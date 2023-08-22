@@ -1,0 +1,5 @@
+// macro_dr script for developing purposes
+
+// define a kinetic model
+
+esto
