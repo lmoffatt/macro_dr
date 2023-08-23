@@ -50,8 +50,7 @@ public:
 
   constexpr static const std::string_view assignment_sep = " ";
 
-  constexpr static const std::string_view label_delimiters = ""
-                                                             "'";
+  constexpr static const std::string_view label_delimiters = "'\"";
 
   constexpr static const std::string_view comment_start = "//";
 
@@ -113,19 +112,20 @@ extract_identifier(const std::string &s, std::size_t pos) {
 Maybe_error<
     std::pair<std::unique_ptr<untyped_string_value<Lexer>>, std::size_t>>
 extract_string(const std::string &s, std::size_t pos) {
+  auto ch=std::string(Lexer::label_delimiters);
   auto delimiter_n = Lexer::label_delimiters.find(s[pos]);
   if (delimiter_n == std::string::npos)
     return error_message("");
   else {
-    auto posf = s.find_first_of(Lexer::label_delimiters[delimiter_n], pos + 1);
+    auto posf = s.find(Lexer::label_delimiters[delimiter_n], pos + 1);
     if (posf == std::string::npos) {
       return error_message(Lexer::to_end_of_line(s, pos) +
                            " does not end with an label delimiter");
     } else {
-      auto label = s.substr(pos + 1, posf - pos - 1);
+      auto label = s.substr(pos, posf - pos+1);
       return std::pair(std::unique_ptr<untyped_string_value<Lexer>>(
                            new untyped_string_value<Lexer>(label)),
-                       posf);
+                       posf+1);
     }
   }
 }
@@ -213,6 +213,7 @@ extract_argument_list(const std::string &s, std::size_t pos) {
       } else {
         out->push_back((*maybe_expression).first.release());
         last_pos = (*maybe_expression).second;
+        last_pos = Lexer::skip_whitespace(s,last_pos);
 
         if (s.substr(last_pos, Lexer::argument_list_sep.size()) ==
             Lexer::argument_list_sep) {
@@ -226,7 +227,7 @@ extract_argument_list(const std::string &s, std::size_t pos) {
                 s.substr(pos, last_pos -pos- 1) + " expected argument separator """ +
                 std::string(Lexer::argument_list_sep) +
                 """or argument end: """ + std::string(Lexer::argument_list_end) +
-                """ found: " + s.substr(last_pos, Lexer::argument_list_end.size())+"\n");
+                """ found: " + s.substr(last_pos, Lexer::argument_list_end.size())+"\"\n");
           }
         }
       }
@@ -254,6 +255,7 @@ extract_function_evaluation(
 Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer>>, std::size_t>>
 extract_expression(const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_whitespace(s, pos);
+   last_pos = Lexer::skip_whiteline(s, last_pos);
   auto maybe_identifier = extract_identifier(s, last_pos);
 
   if (maybe_identifier) {
@@ -335,12 +337,14 @@ extract_expression(const std::string &s, std::size_t pos) {
 Maybe_error<untyped_program<Lexer>> extract_program(const std::string &s) {
   untyped_program<Lexer> out;
   auto last_pos = 0ul;
+  last_pos = Lexer::skip_whitespace(s, last_pos);
+  last_pos = Lexer::skip_whiteline(s, last_pos);
   while (last_pos < s.size()) {
-    last_pos = Lexer::skip_whitespace(s, last_pos);
     auto maybe_expr = extract_expression(s, last_pos);
     if (maybe_expr) {
       out.push_back((*maybe_expr).first.release());
-      last_pos = Lexer::skip_whiteline(s, (*maybe_expr).second);
+      last_pos = (*maybe_expr).second;
+      last_pos = Lexer::skip_whiteline(s, last_pos);
 
     } else {
       return maybe_expr.error();
