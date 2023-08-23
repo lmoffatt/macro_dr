@@ -9,6 +9,7 @@ namespace dcli {
 class Lexer {
 public:
   constexpr static const std::string_view whitespace = " \t";
+  constexpr static const std::string_view whitespaceline = " \t\n";
 
   constexpr static const std::string_view alfa =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
@@ -24,12 +25,12 @@ public:
   constexpr static const std::string_view numeric_plus_or_minus = "-+";
 
   constexpr static const std::string_view argument_list_start = "(";
-  constexpr static const std::string_view argument_list_sep = ", ";
+  constexpr static const std::string_view argument_list_sep = ",";
   constexpr static const std::string_view argument_list_end = ")";
 
   constexpr static const std::string_view statement_sep = "\n";
 
-  constexpr static const std::string_view argument_sep = ", ";
+  constexpr static const std::string_view argument_sep = ",";
 
   constexpr static const std::string_view assignment_operator = "=";
 
@@ -66,9 +67,35 @@ public:
            (s.substr(pos, statement_sep.size()) == statement_sep);
   }
 
+  static bool is_end_of_argument(const std::string &s, std::size_t pos) {
+
+    return ((s.substr(pos, Lexer::argument_list_sep.size()) ==
+             Lexer::argument_list_sep) ||
+            (s.substr(pos, Lexer::argument_list_end.size()) ==
+             Lexer::argument_list_end));
+  }
+
+  static bool is_start_of_argument_list(const std::string &s, std::size_t pos) {
+    return (s.substr(pos, Lexer::argument_list_start.size()) ==
+            Lexer::argument_list_start);
+  }
+
+  static bool is_argument_separator(const std::string &s, std::size_t pos) {
+    return (s.substr(pos, Lexer::argument_list_sep.size()) ==
+            Lexer::argument_list_sep);
+  }
+
+  static bool is_end_of_argument_list(const std::string &s, std::size_t pos) {
+    return (s.substr(pos, Lexer::argument_list_end.size()) ==
+            Lexer::argument_list_end);
+  }
   static auto skip_whitespace(const std::string &s, std::size_t pos) {
     return s.find_first_not_of(whitespace, pos);
   }
+  static auto skip_whitespaceline(const std::string &s, std::size_t pos) {
+    return s.find_first_not_of(whitespaceline, pos);
+  }
+
   static auto skip_whiteline(const std::string &s, std::size_t pos) {
     return s.find_first_not_of("\n", pos);
   }
@@ -112,7 +139,7 @@ extract_identifier(const std::string &s, std::size_t pos) {
 Maybe_error<
     std::pair<std::unique_ptr<untyped_string_value<Lexer>>, std::size_t>>
 extract_string(const std::string &s, std::size_t pos) {
-  auto ch=std::string(Lexer::label_delimiters);
+  auto ch = std::string(Lexer::label_delimiters);
   auto delimiter_n = Lexer::label_delimiters.find(s[pos]);
   if (delimiter_n == std::string::npos)
     return error_message("");
@@ -122,10 +149,10 @@ extract_string(const std::string &s, std::size_t pos) {
       return error_message(Lexer::to_end_of_line(s, pos) +
                            " does not end with an label delimiter");
     } else {
-      auto label = s.substr(pos, posf - pos+1);
+      auto label = s.substr(pos, posf - pos + 1);
       return std::pair(std::unique_ptr<untyped_string_value<Lexer>>(
                            new untyped_string_value<Lexer>(label)),
-                       posf+1);
+                       posf + 1);
     }
   }
 }
@@ -138,8 +165,7 @@ bool is_equal_at_pos(const std::string &s, std::size_t pos,
 Maybe_error<
     std::pair<std::unique_ptr<untyped_numeric_value<Lexer>>, std::size_t>>
 extract_numeric(const std::string &s, std::size_t pos) {
-  auto last_pos= Lexer::skip_whitespace(s,pos);
-  last_pos = Lexer::skip_plus_or_minus(s, last_pos);
+  auto last_pos = Lexer::skip_plus_or_minus(s, pos);
   if (!Lexer::is_numeral(s, last_pos)) {
     return error_message("");
   } else {
@@ -195,39 +221,39 @@ Maybe_error<
     std::pair<std::unique_ptr<untyped_argument_list<Lexer>>, std::size_t>>
 extract_argument_list(const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_whitespace(s, pos);
-  auto may_start = s.substr(last_pos, Lexer::argument_list_start.size());
-  if (s.substr(last_pos, Lexer::argument_list_start.size()) !=
-      Lexer::argument_list_start) {
+  if (!Lexer::is_start_of_argument_list(s, last_pos)) {
     return error_message("");
   } else {
     last_pos = last_pos + Lexer::argument_list_start.size();
+    last_pos = Lexer::skip_whitespaceline(s, last_pos);
+
     auto out = std::make_unique<untyped_argument_list<Lexer>>();
 
-    bool is_end = s.substr(last_pos, Lexer::argument_list_end.size()) ==
-                  Lexer::argument_list_end;
+    bool is_end = Lexer::is_end_of_argument_list(s,last_pos);
     while (!is_end) {
       auto maybe_expression = extract_expression(s, last_pos);
       if (!maybe_expression) {
-        return error_message(s.substr(pos, last_pos-pos) +
-                             "\n error for the next argument:\n " + maybe_expression.error()()+"\n");
+        return error_message(s.substr(pos, last_pos - pos) +
+                             "\t error in the next argument:\n " +
+                             maybe_expression.error()() + "\n");
       } else {
         out->push_back((*maybe_expression).first.release());
         last_pos = (*maybe_expression).second;
-        last_pos = Lexer::skip_whitespace(s,last_pos);
+        last_pos = Lexer::skip_whitespaceline(s, last_pos);
 
-        if (s.substr(last_pos, Lexer::argument_list_sep.size()) ==
-            Lexer::argument_list_sep) {
+        if (Lexer::is_argument_separator(s,last_pos)) {
           last_pos += Lexer::argument_list_sep.size();
         } else {
-          auto may_end = s.substr(last_pos, Lexer::argument_list_end.size());
-          is_end = s.substr(last_pos, Lexer::argument_list_end.size()) ==
-                   Lexer::argument_list_end;
+          is_end = Lexer::is_end_of_argument_list(s,last_pos);
           if (!is_end) {
             return error_message(
-                s.substr(pos, last_pos -pos- 1) + " expected argument separator """ +
+                s.substr(pos, last_pos - pos - 1) +
+                " expected argument separator \"" +
                 std::string(Lexer::argument_list_sep) +
-                """or argument end: """ + std::string(Lexer::argument_list_end) +
-                """ found: " + s.substr(last_pos, Lexer::argument_list_end.size())+"\"\n");
+                "\"or argument end: \""+
+                std::string(Lexer::argument_list_end) +
+                "\" found: \"" +
+                s.substr(last_pos, Lexer::argument_list_end.size()) + "\"\n");
           }
         }
       }
@@ -254,18 +280,14 @@ extract_function_evaluation(
 
 Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer>>, std::size_t>>
 extract_expression(const std::string &s, std::size_t pos) {
-  auto last_pos = Lexer::skip_whitespace(s, pos);
-   last_pos = Lexer::skip_whiteline(s, last_pos);
+  auto last_pos = Lexer::skip_whitespaceline(s, pos);
   auto maybe_identifier = extract_identifier(s, last_pos);
 
   if (maybe_identifier) {
     last_pos = (*maybe_identifier).second;
     last_pos = Lexer::skip_whitespace(s, last_pos);
     if (Lexer::is_end_of_statement(s, last_pos) ||
-        (s.substr(last_pos, Lexer::argument_list_sep.size()) ==
-         Lexer::argument_list_sep)||
-        (s.substr(last_pos, Lexer::argument_list_end.size()) ==
-         Lexer::argument_list_end))
+        Lexer::is_end_of_argument(s, last_pos))
       return std::pair{std::unique_ptr<untyped_expression<Lexer>>{
                            (*maybe_identifier).first.release()},
                        last_pos};
@@ -276,24 +298,20 @@ extract_expression(const std::string &s, std::size_t pos) {
         return std::pair{std::unique_ptr<untyped_expression<Lexer>>{
                              (*maybe_assigment).first.release()},
                          (*maybe_assigment).second};
-      } else if (!maybe_assigment.error()().empty())
-      {
+      } else if (!maybe_assigment.error()().empty()) {
         return maybe_assigment.error();
-      }
-      else
-      {
+      } else {
         auto maybe_function_evaluation =
             extract_function_evaluation((*maybe_identifier).first, s, last_pos);
         if (maybe_function_evaluation) {
           return std::pair{std::unique_ptr<untyped_expression<Lexer>>{
                                (*maybe_function_evaluation).first.release()},
                            (*maybe_function_evaluation).second};
-        } else if (!maybe_function_evaluation.error()().empty())
-        {
+        } else if (!maybe_function_evaluation.error()().empty()) {
           return maybe_function_evaluation.error();
         } else {
           // auto maybe_operation_evaluation here should go
-          return error_message(s.substr(pos, last_pos-pos) +
+          return error_message(s.substr(pos, last_pos - pos) +
                                "\n is not a well formed statment\n");
         }
       }
@@ -306,8 +324,7 @@ extract_expression(const std::string &s, std::size_t pos) {
     return std::pair(std::unique_ptr<untyped_expression<Lexer>>(
                          (*maybe_numeric).first.release()),
                      (*maybe_numeric).second);
-  }
-  else if(!maybe_numeric.error()().empty())
+  } else if (!maybe_numeric.error()().empty())
     return maybe_numeric.error();
   auto maybe_string = extract_string(s, pos);
   if (maybe_string) {
@@ -315,8 +332,7 @@ extract_expression(const std::string &s, std::size_t pos) {
     return std::pair(std::unique_ptr<untyped_expression<Lexer>>(
                          (*maybe_string).first.release()),
                      (*maybe_string).second);
-  }
-  else if(!maybe_string.error()().empty())
+  } else if (!maybe_string.error()().empty())
     return maybe_string.error();
 
   auto maybe_argument_list = extract_argument_list(s, pos);
@@ -325,26 +341,23 @@ extract_expression(const std::string &s, std::size_t pos) {
     return std::pair(std::unique_ptr<untyped_expression<Lexer>>(
                          (*maybe_argument_list).first.release()),
                      (*maybe_argument_list).second);
-  }
-  else if(!maybe_argument_list.error()().empty())
+  } else if (!maybe_argument_list.error()().empty())
     return maybe_argument_list.error();
 
-
-  return error_message(s.substr(pos,s.find_first_of("\n",last_pos)-pos)+ "\n is not a well formed expression"
-      );
+  return error_message(s.substr(pos, s.find_first_of("\n", last_pos) - pos) +
+                       "\n is not a well formed expression");
 }
 
 Maybe_error<untyped_program<Lexer>> extract_program(const std::string &s) {
   untyped_program<Lexer> out;
   auto last_pos = 0ul;
-  last_pos = Lexer::skip_whitespace(s, last_pos);
-  last_pos = Lexer::skip_whiteline(s, last_pos);
+  last_pos = Lexer::skip_whitespaceline(s, last_pos);
   while (last_pos < s.size()) {
     auto maybe_expr = extract_expression(s, last_pos);
     if (maybe_expr) {
       out.push_back((*maybe_expr).first.release());
       last_pos = (*maybe_expr).second;
-      last_pos = Lexer::skip_whiteline(s, last_pos);
+      last_pos = Lexer::skip_whitespaceline(s, last_pos);
 
     } else {
       return maybe_expr.error();
