@@ -1,14 +1,12 @@
 #ifndef GRAMMAR_IDENTIFIER_H
 #define GRAMMAR_IDENTIFIER_H
 
-#include "Maybe_error.h"
+#include "maybe_error.h"
 
 
 #include <string>
 namespace dcli {
 
-using logic::Maybe_error;
-using logic::error_message;
 
 template<class Lexer>
 class Identifier;
