@@ -74,7 +74,7 @@ public:
   untyped_simple_expression(std::string t_expression)
       : m_expression{std::move(t_expression)} {}
 
-  virtual std::string str() const override final { return m_expression; };
+  virtual std::string str() const override  { return m_expression; };
   auto &operator()() const { return m_expression; }
 
 };
@@ -100,6 +100,25 @@ public:
   };
   virtual ~untyped_string_value(){};
 };
+
+
+template <class Lexer>
+class untyped_comment : public untyped_simple_expression<Lexer> {
+
+  public:
+  using untyped_simple_expression<Lexer>::untyped_simple_expression;
+
+  virtual untyped_comment *clone() const override {
+    return new untyped_comment(*this);
+  };
+
+  virtual std::string str()const {
+    return std::string(Lexer::comment_start)+untyped_simple_expression<Lexer>::str();
+  }
+  virtual ~untyped_comment(){};
+};
+
+
 
 template <class Lexer>
 class untyped_identifier : public untyped_expression<Lexer> {
