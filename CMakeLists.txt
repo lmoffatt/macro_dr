@@ -30,6 +30,9 @@ add_executable(macro_dr main.cpp
     test.txt
     matrix.h
     lapack_headers.h
+    experiment.h
+    variables.h
+    fold.h
 #    tst_untyped_grammar.cpp
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
