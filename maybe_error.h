@@ -6,6 +6,10 @@
 #include <tuple>
 #include <variant>
 #include <vector>
+
+constexpr auto NaN = std::numeric_limits<double>::quiet_NaN();
+constexpr auto eps = std::numeric_limits<double>::epsilon();
+
 template <typename C, template <typename...> class V>
 struct is_of_this_template_type : std::false_type {};
 template <template <typename...> class V, typename... Ts>
@@ -142,8 +146,9 @@ public:
 template <class T> class Maybe_error : private std::variant<T, error_message> {
 public:
     using base_type = std::variant<T, error_message>;
-    Maybe_error(T &&x) : base_type(std::move(x)) {}
-    Maybe_error(const T &x) : base_type(x) {}
+    
+    template <typename U> requires std::constructible_from<T, U>
+    Maybe_error(U&& u) : base_type(std::forward<U>(u)) { }    
     Maybe_error()=default;
     Maybe_error(error_message &&x) : base_type{(std::move(x))} {}
     Maybe_error(const error_message &x) : base_type{x} {}
@@ -173,7 +178,7 @@ public:
         if (x)
             os<<x.value();
         else
-            os<<x.error();
+            os<<x.error()();
         return os;
     }
     friend std::ostream& operator<<(std::ostream &os,  Maybe_error&& x)
@@ -181,7 +186,7 @@ public:
         if (x)
             os<<x.value();
         else
-            os<<x.error();
+            os<<x.error()();
         return os;
     }
 };
@@ -195,6 +200,27 @@ auto operator*(const T &x, const S &y) {
         return Maybe_error<std::decay_t<decltype(get_value(x) * get_value(y))>>(
             get_error(x) + " multiplies " + get_error(y));
 }
+
+Maybe_error<bool> operator>>(std::string&& context_message,Maybe_error<bool>&& x)
+{
+    if (x) return x;
+    else
+        return error_message(context_message+x.error()());
+}
+
+
+
+Maybe_error<bool> operator&&(Maybe_error<bool>&& one,Maybe_error<bool>&& two )
+{
+    if ((one)&&(two))
+        return true;
+    else
+        return error_message(one.error()()+two.error()());
+}
+
+
+
+
 
 template<class T>
 Maybe_error<std::vector<T>> promote_Maybe_error(std::vector<Maybe_error<T>>const & x)
@@ -218,7 +244,7 @@ auto operator+(const T &x, const S &y) {
         return Maybe_error<std::decay_t<decltype(get_value(x) + get_value(y))>>(
             get_error(x) + " multiplies " + get_error(y));
 }
-
+        
 template <class T, class S>
     requires(is_Maybe_error<T> || is_Maybe_error<S>)
 auto operator-(const T &x, const S &y) {
@@ -387,11 +413,22 @@ template <class T, auto ...F> struct return_error {
     
 };
 
+template<class T>
+    requires (!std::is_object_v<T>)
+std::ostream& put(std::ostream& os, const T& t)
+{
+    os<<t<<"\n";
+    return os;
+}
+
+
+
+
 
 template<class... Ts>
 std::ostream& operator<<(std::ostream& os, const std::tuple<Ts...>& tu)
 {
-    return std::apply([&os](auto&... x)->std::ostream& {((os<<x<<"\n"),...);return os; },tu);
+    return std::apply([&os](auto&... x)->std::ostream& {(put(os, x),...);return os; },tu);
 }
 
 template<class Ts>
