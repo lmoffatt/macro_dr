@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
   auto experiment=Experiment(std::move(recording),Frequency_of_Sampling(50e3), initial_ATP_concentration(ATP_concentration(0.0)));
   
   Patch_Model model1(N_St(5),
-                     Q0(Matrix<double>(5,5,0.0)), Qa(Matrix<double>(5,5,0.0)), g(Matrix<double>(5,1,0.0)), N_Ch_mean(100), N_Ch_std(2.0), curr_noise(100.0), min_P(1e-7), Probability_error_tolerance(1e-2), Conductance_variance_error_tolerance(1e-2));
+                     Q0(Matrix<double>(5,5,0.0)), Qa(Matrix<double>(5,5,0.0)), g(Matrix<double>(5,1,0.0)), N_Ch_mean(100), N_Ch_std(2.0), curr_noise(1e-5), min_P(1e-7), Probability_error_tolerance(1e-2), Conductance_variance_error_tolerance(1e-2));
   
   get<Qa>(model1)()(0,1)=18;
   get<Qa>(model1)()(1,2)=12;
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
   std::random_device rd;
   typename std::mt19937_64::result_type seed =rd();
   std::mt19937_64 mt(seed);
-  auto sim=Macro_DMR{}.sample(mt,model1,experiment,Simulation_Parameters(Number_of_simulation_sub_steps(1)));
+  auto sim=Macro_DMR{}.sample(mt,model1,experiment,Simulation_Parameters(Number_of_simulation_sub_steps(10)));
   
   
   std::cerr<<sim;
