@@ -240,6 +240,8 @@ class eplogL : public var::Var<eplogL, double> {};
 class vplogL : public var::Var<vplogL, double> {};
 
 class logL : public var::Var<logL, double> {};
+class elogL : public var::Var<elogL, double> {};
+class vlogL : public var::Var<vlogL, double> {};
 
 using Qx_eig = Vector_Space<Qx, V, lambda, W>;
 
@@ -250,8 +252,8 @@ using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, N_Ch_std,
                                  curr_noise, min_P, Probability_error_tolerance,
                                  Conductance_variance_error_tolerance>;
 
-using Patch_State =
-    Vector_Space<logL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL, vplogL>;
+using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
+                                 y_var, plogL, eplogL, vplogL>;
 
 class Number_of_simulation_sub_steps
     : public Var<Number_of_simulation_sub_steps, std::size_t> {};
@@ -496,15 +498,15 @@ public:
     assert(t_P().nrows() == t_P().ncols());
     auto k = N().size();
     N_channel_state out(Matrix<double>(1, k, 0.0));
-    for (std::size_t i0 = 0; i0 < k; ++i0) {
-      std::size_t N_remaining = N()[i0];
+    for (std::size_t i = 0; i < k; ++i) {
+      std::size_t N_remaining = N()[i];
       double p_remaining = 1;
-      for (std::size_t i = 0; i + 1 < k; ++i) {
+      for (std::size_t j = 0; j + 1 < k; ++j) {
         auto n = std::binomial_distribution<std::size_t>(
-            N_remaining, t_P()(i0, i) / p_remaining)(mt);
+            N_remaining, t_P()(i, j) / p_remaining)(mt);
         N_remaining -= n;
-        p_remaining -= t_P()(i0, i);
-        out()[i] += n;
+        p_remaining -= t_P()(i, j);
+        out()[j] += n;
       }
       out()[k - 1] += N_remaining;
     }
@@ -521,25 +523,23 @@ public:
     }
     return std::move(p);
   }
-  
+
   static P normalize(P &&p, double t_min_p) {
-    //std::cerr<<p;
+    // std::cerr<<p;
     for (std::size_t i = 0; i < p().nrows(); ++i) {
-      double sumP=0; 
-      for (std::size_t j=0; j<p().ncols();++j)
-        if (p()(i, j)< t_min_p) 
-          p()(i,j)=0;
+      double sumP = 0;
+      for (std::size_t j = 0; j < p().ncols(); ++j)
+        if (p()(i, j) < t_min_p)
+          p()(i, j) = 0;
         else
-          sumP+=p()(i,j);
-      for (std::size_t j=0; j<p().ncols();++j)
-        p()(i,j)=p()(i,j)/sumP;
-      
-      }
-    //std::cerr<<p;
+          sumP += p()(i, j);
+      for (std::size_t j = 0; j < p().ncols(); ++j)
+        p()(i, j) = p()(i, j) / sumP;
+    }
+    // std::cerr<<p;
     return std::move(p);
   }
-  
-  
+
   template <class Vs>
     requires Vs::is_vector_map_space
   Maybe_error<Qx_eig const *> get_eigen(Vs &buffer_calc, const Patch_Model &m,
@@ -591,8 +591,7 @@ public:
     auto ladt = get<lambda>(t_Qx)() * dt;
 
     auto exp_ladt = apply([](double x) { return std::exp(x); }, ladt);
-    return normalize(P(get<V>(t_Qx)() * exp_ladt * get<W>(t_Qx)()),
-                     t_min_P);
+    return normalize(P(get<V>(t_Qx)() * exp_ladt * get<W>(t_Qx)()), t_min_P);
   }
 
   auto calc_Qdt_old(const Patch_Model &m, const Qx_eig &t_Qx, double dt) {
@@ -911,9 +910,10 @@ public:
       auto v_P_mean = P_mean(p_P_mean() * get<P>(t_Qdt)());
       v_P_cov() = v_P_cov() + diag(v_P_mean());
 
-      return Patch_State(logL(get<logL>(t_prior)()), v_P_mean, v_P_cov,
-                         y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
-                         vplogL(NaN));
+      return Patch_State(
+          logL(get<logL>(t_prior)()), elogL(get<elogL>(t_prior)()),
+          vlogL(get<vlogL>(t_prior)()), v_P_mean, v_P_cov, y_mean(NaN),
+          y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN));
       // std::cerr<<"\nPcov nana corr\n"<<P__cov<<"\nP_mean nana
       // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
       //      auto test = mp_state_information::test(P_mean, P__cov,
@@ -992,7 +992,9 @@ public:
     vplogL v_vplogL(0.5);
     // double chilogL=(eplogL-plogL)/std::sqrt(0.5);
     std::cerr << get<Time>(p).value() << "\t" << v_P_mean << "\n";
-    return Patch_State(logL(get<logL>(t_prior)() + v_plogL()), v_P_mean,
+    return Patch_State(logL(get<logL>(t_prior)() + v_plogL()),
+                       elogL(get<elogL>(t_prior)() + v_eplogL()),
+                       vlogL(get<vlogL>(t_prior)() + v_vplogL()), v_P_mean,
                        v_P_cov, v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
   }
 
@@ -1151,11 +1153,12 @@ public:
       // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
       auto r_test = test<true>(r_P_mean, r_P_cov, t_tolerance);
       if (r_test)
-        return Patch_State(logL(get<logL>(t_prior)()),
-                           normalize(std::move(r_P_mean), t_min_P()),
-                           normalize(std::move(r_P_cov), t_min_P()),
-                           std::move(r_y_mean), std::move(r_y_var), plogL(NaN),
-                           eplogL(NaN), vplogL(NaN));
+        return Patch_State(
+            logL(get<logL>(t_prior)()), elogL(get<elogL>(t_prior)()),
+            vlogL(get<vlogL>(t_prior)()),
+            normalize(std::move(r_P_mean), t_min_P()),
+            normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
+            std::move(r_y_var), plogL(NaN), eplogL(NaN), vplogL(NaN));
       else
         return error_message("fails at intertrace prediction!!: " +
                              r_test.error()());
@@ -1226,6 +1229,8 @@ public:
       }
     } else
       return Patch_State(logL(get<logL>(t_prior)() + r_plogL()),
+                         elogL(get<elogL>(t_prior)() + r_eplogL()),
+                         vlogL(get<vlogL>(t_prior)() + r_vlogL()),
                          normalize(std::move(r_P_mean), t_min_P()),
                          normalize(std::move(r_P_cov), t_min_P()),
                          std::move(r_y_mean), std::move(r_y_var),
@@ -1253,7 +1258,8 @@ public:
           //  t_min_P());
         }
 
-        return Patch_State(logL(0.0), normalize(std::move(r_P_mean), t_min_P()),
+        return Patch_State(logL(0.0), elogL(0.0), vlogL(0.0),
+                           normalize(std::move(r_P_mean), t_min_P()),
                            normalize(std::move(r_P_cov), t_min_P()),
                            y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
                            vplogL(NaN));
@@ -1261,8 +1267,8 @@ public:
     } else
       return v_Qx.error();
   }
-
-  Maybe_error<logL> log_Likelihood(const Patch_Model &m, const Experiment &e) {
+  
+  Maybe_error<Vector_Space<logL,elogL,vlogL>> log_Likelihood(const Patch_Model &m, const Experiment &e) {
 
     auto fs = get<Frequency_of_Sampling>(e).value();
     auto ini = init(m, get<initial_ATP_concentration>(e));
@@ -1295,7 +1301,7 @@ public:
       if (!run)
         return run.error();
       else
-        return get<logL>(run.value());
+        return Vector_Space<logL,elogL,vlogL>(get<logL>(run.value()),get<elogL>(run.value()),get<vlogL>(run.value()));
     }
   }
 
@@ -1303,7 +1309,7 @@ public:
                             const Patch_Model &m, const Experiment_step &t_s,
                             P t_P, std::size_t n_sub) {
     auto &t_g = get<g>(m);
-    auto N = get<N_channel_state>(t_sim_step);
+    auto &N = get<N_channel_state>(t_sim_step);
     double ysum = getvalue(N() * t_g()) / 2;
     for (std::size_t i = 0; i < n_sub - 1; ++i) {
       N = sample_Multinomial(mt, t_P, N);
@@ -1315,8 +1321,8 @@ public:
     get<Patch_current>(t_e_step) = Patch_current(ysum / n_sub);
     get<Recording>(get<Simulated_Experiment>(t_sim_step)())().push_back(
         t_e_step);
-    //std::cerr<<t_e_step;
-    std::cerr<<N;
+    // std::cerr<<t_e_step;
+    std::cerr << N;
     return t_sim_step;
   }
 
@@ -1335,9 +1341,10 @@ public:
     return Simulated_Step(std::move(N_state), std::move(sim));
   }
 
-  Maybe_error<Simulated_Experiment> sample(std::mt19937_64 &mt, const Patch_Model &m,
-                                 const Experiment &e,
-                                 const Simulation_Parameters &sim) {
+  Maybe_error<Simulated_Experiment> sample(std::mt19937_64 &mt,
+                                           const Patch_Model &m,
+                                           const Experiment &e,
+                                           const Simulation_Parameters &sim) {
 
     auto n_sub = get<Number_of_simulation_sub_steps>(sim);
     auto fs = get<Frequency_of_Sampling>(e).value();
@@ -1347,23 +1354,23 @@ public:
     if (!ini)
       return ini.error();
     else {
-      auto run =
-          fold(get<Recording>(e)(), ini.value(),
-               [this, &m, fs, n_sub, &mt](Simulated_Step &&t_sim_step,
-                                          Experiment_step const &t_step) {
-                 auto t_Qx = calc_eigen(m, get<ATP_concentration>(t_step));
+      auto run = fold(
+          get<Recording>(e)(), ini.value(),
+          [this, &m, fs, n_sub, &mt](Simulated_Step &&t_sim_step,
+                                     Experiment_step const &t_step) {
+            auto t_Qx = calc_eigen(m, get<ATP_concentration>(t_step));
 
-                 if (!t_Qx)
-                   return Maybe_error<Simulated_Step>(t_Qx.error());
-                 // print(std::cerr,t_Qx.value());
+            if (!t_Qx)
+              return Maybe_error<Simulated_Step>(t_Qx.error());
+            // print(std::cerr,t_Qx.value());
 
-                 auto sub_dt =
-                     get<number_of_samples>(t_step).value() / fs / n_sub();
-                 auto t_min_P = get<min_P>(m);
-                 auto t_P = calc_P(m, t_Qx.value(), sub_dt, t_min_P());
-                 
-                 return Maybe_error<Simulated_Step>(sub_sample(mt, std::move(t_sim_step), m, t_step, t_P, n_sub()));
-               });
+            auto sub_dt = get<number_of_samples>(t_step).value() / fs / n_sub();
+            auto t_min_P = get<min_P>(m);
+            auto t_P = calc_P(m, t_Qx.value(), sub_dt, t_min_P());
+
+            return Maybe_error<Simulated_Step>(
+                sub_sample(mt, std::move(t_sim_step), m, t_step, t_P, n_sub()));
+          });
       if (!run)
         return run.error();
       else
