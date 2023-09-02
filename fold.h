@@ -16,7 +16,8 @@ Maybe_error<Init> fold (Container c, Init init,
     {
         auto v_run=std::invoke(reduce,std::move(run),e);
         if (!v_run) return v_run.error();
-        else run=std::move(v_run.value());
+        else
+            run=std::move(v_run.value());
     }
     return run;    
 }

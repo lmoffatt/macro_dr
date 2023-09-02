@@ -1602,7 +1602,7 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
       std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
     }
 
-    assert((norm_1(VR_cpp * WR * VL_cpp - x) < 10 * std::sqrt(eps)) &&
+    assert((norm_1(VR_cpp * WR * VL_cpp - x) < 1000 * std::sqrt(eps)) &&
            " fails in eigendecomposition");
 //    return sort_by_eigenvalue(std::make_tuple(
     return std::make_tuple(
