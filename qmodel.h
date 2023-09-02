@@ -1307,18 +1307,17 @@ public:
 
   Simulated_Step sub_sample(std::mt19937_64 &mt, Simulated_Step &&t_sim_step,
                             const Patch_Model &m, const Experiment_step &t_s,
-                            P t_P, std::size_t n_sub) {
+                            P t_P, std::size_t n_sub, double e) {
     auto &t_g = get<g>(m);
     auto &N = get<N_channel_state>(t_sim_step);
-    double ysum = getvalue(N() * t_g()) / 2;
-    for (std::size_t i = 0; i < n_sub - 1; ++i) {
+    double ysum = 0;
+    for (std::size_t i = 0; i < n_sub; ++i) {
       N = sample_Multinomial(mt, t_P, N);
       ysum += getvalue(N() * t_g());
     }
-    N = sample_Multinomial(mt, t_P, N);
-    ysum += getvalue(N() * t_g()) / 2;
     auto t_e_step = t_s;
-    get<Patch_current>(t_e_step) = Patch_current(ysum / n_sub);
+    
+    get<Patch_current>(t_e_step) = Patch_current(ysum / n_sub+std::normal_distribution<double>()(mt)*std::sqrt(e));
     get<Recording>(get<Simulated_Experiment>(t_sim_step)())().push_back(
         t_e_step);
     // std::cerr<<t_e_step;
@@ -1363,13 +1362,15 @@ public:
             if (!t_Qx)
               return Maybe_error<Simulated_Step>(t_Qx.error());
             // print(std::cerr,t_Qx.value());
-
-            auto sub_dt = get<number_of_samples>(t_step).value() / fs / n_sub();
+            
+            auto dt = get<number_of_samples>(t_step).value() / fs;
+            auto sub_dt = dt / n_sub();
             auto t_min_P = get<min_P>(m);
             auto t_P = calc_P(m, t_Qx.value(), sub_dt, t_min_P());
-
+            double e =
+                get<curr_noise>(m).value() * get<number_of_samples>(t_step).value() / fs;
             return Maybe_error<Simulated_Step>(
-                sub_sample(mt, std::move(t_sim_step), m, t_step, t_P, n_sub()));
+                sub_sample(mt, std::move(t_sim_step), m, t_step, t_P, n_sub(),e));
           });
       if (!run)
         return run.error();
