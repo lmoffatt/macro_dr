@@ -11,16 +11,14 @@ namespace macrodr {
 
 using var::Var;
 
-class Time : public Var<Time, double, var::ms> {};
-class number_of_samples : public Var<Time, std::size_t, var::number> {};
+class Time : public Var<Time, double> {};
+class number_of_samples : public Var<Time, std::size_t> {};
 
-class ATP
-    : public Var<ATP, double> {};
 
 class ATP_concentration
-    : public Var<ATP_concentration, double, var::microMolar> {};
+    : public Var<ATP_concentration, double> {};
 
-class Patch_current : public Var<Patch_current, double, var::pA> {};
+class Patch_current : public Var<Patch_current, double> {};
 
 
 
@@ -29,7 +27,7 @@ using Experiment_step=    var::Vector_Space<Time, number_of_samples, ATP_concent
 
 
 class Recording : public Var<Recording,std::vector<Experiment_step>>{};
-class Frequency_of_Sampling : public var::Var<Frequency_of_Sampling, double, var::kHz> {};
+class Frequency_of_Sampling : public var::Var<Frequency_of_Sampling, double> {};
 
 class initial_ATP_concentration
     : public Var<initial_ATP_concentration, ATP_concentration> {};
@@ -51,7 +49,7 @@ auto &extract_double(std::istream &is, double &r) {
   return is;
 }
 
-Recording load_experiment(const std::string filename) {
+Recording load_recording(const std::string filename) {
   std::ifstream f(filename);
   std::vector<Experiment_step> out;
   std::string line;
@@ -66,6 +64,12 @@ Recording load_experiment(const std::string filename) {
   }
   return Recording(out);
 }
+
+Experiment load_experiment(const std::string filename, double frequency_of_sampling, double initial_ATP) {
+  return Experiment(load_recording(filename),Frequency_of_Sampling(frequency_of_sampling), initial_ATP_concentration(ATP_concentration(initial_ATP)));
+  
+}
+
 
 } // namespace macrodr
 

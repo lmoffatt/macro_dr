@@ -23,6 +23,11 @@ using var::Vector_Space;
 
 template <class T> T sqr(T x) { return x * x; }
 
+
+
+
+
+
 /*
 class State_Model;
 
@@ -127,8 +132,13 @@ public:
                        t_agonist_transition_rates, t_conductances);
   }
 };
-
 */
+
+
+
+
+
+
 
 class Q0 : public var::Var<Q0, Matrix<double>> {};
 
@@ -146,9 +156,7 @@ class min_P : public var::Var<min_P, double> {};
 
 class N_Ch_std : public var::Var<N_Ch_std, double> {};
 
-class curr_noise : public var::Var<curr_noise, double,
-                                   var::Product<var::pA, Power<var::ms, -1>>> {
-};
+class curr_noise : public var::Var<curr_noise, double> {};
 
 class P_mean : public var::Var<P_mean, Matrix<double>> {};
 
@@ -1246,9 +1254,8 @@ public:
       auto r_P_cov = P_Cov(diagpos(r_P_mean()) - XTX(r_P_mean.value()));
       auto r_test =
           test<true>(r_P_mean, r_P_cov, get<Probability_error_tolerance>(m));
-      if (!r_test)
-        return error_message("fails at init: " + r_test.error()());
-      else {
+      if (r_test)
+      {
         auto t_min_P = get<min_P>(m);
         if (true) {
           std::cerr << "initial\n";
@@ -1257,12 +1264,15 @@ public:
           //  std::cerr<<"normalized r_P_cov"<<normalize(std::move(r_P_cov),
           //  t_min_P());
         }
-
         return Patch_State(logL(0.0), elogL(0.0), vlogL(0.0),
                            normalize(std::move(r_P_mean), t_min_P()),
                            normalize(std::move(r_P_cov), t_min_P()),
                            y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
                            vplogL(NaN));
+      }
+      else
+      {
+        return error_message("fails at init: " + r_test.error()());
       }
     } else
       return v_Qx.error();

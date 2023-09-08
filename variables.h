@@ -98,7 +98,7 @@ class struct_Var<Id,T>{
     friend auto& put(std::ostream& os, const struct_Var& x){ os<<x.value<<"\t"; return os;}
 };
 
-
+/*
 
 template<class Id, class T, class Unit>
     requires Unit::is_unit
@@ -117,6 +117,7 @@ public:
     friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}    
 };
 
+*/
 
 template<class...Vars>
 requires (Vars::is_variable&&...)
@@ -210,6 +211,10 @@ public:
     
     Vector_Map_Space(){}
 };
+
+
+
+
 
 
 } // namespace var
