@@ -13,6 +13,7 @@
 
 #include "maybe_error.h"
 #include "variables.h"
+#include "parameters.h"
 
 namespace macrodr {
 
@@ -20,7 +21,10 @@ using var::Power;
 using var::Product;
 using var::Var;
 using var::Vector_Space;
+using var::Parameters;
 
+using var::Constant;
+using var::build;
 template <class T> T sqr(T x) { return x * x; }
 
 
@@ -148,11 +152,11 @@ class Qx : public var::Var<Qx, Matrix<double>> {};
 
 class g : public var::Var<g, Matrix<double>> {};
 
-class N_St : public var::Var<N_St, std::size_t> {};
+class N_St : public var::Constant<N_St, std::size_t> {};
 
 class N_Ch_mean : public var::Var<N_Ch_mean, double> {};
 
-class min_P : public var::Var<min_P, double> {};
+class min_P : public var::Constant<min_P, double> {};
 
 class N_Ch_std : public var::Var<N_Ch_std, double> {};
 
@@ -181,10 +185,10 @@ class uses_averaging_aproximation
     : public var::struct_Var<uses_averaging_aproximation, int> {};
 
 class Probability_error_tolerance
-    : public var::Var<Probability_error_tolerance, double> {};
+    : public var::Constant<Probability_error_tolerance, double> {};
 
 class Conductance_variance_error_tolerance
-    : public var::Var<Conductance_variance_error_tolerance, double> {};
+    : public var::Constant<Conductance_variance_error_tolerance, double> {};
 
 /*
 class Transition_rate_resting
@@ -256,9 +260,35 @@ using Qx_eig = Vector_Space<Qx, V, lambda, W>;
 using Qdt = Vector_Space<P, gmean_i, gtotal_ij, gmean_ij, gtotal_sqr_ij, gsqr_i,
                          gvar_i, gtotal_var_ij, gvar_ij>;
 
-using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, N_Ch_std,
-                                 curr_noise, min_P, Probability_error_tolerance,
+using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean,
+    curr_noise, min_P, Probability_error_tolerance,
                                  Conductance_variance_error_tolerance>;
+
+
+template<class Id>
+struct Model_Patch
+{
+    template<class F>
+    class Model{
+    F m_f;
+public:
+    static constexpr bool is_Model_Patch=true;
+    Model(F t_f):m_f{t_f}{}
+    
+    
+    template<class P>
+     requires std::is_same_v<var::untransformed_type_t<P>,Parameters<Id>>
+    auto operator()(const P& t_p)const{
+        return std::invoke(m_f,t_p);
+    }
+};
+    template<class F>
+    Model(F f)->Model_Patch<Id>::Model<F>;
+    
+};
+
+
+
 
 using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
                                  y_var, plogL, eplogL, vplogL>;
@@ -568,12 +598,12 @@ public:
   }
 
   P_mean calc_Peq(Qx_eig const &t_Qx, const Patch_Model &m) {
-    auto nstates = m[Var<N_St>{}].value();
+    auto nstates = get<N_St>(m).value();
     auto p0 = Matrix<double>(1ul, nstates, 1.0 / nstates);
-
-    auto &landa = t_Qx[Var<lambda>{}]();
-    auto &Vv = t_Qx[Var<V>{}]();
-    auto &Wv = t_Qx[Var<W>{}]();
+    
+    auto &landa = get<lambda>(t_Qx)();
+    auto &Vv = get<V>(t_Qx)();
+    auto &Wv = get<W>(t_Qx)();
     auto laexp = DiagonalMatrix<double>(nstates, nstates, 0.0);
     for (std::size_t i = 0; i < nstates; ++i) {
       if (landa(i, i) == 0.0)
@@ -590,8 +620,8 @@ public:
       //  std::cerr<<"\nWv*landa*Vv\n"<<Wv*landa*Vv;
       std::cerr << "\nQx\n" << get<Qx>(t_Qx);
     }
-
-    return P_mean(p0 * Vv * laexp * Wv);
+    
+    return build<P_mean>(p0 * Vv * laexp * Wv);
   }
 
   auto calc_P(const Patch_Model &m, const Qx_eig &t_Qx, double dt,
@@ -1278,8 +1308,10 @@ public:
       return v_Qx.error();
   }
   
-  Maybe_error<Vector_Space<logL,elogL,vlogL>> log_Likelihood(const Patch_Model &m, const Experiment &e) {
-
+  
+  template<class Id, class Model>
+  Maybe_error<Vector_Space<logL,elogL,vlogL>> log_Likelihood(const Model &model,const Parameters<Id>& par, const Experiment &e) {
+    auto m=model(par);
     auto fs = get<Frequency_of_Sampling>(e).value();
     auto ini = init(m, get<initial_ATP_concentration>(e));
     if (!ini)
@@ -1349,12 +1381,14 @@ public:
     auto N_state = sample_Multinomial(mt, r_P_mean, N());
     return Simulated_Step(std::move(N_state), std::move(sim));
   }
-
+  
+  template<class Model, class Id>
   Maybe_error<Simulated_Experiment> sample(std::mt19937_64 &mt,
-                                           const Patch_Model &m,
+                                           const Model &model,const Parameters<Id>& par, 
                                            const Experiment &e,
                                            const Simulation_Parameters &sim) {
-
+    
+    auto m=model(par);
     auto n_sub = get<Number_of_simulation_sub_steps>(sim);
     auto fs = get<Frequency_of_Sampling>(e).value();
     auto sim_recording = Recording{};
@@ -1389,6 +1423,9 @@ public:
     }
   }
 };
+
+struct Model1: public Model_Patch<Model1>{};
+
 
 } // namespace macrodr
 

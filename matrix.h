@@ -18,6 +18,16 @@ template <class> class UpTrianMatrix;
 template <class> class DownTrianMatrix;
 template <class> class DiagonalMatrix;
 
+template<class>
+struct element_of_Matrix;
+
+template<class T>
+struct element_of_Matrix<Matrix<T>> {using type=T;};
+
+template<class T>
+using element_of_Matrix_t=typename element_of_Matrix<T>::type;
+
+
 constexpr bool Matrix_uses_vector = true;
 
 template <class T, bool> constexpr auto empty_matrix_container() {
@@ -161,7 +171,24 @@ public:
     for (std::size_t i = 0; i < size_; ++i)
       x_[i] = value;
   }
-
+  
+  explicit Matrix(std::size_t _nrows, std::size_t _ncols, const std::vector<T>& value)
+      : size_{_nrows * _ncols}, nrows_{_nrows}, ncols_{_ncols},
+      x_{initialize_matrix_container<T, Matrix_uses_vector>(size_)} {
+    for (std::size_t i = 0; i < size_; ++i)
+      x_[i] = value[i];
+  }
+  
+  explicit Matrix(std::size_t _nrows, std::size_t _ncols, std::vector<std::tuple<std::size_t,std::size_t,T>>&& value)
+      : size_{_nrows * _ncols}, nrows_{_nrows}, ncols_{_ncols},
+      x_{initialize_matrix_container<T, Matrix_uses_vector>(size_)} {
+    for (std::size_t k = 0; k < value.size(); ++k)
+    {
+      auto [i,j,x]=value[k];
+      (*this)(i,j) = x;
+     }
+  }
+  
   Matrix(const Matrix &x)
       : size_{x.size()}, nrows_{x.nrows()}, ncols_{x.ncols()},
         x_{initialize_matrix_container<T, Matrix_uses_vector>(x.size())} {
@@ -172,7 +199,9 @@ public:
       : size_{x.size()}, nrows_{x.nrows()}, ncols_{x.ncols()},
         x_{std::exchange(x.x_,
                          empty_matrix_container<T, Matrix_uses_vector>())} {}
-
+  
+  
+  
   friend class DiagonalMatrix<T>;
 
   Matrix &operator=(const Matrix &x) {
@@ -271,21 +300,44 @@ public:
     return out;
   }
 
-  template <class F> friend auto apply(F &&f, Matrix &&x) {
+  template <class F>
+      requires std::constructible_from<T,std::invoke_result_t<F,T>>
+  friend auto apply(F &&f, Matrix &&x) {
     for (std::size_t i = 0; i < x.size(); ++i)
       x[i] = f(x[i]);
     return x;
   }
-
+  
   template <class F>
-    requires(!is_Maybe_error<std::invoke_result_t<F, T>>)
-  friend auto apply(F &&f, Matrix const &a) {
-    Matrix x(a.nrows(), a.ncols());
+  friend auto applyMap(F &&f, Matrix const &a) {
+    using S=std::decay_t<std::invoke_result_t<F,T>>;
+    Matrix<S> x(a.nrows(), a.ncols());
     for (std::size_t i = 0; i < x.size(); ++i)
       x[i] = f(a[i]);
     return x;
   }
+  
+  template <class F>
+  friend auto applyMap_i(F &&f, Matrix const &a) {
+    using S=std::decay_t<std::invoke_result_t<F,T,std::size_t>>;
+    Matrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.size(); ++i)
+      x[i] = std::invoke(std::forward<F>(f),a[i],i);
+    return x;
+  }
 
+
+  template <class F>
+      requires(!is_Maybe_error<std::invoke_result_t<F, T>>)
+  friend auto apply(F &&f, Matrix const &a) {
+    using S=std::decay_t<std::invoke_result_t<F,T>>;
+    Matrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.size(); ++i)
+      x[i] = f(a[i]);
+    return x;
+  }
+  
+  
   template <class F>
     requires(is_Maybe_error<std::invoke_result_t<F, T>>)
   friend Maybe_error<Matrix<T>> apply(F &&f, Matrix const &a) {
@@ -357,6 +409,9 @@ public:
     return os;
   }
 };
+
+
+
 
 template <class T> class SymmetricMatrix : public Matrix<T> {
   using base_type = Matrix<T>;
