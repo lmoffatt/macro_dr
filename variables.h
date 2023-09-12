@@ -66,10 +66,16 @@ class Var<Id,T>{
     T m_x;
 public:
     static constexpr bool is_variable=true;
+    static constexpr bool is_constant=false;
+    
+    using variable_type=Var<Id,T>;
+    operator Id()const {return Id(*this);}
+    
     constexpr Var(T t_x):m_x{t_x}{}
     constexpr auto& operator()(){return m_x;}
     constexpr auto& operator()()const{return m_x;}
-    constexpr auto& operator[](Var<Id>)const{return *this;}
+    constexpr auto& operator[](Var<Id>){return *this;}
+    constexpr auto& operator[](Var<Id>) const{return *this;}
     constexpr Var(){}
     constexpr auto& value()const {return m_x;}
     friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
@@ -77,6 +83,48 @@ public:
     friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
     friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
 };
+
+template<class...>
+class Constant;
+
+
+template<class Id>
+class Constant<Id>{};
+
+
+template<class Id, class T>
+class Constant<Id,T>{
+    T m_x;
+public:
+    static constexpr bool is_variable=true;
+    static constexpr bool is_constant=true;
+    
+    operator Id()const {return Id(*this);}
+    
+    constexpr Constant(T t_x):m_x{t_x}{}
+    constexpr auto& operator()(){return m_x;}
+    constexpr auto& operator()()const{return m_x;}
+    constexpr auto& operator[](Constant<Id>){return *this;}
+    constexpr auto& operator[](Constant<Id>) const{return *this;}
+    constexpr Constant(){}
+    constexpr auto& value()const {return m_x;}
+    friend auto& print(std::ostream& os, const Constant& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    
+    friend auto& operator<<(std::ostream& os, const Constant& x){ os<<x.value(); return os;}
+    friend auto& put(std::ostream& os, const Constant& x){ os<<x.value()<<"\t"; return os;}
+};
+
+
+
+
+
+template<class var, class... T>
+    requires (std::constructible_from<var,T...>)
+var build(T...x){return var(std::forward<T>(x)...);}
+
+
+
+
 
 
 template<class...>
@@ -145,7 +193,7 @@ public:
     template<class Id>
     friend auto& get(Vector_Space const& x){return static_cast<Id const&>(x);}
     template<class Id>
-    friend auto& get(Vector_Space & x){return static_cast<Id&>(x);}
+    friend auto& get(Vector_Space & x){return static_cast<Id &>(x);}
     static constexpr bool is_vector_space=true;
     
     Vector_Space(){}
@@ -169,6 +217,7 @@ public:
     }
     
 };
+
 template<class...>
 class Vector_Map;
 
@@ -211,6 +260,13 @@ public:
     
     Vector_Map_Space(){}
 };
+
+
+
+
+
+
+
 
 
 

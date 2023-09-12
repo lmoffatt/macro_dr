@@ -37,6 +37,10 @@ add_executable(macro_dr main.cpp
     parameters.h
     grammar_typed.h
     lexer_typed.h
+    indexed.h
+    matrix_derivative.h
+    parameters_derivative.h
+    variables_derivative.h
 #    tst_untyped_grammar.cpp
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

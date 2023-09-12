@@ -1,5 +1,11 @@
 experiment = load_experiment(filename="../macro_dr/Moffatt_Hume_2007_ATP_2.txt", frequency_of_sampling=50e3, initial_ATP=0)
 
+//model1 = linear_ligand_model(Q0=((1,0,k10),(2,1,k21),(3,2,k32),(3,4,k34),(4,3,k43)),Qa=((0,1,k01),(1,2,k12),(2,3,k23)),g=((4,gamma),N=N)
+
+
+
+
+
 
 
 
