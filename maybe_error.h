@@ -171,6 +171,13 @@ public:
 };
 
 template <class T>
+Maybe_error(T&&)->Maybe_error<T>;
+
+template <class T>
+Maybe_error(T const &)->Maybe_error<T>;
+
+
+template <class T>
   requires std::is_class_v<typename T::base_type>
 class Maybe_error<T *> : public Maybe_error<typename T::base_type*> {
   T * m_value;
@@ -213,7 +220,7 @@ auto operator*(const T &x, const S &y) {
     return Maybe_error(get_value(x) * get_value(y));
   else
     return Maybe_error<std::decay_t<decltype(get_value(x) * get_value(y))>>(
-        get_error(x) + " multiplies " + get_error(y));
+        get_error(x)() + " multiplies " + get_error(y)());
 }
 
 Maybe_error<bool> operator>>(std::string &&context_message,
@@ -340,7 +347,7 @@ auto operator-(const T &x) {
   if (x)
     return return_type(-(x.value()));
   else
-    return return_type(x.error() + "\n minus");
+    return return_type(x.error()() + "\n minus");
 }
 
 template <class T>

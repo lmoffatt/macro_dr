@@ -83,7 +83,8 @@ int main(int argc, char **argv) {
   auto param1=Parameters<Model1>(Matrix<double>(1,11,std::vector<double>{100,0.05,18,12,6,210,420,630,1680,54,0.5}));
   
   
-  auto dparam1=var::Derivative(param1);
+  auto dparam1=var::selfDerivative(param1);
+  std::cerr<<"dparam1\n"<<dparam1;
   auto n= build<N_Ch_mean>(dparam1()[0]);
   
   auto dp0=dparam1()[0];
@@ -93,6 +94,15 @@ int main(int argc, char **argv) {
   
   auto dm=model1(dparam1);
   
+  std::cerr<<"\ndm!!!\n"<<dm;
+  auto fs = get<Frequency_of_Sampling>(experiment).value();
+  auto ini = macrodr::Macro_DMR{}.init(dm, get<initial_ATP_concentration>(experiment));
+  auto t_step=get<Recording>(experiment)()[0];
+  auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
+  
+  auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(dm, t_Qx.value(),
+                        get<number_of_samples>(t_step).value() / fs);
+  
   std::random_device rd;
   typename std::mt19937_64::result_type seed = rd();
   std::mt19937_64 mt(seed);
@@ -101,8 +111,9 @@ int main(int argc, char **argv) {
       Simulation_Parameters(Number_of_simulation_sub_steps(10)));
 
   std::cerr << sim;
-
-  auto lik = Macro_DMR{}.log_Likelihood(model1,param1, sim.value()());
+  
+  
+  auto lik = Macro_DMR{}.log_Likelihood(model1,dparam1, sim.value()());
 
   std::cerr << "likelihood!!! " << lik << "\n";
 
