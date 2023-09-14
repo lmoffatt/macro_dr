@@ -19,7 +19,11 @@ public:
     constexpr auto& operator()()const{return m_x;}
     constexpr auto& operator[](Var<Id>)const{return *this;}
     constexpr Derivative(){}
-    constexpr auto& value()const {return m_x;;}
+    constexpr auto& value()const {return m_x;}
+    auto& primitive()const {return m_x.primitive();}
+    auto& derivative()const {return m_x.derivative();}
+    
+    
    // friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
     
    // friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
@@ -39,10 +43,15 @@ public:
     friend auto& get(Derivative & x){return static_cast<Derivative_t<Id,X> &>(x);}
     static constexpr bool is_vector_space=true;
     
+    
+    
     Derivative(){}
     Derivative(Derivative_t<Ids,X>&&...t_vars): base_type{std::move(t_vars)...}{}
     Derivative(Derivative_t<Ids,X> const&...t_vars): base_type{t_vars...}{}
     // Vector_Space(std::decay_t <decltype(std::declval<Vars const&>().value())> ... t_vars): Vars{std::move(t_vars)}...{}
+    
+    friend auto& operator<<(std::ostream& os, const Derivative& x){ (os<<...<<get<Ids>(x)); return os;}
+    // friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
     
 };
 
@@ -50,7 +59,18 @@ public:
 
 template<class Id, class X>
     requires(Id::is_variable)
-class Derivative<Id,X>: public Derivative<typename Id::variable_type,X>{};
+class Derivative<Id,X>: public Derivative<typename Id::variable_type,X>{
+public:
+    using base_type=Derivative<typename Id::variable_type,X>;
+    
+    template<class IdT>
+        requires std::is_same_v<Id,std::decay_t<IdT>>
+    Derivative(IdT&& m):base_type{std::forward<IdT>(m)()}{}
+    
+    Derivative(base_type&& m):base_type{std::move(m)}{}
+    Derivative(base_type const & m):base_type{m}{}
+    Derivative(){}
+};
 
 
 

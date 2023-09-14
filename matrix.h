@@ -9,6 +9,7 @@
 #include <iostream>
 #include <memory>
 #include <utility>
+#include <cstring>
 template <class> class Matrix;
 template <class> class SubMatrix;
 
@@ -21,11 +22,25 @@ template <class> class DiagonalMatrix;
 template<class>
 struct element_of_Matrix;
 
-template<class T>
+template<template<class>class Matrix,class T>
+    requires Matrix<T>::is_Matrix
 struct element_of_Matrix<Matrix<T>> {using type=T;};
 
 template<class T>
 using element_of_Matrix_t=typename element_of_Matrix<T>::type;
+
+
+template<class>
+struct is_Matrix:public std::false_type{};
+
+template<class Matrix>
+    requires Matrix::is_Matrix
+struct is_Matrix<Matrix>:public std::true_type{};
+
+template<class Matrix>
+constexpr bool is_Matrix_v=is_Matrix<Matrix>::value;
+
+
 
 
 constexpr bool Matrix_uses_vector = true;
@@ -36,6 +51,8 @@ template <class T, bool> constexpr auto empty_matrix_container() {
   else
     return nullptr;
 }
+
+
 
 template <class T, bool>
 auto initialize_matrix_container(std::size_t t_size, bool initialize = false) {
@@ -128,11 +145,34 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations = true,
 
 template <class T> class DiagPosDetMatrix;
 
+
+
+
+
 template <class Matrix>
-  requires Matrix::is_Matrix
+    requires (Matrix::is_Matrix)
 auto operator*(const Matrix &a, double b) {
   return apply([&b](auto x) { return x * b; }, a);
 }
+
+template <class Matrix>
+    requires (Matrix::is_Matrix)
+auto operator-(const Matrix &a) {
+  return apply([](auto x) { return -x; }, a);
+}
+
+template <class Matrix>
+    requires (Matrix::is_Matrix)
+auto operator-(Matrix &&a) {
+  for (std::size_t i=0; i<a.size; ++i)
+    a[i]=-a[i];
+  return a;  
+  
+}
+
+
+
+
 
 template <class Matrix>
   requires Matrix::is_Matrix
@@ -145,6 +185,43 @@ template <class Matrix>
 auto operator*(double b, const Matrix &a) {
   return apply([&b](auto x) { return x * b; }, a);
 }
+
+template <class F,template<class> class T_Matrix>
+auto apply(F &&f, Matrix<T_Matrix<double>> const &a) {
+  using S=std::decay_t<std::invoke_result_t<F,T_Matrix<double>>>;
+  Matrix<S> x(a.nrows(), a.ncols());
+  for (std::size_t i = 0; i < x.size(); ++i)
+    x[i] = f(a[i]);
+  return x;
+}
+
+
+
+
+template <class F,template<class> class T_Matrix>
+    requires (!is_Maybe_error<std::invoke_result_t<F, double>>&& T_Matrix<double>::is_Matrix && !T_Matrix<double>::is_Symmetric)
+auto apply(F &&f, T_Matrix<double> const &a) {
+  using S=std::decay_t<std::invoke_result_t<F,double>>;
+  T_Matrix<S> x(a.nrows(), a.ncols());
+  for (std::size_t i = 0; i < x.size(); ++i)
+    x[i] = f(a[i]);
+  return x;
+}
+
+
+
+
+template <template<class> class Matrix,class T,class F>
+ auto applyMap_i(F &&f, Matrix<T> const &a) {
+  using S=std::decay_t<std::invoke_result_t<F,T,std::size_t>>;
+  Matrix<S> x(a.nrows(), a.ncols());
+  for (std::size_t i = 0; i < x.size(); ++i)
+    x[i] = std::invoke(std::forward<F>(f),a[i],i);
+  return x;
+}
+
+
+
 
 template <class T> class Matrix {
 private:
@@ -258,6 +335,23 @@ public:
     assert(i < nrows() && j < ncols());
     return x_[i * ncols_ + j];
   }
+  
+  auto operator()(std::size_t i,  const char* ch)const {
+    assert(i < nrows() && std::strcmp(ch,":")==0);
+    Matrix out(1,ncols());
+    for (std::size_t j=0; j<ncols(); ++j)
+      out(0,j)=(*this)(i,j);
+    return out;
+  }
+  auto operator()(const char* ch,std::size_t j) const{
+    assert(j < ncols() &&std::strcmp(ch,":")==0);
+    Matrix out(nrows(),1);
+    for (std::size_t i=0; i<nrows(); ++i)
+      out(i,0)=(*this)(i,j);
+    return out;
+  }
+  
+  
   auto &operator()(std::size_t i, std::size_t j) const {
     assert((i < nrows()) && (j < ncols()));
     return x_[i * ncols_ + j];
@@ -273,6 +367,51 @@ public:
   friend auto operator*(const Matrix &a, const Matrix &b) {
     return lapack::Lapack_Full_Product(a, b, false, false);
   }
+  
+  friend auto operator+(const Matrix &a, const Matrix &b) {
+    if (a.size()==0) return b;
+    else if (b.size()==0) return a;
+    return zip([](auto x, auto y) { return x + y; }, a, b);
+  }
+  
+  template<class S>
+      requires(S::is_Matrix)
+  friend auto operator+(const Matrix &a, const Matrix<S> &b) {
+    return zip([](auto x, auto y) { return x + y; }, a, b);
+  }
+  template<class S>
+      requires(S::is_Matrix)
+  friend auto operator-(const Matrix &a, const Matrix<S> &b) {
+    return zip([](auto x, auto y) { return x - y; }, a, b);
+  }
+  
+  
+  friend auto operator-(const Matrix &a, const Matrix &b) {
+    return zip([](auto x, auto y) { return x - y; }, a, b);
+  }
+  
+  template<class F>
+   friend auto zip(F &&f, const  Matrix &x, const Matrix &y) {
+    assert(same_dimensions(x, y) && "same size");
+    Matrix out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.size(); ++i)
+      out[i] = f(x[i], y[i]);
+    return out;
+  }
+  
+  template<class F, class S>
+      requires S::is_Matrix
+  friend auto zip(F &&f, const  Matrix &x, const Matrix<S> &y) {
+    assert(same_dimensions(x, y) && "same size");
+    using R=std::invoke_result_t<F,T,S>;
+    
+    Matrix<R> out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.size(); ++i)
+      out[i] = f(x[i], y[i]);
+    return out;
+  }
+  
+  
 
   friend auto TranspMult(const Matrix &a, const Matrix &b) {
     return lapack::Lapack_Full_Product(a, b, true, false);
@@ -282,14 +421,7 @@ public:
     return lapack::Lapack_Full_Product(a, b, true, false);
   }
 
-  friend auto operator+(const Matrix &a, const Matrix &b) {
-    return zip([](auto x, auto y) { return x + y; }, a, b);
-  }
-
-  friend auto operator-(const Matrix &a, const Matrix &b) {
-    return zip([](auto x, auto y) { return x - y; }, a, b);
-  }
-
+  
   friend auto inv(const Matrix &a) { return lapack::Lapack_Full_inv(a); }
 
   friend auto tr(const Matrix &a) {
@@ -317,25 +449,8 @@ public:
     return x;
   }
   
-  template <class F>
-  friend auto applyMap_i(F &&f, Matrix const &a) {
-    using S=std::decay_t<std::invoke_result_t<F,T,std::size_t>>;
-    Matrix<S> x(a.nrows(), a.ncols());
-    for (std::size_t i = 0; i < x.size(); ++i)
-      x[i] = std::invoke(std::forward<F>(f),a[i],i);
-    return x;
-  }
+  
 
-
-  template <class F>
-      requires(!is_Maybe_error<std::invoke_result_t<F, T>>)
-  friend auto apply(F &&f, Matrix const &a) {
-    using S=std::decay_t<std::invoke_result_t<F,T>>;
-    Matrix<S> x(a.nrows(), a.ncols());
-    for (std::size_t i = 0; i < x.size(); ++i)
-      x[i] = f(a[i]);
-    return x;
-  }
   
   
   template <class F>
@@ -359,7 +474,13 @@ public:
     return x.size() == y.size() && x.nrows() == y.nrows() &&
            x.ncols() == y.ncols();
   }
-
+  template<class S>
+      requires S::is_Matrix
+  friend bool same_dimensions(const Matrix &x, const Matrix<S> &y) {
+    return x.size() == y.size() && x.nrows() == y.nrows() &&
+           x.ncols() == y.ncols();
+  }
+  
   friend T xtx(const Matrix &x) {
     assert(x.ncols() == 1);
     auto out = T{};
@@ -368,14 +489,6 @@ public:
     return out;
   }
 
-  template <class F> friend auto zip(F &&f, const Matrix &x, const Matrix &y) {
-    assert(same_dimensions(x, y) && "same size");
-
-    Matrix out(x.nrows(), x.ncols(), false);
-    for (std::size_t i = 0; i < x.size(); ++i)
-      out[i] = f(x[i], y[i]);
-    return out;
-  }
 
   template <class F> friend auto reduce(F &&f, const Matrix &x) {
     auto cum = x[0];
@@ -409,6 +522,7 @@ public:
     return os;
   }
 };
+
 
 
 
@@ -477,25 +591,34 @@ public:
   friend SymmetricMatrix operator*(double b, const SymmetricMatrix &a) {
     return apply([&b](auto x) { return x * b; }, a);
   }
-
-  friend auto operator+(const SymmetricMatrix &a, const SymmetricMatrix &b) {
+  
+  
+  template <class S>
+      requires(std::is_same_v<decltype(T{}+S{}),T>)
+  friend auto operator+(const SymmetricMatrix &a, const SymmetricMatrix<S> &b) {
     return zip([](auto x, auto y) { return x + y; }, a, b);
   }
-
-  friend auto operator-(const SymmetricMatrix &a, const SymmetricMatrix &b) {
+  
+  template <class S>
+      requires(std::is_same_v<decltype(T{}-S{}),T>)
+  friend auto operator-(const SymmetricMatrix &a, const SymmetricMatrix<S> &b) {
     return zip([](auto x, auto y) { return x - y; }, a, b);
   }
-
-  friend auto operator+(const SymmetricMatrix<T> &a,
-                        const DiagonalMatrix<T> &b) {
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
+  friend auto operator+(const SymmetricMatrix &a,
+                        const DiagonalMatrix<S> &b) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
       out.set(i, i, out(i, i) + b(i, i));
     return out;
   }
-
-  friend auto operator+(const DiagonalMatrix<T> &b,
-                        const SymmetricMatrix<T> &a) {
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
+  friend auto operator+(const DiagonalMatrix<S> &b,
+                        const SymmetricMatrix &a) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
       out(i, i) += b(i, i);
@@ -528,6 +651,12 @@ public:
 
   friend auto operator-(const SymmetricMatrix &x, const DiagonalMatrix<T> &y) {
     SymmetricMatrix out(x);
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+      out.set(i, i, x(i, i) - y(i, i));
+    return out;
+  }
+  friend auto operator-(const DiagonalMatrix<T>  &x, const SymmetricMatrix &y) {
+    SymmetricMatrix out(-y);
     for (std::size_t i = 0; i < x.nrows(); ++i)
       out.set(i, i, x(i, i) - y(i, i));
     return out;
@@ -854,36 +983,46 @@ public:
   auto nrows() const { return base_type::nrows(); }
   auto size() const { return base_type::size(); }
   ~SymPosDefMatrix() {}
-
-  friend auto operator+(const SymPosDefMatrix &a, const SymPosDefMatrix &b) {
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
+  friend auto operator+(const SymPosDefMatrix &a, const SymPosDefMatrix<S> &b) {
     return SymPosDefMatrix(zip([](auto x, auto y) { return x + y; }, a, b));
   }
-
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
   friend auto operator+(const SymPosDefMatrix &a,
-                        const DiagPosDetMatrix<T> &b) {
+                        const DiagPosDetMatrix<S> &b) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
       out.set(i, i, out(i, i) + b(i, i));
     return out;
   }
-
-  friend auto operator+(const DiagPosDetMatrix<T> &b,
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
+  friend auto operator+(const DiagPosDetMatrix<S> &b,
                         const SymPosDefMatrix &a) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
       out.set(i, i, out(i, i) + b(i, i));
     return out;
   }
-
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
   friend auto operator-(const SymPosDefMatrix &a,
-                        const DiagPosDetMatrix<T> &b) {
+                        const DiagPosDetMatrix<S> &b) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
       out.set(i, i, out(i, i) - b(i, i));
     return out;
   }
-
-  friend auto operator-(const DiagPosDetMatrix<T> &b,
+  
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
+friend auto operator-(const DiagPosDetMatrix<S> &b,
                         const SymPosDefMatrix &a) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
@@ -987,7 +1126,7 @@ public:
         (*this)[i] = a(i, i);
     }
   }
-
+  DiagonalMatrix(){}
   DiagonalMatrix(const DiagonalMatrix &x)
       : size_{x.size()}, nrows_{x.nrows()}, ncols_{x.ncols()},
         x_{initialize_matrix_container<T, Matrix_uses_vector>(x.size())} {
@@ -1192,7 +1331,7 @@ public:
 
   using base_type::operator[];
   using base_type::operator();
-
+  DiagPosDetMatrix() {}
   ~DiagPosDetMatrix() {}
 
   template <class T0>
@@ -1215,7 +1354,10 @@ public:
       out[i] = a[i] * b;
     return out;
   }
-
+  
+  
+  
+  
   friend auto &tr(const DiagPosDetMatrix &a) { return a; }
 
   friend Maybe_error<DiagPosDetMatrix> cholesky(const DiagPosDetMatrix &a) {
@@ -1230,6 +1372,33 @@ public:
     return out;
   }
 };
+
+
+template <template<class>class T2_Matrix,template<class>class T3_Matrix>
+    requires (is_Matrix_v<T2_Matrix<double>>&&is_Matrix_v<T3_Matrix<double>>)
+auto operator*(const Matrix<T2_Matrix<double>> &a, const T3_Matrix<double>& b) {
+  using S=std::decay_t<decltype(a[0]*b)>;
+  auto out=Matrix<S>(a.nrows(),a.ncols());
+  for(std::size_t i=0; i<out.size(); ++i)
+    out[i]=a[i]*b;
+  return out;
+}
+template <template<class>class T2_Matrix,template<class>class T3_Matrix>
+    requires (is_Matrix_v<T2_Matrix<double>>&&is_Matrix_v<T3_Matrix<double>>)
+auto operator*(const T3_Matrix<double>& b,const Matrix<T2_Matrix<double>> &a) {
+  using S=std::decay_t<decltype(a[0]*b)>;
+  auto out=Matrix<S>(a.nrows(),a.ncols());
+  for(std::size_t i=0; i<out.size(); ++i)
+    out[i]=b*a[i];
+  return out;
+}
+
+template<class T>
+void set(SymmetricMatrix<T>& m, std::size_t i, std::size_t j, const T& x)
+{
+  m.set(i,j,x);
+}
+
 
 template <class T> auto IdM(std::size_t ndim) {
   return DiagPosDetMatrix<T>(ndim, T{1.0});
@@ -1265,7 +1434,9 @@ Maybe_error<DiagPosDetMatrix<T>> inv(const DiagPosDetMatrix<T> &x) {
   return out;
 }
 
-template <class T> double getvalue(const Matrix<T> &x) {
+template<template<class>class Matrix, class T>
+    requires Matrix<T>::is_Matrix
+double getvalue(const Matrix<T> &x) {
   assert(x.size() == 1);
   return x[0];
 }

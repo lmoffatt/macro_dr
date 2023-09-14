@@ -33,8 +33,19 @@ namespace var {
 template<class>
 struct untransformed_type;
 
+template<class>
+struct transformation_type;
+
+
 template<class T>
 using untransformed_type_t=typename untransformed_type<T>::type;
+
+template<class T>
+using transformation_type_t=typename transformation_type<T>::type;
+
+
+
+struct Identity_Op{ template<class T> using type=T;};
 
 
 template<class T>
@@ -43,23 +54,57 @@ struct untransformed_type{
 };
 
 
+template<class T>
+struct transformation_type{
+    using type=Identity_Op;
+};
+
+template<class Op, class F>
+using Op_t=typename Op::type<F>;
+
+
+template<class Op_on_F,class G>
+using Transfer_Op_to=Op_t<transformation_type_t<Op_on_F>,G>;
+
+
+
+template<class Tr, class T>
+concept U=std::same_as<untransformed_type_t<Tr>,T>;
+
 
 
 template<class, class>
 class d_d_;
 
 template<class T>
-constexpr d_d_<T,T> selfDerivative(const T&);
+constexpr d_d_<T,T> self_derivative(const T&);
 
     
 
 template<class, class>
 class Derivative;
 
+template<class X>
+struct Derivative_Op{
+    template<class F>
+    using type=Derivative<F,X>;
+};
+
+
+
+
+
 template<class T, class X>
 struct untransformed_type<Derivative<T,X>>{
     using type=T;
 };
+
+
+template<class T, class X>
+struct transformation_type<Derivative<T,X>>{
+    using type=Derivative_Op<X>;
+};
+
 
 
 
@@ -73,9 +118,10 @@ public:
     constexpr d_d_(double dydx):m_dydx{dydx}{}
     constexpr auto& operator()(){return m_dydx;}
     constexpr auto operator()()const{return m_dydx;}
+    constexpr d_d_(){}
 };
 
-constexpr auto selfDerivative(const double&)
+constexpr auto self_derivative(const double&)
 {
     return d_d_<double,double>(1.0);
 }    
@@ -93,8 +139,34 @@ public:
 };
 
 
+template<class T>
+class Primitive<Matrix<T>>: public Matrix<T>
+{
+public:
+    
+    template<class aT>
+        requires std::is_same_v<Matrix<T>,std::decay_t<aT>>
+    constexpr Primitive(aT&& y):Matrix<T>{std::forward<aT>(y)}{}
+    constexpr auto& operator()(){return static_cast<Matrix<T>&>(*this);}
+    constexpr auto& operator()()const {return static_cast<Matrix<T>const &>(*this);}
+ };
+
+
+
+
+
 template<class N,class D>
 class Derivative;
+ 
+ template<class N,class D>
+std::ostream& operator<<(std::ostream& os, const Derivative<N,D>& d)
+{
+    os<<primitive(d)<<"\n derivative: \n"<<derivative(d)();
+    return os;
+}
+
+
+
 
 namespace impl{
 
@@ -112,37 +184,45 @@ using Derivative_t=impl::Derivative_impl<F,X>::type;
 
 
 template<>
-class Derivative<double,double>: public Primitive<double>, d_d_<double,double>{
+class Derivative<double,double>{
+    double m_x;
+    d_d_<double,double> m_d;
 public:
-    constexpr Derivative(double x, double dx):Primitive<double>{x},
-        d_d_<double,double>{dx}{}
+    
+    auto& primitive()const {return m_x;}
+    auto& derivative()const {return m_d;}
+    
+    constexpr Derivative(double x, double dx):m_x{x},
+        m_d{dx}{}
     
     
-    constexpr Derivative(double x):Primitive<double>{x},
-        d_d_<double,double>{selfDerivative(x)}{}
+    constexpr Derivative(double x):m_x{x},
+        m_d{0.0}{}
+    Derivative(){}
+};
+
+struct NoDerivative{
+    template<class T>
+    friend NoDerivative operator*(NoDerivative,T){return NoDerivative{};}
+    template<class T>
+    friend NoDerivative operator*(T,NoDerivative){return NoDerivative{};}
+    
+    template<class T>
+    friend T operator+(T&& x,NoDerivative){return std::forward<T>(x);}
+    
+    template<class T>
+    friend T operator-(T&& x,NoDerivative){return std::forward<T>(x);}
+    
+    template<class T>
+    friend T operator-(NoDerivative,T&& x){return -std::forward<T>(x);}
+    
+    template<class T>
+    friend T operator+(NoDerivative,T&& x){return std::forward<T>(x);}
+    NoDerivative operator()()const {return {};}
     
 };
 
 
-
-template <class T>
-Derivative(T&&) ->Derivative<std::decay_t<T>,std::decay_t<T>>;
-
-
-
-template<class X,class Y>
-    requires (std::is_base_of_v<Primitive<X>,Derivative<X,Y>>)
-decltype(auto) primitive (const Derivative<X,Y>& d)
-{
-    return static_cast<Primitive<X> const&>(d)();
-}
-
-template<class X,class Y>
-    requires (std::is_base_of_v<d_d_<X,Y>,Derivative<X,Y>>)
-decltype(auto) derivative (const Derivative<X,Y>& d)
-{
-    return static_cast<d_d_<X,Y> const&>(d)();
-}
 
 template<class>
 struct is_derivative: public std::false_type{};
@@ -151,11 +231,38 @@ template<class X,class Y>
 struct is_derivative<Derivative<X,Y>>: public std::true_type{};
 
 template<class T>
-constexpr bool is_derivative_v=is_derivative<T>::value;
+constexpr bool is_derivative_v=is_derivative<std::decay_t<T>>::value;
+
+
+template<class X,class Y>
+decltype(auto) primitive(const Derivative<X,Y>& d)
+{
+    return d.primitive();
+}
+template<class X,class Y>
+decltype(auto) primitive(Derivative<X,Y>& d)
+{
+    return d.primitive();
+}
 
 
 
-struct NoDerivative{};
+template <class X>
+    requires (!is_derivative_v<X>)
+decltype(auto) primitive(X&& x) { return x;}
+
+template <class X>
+    requires (!is_derivative_v<X>)
+auto derivative(X&& x) { return NoDerivative{};}
+
+
+template<class X,class Y>
+decltype(auto) derivative (const Derivative<X,Y>& d)
+{
+    return d.derivative();
+}
+
+
 
 template<class...>
 struct dx_of_dfdx;
@@ -241,6 +348,70 @@ template<class var, class... T>
 auto build(T...x){
     using X=dx_of_dfdx_t<T...>;
     return Derivative<var,X>(std::forward<T>(x)...);}
+
+
+
+template<class T, class S>
+    requires(is_derivative_v<T>||is_derivative_v<S>)
+auto operator*(const T& x, const S& y)
+{
+    using X=dx_of_dfdx_t<T,S>;
+    using F=decltype(primitive(x)*primitive(y));
+    
+    return Derivative<F,X>(primitive(x)*primitive(y),derivative(x)()*primitive(y)+primitive(x)*derivative(y)());
+}
+
+template<class T, class S>
+    requires(is_derivative_v<T>||is_derivative_v<S>)
+auto max(const T& x, const S& y)
+{
+    using std::max;
+    return max(primitive(x),primitive(y));
+}
+
+
+
+template<class T, class S>
+    requires(is_derivative_v<T>||is_derivative_v<S>)
+auto operator+(const T& x, const S& y)
+{
+    using X=dx_of_dfdx_t<T,S>;
+    using F=decltype(primitive(x)+primitive(y));
+    
+    return Derivative<F,X>(primitive(x)+primitive(y),derivative(x)()+derivative(y)());
+}
+
+template<class T, class S>
+    requires(is_derivative_v<T>&&is_derivative_v<S>)
+auto operator-(const T& x, const S& y)
+{
+    using X=dx_of_dfdx_t<T,S>;
+    using F=decltype(primitive(x)-primitive(y));
+    
+    return Derivative<F,X>(primitive(x)-primitive(y),derivative(x)()-derivative(y)());
+}
+
+template<class T, class S>
+    requires(is_derivative_v<T>&&(!is_derivative_v<S>))
+auto operator-(const T& x, const S& y)
+{
+    using X=dx_of_dfdx_t<T,S>;
+    using F=decltype(primitive(x)-y);
+    
+    return Derivative<F,X>(primitive(x)-y,derivative(x)());
+}
+
+template<class T, class S>
+    requires(!is_derivative_v<T>&&is_derivative_v<S>)
+auto operator-(const T& x, const S& y)
+{
+    using X=dx_of_dfdx_t<T,S>;
+    using F=decltype(x-primitive(y));
+    
+    return Derivative<F,X>(x-primitive(y),-derivative(y)());
+}
+
+
 }
 
 

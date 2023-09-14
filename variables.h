@@ -69,7 +69,6 @@ public:
     static constexpr bool is_constant=false;
     
     using variable_type=Var<Id,T>;
-    operator Id()const {return Id(*this);}
     
     constexpr Var(T t_x):m_x{t_x}{}
     constexpr auto& operator()(){return m_x;}
