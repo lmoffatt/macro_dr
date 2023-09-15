@@ -14,7 +14,7 @@
 #include "maybe_error.h"
 #include "variables.h"
 #include "parameters.h"
-
+#include "derivative_operator.h"
 namespace macrodr {
 
 using var::Power;
@@ -28,11 +28,13 @@ using var::build;
 using var::Transfer_Op_to;
 using var::transformation_type_t;
 using var::Op_t;
+using var::primitive;
 
 using var::U;
 
 using std::exp;
 using std::max;
+using std::abs;
 
 template <class T> T sqr(T x) { return x * x; }
 
@@ -337,41 +339,56 @@ class Macro_DMR {
     else
       return (E1(y) - E1(x)) / (y - x);
   }
-
-  static double Ee(double x, double y, double exp_x, double exp_y,
+  
+  template<class C_double>
+      requires U<C_double,double>
+  static C_double Ee(C_double const& x, C_double const& y, C_double const& exp_x, C_double const& exp_y,
                    double eps = std::numeric_limits<double>::epsilon()) {
-    if (sqr(x - y) < eps)
+    if (sqr(primitive(x) - primitive(y)) < eps)
       return exp_x;
     else
       return (exp_x - exp_y) / (x - y);
   };
-
-  static double EX_111(double x, double y, double z, double exp_x) {
+  
+  template<class C_double>
+      requires U<C_double,double>
+  static C_double EX_111(C_double const& x, C_double const& y, C_double const& z, C_double const& exp_x) {
     return exp_x / ((x - y) * (x - z));
   }
-
-  static double E111(double x, double y, double z, double exp_x, double exp_y,
-                     double exp_z) {
+  
+  template<class C_double>
+      requires U<C_double,double>
+  static C_double E111(C_double const& x, C_double const& y, C_double const& z, C_double const& exp_x, C_double const& exp_y,
+                     C_double const& exp_z) {
     return EX_111(x, y, z, exp_x) + EX_111(y, x, z, exp_y) +
            EX_111(z, y, x, exp_z);
   }
-  static double E12(double x, double y, double exp_x, double exp_y) {
+  template<class C_double>
+      requires U<C_double,double>
+  static C_double E12(C_double const& x, C_double const& y, C_double const& exp_x, C_double const& exp_y) {
     return EX_111(x, y, y, exp_x) + exp_y / (y - x) * (1.0 - 1.0 / (y - x));
   }
-
-  static double E3(double x, double y, double z, double exp_x, double exp_y,
-                   double exp_z,
+  
+  template<class C_double>
+      requires U<C_double,double>
+  static C_double E3(C_double const& x, C_double const& y, C_double const& z, C_double const& exp_x, C_double const& exp_y,
+                   C_double const& exp_z,
                    double eps = std::numeric_limits<double>::epsilon()) {
-    if (sqr(x - y) < eps) // x==y
+    auto x_=primitive(x);
+    auto y_=primitive(y);
+    auto z_=primitive(z);
+    
+    
+    if (sqr(x_ - y_) < eps) // x==y
     {
-      if (sqr(y - z) < eps) // y==z
+      if (sqr(y_ - z_) < eps) // y==z
         return exp_x / 2.0; // x==y==z
       else
         return E12(z, x, exp_z, exp_x); // x==y!=z
-    } else if (sqr(y - z) < eps)        // x!=y==z
+    } else if (sqr(y_ - z_) < eps)        // x!=y==z
     {
       return E12(x, y, exp_x, exp_y);
-    } else if (sqr(x - z) < eps) // y!=z==x!=y
+    } else if (sqr(x_ - z_) < eps) // y!=z==x!=y
     {
       return E12(y, x, exp_y, exp_x);
     } else
@@ -404,16 +421,17 @@ class Macro_DMR {
 
   template <bool output,class C_P_mean>
                requires (U<C_P_mean,P_mean>)
-  static Maybe_error<bool> test(const C_P_mean &p,
+  static Maybe_error<bool> test(const C_P_mean &pp,
                                 Probability_error_tolerance tolerance) {
+    auto p=primitive(pp());
     double sum = 0;
-    for (std::size_t i = 0; i < p().size(); ++i) {
-      auto Maybe_prob_value = test_Probability_value<output>(p()[i], tolerance);
+    for (std::size_t i = 0; i < p.size(); ++i) {
+      auto Maybe_prob_value = test_Probability_value<output>(p[i], tolerance);
       if (!Maybe_prob_value)
         return Maybe_prob_value.error();
-      sum += p()[i];
+      sum += p[i];
     }
-    if (std::abs(sum - 1.0) < tolerance())
+    if (std::abs(primitive(sum) - 1.0) < tolerance())
       return true;
     else if constexpr (output)
       return error_message("sum test sum=" + std::to_string(sum));
@@ -425,7 +443,7 @@ class Macro_DMR {
       requires (U<C_P_Cov,P_Cov>)
   static Maybe_error<bool> test(const C_P_Cov &t_p,
                                 Probability_error_tolerance tolerance) {
-    auto &p = t_p();
+    auto &p = primitive(t_p());
 
     for (std::size_t i = 0; i < p.nrows(); ++i) {
       for (std::size_t j = 0; j < p.ncols(); ++j) {
@@ -513,7 +531,7 @@ public:
     template<class C_P_mean>
         requires U<C_P_mean,P_mean>
   static C_P_mean normalize(C_P_mean &&pp, double t_min_p) {
-    auto& p=pp();
+    auto& p=primitive(pp());
     for (std::size_t i = 0; i < p.nrows(); ++i) {
       double sum = 0;
       for (std::size_t j = 0; j < p.ncols(); ++j) {
@@ -574,7 +592,7 @@ public:
   template<class C_P_Cov>
       requires U<C_P_Cov,P_Cov>
     static C_P_Cov normalize(C_P_Cov &&pp, double t_min_p) {
-    auto& p=pp();
+    auto& p=primitive(pp());
     for (std::size_t i = 0; i < p.nrows(); ++i) {
       if (p(i, i) < t_min_p) {
         for (std::size_t j = 0; j < p.ncols(); ++j) {
@@ -749,7 +767,7 @@ public:
     auto &t_g = get<g>(m);
     auto t_min_P = get<min_P>(m);
     auto v_ladt = t_landa() * dt;
-    auto v_exp_ladt = apply([](double x) { return exp(x); }, v_ladt);
+    auto v_exp_ladt = apply([](auto& x) { return exp(x); }, v_ladt);
     
     auto r_P = build<P>(t_V() * v_exp_ladt * t_W());
 
@@ -771,11 +789,11 @@ public:
     
     auto r_gtotal_ij = build<gtotal_ij>(t_V() * WgV_E2 * t_W());
 
-    Matrix<double> WgV_E3(N, N, 0.0);
+    Op_t<Trans,Matrix<double>> WgV_E3(N, N, 0.0);
     for (std::size_t n1 = 0; n1 < N; n1++)
       for (std::size_t n3 = 0; n3 < N; n3++)
         for (std::size_t n2 = 0; n2 < N; n2++) {
-          WgV_E3(n1, n3) +=
+          WgV_E3(n1, n3) = WgV_E3(n1, n3)+
               v_WgV(n1, n2) * v_WgV(n2, n3) *
               E3(v_ladt[n1], v_ladt[n2], v_ladt[n3], v_exp_ladt[n1],
                  v_exp_ladt[n2], v_exp_ladt[n3], t_min_P()); // optimizable
@@ -798,7 +816,7 @@ public:
     Matrix<double> UU(t_g().size(), t_g().size(), 1.0);
     auto gmean_ij_p = X_plus_XT(t_g() * U) * (0.5);
     auto gvar_ij_p =
-        apply([](double x) { return std::abs(x); }, t_g() * U - tr(t_g() * U)) *
+        apply([](auto x) { return abs(x); }, t_g() * U - tr(t_g() * U)) *
         (0.5);
 
     auto gmean_ij_tot = r_gtotal_ij() + gmean_ij_p * t_min_P();
@@ -834,7 +852,7 @@ public:
     if (var.ncols() == var.nrows()) {
       for (std::size_t i = 0; i < var.nrows(); ++i)
         for (std::size_t j = 0; j < var.ncols(); ++j)
-          if (var(i, j) + tol() < 0) {
+          if (primitive(var(i, j)) + tol() < 0) {
             std::stringstream ss;
             ss << " negative diagonal variance at i=" << i << ", j= " << j
                << "\n"
@@ -844,7 +862,7 @@ public:
       return true;
     } else
       for (std::size_t i = 0; i < var.size(); ++i)
-        if (var[i] + tol() < 0) {
+        if (primitive(var[i]) + tol() < 0) {
           std::stringstream ss;
           ss << " negative  variance at i=" << i << "\n" << var;
           return error_message(ss.str());
@@ -1093,9 +1111,9 @@ public:
 
     auto &t_tolerance = get<Probability_error_tolerance>(m);
     auto &t_min_P = get<min_P>(m);
-    double e =
+    auto e =
         get<curr_noise>(m).value() * get<number_of_samples>(p).value() / fs;
-    double N = get<N_Ch_mean>(m)();
+    auto N = get<N_Ch_mean>(m)();
     Matrix<double> u(p_P_mean().size(), 1, 1.0);
 
     auto SmD = p_P_cov() - diag(p_P_mean());
@@ -1111,9 +1129,9 @@ public:
         getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i()) +
         getvalue(p_P_mean() * (elemMult(t_gtotal_ij(), t_gmean_ij()) * u));
 
-    double ms = getvalue(p_P_mean() * t_gvar_i());
-
-    double e_mu;
+    auto ms = getvalue(p_P_mean() * t_gvar_i());
+    
+    Op_t<Transf,double> e_mu;
     Op_t<Transf,y_mean> r_y_mean;
     Op_t<Transf,y_var> r_y_var;
 
@@ -1159,7 +1177,7 @@ public:
       e_mu = e + N * ms;
       r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i());
       r_y_var() = e_mu + N * gSg;
-      if (!(r_y_var() > 0)) {
+      if (!(primitive(r_y_var()) > 0)) {
         std::stringstream ss;
         ss << "Negative variance!!\n";
         ss << "\nr_y_var=\t" << r_y_var;
@@ -1259,6 +1277,9 @@ public:
     } else if constexpr (!variance.value) {
       auto gS =
           TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
+      auto gseg=chi*gS;
+      
+      
       r_P_mean() = p_P_mean() * t_P() + chi * gS;
 
       r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
@@ -1282,7 +1303,7 @@ public:
     auto chi2 = dy * chi;
     
     Op_t<Transf,plogL> r_plogL;
-    if (r_y_var() > 0)
+    if (primitive(r_y_var()) > 0.0)
       r_plogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5 * chi2;
     else {
       std::stringstream ss;
