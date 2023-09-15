@@ -199,7 +199,7 @@ auto apply(F &&f, Matrix<T_Matrix<double>> const &a) {
 
 
 template <class F,template<class> class T_Matrix>
-    requires (!is_Maybe_error<std::invoke_result_t<F, double>>&& T_Matrix<double>::is_Matrix && !T_Matrix<double>::is_Symmetric)
+    requires (!is_Maybe_error<std::invoke_result_t<F, double>>&& T_Matrix<double>::is_Matrix && (T_Matrix<double>::is_Diagonal||!T_Matrix<double>::is_Symmetric))
 auto apply(F &&f, T_Matrix<double> const &a) {
   using S=std::decay_t<std::invoke_result_t<F,double>>;
   T_Matrix<S> x(a.nrows(), a.ncols());
@@ -234,6 +234,7 @@ private:
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = false;
+  static constexpr bool is_Diagonal = false;
 
   static int cell_width() { return 12; }
   explicit Matrix() {}
@@ -369,7 +370,8 @@ public:
   }
   
   friend auto operator+(const Matrix &a, const Matrix &b) {
-    if (a.size()==0) return b;
+    if (a.size()==0)
+      return b;
     else if (b.size()==0) return a;
     return zip([](auto x, auto y) { return x + y; }, a, b);
   }
@@ -537,6 +539,8 @@ protected:
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = true;
+  static constexpr bool is_Diagonal = false;
+  
 
   operator Matrix<T> const &() { return static_cast<Matrix<T> const &>(*this); }
 
@@ -755,6 +759,8 @@ template <class T> class UpTrianMatrix : public Matrix<T> {
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = false;
+  static constexpr bool is_Diagonal = false;
+  
 
   void fill_the_zeros() {
     for (std::size_t i = 0; i < nrows(); ++i)
@@ -827,6 +833,8 @@ template <class T> class DownTrianMatrix : public Matrix<T> {
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = false;
+  static constexpr bool is_Diagonal = false;
+  
 
   void fill_the_zeros() {
     for (std::size_t i = 0; i < nrows(); ++i)
@@ -945,6 +953,8 @@ template <class T> class SymPosDefMatrix : public SymmetricMatrix<T> {
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = true;
+  static constexpr bool is_Diagonal = false;
+  
 
   template <class K>
   friend Maybe_error<SymPosDefMatrix<K>>
@@ -1074,6 +1084,7 @@ private:
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = true;
+  static constexpr bool is_Diagonal = true;
 
   explicit DiagonalMatrix(std::size_t _nrows, std::size_t _ncols,
                           bool initialize = true)
@@ -1316,6 +1327,8 @@ private:
 public:
   static constexpr bool is_Matrix = true;
   static constexpr bool is_Symmetric = true;
+  static constexpr bool is_Diagonal = true;
+  
 
   using base_type = DiagonalMatrix<T>;
   explicit DiagPosDetMatrix(std::size_t _nrows)
