@@ -199,6 +199,12 @@ public:
     constexpr Derivative(double x):m_x{x},
         m_d{0.0}{}
     Derivative(){}
+    
+    
+    
+    
+    
+    
 };
 
 struct NoDerivative{
@@ -351,15 +357,6 @@ auto build(T...x){
 
 
 
-template<class T, class S>
-    requires(is_derivative_v<T>||is_derivative_v<S>)
-auto operator*(const T& x, const S& y)
-{
-    using X=dx_of_dfdx_t<T,S>;
-    using F=decltype(primitive(x)*primitive(y));
-    
-    return Derivative<F,X>(primitive(x)*primitive(y),derivative(x)()*primitive(y)+primitive(x)*derivative(y)());
-}
 
 template<class T, class S>
     requires(is_derivative_v<T>||is_derivative_v<S>)
@@ -368,6 +365,7 @@ auto max(const T& x, const S& y)
     using std::max;
     return max(primitive(x),primitive(y));
 }
+
 
 
 
