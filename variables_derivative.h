@@ -43,6 +43,7 @@ public:
     friend auto& get(Derivative & x){return static_cast<Derivative_t<Id,X> &>(x);}
     static constexpr bool is_vector_space=true;
     
+    auto primitive()const {return Vector_Space<Ids...>(get<Ids>(*this).primitive()...);}
     
     
     Derivative(){}
@@ -66,6 +67,7 @@ public:
     template<class IdT>
         requires std::is_same_v<Id,std::decay_t<IdT>>
     Derivative(IdT&& m):base_type{std::forward<IdT>(m)()}{}
+    auto primitive()const {return Id(base_type::primitive());}
     
     Derivative(base_type&& m):base_type{std::move(m)}{}
     Derivative(base_type const & m):base_type{m}{}

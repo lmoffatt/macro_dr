@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
   
   
   auto dparam1=var::selfDerivative(param1);
-  std::cerr<<"dparam1\n"<<dparam1;
+ // std::cerr<<"dparam1\n"<<dparam1;
   auto n= build<N_Ch_mean>(dparam1()[0]);
   
   auto dp0=dparam1()[0];
@@ -93,15 +93,34 @@ int main(int argc, char **argv) {
   
   
   auto dm=model1(dparam1);
+  auto m=model1(param1);
   
-  std::cerr<<"\ndm!!!\n"<<dm;
+ // std::cerr<<"\n!--------------------------------------------------------------------------!\n";
+//  print(std::cerr,dm);
+//  print(std::cerr,m);
   auto fs = get<Frequency_of_Sampling>(experiment).value();
-  auto ini = macrodr::Macro_DMR{}.init(dm, get<initial_ATP_concentration>(experiment));
-  auto t_step=get<Recording>(experiment)()[0];
-  auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
+  auto dini = macrodr::Macro_DMR{}.init(dm, get<initial_ATP_concentration>(experiment));
+  auto ini = macrodr::Macro_DMR{}.init(m, get<initial_ATP_concentration>(experiment));
   
-  auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(dm, t_Qx.value(),
-                        get<number_of_samples>(t_step).value() / fs);
+  auto t_step=get<Recording>(experiment)()[0];
+  auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(m, get<ATP_concentration>(t_step));
+  auto dt_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
+  
+  
+  auto dt_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),
+                                             get<number_of_samples>(t_step).value() / fs);
+  
+  auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(dm, dt_Qx.value(),
+                                             get<number_of_samples>(t_step).value() / fs);
+  
+    std::cerr<<"\n!--------------------------tQdt------------------------------------------------!\n";
+ // print(std::cerr,primitive(t_Qdt));
+  std::cerr<<"\n!-------------------------dtQcx-------------------------------------------------!\n";
+ // print(std::cerr,primitive(dt_Qdt));
+  std::cerr<<"\n!--------------------------------------------------------------------------!\n";
+//  print(std::cerr,dt_Qdt);
+//  std::cerr<<"\n!--------------------------------------------------------------------------!\n";
+ // abort();
   
   std::random_device rd;
   typename std::mt19937_64::result_type seed = rd();
