@@ -261,7 +261,7 @@ public:
     
     friend auto operator/(const Derivative& x, const Derivative& y){
         auto fx=x.primitive();
-        auto fy=x.primitive();
+        auto fy=y.primitive();
         if ((x.derivative()().size()>0)&&(y.derivative()().size()>0))
             return Derivative(fx/fy,zip([fx,fy](auto dx,auto dy) {return dx/fy-fx/fy/fy*dy;},x.derivative()(),y.derivative()()));
         else if (x.derivative()().size()==0)
@@ -273,7 +273,7 @@ public:
     }
     friend auto operator*(const Derivative& x, const Derivative& y){
         auto fx=x.primitive();
-        auto fy=x.primitive();
+        auto fy=y.primitive();
         if ((x.derivative()().size()>0)&&(y.derivative()().size()>0))
              return Derivative(fx*fy,zip([fx,fy](auto dx,auto dy) {return dx*fy+fx*dy;},x.derivative()(),y.derivative()()));
         else if (x.derivative()().size()==0)
@@ -295,10 +295,10 @@ public:
     }
     
     
-    friend auto abs(const Derivative& x){
-        auto f=std::abs(x.primitive());
-        return Derivative(f,((x.primitive() > 0.0) ? 1.0 : ((x.primitive() < 0) ? -1.0 : 0.0))*x.derivative()());
-    }
+        friend auto abs(const Derivative& x){
+            auto f=std::abs(x.primitive());
+            return Derivative(f,((x.primitive() > 0.0) ? 1.0 : ((x.primitive() < 0) ? -1.0 : 0.0))*x.derivative()());
+        }
     
     
     friend bool operator==(Derivative const& one, double val)
@@ -363,13 +363,24 @@ public:
     auto& derivative() {return m_d;}
     auto& derivative()const {return m_d;}
     
-    auto friend operator*(const Derivative& x, double y)
+    friend auto operator*(const Derivative& x, double y)
     {
         return Derivative(x.primitive()*y,x.derivative()()*y);
     }
     
+    template <template<class> class anotherCompatibleMatrix>
+    friend auto operator*(const Derivative& x, anotherCompatibleMatrix<Derivative<double,d_type>>const & t_y)
+    {
+        auto Y=outside_in(t_y);
+        return x*Y;        
+    }
     
-    
+    template <template<class> class anotherCompatibleMatrix>
+    friend auto operator*(anotherCompatibleMatrix<Derivative<double,d_type>>const & t_y,const Derivative& x)
+    {
+        auto Y=outside_in(t_y);
+        return Y*x;        
+    }
     
     
     auto operator()(std::size_t i, std::size_t j)const
@@ -387,6 +398,16 @@ public:
     }
     
 };
+
+
+
+
+
+
+
+
+
+
 
 template<class Id,template<class> class notSymmetricMatrix>
     requires ( (notSymmetricMatrix<double>::is_Matrix) && (!(std::is_same_v<SymmetricMatrix<double>, notSymmetricMatrix<double>>||std::is_same_v<SymPosDefMatrix<double>,notSymmetricMatrix<double>>)) )
@@ -417,6 +438,8 @@ auto inside_out(const Derivative<aSymmetricMatrix<double>,Parameters<Id>>& x)
     return out;
 }
 
+template<template<class>class Matrix>
+auto& outside_in(const Matrix<double>& x) {return x;}
 
 
 
@@ -540,6 +563,12 @@ Derivative<Parameters<Id>,Parameters<Id>> selfDerivative(const Parameters<Id>& x
     
     return Derivative<Parameters<Id>,Parameters<Id>>(Derivative<Matrix<double>,Parameters<Id>>(x(),d_d_<Matrix<double>,Parameters<Id>>(out)));
 }
+
+
+
+
+
+
 
 template <class T, class Id> auto diag(const Derivative<Matrix<T>,Parameters<Id>> &a) {
     

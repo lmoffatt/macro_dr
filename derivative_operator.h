@@ -255,7 +255,7 @@ decltype(auto) primitive(Derivative<X,Y>& d)
 
 template <class X>
     requires (!is_derivative_v<X>)
-decltype(auto) primitive(X&& x) { return x;}
+decltype(auto) primitive(X&& x) { return std::forward<X>(x);}
 
 template <class X>
     requires (!is_derivative_v<X>)

@@ -563,7 +563,7 @@ public:
     return *this;
   }
 
-  void set(std::size_t i, std::size_t j, double x) {
+  void set(std::size_t i, std::size_t j, const T& x) {
     base_type::operator()(i, j) = x;
     if (i != j)
       base_type::operator()(j, i) = x;
@@ -733,7 +733,7 @@ auto elemMult(const Matrix<double> &x, const Matrix<double> &y) {
 auto elemDiv(const Matrix<double> &x, const Matrix<double> &y) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
-    out[i] = x[i] * y[i];
+    out[i] = x[i] /y[i];
   return out;
 }
 
