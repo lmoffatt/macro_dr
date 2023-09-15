@@ -767,7 +767,8 @@ public:
     auto &t_g = get<g>(m);
     auto t_min_P = get<min_P>(m);
     auto v_ladt = t_landa() * dt;
-    auto v_exp_ladt = apply([](auto& x) { return exp(x); }, v_ladt);
+    auto v_exp_ladt = apply([](auto const & x) { using std::exp;
+return exp(x); }, v_ladt);
     
     auto r_P = build<P>(t_V() * v_exp_ladt * t_W());
 
@@ -1338,8 +1339,8 @@ public:
                          normalize(std::move(r_P_mean), t_min_P()),
                          normalize(std::move(r_P_cov), t_min_P()),
                          std::move(r_y_mean), std::move(r_y_var),
-                         std::move(r_plogL), std::move(r_eplogL),
-                         std::move(r_vlogL));
+                         r_plogL, r_eplogL,
+                         r_vlogL);
   }
   
   template<class C_Patch_Model>

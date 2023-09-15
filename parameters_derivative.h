@@ -128,7 +128,7 @@ public:
     constexpr d_d_(aaMatrix&& dydx):m_dydx{std::forward<aaMatrix>(dydx)}{}
     
     constexpr auto& operator()(){return m_dydx;}
-    constexpr auto operator()()const{return m_dydx;}
+    constexpr auto& operator()()const{return m_dydx;}
     
     template <class F>
     friend auto apply_par(F &&f, d_d_ const &a) {
@@ -360,6 +360,7 @@ public:
     
     auto& primitive(){return m_x;}// {return static_cast<primitive_type&>(*this);}
     auto& primitive() const {return m_x;}//{return static_cast<primitive_type const&>(*this);}
+    auto& derivative() {return m_d;}
     auto& derivative()const {return m_d;}
     
     auto friend operator*(const Derivative& x, double y)
