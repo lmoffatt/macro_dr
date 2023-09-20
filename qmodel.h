@@ -15,6 +15,7 @@
 #include "variables.h"
 #include "parameters.h"
 #include "derivative_operator.h"
+#include "derivative_test.h"
 namespace macrodr {
 
 using var::Power;
@@ -352,26 +353,29 @@ class Macro_DMR {
   
   template<class C_double>
       requires U<C_double,double>
-  static C_double EX_111(C_double const& x, C_double const& y, C_double const& z, C_double const& exp_x) {
+  static C_double EX_111(C_double const& x, C_double const& y, C_double const& z,
+                         C_double const& exp_x) {
     return exp_x / ((x - y) * (x - z));
   }
   
   template<class C_double>
       requires U<C_double,double>
-  static C_double E111(C_double const& x, C_double const& y, C_double const& z, C_double const& exp_x, C_double const& exp_y,
-                     C_double const& exp_z) {
+  static C_double E111(C_double const& x, C_double const& y, C_double const& z,
+                       C_double const& exp_x, C_double const& exp_y,C_double const& exp_z) {
     return EX_111(x, y, z, exp_x) + EX_111(y, x, z, exp_y) +
            EX_111(z, y, x, exp_z);
   }
   template<class C_double>
       requires U<C_double,double>
-  static C_double E12(C_double const& x, C_double const& y, C_double const& exp_x, C_double const& exp_y) {
+  static C_double E12(C_double const& x, C_double const& y,
+                      C_double const& exp_x, C_double const& exp_y) {
     return EX_111(x, y, y, exp_x) + exp_y / (y - x) * (1.0 - 1.0 / (y - x));
   }
   
   template<class C_double>
       requires U<C_double,double>
-  static C_double E3(C_double const& x, C_double const& y, C_double const& z, C_double const& exp_x, C_double const& exp_y,
+  static C_double E3(C_double const& x, C_double const& y, C_double const& z,
+                     C_double const& exp_x, C_double const& exp_y,
                    C_double const& exp_z,
                    double eps = std::numeric_limits<double>::epsilon()) {
     auto x_=primitive(x);
@@ -521,35 +525,41 @@ public:
     v_Qx() = v_Qx() - diag(v_Qx() * u);
     auto maybe_eig = eigs(v_Qx());
     if (maybe_eig) {
-      auto [v_V, v_l, v_W] = maybe_eig.value();
+      auto [v_V, v_l, ignore] = std::move(maybe_eig.value());
+      auto Maybe_W=inv(v_V);
+      if (!Maybe_W)
+        return Maybe_W.error();
+      else
       return build<Qx_eig>(std::move(v_Qx), build<V>(std::move(v_V)), build<lambda>(std::move(v_l)),
-                           build<W>(std::move(v_W)));
+                           build<W>(std::move(Maybe_W.value())));
     } else
       return maybe_eig.error();
   }
     
     template<class C_P_mean>
         requires U<C_P_mean,P_mean>
+  
   static C_P_mean normalize(C_P_mean &&pp, double t_min_p) {
-    auto& p=primitive(pp());
+    using Trans=transformation_type_t<C_P_mean>;
+    auto p=var::inside_out(pp());
     for (std::size_t i = 0; i < p.nrows(); ++i) {
-      double sum = 0;
+      Op_t<Trans,double> sum = 0;
       for (std::size_t j = 0; j < p.ncols(); ++j) {
-        if (p(i, j) > 1 - t_min_p) {
+      if (primitive(p(i, j)) > 1.0 - t_min_p) {
           for (std::size_t k = 0; k < p.ncols(); ++k) {
-            p(i, k) = (j == k) ? 1.0 : 0.0;
+            p(i, k) = (j == k) ? 1.0 +p(i, k)-p(i, k)  : p(i, k)-p(i, k);
           }
-          return std::move(pp);
-        } else if (p(i, j) < t_min_p)
-          p(i, j) = 0;
+          return C_P_mean(var::outside_in(p));
+      } else if (primitive(p(i, j)) < t_min_p)
+          p(i, j) = p(i, j)-p(i, j)+ 0.0;
         else
-          sum += p(i, j);
+          sum = sum+p(i, j);
       }
-      if (sum != 1)
+      if (primitive(sum) != 1.0)
         for (std::size_t j = 0; j < p.ncols(); ++j)
           p(i, j) = p(i, j) / sum;
     }
-    return std::move(pp);
+    return C_P_mean(var::outside_in(p));
   }
 
   static auto sample_Multinomial(std::mt19937_64 &mt, P_mean const t_P_mean,
@@ -591,24 +601,24 @@ public:
   
   template<class C_P_Cov>
       requires U<C_P_Cov,P_Cov>
-    static C_P_Cov normalize(C_P_Cov &&pp, double t_min_p) {
-    auto& p=primitive(pp());
-    for (std::size_t i = 0; i < p.nrows(); ++i) {
-      if (p(i, i) < t_min_p) {
-        for (std::size_t j = 0; j < p.ncols(); ++j) {
-          set(p,i, j, 0.0);
+    static C_P_Cov normalize(C_P_Cov &&p, double t_min_p) {
+    for (std::size_t i = 0; i < primitive(p)().nrows(); ++i) {
+      if (primitive(p)()(i, i) < t_min_p) {
+        for (std::size_t j = 0; j < primitive(p)().ncols(); ++j) {
+          set(p(),i, j, 0.0);
         }
       }
     }
-    return std::move(pp);
+    return std::move(p);
   }
   
   
   
   static P normalize(P &&p, double t_min_p) {
-    // std::cerr<<p;
+    using Trans=transformation_type_t<P>;
+    
     for (std::size_t i = 0; i < p().nrows(); ++i) {
-      double sumP = 0;
+      Op_t<Trans,double> sumP = 0;
       for (std::size_t j = 0; j < p().ncols(); ++j)
         if (p()(i, j) < t_min_p)
           p()(i, j) = 0;
@@ -817,17 +827,61 @@ return exp(x); }, v_ladt);
     
     auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
     
+    if (false)
+    {
+    std::cerr<<"\nr_gtotal_sqr_ij\n"<<r_gtotal_sqr_ij;
+    std::cerr<<"\nvar::outside_in(var::inside_out(r_gtotal_sqr_ij))\n"<<var::outside_in(var::inside_out(r_gtotal_sqr_ij()));
+    
+    std::cerr<<"\nvar::inside_out(r_gtotal_sqr_ij)\n"<<var::inside_out(r_gtotal_sqr_ij());
+    } 
+    
+//    std::abort();
+    
+    
+    
+    
+    if constexpr (false){
+      auto test_r_gtotal_sqr_ij=var::test_Derivative(
+          [this,&N,&t_min_P](const auto& t_V, const auto& t_W,const auto& v_WgV,const auto& v_ladt, const auto& v_exp_ladt){
+              using Trans2=transformation_type_t<std::decay_t<decltype(v_ladt)>>;
+              
+              Matrix<Op_t<Trans2,double>> WgV_E3(N, N,Op_t<Trans2,double>(0.0));
+              for (std::size_t n1 = 0; n1 < N; n1++)
+                  for (std::size_t n3 = 0; n3 < N; n3++)
+                      for (std::size_t n2 = 0; n2 < N; n2++) {
+                          //      std::cerr<<"\t"<<WgV_E3(n1, n3);
+                          
+                          WgV_E3(n1, n3) = WgV_E3(n1, n3)+
+                                           v_WgV(n1, n2) * v_WgV(n2, n3) *
+                                               E3(v_ladt[n1], v_ladt[n2], v_ladt[n3], v_exp_ladt[n1],
+                                                  v_exp_ladt[n2], v_exp_ladt[n3], t_min_P()); // optimizable
+                      }
+              
+          //    return var::outside_in(WgV_E3);
+              return build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
+                      },
+          1e-4,1e-6,t_V,t_W,v_WgV, v_ladt, v_exp_ladt);
+      if (!test_r_gtotal_sqr_ij)
+      {
+        std::cerr<<"\n error in test_r_gtotal_sqr_ij!!\n"<<test_r_gtotal_sqr_ij.error()();
+        std::abort();
+      }
+      
+    }
+    
+    
+    
     
    // assert(test_conductance_variance(
    //     r_gtotal_sqr_ij(), get<Conductance_variance_error_tolerance>(m)));
-    r_gtotal_sqr_ij() =
-        truncate_negative_variance(std::move(r_gtotal_sqr_ij()));
-    for (std::size_t i = 0; i < N; ++i)
-      for (std::size_t j = 0; j < N; ++j)
-        if (r_P()(i, j) == 0) {
-          r_gtotal_ij()(i, j) = 0;
-          r_gtotal_sqr_ij()(i, j) = 0;
-        }
+//    r_gtotal_sqr_ij() =
+//        truncate_negative_variance(std::move(r_gtotal_sqr_ij()));
+//    for (std::size_t i = 0; i < N; ++i)
+//      for (std::size_t j = 0; j < N; ++j)
+//        if (r_P()(i, j) == 0) {
+//          r_gtotal_ij()(i, j) = 0;
+//          r_gtotal_sqr_ij()(i, j) = 0;
+//        }
 
     Matrix<double> U(1, t_g().size(), 1.0);
     Matrix<double> UU(t_g().size(), t_g().size(), 1.0);
@@ -837,12 +891,44 @@ return exp(x); }, v_ladt);
     auto gvar_ij_p =
         apply([](auto x) { return abs(x); }, t_g() * U - tr(t_g() * U)) *
         (0.5);
-
+    
+    
+    
     auto gmean_ij_tot = r_gtotal_ij() + gmean_ij_p * t_min_P();
     auto P_p = r_P() + UU * t_min_P();
     auto r_gmean_ij = build<gmean_ij>(elemDiv(gmean_ij_tot, P_p));
     auto r_gtotal_var_ij = build<gtotal_var_ij>(r_gtotal_sqr_ij() -
                                          elemMult(r_gtotal_ij(), r_gmean_ij()));
+    
+    
+    
+    
+    if constexpr (false){
+      auto test_elemMu=var::test_Derivative(
+          [&U](const auto& r_gtotal_sqr_ij,const auto& r_gtotal_ij, const auto& r_gmean_ij){
+              return   r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij());
+          },
+          1e-4,1e-6,r_gtotal_sqr_ij,r_gtotal_ij,r_gmean_ij);
+      if (!test_elemMu)
+      {
+        std::cerr<<"\n error in test_elemMu!!\n"<<test_elemMu.error()();
+        std::abort();
+      }
+      
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
 //    std::cerr<<"\n---------------------fin---------------------------------------------------\n";
 //    std::cerr<<"\n elemDiv(gmean_ij_tot, P_p)"<<primitive(elemDiv(gmean_ij_tot, P_p));
@@ -856,8 +942,8 @@ return exp(x); }, v_ladt);
     
     //assert(test_conductance_variance(
     //    r_gtotal_var_ij(), get<Conductance_variance_error_tolerance>(m)));
-    r_gtotal_var_ij() =
-        truncate_negative_variance(std::move(r_gtotal_var_ij()));
+  //  r_gtotal_var_ij() =
+  //      truncate_negative_variance(std::move(r_gtotal_var_ij()));
 
     auto gvar_ij_tot = r_gtotal_var_ij() + gvar_ij_p * t_min_P();
     auto r_gvar_ij = build<gvar_ij>(elemDiv(gvar_ij_tot, P_p));
@@ -1157,7 +1243,24 @@ return exp(x); }, v_ladt);
     auto gSg =
         getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i()) +
         getvalue(p_P_mean() * (elemMult(t_gtotal_ij(), t_gmean_ij()) * u));
-
+    
+    
+    
+    if constexpr (false){
+      auto test_gSg=var::test_Derivative(
+          [this,&u](auto const& t_gmean_i,auto const& t_gmean_ij,auto const& SmD,auto const& p_P_mean, auto const& t_gtotal_ij){
+              return
+          getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i()) +
+              getvalue(p_P_mean() * (elemMult(t_gtotal_ij(), t_gmean_ij()) * u));
+          },
+          1e-4,1e-6,t_gmean_i,t_gmean_ij,SmD,p_P_mean,t_gtotal_ij);
+      if (!test_gSg)
+      {
+        std::cerr<<"\n error in test_gSg!!\n"<<test_gSg.error()();
+        return Maybe_error<C_Patch_State>(test_gSg.error());
+      }
+      
+    }
     auto ms = getvalue(p_P_mean() * t_gvar_i());
     
     Op_t<Transf,double> e_mu;
@@ -1173,7 +1276,7 @@ return exp(x); }, v_ladt);
       e_mu = e + N * ms;
       r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i());
       r_y_var() = e_mu + N * gSg;
-      if (!(r_y_var() > 0)) {
+      if (!(primitive(r_y_var()) > 0.0)) {
         std::stringstream ss;
         ss << "Negative variance!!\n";
         ss << "\nr_y_var=\t" << r_y_var;
@@ -1343,6 +1446,31 @@ return exp(x); }, v_ladt);
       return error_message(ss.str());
     }
     
+    if constexpr (false){
+      auto test_plogL=var::test_Derivative(
+          [](auto const& r_y_var, auto const& chi2, auto const& t_prior){
+              return -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5 * chi2+get<logL>(t_prior)();
+          },
+          1e-6,1e-8,r_y_var,chi2,t_prior);
+      if (!test_plogL)
+      {
+        std::cerr<<"\n error in test_plogL!!\n"<<test_plogL.error()();
+        return Maybe_error<C_Patch_State>(test_plogL.error());
+      }
+      
+    }
+    
+//    std::cerr<<p<<"\n";
+//    std::cerr<<"r_plogL\n"<<r_plogL<<"\n";
+//    std::cerr<<"r_P_mean\n"<<r_P_mean<<"\n";
+//    std::cerr<<"r_y_mean\n"<<r_y_mean<<"\n";
+//    std::cerr<<"r_y_var\n"<<r_y_var<<"\n";
+    
+    
+//    if (get<Time>(p)()>1)
+//      std::abort();
+    
+    
     Op_t<Transf,eplogL> r_eplogL(-0.5 * log(2 * std::numbers::pi * r_y_var()) -
                     0.5); // e_mu+N*gSg"-N*zeta*sqr(sSg)"
     // double chilogL=(eplogL-plogL)/std::sqrt(0.5);
@@ -1384,7 +1512,7 @@ return exp(x); }, v_ladt);
       if (r_test)
       {
         auto t_min_P = get<min_P>(m);
-        if (true) {
+        if (false) {
           std::cerr << "initial\n";
           std::cerr << "r_P_mean" << r_P_mean;
           std::cerr << "r_P_cov" << r_P_cov;
@@ -1392,7 +1520,7 @@ return exp(x); }, v_ladt);
           //  t_min_P());
         }
         return Transfer_Op_to<C_Patch_Model,Patch_State>(logL(0.0), elogL(0.0), vlogL(0.0),
-                           normalize(std::move(r_P_mean), t_min_P()),
+                                                          normalize(std::move(r_P_mean), t_min_P()),
                            normalize(std::move(r_P_cov), t_min_P()),
                            y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
                            vplogL(NaN));
@@ -1425,17 +1553,44 @@ return exp(x); }, v_ladt);
           get<Recording>(e)(), ini.value(),
           [this, &m, fs,&gege]( C_Patch_State const &t_prior,
                          Experiment_step const &t_step) {
+              
+              
             auto t_Qx = calc_eigen(m, get<ATP_concentration>(t_step));
-
+              
+              if (false){
+              auto test_der_eigen=var::test_Derivative(
+                [this,&t_step](auto l_m){ return calc_eigen(l_m,get<ATP_concentration>(t_step));},
+                1,1e-9,m);
+            if (!test_der_eigen)
+                {
+                  std::cerr<<test_der_eigen.error()();
+                return Maybe_error<C_Patch_State>(test_der_eigen.error());
+                }
+            
+              } 
             if (!t_Qx)
                 return Maybe_error<C_Patch_State>(t_Qx.error());
             // print(std::cerr,t_Qx.value());
             auto t_Qdt = calc_Qdt(m, t_Qx.value(),
                                   get<number_of_samples>(t_step).value() / fs);
             
-//            print(std::cerr,t_prior);
-//            if (gege<10) ++gege;
-//            else abort();
+//
+            if constexpr(false){
+            auto test_der_t_Qdt=var::test_Derivative(
+                [this,&t_step,&fs](auto const& l_m,auto const& l_Qx){ return calc_Qdt(l_m, l_Qx,
+                                                     get<number_of_samples>(t_step).value() / fs);},
+                1e-6,1e-2,m,t_Qx.value());
+            if (true&&!test_der_t_Qdt)
+            {
+                std::cerr<<test_der_t_Qdt.error()();
+                std::cerr<<"\nt_step\n"<<t_step;
+                return Maybe_error<C_Patch_State>(test_der_t_Qdt.error());
+            }
+            
+            }
+            //print(std::cerr,t_prior);
+            if (gege<10) ++gege;
+            else abort();
             
             if (false){
             auto test_Qdt =
@@ -1443,7 +1598,31 @@ return exp(x); }, v_ladt);
 
             if (!test_Qdt)
               return Maybe_error<C_Patch_State>(test_Qdt.error());
-            } 
+            }
+            
+            if constexpr (true){
+            auto test_der_Macror=var::test_Derivative(
+                [this,&t_step,&fs](auto const &l_m,auto const& l_prior,auto const& l_Qdt ){ return Macror<uses_recursive_aproximation(false),
+                                                                                        uses_averaging_aproximation(1),
+                                                                                        uses_variance_aproximation(false)>(l_prior, l_Qdt, l_m,
+                                                                                                                           t_step, fs);},
+                1e-7,1e-14,m,t_prior, t_Qdt);
+            if (!test_der_Macror)
+            {
+              std::cerr<<"\nt_step\n"<<t_step;
+              std::cerr<<test_der_Macror.error()();
+              std::cerr<<"\nt_step\n"<<t_step;
+           //   return Maybe_error<C_Patch_State>(test_der_Macror.error());
+            }
+             
+            }
+            
+            
+            std::cerr<<"\nplogL\n"<<get<plogL>(t_prior);
+            std::cerr<<"\nlogL\n"<<get<logL>(t_prior);
+            std::cerr<<"\nt_step\n"<<t_step<<"\n";
+            
+            
             return Macror<uses_recursive_aproximation(true),
                           uses_averaging_aproximation(2),
                           uses_variance_aproximation(false)>(t_prior, t_Qdt, m,

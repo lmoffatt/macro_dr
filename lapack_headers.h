@@ -1586,14 +1586,48 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
     }
 
   } else {
-    auto &VL_cpp = VR_lapack;
+    auto VL_cpp = tr(VR_lapack);
     auto VR_cpp = tr(VL_lapack);
-    Nelson_Normalization(VR_cpp, VL_cpp);
-    if (norm_1(VR_cpp * WR * VL_cpp - x) > 10 * std::sqrt(eps)) {
+  // Nelson_Normalization(VR_cpp, VL_cpp);
+    
+    
+    
+//    std::cerr << "\ntr(VL_cpp)*VR_cpp\n" << tr(VL_cpp)*VR_cpp ;
+//    std::cerr << "\nVL_cpp*VR_cpp\n" << VL_cpp*VR_cpp  ;
+    
+//    std::cerr << "\nx\n" << x;
+//    std::cerr << "\nVR_cpp\n" << VR_cpp;
+//    std::cerr << "\nWR\n" << WR;
+//    std::cerr << "\nVL_cpp\n" << VL_cpp;
+    
+//    std::cerr << "\nVR_cpp*VL_cpp\n" << VR_cpp * VL_cpp;
+//    std::cerr << "\nVR_cpp * WR * VL_cpp-x\n" << VR_cpp * WR * VL_cpp - x;
+//    std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value();
+//    std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()-x\n" << VR_cpp * WR * inv(VR_cpp).value()-x;
+//    std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)\n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
+//    std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)-x \n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
+    
+    
+//    std::cerr << "\ninv(VL_cpp).value() * WR * VL_cpp\n" << inv(VL_cpp).value() * WR * VL_cpp;
+//    std::cerr << "\nVL_cpp * WR * inv(VL_cpp).value()\n" << VL_cpp * WR * inv(VL_cpp).value();
+    
+//    std::cerr << "\ninv(VL_cpp).value() * WR * VL_cpp\n" << inv(tr(VL_cpp)).value() * WR * tr(VL_cpp);
+//    std::cerr << "\ntr(VL_cpp) * WR * inv(tr(VL_cpp)).value()\n" << tr(VL_cpp) * WR * inv(tr(VL_cpp)).value();
+    
+//    std::cerr << "\nnorm_1(VR_cpp * WR * VL_cpp-x)\n"
+//              << norm_1(VR_cpp * WR * VL_cpp - x);
+//    std::cerr << "\neps\n" << eps << "\n";
+//    std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
+    
+//    std::abort();
+    
+    if (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x) > 1* std::sqrt(eps)) {
       std::cerr << "\nx\n" << x;
       std::cerr << "\nVR_cpp\n" << VR_cpp;
       std::cerr << "\nWR\n" << WR;
       std::cerr << "\nVL_cpp\n" << VL_cpp;
+      std::cerr << "\nVL_cpp\n" << VL_cpp;
+      
       std::cerr << "\nVR_cpp*VL_cpp\n" << VR_cpp * VL_cpp;
       std::cerr << "\nVR_cpp * WR * VL_cpp-x\n" << VR_cpp * WR * VL_cpp - x;
       std::cerr << "\nnorm_1(VR_cpp * WR * VL_cpp-x)\n"
@@ -1601,8 +1635,8 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
       std::cerr << "\neps\n" << eps << "\n";
       std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
     }
-
-    assert((norm_1(VR_cpp * WR * VL_cpp - x) < 1000 * std::sqrt(eps)) &&
+    
+    assert((norm_1(VR_cpp * WR * inv(VR_cpp).value() - x) < 100 * std::sqrt(eps)) &&
            " fails in eigendecomposition");
 //    return sort_by_eigenvalue(std::make_tuple(
     return std::make_tuple(

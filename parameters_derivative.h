@@ -109,7 +109,13 @@ public:
     auto& operator()()const{return m_dydx;}
     
     
-    
+    friend auto operator*(d_d_ const & df, const Parameters<Id>& x)
+    {
+        double out=0; 
+        for (std::size_t i=0; i<df().size(); ++i)
+            out+=df()[i]*x()[i];
+        return out;
+    }
     
     
 };
@@ -166,6 +172,16 @@ public:
         return d_d_<S,Parameters<Id>>(x);
     }
     
+    friend auto operator*(d_d_ const & df, const Parameters<Id>& x)
+    {
+        auto nrows=df()[0].nrows();
+        auto ncols=df()[0].ncols();
+        
+        auto out=aMatrix<double>(nrows,ncols); 
+        for (std::size_t i=0; i<df().size(); ++i)
+            out=out+df()[i]*x()[i];
+        return out;
+    }
     
     
 };
@@ -265,7 +281,7 @@ public:
         if ((x.derivative()().size()>0)&&(y.derivative()().size()>0))
             return Derivative(fx/fy,zip([fx,fy](auto dx,auto dy) {return dx/fy-fx/fy/fy*dy;},x.derivative()(),y.derivative()()));
         else if (x.derivative()().size()==0)
-            return Derivative(fx/fy,fx/fy/fy*y.derivative()());
+            return Derivative(fx/fy,-fx/fy/fy*y.derivative()());
         else
             return Derivative(fx/fy,x.derivative()()/fy);
         
@@ -400,8 +416,12 @@ public:
 };
 
 
-
-
+template<class F, class Id>
+    requires requires (Derivative<F,Parameters<Id>>& f){{f.derivative()().nrows()};}
+auto get_dx_of_dfdx(const Derivative<F,Parameters<Id>>& f)
+{
+    return Parameters<Id>(Matrix<double>(f.derivative()().nrows(),f.derivative()().ncols(),0.0));
+}
 
 
 
@@ -441,6 +461,8 @@ auto inside_out(const Derivative<aSymmetricMatrix<double>,Parameters<Id>>& x)
 template<template<class>class Matrix>
 auto& outside_in(const Matrix<double>& x) {return x;}
 
+template<template<class>class Matrix>
+auto& inside_out(const Matrix<double>& x) {return x;}
 
 
 
@@ -493,8 +515,9 @@ template<class Id,template<class> class aSymmetricMatrix>
     requires (std::is_same_v<SymmetricMatrix<double>, aSymmetricMatrix<double>>||std::is_same_v<SymPosDefMatrix<double>,aSymmetricMatrix<double>>)
 void set( Derivative<aSymmetricMatrix<double>,Parameters<Id>>& x, std::size_t i, std::size_t j , double value)
 {
-    x.primitive().set(i,j,value);
-    
+    d_d_<double, Parameters<Id>> der(Matrix<double>(x.derivative()().ncols(),x.derivative()().ncols(),0.0));
+    Derivative<double,Parameters<Id>> dv(value,der);
+    set(x,i,j,dv);    
 }
 
 template<class Id,template<class> class aSymmetricMatrix>
@@ -679,7 +702,9 @@ auto operator*(const Derivative<aMatrix<double>,Parameters<Id>> &a, const Deriva
     
         return Derivative<S,Parameters<Id>>(fa*fb,
                             zip_par([&fa,&fb](auto const & da, auto const & db)
-                                    {return fa*db+da*fb;}, derivative(a), derivative(b)));
+                                    {
+                                                 return fa*db+da*fb;
+                                             }, derivative(a), derivative(b)));
     else if ((derivative(a)().size()==0)&&(derivative(a)().size()==0))
         return Derivative<S,Parameters<Id>>(fa*fb);
     else if (derivative(a)().size()==0)   
@@ -798,8 +823,8 @@ Maybe_error<Derivative<Matrix<double>,Parameters<Id>>> inv(const Derivative<Matr
 
 template<class Id>
 Maybe_error<std::tuple<Derivative<Matrix<double>,Parameters<Id>>,Derivative<DiagonalMatrix<double>,Parameters<Id>>,Derivative<Matrix<double>,Parameters<Id>>>>
-eigs(const Derivative<Matrix<double>,Parameters<Id>> &x, bool does_permutations = true,
-     bool does_diagonal_scaling = true,
+eigs(const Derivative<Matrix<double>,Parameters<Id>> &x, bool does_permutations = false,
+     bool does_diagonal_scaling = false,
      bool computes_eigenvalues_condition_numbers = false,
      bool computes_eigenvectors_condition_numbers = false) {
     
@@ -814,36 +839,36 @@ eigs(const Derivative<Matrix<double>,Parameters<Id>> &x, bool does_permutations 
         auto derlambda=apply([&VR,&lambda,&VL](auto const & dx){
             auto out=DiagonalMatrix<double>(lambda.nrows(),lambda.ncols());
             for (std::size_t i = 0; i < lambda.size(); ++i) {
-                auto vT = VL(i, ":");
+                auto vT = tr(VL( ":",i));
                 auto u = VR(":", i);
-                out[i]= getvalue(vT * dx * u);
+                out[i]= getvalue(vT * dx * u)/getvalue(vT*u);
             }
             return out;}, x.derivative()());
         
         auto dLambda=Derivative<DiagonalMatrix<double>,Parameters<Id>>(lambda,derlambda);
         
-        auto derVR=apply([&VR,&lambda,&VL](auto const & dx){
+        auto VRRV=XTX(VR);
+        
+        auto derVR=apply([&VR,&lambda,&VL,&VRRV](auto const & dx){
             
             Matrix<double> C(VR.nrows(), VR.ncols());
             for (std::size_t k = 0; k < VR.nrows(); ++k) {
                 auto uk = VR(":", k);
-                std::size_t m = 0;
                 for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                    if (uk[j]== 1)
-                        m = j;
                     if (k != j) {
-                        auto vTj = VL(j, ":");
+                        auto vTj = tr(VL(":",j));
+                        auto uj=VR(":", j);
                         double dl = lambda[k] - lambda[j];
-                        C(k, j) = getvalue(vTj * dx * uk) / dl;
+                        C(k, j) = getvalue(vTj * dx * uk) / dl/getvalue(vTj*uj);
                     }
                 }
                 C(k, k) = 0;
                 for (std::size_t j = 0; j < VR.ncols(); ++j) {
                     if (k != j)
-                        C(k, k) -= VR(m, j) * C(k, j);
+                        C(k, k) -= VRRV(k, j) * C(k, j);
                 }
             }
-            return tr(VR)*C;
+            return tr(C)*VR;
         }, x.derivative()());
         auto dVR=Derivative<Matrix<double>,Parameters<Id>>(VR,derVR);
         auto dVL=inv(dVR);
@@ -857,8 +882,23 @@ eigs(const Derivative<Matrix<double>,Parameters<Id>> &x, bool does_permutations 
 
 
 
+template<class Id>
+auto Taylor_first(Derivative<double,Parameters<Id>>const & f, const Parameters<Id>& x , double eps)
+{
+     return primitive(f) + f.derivative()*x*eps;
+}
 
+template<template<class>class aMatrix,class Id>
+auto Taylor_first(Derivative<aMatrix<double>,Parameters<Id>>const & f, const Parameters<Id>& x , double eps)
+{
+     return primitive(f) + f.derivative()*x*eps;
+}
 
+template<class Id>
+auto Taylor_first(Derivative<Parameters<Id>,Parameters<Id>>const & f, const Parameters<Id>& x , double eps)
+{
+     return Parameters<Id>(primitive(f) + f.derivative()*x*eps);
+}
 
 
 }

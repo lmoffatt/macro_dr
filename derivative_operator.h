@@ -331,6 +331,26 @@ struct dx_of_dfdx<d_d_<X,Y>>
 template<class ...T>
 using    dx_of_dfdx_t=typename std::decay_t<dx_of_dfdx<T...>>::type;
 
+auto get_dx_of_dfdx()
+{
+    return NoDerivative{};
+}
+
+
+template<class T,class ...Ts>
+    requires (!is_derivative_v<T>)
+auto get_dx_of_dfdx(const T& x, const Ts&...xs)
+{
+    return get_dx_of_dfdx(xs...);
+}
+
+
+template<class F,class X,class T,class ...Ts>
+auto get_dx_of_dfdx(const Derivative<F,X>& x, const T&,const Ts&...)
+{
+    return get_dx_of_dfdx(x);
+}
+
 
 
  //auto a=Derivative<double,double>(9.9,9.9);
@@ -417,6 +437,12 @@ auto operator-(const T& x, const S& y)
     
     return Derivative<F,X>(x-primitive(y),-derivative(y)());
 }
+
+
+
+
+
+
 
 
 }
