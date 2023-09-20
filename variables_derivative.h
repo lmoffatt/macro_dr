@@ -43,7 +43,6 @@ public:
     friend auto& get(Derivative & x){return static_cast<Derivative_t<Id,X> &>(x);}
     static constexpr bool is_vector_space=true;
     
-    auto primitive()const {return Vector_Space<Ids...>(get<Ids>(*this).primitive()...);}
     
     
     Derivative(){}
@@ -54,8 +53,21 @@ public:
     friend auto& operator<<(std::ostream& os, const Derivative& x){ (os<<...<<get<Ids>(x)); return os;}
     // friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
     
+    Vector_Space<Ids...> primitive()const {return Vector_Space<Ids...>(var::primitive(get<Ids>(*this))...);}
+    
 };
 
+template<class...Ids, class X>
+auto get_dx_of_dfdx(const Derivative<Vector_Space<Ids...>,X>& f)
+{
+    return get_dx_of_dfdx(get<Ids>(f)...);
+}
+
+template<class...Ids, class X, class Parameters>
+auto Taylor_first(const Derivative<Vector_Space<Ids...>,X>& f, const Parameters& x , double eps)
+{
+    return Vector_Space<Ids...>(Ids(Taylor_first(get<Ids>(f),x,eps))...);
+}
 
 
 template<class Id, class X>
@@ -75,8 +87,31 @@ public:
 };
 
 
+template<class Id, class T, class X>
+auto get_dx_of_dfdx(const Derivative<Var<Id,T>,X>& f)
+{
+    return get_dx_of_dfdx(f());
+}
 
 
+template<class Id, class T, class X>
+Var<Id,T> Taylor_first(const Derivative<Var<Id,T>,X>& f, const X& x , double eps)
+{
+    return Taylor_first(f(),x,eps);
+}
+
+
+template<class Id, class T, class X>
+Var<Id,T> Taylor_first(const Var<Id,T>& f, const X& x , double eps)
+{
+    return f;
+}
+
+template<class Id, class T, class X>
+Constant<Id,T> Taylor_first(const Constant<Id,T>& f, const X& x , double eps)
+{
+    return f;
+}
 
 
 }

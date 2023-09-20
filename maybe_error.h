@@ -6,6 +6,8 @@
 #include <tuple>
 #include <variant>
 #include <vector>
+#include <sstream>
+#include <iomanip>
 
 constexpr auto NaN = std::numeric_limits<double>::quiet_NaN();
 constexpr auto eps = std::numeric_limits<double>::epsilon();
@@ -75,11 +77,6 @@ template <class C, class T>
 concept contains_value =
     std::convertible_to<decltype(get_value(std::declval<C>())), T>;
 
-template <class T>
-  requires(!is_Maybe_error<T>)
-auto get_error(const T &) {
-  return std::string("");
-}
 
 template <class T> auto get_error(const Maybe_error<T> &x) { return x.error(); }
 
@@ -91,6 +88,13 @@ public:
 
   auto operator()() const { return m_; }
 };
+template <class T>
+    requires(!is_Maybe_error<T>)
+auto get_error(const T &) {
+  return error_message("");
+}
+
+
 namespace err {
 
 template <class T> class Maybe_error : public std::variant<T, error_message> {
@@ -125,6 +129,10 @@ public:
   }
 };
 } // namespace err
+
+inline std::string  ToString(const double& x)
+{std::stringstream ss; ss<<std::setprecision(12); ss<<x; return ss.str();}
+
 
 template <class T> class Maybe_error : private std::variant<T, error_message> {
 public:
@@ -444,5 +452,9 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Ts> &v) {
   //  os<<"\n";
   return os;
 }
+
+
+
+
 
 #endif // MAYBE_ERROR_H

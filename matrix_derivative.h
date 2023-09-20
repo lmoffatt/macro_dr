@@ -39,7 +39,7 @@ public:
     
     constexpr auto& operator()(){return m_dydx;}
     constexpr auto operator()()const{return m_dydx;}
-};
+};  
 
 
 

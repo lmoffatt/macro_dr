@@ -79,6 +79,8 @@ public:
     constexpr auto& value()const {return m_x;}
     friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
     
+    friend Id  operator-(const Var& one, const Var& two){return Id(one()-two());}
+    
     friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
     friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
 };
@@ -98,7 +100,7 @@ public:
     static constexpr bool is_variable=true;
     static constexpr bool is_constant=true;
     
-    operator Id()const {return Id(*this);}
+    //operator Id()const {return Id(*this);}
     
     constexpr Constant(T t_x):m_x{t_x}{}
     constexpr auto& operator()(){return m_x;}
@@ -215,6 +217,11 @@ public:
         return islessthan<Vars...>(a,b);
     }
     
+    friend Vector_Space operator- (const Vector_Space& one, const Vector_Space& two)
+    {
+        return Vector_Space(get<Vars>(one)-get<Vars>(two)...);
+    }
+    
 };
 
 template<class...>
@@ -260,12 +267,36 @@ public:
     Vector_Map_Space(){}
 };
 
+inline Maybe_error<bool> test_equality(double x, double y, double eps)
+{
+    if (std::abs(x-y)/(std::abs(x)+std::abs(y)+1.0)>eps)
+        return error_message(ToString(x)+" is not equal to "+ToString(y)+
+                             "|x-y|/(|x|+|y|) = "+
+                             ToString(std::abs(x-y)/(std::abs(x)+std::abs(y)+1.0))+
+                             " is greater than "+ToString (eps));
+    else return true;
+}
 
 
 
+template<class Id, class T>
+Maybe_error<bool> test_equality(const Var<Id,T>& one, const Var<Id,T>& two, double eps)
+{
+    auto test=test_equality(one(), two(), eps);
+    if (!test)
+    {
+        return error_message(std::string("\n\n")+typeid(Id).name()+std::string(" error: ")+test.error()() );
+    }
+    else return true;
+}
 
 
-
+template<class...Vars>
+    requires (Vars::is_variable&&...)
+Maybe_error<bool> test_equality(const Vector_Space<Vars...>& one, const  Vector_Space<Vars...>& two, double eps)
+{
+    return ((test_equality(get<Vars>(one), get<Vars>(two),eps)&&...));
+}
 
 
 

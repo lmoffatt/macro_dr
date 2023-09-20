@@ -107,17 +107,17 @@ int main(int argc, char **argv) {
   auto dt_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
   
   
-  auto dt_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),
-                                             get<number_of_samples>(t_step).value() / fs);
+//  auto dt_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),
+//                                             get<number_of_samples>(t_step).value() / fs);
   
   auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(dm, dt_Qx.value(),
                                              get<number_of_samples>(t_step).value() / fs);
   
-    std::cerr<<"\n!--------------------------tQdt------------------------------------------------!\n";
- // print(std::cerr,primitive(t_Qdt));
-  std::cerr<<"\n!-------------------------dtQcx-------------------------------------------------!\n";
+   // std::cerr<<"\n!--------------------------tQdt------------------------------------------------!\n";
+  // print(std::cerr,t_Qdt);
+  // std::cerr<<"\n!-------------------------dtQcx-------------------------------------------------!\n";
  // print(std::cerr,primitive(dt_Qdt));
-  std::cerr<<"\n!--------------------------------------------------------------------------!\n";
+ // std::cerr<<"\n!--------------------------------------------------------------------------!\n";
 //  print(std::cerr,dt_Qdt);
 //  std::cerr<<"\n!--------------------------------------------------------------------------!\n";
  // abort();
@@ -129,11 +129,24 @@ int main(int argc, char **argv) {
       mt, model1,param1, experiment,
       Simulation_Parameters(Number_of_simulation_sub_steps(10)));
 
-  std::cerr << sim;
+  //std::cerr << sim;
   
   
-  auto lik = Macro_DMR{}.log_Likelihood(model1,dparam1, sim.value()());
-
+  
+  
+  
+  if (false){
+      auto test_der_Likelihood=var::test_Derivative(
+          [&model1,&sim](auto const &dparam1){
+              return Macro_DMR{}.log_Likelihood(model1,dparam1, sim.value()());},
+          1,1e-10,dparam1);
+      if (!test_der_Likelihood)
+      {
+         std::cerr<<test_der_Likelihood.error()();
+      }
+  }
+      auto lik = Macro_DMR{}.log_Likelihood(model1,dparam1, sim.value()());
+  
   std::cerr << "likelihood!!! " << lik << "\n";
 
     if (p) {

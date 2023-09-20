@@ -546,9 +546,12 @@ public:
 
   explicit SymmetricMatrix(std::size_t _nrows)
       : base_type(_nrows, _nrows, false) {}
-  explicit SymmetricMatrix(std::size_t _nrows, T value)
+  explicit SymmetricMatrix(std::size_t _nrows,std::size_t, T value)
       : base_type(_nrows, _nrows, value) {}
-
+  explicit SymmetricMatrix(std::size_t _nrows,std::size_t)
+      : base_type(_nrows, _nrows) {}
+  
+  
   SymmetricMatrix(const SymmetricMatrix &x) : base_type(x) {}
   SymmetricMatrix(SymmetricMatrix &&x) : base_type(std::move(x)) {}
 
@@ -1219,7 +1222,30 @@ public:
     }
     return out;
   }
-
+  
+  template<class F>
+  friend auto zip(F &&f, const  DiagonalMatrix &x, const DiagonalMatrix &y) {
+    assert(x.size()==y.size() && "same size");
+    DiagonalMatrix out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.size(); ++i)
+      out[i] = f(x[i], y[i]);
+    return out;
+  }
+  
+  friend auto operator+(const DiagonalMatrix &a, const DiagonalMatrix &b) {
+    if (a.size()==0)
+      return b;
+    else if (b.size()==0) return a;
+    return zip([](auto x, auto y) { return x + y; }, a, b);
+  }
+  
+  friend auto operator-(const DiagonalMatrix &a, const DiagonalMatrix &b) {
+    if (a.size()==0)
+      return b;
+    else if (b.size()==0) return a;
+    return zip([](auto x, auto y) { return x - y; }, a, b);
+  }
+  
   friend auto operator-(const Matrix<T> &a, const DiagonalMatrix &b) {
     auto out = a;
     for (std::size_t i = 0; i < b.nrows(); ++i)
@@ -1475,8 +1501,8 @@ template <class T> auto diagpos(const Matrix<T> &a) {
 
 template <class T> auto qr(const Matrix<T> &a) { return lapack::Lapack_QR(a); }
 
-auto eigs(const Matrix<double> &x, bool does_permutations = true,
-          bool does_diagonal_scaling = true,
+auto eigs(const Matrix<double> &x, bool does_permutations = false,
+          bool does_diagonal_scaling = false,
           bool computes_eigenvalues_condition_numbers = false,
           bool computes_eigenvectors_condition_numbers = false) {
   return lapack::Lapack_EigenSystem(x, does_permutations, does_diagonal_scaling,
@@ -1579,5 +1605,39 @@ double norm_inf(const Matrix &x) {
   }
   return n;
 }
+
+inline Maybe_error<bool> test_equality(double x, double y, double eps)
+{
+  if (std::abs(x-y)/(std::abs(x)+std::abs(y)+1.0)>eps)
+    return error_message(ToString(x)+" is not equal to "+ToString(y)+
+                         "|x-y|/(|x|+|y|) = "+
+                         ToString(std::abs(x-y)/(std::abs(x)+std::abs(y)+1.0))+
+                         " is greater than "+ToString (eps));
+  else return true;
+}
+
+
+
+template<template<class>class aMatrix>
+Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double>& two, double eps)
+{
+  auto out=Maybe_error<bool>(true);
+  for (std::size_t i=0; i<one.nrows(); ++i)
+    for (std::size_t j=0; j<one.ncols(); ++j)
+    {
+      auto test=test_equality(one(i,j),two(i,j),eps);
+      if (!test)
+        out=error_message(out.error()()+"\n at ("+std::to_string(i)+","+std::to_string(j)+"): "+test.error()());
+      
+    }
+  
+  return out;
+  
+}
+
+
+
+
+
 
 #endif // MATRIX_H

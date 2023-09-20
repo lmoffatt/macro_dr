@@ -51,6 +51,7 @@ public:
   Parameters(MatrixType&& x): m_values{std::forward<MatrixType>(x)}{}
   
   auto& operator()()const {return m_values;}
+  auto& operator()() {return m_values;}
     
 };
 
