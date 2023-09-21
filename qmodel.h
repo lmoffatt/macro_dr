@@ -664,7 +664,7 @@ public:
       if (landa(i, i) == 0.0)
         laexp[i] = 1.0;
     }
-    if (false) {
+    if constexpr(false) {
       std::cerr << "\np0\n" << p0;
       std::cerr << "\nlanda\n" << landa;
       std::cerr << "\nVv\n" << Vv;
@@ -827,18 +827,13 @@ return exp(x); }, v_ladt);
     
     auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
     
-    if (false)
+    if constexpr(false)
     {
     std::cerr<<"\nr_gtotal_sqr_ij\n"<<r_gtotal_sqr_ij;
     std::cerr<<"\nvar::outside_in(var::inside_out(r_gtotal_sqr_ij))\n"<<var::outside_in(var::inside_out(r_gtotal_sqr_ij()));
     
     std::cerr<<"\nvar::inside_out(r_gtotal_sqr_ij)\n"<<var::inside_out(r_gtotal_sqr_ij());
     } 
-    
-//    std::abort();
-    
-    
-    
     
     if constexpr (false){
       auto test_r_gtotal_sqr_ij=var::test_Derivative(
@@ -871,18 +866,21 @@ return exp(x); }, v_ladt);
     
     
     
+    if constexpr (false){    
+    assert(test_conductance_variance(
+        r_gtotal_sqr_ij(), get<Conductance_variance_error_tolerance>(m)));
+    }
     
-   // assert(test_conductance_variance(
-   //     r_gtotal_sqr_ij(), get<Conductance_variance_error_tolerance>(m)));
-//    r_gtotal_sqr_ij() =
-//        truncate_negative_variance(std::move(r_gtotal_sqr_ij()));
-//    for (std::size_t i = 0; i < N; ++i)
-//      for (std::size_t j = 0; j < N; ++j)
-//        if (r_P()(i, j) == 0) {
-//          r_gtotal_ij()(i, j) = 0;
-//          r_gtotal_sqr_ij()(i, j) = 0;
-//        }
-
+    if constexpr (false){    
+    r_gtotal_sqr_ij() =
+        truncate_negative_variance(std::move(r_gtotal_sqr_ij()));
+    for (std::size_t i = 0; i < N; ++i)
+      for (std::size_t j = 0; j < N; ++j)
+        if (r_P()(i, j) == 0) {
+          r_gtotal_ij()(i, j) = 0;
+          r_gtotal_sqr_ij()(i, j) = 0;
+        }
+    }
     Matrix<double> U(1, t_g().size(), 1.0);
     Matrix<double> UU(t_g().size(), t_g().size(), 1.0);
     auto gmean_ij_p = X_plus_XT(t_g() * U) * (0.5);
@@ -918,18 +916,6 @@ return exp(x); }, v_ladt);
     }
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 //    std::cerr<<"\n---------------------fin---------------------------------------------------\n";
 //    std::cerr<<"\n elemDiv(gmean_ij_tot, P_p)"<<primitive(elemDiv(gmean_ij_tot, P_p));
 //    std::cerr<<"\n gmean_ij_tot"<<primitive(gmean_ij_tot);
@@ -939,13 +925,18 @@ return exp(x); }, v_ladt);
 //    std::cerr<<"\n------------------------------------------------------------------------\n";
     
     
+    if constexpr (false)  { 
+    assert(test_conductance_variance(
+        r_gtotal_var_ij(), get<Conductance_variance_error_tolerance>(m)));
+    }
     
-    //assert(test_conductance_variance(
-    //    r_gtotal_var_ij(), get<Conductance_variance_error_tolerance>(m)));
-  //  r_gtotal_var_ij() =
-  //      truncate_negative_variance(std::move(r_gtotal_var_ij()));
-
-    auto gvar_ij_tot = r_gtotal_var_ij() + gvar_ij_p * t_min_P();
+    /* truncate is not derivative safe yet*/
+    if constexpr (false)  { 
+    r_gtotal_var_ij() =
+        truncate_negative_variance(std::move(r_gtotal_var_ij()));
+    }
+    
+     auto gvar_ij_tot = r_gtotal_var_ij() + gvar_ij_p * t_min_P();
     auto r_gvar_ij = build<gvar_ij>(elemDiv(gvar_ij_tot, P_p));
     Matrix<double> u(N, 1, 1.0);
     auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
@@ -1557,7 +1548,7 @@ return exp(x); }, v_ladt);
               
             auto t_Qx = calc_eigen(m, get<ATP_concentration>(t_step));
               
-              if (false){
+              if constexpr (false){
               auto test_der_eigen=var::test_Derivative(
                 [this,&t_step](auto l_m){ return calc_eigen(l_m,get<ATP_concentration>(t_step));},
                 1,1e-9,m);
@@ -1588,10 +1579,10 @@ return exp(x); }, v_ladt);
             }
             
             }
-            //print(std::cerr,t_prior);
+            if constexpr (false){
             if (gege<10) ++gege;
             else abort();
-            
+            }
             if (false){
             auto test_Qdt =
                 test(t_Qdt, get<Conductance_variance_error_tolerance>(m));
@@ -1600,7 +1591,7 @@ return exp(x); }, v_ladt);
               return Maybe_error<C_Patch_State>(test_Qdt.error());
             }
             
-            if constexpr (true){
+            if constexpr (false){
             auto test_der_Macror=var::test_Derivative(
                 [this,&t_step,&fs](auto const &l_m,auto const& l_prior,auto const& l_Qdt ){ return Macror<uses_recursive_aproximation(false),
                                                                                         uses_averaging_aproximation(1),
@@ -1617,11 +1608,12 @@ return exp(x); }, v_ladt);
              
             }
             
+            if constexpr(false){
             
             std::cerr<<"\nplogL\n"<<get<plogL>(t_prior);
             std::cerr<<"\nlogL\n"<<get<logL>(t_prior);
             std::cerr<<"\nt_step\n"<<t_step<<"\n";
-            
+            }
             
             return Macror<uses_recursive_aproximation(true),
                           uses_averaging_aproximation(2),

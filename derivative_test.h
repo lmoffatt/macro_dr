@@ -26,43 +26,42 @@ test_Derivative(F f, const Parameters x, double dx, double eps, Xs const&...xs)
         auto dout=test_equality(get_value(T0)-primitive(get_value(dY)),get_value(T1)-primitive(get_value(dY)),eps);
         if (!dout)
         {
-            std::cerr<<"\n-----error---------------\n";
-            std::cerr<<dout.error()();
+            std::stringstream ss;
+            ss<<"\n test_Derivative on function ";
+            ss<<typeid(F).name();
+            ss<<" with delta parameters "<<typeid(Parameters).name()<<" equal to: ";
+            ss<<"\n x dx\n"<<x()<<"\ndx="<<dx<<"\n";
+            ss<<"eps ="<<eps<<"\n";
+          
+            ss<<"\n-----error---------------\n";
+            ss<<dout.error()();
             
-            std::cerr<<"\n--------------------\n";
+            ss<<"\n--------------------\n";
             
-           // ((std::cerr<<...<<xs));
-            std::cerr<<"\n x dx\n"<<x()<<"\ndx="<<dx<<"\n";
-            std::cerr<<"\n--------------------\n";
+            ss<<"\n--------------------\n";
             
-//            std::cerr<<"\n Taylor xs\n";
-    //        std::cerr<<"\n--------------------\n";
             
-         //   ((std::cerr<<...<<Taylor_first(xs,x,dx)));
-            std::cerr<<"\n--------------------\n";
-            
-            std::cerr<<"\n dY\n"<<dY;
-            std::cerr<<"\n--------------------\n";
-            std::cerr<<"\n--------------------\n";
-//            std::cerr<<"\n T0\n"<<T0;
-//            std::cerr<<"\n--------------------\n";
-//            std::cerr<<"\n T1\n"<<T1;
-            std::cerr<<"\n--------------------\n";
-            std::cerr<<"\n--------------------\n";
-            std::cerr<<"\n delta_T0\n";
-          //   std::cerr<<get_value(T0)-primitive(get_value(dY));
-            print(std::cerr,get_value(T0)-primitive(get_value(dY)));
-            std::cerr<<"\n--------------------\n";
-            std::cerr<<"\n--------------------\n";
-//            using egrwe=typename decltype(primitive(dY.value()))::egrwgew;
-            std::cerr<<"\n delta_T1\n";
-          //   std::cerr<<get_value(T1)-primitive(get_value(dY));
-           print(std::cerr,get_value(T1)-primitive(get_value(dY)));
-            std::cerr<<"\n--------------------\n";
-            
+            ss<<"\n dY\n";
+            print(ss,get_value(dY));
+            ss<<"\n--------------------\n";
+            ss<<"\n--------------------\n";
+            ss<<"\n T0\n";
+            print(ss,T0);
+            ss<<"\n--------------------\n";
+            ss<<"\n T1\n";
+            print(ss,get_value(T1));
+            ss<<"\n--------------------\n";
+            ss<<"\n--------------------\n";
+            ss<<"\n delta_T0\n";
+            print(ss,get_value(T0)-primitive(get_value(dY)));
+            ss<<"\n--------------------\n";
+            ss<<"\n--------------------\n";
+            print(ss,get_value(T1)-primitive(get_value(dY)));
+            ss<<"\n--------------------\n";
+            return error_message(ss.str());
             
         }
-        return dout; 
+        else return dout; 
     }
 }   
 template<class F,  class... Xs>
