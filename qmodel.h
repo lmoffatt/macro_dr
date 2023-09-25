@@ -1081,7 +1081,7 @@ return exp(x); }, v_ladt);
     //      ss << "\nPcov \n" << P__cov;
     //      // ss<<"\nprior=\n"<<prior<<"\nQ_dt \n"<<Q_dt;
 
-    //      return Op(false, "\nfails in trace!!!; error=" + test.error() +
+    //      return Op(false, "\nfails in trace!!!; error=" + test.error()() +
     //      ss.str());
     //    } else
     return Patch_State(logL(get<logL>(t_prior)()+v_plogL()),v_P_mean, v_P_cov,
@@ -1615,7 +1615,7 @@ return exp(x); }, v_ladt);
             std::cerr<<"\nt_step\n"<<t_step<<"\n";
             }
             
-            return Macror<uses_recursive_aproximation(true),
+            return Macror<uses_recursive_aproximation(false),
                           uses_averaging_aproximation(2),
                           uses_variance_aproximation(false)>(t_prior, t_Qdt, m,
                                                              t_step, fs);
@@ -1643,7 +1643,7 @@ return exp(x); }, v_ladt);
     get<Recording>(get<Simulated_Experiment>(t_sim_step)())().push_back(
         t_e_step);
     // std::cerr<<t_e_step;
-    std::cerr << N;
+    //std::cerr << N;
     return t_sim_step;
   }
 

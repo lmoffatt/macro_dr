@@ -1,6 +1,7 @@
 #ifndef DERIVATIVE_OPERATOR_H
 #define DERIVATIVE_OPERATOR_H
 
+#include <concepts>
 namespace var {
 
 /**
@@ -60,7 +61,7 @@ struct transformation_type{
 };
 
 template<class Op, class F>
-using Op_t=typename Op::type<F>;
+using Op_t=typename Op::template type<F>;
 
 
 template<class Op_on_F,class G>

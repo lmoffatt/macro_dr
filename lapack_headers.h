@@ -1998,7 +1998,7 @@ Lapack_Product_Self_Transpose(const Matrix<double> &a,
                               bool first_transposed_in_c, char UPLO_in_c,
                               double alpha, double beta) {
   std::size_t n = first_transposed_in_c ? a.ncols() : a.nrows();
-  SymPosDefMatrix<double> c(n, false);
+  SymPosDefMatrix<double> c(n, n,false);
   c = Lapack_Product_Self_Transpose_mod(a, c, first_transposed_in_c, UPLO_in_c,
                                         alpha, beta);
   return c;
