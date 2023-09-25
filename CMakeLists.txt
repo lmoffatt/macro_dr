@@ -42,6 +42,15 @@ add_executable(macro_dr main.cpp
     parameters_derivative.h
     variables_derivative.h
     derivative_test.h
+    multivariate_normal_distribution.h
+    parallel_tempering.h
+    mcmc.h
+    distributions.h
+    bayesian_linear_regression.h
+    parallel_tempering_linear_regression.h
+    cuevi.h
+    matrix_random.h
+    random_samplers.h
 #    tst_untyped_grammar.cpp
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

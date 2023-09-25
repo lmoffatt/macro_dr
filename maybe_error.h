@@ -255,7 +255,7 @@ promote_Maybe_error(std::vector<Maybe_error<T>> const &x) {
     if (x[i])
       out[i] = x[i].value();
     else
-      return "error at " + std::to_string(i) + x[i].error();
+      return error_message("error at " + std::to_string(i) + x[i].error()());
   return out;
 }
 
@@ -265,8 +265,8 @@ auto operator+(const T &x, const S &y) {
   if (is_valid(x) && is_valid(y))
     return Maybe_error(get_value(x) + get_value(y));
   else
-    return Maybe_error<std::decay_t<decltype(get_value(x) + get_value(y))>>(
-        get_error(x) + " multiplies " + get_error(y));
+    return Maybe_error<std::decay_t<decltype(get_value(x) + get_value(y))>>(error_message(
+        get_error(x)() + " multiplies " + get_error(y)()));
 }
 
 template <class T, class S>
@@ -276,7 +276,7 @@ auto operator-(const T &x, const S &y) {
     return Maybe_error(get_value(x) - get_value(y));
   else
     return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
-        get_error(x) + " multiplies " + get_error(y));
+        get_error(x)() + " multiplies " + get_error(y)());
 }
 
 template <class T, class S>
@@ -286,7 +286,7 @@ auto operator/(const T &x, const S &y) {
     return Maybe_error(get_value(x) / get_value(y));
   else
     return Maybe_error<std::decay_t<decltype(get_value(x) / get_value(y))>>(
-        get_error(x) + " divides " + get_error(y));
+        get_error(x)() + " divides " + get_error(y)());
 }
 
 template <class T, class S>
@@ -308,7 +308,7 @@ auto xAxt(const T &x, const S &y) {
   else
     return Maybe_error<
         std::decay_t<decltype(xtAx(get_value(x), get_value(y)))>>(
-        get_error(x) + " xAxt " + get_error(y));
+        get_error(x)() + " xAxt " + get_error(y)());
 }
 
 template <class T, class... Ts>
@@ -327,7 +327,7 @@ auto inv(const T &x) {
   if (x)
     return return_type(inv(x.value()));
   else
-    return return_type(x.error() + "\n inverse");
+    return return_type(x.error()() + "\n inverse");
 }
 template <class T>
   requires(is_Maybe_error<T>)
@@ -336,7 +336,7 @@ auto diag(const T &x) {
   if (x)
     return return_type(diag(x.value()));
   else
-    return return_type(x.error() + "\n diag");
+    return return_type(x.error()() + "\n diag");
 }
 template <class T>
   requires(is_Maybe_error<T>)
@@ -345,7 +345,7 @@ auto XXT(const T &x) {
   if (x)
     return return_type(XXT(x.value()));
   else
-    return return_type(x.error() + "\n diag");
+    return return_type(x.error()() + "\n diag");
 }
 
 template <class T>
@@ -365,7 +365,7 @@ auto logdet(const T &x) {
   if (x)
     return return_type(logdet(x.value()));
   else
-    return return_type(x.error() + "\n logdet");
+    return return_type(x.error()() + "\n logdet");
 }
 
 using std::log;
@@ -376,7 +376,7 @@ auto log(const T &x) {
   if (x)
     return return_type(log(x.value()));
   else
-    return return_type(x.error() + "\n log");
+    return return_type(x.error()() + "\n log");
 }
 
 template <class T>
@@ -387,7 +387,7 @@ auto cholesky(const T &x) {
   if (x)
     return return_type(cholesky(x.value()));
   else
-    return return_type(x.error() + "\n log");
+    return return_type(x.error()() + "\n log");
 }
 using std::sqrt;
 template <class T>
@@ -397,7 +397,7 @@ auto sqrt(const T &x) {
   if (x)
     return return_type(sqrt(x.value()));
   else
-    return return_type(x.error() + "\n sqrt");
+    return return_type(x.error()() + "\n sqrt");
 }
 
 template <class T>
@@ -407,7 +407,7 @@ auto tr(const T &x) {
   if (x)
     return return_type(tr(x.value()));
   else
-    return return_type(x.error() + "\n transpose");
+    return return_type(error_message(x.error()() + "\n transpose"));
 }
 
 template <class T>
@@ -417,7 +417,7 @@ auto Trace(const T &x) {
   if (x)
     return return_type(Trace(x.value()));
   else
-    return return_type(x.error() + "\n Trace");
+    return return_type(x.error()() + "\n Trace");
 }
 
 template <class T, auto... F> struct return_error {

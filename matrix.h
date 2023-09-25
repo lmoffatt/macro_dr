@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -171,7 +172,12 @@ auto operator-(Matrix &&a) {
 }
 
 
-
+inline Maybe_error<double> inv(double a) {
+  if (a==0)
+    return error_message("Division by zero");
+  else
+    return 1.0/a;
+}
 
 
 template <class Matrix>
@@ -284,20 +290,21 @@ public:
 
   Matrix &operator=(const Matrix &x) {
     if (&x != this) {
-      if (size() != x.size()) {
         size_ = x.size();
         nrows_ = x.nrows();
         ncols_ = x.ncols();
         if constexpr (!Matrix_uses_vector) {
-          delete[] x_;
-          x_ = new T[x.size()];
+            if (size() != x.size()) {
+                delete[] x_;
+                x_ = new T[x.size()];
+            }
           for (std::size_t i = 0; i < size_; ++i)
             x_[i] = x[i];
-        } else {
+        }
+        else {
           x_ = x.x_;
         }
       }
-    }
     return *this;
   }
 
@@ -465,7 +472,7 @@ public:
         if (v)
           x(i, j) = std::move(v.value());
         else {
-          return v.error() + " at cell (" + std::to_string(i) + "," +
+          return v.error()() + " at cell (" + std::to_string(i) + "," +
                  std::to_string(j) + ")";
         }
       }
@@ -971,11 +978,14 @@ public:
     return static_cast<SymmetricMatrix<T> const &>(*this);
   }
 
-  explicit SymPosDefMatrix(std::size_t _nrows, bool initialize = true)
-      : base_type(_nrows, initialize) {}
+  explicit SymPosDefMatrix(std::size_t _nrows, std::size_t _ncols,bool initialize = true)
+      : base_type(_nrows, _nrows,initialize) {}
+  explicit SymPosDefMatrix(std::size_t _nrows, std::size_t ,T value)
+      : base_type(_nrows, value) {}
+  
   explicit SymPosDefMatrix(std::size_t _nrows, T value)
       : base_type(_nrows, value) {}
-
+  
   static SymPosDefMatrix I_sware_it_is_possitive(base_type &&x) {
     return SymPosDefMatrix(std::move(x));
   }
@@ -987,7 +997,9 @@ public:
     base_type::operator=(static_cast<base_type const &>(x));
     return *this;
   }
-
+  
+  SymPosDefMatrix()  {}
+  
   void set(std::size_t i, std::size_t j, double x) { base_type::set(i, j, x); }
   auto operator()(std::size_t i, std::size_t j) const {
     return base_type::operator()(i, j);
@@ -1032,6 +1044,16 @@ public:
       out.set(i, i, out(i, i) - b(i, i));
     return out;
   }
+  template<class S>
+      requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
+  friend auto operator-(const SymPosDefMatrix &a,
+                        const SymPosDefMatrix<S> &b) {
+    auto out = a;
+    for (std::size_t i = 0; i < b.nrows(); ++i)
+      for (std::size_t j = 0; j < b.ncols(); ++j)
+      out.set(i, j, out(i, j) - b(i, j));
+    return out;
+  }
   
   template<class S>
       requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
@@ -1066,7 +1088,7 @@ friend auto operator-(const DiagPosDetMatrix<S> &b,
     if (chol)
       return 2.0 * logdet(chol.value());
     else
-      return Maybe_error<double>(chol.error() + " in calculation of logdet");
+      return Maybe_error<double>(chol.error()() + " in calculation of logdet");
   }
 };
 template <class T>
@@ -1260,7 +1282,9 @@ public:
       out[i] = a[i] * b[i];
     return out;
   }
-
+  friend auto inv(const DiagonalMatrix &a) { return apply([](auto const& a){return inv(a);},a); }
+  
+  
   friend auto tr(const DiagonalMatrix &a) { return a; }
 
   friend auto diag(const DiagonalMatrix &a) {
@@ -1322,7 +1346,7 @@ public:
       if (v)
         out[i] = std::move(v.value());
       else
-        return v.error() + " at the " + std::to_string(i) + "th row";
+        return error_message(v.error()() + " at the " + std::to_string(i) + "th row");
     }
     return out;
   }
@@ -1405,9 +1429,9 @@ public:
       if (a(i, i) > 0)
         out[i] = std::sqrt(a(i, i));
       else if (a(i, i) == 0)
-        return std::string("zero value at") + std::to_string(i);
+        return error_message(std::string("zero value at") + std::to_string(i));
       else
-        return "sqrt of negative value " + std::to_string(a(i, i));
+        return error_message("sqrt of negative value " + std::to_string(a(i, i)));
     return out;
   }
 };
@@ -1458,7 +1482,7 @@ Maybe_error<DiagPosDetMatrix<T>> inv_from_chol(const DiagPosDetMatrix<T> &x) {
     if (x(i, i) > 0)
       out[i] = std::pow(x(i, i), -2);
     else
-      return std::string("error inverting chol");
+      return error_message("error inverting chol");
   return out;
 }
 
@@ -1469,7 +1493,7 @@ Maybe_error<DiagPosDetMatrix<T>> inv(const DiagPosDetMatrix<T> &x) {
     if (out(i, i) > 0)
       out[i] = std::pow(x(i, i), -1);
     else
-      return std::string("error inverting chol");
+      return error_message("error inverting chol");
   return out;
 }
 
