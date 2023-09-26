@@ -351,10 +351,10 @@ int main(int argc, char **argv) {
     
     
     if constexpr (false){
-        auto number_replicates=1000;
+        auto number_replicates=100;
         auto outputfilename = "../macro_dr/output";
         
-        std::string algorithm="_MacroRC_log";
+        std::string algorithm="_MacroRC100_log";
         std::ofstream fo(outputfilename+algorithm+".txt");
         
         Matrix<double> mean_dlogL;
@@ -468,7 +468,7 @@ int main(int argc, char **argv) {
         /**
    * @brief num_scouts_per_ensemble number of scouts per ensemble in the affine ensemble mcmc model
    */
-        std::size_t num_scouts_per_ensemble = 8;
+        std::size_t num_scouts_per_ensemble = 16;
         
         /**
    * @brief n_points_per_decade number of points per 10 times increment in beta thermodynamic parameter
@@ -479,7 +479,7 @@ int main(int argc, char **argv) {
         /**
    * @brief stops_at minimum value of beta greater than zero
    */
-        double stops_at = 1e-7;
+        double stops_at = 1e-3;
         
         /**
    * @brief includes_zero considers also beta equal zero
@@ -505,7 +505,7 @@ int main(int argc, char **argv) {
         
         
         
-        double prior_error=1;
+        double prior_error=2;
         
         auto param1_prior=var::prior_around(param1,prior_error);
         
@@ -514,14 +514,19 @@ int main(int argc, char **argv) {
      * @brief tmi classical thermodynamic algorithm ends by maximum iteration
      */
         auto tmi = thermo_by_max_iter<Parameters<Model1>>(
-            path, "Iteri", num_scouts_per_ensemble, thermo_jumps_every, max_iter,
+            path, "SmallR", num_scouts_per_ensemble, thermo_jumps_every, max_iter,
             n_points_per_decade, stops_at, includes_zero, myseed);
         
         auto modelLikelihood=make_Likelihood_Model<uses_recursive_aproximation(true),
                                                 uses_averaging_aproximation(2),uses_variance_aproximation(false)>(model1,Number_of_simulation_sub_steps(10));
         
+        auto sim = Macro_DMR{}.sample(
+            mt, model1,param1, experiment,
+            Simulation_Parameters(Number_of_simulation_sub_steps(10)));
+        
+        if (sim)
         auto opt = evidence(std::move(tmi), param1_prior,
-                            modelLikelihood, recording, experiment);
+                                modelLikelihood, sim.value()(), experiment);
    }
     
     
