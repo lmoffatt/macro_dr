@@ -240,7 +240,7 @@ int main(int argc, char **argv) {
     
     
     
-    constexpr bool test_dynamice_command_line_interprester=true;
+    constexpr bool test_dynamice_command_line_interprester=false;
     
     if constexpr (test_dynamice_command_line_interprester)
     {
@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
     std::mt19937_64 mt(seed);
     
     
-    if constexpr (true){
+    if constexpr (false){
         auto number_replicates=1000;
         auto outputfilename = "../macro_dr/output";
         
@@ -459,15 +459,6 @@ int main(int argc, char **argv) {
         //  auto myseed = 0;
         
         
-        /**
-   * @brief prior_eps_df prior value for the degrees of freedom used for estimating the value of the variance of the data point error
-   */
-        double prior_eps_df = 1.0;
-        
-        /**
-   * @brief prior_eps_variance prior value of the variance of the data point error
-   */
-        double prior_eps_variance = 1.0;
         
         myseed = calc_seed(myseed);
         std::cerr<<"myseed ="<<myseed;
@@ -477,7 +468,7 @@ int main(int argc, char **argv) {
         /**
    * @brief num_scouts_per_ensemble number of scouts per ensemble in the affine ensemble mcmc model
    */
-        std::size_t num_scouts_per_ensemble = 64;
+        std::size_t num_scouts_per_ensemble = 8;
         
         /**
    * @brief n_points_per_decade number of points per 10 times increment in beta thermodynamic parameter
@@ -499,7 +490,7 @@ int main(int argc, char **argv) {
         /**
    * @brief max_iter maximum number of iterations
    */
-        std::size_t max_iter = 10000;
+        std::size_t max_iter = 100;
         
         /**
    * @brief path directory for the output
@@ -525,9 +516,13 @@ int main(int argc, char **argv) {
         auto tmi = thermo_by_max_iter<Parameters<Model1>>(
             path, "Iteri", num_scouts_per_ensemble, thermo_jumps_every, max_iter,
             n_points_per_decade, stops_at, includes_zero, myseed);
-    //    auto opt = evidence(std::move(tmi), param1_prior,
-    //                        my_linear_model.likelihood(), y, X);
-    }
+        
+        auto modelLikelihood=make_Likelihood_Model<uses_recursive_aproximation(true),
+                                                uses_averaging_aproximation(2),uses_variance_aproximation(false)>(model1,Number_of_simulation_sub_steps(10));
+        
+        auto opt = evidence(std::move(tmi), param1_prior,
+                            modelLikelihood, recording, experiment);
+   }
     
     
     if (false){

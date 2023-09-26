@@ -44,6 +44,8 @@ public:
     }
     
     template <class Prior, class Likelihood, class Variables, class DataType>
+        requires requires (Prior const &prior, Likelihood const& lik, const DataType &y,
+                          const Variables &x){{evidence(conjugate{},prior,lik,y, x)};}
     friend void report_model(save_Evidence &s, Prior const &prior, Likelihood const& lik, const DataType &y,
                              const Variables &x, by_beta<double> const &beta0) {
         
@@ -58,6 +60,18 @@ public:
                     << meanLik.value()[i_beta] << s.sep << 0 << s.sep
                     << expected_Evidence << s.sep << expected_Evidence << "\n";
     }
+    
+    template <class Prior, class Likelihood, class Variables, class DataType>
+    friend void report_model(save_Evidence &s, Prior const &prior, Likelihood const& lik, const DataType &y,
+                             const Variables &x, by_beta<double> const &beta0) {
+        
+          for (std::size_t i_beta = 0; i_beta < size(beta0); ++i_beta)
+                s.f << 0 << s.sep << 0 << s.sep << beta0[i_beta]  << "\n";
+    }
+    
+    
+    
+    
 };
 
 template <class Parameters,class Algorithm,
