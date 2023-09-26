@@ -51,6 +51,7 @@ add_executable(macro_dr main.cpp
     cuevi.h
     matrix_random.h
     random_samplers.h
+    parameters_distribution.h
 #    tst_untyped_grammar.cpp
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

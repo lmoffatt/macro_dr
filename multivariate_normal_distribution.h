@@ -65,10 +65,12 @@ private:
 public:
     template <
         class Mat, class Cov,
-        typename Te ,//= std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
-        class Covae> // = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
-        requires Covariance<Te, Covae> && contains_value<Mat &&, Matrix<Te>> &&
-                 contains_value<Cov &&, Covae>
+        typename Te,
+        //= std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
+        class Covae>
+    // = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
+        requires (Covariance<Te, Covae> && contains_value<Mat &&, Matrix<Te>> &&
+                 contains_value<Cov &&, Covae>)
     friend Maybe_error<multivariate_normal_distribution<Te, Covae>>
     make_multivariate_normal_distribution(Mat &&mean, Cov &&cov);
     
@@ -76,8 +78,8 @@ public:
         class Mat, class Cov,
         typename Te ,//= std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
         class Covae> // = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
-        requires Covariance<Te, Covae> && contains_value<Mat &&, Matrix<Te>> &&
-                 contains_value<Cov &&, Covae>
+        requires (Covariance<Te, Covae> && contains_value<Mat &&, Matrix<Te>> &&
+                 contains_value<Cov &&, Covae>)
     friend Maybe_error<multivariate_normal_distribution<Te, Covae>>
     make_multivariate_normal_distribution_from_precision(Mat &&mean, Cov &&cov_inv);
     
@@ -133,12 +135,12 @@ template <
     class Mat, class Cov,
     typename T = std::decay_t<decltype(get_value(std::declval<Mat>())(0ul, 0ul))>,
     class Cova = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
-    requires Covariance<T, Cova> && contains_value<Mat &&, Matrix<T>> &&
-             contains_value<Cov &&, Cova>
+    requires (Covariance<T, Cova> && contains_value<Mat &&, Matrix<T>> &&
+             contains_value<Cov &&, Cova>)
 Maybe_error<multivariate_normal_distribution<T, Cova>>
 make_multivariate_normal_distribution(Mat &&mean, Cov &&cov) {
-    return_error<multivariate_normal_distribution<T, Cova>> Error{
-                                                                  "make_multivariate_normal_distribution"};
+    return_error<multivariate_normal_distribution<T, Cova>>
+        Error{"make_multivariate_normal_distribution"};
     if (!is_valid(mean))
         return Error(get_error(mean)());
     else if (!is_valid(cov))
@@ -171,8 +173,8 @@ template <
     class Mat, class Cov,
     typename T = std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
     class Cova = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
-    requires Covariance<T, Cova> && contains_value<Mat &&, Matrix<T>> &&
-             contains_value<Cov &&, Cova>
+    requires (Covariance<T, Cova> && contains_value<Mat &&, Matrix<T>> &&
+             contains_value<Cov &&, Cova>)
 Maybe_error<multivariate_normal_distribution<T, Cova>>
 make_multivariate_normal_distribution_from_precision(Mat &&mean, Cov &&cov_inv) {
     return_error<multivariate_normal_distribution<T, Cova>> Error{

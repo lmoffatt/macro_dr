@@ -16,6 +16,7 @@
 #include "parameters.h"
 #include "derivative_operator.h"
 #include "derivative_test.h"
+#include "mcmc.h"
 namespace macrodr {
 
 using var::Power;
@@ -34,6 +35,7 @@ using var::primitive;
 using var::U;
 
 using std::exp;
+using std::log10;
 using std::max;
 using std::abs;
 
@@ -293,11 +295,14 @@ public:
     auto operator()(const P& t_p)const{
         return std::invoke(m_f,t_p);
     }
+    
+    
 };
     template<class F>
     Model(F f)->Model_Patch<Id>::Model<F>;
     
 };
+
 
 
 
@@ -308,9 +313,9 @@ using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
 class Number_of_simulation_sub_steps
     : public Var<Number_of_simulation_sub_steps, std::size_t> {};
 
-class Simulated_Experiment : public Var<Simulated_Experiment, Experiment> {};
+class Simulated_Recording : public Var<Simulated_Recording, Recording> {};
 
-using Simulated_Step = Vector_Space<N_channel_state, Simulated_Experiment>;
+using Simulated_Step = Vector_Space<N_channel_state, Simulated_Recording>;
 
 using Simulated_Sub_Step = Vector_Space<N_channel_state, y_sum, t_sum>;
 
@@ -1092,8 +1097,9 @@ return exp(x); }, v_ladt);
 
   Maybe_error<Patch_State> DVR(const Patch_State &t_prior, Qdt const &t_Qdt,
                                Patch_Model const &m, const Experiment_step &p,
+                               const Patch_current& p_y,
                                double fs) const {
-    auto &p_y = get<Patch_current>(p);
+  //  auto &p_y = get<Patch_current>(p);
     auto &p_P_mean = get<P_mean>(t_prior);
     auto &p_P_Cov = get<P_Cov>(t_prior);
 
@@ -1204,17 +1210,19 @@ return exp(x); }, v_ladt);
             uses_variance_aproximation variance,
            class C_Patch_State, class C_Qdt,class C_Patch_Model>
       requires (U<C_Patch_State,Patch_State>&&U<C_Patch_Model,Patch_Model>&&U<C_Qdt,Qdt>)
-  
+ 
   
   Maybe_error<C_Patch_State> Macror(const C_Patch_State &t_prior, C_Qdt const &t_Qdt,
                                   C_Patch_Model const &m,
-                                    const Experiment_step &p, double fs) {
+                                    const Experiment_step &p,
+                                    const Patch_current& p_y,double fs) {
     
     using Transf=transformation_type_t<C_Qdt>;
     auto &p_P_cov = get<P_Cov>(t_prior);
     auto &p_P_mean = get<P_mean>(t_prior);
-    auto &y = get<Patch_current>(p).value();
-
+//    auto &y = get<Patch_current>(p).value();
+    auto &y = p_y.value();
+    
     auto &t_tolerance = get<Probability_error_tolerance>(m);
     auto &t_min_P = get<min_P>(m);
     auto e =
@@ -1525,8 +1533,10 @@ return exp(x); }, v_ladt);
   }
   
   
-  template<class C_Parameters, class Model>
-  auto log_Likelihood(const Model &model,const C_Parameters& par, const Experiment &e)->Maybe_error<Transfer_Op_to<C_Parameters,Vector_Space<logL,elogL,vlogL>>>  {
+  template<uses_recursive_aproximation recursive,
+           uses_averaging_aproximation averaging,
+           uses_variance_aproximation variance,class C_Parameters, class Model>
+  auto log_Likelihood(const Model &model,const C_Parameters& par, const Experiment &e, const Recording& y)->Maybe_error<Transfer_Op_to<C_Parameters,Vector_Space<logL,elogL,vlogL>>>  {
     
     
     using Transf=transformation_type_t<C_Parameters>;
@@ -1540,12 +1550,11 @@ return exp(x); }, v_ladt);
     if (!ini)
       return ini.error();
     else {
-      auto run = fold(
-          get<Recording>(e)(), ini.value(),
-          [this, &m, fs,&gege]( C_Patch_State const &t_prior,
-                         Experiment_step const &t_step) {
-              
-              
+      auto run = fold(0ul,y().size(), ini.value(),
+                      [this, &m, fs,&e,&y,&gege]( C_Patch_State const &t_prior,std::size_t i_step) {
+          
+          
+          Experiment_step const &t_step=get<Recording_conditions>(e)()[i_step];   
             auto t_Qx = calc_eigen(m, get<ATP_concentration>(t_step));
               
               if constexpr (false){
@@ -1568,7 +1577,7 @@ return exp(x); }, v_ladt);
 //
             if constexpr(false){
             auto test_der_t_Qdt=var::test_Derivative(
-                [this,&t_step,&fs](auto const& l_m,auto const& l_Qx){ return calc_Qdt(l_m, l_Qx,
+                [this,&t_step,&fs,&gege](auto const& l_m,auto const& l_Qx){ return calc_Qdt(l_m, l_Qx,
                                                      get<number_of_samples>(t_step).value() / fs);},
                 1e-6,1e-2,m,t_Qx.value());
             if (true&&!test_der_t_Qdt)
@@ -1615,10 +1624,8 @@ return exp(x); }, v_ladt);
             std::cerr<<"\nt_step\n"<<t_step<<"\n";
             }
             
-            return Macror<uses_recursive_aproximation(false),
-                          uses_averaging_aproximation(2),
-                          uses_variance_aproximation(false)>(t_prior, t_Qdt, m,
-                                                             t_step, fs);
+            return Macror<recursive,averaging,variance>(t_prior, t_Qdt, m,
+                                                          t_step,y()[i_step], fs);
           });
       if (!run)
         return run.error();
@@ -1632,18 +1639,13 @@ return exp(x); }, v_ladt);
                             P t_P, std::size_t n_sub, double e) {
     auto &t_g = get<g>(m);
     auto &N = get<N_channel_state>(t_sim_step);
+    auto &t_e_step=get<Simulated_Recording>(t_sim_step);
     double ysum = 0;
     for (std::size_t i = 0; i < n_sub; ++i) {
       N = sample_Multinomial(mt, t_P, N);
       ysum += getvalue(N() * t_g());
     }
-    auto t_e_step = t_s;
-    
-    get<Patch_current>(t_e_step) = Patch_current(ysum / n_sub+std::normal_distribution<double>()(mt)*std::sqrt(e));
-    get<Recording>(get<Simulated_Experiment>(t_sim_step)())().push_back(
-        t_e_step);
-    // std::cerr<<t_e_step;
-    //std::cerr << N;
+    t_e_step()().emplace_back( Patch_current(ysum / n_sub+std::normal_distribution<double>()(mt)*std::sqrt(e)));
     return t_sim_step;
   }
 
@@ -1655,16 +1657,15 @@ return exp(x); }, v_ladt);
       return v_Qx.error();
     auto r_P_mean = calc_Peq(v_Qx.value(), m);
     auto N = get<N_Ch_mean>(m);
-    auto sim = Simulated_Experiment(
-        Experiment(Recording{}, get<Frequency_of_Sampling>(e),
-                   get<initial_ATP_concentration>(e)));
+    auto sim = Simulated_Recording(Recording{});
     auto N_state = sample_Multinomial(mt, r_P_mean, N());
     return Simulated_Step(std::move(N_state), std::move(sim));
   }
   
   template<class Model, class Id>
-  Maybe_error<Simulated_Experiment> sample(std::mt19937_64 &mt,
-                                           const Model &model,const Parameters<Id>& par, 
+  Maybe_error<Simulated_Recording> sample(std::mt19937_64 &mt,
+                                           const Model &model,
+                                           const Parameters<Id>& par, 
                                            const Experiment &e,
                                            const Simulation_Parameters &sim) {
     
@@ -1678,7 +1679,7 @@ return exp(x); }, v_ladt);
       return ini.error();
     else {
       auto run = fold(
-          get<Recording>(e)(), ini.value(),
+          get<Recording_conditions>(e)(), ini.value(),
           [this, &m, fs, n_sub, &mt](Simulated_Step &&t_sim_step,
                                      Experiment_step const &t_step) {
             auto t_Qx = calc_eigen(m, get<ATP_concentration>(t_step));
@@ -1699,12 +1700,13 @@ return exp(x); }, v_ladt);
       if (!run)
         return run.error();
       else
-        return get<Simulated_Experiment>(run.value());
+        return get<Simulated_Recording>(run.value());
     }
   }
 };
 
 struct Model1: public Model_Patch<Model1>{};
+
 
 
 } // namespace macrodr

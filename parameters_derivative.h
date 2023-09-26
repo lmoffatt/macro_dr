@@ -309,6 +309,15 @@ public:
         auto f=log(x.primitive());
         return Derivative(f,x.derivative()()*(1.0/x.primitive()));
     }
+    friend auto log10(const Derivative& x){
+        auto f=log10(x.primitive());
+        return Derivative(f,x.derivative()()*(1.0/(x.primitive()*std::log(10))));
+    }
+    friend auto pow(double base,const Derivative& x){
+        using std::pow;
+        auto f=pow(base,x.primitive());
+        return Derivative(f,x.derivative()()*f*std::log(base));
+    }
     
     
         friend auto abs(const Derivative& x){
