@@ -5,6 +5,7 @@
 #include "matrix.h"
 #include "variables_derivative.h"
 #include "parameters_derivative.h"
+#include "parameters_distribution.h"
 //#include "multivariate_normal_distribution.h"
 #include "parallel_tempering.h"
 #include "cuevi.h"
@@ -20,7 +21,7 @@ using namespace macrodr;
 
 int main(int argc, char **argv) {
     
-    constexpr bool test_Bayesian_Linear_Regression=true;
+    constexpr bool test_Bayesian_Linear_Regression=false;
     if constexpr (test_Bayesian_Linear_Regression)
     {
         /**
@@ -239,72 +240,77 @@ int main(int argc, char **argv) {
     
     
     
+    constexpr bool test_dynamice_command_line_interprester=true;
     
-    //        auto filename=argv[1];
-    //  auto filename = "../macro_dr/test.txt";
-    
-    auto cm = dcli::Compiler{};
-    
-    cm.push_function("load_experiment",
-                     dcli::to_typed_function<std::string, double, double>(
-                         &macrodr::load_experiment, "filename",
-                         "frequency_of_sampling", "initial_ATP"));
-    
-    
-    auto filename = "../macro_dr/run_script.txt";
-    std::ifstream f(filename);
-    
-    std::string s;
-    while (f) {
-        std::string line;
-        std::getline(f, line);
-        s += line + "\n";
-    }
-    std::cout << "\ntest file \n" << s << "\n";
-    auto p = dcli::extract_program(s);
-    
-    std::cerr<<p;
-    
-    if (p)
-    { 
-        auto c=dcli::compile_program(cm,p.value());
-        if (c)
-        {
-            auto exec=c.value().run();
+    if constexpr (test_dynamice_command_line_interprester)
+    {
+        auto cm = dcli::Compiler{};
+        
+        cm.push_function("load_experiment",
+                         dcli::to_typed_function<std::string, double, double>(
+                             &macrodr::load_experiment, "filename",
+                             "frequency_of_sampling", "initial_ATP"));
+        
+        
+        auto filename = "../macro_dr/run_script.txt";
+        std::ifstream f(filename);
+        
+        std::string s;
+        while (f) {
+            std::string line;
+            std::getline(f, line);
+            s += line + "\n";
         }
+        std::cout << "\ntest file \n" << s << "\n";
+        auto p = dcli::extract_program(s);
+        
+        std::cerr<<p;
+        
+        if (p)
+        { 
+            auto c=dcli::compile_program(cm,p.value());
+            if (c)
+            {
+                auto exec=c.value().run();
+            }
+        }
+        
+        if (p) {
+            auto ss = p.value().str();
+            std::cerr << ss;
+        } else
+            std::cerr << p.error()();
+        
+        
     }
     
     auto Efilename = "../macro_dr/Moffatt_Hume_2007_ATP_2.txt";
     
-    auto recording = macrodr::load_recording(Efilename);
-    
-    // std::cerr<<recording.value();
-    // std::cerr<<std::numeric_limits<double>::quiet_NaN();
-    //  aram_0 = State_Model_Parameters ( values = { { "kon"  50 }  { "koff"   20
-    //  }  { "beta"  500 }  { "alfa"  400 } { "g"  16.59e-3 }
-    //  {"Number_of_Channels"  100}  { "gaussian_noise"  1.0e-5 } } )
+    auto [recording_conditions,recording] = macrodr::load_recording(Efilename);
     
     auto experiment =
-        Experiment(std::move(recording), Frequency_of_Sampling(50e3),
+        Experiment(std::move(recording_conditions), Frequency_of_Sampling(50e3),
                    initial_ATP_concentration(ATP_concentration(0.0)));
     
     
-    auto model1= Model1::Model([](const auto& p){
+    auto model1= Model1::Model([](const auto& logp){
+        using std::pow;
+        auto p=apply([](const auto& x){return pow(10.0,x);}, logp());
+        
         return build<macrodr::Patch_Model>(N_St(5),
                                            build<Q0>(var::build_<Matrix<double>>(5, 5, {{1,0}, {2,1},{3,2},{3,4},{4,3}},
-                                                                                 {p()[5],p()[6],p()[7],p()[8],p()[9]})),
-                                           build<Qa>(var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2},{2, 3}},{p()[2],p()[3],p()[4]})),
-                                           build<g>(var::build_<Matrix<double>>(5,1,{{4,0}},{p()[10]})),
-                                           build<N_Ch_mean>(p()[0]),
-                                           build<curr_noise>(p()[1]),
+                                                                                 {p[5],p[6],p[7],p[8],p[9]})),
+                                           build<Qa>(var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2},{2, 3}},{p[2],p[3],p[4]})),
+                                           build<g>(var::build_<Matrix<double>>(5,1,{{4,0}},{p[10]})),
+                                           build<N_Ch_mean>(p[0]),
+                                           build<curr_noise>(p[1]),
                                            min_P(1e-7),
                                            Probability_error_tolerance(1e-2),
                                            Conductance_variance_error_tolerance(1e-2));
     });
     
-    
-    
-    auto param1=Parameters<Model1>(Matrix<double>(1,11,std::vector<double>{100,0.05,18,12,6,210,420,630,1680,54,0.5}));
+    auto param1=Parameters<Model1>(apply([](auto x){return std::log10(x);},
+                                           Matrix<double>(1,11,std::vector<double>{100,0.05,18,12,6,210,420,630,1680,54,0.5})));
     auto param1Names=std::vector<std::string>{"Num_Chan","noise","k01","k12","k23","k10","k21","k32","k34","k43","conductance"};
     
     auto dparam1=var::selfDerivative(param1);
@@ -326,7 +332,7 @@ int main(int argc, char **argv) {
     auto dini = macrodr::Macro_DMR{}.init(dm, get<initial_ATP_concentration>(experiment));
     auto ini = macrodr::Macro_DMR{}.init(m, get<initial_ATP_concentration>(experiment));
     
-    auto t_step=get<Recording>(experiment)()[0];
+    auto t_step=get<Recording_conditions>(experiment)()[0];
     auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(m, get<ATP_concentration>(t_step));
     auto dt_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
     
@@ -348,7 +354,7 @@ int main(int argc, char **argv) {
         auto number_replicates=1000;
         auto outputfilename = "../macro_dr/output";
         
-        std::string algorithm="_MacroNRC";
+        std::string algorithm="_MacroRC_log";
         std::ofstream fo(outputfilename+algorithm+".txt");
         
         Matrix<double> mean_dlogL;
@@ -362,7 +368,9 @@ int main(int argc, char **argv) {
             auto sim = Macro_DMR{}.sample(
                 mt, model1,param1, experiment,
                 Simulation_Parameters(Number_of_simulation_sub_steps(10)));
-            auto lik = Macro_DMR{}.log_Likelihood(model1,dparam1, sim.value()());
+            auto lik = Macro_DMR{}.log_Likelihood<uses_recursive_aproximation(true),
+                                                  uses_averaging_aproximation(2),
+                                                  uses_variance_aproximation(false)>(model1,dparam1, experiment,sim.value()());
             std::cerr<<"\n"<<i<<"th likelihood!!\n"<<lik;
             if (lik)
             {
@@ -440,14 +448,98 @@ int main(int argc, char **argv) {
         }
     }
     
+    
+    constexpr bool thermo_int_by_max_iter=true;
+    
+    if (thermo_int_by_max_iter) {
+        /**
+   * @brief myseed defines the random number seed so all runs are identical for debugging purposes
+   */
+        auto myseed = 9762841416869310605ul;
+        //  auto myseed = 0;
+        
+        
+        /**
+   * @brief prior_eps_df prior value for the degrees of freedom used for estimating the value of the variance of the data point error
+   */
+        double prior_eps_df = 1.0;
+        
+        /**
+   * @brief prior_eps_variance prior value of the variance of the data point error
+   */
+        double prior_eps_variance = 1.0;
+        
+        myseed = calc_seed(myseed);
+        std::cerr<<"myseed ="<<myseed;
+        
+        
+        
+        /**
+   * @brief num_scouts_per_ensemble number of scouts per ensemble in the affine ensemble mcmc model
+   */
+        std::size_t num_scouts_per_ensemble = 64;
+        
+        /**
+   * @brief n_points_per_decade number of points per 10 times increment in beta thermodynamic parameter
+   */
+        double n_points_per_decade = 3;
+        
+        
+        /**
+   * @brief stops_at minimum value of beta greater than zero
+   */
+        double stops_at = 1e-7;
+        
+        /**
+   * @brief includes_zero considers also beta equal zero
+   */
+        bool includes_zero = true;
+        
+        
+        /**
+   * @brief max_iter maximum number of iterations
+   */
+        std::size_t max_iter = 10000;
+        
+        /**
+   * @brief path directory for the output
+   */
+        std::string path = "";
+        
+        
+        /**
+   * @brief thermo_jumps_every factor that multiplied by the model size it produces the number of steps skipped until the next thermo jump
+   */
+        std::size_t thermo_jumps_every = param1().size() * 1e0;
+        
+        
+        
+        double prior_error=1;
+        
+        auto param1_prior=var::prior_around(param1,prior_error);
+        
+        
+        /**
+     * @brief tmi classical thermodynamic algorithm ends by maximum iteration
+     */
+        auto tmi = thermo_by_max_iter<Parameters<Model1>>(
+            path, "Iteri", num_scouts_per_ensemble, thermo_jumps_every, max_iter,
+            n_points_per_decade, stops_at, includes_zero, myseed);
+    //    auto opt = evidence(std::move(tmi), param1_prior,
+    //                        my_linear_model.likelihood(), y, X);
+    }
+    
+    
     if (false){
         auto sim = Macro_DMR{}.sample(
             mt, model1,param1, experiment,
             Simulation_Parameters(Number_of_simulation_sub_steps(10)));
         
         auto test_der_Likelihood=var::test_Derivative(
-            [&model1,&sim](auto const &dparam1){
-                return Macro_DMR{}.log_Likelihood(model1,dparam1, sim.value()());},
+            [&model1,&sim,&experiment](auto const &dparam1){
+                return Macro_DMR{}.log_Likelihood<uses_recursive_aproximation(true),
+                                                                                     uses_averaging_aproximation(2),
+                                                                                     uses_variance_aproximation(false)>(model1,dparam1, experiment,sim.value()());},
             1,1e-10,dparam1);
         if (!test_der_Likelihood)
         {
@@ -456,9 +548,4 @@ int main(int argc, char **argv) {
     }
     
     
-    if (p) {
-        auto ss = p.value().str();
-        std::cerr << ss;
-    } else
-        std::cerr << p.error()();
 }

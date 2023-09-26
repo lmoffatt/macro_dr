@@ -1381,9 +1381,9 @@ public:
   
 
   using base_type = DiagonalMatrix<T>;
-  explicit DiagPosDetMatrix(std::size_t _nrows)
+  explicit DiagPosDetMatrix(std::size_t _nrows, std::size_t)
       : base_type{_nrows, _nrows, false} {}
-  explicit DiagPosDetMatrix(std::size_t _nrows, T value)
+  explicit DiagPosDetMatrix(std::size_t _nrows,std::size_t, T value)
       : base_type{_nrows, _nrows, value} {}
   explicit DiagPosDetMatrix(std::initializer_list<T> &&a)
       : base_type(std::move(a)) {}
@@ -1424,7 +1424,7 @@ public:
   friend auto &tr(const DiagPosDetMatrix &a) { return a; }
 
   friend Maybe_error<DiagPosDetMatrix> cholesky(const DiagPosDetMatrix &a) {
-    DiagPosDetMatrix out(a.nrows());
+    DiagPosDetMatrix out(a.nrows(),a.nrows());
     for (std::size_t i = 0; i < out.nrows(); ++i)
       if (a(i, i) > 0)
         out[i] = std::sqrt(a(i, i));
@@ -1464,7 +1464,7 @@ void set(SymmetricMatrix<T>& m, std::size_t i, std::size_t j, const T& x)
 
 
 template <class T> auto IdM(std::size_t ndim) {
-  return DiagPosDetMatrix<T>(ndim, T{1.0});
+  return DiagPosDetMatrix<T>(ndim, ndim,T{1.0});
 }
 
 template <class T> auto inv_from_chol(const DownTrianMatrix<T> &x) {
@@ -1477,7 +1477,7 @@ template <class T> auto inv_from_chol(const UpTrianMatrix<T> &x) {
 
 template <class T>
 Maybe_error<DiagPosDetMatrix<T>> inv_from_chol(const DiagPosDetMatrix<T> &x) {
-  DiagPosDetMatrix<T> out(x.nrows());
+  DiagPosDetMatrix<T> out(x.nrows(),x.nrows());
   for (std::size_t i = 0; i < x.nrows(); ++i)
     if (x(i, i) > 0)
       out[i] = std::pow(x(i, i), -2);
