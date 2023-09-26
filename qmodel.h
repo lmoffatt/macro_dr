@@ -1708,6 +1708,50 @@ return exp(x); }, v_ladt);
 struct Model1: public Model_Patch<Model1>{};
 
 
+template<uses_recursive_aproximation recursive,
+         uses_averaging_aproximation averaging,
+         uses_variance_aproximation variance,
+         class Model>
+struct Likelihood_Model{
+  Model m;
+  Number_of_simulation_sub_steps number_of_simulation_sub_steps;
+  Likelihood_Model(const Model& model, Number_of_simulation_sub_steps n): m{model},number_of_simulation_sub_steps{n}{}
+};
+
+
+
+template<uses_recursive_aproximation recursive,
+         uses_averaging_aproximation averaging,
+         uses_variance_aproximation variance,
+         class Model>
+auto make_Likelihood_Model(const Model& m,Number_of_simulation_sub_steps n)
+{
+  return Likelihood_Model<recursive,averaging,variance, Model>(m,n);
+}
+
+
+template <uses_recursive_aproximation recursive,
+         uses_averaging_aproximation averaging,
+         uses_variance_aproximation variance,
+         class Model,class Parameters,class Variables,class DataType>
+Maybe_error<double> logLikelihood(const Likelihood_Model<recursive,averaging,variance,Model>& lik,Parameters const & p, const Variables& var, const DataType& y)
+{
+  auto v_logL=Macro_DMR{}.log_Likelihood<recursive,averaging,variance>(lik.m,p,y,var);
+  if (!v_logL)
+    return v_logL.error();
+  else
+    return get<logL>(v_logL.value())();
+}
+
+template <uses_recursive_aproximation recursive,
+         uses_averaging_aproximation averaging,
+         uses_variance_aproximation variance,
+         class Model,class Parameters,class Variables>
+auto simulate(std::mt19937_64& mt,const Likelihood_Model<recursive,averaging,variance,Model>& lik,Parameters const & p, const Variables& var)
+{
+  return  Macro_DMR{}.sample(
+                        mt, lik.m,p, var ,lik.number_of_simulation_sub_steps).value()();
+}
 
 } // namespace macrodr
 

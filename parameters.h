@@ -50,8 +50,17 @@ public:
       requires std::is_same_v<Matrix<double>,std::decay_t<MatrixType>>
   Parameters(MatrixType&& x): m_values{std::forward<MatrixType>(x)}{}
   
+  Parameters(){}
+  
+  
   auto& operator()()const {return m_values;}
   auto& operator()() {return m_values;}
+  
+  auto size()const {return m_values.size();}
+  
+  auto& operator[](std::size_t i)const {return (*this)()[i];}
+  auto& operator[](std::size_t i) {return (*this)()[i];}
+  
     
 };
 
