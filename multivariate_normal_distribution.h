@@ -94,9 +94,9 @@ public:
     Matrix<double> operator()(std::mt19937_64 &mt) {
         auto z = sample(mt, normal_distribution(0,1),mean().nrows(), mean().ncols());
         if (mean().nrows()==1)
-            return z* tr(cholesky());
+            return z* tr(cholesky())+mean();
         else
-            return cholesky() * z;
+            return cholesky() * z+mean();
     }
     auto operator()(std::mt19937_64 &mt, std::size_t n) {
         return  sample(mt,normal_distribution(0.0,1.0), n, mean().ncols()) * tr(cholesky());
