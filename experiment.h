@@ -10,26 +10,34 @@
 namespace macrodr {
 
 using var::Var;
+using var::Vector_Space;
 
 class Time : public Var<Time, double> {};
-class number_of_samples : public Var<Time, std::size_t> {};
+class number_of_samples : public var::Constant<number_of_samples, std::size_t> {};
 
+class ATP_concentration: public Var<ATP_concentration, double> {};
 
-class ATP_concentration
-    : public Var<ATP_concentration, double> {};
+using ATP_step=var::Vector_Space<number_of_samples,ATP_concentration>;
+
+using ATP_evoltype= std::variant<ATP_step,std::vector<ATP_step>>;
+
+class ATP_evolution: public Var<ATP_evolution, std::variant<ATP_step,std::vector<ATP_step>>>{
+    using Var<ATP_evolution, std::variant<ATP_step,std::vector<ATP_step>>>::Var;
+};
+
 
 class Patch_current : public Var<Patch_current, double> {};
 
 
 
 
-using Experiment_step=    var::Vector_Space<Time, number_of_samples, ATP_concentration>;
+using Experiment_step=    var::Vector_Space<Time, ATP_evolution>;
 
 
 class Recording : public Var<Recording,std::vector<Patch_current>>{};
 
 
-class Recording_conditions : public Var<Recording,std::vector<Experiment_step>>{};
+class Recording_conditions : public Var<Recording_conditions,std::vector<Experiment_step>>{};
 
 class Frequency_of_Sampling : public var::Var<Frequency_of_Sampling, double> {};
 
@@ -67,7 +75,9 @@ std::tuple<Recording_conditions,Recording> load_recording(const std::string file
       std::stringstream ss(line);
       double v_time, v_ns, v_ATP, v_current;
       extract_double(ss >> v_time >> v_ns >> v_ATP, v_current);
-      out0.emplace_back(Time(v_time/1000), number_of_samples(std::size_t(v_ns)), ATP_concentration(v_ATP));
+      ATP_evolution step;
+      step()=ATP_step(number_of_samples(std::size_t(v_ns)), ATP_concentration(v_ATP));
+      out0.emplace_back(Time(v_time/1000), std::move(step));
       out1.emplace_back(Patch_current(v_current));
     }
   }

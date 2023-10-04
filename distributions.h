@@ -77,6 +77,11 @@ template<class T>
     requires (has_size<T>)
 std::size_t size(const T& x) {return x.size();}
 
+template<class T>
+    requires (!has_size<T>&&has_size<std::decay_t<decltype(std::declval<T>()())>>)
+std::size_t size(const T& x) {return x().size();}
+
+
 constexpr std::size_t size(double){return 1;}
 
 

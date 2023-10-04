@@ -2,6 +2,7 @@
 #define VARIABLES_H
 
 #include "maybe_error.h"
+#include "general_output_operator.h"
 #include <map>
 #include <ostream>
 namespace var {
@@ -70,9 +71,15 @@ public:
     
     using variable_type=Var<Id,T>;
     
-    constexpr Var(T t_x):m_x{t_x}{}
+    template<class S>
+        requires std::is_convertible_v<S,T>
+    constexpr Var(S&& t_x):m_x{std::forward<S>(t_x)}{}
+    
+    constexpr Var(T const& t_x):m_x{t_x}{}
+    
+    constexpr Var(T&& t_x):m_x{std::move(t_x)}{}
     constexpr auto& operator()(){return m_x;}
-    constexpr auto& operator()()const{return m_x;}
+    constexpr auto const& operator()()const{return m_x;}
     constexpr auto& operator[](Var<Id>){return *this;}
     constexpr auto& operator[](Var<Id>) const{return *this;}
     constexpr Var(){}
@@ -192,7 +199,7 @@ class Vector_Space: public Vars...
 public:
     using Vars::operator[]...;
     template<class Id>
-    friend auto& get(Vector_Space const& x){return static_cast<Id const&>(x);}
+    friend auto const& get(Vector_Space const& x){return static_cast<Id const&>(x);}
     template<class Id>
     friend auto& get(Vector_Space & x){return static_cast<Id &>(x);}
     static constexpr bool is_vector_space=true;
@@ -281,6 +288,17 @@ inline Maybe_error<bool> test_equality(double x, double y, double eps)
 
 template<class Id, class T>
 Maybe_error<bool> test_equality(const Var<Id,T>& one, const Var<Id,T>& two, double eps)
+{
+    auto test=test_equality(one(), two(), eps);
+    if (!test)
+    {
+        return error_message(std::string("\n\n")+typeid(Id).name()+std::string(" error: ")+test.error()() );
+    }
+    else return true;
+}
+
+template<class Id, class T>
+Maybe_error<bool> test_equality(const Constant<Id,T>& one, const Constant<Id,T>& two, double eps)
 {
     auto test=test_equality(one(), two(), eps);
     if (!test)

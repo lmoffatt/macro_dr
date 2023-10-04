@@ -23,7 +23,8 @@ Maybe_error<Init> fold (Container c, Init init,
     for (auto& e:c)
     {
         auto v_run=std::invoke(reduce,std::move(run),e);
-        if (!v_run) return v_run.error();
+        if (!v_run) return
+                v_run.error();
         else
             run=std::move(v_run.value());
     }
@@ -39,7 +40,8 @@ Maybe_error<Init> fold (std::size_t i_start, std::size_t i_end,Init init,
     for (auto i=i_start; i<i_end; ++i)
     {
         auto v_run=std::invoke(reduce,std::move(run),i);
-        if (!v_run) return v_run.error();
+        if (!v_run)
+            return v_run.error();
         else
             run=std::move(v_run.value());
     }
