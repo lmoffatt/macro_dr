@@ -91,6 +91,15 @@ std::ostream &write_tuple_i(std::ostream &os, const std::tuple<Args...> &tu,
   return write_tuple_i(os, tu, i, std::index_sequence_for<Args...>());
 }
 
+inline double elemDivSafe(double x, double y,
+                          double eps = std::numeric_limits<double>::epsilon()) {
+  if (std::abs(y) > eps)
+    return x / y;
+  else
+    return 0;
+}
+
+
 namespace lapack {
 Matrix<double> Lapack_Full_Product(const Matrix<double> &x,
                                    const Matrix<double> &y, bool transpose_x,
@@ -343,6 +352,14 @@ public:
     assert(i < nrows() && j < ncols());
     return x_[i * ncols_ + j];
   }
+  
+  void set(std::size_t i, std::size_t j, const T& x) {
+    operator()(i, j) = x;
+  }
+  void set(std::size_t i, std::size_t j, T&& x) {
+    operator()(i, j) = std::move(x);
+  }
+  
   
   auto operator()(std::size_t i,  const char* ch)const {
     assert(i < nrows() && std::strcmp(ch,":")==0);
@@ -744,6 +761,20 @@ auto elemDiv(const Matrix<double> &x, const Matrix<double> &y) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
     out[i] = x[i] /y[i];
+  return out;
+}
+
+auto elemDivSafe(const Matrix<double> &x, const Matrix<double> &y, double eps) {
+  auto out = x;
+  for (std::size_t i = 0; i < x.size(); ++i)
+    out[i] = elemDivSafe(x[i],y[i],eps);
+  return out;
+}
+
+auto elemDivSafe(const Matrix<double> &x,  double y, double eps) {
+  auto out = x;
+  for (std::size_t i = 0; i < x.size(); ++i)
+    out[i] = elemDivSafe(x[i],y,eps);
   return out;
 }
 
@@ -1641,6 +1672,14 @@ inline Maybe_error<bool> test_equality(double x, double y, double eps)
 }
 
 
+inline Maybe_error<bool> test_equality(std::integral auto x,  std::integral auto y, double)
+{
+  if (x!=y)
+    return error_message(ToString(x)+" is not equal to "+ToString(y));
+  else
+return true;
+}
+
 
 template<template<class>class aMatrix>
 Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double>& two, double eps)
@@ -1654,7 +1693,15 @@ Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double
         out=error_message(out.error()()+"\n at ("+std::to_string(i)+","+std::to_string(j)+"): "+test.error()());
       
     }
-  
+  if (!out)
+  {
+    std::stringstream ss;
+    ss<<"\nMatrix differs\n";
+    ss<<one<<"\n differs from \n"<<two;
+    ss<<out.error()();
+    return error_message(ss.str());
+  }
+else  
   return out;
   
 }

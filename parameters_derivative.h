@@ -287,6 +287,23 @@ public:
         
         
     }
+    
+    friend auto elemDivSafe(const Derivative& x, const Derivative& y, double eps){
+        auto fx=x.primitive();
+        auto fy=y.primitive();
+        if ((x.derivative()().size()>0)&&(y.derivative()().size()>0))
+            return Derivative(elemDivSafe(fx,fy,eps),zip([fx,fy,eps](auto dx,auto dy) {
+                                  return elemDivSafe(dx,fy,eps)-elemDivSafe(fx,fy*fy,eps)*dy;},x.derivative()(),y.derivative()()));
+        else if (x.derivative()().size()==0)
+            return Derivative(elemDivSafe(fx,fy,eps),-elemDivSafe(fx,fy*fy,eps)*y.derivative()());
+        else
+            return Derivative(elemDivSafe(fx,fy,eps),elemDivSafe(x.derivative()(),fy,eps));
+        
+        
+    }
+    
+    
+    
     friend auto operator*(const Derivative& x, const Derivative& y){
         auto fx=x.primitive();
         auto fy=y.primitive();
@@ -414,6 +431,13 @@ public:
             primitive()(i,j),
             applyMap([i,j](auto const& m){return m(i,j);},derivative()()));
     }
+    
+    
+    void set(std::size_t i, std::size_t j, double x) {
+        primitive()(i, j) = x;
+        
+    }
+    
     
     auto operator[](std::size_t i)const
     {
@@ -654,6 +678,13 @@ template<class Id,template<class> class aMatrix>
 auto elemDiv(const Derivative<aMatrix<double>,Parameters<Id>> &a,const Derivative<aMatrix<double>,Parameters<Id>> &b) {
     
     return zip([] (auto& x, auto& y){ return x/y;}, a,b);
+}
+
+template<class Id,template<class> class aMatrix>
+    requires aMatrix<double>::is_Matrix
+auto elemDivSafe(const Derivative<aMatrix<double>,Parameters<Id>> &a,const Derivative<aMatrix<double>,Parameters<Id>> &b, double eps) {
+    
+    return zip([eps] (auto& x, auto& y){ return elemDivSafe(x,y,eps);}, a,b);
 }
 
 template<class Id,template<class> class aMatrix>

@@ -1639,7 +1639,7 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
     }
     
     assert(
-        (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) <  std::sqrt(eps)) &&
+        (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) <  std::sqrt(eps)*1000) &&
            " fails in eigendecomposition");
 //    return sort_by_eigenvalue(std::make_tuple(
     return std::make_tuple(

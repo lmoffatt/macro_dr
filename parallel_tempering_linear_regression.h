@@ -14,7 +14,7 @@ public:
         : f{std::ofstream(path + "__i_iter.csv")}, save_every{interval} {}
     
     template<class Parameters>
-    friend void report_title(save_Evidence &s, thermo_mcmc<Parameters> const &) {
+    friend void report_title(save_Evidence &s, thermo_mcmc<Parameters> const &,...) {
         
         s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep
             << "meanPrior" << s.sep << "meanLik" << s.sep << "varLik" << s.sep
@@ -24,7 +24,7 @@ public:
     
     template<class Parameters>
     friend void report(std::size_t iter, save_Evidence &s,
-                       thermo_mcmc<Parameters> const &data) {
+                       thermo_mcmc<Parameters> const &data,...) {
         if (iter % s.save_every == 0) {
             
             auto meanLik = mean_logL(data);
@@ -105,7 +105,7 @@ class thermo{
         auto n_par = current.walkers[0][0].parameter.size();
         auto mcmc_run = checks_convergence(std::move(a), current);
         std::size_t iter = 0;
-        report_title(rep, current);
+        report_title(rep, current, lik, y, x);
         report_model(rep, prior, lik, y, x, beta);
         
         while (beta_run.size() < beta.size() || !mcmc_run.second) {
@@ -113,7 +113,7 @@ class thermo{
                 step_stretch_thermo_mcmc(iter, current, rep, beta_run, mts, prior, lik, y, x);
                 thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                                  thermo_jumps_every);
-                report(iter, rep, current);
+                report(iter, rep, current,prior, lik, y, x);
                 mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
             }
             if (beta_run.size() < beta.size()) {
@@ -153,7 +153,7 @@ auto thermo_impl(const Algorithm &alg, Prior const &prior, Likelihood const& lik
     auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
     std::size_t iter = 0;
-    report_title(rep, current);
+    report_title(rep, current, lik, y, x);
     report_model(rep, prior, lik, y, x, beta);
     
     while (beta_run.size() < beta.size() || !mcmc_run.second) {
@@ -231,7 +231,7 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
     auto mcmc_run = checks_convergence(std::move(a), current);
     std::size_t iter = 0;
     auto& rep=therm.reporter();
-    report_title(rep, current);
+    report_title(rep, current, lik, y, x);
     report_model(rep, prior, lik, y, x, beta);
     
     while (beta_run.size() < beta.size() || !mcmc_run.second) {

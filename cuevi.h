@@ -20,14 +20,14 @@ template <class Parameters> struct cuevi_mcmc {
     by_fraction<by_beta<double>> beta;
     ensemble<by_fraction<by_beta<mcmc2<Parameters>>>> walkers;
     ensemble<by_fraction<by_beta<std::size_t>>> i_walkers;
-    friend void report_title(save_likelihood<Parameters> &s, cuevi_mcmc<Parameters> const &) {
+    friend void report_title(save_likelihood<Parameters> &s, cuevi_mcmc<Parameters> const &,...) {
         
         s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
             << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
-            << "id_walker" << s.sep << "logP" << s.sep << "logLik"
+            << "id_walker" << s.sep << "logPa"  << s.sep << "logP" << s.sep << "logLik"
             << "\n";
     }
-    friend void report_title(save_Evidence &s, cuevi_mcmc const &) {
+    friend void report_title(save_Evidence &s, cuevi_mcmc const &,...) {
         
         s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
             << "nsamples" << s.sep << "beta" << s.sep << "meanPrior" << s.sep
@@ -37,18 +37,31 @@ template <class Parameters> struct cuevi_mcmc {
             << "\n";
     }
     
-    friend void report_title(save_Parameter<Parameters> &s, cuevi_mcmc const &) {
+    friend void report_title(save_Parameter<Parameters> &s, cuevi_mcmc const &,...) {
         
-        s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
-            << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
-            << "i_par" << s.sep << "par_value"
+        s.f << "n_fractions" << s.sep
+            <<"n_betas" << s.sep
+            <<"iter" << s.sep
+            << "nsamples" << s.sep
+            << "beta" << s.sep
+            <<"i_walker" << s.sep
+            << "id_walker" << s.sep
+            << "i_par" << s.sep
+            << "par_value"
             << "\n";
     }
-    template <class... saving>
+    
+    
+    
+    
+    
+    template <class... saving, class... Ts>
     friend void report_title(save_mcmc<Parameters,saving...> &f,
-                             cuevi_mcmc const &data) {
-        (report_title(static_cast<saving &>(f), data), ..., 1);
+                             cuevi_mcmc const &data, const Ts&...ts) {
+        (report_title(static_cast<saving &>(f), data, ts...), ..., 1);
     }
+    
+    
 };
 
 template <class Parameters> auto mean_logL(cuevi_mcmc<Parameters> const &mcmc) {
@@ -361,7 +374,7 @@ auto bayesian_linear_regression_calculate_mean_logLik(
 
 template<class Parameters>
 void report(std::size_t iter, save_likelihood<Parameters> &s,
-            cuevi_mcmc<Parameters> const &data) {
+            cuevi_mcmc<Parameters> const &data,...) {
     if (iter % s.save_every == 0)
         for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
             for (std::size_t i_beta = 0; i_beta < size(data.beta[i_frac]); ++i_beta)
@@ -372,13 +385,14 @@ void report(std::size_t iter, save_likelihood<Parameters> &s,
                         << iter << s.sep << data.nsamples[i_frac] << s.sep
                         << data.beta[i_frac][i_beta] << s.sep << i_walker << s.sep
                         << data.i_walkers[i_walker][i_frac][i_beta] << s.sep
+                        << data.walkers[i_walker][i_frac][i_beta].logPa << s.sep
                         << data.walkers[i_walker][i_frac][i_beta].logP << s.sep
                         << data.walkers[i_walker][i_frac][i_beta].logL << "\n";
 }
 
 template<class Parameters>
 void report(std::size_t iter, save_Parameter<Parameters> &s,
-            cuevi_mcmc<Parameters> const &data) {
+            cuevi_mcmc<Parameters> const &data,...) {
     if (iter % s.save_every == 0)
         for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
             for (std::size_t i_beta = 0; i_beta < size(data.beta[i_frac]); ++i_beta)
@@ -388,15 +402,41 @@ void report(std::size_t iter, save_Parameter<Parameters> &s,
                          i_par < size(data.walkers[i_walker][i_frac][i_beta].parameter);
                          ++i_par)
                         
-                        s.f << size(data.beta) << s.sep << size(data.beta[i_frac]) << s.sep
-                            << iter << s.sep << data.nsamples[i_frac] << s.sep
+                        
+                        
+                        s.f << size(data.beta) << s.sep
+                            << size(data.beta[i_frac]) << s.sep
+                            << iter << s.sep
+                            << data.nsamples[i_frac] << s.sep
                             << data.beta[i_frac][i_beta] << s.sep
-                            << data.i_walkers[i_walker][i_frac][i_beta] << s.sep << i_par
-                            << s.sep
+                            << i_walker << s.sep
+                            << data.i_walkers[i_walker][i_frac][i_beta] << s.sep
+                            << i_par<< s.sep
                             << data.walkers[i_walker][i_frac][i_beta].parameter[i_par]
                             << "\n";
 }
+
+
+
+
+
+
 template <class Prior, class Likelihood, class Variables, class DataType>
+concept has_conjugate= requires (Prior const &prior, Likelihood const &lik,
+                                 const DataType &y, const Variables &x)
+{
+    {posterior(conjugate{}, prior, lik, y[0], x[0])};
+};
+
+
+
+
+
+
+
+
+template <class Prior, class Likelihood, class Variables, class DataType>
+    requires has_conjugate<Prior,Likelihood,Variables,DataType>
 void report_model(save_Evidence &s, Prior const &prior, Likelihood const &lik,
                   const DataType &y, const Variables &x,
                   by_fraction<by_beta<double>> const &beta0) {
@@ -459,9 +499,27 @@ void report_model(save_Evidence &s, Prior const &prior, Likelihood const &lik,
             }
 }
 
+
+
+
+template <class Prior, class Likelihood, class Variables, class DataType>
+    requires (!has_conjugate<Prior,Likelihood,Variables,DataType>)
+void report_model(save_Evidence &, Prior const &, Likelihood const &,
+                  const DataType &, const Variables &,
+                  by_fraction<by_beta<double>> const &) {
+    
+}
+
+
+
+
+
+
+
+
 template<class Parameters>
 void report(std::size_t iter, save_Evidence &s,
-            cuevi_mcmc<Parameters> const &data) {
+            cuevi_mcmc<Parameters> const &data,...) {
     if (iter % s.save_every == 0) {
         
         auto meanLik = mean_logL(data);
@@ -491,10 +549,10 @@ void report(std::size_t iter, save_Evidence &s,
     }
 }
 
-template <class Parameters, class... saving>
+template <class Parameters, class... saving, class... T>
 void report(std::size_t iter, save_mcmc<Parameters,saving...> &f,
-            cuevi_mcmc<Parameters> const &data) {
-    (report(iter, static_cast<saving &>(f), data), ..., 1);
+            cuevi_mcmc<Parameters> const &data,T const &...ts) {
+    (report(iter, static_cast<saving &>(f), data, ts...), ..., 1);
 }
 
 template <class Observer, class Prior, class Likelihood, class Variables,
@@ -803,25 +861,39 @@ void step_stretch_cuevi_mcmc(cuevi_mcmc<Parameters> &current, Observer &obs,
 using DataIndexes = std::vector<std::size_t>;
 
 auto generate_random_Indexes(std::mt19937_64 &mt, std::size_t num_samples,
-                             std::size_t num_parameters,
-                             double num_jumps_per_decade) {
+                             std::size_t min_num_extra_samples,
+                             double num_jumps_per_decade, std::vector<std::size_t> initial_samples={}) {
     
+    std::size_t num_initial_samples= size(initial_samples);
     std::size_t n_jumps = std::max(
         0.0, std::floor(num_jumps_per_decade * (std::log10(num_samples) -
-                                           std::log10(2 * num_parameters))));
-    auto indexsizes = DataIndexes(n_jumps);
+                                           std::log10(min_num_extra_samples+num_initial_samples))));
+    auto indexsizes = DataIndexes(n_jumps+1);
     
-    for (std::size_t i = 0; i < n_jumps; ++i)
+    for (std::size_t i = 0; i < n_jumps+1; ++i)
         indexsizes[i] = num_samples * std::pow(10.0, -(1.0 * (n_jumps - i)) /
                                                          num_jumps_per_decade);
-    auto out = std::vector<DataIndexes>(n_jumps);
+    auto out = std::vector<DataIndexes>(n_jumps+1);
     if (n_jumps > 0) {
         auto index = DataIndexes(num_samples);
         std::iota(index.begin(), index.end(), 0u);
-        auto it = randomly_extract_n(mt, index.begin(), index.end(), indexsizes[0]);
-        std::sort(index.begin(), it);
-        out[0] = DataIndexes(index.begin(), it);
-        for (auto i = 1u; i < n_jumps; ++i) {
+        auto it=index.begin();
+        if (num_initial_samples>0)
+        {
+            auto new_index=DataIndexes{};
+            std::copy(initial_samples.begin(), initial_samples.end(), std::back_inserter(new_index));
+            std::set_difference(index.begin(),index.end(),initial_samples.begin(),initial_samples.end(), std::back_inserter(new_index));
+            
+            std::swap(index,new_index);
+            it=index.begin();
+            std::advance(it,initial_samples.size());
+            auto f=*it;
+        }
+        it = randomly_extract_n(mt, it, index.end(), indexsizes[0]-num_initial_samples);
+        auto res=DataIndexes(index.begin(), it);
+        std::sort(res.begin(), res.end());
+        out[0] = std::move(res);
+        for (auto i = 1u; i < n_jumps+1; ++i) {
             auto n = (indexsizes[i] - indexsizes[i - 1]);
             it = randomly_extract_n(mt, it, index.end(), n);
             std::sort(index.begin(), it);
@@ -839,12 +911,13 @@ struct fractioner {
                     bool includes_zero) const {
         assert(y.nrows() == x.nrows());
         std::size_t num_samples = size(y);
-        auto indexes = generate_random_Indexes(mt, num_samples, num_parameters,
+        // generate_random_Indexes differs from repository CumulativeEvidence
+        auto indexes = generate_random_Indexes(mt, num_samples, 2*num_parameters,
                                                n_points_per_decade_fraction);
-        auto n_frac = size(indexes) + 1;
+        auto n_frac = size(indexes);
         by_fraction<Matrix<double>> y_out(n_frac);
         by_fraction<Matrix<double>> x_out(n_frac);
-        for (std::size_t i = 0; i < n_frac - 1; ++i) {
+        for (std::size_t i = 0; i < n_frac; ++i) {
             auto n = size(indexes[i]);
             auto ii = indexes[i];
             Matrix<double> yi(n, 1, false);
@@ -858,8 +931,6 @@ struct fractioner {
             y_out[i] = std::move(yi);
             x_out[i] = std::move(xi);
         }
-        x_out[n_frac - 1] = x;
-        y_out[n_frac - 1] = y;
         
         auto beta0 = get_beta_list(n_points_per_decade_beta,
                                    stops_at * num_samples /
@@ -872,6 +943,8 @@ struct fractioner {
         return std::tuple(std::move(y_out), std::move(x_out), std::move(beta));
     }
 };
+
+
 
 template <class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
@@ -888,6 +961,9 @@ auto init_mcmc2(std::mt19937_64 &mt, const Prior &prior, const Likelihood &lik,
     auto logL = logLikelihood(lik, par, y[0], x[0]);
     auto logPa = logP;
     while (!(logP) || !(logL)) {
+        // std::cerr<<"\npar\ņ"<<par;
+        //std::cerr<<"\nlogL\ņ"<<logL;
+        
         par = sample(mt, prior_sampler);
         logP = logPrior(prior, par);
         logL = logLikelihood(lik, par, y[0], x[0]);
@@ -919,7 +995,7 @@ auto init_cuevi_mcmc(std::size_t n_walkers, by_beta<double> const &beta,
         for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
             auto iw = iiw + half * n_walkers / 2;
             for (std::size_t i = 0; i < beta.size(); ++i) {
-                i_walker[iw][0][i] = iw + i * n_walkers;
+                i_walker[iw][0][i] = iw + (beta.size()-i-1) * n_walkers;
                 walker[iw][0][i] = init_mcmc2(mt[iiw], prior, lik, y, x);
             }
         }
@@ -934,21 +1010,103 @@ std::size_t last_walker(const cuevi_mcmc<Parameters> &c) {
     return tot * size(c.walkers);
 }
 
+
 template <class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<Likelihood, Parameters, Variables, DataType>)
 
-Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction(
-    const cuevi_mcmc<Parameters> &current_old, ensemble<std::mt19937_64> &mts,
-    const by_fraction<by_beta<double>> &final_beta, Prior const &prior,
+Maybe_error<bool> calculate_Likelihoods_sample(
+    cuevi_mcmc<Parameters> &current,
+    Prior const &prior,
+    Likelihood const &lik,
+    const by_fraction<DataType> &y,
+    const by_fraction<Variables> &x,
+    std::size_t iw,
+    std::size_t i_frac,
+    std::size_t ib) {
+    auto const & ca_par = current.walkers[iw][i_frac][ib].parameter;
+    auto ca_logPa_ = logPrior(prior, ca_par);
+    auto ca_logL_0 = i_frac > 0
+                         ? logLikelihood(lik, ca_par, y[i_frac - 1], x[i_frac - 1])
+                         : Maybe_error(0.0);
+    auto ca_logL_1 = logLikelihood(lik, ca_par, y[i_frac], x[i_frac]);
+    if (!(is_valid(ca_logPa_) && is_valid(ca_logL_0) && is_valid(ca_logL_1)))
+    {
+        return error_message(ca_logPa_.error()()+ca_logL_0.error()()+ca_logL_1.error()());
+    }
+    else{
+        auto ca_logPa = ca_logPa_.value();
+        auto ca_logP0 = ca_logPa_.value() + ca_logL_0.value();
+        auto ca_logL0 = ca_logL_1.value() - ca_logL_0.value();
+        if (i_frac + 1 < size(current.walkers[iw]) && (current.beta[i_frac][ib] == 1.0)) {
+            auto ca_logL_2 = logLikelihood(lik, ca_par, y[i_frac + 1], x[i_frac + 1]);
+            if (!(ca_logL_2))
+                return ca_logL_2.error();
+            else    
+            {
+               // assert(test_equality(ca_par,current.walkers[iw][i_frac + 1][0].parameter, eps));
+                auto ca_logP1 = ca_logPa + ca_logL_1.value();
+                auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();
+                current.walkers[iw][i_frac][ib].logPa = ca_logPa;
+                current.walkers[iw][i_frac][ib].logP = ca_logP0;
+                current.walkers[iw][i_frac][ib].logL = ca_logL0;
+                current.walkers[iw][i_frac + 1][0].logPa = ca_logPa;
+                current.walkers[iw][i_frac + 1][0].logP = ca_logP1;
+                current.walkers[iw][i_frac + 1][0].logL = ca_logL1;
+                return true;
+            }
+        } else {
+            current.walkers[iw][i_frac][ib].logPa = ca_logPa;
+            current.walkers[iw][i_frac][ib].logP = ca_logP0;
+            current.walkers[iw][i_frac][ib].logL = ca_logL0;
+            return true;
+        }
+    }
+}
+
+
+template <class Prior, class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<Likelihood, Parameters, Variables, DataType>)
+Maybe_error<cuevi_mcmc<Parameters>> calculate_current_Likelihoods(
+    cuevi_mcmc<Parameters> &current,
+    Prior const &prior,
+    Likelihood const &lik,
+    const by_fraction<DataType> &y,
+    const by_fraction<Variables> &x) {
+    
+    for (std::size_t iw=0; iw<current.walkers.size(); ++iw)
+    {
+        auto res=calculate_Likelihoods_sample(current,prior,lik,y,x,iw,0,0);
+        if (!res) return res.error();
+        for (std::size_t i_frac=0; i_frac<current.walkers[iw].size(); ++i_frac)
+            for (std::size_t ib=1; ib<current.walkers[iw][i_frac].size(); ++ib)
+            {
+                auto res=calculate_Likelihoods_sample(current,prior,lik,y,x,iw,i_frac,ib);
+                if (!res) return res.error();
+                
+            }
+    }
+    return current;
+}
+
+
+template <class Prior, class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<Likelihood, Parameters, Variables, DataType>)
+auto create_new_walkers(
+    const cuevi_mcmc<Parameters> &current, ensemble<std::mt19937_64> &mts,
+    Prior const &prior,
     Likelihood const &lik, const by_fraction<DataType> &y,
     const by_fraction<Variables> &x) {
-    auto current = current_old;
+    
     auto n_walkers = current.walkers.size();
-    auto n_frac_old = size(current.beta);
-    auto i_frac_old = n_frac_old - 1;
     auto sum_walkers = last_walker(current);
     ensemble<mcmc2<Parameters>> new_walkers(n_walkers);
     ensemble<std::size_t> new_i_walkers(n_walkers);
@@ -959,119 +1117,357 @@ Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction(
             new_i_walkers[iw] = sum_walkers + iw;
         }
     
-    auto beta_first = size(current.beta[0]);
+    return std::tuple(new_walkers,new_i_walkers);
+}
+
+template <class DataType,
+         class Parameters>
+void insert_new_walkers(
+    cuevi_mcmc<Parameters> &current, 
+    const by_fraction<by_beta<double>> &final_beta,  const by_fraction<DataType> &y,ensemble<mcmc2<Parameters>>&& new_walkers, ensemble<std::size_t>&& new_i_walkers) {
+    for (std::size_t iw=0; iw<current.walkers.size(); ++iw)
+    {
+        for (std::size_t ib=0; ib<current.walkers[iw][0].size(); ++ib)
+        {
+            std::swap(current.walkers[iw][0][ib],new_walkers[iw]);
+            std::swap(current.i_walkers[iw][0][ib],new_i_walkers[iw]);
+        }
+        for (std::size_t i_frac=1; i_frac<current.walkers[iw].size(); ++i_frac)
+        {
+            current.walkers[iw][i_frac][0]=current.walkers[iw][i_frac-1].back();
+            current.i_walkers[iw][i_frac][0]=current.i_walkers[iw][i_frac-1].back();
+           
+            for (std::size_t ib=1; ib<current.walkers[iw][i_frac].size(); ++ib)
+            {
+                std::swap(current.walkers[iw][i_frac][ib],new_walkers[iw]);
+                std::swap(current.i_walkers[iw][i_frac][ib],new_i_walkers[iw]);
+            }
+        }
+        auto i_frac=current.walkers[iw].size()-1;
+        auto ib=current.walkers[iw][i_frac].size()-1;
+        
+        if (current.beta[i_frac][ib]<1.0)
+        {
+            current.walkers[iw][i_frac].push_back(new_walkers[iw]);
+            current.i_walkers[iw][i_frac].push_back(new_i_walkers[iw]);
+            if (iw==0)
+                current.beta[i_frac].push_back(final_beta[i_frac][ib+1]);
+        }
+        else
+        {
+            current.walkers[iw].push_back(by_beta<mcmc2<Parameters>>(2));
+            current.i_walkers[iw].push_back(by_beta<std::size_t>(2));
+            current.walkers[iw][i_frac+1][0]=current.walkers[iw][i_frac].back();
+            current.i_walkers[iw][i_frac+1][0]=current.i_walkers[iw][i_frac].back();
+            
+            current.walkers[iw][i_frac+1][1]=new_walkers[iw];
+            current.i_walkers[iw][i_frac+1][1]=new_i_walkers[iw];
+            
+            if (iw==0)
+            {
+                current.beta.push_back(by_beta<double>{final_beta[i_frac+1][0],final_beta[i_frac+1][1]});
+                current.nsamples.push_back(size(y[i_frac+1]));
+            }
+        }
+    }
+}
+
+template <class Prior, class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<Likelihood, Parameters, Variables, DataType>)
+Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction(
+    const cuevi_mcmc<Parameters> &current_old, ensemble<std::mt19937_64> &mts,
+    const by_fraction<by_beta<double>> &final_beta, Prior const &prior,
+    Likelihood const &lik, const by_fraction<DataType> &y,
+    const by_fraction<Variables> &x) {
+    
+    auto current=current_old;
+    
+    auto [new_walkers,new_i_walkers]=create_new_walkers(current,mts,prior,lik,y,x);
+    
+    insert_new_walkers(current,final_beta,y,std::move(new_walkers), std::move(new_i_walkers));
+    
+    return calculate_current_Likelihoods(current,prior,lik,y,x);
+    
+}
+
+
+
+
+
+template <class Prior, class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<Likelihood, Parameters, Variables, DataType>)
+
+
+
+
+Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction_old(
+    const cuevi_mcmc<Parameters> &current_old, ensemble<std::mt19937_64> &mts,
+    const by_fraction<by_beta<double>> &final_beta, Prior const &prior,
+    Likelihood const &lik, const by_fraction<DataType> &y,
+    const by_fraction<Variables> &x) {
+    auto current = current_old;
+    std::cerr<<"\ncurrent.walkers before\n";
+    for (std::size_t i_fr=0; i_fr<size(current.walkers[0]); ++i_fr)
+    {
+        for (std::size_t i_b=0; i_b<size(current.walkers[0][i_fr]); ++i_b)
+            std::cerr<<get_value(current.walkers[0][i_fr][i_b].parameter)[10]<<"\t";
+        std::cerr<<"\t\t";
+    }
+    std::cerr<<"\n";
+    auto n_walkers = current.walkers.size();
+    auto sum_walkers = last_walker(current);
+    ensemble<mcmc2<Parameters>> new_walkers(n_walkers);
+    ensemble<std::size_t> new_i_walkers(n_walkers);
+    for (std::size_t half = 0; half < 2; ++half)
+        for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+            auto iw = i + half * n_walkers / 2;
+            new_walkers[iw] = init_mcmc2(mts[i], prior, lik, y, x);
+            new_i_walkers[iw] = sum_walkers + iw;
+        }
+    
+    
+    
+    
+    
+    
+    auto swap_walker=[&current,&current_old,&final_beta,&lik,&prior,&y,&x](std::size_t iw,
+                                                                                   std::size_t ib,
+                                                                                   std::size_t i_frac,
+                                                                                   auto& new_walkers,
+                                                                                   auto& new_i_walkers)->Maybe_error<bool>
+    {
+        if ((i_frac<current_old.walkers[iw].size())&&(ib<current_old.walkers[iw][i_frac].size())){  
+            std::swap(current.walkers[iw][i_frac][ib], new_walkers[iw]);
+            std::swap(current.i_walkers[iw][i_frac][ib], new_i_walkers[iw]);
+            
+            if ((final_beta[i_frac][ib]==1.0)&&(i_frac+1==current.walkers[iw].size())&&(i_frac+1<final_beta.size()))
+            {
+                current.i_walkers[iw].push_back(by_beta<std::size_t>(1));
+                current.walkers[iw].push_back(by_beta<mcmc2<Parameters>>(1));
+                if (iw==0)
+                    current.beta.push_back(by_beta<double>{0.0});
+            }
+        }
+        else 
+        {
+            current.walkers[iw][i_frac].push_back(new_walkers[iw]);
+            current.i_walkers[iw][i_frac].push_back(new_i_walkers[iw]);
+            if (iw==0)
+                current.beta[i_frac].push_back(final_beta[i_frac][ib]);
+            
+        }
+        
+        if (final_beta[i_frac][ib]!=1.0){
+            return true;
+        }
+        else
+        {
+            auto& ca_par = current.walkers[iw][i_frac][ib].parameter;
+            auto& i_walker = current.i_walkers[iw][i_frac][ib];
+            auto ca_logPa_ = logPrior(prior, ca_par);
+            auto ca_logL_0 = i_frac > 0
+                                 ? logLikelihood(lik, ca_par, y[i_frac - 1], x[i_frac - 1])
+                                 : Maybe_error(0.0);
+            auto ca_logL_1 = logLikelihood(lik, ca_par, y[i_frac], x[i_frac]);
+            if (!(is_valid(ca_logPa_) && is_valid(ca_logL_0) && is_valid(ca_logL_1)))
+            {
+                return error_message(ca_logPa_.error()()+ca_logL_0.error()()+ca_logL_1.error()());
+            }
+            else{
+                auto ca_logPa = ca_logPa_.value();
+                auto ca_logP0 = ca_logPa_.value() + ca_logL_0.value();
+                auto ca_logL0 = ca_logL_1.value() - ca_logL_0.value();
+                if (i_frac + 1 < size(current.walkers[iw]) && (current.beta[i_frac][ib] == 1.0)) {
+                    auto ca_logL_2 = logLikelihood(lik, ca_par, y[i_frac + 1], x[i_frac + 1]);
+                    if (!(ca_logL_2))
+                        return ca_logL_2.error();
+                    else    
+                    {
+                        auto ca_logP1 = ca_logPa + ca_logL_1.value();
+                        auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();
+                        current.walkers[iw][i_frac][ib].parameter = ca_par;
+                        current.walkers[iw][i_frac][ib].logPa = ca_logPa;
+                        current.walkers[iw][i_frac][ib].logP = ca_logP0;
+                        current.walkers[iw][i_frac][ib].logL = ca_logL0;
+                        current.walkers[iw][i_frac + 1][0].parameter = ca_par;
+                        current.walkers[iw][i_frac + 1][0].logPa = ca_logPa;
+                        current.walkers[iw][i_frac + 1][0].logP = ca_logP1;
+                        current.walkers[iw][i_frac + 1][0].logL = ca_logL1;
+                        current.i_walkers[iw][i_frac + 1][0] = i_walker;
+                        
+                        return true;
+                    }
+                } else {
+                    current.walkers[iw][i_frac][ib].parameter = ca_par;
+                    current.walkers[iw][i_frac][ib].logPa = ca_logPa;
+                    current.walkers[iw][i_frac][ib].logP = ca_logP0;
+                    current.walkers[iw][i_frac][ib].logL = ca_logL0;
+                    return true;
+                }
+            }
+        }
+    };
+    
+    
     
     for (std::size_t half = 0; half < 2; ++half)
         for (std::size_t i = 0; i < n_walkers / 2; ++i) {
             auto iw = i + half * n_walkers / 2;
-            for (std::size_t i_b = 0; i_b < beta_first; ++i_b) {
-                std::swap(current.walkers[iw][0][i_b], new_walkers[iw]);
-                std::swap(current.i_walkers[iw][0][i_b], new_i_walkers[iw]);
+            swap_walker(iw,0ul,0ul,new_walkers,new_i_walkers);
+            for (std::size_t i_frac=0; i_frac<current_old.walkers[iw].size(); ++i_frac)
+            {
+                for (std::size_t ib=1; ib<current_old.walkers[iw][i_frac].size(); ++ib)
+                {
+                    auto res=swap_walker(iw,ib,i_frac,new_walkers,new_i_walkers);
+                    if (!res)
+                        return res.error();
+                }
             }
-        }
-    
-    if (beta_first < size(final_beta[0])) {
-        for (std::size_t half = 0; half < 2; ++half)
-            for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-                auto iw = i + half * n_walkers / 2;
-                current.walkers[iw][0].push_back(new_walkers[iw]);
-                current.i_walkers[iw][0].push_back(new_i_walkers[iw]);
+            auto i_frac=current_old.walkers[iw].size()-1;
+            auto i_b=current_old.walkers[iw][i_frac].size()-1;
+            if (final_beta[i_frac][i_b]<1.0)
+            {
+                swap_walker(iw,i_b+1,i_frac,new_walkers,new_i_walkers);     
             }
-        current.beta[0].push_back(final_beta[0][beta_first]);
-        return current;
-    } else {
-        for (auto i_frac = 1ul; i_frac < n_frac_old; ++i_frac) {
-            for (std::size_t i_b = 0; i_b < 1; ++i_b) {
-                for (std::size_t half = 0; half < 2; ++half)
-                    for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-                        auto iw = i + half * n_walkers / 2;
-                        std::swap(current.walkers[iw][i_frac][i_b], new_walkers[iw]);
-                        std::swap(current.i_walkers[iw][i_frac][i_b], new_i_walkers[iw]);
-                        auto &ca_wa = current.walkers[iw][i_frac - 1].back();
-                        auto ca_logPa = ca_wa.logPa;
-                        auto ca_par = ca_wa.parameter;
-                        auto ca_logP = ca_wa.logP + ca_wa.logL;
-                        auto ca_logL1 = logLikelihood(lik, ca_par, y[i_frac], x[i_frac]);
-                        if (!(ca_logL1))
-                            return error_message(ca_logL1.error()() + " push back new fraction at walker " +
-                                   std::to_string(iw) + "of fraction " +
-                                                 std::to_string(i_frac) + " beta 0");
-                        auto ca_logL = ca_logL1.value() - ca_logP + ca_logPa;
-                        current.walkers[iw][i_frac][i_b] = {{ca_par, ca_logP, ca_logL},
-                                                            ca_logPa};
-                    }
-            }
+            else
+            {
+                swap_walker(iw,1ul,i_frac+1,new_walkers,new_i_walkers);
+                if ((iw==0)&& (i_frac+1<size(y)))
+                    current.nsamples.push_back(size(y[i_frac+1]));
+                
+            }    
             
-            for (std::size_t i_b = 1; i_b < size(current.beta[i_frac]); ++i_b) {
-                for (std::size_t half = 0; half < 2; ++half)
-                    for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-                        auto iw = i + half * n_walkers / 2;
-                        std::swap(current.walkers[iw][i_frac][i_b], new_walkers[iw]);
-                        std::swap(current.i_walkers[iw][i_frac][i_b], new_i_walkers[iw]);
-                    }
-            }
         }
-        auto n_beta_current = size(current.beta[i_frac_old]);
-        auto n_beta_current_final = size(final_beta[i_frac_old]);
-        auto n_frac_final = size(final_beta);
-        
-        if ((n_beta_current < n_beta_current_final) ||
-            (n_frac_final == n_frac_old)) {
-            for (std::size_t half = 0; half < 2; ++half)
-                for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-                    auto iw = i + half * n_walkers / 2;
-                    current.walkers[iw][n_frac_old].push_back(new_walkers[iw]);
-                    current.i_walkers[iw][n_frac_old].push_back(new_i_walkers[iw]);
-                }
-            current.beta[n_frac_old].push_back(
-                final_beta[n_frac_old][n_beta_current]);
-            return current;
-        } else {
-            for (std::size_t half = 0; half < 2; ++half)
-                for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-                    auto iw = i + half * n_walkers / 2;
-                    current.walkers[iw].push_back(by_beta<mcmc2<Parameters>>(2));
-                    current.i_walkers[iw].push_back(by_beta<std::size_t>(2));
-                    
-                    auto &ca_wa0 = current.walkers[iw][i_frac_old].back();
-                    auto ca_logPa0 = ca_wa0.logPa;
-                    auto ca_par0 = ca_wa0.parameter;
-                    auto ca_logP0 = ca_wa0.logP + ca_wa0.logL;
-                    auto ca_logL10 =
-                        logLikelihood(lik, ca_par0, y[i_frac_old + 1], x[i_frac_old + 1]);
-                    if (!(ca_logL10))
-                        return error_message(ca_logL10.error()() + " push back new fraction at walker " +
-                               std::to_string(iw) + "of fraction " +
-                                             std::to_string(i_frac_old + 1) + " beta 0");
-                    auto ca_logL0 = ca_logL10.value() - ca_logP0 + ca_logPa0;
-                    current.walkers[iw][i_frac_old + 1][0] = {
-                                                              {ca_par0, ca_logP0, ca_logL0}, ca_logPa0};
-                    current.i_walkers[iw][i_frac_old + 1][0] =
-                        current.i_walkers[iw][i_frac_old].back();
-                    
-                    auto &ca_wa1 = new_walkers[iw];
-                    auto ca_logPa1 = ca_wa1.logPa;
-                    auto ca_par1 = ca_wa1.parameter;
-                    auto ca_logP1 = ca_wa1.logP + ca_wa1.logL;
-                    auto ca_logL11 =
-                        logLikelihood(lik, ca_par1, y[i_frac_old + 1], x[i_frac_old + 1]);
-                    if (!(ca_logL11)) {
-                        return error_message(ca_logL11.error()() + " push back new fraction at walker " +
-                               std::to_string(iw) + "of fraction " +
-                                             std::to_string(i_frac_old + 1) + " beta 0");
-                    } else {
-                        auto ca_logL1 = ca_logL11.value() - ca_logP1 + ca_logPa1;
-                        current.walkers[iw][i_frac_old + 1][1] = {
-                                                                  {ca_par1, ca_logP1, ca_logL1}, ca_logPa1};
-                        current.i_walkers[iw][i_frac_old + 1][1] = new_i_walkers[iw];
-                    }
-                }
-            auto new_beta = by_beta<double>{0.0, 1.0};
-            current.beta.push_back(new_beta);
-            current.nsamples.push_back(size(y[n_frac_old]));
-            return current;
-        }
+    std::cerr<<"\ncurrent.walkers\n";
+    for (std::size_t i_fr=0; i_fr<size(current.walkers[0]); ++i_fr)
+    {
+        for (std::size_t i_b=0; i_b<size(current.walkers[0][i_fr]); ++i_b)
+            std::cerr<<get_value(current.walkers[0][i_fr][i_b].parameter)[10]<<"\t";
+        std::cerr<<"\t\t";
     }
+    std::cerr<<"\n beta final\n"<<final_beta;
+    
+    std::cerr<<"\ncurrent.i_walkers[0]-----------------------popo\n"<<current.i_walkers[0];
+    std::cerr<<"\ncurrent.nsamples----------------popa\n"<<current.nsamples;
+    std::cerr<<"\ncurrent.beta----------------popi\n"<<current.beta;
+    return current;    
+    
+    //    bool we_are_still_filling_the_first_fraction=beta_first < size(final_beta[0]);
+    //    bool we_just_completed_the_first_faction=(i_frac_old==0)&&(!we_are_still_filling_the_first_fraction);
+    //    if (we_are_still_filling_the_first_fraction) {
+    //        for (std::size_t half = 0; half < 2; ++half)
+    //            for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+    //                auto iw = i + half * n_walkers / 2;
+    //                current.walkers[iw][0].push_back(new_walkers[iw]);
+    //                current.i_walkers[iw][0].push_back(new_i_walkers[iw]);
+    //            }
+    //        current.beta[0].push_back(final_beta[0][beta_first]);
+    //        return current;
+    //    } else {
+    
+    
+    
+    //        // we process now the fractions 
+    //        for (auto i_frac = 1ul; i_frac < n_frac_old; ++i_frac) {
+    //            for (std::size_t i_b = 0; i_b < 1; ++i_b) {
+    //                for (std::size_t half = 0; half < 2; ++half)
+    //                    for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+    //                        auto iw = i + half * n_walkers / 2;
+    //                        std::swap(current.walkers[iw][i_frac][i_b], new_walkers[iw]);
+    //                        std::swap(current.i_walkers[iw][i_frac][i_b], new_i_walkers[iw]);
+    //                        auto &ca_wa = current.walkers[iw][i_frac - 1].back();
+    //                        auto ca_logPa = ca_wa.logPa;
+    //                        auto ca_par = ca_wa.parameter;
+    //                        auto ca_logP = ca_wa.logP + ca_wa.logL;
+    //                        auto ca_logL1 = logLikelihood(lik, ca_par, y[i_frac], x[i_frac]);
+    //                        if (!(ca_logL1))
+    //                            return error_message(ca_logL1.error()() + " push back new fraction at walker " +
+    //                                                 std::to_string(iw) + "of fraction " +
+    //                                                 std::to_string(i_frac) + " beta 0");
+    //                        auto ca_logL = ca_logL1.value() - ca_logP + ca_logPa;
+    //                        current.walkers[iw][i_frac][i_b] = {{ca_par, ca_logP, ca_logL},
+    //                                                            ca_logPa};
+    //                    }
+    //            }
+    
+    //            for (std::size_t i_b = 1; i_b < size(current.beta[i_frac]); ++i_b) {
+    //                for (std::size_t half = 0; half < 2; ++half)
+    //                    for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+    //                        auto iw = i + half * n_walkers / 2;
+    //                        std::swap(current.walkers[iw][i_frac][i_b], new_walkers[iw]);
+    //                        std::swap(current.i_walkers[iw][i_frac][i_b], new_i_walkers[iw]);
+    //                    }
+    //            }
+    //        }
+    //        auto n_beta_current = size(current.beta[i_frac_old]);
+    //        auto n_beta_current_final = size(final_beta[i_frac_old]);
+    //        auto n_frac_final = size(final_beta);
+    //        bool theres_room_for_one_more_beta=(n_beta_current < n_beta_current_final) ;
+    //        bool this_is_the_final_fraction_in_a_more_than_2_betas_situation=n_frac_final == n_frac_old;
+    
+    //        if ( theres_room_for_one_more_beta||this_is_the_final_fraction_in_a_more_than_2_betas_situation
+    //            ) {
+    //            for (std::size_t half = 0; half < 2; ++half)
+    //                for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+    //                    auto iw = i + half * n_walkers / 2;
+    //                    current.walkers[iw][n_frac_old].push_back(new_walkers[iw]);
+    //                    current.i_walkers[iw][n_frac_old].push_back(new_i_walkers[iw]);
+    //                }
+    //            current.beta[n_frac_old].push_back(
+    //                final_beta[n_frac_old][n_beta_current]);
+    //            return current;
+    //        } else {
+    //            for (std::size_t half = 0; half < 2; ++half)
+    //                for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+    //                    auto iw = i + half * n_walkers / 2;
+    //                    current.walkers[iw].push_back(by_beta<mcmc2<Parameters>>(2));
+    //                    current.i_walkers[iw].push_back(by_beta<std::size_t>(2));
+    
+    //                    auto &ca_wa0 = current.walkers[iw][i_frac_old].back();
+    //                    auto ca_logPa0 = ca_wa0.logPa;
+    //                    auto ca_par0 = ca_wa0.parameter;
+    //                    auto ca_logP0 = ca_wa0.logP + ca_wa0.logL;
+    //                    auto ca_logL10 =
+    //                        logLikelihood(lik, ca_par0, y[i_frac_old + 1], x[i_frac_old + 1]);
+    //                    if (!(ca_logL10))
+    //                        return error_message(ca_logL10.error()() + " push back new fraction at walker " +
+    //                                             std::to_string(iw) + "of fraction " +
+    //                                             std::to_string(i_frac_old + 1) + " beta 0");
+    //                    auto ca_logL0 = ca_logL10.value() - ca_logP0 + ca_logPa0;
+    //                    current.walkers[iw][i_frac_old + 1][0] = {
+    //                                                              {ca_par0, ca_logP0, ca_logL0}, ca_logPa0};
+    //                    current.i_walkers[iw][i_frac_old + 1][0] =
+    //                        current.i_walkers[iw][i_frac_old].back();
+    
+    //                    auto &ca_wa1 = new_walkers[iw];
+    //                    auto ca_logPa1 = ca_wa1.logPa;
+    //                    auto ca_par1 = ca_wa1.parameter;
+    //                    auto ca_logP1 = ca_wa1.logP + ca_wa1.logL;
+    //                    auto ca_logL11 =
+    //                        logLikelihood(lik, ca_par1, y[i_frac_old + 1], x[i_frac_old + 1]);
+    //                    if (!(ca_logL11)) {
+    //                        return error_message(ca_logL11.error()() + " push back new fraction at walker " +
+    //                                             std::to_string(iw) + "of fraction " +
+    //                                             std::to_string(i_frac_old + 1) + " beta 0");
+    //                    } else {
+    //                        auto ca_logL1 = ca_logL11.value() - ca_logP1 + ca_logPa1;
+    //                        current.walkers[iw][i_frac_old + 1][1] = {
+    //                                                                  {ca_par1, ca_logP1, ca_logL1}, ca_logPa1};
+    //                        current.i_walkers[iw][i_frac_old + 1][1] = new_i_walkers[iw];
+    //                    }
+    //                }
+    //            auto new_beta = by_beta<double>{0.0, 1.0};
+    //            current.beta.push_back(new_beta);
+    //            current.nsamples.push_back(size(y[n_frac_old]));
+    //            return current;
+    //        }
+    //    }
 }
 
 template <class Observer, class Prior, class Likelihood, class Variables,
@@ -1484,7 +1880,7 @@ auto evidence(cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
     auto mcmc_run = checks_convergence(std::move(a), current);
     std::size_t iter = 0;
     auto &rep = cue.reporter();
-    report_title(rep, current);
+    report_title(rep, current,prior,lik, ys, xs);
     report_model(rep, prior, lik, ys, xs, beta_final);
     while ((size(current.beta) < size(beta_final)) ||
            (size(current.beta.back()) < size(beta_final.back())) ||
@@ -1494,23 +1890,27 @@ auto evidence(cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
             ++iter;
             thermo_cuevi_jump_mcmc(iter, current, rep, mt, mts, prior, lik, ys, xs,
                                    cue.thermo_jumps_every());
-            report(iter, rep, current);
+            report(iter, rep, current, prior, lik, ys, xs);
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
         if ((size(current.beta) < size(ys)) ||
             (size(current.beta.back()) < size(beta_final.back()))) {
+            //   std::cerr<<"\n---walkers!!------------------------\n"<<current.walkers;
+            
             auto is_current =
                 push_back_new_fraction(current, mts, beta_final, prior, lik, ys, xs);
             while (!(is_current)) {
+                std::cerr<<is_current.error()();
                 step_stretch_cuevi_mcmc(current, rep, mts, prior, lik, ys, xs);
                 ++iter;
                 thermo_cuevi_jump_mcmc(iter, current, rep, mt, mts, prior, lik, ys, xs,
                                        cue.thermo_jumps_every());
-                report(iter, rep, current);
+                report(iter, rep, current, prior, lik, ys, xs);
                 is_current = push_back_new_fraction(current, mts, beta_final, prior,
                                                     lik, ys, xs);
             }
             current = std::move(is_current.value());
+            std::cerr<<"\niwalkers!!------------------------\n"<<current.i_walkers;
             std::cerr << "\n  nsamples=" << current.nsamples.back()
                       << "   beta_run=" << current.beta.back().back() << "\n";
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
@@ -1532,7 +1932,7 @@ auto cuevi_by_convergence(std::string path, std::string filename,
         checks_derivative_var_ratio<cuevi_mcmc, Parameters>(max_iter, max_ratio),
         fractioner{},
         save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
-            path, filename, 100ul, 10000ul, 100ul),
+            path, filename, 100ul, 100ul, 100ul),
         num_scouts_per_ensemble, min_fraction, thermo_jumps_every,
         n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
         includes_zero, initseed);

@@ -606,7 +606,7 @@ public:
         save_every{interval} {}
     
     friend void report_title(save_likelihood &s,
-                             thermo_mcmc<Parameters> const &) {
+                             thermo_mcmc<Parameters> const &,...) {
         
         s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep
             << "i_walker" << s.sep << "id_walker" << s.sep << "logP" << s.sep
@@ -617,7 +617,7 @@ public:
     friend void report_model(save_likelihood &,const Prior &, const Likelihood&,  const DataType &,
                              const Variables &, by_beta<double> const &) {}
     friend void report(std::size_t iter, save_likelihood &s,
-                       thermo_mcmc<Parameters> const &data) {
+                       thermo_mcmc<Parameters> const &data,...) {
         if (iter % s.save_every == 0)
             for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
                 for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
@@ -659,7 +659,7 @@ public:
         : f{std::ofstream(path + "__i_beta__i_walker__i_par.csv")},
         save_every{interval} {}
     
-    friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &) {
+    friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,...) {
         
         s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep
             << "i_walker" << s.sep << "id_walker" << s.sep << "i_par" << s.sep
@@ -671,7 +671,7 @@ public:
                              const Variables &, by_beta<double> const &) {}
     
     friend void report(std::size_t iter, save_Parameter &s,
-                       thermo_mcmc<Parameters> const &data) {
+                       thermo_mcmc<Parameters> const &data,...) {
         if (iter % s.save_every == 0)
             for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
                 for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
@@ -683,6 +683,26 @@ public:
                             << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
     }
 };
+
+
+template<class Parameters>
+class save_Predictions {
+    
+public:
+    std::string sep = ",";
+    std::ofstream f;
+    std::size_t save_every;
+    save_Predictions(std::string const &path, std::size_t interval)
+        : f{std::ofstream(path + "__i_beta__i_walker__i_x.csv")},
+        save_every{interval} {}
+    
+    template <class Prior, class Likelihood, class Variables, class DataType>
+    friend void report_model(save_Predictions &, const Prior&, const Likelihood&, const DataType &,
+                             const Variables &, by_beta<double> const &) {}
+    
+   };
+
+
 
 template <class Parameters, class... saving> class save_mcmc : public observer, public saving... {
     
@@ -702,16 +722,18 @@ public:
         : saving{dir + filename_prefix, 1ul}..., directory_{dir},
         filename_prefix_{filename_prefix} {}
     
+    template<class ...T>
     friend void report(std::size_t iter, save_mcmc &f,
-                       thermo_mcmc<Parameters> const &data) {
-        (report(iter, static_cast<saving &>(f), data), ..., 1);
+                       thermo_mcmc<Parameters> const &data,T&&... ts) {
+        (report(iter, static_cast<saving &>(f), data, std::forward<T>(ts)...), ..., 1);
     }
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_mcmc &s, Prior const &prior, Likelihood const& lik, const DataType &y,
                              const Variables &x, by_beta<double> const &beta0) {
         (report_model(static_cast<saving &>(s), prior, lik, y, x, beta0), ..., 1);
     }
-    friend void report_title(save_mcmc &f, thermo_mcmc<Parameters> const &data) {
+    
+    friend void report_title(save_mcmc &f, thermo_mcmc<Parameters> const &data,...) {
         (report_title(static_cast<saving &>(f), data), ..., 1);
     }
 };

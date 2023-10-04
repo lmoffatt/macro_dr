@@ -191,7 +191,6 @@ int main(int argc, char **argv) {
    */
         auto beta = get_beta_list(n_points_per_decade, stops_at, includes_zero);
         
-        
         /**
    * @brief thermo_jumps_every factor that multiplied by the model size it produces the number of steps skipped until the next thermo jump
    */
@@ -235,8 +234,8 @@ int main(int argc, char **argv) {
             auto opt3 = evidence(std::move(cbc), my_linear_model.prior(),
                                  my_linear_model.likelihood(), y, X);
         }
+        
     }
-    
     
     
     
@@ -284,7 +283,7 @@ int main(int argc, char **argv) {
         
     }
     
-    auto Efilename = "../macro_dr/Moffatt_Hume_2007_ATP_2.txt";
+    auto Efilename = "../macro_dr/Moffatt_Hume_2007_ATP.txt";
     
     auto [recording_conditions,recording] = macrodr::load_recording(Efilename);
     
@@ -310,7 +309,7 @@ int main(int argc, char **argv) {
     });
     
     auto param1=Parameters<Model1>(apply([](auto x){return std::log10(x);},
-                                           Matrix<double>(1,11,std::vector<double>{100,0.05,18,12,6,210,420,630,1680,54,0.5})));
+                                           Matrix<double>(1,11,std::vector<double>{10,1e-4,18,12,6,210,420,630,1680,54,0.5})));
     auto param1Names=std::vector<std::string>{"Num_Chan","noise","k01","k12","k23","k10","k21","k32","k34","k43","conductance"};
     
     auto dparam1=var::selfDerivative(param1);
@@ -329,19 +328,29 @@ int main(int argc, char **argv) {
     //  print(std::cerr,dm);
     //  print(std::cerr,m);
     auto fs = get<Frequency_of_Sampling>(experiment).value();
-    auto dini = macrodr::Macro_DMR{}.init(dm, get<initial_ATP_concentration>(experiment));
-    auto ini = macrodr::Macro_DMR{}.init(m, get<initial_ATP_concentration>(experiment));
+    auto dini = macrodr::Macro_DMR{}.init<return_predictions(false)>(dm, get<initial_ATP_concentration>(experiment));
+    auto ini = macrodr::Macro_DMR{}.init<return_predictions(false)>(m, get<initial_ATP_concentration>(experiment));
     
     auto t_step=get<Recording_conditions>(experiment)()[0];
-    auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(m, get<ATP_concentration>(t_step));
-    auto dt_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
+    auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(m, ATP_concentration(100.0));
+    
+  //  auto dt_Qx = macrodr::Macro_DMR{}.calc_eigen(dm, get<ATP_concentration>(t_step));
     
     
-    //  auto dt_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),
+    // auto dt_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),
     //                                             get<number_of_samples>(t_step).value() / fs);
     
-    auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(dm, dt_Qx.value(),
-                                               get<number_of_samples>(t_step).value() / fs);
+  //  auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),1e-3);
+    if constexpr (false){
+    auto t_Qdt2 = macrodr::Macro_DMR{}.calc_Qdt(m, ATP_step(number_of_samples(50), ATP_concentration(100)),50e3 );
+    auto t_Qdt3 = macrodr::Macro_DMR{}.calc_Qdt(m, std::vector<ATP_step>{
+                                                                         ATP_step(number_of_samples(10), ATP_concentration(100)),ATP_step(number_of_samples(40), ATP_concentration(100))},50e3 );
+    
+    auto test=test_equality(t_Qdt2.value(),t_Qdt3.value(), eps);
+    std::cerr<<test;
+    //std::abort();
+    }
+    
     
     
     std::random_device rd;
@@ -349,12 +358,13 @@ int main(int argc, char **argv) {
     
     std::mt19937_64 mt(seed);
     
+    constexpr bool test_derivative=true;
     
-    if constexpr (false){
+    if constexpr (test_derivative){
         auto number_replicates=100;
         auto outputfilename = "../macro_dr/output";
         
-        std::string algorithm="_MacroRC100_log";
+        std::string algorithm="_changes_MacroRC100_log_N10";
         std::ofstream fo(outputfilename+algorithm+".txt");
         
         Matrix<double> mean_dlogL;
@@ -367,10 +377,11 @@ int main(int argc, char **argv) {
         for (std::size_t i= 0; i<number_replicates; ++i) {
             auto sim = Macro_DMR{}.sample(
                 mt, model1,param1, experiment,
-                Simulation_Parameters(Number_of_simulation_sub_steps(10)));
+                Simulation_Parameters(Number_of_simulation_sub_steps(100ul)));
             auto lik = Macro_DMR{}.log_Likelihood<uses_recursive_aproximation(true),
                                                   uses_averaging_aproximation(2),
-                                                  uses_variance_aproximation(false)>(model1,dparam1, experiment,sim.value()());
+                                                  uses_variance_aproximation(false),
+                                                  return_predictions(false)>(model1,param1, experiment,sim.value()());
             std::cerr<<"\n"<<i<<"th likelihood!!\n"<<lik;
             if (lik)
             {
@@ -384,11 +395,11 @@ int main(int argc, char **argv) {
                 
                 if (i==0)
                 {
-                    fo<<"logL\telogL\tvlogL";
+                    fo<<"logL,elogL,vlogL";
                     for (std::size_t j= 0; j<v_dlogL().size(); ++j)
-                        fo<<"\t"<<"dlogL_d"<<param1Names[j];
-                    for (std::size_t j= 0; j<v_delogL().size(); ++j)
-                        fo<<"\t"<<"delogL_d"<<param1Names[j];
+                        fo<<","<<"dlogL_d"<<param1Names[j];
+                   // for (std::size_t j= 0; j<v_delogL().size(); ++j)
+                   //     fo<<","<<"delogL_d"<<param1Names[j];
                     fo<<"\n";
                     mean_dlogL= Matrix<double>(1,v_delogL().size(),0.0);
                     Cov_dlogL= SymPosDefMatrix<double>(v_delogL().size(),v_delogL().size(),0.0);
@@ -397,13 +408,13 @@ int main(int argc, char **argv) {
                     Cov_edlogL= SymPosDefMatrix<double>(v_delogL().size(),v_delogL().size(),0.0);
                     
                 }
-                fo<<primitive(v_dlogL)()<<"\t";
-                fo<<primitive(v_elogL)<<"\t";
+                fo<<primitive(v_logL)<<",";
+                fo<<primitive(v_elogL)<<",";
                 fo<<primitive(v_vlogL);
                 for (std::size_t j= 0; j<v_dlogL().size(); ++j)
-                    fo<<"\t"<<v_dlogL()[j];
-                for (std::size_t j= 0; j<v_delogL().size(); ++j)
-                    fo<<"\t"<<v_delogL()[j];
+                    fo<<","<<v_dlogL()[j];
+               // for (std::size_t j= 0; j<v_delogL().size(); ++j)
+               //     fo<<"\t"<<v_delogL()[j];
                 fo<<"\n";
                 mean_dlogL=mean_dlogL+v_dlogL();
                 Cov_dlogL=Cov_dlogL+XTX(v_dlogL());
@@ -417,7 +428,7 @@ int main(int argc, char **argv) {
         
         std::cerr<<"\nmean_dlogL\n"<<mean_dlogL<<"\n";
         foa<<"\nmean_dlogL\n"<<mean_dlogL<<"\n";
-        Cov_dlogL=Cov_dlogL*(1.0/number_replicates);//-XTX(mean_dlogL);
+        Cov_dlogL=Cov_dlogL*(1.0/number_replicates)-XTX(mean_dlogL);
         std::cerr<<"\nCov_dlogL\n"<<Cov_dlogL<<"\n";
         foa<<"\nCov_dlogL\n"<<Cov_dlogL<<"\n";
         
@@ -449,14 +460,14 @@ int main(int argc, char **argv) {
     }
     
     
-    constexpr bool thermo_int_by_max_iter=true;
+    constexpr bool thermo_int_by_max_iter=false;
     
     if (thermo_int_by_max_iter) {
         /**
    * @brief myseed defines the random number seed so all runs are identical for debugging purposes
    */
-        auto myseed = 9762841416869310605ul;
-        //  auto myseed = 0;
+       // auto myseed = 9762841416869310605ul;
+          auto myseed = 0;
         
         
         
@@ -490,7 +501,7 @@ int main(int argc, char **argv) {
         /**
    * @brief max_iter maximum number of iterations
    */
-        std::size_t max_iter = 100;
+        std::size_t max_iter = 2000;
         
         /**
    * @brief path directory for the output
@@ -501,7 +512,7 @@ int main(int argc, char **argv) {
         /**
    * @brief thermo_jumps_every factor that multiplied by the model size it produces the number of steps skipped until the next thermo jump
    */
-        std::size_t thermo_jumps_every = param1().size() * 1e0;
+        std::size_t thermo_jumps_every = param1().size() * 10e0;
         
         
         
@@ -514,32 +525,159 @@ int main(int argc, char **argv) {
      * @brief tmi classical thermodynamic algorithm ends by maximum iteration
      */
         auto tmi = thermo_by_max_iter<Parameters<Model1>>(
-            path, "SmallR", num_scouts_per_ensemble, thermo_jumps_every, max_iter,
+            path, "thermo_R_2000", num_scouts_per_ensemble, thermo_jumps_every, max_iter,
             n_points_per_decade, stops_at, includes_zero, myseed);
         
         auto modelLikelihood=make_Likelihood_Model<uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(2),uses_variance_aproximation(false)>(model1,Number_of_simulation_sub_steps(10));
+                                                uses_averaging_aproximation(2),uses_variance_aproximation(false)>(model1,Number_of_simulation_sub_steps(10ul));
         
         auto sim = Macro_DMR{}.sample(
             mt, model1,param1, experiment,
-            Simulation_Parameters(Number_of_simulation_sub_steps(10)));
+            Simulation_Parameters(Number_of_simulation_sub_steps(100)));
         
         if (sim)
         auto opt = evidence(std::move(tmi), param1_prior,
                                 modelLikelihood, sim.value()(), experiment);
    }
-    
+   
+   
+   constexpr bool cuevi_by_max_iter=false;
+   if (cuevi_by_max_iter)
+   {
+        /**
+   * @brief myseed defines the random number seed so all runs are identical for debugging purposes
+   */
+     //   auto myseed = 9762841416869310605ul;
+          auto myseed = 0;
+        
+        
+        
+        myseed = calc_seed(myseed);
+        std::cerr<<"myseed ="<<myseed;
+        
+        
+        
+        /**
+   * @brief num_scouts_per_ensemble number of scouts per ensemble in the affine ensemble mcmc model
+   */
+        std::size_t num_scouts_per_ensemble = 16;
+        
+        /**
+   * @brief n_points_per_decade number of points per 10 times increment in beta thermodynamic parameter
+   */
+        double n_points_per_decade = 3;
+        
+        
+        /**
+   * @brief stops_at minimum value of beta greater than zero
+   */
+        double stops_at = 1e-5;
+        
+        /**
+   * @brief includes_zero considers also beta equal zero
+   */
+        bool includes_zero = true;
+        
+        
+        /**
+   * @brief max_iter maximum number of iterations
+   */
+        std::size_t max_iter = 1000;
+        
+        /**
+   * @brief path directory for the output
+   */
+        std::string path = "";
+        
+        
+        /**
+   * @brief min_fraction fraction of the prior parameter size used as the minimal sample used for the cumulative sequence
+   */
+        double min_fraction = 2;
+        
+        /**
+   * @brief checks_derivative_every_model_size number of steps before every check of the derivative against the beta thermo parameter for stopping
+   */
+        std::size_t checks_derivative_every_model_size = 10;
+        
+        
+        /**
+   * @brief max_ratio maximimum tolerated ratio for the beta derivative method
+   */
+        double max_ratio = 8000e16;
+        
+        /**
+   * @brief n_points_per_decade_fraction number of points per 10 times increment in the number of samples
+   */
+        double n_points_per_decade_fraction = 3;
+        
+        
+        /**
+   * @brief thermo_jumps_every factor that multiplied by the model size it produces the number of steps skipped until the next thermo jump
+   */
+        std::size_t thermo_jumps_every = param1().size() * 1e0;
+        
+        
+        
+        double prior_error=0.2;
+        
+        auto param1_prior=var::prior_around(param1,prior_error);
+        
+        
+        /**
+     * @brief tmi classical thermodynamic algorithm ends by maximum iteration
+     */
+        
+        auto modelLikelihood=make_Likelihood_Model<uses_recursive_aproximation(false),
+                                                     uses_averaging_aproximation(2),uses_variance_aproximation(false)>(model1,Number_of_simulation_sub_steps(10));
+        
+        auto sim = Macro_DMR{}.sample(
+            mt, model1,param1, experiment,
+            Simulation_Parameters(Number_of_simulation_sub_steps(100)));
+        
+        if (sim)
+        {
+        std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1,1,1,1};
+        auto number_of_traces= 7;
+        auto number_of_segments= t_segments.size();
+        t_segments.reserve(number_of_traces*t_segments.size());
+        
+        for (std::size_t i=0; i+1<number_of_traces; ++i)
+                std::copy_n(t_segments.begin(),number_of_segments,std::back_inserter(t_segments));
+        std::cerr<<"t_segments\n"<<t_segments;
+        std::cerr<<"cum t_segments\n"<<var::cumsum(t_segments);
+        
+        
+        std::size_t t_min_number_of_samples = 10;
+        
+        
+        /**
+     * @brief cbc cumulative evidence algorithm, ends using convergence criteria
+     */
+        auto cbc = cuevi_Model_by_iteration<Model1>(
+            path, "noise_error_solved_walker_cuevi_th_NR_100subsamples",t_segments, t_min_number_of_samples,
+                num_scouts_per_ensemble, min_fraction,
+            thermo_jumps_every, max_iter, max_ratio,
+            n_points_per_decade, n_points_per_decade_fraction, stops_at,
+            includes_zero, myseed);
+        
+        auto opt3 = evidence(std::move(cbc), param1_prior,
+                             modelLikelihood, sim.value()(), experiment);
+        }
+        }
+   
     
     if (false){
         auto sim = Macro_DMR{}.sample(
             mt, model1,param1, experiment,
-            Simulation_Parameters(Number_of_simulation_sub_steps(10)));
+            Simulation_Parameters(Number_of_simulation_sub_steps(100)));
         
         auto test_der_Likelihood=var::test_Derivative(
             [&model1,&sim,&experiment](auto const &dparam1){
                 return Macro_DMR{}.log_Likelihood<uses_recursive_aproximation(true),
                                                                                      uses_averaging_aproximation(2),
-                                                                                     uses_variance_aproximation(false)>(model1,dparam1, experiment,sim.value()());},
+                                                                                     uses_variance_aproximation(false),
+                                                                                                  return_predictions(false)>(model1,dparam1, experiment,sim.value()());},
             1,1e-10,dparam1);
         if (!test_der_Likelihood)
         {
