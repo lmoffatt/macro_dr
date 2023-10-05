@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
     });
     
     auto param1=Parameters<Model1>(apply([](auto x){return std::log10(x);},
-                                           Matrix<double>(1,11,std::vector<double>{10,1e-4,18,12,6,210,420,630,1680,54,0.5})));
+                                           Matrix<double>(1,11,std::vector<double>{100,1e-4,18,12,6,210,420,630,1680,54,0.5})));
     auto param1Names=std::vector<std::string>{"Num_Chan","noise","k01","k12","k23","k10","k21","k32","k34","k43","conductance"};
     
     auto dparam1=var::selfDerivative(param1);
@@ -358,13 +358,13 @@ int main(int argc, char **argv) {
     
     std::mt19937_64 mt(seed);
     
-    constexpr bool test_derivative=true;
+    constexpr bool test_derivative=false;
     
     if constexpr (test_derivative){
         auto number_replicates=100;
         auto outputfilename = "../macro_dr/output";
         
-        std::string algorithm="_changes_MacroRC100_log_N10";
+        std::string algorithm="_NaN_MacroRC100_log_N100";
         std::ofstream fo(outputfilename+algorithm+".txt");
         
         Matrix<double> mean_dlogL;
@@ -377,11 +377,11 @@ int main(int argc, char **argv) {
         for (std::size_t i= 0; i<number_replicates; ++i) {
             auto sim = Macro_DMR{}.sample(
                 mt, model1,param1, experiment,
-                Simulation_Parameters(Number_of_simulation_sub_steps(100ul)));
+                Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),recording);
             auto lik = Macro_DMR{}.log_Likelihood<uses_recursive_aproximation(true),
                                                   uses_averaging_aproximation(2),
                                                   uses_variance_aproximation(false),
-                                                  return_predictions(false)>(model1,param1, experiment,sim.value()());
+                                                  return_predictions(false)>(model1,dparam1, experiment,sim.value()());
             std::cerr<<"\n"<<i<<"th likelihood!!\n"<<lik;
             if (lik)
             {
@@ -541,7 +541,7 @@ int main(int argc, char **argv) {
    }
    
    
-   constexpr bool cuevi_by_max_iter=false;
+   constexpr bool cuevi_by_max_iter=true;
    if (cuevi_by_max_iter)
    {
         /**
@@ -571,7 +571,7 @@ int main(int argc, char **argv) {
         /**
    * @brief stops_at minimum value of beta greater than zero
    */
-        double stops_at = 1e-5;
+        double stops_at = 1e-3;
         
         /**
    * @brief includes_zero considers also beta equal zero
@@ -582,7 +582,7 @@ int main(int argc, char **argv) {
         /**
    * @brief max_iter maximum number of iterations
    */
-        std::size_t max_iter = 1000;
+        std::size_t max_iter = 2000;
         
         /**
    * @brief path directory for the output
@@ -619,7 +619,7 @@ int main(int argc, char **argv) {
         
         
         
-        double prior_error=0.2;
+        double prior_error=2;
         
         auto param1_prior=var::prior_around(param1,prior_error);
         
@@ -628,12 +628,12 @@ int main(int argc, char **argv) {
      * @brief tmi classical thermodynamic algorithm ends by maximum iteration
      */
         
-        auto modelLikelihood=make_Likelihood_Model<uses_recursive_aproximation(false),
+        auto modelLikelihood=make_Likelihood_Model<uses_recursive_aproximation(true),
                                                      uses_averaging_aproximation(2),uses_variance_aproximation(false)>(model1,Number_of_simulation_sub_steps(10));
         
         auto sim = Macro_DMR{}.sample(
             mt, model1,param1, experiment,
-            Simulation_Parameters(Number_of_simulation_sub_steps(100)));
+            Simulation_Parameters(Number_of_simulation_sub_steps(100)),recording);
         
         if (sim)
         {
@@ -655,7 +655,7 @@ int main(int argc, char **argv) {
      * @brief cbc cumulative evidence algorithm, ends using convergence criteria
      */
         auto cbc = cuevi_Model_by_iteration<Model1>(
-            path, "noise_error_solved_walker_cuevi_th_NR_100subsamples",t_segments, t_min_number_of_samples,
+            path, "N100_with_NaNsR",t_segments, t_min_number_of_samples,
                 num_scouts_per_ensemble, min_fraction,
             thermo_jumps_every, max_iter, max_ratio,
             n_points_per_decade, n_points_per_decade_fraction, stops_at,
