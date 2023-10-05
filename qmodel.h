@@ -1506,19 +1506,21 @@ public:
                         std::move(r_y_var), plogL(NaN), eplogL(NaN), vplogL(NaN));
                 else{
                     auto& ev=get<Patch_State_Evolution>(t_prior);
+                    r_P_mean=normalize(std::move(r_P_mean), t_min_P());
+                    r_P_cov=normalize(std::move(r_P_cov), t_min_P());
                     ev().push_back(Op_t<Transf, Patch_State>
                                    (Op_t<Transf, logL>(get<logL>(t_prior)()),
                                     Op_t<Transf, elogL>(get<elogL>(t_prior)()),
                                     Op_t<Transf, vlogL>(get<vlogL>(t_prior)()),
-                                    normalize(std::move(r_P_mean), t_min_P()),
-                                    normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
-                                    std::move(r_y_var), plogL(NaN), eplogL(NaN), vplogL(NaN)));
+                                    r_P_mean,
+                                    r_P_cov, r_y_mean,
+                                    r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN)));
                     return  Op_t<Transf, Patch_State_and_Evolution>(
                         Op_t<Transf, logL>(get<logL>(t_prior)()),
                         Op_t<Transf, elogL>(get<elogL>(t_prior)()),
                         Op_t<Transf, vlogL>(get<vlogL>(t_prior)()),
-                        normalize(std::move(r_P_mean), t_min_P()),
-                        normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
+                        std::move(r_P_mean),
+                        std::move(r_P_cov), std::move(r_y_mean),
                         std::move(r_y_var), plogL(NaN), eplogL(NaN), vplogL(NaN),
                         std::move(ev)
                         );
@@ -1845,9 +1847,14 @@ public:
                                            std::size_t n_sub, double fs) {
         auto &N = get<N_channel_state>(t_sim_step);
         
+        //std::cerr<<N();
+        
+        
         auto t_sub_step=Simulated_Sub_Step(get<N_channel_state>(t_sim_step),number_of_samples(0ul),y_sum(0.0));
         
         auto Maybe_t_sub_step=std::visit([this,&mt,&m,n_sub,&t_sub_step,fs](auto const& a){return sub_sub_sample(mt,std::move(t_sub_step),m,a,n_sub,fs);},t_s());
+        
+        
         
         if (!Maybe_t_sub_step)return Maybe_t_sub_step.error();
         else
@@ -1879,10 +1886,21 @@ public:
         return Simulated_Step(std::move(N_state), std::move(sim));
     }
     
+    static Simulated_Recording copy_NaNs(Simulated_Recording&& sim, const Recording& r)
+    {
+            for (std::size_t i=0; i<size(r()); ++i)
+            if (std::isnan(r()[i]()))
+                        sim()()[i]()=r()[i]();
+             
+        
+        return std::move(sim);
+        
+    }
+    
     template <class Model, class Id>
     Maybe_error<Simulated_Recording>
     sample(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
-           const Experiment &e, const Simulation_Parameters &sim) {
+           const Experiment &e, const Simulation_Parameters &sim, const Recording& r=Recording{}) {
         
         auto m = model(par);
         auto n_sub = get<Number_of_simulation_sub_steps>(sim);
@@ -1903,7 +1921,9 @@ public:
             if (!run)
                 return run.error();
             else
-                return get<Simulated_Recording>(run.value());
+            {
+                return copy_NaNs(std::move(get<Simulated_Recording>(run.value())),r);
+            }    
         }
     }
 };
@@ -2354,7 +2374,7 @@ auto cuevi_Model_by_convergence(std::string path, std::string filename,
         checks_derivative_var_ratio<cuevi_mcmc, Parameters<Id>>(max_iter, max_ratio),
         experiment_fractioner(t_segments,t_min_number_of_samples),
         save_mcmc<Parameters<Id>,save_likelihood<Parameters<Id>>, save_Parameter<Parameters<Id>>, save_Evidence, save_Predictions<Parameters<Id>>>(
-            path, filename, 100ul, 100ul, 100ul,10ul),
+            path, filename, 100ul, 100ul, 100ul,100ul),
         num_scouts_per_ensemble, min_fraction, thermo_jumps_every,
         n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
         includes_zero, initseed);
@@ -2374,7 +2394,7 @@ auto cuevi_Model_by_iteration(std::string path, std::string filename,
         less_than_max_iteration(max_iter),
         experiment_fractioner(t_segments,t_min_number_of_samples),
         save_mcmc<Parameters<Id>,save_likelihood<Parameters<Id>>, save_Parameter<Parameters<Id>>, save_Evidence, save_Predictions<Parameters<Id>>>(
-            path, filename, 10ul, 10ul, 10ul,100ul),
+            path, filename, 10ul, 100ul, 10ul,100ul),
         num_scouts_per_ensemble, min_fraction, thermo_jumps_every,
         n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
         includes_zero, initseed);
