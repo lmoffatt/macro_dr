@@ -162,6 +162,8 @@ class N_St : public var::Constant<N_St, std::size_t> {};
 
 class N_Ch_mean : public var::Var<N_Ch_mean, double> {};
 
+class Binomial_magical_number: public var::Constant<Binomial_magical_number,double>{};
+
 class min_P : public var::Constant<min_P, double> {};
 
 class N_Ch_std : public var::Var<N_Ch_std, double> {};
@@ -185,6 +187,10 @@ class W : public var::Var<W, Matrix<double>> {};
 
 class uses_variance_aproximation
     : public var::struct_Var<uses_variance_aproximation, bool> {};
+
+
+class uses_adaptive_aproximation
+    : public var::struct_Var<uses_adaptive_aproximation, bool> {};
 class uses_recursive_aproximation
     : public var::struct_Var<uses_recursive_aproximation, bool> {};
 class uses_averaging_aproximation
@@ -277,7 +283,9 @@ using Qdt =
     Vector_Space<number_of_samples, min_P, P, gmean_i, gtotal_ij, gmean_ij,
                  gtotal_sqr_ij, gsqr_i, gvar_i, gtotal_var_ij, gvar_ij>;
 
-using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, curr_noise, min_P,
+using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, curr_noise,
+                                 Binomial_magical_number, 
+                                 min_P,
                                  Probability_error_tolerance,
                                  Conductance_variance_error_tolerance>;
 
@@ -978,6 +986,16 @@ public:
         return one;
     }
     
+    static bool is_Binomial_Approximation_valid(double N, double p, double q,
+                                                double Np_min)
+    {
+        if (N*p<Np_min)
+            return false;
+        else if (N*q<Np_min)
+            return false;
+        else return true;
+    }
+    
     template <class C_Qn>
         requires(U<C_Qn, Qn> )
     static auto Qn_to_Qdt(const C_Qn& x)
@@ -1208,114 +1226,114 @@ public:
 
   */
     
-//    Maybe_error<Patch_State> DVR(const Patch_State &t_prior, Qdt const &t_Qdt,
-//                                 Patch_Model const &m, const ATP_step &p,
-//                                 const Patch_current &p_y, double fs) const {
-//        //  auto &p_y = get<Patch_current>(p);
-//        auto &p_P_mean = get<P_mean>(t_prior);
-//        auto &p_P_Cov = get<P_Cov>(t_prior);
-        
-//        double e =
-//            get<curr_noise>(m).value() * fs/ get<number_of_samples>(p).value();
-//        double N = get<N_Ch_mean>(m)();
-        
-//        auto N_states = p_P_mean().ncols();
-//        Matrix<double> u(N_states, 1, 1.0);
-        
-//        auto SmD = p_P_Cov() - diag(p_P_mean());
-        
-//        if (std::isnan(p_y.value())) {
-//            auto v_P_cov = P_Cov(AT_B_A(get<P>(t_Qdt)(), SmD));
-//            auto v_P_mean = P_mean(p_P_mean() * get<P>(t_Qdt)());
-//            v_P_cov() = v_P_cov() + diag(v_P_mean());
-            
-//            return Patch_State(
-//                logL(get<logL>(t_prior)()), elogL(get<elogL>(t_prior)()),
-//                vlogL(get<vlogL>(t_prior)()), v_P_mean, v_P_cov, y_mean(NaN),
-//                y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN));
-//            // std::cerr<<"\nPcov nana corr\n"<<P__cov<<"\nP_mean nana
-//            // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
-//            //      auto test = mp_state_information::test(P_mean, P__cov,
-//            //      tolerance_); if (test.has_value())
-//            //        return Op(mp_state_information::adjust(std::move(P_mean),
-//            //                                               std::move(P__cov),
-//            //                                               y_mean, y_var, plogL,
-//            //                                               eplogL,
-//            //                                               vplogL,Q_dt.min_P(), e));
-//            //      else
-//            //        return Op(false, "fails at intertrace prediction!!: " +
-//            //        test.error());
-//        }
-//        double gSg = xtAx(get<gmean_i>(t_Qdt)(), SmD) +
-//                     getvalue(p_P_mean() *
-//                              zip([](auto x, auto y) { return x * y; },
-//                                  get<gtotal_ij>(t_Qdt)(), get<gmean_ij>(t_Qdt)()) *
-//                              u);
-        
-//        double sSg =
-//            xtAy(get<gvar_i>(t_Qdt)(), SmD, get<gmean_i>(t_Qdt)()) +
-//            getvalue(p_P_mean() *
-//                     zip([](auto x, auto y) { return x * y; },
-//                         get<gtotal_var_ij>(t_Qdt)(), get<gmean_ij>(t_Qdt)()) *
-//                     u);
-        
-//        double sSs =
-//            xtAx(get<gvar_i>(t_Qdt)(), SmD) +
-//            getvalue(p_P_mean() *
-//                     zip([](auto x, auto y) { return x * y; },
-//                         get<gtotal_var_ij>(t_Qdt)(), get<gvar_ij>(t_Qdt)()) *
-//                     u);
-        
-//        auto sS = tr(get<gvar_i>(t_Qdt)()) * SmD * get<P>(t_Qdt)() +
-//                  p_P_mean() * get<gtotal_var_ij>(t_Qdt)();
-        
-//        auto gS = tr(get<gmean_i>(t_Qdt)()) * SmD * get<P>(t_Qdt)() +
-//                  p_P_mean() * get<gtotal_ij>(t_Qdt)();
-        
-//        double ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
-        
-//        double delta_emu = std::max(sqr(ms + e / N) - 2.0 / N * sSs, 0.0);
-//        double ms0 = (ms - e / N) / 2 + std::sqrt(delta_emu) / 2;
-        
-//        auto e_mu = e + N * ms0;
-        
-//        auto v_y_mean = y_mean(N * getvalue(p_P_mean() * get<gmean_i>(t_Qdt)()) -
-//                               N * 0.5 / e_mu * sSg);
-        
-//        auto zeta = N / (2 * sqr(e_mu) + N * sSs);
-//        auto v_y_var = y_var(std::max(e_mu + N * gSg - N * zeta * sqr(sSg), e));
-//        auto dy = p_y.value() - v_y_mean();
-        
-//        auto chi = dy / v_y_var();
-        
-//        auto v_P_mean = P_mean(p_P_mean() * get<P>(t_Qdt)() + chi * gS -
-//                               (chi * zeta * sSg + 0.5 / e_mu) * sS);
-        
-//        auto v_P_cov = build<P_Cov>(
-//            AT_B_A(get<P>(t_Qdt)(), SmD) + diagpos(v_P_mean()) -
-//            (zeta + N / v_y_var() * sqr(zeta * sSg)) * XTX(sS) +
-//            (2.0 * N / v_y_var() * zeta * sSg) * X_plus_XT(tr(sS) * gS) -
-//            (N / v_y_var()) * XTX(gS));
-        
-//        auto chi2 = dy * chi;
-        
-//        auto v_plogL = plogL(0.0);
-//        if (v_y_var() > 0)
-//            v_plogL =
-//                plogL(-0.5 * log(2 * std::numbers::pi * v_y_var()) - 0.5 * chi2);
-//        else
-//            v_plogL = plogL(std::numeric_limits<double>::infinity());
-        
-//        auto v_eplogL = eplogL(-0.5 * log(2 * std::numbers::pi * v_y_var()) -
-//                               0.5); // e_mu+N*gSg"-N*zeta*sqr(sSg)"
-//        vplogL v_vplogL(0.5);
-//        // double chilogL=(eplogL-plogL)/std::sqrt(0.5);
-//        std::cerr << get<number_of_samples>(p).value() << "\t" << v_P_mean << "\n";
-//        return Patch_State(logL(get<logL>(t_prior)() + v_plogL()),
-//                           elogL(get<elogL>(t_prior)() + v_eplogL()),
-//                           vlogL(get<vlogL>(t_prior)() + v_vplogL()), v_P_mean,
-//                           v_P_cov, v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
-//    }
+    //    Maybe_error<Patch_State> DVR(const Patch_State &t_prior, Qdt const &t_Qdt,
+    //                                 Patch_Model const &m, const ATP_step &p,
+    //                                 const Patch_current &p_y, double fs) const {
+    //        //  auto &p_y = get<Patch_current>(p);
+    //        auto &p_P_mean = get<P_mean>(t_prior);
+    //        auto &p_P_Cov = get<P_Cov>(t_prior);
+    
+    //        double e =
+    //            get<curr_noise>(m).value() * fs/ get<number_of_samples>(p).value();
+    //        double N = get<N_Ch_mean>(m)();
+    
+    //        auto N_states = p_P_mean().ncols();
+    //        Matrix<double> u(N_states, 1, 1.0);
+    
+    //        auto SmD = p_P_Cov() - diag(p_P_mean());
+    
+    //        if (std::isnan(p_y.value())) {
+    //            auto v_P_cov = P_Cov(AT_B_A(get<P>(t_Qdt)(), SmD));
+    //            auto v_P_mean = P_mean(p_P_mean() * get<P>(t_Qdt)());
+    //            v_P_cov() = v_P_cov() + diag(v_P_mean());
+    
+    //            return Patch_State(
+    //                logL(get<logL>(t_prior)()), elogL(get<elogL>(t_prior)()),
+    //                vlogL(get<vlogL>(t_prior)()), v_P_mean, v_P_cov, y_mean(NaN),
+    //                y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN));
+    //            // std::cerr<<"\nPcov nana corr\n"<<P__cov<<"\nP_mean nana
+    //            // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
+    //            //      auto test = mp_state_information::test(P_mean, P__cov,
+    //            //      tolerance_); if (test.has_value())
+    //            //        return Op(mp_state_information::adjust(std::move(P_mean),
+    //            //                                               std::move(P__cov),
+    //            //                                               y_mean, y_var, plogL,
+    //            //                                               eplogL,
+    //            //                                               vplogL,Q_dt.min_P(), e));
+    //            //      else
+    //            //        return Op(false, "fails at intertrace prediction!!: " +
+    //            //        test.error());
+    //        }
+    //        double gSg = xtAx(get<gmean_i>(t_Qdt)(), SmD) +
+    //                     getvalue(p_P_mean() *
+    //                              zip([](auto x, auto y) { return x * y; },
+    //                                  get<gtotal_ij>(t_Qdt)(), get<gmean_ij>(t_Qdt)()) *
+    //                              u);
+    
+    //        double sSg =
+    //            xtAy(get<gvar_i>(t_Qdt)(), SmD, get<gmean_i>(t_Qdt)()) +
+    //            getvalue(p_P_mean() *
+    //                     zip([](auto x, auto y) { return x * y; },
+    //                         get<gtotal_var_ij>(t_Qdt)(), get<gmean_ij>(t_Qdt)()) *
+    //                     u);
+    
+    //        double sSs =
+    //            xtAx(get<gvar_i>(t_Qdt)(), SmD) +
+    //            getvalue(p_P_mean() *
+    //                     zip([](auto x, auto y) { return x * y; },
+    //                         get<gtotal_var_ij>(t_Qdt)(), get<gvar_ij>(t_Qdt)()) *
+    //                     u);
+    
+    //        auto sS = tr(get<gvar_i>(t_Qdt)()) * SmD * get<P>(t_Qdt)() +
+    //                  p_P_mean() * get<gtotal_var_ij>(t_Qdt)();
+    
+    //        auto gS = tr(get<gmean_i>(t_Qdt)()) * SmD * get<P>(t_Qdt)() +
+    //                  p_P_mean() * get<gtotal_ij>(t_Qdt)();
+    
+    //        double ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
+    
+    //        double delta_emu = std::max(sqr(ms + e / N) - 2.0 / N * sSs, 0.0);
+    //        double ms0 = (ms - e / N) / 2 + std::sqrt(delta_emu) / 2;
+    
+    //        auto e_mu = e + N * ms0;
+    
+    //        auto v_y_mean = y_mean(N * getvalue(p_P_mean() * get<gmean_i>(t_Qdt)()) -
+    //                               N * 0.5 / e_mu * sSg);
+    
+    //        auto zeta = N / (2 * sqr(e_mu) + N * sSs);
+    //        auto v_y_var = y_var(std::max(e_mu + N * gSg - N * zeta * sqr(sSg), e));
+    //        auto dy = p_y.value() - v_y_mean();
+    
+    //        auto chi = dy / v_y_var();
+    
+    //        auto v_P_mean = P_mean(p_P_mean() * get<P>(t_Qdt)() + chi * gS -
+    //                               (chi * zeta * sSg + 0.5 / e_mu) * sS);
+    
+    //        auto v_P_cov = build<P_Cov>(
+    //            AT_B_A(get<P>(t_Qdt)(), SmD) + diagpos(v_P_mean()) -
+    //            (zeta + N / v_y_var() * sqr(zeta * sSg)) * XTX(sS) +
+    //            (2.0 * N / v_y_var() * zeta * sSg) * X_plus_XT(tr(sS) * gS) -
+    //            (N / v_y_var()) * XTX(gS));
+    
+    //        auto chi2 = dy * chi;
+    
+    //        auto v_plogL = plogL(0.0);
+    //        if (v_y_var() > 0)
+    //            v_plogL =
+    //                plogL(-0.5 * log(2 * std::numbers::pi * v_y_var()) - 0.5 * chi2);
+    //        else
+    //            v_plogL = plogL(std::numeric_limits<double>::infinity());
+    
+    //        auto v_eplogL = eplogL(-0.5 * log(2 * std::numbers::pi * v_y_var()) -
+    //                               0.5); // e_mu+N*gSg"-N*zeta*sqr(sSg)"
+    //        vplogL v_vplogL(0.5);
+    //        // double chilogL=(eplogL-plogL)/std::sqrt(0.5);
+    //        std::cerr << get<number_of_samples>(p).value() << "\t" << v_P_mean << "\n";
+    //        return Patch_State(logL(get<logL>(t_prior)() + v_plogL()),
+    //                           elogL(get<elogL>(t_prior)() + v_eplogL()),
+    //                           vlogL(get<vlogL>(t_prior)() + v_vplogL()), v_P_mean,
+    //                           v_P_cov, v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
+    //    }
     
     template <uses_recursive_aproximation recursive,
              uses_averaging_aproximation averaging,
@@ -1377,9 +1395,9 @@ public:
         Op_t<Transf, y_mean> r_y_mean;
         Op_t<Transf, y_var> r_y_var;
         
-        double sSg;
-        double sSs;
-        double zeta;
+        Op_t<Transf, double> sSg;
+        Op_t<Transf, double> sSs;
+        Op_t<Transf, double> zeta;
         auto t_P = get<P>(t_Qdt);
         
         if constexpr ((!variance.value) && (!recursive.value)) {
@@ -1455,15 +1473,15 @@ public:
                 getvalue(TranspMult(t_gvar_i(), SmD) * t_gvar_i()) +
                 getvalue(p_P_mean() * (elemMult(t_gtotal_var_ij(), t_gvar_ij()) * u));
             
-            auto delta_emu = std::max(sqr(ms + e / N) - 2.0 / N * sSs, 0.0);
+            auto delta_emu = var::max(sqr(ms + e / N) - 2.0 / N * sSs, 0.0);
             auto ms0 = (ms - e / N) / 2 + std::sqrt(delta_emu) / 2;
             
             e_mu = e + N * ms0;
             r_y_mean() =
                 N * getvalue(p_P_mean() * t_gmean_i()) - N * 0.5 / e_mu * sSg;
             zeta = N / (2 * sqr(e_mu) + N * sSs);
-            r_y_var() = std::max(e, e+ N * ms0 + N * gSg - N * zeta * sqr(sSg));
-            if (!(r_y_var() > 0)) {
+            r_y_var() = var::max(e, e+ N * ms0 + N * gSg - N * zeta * sqr(sSg));
+            if (!(primitive(r_y_var()) > 0)) {
                 std::stringstream ss;
                 ss << "Negative variance!!\n";
                 ss << "\nr_y_var=\t" << r_y_var;
@@ -1495,7 +1513,7 @@ public:
             // std::cerr<<"\nPcov nana corr\n"<<P__cov<<"\nP_mean nana
             // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
             auto r_test = test<true>(r_P_mean, r_P_cov, t_tolerance);
-            if (r_test)
+            if constexpr (true || r_test)
                 if constexpr (U<C_Patch_State,Patch_State>)
                     return Op_t<Transf, Patch_State>(
                         Op_t<Transf, logL>(get<logL>(t_prior)()),
@@ -1631,16 +1649,16 @@ public:
                         normalize(std::move(r_P_mean), t_min_P()),
                         normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
                         std::move(r_y_var), r_plogL, r_eplogL, r_vlogL);
-            else{
+                else{
                     auto& ev=get<Patch_State_Evolution>(t_prior);
                     r_P_mean=normalize(std::move(r_P_mean), t_min_P());
                     r_P_cov=normalize(std::move(r_P_cov), t_min_P());
                     ev().push_back(build<Patch_State>(build<logL>(get<logL>(t_prior)() + r_plogL()),
-                                                              build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
-                                                              build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()),
-                                                              r_P_mean,
-                                                              r_P_cov,r_y_mean,
-                                                             r_y_var, r_plogL, r_eplogL, r_vlogL));
+                                                      build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
+                                                      build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()),
+                                                      r_P_mean,
+                                                      r_P_cov,r_y_mean,
+                                                      r_y_var, r_plogL, r_eplogL, r_vlogL));
                     return build<Patch_State_and_Evolution>(
                         build<logL>(get<logL>(t_prior)() + r_plogL()),
                         build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
@@ -1648,7 +1666,7 @@ public:
                         std::move(r_P_mean),
                         std::move(r_P_cov), std::move(r_y_mean),
                         std::move(r_y_var), r_plogL, r_eplogL, r_vlogL,std::move(ev));
-            }
+                }
         
     }
     
@@ -1693,7 +1711,8 @@ public:
             return v_Qx.error();
     }
     
-    template <uses_recursive_aproximation recursive,
+    template <uses_adaptive_aproximation adaptive,
+             uses_recursive_aproximation recursive,
              uses_averaging_aproximation averaging,
              uses_variance_aproximation variance,
              return_predictions predictions,
@@ -1765,7 +1784,8 @@ public:
                             auto test_der_Macror = var::test_Derivative(
                                 [this, &t_step, &fs](auto const &l_m, auto const &l_prior,
                                                      auto const &l_Qdt) {
-                                    return Macror<uses_recursive_aproximation(false),
+                                    return Macror<uses_adaptive_aproximation(false),
+                                                  uses_recursive_aproximation(false),
                                                   uses_averaging_aproximation(1),
                                                   uses_variance_aproximation(false)>(
                                         l_prior, l_Qdt, l_m, fs);
@@ -1785,9 +1805,28 @@ public:
                             std::cerr << "\nlogL\n" << get<logL>(t_prior);
                             std::cerr << "\nt_step\n" << t_step << "\n";
                         }
-                        
-                        return Macror<recursive, averaging, variance>(
-                            std::move(t_prior), t_Qdt, m, y()[i_step], fs);
+                        if constexpr(!adaptive.value)
+                            return Macror<recursive, averaging, variance>(
+                                std::move(t_prior), t_Qdt, m, y()[i_step], fs);
+                                else{
+                                double mg = getvalue(primitive(get<P_mean>(t_prior)()) * primitive(get<gmean_i>(t_Qdt)()));
+                                double g_max = var::max(get<gmean_i>(primitive(t_Qdt))());
+                                double g_min = var::min(get<gmean_i>(primitive(t_Qdt))());
+                                double g_range = g_max - g_min;
+                                auto N = get<N_Ch_mean>(primitive(m))();
+                                auto p_bi = (g_max - mg) / g_range;
+                                auto q_bi = (mg - g_min) / g_range;
+                                bool test_Binomial =is_Binomial_Approximation_valid(
+                                    N, p_bi, q_bi, get<Binomial_magical_number>(m)());
+                                if (test_Binomial) {
+                                    return Macror<recursive, averaging, variance>(
+                                        std::move(t_prior), t_Qdt, m, y()[i_step], fs);
+                                }
+                                else
+                                {    return Macror<uses_recursive_aproximation(false), averaging, uses_variance_aproximation(false)>(
+                                        std::move(t_prior), t_Qdt, m, y()[i_step], fs);
+                                }
+                            }
                     }});
             if (!run)
                 return run.error();
@@ -1888,10 +1927,10 @@ public:
     
     static Simulated_Recording copy_NaNs(Simulated_Recording&& sim, const Recording& r)
     {
-            for (std::size_t i=0; i<size(r()); ++i)
+        for (std::size_t i=0; i<size(r()); ++i)
             if (std::isnan(r()[i]()))
-                        sim()()[i]()=r()[i]();
-             
+                sim()()[i]()=r()[i]();
+        
         
         return std::move(sim);
         
@@ -1930,7 +1969,8 @@ public:
 
 struct Model1 : public Model_Patch<Model1> {};
 
-template <uses_recursive_aproximation recursive,
+template <uses_adaptive_aproximation adaptive,
+         uses_recursive_aproximation recursive,
          uses_averaging_aproximation averaging,
          uses_variance_aproximation variance, class Model>
 struct Likelihood_Model {
@@ -1940,21 +1980,23 @@ struct Likelihood_Model {
         : m{model}, number_of_simulation_sub_steps{n} {}
 };
 
-template <uses_recursive_aproximation recursive,
+template <uses_adaptive_aproximation adaptive,
+         uses_recursive_aproximation recursive,
          uses_averaging_aproximation averaging,
          uses_variance_aproximation variance, class Model>
 auto make_Likelihood_Model(const Model &m, Number_of_simulation_sub_steps n) {
-    return Likelihood_Model<recursive, averaging, variance, Model>(m, n);
+    return Likelihood_Model<adaptive,recursive, averaging, variance, Model>(m, n);
 }
 
-template <uses_recursive_aproximation recursive,
+template <uses_adaptive_aproximation adaptive,
+         uses_recursive_aproximation recursive,
          uses_averaging_aproximation averaging,
          uses_variance_aproximation variance, class Model, class Parameters,
          class Variables, class DataType>
 Maybe_error<double> logLikelihood(
-    const Likelihood_Model<recursive, averaging, variance, Model> &lik,
+    const Likelihood_Model<adaptive,recursive, averaging, variance, Model> &lik,
     Parameters const &p, const Variables &var, const DataType &y) {
-    auto v_logL = Macro_DMR{}.log_Likelihood<recursive, averaging, variance,return_predictions(false)>(
+    auto v_logL = Macro_DMR{}.log_Likelihood<adaptive,recursive, averaging, variance,return_predictions(false)>(
         lik.m, p, y, var);
     if (!v_logL)
         return v_logL.error();
@@ -1962,14 +2004,15 @@ Maybe_error<double> logLikelihood(
         return get<logL>(v_logL.value())();
 }
 
-template <uses_recursive_aproximation recursive,
+template <uses_adaptive_aproximation adaptive,
+         uses_recursive_aproximation recursive,
          uses_averaging_aproximation averaging,
          uses_variance_aproximation variance, class Model, class Parameters,
          class Variables, class DataType>
 Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
-    const Likelihood_Model<recursive, averaging, variance, Model> &lik,
+    const Likelihood_Model<adaptive,recursive, averaging, variance, Model> &lik,
     Parameters const &p, const Variables &var, const DataType &y) {
-    return  Macro_DMR{}.log_Likelihood<recursive, averaging, variance,return_predictions(true)>(
+    return  Macro_DMR{}.log_Likelihood<adaptive,recursive, averaging, variance,return_predictions(true)>(
         lik.m, p, y, var);
 }
 
@@ -2033,13 +2076,14 @@ inline ATP_evolution average_ATP_step(std::vector<ATP_step>const & x)
 inline ATP_evolution average_ATP_step(ATP_evolution const & x){return x;}
 
 
-template <uses_recursive_aproximation recursive,
+template <uses_adaptive_aproximation adaptive,
+         uses_recursive_aproximation recursive,
          uses_averaging_aproximation averaging,
          uses_variance_aproximation variance, class Model, class Parameters,
          class Variables>
 auto simulate(
     std::mt19937_64 &mt,
-    const Likelihood_Model<recursive, averaging, variance, Model> &lik,
+    const Likelihood_Model<adaptive,recursive, averaging, variance, Model> &lik,
     Parameters const &p, const Variables &var) {
     return Macro_DMR{}
         .sample(mt, lik.m, p, var, lik.number_of_simulation_sub_steps)
@@ -2273,6 +2317,10 @@ void report_title(save_Predictions<Parameters<Id>> &s, thermo_mcmc<Parameters<Id
         << "pelogL"
         << "\n";
 }
+
+void report_title(save_Predictions<Matrix<double>> &s, thermo_mcmc<Matrix<double>> const &,...) {
+}
+
 template<class Id>
 void report(std::size_t iter, save_Predictions<Parameters<Id>> &s,
             thermo_mcmc<Parameters<Id>> const &data,...) {
@@ -2290,7 +2338,7 @@ void report(std::size_t iter, save_Predictions<Parameters<Id>> &s,
 inline std::string ToString(const ATP_step& ev)
 {
     return std::to_string(get<number_of_samples>(ev)())+"  "+ std::to_string(get<ATP_concentration>(ev)());
- }
+}
 
 inline std::string ToString(const std::vector<ATP_step>& ev)
 {
@@ -2305,7 +2353,7 @@ inline std::string ToString(const std::vector<ATP_step>& ev)
 
 
 inline std::string ToString(const ATP_evolution& ev)
- {
+{
     return std::visit([](auto const& a){ return ToString(a);},ev());
     
 }
@@ -2399,6 +2447,23 @@ auto cuevi_Model_by_iteration(std::string path, std::string filename,
         n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
         includes_zero, initseed);
 }
+
+
+template<class Id>
+auto thermo_Model_by_max_iter(std::string path, std::string filename,
+                              std::size_t num_scouts_per_ensemble,
+                              std::size_t max_num_simultaneous_temperatures,
+                              std::size_t thermo_jumps_every, std::size_t max_iter,
+                              double n_points_per_decade, double stops_at,
+                              bool includes_zero, std::size_t initseed) {
+    return thermodynamic_integration(less_than_max_iteration(max_iter),
+                                     save_mcmc<Parameters<Id>,save_likelihood<Parameters<Id>>, save_Parameter<Parameters<Id>>, save_Evidence, save_Predictions<Parameters<Id>>>(
+                                         path, filename, 10ul, 10ul, 10ul,100ul),
+                                     num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+                                     thermo_jumps_every,
+                                     n_points_per_decade, stops_at, includes_zero, initseed);
+}
+
 
 
 } // namespace macrodr

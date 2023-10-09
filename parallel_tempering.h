@@ -370,6 +370,8 @@ public:
             return std::pair(std::move(c), false);
         }
     }
+    
+    void reset(){current_iteration_=0;}
 };
 //static_assert(is_Algorithm_conditions<less_than_max_iteration, thermo_mcmc>);
 
@@ -438,6 +440,8 @@ public:
             return std::pair(std::move(c), false);
         }
     }
+    
+    void reset(){}
 };
 //static_assert(is_Algorithm_conditions<checks_derivative_var_ratio<thermo_mcmc>,
 //                                      thermo_mcmc>);

@@ -48,6 +48,16 @@ auto max(is_Container auto const& c)
     return out; 
 }
 
+auto min(is_Container auto const& c)
+{
+    using T=std::decay_t<decltype(c[0])>;
+    using std::numeric_limits;
+    auto out=numeric_limits<T>::max();
+    for (std::size_t i=0; i<c.size(); ++i)
+        if (out>c[i])
+            out=c[i];
+    return out; 
+}
 
 
 auto count_nan(is_Container auto const& c)
