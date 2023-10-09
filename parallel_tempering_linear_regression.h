@@ -81,6 +81,7 @@ class thermo{
     Algorithm alg;
     Reporter rep;
     std::size_t num_scouts_per_ensemble;
+    std::size_t max_num_simultaneous_temperatures;
     std::size_t thermo_jumps_every;
     double n_points_per_decade;
     double stops_at;
@@ -101,6 +102,7 @@ class thermo{
         auto beta = get_beta_list(n_points_per_decade, stops_at, includes_zero);
         
         auto beta_run = by_beta<double>(beta.rend() - 2, beta.rend());
+       
         auto current = init_thermo_mcmc(n_walkers, beta_run, mts, prior, lik, y, x);
         auto n_par = current.walkers[0][0].parameter.size();
         auto mcmc_run = checks_convergence(std::move(a), current);
@@ -117,9 +119,13 @@ class thermo{
                 mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
             }
             if (beta_run.size() < beta.size()) {
+                if (beta_run.size()<max_num_simultaneous_temperatures){
                 beta_run.insert(beta_run.begin(), beta[beta_run.size()]);
                 current = push_back_new_beta(iter, current, mts, beta_run, prior, lik, y, x);
+                }
+                
                 std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
+                reset(mcmc_run.first);
                 mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
             }
         }
@@ -139,6 +145,7 @@ template <class Algorithm, class Prior, class Likelihood, class Variables, class
 auto thermo_impl(const Algorithm &alg, Prior const &prior, Likelihood const& lik, const DataType &y,
                  const Variables &x, Reporter rep,
                  std::size_t num_scouts_per_ensemble,
+                 std::size_t max_num_simultaneous_temperatures,
                  std::size_t thermo_jumps_every, double n_points_per_decade,
                  double stops_at, bool includes_zero, std::size_t initseed) {
     
@@ -183,6 +190,7 @@ class thermodynamic_integration{
     Algorithm alg_;
     Reporter rep_;
     std::size_t num_scouts_per_ensemble_;
+    std::size_t max_num_simultaneous_temperatures_;
     std::size_t thermo_jumps_every_;
     double n_points_per_decade_;
     double stops_at_;
@@ -192,15 +200,18 @@ public:
     
     thermodynamic_integration(Algorithm &&alg,  Reporter&& rep,
                               std::size_t num_scouts_per_ensemble,
+                              std::size_t max_num_simultaneous_temperatures,
                               std::size_t thermo_jumps_every, double n_points_per_decade,
                               double stops_at, bool includes_zero, std::size_t initseed)
         :
-        alg_{std::move(alg)},rep_{std::move(rep)},num_scouts_per_ensemble_{num_scouts_per_ensemble},thermo_jumps_every_{thermo_jumps_every},
+        alg_{std::move(alg)},rep_{std::move(rep)},num_scouts_per_ensemble_{num_scouts_per_ensemble},
+        max_num_simultaneous_temperatures_{max_num_simultaneous_temperatures},thermo_jumps_every_{thermo_jumps_every},
         n_points_per_decade_{n_points_per_decade},stops_at_{stops_at},includes_zero_{includes_zero},initseed_{initseed}{}
     
     auto& algorithm()const {return alg_;}
     auto& reporter()  {return rep_;}
     auto& num_scouts_per_ensemble()const {return num_scouts_per_ensemble_;}
+    auto& max_num_simultaneous_temperatures()const {return max_num_simultaneous_temperatures_;}
     auto& thermo_jumps_every()const {return thermo_jumps_every_;}
     auto& n_points_per_decade()const {return n_points_per_decade_;}
     auto& stops_at()const {return stops_at_;}
@@ -225,7 +236,10 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
     auto mts = init_mts(mt, therm.num_scouts_per_ensemble() / 2);
     auto beta = get_beta_list(therm.n_points_per_decade(), therm.stops_at(), therm.includes_zero());
     
-    auto beta_run = by_beta<double>(beta.rend() - 2, beta.rend());
+    auto it_beta_run_begin=beta.rend()-2;
+    auto it_beta_run_end=beta.rend();
+    auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
+    
     auto current = init_thermo_mcmc(n_walkers, beta_run, mts, prior, lik, y, x);
     //auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
@@ -234,7 +248,7 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
     report_title(rep, current, lik, y, x);
     report_model(rep, prior, lik, y, x, beta);
     
-    while (beta_run.size() < beta.size() || !mcmc_run.second) {
+    while (it_beta_run_begin!=beta.rbegin() || !mcmc_run.second) {
         while (!mcmc_run.second) {
             step_stretch_thermo_mcmc(iter, current, rep, beta_run, mts, prior, lik, y, x);
             thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
@@ -242,10 +256,21 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
             report(iter, rep, current);
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
-        if (beta_run.size() < beta.size()) {
-            beta_run.insert(beta_run.begin(), beta[beta_run.size()]);
-            current = push_back_new_beta(iter, current, mts, beta_run, prior, lik, y, x);
+        if (it_beta_run_begin!=beta.rbegin()) {
+            --it_beta_run_begin;
+            if (beta_run.size()<therm.max_num_simultaneous_temperatures())
+            {
+                beta_run= by_beta<double>(it_beta_run_begin,it_beta_run_end);
+                current = push_back_new_beta(iter, current, mts, beta_run, prior, lik, y, x);
+            }
+            else
+            {
+                --it_beta_run_end;
+                beta_run= by_beta<double>(it_beta_run_begin,it_beta_run_end);
+                current.beta=beta_run;
+            }
             std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
+            mcmc_run.first.reset();
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
     }
@@ -261,6 +286,7 @@ class thermo_max {
     std::string path_;
     std::string filename_;
     std::size_t num_scouts_per_ensemble_;
+    std::size_t max_num_simultaneous_temperatures_;
     std::size_t thermo_jumps_every_;
     std::size_t max_iter_;
     double n_points_per_decade_;
@@ -271,9 +297,12 @@ class thermo_max {
 public:
     thermo_max(std::string path, std::string filename,
                std::size_t num_scouts_per_ensemble,
+               std::size_t max_num_simultaneous_temperatures,
+
                std::size_t thermo_jumps_every, std::size_t max_iter,
                double n_points_per_decade, double stops_at, bool includes_zero,
                std::size_t initseed):path_{path},filename_{filename},num_scouts_per_ensemble_{num_scouts_per_ensemble},
+        max_num_simultaneous_temperatures_{max_num_simultaneous_temperatures},
         thermo_jumps_every_{thermo_jumps_every},max_iter_{max_iter},n_points_per_decade_{n_points_per_decade},
         stops_at_{stops_at},includes_zero_{includes_zero}, initseed_{initseed}{}
     
@@ -286,7 +315,7 @@ public:
             less_than_max_iteration(max_iter_), prior, lik, y, x,
             save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
                 path_, filename_, 10ul, 10ul, 10ul),
-            num_scouts_per_ensemble_, thermo_jumps_every_, n_points_per_decade_,
+            num_scouts_per_ensemble_, max_num_simultaneous_temperatures_,thermo_jumps_every_, n_points_per_decade_,
             stops_at_, includes_zero_, initseed_);
     }
 };
@@ -298,13 +327,14 @@ template <class Prior, class Likelihood, class Variables, class DataType,
 auto thermo_max_iter(const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
                      std::string path, std::string filename,
                      std::size_t num_scouts_per_ensemble,
+                     std::size_t max_num_simultaneous_temperatures,
                      std::size_t thermo_jumps_every, std::size_t max_iter,
                      double n_points_per_decade, double stops_at,
                      bool includes_zero, std::size_t initseed) {
     return thermo_impl(less_than_max_iteration(max_iter), prior, lik, y, x,
-                       save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
-                           path, filename, 10ul, 10ul, 10ul),
-                       num_scouts_per_ensemble, thermo_jumps_every,
+                       save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence, save_Predictions<Parameters>>(
+                           path, filename, 10ul, 10ul, 10ul, 100ul),
+                       num_scouts_per_ensemble, max_num_simultaneous_temperatures,thermo_jumps_every,
                        n_points_per_decade, stops_at, includes_zero, initseed);
 }
 
@@ -313,13 +343,15 @@ auto thermo_max_iter(const Prior& prior, const Likelihood& lik, const DataType &
 template<class Parameters>
 auto thermo_by_max_iter(std::string path, std::string filename,
                         std::size_t num_scouts_per_ensemble,
+                        std::size_t max_num_simultaneous_temperatures,
                         std::size_t thermo_jumps_every, std::size_t max_iter,
                         double n_points_per_decade, double stops_at,
                         bool includes_zero, std::size_t initseed) {
     return thermodynamic_integration(less_than_max_iteration(max_iter),
                                      save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
                                          path, filename, 10ul, 10ul, 10ul),
-                                     num_scouts_per_ensemble, thermo_jumps_every,
+                                     num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+                                     thermo_jumps_every,
                                      n_points_per_decade, stops_at, includes_zero, initseed);
 }
 
@@ -333,6 +365,7 @@ template <class Prior, class Likelihood, class Variables, class DataType,
 auto thermo_convergence(const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
                         std::string path, std::string filename,
                         std::size_t num_scouts_per_ensemble,
+                        std::size_t max_num_simultaneous_temperatures,
                         std::size_t thermo_jumps_every, std::size_t max_iter,
                         double n_points_per_decade, double stops_at,
                         bool includes_zero, std::size_t initseed) {
@@ -341,7 +374,8 @@ auto thermo_convergence(const Prior& prior, const Likelihood& lik, const DataTyp
         y, x,
         save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
             path, filename, 10ul, 100ul, 10ul),
-        num_scouts_per_ensemble, thermo_jumps_every, n_points_per_decade,
+        num_scouts_per_ensemble,max_num_simultaneous_temperatures,
+thermo_jumps_every, n_points_per_decade,
         stops_at, includes_zero, initseed);
 }
 
@@ -349,6 +383,7 @@ auto thermo_convergence(const Prior& prior, const Likelihood& lik, const DataTyp
 template<class Parameters>
 auto thermo_by_convergence(std::string path, std::string filename,
                            std::size_t num_scouts_per_ensemble,
+                           std::size_t max_num_simultaneous_temperatures,
                            std::size_t thermo_jumps_every, std::size_t max_iter,
                            double n_points_per_decade, double stops_at,
                            bool includes_zero, std::size_t initseed) {
@@ -356,7 +391,8 @@ auto thermo_by_convergence(std::string path, std::string filename,
         checks_derivative_var_ratio<thermo_mcmc, Parameters>(max_iter ),
         save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
             path, filename, 10ul, 100ul, 10ul),
-        num_scouts_per_ensemble, thermo_jumps_every, n_points_per_decade,
+        num_scouts_per_ensemble,max_num_simultaneous_temperatures,
+thermo_jumps_every, n_points_per_decade,
         stops_at, includes_zero, initseed);
 }
 

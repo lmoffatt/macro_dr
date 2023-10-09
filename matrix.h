@@ -413,7 +413,12 @@ public:
   
   
   friend auto operator-(const Matrix &a, const Matrix &b) {
-    return zip([](auto x, auto y) { return x - y; }, a, b);
+    if (a.size()==0)
+      return b*(-1.0);
+    else if (b.size()==0)
+      return a;
+    else
+       return zip([](auto x, auto y) { return x - y; }, a, b);
   }
   
   template<class F>
@@ -1043,7 +1048,12 @@ public:
   template<class S>
       requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
   friend auto operator+(const SymPosDefMatrix &a, const SymPosDefMatrix<S> &b) {
-    return SymPosDefMatrix(zip([](auto x, auto y) { return x + y; }, a, b));
+    if (a.size()==0)
+      return b;
+    else if(b.size()==0)
+      return a;
+    else
+      return SymPosDefMatrix(zip([](auto x, auto y) { return x + y; }, a, b));
   }
   
   template<class S>
@@ -1574,6 +1584,9 @@ template <class T> auto XXT(const DiagonalMatrix<T> &a) {
 }
 
 auto XTX(const Matrix<double> &a) {
+  if (a.size()==0)
+    return SymPosDefMatrix<double>{};
+  else
   return lapack::Lapack_Product_Self_Transpose(a, true);
 }
 
