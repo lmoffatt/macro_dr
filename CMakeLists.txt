@@ -54,7 +54,7 @@ add_executable(macro_dr main.cpp
     parameters_distribution.h
     general_algorithm_on_containers.h
     general_output_operator.h
-#    tst_untyped_grammar.cpp
+    allosteric_models.h
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
 

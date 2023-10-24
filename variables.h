@@ -88,6 +88,7 @@ public:
     
     friend Id  operator-(const Var& one, const Var& two){return Id(one()-two());}
     
+    friend bool operator<(const Var& one,const Var& two){ return one.value()<two.value();}
     friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
     friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
 };
@@ -117,6 +118,7 @@ public:
     constexpr Constant(){}
     constexpr auto& value()const {return m_x;}
     friend auto& print(std::ostream& os, const Constant& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    friend bool operator<(const Constant& one,const Constant& two){ return one.value()<two.value();}
     
     friend auto& operator<<(std::ostream& os, const Constant& x){ os<<x.value(); return os;}
     friend auto& put(std::ostream& os, const Constant& x){ os<<x.value()<<"\t"; return os;}
@@ -183,8 +185,7 @@ class Vector_Space: public Vars...
     {
         return false;
     }
-    
-    template<class V0,class... Vs>
+    template<class V0,class V2,class... Vs>
     static bool islessthan(const Vector_Space& a,const Vector_Space& b)
     {
         if (static_cast<V0 const&>(a).value()<static_cast<V0 const&>(b).value())
@@ -192,8 +193,21 @@ class Vector_Space: public Vars...
             return true;
         } else if (static_cast<V0 const&>(b).value() < static_cast<V0 const&>(a).value())
         {
-                return false;}
-        else return islessthan<Vs...>(a,b);
+            return false;
+        }
+        else return islessthan<V2,Vs...>(a,b);
+    }
+    template<class V0>
+    static bool islessthan(const Vector_Space& a,const Vector_Space& b)
+    {
+        if (static_cast<V0 const&>(a).value()<static_cast<V0 const&>(b).value())
+        {
+            return true;
+        } else if (static_cast<V0 const&>(b).value() < static_cast<V0 const&>(a).value())
+        {
+                return false;
+        }
+        else return islessthan(a,b);
     }
     
 public:
