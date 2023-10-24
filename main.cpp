@@ -13,8 +13,8 @@
 #include <iostream>
 #include <map>
 
-
 #include "qmodel.h"
+#include "allosteric_models.h"
 using namespace macrodr;
 
 
