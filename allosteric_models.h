@@ -14,11 +14,14 @@ struct Agonist_dependency: public Constant<Agonist_dependency, std::optional<Ago
 
 struct Agonist_dependency_map: public Constant<Agonist_dependency_map, std::map<Conformational_change_label,Agonist_dependency>>{};
 
-struct Conformational_change: public Constant<Conformational_change,Vector_Space<Conformational_change_label,Agonist_dependency>>{};
+
+struct Conformational_change: public Constant<Conformational_change,                                                Vector_Space<Conformational_change_label,Agonist_dependency>>{};
 
 struct Conformational_change_domain_state: public Constant<Conformational_change_domain_state, bool>{};
 
 struct Conformational_change_state_vector: public Constant<Conformational_change_state_vector, std::vector<Conformational_change_domain_state>>{};
+
+struct Conductance_interaction_label: public Constant<Conductance_interaction_label,std::string>{};
 
 
 struct Conformational_change_scheme: public Constant<Conformational_change_scheme,std::vector<Conformational_change>>{};
@@ -28,6 +31,11 @@ struct Conformational_position: public Constant<Conformational_position, std::si
 
 struct Conformational_interaction_positions: public Constant<Conformational_interaction_positions, std::vector<std::vector<Conformational_position>>>{};
 
+struct Conductance_interaction_positions: public Constant<Conductance_interaction_positions, std::vector<std::vector<Conformational_position>>>{};
+struct Conductance_interaction_players: public Constant<Conductance_interaction_players,
+                                                            std::vector<Conformational_change_label>>{};
+
+
 struct Conformational_interaction_label: public Constant<Conformational_interaction_label,
                                                             std::string>{};
 
@@ -36,11 +44,28 @@ struct Conformational_interaction_players: public Constant<Conformational_intera
                                                             std::vector<Conformational_change_label>>{};
 
 struct Conformational_interaction: public Constant<Conformational_interaction,
-                                                    Vector_Space<Conformational_interaction_label,Conformational_interaction_players,Conformational_interaction_positions>>{};
+                                                    Vector_Space<Conformational_interaction_label,
+                                                                 Conformational_interaction_players,
+                                                                 Conformational_interaction_positions>>{};
+
+
+struct Conductance_interaction: public Constant<Conductance_interaction,
+                                                    Vector_Space<Conductance_interaction_label,
+                                                                 Conductance_interaction_players,
+                                                                 Conductance_interaction_positions>>{};
+
+
 
 struct Conformational_interaction_scheme: public Constant<Conformational_interaction_scheme,std::vector<Conformational_interaction>>{};
 
+struct Conductance_interaction_scheme: public Constant<Conductance_interaction_scheme,std::vector<Conductance_interaction>>{};
+
+
 struct Conformational_interaction_index: public Constant<Conformational_interaction_index,std::size_t>{};
+
+struct Conductance_interaction_index: public Constant<Conductance_interaction_index,std::size_t>{};
+
+
 
 struct Conformational_interaction_subposition: public Constant<Conformational_interaction_subposition,std::size_t>{};
 
@@ -55,11 +80,12 @@ struct Conformational_state_vector: public Constant<Conformational_state_vector,
 
 struct Conformational_state_count: public Constant<Conformational_state_count,std::map<Conformational_domain_state, std::size_t>>{};
 
+struct Conductance_state_count: public Constant<Conductance_state_count,std::map<Conductance_interaction_index, std::size_t>>{};
 
 
 
 
-struct Conformational_model_scheme: public Constant<Conformational_model_scheme,Vector_Space<Conformational_change_scheme, Conformational_interaction_scheme>>{};
+struct Conformational_model_scheme: public Constant<Conformational_model_scheme,Vector_Space<Conformational_change_scheme, Conformational_interaction_scheme, Conductance_interaction_scheme>>{};
 
 struct Conformational_transition_direction: public Constant<Conformational_transition_direction,bool>{};
 
@@ -89,7 +115,7 @@ struct Conformational_transition_list: public Constant<Conformational_transition
 
 struct Conformational_states: public Constant<Conformational_states,
     std::vector<Vector_Space<Conformational_state_count,
-                                                  Conformational_state_vector>>>{};
+                                                  Conformational_state_vector, Conductance_state_count>>>{};
 
 struct Conformational_state_count_to_index: public Constant<Conformational_state_count_to_index, std::map<Conformational_state_count, Conformational_state_index>>{};
 
@@ -181,6 +207,34 @@ Maybe_error<Conformational_state_count> to_state_count(const Conformational_mode
     }
 }
 
+Conductance_state_count to_state_conductance_count(const Conformational_model_scheme& model, const Conformational_state_vector& state_vector)
+
+{
+    auto state=get<Conformational_change_state_vector>(state_vector());
+    auto v_inter=get<Conductance_interaction_scheme>(model());
+        auto number_inter=v_inter().size();
+        std::map<Conductance_interaction_index, std::size_t> out;
+        for (std::size_t i=0; i<number_inter; ++i)
+        {
+                auto v_ipos=get<Conductance_interaction_positions>(v_inter()[i]());
+                for (std::size_t k=0; k<v_ipos().size(); ++k)
+                {
+                    bool includes_all=true;
+                    for (std::size_t kk=0; kk<v_ipos()[k].size(); ++kk)
+                    {
+                      includes_all=includes_all&&(state()[v_ipos()[k][kk]()]());
+                    }
+                    if(includes_all)
+                      ++out[Conductance_interaction_index(i)];
+                }
+        }
+        return Conductance_state_count(std::move(out));   
+}
+    
+
+
+
+
 Maybe_error<Conformational_state_index> to_state_index(const Conformational_state_count_to_index& model, const Conformational_state_count& state_count)
 {
     if (auto it=model().find(state_count); it==model().end())
@@ -212,12 +266,13 @@ Maybe_error<std::tuple<Conformational_states,Conformational_state_count_to_index
     for (std::size_t n = 0; n < (1ul << number_units); ++n) {
         auto v_state_vector=make_Conformational_state_vector(model,n);
         auto v_state_count=to_state_count(model,v_state_vector);
+        auto v_state_conductance=to_state_conductance_count(model,v_state_vector);
         if (!v_state_count){
             return v_state_count.error();}
         else if (map().find(v_state_count.value())==map().end())
         {
             map()[v_state_count.value()]=Conformational_state_index(out().size());
-            out().push_back(Vector_Space(std::move(v_state_count.value()), std::move(v_state_vector)));
+            out().push_back(Vector_Space(std::move(v_state_count.value()), std::move(v_state_vector),std::move(v_state_conductance)));
         }
     }
     return std::tuple(std::move(out),std::move(map));
@@ -286,14 +341,17 @@ Maybe_error<Conformational_transition_list> make_Conformational_transition_list(
 
 
 
-Maybe_error<Conformational_change_scheme> make_Conformational_change_scheme(Agonist_dependency_map&& t_agonist_map, std::vector<Conformational_change_label>&& t_scheme )
+Maybe_error<Conformational_change_scheme>
+make_Conformational_change_scheme(Agonist_dependency_map&& t_agonist_map, std::vector<Conformational_change_label>&& t_scheme )
 {
     std::vector<Conformational_change> out(t_scheme.size());
     for (std::size_t i=0; i<t_scheme.size(); ++i)
     {
         if (auto it=t_agonist_map().find(t_scheme[i]); it!=t_agonist_map().end())
         {
-            out[i]=Conformational_change(Vector_Space(t_scheme[i],it->second));
+                
+                out[i]=Conformational_change(Vector_Space(t_scheme[i],it->second));
+           
         }
         else
         {
@@ -340,7 +398,8 @@ Maybe_error<bool> check_Conformational_interaction(const Conformational_change_s
 Maybe_error<Conformational_model_scheme>
 make_Conformational_model_scheme(Agonist_dependency_map&& t_agonist_map,
                                  std::vector<Conformational_change_label>&& t_scheme,
-                                 std::vector<Conformational_interaction>&& t_interactions )
+                                 std::vector<Conformational_interaction>&& t_interactions,
+                                 std::vector<Conductance_interaction>&& t_conductance)
 {
     auto Maybe_Conformational_change=make_Conformational_change_scheme(std::move(t_agonist_map), std::move(t_scheme));
     if (!Maybe_Conformational_change)
@@ -357,7 +416,8 @@ make_Conformational_model_scheme(Agonist_dependency_map&& t_agonist_map,
             return out.error();
         else
             return Conformational_model_scheme(Vector_Space(std::move(Maybe_Conformational_change.value()),
-                                                            Conformational_interaction_scheme(std::move(t_interactions))));
+                                                            Conformational_interaction_scheme(std::move(t_interactions)),
+                                                            Conductance_interaction_scheme(std::move(t_conductance))));
     }
 }
 
@@ -453,13 +513,84 @@ template <class P, class Id>
 }
 
 
+
+template <class P, class Id>
+    requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+auto calc_gi(const Conductance_interaction_scheme& scheme,
+            const  typename Parameters<Id>::Names& names,
+            const P& par,
+             const Conductance_state_count& count)->Maybe_error<Transfer_Op_to<P, double>>
+{
+    Transfer_Op_to<P, double> out=0.0;
+    for (auto it=count().begin(); it!=count().end(); ++it)
+    {
+        auto i_lab=it->first();
+        auto lab=get<Conductance_interaction_label>(scheme()[i_lab]())(); 
+        auto n= it->second;
+        auto Maybe_i=names[lab];
+        if (!Maybe_i)
+            return Maybe_i.error();
+        else
+        {
+            auto i=Maybe_i.value();
+            out=out+par[i]*n; 
+        }
+    }
+    return out;
+}
+
+
+
+template <class P, class Id>
+    requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+auto make_g(const Conformational_model& model,
+                const  typename Parameters<Id>::Names& names,
+                const P& par)->Maybe_error<Transfer_Op_to<P, g>>
+{
+    using Trans = transformation_type_t<P>;
+    
+    auto& v_states=get<Conformational_states>(model());
+    
+    auto& v_scheme=get<Conformational_model_scheme>(model());
+    
+    auto v_conductance= get<Conductance_interaction_scheme>(v_scheme());
+    
+    auto N=get<N_St>(model())();
+    assert(v_states().size()==N);
+    auto v_g=Op_t<Trans,g>(Matrix<double>(N,1ul,0.0));
+   
+    for (std::size_t i=0; i<N; ++i)
+    {
+        auto& v_cond_map=get<Conductance_state_count>(v_states()[i])();
+        
+        auto Maybe_gi=calc_gi(v_conductance,names, par,v_cond_map);
+            if (!Maybe_gi)
+                return Maybe_gi.error();
+            else 
+            {
+                set(v_g(),i,0,Maybe_gi.value());
+            }    
+    }
+    return v_g;
+    
+}
+
+
+
+
+
+
 }
 
 Maybe_error<Conformational_model> make_Conformational_model(Agonist_dependency_map&& t_agonist_map,
                                std::vector<Conformational_change_label>&& t_scheme,
-                               std::vector<Conformational_interaction>&& t_interactions )
+                               std::vector<Conformational_interaction>&& t_interactions,
+                                                            std::vector<Conductance_interaction>&& t_conductance)
 {
-    auto Maybe_scheme=impl::make_Conformational_model_scheme(std::move(t_agonist_map),std::move(t_scheme),std::move(t_interactions));
+    auto Maybe_scheme=impl::make_Conformational_model_scheme(std::move(t_agonist_map),
+                                                               std::move(t_scheme),
+                                                               std::move(t_interactions),
+                                                               std::move(t_conductance));
     if (!Maybe_scheme)
         return Maybe_scheme.error();
     else
@@ -492,6 +623,8 @@ template <class P, class Id>
 requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
 auto make_Patch_Model(const Conformational_model& model, const P& par)
 {
+    
+    
     
 }
 
