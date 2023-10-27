@@ -5,6 +5,7 @@
 #include "general_output_operator.h"
 #include <map>
 #include <ostream>
+#include <functional>
 namespace var {
 
 
@@ -62,6 +63,7 @@ class Var<Id>{};
 
 
 
+
 template<class Id, class T>
 class Var<Id,T>{
     T m_x;
@@ -84,6 +86,16 @@ public:
     constexpr auto& operator[](Var<Id>) const{return *this;}
     constexpr Var(){}
     constexpr auto& value()const {return m_x;}
+    
+    
+    
+    template<class... Ts>
+    constexpr auto& operator()(const Ts&...){return m_x;}
+    
+    template<class... Ts>
+    constexpr auto& operator()(const Ts&...)const {return m_x;}
+    
+    
     friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
     
     friend Id  operator-(const Var& one, const Var& two){return Id(one()-two());}
@@ -115,6 +127,13 @@ public:
     constexpr auto& operator()()const{return m_x;}
     constexpr auto& operator[](Constant<Id>){return *this;}
     constexpr auto& operator[](Constant<Id>) const{return *this;}
+    
+    template<class... Ts>
+    constexpr auto& operator()(const Ts&...){return m_x;}
+    
+    template<class... Ts>
+    constexpr auto& operator()(const Ts&...)const {return m_x;}
+    
     constexpr Constant(){}
     constexpr auto& value()const {return m_x;}
     friend auto& print(std::ostream& os, const Constant& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
@@ -127,10 +146,48 @@ public:
 
 
 
+template<class Id, class F, class ...T>
+class Fun{
+    std::tuple<T...> m_x; 
+    F m_f;
+public:
+    static constexpr bool is_variable=true;
+    static constexpr bool is_constant=false;
+    
+    using variable_type=Fun<Id,F,T...>;
+    
+    
+    constexpr Fun(Var<Id>,F const& t_f,T const&... t_x):m_x{t_x...},m_f{t_f}{}
+    
+    constexpr Fun(Var<Id>,F && t_f,T && ...t_x):m_x{std::move(t_x)...},m_f{std::move(t_f)}{}
+    
+    template<class... Ts>
+    constexpr auto operator()(const Ts&...ts){return Id(std::apply([this,&ts...](auto&...xs) {return std::invoke(m_f,xs...,ts...);},m_x));}
+    
+    template<class... Ts>
+    constexpr auto operator()(const Ts&...ts)const {return Id(std::apply([this,&ts...](auto&...xs) {return std::invoke(m_f,xs...,ts...);},m_x));}
+    
+    constexpr Fun(){}
+    
+    constexpr auto& operator[](Var<Id>){return *this;}
+    constexpr auto& operator[](Var<Id>) const{return *this;}
+    
+   };
+   
+   
+   
+   
+   template<class Id, class T, class F>
+   Fun(Var<Id>,T,F)->Fun<Id,std::decay_t<T>,F>;
+
 
 template<class var, class... T>
     requires (std::constructible_from<var,T...>)
 var build(T...x){return var(std::forward<T>(x)...);}
+
+// template<template<class...> class var, class... T>
+//     requires ((std::constructible_from<var<T...>,T...>)&&(!std::is_same_v<var<T...>,Fun<T...>>))
+// var<T...> build(T...x){return var(std::forward<T>(x)...);}
 
 
 
@@ -216,6 +273,9 @@ public:
     friend auto const& get(Vector_Space const& x){return static_cast<Id const&>(x);}
     template<class Id>
     friend auto& get(Vector_Space & x){return static_cast<Id &>(x);}
+    
+    
+    
     static constexpr bool is_vector_space=true;
     
     Vector_Space(){}
@@ -244,6 +304,13 @@ public:
     }
     
 };
+
+template<class Id,class...Vars>
+auto const& fun(Vector_Space<Vars...> const& x){return x[Var<Id>{}];}
+
+template<class Id,class...Vars>
+auto& fun(Vector_Space<Vars...> & x){return x[Var<Id>{}];}
+
 
 template<class...>
 class Vector_Map;

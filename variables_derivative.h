@@ -30,6 +30,37 @@ public:
    // friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
 };
 
+template<class Id, class F, class ...T, class X>
+class Derivative<Fun<Id,F,T...>,X>{
+    std::tuple<Derivative<T,X>...> m_x;
+    F m_f; 
+public:
+    
+    static constexpr bool is_variable=true;
+    template<class... S>
+        requires ((std::constructible_from<Derivative<T,X>,S>)&&...)
+    constexpr Derivative(Var<Id>,F const& t_f,S&&... t_x):m_x{std::forward<S>(t_x)...},m_f{t_f}{}
+    constexpr auto& operator()(){return m_x;}
+    constexpr auto& operator()()const{return m_x;}
+    constexpr auto& operator[](Var<Id>)const{return *this;}
+    
+    template<class... Ts>
+    constexpr auto operator()(const Ts&...ts){return Derivative<Id,X>(std::apply([this,&ts...](auto&...xs) {return std::invoke(m_f,xs...,ts...);},m_x));}
+    
+    template<class... Ts>
+    constexpr auto operator()(const Ts&...ts)const {return Derivative<Id,X>(std::apply([this,&ts...](auto&...xs) {return std::invoke(m_f,xs...,ts...);},m_x));}
+    
+    constexpr Derivative(){}
+    
+    
+    // friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    
+    // friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
+    // friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
+};
+
+
+
 
 template<class...Ids, class X>
     requires (Ids::is_variable&&...)

@@ -2,6 +2,9 @@
 #define DERIVATIVE_OPERATOR_H
 
 #include <concepts>
+#include <utility>
+#include <ostream>
+#include "variables.h"
 namespace var {
 
 /**
@@ -375,6 +378,40 @@ template<class var, class... T>
 auto build(T...x){
     using X=dx_of_dfdx_t<T...>;
     return Derivative<var,X>(std::forward<T>(x)...);}
+
+
+template<template<class...>class Vector_Space, class... T>
+    requires (std::constructible_from<Vector_Space<untransformed_type_t<T>...>,untransformed_type_t<T>...>&&
+             (is_derivative_v<T>||...||false))
+auto build(T...x){
+    using X=dx_of_dfdx_t<T...>;
+    return Derivative<Vector_Space<untransformed_type_t<T>...>,X>(std::forward<T>(x)...);
+}
+
+template<template<class...>class Vector_Space, class... T>
+    requires (std::constructible_from<Vector_Space<untransformed_type_t<T>...>,untransformed_type_t<T>...>&&
+             (!is_derivative_v<T>&&...&&true))
+auto build(T...x){
+    return Vector_Space<untransformed_type_t<T>...>(std::forward<T>(x)...);
+}
+
+
+template<template<class...> class var, class Id, class F, class... T>
+    requires (std::constructible_from<var<Id,F,T...>,Var<Id>,F,T...>&&(std::is_same_v<var<Id,T...>,Fun<Id,T...>>)&&
+             (!is_derivative_v<T>&&...&&true))
+var<Id,F,std::decay_t<T>...> build(Var<Id>,F&& t_f,T&&...t_x){return var(Var<Id>{},std::forward<F>(t_f),std::forward<T>(t_x)...);}
+
+
+template<template<class...> class var, class Id, class F,class... T>
+    requires (std::constructible_from<var<Id,F,untransformed_type_t<T>...>,Var<Id>,F,untransformed_type_t<T>...>&&
+             (std::is_same_v<var<Id,F,untransformed_type_t<T>...>,Fun<Id,F,untransformed_type_t<T>...>>)&&
+             (is_derivative_v<T>||...||false))
+auto build(Var<Id>,F&& t_f,T&&...t_x){
+    using X=dx_of_dfdx_t<T...>;
+    return Derivative<Fun<Id,F,untransformed_type_t<T>...>,X>(
+        Var<Id>{},std::forward<F>(t_f),std::forward<T>(t_x)...);
+}
+
 
 
 
