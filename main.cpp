@@ -304,12 +304,16 @@ int main(int argc, char **argv) {
         using std::pow;
         auto p=apply([](const auto& x){return pow(10.0,x);}, logp());
         
-        return build<macrodr::Patch_Model>(N_St(5),
+        auto p0=p[0];
+        
+        return      build<Vector_Space>(N_St(5),
                                            build<Q0>(var::build_<Matrix<double>>(5, 5, {{1,0}, {2,1},{3,2},{3,4},{4,3}},
                                                                                  {p[5],p[6],p[7],p[8],p[9]})),
                                            build<Qa>(var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2},{2, 3}},{p[2],p[3],p[4]})),
                                            build<g>(var::build_<Matrix<double>>(5,1,{{4,0}},{p[10]})),
-                                           build<N_Ch_mean>(p[0]),
+                                         //  build<N_Ch_mean>(p[0]),
+                                   
+                                           build<Fun>(Var<N_Ch_mean>{},[](auto N,auto...){return N;},p[0] ),
                                            build<curr_noise>(p[1]),
                                            Binomial_magical_number(5.0),
                                            min_P(1e-7),
@@ -317,11 +321,24 @@ int main(int argc, char **argv) {
                                            Conductance_variance_error_tolerance(1e-2));
     });
     
+    
+    
+//    auto egrw=var::Derivative_t<decltype(Fun(Var<N_Ch_mean>{},[](auto N,auto...){return N;},9.0 )),Parameters<Model1>>;
+   // using tetw=typename dsge::ik;
+    
+    
     auto param1=Parameters<Model1>(apply([](auto x){return std::log10(x);},
                                            Matrix<double>(1,11,std::vector<double>{100,1e-4,18,12,6,210,420,630,1680,54,0.5})));
     auto param1Names=std::vector<std::string>{"Num_Chan","noise","k01","k12","k23","k10","k21","k32","k34","k43","conductance"};
-    
     auto dparam1=var::selfDerivative(param1);
+    
+    auto NNN=build<Fun>(Var<N_Ch_mean>{},[](auto N,auto...){return N;},param1[0] );
+    auto dNNN=build<Fun>(Var<N_Ch_mean>{},[](auto N,auto...){return N;},dparam1()[0] );
+    
+    // using jger=typename decltype(NNN)::kgerge;
+    // using jger2=typename decltype(dNNN)::kgerge;
+    
+    
     // std::cerr<<"dparam1\n"<<dparam1;
     auto n= build<N_Ch_mean>(dparam1()[0]);
     
