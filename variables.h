@@ -122,7 +122,8 @@ public:
     
     //operator Id()const {return Id(*this);}
     
-    constexpr Constant(T t_x):m_x{t_x}{}
+    constexpr Constant(T&& t_x):m_x{std::move(t_x)}{}
+    constexpr Constant(T const& t_x):m_x{t_x}{}
     constexpr auto& operator()(){return m_x;}
     constexpr auto& operator()()const{return m_x;}
     constexpr auto& operator[](Constant<Id>){return *this;}
