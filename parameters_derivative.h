@@ -1,6 +1,7 @@
 #ifndef PARAMETERS_DERIVATIVE_H
 #define PARAMETERS_DERIVATIVE_H
 
+#include "derivative_operator.h"
 #include "parameters.h"
 //#include "matrix_derivative.h"
 

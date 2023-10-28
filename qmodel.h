@@ -1980,6 +1980,8 @@ public:
 };
 
 struct Model1 : public Model_Patch<Model1> {};
+struct Allost1 : public Model_Patch<Allost1> {};
+
 
 template <uses_adaptive_aproximation adaptive,
          uses_recursive_aproximation recursive,

@@ -1502,6 +1502,11 @@ void set(SymmetricMatrix<T>& m, std::size_t i, std::size_t j, const T& x)
 {
   m.set(i,j,x);
 }
+template<class T>
+void set(Matrix<T>& m, std::size_t i, std::size_t j, const T& x)
+{
+    m.set(i,j,x);
+}
 
 
 template <class T> auto IdM(std::size_t ndim) {
