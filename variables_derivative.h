@@ -18,6 +18,13 @@ public:
     constexpr auto& operator()(){return m_x;}
     constexpr auto& operator()()const{return m_x;}
     constexpr auto& operator[](Var<Id>)const{return *this;}
+    
+    
+    template<class... Ts>
+    constexpr auto operator()(const Ts&...)const {
+        return Derivative<Id,X>(*this);
+    }
+    
     constexpr Derivative(){}
     constexpr auto& value()const {return m_x;}
     auto& primitive()const {return m_x.primitive();}
