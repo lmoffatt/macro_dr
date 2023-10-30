@@ -295,7 +295,7 @@ int main(int argc, char **argv) {
       std::cerr << p.error()();
   }
 
-  auto Efilename = "../macro_dr/Moffatt_Hume_2007_ATP.txt";
+  auto Efilename = "../macro_dr/Moffatt_Hume_2007_ATP_time.txt";
 
   auto [recording_conditions, recording] = macrodr::load_recording(Efilename);
 
@@ -306,31 +306,42 @@ int main(int argc, char **argv) {
   auto model1 = Model1::Model([](const auto &logp) {
     using std::pow;
     auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+    auto Npar = 9ul;
+    auto v_curr_noise = p[Npar];
+    auto v_baseline = logp()[Npar + 1];
+    auto v_N0 = p[Npar + 2];
+    auto v_Neq = p[Npar + 3];
+    auto v_Ntau = p[Npar] + 4;
 
     return build<Vector_Space>(
         N_St(5),
         build<Q0>(var::build_<Matrix<double>>(
             5, 5, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
-            {p[5], p[6], p[7], p[8], p[9]})),
+            {p[3], p[4], p[5], p[6], p[7]})),
         build<Qa>(var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
-                                              {p[2], p[3], p[4]})),
-        build<g>(var::build_<Matrix<double>>(5, 1, {{4, 0}}, {p[10]})),
-        //  build<N_Ch_mean>(p[0]),
+                                              {p[0], p[1], p[2]})),
+        build<g>(var::build_<Matrix<double>>(5, 1, {{4, 0}}, {p[8]})),
+        // build<N_Ch_mean>(v_N0),
 
         build<Fun>(
-            Var<N_Ch_mean>{}, [](auto N, auto...) { return N; }, p[0]),
-        build<curr_noise>(p[1]), Binomial_magical_number(5.0), min_P(1e-7),
+            Var<N_Ch_mean>{},
+            [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+              return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
+            },
+            v_N0, v_Neq, v_Ntau),
+        build<curr_noise>(v_curr_noise), build<curr_baseline>(v_baseline),
+        Binomial_magical_number(5.0), min_P(1e-7),
         Probability_error_tolerance(1e-2),
         Conductance_variance_error_tolerance(1e-2));
   });
   auto v_rocking = Conformational_change_label{"Rocking"};
   auto v_binding = Conformational_change_label{"Binding"};
-  
+
   auto allostM = make_Conformational_model(
       Agonist_dependency_map{
-                             std::map<Conformational_change_label, Agonist_dependency>{
-                                                                                       {v_rocking, Agonist_dependency{}},
-                                                                                       {v_binding, Agonist_dependency{Agonist_label{"ATP"}}}}},
+          std::map<Conformational_change_label, Agonist_dependency>{
+              {v_rocking, Agonist_dependency{}},
+              {v_binding, Agonist_dependency{Agonist_label{"ATP"}}}}},
       std::vector<Conformational_change_label>{
           v_rocking,
           v_binding,
@@ -339,59 +350,53 @@ int main(int argc, char **argv) {
           v_rocking,
           v_binding,
       },
-      std::vector<Conformational_interaction>{
-                                              {Vector_Space{Conformational_interaction_label{"RBR"},
-                                                            Conformational_interaction_players{
-                                                                                               {v_rocking, v_binding, v_rocking}},
-                                                            Conformational_interaction_positions{
-                                                                                                 {{0, 1, 2}, {2, 3, 4}, {4, 5, 0}}}}}},
+      std::vector<Conformational_interaction>{{Vector_Space{
+          Conformational_interaction_label{"RBR"},
+          Conformational_interaction_players{{v_rocking, v_binding, v_rocking}},
+          Conformational_interaction_positions{{{0, 1, 2},
+                                                {2, 1, 0},
+                                                {2, 3, 4},
+                                                {4, 3, 2},
+                                                {4, 5, 0},
+                                                {0, 5, 4}}}}}},
       std::vector<Conductance_interaction>{Vector_Space{
-                                                        Conductance_interaction_label{"Rocking_Conductance"},
-                                                        Conductance_interaction_players{{v_rocking}},
-                                                        Conductance_interaction_positions{{{{0}},{{2}},{{4}}}}}});
-  
+          Conductance_interaction_label{"Rocking_Conductance"},
+          Conductance_interaction_players{{v_rocking}},
+          Conductance_interaction_positions{{{{0}}, {{2}}, {{4}}}}}});
+
   print(std::cerr, allostM.value());
-  
-  
-  
-  
+
   auto aparam1 = Parameters<Allost1>(
       apply([](auto x) { return std::log10(x); },
             Matrix<double>(1, 11,
                            std::vector<double>{100, 1e-4, 18, 12, 6, 210, 420,
                                                630, 1680, 54, 0.5})));
   auto aparam1Names = make_ModelNames<Allost1>(allostM.value());
-  
-  
-  print(std::cerr,aparam1Names);
-  
-  auto Maybe_modeltyple_formula=make_Model_Formulas<Allost1>(allostM.value(),aparam1Names);
-  if (Maybe_modeltyple_formula)
-  {
-      auto [a_Q0,a_Qa,a_g]=std::move(Maybe_modeltyple_formula.value());
-      std::cerr<<"\nQ0 formulas\n"<<a_Q0<<"\n";
-      std::cerr<<"\nQa formulas\n"<<a_Qa<<"\n";
-      std::cerr<<"\ng formulas\n"<<a_g<<"\n";
+
+  print(std::cerr, aparam1Names);
+
+  auto Maybe_modeltyple_formula =
+      make_Model_Formulas<Allost1>(allostM.value(), aparam1Names);
+  if (Maybe_modeltyple_formula) {
+    auto [a_Q0, a_Qa, a_g] = std::move(Maybe_modeltyple_formula.value());
+    std::cerr << "\nQ0 formulas\n" << a_Q0 << "\n";
+    std::cerr << "\nQa formulas\n" << a_Qa << "\n";
+    std::cerr << "\ng formulas\n" << a_g << "\n";
   }
-  
-  
-  auto Maybe_modeltyple=make_Model<Allost1>(allostM.value(),aparam1Names,aparam1);
-  if (Maybe_modeltyple)
-  {
-      auto [a_Q0,a_Qa,a_g]=std::move(Maybe_modeltyple.value());
+
+  auto Maybe_modeltyple =
+      make_Model<Allost1>(allostM.value(), aparam1Names, aparam1);
+  if (Maybe_modeltyple) {
+    auto [a_Q0, a_Qa, a_g] = std::move(Maybe_modeltyple.value());
   }
-  
-  
-  
-  
+
   auto allost1 = Model1::Model([](const auto &logp) {
     using std::pow;
     auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
-
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_binding = Conformational_change_label{"Binding"};
 
-    auto m = make_Conformational_model(
+    auto mo = make_Conformational_model(
         Agonist_dependency_map{
             std::map<Conformational_change_label, Agonist_dependency>{
                 {v_rocking, Agonist_dependency{}},
@@ -408,26 +413,71 @@ int main(int argc, char **argv) {
             {Vector_Space{Conformational_interaction_label{"RBR"},
                           Conformational_interaction_players{
                               {v_rocking, v_binding, v_rocking}},
-                          Conformational_interaction_positions{
-                              {{0, 1, 2}, {2, 3, 4}, {4, 5, 0}}}}}},
+                          Conformational_interaction_positions{{{0, 1, 2},
+                                                                {2, 1, 0},
+                                                                {2, 3, 4},
+                                                                {4, 3, 2},
+                                                                {4, 5, 0},
+                                                                {0, 5, 4}}}}}},
         std::vector<Conductance_interaction>{Vector_Space{
             Conductance_interaction_label{"Rocking_Conductance"},
             Conductance_interaction_players{{v_rocking}},
-            Conductance_interaction_positions{{{{0}},{{2}},{{4}}}}}});
+            Conductance_interaction_positions{{{{0}}, {{2}}, {{4}}}}}});
+
+    assert(mo);
+    auto m = std::move(mo.value());
+
+    auto names = make_ModelNames<Allost1>(m);
+
+    auto names_vec = std::vector<std::string>{"Rocking_on",           //--> 0
+                                              "Rocking_off",          //--> 1
+                                              "Binding_on",           //--> 2
+                                              "Binding_off",          //--> 3
+                                              "RBR",                  //--> 4
+                                              "RBR_0",                //--> 5
+                                              "RBR_1",                //--> 6
+                                              "RBR_2",                //--> 7
+                                              "Rocking_Conductance"}; //--> 8
+
+    assert(names() == names_vec);
+
+    auto Npar = names().size();
+
+    auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
+    assert(Maybe_Q0Qag);
+    auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
+    auto v_curr_noise = p[Npar];
+    auto v_baseline = logp[Npar + 1];
+    auto v_N0 = p[Npar + 2];
+    auto v_Neq = p[Npar + 3];
+    auto v_Ntau = p[Npar + 4];
+    auto v_min_conductance = p[Npar + 5];
+
+    auto v_g = g(
+        apply([&v_min_conductance](
+                  const auto &x) { return -v_min_conductance * pow(10.0, x); },
+              a_g()));
 
     return build<Vector_Space>(
-        N_St(5),
-        build<Q0>(var::build_<Matrix<double>>(
-            5, 5, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
-            {p[5], p[6], p[7], p[8], p[9]})),
-        build<Qa>(var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
-                                              {p[2], p[3], p[4]})),
-        build<g>(var::build_<Matrix<double>>(5, 1, {{4, 0}}, {p[10]})),
-        //  build<N_Ch_mean>(p[0]),
-
+        N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa), std::move(v_g),
         build<Fun>(
-            Var<N_Ch_mean>{}, [](auto N, auto...) { return N; }, p[0]),
-        build<curr_noise>(p[1]), Binomial_magical_number(5.0), min_P(1e-7),
+            Var<N_Ch_mean>{},
+            [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+              return Neq + (N0 - Neq) * 1 - exp(-time() / Ntau);
+            },
+            v_N0, v_Neq, v_Ntau),
+
+        // build<Fun>(
+        //     Var<N_Ch_mean>{},
+        //     [](auto N0, auto...) {
+        //         return N0;
+        //     },
+        //     v_N0),
+
+        //   build<N_Ch_mean>(v_N0),
+
+        build<curr_noise>(v_curr_noise), build<curr_baseline>(v_baseline),
+        Binomial_magical_number(5.0), min_P(1e-7),
         Probability_error_tolerance(1e-2),
         Conductance_variance_error_tolerance(1e-2));
   });
@@ -436,20 +486,36 @@ int main(int argc, char **argv) {
   //    N,auto...){return N;},9.0 )),Parameters<Model1>>;
   // using tetw=typename dsge::ik;
 
-  auto param1 = Parameters<Model1>(
-      apply([](auto x) { return std::log10(x); },
-            Matrix<double>(1, 11,
-                           std::vector<double>{100, 1e-4, 18, 12, 6, 210, 420,
-                                               630, 1680, 54, 0.5})));
+  auto param1 = Parameters<Model1>(apply(
+      [](auto x) { return std::log10(x); },
+      Matrix<double>(1, 14,
+                     std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
+                                         0.5, 100, 50, 1000, 1e-4, 1.0})));
   auto param1Names = std::vector<std::string>{
-      "Num_Chan", "noise", "k01", "k12", "k23",        "k10",
-      "k21",      "k32",   "k34", "k43", "conductance"};
+      "k01",         "k12",          "k23",   "k10",         "k21",
+      "k32",         "k34",          "k43",   "conductance", "Num_Chan_0",
+      "Num_Chan_eq", "Num_Chan_tau", "noise", "baseline"};
+  assert(param1Names.size() == param1.size());
   auto dparam1 = var::selfDerivative(param1);
 
   auto NNN = build<Fun>(
       Var<N_Ch_mean>{}, [](auto N, auto...) { return N; }, param1[0]);
   auto dNNN = build<Fun>(
       Var<N_Ch_mean>{}, [](auto N, auto...) { return N; }, dparam1()[0]);
+
+  auto Npar = 9ul;
+  auto v_N0 = dparam1()[Npar + 2];
+  auto v_Neq = dparam1()[Npar + 3];
+  auto v_Ntau = dparam1()[Npar] + 4;
+
+  auto ggg = build<Fun>(
+      Var<N_Ch_mean>{},
+      [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+        return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
+      },
+      v_N0, v_Neq, v_Ntau);
+
+  auto ggb = ggg(Time(10.0));
 
   // using jger=typename decltype(NNN)::kgerge;
   // using jger2=typename decltype(dNNN)::kgerge;
@@ -463,8 +529,8 @@ int main(int argc, char **argv) {
       var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
                                   {dparam1()[2], dparam1()[3], dparam1()[4]});
 
-  auto dm = model1(dparam1);
   auto m = model1(param1);
+  auto dm = model1(dparam1);
 
   // std::cerr<<"\n!--------------------------------------------------------------------------!\n";
   //  print(std::cerr,dm);
@@ -863,7 +929,8 @@ thermodynamic parameter
 
     auto sim = Macro_DMR{}.sample(
         mt, model1, param1, experiment,
-        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)), recording);
+        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
+        recording);
 
     if (sim)
       auto opt = evidence(std::move(tmi), param1_prior, modelLikelihood,
@@ -958,7 +1025,8 @@ thermodynamic parameter
 
     auto sim = Macro_DMR{}.sample(
         mt, model1, param1, experiment,
-        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)), recording);
+        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
+        recording);
 
     if (sim) {
       std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
@@ -992,7 +1060,7 @@ thermodynamic parameter
   if (false) {
     auto sim = Macro_DMR{}.sample(
         mt, model1, param1, experiment,
-        Simulation_Parameters(Number_of_simulation_sub_steps(100)));
+        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)));
 
     auto test_der_Likelihood = var::test_Derivative(
         [&model1, &sim, &experiment](auto const &dparam1) {

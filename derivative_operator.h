@@ -415,8 +415,8 @@ template<template<class...> class var, class Id, class F,class... T>
              (std::is_same_v<var<Id,F,untransformed_type_t<T>...>,Fun<Id,F,untransformed_type_t<T>...>>)&&
              (is_derivative_v<T>||...||false))
 auto build(Var<Id>,F&& t_f,T&&...t_x){
-    using X=dx_of_dfdx_t<T...>;
-    return Derivative<Fun<Id,F,untransformed_type_t<T>...>,X>(
+    using X=dx_of_dfdx_t<std::decay_t<T>...>;
+    return Derivative<Fun<Id,F,untransformed_type_t<std::decay_t<T>>...>,X>(
         Var<Id>{},std::forward<F>(t_f),std::forward<T>(t_x)...);
 }
 

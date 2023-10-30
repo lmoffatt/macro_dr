@@ -197,6 +197,11 @@ class N_St : public var::Constant<N_St, std::size_t> {};
 
 class N_Ch_mean : public var::Var<N_Ch_mean, double> {};
 
+class N_Ch_init : public var::Var<N_Ch_init, double> {};
+class N_Ch_eq : public var::Var<N_Ch_eq, double> {};
+class N_Ch_tau : public var::Var<N_Ch_tau, double> {};
+
+
 class Binomial_magical_number: public var::Constant<Binomial_magical_number,double>{};
 
 class min_P : public var::Constant<min_P, double> {};
@@ -204,6 +209,9 @@ class min_P : public var::Constant<min_P, double> {};
 class N_Ch_std : public var::Var<N_Ch_std, double> {};
 
 class curr_noise : public var::Var<curr_noise, double> {};
+
+class curr_baseline : public var::Var<curr_baseline, double> {};
+
 
 class P_mean : public var::Var<P_mean, Matrix<double>> {};
 
@@ -1397,6 +1405,7 @@ public:
         auto &t_min_P = get<min_P>(m);
         auto e =
             get<curr_noise>(m).value() * fs/ get<number_of_samples>(t_Qdt).value();
+        auto y_baseline =get<curr_baseline>(m);
         auto N = Nch();
         Matrix<double> u(p_P_mean().size(), 1, 1.0);
         
@@ -1441,7 +1450,7 @@ public:
         
         if constexpr ((!variance.value) && (!recursive.value)) {
             e_mu = e + max(0.0,N * ms);
-            r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i());
+            r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i())+y_baseline();
             r_y_var() = e + max(0.0, N * ms+ N * gSg);
             if (!(primitive(r_y_var()) > 0.0)) {
                 std::stringstream ss;
@@ -1474,7 +1483,7 @@ public:
             auto ms = getvalue(p_P_mean() * t_gvar_i());
             
             e_mu = e + max(N * ms,0.0);
-            r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i());
+            r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i())+y_baseline();
             r_y_var() = e + max(0.0, N * ms+ N * gSg);
             if (!(primitive(r_y_var()) > 0)) {
                 std::stringstream ss;
@@ -1517,7 +1526,7 @@ public:
             
             e_mu = e + N * ms0;
             r_y_mean() =
-                N * getvalue(p_P_mean() * t_gmean_i()) - N * 0.5 / e_mu * sSg;
+                N * getvalue(p_P_mean() * t_gmean_i()) - N * 0.5 / e_mu * sSg+y_baseline();
             zeta = N / (2 * sqr(e_mu) + N * sSs);
             r_y_var() = var::max(e, e+ N * ms0 + N * gSg - N * zeta * sqr(sSg));
             if (!(primitive(r_y_var()) > 0)) {
@@ -1782,9 +1791,9 @@ public:
                     ATP_evolution const &t_step =
                         get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
                     
-                    auto t_time= get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
+                    auto t_time= get<Time>(get<Recording_conditions>(e)()[i_step]);
                     
-                    auto Nch=var::fun<N_Ch_mean>(m)(t_time);
+                    Op_t<Transf,N_Ch_mean>  Nch=var::fun<N_Ch_mean>(m)(t_time);
                     
                     auto Maybe_t_Qdt = calc_Qdt(m,t_step, fs);
                     if (!Maybe_t_Qdt)
@@ -1948,9 +1957,11 @@ public:
             auto &t_e_step = get<Simulated_Recording>(t_sim_step);
             double e = get<curr_noise>(m)() * fs/
                        get<number_of_samples>(t_sub_step)();
+            auto y_baseline = get<curr_baseline>(m);
+            
             
             t_e_step()().emplace_back(Patch_current(
-                y_mean + std::normal_distribution<double>()(mt) * std::sqrt(e)));
+                y_mean + y_baseline()+ std::normal_distribution<double>()(mt) * std::sqrt(e)));
             return t_sim_step;
         }
     }

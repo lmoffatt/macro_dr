@@ -92,10 +92,10 @@ public:
     
     
     template<class... Ts>
-    constexpr auto& operator()(const Ts&...){return m_x;}
+    constexpr auto operator()(const Ts&...){return Id(*this);}
     
     template<class... Ts>
-    constexpr auto& operator()(const Ts&...)const {return m_x;}
+    constexpr auto operator()(const Ts&...)const {return Id(*this);}
     
     
     friend auto& print(std::ostream& os, const Var& x){
@@ -137,10 +137,10 @@ public:
     constexpr auto& operator[](Constant<Id>) const{return *this;}
     
     template<class... Ts>
-    constexpr auto& operator()(const Ts&...){return m_x;}
+    constexpr auto operator()(const Ts&...){return Id(*this);}
     
     template<class... Ts>
-    constexpr auto& operator()(const Ts&...)const {return m_x;}
+    constexpr auto operator()(const Ts&...)const {return Id(*this);}
     
     constexpr Constant(){}
     constexpr auto& value()const {return m_x;}
