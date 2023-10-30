@@ -169,6 +169,14 @@ std::ostream& operator<<(std::ostream& os, const Derivative<N,D>& d)
     return os;
 }
 
+template<class N,class D>
+std::ostream& print(std::ostream& os, const Derivative<N,D>& d)
+{
+    print(os, primitive(d));
+    os<<"\n derivative: \n";
+    print(os,derivative(d)());
+    return os;
+}
 
 
 

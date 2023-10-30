@@ -3,6 +3,7 @@
 
 #include "matrix.h"
 #include "maybe_error.h"
+#include "general_output_operator.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -43,6 +44,12 @@ public:
         return it->second;
       else
         return error_message("name not found");
+    }
+    
+    friend std::ostream& print(std::ostream& os, Names const & x)
+    {
+        ::print(os,x.m_index_map);
+        return os;
     }
   };
   

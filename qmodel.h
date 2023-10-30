@@ -153,12 +153,45 @@ public:
 */
 
 class Q0 : public var::Var<Q0, Matrix<double>> {};
+class Q0_formula : public var::Var<Q0_formula, std::vector<std::vector<std::string>>> {
+public:
+    friend std::ostream& operator<<(std::ostream& os, Q0_formula const& x)
+    {
+        os<<"Q0 formula"<<"\n";
+        for (std::size_t i=0; i<x().size(); ++i){
+            for (std::size_t j=0; j<x()[i].size(); ++j){
+                if (x()[i][j].size()>0)
+                    os<<"Q("<<i<<","<<j<<")->"<<x()[i][j]<<"\t";
+            }
+            os<<"\n";
+        }
+        return os;
+    }
+    
+};
 
 class Qa : public var::Var<Qa, Matrix<double>> {};
+class Qa_formula : public var::Var<Qa_formula, std::vector<std::vector<std::string>>> {
+public:
+    friend std::ostream& operator<<(std::ostream& os, Qa_formula const& x)
+    {
+        os<<"Q0 formula"<<"\n";
+        for (std::size_t i=0; i<x().size(); ++i){
+            for (std::size_t j=0; j<x()[i].size(); ++j){
+                if (x()[i][j].size()>0)
+                    os<<"Q("<<i<<","<<j<<")->"<<x()[i][j]<<"\t";
+            }
+            os<<"\n";
+        }
+        return os;
+    }
+    
+};
 
 class Qx : public var::Var<Qx, Matrix<double>> {};
 
 class g : public var::Var<g, Matrix<double>> {};
+class g_formula : public var::Var<g_formula, std::vector<std::string>> {};
 
 class N_St : public var::Constant<N_St, std::size_t> {};
 

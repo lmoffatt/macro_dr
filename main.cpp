@@ -350,6 +350,11 @@ int main(int argc, char **argv) {
                                                         Conductance_interaction_players{{v_rocking}},
                                                         Conductance_interaction_positions{{{{0}},{{2}},{{4}}}}}});
   
+  print(std::cerr, allostM.value());
+  
+  
+  
+  
   auto aparam1 = Parameters<Allost1>(
       apply([](auto x) { return std::log10(x); },
             Matrix<double>(1, 11,
@@ -357,11 +362,26 @@ int main(int argc, char **argv) {
                                                630, 1680, 54, 0.5})));
   auto aparam1Names = make_ModelNames<Allost1>(allostM.value());
   
+  
+  print(std::cerr,aparam1Names);
+  
+  auto Maybe_modeltyple_formula=make_Model_Formulas<Allost1>(allostM.value(),aparam1Names);
+  if (Maybe_modeltyple_formula)
+  {
+      auto [a_Q0,a_Qa,a_g]=std::move(Maybe_modeltyple_formula.value());
+      std::cerr<<"\nQ0 formulas\n"<<a_Q0<<"\n";
+      std::cerr<<"\nQa formulas\n"<<a_Qa<<"\n";
+      std::cerr<<"\ng formulas\n"<<a_g<<"\n";
+  }
+  
+  
   auto Maybe_modeltyple=make_Model<Allost1>(allostM.value(),aparam1Names,aparam1);
   if (Maybe_modeltyple)
   {
       auto [a_Q0,a_Qa,a_g]=std::move(Maybe_modeltyple.value());
   }
+  
+  
   
   
   auto allost1 = Model1::Model([](const auto &logp) {
@@ -468,12 +488,12 @@ int main(int argc, char **argv) {
   //  auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),1e-3);
   if constexpr (false) {
     auto t_Qdt2 = macrodr::Macro_DMR{}.calc_Qdt(
-        m, ATP_step(number_of_samples(50), ATP_concentration(100)), 50e3);
+        m, ATP_step(number_of_samples(50), ATP_concentration(100.0)), 50e3);
     auto t_Qdt3 = macrodr::Macro_DMR{}.calc_Qdt(
         m,
         std::vector<ATP_step>{
-            ATP_step(number_of_samples(10), ATP_concentration(100)),
-            ATP_step(number_of_samples(40), ATP_concentration(100))},
+            ATP_step(number_of_samples(10.0), ATP_concentration(100.0)),
+            ATP_step(number_of_samples(40.0), ATP_concentration(100.0))},
         50e3);
 
     auto test = test_equality(t_Qdt2.value(), t_Qdt3.value(), eps);
@@ -843,7 +863,7 @@ thermodynamic parameter
 
     auto sim = Macro_DMR{}.sample(
         mt, model1, param1, experiment,
-        Simulation_Parameters(Number_of_simulation_sub_steps(100)), recording);
+        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)), recording);
 
     if (sim)
       auto opt = evidence(std::move(tmi), param1_prior, modelLikelihood,
@@ -934,11 +954,11 @@ thermodynamic parameter
     auto modelLikelihood = make_Likelihood_Model<
         uses_adaptive_aproximation(false), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false)>(
-        model1, Number_of_simulation_sub_steps(10));
+        model1, Number_of_simulation_sub_steps(10ul));
 
     auto sim = Macro_DMR{}.sample(
         mt, model1, param1, experiment,
-        Simulation_Parameters(Number_of_simulation_sub_steps(100)), recording);
+        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)), recording);
 
     if (sim) {
       std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};

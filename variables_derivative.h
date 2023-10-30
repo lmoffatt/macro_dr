@@ -24,7 +24,10 @@ public:
     auto& derivative()const {return m_x.derivative();}
     
     
-   // friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    friend auto& print(std::ostream& os, const Derivative& x){ os<<typeid(Id).name()<<": \n";
+        print(os,x.value());
+        os<<"\n"; return os;
+    }
     
    // friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
    // friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
@@ -53,7 +56,9 @@ public:
     constexpr Derivative(){}
     
     
-    // friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    friend auto& print(std::ostream& os, const Derivative& x){ os<<typeid(Id).name()<<": \n";
+        print(os,x.m_x);
+        os<<"\t"; return os;}
     
     // friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
     // friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
