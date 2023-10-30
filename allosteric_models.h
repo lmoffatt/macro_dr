@@ -1,6 +1,7 @@
 #ifndef ALLOSTERIC_MODELS_H
 #define ALLOSTERIC_MODELS_H
 #include "qmodel.h"
+#include "variables.h"
 #include <map>
 #include <optional>
 namespace macrodr {
@@ -16,6 +17,11 @@ struct Agonist_label : public Constant<Agonist_label, std::string> {
 
 struct Agonist_dependency
     : public Constant<Agonist_dependency, std::optional<Agonist_label>> {
+  friend std::ostream &print(std::ostream &os, Agonist_dependency const &x) {
+    if (x())
+      os << "(" << (*x())() << ")";
+    return os;
+  }
   using Constant::Constant;
 };
 
@@ -30,6 +36,11 @@ struct Conformational_change
     : public Constant<
           Conformational_change,
           Vector_Space<Conformational_change_label, Agonist_dependency>> {
+  friend std::ostream &print(std::ostream &os, Conformational_change const &x) {
+    os << get<Conformational_change_label>(x())();
+    print(os, get<Agonist_dependency>(x()));
+    return os;
+  }
   using Constant::Constant;
 };
 
@@ -42,6 +53,13 @@ struct Conformational_change_state_vector
     : public Constant<Conformational_change_state_vector,
                       std::vector<Conformational_change_domain_state>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_change_state_vector const &x) {
+    for (auto e : x())
+      os << e();
+    os << " ";
+    return os;
+  }
 };
 
 struct Conductance_interaction_label
@@ -53,6 +71,17 @@ struct Conformational_change_scheme
     : public Constant<Conformational_change_scheme,
                       std::vector<Conformational_change>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_change_scheme const &x) {
+    os << "scheme: {";
+    for (auto e : x())
+    {
+        print(os,e);
+         os<< ", ";
+    }
+    os << "}\n";
+    return os;
+  }
 };
 
 struct Conformational_position
@@ -64,17 +93,58 @@ struct Conformational_interaction_positions
     : public Constant<Conformational_interaction_positions,
                       std::vector<std::vector<Conformational_position>>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_interaction_positions const &x) {
+    os << "positions: {";
+    for (auto e : x()) {
+      os << "{";
+      for (auto ee : e)
+      {
+          print(os, ee());
+          os<< ",";
+      }
+      os << "} ";
+    }
+    os << "}\n";
+    return os;
+  }
 };
 
 struct Conductance_interaction_positions
     : public Constant<Conductance_interaction_positions,
                       std::vector<std::vector<Conformational_position>>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conductance_interaction_positions const &x) {
+    os << "positions: {";
+    for (auto e : x()) {
+      os << "{";
+        for (auto ee : e)
+        {
+            print(os, ee());
+            os<< ",";
+        }
+      os << "} ";
+    }
+    os << "}\n";
+    return os;
+  }
 };
 struct Conductance_interaction_players
     : public Constant<Conductance_interaction_players,
                       std::vector<Conformational_change_label>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conductance_interaction_players const &x) {
+    os << "players: {";
+    for (auto e : x())
+    {
+        print(os, e());
+        os<< ",";
+    }
+    os << "} ";
+    return os;
+  }
 };
 
 struct Conformational_interaction_label
@@ -86,6 +156,17 @@ struct Conformational_interaction_players
     : public Constant<Conformational_interaction_players,
                       std::vector<Conformational_change_label>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_interaction_players const &x) {
+    os << "players: {";
+    for (auto e : x())
+    {
+        print(os, e());
+        os<< ",";
+    }
+    os << "} ";
+    return os;
+  }
 };
 
 struct Conformational_interaction
@@ -94,6 +175,14 @@ struct Conformational_interaction
                                    Conformational_interaction_players,
                                    Conformational_interaction_positions>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_interaction const &x) {
+    print(os, get<Conformational_interaction_label>(x())());
+    os << " => ";
+    print(os, get<Conformational_interaction_players>(x()));
+    print(os, get<Conformational_interaction_positions>(x()));
+    return os << "\n";
+  }
 };
 
 struct Conductance_interaction
@@ -102,17 +191,46 @@ struct Conductance_interaction
                                    Conductance_interaction_players,
                                    Conductance_interaction_positions>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conductance_interaction const &x) {
+    print(os, get<Conductance_interaction_label>(x())());
+    os << " => ";
+    print(os, get<Conductance_interaction_players>(x()));
+    print(os, get<Conductance_interaction_positions>(x()));
+    return os << "\n";
+  }
 };
 
 struct Conformational_interaction_scheme
     : public Constant<Conformational_interaction_scheme,
                       std::vector<Conformational_interaction>> {
   using Constant::Constant;
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_interaction_scheme const &x) {
+    os << "\ninteraction scheme begin: \n";
+    for (auto e : x())
+    {
+        print(os, e);
+    }
+    os << "interaction end\n";
+    return os;
+  }
 };
 
 struct Conductance_interaction_scheme
     : public Constant<Conductance_interaction_scheme,
-                      std::vector<Conductance_interaction>> {};
+                      std::vector<Conductance_interaction>> {
+  friend std::ostream &print(std::ostream &os,
+                             Conductance_interaction_scheme const &x) {
+    os << "conductance interaction scheme begin\n";
+    for (auto e : x())
+    {
+        print(os, e);
+    }
+    os << "end\n";
+    return os;
+  }
+};
 
 struct Conformational_interaction_index
     : public Constant<Conformational_interaction_index, std::size_t> {};
@@ -126,37 +244,121 @@ struct Conformational_interaction_subposition
 struct Conformational_interactions_domain_state
     : public Constant<
           Conformational_interactions_domain_state,
-          std::vector<Vector_Space<Conformational_interaction_index,
-                                   Conformational_interaction_subposition>>> {};
+          std::multiset<Vector_Space<Conformational_interaction_index,
+                                   Conformational_interaction_subposition>>> {
+
+  friend std::ostream &
+  print(std::ostream &os, Conformational_interactions_domain_state const &x) {
+    // os<<"Interactions:[";
+    for (auto &e : x())
+      os << get<Conformational_interaction_index>(e)() << "_"
+         << get<Conformational_interaction_subposition>(e)() << " ";
+    // os<<"]";
+    return os;
+  }
+};
 
 struct Conformational_domain_state
     : public Constant<Conformational_domain_state,
-                      std::pair<Conformational_change,
-                                Conformational_interactions_domain_state>> {};
+                      Vector_Space<Conformational_change,
+                                Conformational_change_domain_state,
+                                Conformational_interactions_domain_state>> {
+    
+    friend std::ostream &
+    print(std::ostream &os, Conformational_domain_state const &x) {
+        print(os,get<Conformational_change>(x()));
+        os<<" ";
+        print(os,get<Conformational_change_domain_state>(x())());
+        os<<" [";
+        print(os,get<Conformational_interactions_domain_state>(x()));
+        os<<"]";
+        
+        return os;
+    } 
+};
 
 struct Conformational_interactions_state_vector
     : public Constant<Conformational_interactions_state_vector,
-                      std::vector<Conformational_interactions_domain_state>> {};
+                      std::vector<Conformational_interactions_domain_state>> {
+
+  friend std::ostream &
+  print(std::ostream &os, Conformational_interactions_state_vector const &x) {
+    for (auto &e : x()) {
+      os << "[";
+      print(os, e);
+      os << "]";
+    }
+    return os;
+  }
+};
 
 struct Conformational_state_vector
     : public Constant<Conformational_state_vector,
                       Vector_Space<Conformational_change_state_vector,
                                    Conformational_interactions_state_vector>> {
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_state_vector const &x) {
+    os << " state: ";
+    print(os, get<Conformational_change_state_vector>(x()));
+    os << " interactions: ";
+    print(os, get<Conformational_interactions_state_vector>(x()));
+    return os;
+  }
 };
 
 struct Conformational_state_count
     : public Constant<Conformational_state_count,
-                      std::map<Conformational_domain_state, std::size_t>> {};
+                      std::map<Conformational_domain_state, std::size_t>> {
+    
+    friend std::ostream &print(std::ostream &os,
+                               Conformational_state_count const &x) {
+        os << " states: ";
+        for (auto& e: x())
+        {
+            os<<"{";
+          print(os, e.first);
+            os<<"}->"<<e.second<<"  ";     
+        }
+        return os;
+    }
+    
+    
+};
 
 struct Conductance_state_count
     : public Constant<Conductance_state_count,
-                      std::map<Conductance_interaction_index, std::size_t>> {};
+                      std::map<Conductance_interaction_index, std::size_t>> {
+    friend std::ostream &print(std::ostream &os,
+                               Conductance_state_count const &x) {
+        os << " conductance: ";
+        for (auto& e: x())
+        {
+            os<<"[";
+            print(os, e.first());
+            os<<"]->"<<e.second<<"  ";     
+        }
+        return os;
+    }
+    
+    
+};
 
 struct Conformational_model_scheme
     : public Constant<Conformational_model_scheme,
                       Vector_Space<Conformational_change_scheme,
                                    Conformational_interaction_scheme,
-                                   Conductance_interaction_scheme>> {};
+                                   Conductance_interaction_scheme>> {
+
+  friend std::ostream &print(std::ostream &os,
+                             Conformational_model_scheme const &x) {
+    os << "\nConformational model scheme\n";
+    print(os, get<Conformational_change_scheme>(x()));
+    print(os, get<Conformational_interaction_scheme>(x()));
+    print(os, get<Conductance_interaction_scheme>(x()));
+    os << "\n end of Conformational model scheme\n-------------------------\n";
+    return os;
+  }
+};
 
 struct Conformational_transition_direction
     : public Constant<Conformational_transition_direction, bool> {};
@@ -182,17 +384,71 @@ struct Conformational_transition
                        Agonist_dependency, Conformational_transition_direction,
                        Conformational_change_label,
                        Conformational_interactions_domain_state,
-                       Conformational_transition_mulitplicity>> {};
+                       Conformational_transition_mulitplicity>> {
+    
+    friend std::ostream &print(std::ostream &os,
+                               Conformational_transition const &x) {
+        os<<get<Conformational_transition_initiating_state_index>(x())()<<"->";
+        os<<get<Conformational_transition_landing_state_index>(x())();
+        
+        os<<": ";
+        print(os, get<Conformational_transition_mulitplicity>(x())());
+        os<<"*"<<get<Conformational_change_label>(x())();
+        if (get<Conformational_transition_direction>(x())())
+            os<<"_on";
+        else
+            os<<"_off";
+        
+        print(os, get<Agonist_dependency>(x()));
+        
+        os<<" [";
+        print(os, get<Conformational_interactions_domain_state>(x()));
+        os<<"]";
+        return os;
+    } 
+    
+};
 
 struct Conformational_transition_list
     : public Constant<Conformational_transition_list,
-                      std::vector<std::vector<Conformational_transition>>> {};
+                      std::vector<std::vector<Conformational_transition>>> {
+    
+    friend std::ostream& print (std::ostream& os,Conformational_transition_list const & x )
+    {
+        for (auto i=0ul; i<x().size(); ++i){
+            for (auto j=0ul; j<x()[i].size(); ++j )
+            {
+                print(os,x()[i][j]);
+                os<<"\n";
+            }
+        }
+        return os;
+    }
+    
+};
 
 struct Conformational_states
     : public Constant<Conformational_states,
                       std::vector<Vector_Space<Conformational_state_count,
                                                Conformational_state_vector,
-                                               Conductance_state_count>>> {};
+                                               Conductance_state_count>>> {
+
+  friend std::ostream &print(std::ostream &os, Conformational_states const &x) {
+    os << "\nConformational states\n";
+    for (auto i = 0ul; i < x().size(); ++i) {
+      auto &e = x()[i];
+      os << "\n" << i << "-->";
+      print(os, get<Conformational_state_vector>(e));
+      os<<"\t";
+      print(os, get<Conformational_state_count>(e));
+      os<<"\t";
+      print(os, get<Conductance_state_count>(e));
+      
+    }
+    os << "\n end of Conformational states\n";
+    return os;
+  }
+};
 
 struct Conformational_state_count_to_index
     : public Constant<
@@ -203,7 +459,15 @@ struct Conformational_model
     : public Constant<
           Conformational_model,
           Vector_Space<N_St, Conformational_model_scheme, Conformational_states,
-                       Conformational_transition_list>> {};
+                       Conformational_transition_list>> {
+  friend std::ostream &print(std::ostream &os, Conformational_model const &x) {
+    os << "Conformational model\n";
+    print(os, get<Conformational_model_scheme>(x()));
+    print(os, get<Conformational_states>(x()));
+    print(os, get<Conformational_transition_list>(x()));
+    return os;
+  }
+};
 
 namespace impl {
 
@@ -243,7 +507,7 @@ make_Conformational_interaction_state_vector(
           }
         }
         if (includes_all_other && includes_i)
-          out[i]().push_back(Vector_Space(
+          out[i]().insert(Vector_Space(
               Conformational_interaction_index(j),
               Conformational_interaction_subposition(i_sub_position)));
       }
@@ -273,9 +537,9 @@ to_state_count(const Conformational_model_scheme &model,
     std::map<Conformational_domain_state, std::size_t> out;
 
     for (std::size_t i = 0; i < v_state().size(); ++i) {
-      if (v_state()[i]())
-        ++out[Conformational_domain_state(
-            std::pair(v_change()[i], v_inter()[i]))];
+            ++out[Conformational_domain_state(
+               Vector_Space(
+            v_change()[i], v_state()[i],v_inter()[i]))];
     }
     return Conformational_state_count(std::move(out));
   }
@@ -504,18 +768,18 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
   auto v_int = get<Conformational_interactions_domain_state>(tr());
   auto n = get<Conformational_transition_mulitplicity>(tr());
 
-  auto Maybe_i_base = d() ? names[chla() + "_on"] : names[chla() + ":off"];
+  auto Maybe_i_base = d() ? names[chla() + "_on"] : names[chla() + "_off"];
 
   if (!Maybe_i_base)
     return Maybe_i_base.error();
   else {
     auto i_base = Maybe_i_base.value();
     auto out = n() * par[i_base];
-    for (std::size_t ii = 0; ii < v_int().size(); ++ii) {
+    for (auto ii = v_int().begin(); ii!=v_int().end(); ++ii) {
       auto factor_la = get<Conformational_interaction_label>(
-          inter()[get<Conformational_interaction_index>(v_int()[ii])()]())();
+          inter()[get<Conformational_interaction_index>(*ii)()]())();
       auto factor_ipos =
-          get<Conformational_interaction_subposition>(v_int()[ii])();
+          get<Conformational_interaction_subposition>(*ii)();
       auto Maybe_i_Factor = names[factor_la];
       auto Maybe_i_Factor_pos =
           names[factor_la + "_" + std::to_string(factor_ipos)];
@@ -537,6 +801,53 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
   }
 }
 
+template <class Id>
+auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
+                      const typename Parameters<Id>::Names &names,
+                      const Conformational_transition &tr)
+    -> Maybe_error<std::string> {
+  auto ag = get<Agonist_dependency>(tr());
+  auto d = get<Conformational_transition_direction>(tr());
+  auto chla = get<Conformational_change_label>(tr());
+  auto v_int = get<Conformational_interactions_domain_state>(tr());
+  auto n = get<Conformational_transition_mulitplicity>(tr());
+
+  auto Maybe_i_base = d() ? names[chla() + "_on"] : names[chla() + "_off"];
+
+  if (!Maybe_i_base)
+    return Maybe_i_base.error();
+  else {
+    auto i_base = Maybe_i_base.value();
+    auto out = std::to_string(n()) + " * " + names.names()[i_base];
+    for (auto  ii = v_int().begin(); ii!= v_int().end(); ++ii) {
+      auto factor_la = get<Conformational_interaction_label>(
+          inter()[get<Conformational_interaction_index>(*ii)()]())();
+      auto factor_ipos =
+          get<Conformational_interaction_subposition>(*ii)();
+      auto Maybe_i_Factor = names[factor_la];
+      auto Maybe_i_Factor_pos =
+          names[factor_la + "_" + std::to_string(factor_ipos)];
+      if (!Maybe_i_Factor || !Maybe_i_Factor_pos)
+        return error_message(Maybe_i_Factor.error()() +
+                             Maybe_i_Factor_pos.error()());
+      else {
+        auto i_Factor = Maybe_i_Factor.value();
+        auto i_Factor_pos = Maybe_i_Factor_pos.value();
+
+        using std::pow;
+        if (d())
+          out = out + "* pow(" + names()[i_Factor] + "," +
+                names()[i_Factor_pos] + ")";
+        else
+          out = out + "* pow(" + names()[i_Factor] + "," +
+                names()[i_Factor_pos] + "-1.0)";
+        //      out = out * pow(par[i_Factor], par[i_Factor_pos] - 1.0);
+      }
+    }
+    return out;
+  }
+}
+
 template <class Id, class P>
   requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
 auto make_Q0_Qa(const Conformational_model &model,
@@ -546,7 +857,8 @@ auto make_Q0_Qa(const Conformational_model &model,
   using Trans = transformation_type_t<P>;
 
   auto N = get<N_St>(model())();
-  auto inter=get<Conformational_interaction_scheme>(get<Conformational_model_scheme>(model())());
+  auto inter = get<Conformational_interaction_scheme>(
+      get<Conformational_model_scheme>(model())());
   auto tr = get<Conformational_transition_list>(model());
   assert(tr().size() == N);
   auto v_Q0 = Op_t<Trans, Q0>(Matrix<double>(N, N, 0.0));
@@ -564,10 +876,47 @@ auto make_Q0_Qa(const Conformational_model &model,
         return Maybe_qij.error();
       else if (!ag()) {
         set(v_Q0(), i, i, v_Q0()(i, i) - Maybe_qij.value());
-          set(v_Q0(), i, v_j()(), Maybe_qij.value());
+        set(v_Q0(), i, v_j()(), Maybe_qij.value());
       } else {
         set(v_Qa(), i, i, v_Qa()(i, i) - Maybe_qij.value());
-          set(v_Qa(), i, v_j()(), Maybe_qij.value());
+        set(v_Qa(), i, v_j()(), Maybe_qij.value());
+      }
+    }
+  }
+  return std::tuple(v_Q0, v_Qa);
+}
+
+template <class Id>
+auto make_Q0_Qa_formula(const Conformational_model &model,
+                        const typename Parameters<Id>::Names &names)
+    -> Maybe_error<std::tuple<Q0_formula, Qa_formula>> {
+
+  auto N = get<N_St>(model())();
+  auto inter = get<Conformational_interaction_scheme>(
+      get<Conformational_model_scheme>(model())());
+  auto tr = get<Conformational_transition_list>(model());
+  assert(tr().size() == N);
+  auto v_Q0 = Q0_formula(std::vector<std::vector<std::string>>(
+      N, std::vector<std::string>(N, "")));
+  auto v_Qa = Qa_formula(std::vector<std::vector<std::string>>(
+      N, std::vector<std::string>(N, "")));
+
+  for (std::size_t i = 0; i < N; ++i) {
+    for (std::size_t j = 0; j < tr()[i].size(); ++j) {
+      auto trr = tr()[i][j];
+      auto v_i = get<Conformational_transition_initiating_state_index>(trr());
+      assert(v_i()() == i);
+      auto v_j = get<Conformational_transition_landing_state_index>(trr());
+      auto ag = get<Agonist_dependency>(trr());
+      auto Maybe_qij = calc_Qij_formula<Id>(inter, names, trr);
+      if (!Maybe_qij)
+        return Maybe_qij.error();
+      else if (!ag()) {
+        v_Q0()[i][i] = v_Q0()[i][i] + " -" + Maybe_qij.value();
+        v_Q0()[i][v_j()()] = Maybe_qij.value();
+      } else {
+        v_Qa()[i][i] = v_Qa()[i][i] + " -" + Maybe_qij.value();
+        v_Qa()[i][v_j()()] = Maybe_qij.value();
       }
     }
   }
@@ -596,6 +945,30 @@ auto calc_gi(const Conductance_interaction_scheme &scheme,
   return out;
 }
 
+template <class Id>
+auto calc_gi_formula(const Conductance_interaction_scheme &scheme,
+                     const typename Parameters<Id>::Names &names,
+                     const Conductance_state_count &count)
+    -> Maybe_error<std::string> {
+  std::string out = "";
+  for (auto it = count().begin(); it != count().end(); ++it) {
+    auto i_lab = it->first();
+    auto lab = get<Conductance_interaction_label>(scheme()[i_lab]())();
+    auto n = it->second;
+    auto Maybe_i = names[lab];
+    if (!Maybe_i)
+      return Maybe_i.error();
+    else {
+      auto i = Maybe_i.value();
+      if (n > 1)
+        out = out + "+" + names()[i] + "*" + std::to_string(n);
+      else
+        out = out + "+" + names()[i];
+    }
+  }
+  return out;
+}
+
 template <class Id, class P>
   requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
 auto make_g(const Conformational_model &model,
@@ -615,12 +988,40 @@ auto make_g(const Conformational_model &model,
 
   for (std::size_t i = 0; i < N; ++i) {
     auto &v_cond_map = get<Conductance_state_count>(v_states()[i]);
-      
-      auto Maybe_gi = calc_gi<Id>(v_conductance, names, par, v_cond_map);
+
+    auto Maybe_gi = calc_gi<Id>(v_conductance, names, par, v_cond_map);
     if (!Maybe_gi)
       return Maybe_gi.error();
     else {
       set(v_g(), i, 0, Maybe_gi.value());
+    }
+  }
+  return v_g;
+}
+
+template <class Id>
+auto make_g_formula(const Conformational_model &model,
+                    const typename Parameters<Id>::Names &names)
+    -> Maybe_error<g_formula> {
+
+  auto &v_states = get<Conformational_states>(model());
+
+  auto &v_scheme = get<Conformational_model_scheme>(model());
+
+  auto v_conductance = get<Conductance_interaction_scheme>(v_scheme());
+
+  auto N = get<N_St>(model())();
+  assert(v_states().size() == N);
+  auto v_g = g_formula(std::vector<std::string>(N, ""));
+
+  for (std::size_t i = 0; i < N; ++i) {
+    auto &v_cond_map = get<Conductance_state_count>(v_states()[i]);
+
+    auto Maybe_gi = calc_gi_formula<Id>(v_conductance, names, v_cond_map);
+    if (!Maybe_gi)
+      return Maybe_gi.error();
+    else {
+      v_g()[i] = Maybe_gi.value();
     }
   }
   return v_g;
@@ -631,7 +1032,7 @@ auto get_conformational_change_names(const Conformational_change_scheme &sch) {
   std::set<std::string> labels;
   for (auto &e : sch()) {
     auto la = get<Conformational_change_label>(e())();
-    if (labels.find(la) != labels.end()) {
+    if (labels.find(la) == labels.end()) {
       out.push_back(la + "_on");
       out.push_back(la + "_off");
       labels.insert(la);
@@ -646,7 +1047,7 @@ auto get_conformational_interaction_names(
   std::set<std::string> labels;
   for (auto &e : sch()) {
     auto la = get<Conformational_interaction_label>(e())();
-    if (labels.find(la) != labels.end()) {
+    if (labels.find(la) == labels.end()) {
       out.push_back(la);
       auto n = get<Conformational_interaction_players>(e())().size();
       for (std::size_t i = 0; i < n; ++i)
@@ -658,17 +1059,19 @@ auto get_conformational_interaction_names(
 }
 
 auto get_conductance_names(const Conductance_interaction_scheme &sch) {
-    std::vector<std::string> out;
-    std::set<std::string> labels;
+  std::vector<std::string> out;
+  std::set<std::string> labels;
   for (auto &e : sch()) {
     auto la = get<Conductance_interaction_label>(e())();
-      if (labels.find(la) != labels.end()) {
-          out.push_back(la);
-          labels.insert(la);
-      }
+    if (labels.find(la) == labels.end()) {
+      out.push_back(la);
+      labels.insert(la);
+    }
   }
   return out;
 }
+
+auto get_states_structure(const Conformational_states &states) {}
 
 } // namespace impl
 
@@ -702,6 +1105,10 @@ Maybe_error<Conformational_model> make_Conformational_model(
   }
 }
 
+auto get_states_structure(const Conformational_model &model) {
+  return impl::get_states_structure(get<Conformational_states>(model()));
+}
+
 template <class Id, class P>
   requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
 auto make_Model(const Conformational_model &model,
@@ -710,8 +1117,25 @@ auto make_Model(const Conformational_model &model,
                               Transfer_Op_to<P, g>>>
 
 {
-    auto Maybe_Q0Qa = impl::make_Q0_Qa<Id>(model, names, p);
-    auto Maybe_g = impl::make_g<Id>(model, names, p);
+  auto Maybe_Q0Qa = impl::make_Q0_Qa<Id>(model, names, p);
+  auto Maybe_g = impl::make_g<Id>(model, names, p);
+  if (!Maybe_Q0Qa || !Maybe_g)
+    return error_message(Maybe_Q0Qa.error()() + Maybe_g.error()());
+  else {
+    auto [v_Q0, v_Qa] = std::move(Maybe_Q0Qa.value());
+    auto v_g = std::move(Maybe_g.value());
+    return std::tuple(std::move(v_Q0), std::move(v_Qa), std::move(v_g));
+  }
+}
+
+template <class Id>
+auto make_Model_Formulas(const Conformational_model &model,
+                         const typename Parameters<Id>::Names &names)
+    -> Maybe_error<std::tuple<Q0_formula, Qa_formula, g_formula>>
+
+{
+  auto Maybe_Q0Qa = impl::make_Q0_Qa_formula<Id>(model, names);
+  auto Maybe_g = impl::make_g_formula<Id>(model, names);
   if (!Maybe_Q0Qa || !Maybe_g)
     return error_message(Maybe_Q0Qa.error()() + Maybe_g.error()());
   else {
@@ -730,11 +1154,10 @@ auto make_ModelNames(const Conformational_model &confmodel) {
       get<Conformational_interaction_scheme>(model()));
   auto cond_names =
       impl::get_conductance_names(get<Conductance_interaction_scheme>(model()));
-  
-  con_names.insert(cond_names.end(),inter_names.begin(),inter_names.end());
-  con_names.insert(cond_names.end(),cond_names.begin(),cond_names.end());
-  
-  
+
+  con_names.insert(con_names.end(), inter_names.begin(), inter_names.end());
+  con_names.insert(con_names.end(), cond_names.begin(), cond_names.end());
+
   return typename Parameters<Id>::Names(con_names);
 }
 

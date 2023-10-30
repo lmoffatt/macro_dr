@@ -1409,6 +1409,14 @@ public:
     return os;
   }
 };
+
+template<class Matrix>
+    requires (Matrix::is_Matrix)
+std::ostream& print(std::ostream& os, const Matrix& x)
+{
+    return os<<x;
+}
+
 template <class T> DiagPosDetMatrix<T> XTX(const DiagonalMatrix<T> &a);
 
 template <class T> class DiagPosDetMatrix : public DiagonalMatrix<T> {

@@ -8,6 +8,8 @@
 #include <functional>
 namespace var {
 
+ 
+
 
 template<class Id>
 struct Unit{ public: static constexpr bool is_unit=true;};
@@ -96,7 +98,12 @@ public:
     constexpr auto& operator()(const Ts&...)const {return m_x;}
     
     
-    friend auto& print(std::ostream& os, const Var& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    friend auto& print(std::ostream& os, const Var& x){
+        os<<typeid(Id).name()<<": \n";
+        print(os,x.value());
+        os<<"\n";
+        return os;
+    }
     
     friend Id  operator-(const Var& one, const Var& two){return Id(one()-two());}
     
@@ -137,7 +144,13 @@ public:
     
     constexpr Constant(){}
     constexpr auto& value()const {return m_x;}
-    friend auto& print(std::ostream& os, const Constant& x){ os<<typeid(Id).name()<<": \t"<<x.value()<<"\t"; return os;}
+    friend auto& print(std::ostream& os, const Constant& x){
+        os<<typeid(Id).name()<<": \n";
+        print(os,x.value());
+        os<<"\n";
+        return os;
+        
+    }
     friend bool operator<(const Constant& one,const Constant& two){ return one.value()<two.value();}
     
     friend auto& operator<<(std::ostream& os, const Constant& x){ os<<x.value(); return os;}
@@ -290,7 +303,11 @@ public:
     
     friend std::ostream& print(std::ostream& os, const Vector_Space& tu)
     {
-        return ((os<<typeid(Vars).name()<<" :=\t"<<static_cast<Vars const&>(tu).value()<<"\t"),...);
+        (print(os,static_cast<Vars const&>(tu)),...);
+        os<<"\n";
+        return os;
+       //  ((os<<typeid(Vars).name()<<" :=\t"<<static_cast<Vars const&>(tu).value()<<"\t"),...);
+       // return os
     }
     
     

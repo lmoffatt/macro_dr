@@ -435,24 +435,6 @@ std::ostream &put(std::ostream &os, const T &t) {
   return os;
 }
 
-template <class... Ts>
-std::ostream &operator<<(std::ostream &os, const std::tuple<Ts...> &tu) {
-  return std::apply(
-      [&os](auto &...x) -> std::ostream & {
-        (put(os, x), ...);
-        return os;
-      },
-      tu);
-}
-
-template <class Ts>
-std::ostream &operator<<(std::ostream &os, const std::vector<Ts> &v) {
-  for (std::size_t i = 0; i < v.size(); ++i)
-    os << v[i] << "\n";
-  //  os<<"\n";
-  return os;
-}
-
 
 
 
