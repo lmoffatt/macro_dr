@@ -303,7 +303,12 @@ int main(int argc, char **argv) {
       Experiment(std::move(recording_conditions), Frequency_of_Sampling(50e3),
                  initial_ATP_concentration(ATP_concentration(0.0)));
 
-  auto model1 = Model1::Model([](const auto &logp) {
+  struct Model0 : public Model_Patch<Model0> {};
+  struct Model1 : public Model_Patch<Model1> {};
+
+  struct Allost1 : public Model_Patch<Allost1> {};
+
+  auto model0 = Model0::Model([](const auto &logp) {
     using std::pow;
     auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
     auto Npar = 9ul;
@@ -329,11 +334,86 @@ int main(int argc, char **argv) {
               return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
             },
             v_N0, v_Neq, v_Ntau),
-        build<curr_noise>(v_curr_noise), build<curr_baseline>(v_baseline),
+        build<Current_Noise>(v_curr_noise), build<Current_Baseline>(v_baseline),
         Binomial_magical_number(5.0), min_P(1e-7),
         Probability_error_tolerance(1e-2),
         Conductance_variance_error_tolerance(1e-2));
   });
+
+  auto model4 = Model0::Model([](const auto &logp) {
+    using std::pow;
+    auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+
+    auto k01 = p[0];
+    auto k10 = p[1];
+    auto k12 = p[2];
+    auto k21 = p[3];
+    auto k23 = p[4];
+    auto k32 = p[5];
+    auto k34 = p[6];
+    auto k43 = p[7];
+    auto k45 = p[8];
+    auto k54 = p[9];
+    auto k46 = p[10];
+    auto k64 = p[11];
+    auto k57 = p[12];
+    auto k75 = p[13];
+    auto k67 = p[14];
+    auto k76 = (k75 * k54 * k46 * k67) / (k64 * k45 * k57);
+    auto v_g = p[15];
+    auto Npar = 16ul;
+    auto v_curr_noise = p[Npar];
+    auto v_baseline = logp()[Npar + 1];
+    auto v_N0 = p[Npar + 2];
+    auto v_Neq = p[Npar + 3];
+    auto v_Ntau = p[Npar] + 4;
+    auto names_model = std::vector<std::string>{
+        "k01", "k10", "k12", "k21", "k23", "k32", "k34", "k43",
+        "k45", "k54", "k46", "k64", "k57", "k75", "k67", "unitary_current"};
+    auto names_other =
+        std::vector<std::string>{"Current_Noise", "Current_Baseline",
+                                 "Num_ch_initial", "Num_ch_eq", "Num_ch_tau"};
+    names_model.insert(names_model.end(), names_other.begin(),
+                       names_other.end());
+    return std::tuple(
+        names_model,
+        build<Vector_Space>(
+            N_St(8),
+            build<Q0>(var::build_<Matrix<double>>(
+                8, 8,
+                {{1, 0},
+                 {2, 1},
+                 {3, 2},
+                 {3, 4},
+                 {4, 3},
+                 {4, 5},
+                 {5, 4},
+                 {4, 6},
+                 {6, 4},
+                 {5, 7},
+                 {7, 5},
+                 {6, 7},
+                 {7, 6}},
+                {k10, k21, k32, k34, k43, k45, k54, k46, k64, k57, k75, k67,
+                 k76})),
+            build<Qa>(var::build_<Matrix<double>>(
+                8, 8, {{0, 1}, {1, 2}, {2, 3}}, {k01, k12, k23})),
+            build<g>(var::build_<Matrix<double>>(8, 1, {{5, 0}, {6, 0}},
+                                                 {v_g, v_g})),
+            // build<N_Ch_mean>(v_N0),
+
+            build<Fun>(
+                Var<N_Ch_mean>{},
+                [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+                  return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
+                },
+                v_N0, v_Neq, v_Ntau),
+            build<Current_Noise>(v_curr_noise),
+            build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
+            min_P(1e-7), Probability_error_tolerance(1e-2),
+            Conductance_variance_error_tolerance(1e-2)));
+  });
+
   auto v_rocking = Conformational_change_label{"Rocking"};
   auto v_binding = Conformational_change_label{"Binding"};
 
@@ -360,7 +440,7 @@ int main(int argc, char **argv) {
                                                 {4, 5, 0},
                                                 {0, 5, 4}}}}}},
       std::vector<Conductance_interaction>{Vector_Space{
-          Conductance_interaction_label{"Rocking_Conductance"},
+          Conductance_interaction_label{"Rocking_Unitary_Current"},
           Conductance_interaction_players{{v_rocking}},
           Conductance_interaction_positions{{{{0}}, {{2}}, {{4}}}}}});
 
@@ -390,7 +470,7 @@ int main(int argc, char **argv) {
     auto [a_Q0, a_Qa, a_g] = std::move(Maybe_modeltyple.value());
   }
 
-  auto allost1 = Model1::Model([](const auto &logp) {
+  auto allost1 = Allost1::Model([](const auto &logp) {
     using std::pow;
     auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
     auto v_rocking = Conformational_change_label{"Rocking"};
@@ -402,13 +482,7 @@ int main(int argc, char **argv) {
                 {v_rocking, Agonist_dependency{}},
                 {v_binding, Agonist_dependency{Agonist_label{"ATP"}}}}},
         std::vector<Conformational_change_label>{
-            v_rocking,
-            v_binding,
-            v_rocking,
-            v_binding,
-            v_rocking,
-            v_binding,
-        },
+            v_rocking, v_binding, v_rocking, v_binding, v_rocking, v_binding},
         std::vector<Conformational_interaction>{
             {Vector_Space{Conformational_interaction_label{"RBR"},
                           Conformational_interaction_players{
@@ -420,7 +494,7 @@ int main(int argc, char **argv) {
                                                                 {4, 5, 0},
                                                                 {0, 5, 4}}}}}},
         std::vector<Conductance_interaction>{Vector_Space{
-            Conductance_interaction_label{"Rocking_Conductance"},
+            Conductance_interaction_label{"Rocking_Unitary_Current"},
             Conductance_interaction_players{{v_rocking}},
             Conductance_interaction_positions{{{{0}}, {{2}}, {{4}}}}}});
 
@@ -429,17 +503,23 @@ int main(int argc, char **argv) {
 
     auto names = make_ModelNames<Allost1>(m);
 
-    auto names_vec = std::vector<std::string>{"Rocking_on",           //--> 0
-                                              "Rocking_off",          //--> 1
-                                              "Binding_on",           //--> 2
-                                              "Binding_off",          //--> 3
-                                              "RBR",                  //--> 4
-                                              "RBR_0",                //--> 5
-                                              "RBR_1",                //--> 6
-                                              "RBR_2",                //--> 7
-                                              "Rocking_Conductance"}; //--> 8
+    auto names_vec =
+        std::vector<std::string>{"Rocking_on",               //--> 0
+                                 "Rocking_off",              //--> 1
+                                 "Binding_on",               //--> 2
+                                 "Binding_off",              //--> 3
+                                 "RBR",                      //--> 4
+                                 "RBR_0",                    //--> 5
+                                 "RBR_1",                    //--> 6
+                                 "RBR_2",                    //--> 7
+                                 "Rocking_Unitary_Current"}; //--> 8
 
     assert(names() == names_vec);
+    auto names_other = std::vector<std::string>{
+        "Current_Noise","Current_Baseline","Num_ch_initial",
+        "Num_ch_eq","Num_ch_tau","base_unitary_current"};
+
+    names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
 
     auto Npar = names().size();
 
@@ -458,35 +538,28 @@ int main(int argc, char **argv) {
                   const auto &x) { return -v_min_conductance * pow(10.0, x); },
               a_g()));
 
-    return build<Vector_Space>(
-        N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa), std::move(v_g),
-        build<Fun>(
-            Var<N_Ch_mean>{},
-            [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
-              return Neq + (N0 - Neq) * 1 - exp(-time() / Ntau);
-            },
-            v_N0, v_Neq, v_Ntau),
-
-        // build<Fun>(
-        //     Var<N_Ch_mean>{},
-        //     [](auto N0, auto...) {
-        //         return N0;
-        //     },
-        //     v_N0),
-
-        //   build<N_Ch_mean>(v_N0),
-
-        build<curr_noise>(v_curr_noise), build<curr_baseline>(v_baseline),
-        Binomial_magical_number(5.0), min_P(1e-7),
-        Probability_error_tolerance(1e-2),
-        Conductance_variance_error_tolerance(1e-2));
+    return std::tuple(
+        names_vec,
+        build<Vector_Space>(
+            N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+            std::move(v_g),
+            build<Fun>(
+                Var<N_Ch_mean>{},
+                [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+                  return Neq + (N0 - Neq) * 1 - exp(-time() / Ntau);
+                },
+                v_N0, v_Neq, v_Ntau),
+            build<Current_Noise>(v_curr_noise),
+            build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
+            min_P(1e-7), Probability_error_tolerance(1e-2),
+            Conductance_variance_error_tolerance(1e-2)));
   });
 
   //    auto egrw=var::Derivative_t<decltype(Fun(Var<N_Ch_mean>{},[](auto
-  //    N,auto...){return N;},9.0 )),Parameters<Model1>>;
+  //    N,auto...){return N;},9.0 )),Parameters<Model0>>;
   // using tetw=typename dsge::ik;
 
-  auto param1 = Parameters<Model1>(apply(
+  auto param1 = Parameters<Model0>(apply(
       [](auto x) { return std::log10(x); },
       Matrix<double>(1, 14,
                      std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
@@ -529,8 +602,8 @@ int main(int argc, char **argv) {
       var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
                                   {dparam1()[2], dparam1()[3], dparam1()[4]});
 
-  auto m = model1(param1);
-  auto dm = model1(dparam1);
+  auto m = model0(param1);
+  auto dm = model0(dparam1);
 
   // std::cerr<<"\n!--------------------------------------------------------------------------!\n";
   //  print(std::cerr,dm);
@@ -589,7 +662,7 @@ int main(int argc, char **argv) {
 
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
-          mt, model1, param1, experiment,
+          mt, model0, param1, experiment,
           Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
           recording);
       auto lik = Macro_DMR{}
@@ -598,7 +671,7 @@ int main(int argc, char **argv) {
                                      uses_averaging_aproximation(2),
                                      uses_variance_aproximation(false),
                                      return_predictions(false)>(
-                         model1, dparam1, experiment, sim.value()());
+                         model0, dparam1, experiment, sim.value()());
       std::cerr << "\n" << i << "th likelihood!!\n" << lik;
       if (lik) {
         auto v_logL = get<logL>(lik.value());
@@ -701,7 +774,7 @@ int main(int argc, char **argv) {
     std::vector<Matrix<double>> mean_edlogL(algo.size());
     std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
 
-    auto logLik_by_algo = [&model1, &dparam1, &experiment](auto const &sim,
+    auto logLik_by_algo = [&model0, &dparam1, &experiment](auto const &sim,
                                                            std::string algo) {
       if (algo == "NR")
         return Macro_DMR{}
@@ -710,7 +783,7 @@ int main(int argc, char **argv) {
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model1, dparam1, experiment, sim.value()());
+                model0, dparam1, experiment, sim.value()());
       else if (algo == "R")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(false),
@@ -718,7 +791,7 @@ int main(int argc, char **argv) {
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model1, dparam1, experiment, sim.value()());
+                model0, dparam1, experiment, sim.value()());
       else if (algo == "VR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(false),
@@ -726,7 +799,7 @@ int main(int argc, char **argv) {
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(true),
                             return_predictions(false)>(
-                model1, dparam1, experiment, sim.value()());
+                model0, dparam1, experiment, sim.value()());
       else if (algo == "aNR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(true),
@@ -734,7 +807,7 @@ int main(int argc, char **argv) {
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model1, dparam1, experiment, sim.value()());
+                model0, dparam1, experiment, sim.value()());
       else if (algo == "aR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(true),
@@ -742,7 +815,7 @@ int main(int argc, char **argv) {
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model1, dparam1, experiment, sim.value()());
+                model0, dparam1, experiment, sim.value()());
       else // if(algo=="aVR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(true),
@@ -750,12 +823,12 @@ int main(int argc, char **argv) {
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(true),
                             return_predictions(false)>(
-                model1, dparam1, experiment, sim.value()());
+                model0, dparam1, experiment, sim.value()());
     };
 
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
-          mt, model1, param1, experiment,
+          mt, model0, param1, experiment,
           Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
           recording);
       for (std::size_t j = 0; j < algo.size(); ++j) {
@@ -917,7 +990,7 @@ thermodynamic parameter
     /**
      * @brief tmi classical thermodynamic algorithm ends by maximum iteration
      */
-    auto tmi = thermo_Model_by_max_iter<Model1>(
+    auto tmi = thermo_Model_by_max_iter<Model0>(
         path, "newNaN_thermo_R__2000", num_scouts_per_ensemble,
         max_num_simultaneous_temperatures, thermo_jumps_every, max_iter,
         n_points_per_decade, stops_at, includes_zero, myseed);
@@ -925,10 +998,10 @@ thermodynamic parameter
     auto modelLikelihood = make_Likelihood_Model<
         uses_adaptive_aproximation(false), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false)>(
-        model1, Number_of_simulation_sub_steps(10ul));
+        model0, Number_of_simulation_sub_steps(10ul));
 
     auto sim = Macro_DMR{}.sample(
-        mt, model1, param1, experiment,
+        mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
         recording);
 
@@ -1021,10 +1094,10 @@ thermodynamic parameter
     auto modelLikelihood = make_Likelihood_Model<
         uses_adaptive_aproximation(false), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false)>(
-        model1, Number_of_simulation_sub_steps(10ul));
+        model0, Number_of_simulation_sub_steps(10ul));
 
     auto sim = Macro_DMR{}.sample(
-        mt, model1, param1, experiment,
+        mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
         recording);
 
@@ -1046,7 +1119,7 @@ thermodynamic parameter
        * @brief cbc cumulative evidence algorithm, ends using convergence
        * criteria
        */
-      auto cbc = cuevi_Model_by_iteration<Model1>(
+      auto cbc = cuevi_Model_by_iteration<Model0>(
           path, "N100_with_NaNsR", t_segments, t_min_number_of_samples,
           num_scouts_per_ensemble, min_fraction, thermo_jumps_every, max_iter,
           max_ratio, n_points_per_decade, n_points_per_decade_fraction,
@@ -1059,18 +1132,18 @@ thermodynamic parameter
 
   if (false) {
     auto sim = Macro_DMR{}.sample(
-        mt, model1, param1, experiment,
+        mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)));
 
     auto test_der_Likelihood = var::test_Derivative(
-        [&model1, &sim, &experiment](auto const &dparam1) {
+        [&model0, &sim, &experiment](auto const &dparam1) {
           return Macro_DMR{}
               .log_Likelihood<uses_adaptive_aproximation(false),
                               uses_recursive_aproximation(true),
                               uses_averaging_aproximation(2),
                               uses_variance_aproximation(false),
                               return_predictions(false)>(
-                  model1, dparam1, experiment, sim.value()());
+                  model0, dparam1, experiment, sim.value()());
         },
         1, 1e-10, dparam1);
     if (!test_der_Likelihood) {
