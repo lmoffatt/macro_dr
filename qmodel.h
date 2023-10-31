@@ -336,7 +336,6 @@ using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, curr_noise,
 template <class Id> struct Model_Patch {
     template <class F> class Model {
         F m_f;
-        
     public:
         static constexpr bool is_Model_Patch = true;
         Model(F t_f) : m_f{t_f} {}
@@ -2023,8 +2022,6 @@ public:
     }
 };
 
-struct Model1 : public Model_Patch<Model1> {};
-struct Allost1 : public Model_Patch<Allost1> {};
 
 
 template <uses_adaptive_aproximation adaptive,
