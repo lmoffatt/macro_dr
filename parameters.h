@@ -29,11 +29,9 @@ public:
 
   public:
     static constexpr bool is_Parameters = true;
-    template <class stringvector>
-      requires std::is_same_v<std::decay_t<stringvector>,
-                              std::vector<std::string>>
-    Names(stringvector &&names)
-        : m_names{std::forward<stringvector>(names)},
+    Names(){}  
+    Names(std::vector<std::string> const &names)
+        : m_names{names},
           m_index_map{get_index_map(names)} {}
     auto &operator()() const { return m_names; }
     auto &names() const { return m_names; }

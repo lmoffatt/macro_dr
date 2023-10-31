@@ -208,9 +208,9 @@ class min_P : public var::Constant<min_P, double> {};
 
 class N_Ch_std : public var::Var<N_Ch_std, double> {};
 
-class curr_noise : public var::Var<curr_noise, double> {};
+class Current_Noise : public var::Var<Current_Noise, double> {};
 
-class curr_baseline : public var::Var<curr_baseline, double> {};
+class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
 
 class P_mean : public var::Var<P_mean, Matrix<double>> {};
@@ -327,7 +327,7 @@ using Qdt =
                  gtotal_sqr_ij, gsqr_i, gvar_i, gtotal_var_ij, gvar_ij>;
 
 
-using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, curr_noise,
+using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, Current_Noise,
                                  Binomial_magical_number, 
                                  min_P,
                                  Probability_error_tolerance,
@@ -335,18 +335,27 @@ using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, curr_noise,
 
 template <class Id> struct Model_Patch {
     template <class F> class Model {
-        F m_f;
+        std::tuple<F,typename Parameters<Id>::Names,Q0_formula, Qa_formula, g_formula> m_f;
+        
     public:
         static constexpr bool is_Model_Patch = true;
-        Model(F t_f) : m_f{t_f} {}
+        template<class G>
+        Model(G&& t_g):m_f{std::forward<G>(t_g)()}{}
+        
+        
+        auto& names()const {return std::get<typename Parameters<Id>::Names>(m_f);}
+        auto& get_Q0_formula()const {return std::get<Q0_formula>(m_f);}
+        auto& get_Qa_formula()const {return std::get<Qa_formula>(m_f);}
+        auto& get_g_formula()const {return std::get<g_formula>(m_f);}
+        
         
         template <class P>
             requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
         auto operator()(const P &t_p) const {
-            return std::invoke(m_f, t_p);
+            return std::invoke(std::get<F>(m_f), t_p);
         }
     };
-    template <class F> Model(F f)->Model_Patch<Id>::Model<F>;
+    template <class F> Model(F&& f)->Model_Patch<Id>::Model<std::tuple_element_t<0,decltype(std::declval<F&&>()())>>;
 };
 
 using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
@@ -1193,7 +1202,7 @@ public:
   get<P_mean>(t_prior); auto &p_P_Cov = get<P_Cov>(t_prior);
 
     double e =
-        get<curr_noise>(m).value() * fs/ get<number_of_samples>(p).value();
+        get<Current_Noise>(m).value() * fs/ get<number_of_samples>(p).value();
     double N = get<N_Ch_mean>(m)();
     auto N_states = p_P_mean().nrows();
     Matrix<double> u(N_states, 1, 1.0);
@@ -1279,7 +1288,7 @@ public:
     //        auto &p_P_Cov = get<P_Cov>(t_prior);
     
     //        double e =
-    //            get<curr_noise>(m).value() * fs/ get<number_of_samples>(p).value();
+    //            get<Current_Noise>(m).value() * fs/ get<number_of_samples>(p).value();
     //        double N = get<N_Ch_mean>(m)();
     
     //        auto N_states = p_P_mean().ncols();
@@ -1403,8 +1412,8 @@ public:
         auto &t_tolerance = get<Probability_error_tolerance>(m);
         auto &t_min_P = get<min_P>(m);
         auto e =
-            get<curr_noise>(m).value() * fs/ get<number_of_samples>(t_Qdt).value();
-        auto y_baseline =get<curr_baseline>(m);
+            get<Current_Noise>(m).value() * fs/ get<number_of_samples>(t_Qdt).value();
+        auto y_baseline =get<Current_Baseline>(m);
         auto N = Nch();
         Matrix<double> u(p_P_mean().size(), 1, 1.0);
         
@@ -1954,9 +1963,9 @@ public:
             double y_mean=get<y_sum>(t_sub_step)()/get<number_of_samples>(t_sub_step)();
             get<N_channel_state>(t_sim_step)=get<N_channel_state>(t_sub_step);
             auto &t_e_step = get<Simulated_Recording>(t_sim_step);
-            double e = get<curr_noise>(m)() * fs/
+            double e = get<Current_Noise>(m)() * fs/
                        get<number_of_samples>(t_sub_step)();
-            auto y_baseline = get<curr_baseline>(m);
+            auto y_baseline = get<Current_Baseline>(m);
             
             
             t_e_step()().emplace_back(Patch_current(
@@ -2022,6 +2031,10 @@ public:
     }
 };
 
+struct Model0 : public Model_Patch<Model0> {};
+struct Model1 : public Model_Patch<Model1> {};
+
+struct Allost1 : public Model_Patch<Allost1> {};
 
 
 template <uses_adaptive_aproximation adaptive,

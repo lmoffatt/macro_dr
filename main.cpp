@@ -308,174 +308,174 @@ int main(int argc, char **argv) {
 
   struct Allost1 : public Model_Patch<Allost1> {};
 
-  auto model0 = Model0::Model([](const auto &logp) {
-    using std::pow;
-    auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
-    auto Npar = 9ul;
-    auto v_curr_noise = p[Npar];
-    auto v_baseline = logp()[Npar + 1];
-    auto v_N0 = p[Npar + 2];
-    auto v_Neq = p[Npar + 3];
-    auto v_Ntau = p[Npar] + 4;
+  auto model0 = Model0::Model([]() {
+    auto names_model =
+        std::vector<std::string>{"k01", "k10", "k12",
+                                 "k21", "k23", "k32",
+                                 "k34", "k43", "unitary_current"};
+    auto names_other =
+        std::vector<std::string>{"Current_Noise", "Current_Baseline",
+                                 "Num_ch_initial", "Num_ch_eq", "Num_ch_tau"};
 
-    return build<Vector_Space>(
-        N_St(5),
-        build<Q0>(var::build_<Matrix<double>>(
-            5, 5, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
-            {p[3], p[4], p[5], p[6], p[7]})),
-        build<Qa>(var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
-                                              {p[0], p[1], p[2]})),
-        build<g>(var::build_<Matrix<double>>(5, 1, {{4, 0}}, {p[8]})),
-        // build<N_Ch_mean>(v_N0),
+    std::size_t N = 5ul;
 
-        build<Fun>(
-            Var<N_Ch_mean>{},
-            [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
-              return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
-            },
-            v_N0, v_Neq, v_Ntau),
-        build<Current_Noise>(v_curr_noise), build<Current_Baseline>(v_baseline),
-        Binomial_magical_number(5.0), min_P(1e-7),
-        Probability_error_tolerance(1e-2),
-        Conductance_variance_error_tolerance(1e-2));
+    auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
+        N, std::vector<std::string>(N, "")));
+    v_Q0_formula()[1][0] = "k10";
+    v_Q0_formula()[2][1] = "k21";
+    v_Q0_formula()[3][2] = "k32";
+    v_Q0_formula()[3][4] = "k34";
+    v_Q0_formula()[4][3] = "k43";
+    auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
+        N, std::vector<std::string>(N, "")));
+    v_Qa_formula()[0][1] = "k01";
+    v_Qa_formula()[1][2] = "k12";
+    v_Qa_formula()[2][3] = "k23";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[4] = "unitary_current";
+
+    names_model.insert(names_model.end(), names_other.begin(),
+                       names_other.end());
+
+    return std::tuple(
+        [](const auto &logp) {
+          using std::pow;
+          auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+          auto Npar = 9ul;
+          auto v_curr_noise = p[Npar];
+          auto v_baseline = logp()[Npar + 1];
+          auto v_N0 = p[Npar + 2];
+          auto v_Neq = p[Npar + 3];
+          auto v_Ntau = p[Npar] + 4;
+          return build<Vector_Space>(
+              N_St(5),
+              build<Q0>(var::build_<Matrix<double>>(
+                  5, 5, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
+                  {p[3], p[4], p[5], p[6], p[7]})),
+              build<Qa>(var::build_<Matrix<double>>(
+                  5, 5, {{0, 1}, {1, 2}, {2, 3}}, {p[0], p[1], p[2]})),
+              build<g>(var::build_<Matrix<double>>(5, 1, {{4, 0}}, {p[8]})),
+              // build<N_Ch_mean>(v_N0),
+
+              build<Fun>(
+                  Var<N_Ch_mean>{},
+                  [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+                    return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
+                  },
+                  v_N0, v_Neq, v_Ntau),
+              build<Current_Noise>(v_curr_noise),
+              build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
+              min_P(1e-7), Probability_error_tolerance(1e-2),
+              Conductance_variance_error_tolerance(1e-2));
+        },
+        typename Parameters<Model0>::Names(names_model), std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula));
   });
 
-  auto model4 = Model0::Model([](const auto &logp) {
-    using std::pow;
-    auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
-
-    auto k01 = p[0];
-    auto k10 = p[1];
-    auto k12 = p[2];
-    auto k21 = p[3];
-    auto k23 = p[4];
-    auto k32 = p[5];
-    auto k34 = p[6];
-    auto k43 = p[7];
-    auto k45 = p[8];
-    auto k54 = p[9];
-    auto k46 = p[10];
-    auto k64 = p[11];
-    auto k57 = p[12];
-    auto k75 = p[13];
-    auto k67 = p[14];
-    auto k76 = (k75 * k54 * k46 * k67) / (k64 * k45 * k57);
-    auto v_g = p[15];
-    auto Npar = 16ul;
-    auto v_curr_noise = p[Npar];
-    auto v_baseline = logp()[Npar + 1];
-    auto v_N0 = p[Npar + 2];
-    auto v_Neq = p[Npar + 3];
-    auto v_Ntau = p[Npar] + 4;
+  auto model4 = Model0::Model([]() {
     auto names_model = std::vector<std::string>{
         "k01", "k10", "k12", "k21", "k23", "k32", "k34", "k43",
         "k45", "k54", "k46", "k64", "k57", "k75", "k67", "unitary_current"};
     auto names_other =
         std::vector<std::string>{"Current_Noise", "Current_Baseline",
                                  "Num_ch_initial", "Num_ch_eq", "Num_ch_tau"};
+
+    std::size_t N = 8ul;
+
+    auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
+        N, std::vector<std::string>(N, "")));
+    v_Q0_formula()[1][0] = "k10";
+    v_Q0_formula()[2][1] = "k21";
+    v_Q0_formula()[3][2] = "k32";
+    v_Q0_formula()[3][4] = "k34";
+    v_Q0_formula()[4][3] = "k43";
+    v_Q0_formula()[4][5] = "k45";
+    v_Q0_formula()[5][4] = "k54";
+    v_Q0_formula()[4][6] = "k46";
+    v_Q0_formula()[6][4] = "k64";
+    v_Q0_formula()[5][7] = "k57";
+    v_Q0_formula()[7][5] = "k75";
+    v_Q0_formula()[6][7] = "k67";
+    v_Q0_formula()[7][6] = "(k75 * k54 * k46 * k67)/ (k64 * k45 * k57)";
+    auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
+        N, std::vector<std::string>(N, "")));
+    v_Qa_formula()[0][1] = "k01";
+    v_Qa_formula()[1][2] = "k12";
+    v_Qa_formula()[2][3] = "k23";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[5] = "unitary_current";
+    v_g_formula()[6] = "unitary_current";
+
     names_model.insert(names_model.end(), names_other.begin(),
                        names_other.end());
     return std::tuple(
-        names_model,
-        build<Vector_Space>(
-            N_St(8),
-            build<Q0>(var::build_<Matrix<double>>(
-                8, 8,
-                {{1, 0},
-                 {2, 1},
-                 {3, 2},
-                 {3, 4},
-                 {4, 3},
-                 {4, 5},
-                 {5, 4},
-                 {4, 6},
-                 {6, 4},
-                 {5, 7},
-                 {7, 5},
-                 {6, 7},
-                 {7, 6}},
-                {k10, k21, k32, k34, k43, k45, k54, k46, k64, k57, k75, k67,
-                 k76})),
-            build<Qa>(var::build_<Matrix<double>>(
-                8, 8, {{0, 1}, {1, 2}, {2, 3}}, {k01, k12, k23})),
-            build<g>(var::build_<Matrix<double>>(8, 1, {{5, 0}, {6, 0}},
-                                                 {v_g, v_g})),
-            // build<N_Ch_mean>(v_N0),
+        [](const auto &logp) {
+          using std::pow;
+          auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+          auto k01 = p[0];
+          auto k10 = p[1];
+          auto k12 = p[2];
+          auto k21 = p[3];
+          auto k23 = p[4];
+          auto k32 = p[5];
+          auto k34 = p[6];
+          auto k43 = p[7];
+          auto k45 = p[8];
+          auto k54 = p[9];
+          auto k46 = p[10];
+          auto k64 = p[11];
+          auto k57 = p[12];
+          auto k75 = p[13];
+          auto k67 = p[14];
+          auto k76 = (k75 * k54 * k46 * k67) / (k64 * k45 * k57);
+          auto v_g = p[15];
+          auto Npar = 16ul;
+          auto v_curr_noise = p[Npar];
+          auto v_baseline = logp()[Npar + 1];
+          auto v_N0 = p[Npar + 2];
+          auto v_Neq = p[Npar + 3];
+          auto v_Ntau = p[Npar] + 4;
+          return build<Vector_Space>(
+              N_St(8),
+              build<Q0>(var::build_<Matrix<double>>(8, 8,
+                                                    {{1, 0},
+                                                     {2, 1},
+                                                     {3, 2},
+                                                     {3, 4},
+                                                     {4, 3},
+                                                     {4, 5},
+                                                     {5, 4},
+                                                     {4, 6},
+                                                     {6, 4},
+                                                     {5, 7},
+                                                     {7, 5},
+                                                     {6, 7},
+                                                     {7, 6}},
+                                                    {k10, k21, k32, k34, k43,
+                                                     k45, k54, k46, k64, k57,
+                                                     k75, k67, k76})),
+              build<Qa>(var::build_<Matrix<double>>(
+                  8, 8, {{0, 1}, {1, 2}, {2, 3}}, {k01, k12, k23})),
+              build<g>(var::build_<Matrix<double>>(8, 1, {{5, 0}, {6, 0}},
+                                                   {v_g, v_g})),
+              // build<N_Ch_mean>(v_N0),
 
-            build<Fun>(
-                Var<N_Ch_mean>{},
-                [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
-                  return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
-                },
-                v_N0, v_Neq, v_Ntau),
-            build<Current_Noise>(v_curr_noise),
-            build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
-            min_P(1e-7), Probability_error_tolerance(1e-2),
-            Conductance_variance_error_tolerance(1e-2)));
+              build<Fun>(
+                  Var<N_Ch_mean>{},
+                  [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+                    return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
+                  },
+                  v_N0, v_Neq, v_Ntau),
+              build<Current_Noise>(v_curr_noise),
+              build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
+              min_P(1e-7), Probability_error_tolerance(1e-2),
+              Conductance_variance_error_tolerance(1e-2));
+        },
+        std::move(names_model), v_Q0_formula, v_Qa_formula, v_g_formula);
   });
 
-  auto v_rocking = Conformational_change_label{"Rocking"};
-  auto v_binding = Conformational_change_label{"Binding"};
-
-  auto allostM = make_Conformational_model(
-      Agonist_dependency_map{
-          std::map<Conformational_change_label, Agonist_dependency>{
-              {v_rocking, Agonist_dependency{}},
-              {v_binding, Agonist_dependency{Agonist_label{"ATP"}}}}},
-      std::vector<Conformational_change_label>{
-          v_rocking,
-          v_binding,
-          v_rocking,
-          v_binding,
-          v_rocking,
-          v_binding,
-      },
-      std::vector<Conformational_interaction>{{Vector_Space{
-          Conformational_interaction_label{"RBR"},
-          Conformational_interaction_players{{v_rocking, v_binding, v_rocking}},
-          Conformational_interaction_positions{{{0, 1, 2},
-                                                {2, 1, 0},
-                                                {2, 3, 4},
-                                                {4, 3, 2},
-                                                {4, 5, 0},
-                                                {0, 5, 4}}}}}},
-      std::vector<Conductance_interaction>{Vector_Space{
-          Conductance_interaction_label{"Rocking_Unitary_Current"},
-          Conductance_interaction_players{{v_rocking}},
-          Conductance_interaction_positions{{{{0}}, {{2}}, {{4}}}}}});
-
-  print(std::cerr, allostM.value());
-
-  auto aparam1 = Parameters<Allost1>(
-      apply([](auto x) { return std::log10(x); },
-            Matrix<double>(1, 11,
-                           std::vector<double>{100, 1e-4, 18, 12, 6, 210, 420,
-                                               630, 1680, 54, 0.5})));
-  auto aparam1Names = make_ModelNames<Allost1>(allostM.value());
-
-  print(std::cerr, aparam1Names);
-
-  auto Maybe_modeltyple_formula =
-      make_Model_Formulas<Allost1>(allostM.value(), aparam1Names);
-  if (Maybe_modeltyple_formula) {
-    auto [a_Q0, a_Qa, a_g] = std::move(Maybe_modeltyple_formula.value());
-    std::cerr << "\nQ0 formulas\n" << a_Q0 << "\n";
-    std::cerr << "\nQa formulas\n" << a_Qa << "\n";
-    std::cerr << "\ng formulas\n" << a_g << "\n";
-  }
-
-  auto Maybe_modeltyple =
-      make_Model<Allost1>(allostM.value(), aparam1Names, aparam1);
-  if (Maybe_modeltyple) {
-    auto [a_Q0, a_Qa, a_g] = std::move(Maybe_modeltyple.value());
-  }
-
-  auto allost1 = Allost1::Model([](const auto &logp) {
-    using std::pow;
-    auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+  auto allost1 = Allost1::Model([]() {
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_binding = Conformational_change_label{"Binding"};
-
     auto mo = make_Conformational_model(
         Agonist_dependency_map{
             std::map<Conformational_change_label, Agonist_dependency>{
@@ -516,43 +516,52 @@ int main(int argc, char **argv) {
 
     assert(names() == names_vec);
     auto names_other = std::vector<std::string>{
-        "Current_Noise","Current_Baseline","Num_ch_initial",
-        "Num_ch_eq","Num_ch_tau","base_unitary_current"};
+        "Current_Noise", "Current_Baseline", "Num_ch_initial",
+        "Num_ch_eq",     "Num_ch_tau",       "base_unitary_current"};
 
     names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
 
-    auto Npar = names().size();
+    auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
+    assert(Maybe_modeltyple_formula);
+    auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
+        std::move(Maybe_modeltyple_formula.value());
+    return std::tuple(
+        [names, m](const auto &logp) {
+          using std::pow;
+          auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+          auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
+          assert(Maybe_Q0Qag);
+          auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
+          auto Npar = names().size();
 
-    auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
-    assert(Maybe_Q0Qag);
-    auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
-    auto v_curr_noise = p[Npar];
-    auto v_baseline = logp[Npar + 1];
-    auto v_N0 = p[Npar + 2];
-    auto v_Neq = p[Npar + 3];
-    auto v_Ntau = p[Npar + 4];
-    auto v_min_conductance = p[Npar + 5];
+          auto v_curr_noise = p[Npar];
+          auto v_baseline = logp[Npar + 1];
+          auto v_N0 = p[Npar + 2];
+          auto v_Neq = p[Npar + 3];
+          auto v_Ntau = p[Npar + 4];
+          auto v_min_conductance = p[Npar + 5];
 
-    auto v_g = g(
-        apply([&v_min_conductance](
-                  const auto &x) { return -v_min_conductance * pow(10.0, x); },
+          auto v_g = g(apply(
+              [&v_min_conductance](const auto &x) {
+                return -v_min_conductance * pow(10.0, x);
+              },
               a_g()));
 
-    return std::tuple(
-        names_vec,
-        build<Vector_Space>(
-            N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-            std::move(v_g),
-            build<Fun>(
-                Var<N_Ch_mean>{},
-                [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
-                  return Neq + (N0 - Neq) * 1 - exp(-time() / Ntau);
-                },
-                v_N0, v_Neq, v_Ntau),
-            build<Current_Noise>(v_curr_noise),
-            build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
-            min_P(1e-7), Probability_error_tolerance(1e-2),
-            Conductance_variance_error_tolerance(1e-2)));
+          return build<Vector_Space>(
+              N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+              std::move(v_g),
+              build<Fun>(
+                  Var<N_Ch_mean>{},
+                  [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
+                    return Neq + (N0 - Neq) * 1 - exp(-time() / Ntau);
+                  },
+                  v_N0, v_Neq, v_Ntau),
+              build<Current_Noise>(v_curr_noise),
+              build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
+              min_P(1e-7), Probability_error_tolerance(1e-2),
+              Conductance_variance_error_tolerance(1e-2));
+        },
+        names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
   });
 
   //    auto egrw=var::Derivative_t<decltype(Fun(Var<N_Ch_mean>{},[](auto
