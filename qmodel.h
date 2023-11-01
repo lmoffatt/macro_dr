@@ -335,7 +335,7 @@ using Patch_Model = Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, Current_Noise,
 
 template <class Id> struct Model_Patch {
     template <class F> class Model {
-        std::tuple<F,typename Parameters<Id>::Names,Q0_formula, Qa_formula, g_formula> m_f;
+        std::tuple<F,Parameters<Id>,typename Parameters<Id>::Names,Q0_formula, Qa_formula, g_formula> m_f;
         
     public:
         static constexpr bool is_Model_Patch = true;
@@ -344,6 +344,9 @@ template <class Id> struct Model_Patch {
         
         
         auto& names()const {return std::get<typename Parameters<Id>::Names>(m_f);}
+        auto& parameters()const {return std::get<Parameters<Id>>(m_f);}
+        
+        
         auto& get_Q0_formula()const {return std::get<Q0_formula>(m_f);}
         auto& get_Qa_formula()const {return std::get<Qa_formula>(m_f);}
         auto& get_g_formula()const {return std::get<g_formula>(m_f);}
@@ -352,7 +355,7 @@ template <class Id> struct Model_Patch {
         template <class P>
             requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
         auto operator()(const P &t_p) const {
-            return std::invoke(std::get<F>(m_f), t_p);
+            return std::invoke(std::get<F>(m_f) , t_p);
         }
     };
     template <class F> Model(F&& f)->Model_Patch<Id>::Model<std::tuple_element_t<0,decltype(std::declval<F&&>()())>>;

@@ -336,7 +336,11 @@ int main(int argc, char **argv) {
 
     names_model.insert(names_model.end(), names_other.begin(),
                        names_other.end());
-
+    auto p=Parameters<Model0>(std::vector<double>{10,100,10,100,10,100,100,
+        100,1,1,100,10,1000});
+    
+    auto logp=Parameters<Model0>(apply([](auto x){return std::log10(x);},p()));
+    
     return std::tuple(
         [](const auto &logp) {
           using std::pow;
@@ -368,6 +372,7 @@ int main(int argc, char **argv) {
               min_P(1e-7), Probability_error_tolerance(1e-2),
               Conductance_variance_error_tolerance(1e-2));
         },
+        logp,
         typename Parameters<Model0>::Names(names_model), std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula));
   });
 
@@ -407,6 +412,21 @@ int main(int argc, char **argv) {
 
     names_model.insert(names_model.end(), names_other.begin(),
                        names_other.end());
+    
+    auto p_kinetics=std::vector<double>(15,100.0);
+    p_kinetics[0]=10;
+    p_kinetics[2]=10;
+    p_kinetics[4]=10;
+    auto p_other=std::vector<double>{1,1,1,100,20,1000};
+    
+    p_kinetics.insert(p_kinetics.end(),p_other.begin(),p_other.end());
+    auto p=Parameters<Model0>(std::vector<double>{10,100,10,100,10,100,100,
+                                                    100,1,1,100,10,1000});
+    
+    
+    auto logp=Parameters<Model0>(apply([](auto x){return std::log10(x);},p()));
+    
+    
     return std::tuple(
         [](const auto &logp) {
           using std::pow;
@@ -470,7 +490,7 @@ int main(int argc, char **argv) {
               min_P(1e-7), Probability_error_tolerance(1e-2),
               Conductance_variance_error_tolerance(1e-2));
         },
-        std::move(names_model), v_Q0_formula, v_Qa_formula, v_g_formula);
+        std::move(logp),std::move(names_model), v_Q0_formula, v_Qa_formula, v_g_formula);
   });
 
   auto allost1 = Allost1::Model([]() {
@@ -494,7 +514,7 @@ int main(int argc, char **argv) {
                                                                 {4, 5, 0},
                                                                 {0, 5, 4}}}}}},
         std::vector<Conductance_interaction>{Vector_Space{
-            Conductance_interaction_label{"Rocking_Unitary_Current"},
+            Conductance_interaction_label{"Rocking_Current_factor"},
             Conductance_interaction_players{{v_rocking}},
             Conductance_interaction_positions{{{{0}}, {{2}}, {{4}}}}}});
 
@@ -512,8 +532,17 @@ int main(int argc, char **argv) {
                                  "RBR_0",                    //--> 5
                                  "RBR_1",                    //--> 6
                                  "RBR_2",                    //--> 7
-                                 "Rocking_Unitary_Current"}; //--> 8
-
+                                 "Rocking_Current_factor"}; //--> 8
+    
+    auto p_kinetics=std::vector<double>{100,100,10,100,100,1.0,1.0,1.0,10};
+    auto p_other=std::vector<double>{1,1,1,100,20,1000,1e-3};
+    
+    p_kinetics.insert(p_kinetics.end(),p_other.begin(),p_other.end());
+    auto p=Parameters<Allost1>(p_kinetics);
+    
+    
+    auto logp=Parameters<Allost1>(apply([](auto x){return std::log10(x);},p()));
+    
     assert(names() == names_vec);
     auto names_other = std::vector<std::string>{
         "Current_Noise", "Current_Baseline", "Num_ch_initial",
@@ -529,6 +558,10 @@ int main(int argc, char **argv) {
         [names, m](const auto &logp) {
           using std::pow;
           auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+          p[names["RBR_0"]]=p[names["RBR_0"]]/(1.0+p[names["RBR_0"]]);
+          p[names["RBR_1"]]=p[names["RBR_1"]]/(1.0+p[names["RBR_1"]]);
+          p[names["RBR_2"]]=p[names["RBR_2"]]/(1.0+p[names["RBR_2"]]);
+          
           auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
           assert(Maybe_Q0Qag);
           auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
@@ -561,14 +594,14 @@ int main(int argc, char **argv) {
               min_P(1e-7), Probability_error_tolerance(1e-2),
               Conductance_variance_error_tolerance(1e-2));
         },
-        names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
+        logp,names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
   });
 
   //    auto egrw=var::Derivative_t<decltype(Fun(Var<N_Ch_mean>{},[](auto
   //    N,auto...){return N;},9.0 )),Parameters<Model0>>;
   // using tetw=typename dsge::ik;
 
-  auto param1 = Parameters<Model0>(apply(
+  auto param1 = Parameters<Model0>(apply(   
       [](auto x) { return std::log10(x); },
       Matrix<double>(1, 14,
                      std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
