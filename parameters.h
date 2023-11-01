@@ -55,6 +55,10 @@ public:
       requires std::is_same_v<Matrix<double>,std::decay_t<MatrixType>>
   Parameters(MatrixType&& x): m_values{std::forward<MatrixType>(x)}{}
   
+  template<class VectorType>
+      requires std::is_same_v<std::vector<double>,std::decay_t<VectorType>>
+  Parameters(VectorType&& x):m_values{x.size(),1,std::forward<VectorType>(x)}{}
+  
   Parameters(){}
   
   
