@@ -1626,16 +1626,17 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
       return error_message("eigenvector singular: "+inv_VR.error()());
     
     if (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) >  std::sqrt(eps)) {
-      std::cerr << "\nx\n" << x;
-      std::cerr << "\nVR_cpp\n" << VR_cpp;
-      std::cerr << "\nWR\n" << WR;
-      std::cerr << "\ninv(VR_cpp)\n" << inv(VR_cpp);
-      std::cerr << "\nVL_cpp\n" << VL_cpp;
+      // std::cerr << "\nx\n" << x;
+      // std::cerr << "\nVR_cpp\n" << VR_cpp;
+      // std::cerr << "\nWR\n" << WR;
+      // std::cerr << "\ninv(VR_cpp)\n" << inv(VR_cpp);
+      // std::cerr << "\nVL_cpp\n" << VL_cpp;
       
-      std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value() ;
-      std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value() -x\n" << VR_cpp * WR * inv(VR_cpp).value()  - x;
-      std::cerr << "\neps\n" << eps << "\n";
-      std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
+      // std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value() ;
+      // std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value() -x\n" << VR_cpp * WR * inv(VR_cpp).value()  - x;
+      // std::cerr << "\neps\n" << eps << "\n";
+      // std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
+      return error_message("bad eigenvalue decomposition");
     }
     
     assert(

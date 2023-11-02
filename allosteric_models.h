@@ -774,7 +774,7 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
     return Maybe_i_base.error();
   else {
     auto i_base = Maybe_i_base.value();
-    auto out = n() * par[i_base];
+      auto out = n() * par()[i_base];
     for (auto ii = v_int().begin(); ii!=v_int().end(); ++ii) {
       auto factor_la = get<Conformational_interaction_label>(
           inter()[get<Conformational_interaction_index>(*ii)()]())();
@@ -792,9 +792,9 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 
         using std::pow;
         if (d())
-          out = out * pow(par[i_Factor], par[i_Factor_pos]);
+            out = out * pow(par()[i_Factor], par()[i_Factor_pos]);
         else
-          out = out * pow(par[i_Factor], par[i_Factor_pos] - 1.0);
+            out = out * pow(par()[i_Factor], par()[i_Factor_pos] - 1.0);
       }
     }
     return out;
@@ -875,10 +875,10 @@ auto make_Q0_Qa(const Conformational_model &model,
       if (!Maybe_qij)
         return Maybe_qij.error();
       else if (!ag()) {
-        set(v_Q0(), i, i, v_Q0()(i, i) - Maybe_qij.value());
+       // set(v_Q0(), i, i, v_Q0()(i, i) - Maybe_qij.value());  later change it back 
         set(v_Q0(), i, v_j()(), Maybe_qij.value());
       } else {
-        set(v_Qa(), i, i, v_Qa()(i, i) - Maybe_qij.value());
+      //  set(v_Qa(), i, i, v_Qa()(i, i) - Maybe_qij.value());  same
         set(v_Qa(), i, v_j()(), Maybe_qij.value());
       }
     }
@@ -939,7 +939,7 @@ auto calc_gi(const Conductance_interaction_scheme &scheme,
       return Maybe_i.error();
     else {
       auto i = Maybe_i.value();
-      out = out + par[i] * n;
+        out = out + par()[i] * n;
     }
   }
   return out;
