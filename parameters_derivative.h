@@ -336,6 +336,12 @@ public:
         auto f=pow(base,x.primitive());
         return Derivative(f,x.derivative()()*f*std::log(base));
     }
+    friend auto pow(const Derivative& base,const Derivative& x){
+        using std::pow;
+        auto f=pow(base.primitive(),x.primitive());
+        return Derivative(f,x.derivative()()*f*std::log(base.primitive())+
+                                 base.derivative()()*x.primitive()*pow(base.primitive(),x.primitive()-1.0));
+    }
     
     
         friend auto abs(const Derivative& x){
@@ -549,7 +555,7 @@ template<class Id,template<class> class aSymmetricMatrix>
     requires (std::is_same_v<SymmetricMatrix<double>, aSymmetricMatrix<double>>||std::is_same_v<SymPosDefMatrix<double>,aSymmetricMatrix<double>>)
 void set( Derivative<aSymmetricMatrix<double>,Parameters<Id>>& x, std::size_t i, std::size_t j , double value)
 {
-    d_d_<double, Parameters<Id>> der(Matrix<double>(x.derivative()().ncols(),x.derivative()().ncols(),0.0));
+    d_d_<double, Parameters<Id>> der(Matrix<double>(x.derivative()().nrows(),x.derivative()().ncols(),0.0));
     Derivative<double,Parameters<Id>> dv(value,der);
     set(x,i,j,dv);    
 }
@@ -565,7 +571,28 @@ void set( Derivative<aSymmetricMatrix<double>,Parameters<Id>>& x, std::size_t i,
     for (std::size_t k=0; k<x.derivative()().size(); ++k)
         x.derivative()()[k].set(i,j,value.derivative()()[k]);
 }
+template<class Id,template<class> class aNonSymmetricMatrix>
+    requires (std::is_same_v<Matrix<double>, aNonSymmetricMatrix<double>>)
+void set( Derivative<aNonSymmetricMatrix<double>,Parameters<Id>>& x, std::size_t i, std::size_t j , double value)
+{
+    d_d_<double, Parameters<Id>> der(Matrix<double>(x.derivative()().nrows(),x.derivative()().ncols(),0.0));
+    Derivative<double,Parameters<Id>> dv(value,der);
+    set(x,i,j,dv);    
+}
 
+
+template<class Id,template<class> class aNonSymmetricMatrix>
+    requires (std::is_same_v<Matrix<double>, aNonSymmetricMatrix<double>>)
+void set( Derivative<aNonSymmetricMatrix<double>,Parameters<Id>>& x, std::size_t i, std::size_t j , const Derivative<double, Parameters<Id>>& value)
+{
+    x.primitive()(i,j)=value.primitive();
+    if (x.derivative()().size()==0)
+        x.derivative()()=Matrix<aNonSymmetricMatrix<double>>(value.derivative()().nrows(),value.derivative()().ncols(),
+                                                            aNonSymmetricMatrix<double>(x.nrows(),x.ncols()));
+    for (std::size_t k=0; k<x.derivative()().size(); ++k)
+        if (value.derivative()().size()>0)
+        x.derivative()()[k](i,j)=value.derivative()()[k];
+}
 
 
 

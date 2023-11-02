@@ -55,6 +55,7 @@ add_executable(macro_dr main.cpp
     general_algorithm_on_containers.h
     general_output_operator.h
     allosteric_models.h
+    exponential_matrix.h
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
 

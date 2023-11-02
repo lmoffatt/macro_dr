@@ -1100,9 +1100,9 @@ public:
       requires (std::is_same_v<T,std::decay_t<decltype(T{},S{})>>)
 friend auto operator-(const DiagPosDetMatrix<S> &b,
                         const SymPosDefMatrix &a) {
-    auto out = a;
+      auto out = a*(-1.0);
     for (std::size_t i = 0; i < b.nrows(); ++i)
-      out.set(i, i, out(i, i) - b(i, i));
+      out.set(i, i, out(i, i) + b(i, i));
     return out;
   }
 
@@ -1301,6 +1301,28 @@ public:
     else if (b.size()==0) return a;
     return zip([](auto x, auto y) { return x + y; }, a, b);
   }
+  
+  friend Matrix<T> operator+(const DiagonalMatrix &a, const Matrix<T> &b) {
+      auto out=b;
+      for (std::size_t i=0; i<a.nrows(); ++i)
+          out(i,i)=a(i,i)+out(i,i);
+      return out;      
+     }
+  friend Matrix<T> operator+( const Matrix<T> &b, const DiagonalMatrix &a) {
+      auto out=b;
+      for (std::size_t i=0; i<a.nrows(); ++i)
+          out(i,i)=out(i,i)+a(i,i);
+      return out;      
+  }
+  
+  
+  friend Matrix<T> operator-(const DiagonalMatrix &a, const Matrix<T> &b) {
+      auto out=b*-1.0;
+      for (std::size_t i=0; i<a.nrows(); ++i)
+          out(i,i)=a(i,i)+out(i,i);
+      return out;      
+  }
+     
   
   friend auto operator-(const DiagonalMatrix &a, const DiagonalMatrix &b) {
     if (a.size()==0)
@@ -1674,9 +1696,9 @@ template <typename Matrix>
   requires Matrix::is_Matrix
 double norm_inf(const Matrix &x) {
   double n(0);
-  for (size_t i = 0; i < nrows(x); ++i) {
+  for (size_t i = 0; i < x.nrows(); ++i) {
     double sum(0);
-    for (size_t j = 0; j < ncols(x); ++j)
+    for (size_t j = 0; j < x.ncols(); ++j)
       if (x(i, j) > 0)
         sum += x(i, j);
       else

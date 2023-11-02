@@ -308,7 +308,7 @@ int main(int argc, char **argv) {
 
   struct Allost1 : public Model_Patch<Allost1> {};
 
-  auto model0 = Model0::Model([]() {
+  auto model00 = Model0::Model([]() {
     auto names_model =
         std::vector<std::string>{"k01", "k10", "k12",
                                  "k21", "k23", "k32",
@@ -414,14 +414,15 @@ int main(int argc, char **argv) {
                        names_other.end());
     
     auto p_kinetics=std::vector<double>(15,100.0);
-    p_kinetics[0]=10;
+    p_kinetics[0]=9;
     p_kinetics[2]=10;
-    p_kinetics[4]=10;
+    p_kinetics[4]=11;
+    p_kinetics[12]=90.0;
+    
     auto p_other=std::vector<double>{1,1,1,100,20,1000};
     
     p_kinetics.insert(p_kinetics.end(),p_other.begin(),p_other.end());
-    auto p=Parameters<Model0>(std::vector<double>{10,100,10,100,10,100,100,
-                                                    100,1,1,100,10,1000});
+    auto p=Parameters<Model0>(p_kinetics);
     
     
     auto logp=Parameters<Model0>(apply([](auto x){return std::log10(x);},p()));
@@ -447,7 +448,7 @@ int main(int argc, char **argv) {
           auto k75 = p[13];
           auto k67 = p[14];
           auto k76 = (k75 * k54 * k46 * k67) / (k64 * k45 * k57);
-          auto v_g = p[15];
+          auto v_g = p[15]*-1.0;
           auto Npar = 16ul;
           auto v_curr_noise = p[Npar];
           auto v_baseline = logp()[Npar + 1];
@@ -493,7 +494,7 @@ int main(int argc, char **argv) {
         std::move(logp),std::move(names_model), v_Q0_formula, v_Qa_formula, v_g_formula);
   });
 
-  auto allost1 = Allost1::Model([]() {
+  auto model8 = Allost1::Model([]() {
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_binding = Conformational_change_label{"Binding"};
     auto mo = make_Conformational_model(
@@ -533,9 +534,12 @@ int main(int argc, char **argv) {
                                  "RBR_1",                    //--> 6
                                  "RBR_2",                    //--> 7
                                  "Rocking_Current_factor"}; //--> 8
+    auto names_other = std::vector<std::string>{
+                                                "Current_Noise", "Current_Baseline", "Num_ch_initial",
+                                                "Num_ch_eq",     "Num_ch_tau",       "base_unitary_current"};
     
     auto p_kinetics=std::vector<double>{100,100,10,100,100,1.0,1.0,1.0,10};
-    auto p_other=std::vector<double>{1,1,1,100,20,1000,1e-3};
+    auto p_other=std::vector<double>{1,1,100,20,1000,1e-3};
     
     p_kinetics.insert(p_kinetics.end(),p_other.begin(),p_other.end());
     auto p=Parameters<Allost1>(p_kinetics);
@@ -544,10 +548,7 @@ int main(int argc, char **argv) {
     auto logp=Parameters<Allost1>(apply([](auto x){return std::log10(x);},p()));
     
     assert(names() == names_vec);
-    auto names_other = std::vector<std::string>{
-        "Current_Noise", "Current_Baseline", "Num_ch_initial",
-        "Num_ch_eq",     "Num_ch_tau",       "base_unitary_current"};
-
+  
     names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
 
     auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
@@ -557,26 +558,26 @@ int main(int argc, char **argv) {
     return std::tuple(
         [names, m](const auto &logp) {
           using std::pow;
-          auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
-          p[names["RBR_0"]]=p[names["RBR_0"]]/(1.0+p[names["RBR_0"]]);
-          p[names["RBR_1"]]=p[names["RBR_1"]]/(1.0+p[names["RBR_1"]]);
-          p[names["RBR_2"]]=p[names["RBR_2"]]/(1.0+p[names["RBR_2"]]);
+            auto p = build<Parameters<Allost1>>(apply([](const auto &x) { return pow(10.0, x); }, logp()));
+          p()[names["RBR_0"].value()]=p()[names["RBR_0"].value()]/(1.0+p()[names["RBR_0"].value()]);
+            p()[names["RBR_1"].value()]=p()[names["RBR_1"].value()]/(1.0+p()[names["RBR_1"].value()]);
+          p()[names["RBR_2"].value()]=p()[names["RBR_2"].value()]/(1.0+p()[names["RBR_2"].value()]);
           
           auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
           assert(Maybe_Q0Qag);
           auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
           auto Npar = names().size();
-
-          auto v_curr_noise = p[Npar];
-          auto v_baseline = logp[Npar + 1];
-          auto v_N0 = p[Npar + 2];
-          auto v_Neq = p[Npar + 3];
-          auto v_Ntau = p[Npar + 4];
-          auto v_min_conductance = p[Npar + 5];
-
-          auto v_g = g(apply(
+          
+          auto v_curr_noise = p()[Npar];
+          auto v_baseline = logp()[Npar + 1];
+          auto v_N0 = p()[Npar + 2];
+          auto v_Neq = p()[Npar + 3];
+          auto v_Ntau = p()[Npar + 4];
+          auto v_min_conductance = p()[Npar + 5];
+          
+          auto v_g = build<g>(apply(
               [&v_min_conductance](const auto &x) {
-                return -v_min_conductance * pow(10.0, x);
+                  return v_min_conductance * pow(10.0, x)*(-1.0);
               },
               a_g()));
 
@@ -600,17 +601,32 @@ int main(int argc, char **argv) {
   //    auto egrw=var::Derivative_t<decltype(Fun(Var<N_Ch_mean>{},[](auto
   //    N,auto...){return N;},9.0 )),Parameters<Model0>>;
   // using tetw=typename dsge::ik;
-
-  auto param1 = Parameters<Model0>(apply(   
+  
+  
+  
+  auto param11 = Parameters<Model0>(apply(   
       [](auto x) { return std::log10(x); },
       Matrix<double>(1, 14,
                      std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
                                          0.5, 100, 50, 1000, 1e-4, 1.0})));
-  auto param1Names = std::vector<std::string>{
+  
+  
+  auto param4=model4.parameters();
+  auto param4Names=model4.names();
+  auto param8=model8.parameters();
+  auto param8Names=model8.names();
+  auto param11Names = std::vector<std::string>{
       "k01",         "k12",          "k23",   "k10",         "k21",
       "k32",         "k34",          "k43",   "conductance", "Num_Chan_0",
       "Num_Chan_eq", "Num_Chan_tau", "noise", "baseline"};
-  assert(param1Names.size() == param1.size());
+  
+  auto& model0=model8;
+  auto& param1Names=param8Names;
+  auto& param1=param8;
+  std::string ModelName="Model8";
+  using MyModel=Allost1;
+  
+  assert(param1Names().size() == param1.size());
   auto dparam1 = var::selfDerivative(param1);
 
   auto NNN = build<Fun>(
@@ -643,7 +659,7 @@ int main(int argc, char **argv) {
   auto qq =
       var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
                                   {dparam1()[2], dparam1()[3], dparam1()[4]});
-
+  
   auto m = model0(param1);
   auto dm = model0(dparam1);
 
@@ -657,7 +673,8 @@ int main(int argc, char **argv) {
       m, get<initial_ATP_concentration>(experiment));
 
   auto t_step = get<Recording_conditions>(experiment)()[0];
-  auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(m, ATP_concentration(100.0));
+  auto tQx= macrodr::Macro_DMR{}.calc_Qx(m, ATP_concentration(100.0));
+  auto t_Qx = macrodr::Macro_DMR{}.calc_eigen(tQx);
 
   //  auto dt_Qx = macrodr::Macro_DMR{}.calc_eigen(dm,
   //  get<ATP_concentration>(t_step));
@@ -795,7 +812,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  constexpr bool test_derivative_per_algorithm = true;
+  constexpr bool test_derivative_per_algorithm = false;
 
   if constexpr (test_derivative_per_algorithm) {
     auto number_replicates = 100;
@@ -1032,7 +1049,7 @@ thermodynamic parameter
     /**
      * @brief tmi classical thermodynamic algorithm ends by maximum iteration
      */
-    auto tmi = thermo_Model_by_max_iter<Model0>(
+    auto tmi = thermo_Model_by_max_iter<MyModel>(
         path, "newNaN_thermo_R__2000", num_scouts_per_ensemble,
         max_num_simultaneous_temperatures, thermo_jumps_every, max_iter,
         n_points_per_decade, stops_at, includes_zero, myseed);
@@ -1052,7 +1069,7 @@ thermodynamic parameter
                           sim.value()(), experiment);
   }
 
-  constexpr bool cuevi_by_max_iter = false;
+  constexpr bool cuevi_by_max_iter = true;
   if (cuevi_by_max_iter) {
     /**
      * @brief myseed defines the random number seed so all runs are identical
@@ -1068,7 +1085,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-    std::size_t num_scouts_per_ensemble = 16;
+    std::size_t num_scouts_per_ensemble = 32;
 
     /**
      * @brief n_points_per_decade number of points per 10 times increment in
@@ -1143,7 +1160,7 @@ thermodynamic parameter
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
         recording);
 
-    if (sim) {
+    if (sim&& true) {
       std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
       auto number_of_traces = 7;
       auto number_of_segments = t_segments.size();
@@ -1161,14 +1178,17 @@ thermodynamic parameter
        * @brief cbc cumulative evidence algorithm, ends using convergence
        * criteria
        */
-      auto cbc = cuevi_Model_by_iteration<Model0>(
-          path, "N100_with_NaNsR", t_segments, t_min_number_of_samples,
+      auto cbc = cuevi_Model_by_iteration<MyModel>(
+          path, ModelName+"_recording", t_segments, t_min_number_of_samples,
           num_scouts_per_ensemble, min_fraction, thermo_jumps_every, max_iter,
           max_ratio, n_points_per_decade, n_points_per_decade_fraction,
           stops_at, includes_zero, myseed);
 
+      // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
+      //                      sim.value()(), experiment);
       auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
-                           sim.value()(), experiment);
+                           recording, experiment);
+      
     }
   }
 
