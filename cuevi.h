@@ -24,7 +24,8 @@ template <class Parameters> struct cuevi_mcmc {
   auto current_number_of_temperatures() const {
     std::size_t count = 0;
     for (auto &e : beta)
-      count += e.size();
+        for (auto& ee:e )
+            if (ee>0) ++count; 
     return count;
   }
 
@@ -1166,16 +1167,17 @@ void warm_walkers(cuevi_mcmc<Parameters> &current,
   //     current.i_walkers[iw][0].pop_back();
   //   }
   } else if (current.nsamples.back() != size(y[y.size()-1])) {
-      if (current.nsamples[0] == size(y[0])) {
       // we still have walkers in the first fraction
      // assert(current.beta[1].size() == 2);
-      std::size_t i_frac =0;
-      while( (i_frac<y.size()) && (size(y[i_frac])  !=current.nsamples.back())) ++i_frac;
+      std::size_t i_greatest_frac =0;
+      while( (i_greatest_frac<y.size()) && (size(y[i_greatest_frac])  !=current.nsamples.back())) ++i_greatest_frac;
       
-      ++i_frac;
-      current.beta.push_back(by_beta<double>(final_beta[i_frac].begin(),
-                                             final_beta[i_frac].begin() + 2));
-      current.nsamples.push_back(size(y[i_frac]));
+      auto i_new_frac=i_greatest_frac+1;
+      current.beta.push_back(by_beta<double>(final_beta[i_new_frac].begin(),
+                                             final_beta[i_new_frac].begin() + 2));
+      current.nsamples.push_back(size(y[i_new_frac]));
+      if (current.beta[0].size()>2)
+      {
       for (std::size_t iw = 0; iw < current.walkers.size(); ++iw) {
         current.walkers[iw].insert(
             current.walkers[iw].begin() + 1,
@@ -1191,16 +1193,12 @@ void warm_walkers(cuevi_mcmc<Parameters> &current,
         current.walkers[iw][0].pop_back();
         current.i_walkers[iw][0].pop_back();
       }
-      if (current.beta[0].size() == 0) {
-        current.beta.erase(current.beta.begin());
-        for (std::size_t iw = 0; iw < current.walkers.size(); ++iw) {
-          current.walkers[iw].erase(current.walkers[iw].begin());
-          current.i_walkers[iw].erase(current.i_walkers[iw].begin());
-        }
-        current.nsamples.erase(current.nsamples.begin());
       }
+      else {
+          current.beta.erase(current.beta.begin());
+          current.nsamples.erase(current.nsamples.begin());
     }
-  }
+  } 
 }
    
 
@@ -1938,7 +1936,7 @@ void warm_walkers(cuevi_mcmc<Parameters> &current,
     report_model(rep, prior, lik, ys, xs, beta_final);
     // auto it_frac = beta_final.begin();
     // auto it_beta = it_frac->begin() + 2;
-    while ((size(current.beta) < size(beta_final)) ||
+    while ((current.nsamples.back() < size(ys[size(ys)-1]))  ||
            (size(current.beta.back()) < size(beta_final.back())) ||
            !mcmc_run.second) {
       while (!mcmc_run.second) {
@@ -1949,7 +1947,7 @@ void warm_walkers(cuevi_mcmc<Parameters> &current,
         report(iter, rep, current, prior, lik, ys, xs);
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
       }
-      if ((size(current.beta) < size(ys)) ||
+      if ((current.nsamples.back() < size(ys[size(ys)-1])) ||
           (size(current.beta.back()) < size(beta_final.back()))) {
         //   std::cerr<<"\n---walkers!!------------------------\n"<<current.walkers;
 
