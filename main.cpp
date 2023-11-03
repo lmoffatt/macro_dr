@@ -1466,7 +1466,7 @@ thermodynamic parameter
     /**
      * @brief stops_at minimum value of beta greater than zero
      */
-    double stops_at = 1e-3;
+    double stops_at = 5e-4;
 
     /**
      * @brief includes_zero considers also beta equal zero
@@ -1476,7 +1476,7 @@ thermodynamic parameter
     /**
      * @brief max_iter maximum number of iterations
      */
-    std::size_t max_iter = 1000;
+    std::size_t max_iter = 2000;
 
     /**
      * @brief path directory for the output
@@ -1510,7 +1510,7 @@ thermodynamic parameter
      * @brief thermo_jumps_every factor that multiplied by the model size it
      * produces the number of steps skipped until the next thermo jump
      */
-    std::size_t thermo_jumps_every = param1().size() * 1e0;
+    std::size_t thermo_jumps_every = param1().size() /2;
 
     double prior_error = 2;
 
@@ -1549,7 +1549,7 @@ thermodynamic parameter
        * criteria
        */
       auto cbc = cuevi_Model_by_iteration<MyModel>(
-          path, ModelName + time_now() + "_", t_segments,
+          path, ModelName + time_now() + "_2000_3", t_segments,
           t_min_number_of_samples, num_scouts_per_ensemble,
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
           max_iter, max_ratio, n_points_per_decade,
