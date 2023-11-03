@@ -713,8 +713,9 @@ Maybe_error<bool> check_Conformational_interaction(
     else {
       Maybe_error<bool> outp(true);
       for (auto j = 0ul; j < v_positions()[i].size(); ++j) {
+          auto jpos=v_positions()[i][j]();
         if (v_players()[j]() !=
-            get<Conformational_change_label>(t_scheme()[j]())())
+            get<Conformational_change_label>(t_scheme()[jpos]())())
           outp = error_message(
               outp.error()() + " at position " + std::to_string(j) + ": " +
               get<Conformational_change_label>(t_scheme()[j]())() + "is not " +
