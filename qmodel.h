@@ -190,6 +190,7 @@ public:
 };
 
 class Qx : public var::Var<Qx, Matrix<double>> {};
+class P_initial : public var::Var<P_initial, Matrix<double>> {};
 
 class g : public var::Var<g, Matrix<double>> {};
 class g_formula : public var::Var<g_formula, std::vector<std::string>> {};
@@ -325,7 +326,7 @@ using Qdt =
                  gtotal_sqr_ij, gsqr_i, gvar_i, gtotal_var_ij, gvar_ij>;
 
 using Patch_Model =
-    Vector_Space<N_St, Q0, Qa, g, N_Ch_mean, Current_Noise,
+    Vector_Space<N_St, Q0, Qa, P_initial,g, N_Ch_mean, Current_Noise,Current_Baseline,
                  Binomial_magical_number, min_P, Probability_error_tolerance,
                  Conductance_variance_error_tolerance>;
 
@@ -583,7 +584,7 @@ class Macro_DMR {
 
 public:
   template <class C_Patch_Model>
-  //      requires U<C_Patch_Model, Patch_Model>
+       requires U<C_Patch_Model, Patch_Model>
   auto calc_Qx(const C_Patch_Model &m, ATP_concentration x)
       -> Transfer_Op_to<C_Patch_Model, Qx> {
     using Trans = transformation_type_t<C_Patch_Model>;
@@ -594,7 +595,6 @@ public:
   }
 
   template <class C_Qx>
-  //      requires U<C_Patch_Model, Patch_Model>
   auto calc_eigen(const C_Qx &v_Qx)
       -> Maybe_error<Transfer_Op_to<C_Qx, Qx_eig>> {
     auto maybe_eig = eigs(v_Qx());
@@ -928,7 +928,7 @@ public:
   }
 
   template <class C_Patch_Model, class C_Qx_eig>
-    requires(/*U<C_Patch_Model, Patch_Model> && */ U<C_Qx_eig, Qx_eig>)
+    requires(U<C_Patch_Model, Patch_Model> &&  U<C_Qx_eig, Qx_eig>)
   auto calc_Qdt(const C_Patch_Model &m, const C_Qx_eig &t_Qx,
                 number_of_samples ns, double dt) {
     using Trans = transformation_type_t<C_Patch_Model>;
@@ -1879,14 +1879,14 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
   }
 
   template <return_predictions predictions, class C_Patch_Model>
-  //  requires U<C_Patch_Model, Patch_Model>
+   requires U<C_Patch_Model, Patch_Model>
   auto init(const C_Patch_Model &m, initial_ATP_concentration initial_x)
       -> Maybe_error<Transfer_Op_to<
           C_Patch_Model,
           std::conditional_t<predictions.value, Patch_State_and_Evolution,
                              Patch_State>>> {
     auto v_Qx = calc_Qx(m, initial_x());
-    auto r_P_mean = calc_Peq(v_Qx, m);
+    auto r_P_mean = build<P_mean>(get<P_initial>(m)());
     auto r_P_cov = build<P_Cov>(diagpos(r_P_mean()) - XTX(r_P_mean.value()));
     auto r_test =
         test<true>(r_P_mean, r_P_cov, get<Probability_error_tolerance>(m));
@@ -1950,9 +1950,8 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
             ATP_evolution const &t_step =
                 get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
 
-            auto t_time = get<Time>(get<Recording_conditions>(e)()[i_step]);
-
-            Op_t<Transf, N_Ch_mean> Nch = var::fun<N_Ch_mean>(m)(t_time);
+            
+            auto Nch = get<N_Ch_mean>(m);
 
             auto Maybe_t_Qdt = calc_Qdt(m, t_step, fs);
             if (!Maybe_t_Qdt)
@@ -2135,8 +2134,8 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
                           const Experiment &e) {
     auto initial_x = get<initial_ATP_concentration>(e);
     auto v_Qx = calc_Qx(m, initial_x());
-    auto r_P_mean = calc_Peq(v_Qx, m);
-    auto N = fun<N_Ch_mean>(m)(Time(0.0));
+    auto r_P_mean = P_mean(get<P_initial>(m)());
+    auto N = get<N_Ch_mean>(m);
     auto sim = Simulated_Recording(Recording{});
     auto N_state = sample_Multinomial(mt, r_P_mean, N());
     return Simulated_Step(std::move(N_state), std::move(sim));
