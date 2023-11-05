@@ -332,34 +332,34 @@ int main(int argc, char **argv) {
 
   auto model00 = Model0::Model([]() {
     auto names_model =
-        std::vector<std::string>{"k01", "k10", "k12",
-                                 "k21", "k23", "k32",
-                                 "k34", "k43", "unitary_current"};
+        std::vector<std::string>{"kon", "koff", "gatin_on",
+                                 "gating_off",  "inactivation_rate","unitary_current"};
     auto names_other =
-        std::vector<std::string>{"Current_Noise", "Current_Baseline",
-                                 "Num_ch_initial", "Num_ch_eq", "Num_ch_tau"};
+        std::vector<std::string>{"Num_ch","Current_Noise", "Current_Baseline"};
 
-    std::size_t N = 5ul;
+    std::size_t N = 6ul;
 
     auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
         N, std::vector<std::string>(N, "")));
-    v_Q0_formula()[1][0] = "k10";
-    v_Q0_formula()[2][1] = "k21";
-    v_Q0_formula()[3][2] = "k32";
-    v_Q0_formula()[3][4] = "k34";
-    v_Q0_formula()[4][3] = "k43";
+    v_Q0_formula()[1][0] = "koff";
+    v_Q0_formula()[2][1] = "2*koff";
+    v_Q0_formula()[3][2] = "3*koff";
+    v_Q0_formula()[3][4] = "gatin_on";
+    v_Q0_formula()[4][3] = "gating_off";
+    v_Q0_formula()[0][5] = "inactivation_rate";
+    
     auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
         N, std::vector<std::string>(N, "")));
-    v_Qa_formula()[0][1] = "k01";
-    v_Qa_formula()[1][2] = "k12";
-    v_Qa_formula()[2][3] = "k23";
+    v_Qa_formula()[0][1] = "3*kon";
+    v_Qa_formula()[1][2] = "2*kon";
+    v_Qa_formula()[2][3] = "kon";
     auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
     v_g_formula()[4] = "unitary_current";
 
     names_model.insert(names_model.end(), names_other.begin(),
                        names_other.end());
     auto p = Parameters<Model0>(std::vector<double>{
-        10, 100, 10, 100, 10, 100, 100, 100, 1, 1, 1, 100, 10, 1000});
+        10, 200, 1500, 50, 1e-5,1, 1000,1e-4, 1});
 
     auto logp =
         Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
@@ -368,29 +368,28 @@ int main(int argc, char **argv) {
         [](const auto &logp) {
           using std::pow;
           auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
-          auto Npar = 9ul;
-          auto v_curr_noise = p[Npar];
-          auto v_baseline = logp()[Npar + 1];
-          auto v_N0 = p[Npar + 2];
-          auto v_Neq = p[Npar + 3];
-          auto v_Ntau = p[Npar] + 4;
-          return build<Vector_Space>(
-              N_St(5),
+          auto kon=p[0];
+          auto koff=p[1];
+          auto gating_on=p[2];
+          auto gating_off=p[3];
+          auto inactivation_rate=p[4];
+          auto v_unitary_current=p[5]* -1.0;
+          auto Npar = 6ul;
+          auto v_N0 = p[Npar];
+          auto v_curr_noise = p[Npar+1];
+          auto v_baseline = logp()[Npar + 2];
+          return build<Patch_Model>(
+              N_St(6),
               build<Q0>(var::build_<Matrix<double>>(
-                  5, 5, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
-                  {p[3], p[4], p[5], p[6], p[7]})),
+                  6, 6, {{0,5},{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
+                  {inactivation_rate,koff, koff*2.0, koff*3.0,gating_on,gating_off})),
               build<Qa>(var::build_<Matrix<double>>(
-                  5, 5, {{0, 1}, {1, 2}, {2, 3}}, {p[0], p[1], p[2]})),
+                  6, 6, {{0, 1}, {1, 2}, {2, 3}}, {kon*3.0,kon*2.0, kon})),
+              build<P_initial>(
+                  var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
               build<g>(
-                  var::build_<Matrix<double>>(5, 1, {{4, 0}}, {p[8] * (-1.0)})),
-              // build<N_Ch_mean>(v_N0),
-
-              build<Fun>(
-                  Var<N_Ch_mean>{},
-                  [](auto &N0, auto &Neq, auto &Ntau, auto &time) {
-                    return Neq + (N0 - Neq) * (1.0 - exp(-time() / Ntau));
-                  },
-                  v_N0, v_Neq, v_Ntau),
+                  var::build_<Matrix<double>>(6, 1, {{4, 0}}, {v_unitary_current})),
+              build<N_Ch_mean>(v_N0),
               build<Current_Noise>(v_curr_noise),
               build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
               min_P(1e-7), Probability_error_tolerance(1e-2),
@@ -606,8 +605,8 @@ int main(int argc, char **argv) {
               p()[names["RG_0"].value()] / (1.0 + p()[names["RG_0"].value()]);
           p()[names["RG_1"].value()] =
               p()[names["RG_1"].value()] / (1.0 + p()[names["RG_1"].value()]);
-
-          p()[names["Gating_Current"]] = p()[names["Gating_Current"]] * -1.0;
+          
+          p()[names["Gating_Current"].value()] = p()[names["Gating_Current"].value()] * -1.0;
           auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
           assert(Maybe_Q0Qag);
           auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
@@ -969,23 +968,27 @@ int main(int argc, char **argv) {
       Matrix<double>(1, 14,
                      std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
                                          0.5, 100, 50, 1000, 1e-4, 1.0})));
-
+  
   auto param4 = model4.parameters();
   auto param4Names = model4.names();
   auto param8 = model8.parameters();
   auto param8Names = model8.names();
+  auto param9 = model9.parameters();
+  auto param9Names = model9.names();
+  auto param6 = model6.parameters();
+  auto param6Names = model6.names();
   auto param00 = model00.parameters();
-  auto param0Names = model00.names();
+  auto param00Names = model00.names();
 
   auto param11Names = std::vector<std::string>{
       "k01",         "k12",          "k23",   "k10",         "k21",
       "k32",         "k34",          "k43",   "conductance", "Num_Chan_0",
       "Num_Chan_eq", "Num_Chan_tau", "noise", "baseline"};
 
-  auto &model0 = model4;
-  auto &param1Names = param4Names;
-  auto &param1 = param4;
-  std::string ModelName = "Model4";
+  auto &model0 = model00;
+  auto &param1Names = param00Names;
+  auto &param1 = param00;
+  std::string ModelName = "Model00_";
   using MyModel = Model0;
 
   assert(param1Names().size() == param1.size());
@@ -996,7 +999,7 @@ int main(int argc, char **argv) {
   auto dNNN = build<Fun>(
       Var<N_Ch_mean>{}, [](auto N, auto...) { return N; }, dparam1()[0]);
 
-  auto Npar = 9ul;
+  auto Npar = 5ul;
   auto v_N0 = dparam1()[Npar + 2];
   auto v_Neq = dparam1()[Npar + 3];
   auto v_Ntau = dparam1()[Npar] + 4;
@@ -1447,7 +1450,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-    std::size_t num_scouts_per_ensemble = 32;
+    std::size_t num_scouts_per_ensemble = 8;
 
     /**
      * @brief max_num_simultaneous_temperatures when the number of parallel
@@ -1455,18 +1458,18 @@ thermodynamic parameter
      * drifts on temperature
      *
      */
-    std::size_t max_num_simultaneous_temperatures = 4;
+    std::size_t max_num_simultaneous_temperatures = 8;
 
     /**
      * @brief n_points_per_decade number of points per 10 times increment in
      * beta thermodynamic parameter
      */
-    double n_points_per_decade = 6;
+    double n_points_per_decade = 10;
 
     /**
      * @brief stops_at minimum value of beta greater than zero
      */
-    double stops_at = 5e-4;
+    double stops_at = 0.01;
 
     /**
      * @brief includes_zero considers also beta equal zero
@@ -1476,7 +1479,7 @@ thermodynamic parameter
     /**
      * @brief max_iter maximum number of iterations
      */
-    std::size_t max_iter = 2000;
+    std::size_t max_iter = 400;
 
     /**
      * @brief path directory for the output
@@ -1504,13 +1507,13 @@ thermodynamic parameter
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-    double n_points_per_decade_fraction = 6;
+    double n_points_per_decade_fraction = 10;
 
     /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
      * produces the number of steps skipped until the next thermo jump
      */
-    std::size_t thermo_jumps_every = param1().size() /2;
+    std::size_t thermo_jumps_every = param1().size() /4;
 
     double prior_error = 2;
 
@@ -1530,7 +1533,7 @@ thermodynamic parameter
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
         recording);
 
-    if (sim && true) {
+    if (sim ) {
       std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
       auto number_of_traces = 7;
       auto number_of_segments = t_segments.size();
@@ -1549,7 +1552,7 @@ thermodynamic parameter
        * criteria
        */
       auto cbc = cuevi_Model_by_iteration<MyModel>(
-          path, ModelName + time_now() + "_2000_3", t_segments,
+          path, ModelName +"_"+ time_now() + "_2000_3", t_segments,
           t_min_number_of_samples, num_scouts_per_ensemble,
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
           max_iter, max_ratio, n_points_per_decade,
