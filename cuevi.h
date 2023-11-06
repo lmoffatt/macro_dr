@@ -494,9 +494,9 @@ void report_model(save_Evidence &, Prior const &, Likelihood const &,
                   const DataType &, const Variables &,
                   by_fraction<by_beta<double>> const &) {}
 
-template <class Parameters>
+template <class Parameters,class T>
 void report(std::size_t iter, save_Evidence &s,
-            cuevi_mcmc<Parameters> const &data, ...) {
+            cuevi_mcmc<Parameters> const &data, T const &...) {
   if (iter % s.save_every == 0) {
 
     auto meanLik = mean_logL(data);
@@ -527,7 +527,7 @@ void report(std::size_t iter, save_Evidence &s,
 }
 
 template <class Parameters, class... saving, class... T>
-void report(std::size_t iter, save_mcmc<Parameters, saving...> &f,
+void report_all(std::size_t iter,save_mcmc<Parameters, saving...> &f,
             cuevi_mcmc<Parameters> const &data, T const &...ts) {
   (report(iter, static_cast<saving &>(f), data, ts...), ..., 1);
 }
@@ -1352,7 +1352,8 @@ Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction_old(
                 << "\t";
     std::cerr << "\t\t";
   }
-  std::cerr << "\n beta final\n" << final_beta;
+  
+ // std::cerr << "\n beta final\n" << final_beta;
 
   std::cerr << "\ncurrent.i_walkers[0]-----------------------popo\n"
             << current.i_walkers[0];
@@ -1560,7 +1561,7 @@ void thermo_cuevi_jump_mcmc(std::size_t iter, cuevi_mcmc<Parameters> &current,
         }
       else {
         for (std::size_t i_fr = 0; i_fr < 1; ++i_fr) {
-          for (std::size_t ib = 0; ib < current.beta[i_fr].size() - 2; ++ib) {
+          for (std::size_t ib = 0; ib +2< current.beta[i_fr].size(); ++ib) {
             if (current.is_active[i_fr][ib] == 1) {
 
               auto r = rdist[i](mts[i]);
@@ -1946,7 +1947,7 @@ auto evidence(cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
       ++iter;
       thermo_cuevi_jump_mcmc(iter, current, rep, mt, mts, prior, lik, ys, xs,
                              cue.thermo_jumps_every());
-      report(iter, rep, current, prior, lik, ys, xs);
+      report_all(iter,rep, current, prior, lik, ys, xs);
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
     if ((current.nsamples.back() < size(ys[size(ys) - 1])) ||
@@ -1962,7 +1963,7 @@ auto evidence(cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
         ++iter;
         thermo_cuevi_jump_mcmc(iter, current, rep, mt, mts, prior, lik, ys, xs,
                                cue.thermo_jumps_every());
-        report(iter, rep, current, prior, lik, ys, xs);
+        report_all(iter,rep, current, prior, lik, ys, xs);
         is_current = push_back_new_fraction(current, mts, beta_final,
                                             max_num_simultaneous_temperatures,
                                             prior, lik, ys, xs);
@@ -1973,6 +1974,9 @@ auto evidence(cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
       std::cerr << "\n  nsamples=" << current.nsamples.back()
                 << "   beta_run=" << current.beta.back().back() << "\n";
       mcmc_run.first.reset();
+      if ((current.beta.size()==beta_final.size())&&(current.beta.back().back()==1.0))
+          mcmc_run.first.we_reach_final_temperature();
+          
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
   }

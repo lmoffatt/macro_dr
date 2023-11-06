@@ -126,6 +126,9 @@ class thermo{
                 
                 std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
                 reset(mcmc_run.first);
+                if (current.beta.back()==1.0)
+                    mcmc_run.first.we_reach_final_temperature();
+                
                 mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
             }
         }
@@ -328,10 +331,11 @@ auto thermo_max_iter(const Prior& prior, const Likelihood& lik, const DataType &
                      std::string path, std::string filename,
                      std::size_t num_scouts_per_ensemble,
                      std::size_t max_num_simultaneous_temperatures,
-                     std::size_t thermo_jumps_every, std::size_t max_iter,
+                     std::size_t thermo_jumps_every, std::size_t max_iter_warming,
+std::size_t max_iter_equilibrium,
                      double n_points_per_decade, double stops_at,
                      bool includes_zero, std::size_t initseed) {
-    return thermo_impl(less_than_max_iteration(max_iter), prior, lik, y, x,
+    return thermo_impl(less_than_max_iteration(max_iter_warming, max_iter_equilibrium), prior, lik, y, x,
                        save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence, save_Predictions<Parameters>>(
                            path, filename, 10ul, 10ul, 10ul, 100ul),
                        num_scouts_per_ensemble, max_num_simultaneous_temperatures,thermo_jumps_every,
@@ -344,10 +348,12 @@ template<class Parameters>
 auto thermo_by_max_iter(std::string path, std::string filename,
                         std::size_t num_scouts_per_ensemble,
                         std::size_t max_num_simultaneous_temperatures,
-                        std::size_t thermo_jumps_every, std::size_t max_iter,
+                        std::size_t thermo_jumps_every,
+                        std::size_t max_iter_warming,
+                        std::size_t max_iter_equilibrium,
                         double n_points_per_decade, double stops_at,
                         bool includes_zero, std::size_t initseed) {
-    return thermodynamic_integration(less_than_max_iteration(max_iter),
+    return thermodynamic_integration(less_than_max_iteration(max_iter_warming,max_iter_equilibrium),
                                      save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
                                          path, filename, 10ul, 10ul, 10ul),
                                      num_scouts_per_ensemble, max_num_simultaneous_temperatures,
