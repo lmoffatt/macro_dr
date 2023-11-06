@@ -338,22 +338,31 @@ concept is_Algorithm_conditions = requires(Algorithm &&a) {
 
 class less_than_max_iteration {
     std::size_t current_iteration_;
-    std::size_t max_iter_;
+    std::size_t max_iter_warming_;
+    std::size_t max_iter_final_;
     std::size_t num_betas_;
+    bool is_final_; 
     
 public:
-    less_than_max_iteration(std::size_t max_iter)
-        : current_iteration_{0ul}, max_iter_{max_iter}, num_betas_{1ul} {}
+    less_than_max_iteration(std::size_t max_iter_warming, std::size_t max_iter_final)
+        : current_iteration_{0ul}, max_iter_warming_{max_iter_warming},max_iter_final_{max_iter_final}, num_betas_{1ul}, is_final_{false} {}
     
     less_than_max_iteration &operator++() {
         ++current_iteration_;
         return *this;
     }
     std::size_t current_iteration() const { return current_iteration_; }
-    std::size_t max_iteration() const { return max_iter_; }
+    std::size_t max_iteration_warming() const { return max_iter_warming_; }
+    std::size_t max_iteration_final() const { return max_iter_final_; }
+    
     std::size_t betas_number() const { return num_betas_; }
     
-    bool stop() const { return current_iteration() >= max_iteration(); }
+    bool is_final()const{return is_final_;}
+    
+    bool stop() const { if (is_final())
+            return current_iteration()>=max_iteration_final();
+        else
+            return current_iteration() >= max_iteration_warming(); }
     template <class Anything>
     friend auto checks_convergence(less_than_max_iteration &&c,
                                    const Anything &mcmc) {
@@ -372,6 +381,11 @@ public:
     }
     
     void reset(){current_iteration_=0;}
+    
+    void we_reach_final_temperature()
+    {
+        is_final_=true;
+    }
 };
 //static_assert(is_Algorithm_conditions<less_than_max_iteration, thermo_mcmc>);
 
@@ -442,6 +456,8 @@ public:
     }
     
     void reset(){}
+    
+    void we_reach_final_temperature(){}
 };
 //static_assert(is_Algorithm_conditions<checks_derivative_var_ratio<thermo_mcmc>,
 //                                      thermo_mcmc>);

@@ -363,6 +363,44 @@ template <class Id> struct Model_Patch {
 using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
                                  y_var, plogL, eplogL, vplogL>;
 
+template<class C_Patch_Model, class C_double>
+C_Patch_Model add_Patch_inactivation(C_Patch_Model&& m, C_double const& deactivation_rate)
+{
+    using Transf = transformation_type_t<C_Patch_Model>;
+    auto Nst=get<N_St>(m)()+1;
+    Op_t<Transf, Q0> v_Q0=Q0(Matrix<double>(Nst,Nst,0.0));
+    for (std::size_t i=0; i+1<Nst; ++i)
+    {
+        for (std::size_t j=0; j+1<Nst; ++j)
+            set(v_Q0(),i,j,get<Q0>(m)()(i,j));
+        set(v_Q0(),i,Nst-1, deactivation_rate);
+    }
+    Op_t<Transf, Qa> v_Qa=Qa(Matrix<double>(Nst,Nst,0.0));
+    for (std::size_t i=0; i+1<Nst; ++i)
+    {
+        for (std::size_t j=0; j+1<Nst; ++j)
+            set(v_Qa(),i,j,get<Qa>(m)()(i,j));
+    }
+    Op_t<Transf, g> v_g=g(Matrix<double>(Nst,1,0.0));
+    for (std::size_t i=0; i+1<Nst; ++i)
+    {
+        set(v_g(),i,0,get<g>(m)()[i]);
+    }
+    Op_t<Transf, P_initial> v_Pini=P_initial(Matrix<double>(1,Nst,0.0));
+    for (std::size_t i=0; i+1<Nst; ++i)
+    {
+        set(v_Pini(),0,i,get<P_initial>(m)()[i]);
+    }
+    
+    get<N_St>(m)()=Nst;
+    get<Qa>(m)=v_Qa;
+    get<Q0>(m)=v_Q0;
+    get<g>(m)=v_g;
+    get<P_initial>(m)=v_Pini;
+    return std::move(m);
+ }
+
+
 class Patch_State_Evolution
     : public Var<Patch_State_Evolution, std::vector<Patch_State>> {};
 
@@ -2594,11 +2632,14 @@ auto cuevi_Model_by_iteration(
     std::size_t num_scouts_per_ensemble,
     std::size_t max_number_of_simultaneous_temperatures,
     double min_fraction,
-    std::size_t thermo_jumps_every, std::size_t max_iter, double max_ratio,
+    std::size_t thermo_jumps_every,
+    std::size_t max_iter_warming,
+    std::size_t max_iter_equilibrium,
+    double max_ratio,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double stops_at, bool includes_zero, std::size_t initseed) {
   return cuevi_integration(
-      less_than_max_iteration(max_iter),
+      less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
       experiment_fractioner(t_segments, t_min_number_of_samples),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
                 save_Parameter<Parameters<Id>>, save_Evidence,
@@ -2614,11 +2655,13 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
                               std::size_t num_scouts_per_ensemble,
                               std::size_t max_num_simultaneous_temperatures,
                               std::size_t thermo_jumps_every,
-                              std::size_t max_iter, double n_points_per_decade,
+                              std::size_t max_iter_warming,
+                              std::size_t max_iter_equilibrium,
+                              double n_points_per_decade,
                               double stops_at, bool includes_zero,
                               std::size_t initseed) {
   return thermodynamic_integration(
-      less_than_max_iteration(max_iter),
+      less_than_max_iteration(max_iter_warming,max_iter_equilibrium),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
                 save_Parameter<Parameters<Id>>, save_Evidence,
                 save_Predictions<Parameters<Id>>>(path, filename, 10ul, 10ul,
