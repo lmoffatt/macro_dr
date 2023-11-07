@@ -532,6 +532,20 @@ void report_all(std::size_t iter,save_mcmc<Parameters, saving...> &f,
   (report(iter, static_cast<saving &>(f), data, ts...), ..., 1);
 }
 
+template <class Parameters>
+void check_sanity(std::size_t iter, 
+            cuevi_mcmc<Parameters> const &data)
+{
+    for (std::size_t iw=0; iw<data.walkers.size(); ++iw)
+        for (std::size_t i_frac=0; i_frac<data.walkers[iw].size(); ++i_frac)
+            for (std::size_t ib=0; ib<data.walkers[iw][i_frac].size(); ++ib)
+                if((data.walkers[iw][i_frac][ib].logL<-1e8)&&(i_frac>0 || data.beta[0][ib]>0)&& iter%100>10)
+                     std::cerr<<"report "<<iter<<" "<<iw<<" "<<i_frac<<" "<<ib<<" "<<data.walkers[iw][i_frac][ib].logL<<"\n";
+    
+}
+
+
+
 template <class Observer, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
@@ -546,7 +560,7 @@ void step_stretch_cuevi_mcmc(
     Prior const &prior, Likelihood const &lik, const by_fraction<DataType> &y,
     const by_fraction<Variables> &x, std::size_t n_par, std::size_t i,
     std::size_t iw, std::size_t jw, std::size_t ib, std::size_t i_fr) {
-  if (current.is_active[i_fr][ib] == 1) {
+   if (current.is_active[i_fr][ib] == 1) {
     auto z = std::pow(rdist[i](mt[i]) + 1, 2) / 2.0;
     auto r = rdist[i](mt[i]);
     // candidate[ib].walkers[iw].
@@ -573,6 +587,10 @@ void step_stretch_cuevi_mcmc(
           if ((ca_logL_2)) {
             auto ca_logP1 = ca_logPa + ca_logL_1.value();
             auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();
+            if ((current.beta[i_fr][ib]>0)&&(ca_logL0<-1e6||ca_logL1<-1e6))
+            {
+                std::cerr<<"here guy\n";
+            }
             current.walkers[iw][i_fr][ib].parameter = ca_par;
             current.walkers[iw][i_fr][ib].logPa = ca_logPa;
             current.walkers[iw][i_fr][ib].logP = ca_logP0;
@@ -993,11 +1011,14 @@ auto init_cuevi_mcmc(std::size_t n_walkers, by_beta<double> const &beta,
 }
 
 template <class Parameters>
-std::size_t last_walker(const cuevi_mcmc<Parameters> &c) {
-  std::size_t tot = 0;
-  for (std::size_t i_frac = 0; i_frac < size(c.walkers[0]); ++i_frac)
-    tot += size(c.walkers[0][i_frac]);
-  return tot * size(c.walkers);
+std::size_t next_id_walker(const cuevi_mcmc<Parameters> &c) {
+  std::size_t out = 0;
+    for (auto& i_w:c.i_walkers)
+      for (auto& i_wf:i_w)
+            for(auto& i_wfb:i_wf)
+              out=std::max(out,i_wfb);
+    return out+1;       
+             
 }
 
 template <class Prior, class Likelihood, class Variables, class DataType,
@@ -1090,7 +1111,7 @@ auto create_new_walkers(const cuevi_mcmc<Parameters> &current,
                         const by_fraction<Variables> &x) {
 
   auto n_walkers = current.walkers.size();
-  auto sum_walkers = last_walker(current);
+    auto sum_walkers = next_id_walker(current);
   ensemble<mcmc2<Parameters>> new_walkers(n_walkers);
   ensemble<std::size_t> new_i_walkers(n_walkers);
   for (std::size_t half = 0; half < 2; ++half)
@@ -1238,7 +1259,7 @@ Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction_old(
   }
   std::cerr << "\n";
   auto n_walkers = current.walkers.size();
-  auto sum_walkers = last_walker(current);
+  auto sum_walkers = next_id_walker(current);
   ensemble<mcmc2<Parameters>> new_walkers(n_walkers);
   ensemble<std::size_t> new_i_walkers(n_walkers);
   for (std::size_t half = 0; half < 2; ++half)
@@ -1944,9 +1965,12 @@ auto evidence(cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
          !mcmc_run.second) {
     while (!mcmc_run.second) {
       step_stretch_cuevi_mcmc(current, rep, mts, prior, lik, ys, xs);
+      check_sanity(iter,current);  
       ++iter;
       thermo_cuevi_jump_mcmc(iter, current, rep, mt, mts, prior, lik, ys, xs,
                              cue.thermo_jumps_every());
+      check_sanity(iter,current);  
+      
       report_all(iter,rep, current, prior, lik, ys, xs);
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }

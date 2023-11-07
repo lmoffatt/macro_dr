@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
     /**
      * @brief max_iter_warming maximum number of iterations on each warming step
      */
-    std::size_t max_iter_warming = 10000;
+    std::size_t max_iter_warming = 200;
     
     /**
      * @brief max_iter_equilibrium maximum number of iterations on the equilibrium step
@@ -1403,7 +1403,7 @@ thermodynamic parameter
     /**
      * @brief max_iter maximum number of iterations on each warming step
      */
-    std::size_t max_iter_warming = 10000;
+    std::size_t max_iter_warming = 200;
     
     /**
      * @brief max_iter maximum number of iterations on the equilibrium step
@@ -1455,16 +1455,16 @@ thermodynamic parameter
      * for debugging purposes
      */
     //   auto myseed = 9762841416869310605ul;
-    auto myseed = 0;
+    auto myseed = 0ul;
 
     myseed = calc_seed(myseed);
-    std::cerr << "myseed =" << myseed;
+    std::cerr << "myseed =" << myseed<<"\n";
 
     /**
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-    std::size_t num_scouts_per_ensemble = 32;
+    std::size_t num_scouts_per_ensemble = 8;
 
     /**
      * @brief max_num_simultaneous_temperatures when the number of parallel
@@ -1472,13 +1472,8 @@ thermodynamic parameter
      * drifts on temperature
      *
      */
-    std::size_t max_num_simultaneous_temperatures = 8;
+    std::size_t max_num_simultaneous_temperatures = 1e5;
 
-    /**
-     * @brief n_points_per_decade number of points per 10 times increment in
-     * beta thermodynamic parameter
-     */
-    double n_points_per_decade = 3;
 
     /**
      * @brief stops_at minimum value of beta greater than zero
@@ -1493,12 +1488,12 @@ thermodynamic parameter
     /**
      * @brief max_iter maximum number of iterations on each warming step
      */
-    std::size_t max_iter_warming = 10000;
+    std::size_t max_iter_warming = 100;
     
     /**
      * @brief max_iter maximum number of iterations on the equilibrium step
      */
-    std::size_t max_iter_equilibrium = 10000;
+    std::size_t max_iter_equilibrium = 20000;
 
     /**
      * @brief path directory for the output
@@ -1521,12 +1516,18 @@ thermodynamic parameter
      * @brief max_ratio maximimum tolerated ratio for the beta derivative method
      */
     double max_ratio = 8000e16;
-
+    
+    /**
+     * @brief n_points_per_decade number of points per 10 times increment in
+     * beta thermodynamic parameter
+     */
+    
+    double n_points_per_decade = 24;
     /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-    double n_points_per_decade_fraction = 3;
+    double n_points_per_decade_fraction = 24;
 
     /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
@@ -1571,7 +1572,7 @@ thermodynamic parameter
        * criteria
        */
       auto cbc = cuevi_Model_by_iteration<MyModel>(
-          path, ModelName + "_" + time_now() + "_2000_3", t_segments,
+          path, ModelName + "_equilibrium_" +std::to_string(myseed)+"_"+ time_now() , t_segments,
           t_min_number_of_samples, num_scouts_per_ensemble,
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
           max_iter_warming,max_iter_equilibrium, max_ratio, n_points_per_decade,
