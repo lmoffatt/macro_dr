@@ -120,42 +120,42 @@ public:
 
   {}
   constexpr Time_it_parallel() {}
-  constexpr auto &f(Id) { return *this; }
-  constexpr auto &f(Id) const { return *this; }
+   auto &f(Id) { return *this; }
+   auto &f(Id) const { return *this; }
 
   auto naked_function() const { return m_f; }
 
   template <class... Ts>
     requires(!std::is_void_v<std::invoke_result_t<F<Id, Fun>, Ts...>>)
-  constexpr auto operator()(I_thread i_thread, Ts &&...ts) {
+  auto operator()(I_thread i_thread, Ts &&...ts) {
 
     const auto start = std::chrono::high_resolution_clock::now();
     auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
     const auto end = std::chrono::high_resolution_clock::now();
     auto dur = end - start;
-    m_sum[i_thread.i] += dur;
-    ++m_count[i_thread.i];
+    m_sum.at(i_thread.i) += dur;
+    ++m_count.at(i_thread.i);
     return out;
   }
 
   template <class... Ts>
-    requires(std::is_void_v<std::invoke_result_t<F<Id, Fun>, Ts...>>)
-  constexpr void operator()(I_thread i_thread, Ts &&...ts) {
+    requires(std::is_same_v<void,std::invoke_result_t<F<Id, Fun>, Ts...>>)
+  void operator()(I_thread i_thread, Ts &&...ts) {
 
     const auto start = std::chrono::high_resolution_clock::now();
     std::invoke(m_f, std::forward<Ts>(ts)...);
     const auto end = std::chrono::high_resolution_clock::now();
     auto dur = end - start;
-    m_sum[i_thread.i] += dur;
-    ++m_count[i_thread.i];
+    m_sum.at(i_thread.i) += dur;
+    ++m_count.at(i_thread.i);
   }
 
-  template <class T, class... Ts>
-    requires(!std::is_same_v<std::decay_t<T>, I_thread>)
-  constexpr auto operator()(T &&not_i_thread, Ts &&...ts) {
-    return (*this)(I_thread(0ul), std::forward<T>(not_i_thread),
-                   std::forward<Ts>(ts)...);
-  }
+  // template <class T, class... Ts>
+  // requires(!std::is_same_v<std::decay_t<T>, I_thread>)
+  // auto operator()(T && not_i_thread, Ts &&...ts) {
+  //   return (*this)(I_thread(0ul), std::forward<T>(not_i_thread),
+  //                  std::forward<Ts>(ts)...);
+  // }
 
   auto mean_duration() const {
     std::vector<
@@ -200,8 +200,8 @@ public:
                                     Time_it_parallel const &me) {
     os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count";
     for (std::size_t i = 0; i < me.m_count.size(); ++i)
-      os << sep << ToString(Id{}) << "_sum_time_" << i << sep << ToString(Id{})
-         << "_count_" << i << sep << ToString(Id{}) << "_average_time_" << i;
+        os << sep << ToString(Id{})<<"_"<<i << "_sum_time" << sep << ToString(Id{})
+         << "_"<< i <<"_count" << sep << ToString(Id{}) << "_"<< i << "_average_time";
     return os;
   }
 
@@ -262,7 +262,7 @@ public:
     return F_on_thread<std::decay_t<decltype(m_f.f(Id{}))>>(m_f.f(Id{}),
                                                             i_thread);
   }
-  template <class... Ts> constexpr auto operator()(Ts &&...ts) {
+  template <class... Ts>  auto operator()(Ts &&...ts) {
     return std::invoke(m_f, i_thread, std::forward<Ts>(ts)...);
   }
 };

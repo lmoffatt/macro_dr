@@ -1634,7 +1634,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
 
   Maybe_error<C_Patch_State>
   Macror(C_Patch_State &&t_prior, C_Qdt const &t_Qdt, C_Patch_Model const &m,
-         C_N_Ch_mean const &Nch, const Patch_current &p_y, double fs) {
+         C_N_Ch_mean const &Nch, const Patch_current &p_y, double fs)const  {
 
     using Transf = transformation_type_t<C_Qdt>;
     auto &p_P_cov = get<P_Cov>(t_prior);
@@ -1992,7 +1992,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
             uses_averaging_aproximation averaging,
             uses_variance_aproximation variance, return_predictions predictions,
             class FuncTable, class C_Parameters, class Model>
-  auto log_Likelihood(FuncTable& f,const Model &model, const C_Parameters &par,
+  auto log_Likelihood(FuncTable&& f,const Model &model, const C_Parameters &par,
                       const Experiment &e, const Recording &y)
       -> Maybe_error<Transfer_Op_to<
           C_Parameters,
@@ -2058,12 +2058,11 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
 
               if constexpr (false) {
                 auto test_der_Macror = var::test_Derivative(
-                    [this, &t_step, &fs](auto const &l_m, auto const &l_prior,
+                    [this, &t_step, &fs,&f](auto const &l_m, auto const &l_prior,
                                          auto const &l_Qdt) {
-                      return Macror<uses_adaptive_aproximation(false),
-                                    uses_recursive_aproximation(false),
+                      return f.f(MacroR<uses_recursive_aproximation(false),
                                     uses_averaging_aproximation(1),
-                                    uses_variance_aproximation(false)>(
+                                            uses_variance_aproximation(false)>{})(
                           l_prior, l_Qdt, l_m, fs);
                     },
                     1e-7, 1e-14, m, t_prior, t_Qdt);
@@ -2083,8 +2082,12 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
                 std::cerr << "\nt_step\n" << t_step << "\n";
               }
               if constexpr (!adaptive.value)
-                return Macror<recursive, averaging, variance>(
+              {
+                  auto&& macrorf=f.f(MacroR<recursive, averaging, variance>{});
+                  //using gessger=typename decltype(macrorf)::kgsjer;
+                  return macrorf(
                     std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+              }
               else {
                 double mg = getvalue(primitive(get<P_mean>(t_prior)()) *
                                      primitive(get<gmean_i>(t_Qdt)()));
@@ -2097,7 +2100,9 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
                 bool test_Binomial = is_Binomial_Approximation_valid(
                     N, p_bi, q_bi, get<Binomial_magical_number>(m)());
                 if (test_Binomial) {
-                  return Macror<recursive, averaging, variance>(
+                   // using egsr=typename decltype(f.f(MacroR<recursive, averaging, variance>{}))::ege;
+                  //  auto r=egsr();                    
+                  return f.f(MacroR<recursive, averaging, variance>{})(
                       std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
                 } else {
                   return f.f(MacroR<uses_recursive_aproximation(false), averaging,
@@ -2277,7 +2282,7 @@ template <
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     class FuncTable,class Model, class Parameters, class Variables, class DataType>
 Maybe_error<double>
-logLikelihood(FuncTable& f,const Likelihood_Model<adaptive, recursive, averaging, variance,
+logLikelihood(FuncTable&& f,const Likelihood_Model<adaptive, recursive, averaging, variance,
                                      Model> &lik,
               Parameters const &p, const Variables &var, const DataType &y) {
   auto v_logL =
@@ -2604,7 +2609,7 @@ void report(FunctionTable &&f, std::size_t iter, save_Predictions<Parameters> &s
         for (std::size_t i_walker = 0; i_walker < size(data.walkers);
              ++i_walker) {
           Maybe_error<Patch_State_Evolution> prediction =
-              logLikelihoodPredictions(f,
+                logLikelihoodPredictions(var::F_on_thread(f, var::I_thread(i_walker)),
                   lik, data.walkers[i_walker][i_frac][i_beta].parameter,
                   ys[i_frac], xs[i_frac]);
           if (is_valid(prediction)) {
