@@ -22,8 +22,8 @@ public:
             << "\n";
     }
     
-    template<class Parameters>
-    friend void report(std::size_t iter, save_Evidence &s,
+    template<class FunctionTable,class Parameters>
+    friend void report(FunctionTable&& f,std::size_t iter, save_Evidence &s,
                        thermo_mcmc<Parameters> const &data,...) {
         if (iter % s.save_every == 0) {
             
@@ -88,11 +88,11 @@ class thermo{
     bool includes_zero;
     std::size_t initseed;
     
-    template <class Prior, class Likelihood,class Variables, class DataType>
-        requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>
+    template <class FunctionTable,class Prior, class Likelihood,class Variables, class DataType>
+        requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>
                  )
     
-    auto logEvidence(const Prior prior, const Likelihood &lik, const DataType &y,
+    auto logEvidence(FunctionTable&& f,const Prior prior, const Likelihood &lik, const DataType &y,
                      const Variables &x) {
         
         auto a = alg;
@@ -103,7 +103,7 @@ class thermo{
         
         auto beta_run = by_beta<double>(beta.rend() - 2, beta.rend());
        
-        auto current = init_thermo_mcmc(n_walkers, beta_run, mts, prior, lik, y, x);
+        auto current = init_thermo_mcmc(f,n_walkers, beta_run, mts, prior, lik, y, x);
         auto n_par = current.walkers[0][0].parameter.size();
         auto mcmc_run = checks_convergence(std::move(a), current);
         std::size_t iter = 0;
@@ -112,16 +112,16 @@ class thermo{
         
         while (beta_run.size() < beta.size() || !mcmc_run.second) {
             while (!mcmc_run.second) {
-                step_stretch_thermo_mcmc(iter, current, rep, beta_run, mts, prior, lik, y, x);
+                step_stretch_thermo_mcmc(f,iter, current, rep, beta_run, mts, prior, lik, y, x);
                 thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                                  thermo_jumps_every);
-                report(iter, rep, current,prior, lik, y, x);
+                report(f,iter, rep, current,prior, lik, y, x);
                 mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
             }
             if (beta_run.size() < beta.size()) {
                 if (beta_run.size()<max_num_simultaneous_temperatures){
                 beta_run.insert(beta_run.begin(), beta[beta_run.size()]);
-                current = push_back_new_beta(iter, current, mts, beta_run, prior, lik, y, x);
+                current = push_back_new_beta(f,iter, current, mts, beta_run, prior, lik, y, x);
                 }
                 
                 std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
@@ -138,14 +138,14 @@ class thermo{
     
 };
 
-template <class Algorithm, class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Algorithm, class Prior, class Likelihood, class Variables, class DataType,
          class Reporter,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires(is_Algorithm_conditions<Algorithm, thermo_mcmc<Parameters>> &&
-             is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
+             is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 
-auto thermo_impl(const Algorithm &alg, Prior const &prior, Likelihood const& lik, const DataType &y,
+auto thermo_impl(FunctionTable& f,const Algorithm &alg, Prior const &prior, Likelihood const& lik, const DataType &y,
                  const Variables &x, Reporter rep,
                  std::size_t num_scouts_per_ensemble,
                  std::size_t max_num_simultaneous_temperatures,
@@ -159,7 +159,7 @@ auto thermo_impl(const Algorithm &alg, Prior const &prior, Likelihood const& lik
     auto beta = get_beta_list(n_points_per_decade, stops_at, includes_zero);
     
     auto beta_run = by_beta<double>(beta.rend() - 2, beta.rend());
-    auto current = init_thermo_mcmc(n_walkers, beta_run, mts, prior, lik, y, x);
+    auto current = init_thermo_mcmc(f,n_walkers, beta_run, mts, prior, lik, y, x);
     auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
     std::size_t iter = 0;
@@ -168,15 +168,15 @@ auto thermo_impl(const Algorithm &alg, Prior const &prior, Likelihood const& lik
     
     while (beta_run.size() < beta.size() || !mcmc_run.second) {
         while (!mcmc_run.second) {
-            step_stretch_thermo_mcmc(iter, current, rep, beta_run, mts, prior, lik, y, x);
+            step_stretch_thermo_mcmc(f,iter, current, rep, beta_run, mts, prior, lik, y, x);
             thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                              thermo_jumps_every);
-            report(iter, rep, current);
+            report(f,iter, rep, current);
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
         if (beta_run.size() < beta.size()) {
             beta_run.insert(beta_run.begin(), beta[beta_run.size()]);
-            current = push_back_new_beta(iter, current, mts, beta_run, prior, lik, y, x);
+            current = push_back_new_beta(f,iter, current, mts, beta_run, prior, lik, y, x);
             std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
@@ -225,12 +225,12 @@ public:
 };
 
 
-template <class Algorithm, class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Algorithm, class Prior, class Likelihood, class Variables, class DataType,
          class Reporter>
 //    requires(is_Algorithm_conditions<Algorithm, thermo_mcmc<Parameters>> &&
 //             is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
 
-auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const &prior, Likelihood const& lik, const DataType &y,
+auto evidence(FunctionTable& f,thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const &prior, Likelihood const& lik, const DataType &y,
               const Variables &x) {
     
     auto a = therm.algorithm();
@@ -243,7 +243,7 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
     auto it_beta_run_end=beta.rend();
     auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
     
-    auto current = init_thermo_mcmc(n_walkers, beta_run, mts, prior, lik, y, x);
+    auto current = init_thermo_mcmc(f,n_walkers, beta_run, mts, prior, lik, y, x);
     //auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
     std::size_t iter = 0;
@@ -253,10 +253,10 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
     
     while (it_beta_run_begin!=beta.rbegin() || !mcmc_run.second) {
         while (!mcmc_run.second) {
-            step_stretch_thermo_mcmc(iter, current, rep, beta_run, mts, prior, lik, y, x);
+            step_stretch_thermo_mcmc(f,iter, current, rep, beta_run, mts, prior, lik, y, x);
             thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                              therm.thermo_jumps_every());
-            report(iter, rep, current);
+            report(f,iter, rep, current);
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
         if (it_beta_run_begin!=beta.rbegin()) {
@@ -264,7 +264,7 @@ auto evidence(thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const
             if (beta_run.size()<therm.max_num_simultaneous_temperatures())
             {
                 beta_run= by_beta<double>(it_beta_run_begin,it_beta_run_end);
-                current = push_back_new_beta(iter, current, mts, beta_run, prior, lik, y, x);
+                current = push_back_new_beta(f,iter, current, mts, beta_run, prior, lik, y, x);
             }
             else
             {
@@ -291,7 +291,9 @@ class thermo_max {
     std::size_t num_scouts_per_ensemble_;
     std::size_t max_num_simultaneous_temperatures_;
     std::size_t thermo_jumps_every_;
-    std::size_t max_iter_;
+    std::size_t max_iter_warming_;
+    std::size_t max_iter_final_;
+    
     double n_points_per_decade_;
     double stops_at_;
     bool includes_zero_;
@@ -302,20 +304,20 @@ public:
                std::size_t num_scouts_per_ensemble,
                std::size_t max_num_simultaneous_temperatures,
 
-               std::size_t thermo_jumps_every, std::size_t max_iter,
+               std::size_t thermo_jumps_every, std::size_t max_iter_warming, std::size_t max_iter_equilibrium,
                double n_points_per_decade, double stops_at, bool includes_zero,
                std::size_t initseed):path_{path},filename_{filename},num_scouts_per_ensemble_{num_scouts_per_ensemble},
         max_num_simultaneous_temperatures_{max_num_simultaneous_temperatures},
-        thermo_jumps_every_{thermo_jumps_every},max_iter_{max_iter},n_points_per_decade_{n_points_per_decade},
+        thermo_jumps_every_{thermo_jumps_every},max_iter_warming_{max_iter_warming},max_iter_final_{max_iter_equilibrium},n_points_per_decade_{n_points_per_decade},
         stops_at_{stops_at},includes_zero_{includes_zero}, initseed_{initseed}{}
     
-    template <class Prior, class Likelihood, class Variables, class DataType,
+    template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
              class Parameters = std::decay_t<decltype(sample(
                  std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
-        requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
-    auto operator()(const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x) {
+        requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+    auto operator()(FunctionTable& f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x) {
         return thermo_impl(
-            less_than_max_iteration(max_iter_), prior, lik, y, x,
+            less_than_max_iteration(max_iter_warming_,max_iter_final_), prior, lik, y, x,
             save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
                 path_, filename_, 10ul, 10ul, 10ul),
             num_scouts_per_ensemble_, max_num_simultaneous_temperatures_,thermo_jumps_every_, n_points_per_decade_,
@@ -323,11 +325,11 @@ public:
     }
 };
 
-template <class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable, class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
-    requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
-auto thermo_max_iter(const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
+    requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+auto thermo_max_iter(FunctionTable& f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
                      std::string path, std::string filename,
                      std::size_t num_scouts_per_ensemble,
                      std::size_t max_num_simultaneous_temperatures,
@@ -335,7 +337,7 @@ auto thermo_max_iter(const Prior& prior, const Likelihood& lik, const DataType &
 std::size_t max_iter_equilibrium,
                      double n_points_per_decade, double stops_at,
                      bool includes_zero, std::size_t initseed) {
-    return thermo_impl(less_than_max_iteration(max_iter_warming, max_iter_equilibrium), prior, lik, y, x,
+    return thermo_impl(f,less_than_max_iteration(max_iter_warming, max_iter_equilibrium), prior, lik, y, x,
                        save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence, save_Predictions<Parameters>>(
                            path, filename, 10ul, 10ul, 10ul, 100ul),
                        num_scouts_per_ensemble, max_num_simultaneous_temperatures,thermo_jumps_every,
@@ -364,18 +366,18 @@ auto thermo_by_max_iter(std::string path, std::string filename,
 
 
 
-template <class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
-    requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
-auto thermo_convergence(const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
+    requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+auto thermo_convergence(FunctionTable& f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
                         std::string path, std::string filename,
                         std::size_t num_scouts_per_ensemble,
                         std::size_t max_num_simultaneous_temperatures,
                         std::size_t thermo_jumps_every, std::size_t max_iter,
                         double n_points_per_decade, double stops_at,
                         bool includes_zero, std::size_t initseed) {
-    return thermo_impl(
+    return thermo_impl(f,
         checks_derivative_var_ratio<thermo_mcmc, Parameters>(max_iter * prior.size()), prior,lik,
         y, x,
         save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(

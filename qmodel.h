@@ -22,6 +22,7 @@
 #include "parameters.h"
 #include "variables.h"
 #include "exponential_matrix.h"
+#include "function_measure_verification_and_optimization.h"
 namespace macrodr {
 
 using var::Parameters;
@@ -44,6 +45,9 @@ using std::abs;
 using std::exp;
 using std::log10;
 using std::max;
+
+using var::FuncMap;
+using var::Time_it;
 
 template <class T> T sqr(T x) { return x * x; }
 
@@ -419,6 +423,32 @@ using Simulated_Sub_Step =
     Vector_Space<N_channel_state, number_of_samples, y_sum>;
 
 using Simulation_Parameters = Vector_Space<Number_of_simulation_sub_steps>;
+
+
+template <uses_recursive_aproximation recursive,
+         uses_averaging_aproximation averaging,
+         uses_variance_aproximation variance>
+struct MacroR{
+    friend std::string ToString(MacroR){
+        std::string out="MacroR";
+        if (recursive.value)
+            out+="_R";
+        else
+            out+="_NR";
+        if (averaging.value==2)
+            out+="_2";
+        else
+            out+="__";
+        if (variance.value)
+            out+="_V";
+        else
+            out+="_M";
+        
+        return out; 
+        }
+};
+
+
 
 class Macro_DMR {
   static double E1(double x) {
@@ -822,6 +852,7 @@ public:
       return build<P_mean>(p0 * Vv * laexp * Wv);
 
     } else {
+        std::cerr<<"uses expm_sure\n";
       auto P = expm_sure(t_Qx());
       auto P2 = P * P;
       while (maxAbs(primitive(P - P2)) > 1e-9) {
@@ -1960,8 +1991,8 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
             uses_recursive_aproximation recursive,
             uses_averaging_aproximation averaging,
             uses_variance_aproximation variance, return_predictions predictions,
-            class C_Parameters, class Model>
-  auto log_Likelihood(const Model &model, const C_Parameters &par,
+            class FuncTable, class C_Parameters, class Model>
+  auto log_Likelihood(FuncTable& f,const Model &model, const C_Parameters &par,
                       const Experiment &e, const Recording &y)
       -> Maybe_error<Transfer_Op_to<
           C_Parameters,
@@ -1983,7 +2014,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     else {
       auto run = fold(
           0ul, y().size(), std::move(ini).value(),
-          [this, &m, fs, &e, &y, &gege](C_Patch_State &&t_prior,
+          [this, &f,&m, fs, &e, &y, &gege](C_Patch_State &&t_prior,
                                         std::size_t i_step) {
             ATP_evolution const &t_step =
                 get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
@@ -2069,8 +2100,8 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
                   return Macror<recursive, averaging, variance>(
                       std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
                 } else {
-                  return Macror<uses_recursive_aproximation(false), averaging,
-                                uses_variance_aproximation(false)>(
+                  return f.f(MacroR<uses_recursive_aproximation(false), averaging,
+                                      uses_variance_aproximation(false)>{})(
                       std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
                 }
               }
@@ -2244,15 +2275,15 @@ auto make_Likelihood_Model(const Model &m, Number_of_simulation_sub_steps n) {
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
-    class Model, class Parameters, class Variables, class DataType>
+    class FuncTable,class Model, class Parameters, class Variables, class DataType>
 Maybe_error<double>
-logLikelihood(const Likelihood_Model<adaptive, recursive, averaging, variance,
+logLikelihood(FuncTable& f,const Likelihood_Model<adaptive, recursive, averaging, variance,
                                      Model> &lik,
               Parameters const &p, const Variables &var, const DataType &y) {
   auto v_logL =
       Macro_DMR{}
           .log_Likelihood<adaptive, recursive, averaging, variance,
-                          return_predictions(false)>(lik.m, p, y, var);
+                          return_predictions(false)>(f,lik.m, p, y, var);
   if (!v_logL)
     return v_logL.error();
   else
@@ -2262,14 +2293,14 @@ logLikelihood(const Likelihood_Model<adaptive, recursive, averaging, variance,
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
-    class Model, class Parameters, class Variables, class DataType>
-Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
+    class FunctionTable,class Model, class Parameters, class Variables, class DataType>
+Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(FunctionTable&& f,
     const Likelihood_Model<adaptive, recursive, averaging, variance, Model>
         &lik,
     Parameters const &p, const Variables &var, const DataType &y) {
   return Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
-                      return_predictions(true)>(lik.m, p, y, var);
+                      return_predictions(true)>(f,lik.m, p, y, var);
 }
 
 inline auto get_num_samples(const ATP_step &e) {
@@ -2531,8 +2562,8 @@ void report_title(save_Predictions<Parameters<Id>> &s,
 void report_title(save_Predictions<Matrix<double>> &s,
                   thermo_mcmc<Matrix<double>> const &, ...) {}
 
-template <class Id>
-void report(std::size_t iter, save_Predictions<Parameters<Id>> &s,
+template <class Id,class FunctionTable>
+void report(FunctionTable&& f,std::size_t iter, save_Predictions<Parameters<Id>> &s,
             thermo_mcmc<Parameters<Id>> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
@@ -2562,9 +2593,9 @@ inline std::string ToString(const ATP_evolution &ev) {
   return std::visit([](auto const &a) { return ToString(a); }, ev());
 }
 
-template <class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
           class Parameters>
-void report(std::size_t iter, save_Predictions<Parameters> &s,
+void report(FunctionTable &&f, std::size_t iter, save_Predictions<Parameters> &s,
             cuevi_mcmc<Parameters> const &data, Prior const &prior,
             Likelihood const &lik, const DataType &ys, const Variables &xs) {
   if (iter % s.save_every == 0)
@@ -2573,7 +2604,7 @@ void report(std::size_t iter, save_Predictions<Parameters> &s,
         for (std::size_t i_walker = 0; i_walker < size(data.walkers);
              ++i_walker) {
           Maybe_error<Patch_State_Evolution> prediction =
-              logLikelihoodPredictions(
+              logLikelihoodPredictions(f,
                   lik, data.walkers[i_walker][i_frac][i_beta].parameter,
                   ys[i_frac], xs[i_frac]);
           if (is_valid(prediction)) {

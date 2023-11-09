@@ -6,6 +6,8 @@
 #include <cstdlib>
 
 
+constexpr std::size_t large_prime=654612646693;
+
 template<class bidiiter>
 bidiiter randomly_extract_n(std::mt19937_64& mt,bidiiter begin, bidiiter end, std::size_t num_random ) {
     std::size_t left = std::distance(begin, end);

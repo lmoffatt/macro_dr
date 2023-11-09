@@ -4,6 +4,7 @@
 #include "matrix.h"
 #include <cassert>
 #include <random>
+#include <utility>
 #include <vector>
 #include "distributions.h"
 //using Parameters = Matrix<double>;
@@ -74,8 +75,9 @@ concept is_prior = requires(Prior const &prior,
 };
 
 
-template <class Likelihood, class Parameters,class Variables,class DataType>
-concept is_likelihood_model = requires(Likelihood const &lik,
+template <class FunctionTable,class Likelihood, class Parameters,class Variables,class DataType>
+concept is_likelihood_model = requires(FunctionTable&& f,
+                                       Likelihood const &lik,
                                        const Parameters& p,
                                        const Variables& var,
                                        const DataType& y) {
@@ -85,11 +87,14 @@ concept is_likelihood_model = requires(Likelihood const &lik,
     }-> std::convertible_to<DataType>;
     
     {
-        logLikelihood(lik,p,var,y)
+        logLikelihood(f,lik,p,var,y)
     }->std::convertible_to<Maybe_error<double>>;
 };
 
 
+struct logLikelihood_f{
+    friend constexpr std::string ToString(logLikelihood_f){ return "logLikelihood_f";}
+};
 
 
 template<class D, class T>
@@ -108,21 +113,21 @@ struct mcmc {
     double logL;
 };
 
-template <class Prior,class Lik, class Variables,class DataType,
+template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
          class Parameters=std::decay_t<
              decltype(sample(std::declval<std::mt19937_64 &>(), std::declval<Prior&>()))>>
-    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Lik,Parameters,Variables,DataType>)
-auto init_mcmc(std::mt19937_64 &mt, Prior const & pr, const Lik& lik,
+ //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
+auto init_mcmc(FunctionTable&f, std::mt19937_64 &mt, Prior const & pr, const Lik& lik,
                const DataType &y, const Variables &x) {
     auto priorsampler=sampler(pr);
     auto par = sample(mt,priorsampler);
     auto logP = logPrior(pr,par);
-    auto logL = logLikelihood(lik,par, y,x);
+    auto logL = logLikelihood(f,lik,par, y,x);
     while(!(logP)||!(logL))
     {
         par = sample(mt,priorsampler);
         logP = logPrior(pr,par);
-        logL = logLikelihood(lik,par, y,x);
+        logL = logLikelihood(f,lik,par, y,x);
         
     }
     return mcmc<Parameters>{std::move(par), logP.value(), logL.value()};
