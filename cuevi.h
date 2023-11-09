@@ -1207,14 +1207,14 @@ Maybe_error<cuevi_mcmc<Parameters>> calculate_current_Likelihoods(
   for (std::size_t iw = 0; iw < current.walkers.size(); ++iw) {
     if (current.is_active[0][0] == 1) {
       auto res =
-          calculate_Likelihoods_sample(f, current, prior, lik, y, x, iw, 0, 0);
+            calculate_Likelihoods_sample(var::F_on_thread(f, var::I_thread(iw)), current, prior, lik, y, x, iw, 0, 0);
       if (!res)
         return res.error();
     }
     for (std::size_t i_frac = 0; i_frac < current.walkers[iw].size(); ++i_frac)
       for (std::size_t ib = 1; ib < current.walkers[iw][i_frac].size(); ++ib) {
         if (current.is_active[i_frac][ib] == 1) {
-          auto res = calculate_Likelihoods_sample(f, current, prior, lik, y, x,
+          auto res = calculate_Likelihoods_sample(var::F_on_thread(f, var::I_thread(iw)), current, prior, lik, y, x,
                                                   iw, i_frac, ib);
           if (!res)
             return res.error();
@@ -1243,7 +1243,7 @@ auto create_new_walkers(FunctionTable &f, const cuevi_mcmc<Parameters> &current,
   for (std::size_t half = 0; half < 2; ++half)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
       auto iw = i + half * n_walkers / 2;
-      new_walkers[iw] = init_mcmc2(f, mts[i], prior, lik, y, x);
+        new_walkers[iw] = init_mcmc2(var::F_on_thread(f,var::I_thread(i)), mts[i], prior, lik, y, x);
       new_i_walkers[iw] = sum_walkers + iw;
     }
 
@@ -1764,7 +1764,7 @@ struct thermo_cuevi_jump_mcmc {
                 if (pJump > r) {
                   auto ca_par = current.walkers[iw][i_fr][ib].parameter;
                   auto ca_logL1 =
-                      logLikelihood(f,lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
+                      logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
                   if (ca_logL1) {
                     auto ca_logPa = current.walkers[iw][i_fr][ib].logPa;
                     auto ca_logP = current.walkers[iw][i_fr][ib].logP;
@@ -1808,11 +1808,11 @@ struct thermo_cuevi_jump_mcmc {
                   if (pJump > r) {
                     auto ca_par_1 = current.walkers[iw][i_fr][ib].parameter;
                     auto ca_logL_11 =
-                        logLikelihood(f,lik, ca_par_1, y[i_fr + 1], x[i_fr + 1]);
+                        logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_1, y[i_fr + 1], x[i_fr + 1]);
                     auto ca_par_0 = current.walkers[jw][i_fr][ib + 1].parameter;
                     auto ca_logL_00 =
                         i_fr == 1 ? Maybe_error<double>{0.0}
-                                  : logLikelihood(f,lik, ca_par_0, y[i_fr - 2],
+                                  : logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
                                                   x[i_fr - 2]);
                     if (is_valid(ca_logL_11) && is_valid(ca_logL_00)) {
                       auto ca_logPa_1 = current.walkers[iw][i_fr][ib].logPa;
@@ -1866,7 +1866,7 @@ struct thermo_cuevi_jump_mcmc {
                     auto ca_par_0 = current.walkers[jw][i_fr][ib + 1].parameter;
                     auto ca_logL_00 =
                         i_fr == 1 ? Maybe_error<double>{0.0}
-                                  : logLikelihood(f,lik, ca_par_0, y[i_fr - 2],
+                                  : logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
                                                   x[i_fr - 2]);
                     if (ca_logL_00) {
                       auto ca_logPa_0 = current.walkers[jw][i_fr][ib + 1].logPa;
@@ -1937,7 +1937,7 @@ struct thermo_cuevi_jump_mcmc {
                   auto ca_par_0 = current.walkers[jw][i_fr][ib + 1].parameter;
                   auto ca_logL_00 =
                       i_fr == 1 ? Maybe_error<double>{0.0}
-                                : logLikelihood(f,lik, ca_par_0, y[i_fr - 2],
+                                : logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
                                                 x[i_fr - 2]);
                   if (ca_logL_00) {
                     auto ca_logPa_0 = current.walkers[jw][i_fr][ib + 1].logPa;

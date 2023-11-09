@@ -2,6 +2,7 @@
 #define PARALLEL_TEMPERING_H
 // #include "bayesian_linear_regression.h"
 //#include "bayesian_linear_regression.h"
+#include "function_measure_verification_and_optimization.h"
 #include "mcmc.h"
 #include "multivariate_normal_distribution.h"
 #include <algorithm>
@@ -311,7 +312,7 @@ auto init_thermo_mcmc(FunctionTable& f,std::size_t n_walkers, by_beta<double> co
             auto iw = iiw + half * n_walkers / 2;
             for (std::size_t i = 0; i < beta.size(); ++i) {
                 i_walker[iw][i] = iw + i * n_walkers;
-                walker[iw][i] = init_mcmc(f,mt[iiw], prior,lik, y, x);
+                walker[iw][i] = init_mcmc(var::F_on_thread(f,var::I_thread(iiw)),mt[iiw], prior,lik, y, x);
             }
         }
     return thermo_mcmc<Parameters>{beta, walker, i_walker};
@@ -480,7 +481,7 @@ template <class FunctionTable,class Observer, class Prior, class Likelihood, cla
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-void step_stretch_thermo_mcmc(FunctionTable& f,std::size_t &iter,
+void step_stretch_thermo_mcmc(FunctionTable&& f,std::size_t &iter,
                               thermo_mcmc<Parameters> &current, Observer &obs,
                               const by_beta<double> &beta,
                               ensemble<std::mt19937_64> &mt, Prior const &prior, Likelihood const& lik,
@@ -521,7 +522,7 @@ void step_stretch_thermo_mcmc(FunctionTable& f,std::size_t &iter,
                 auto ca_par = stretch_move(current.walkers[iw][ib].parameter,
                                            current.walkers[jw][ib].parameter, z);
                 auto ca_logP = logPrior(prior, ca_par);
-                auto ca_logL = logLikelihood(f,lik, ca_par, y, x);
+                auto ca_logL = logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par, y, x);
                 
                 if ((ca_logP.valid()) && (ca_logL.valid())) {
                     auto dthLogL =
@@ -597,7 +598,7 @@ template <class FunctionTable,class Prior, class Likelihood, class Variables, cl
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-auto push_back_new_beta(FunctionTable& f,std::size_t &iter, thermo_mcmc<Parameters> &current,
+auto push_back_new_beta(FunctionTable&& f,std::size_t &iter, thermo_mcmc<Parameters> &current,
                         ensemble<std::mt19937_64> &mts,
                         by_beta<double> const &new_beta, Prior const &prior, Likelihood const& lik,
                         const DataType &y, const Variables &x) {
@@ -606,7 +607,7 @@ auto push_back_new_beta(FunctionTable& f,std::size_t &iter, thermo_mcmc<Paramete
     for (std::size_t half = 0; half < 2; ++half)
         for (std::size_t i = 0; i < n_walkers / 2; ++i) {
             auto iw = i + half * n_walkers / 2;
-            current.walkers[iw].push_back(init_mcmc(f,mts[i], prior,lik, y, x));
+            current.walkers[iw].push_back(init_mcmc(var::F_on_thread(f, var::I_thread(i)),mts[i], prior,lik, y, x));
             current.i_walkers[iw].push_back(n_beta_old * n_walkers + iw);
         }
     iter = 0;

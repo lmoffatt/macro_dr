@@ -117,7 +117,7 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<std::mt19937_64 &>(), std::declval<Prior&>()))>>
  //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_mcmc(FunctionTable&f, std::mt19937_64 &mt, Prior const & pr, const Lik& lik,
+auto init_mcmc(FunctionTable&& f, std::mt19937_64 &mt, Prior const & pr, const Lik& lik,
                const DataType &y, const Variables &x) {
     auto priorsampler=sampler(pr);
     auto par = sample(mt,priorsampler);

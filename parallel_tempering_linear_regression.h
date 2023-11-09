@@ -1,6 +1,7 @@
 #ifndef PARALLEL_TEMPERING_LINEAR_REGRESSION_H
 #define PARALLEL_TEMPERING_LINEAR_REGRESSION_H
 #include "bayesian_linear_regression.h"
+#include "function_measure_verification_and_optimization.h"
 #include "multivariate_normal_distribution.h"
 #include "parallel_tempering.h"
 
@@ -230,7 +231,7 @@ template <class FunctionTable,class Algorithm, class Prior, class Likelihood, cl
 //    requires(is_Algorithm_conditions<Algorithm, thermo_mcmc<Parameters>> &&
 //             is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
 
-auto evidence(FunctionTable& f,thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const &prior, Likelihood const& lik, const DataType &y,
+auto evidence(FunctionTable&& f,thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const &prior, Likelihood const& lik, const DataType &y,
               const Variables &x) {
     
     auto a = therm.algorithm();
