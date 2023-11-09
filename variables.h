@@ -172,7 +172,7 @@ public:
     
     
     constexpr Fun(Var<Id>,F const& t_f,T const&... t_x):m_x{t_x...},m_f{t_f}{}
-    
+      
     constexpr Fun(Var<Id>,F && t_f,T && ...t_x):m_x{std::move(t_x)...},m_f{std::move(t_f)}{}
     
     template<class... Ts>

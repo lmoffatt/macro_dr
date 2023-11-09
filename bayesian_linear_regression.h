@@ -93,7 +93,8 @@ auto get_parameters(linear_model, const Matrix<double> &beta)
     return std::tuple(logvar,b);
 }
 
-Maybe_error<double> logLikelihood(linear_model, const Matrix<double> &beta,
+template<class FunctionTable>
+Maybe_error<double> logLikelihood(FunctionTable&& f,linear_model, const Matrix<double> &beta,
                                   const Matrix<double> &y,
                                   const Matrix<double> &X) {
     assert(beta.ncols() - 1 == X.ncols() && "beta has the right number");

@@ -292,11 +292,11 @@ auto mixing_var_ratio(by_beta<double> const &mean_var,
     return out;
 }
 
-template <class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
-    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
-auto init_thermo_mcmc(std::size_t n_walkers, by_beta<double> const &beta,
+//    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+auto init_thermo_mcmc(FunctionTable& f,std::size_t n_walkers, by_beta<double> const &beta,
                       ensemble<std::mt19937_64> &mt, Prior const &prior, Likelihood const& lik,
                       const DataType &y, const Variables &x) {
     
@@ -311,7 +311,7 @@ auto init_thermo_mcmc(std::size_t n_walkers, by_beta<double> const &beta,
             auto iw = iiw + half * n_walkers / 2;
             for (std::size_t i = 0; i < beta.size(); ++i) {
                 i_walker[iw][i] = iw + i * n_walkers;
-                walker[iw][i] = init_mcmc(mt[iiw], prior,lik, y, x);
+                walker[iw][i] = init_mcmc(f,mt[iiw], prior,lik, y, x);
             }
         }
     return thermo_mcmc<Parameters>{beta, walker, i_walker};
@@ -476,11 +476,11 @@ void observe_thermo_jump_mcmc(Observer &obs, std::size_t jlanding,
                               double calogL, double deltabeta, double logA,
                               double pJump, double r, bool doesChange) {}
 
-template <class Observer, class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Observer, class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
-    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
-void step_stretch_thermo_mcmc(std::size_t &iter,
+    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+void step_stretch_thermo_mcmc(FunctionTable& f,std::size_t &iter,
                               thermo_mcmc<Parameters> &current, Observer &obs,
                               const by_beta<double> &beta,
                               ensemble<std::mt19937_64> &mt, Prior const &prior, Likelihood const& lik,
@@ -521,7 +521,7 @@ void step_stretch_thermo_mcmc(std::size_t &iter,
                 auto ca_par = stretch_move(current.walkers[iw][ib].parameter,
                                            current.walkers[jw][ib].parameter, z);
                 auto ca_logP = logPrior(prior, ca_par);
-                auto ca_logL = logLikelihood(lik, ca_par, y, x);
+                auto ca_logL = logLikelihood(f,lik, ca_par, y, x);
                 
                 if ((ca_logP.valid()) && (ca_logL.valid())) {
                     auto dthLogL =
@@ -593,11 +593,11 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
     }
 }
 
-template <class Prior, class Likelihood, class Variables, class DataType,
+template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
-    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
-auto push_back_new_beta(std::size_t &iter, thermo_mcmc<Parameters> &current,
+    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+auto push_back_new_beta(FunctionTable& f,std::size_t &iter, thermo_mcmc<Parameters> &current,
                         ensemble<std::mt19937_64> &mts,
                         by_beta<double> const &new_beta, Prior const &prior, Likelihood const& lik,
                         const DataType &y, const Variables &x) {
@@ -606,7 +606,7 @@ auto push_back_new_beta(std::size_t &iter, thermo_mcmc<Parameters> &current,
     for (std::size_t half = 0; half < 2; ++half)
         for (std::size_t i = 0; i < n_walkers / 2; ++i) {
             auto iw = i + half * n_walkers / 2;
-            current.walkers[iw].push_back(init_mcmc(mts[i], prior,lik, y, x));
+            current.walkers[iw].push_back(init_mcmc(f,mts[i], prior,lik, y, x));
             current.i_walkers[iw].push_back(n_beta_old * n_walkers + iw);
         }
     iter = 0;
@@ -636,7 +636,9 @@ public:
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_likelihood &,const Prior &, const Likelihood&,  const DataType &,
                              const Variables &, by_beta<double> const &) {}
-    friend void report(std::size_t iter, save_likelihood &s,
+    
+    template<class FunctionTable>
+    friend void report(FunctionTable&& f,std::size_t iter, save_likelihood &s,
                        thermo_mcmc<Parameters> const &data,...) {
         if (iter % s.save_every == 0)
             for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
@@ -689,8 +691,8 @@ public:
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_Parameter &, const Prior&, const Likelihood&, const DataType &,
                              const Variables &, by_beta<double> const &) {}
-    
-    friend void report(std::size_t iter, save_Parameter &s,
+    template<class FunctionTable>
+    friend void report(FunctionTable&& f,std::size_t iter, save_Parameter &s,
                        thermo_mcmc<Parameters> const &data,...) {
         if (iter % s.save_every == 0)
             for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
@@ -742,10 +744,10 @@ public:
         : saving{dir + filename_prefix, 1ul}..., directory_{dir},
         filename_prefix_{filename_prefix} {}
     
-    template<class ...T>
-    friend void report(std::size_t iter, save_mcmc &f,
+    template<class FunctionTable,class ...T>
+    friend void report(FunctionTable &&f,std::size_t iter, save_mcmc &smcmc,
                        thermo_mcmc<Parameters> const &data,T&&... ts) {
-        (report(iter, static_cast<saving &>(f), data, std::forward<T>(ts)...), ..., 1);
+        (report(f,iter, static_cast<saving &>(smcmc), data, std::forward<T>(ts)...), ..., 1);
     }
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_mcmc &s, Prior const &prior, Likelihood const& lik, const DataType &y,

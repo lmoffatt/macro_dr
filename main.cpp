@@ -1,5 +1,6 @@
 #include "CLI_macro_dr.h"
 #include "experiment.h"
+#include "function_measure_verification_and_optimization.h"
 #include "lapack_headers.h"
 #include "lexer_typed.h"
 #include "matrix.h"
@@ -165,12 +166,13 @@ int main(int argc, char **argv) {
      * @brief max_iter_warming maximum number of iterations on each warming step
      */
     std::size_t max_iter_warming = 200;
-    
+
     /**
-     * @brief max_iter_equilibrium maximum number of iterations on the equilibrium step
+     * @brief max_iter_equilibrium maximum number of iterations on the
+     * equilibrium step
      */
     std::size_t max_iter_equilibrium = 10000;
-    
+
     /**
      * @brief path directory for the output
      */
@@ -240,17 +242,60 @@ int main(int argc, char **argv) {
      * produces the number of steps skipped until the next thermo jump
      */
     std::size_t thermo_jumps_every = my_linear_model.size() * 1e0;
-
+    auto ModelName="Model";
+    
+    auto ftbl = FuncMap(
+        var::Time_it_parallel(
+            logLikelihood_f{},
+            [](auto &&...x) {
+                return logLikelihood(std::forward<decltype(x)>(x)...);
+            },
+            path + 
+                "_" + time_now(),
+            num_scouts_per_ensemble / 2),
+        var::Time_it_parallel(
+            MacroR<uses_recursive_aproximation(true),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path+ ModelName + "_equilibrium_" + std::to_string(myseed) +
+                "_" + time_now(), num_scouts_per_ensemble / 2),
+        var::Time_it_parallel(
+            MacroR<uses_recursive_aproximation(false),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path+ ModelName + "_equilibrium_" + std::to_string(myseed) +
+                "_" + time_now(), num_scouts_per_ensemble / 2)
+        );
+    
+    
+    
+    
     if (false) {
+        
+        
       /**
        * @brief tmi classical thermodynamic algorithm ends by maximum iteration
        */
       auto tmi = thermo_by_max_iter<Matrix<double>>(
           path, "Iteri", num_scouts_per_ensemble,
-          max_num_simultaneous_temperatures, thermo_jumps_every, max_iter_warming,
-max_iter_equilibrium,
-          n_points_per_decade, stops_at, includes_zero, myseed);
-      auto opt = evidence(std::move(tmi), my_linear_model.prior(),
+          max_num_simultaneous_temperatures, thermo_jumps_every,
+          max_iter_warming, max_iter_equilibrium, n_points_per_decade, stops_at,
+          includes_zero, myseed);
+      auto opt = evidence(ftbl,std::move(tmi), my_linear_model.prior(),
                           my_linear_model.likelihood(), y, X);
     }
     if (false) {
@@ -264,7 +309,7 @@ max_iter_equilibrium,
           checks_derivative_every_model_size, n_points_per_decade, stops_at,
           includes_zero, myseed);
 
-      auto opt2 = evidence(std::move(tbc), my_linear_model.prior(),
+      auto opt2 = evidence(ftbl,std::move(tbc), my_linear_model.prior(),
                            my_linear_model.likelihood(), y, X);
 
       // std::cout<<y;
@@ -280,7 +325,47 @@ max_iter_equilibrium,
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
           checks_derivative_every_model_size, max_ratio, n_points_per_decade,
           n_points_per_decade_fraction, stops_at, includes_zero, myseed);
-      auto opt3 = evidence(std::move(cbc), my_linear_model.prior(),
+
+      auto ftbl = FuncMap(
+          Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}, path),
+          Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}, path),
+          var::Time_it_parallel(step_stretch_cuevi_mcmc_per_walker{},
+                                step_stretch_cuevi_mcmc_per_walker{}, path,
+                                num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              logLikelihood_f{},
+              [](auto &&...x) {
+                return logLikelihood(std::forward<decltype(x)>(x)...);
+              },
+              path, num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              MacroR<uses_recursive_aproximation(true),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                  return Macro_DMR{}
+                      .Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+              },
+              path, num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              MacroR<uses_recursive_aproximation(false),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                  return Macro_DMR{}
+                      .Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+              },
+              path, num_scouts_per_ensemble / 2)
+          
+          );
+
+      auto opt3 = evidence(ftbl, std::move(cbc), my_linear_model.prior(),
                            my_linear_model.likelihood(), y, X);
     }
   }
@@ -465,7 +550,7 @@ max_iter_equilibrium,
     p_kinetics[2] = 10;
     p_kinetics[4] = 10;
     p_kinetics[12] = 100;
-    p_kinetics[16] = 1e-3;
+    p_kinetics[15] = 1e-3;
 
     auto p_other = std::vector<double>{1, 1000, 1e-3, 1};
 
@@ -743,7 +828,8 @@ max_iter_equilibrium,
           p()[names["RG_1"].value()] =
               p()[names["RG_1"].value()] / (1.0 + p()[names["RG_1"].value()]);
 
-          p()[names["Gating_Current"].value()] = p()[names["Gating_Current"].value()] * -1.0;
+          p()[names["Gating_Current"].value()] =
+              p()[names["Gating_Current"].value()] * -1.0;
           auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
           assert(Maybe_Q0Qag);
           auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
@@ -804,8 +890,9 @@ max_iter_equilibrium,
         "Binding_on",  "Binding_off", "Rocking_on",
         "Rocking_off", "RBR",         "RBR_0",
         "RBR_1",       "RBR_2",       "Rocking_Current_factor"}; //--> 8
-    auto names_other = std::vector<std::string>{
-        "Inactivation_rate", "Leaking_current","Num_ch", "Current_Noise", "Current_Baseline"};
+    auto names_other =
+        std::vector<std::string>{"Inactivation_rate", "Leaking_current",
+                                 "Num_ch", "Current_Noise", "Current_Baseline"};
 
     auto p_kinetics =
         std::vector<double>{10, 10000, 100, 10000, 100, 1.0, 1e-2, 1.0, 100};
@@ -836,41 +923,39 @@ max_iter_equilibrium,
               p()[names["RBR_1"].value()] / (1.0 + p()[names["RBR_1"].value()]);
           p()[names["RBR_2"].value()] =
               p()[names["RBR_2"].value()] / (1.0 + p()[names["RBR_2"].value()]);
-          
-            
-            
-            auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
-            assert(Maybe_Q0Qag);
-            auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
-            auto Npar = names().size();
-            
-            auto v_Inac_rate = p()[Npar];
-            auto v_leaking_current= p()[Npar+1];
-            auto v_N0 = p()[Npar + 2];
-            auto v_curr_noise = p()[Npar + 3];
-            auto v_baseline = logp()[Npar + 4];
-            
-            auto v_g = build<g>(apply(
-                [&v_leaking_current](const auto &x) {
-                    return v_leaking_current * pow(10.0, x) * (-1.0);
-                },
-                a_g()));
-            auto Nst = get<N_St>(m())();
-            return add_Patch_inactivation(
-                build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
-                                   std::move(a_Qa),
-                                   build<P_initial>(var::build_<Matrix<double>>(
-                                       1, Nst, {{0, 0}}, {1.0})),
-                                   std::move(v_g), build<N_Ch_mean>(v_N0),
-                                   build<Current_Noise>(v_curr_noise),
-                                   build<Current_Baseline>(v_baseline),
-                                   Binomial_magical_number(5.0), min_P(1e-7),
-                                   Probability_error_tolerance(1e-2),
-                                   Conductance_variance_error_tolerance(1e-2)),
-                v_Inac_rate);
+
+          auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
+          assert(Maybe_Q0Qag);
+          auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
+          auto Npar = names().size();
+
+          auto v_Inac_rate = p()[Npar];
+          auto v_leaking_current = p()[Npar + 1];
+          auto v_N0 = p()[Npar + 2];
+          auto v_curr_noise = p()[Npar + 3];
+          auto v_baseline = logp()[Npar + 4];
+
+          auto v_g = build<g>(apply(
+              [&v_leaking_current](const auto &x) {
+                return v_leaking_current * pow(10.0, x) * (-1.0);
+              },
+              a_g()));
+          auto Nst = get<N_St>(m())();
+          return add_Patch_inactivation(
+              build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
+                                 std::move(a_Qa),
+                                 build<P_initial>(var::build_<Matrix<double>>(
+                                     1, Nst, {{0, 0}}, {1.0})),
+                                 std::move(v_g), build<N_Ch_mean>(v_N0),
+                                 build<Current_Noise>(v_curr_noise),
+                                 build<Current_Baseline>(v_baseline),
+                                 Binomial_magical_number(5.0), min_P(1e-7),
+                                 Probability_error_tolerance(1e-2),
+                                 Conductance_variance_error_tolerance(1e-2)),
+              v_Inac_rate);
         },
         logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
-            });
+  });
 
   auto model9 = Allost1::Model([]() {
     auto v_binding = Conformational_change_label{"Binding"};
@@ -932,36 +1017,36 @@ max_iter_equilibrium,
               p()[names["RB_0"].value()] / (1.0 + p()[names["RB_0"].value()]);
           p()[names["RB_1"].value()] =
               p()[names["RB_1"].value()] / (1.0 + p()[names["RB_1"].value()]);
-            
-            auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
-            assert(Maybe_Q0Qag);
-            auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
-            auto Npar = names().size();
-            
-            auto v_Inac_rate = p()[Npar];
-            auto v_leaking_current= p()[Npar+1];
-            auto v_N0 = p()[Npar + 2];
-            auto v_curr_noise = p()[Npar + 3];
-            auto v_baseline = logp()[Npar + 4];
-            
-            auto v_g = build<g>(apply(
-                [&v_leaking_current](const auto &x) {
-                    return v_leaking_current * pow(10.0, x) * (-1.0);
-                },
-                a_g()));
-            auto Nst = get<N_St>(m())();
-            return add_Patch_inactivation(
-                build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
-                                   std::move(a_Qa),
-                                   build<P_initial>(var::build_<Matrix<double>>(
-                                       1, Nst, {{0, 0}}, {1.0})),
-                                   std::move(v_g), build<N_Ch_mean>(v_N0),
-                                   build<Current_Noise>(v_curr_noise),
-                                   build<Current_Baseline>(v_baseline),
-                                   Binomial_magical_number(5.0), min_P(1e-7),
-                                   Probability_error_tolerance(1e-2),
-                                   Conductance_variance_error_tolerance(1e-2)),
-                v_Inac_rate);
+
+          auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
+          assert(Maybe_Q0Qag);
+          auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
+          auto Npar = names().size();
+
+          auto v_Inac_rate = p()[Npar];
+          auto v_leaking_current = p()[Npar + 1];
+          auto v_N0 = p()[Npar + 2];
+          auto v_curr_noise = p()[Npar + 3];
+          auto v_baseline = logp()[Npar + 4];
+
+          auto v_g = build<g>(apply(
+              [&v_leaking_current](const auto &x) {
+                return v_leaking_current * pow(10.0, x) * (-1.0);
+              },
+              a_g()));
+          auto Nst = get<N_St>(m())();
+          return add_Patch_inactivation(
+              build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
+                                 std::move(a_Qa),
+                                 build<P_initial>(var::build_<Matrix<double>>(
+                                     1, Nst, {{0, 0}}, {1.0})),
+                                 std::move(v_g), build<N_Ch_mean>(v_N0),
+                                 build<Current_Noise>(v_curr_noise),
+                                 build<Current_Baseline>(v_baseline),
+                                 Binomial_magical_number(5.0), min_P(1e-7),
+                                 Probability_error_tolerance(1e-2),
+                                 Conductance_variance_error_tolerance(1e-2)),
+              v_Inac_rate);
         },
         logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
   });
@@ -994,11 +1079,11 @@ max_iter_equilibrium,
       "k32",         "k34",          "k43",   "conductance", "Num_Chan_0",
       "Num_Chan_eq", "Num_Chan_tau", "noise", "baseline"};
 
-  auto &model0 = model4;
-  auto &param1Names = param4Names;
-  auto &param1 = param4;
-  std::string ModelName = "Model4";
-  using MyModel = Model0;
+  auto &model0 = model6;
+  auto &param1Names = param6Names;
+  auto &param1 = param6;
+  std::string ModelName = "Model6";
+  using MyModel = Allost1;
 
   assert(param1Names().size() == param1.size());
   auto dparam1 = var::selfDerivative(param1);
@@ -1092,7 +1177,41 @@ max_iter_equilibrium,
 
     Matrix<double> mean_edlogL;
     SymPosDefMatrix<double> Cov_edlogL;
-
+    
+    std::string path="derivative";
+    auto ftbl = FuncMap(
+        var::Time_it(
+            logLikelihood_f{},
+            [](auto &&...x) {
+                return logLikelihood(std::forward<decltype(x)>(x)...);
+            },
+            path),
+        var::Time_it(
+            MacroR<uses_recursive_aproximation(true),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path),
+        var::Time_it(
+            MacroR<uses_recursive_aproximation(false),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path)
+        
+        );
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
@@ -1104,7 +1223,7 @@ max_iter_equilibrium,
                                      uses_averaging_aproximation(2),
                                      uses_variance_aproximation(false),
                                      return_predictions(false)>(
-                         model0, dparam1, experiment, sim.value()());
+                         ftbl,model0, dparam1, experiment, sim.value()());
       std::cerr << "\n" << i << "th likelihood!!\n" << lik;
       if (lik) {
         auto v_logL = get<logL>(lik.value());
@@ -1206,8 +1325,42 @@ max_iter_equilibrium,
 
     std::vector<Matrix<double>> mean_edlogL(algo.size());
     std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
-
-    auto logLik_by_algo = [&model0, &dparam1, &experiment](auto const &sim,
+    
+    std::string path="derivative";
+    auto ftbl = FuncMap(
+        var::Time_it(
+            logLikelihood_f{},
+            [](auto &&...x) {
+                return logLikelihood(std::forward<decltype(x)>(x)...);
+            },
+            path),
+        var::Time_it(
+            MacroR<uses_recursive_aproximation(true),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path),
+        var::Time_it(
+            MacroR<uses_recursive_aproximation(false),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path)
+        
+        );
+    auto logLik_by_algo = [&ftbl,&model0, &dparam1, &experiment](auto const &sim,
                                                            std::string algo) {
       if (algo == "NR")
         return Macro_DMR{}
@@ -1216,7 +1369,7 @@ max_iter_equilibrium,
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model0, dparam1, experiment, sim.value()());
+                ftbl,model0, dparam1, experiment, sim.value()());
       else if (algo == "R")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(false),
@@ -1224,7 +1377,7 @@ max_iter_equilibrium,
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model0, dparam1, experiment, sim.value()());
+                ftbl,model0, dparam1, experiment, sim.value()());
       else if (algo == "VR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(false),
@@ -1232,7 +1385,7 @@ max_iter_equilibrium,
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(true),
                             return_predictions(false)>(
-                model0, dparam1, experiment, sim.value()());
+                ftbl,model0, dparam1, experiment, sim.value()());
       else if (algo == "aNR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(true),
@@ -1240,7 +1393,7 @@ max_iter_equilibrium,
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model0, dparam1, experiment, sim.value()());
+                ftbl,model0, dparam1, experiment, sim.value()());
       else if (algo == "aR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(true),
@@ -1248,7 +1401,7 @@ max_iter_equilibrium,
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(false),
                             return_predictions(false)>(
-                model0, dparam1, experiment, sim.value()());
+                ftbl,model0, dparam1, experiment, sim.value()());
       else // if(algo=="aVR")
         return Macro_DMR{}
             .log_Likelihood<uses_adaptive_aproximation(true),
@@ -1256,7 +1409,7 @@ max_iter_equilibrium,
                             uses_averaging_aproximation(2),
                             uses_variance_aproximation(true),
                             return_predictions(false)>(
-                model0, dparam1, experiment, sim.value()());
+                ftbl,model0, dparam1, experiment, sim.value()());
     };
 
     for (std::size_t i = 0; i < number_replicates; ++i) {
@@ -1399,12 +1552,12 @@ thermodynamic parameter
      * @brief includes_zero considers also beta equal zero
      */
     bool includes_zero = true;
-    
+
     /**
      * @brief max_iter maximum number of iterations on each warming step
      */
     std::size_t max_iter_warming = 200;
-    
+
     /**
      * @brief max_iter maximum number of iterations on the equilibrium step
      */
@@ -1430,8 +1583,9 @@ thermodynamic parameter
      */
     auto tmi = thermo_Model_by_max_iter<MyModel>(
         path, "newNaN_thermo_R__2000", num_scouts_per_ensemble,
-        max_num_simultaneous_temperatures, thermo_jumps_every, max_iter_warming,max_iter_equilibrium,
-        n_points_per_decade, stops_at, includes_zero, myseed);
+        max_num_simultaneous_temperatures, thermo_jumps_every, max_iter_warming,
+        max_iter_equilibrium, n_points_per_decade, stops_at, includes_zero,
+        myseed);
 
     auto modelLikelihood = make_Likelihood_Model<
         uses_adaptive_aproximation(false), uses_recursive_aproximation(true),
@@ -1442,9 +1596,47 @@ thermodynamic parameter
         mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
         recording);
+    auto ftbl = FuncMap(
+        Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}, path),
+        Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}, path),
+        var::Time_it_parallel(step_stretch_cuevi_mcmc_per_walker{},
+                              step_stretch_cuevi_mcmc_per_walker{}, path,
+                              num_scouts_per_ensemble / 2),
+        var::Time_it_parallel(
+            logLikelihood_f{},
+            [](auto &&...x) {
+              return logLikelihood(std::forward<decltype(x)>(x)...);
+            },
+            path, num_scouts_per_ensemble / 2),
+        var::Time_it_parallel(
+            MacroR<uses_recursive_aproximation(true),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+              return Macro_DMR{}
+                  .Macror<uses_recursive_aproximation(true),
+                          uses_averaging_aproximation(2),
+                          uses_variance_aproximation(false)>(
+                      std::forward<decltype(x)>(x)...);
+            },
+            path, num_scouts_per_ensemble / 2),
+        var::Time_it_parallel(
+            MacroR<uses_recursive_aproximation(false),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+                return Macro_DMR{}
+                    .Macror<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>(
+                        std::forward<decltype(x)>(x)...);
+            },
+            path, num_scouts_per_ensemble / 2)
+        
+        );
 
     if (sim)
-      auto opt = evidence(std::move(tmi), param1_prior, modelLikelihood,
+      auto opt = evidence(ftbl,std::move(tmi), param1_prior, modelLikelihood,
                           sim.value()(), experiment);
   }
 
@@ -1458,7 +1650,7 @@ thermodynamic parameter
     auto myseed = 0ul;
 
     myseed = calc_seed(myseed);
-    std::cerr << "myseed =" << myseed<<"\n";
+    std::cerr << "myseed =" << myseed << "\n";
 
     /**
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
@@ -1474,26 +1666,25 @@ thermodynamic parameter
      */
     std::size_t max_num_simultaneous_temperatures = 1e5;
 
-
     /**
      * @brief stops_at minimum value of beta greater than zero
      */
-    double stops_at = 0.001;
+    double stops_at = 0.0001;
 
-    /**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
+    /**
      * @brief includes_zero considers also beta equal zero
      */
     bool includes_zero = true;
-    
+
     /**
      * @brief max_iter maximum number of iterations on each warming step
      */
-    std::size_t max_iter_warming = 100;
-    
+    std::size_t max_iter_warming = 200;
+
     /**
      * @brief max_iter maximum number of iterations on the equilibrium step
      */
-    std::size_t max_iter_equilibrium = 20000;
+    std::size_t max_iter_equilibrium = 40000;
 
     /**
      * @brief path directory for the output
@@ -1516,12 +1707,12 @@ thermodynamic parameter
      * @brief max_ratio maximimum tolerated ratio for the beta derivative method
      */
     double max_ratio = 8000e16;
-    
+
     /**
      * @brief n_points_per_decade number of points per 10 times increment in
      * beta thermodynamic parameter
      */
-    
+
     double n_points_per_decade = 24;
     /**
      * @brief n_points_per_decade_fraction number of points per 10 times
@@ -1572,32 +1763,128 @@ thermodynamic parameter
        * criteria
        */
       auto cbc = cuevi_Model_by_iteration<MyModel>(
-          path, ModelName + "_equilibrium_" +std::to_string(myseed)+"_"+ time_now() , t_segments,
-          t_min_number_of_samples, num_scouts_per_ensemble,
+          path,
+          ModelName + "_equilibrium_" + std::to_string(myseed) + "_" +
+              time_now(),
+          t_segments, t_min_number_of_samples, num_scouts_per_ensemble,
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
-          max_iter_warming,max_iter_equilibrium, max_ratio, n_points_per_decade,
-          n_points_per_decade_fraction, stops_at, includes_zero, myseed);
+          max_iter_warming, max_iter_equilibrium, max_ratio,
+          n_points_per_decade, n_points_per_decade_fraction, stops_at,
+          includes_zero, myseed);
 
       // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
       //                      sim.value()(), experiment);
-      auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
+      auto ftbl = FuncMap(
+          Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{},
+                  path + ModelName + "_equilibrium_" + std::to_string(myseed) +
+                      "_" + time_now()),
+          Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{},
+                  path + ModelName + "_equilibrium_" + std::to_string(myseed) +
+                      "_" + time_now()),
+          var::Time_it_parallel(step_stretch_cuevi_mcmc_per_walker{},
+                                step_stretch_cuevi_mcmc_per_walker{},
+                                path + ModelName + "_equilibrium_" +
+                                    std::to_string(myseed) + "_" + time_now(),
+                                num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              logLikelihood_f{},
+              [](auto &&...x) {
+                return logLikelihood(std::forward<decltype(x)>(x)...);
+              },
+              path + ModelName + "_equilibrium_" + std::to_string(myseed) +
+                  "_" + time_now(),
+              num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              MacroR<uses_recursive_aproximation(true),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                  return Macro_DMR{}
+                      .Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+              },
+              path+ ModelName + "_equilibrium_" + std::to_string(myseed) +
+                  "_" + time_now(), num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              MacroR<uses_recursive_aproximation(false),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                  return Macro_DMR{}
+                      .Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+              },
+              path+ ModelName + "_equilibrium_" + std::to_string(myseed) +
+                  "_" + time_now(), num_scouts_per_ensemble / 2)
+          
+          
+
+      );
+
+      auto opt3 = evidence(ftbl, std::move(cbc), param1_prior, modelLikelihood,
                            recording, experiment);
     }
   }
-
+  
+  
   if (false) {
+      std::string ModelName="test_der_Likelihood";
+      std::string path="";
+      auto num_scouts_per_ensemble=2ul;
+      auto myseed=0ul;
+      auto ftbl = FuncMap(
+          var::Time_it_parallel(
+              logLikelihood_f{},
+              [](auto &&...x) {
+                  return logLikelihood(std::forward<decltype(x)>(x)...);
+              },
+              path + 
+                  "_" + time_now(),
+              num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              MacroR<uses_recursive_aproximation(true),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                  return Macro_DMR{}
+                      .Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+              },
+              path+ ModelName + "_equilibrium_" + std::to_string(myseed) +
+                  "_" + time_now(), num_scouts_per_ensemble / 2),
+          var::Time_it_parallel(
+              MacroR<uses_recursive_aproximation(false),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                  return Macro_DMR{}
+                      .Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+              },
+              path+ ModelName + "_equilibrium_" + std::to_string(myseed) +
+                  "_" + time_now(), num_scouts_per_ensemble / 2)
+          );
+      
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)));
 
     auto test_der_Likelihood = var::test_Derivative(
-        [&model0, &sim, &experiment](auto const &dparam1) {
+        [&model0, &sim, &experiment,&ftbl](auto const &dparam1) {
           return Macro_DMR{}
               .log_Likelihood<uses_adaptive_aproximation(false),
                               uses_recursive_aproximation(true),
                               uses_averaging_aproximation(2),
                               uses_variance_aproximation(false),
-                              return_predictions(false)>(
+                              return_predictions(false)>(ftbl,
                   model0, dparam1, experiment, sim.value()());
         },
         1, 1e-10, dparam1);
