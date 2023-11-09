@@ -778,9 +778,9 @@ struct step_stretch_cuevi_mcmc_per_walker {
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 =
           i_fr > 0
-              ? logLikelihood(f,lik, ca_par, y[i_fr - 1], x[i_fr - 1])
+              ? f.f(logLikelihood_f{})(f,lik, ca_par, y[i_fr - 1], x[i_fr - 1])
               : Maybe_error(0.0);
-      auto ca_logL_1 = logLikelihood(f,lik, ca_par, y[i_fr], x[i_fr]);
+      auto ca_logL_1 = f.f(logLikelihood_f{})(f,lik, ca_par, y[i_fr], x[i_fr]);
       if (is_valid(ca_logPa_) && is_valid(ca_logL_0) && is_valid(ca_logL_1)) {
         auto ca_logPa = ca_logPa_.value();
         auto ca_logP0 = ca_logPa_.value() + ca_logL_0.value();
@@ -794,7 +794,7 @@ struct step_stretch_cuevi_mcmc_per_walker {
           if (i_fr + 1 < size(current.beta) &&
               (current.beta[i_fr][ib] == 1.0)) {
             auto ca_logL_2 =
-                logLikelihood(f,lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
+                f.f(logLikelihood_f{})(f,lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
             if ((ca_logL_2)) {
               auto ca_logP1 = ca_logPa + ca_logL_1.value();
               auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();

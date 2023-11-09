@@ -269,7 +269,7 @@ public:
         return F_on_thread<std::decay_t<decltype(m_f.f(Id{}))>>(m_f.f(Id{}),i_thread);
     }
     template <class... Ts>
-    constexpr void operator()(Ts &&...ts) {
+    constexpr auto operator()(Ts &&...ts) {
         return std::invoke(m_f,i_thread,std::forward<Ts>(ts)...);   
     }
 };
