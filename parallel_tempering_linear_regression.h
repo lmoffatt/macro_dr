@@ -146,7 +146,7 @@ template <class FunctionTable,class Algorithm, class Prior, class Likelihood, cl
     requires(is_Algorithm_conditions<Algorithm, thermo_mcmc<Parameters>> &&
              is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 
-auto thermo_impl(FunctionTable& f,const Algorithm &alg, Prior const &prior, Likelihood const& lik, const DataType &y,
+auto thermo_impl(FunctionTable&&  f,const Algorithm &alg, Prior const &prior, Likelihood const& lik, const DataType &y,
                  const Variables &x, Reporter rep,
                  std::size_t num_scouts_per_ensemble,
                  std::size_t max_num_simultaneous_temperatures,
@@ -231,9 +231,9 @@ template <class FunctionTable,class Algorithm, class Prior, class Likelihood, cl
 //    requires(is_Algorithm_conditions<Algorithm, thermo_mcmc<Parameters>> &&
 //             is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
 
-auto evidence(FunctionTable&& f,thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const &prior, Likelihood const& lik, const DataType &y,
+auto evidence(FunctionTable&& ff,thermodynamic_integration<Algorithm,Reporter>&& therm, Prior const &prior, Likelihood const& lik, const DataType &y,
               const Variables &x) {
-    
+    auto f=ff.fork(var::I_thread(0));
     auto a = therm.algorithm();
     auto mt = init_mt(therm.initseed());
     auto n_walkers = therm.num_scouts_per_ensemble();
@@ -316,7 +316,7 @@ public:
              class Parameters = std::decay_t<decltype(sample(
                  std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
         requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-    auto operator()(FunctionTable& f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x) {
+    auto operator()(FunctionTable&&  f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x) {
         return thermo_impl(
             less_than_max_iteration(max_iter_warming_,max_iter_final_), prior, lik, y, x,
             save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
@@ -330,7 +330,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables, c
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-auto thermo_max_iter(FunctionTable& f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
+auto thermo_max_iter(FunctionTable&&  f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
                      std::string path, std::string filename,
                      std::size_t num_scouts_per_ensemble,
                      std::size_t max_num_simultaneous_temperatures,
@@ -371,7 +371,7 @@ template <class FunctionTable,class Prior, class Likelihood, class Variables, cl
          class Parameters = std::decay_t<decltype(sample(
              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-auto thermo_convergence(FunctionTable& f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
+auto thermo_convergence(FunctionTable&&  f,const Prior& prior, const Likelihood& lik, const DataType &y, const Variables &x,
                         std::string path, std::string filename,
                         std::size_t num_scouts_per_ensemble,
                         std::size_t max_num_simultaneous_temperatures,
