@@ -778,9 +778,9 @@ struct step_stretch_cuevi_mcmc_per_walker {
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 =
           i_fr > 0
-              ? f.f(logLikelihood_f{})(f,lik, ca_par, y[i_fr - 1], x[i_fr - 1])
+              ? f.f(logLikelihood_f{},lik, ca_par, y[i_fr - 1], x[i_fr - 1])
               : Maybe_error(0.0);
-      auto ca_logL_1 = f.f(logLikelihood_f{})(f,lik, ca_par, y[i_fr], x[i_fr]);
+      auto ca_logL_1 = f.f(logLikelihood_f{},lik, ca_par, y[i_fr], x[i_fr]);
       if (is_valid(ca_logPa_) && is_valid(ca_logL_0) && is_valid(ca_logL_1)) {
         auto ca_logPa = ca_logPa_.value();
         auto ca_logP0 = ca_logPa_.value() + ca_logL_0.value();
@@ -794,7 +794,7 @@ struct step_stretch_cuevi_mcmc_per_walker {
           if (i_fr + 1 < size(current.beta) &&
               (current.beta[i_fr][ib] == 1.0)) {
             auto ca_logL_2 =
-                f.f(logLikelihood_f{})(f,lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
+                f.f(logLikelihood_f{},lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
             if ((ca_logL_2)) {
               auto ca_logP1 = ca_logPa + ca_logL_1.value();
               auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();
@@ -845,7 +845,7 @@ struct step_stretch_cuevi_mcmc {
                                  Variables, DataType>)
 
   void
-  operator()(FunctionTable &f, cuevi_mcmc<Parameters> &current, Observer &obs,
+  operator()(FunctionTable &&f, cuevi_mcmc<Parameters> &current, Observer &obs,
              ensemble<std::mt19937_64> &mt, Prior const &prior,
              Likelihood const &lik, const by_fraction<DataType> &y,
              const by_fraction<Variables> &x, double alpha_stretch = 2) const {
@@ -875,16 +875,14 @@ struct step_stretch_cuevi_mcmc {
         auto j = udist[i](mt[i]);
         auto jw = half ? j : j + n_walkers / 2;
         if (current.is_active[0][0] == 1)
-          var::F_on_thread(f, var::I_thread(i))
-              .f(step_stretch_cuevi_mcmc_per_walker{})(
-                  var::F_on_thread(f, var::I_thread(i)), current, obs, mt,
+          f.fork( var::I_thread(i))
+              .f(step_stretch_cuevi_mcmc_per_walker{}, current, obs, mt,
                   rdist, prior, lik, y, x, n_par, i, iw, jw, 0, 0);
         for (std::size_t i_fr = 0; i_fr < size(current.beta); ++i_fr) {
           for (std::size_t ib = 1; ib < size(current.beta[i_fr]); ++ib)
             if (current.is_active[i_fr][ib] == 1)
-              var::F_on_thread(f, var::I_thread(i))
-                  .f(step_stretch_cuevi_mcmc_per_walker{})(
-                      var::F_on_thread(f, var::I_thread(i)), current, obs, mt,
+              f.fork( var::I_thread(i))
+                  .f(step_stretch_cuevi_mcmc_per_walker{},current, obs, mt,
                       rdist, prior, lik, y, x, n_par, i, iw, jw, ib, i_fr);
         }
       }
@@ -1119,7 +1117,7 @@ auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
       auto iw = iiw + half * n_walkers / 2;
       for (std::size_t i = 0; i < beta.size(); ++i) {
         i_walker[iw][0][i] = iw + (beta.size() - i - 1) * n_walkers;
-        walker[iw][0][i] = init_mcmc2(var::F_on_thread(f, var::I_thread(iiw)),
+        walker[iw][0][i] = init_mcmc2(f.fork( var::I_thread(iiw)),
                                       mt[iiw], prior, lik, y, x);
       }
     }
@@ -1207,14 +1205,14 @@ Maybe_error<cuevi_mcmc<Parameters>> calculate_current_Likelihoods(
   for (std::size_t iw = 0; iw < current.walkers.size(); ++iw) {
     if (current.is_active[0][0] == 1) {
       auto res =
-            calculate_Likelihoods_sample(var::F_on_thread(f, var::I_thread(iw)), current, prior, lik, y, x, iw, 0, 0);
+            calculate_Likelihoods_sample(f, current, prior, lik, y, x, iw, 0, 0);
       if (!res)
         return res.error();
     }
     for (std::size_t i_frac = 0; i_frac < current.walkers[iw].size(); ++i_frac)
       for (std::size_t ib = 1; ib < current.walkers[iw][i_frac].size(); ++ib) {
         if (current.is_active[i_frac][ib] == 1) {
-          auto res = calculate_Likelihoods_sample(var::F_on_thread(f, var::I_thread(iw)), current, prior, lik, y, x,
+          auto res = calculate_Likelihoods_sample(f, current, prior, lik, y, x,
                                                   iw, i_frac, ib);
           if (!res)
             return res.error();
@@ -1231,7 +1229,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
-auto create_new_walkers(FunctionTable &f, const cuevi_mcmc<Parameters> &current,
+auto create_new_walkers(FunctionTable &&f, const cuevi_mcmc<Parameters> &current,
                         ensemble<std::mt19937_64> &mts, Prior const &prior,
                         Likelihood const &lik, const by_fraction<DataType> &y,
                         const by_fraction<Variables> &x) {
@@ -1243,7 +1241,7 @@ auto create_new_walkers(FunctionTable &f, const cuevi_mcmc<Parameters> &current,
   for (std::size_t half = 0; half < 2; ++half)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
       auto iw = i + half * n_walkers / 2;
-        new_walkers[iw] = init_mcmc2(var::F_on_thread(f,var::I_thread(i)), mts[i], prior, lik, y, x);
+        new_walkers[iw] = init_mcmc2(f, mts[i], prior, lik, y, x);
       new_i_walkers[iw] = sum_walkers + iw;
     }
 
@@ -1764,7 +1762,7 @@ struct thermo_cuevi_jump_mcmc {
                 if (pJump > r) {
                   auto ca_par = current.walkers[iw][i_fr][ib].parameter;
                   auto ca_logL1 =
-                      logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
+                      logLikelihood(f.fork(var::I_thread(i)),lik, ca_par, y[i_fr + 1], x[i_fr + 1]);
                   if (ca_logL1) {
                     auto ca_logPa = current.walkers[iw][i_fr][ib].logPa;
                     auto ca_logP = current.walkers[iw][i_fr][ib].logP;
@@ -1808,11 +1806,11 @@ struct thermo_cuevi_jump_mcmc {
                   if (pJump > r) {
                     auto ca_par_1 = current.walkers[iw][i_fr][ib].parameter;
                     auto ca_logL_11 =
-                        logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_1, y[i_fr + 1], x[i_fr + 1]);
+                        logLikelihood(f.fork(var::I_thread(i)),lik, ca_par_1, y[i_fr + 1], x[i_fr + 1]);
                     auto ca_par_0 = current.walkers[jw][i_fr][ib + 1].parameter;
                     auto ca_logL_00 =
                         i_fr == 1 ? Maybe_error<double>{0.0}
-                                  : logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
+                                  : logLikelihood(f.fork(var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
                                                   x[i_fr - 2]);
                     if (is_valid(ca_logL_11) && is_valid(ca_logL_00)) {
                       auto ca_logPa_1 = current.walkers[iw][i_fr][ib].logPa;
@@ -1866,7 +1864,7 @@ struct thermo_cuevi_jump_mcmc {
                     auto ca_par_0 = current.walkers[jw][i_fr][ib + 1].parameter;
                     auto ca_logL_00 =
                         i_fr == 1 ? Maybe_error<double>{0.0}
-                                  : logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
+                                  : logLikelihood(f.fork(var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
                                                   x[i_fr - 2]);
                     if (ca_logL_00) {
                       auto ca_logPa_0 = current.walkers[jw][i_fr][ib + 1].logPa;
@@ -1937,7 +1935,7 @@ struct thermo_cuevi_jump_mcmc {
                   auto ca_par_0 = current.walkers[jw][i_fr][ib + 1].parameter;
                   auto ca_logL_00 =
                       i_fr == 1 ? Maybe_error<double>{0.0}
-                                : logLikelihood(var::F_on_thread(f,var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
+                                : logLikelihood(f.fork(var::I_thread(i)),lik, ca_par_0, y[i_fr - 2],
                                                 x[i_fr - 2]);
                   if (ca_logL_00) {
                     auto ca_logPa_0 = current.walkers[jw][i_fr][ib + 1].logPa;
@@ -2081,11 +2079,11 @@ template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto evidence(FunctionTable &&f,
+auto evidence(FunctionTable &&ff,
               cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
               Prior const &prior, Likelihood const &lik, const DataType &y,
               const Variables &x) {
-
+  auto f=ff.fork(var::I_thread(0));
   auto a = cue.algorithm();
   auto mt = init_mt(cue.initseed());
   auto n_walkers = cue.num_scouts_per_ensemble();
@@ -2105,20 +2103,20 @@ auto evidence(FunctionTable &&f,
   auto &rep = cue.reporter();
   report_title(rep, current, prior, lik, ys, xs);
   report_model(rep, prior, lik, ys, xs, beta_final);
-  report_title(f, "Iter");
-
+  report_title(ff, "Iter");
+  
   // auto it_frac = beta_final.begin();
   // auto it_beta = it_frac->begin() + 2;
   while ((current.nsamples.back() < size(ys[size(ys) - 1])) ||
          (size(current.beta.back()) < size(beta_final.back())) ||
          !mcmc_run.second) {
     while (!mcmc_run.second) {
-      f.f(step_stretch_cuevi_mcmc{})(f, current, rep, mts, prior, lik, ys, xs);
+      f.f(step_stretch_cuevi_mcmc{}, current, rep, mts, prior, lik, ys, xs);
       // check_sanity(iter,current);
-      report_point(f, iter);
+      report_point(ff, iter);
 
       ++iter;
-      f.f(thermo_cuevi_jump_mcmc{})(f, iter, current, rep, mt, mts, prior, lik,
+      f.f(thermo_cuevi_jump_mcmc{}, iter, current, rep, mt, mts, prior, lik,
                                     ys, xs, cue.thermo_jumps_every());
       // check_sanity(iter,current);
 
@@ -2134,11 +2132,11 @@ auto evidence(FunctionTable &&f,
           lik, ys, xs);
       while (!(is_current)) {
         std::cerr << is_current.error()();
-        f.f(step_stretch_cuevi_mcmc{})(f, current, rep, mts, prior, lik, ys,
+        f.f(step_stretch_cuevi_mcmc{}, current, rep, mts, prior, lik, ys,
                                        xs);
-        report_point(f, iter);
+        report_point(ff, iter);
         ++iter;
-        f.f(thermo_cuevi_jump_mcmc{})(f, iter, current, rep, mt, mts, prior,
+        f.f(thermo_cuevi_jump_mcmc{}, iter, current, rep, mt, mts, prior,
                                       lik, ys, xs, cue.thermo_jumps_every());
         report_all(f, iter, rep, current, prior, lik, ys, xs);
         is_current = push_back_new_fraction(f, current, mts, beta_final,
