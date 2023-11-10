@@ -2342,7 +2342,7 @@ inline auto get_num_samples(const ATP_step &e) {
 }
 
 inline auto get_num_samples(const std::vector<ATP_step> &e) {
-  std::size_t out = 0;
+  double out = 0;
   for (auto &elem : e)
     out += get_num_samples(elem);
   return out;

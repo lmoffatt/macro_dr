@@ -13,7 +13,7 @@ using var::Var;
 using var::Vector_Space;
 
 class Time : public Var<Time, double> {};
-class number_of_samples : public var::Constant<number_of_samples, std::size_t> {};
+class number_of_samples : public var::Constant<number_of_samples, double> {};
 
 class ATP_concentration: public Var<ATP_concentration, double> {};
 
