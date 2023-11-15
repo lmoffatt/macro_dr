@@ -700,7 +700,17 @@ public:
     } else
       return maybe_eig.error();
   }
-
+  
+  template <class C_Patch_Model>
+       requires U<C_Patch_Model, Patch_Model>
+  auto calc_eigen(const C_Patch_Model &m, ATP_concentration x)
+      -> Maybe_error<Transfer_Op_to<C_Patch_Model,  Qx_eig>> {
+      return calc_eigen(calc_Qx(m,x));
+     }
+  
+  
+  
+  
   template <class C_P_mean>
     requires U<C_P_mean, P_mean>
 
@@ -1323,8 +1333,7 @@ public:
   auto calc_Qdt_ATP_step(FunctionTable && f,const C_Patch_Model &m, const ATP_step &t_step, double fs)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     auto dt = get<number_of_samples>(t_step)() / fs;
-      auto tQx=f.fstop(Calc_Qx{},m, get<ATP_concentration>(t_step));
-    auto t_Qx = f.fstop(Calc_eigen{},tQx);
+    auto t_Qx = f.fstop(Calc_eigen{},m, get<ATP_concentration>(t_step));
 
     if constexpr (false) {
       auto test_der_eigen = var::test_Derivative(
@@ -2110,9 +2119,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
           std::conditional_t<predictions.value, Patch_State_Evolution,
                              Vector_Space<logL, elogL, vlogL>>>> {
       
-    var::clear(f[Calc_Qdt_step{}]);
-      var::clear(f[Calc_eigen{}]);
-    
+      f.clear();
           
     using Transf = transformation_type_t<C_Parameters>;
     using C_Patch_State =

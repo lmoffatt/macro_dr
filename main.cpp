@@ -1052,11 +1052,11 @@ int main(int argc, char **argv) {
       "k32",         "k34",          "k43",   "conductance", "Num_Chan_0",
       "Num_Chan_eq", "Num_Chan_tau", "noise", "baseline"};
 
-  auto &model0 = model6;
-  auto &param1Names = param6Names;
-  auto &param1 = param6;
-  std::string ModelName = "Model6";
-  using MyModel = Allost1;
+  auto &model0 = model00;
+  auto &param1Names = param00Names;
+  auto &param1 = param00;
+  std::string ModelName = "Model00";
+  using MyModel = Model0;
 
   assert(param1Names().size() == param1.size());
   auto dparam1 = var::selfDerivative(param1);
@@ -1675,7 +1675,7 @@ thermodynamic parameter
      * for debugging purposes
      */
     //   auto myseed = 9762841416869310605ul;
-    auto myseed = 0ul;
+    auto myseed = 2555984001541913735ul;
 
     myseed = calc_seed(myseed);
     std::cerr << "myseed =" << myseed << "\n";
@@ -1684,7 +1684,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-    std::size_t num_scouts_per_ensemble = 8;
+    std::size_t num_scouts_per_ensemble = 16;
 
     /**
      * @brief max_num_simultaneous_temperatures when the number of parallel
@@ -1707,7 +1707,7 @@ thermodynamic parameter
     /**
      * @brief max_iter maximum number of iterations on each warming step
      */
-    std::size_t max_iter_warming = 200;
+    std::size_t max_iter_warming = 500;
 
     /**
      * @brief max_iter maximum number of iterations on the equilibrium step
@@ -1795,9 +1795,9 @@ thermodynamic parameter
                              std::to_string(bisection_count) + "_" +
                              std::to_string(myseed) + "_" + time_now();
       
-      std::string filename = ModelName + "_memoization_" +
-                                       std::to_string(bisection_count) + "_" +
-                                       std::to_string(myseed) + "_" + time_now();
+      std::string filename = ModelName + "_eigen_Qdt_memoization_"  + time_now()+ "_"+
+                                      // std::to_string(bisection_count) + "_" +
+                                       std::to_string(myseed) ;
 
       auto cbc = cuevi_Model_by_iteration<MyModel>(
           path, filename, t_segments, t_min_number_of_samples,
@@ -1850,6 +1850,12 @@ thermodynamic parameter
                        return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
                      }),
               var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{})),
+          // var::Time_it(
+          //     var::F(Calc_Qdt_step{},
+          //            [](auto &&...x) {
+          //              auto m = Macro_DMR{};
+          //              return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+          //            })),
            var::Time_it(
                var::F(Calc_Qdt{},
                       [](auto &&...x) {
@@ -1867,7 +1873,13 @@ thermodynamic parameter
                          [](auto &&...x) {
                            auto m = Macro_DMR{};
                            return m.calc_eigen(std::forward<decltype(x)>(x)...);
-                         }),              var::Memoiza_all_values<Maybe_error<Qx_eig>, Qx>{}))
+                         }),              var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{}))
+          // var::Time_it(
+          //     F(Calc_eigen{},
+          //       [](auto &&...x) {
+          //           auto m = Macro_DMR{};
+          //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
+          //       }))
 
       );
 

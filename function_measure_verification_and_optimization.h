@@ -29,7 +29,9 @@ public:
   template <class... Ts> constexpr auto operator()(Ts &&...ts) const {
     return std::invoke(m_f, std::forward<Ts>(ts)...);
   }
-
+  
+  
+  
   template <class... Ts> friend auto apply_F(F const me, Ts &&...ts) {
 
     return me.m_f(std::forward<Ts>(ts)...);
@@ -45,6 +47,31 @@ struct I_thread {
   std::size_t i;
 };
 
+
+template <typename T,typename I, typename = void>
+struct has_clear_method : public std::false_type {};
+
+template <typename T,typename I>
+struct has_clear_method<T, I,std::void_t<decltype(std::declval<T>().clear(std::declval<I>()))>>
+    : public std::true_type {
+    using std::true_type::value;
+};
+
+template <typename T, typename I>
+constexpr bool has_clear_method_v = has_clear_method<std::decay_t<T>, I>::value;
+
+template <class T, class I>
+void clearit(T &&me, I i) {
+    if constexpr (has_clear_method_v<T,I>)
+        me.clear(i);
+}
+template <class T> void clearit(T &&me) {
+    if constexpr (has_clear_method_v<T,void>)
+        me.clear();
+}
+
+
+
 template <class Id, class... Fun, template <class...> class F>
   requires(std::is_trivial_v<Id>)
 class Time_it<Id, F<Id, Fun...>> {
@@ -55,7 +82,12 @@ class Time_it<Id, F<Id, Fun...>> {
 
 public:
   static constexpr bool is_threadable = true;
-
+    
+    void clear(I_thread i)
+   {
+        clearit(m_f,i);    
+    }
+  
   auto &get_Fun() { return m_f.get_Fun(); }
 
   constexpr Time_it(F<Id, Fun...> &&t_f, std::size_t n_threads = 8ul)
@@ -214,7 +246,8 @@ public:
   F_on_thread(F &f) : m_f{f}, i_thread{0ul} {}
   F_on_thread fork(I_thread i) { return F_on_thread(m_f, i); }
   template <class Id> decltype(auto) operator[](Id) { return m_f[Id{}]; }
-
+  
+  void clear(){ m_f.clear(i_thread);}
   template <class Id, class... Ts> auto f(Id, Ts &&...ts) {
     auto &fun = (*this)[Id{}];
     return fun(i_thread, *this, std::forward<Ts>(ts)...);
@@ -239,7 +272,12 @@ public:
   using Fs::operator[]...;
 
   template <class Id> Nothing operator[](Id) const { return Nothing{}; }
-
+  
+  void clear(I_thread i)
+  {
+      (clearit(static_cast<Fs&>(*this), i),...);
+  }
+  
   auto &file() { return m_file; }
   FuncMap(const std::string path, Fs &&...fs)
       : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {}
