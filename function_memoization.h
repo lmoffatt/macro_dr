@@ -31,7 +31,9 @@ template <class Y, class... Xs> class Memoiza_all_values {
 
 public:
   constexpr Memoiza_all_values() {}
-  void clear() { m_values.clear(); }
+  void clear() {
+      m_values.clear();
+  }
   
   
   template <class F, class... Ts>
@@ -150,7 +152,9 @@ public:
                             std::size_t n_threads = 8ul)
       : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {}
 
-  void clear(I_thread i) { m_memoiza[i.i % m_n_threads].clear(); }
+  void clear(I_thread i) {
+      m_memoiza[i.i % m_n_threads].clear();
+  }
   constexpr Thread_Memoizer() {}
   auto &operator[](Id) { return *this; }
   auto &operator[](Id) const { return *this; }
@@ -160,9 +164,9 @@ public:
   template <class... Ts>
   auto &operator()(I_thread i_thread, Ts&&... ts) {
       if constexpr( m_f.is_threadable)
-          return m_memoiza[i_thread.i].get_or_calc(m_f, i_thread,std::forward<Ts>(ts)...);
+          return m_memoiza[i_thread.i%m_n_threads].get_or_calc(m_f, i_thread,std::forward<Ts>(ts)...);
       else
-          return m_memoiza[i_thread.i].get_or_calc(m_f, std::forward<Ts>(ts)...);
+          return m_memoiza[i_thread.i%m_n_threads].get_or_calc(m_f, std::forward<Ts>(ts)...);
   }
   
   template <class... Ts> friend auto apply_F(Thread_Memoizer& me, I_thread i_thread,Ts &&...ts) {
@@ -184,23 +188,6 @@ template <class Id, class... Fun, class Y, class... Xs,
 Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
     -> Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
 
-
-template <typename T, typename = void>
-struct has_clear_method : public std::false_type {};
-
-template <typename T>
-struct has_clear_method<T, std::void_t<decltype(std::declval<T>().clear())>>
-    : public std::true_type {
-  using std::true_type::value;
-};
-
-template <typename T>
-constexpr bool has_clear_method_v = has_clear_method<std::decay_t<T>>::value;
-
-template <class T> void clear(T &&me) {
-  if constexpr (has_clear_method_v<T>)
-     me.clear();
-}
 
 } // namespace var
 
