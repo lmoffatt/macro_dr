@@ -1,6 +1,7 @@
 #ifndef FUNCTION_MEASURE_VERIFICATION_AND_OPTIMIZATION_H
 #define FUNCTION_MEASURE_VERIFICATION_AND_OPTIMIZATION_H
 
+#include "maybe_error.h"
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -20,7 +21,9 @@ class F {
   Fun m_f;
 
 public:
-  auto& get_Fun(){return m_f;}
+  static constexpr bool is_threadable = false;
+
+  auto &get_Fun() { return m_f; }
   constexpr F(Id, Fun &&t_f) : m_f{std::move(t_f)} {}
   constexpr F(Fun &&t_f) : m_f{std::move(t_f)} {}
   template <class... Ts> constexpr auto operator()(Ts &&...ts) const {
@@ -36,25 +39,26 @@ public:
   constexpr auto &operator[](Id) const { return *this; }
 };
 
-template <class> class Time_it;
+template <class, class> class Time_it;
 
 struct I_thread {
   std::size_t i;
 };
 
-template <class Id, class Fun>
+template <class Id, class... Fun, template <class...> class F>
   requires(std::is_trivial_v<Id>)
-class Time_it<F<Id, Fun>> {
-  F<Id, Fun> m_f;
+class Time_it<Id, F<Id, Fun...>> {
+  F<Id, Fun...> m_f;
   std::vector<std::chrono::nanoseconds> m_sum;
   std::vector<std::size_t> m_count;
   std::size_t m_n_threads;
 
 public:
-  
-  auto& get_Fun() {return m_f.get_Fun();}     
-    
-  constexpr Time_it(Id, Fun &&t_f, std::size_t n_threads = 8ul)
+  static constexpr bool is_threadable = true;
+
+  auto &get_Fun() { return m_f.get_Fun(); }
+
+  constexpr Time_it(F<Id, Fun...> &&t_f, std::size_t n_threads = 8ul)
       : m_f{std::move(t_f)}, m_sum{n_threads, std::chrono::nanoseconds::zero()},
         m_count{std::vector<std::size_t>(n_threads, 0ul)},
         m_n_threads{n_threads} {}
@@ -66,46 +70,63 @@ public:
 
   auto n_threads() const { return m_n_threads; }
 
-  template <class... Ts>
-    requires(!std::is_void_v<std::invoke_result_t<F<Id, Fun>, Ts...>>)
-  auto operator()(I_thread i_thread, Ts &&...ts)
-  {
-
+  template <class... Ts> auto operator()(I_thread i_thread, Ts &&...ts) {
     const auto start = std::chrono::high_resolution_clock::now();
-    auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
-    const auto end = std::chrono::high_resolution_clock::now();
-    auto dur = end - start;
-    m_sum[i_thread.i % n_threads()] += dur;
-    ++m_count[i_thread.i % n_threads()];
-    return out;
+    if constexpr (m_f.is_threadable) {
+      if constexpr (std::is_same_v<void, decltype(std::invoke(
+                                             m_f, i_thread,
+                                             std::forward<Ts>(ts)...))>) {
+        std::invoke(m_f, i_thread, std::forward<Ts>(ts)...);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur = end - start;
+        m_sum[i_thread.i % n_threads()] += dur;
+        ++m_count[i_thread.i % n_threads()];
+        return void();
+      } else {
+        auto out = std::invoke(m_f, i_thread, std::forward<Ts>(ts)...);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur = end - start;
+        m_sum[i_thread.i % n_threads()] += dur;
+        ++m_count[i_thread.i % n_threads()];
+        return out;
+      }
+    } else {
+      if constexpr (std::is_same_v<void, decltype(std::invoke(
+                                             m_f, std::forward<Ts>(ts)...))>) {
+        std::invoke(m_f, std::forward<Ts>(ts)...);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur = end - start;
+        m_sum[i_thread.i % n_threads()] += dur;
+        ++m_count[i_thread.i % n_threads()];
+      } else {
+        auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur = end - start;
+        m_sum[i_thread.i % n_threads()] += dur;
+        ++m_count[i_thread.i % n_threads()];
+        return out;
+      }
+    }
   }
-
   template <class... Ts>
   friend auto apply_time(Time_it &me, I_thread i_thread, Ts &&...ts) {
 
-    using sge = typename std::tuple<Ts...>::ees;
-    using sgffe = typename decltype(me.m_f)::eetts;
-
-    auto t = sge();
     const auto start = std::chrono::high_resolution_clock::now();
-    auto out = apply_F(me.m_f, std::forward<Ts>(ts)...);
-    const auto end = std::chrono::high_resolution_clock::now();
-    auto dur = end - start;
-    me.m_sum[i_thread.i % me.n_threads()] += dur;
-    ++me.m_count[i_thread.i % me.n_threads()];
-    return out;
-  }
-  
-  
-  template <class... Ts>
-  auto  operator()(I_thread i_thread, Ts &&...ts) ->std::enable_if_t<std::is_same_v<void, std::invoke_result_t<F<Id, Fun>, Ts...>>,void>
-  {
-    const auto start = std::chrono::high_resolution_clock::now();
-    std::invoke(m_f, std::forward<Ts>(ts)...);
-    const auto end = std::chrono::high_resolution_clock::now();
-    auto dur = end - start;
-    m_sum[i_thread.i % n_threads()] += dur;
-    ++m_count[i_thread.i % n_threads()];
+    if constexpr (me.m_f.is_threadable) {
+      auto out = apply_F(me.m_f, i_thread, std::forward<Ts>(ts)...);
+      const auto end = std::chrono::high_resolution_clock::now();
+      auto dur = end - start;
+      me.m_sum[i_thread.i % me.n_threads()] += dur;
+      ++me.m_count[i_thread.i % me.n_threads()];
+      return out;
+    } else {
+      auto out = apply_F(me.m_f, std::forward<Ts>(ts)...);
+      const auto end = std::chrono::high_resolution_clock::now();
+      auto dur = end - start;
+      me.m_sum[i_thread.i % me.n_threads()] += dur;
+      ++me.m_count[i_thread.i % me.n_threads()];
+      return out;
+    }
   }
 
   auto mean_duration() const {
@@ -174,15 +195,15 @@ public:
     return os;
   }
 };
-template <class Id, class Fun>
-Time_it(Id, Fun, std::size_t) -> Time_it<F<Id, Fun>>;
 
-template <class Id, class Fun> Time_it(Id, Fun) -> Time_it<F<Id, Fun>>;
+template <class Id, class... Fun, template <class...> class F>
+Time_it(F<Id, Fun...>, std::size_t) -> Time_it<Id, F<Id, Fun...>>;
+
+template <class Id, class... Fun, template <class...> class F>
+Time_it(F<Id, Fun...>) -> Time_it<Id, F<Id, Fun...>>;
 
 template <class F> class F_on_thread;
 template <class... Fs> class FuncMap;
-
-
 
 template <class F> class F_on_thread {
   F &m_f;
@@ -192,20 +213,22 @@ template <class F> class F_on_thread {
 public:
   F_on_thread(F &f) : m_f{f}, i_thread{0ul} {}
   F_on_thread fork(I_thread i) { return F_on_thread(m_f, i); }
-  template <class Id> auto &operator[](Id) { return m_f[Id{}]; }
+  template <class Id> decltype(auto) operator[](Id) { return m_f[Id{}]; }
 
-  template <class Id, class... Ts>
-  auto f(Id, Ts &&...ts) {
+  template <class Id, class... Ts> auto f(Id, Ts &&...ts) {
     auto &fun = (*this)[Id{}];
-    return std::invoke(fun, i_thread, *this, std::forward<Ts>(ts)...);
+    return fun(i_thread, *this, std::forward<Ts>(ts)...);
   }
-  
-  template <class Id, class... Ts>
-  auto fstop(Id, Ts &&...ts) {
-      auto &fun = (*this)[Id{}];
-      return std::invoke(fun, i_thread,  std::forward<Ts>(ts)...);
+
+  template <class Id, class... Ts> auto fff(Id, Ts &&...ts) {
+    auto &&fun = (*this)[Id{}];
+    return apply_time(fun, i_thread, *this, std::forward<Ts>(ts)...);
   }
-  
+
+  template <class Id, class... Ts> auto fstop(Id, Ts &&...ts) {
+    auto &fun = (*this)[Id{}];
+    return std::invoke(fun, i_thread, std::forward<Ts>(ts)...);
+  }
 };
 
 template <class... Fs> class FuncMap : public Fs... {
@@ -214,6 +237,9 @@ template <class... Fs> class FuncMap : public Fs... {
 
 public:
   using Fs::operator[]...;
+
+  template <class Id> Nothing operator[](Id) const { return Nothing{}; }
+
   auto &file() { return m_file; }
   FuncMap(const std::string path, Fs &&...fs)
       : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {}

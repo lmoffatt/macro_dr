@@ -2,11 +2,14 @@
 #include "cuevi.h"
 #include "experiment.h"
 #include "fold.h"
+#include "function_memoization.h"
 #include "matrix.h"
+#include <cstddef>
 #include <functional>
 #include <numeric>
 #include <random>
 #include <set>
+#include <type_traits>
 #ifndef QMODEL_H
 #define QMODEL_H
 #include <map>
@@ -48,6 +51,7 @@ using std::max;
 
 using var::FuncMap;
 using var::Time_it;
+using var::F;
 
 template <class T> T sqr(T x) { return x * x; }
 
@@ -453,9 +457,19 @@ struct Calc_Qdt{
     friend std::string ToString(Calc_Qdt){return "Calc_Qdt";}
 };
 
+struct Calc_Qdt_step{
+    friend std::string ToString(Calc_Qdt_step){return "Calc_Qdt_step";}
+};
+
+
 struct Calc_Qx{
     friend std::string ToString(Calc_Qx){return "Calc_Qx";}
 };
+
+struct Calc_eigen{
+    friend std::string ToString(Calc_eigen){return "Calc_eigen";}
+};
+
 
 
 class Macro_DMR {
@@ -1206,30 +1220,7 @@ public:
       return Qn_to_Qdt(r_Qn);    
  }
   
-  template <class C_Patch_Model, class C_Qx_eig>
-      requires(/*U<C_Patch_Model, Patch_Model> && */ U<C_Qx_eig, Qx_eig>)
-  auto calc_Qdt_bisecting(const C_Patch_Model &m, const C_Qx_eig &t_Qx,
-                       number_of_samples ns, double dt, std::size_t order) {
-      
-      // first 
-      auto v_Qrun=t_Qx()*dt;
-      double max=maxAbs(primitive(v_Qrun));
-      double desired=0.125;
-      int k=std::ceil(std::log2(max/desired));
-      std::size_t n=std::max(0,k);
-      double scale=std::pow(2,-n);
-      auto t_Qrun_sub=v_Qrun*scale;
-      auto P_sub=build<P>(expm_taylor(t_Qrun_sub,order));
-      auto r_Qn=get_Qn( P_sub,get<g>(m),ns,get<min_P>(m));
-      for (std::size_t i=0; i<n; ++n)
-      {
-          r_Qn=sum_Qn(std::move(r_Qn),r_Qn);
-      }
-      get<number_of_samples>(r_Qn)()=ns;
-      return Qn_to_Qdt(r_Qn);    
-  } 
-  
-  
+   
   
   template <class C_Qdt>
     requires(U<C_Qdt, Qdt>)
@@ -1245,12 +1236,12 @@ public:
       requires(U<C_P, P>&&U<C_g,g>)
   auto get_Qn(const C_P &t_P, C_g const & t_g,number_of_samples n, min_P t_minP) {
       
-      auto N=t_P().size();
+      auto N=t_P().nrows();
       auto t_g2=apply([](auto x){return x*x;}, t_g());
-      auto u=Matrix<double>(N,1,1.0);
-      auto G=u*t_g();
+      auto u=Matrix<double>(1,N,1.0);
+      auto G=t_g()*u;
       auto GT=tr(G);
-      auto G2=u*t_g2;
+      auto G2=t_g2*u;
       auto G2T=tr(G2);
       auto Gmean=0.5*G+0.5*GT;
       
@@ -1261,8 +1252,8 @@ public:
                        build<PGG_n>(t_P()* Gvar * (n() * n() * 0.5)));
   }
   
-  template <class C_Qn, class C_Qdt>
-      requires(U<C_Qn, Qn> && U<C_Qdt, Qdt>)
+  template <class C_Qn>
+      requires(U<C_Qn, Qn>)
   static C_Qn sum_Qn(C_Qn &&one, const C_Qn &two) {
       auto n1 = get<number_of_samples>(two)();
       get<PGG_n>(one)() =
@@ -1329,11 +1320,11 @@ public:
 
   template <class FunctionTable,class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model>)
-  auto calc_Qdt(FunctionTable && f,const C_Patch_Model &m, const ATP_step &t_step, double fs)
+  auto calc_Qdt_ATP_step(FunctionTable && f,const C_Patch_Model &m, const ATP_step &t_step, double fs)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     auto dt = get<number_of_samples>(t_step)() / fs;
-      auto tQx=f.fstop(Calc_Qx{},m, get<ATP_concentration>(t_step));  
-    auto t_Qx = calc_eigen(tQx);
+      auto tQx=f.fstop(Calc_Qx{},m, get<ATP_concentration>(t_step));
+    auto t_Qx = f.fstop(Calc_eigen{},tQx);
 
     if constexpr (false) {
       auto test_der_eigen = var::test_Derivative(
@@ -1353,7 +1344,59 @@ public:
       return calc_Qdt(f,m, t_Qx.value(), get<number_of_samples>(t_step), dt);
     }
   }
-
+  
+  template <class FunctionTable,class C_Patch_Model>
+  // requires(U<C_Patch_Model, Patch_Model>)
+  auto calc_Qdt(FunctionTable && f,const C_Patch_Model &m, const ATP_step &t_step, double fs)
+      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+      if constexpr(std::is_same_v<Nothing,decltype(f[Calc_Qdt_step{}])>)
+          return calc_Qdt_ATP_step(f,m,t_step,fs);
+      else
+          return f.f(Calc_Qdt_step{},m,t_step,fs);
+  }
+  
+  
+  template <class FunctionTable,class C_Patch_Model>
+  // requires(U<C_Patch_Model, Patch_Model>)
+  auto calc_Qn_bisection(FunctionTable && f,const C_Patch_Model &m, const ATP_step &t_step, double fs, std::size_t order)
+      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qn>> {
+      auto dt = get<number_of_samples>(t_step)() / fs;
+      auto ns =get<number_of_samples>(t_step) ;
+      auto tQx=f.fstop(Calc_Qx{},m, get<ATP_concentration>(t_step));
+      auto t_Qx = f.fstop(Calc_eigen{},tQx);
+      
+      if (!t_Qx)
+          return t_Qx.error();
+      else {
+          double scale=std::pow(2.0,-1.0*order);
+          
+          number_of_samples n_ss(ns()*scale);
+          double sdt=dt*scale;
+          auto t_Psub=calc_P(m,t_Qx.value(),sdt,get<min_P>(m)());
+          auto r_Qn=get_Qn( t_Psub,get<g>(m),n_ss,get<min_P>(m));
+          for (std::size_t i=0; i<order; ++i)
+          {
+              r_Qn=sum_Qn(std::move(r_Qn),r_Qn);
+          }
+          assert(get<number_of_samples>(r_Qn)()==ns());
+          return r_Qn;    
+      }
+  }
+  
+  template <class FunctionTable,class C_Patch_Model>
+  // requires(U<C_Patch_Model, Patch_Model>)
+  auto calc_Qdt_bisection(FunctionTable && f,const C_Patch_Model &m, const ATP_step &t_step, double fs, std::size_t order)
+      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+      auto maybe_Qn=calc_Qn_bisection(f,m,t_step,fs,order);
+      if (!maybe_Qn) return maybe_Qn.error();
+      else
+      {
+          return Qn_to_Qdt(maybe_Qn.value());
+      }
+  }
+  
+  
+  
   template <class FunctionTable,class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model> )
   auto calc_Qdt(FunctionTable&&f,const C_Patch_Model &m, const std::vector<ATP_step> &t_step,
@@ -1377,7 +1420,35 @@ public:
       }
     }
   }
-
+  
+  
+  template <class FunctionTable,class C_Patch_Model>
+  // requires(U<C_Patch_Model, Patch_Model> )
+  auto calc_Qdt_bisection(FunctionTable&&f,const C_Patch_Model &m, const std::vector<ATP_step> &t_step,
+                          double fs, std::size_t order) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+      if (t_step.empty())
+          return error_message("Emtpy ATP step");
+      else {
+          auto v_Qn0 = calc_Qn_bisection(f,m, t_step[0], fs,order);
+          if (!v_Qn0)
+              return v_Qn0.error();
+          else {
+              auto v_Qrun = v_Qn0.value();
+              for (std::size_t i = 1; i < t_step.size(); ++i) {
+                  auto v_Qni = calc_Qn_bisection(f,m, t_step[i], fs,order);
+                  if (!v_Qni)
+                      return v_Qni.error();
+                  else
+                      v_Qrun = sum_Qn(std::move(v_Qrun), v_Qni.value());
+              }
+              return Qn_to_Qdt(v_Qrun);
+          }
+      }
+  }
+  
+  
+  
+  
   template <class FunctionTable,class C_Patch_Model>
   //   requires(U<C_Patch_Model, Patch_Model>)
   auto calc_Qdt(FunctionTable&&f,const C_Patch_Model &m, const ATP_evolution &t_step, double fs)
@@ -1385,7 +1456,16 @@ public:
     return std::visit([this, &m, &f,fs](auto &&a) { return calc_Qdt(f,m, a, fs); },
                       t_step());
   }
-
+  
+  template <class FunctionTable,class C_Patch_Model>
+  //   requires(U<C_Patch_Model, Patch_Model>)
+  auto calc_Qdt_bisection(FunctionTable&&f,const C_Patch_Model &m, const ATP_evolution &t_step, double fs, std::size_t order)
+      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+      return std::visit([this, &m, &f,fs,order](auto &&a) { return calc_Qdt_bisection(f,m, a, fs,order  ); },
+                        t_step());
+  }
+  
+  
   template <class C_Matrix>
     requires U<C_Matrix, Matrix<double>>
   Maybe_error<bool>
@@ -2029,7 +2109,11 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
           C_Parameters,
           std::conditional_t<predictions.value, Patch_State_Evolution,
                              Vector_Space<logL, elogL, vlogL>>>> {
-
+      
+    var::clear(f[Calc_Qdt_step{}]);
+      var::clear(f[Calc_eigen{}]);
+    
+          
     using Transf = transformation_type_t<C_Parameters>;
     using C_Patch_State =
         Op_t<Transf,
@@ -2053,7 +2137,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
             
             auto Nch = get<N_Ch_mean>(m);
             
-            auto Maybe_t_Qdt = f.f(Calc_Qdt{},m, t_step, fs);
+            auto Maybe_t_Qdt = calc_Qdt(f,m, t_step, fs);
             if (!Maybe_t_Qdt)
               return Maybe_error<C_Patch_State>(Maybe_t_Qdt.error());
             else {

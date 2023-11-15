@@ -1,9 +1,11 @@
 #include "CLI_macro_dr.h"
 #include "experiment.h"
 #include "function_measure_verification_and_optimization.h"
+#include "function_memoization.h"
 #include "lapack_headers.h"
 #include "lexer_typed.h"
 #include "matrix.h"
+#include "maybe_error.h"
 #include "parameters_derivative.h"
 #include "parameters_distribution.h"
 #include "variables_derivative.h"
@@ -16,6 +18,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <string>
 using namespace macrodr;
 
 inline std::string leadingZero(int i) {
@@ -244,54 +247,55 @@ int main(int argc, char **argv) {
     std::size_t thermo_jumps_every = my_linear_model.size() * 1e0;
     auto ModelName = "Model";
 
-    auto ftbl =
-        FuncMap(path + ModelName + std::to_string(myseed) + "_" + time_now(),
-                Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
-                Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
-                var::Time_it(step_stretch_cuevi_mcmc_per_walker{},
-                             step_stretch_cuevi_mcmc_per_walker{},
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(
-                    logLikelihood_f{},
-                    [](auto &&...x) {
-                      return logLikelihood(std::forward<decltype(x)>(x)...);
-                    },
-                    num_scouts_per_ensemble / 2),
-                var::Time_it(
-                    MacroR<uses_recursive_aproximation(true),
-                           uses_averaging_aproximation(2),
-                           uses_variance_aproximation(false)>{},
-                    [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.Macror<uses_recursive_aproximation(true),
-                                      uses_averaging_aproximation(2),
-                                      uses_variance_aproximation(false)>(
-                          std::forward<decltype(x)>(x)...);
-                    },
-                    num_scouts_per_ensemble / 2),
-                var::Time_it(
-                    MacroR<uses_recursive_aproximation(false),
-                           uses_averaging_aproximation(2),
-                           uses_variance_aproximation(false)>{},
-                    [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.Macror<uses_recursive_aproximation(true),
-                                      uses_averaging_aproximation(2),
-                                      uses_variance_aproximation(false)>(
-                          std::forward<decltype(x)>(x)...);
-                    },
-                    num_scouts_per_ensemble / 2),
-                var::Time_it(
-                    Calc_Qdt{},
-                    [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-                    },
-                    num_scouts_per_ensemble / 2),
-                        var::Time_it(Calc_Qx{}, [](auto &&...x) {
-                            auto m = Macro_DMR{};
-                            return m.calc_Qx(std::forward<decltype(x)>(x)...);
-                        }));
+    auto ftbl = FuncMap(
+        path + ModelName + std::to_string(myseed) + "_" + time_now(),
+        Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
+        Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+        var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
+                       step_stretch_cuevi_mcmc_per_walker{}),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(logLikelihood_f{},
+                       [](auto &&...x) {
+                         return logLikelihood(std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.Macror<uses_recursive_aproximation(true),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.Macror<uses_recursive_aproximation(true),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(Calc_Qdt{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(Calc_Qx{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                       })),
+        var::Time_it(F(Calc_eigen{}, [](auto &&...x) {
+          auto m = Macro_DMR{};
+          return m.calc_eigen(std::forward<decltype(x)>(x)...);
+        })));
 
     if (false) {
 
@@ -1115,49 +1119,55 @@ int main(int argc, char **argv) {
 
   auto ftbl = FuncMap(
       "_" + time_now(),
-      Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
-      Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
-      var::Time_it(step_stretch_cuevi_mcmc_per_walker{},
-                   step_stretch_cuevi_mcmc_per_walker{}),
-      var::Time_it(logLikelihood_f{},
-                   [](auto &&...x) {
-                     return logLikelihood(std::forward<decltype(x)>(x)...);
-                   }),
-      var::Time_it(MacroR<uses_recursive_aproximation(true),
-                          uses_averaging_aproximation(2),
-                          uses_variance_aproximation(false)>{},
-                   [](auto &&...x) {
-                     auto m = Macro_DMR{};
-                     return m.Macror<uses_recursive_aproximation(true),
-                                     uses_averaging_aproximation(2),
-                                     uses_variance_aproximation(false)>(
-                         std::forward<decltype(x)>(x)...);
-                   }),
-      var::Time_it(MacroR<uses_recursive_aproximation(false),
-                          uses_averaging_aproximation(2),
-                          uses_variance_aproximation(false)>{},
-                   [](auto &&...x) {
-                     auto m = Macro_DMR{};
-                     return m.Macror<uses_recursive_aproximation(false),
-                                     uses_averaging_aproximation(2),
-                                     uses_variance_aproximation(false)>(
-                         std::forward<decltype(x)>(x)...);
-                   }),
-      var::Time_it(Calc_Qdt{}, [](auto &&...x) {
+      Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
+      Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+      var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
+                     step_stretch_cuevi_mcmc_per_walker{})),
+      var::Time_it(F(logLikelihood_f{},
+                     [](auto &&...x) {
+                       return logLikelihood(std::forward<decltype(x)>(x)...);
+                     })),
+      var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>{},
+                     [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.Macror<uses_recursive_aproximation(true),
+                                       uses_averaging_aproximation(2),
+                                       uses_variance_aproximation(false)>(
+                           std::forward<decltype(x)>(x)...);
+                     })),
+      var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                            uses_averaging_aproximation(2),
+                            uses_variance_aproximation(false)>{},
+                     [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.Macror<uses_recursive_aproximation(false),
+                                       uses_averaging_aproximation(2),
+                                       uses_variance_aproximation(false)>(
+                           std::forward<decltype(x)>(x)...);
+                     })),
+      var::Time_it(F(Calc_Qdt{},
+                     [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                     })),
+      var::Time_it(F(Calc_Qx{},
+                     [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                     })),
+      var::Time_it(F(Calc_eigen{}, [](auto &&...x) {
         auto m = Macro_DMR{};
-        return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-      }),
-      var::Time_it(Calc_Qx{}, [](auto &&...x) {
-          auto m = Macro_DMR{};
-          return m.calc_Qx(std::forward<decltype(x)>(x)...);
-      }));
+        return m.calc_eigen(std::forward<decltype(x)>(x)...);
+      })));
 
   if constexpr (false) {
     auto t_Qdt2 = macrodr::Macro_DMR{}.calc_Qdt(
         ftbl, m, ATP_step(number_of_samples(50), ATP_concentration(100.0)),
         50e3);
-    auto t_Qdt3 = macrodr::Macro_DMR{}.calc_Qdt(ftbl,
-        m,
+    auto t_Qdt3 = macrodr::Macro_DMR{}.calc_Qdt(
+        ftbl, m,
         std::vector<ATP_step>{
             ATP_step(number_of_samples(10.0), ATP_concentration(100.0)),
             ATP_step(number_of_samples(40.0), ATP_concentration(100.0))},
@@ -1307,55 +1317,61 @@ int main(int argc, char **argv) {
 
     std::string path = "derivative";
     auto ftb = FuncMap(
-        path, Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
-        Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
-        var::Time_it(step_stretch_cuevi_mcmc_per_walker{},
-                     step_stretch_cuevi_mcmc_per_walker{}),
+        path, Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
+        Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+        var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
+                       step_stretch_cuevi_mcmc_per_walker{})),
 
-        var::Time_it(logLikelihood_f{},
-                     [](auto &&...x) {
-                       return logLikelihood(std::forward<decltype(x)>(x)...);
-                     }),
-        var::Time_it(MacroR<uses_recursive_aproximation(true),
-                            uses_averaging_aproximation(2),
-                            uses_variance_aproximation(false)>{},
-                     [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                       return m.Macror<uses_recursive_aproximation(true),
-                                       uses_averaging_aproximation(2),
-                                       uses_variance_aproximation(false)>(
-                           std::forward<decltype(x)>(x)...);
-                     }),
-        var::Time_it(MacroR<uses_recursive_aproximation(true),
-                            uses_averaging_aproximation(2),
-                            uses_variance_aproximation(true)>{},
-                     [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                       return m.Macror<uses_recursive_aproximation(true),
-                                       uses_averaging_aproximation(2),
-                                       uses_variance_aproximation(true)>(
-                           std::forward<decltype(x)>(x)...);
-                     }),
+        var::Time_it(F(logLikelihood_f{},
+                       [](auto &&...x) {
+                         return logLikelihood(std::forward<decltype(x)>(x)...);
+                       })),
+        var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false)>{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.Macror<uses_recursive_aproximation(true),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                       })),
+        var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(true)>{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.Macror<uses_recursive_aproximation(true),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(true)>(
+                             std::forward<decltype(x)>(x)...);
+                       })),
         var::Time_it(
-            MacroR<uses_recursive_aproximation(false),
-                   uses_averaging_aproximation(2),
-                   uses_variance_aproximation(false)>{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.template Macror<uses_recursive_aproximation(false),
-                                       uses_averaging_aproximation(2),
-                                       uses_variance_aproximation(false)>(
-                  std::forward<decltype(x)>(x)...);
-            }),
-        var::Time_it(Calc_Qdt{},
-                     [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                       return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-                     }),
-        var::Time_it(Calc_Qx{}, [](auto &&...x) {
-            auto m = Macro_DMR{};
-            return m.calc_Qx(std::forward<decltype(x)>(x)...);
-        })
+            F(MacroR<uses_recursive_aproximation(false),
+                     uses_averaging_aproximation(2),
+                     uses_variance_aproximation(false)>{},
+              [](auto &&...x) {
+                auto m = Macro_DMR{};
+                return m.template Macror<uses_recursive_aproximation(false),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false)>(
+                    std::forward<decltype(x)>(x)...);
+              })),
+        var::Time_it(F(Calc_Qdt{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                       })),
+        var::Time_it(F(Calc_Qx{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                       })),
+        var::Time_it(F(Calc_eigen{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                       }))
 
     );
     auto logLik_by_algo = [&ftb, &model0, &dparam1,
@@ -1596,52 +1612,54 @@ thermodynamic parameter
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
         recording);
     auto ftbl = FuncMap(
-        path, Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
-        Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
-        var::Time_it(step_stretch_cuevi_mcmc_per_walker{},
-                     step_stretch_cuevi_mcmc_per_walker{},
+        path, Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
+        Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+        var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
+                       step_stretch_cuevi_mcmc_per_walker{}),
                      num_scouts_per_ensemble / 2),
-        var::Time_it(
-            logLikelihood_f{},
-            [](auto &&...x) {
-              return logLikelihood(std::forward<decltype(x)>(x)...);
-            },
-            num_scouts_per_ensemble / 2),
-        var::Time_it(
-            MacroR<uses_recursive_aproximation(true),
-                   uses_averaging_aproximation(2),
-                   uses_variance_aproximation(false)>{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.Macror<uses_recursive_aproximation(true),
+        var::Time_it(F(logLikelihood_f{},
+                       [](auto &&...x) {
+                         return logLikelihood(std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(MacroR<uses_recursive_aproximation(true),
                               uses_averaging_aproximation(2),
-                              uses_variance_aproximation(false)>(
-                  std::forward<decltype(x)>(x)...);
-            },
-            num_scouts_per_ensemble / 2),
-        var::Time_it(
-            MacroR<uses_recursive_aproximation(false),
-                   uses_averaging_aproximation(2),
-                   uses_variance_aproximation(false)>{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.Macror<uses_recursive_aproximation(false),
+                              uses_variance_aproximation(false)>{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.Macror<uses_recursive_aproximation(true),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(MacroR<uses_recursive_aproximation(false),
                               uses_averaging_aproximation(2),
-                              uses_variance_aproximation(false)>(
-                  std::forward<decltype(x)>(x)...);
-            },
-            num_scouts_per_ensemble / 2),
-        var::Time_it(
-            Calc_Qdt{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-            },
-            num_scouts_per_ensemble / 2),
-        var::Time_it(Calc_Qx{}, [](auto &&...x) {
-            auto m = Macro_DMR{};
-            return m.calc_Qx(std::forward<decltype(x)>(x)...);
-        })
+                              uses_variance_aproximation(false)>{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.Macror<uses_recursive_aproximation(false),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(Calc_Qdt{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                       }),
+                     num_scouts_per_ensemble / 2),
+        var::Time_it(F(Calc_Qx{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                       })),
+        var::Time_it(F(Calc_eigen{},
+                       [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                       }))
 
     );
 
@@ -1772,8 +1790,14 @@ thermodynamic parameter
        * @brief cbc cumulative evidence algorithm, ends using convergence
        * criteria
        */
-      std::string filename = ModelName + "_equilibrium_" +
+      std::size_t bisection_count = 2ul;
+      std::string filename_bisection = ModelName + "_bisection_" +
+                             std::to_string(bisection_count) + "_" +
                              std::to_string(myseed) + "_" + time_now();
+      
+      std::string filename = ModelName + "_memoization_" +
+                                       std::to_string(bisection_count) + "_" +
+                                       std::to_string(myseed) + "_" + time_now();
 
       auto cbc = cuevi_Model_by_iteration<MyModel>(
           path, filename, t_segments, t_min_number_of_samples,
@@ -1784,58 +1808,70 @@ thermodynamic parameter
 
       // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
       //                      sim.value()(), experiment);
-      auto ftbl =
-          FuncMap(path + filename,
-                  Time_it(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
-                  Time_it(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
-                  var::Time_it(step_stretch_cuevi_mcmc_per_walker{},
-                               step_stretch_cuevi_mcmc_per_walker{},
-                               num_scouts_per_ensemble / 2),
-                  var::Time_it(
-                      logLikelihood_f{},
+      auto ftbl3 = FuncMap(
+          path + filename,
+          Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
+          Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+          var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
+                         step_stretch_cuevi_mcmc_per_walker{}),
+                       num_scouts_per_ensemble / 2),
+          var::Time_it(F(logLikelihood_f{},
+                         [](auto &&...x) {
+                           return logLikelihood(
+                               std::forward<decltype(x)>(x)...);
+                         }),
+                       num_scouts_per_ensemble / 2),
+          var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                                uses_averaging_aproximation(2),
+                                uses_variance_aproximation(false)>{},
+                         [](auto &&...x) {
+                           auto m = Macro_DMR{};
+                           return m.Macror<uses_recursive_aproximation(true),
+                                           uses_averaging_aproximation(2),
+                                           uses_variance_aproximation(false)>(
+                               std::forward<decltype(x)>(x)...);
+                         }),
+                       num_scouts_per_ensemble / 2),
+          var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                                uses_averaging_aproximation(2),
+                                uses_variance_aproximation(false)>{},
+                         [](auto &&...x) {
+                           auto m = Macro_DMR{};
+                           return m.Macror<uses_recursive_aproximation(false),
+                                           uses_averaging_aproximation(2),
+                                           uses_variance_aproximation(false)>(
+                               std::forward<decltype(x)>(x)...);
+                         }),
+                       num_scouts_per_ensemble / 2),
+          var::Time_it(var::Thread_Memoizer(
+              var::F(Calc_Qdt_step{},
+                     [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+                     }),
+              var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{})),
+           var::Time_it(
+               var::F(Calc_Qdt{},
                       [](auto &&...x) {
-                        return logLikelihood(std::forward<decltype(x)>(x)...);
-                      },
-                      num_scouts_per_ensemble / 2),
-                  var::Time_it(
-                      MacroR<uses_recursive_aproximation(true),
-                             uses_averaging_aproximation(2),
-                             uses_variance_aproximation(false)>{},
-                      [](auto &&...x) {
-                        auto m = Macro_DMR{};
-                        return m.Macror<uses_recursive_aproximation(true),
-                                        uses_averaging_aproximation(2),
-                                        uses_variance_aproximation(false)>(
-                            std::forward<decltype(x)>(x)...);
-                      },
-                      num_scouts_per_ensemble / 2),
-                  var::Time_it(
-                      MacroR<uses_recursive_aproximation(false),
-                             uses_averaging_aproximation(2),
-                             uses_variance_aproximation(false)>{},
-                      [](auto &&...x) {
-                        auto m = Macro_DMR{};
-                        return m.Macror<uses_recursive_aproximation(false),
-                                        uses_averaging_aproximation(2),
-                                        uses_variance_aproximation(false)>(
-                            std::forward<decltype(x)>(x)...);
-                      },
-                      num_scouts_per_ensemble / 2),
-                  var::Time_it(
-                      Calc_Qdt{},
-                      [](auto &&...x) {
-                        auto m = Macro_DMR{};
-                        return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-                      },
-                      num_scouts_per_ensemble / 2),
-                          var::Time_it(Calc_Qx{}, [](auto &&...x) {
-                              auto m = Macro_DMR{};
-                              return m.calc_Qx(std::forward<decltype(x)>(x)...);
-                          })
+                         auto m = Macro_DMR{};
+                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                     }),
+              num_scouts_per_ensemble / 2),
+          var::Time_it(F(Calc_Qx{},
+                         [](auto &&...x) {
+                           auto m = Macro_DMR{};
+                           return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                         })),
+          var::Time_it(var::Thread_Memoizer(
+                       F(Calc_eigen{},
+                         [](auto &&...x) {
+                           auto m = Macro_DMR{};
+                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                         }),              var::Memoiza_all_values<Maybe_error<Qx_eig>, Qx>{}))
 
-          );
+      );
 
-      auto opt3 = evidence(ftbl, std::move(cbc), param1_prior, modelLikelihood,
+      auto opt3 = evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood,
                            recording, experiment);
     }
   }
@@ -1845,7 +1881,7 @@ thermodynamic parameter
     std::string path = "";
     auto num_scouts_per_ensemble = 2ul;
     auto myseed = 0ul;
-    
+
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)));

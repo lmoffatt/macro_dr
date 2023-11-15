@@ -1755,7 +1755,19 @@ else
 }
 
 
-
+template <typename Matrix>
+    requires Matrix::is_Matrix
+bool operator<(const Matrix &x, const Matrix& y) 
+    {
+    if (x.size()<y.size())
+            return true;
+    else if (y.size()<x.size())
+        return false;
+    else for (std::size_t i=0; i<x.size(); ++i)
+            if(x[i]<y[i]) return true;
+            else if (y[i]<x[i]) return false;
+    return false;
+  }
 
 
 
