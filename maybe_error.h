@@ -38,6 +38,9 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 template <auto F> std::string function_name();
 
+struct Nothing{};
+
+
 template <class T> class Maybe_error;
 
 template <class T>

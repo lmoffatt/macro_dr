@@ -57,6 +57,7 @@ add_executable(macro_dr main.cpp
     allosteric_models.h
     exponential_matrix.h
     function_measure_verification_and_optimization.h
+    function_memoization.h
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
 
