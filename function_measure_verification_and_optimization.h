@@ -57,6 +57,7 @@ struct has_clear_method<T, I,std::void_t<decltype(std::declval<T>().clear(std::d
     using std::true_type::value;
 };
 
+
 template <typename T, typename I>
 constexpr bool has_clear_method_v = has_clear_method<std::decay_t<T>, I>::value;
 
@@ -236,6 +237,17 @@ Time_it(F<Id, Fun...>) -> Time_it<Id, F<Id, Fun...>>;
 
 template <class F> class F_on_thread;
 template <class... Fs> class FuncMap;
+
+std::ostream &report_title(std::ostream &os, const std::string &,...){
+    return os;
+}
+
+ std::ostream &report_point(std::ostream &os, const std::string &,...) {
+    
+    return os;
+}
+
+
 
 template <class F> class F_on_thread {
   F &m_f;

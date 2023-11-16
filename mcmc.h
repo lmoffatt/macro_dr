@@ -13,6 +13,7 @@ using Data = Matrix<double>;
 using WalkerIndexes = std::vector<std::size_t>;
 
 
+
 /*
 auto operator+(const Parameters &x, const Parameters &y) {
   assert((x.size() == y.size()) && "sum of vector fields of different sizes");
