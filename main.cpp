@@ -251,6 +251,7 @@ int main(int argc, char **argv) {
         path + ModelName + std::to_string(myseed) + "_" + time_now(),
         Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+        Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
         var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                        step_stretch_cuevi_mcmc_per_walker{}),
                      num_scouts_per_ensemble / 2),
@@ -467,7 +468,86 @@ int main(int argc, char **argv) {
         std::move(v_Q0_formula), std::move(v_Qa_formula),
         std::move(v_g_formula));
   });
-
+  
+  
+  auto model01 = Model0::Model([]() {
+      auto names_model = std::vector<std::string>{"kon",
+                                                  "koff",
+                                                  "gatin_on",
+                                                  "gating_off",
+                                                  "inactivation_rate",
+                                                  "unitary_current"};
+      auto names_other =
+          std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
+      
+      std::size_t N = 6ul;
+      
+      auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
+          N, std::vector<std::string>(N, "")));
+      v_Q0_formula()[1][0] = "koff";
+      v_Q0_formula()[2][1] = "2*koff";
+      v_Q0_formula()[3][2] = "3*koff";
+      v_Q0_formula()[3][4] = "gatin_on";
+      v_Q0_formula()[4][3] = "gating_off";
+      v_Q0_formula()[0][5] = "inactivation_rate";
+      
+      auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
+          N, std::vector<std::string>(N, "")));
+      v_Qa_formula()[0][1] = "3*kon";
+      v_Qa_formula()[1][2] = "2*kon";
+      v_Qa_formula()[2][3] = "kon";
+      auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+      v_g_formula()[4] = "unitary_current";
+      
+      names_model.insert(names_model.end(), names_other.begin(),
+                         names_other.end());
+      auto p = Parameters<Model0>(
+          std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1000, 1e-4, 1});
+      
+      auto logp =
+          Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+      
+      return std::tuple(
+          [](const auto &logp) {
+              using std::pow;
+              auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+              auto kon = p[0];
+              auto koff = p[1];
+              auto gating_on = p[2];
+              auto gating_off = p[3];
+              auto inactivation_rate = p[4];
+              auto v_unitary_current = p[5] * -1.0;
+              auto Npar = 6ul;
+              auto v_N0 = p[Npar];
+              auto v_curr_noise = p[Npar + 1];
+              auto v_baseline = logp()[Npar + 2];
+              return build<Patch_Model>(
+                  N_St(6),
+                  build<Q0>(var::build_<Matrix<double>>(
+                      6, 6, {{0, 5}, {1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
+                      {inactivation_rate, koff, koff * 2.0, koff * 3.0, gating_on,
+                       gating_off})),
+                  build<Qa>(var::build_<Matrix<double>>(
+                      6, 6, {{0, 1}, {1, 2}, {2, 3}}, {kon * 3.0, kon * 2.0, kon})),
+                  build<P_initial>(
+                      var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
+                  build<g>(var::build_<Matrix<double>>(6, 1, {{4, 0}},
+                                                       {v_unitary_current})),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
+                  min_P(1e-7), Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2));
+          },
+          logp, typename Parameters<Model0>::Names(names_model),
+          std::move(v_Q0_formula), std::move(v_Qa_formula),
+          std::move(v_g_formula));
+  });
+  
+  
+  
+  
+  
+  
   auto model4 = Model0::Model([]() {
     auto names_model = std::vector<std::string>{"k01",
                                                 "k10",
@@ -1122,6 +1202,7 @@ int main(int argc, char **argv) {
       "_" + time_now(),
       Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
       Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+      Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
       var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                      step_stretch_cuevi_mcmc_per_walker{})),
       var::Time_it(F(logLikelihood_f{},
@@ -1320,6 +1401,7 @@ int main(int argc, char **argv) {
     auto ftb = FuncMap(
         path, Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+        Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
         var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                        step_stretch_cuevi_mcmc_per_walker{})),
 
@@ -1615,6 +1697,8 @@ thermodynamic parameter
     auto ftbl = FuncMap(
         path, Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+        Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
+
         var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                        step_stretch_cuevi_mcmc_per_walker{}),
                      num_scouts_per_ensemble / 2),
@@ -1743,12 +1827,12 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
 
-    double n_points_per_decade = 6;
+    double n_points_per_decade = 12;
     /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-    double n_points_per_decade_fraction = 6;
+    double n_points_per_decade_fraction = 12;
 
     /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
@@ -1803,7 +1887,7 @@ thermodynamic parameter
       
       std::string n_points_per_decade_str="_"+std::to_string(n_points_per_decade)+"_";
       
-      std::string filename = ModelName + all_at_once_str+"_eigen_Qdt_memoization_" +n_points_per_decade_str + time_now()+ "_"+
+      std::string filename = ModelName + all_at_once_str+"_randomized_jump_" +n_points_per_decade_str + time_now()+ "_"+
                                       // std::to_string(bisection_count) + "_" +
                                        std::to_string(myseed) ;
 
@@ -1820,6 +1904,7 @@ thermodynamic parameter
           path + filename,
           Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
           Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
+          Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
           var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                          step_stretch_cuevi_mcmc_per_walker{}),
                        num_scouts_per_ensemble / 2),

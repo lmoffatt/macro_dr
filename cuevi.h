@@ -2118,7 +2118,7 @@ struct calculate_cuevi_walker {
   friend std::string ToString(calculate_cuevi_walker) {
     return "calculate_cuevi_walker";
   }
-  template <class FunctionTable, class Observer, class Prior, class Likelihood,
+  template <class FunctionTable, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
                 std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
@@ -2141,12 +2141,13 @@ struct calculate_cuevi_walker {
     if (!(is_valid(ca_logL_0) && is_valid(ca_logL_1))) {
       return error_message(ca_logL_0.error()() + ca_logL_1.error()());
     } else {
-      auto ca_logPa = ca_logPa_.value();
-      auto ca_logP0 = ca_logPa_.value() + ca_logL_0.value();
+      auto ca_logPa = ca_logPa_;
+      auto ca_logP0 = ca_logPa_ + ca_logL_0.value();
       auto ca_logL0 = ca_logL_1.value() - ca_logL_0.value();
       mcmc2<Parameters> out0;
       mcmc2<Parameters> out1;
       if (beta[i_frac][ib] == 1.0) {
+        out0.parameter=ca_par;  
         out0.logPa = ca_logPa;
         out0.logP = ca_logP0;
         out0.logL = ca_logL0;
@@ -2159,24 +2160,27 @@ struct calculate_cuevi_walker {
           else {
             auto ca_logP1 = ca_logPa + ca_logL_1.value();
             auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();
-
+            out1.parameter=ca_par;  
             out1.logPa = ca_logPa;
             out1.logP = ca_logP1;
             out1.logL = ca_logL1;
           }
         }
-      } else if (beta[i_frac][ib] == 0.0) {
+      } else  {
+        out1.parameter=ca_par;  
         out1.logPa = ca_logPa;
         out1.logP = ca_logP0;
         out1.logL = ca_logL0;
-        if (i_frac > 1) {
-          auto ca_logL_00 =
-              f.f(logLikelihood_f{}, lik, ca_par, y[i_frac - 2], x[i_frac - 2]);
+        if ((i_frac > 0)&&(beta[i_frac][ib] == 0.0)) {
+          auto ca_logL_00 =i_frac > 1 ?
+              f.f(logLikelihood_f{}, lik, ca_par, y[i_frac - 2], x[i_frac - 2]):
+                                  Maybe_error<double>(0.0);
           if (!(ca_logL_00))
             return ca_logL_00.error();
           else {
             auto ca_logP00 = ca_logPa + ca_logL_00.value();
             auto ca_logL00 = ca_logL_0.value() - ca_logL_00.value();
+            out0.parameter=ca_par;  
             out0.logPa = ca_logPa;
             out0.logP = ca_logP00;
             out0.logL = ca_logL00;
@@ -2191,7 +2195,7 @@ struct thermo_cuevi_randomized_jump_mcmc_per_walker {
   friend std::string ToString(thermo_cuevi_randomized_jump_mcmc_per_walker) {
     return "thermo_cuevi_randomized_jump_mcmc";
   }
-  template <class FunctionTable, class Observer, class Prior, class Likelihood,
+  template <class FunctionTable, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
                 std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
@@ -2210,10 +2214,10 @@ struct thermo_cuevi_randomized_jump_mcmc_per_walker {
               i_frac_destination, i_frac_origin, prior, lik, y, x, r);
     else {
       auto ib_origin = i_frac_origin > 0 ? 0ul : current.beta[0].size() - 2;
-      auto ib_destination = current[iw][i_frac_destination].size() - 1;
-      mcmc2<Parameters> &origin = current.walker[iw][i_frac_origin][ib_origin];
+      auto ib_destination = current.beta[i_frac_destination].size() - 1;
+      mcmc2<Parameters> &origin = current.walkers[iw][i_frac_origin][ib_origin];
       mcmc2<Parameters> &destination =
-          current.walker[jw][i_frac_destination][ib_destination];
+          current.walkers[jw][i_frac_destination][ib_destination];
       auto Maybe_destination_new =
           calculate_cuevi_walker{}(f, origin, current.beta, i_frac_destination,
                                    ib_destination, prior, lik, y, x);
@@ -2308,7 +2312,7 @@ struct thermo_cuevi_randomized_jump_mcmc {
           auto r = rdist[i](mts[i]);
 
           thermo_cuevi_randomized_jump_mcmc_per_walker{}(
-              f, current, iw, jw, i_frac_origin, i_frac_destination, prior, lik,
+              f.fork(var::I_thread(i)), current, iw, jw, i_frac_origin, i_frac_destination, prior, lik,
               y, x, r);
         }
       }
@@ -2455,6 +2459,9 @@ auto evidence(FunctionTable &&ff,
       ++iter;
       f.f(thermo_cuevi_jump_mcmc{}, iter, current, rep, mt, mts, prior, lik, ys,
           xs, cue.thermo_jumps_every());
+      f.f(thermo_cuevi_randomized_jump_mcmc{}, iter+cue.thermo_jumps_every()%2, current, rep, mt, mts, prior, lik, ys,
+          xs, cue.thermo_jumps_every());
+      
       // check_sanity(iter,current);
 
       report_all(f, iter, rep, current, prior, lik, ys, xs);
