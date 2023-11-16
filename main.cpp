@@ -337,9 +337,10 @@ int main(int argc, char **argv) {
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
           checks_derivative_every_model_size, max_ratio, n_points_per_decade,
           n_points_per_decade_fraction, stops_at, includes_zero, myseed);
-
+      
+      bool all_at_once=false;
       auto opt3 = evidence(ftbl, std::move(cbc), my_linear_model.prior(),
-                           my_linear_model.likelihood(), y, X);
+                           my_linear_model.likelihood(), y, X,all_at_once);
     }
   }
 
@@ -1675,7 +1676,8 @@ thermodynamic parameter
      * for debugging purposes
      */
     //   auto myseed = 9762841416869310605ul;
-    auto myseed = 2555984001541913735ul;
+//    auto myseed = 2555984001541913735ul;
+    auto myseed = 0ul;
 
     myseed = calc_seed(myseed);
     std::cerr << "myseed =" << myseed << "\n";
@@ -1697,7 +1699,7 @@ thermodynamic parameter
     /**
      * @brief stops_at minimum value of beta greater than zero
      */
-    double stops_at = 0.0001;
+    double stops_at = 0.001;
 
     /**
      * @brief includes_zero considers also beta equal zero
@@ -1707,12 +1709,12 @@ thermodynamic parameter
     /**
      * @brief max_iter maximum number of iterations on each warming step
      */
-    std::size_t max_iter_warming = 500;
+    std::size_t max_iter_warming = 50;
 
     /**
      * @brief max_iter maximum number of iterations on the equilibrium step
      */
-    std::size_t max_iter_equilibrium = 40000;
+    std::size_t max_iter_equilibrium = 4000;
 
     /**
      * @brief path directory for the output
@@ -1741,12 +1743,12 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
 
-    double n_points_per_decade = 24;
+    double n_points_per_decade = 6;
     /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-    double n_points_per_decade_fraction = 24;
+    double n_points_per_decade_fraction = 6;
 
     /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
@@ -1795,7 +1797,13 @@ thermodynamic parameter
                              std::to_string(bisection_count) + "_" +
                              std::to_string(myseed) + "_" + time_now();
       
-      std::string filename = ModelName + "_eigen_Qdt_memoization_"  + time_now()+ "_"+
+      bool all_at_once=true;
+      
+      std::string all_at_once_str=all_at_once?"_all_at_once_":"_progressive_";
+      
+      std::string n_points_per_decade_str="_"+std::to_string(n_points_per_decade)+"_";
+      
+      std::string filename = ModelName + all_at_once_str+"_eigen_Qdt_memoization_" +n_points_per_decade_str + time_now()+ "_"+
                                       // std::to_string(bisection_count) + "_" +
                                        std::to_string(myseed) ;
 
@@ -1843,37 +1851,36 @@ thermodynamic parameter
                                std::forward<decltype(x)>(x)...);
                          }),
                        num_scouts_per_ensemble / 2),
-          var::Time_it(var::Thread_Memoizer(
+          var::Thread_Memoizer(
               var::F(Calc_Qdt_step{},
                      [](auto &&...x) {
                        auto m = Macro_DMR{};
                        return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
                      }),
-              var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{})),
+              var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
           // var::Time_it(
           //     var::F(Calc_Qdt_step{},
           //            [](auto &&...x) {
           //              auto m = Macro_DMR{};
           //              return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
           //            })),
-           var::Time_it(
+           
                var::F(Calc_Qdt{},
                       [](auto &&...x) {
                          auto m = Macro_DMR{};
                          return m.calc_Qdt(std::forward<decltype(x)>(x)...);
                      }),
-              num_scouts_per_ensemble / 2),
-          var::Time_it(F(Calc_Qx{},
+          F(Calc_Qx{},
                          [](auto &&...x) {
                            auto m = Macro_DMR{};
                            return m.calc_Qx(std::forward<decltype(x)>(x)...);
-                         })),
-          var::Time_it(var::Thread_Memoizer(
+                         }),
+          var::Thread_Memoizer(
                        F(Calc_eigen{},
                          [](auto &&...x) {
                            auto m = Macro_DMR{};
                            return m.calc_eigen(std::forward<decltype(x)>(x)...);
-                         }),              var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{}))
+                         }),              var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
           // var::Time_it(
           //     F(Calc_eigen{},
           //       [](auto &&...x) {
@@ -1884,7 +1891,7 @@ thermodynamic parameter
       );
 
       auto opt3 = evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood,
-                           recording, experiment);
+                           recording, experiment, all_at_once);
     }
   }
 
