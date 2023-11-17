@@ -159,7 +159,7 @@ public:
     if (!Maybe_id)
       return Maybe_id.error();
     else
-      Maybe_id.value();
+      return Maybe_id.value();
   }
 
   void push_back(Identifier<Lexer> id,

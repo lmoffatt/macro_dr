@@ -2,9 +2,11 @@
 #define DISTRIBUTIONS_H
 
 #include "matrix.h"
+#include "maybe_error.h"
 #include <concepts>
 #include <functional>
 #include <random>
+#include <type_traits>
 #include <utility>
 
 template <class Distribution>
@@ -31,6 +33,22 @@ concept is_Distribution_of = requires(Distribution &m, Distribution const& m_con
         m_const.logP(m(std::declval<std::mt19937_64 &>()))
     }->std::convertible_to<Maybe_error<double>>;
 };
+
+
+
+template<class Sampler, class ProbabilityFunction>
+class Custom_Distribution
+{
+    Sampler m_s;
+    ProbabilityFunction m_p;
+public:
+    using T=std::invoke_result_t<Sampler,std::mt19937_64&>;
+    Custom_Distribution(Sampler&& s, ProbabilityFunction&& f):m_s{std::move(s)}, m_p{std::move(f)}{}
+    
+    auto operator()(std::mt19937_64& mt){ return std::invoke(m_s,mt);}
+    Maybe_error<double> logP(const T& x)const { return std::invoke(m_p,x);}
+};
+    
 
 template<class T>
 concept has_size= requires(const T& a)

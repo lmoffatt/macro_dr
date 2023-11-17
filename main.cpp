@@ -251,7 +251,8 @@ int main(int argc, char **argv) {
         path + ModelName + std::to_string(myseed) + "_" + time_now(),
         Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
-        Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
+        Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
+                  thermo_cuevi_randomized_jump_mcmc{})),
         var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                        step_stretch_cuevi_mcmc_per_walker{}),
                      num_scouts_per_ensemble / 2),
@@ -338,10 +339,10 @@ int main(int argc, char **argv) {
           max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
           checks_derivative_every_model_size, max_ratio, n_points_per_decade,
           n_points_per_decade_fraction, stops_at, includes_zero, myseed);
-      
-      bool all_at_once=false;
+
+      bool all_at_once = false;
       auto opt3 = evidence(ftbl, std::move(cbc), my_linear_model.prior(),
-                           my_linear_model.likelihood(), y, X,all_at_once);
+                           my_linear_model.likelihood(), y, X, all_at_once);
     }
   }
 
@@ -397,6 +398,83 @@ int main(int argc, char **argv) {
   struct Allost1 : public Model_Patch<Allost1> {};
 
   auto model00 = Model0::Model([]() {
+    auto names_model = std::vector<std::string>{"kon",
+                                                "koff",
+                                                "gatin_on",
+                                                "gating_off",
+                                                "inactivation_rate",
+                                                "unitary_current"};
+    auto names_other = std::vector<std::string>{
+        "Current_Noise", "Current_Baseline", "Num_ch_mean", "Num_ch_stddev",
+        "Num_ch_0",      "Num_ch_1",         "Num_ch_2",    "Num_ch_3",
+        "Num_ch_4",      "Num_ch_5",         "Num_ch_6"};
+
+    std::size_t N = 6ul;
+
+    auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
+        N, std::vector<std::string>(N, "")));
+    v_Q0_formula()[1][0] = "koff";
+    v_Q0_formula()[2][1] = "2*koff";
+    v_Q0_formula()[3][2] = "3*koff";
+    v_Q0_formula()[3][4] = "gatin_on";
+    v_Q0_formula()[4][3] = "gating_off";
+    v_Q0_formula()[0][5] = "inactivation_rate";
+
+    auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
+        N, std::vector<std::string>(N, "")));
+    v_Qa_formula()[0][1] = "3*kon";
+    v_Qa_formula()[1][2] = "2*kon";
+    v_Qa_formula()[2][3] = "kon";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[4] = "unitary_current";
+
+    names_model.insert(names_model.end(), names_other.begin(),
+                       names_other.end());
+    auto p = Parameters<Model0>(
+        std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-4, 1, 1000,100,1000, 1000, 1000, 1000, 1000, 1000, 1000});
+
+    auto logp =
+        Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+
+    return std::tuple(
+        [](const auto &logp) {
+          using std::pow;
+          auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+          auto kon = p[0];
+          auto koff = p[1];
+          auto gating_on = p[2];
+          auto gating_off = p[3];
+          auto inactivation_rate = p[4];
+          auto v_unitary_current = p[5] * -1.0;
+          auto Npar = 6ul;
+          auto v_curr_noise = p[Npar];
+          auto v_baseline = logp()[Npar + 1];
+          auto v_N0 = p[std::pair(Npar+2, Npar+8)];
+          return build<Patch_Model>(
+              N_St(6),
+              build<Q0>(var::build_<Matrix<double>>(
+                  6, 6, {{0, 5}, {1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
+                  {inactivation_rate, koff, koff * 2.0, koff * 3.0, gating_on,
+                   gating_off})),
+              build<Qa>(var::build_<Matrix<double>>(
+                  6, 6, {{0, 1}, {1, 2}, {2, 3}}, {kon * 3.0, kon * 2.0, kon})),
+              build<P_initial>(
+                  var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
+              build<g>(var::build_<Matrix<double>>(6, 1, {{4, 0}},
+                                                   {v_unitary_current})),
+              build<N_Ch_mean>(v_N0),
+              build<Current_Noise>(v_curr_noise),
+              build<Current_Baseline>(v_baseline),
+              N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
+              min_P(1e-7), Probability_error_tolerance(1e-2),
+              Conductance_variance_error_tolerance(1e-2));
+        },
+        logp, typename Parameters<Model0>::Names(names_model),
+        std::move(v_Q0_formula), std::move(v_Qa_formula),
+        std::move(v_g_formula));
+  });
+
+  auto model01 = Model0::Model([]() {
     auto names_model = std::vector<std::string>{"kon",
                                                 "koff",
                                                 "gatin_on",
@@ -468,86 +546,7 @@ int main(int argc, char **argv) {
         std::move(v_Q0_formula), std::move(v_Qa_formula),
         std::move(v_g_formula));
   });
-  
-  
-  auto model01 = Model0::Model([]() {
-      auto names_model = std::vector<std::string>{"kon",
-                                                  "koff",
-                                                  "gatin_on",
-                                                  "gating_off",
-                                                  "inactivation_rate",
-                                                  "unitary_current"};
-      auto names_other =
-          std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
-      
-      std::size_t N = 6ul;
-      
-      auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
-          N, std::vector<std::string>(N, "")));
-      v_Q0_formula()[1][0] = "koff";
-      v_Q0_formula()[2][1] = "2*koff";
-      v_Q0_formula()[3][2] = "3*koff";
-      v_Q0_formula()[3][4] = "gatin_on";
-      v_Q0_formula()[4][3] = "gating_off";
-      v_Q0_formula()[0][5] = "inactivation_rate";
-      
-      auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
-          N, std::vector<std::string>(N, "")));
-      v_Qa_formula()[0][1] = "3*kon";
-      v_Qa_formula()[1][2] = "2*kon";
-      v_Qa_formula()[2][3] = "kon";
-      auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
-      v_g_formula()[4] = "unitary_current";
-      
-      names_model.insert(names_model.end(), names_other.begin(),
-                         names_other.end());
-      auto p = Parameters<Model0>(
-          std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1000, 1e-4, 1});
-      
-      auto logp =
-          Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
-      
-      return std::tuple(
-          [](const auto &logp) {
-              using std::pow;
-              auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
-              auto kon = p[0];
-              auto koff = p[1];
-              auto gating_on = p[2];
-              auto gating_off = p[3];
-              auto inactivation_rate = p[4];
-              auto v_unitary_current = p[5] * -1.0;
-              auto Npar = 6ul;
-              auto v_N0 = p[Npar];
-              auto v_curr_noise = p[Npar + 1];
-              auto v_baseline = logp()[Npar + 2];
-              return build<Patch_Model>(
-                  N_St(6),
-                  build<Q0>(var::build_<Matrix<double>>(
-                      6, 6, {{0, 5}, {1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
-                      {inactivation_rate, koff, koff * 2.0, koff * 3.0, gating_on,
-                       gating_off})),
-                  build<Qa>(var::build_<Matrix<double>>(
-                      6, 6, {{0, 1}, {1, 2}, {2, 3}}, {kon * 3.0, kon * 2.0, kon})),
-                  build<P_initial>(
-                      var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
-                  build<g>(var::build_<Matrix<double>>(6, 1, {{4, 0}},
-                                                       {v_unitary_current})),
-                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                  build<Current_Baseline>(v_baseline), Binomial_magical_number(5.0),
-                  min_P(1e-7), Probability_error_tolerance(1e-2),
-                  Conductance_variance_error_tolerance(1e-2));
-          },
-          logp, typename Parameters<Model0>::Names(names_model),
-          std::move(v_Q0_formula), std::move(v_Qa_formula),
-          std::move(v_g_formula));
-  });
-  
-  
-  
-  
-  
-  
+
   auto model4 = Model0::Model([]() {
     auto names_model = std::vector<std::string>{"k01",
                                                 "k10",
@@ -1159,13 +1158,13 @@ int main(int argc, char **argv) {
       },
       v_N0, v_Neq, v_Ntau);
 
-  auto ggb = ggg(Time(10.0));
+  // auto ggb = ggg(Time(10.0)); does not compile with N_Ch_mean being a Matrix
 
   // using jger=typename decltype(NNN)::kgerge;
   // using jger2=typename decltype(dNNN)::kgerge;
 
   // std::cerr<<"dparam1\n"<<dparam1;
-  auto n = build<N_Ch_mean>(dparam1()[0]);
+  // auto n = build<N_Ch_mean>(dparam1()[0]);
 
   auto dp0 = dparam1()[0];
 
@@ -1202,7 +1201,8 @@ int main(int argc, char **argv) {
       "_" + time_now(),
       Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
       Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
-      Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
+      Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
+                thermo_cuevi_randomized_jump_mcmc{})),
       var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                      step_stretch_cuevi_mcmc_per_walker{})),
       var::Time_it(F(logLikelihood_f{},
@@ -1401,7 +1401,8 @@ int main(int argc, char **argv) {
     auto ftb = FuncMap(
         path, Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
-        Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
+        Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
+                  thermo_cuevi_randomized_jump_mcmc{})),
         var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                        step_stretch_cuevi_mcmc_per_walker{})),
 
@@ -1697,7 +1698,8 @@ thermodynamic parameter
     auto ftbl = FuncMap(
         path, Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
-        Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
+        Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
+                  thermo_cuevi_randomized_jump_mcmc{})),
 
         var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                        step_stretch_cuevi_mcmc_per_walker{}),
@@ -1760,7 +1762,7 @@ thermodynamic parameter
      * for debugging purposes
      */
     //   auto myseed = 9762841416869310605ul;
-//    auto myseed = 2555984001541913735ul;
+    //    auto myseed = 2555984001541913735ul;
     auto myseed = 0ul;
 
     myseed = calc_seed(myseed);
@@ -1877,19 +1879,22 @@ thermodynamic parameter
        * criteria
        */
       std::size_t bisection_count = 2ul;
-      std::string filename_bisection = ModelName + "_bisection_" +
-                             std::to_string(bisection_count) + "_" +
-                             std::to_string(myseed) + "_" + time_now();
-      
-      bool all_at_once=true;
-      
-      std::string all_at_once_str=all_at_once?"_all_at_once_":"_progressive_";
-      
-      std::string n_points_per_decade_str="_"+std::to_string(n_points_per_decade)+"_";
-      
-      std::string filename = ModelName + all_at_once_str+"_randomized_jump_" +n_points_per_decade_str + time_now()+ "_"+
-                                      // std::to_string(bisection_count) + "_" +
-                                       std::to_string(myseed) ;
+      std::string filename_bisection =
+          ModelName + "_bisection_" + std::to_string(bisection_count) + "_" +
+          std::to_string(myseed) + "_" + time_now();
+
+      bool all_at_once = true;
+
+      std::string all_at_once_str =
+          all_at_once ? "_all_at_once_" : "_progressive_";
+
+      std::string n_points_per_decade_str =
+          "_" + std::to_string(n_points_per_decade) + "_";
+
+      std::string filename = ModelName + all_at_once_str + "_randomized_jump_" +
+                             n_points_per_decade_str + time_now() + "_" +
+                             // std::to_string(bisection_count) + "_" +
+                             std::to_string(myseed);
 
       auto cbc = cuevi_Model_by_iteration<MyModel>(
           path, filename, t_segments, t_min_number_of_samples,
@@ -1904,7 +1909,8 @@ thermodynamic parameter
           path + filename,
           Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{})),
           Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{})),
-          Time_it(F(thermo_cuevi_randomized_jump_mcmc{}, thermo_cuevi_randomized_jump_mcmc{})),
+          Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
+                    thermo_cuevi_randomized_jump_mcmc{})),
           var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
                          step_stretch_cuevi_mcmc_per_walker{}),
                        num_scouts_per_ensemble / 2),
@@ -1940,32 +1946,35 @@ thermodynamic parameter
               var::F(Calc_Qdt_step{},
                      [](auto &&...x) {
                        auto m = Macro_DMR{};
-                       return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+                       return m.calc_Qdt_ATP_step(
+                           std::forward<decltype(x)>(x)...);
                      }),
               var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
           // var::Time_it(
           //     var::F(Calc_Qdt_step{},
           //            [](auto &&...x) {
           //              auto m = Macro_DMR{};
-          //              return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+          //              return
+          //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
           //            })),
-           
-               var::F(Calc_Qdt{},
-                      [](auto &&...x) {
-                         auto m = Macro_DMR{};
-                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-                     }),
+
+          var::F(Calc_Qdt{},
+                 [](auto &&...x) {
+                   auto m = Macro_DMR{};
+                   return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                 }),
           F(Calc_Qx{},
-                         [](auto &&...x) {
-                           auto m = Macro_DMR{};
-                           return m.calc_Qx(std::forward<decltype(x)>(x)...);
-                         }),
+            [](auto &&...x) {
+              auto m = Macro_DMR{};
+              return m.calc_Qx(std::forward<decltype(x)>(x)...);
+            }),
           var::Thread_Memoizer(
-                       F(Calc_eigen{},
-                         [](auto &&...x) {
-                           auto m = Macro_DMR{};
-                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
-                         }),              var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
+              F(Calc_eigen{},
+                [](auto &&...x) {
+                  auto m = Macro_DMR{};
+                  return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                }),
+              var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
           // var::Time_it(
           //     F(Calc_eigen{},
           //       [](auto &&...x) {

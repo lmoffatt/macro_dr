@@ -4,6 +4,7 @@
 #include "matrix.h"
 #include "maybe_error.h"
 #include "general_output_operator.h"
+#include <cstddef>
 #include <map>
 #include <string>
 #include <vector>
@@ -70,6 +71,20 @@ public:
   auto& operator[](std::size_t i)const {return (*this)()[i];}
   auto& operator[](std::size_t i) {return (*this)()[i];}
   
+  Matrix<double> operator[](std::pair<std::size_t, std::size_t> ij)const
+  {
+      if (m_values.size()==m_values.ncols())
+      {
+          auto out=Matrix<double>(1ul, ij.second-ij.first+1);
+          for (std::size_t i=0; i<out.size(); ++i) out[i]=m_values[ij.first+i];
+          return out;
+      }
+      else{
+          auto out=Matrix<double>(ij.second-ij.first+1,1ul);
+          for (std::size_t i=0; i<out.size(); ++i) out[i]=m_values[ij.first+i];
+          return out;
+      }
+  }
     
 };
 

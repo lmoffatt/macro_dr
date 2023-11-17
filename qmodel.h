@@ -205,7 +205,9 @@ class g_formula : public var::Var<g_formula, std::vector<std::string>> {};
 
 class N_St : public var::Constant<N_St, std::size_t> {};
 
-class N_Ch_mean : public var::Var<N_Ch_mean, double> {};
+class N_Ch_mean : public var::Var<N_Ch_mean, Matrix<double>> {};
+
+class N_Ch_mean_time_segment_duration : public var::Constant<N_Ch_mean_time_segment_duration, double> {};
 
 class N_Ch_init : public var::Var<N_Ch_init, double> {};
 class N_Ch_eq : public var::Var<N_Ch_eq, double> {};
@@ -334,7 +336,8 @@ using Qdt =
                  gtotal_sqr_ij, gsqr_i, gvar_i, gtotal_var_ij, gvar_ij>;
 
 using Patch_Model =
-    Vector_Space<N_St, Q0, Qa, P_initial,g, N_Ch_mean, Current_Noise,Current_Baseline,
+    Vector_Space<N_St, Q0, Qa, P_initial,g, N_Ch_mean,
+                                 Current_Noise,Current_Baseline, N_Ch_mean_time_segment_duration,
                  Binomial_magical_number, min_P, Probability_error_tolerance,
                  Conductance_variance_error_tolerance>;
 
@@ -1744,17 +1747,17 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
             uses_variance_aproximation variance,
            class FunctionTable,
            class C_Patch_State,
-            class C_Qdt, class C_Patch_Model, class C_N_Ch_mean>
+            class C_Qdt, class C_Patch_Model, class C_double>
     requires(
         /*(U<std::decay_t<C_Patch_State>,
            Patch_State>||U<std::decay_t<C_Patch_State>,
            Patch_State_and_Evolution> )&& U<C_Patch_Model, Patch_Model> &&*/
-        U<C_N_Ch_mean, N_Ch_mean> &&
+        U<C_double, double> &&
         U<C_Qdt, Qdt>)
 
   Maybe_error<C_Patch_State>
   Macror(FunctionTable&,C_Patch_State &&t_prior, C_Qdt const &t_Qdt, C_Patch_Model const &m,
-         C_N_Ch_mean const &Nch, const Patch_current &p_y, double fs)const  {
+         C_double const &Nch, const Patch_current &p_y, double fs)const  {
 
     using Transf = transformation_type_t<C_Qdt>;
     auto &p_P_cov = get<P_Cov>(t_prior);
@@ -1767,7 +1770,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     auto e = get<Current_Noise>(m).value() * fs /
              get<number_of_samples>(t_Qdt).value();
     auto y_baseline = get<Current_Baseline>(m);
-    auto N = Nch();
+    auto N = Nch;
     Matrix<double> u(p_P_mean().size(), 1, 1.0);
 
     auto SmD = p_P_cov() - diag(p_P_mean());
@@ -2140,9 +2143,14 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
                                         std::size_t i_step) {
             ATP_evolution const &t_step =
                 get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
-
-            
-            auto Nch = get<N_Ch_mean>(m);
+                
+            auto time=get<Time>(get<Recording_conditions>(e)()[i_step])();
+            auto time_segment=get<N_Ch_mean_time_segment_duration>(m)();
+            auto Nchs = get<N_Ch_mean>(m)();
+            std::size_t i_segment=std::floor(time/time_segment);
+            auto j_segment= std::min(Nchs.size()-1,i_segment+1);
+            auto r= std::max(1.0,time/time_segment-i_segment);
+            auto Nch = Nchs[i_segment]*(1-r)+r*Nchs[j_segment];
             
             auto Maybe_t_Qdt = calc_Qdt(f,m, t_step, fs);
             if (!Maybe_t_Qdt)
@@ -2214,7 +2222,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
                 double g_max = var::max(get<gmean_i>(primitive(t_Qdt))());
                 double g_min = var::min(get<gmean_i>(primitive(t_Qdt))());
                 double g_range = g_max - g_min;
-                auto N = primitive(Nch());
+                auto N = primitive(Nch);
                 auto p_bi = (g_max - mg) / g_range;
                 auto q_bi = (mg - g_min) / g_range;
                 bool test_Binomial = is_Binomial_Approximation_valid(
@@ -2329,9 +2337,9 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     auto initial_x = get<initial_ATP_concentration>(e);
     auto v_Qx = calc_Qx(m, initial_x());
     auto r_P_mean = P_mean(get<P_initial>(m)());
-    auto N = get<N_Ch_mean>(m);
+    auto N = get<N_Ch_mean>(m)()[0];
     auto sim = Simulated_Recording(Recording{});
-    auto N_state = sample_Multinomial(mt, r_P_mean, N());
+    auto N_state = sample_Multinomial(mt, r_P_mean, N);
     return Simulated_Step(std::move(N_state), std::move(sim));
   }
 
