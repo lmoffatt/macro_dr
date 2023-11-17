@@ -6,7 +6,7 @@ find_package(OpenMP REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0 -Werror=return-type -fconcepts-diagnostics-depth=20" )
+set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0 -Werror=return-type" )
 #find_package(Catch2 REQUIRED)
 #target_link_libraries(tests Catch2::Catch2)
 

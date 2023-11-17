@@ -294,7 +294,6 @@ public:
                          empty_matrix_container<T, Matrix_uses_vector>())} {}
   
   
-  
   friend class DiagonalMatrix<T>;
 
   Matrix &operator=(const Matrix &x) {
@@ -340,6 +339,23 @@ public:
     assert(i < size_);
     return x_[i];
   }
+  
+  Matrix<double> operator[](std::pair<std::size_t, std::size_t> ij)const
+  {
+      if (size()==ncols())
+      {
+          auto out=Matrix<double>(1ul, ij.second-ij.first+1);
+          for (std::size_t i=0; i<size(); ++i) out[i]=(*this)[ij.first+i];
+          return out;
+      }
+      else{
+          auto out=Matrix<double>( ij.second-ij.first+1,1ul);
+          for (std::size_t i=0; i<out.size(); ++i) out[i]=(*this)[ij.first+i];
+          return out;
+      }
+  }
+  
+  
   auto &operator()(std::size_t i) {
     assert(i < size_);
     return x_[i];

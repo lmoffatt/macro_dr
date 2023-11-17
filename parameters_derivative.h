@@ -453,6 +453,13 @@ public:
             applyMap([i](auto const& m){return m[i];},derivative()()));
     }
     
+    auto operator[](std::pair<std::size_t,std::size_t> ij)const
+    {
+        return Derivative<Matrix<double>,Parameters<Id>>(
+            primitive()[ij],
+            applyMap([ij](auto const& m){return m[ij];},derivative()()));
+    }
+    
 };
 
 
@@ -904,7 +911,7 @@ eigs(const Derivative<Matrix<double>,Parameters<Id>> &x, bool does_permutations 
     else{
         auto [VR, lambda, VL] = std::move(res).value();
         
-        auto derlambda=apply([&VR,&lambda,&VL](auto const & dx){
+        auto derlambda=apply([VR,lambda,VL](auto const & dx){
             auto out=DiagonalMatrix<double>(lambda.nrows(),lambda.ncols());
             for (std::size_t i = 0; i < lambda.size(); ++i) {
                 auto vT = tr(VL( ":",i));
