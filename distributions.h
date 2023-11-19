@@ -4,6 +4,7 @@
 #include "matrix.h"
 #include "maybe_error.h"
 #include <concepts>
+#include <cstddef>
 #include <functional>
 #include <random>
 #include <type_traits>
@@ -39,14 +40,17 @@ concept is_Distribution_of = requires(Distribution &m, Distribution const& m_con
 template<class Sampler, class ProbabilityFunction>
 class Custom_Distribution
 {
+    std::size_t m_size;
     Sampler m_s;
     ProbabilityFunction m_p;
 public:
     using T=std::invoke_result_t<Sampler,std::mt19937_64&>;
-    Custom_Distribution(Sampler&& s, ProbabilityFunction&& f):m_s{std::move(s)}, m_p{std::move(f)}{}
+    Custom_Distribution(std::size_t t_size,Sampler&& s, ProbabilityFunction&& f):m_size{t_size},m_s{std::move(s)}, m_p{std::move(f)}{}
     
     auto operator()(std::mt19937_64& mt){ return std::invoke(m_s,mt);}
     Maybe_error<double> logP(const T& x)const { return std::invoke(m_p,x);}
+    
+    auto size()const {return m_size;}
 };
     
 

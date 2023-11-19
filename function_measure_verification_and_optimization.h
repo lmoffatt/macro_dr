@@ -91,7 +91,7 @@ public:
   
   auto &get_Fun() { return m_f.get_Fun(); }
 
-  constexpr Time_it(F<Id, Fun...> &&t_f, std::size_t n_threads = 8ul)
+  constexpr Time_it(F<Id, Fun...> &&t_f, std::size_t n_threads)
       : m_f{std::move(t_f)}, m_sum{n_threads, std::chrono::nanoseconds::zero()},
         m_count{std::vector<std::size_t>(n_threads, 0ul)},
         m_n_threads{n_threads} {}

@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 #include <cstring>
+#include <vector>
 template <class> class Matrix;
 template <class> class SubMatrix;
 
@@ -1200,7 +1201,11 @@ public:
         (*this)[i] = a(i, i);
     }
   }
-
+  
+  explicit DiagonalMatrix(const std::vector<T> &a):
+      DiagonalMatrix(Matrix<T>(a.size(),1ul,a)){}
+  
+  
   explicit DiagonalMatrix(Matrix<T> &&a)
       : size_{(a.ncols() == 1 || a.nrows() == 1)
                   ? a.size()
@@ -1478,7 +1483,9 @@ public:
   explicit DiagPosDetMatrix(const Matrix<T> &a) : base_type(a) {}
 
   explicit DiagPosDetMatrix(Matrix<T> &&a) : base_type(std::move(a)) {}
-
+  
+  explicit DiagPosDetMatrix(const std::vector<T> &a) : base_type(a) {}
+  
   using base_type::operator[];
   using base_type::operator();
   DiagPosDetMatrix() {}

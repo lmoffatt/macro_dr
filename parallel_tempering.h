@@ -559,20 +559,17 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
         auto n_walkers = mts.size() * 2;
         auto n_beta = beta.size();
         auto n_par = current.walkers[0][0].parameter.size();
-        std::uniform_int_distribution<std::size_t> booldist(0, 1);
-        auto half = booldist(mt) == 1;
         
-        WalkerIndexes landing_walker(n_walkers / 2);
-        std::iota(landing_walker.begin(), landing_walker.end(), 0);
-        std::shuffle(landing_walker.begin(), landing_walker.end(), mt);
+        WalkerIndexes shuffeld_walkers(n_walkers);
+        std::iota(shuffeld_walkers.begin(), shuffeld_walkers.end(), 0);
+        std::shuffle(shuffeld_walkers.begin(), shuffeld_walkers.end(), mt);
         std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
                                                                   uniform_real);
 
 #pragma omp parallel for
         for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-            auto iw = half ? i + n_walkers / 2 : i;
-            auto j = landing_walker[i];
-            auto jw = half ? j : j + n_walkers / 2;
+            auto iw = shuffeld_walkers[i];
+            auto jw = shuffeld_walkers[i+n_walkers / 2];
             for (std::size_t ib = 0; ib < n_beta - 1; ++ib) {
                 
                 auto r = rdist[i](mts[i]);

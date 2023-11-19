@@ -149,7 +149,7 @@ public:
   auto &get_Fun() { return m_f.get_Fun(); }
 
   constexpr Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer<Y, Xs...>,
-                            std::size_t n_threads = 8ul)
+                            std::size_t n_threads)
       : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {}
 
   void clear(I_thread i) {

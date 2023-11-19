@@ -1309,20 +1309,17 @@ struct thermo_cuevi_jump_mcmc {
       std::uniform_real_distribution<double> uniform_real(0, 1);
       auto n_walkers = mts.size() * 2;
       auto n_par = current.walkers[0][0][0].parameter.size();
-      std::uniform_int_distribution<std::size_t> booldist(0, 1);
-      auto half = booldist(mt) == 1;
-
-      WalkerIndexes landing_walker(n_walkers / 2);
-      std::iota(landing_walker.begin(), landing_walker.end(), 0);
-      std::shuffle(landing_walker.begin(), landing_walker.end(), mt);
+      
+      WalkerIndexes shuffled_walker(n_walkers );
+      std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
+      std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
       std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
                                                                 uniform_real);
 
 #pragma omp parallel for // not currently working
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-        auto iw = half ? i + n_walkers / 2 : i;
-        auto j = landing_walker[i];
-        auto jw = half ? j : j + n_walkers / 2;
+        auto iw =shuffled_walker[i];
+        auto jw = shuffled_walker[i+n_walkers / 2];
 
         if (size(current.beta) == 1)
           for (std::size_t i_fr = 0; i_fr < 1; ++i_fr) {
@@ -1801,11 +1798,10 @@ struct thermo_cuevi_randomized_jump_mcmc {
       auto n_walkers = mts.size() * 2;
       auto n_par = current.walkers[0][0][0].parameter.size();
       std::uniform_int_distribution<std::size_t> booldist(0, 1);
-      auto half = booldist(mt) == 1;
-
-      WalkerIndexes landing_walker(n_walkers / 2);
-      std::iota(landing_walker.begin(), landing_walker.end(), 0);
-      std::shuffle(landing_walker.begin(), landing_walker.end(), mt);
+     
+      WalkerIndexes shuffled_walker(n_walkers);
+      std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
+      std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
       std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
                                                                 uniform_real);
 
@@ -1816,9 +1812,8 @@ struct thermo_cuevi_randomized_jump_mcmc {
 
 #pragma omp parallel for // not currently working
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-        auto iw = half ? i + n_walkers / 2 : i;
-        auto j = landing_walker[i];
-        auto jw = half ? j : j + n_walkers / 2;
+        auto iw = shuffled_walker[i];
+        auto jw =shuffled_walker[i+n_walkers / 2];
 
         for (std::size_t i_fr = 0; i_fr < n_fractions; ++i_fr) {
           auto i_frac_origin = i_fr;
