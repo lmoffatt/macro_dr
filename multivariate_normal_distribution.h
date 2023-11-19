@@ -117,7 +117,8 @@ public:
         double out=-0.5 * (mean().size() * log(2*std::numbers::pi) + logDetCov() + chi2(x));
         if (std::isfinite(out))
             return out;
-        else return error_message("likelihood not finite:" +std::to_string(out));
+        else
+            return error_message("likelihood not finite:" +std::to_string(out));
     }
     
     friend std::ostream& operator<<(std::ostream& os, const multivariate_normal_distribution& m)
@@ -313,7 +314,8 @@ public:
             double out=logPvar.value()-0.5 * (k * log(2*std::numbers::pi) + m_normal::logDetCov() + k*logvar+ chi_2);
             if (std::isfinite(out))
                 return out;
-            else return error_message("likelihood not finite:" +std::to_string(out));
+            else
+                return error_message("likelihood not finite:" +std::to_string(out));
         }}
     
     
