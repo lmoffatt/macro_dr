@@ -5,11 +5,13 @@
 #include "function_memoization.h"
 #include "matrix.h"
 #include <cstddef>
+#include <fstream>
 #include <functional>
 #include <numeric>
 #include <random>
 #include <set>
 #include <type_traits>
+#include <vector>
 #ifndef QMODEL_H
 #define QMODEL_H
 #include <map>
@@ -26,6 +28,7 @@
 #include "variables.h"
 #include "exponential_matrix.h"
 #include "function_measure_verification_and_optimization.h"
+#include "parameters_distribution.h"
 namespace macrodr {
 
 using var::Parameters;
@@ -341,9 +344,21 @@ using Patch_Model =
                  Binomial_magical_number, min_P, Probability_error_tolerance,
                  Conductance_variance_error_tolerance>;
 
+
+void save(const std::string name, const Patch_Model& m)
+{
+    std::ofstream f_Q0(name+"_Q0.txt");
+    f_Q0<<get<Q0>(m)<<"\n";
+    std::ofstream f_Qa(name+"_Qa.txt");
+    f_Qa<<get<Qa>(m)<<"\n";
+    std::ofstream f_g(name+"_g.txt");
+    f_g<<get<g>(m)<<"\n";
+}
+
+
 template <class Id> struct Model_Patch {
   template <class F> class Model {
-    std::tuple<F, Parameters<Id>, typename Parameters<Id>::Names, Q0_formula,
+      std::tuple<F, Parameters<Id>,typename Parameters<Id>::Names, Q0_formula,
                Qa_formula, g_formula>
         m_f;
 
@@ -355,7 +370,7 @@ template <class Id> struct Model_Patch {
       return std::get<typename Parameters<Id>::Names>(m_f);
     }
     auto &parameters() const { return std::get<Parameters<Id>>(m_f); }
-
+   
     auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
     auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
     auto &get_g_formula() const { return std::get<g_formula>(m_f); }
@@ -430,6 +445,25 @@ using Simulated_Sub_Step =
     Vector_Space<N_channel_state, number_of_samples, y_sum>;
 
 using Simulation_Parameters = Vector_Space<Number_of_simulation_sub_steps>;
+
+
+void save(std::string name, Simulated_Recording const & r)
+{
+    std::ofstream f(name+"_sim.txt");
+    f<<r<<"\n";
+}
+
+void save(std::string name, std::vector<Simulated_Recording> const & r)
+{
+    std::ofstream f(name+"_sim.txt");
+    f<<"nrep"<<","<<"i_x"<<","<<"Y"<<"\n";
+    
+    for(std::size_t i=0; i<r.size(); ++i)
+    for (std::size_t n=0; n<r[i]()().size(); ++n )
+    {
+            f<<i<<","<<n<<","<<r[i]()()[n]()<<"\n";
+    }
+}
 
 
 template <uses_recursive_aproximation recursive,
@@ -1250,19 +1284,16 @@ public:
   auto get_Qn(const C_P &t_P, C_g const & t_g,number_of_samples n, min_P t_minP) {
       
       auto N=t_P().nrows();
-      auto t_g2=apply([](auto x){return x*x;}, t_g());
       auto u=Matrix<double>(1,N,1.0);
       auto G=t_g()*u;
       auto GT=tr(G);
-      auto G2=t_g2*u;
-      auto G2T=tr(G2);
       auto Gmean=0.5*G+0.5*GT;
       
-      auto Gvar=0.5*G2+0.5*G2T-Gmean;
+      auto Gvar=elemMult(G,GT)-elemMult(Gmean,Gmean);
       
       return build<Qn>(n, t_minP, t_P,
-                       build<PG_n>(t_P() *Gmean* n()),
-                       build<PGG_n>(t_P()* Gvar * (n() * n() * 0.5)));
+                       build<PG_n>(elemMult(t_P() ,Gmean)* n()),
+                       build<PGG_n>(elemMult(t_P(), Gvar) * (n() * n() * 0.5)));
   }
   
   template <class C_Qn>
@@ -1374,8 +1405,7 @@ public:
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qn>> {
       auto dt = get<number_of_samples>(t_step)() / fs;
       auto ns =get<number_of_samples>(t_step) ;
-      auto tQx=f.fstop(Calc_Qx{},m, get<ATP_concentration>(t_step));
-      auto t_Qx = f.fstop(Calc_eigen{},tQx);
+      auto t_Qx = f.fstop(Calc_eigen{},m, get<ATP_concentration>(t_step));
       
       if (!t_Qx)
           return t_Qx.error();
@@ -1384,8 +1414,8 @@ public:
           
           number_of_samples n_ss(ns()*scale);
           double sdt=dt*scale;
-          auto t_Psub=calc_P(m,t_Qx.value(),sdt,get<min_P>(m)());
-          auto r_Qn=get_Qn( t_Psub,get<g>(m),n_ss,get<min_P>(m));
+          auto t_Psub=calc_P(m,t_Qx.value(),sdt,get<min_P>(m)()*scale);
+          auto r_Qn=get_Qn( t_Psub,get<g>(m),n_ss,min_P(get<min_P>(m)()*scale));
           for (std::size_t i=0; i<order; ++i)
           {
               r_Qn=sum_Qn(std::move(r_Qn),r_Qn);

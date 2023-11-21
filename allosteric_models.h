@@ -872,10 +872,12 @@ auto make_Q0_Qa(const Conformational_model &model,
       assert(v_i()() == i);
       auto v_j = get<Conformational_transition_landing_state_index>(trr());
       auto ag = get<Agonist_dependency>(trr());
+      auto d = get<Conformational_transition_direction>(trr());
+      
       auto Maybe_qij = calc_Qij<Id>(inter, names, par, trr);
       if (!Maybe_qij)
         return Maybe_qij.error();
-      else if (!ag()) {
+      else if (!ag()|| !d()) {
        // set(v_Q0(), i, i, v_Q0()(i, i) - Maybe_qij.value());  later change it back 
         set(v_Q0(), i, v_j()(), Maybe_qij.value());
       } else {
