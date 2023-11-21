@@ -3,6 +3,7 @@
 
 #include "parameters.h"
 #include "multivariate_normal_distribution.h"
+#include <vector>
 
 namespace var {
 
@@ -44,6 +45,14 @@ auto prior_around(const Parameters<Id>& x, double error )
     return Parameters_Normal_Distribution<Id>{Maybe_dist.value()};
 }
 
+template<class Id>
+auto prior_around(const Parameters<Id>& x, std::vector<double> values )
+{
+    assert(*std::min(values.begin(), values.end())>0);
+    auto Maybe_dist=make_multivariate_normal_distribution(x(),DiagPosDetMatrix<double>(values));
+    
+    return Parameters_Normal_Distribution<Id>{Maybe_dist.value()};
+}
 
 
 

@@ -434,12 +434,13 @@ auto operator*(const T& x, const S& y)
 }
 
 template<class T, class S>
-    requires(is_derivative_v<T>||is_derivative_v<S>)
+//    requires(is_derivative_v<T>||is_derivative_v<S>)
 auto max(const T& x, const S& y)
 {
     using std::max;
     return max(primitive(x),primitive(y));
 }
+
 
 
 
