@@ -1920,7 +1920,7 @@ int main(int argc, char **argv) {
   //  print(std::cerr,dm);
   //  print(std::cerr,m);
   auto fs = get<Frequency_of_Sampling>(experiment).value();
-  auto dini = macrodr::Macro_DMR{}.init<return_predictions(false)>(
+  auto dini = macrodr::Macro_DMR{}.init<return_predictions(false)>  (
       dm, get<initial_ATP_concentration>(experiment));
   auto ini = macrodr::Macro_DMR{}.init<return_predictions(false)>(
       m, get<initial_ATP_concentration>(experiment));
@@ -2046,8 +2046,8 @@ int main(int argc, char **argv) {
                                      uses_averaging_aproximation(2),
                                      uses_variance_aproximation(false),
                                      return_predictions(false)>(
-                         ftbl, model0, dparam1, experiment, sim.value()());
-      std::cerr << "\n" << i << "th likelihood!!\n" << lik;
+                         ftbl.fork(var::I_thread(0)), model0, dparam1, experiment, sim.value()());
+      //std::cerr << "\n" << i << "th likelihood!!\n" << lik;
       if (lik) {
         auto v_logL = get<logL>(lik.value());
         auto v_elogL = get<elogL>(lik.value());
@@ -2064,11 +2064,11 @@ int main(int argc, char **argv) {
           // for (std::size_t j= 0; j<v_delogL().size(); ++j)
           //     fo<<","<<"delogL_d"<<param1Names[j];
           fo << "\n";
-          mean_dlogL = Matrix<double>(1, v_delogL().size(), 0.0);
-          Cov_dlogL = SymPosDefMatrix<double>(v_delogL().size(),
-                                              v_delogL().size(), 0.0);
+          mean_dlogL = Matrix<double>(v_dlogL().nrows(), v_dlogL().ncols(), 0.0);
+          Cov_dlogL = SymPosDefMatrix<double>(v_dlogL().size(),
+                                              v_dlogL().size(), 0.0);
 
-          mean_edlogL = Matrix<double>(1, v_delogL().size(), 0.0);
+          mean_edlogL = Matrix<double>(v_delogL().nrows(), v_delogL().ncols(), 0.0);
           Cov_edlogL = SymPosDefMatrix<double>(v_delogL().size(),
                                                v_delogL().size(), 0.0);
         }
@@ -2081,9 +2081,9 @@ int main(int argc, char **argv) {
         //     fo<<"\t"<<v_delogL()[j];
         fo << "\n";
         mean_dlogL = mean_dlogL + v_dlogL();
-        Cov_dlogL = Cov_dlogL + XTX(v_dlogL());
+        Cov_dlogL = Cov_dlogL + XXT(v_dlogL());
         mean_edlogL = mean_edlogL + v_delogL();
-        Cov_edlogL = Cov_edlogL + XTX(v_delogL());
+        Cov_edlogL = Cov_edlogL + XXT(v_delogL());
       }
     }
     mean_dlogL = mean_dlogL * (1.0 / number_replicates);
@@ -2091,7 +2091,7 @@ int main(int argc, char **argv) {
 
     std::cerr << "\nmean_dlogL\n" << mean_dlogL << "\n";
     foa << "\nmean_dlogL\n" << mean_dlogL << "\n";
-    Cov_dlogL = Cov_dlogL * (1.0 / number_replicates) - XTX(mean_dlogL);
+    Cov_dlogL = Cov_dlogL * (1.0 / number_replicates) - XXT(mean_dlogL);
     std::cerr << "\nCov_dlogL\n" << Cov_dlogL << "\n";
     foa << "\nCov_dlogL\n" << Cov_dlogL << "\n";
 
@@ -2129,7 +2129,7 @@ int main(int argc, char **argv) {
   }
   
   
-  constexpr bool test_simulation_model = true;
+  constexpr bool test_simulation_model = false;
   if constexpr (test_simulation_model) {
       auto &model0 = model4;
       auto &param1Names = model0.names();
@@ -2163,7 +2163,7 @@ int main(int argc, char **argv) {
 
   if constexpr (test_derivative_per_algorithm) {
     auto number_replicates = 100;
-    auto outputfilename = "../macro_dr/output";
+    auto outputfilename = "test_derivative_"+ModelName;
 
     std::string fname = "_new_MacroRC100_log_N100";
 
@@ -2177,12 +2177,12 @@ int main(int argc, char **argv) {
     std::vector<Matrix<double>> mean_dlogL(algo.size());
     std::vector<SymPosDefMatrix<double>> Cov_dlogL(algo.size());
 
-    std::vector<Matrix<double>> mean_edlogL(algo.size());
-    std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
+    //std::vector<Matrix<double>> mean_edlogL(algo.size());
+    //std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
 
     std::string path = "derivative";
     auto ftb = FuncMap(
-        path,
+        ModelName,
         Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
                 num_scouts_per_ensemble / 2),
         Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
@@ -2233,12 +2233,25 @@ int main(int argc, char **argv) {
                     std::forward<decltype(x)>(x)...);
               }),
             num_scouts_per_ensemble / 2),
-        var::Time_it(F(Calc_Qdt{},
-                       [](auto &&...x) {
-                         auto m = Macro_DMR{};
-                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-                       }),
-                     num_scouts_per_ensemble / 2),
+        // var::Thread_Memoizer(
+        //     var::F(Calc_Qdt_step{},
+        //            [](auto &&...x) {
+        //              auto m = Macro_DMR{};
+        //                auto bisection_order=16ul;
+        //              return m.calc_Qdt_bisection(
+        //                  std::forward<decltype(x)>(x)...,bisection_order);
+        //            }),
+        //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+        //     num_scouts_per_ensemble / 2),
+        var::Time_it(
+            var::F(Calc_Qdt_step{},
+                   [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.calc_Qdt_ATP_step(
+                           std::forward<decltype(x)>(x)...);
+                   }),
+           // var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+            num_scouts_per_ensemble / 2),
         var::Time_it(F(Calc_Qx{},
                        [](auto &&...x) {
                          auto m = Macro_DMR{};
@@ -2322,7 +2335,7 @@ int main(int argc, char **argv) {
           auto v_vlogL = get<vlogL>(lik.value());
 
           auto v_dlogL = derivative(v_logL);
-          auto v_delogL = derivative(v_elogL);
+       //   auto v_delogL = derivative(v_elogL);
 
           if (i == 0) {
             fo[j] << "logL,elogL,vlogL";
@@ -2332,13 +2345,13 @@ int main(int argc, char **argv) {
             // for (std::size_t j= 0; j<v_delogL().size(); ++j)
             //     fo<<","<<"delogL_d"<<param1Names[j];
             fo[j] << "\n";
-            mean_dlogL[j] = Matrix<double>(1, v_delogL().size(), 0.0);
-            Cov_dlogL[j] = SymPosDefMatrix<double>(v_delogL().size(),
-                                                   v_delogL().size(), 0.0);
-
-            mean_edlogL[j] = Matrix<double>(1, v_delogL().size(), 0.0);
-            Cov_edlogL[j] = SymPosDefMatrix<double>(v_delogL().size(),
-                                                    v_delogL().size(), 0.0);
+            mean_dlogL[j] = Matrix<double>(v_dlogL().nrows(), v_dlogL().ncols(), 0.0);
+            Cov_dlogL[j] = SymPosDefMatrix<double>(v_dlogL().size(),
+                                                   v_dlogL().size(), 0.0);
+            
+         //   mean_edlogL[j] = Matrix<double>(v_delogL().nrows(), v_delogL().ncols(), 0.0);
+         //   Cov_edlogL[j] = SymPosDefMatrix<double>(v_delogL().size(),
+          //                                          v_delogL().size(), 0.0);
           }
           fo[j] << primitive(v_logL) << ",";
           fo[j] << primitive(v_elogL) << ",";
@@ -2349,9 +2362,9 @@ int main(int argc, char **argv) {
           //     fo<<"\t"<<v_delogL()[j];
           fo[j] << "\n";
           mean_dlogL[j] = mean_dlogL[j] + v_dlogL();
-          Cov_dlogL[j] = Cov_dlogL[j] + XTX(v_dlogL());
-          mean_edlogL[j] = mean_edlogL[j] + v_delogL();
-          Cov_edlogL[j] = Cov_edlogL[j] + XTX(v_delogL());
+          Cov_dlogL[j] = Cov_dlogL[j] + XXT(v_dlogL());
+          //mean_edlogL[j] = mean_edlogL[j] + v_delogL();
+          //Cov_edlogL[j] = Cov_edlogL[j] + XXT(v_delogL());
         }
       }
     }
@@ -2365,7 +2378,7 @@ int main(int argc, char **argv) {
       std::cerr << "\nmean_dlogL\n" << mean_dlogL[j] << "\n";
       foa << "\nmean_dlogL\n" << mean_dlogL[j] << "\n";
       Cov_dlogL[j] =
-          Cov_dlogL[j] * (1.0 / number_replicates) - XTX(mean_dlogL[j]);
+          Cov_dlogL[j] * (1.0 / number_replicates) - XXT(mean_dlogL[j]);
       std::cerr << "\nCov_dlogL\n" << Cov_dlogL[j] << "\n";
       foa << "\nCov_dlogL\n" << Cov_dlogL[j] << "\n";
 
@@ -2696,7 +2709,7 @@ thermodynamic parameter
       std::string n_points_per_decade_str =
           "_" + std::to_string(n_points_per_decade) + "_";
 
-      std::string filename = ModelName + "_sim_bisection_timeit_4800ch_MRAdap_only_7_" + all_at_once_str +
+      std::string filename = ModelName + "_sim_eig_4800ch_MRAdap_only_7_" + all_at_once_str +
                              "_randomized_jump_" + n_points_per_decade_str +
                              time_now() + "_" +
                              // std::to_string(bisection_count) + "_" +
@@ -2764,25 +2777,25 @@ thermodynamic parameter
                                std::forward<decltype(x)>(x)...);
                          }),
                        num_scouts_per_ensemble / 2),
-          var::Thread_Memoizer(
-              var::F(Calc_Qdt_step{},
-                     [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                         auto bisection_order=16ul;
-                       return m.calc_Qdt_bisection(
-                           std::forward<decltype(x)>(x)...,bisection_order);
-                     }),
-              var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-              num_scouts_per_ensemble / 2),
           // var::Thread_Memoizer(
           //     var::F(Calc_Qdt_step{},
           //            [](auto &&...x) {
-          //                auto m = Macro_DMR{};
-          //                return m.calc_Qdt_ATP_step(
-          //                    std::forward<decltype(x)>(x)...);
+          //              auto m = Macro_DMR{};
+          //                auto bisection_order=16ul;
+          //              return m.calc_Qdt_bisection(
+          //                  std::forward<decltype(x)>(x)...,bisection_order);
           //            }),
           //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-          //    num_scouts_per_ensemble / 2),
+          //     num_scouts_per_ensemble / 2),
+          var::Thread_Memoizer(
+              var::F(Calc_Qdt_step{},
+                     [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qdt_ATP_step(
+                             std::forward<decltype(x)>(x)...);
+                     }),
+              var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+             num_scouts_per_ensemble / 2),
           // var::Time_it(
           //     var::F(Calc_Qdt_step{},
           //            [](auto &&...x) {

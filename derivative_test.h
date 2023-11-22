@@ -12,7 +12,7 @@ template<class F, class Parameters, class... Xs>
 Maybe_error<bool> 
 test_Derivative(F f, const Parameters x, double dx, double eps, Xs const&...xs)
 {
-    auto dY=std::invoke(f,xs...);
+    auto dY=f(xs...);
     if (!(is_valid(dY)))
         return get_error(dY);
     else{
