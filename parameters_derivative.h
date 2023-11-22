@@ -150,7 +150,8 @@ public:
     friend auto zip_par(F &&f, d_d_ const &a,d_d_<bMatrix<double>,Parameters<Id>>const &b) {
         using S=std::decay_t<std::invoke_result_t<F,aMatrix<double>,bMatrix<double>>>;
         Matrix<S> x(a().nrows(), a().ncols());
-        for (std::size_t i = 0; i < x.size(); ++i)
+        
+        for (std::size_t i = 0; i < std::min(x.size(),b().size()); ++i)
             x[i] = f(a()[i],b()[i]);
         return d_d_<S,Parameters<Id>>(x);
     }
@@ -159,7 +160,7 @@ public:
     friend auto zip_par(F &&f, d_d_ const &a,d_d_<double,Parameters<Id>>const &b) {
         using S=std::decay_t<std::invoke_result_t<F,aMatrix<double>,double>>;
         Matrix<S> x(a().nrows(), a().ncols());
-        for (std::size_t i = 0; i < x.size(); ++i)
+        for (std::size_t i = 0; i < std::min(x.size(), b().size()); ++i)
             x[i] = f(a()[i],b()[i]);
         return d_d_<S,Parameters<Id>>(x);
     }
@@ -175,13 +176,17 @@ public:
     
     friend auto operator*(d_d_ const & df, const Parameters<Id>& x)
     {
+        if (df().size()==0) return aMatrix<double>{};
+        else{
         auto nrows=df()[0].nrows();
         auto ncols=df()[0].ncols();
         
-        auto out=aMatrix<double>(nrows,ncols); 
-        for (std::size_t i=0; i<df().size(); ++i)
+        auto out=aMatrix<double>(nrows,ncols);
+        
+        for (std::size_t i=0; i<std::min(df().size(),x.size()); ++i)
             out=out+df()[i]*x()[i];
         return out;
+        }
     }
     
     
@@ -487,6 +492,9 @@ auto inside_out(const Derivative<notSymmetricMatrix<double>,Parameters<Id>>& x)
     if (der.size()>0)
         for (std::size_t i=0; i<out.size(); ++i)
             out[i]=Derivative<double, Parameters<Id>>(x.primitive()[i], der[i]);
+    else
+        for (std::size_t i=0; i<out.size(); ++i)
+            out[i]=Derivative<double, Parameters<Id>>(x.primitive()[i]);
     return out;
 }
 
@@ -735,11 +743,34 @@ auto TranspMult(const Derivative<aMatrix<double>,Parameters<Id>> &a, const Deriv
     using S=std::decay_t<decltype(TranspMult(aMatrix<double>{},bMatrix<double>{}))>;
     auto& fa=primitive(a);
     auto& fb=primitive(b);
-    
-    return Derivative<S,Parameters<Id>>(TranspMult(fa,fb),
+    if (derivative(b)().size()==0)
+        return TranspMult(a,primitive(b));
+    else if (derivative(a)().size()==0)
+       return TranspMult(primitive(a),b);
+    else    
+       return Derivative<S,Parameters<Id>>(TranspMult(fa,fb),
                             zip_par([&fa,&fb](auto const & da, auto const & db)
                                     {return TranspMult(fa,db)+TranspMult(da,fb);}, derivative(a), derivative(b)));
+    
+    
+    
 }
+
+template<class Id,template<class> class aMatrix,template<class> class bMatrix >
+    requires aMatrix<double>::is_Matrix
+auto operator+(const Derivative<aMatrix<double>,Parameters<Id>> &a, const Derivative<bMatrix<double>,Parameters<Id>> &b) {
+    using S=std::decay_t<decltype(aMatrix<double>{}+bMatrix<double>{})>;
+    auto& fa=primitive(a);
+    auto& fb=primitive(b);
+   return Derivative<S,Parameters<Id>>(fa+fb,
+                                             zip_par([](auto const & da, auto const & db)
+                                                     {return da+db;}, derivative(a), derivative(b)));
+    
+    
+    
+}
+
+
 
 
 template<class Id,template<class> class aMatrix,template<class> class bMatrix >

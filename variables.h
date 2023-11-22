@@ -318,7 +318,7 @@ public:
     
     friend Vector_Space operator- (const Vector_Space& one, const Vector_Space& two)
     {
-        return Vector_Space(get<Vars>(one)-get<Vars>(two)...);
+        return Vector_Space(Vars(get<Vars>(one)()-get<Vars>(two)())...);
     }
     
 };

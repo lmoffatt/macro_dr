@@ -2189,13 +2189,13 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
               auto t_Qdt = std::move(Maybe_t_Qdt.value());
 
               //
-              if constexpr (false) {
+              if constexpr (true) {
                 auto test_der_t_Qdt = var::test_Derivative(
                     [this, &t_step, &fs, &gege,&f](auto const &l_m,
                                                 auto const &l_Qx) {
-                      return f.f(Calc_Qdt{},l_m, t_step, fs);
+                          return calc_Qdt(f,l_m, t_step, fs);
                     },
-                    1e-6, 1e-2, m);
+                    1e-6, 1e-2, m, t_Qdt);
                 if (true && !test_der_t_Qdt) {
                   std::cerr << test_der_t_Qdt.error()();
                   std::cerr << "\nt_step\n" << t_step;
