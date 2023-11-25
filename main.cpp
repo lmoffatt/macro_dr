@@ -25,6 +25,7 @@
 #include <map>
 #include <random>
 #include <string>
+#include <tuple>
 #include <vector>
 using namespace macrodr;
 
@@ -899,10 +900,9 @@ int main(int argc, char **argv) {
 
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
     p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
-    
-//    auto p = Parameters<Model0>(p_kinetics);
+
+    //    auto p = Parameters<Model0>(p_kinetics);
     auto p = Parameters<Model0>(p_k_MH2007);
-    
 
     auto logp =
         Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
@@ -966,15 +966,14 @@ int main(int argc, char **argv) {
               build<Current_Noise>(v_curr_noise),
               build<Current_Baseline>(v_baseline),
               N_Ch_mean_time_segment_duration(121000),
-              Binomial_magical_number(5.0), min_P(1e-7),
+              Binomial_magical_number(5.0), min_P(1e-14),
               Probability_error_tolerance(1e-2),
               Conductance_variance_error_tolerance(1e-2));
         },
         std::move(logp), std::move(names_model), v_Q0_formula, v_Qa_formula,
         v_g_formula);
   });
-  
-  
+
   auto model4_g_lin = Model0::Model([]() {
     auto names_model = std::vector<std::string>{"k01",
                                                 "k10",
@@ -1275,19 +1274,10 @@ int main(int argc, char **argv) {
         std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
 
     auto p_kinetics = std::vector<double>{
-        10, 1000,
-        1000, 100000,
-        1, 100,
-        100, 1, 1,
-        1, 1, 1,
-        100, 1, 1,
-        1};
-    auto p_Moffatt_Hume_transformed = std::vector<double>{9.28,1871,
-               2547.88, 295207,
-               0.220378, 150.312,
-               74.865, 0.0323846, 0.187903,
-               1.77,-0.457748, 1,
-               123,       1,        1.3411,1};
+        10, 1000, 1000, 100000, 1, 100, 100, 1, 1, 1, 1, 1, 100, 1, 1, 1};
+    auto p_Moffatt_Hume_transformed = std::vector<double>{
+        9.28,     1871, 2547.88,   295207, 0.220378, 150.312, 74.865, 0.0323846,
+        0.187903, 1.77, -0.457748, 1,      123,      1,       1.3411, 1};
     auto p_other = std::vector<double>{1000, 1e-3, 1};
 
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
@@ -1418,14 +1408,9 @@ int main(int argc, char **argv) {
     auto names_other =
         std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
 
-    auto p_kinetics = std::vector<double>{
-        9.28, 1871,
-        3875, 1.07,
-        914,  776,
-        65.1 * 1.15, 1.15,33.3,
-        1.77, 0.77, 1.77,
-        123,  123,  635,
-        1};
+    auto p_kinetics =
+        std::vector<double>{9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
+                            33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
     auto p_other = std::vector<double>{2000, 1e-3, 1};
 
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
@@ -1463,14 +1448,13 @@ int main(int argc, char **argv) {
           auto RG = tr_p()[12];
           auto RG_Ron = tr_p()[13];
           auto RG_Gon = tr_p()[14];
-          auto Gating_Current = tr_p()[15]* (-1.0);
+          auto Gating_Current = tr_p()[15] * (-1.0);
 
           auto Rocking_on = Rocking_on_B / pow(BR_Bon, 3);
           auto Rocking_off = Rocking_off_B * pow(BR / BR_Bon, 3);
 
           auto Gating_on = Gating_off_BR / pow(BG_Gon, 3) / RG_Gon;
-          auto Gating_off =
-              Gating_off_BR * pow(BG / BG_Gon, 3) * RG / RG_Gon;
+          auto Gating_off = Gating_off_BR * pow(BG / BG_Gon, 3) * RG / RG_Gon;
 
           auto BR_0 = log(BR_Bon) / log(BR);
           auto BR_1 = log(BR_Ron) / log(BR);
@@ -1484,22 +1468,22 @@ int main(int argc, char **argv) {
           auto p = tr_p;
           p()[2] = Rocking_on;
           p()[3] = Rocking_off;
-          
+
           p()[4] = Gating_on;
           p()[5] = Gating_off;
-          
+
           p()[7] = BR_0;
           p()[8] = BR_1;
-          
+
           p()[10] = BG_0;
           p()[11] = BG_1;
-          
+
           p()[13] = RG_0;
           p()[14] = RG_1;
-          p()[15] = Gating_Current;  
+          p()[15] = Gating_Current;
           auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
-          //std::cerr<<"parameters\n"<<p();
-          
+          // std::cerr<<"parameters\n"<<p();
+
           assert(Maybe_Q0Qag);
           auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
           auto Npar = names().size();
@@ -1524,11 +1508,12 @@ int main(int argc, char **argv) {
         logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
   });
 
-  auto sd_log_model6_eff=std::vector<double>(15,1e-5);
-  sd_log_model6_eff.insert(sd_log_model6_eff.end(),4,2);
-  sd_log_model6_eff[18]=50;
-  
-  auto prior_model6_Eff_no_inactivation=var::prior_around(model6_Eff_no_inactivation.parameters(),sd_log_model6_eff);
+  auto sd_log_model6_eff = std::vector<double>(15, 1e-5);
+  sd_log_model6_eff.insert(sd_log_model6_eff.end(), 4, 2);
+  sd_log_model6_eff[18] = 50;
+
+  auto prior_model6_Eff_no_inactivation = var::prior_around(
+      model6_Eff_no_inactivation.parameters(), sd_log_model6_eff);
 
   auto model7 = Allost1::Model([]() {
     auto v_rocking = Conformational_change_label{"Rocking"};
@@ -1920,7 +1905,7 @@ int main(int argc, char **argv) {
   //  print(std::cerr,dm);
   //  print(std::cerr,m);
   auto fs = get<Frequency_of_Sampling>(experiment).value();
-  auto dini = macrodr::Macro_DMR{}.init<return_predictions(false)>  (
+  auto dini = macrodr::Macro_DMR{}.init<return_predictions(false)>(
       dm, get<initial_ATP_concentration>(experiment));
   auto ini = macrodr::Macro_DMR{}.init<return_predictions(false)>(
       m, get<initial_ATP_concentration>(experiment));
@@ -2017,6 +2002,160 @@ int main(int argc, char **argv) {
 
   std::mt19937_64 mt(seed);
 
+  /**
+   * @brief analyze_and_test_Qdt
+   *
+   * the objective of this section is to do two things
+   *
+   * 1. a sanity check of the coding of Qdt by comparing it to Qdt_by_bisection
+   * both should give comparable results.
+   *
+   * 2. provide data to build some nice graphs ilustrating the concept of Qdt
+   *
+   *
+   *  with all this in mind we need to show that both functions are comparable
+   * in a wide range of concentration and dt and for current model. (model0)
+   *
+   */
+  constexpr bool analyze_and_test_Qdt = true;
+  if constexpr (analyze_and_test_Qdt) {
+
+    auto orders = std::vector<std::size_t>{1, 2, 3, 5, 8, 12, 16};
+
+    // auto xs = std::vector<ATP_concentration>{
+    //     ATP_concentration(0),    ATP_concentration(100),
+    //     ATP_concentration(200),  ATP_concentration(500),
+    //     ATP_concentration(1000), ATP_concentration(2000),
+    //     ATP_concentration(5000), ATP_concentration(10000)};
+    
+    auto xs = std::vector<ATP_concentration>{
+                                             ATP_concentration(0),    ATP_concentration(10000)};
+    
+    auto dts = std::vector<double>();
+    double dt_min = 1e-6;
+    double dt_max = 1;
+    double n_per_decade_dt = 12;
+
+    double log10_dt_run = std::log10(dt_min);
+    while (log10_dt_run <= std::log10(dt_max)) {
+      dts.push_back(std::pow(10.0, log10_dt_run));
+      log10_dt_run += 1.0 / n_per_decade_dt;
+    }
+
+    std::string filename = "Qdt_comparison_";
+
+    std::ofstream fo_i(filename + ModelName + "_istate_.txt");
+    std::ofstream fo_ij(filename + ModelName + "_istate_jstate.txt");
+
+    fo_i << "ATP"
+         << ","
+         << "dt"
+         << ","
+         << "algoritm"
+         << ","
+         << "order"
+         << ","
+         << "variable"
+         << ","
+         << "i_state"
+         << ","
+         << "value"
+         << "\n";
+    fo_ij << "ATP"
+          << ","
+          << "dt"
+          << ","
+          << "algoritm"
+          << ","
+          << "order"
+          << ","
+          << "variable"
+          << ","
+          << "i_state"
+          << ","
+          << "j_state"
+          << ","
+          << "value"
+          << "\n";
+
+    auto m = model0(param1);
+    auto fs = 50e3;
+    for (auto x : xs) {
+      for (auto dt : dts) {
+        //, , ,
+        //  , , , ,
+        auto n = number_of_samples(dt * fs);
+        auto step = ATP_step(n, x);
+        Qdt Qdtd = macrodr::Macro_DMR{}.calc_Qdt(ftbl.fork(var::I_thread(0)), m, step, fs).value();
+        for (std::size_t i = 0; i < get<gmean_i>(Qdtd)().size(); ++i) {
+          std::apply(
+              [x, dt, i, &fo_i](auto const &...g_i) {
+                ((fo_i << x.value() << "," << dt << ","
+                       << "Qdt_eig"
+                       << "," << 0 << "," << className(g_i) << "," << i << ","
+                       << g_i()[i] << "\n"),
+                 ...);
+              },
+              std::forward_as_tuple(get<gmean_i>(Qdtd), get<gsqr_i>(Qdtd),
+                                    get<gvar_i>(Qdtd)));
+        }
+        for (std::size_t i = 0; i < get<gtotal_ij>(Qdtd)().nrows(); ++i) {
+          for (std::size_t j = 0; j < get<gtotal_ij>(Qdtd)().ncols(); ++j) {
+
+            std::apply(
+                [x, dt, &fo_ij, i, j](auto const &...g_ij) {
+                  ((fo_ij << x.value() << "," << dt << ","
+                          << "Qdt_eig"
+                          << "," << 0 << "," << className(g_ij) << "," << i
+                          << "," << j << "," << g_ij()(i, j) << "\n"),
+                   ...);
+                },
+                std::forward_as_tuple(get<P>(Qdtd),get<gtotal_ij>(Qdtd), get<gmean_ij>(Qdtd),
+                                      get<gtotal_sqr_ij>(Qdtd),
+                                      get<gtotal_var_ij>(Qdtd),
+                                      get<gvar_ij>(Qdtd)));
+          }
+        }
+
+        for (auto order : orders) {
+          Qdt Q_dtb = macrodr::Macro_DMR{}
+                          .calc_Qdt_bisection(ftbl.fork(var::I_thread(0)), m, step, fs, order)
+                          .value();
+
+          for (std::size_t i = 0; i < get<gmean_i>(Qdtd)().size(); ++i) {
+            std::apply(
+                [x, dt, i, &fo_i,order](auto const &...g_i) {
+                  ((fo_i << x.value() << "," << dt << ","
+                         << "Qdt_bis"
+                         << "," << order << "," << className(g_i) << "," << i
+                         << "," << g_i()[i] << "\n"),
+                   ...);
+                },
+                std::forward_as_tuple(get<gmean_i>(Q_dtb), get<gsqr_i>(Q_dtb),
+                                      get<gvar_i>(Q_dtb)));
+          }
+          for (std::size_t i = 0; i < get<gtotal_ij>(Q_dtb)().nrows(); ++i) {
+            for (std::size_t j = 0; j < get<gtotal_ij>(Q_dtb)().ncols(); ++j) {
+
+              std::apply(
+                  [x, dt, &fo_ij, i, j,order](auto const &...g_ij) {
+                    ((fo_ij << x.value() << "," << dt << ","
+                            << "Qdt_bis"
+                            << "," << order << "," << className(g_ij) << ","
+                            << i << "," << j << "," << g_ij()(i, j) << "\n"),
+                     ...);
+                  },
+                  std::forward_as_tuple(get<P>(Q_dtb),
+                      get<gtotal_ij>(Q_dtb), get<gmean_ij>(Q_dtb),
+                      get<gtotal_sqr_ij>(Q_dtb), get<gtotal_var_ij>(Q_dtb),
+                      get<gvar_ij>(Q_dtb)));
+            }
+          }
+        }
+      }
+    }
+  }
+
   constexpr bool test_derivative = false;
 
   if constexpr (test_derivative) {
@@ -2046,8 +2185,9 @@ int main(int argc, char **argv) {
                                      uses_averaging_aproximation(2),
                                      uses_variance_aproximation(false),
                                      return_predictions(false)>(
-                         ftbl.fork(var::I_thread(0)), model0, dparam1, experiment, sim.value()());
-      //std::cerr << "\n" << i << "th likelihood!!\n" << lik;
+                         ftbl.fork(var::I_thread(0)), model0, dparam1,
+                         experiment, sim.value()());
+      // std::cerr << "\n" << i << "th likelihood!!\n" << lik;
       if (lik) {
         auto v_logL = get<logL>(lik.value());
         auto v_elogL = get<elogL>(lik.value());
@@ -2064,11 +2204,13 @@ int main(int argc, char **argv) {
           // for (std::size_t j= 0; j<v_delogL().size(); ++j)
           //     fo<<","<<"delogL_d"<<param1Names[j];
           fo << "\n";
-          mean_dlogL = Matrix<double>(v_dlogL().nrows(), v_dlogL().ncols(), 0.0);
-          Cov_dlogL = SymPosDefMatrix<double>(v_dlogL().size(),
-                                              v_dlogL().size(), 0.0);
+          mean_dlogL =
+              Matrix<double>(v_dlogL().nrows(), v_dlogL().ncols(), 0.0);
+          Cov_dlogL =
+              SymPosDefMatrix<double>(v_dlogL().size(), v_dlogL().size(), 0.0);
 
-          mean_edlogL = Matrix<double>(v_delogL().nrows(), v_delogL().ncols(), 0.0);
+          mean_edlogL =
+              Matrix<double>(v_delogL().nrows(), v_delogL().ncols(), 0.0);
           Cov_edlogL = SymPosDefMatrix<double>(v_delogL().size(),
                                                v_delogL().size(), 0.0);
         }
@@ -2127,43 +2269,37 @@ int main(int argc, char **argv) {
           << "\n";
     }
   }
-  
-  
+
   constexpr bool test_simulation_model = false;
   if constexpr (test_simulation_model) {
-      auto &model0 = model4;
-      auto &param1Names = model0.names();
-      auto &param1 = model0.parameters();
-      std::string ModelName = "model4";
-      using MyModel = Allost1;
-      
-      auto m=model0(param1);
-      
-      
-      save(ModelName,m);
-      
-      std::string fname = "simulate_model";
-      std::size_t nrep=20;
-      std::vector<Simulated_Recording> out(20);
-      for (std::size_t i=0; i<nrep; ++i)
-      {
+    auto &model0 = model4;
+    auto &param1Names = model0.names();
+    auto &param1 = model0.parameters();
+    std::string ModelName = "model4";
+    using MyModel = Allost1;
+
+    auto m = model0(param1);
+
+    save(ModelName, m);
+
+    std::string fname = "simulate_model";
+    std::size_t nrep = 20;
+    std::vector<Simulated_Recording> out(20);
+    for (std::size_t i = 0; i < nrep; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
           Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
           recording);
-          out[i]=sim.value();    
-      }    
-      save(ModelName,out);
-      
-  }  
-  
-  
-  
+      out[i] = sim.value();
+    }
+    save(ModelName, out);
+  }
+
   constexpr bool test_derivative_per_algorithm = false;
 
   if constexpr (test_derivative_per_algorithm) {
     auto number_replicates = 100;
-    auto outputfilename = "test_derivative_"+ModelName;
+    auto outputfilename = "test_derivative_" + ModelName;
 
     std::string fname = "_new_MacroRC100_log_N100";
 
@@ -2177,8 +2313,8 @@ int main(int argc, char **argv) {
     std::vector<Matrix<double>> mean_dlogL(algo.size());
     std::vector<SymPosDefMatrix<double>> Cov_dlogL(algo.size());
 
-    //std::vector<Matrix<double>> mean_edlogL(algo.size());
-    //std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
+    // std::vector<Matrix<double>> mean_edlogL(algo.size());
+    // std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
 
     std::string path = "derivative";
     auto ftb = FuncMap(
@@ -2246,11 +2382,11 @@ int main(int argc, char **argv) {
         var::Time_it(
             var::F(Calc_Qdt_step{},
                    [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                       return m.calc_Qdt_ATP_step(
-                           std::forward<decltype(x)>(x)...);
+                     auto m = Macro_DMR{};
+                     return m.calc_Qdt_ATP_step(
+                         std::forward<decltype(x)>(x)...);
                    }),
-           // var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+            // var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
             num_scouts_per_ensemble / 2),
         var::Time_it(F(Calc_Qx{},
                        [](auto &&...x) {
@@ -2335,7 +2471,7 @@ int main(int argc, char **argv) {
           auto v_vlogL = get<vlogL>(lik.value());
 
           auto v_dlogL = derivative(v_logL);
-       //   auto v_delogL = derivative(v_elogL);
+          //   auto v_delogL = derivative(v_elogL);
 
           if (i == 0) {
             fo[j] << "logL,elogL,vlogL";
@@ -2345,13 +2481,15 @@ int main(int argc, char **argv) {
             // for (std::size_t j= 0; j<v_delogL().size(); ++j)
             //     fo<<","<<"delogL_d"<<param1Names[j];
             fo[j] << "\n";
-            mean_dlogL[j] = Matrix<double>(v_dlogL().nrows(), v_dlogL().ncols(), 0.0);
+            mean_dlogL[j] =
+                Matrix<double>(v_dlogL().nrows(), v_dlogL().ncols(), 0.0);
             Cov_dlogL[j] = SymPosDefMatrix<double>(v_dlogL().size(),
                                                    v_dlogL().size(), 0.0);
-            
-         //   mean_edlogL[j] = Matrix<double>(v_delogL().nrows(), v_delogL().ncols(), 0.0);
-         //   Cov_edlogL[j] = SymPosDefMatrix<double>(v_delogL().size(),
-          //                                          v_delogL().size(), 0.0);
+
+            //   mean_edlogL[j] = Matrix<double>(v_delogL().nrows(),
+            //   v_delogL().ncols(), 0.0); Cov_edlogL[j] =
+            //   SymPosDefMatrix<double>(v_delogL().size(),
+            //                                          v_delogL().size(), 0.0);
           }
           fo[j] << primitive(v_logL) << ",";
           fo[j] << primitive(v_elogL) << ",";
@@ -2363,8 +2501,8 @@ int main(int argc, char **argv) {
           fo[j] << "\n";
           mean_dlogL[j] = mean_dlogL[j] + v_dlogL();
           Cov_dlogL[j] = Cov_dlogL[j] + XXT(v_dlogL());
-          //mean_edlogL[j] = mean_edlogL[j] + v_delogL();
-          //Cov_edlogL[j] = Cov_edlogL[j] + XXT(v_delogL());
+          // mean_edlogL[j] = mean_edlogL[j] + v_delogL();
+          // Cov_edlogL[j] = Cov_edlogL[j] + XXT(v_delogL());
         }
       }
     }
@@ -2569,7 +2707,7 @@ thermodynamic parameter
                           sim.value()(), experiment);
   }
 
-  constexpr bool cuevi_by_max_iter = true;
+  constexpr bool cuevi_by_max_iter = false;
   if (cuevi_by_max_iter) {
     /**
      * @brief myseed defines the random number seed so all runs are identical
@@ -2709,9 +2847,9 @@ thermodynamic parameter
       std::string n_points_per_decade_str =
           "_" + std::to_string(n_points_per_decade) + "_";
 
-      std::string filename = ModelName + "_sim_eig_4800ch_MRAdap_only_7_" + all_at_once_str +
-                             "_randomized_jump_" + n_points_per_decade_str +
-                             time_now() + "_" +
+      std::string filename = ModelName + "_sim_eig_4800ch_MRAdap_only_7_" +
+                             all_at_once_str + "_randomized_jump_" +
+                             n_points_per_decade_str + time_now() + "_" +
                              // std::to_string(bisection_count) + "_" +
                              std::to_string(myseed);
 
@@ -2759,11 +2897,11 @@ thermodynamic parameter
                                 uses_averaging_aproximation(2),
                                 uses_variance_aproximation(false)>{},
                          [](auto &&...x) {
-                             auto m = Macro_DMR{};
-                             return m.Macror<uses_recursive_aproximation(true),
-                                             uses_averaging_aproximation(2),
-                                             uses_variance_aproximation(false)>(
-                                 std::forward<decltype(x)>(x)...);
+                           auto m = Macro_DMR{};
+                           return m.Macror<uses_recursive_aproximation(true),
+                                           uses_averaging_aproximation(2),
+                                           uses_variance_aproximation(false)>(
+                               std::forward<decltype(x)>(x)...);
                          }),
                        num_scouts_per_ensemble / 2),
           var::Time_it(F(MacroR<uses_recursive_aproximation(false),
@@ -2790,12 +2928,12 @@ thermodynamic parameter
           var::Thread_Memoizer(
               var::F(Calc_Qdt_step{},
                      [](auto &&...x) {
-                         auto m = Macro_DMR{};
-                         return m.calc_Qdt_ATP_step(
-                             std::forward<decltype(x)>(x)...);
+                       auto m = Macro_DMR{};
+                       return m.calc_Qdt_ATP_step(
+                           std::forward<decltype(x)>(x)...);
                      }),
               var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-             num_scouts_per_ensemble / 2),
+              num_scouts_per_ensemble / 2),
           // var::Time_it(
           //     var::F(Calc_Qdt_step{},
           //            [](auto &&...x) {

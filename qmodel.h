@@ -304,26 +304,61 @@ class Transition_rate_W
     : public var::Var<Transition_rate_W, Matrix<double>, var::dimensionless> {};
 */
 
-class P : public Var<P, Matrix<double>> {};
+class P : public Var<P, Matrix<double>> {
+    friend std::string className(P){return "P_ij";}
+};
+    
+class gmean_i : public Var<gmean_i, Matrix<double>> {
+    friend std::string className(gmean_i){return "gmean_i";}
+    
+};
+class gtotal_ij : public Var<gtotal_ij, Matrix<double>> {
+    friend std::string className(gtotal_ij){return "gtotal_ij";}
+};
+class gmean_ij : public Var<gmean_ij, Matrix<double>>{
+    friend std::string className(gmean_ij){return "gmean_ij";}
+};
+class gtotal_sqr_ij : public Var<gtotal_sqr_ij, Matrix<double>> {
+    friend std::string className(gtotal_sqr_ij){return "gtotal_sqr_ij";}
+};
+class gsqr_i : public Var<gsqr_i, Matrix<double>> {
+    friend std::string className(gsqr_i){return "gsqr_i";}
+};
+class gvar_i : public Var<gvar_i, Matrix<double>> {
+    friend std::string className(gvar_i){return "gvar_i";}
+};
+class gtotal_var_ij : public Var<gtotal_var_ij, Matrix<double>> {
+    friend std::string className(gtotal_var_ij){return "gtotal_var_ij";}
+};
+class gvar_ij : public Var<gvar_ij, Matrix<double>> {
+    friend std::string className(gvar_ij){return "gvar_ij";}
+};
 
-class gmean_i : public Var<gmean_i, Matrix<double>> {};
-class gtotal_ij : public Var<gtotal_ij, Matrix<double>> {};
-class gmean_ij : public Var<gmean_ij, Matrix<double>> {};
-class gtotal_sqr_ij : public Var<gtotal_sqr_ij, Matrix<double>> {};
-class gsqr_i : public Var<gsqr_i, Matrix<double>> {};
-class gvar_i : public Var<gvar_i, Matrix<double>> {};
-class gtotal_var_ij : public Var<gtotal_var_ij, Matrix<double>> {};
-class gvar_ij : public Var<gvar_ij, Matrix<double>> {};
+class y_mean : public var::Var<y_mean, double> {
+    friend std::string className(y_mean){return "y_mean";}
+};
+class y_var : public var::Var<y_var, double> {
+    friend std::string className(y_var){return "y_var";}
+};
+class plogL : public var::Var<plogL, double> {
+    friend std::string className(plogL){return "plogL";}
+};
+class eplogL : public var::Var<eplogL, double> {
+    friend std::string className(eplogL){return "eplogL";}
+};
+class vplogL : public var::Var<vplogL, double> {
+    friend std::string className(vplogL){return "vplogL";}
+};
 
-class y_mean : public var::Var<y_mean, double> {};
-class y_var : public var::Var<y_var, double> {};
-class plogL : public var::Var<plogL, double> {};
-class eplogL : public var::Var<eplogL, double> {};
-class vplogL : public var::Var<vplogL, double> {};
-
-class logL : public var::Var<logL, double> {};
-class elogL : public var::Var<elogL, double> {};
-class vlogL : public var::Var<vlogL, double> {};
+class logL : public var::Var<logL, double> {
+    friend std::string className(logL){return "logL";}
+};
+class elogL : public var::Var<elogL, double> {
+    friend std::string className(elogL){return "elogL";}
+};
+class vlogL : public var::Var<vlogL, double> {
+    friend std::string className(vlogL){return "vlogL";}
+};
 
 class PGn : public var::Var<PGn, Matrix<double>> {};
 class PGG_n : public var::Var<PGG_n, Matrix<double>> {};
@@ -2189,7 +2224,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
               auto t_Qdt = std::move(Maybe_t_Qdt.value());
 
               //
-              if constexpr (true) {
+              if constexpr (false) {
                 auto test_der_t_Qdt = var::test_Derivative(
                     [this, &t_step, &fs, &gege,&f](auto const &l_m,
                                                 auto const &l_Qx) {
