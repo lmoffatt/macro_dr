@@ -2,6 +2,8 @@
 #define MULTIVARIATE_NORMAL_DISTRIBUTION_H
 
 #include "matrix.h"
+#include "maybe_error.h"
+#include <cmath>
 #include <iostream>
 #include <random>
 
@@ -209,6 +211,164 @@ make_multivariate_normal_distribution_from_precision(Mat &&mean, Cov &&cov_inv) 
                          " cholesky fails to be built from precision");
     }
 }
+
+
+
+
+
+template <typename T, class Cova>
+    requires Covariance<T, Cova>
+class multivariate_normal_distribution_by_eig {
+private:
+    std::normal_distribution<T> n_;
+    Matrix<T> mean_;
+    Cova cov_;
+    Matrix<T> m_Q;
+    DiagonalMatrix<T> m_std;
+    Cova cov_inv_;
+    double logdetCov_;
+    
+    static double calc_logdet(const DiagonalMatrix<T>& t_var, double min_landa) {
+        double out=0; 
+        for (std::size_t i=0; i<t_var.size(); ++i)
+        {
+            if (t_var[i]>min_landa)
+                out=out+std::log(t_var[i]);
+            
+        }
+        return out; 
+    }
+    
+    static double calc_std(const DiagonalMatrix<T>& t_var, double min_landa) {
+        
+        DiagonalMatrix<T> t_std(t_var.nrows(),t_var.ncols()); 
+        for (std::size_t i=0; i<t_var.size(); ++i)
+        {
+            if (t_var[i]>min_landa)
+                t_std[i]=std::sqrt(t_var[i]);
+            
+        }
+        return t_std; 
+    }
+    
+    static double calc_cov_inv(const Matrix<T>& Q,const DiagonalMatrix<T>& t_var, double min_landa) {
+        
+        DiagonalMatrix<T> v_inv(t_var.nrows(),t_var.ncols()); 
+        for (std::size_t i=0; i<t_var.size(); ++i)
+        {
+            if (t_var[i]>min_landa)
+                v_inv[i]=1/t_var[i];
+            
+        }
+        return Q*v_inv*tr(Q); 
+    }
+    
+    
+    
+    
+    
+    multivariate_normal_distribution_by_eig(Matrix<T> &&t_mean, Cova &&t_cov,
+                                            Matrix<T>&& Q,
+                                            DiagonalMatrix<T>&& std,
+                                            Cova&& cov_inv,
+                                            double logdetCov
+                                     ):
+        n_{}, mean_{std::move(t_mean)}, cov_{std::move(t_cov)},
+        m_Q{std::move(Q)}, m_std{std::move(std)},cov_inv_{std::move(cov_inv)},logdetCov_{logdetCov} {}
+    
+public:
+    template <
+        class Mat, class Cov,
+        typename Te,
+        //= std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
+        class Covae>
+    // = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
+        requires (Covariance<Te, Covae> && contains_value<Mat &&, Matrix<Te>> &&
+                 contains_value<Cov &&, Covae>)
+    friend Maybe_error<multivariate_normal_distribution_by_eig<Te, Covae>>
+    make_multivariate_normal_distribution_by_eig(Mat &&mean, Cov &&cov);
+    
+    
+    auto &mean() const { return mean_; }
+    
+    std::size_t size()const {return mean().size();}
+    auto &cov() const { return cov_; }
+    
+    auto &cov_inv() const { return cov_inv_; }
+    
+    Matrix<double> operator()(std::mt19937_64 &mt) {
+        auto z = sample(mt, normal_distribution(0,1),mean().nrows(), mean().ncols());
+        if (mean().nrows()==1)
+            return z* tr(m_Q*m_std)+mean();
+        else
+            return m_Q*m_std * z+mean();
+    }
+    auto operator()(std::mt19937_64 &mt, std::size_t n) {
+        return  sample(mt,normal_distribution(0.0,1.0), n, mean().ncols()) * tr(m_Q*m_std);
+    }
+    
+    auto logDetCov() const {return logdetCov_;}
+    double chi2(const Matrix<T>& x)const {
+        auto xdiff=x - mean();
+        if (xdiff.nrows()==cov_inv().nrows())
+            return xtAx(xdiff, cov_inv());
+        else
+            return xAxt(xdiff, cov_inv());
+        
+    }
+    Maybe_error<double> logP(const Matrix<T>& x)const
+    {
+        assert(x.size()==mean().size());
+        double out=-0.5 * (mean().size() * log(2*std::numbers::pi) + logDetCov() + chi2(x));
+        if (std::isfinite(out))
+            return out;
+        else
+            return error_message("likelihood not finite:" +std::to_string(out));
+    }
+    
+    friend std::ostream& operator<<(std::ostream& os, const multivariate_normal_distribution_by_eig& m)
+    {
+        
+        os<<"mean "<<m.mean();
+        os<<"diag(cov) "<<diag(m.cov());
+        return os;
+        
+    }
+};
+
+
+
+template <
+    class Mat, class Cov,
+    typename T = std::decay_t<decltype(get_value(std::declval<Mat>())(0ul, 0ul))>,
+    class Cova = std::decay_t<decltype(get_value(std::declval<Cov>()))>>
+    requires (Covariance<T, Cova> && contains_value<Mat &&, Matrix<T>> &&
+             contains_value<Cov &&, Cova>)
+Maybe_error<multivariate_normal_distribution_by_eig<T, Cova>>
+make_multivariate_normal_distribution_by_eig(Mat &&mean, Cov &&cov, double min_std) {
+    if (!is_valid(mean))
+        return get_error(mean);
+    else if (!is_valid(cov))
+        return get_error(cov);
+    else  {
+        auto beta_cov = get_value(std::forward<Cov>(cov));
+        auto Maybe_eig =eigs(beta_cov);
+        
+        if (!Maybe_eig)
+            return Maybe_eig.error();
+        else {
+            auto [r_Q,r_var]=std::move(Maybe_eig.value());
+            auto meanbeta = get_value(std::forward<Mat>(mean));
+            auto logDetCov=calc_logdet(r_var);
+            auto v_Cov_inv=calc_cov_inv(r_Q,r_var);
+            auto v_std=calc_std(r_var,min_std);
+            return multivariate_normal_distribution_by_eig<T, Cova>(
+                        std::move(meanbeta), std::move(beta_cov), std::move(r_Q),
+                std::move(v_std),std::move(v_Cov_inv),logDetCov);
+        }
+    }
+}
+
 
 
 
