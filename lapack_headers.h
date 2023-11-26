@@ -5,6 +5,7 @@
 #include "maybe_error.h"
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 
 namespace lapack {
 
@@ -1649,6 +1650,459 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
   }
 }
 
+
+extern "C" void dsyevx_(char *JOBZ, char *RANGE, char *UPLO, int *N,
+                        double * /*precision, dimension(lda, *) */ A, int *LDA,
+                        double *VL, double *VU, int *IL, int *IU,
+                        double *ABSTOL, int *M,
+                        double * /*precision, dimension(*) */ W,
+                        double * /*
+                         dimension(ldz, *) */
+                            Z,
+                        int *LDZ, double * /*precision, dimension(*) */ WORK,
+                        
+                        
+                        int *LWORK, int * /*, dimension(*) */ IWORK,
+                        int * /*, dimension(*) */ IFAIL, int *INFO);
+
+
+
+extern "C" void ddisna_(char *JOB, int * M, int *N,double * D, double *SEP,int * INFO );
+
+
+inline Maybe_error<std::tuple<Matrix<double>,DiagonalMatrix<double>,Matrix<double>>> Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind) {
+    
+    assert(x.isSymmetric());
+    using lapack::dsyevx_;
+    
+    /** DSYEVX computes the eigenvalues and, optionally, the left and/or right eigenvectors for SY matrices
+
+Download DSYEVX + dependencies [TGZ] [ZIP] [TXT]
+
+Purpose:
+
+     DSYEVX computes selected eigenvalues and, optionally, eigenvectors
+     of a real symmetric matrix A.  Eigenvalues and eigenvectors can be
+     selected by specifying either a range of values or a range of indices
+     for the desired eigenvalues.
+*/
+    /**
+Parameters
+    [in]	JOBZ
+
+              JOBZ is CHARACTER*1
+              = 'N':  Compute eigenvalues only;
+              = 'V':  Compute eigenvalues and eigenvectors.
+*/
+    
+    char JOBZ = 'V';
+    
+    /**
+    [in]	RANGE
+
+              RANGE is CHARACTER*1
+              = 'A': all eigenvalues will be found.
+              = 'V': all eigenvalues in the half-open interval (VL,VU]
+                     will be found.
+              = 'I': the IL-th through IU-th eigenvalues will be found.
+
+
+*/
+    
+    char RANGE = 'A';
+    
+    /**
+    [in]	UPLO
+
+              UPLO is CHARACTER*1
+              = 'U':  Upper triangle of A is stored;
+              = 'L':  Lower triangle of A is stored.
+
+
+*/
+    char UPLO;
+    if (kind == "lower")
+        UPLO = 'U';
+    else
+        UPLO = 'L';
+    
+    /*
+    [in]	N
+
+              N is INTEGER
+              The order of the matrix A.  N >= 0.
+
+*/
+    
+    int N = x.nrows();
+    
+    /**
+
+
+
+    [in,out]	A
+
+              A is DOUBLE PRECISION array, dimension (LDA, N)
+              On entry, the symmetric matrix A.  If UPLO = 'U', the
+              leading N-by-N upper triangular part of A contains the
+              upper triangular part of the matrix A.  If UPLO = 'L',
+              the leading N-by-N lower triangular part of A contains
+              the lower triangular part of the matrix A.
+              On exit, the lower triangle (if UPLO='L') or the upper
+              triangle (if UPLO='U') of A, including the diagonal, is
+              destroyed.
+
+*/
+    double &A = const_cast<double &>(x[0]);
+    
+    /*   M_Matrix<double> A(x.nrows(), x.ncols());
+  if (kind != "lower") {
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+      for (std::size_t j = i; j < x.ncols(); ++j)
+        A(i, j) = x(i, j);
+  } else {
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+      for (std::size_t j = 0; j < i + 1; ++j)
+        A(i, j) = x(i, j);
+  }
+*/
+    
+    
+    /**
+
+    [in]	LDA
+
+              LDA is INTEGER
+              The leading dimension of the array A.  LDA >= max(1,N).
+
+*/
+    
+    int LDA = N;
+    
+    
+    /**
+
+
+    [in]	VL
+
+              VL is DOUBLE PRECISION
+              If RANGE='V', the lower bound of the interval to
+              be searched for eigenvalues. VL < VU.
+              Not referenced if RANGE = 'A' or 'I'.
+*/
+    
+    double VL;
+    
+    
+    /**
+
+
+    [in]	VU
+
+              VU is DOUBLE PRECISION
+              If RANGE='V', the upper bound of the interval to
+              be searched for eigenvalues. VL < VU.
+              Not referenced if RANGE = 'A' or 'I'.
+*/
+    
+    double VU;
+    
+    /**
+
+
+
+
+    [in]	IL
+
+              IL is INTEGER
+              If RANGE='I', the index of the
+              smallest eigenvalue to be returned.
+              1 <= IL <= IU <= N, if N > 0; IL = 1 and IU = 0 if N = 0.
+              Not referenced if RANGE = 'A' or 'V'.
+
+
+*/
+    
+    int IL;
+    
+    
+    /**
+    [in]	IU
+
+              IU is INTEGER
+              If RANGE='I', the index of the
+              largest eigenvalue to be returned.
+              1 <= IL <= IU <= N, if N > 0; IL = 1 and IU = 0 if N = 0.
+              Not referenced if RANGE = 'A' or 'V'.
+*/
+    int IU;
+    
+    
+    /**
+
+    [in]	ABSTOL
+
+              ABSTOL is DOUBLE PRECISION
+              The absolute error tolerance for the eigenvalues.
+              An approximate eigenvalue is accepted as converged
+              when it is determined to lie in an interval [a,b]
+              of width less than or equal to
+
+                      ABSTOL + EPS *   max( |a|,|b| ) ,
+
+              where EPS is the machine precision.  If ABSTOL is less than
+              or equal to zero, then  EPS*|T|  will be used in its place,
+              where |T| is the 1-norm of the tridiagonal matrix obtained
+              by reducing A to tridiagonal form.
+
+              Eigenvalues will be computed most accurately when ABSTOL is
+              set to twice the underflow threshold 2*DLAMCH('S'), not zero.
+              If this routine returns with INFO>0, indicating that some
+              eigenvectors did not converge, try setting ABSTOL to
+              2*DLAMCH('S').
+
+              See "Computing Small Singular Values of Bidiagonal Matrices
+              with Guaranteed High Relative Accuracy," by Demmel and
+              Kahan, LAPACK Working Note #3.
+*/
+    
+    double ABSTOL = std ::numeric_limits<double>::epsilon()*100;
+    
+    /**
+    [out]	M
+
+              M is INTEGER
+              The total number of eigenvalues found.  0 <= M <= N.
+              If RANGE = 'A', M = N, and if RANGE = 'I', M = IU-IL+1.
+*/
+    
+    int M;
+    
+    /**
+    [out]	W
+
+              W is DOUBLE PRECISION array, dimension (N)
+              On normal exit, the first M elements contain the selected
+              eigenvalues in ascending order.
+*/
+    
+    DiagonalMatrix<double> W(x.nrows(), x.ncols());
+    
+    
+    /**
+    [out]	Z
+
+              Z is DOUBLE PRECISION array, dimension (LDZ, max(1,M))
+              If JOBZ = 'V', then if INFO = 0, the first M columns of Z
+              contain the orthonormal eigenvectors of the matrix A
+              corresponding to the selected eigenvalues, with the i-th
+              column of Z holding the eigenvector associated with W(i).
+              If an eigenvector fails to converge, then that column of Z
+              contains the latest approximation to the eigenvector, and the
+              index of the eigenvector is returned in IFAIL.
+              If JOBZ = 'N', then Z is not referenced.
+              Note: the user must ensure that at least max(1,M) columns are
+              supplied in the array Z; if RANGE = 'V', the exact value of M
+              is not known in advance and an upper bound must be used.
+
+
+
+    [in]	LDZ
+
+              LDZ is INTEGER
+              The leading dimension of the array Z.  LDZ >= 1, and if
+              JOBZ = 'V', LDZ >= max(1,N).
+
+
+
+*/
+    
+    int LDZ = N;
+    Matrix<double> Z(x.nrows(), x.nrows());
+    /*
+
+    [out]	WORK
+
+              WORK is DOUBLE PRECISION array, dimension (MAX(1,LWORK))
+              On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+
+*/
+    
+    std ::vector<double> WORK(1);
+    
+    /**
+    [in]	LWORK
+
+              LWORK is INTEGER
+              The length of the array WORK.  LWORK >= 1, when N <= 1;
+              otherwise 8*N.
+              For optimal efficiency, LWORK >= (NB+3)*N,
+              where NB is the max of the blocksize for DSYTRD and DORMTR
+              returned by ILAENV.
+
+              If LWORK = -1, then a workspace query is assumed; the routine
+              only calculates the optimal size of the WORK array, returns
+              this value as the first entry of the WORK array, and no error
+              message related to LWORK is issued by XERBLA.
+*/
+    
+    int LWORK = -1;
+    
+    /**
+    [out]	IWORK
+
+              IWORK is INTEGER array, dimension (5*N)
+
+*/
+    
+    std ::vector<int> IWORK(5 * x.nrows());
+    
+    
+    /**
+    [out]	IFAIL
+
+              IFAIL is INTEGER array, dimension (N)
+              If JOBZ = 'V', then if INFO = 0, the first M elements of
+              IFAIL are zero.  If INFO > 0, then IFAIL contains the
+              indices of the eigenvectors that failed to converge.
+              If JOBZ = 'N', then IFAIL is not referenced.
+*/
+    std::vector<int> IFAIL(x.nrows());
+    
+    /**
+    [out]	INFO
+
+              INFO is INTEGER
+              = 0:  successful exit
+              < 0:  if INFO = -i, the i-th argument had an illegal value
+              > 0:  if INFO = i, then i eigenvectors failed to converge.
+                    Their indices are stored in array IFAIL.
+*/
+    
+    int INFO;
+    
+    
+    dsyevx_(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W[0], &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0],&INFO );
+    
+    LWORK = WORK[0];
+    WORK.resize(LWORK);
+    dsyevx_(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W[0], &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0], &INFO);
+    
+    
+    
+    
+    if (INFO != 0) {
+        if (INFO > 0)
+        {
+            std::stringstream ss;
+            ss<<INFO<<" eigenvectors failed to converge. Their indices are: ";
+            std::for_each(IFAIL.begin(),IFAIL.end(),[&ss](auto const& x){ss<<x;});
+            return error_message(ss.str());
+        }
+        else {
+            auto args = std::make_tuple(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W, &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0],&INFO);
+            std::string argumentsNames[] = {
+                                            "JOBZ", "RANGE", "UPLO", "N", "A[0]", "LDA", "VL", "VU", "IL", "IU", "ABSTOL", "M", "W", "Z[0]", "LDZ", "WORK[0]", "LWORK",  "IWORK[0]","IFAIL[0]", "INFO"    };
+            
+            std::stringstream ss;
+            std::size_t i = -INFO;
+            write_tuple_i(ss, args, i);
+            return error_message("the" + std::to_string(i) + "-th argument " +
+                                 argumentsNames[i] +
+                                 " had the illegal value =" + ss.str());
+        }
+        
+    } else {
+        /**
+ * extern "C" void ddisna_(char *JOB, int * M, int *N,double * D, double *SEP,int * INFO );
+*
+*  -- LAPACK routine (version 3.1) --
+*     Univ. of Tennessee, Univ. of California Berkeley and NAG Ltd..
+*     November 2006
+*
+*     .. Scalar Arguments ..
+      CHARACTER          JOB
+      INTEGER            INFO, M, N
+*     ..
+*     .. Array Arguments ..
+      DOUBLE PRECISION   D( * ), SEP( * )
+*     ..
+*
+*  Purpose
+*  =======
+*
+*  DDISNA computes the reciprocal condition numbers for the eigenvectors
+*  of a real symmetric or complex Hermitian matrix or for the left or
+*  right singular vectors of a general m-by-n matrix. The reciprocal
+*  condition number is the 'gap' between the corresponding eigenvalue or
+*  singular value and the nearest other one.
+*
+*  The bound on the error, measured by angle in radians, in the I-th
+*  computed vector is given by
+*
+*         DLAMCH( 'E' ) * ( ANORM / SEP( I ) )
+*
+*  where ANORM = 2-norm(A) = max( abs( D(j) ) ).  SEP(I) is not allowed
+*  to be smaller than DLAMCH( 'E' )*ANORM in order to limit the size of
+*  the error bound.
+*
+*  DDISNA may also be used to compute error bounds for eigenvectors of
+*  the generalized symmetric definite eigenproblem.
+*/
+        
+        /**
+*  JOB     (input) CHARACTER*1
+*          Specifies for which problem the reciprocal condition numbers
+*          should be computed:
+*          = 'E':  the eigenvectors of a symmetric/Hermitian matrix;
+*          = 'L':  the left singular vectors of a general matrix;
+*          = 'R':  the right singular vectors of a general matrix.
+*/
+        char JOB='E';
+        /**  M       (input) INTEGER
+*          The number of rows of the matrix. M >= 0.
+*
+*/
+        
+        /**
+*  N       (input) INTEGER
+*          If JOB = 'L' or 'R', the number of columns of the matrix,
+*          in which case N >= 0. Ignored if JOB = 'E'.
+*/
+        
+        /**  D       (input) DOUBLE PRECISION array, dimension (M) if JOB = 'E'
+*                              dimension (min(M,N)) if JOB = 'L' or 'R'
+*          The eigenvalues (if JOB = 'E') or singular values (if JOB =
+*          'L' or 'R') of the matrix, in either increasing or decreasing
+*          order. If singular values, they must be non-negative.
+*
+*/
+        
+        /**  SEP     (output) DOUBLE PRECISION array, dimension (M) if JOB = 'E'
+*                               dimension (min(M,N)) if JOB = 'L' or 'R'
+*          The reciprocal condition numbers of the vectors.
+*/
+        DiagonalMatrix<double> RCOND(x.nrows(), x.ncols());
+        
+        /**  INFO    (output) INTEGER
+*          = 0:  successful exit.
+*          < 0:  if INFO = -i, the i-th argument had an illegal value.
+*/
+        lapack::ddisna_(&JOB,&M,&N,&W[0],&RCOND[0] ,&INFO );
+        auto VL_cpp = Z;
+        auto VR_cpp = tr(Z);
+        Nelson_Normalization(VR_cpp, VL_cpp);
+        
+        return std::tuple(
+            VR_cpp, W,
+            VL_cpp);
+    }
+}
+
+
+
+
+
 template <class T>
 Maybe_error<SymPosDefMatrix<T>>
 Lapack_UT_Cholesky_inv(const UpTrianMatrix<T> &x) {
@@ -2503,6 +2957,9 @@ Parameters
   else
     return a;
 }
+
+
+
 
 } // namespace lapack
 

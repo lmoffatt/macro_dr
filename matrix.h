@@ -143,6 +143,10 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations = true,
                    bool does_diagonal_scaling = true,
                    bool computes_eigenvalues_condition_numbers = false,
                    bool computes_eigenvectors_condition_numbers = false);
+
+Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind="lower");
+
 } // namespace lapack
 
 template <class T> class DiagPosDetMatrix;
@@ -1620,6 +1624,15 @@ auto eigs(const Matrix<double> &x, bool does_permutations = false,
                                     computes_eigenvalues_condition_numbers,
                                     computes_eigenvectors_condition_numbers);
 }
+
+
+
+auto eigs(const SymmetricMatrix<double> &x) {
+    return lapack::Lapack_Symm_EigenSystem(x);
+}
+
+
+
 
 auto XXT(const Matrix<double> &a) {
   return lapack::Lapack_Product_Self_Transpose(a, false);

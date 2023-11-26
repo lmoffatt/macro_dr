@@ -21,6 +21,7 @@ class F {
   Fun m_f;
 
 public:
+  using myId=Id;
   static constexpr bool is_threadable = false;
 
   auto &get_Fun() { return m_f; }
@@ -78,6 +79,8 @@ class Time_it<Id, F<Id, Fun...>> {
   std::size_t m_n_threads{};
 
 public:
+  using myId=Id;
+  
   static constexpr bool is_threadable = true;
 
   void clear(I_thread i) { clearit(m_f, i); }
@@ -238,6 +241,8 @@ class Test_it<Id, F<Id, Fun...>, Preconditions, Postconditions> {
   std::size_t m_n_threads{};
 
 public:
+  using myId=Id;
+  
   static constexpr bool is_threadable = true;
 
   void clear(I_thread i) { clearit(m_f, i); }
@@ -435,7 +440,10 @@ public:
   auto &file() { return m_file; }
   FuncMap(const std::string path, Fs &&...fs)
       : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {}
-
+  
+  
+  
+  
   template <class... Context_data>
   friend auto &report_point(FuncMap<Fs...> &f, const Context_data &...s) {
     ((f.m_file << s << f.sep), ...);
@@ -453,6 +461,23 @@ public:
 
   F_on_thread<FuncMap> fork(I_thread i) { return F_on_thread(*this).fork(i); }
 };
+
+
+template <class... Fs, class F, class G>
+auto operator +(std::pair<FuncMap<Fs...>, F> && f, G const & g )
+{
+    if constexpr(std::is_same_v<typename G::myId, typename F::myId>)
+        return std::pair(FuncMap<Fs...,F>(std::move(f.first[typename Fs::myId{}])...,f.second),f.second);
+    else
+        return std::pair(FuncMap<Fs...,G>(std::move(f.first[typename Fs::myId{}])...,g),f.second);
+}
+
+template <class G,class... Fs,  class F>
+auto insert(FuncMap<G,Fs...> const & fun,  F const & f )
+{
+   return (std::pair(FuncMap<G>(fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
+}
+
 
 } // namespace var
 #endif // FUNCTION_MEASURE_VERIFICATION_AND_OPTIMIZATION_H

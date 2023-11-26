@@ -2134,7 +2134,14 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
           r_eplogL, r_vlogL, std::move(ev));
     }
   }
-
+  
+  
+  
+  
+  
+  
+  
+  
   template <return_predictions predictions, class C_Patch_Model>
    requires U<C_Patch_Model, Patch_Model>
   auto init(const C_Patch_Model &m, initial_ATP_concentration initial_x)

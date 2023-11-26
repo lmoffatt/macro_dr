@@ -144,6 +144,8 @@ class Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
   std::size_t m_n_threads;
 
 public:
+  using myId=Id;
+  
   static constexpr bool is_threadable= true; 
   
   auto &get_Fun() { return m_f.get_Fun(); }
