@@ -816,6 +816,17 @@ auto elemMult(const Matrix<double> &x, const Matrix<double> &y) {
   return out;
 }
 
+template<class T, class S>
+auto elemMult(const Matrix<S> &x, const Matrix<T> &y) ->Matrix<std::decay_t<decltype(T{}*S{})>>{
+    Matrix<std::decay_t<decltype(T{}*S{})>> out(x.nrows(),x.ncols());
+    for (std::size_t i = 0; i < x.size(); ++i)
+        out[i] = x[i] * y[i];
+    return out;
+}
+
+
+
+
 auto elemDiv(const Matrix<double> &x, const Matrix<double> &y) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
