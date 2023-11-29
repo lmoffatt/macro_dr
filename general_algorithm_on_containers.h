@@ -2,6 +2,7 @@
 #define GENERAL_ALGORITHM_ON_CONTAINERS_H
 
 #include <limits>
+#include <type_traits>
 namespace var{
 
 template<class Container>

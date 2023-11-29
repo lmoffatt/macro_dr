@@ -209,6 +209,7 @@ class g_formula : public var::Var<g_formula, std::vector<std::string>> {};
 class N_St : public var::Constant<N_St, std::size_t> {};
 
 class N_Ch_mean : public var::Var<N_Ch_mean, Matrix<double>> {};
+class N_Ch_mean_value : public var::Var<N_Ch_mean, double> {};
 
 class N_Ch_mean_time_segment_duration : public var::Constant<N_Ch_mean_time_segment_duration, double> {};
 
@@ -307,7 +308,12 @@ class Transition_rate_W
 class P : public Var<P, Matrix<double>> {
     friend std::string className(P){return "P_ij";}
 };
-    
+
+class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
+    friend std::string className(Ptotal_ij){return "Ptotal_ij";}
+};
+
+
 class gmean_i : public Var<gmean_i, Matrix<double>> {
     friend std::string className(gmean_i){return "gmean_i";}
     
