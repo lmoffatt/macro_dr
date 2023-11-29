@@ -408,7 +408,20 @@ public:
     else
       return zip([](auto x, auto y) { return x + y; }, a, b);
   }
-
+  
+  template <class S>
+      requires(std::is_arithmetic_v<S>)
+  friend auto operator-(const Matrix &a, const Matrix<S> &b) {
+      using R = std::decay_t<decltype(a[0] - b[0])>;
+      if (a.size() == 0)
+          return applyMap([](auto e) {return R(e);},b);
+      else if (b.size() == 0)
+          return Matrix<R>(a);
+      else
+          return zip([](auto x, auto y) { return x - y; }, a, b);
+  }
+  
+  
   friend auto operator-(const Matrix &a, const Matrix &b) {
     if (a.size() == 0)
       return b * (-1.0);
@@ -437,7 +450,20 @@ public:
       out[i] = f(x[i], y[i]);
     return out;
   }
-
+  
+  template <class F, class S>
+      requires (std::is_arithmetic_v<S>)
+  friend auto zip(F &&f, const Matrix &x, const Matrix<S> &y) {
+      // assert(same_dimensions(x, y) && "same size");
+      using R = std::invoke_result_t<F, T, S>;
+      
+      Matrix<R> out(x.nrows(), x.ncols(), false);
+      for (std::size_t i = 0; i < x.size(); ++i)
+          out[i] = f(x[i], y[i]);
+      return out;
+  }
+  
+  
   friend auto TranspMult(const Matrix &a, const Matrix &b) {
     if (a.size() == 0)
       return a;
@@ -476,7 +502,16 @@ public:
       x[i] = f(a[i]);
     return x;
   }
-
+  
+  template <class F> friend auto applyMap(F &&f, Matrix  &a) {
+      using S = std::decay_t<std::invoke_result_t<F, T&>>;
+      Matrix<S> x(a.nrows(), a.ncols());
+      for (std::size_t i = 0; i < x.size(); ++i)
+          x[i] = f(a[i]);
+      return x;
+  }
+  
+  
   template <class F>
     requires(is_Maybe_error<std::invoke_result_t<F, T>>)
   friend Maybe_error<Matrix<T>> apply(F &&f, Matrix const &a) {

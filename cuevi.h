@@ -572,11 +572,10 @@ struct step_stretch_cuevi_mcmc_per_walker {
                   std::size_t i, std::size_t iw, std::size_t jw, std::size_t ib,
                   std::size_t i_fr) const {
     if (current.is_active[i_fr][ib] == 1) {
-      auto z = std::pow(rdist[i](mt[i]) + 1, 2) / 2.0;
       auto r = rdist[i](mt[i]);
       // candidate[ib].walkers[iw].
-      auto ca_par = stretch_move(current.walkers[iw][i_fr][ib].parameter,
-                                 current.walkers[jw][i_fr][ib].parameter, z);
+      auto [ca_par,z] = stretch_move(mt[i],rdist[i],current.walkers[iw][i_fr][ib].parameter,
+                                 current.walkers[jw][i_fr][ib].parameter);
 
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 = i_fr > 0 ? f.f(logLikelihood_f{}, lik, ca_par,
@@ -707,11 +706,10 @@ struct step_stretch_cuevi_mcmc {
                   std::size_t i, std::size_t iw, std::size_t jw, std::size_t ib,
                   std::size_t i_fr) {
     if (current.is_active[i_fr][ib] == 1) {
-      auto z = std::pow(rdist[i](mt[i]) + 1, 2) / 2.0;
       auto r = rdist[i](mt[i]);
       // candidate[ib].walkers[iw].
-      auto ca_par = stretch_move(current.walkers[iw][i_fr][ib].parameter,
-                                 current.walkers[jw][i_fr][ib].parameter, z);
+      auto [ca_par,z] = stretch_move(mt[i],rdist[i],current.walkers[iw][i_fr][ib].parameter,
+                                      current.walkers[jw][i_fr][ib].parameter);
 
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 =

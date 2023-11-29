@@ -20,13 +20,25 @@ template <class T> using by_beta = std::vector<T>;
 template <class T> using by_iteration = std::vector<T>;
 
 template<class Parameters>
-auto stretch_move(const Parameters &Xk, const Parameters &Xj, double z) {
+auto stretch_move(std::mt19937_64& ,const Parameters &Xk, const Parameters &Xj, double z) {
     assert((Xj.size() == Xk.size()) && "sum of vector fields of different sizes");
     auto out = Xj;
     for (std::size_t i = 0; i < Xj.size(); ++i)
         out[i] += z * (Xk[i] - Xj[i]);
     return out;
 }
+
+template<class Parameters>
+auto stretch_move(std::mt19937_64& mt,std::uniform_real_distribution<double>& rdist, const Parameters &Xk, const Parameters &Xj) {
+    assert((Xj.size() == Xk.size()) && "sum of vector fields of different sizes");
+    auto z = std::pow(rdist(mt) + 1, 2) / 2.0;
+    
+    auto out = Xj;
+    for (std::size_t i = 0; i < Xj.size(); ++i)
+        out[i] += z * (Xk[i] - Xj[i]);
+    return std::tuple(out,z);
+}
+
 
 auto init_mts(std::mt19937_64 &mt, std::size_t n) {
     std::uniform_int_distribution<typename std::mt19937_64::result_type> useed;
@@ -515,12 +527,12 @@ void step_stretch_thermo_mcmc(FunctionTable&& f,std::size_t &iter,
             for (std::size_t ib = 0; ib < n_beta; ++ib) {
                 // we can try in the outer loop
                 
-                auto z = std::pow(rdist[i](mt[i]) + 1, 2) / 2.0;
                 auto r = rdist[i](mt[i]);
                 
                 // candidate[ib].walkers[iw].
-                auto ca_par = stretch_move(current.walkers[iw][ib].parameter,
-                                           current.walkers[jw][ib].parameter, z);
+                auto [ca_par,z] = stretch_move(mt[i],rdist[i],current.walkers[iw][ib].parameter,
+                                           current.walkers[jw][ib].parameter);
+                
                 auto ca_logP = logPrior(prior, ca_par);
                 auto ca_logL = logLikelihood(f.fork(var::I_thread(i)),lik, ca_par, y, x);
                 
