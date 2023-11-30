@@ -365,6 +365,23 @@ auto thermo_by_max_iter(std::string path, std::string filename,
 }
 
 
+template<class Parameters>
+auto thermo_store_every(std::size_t num_scouts_per_ensemble,
+                        std::size_t max_num_simultaneous_temperatures,
+                        std::size_t thermo_jumps_every,
+                        std::size_t save_every_iter,
+                        std::size_t max_iter_equilibrium,
+                        double n_points_per_decade, double stops_at,
+                        bool includes_zero, std::size_t initseed) {
+    return thermodynamic_integration(store_every_n_iter<thermo_mcmc<Parameters>>(max_iter_equilibrium,save_every_iter),
+                                     no_save{},
+                                     num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+                                     thermo_jumps_every,
+                                     n_points_per_decade, stops_at, includes_zero, initseed);
+}
+
+
+
 
 
 template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
