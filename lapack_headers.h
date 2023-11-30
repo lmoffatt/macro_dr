@@ -1672,7 +1672,6 @@ extern "C" void ddisna_(char *JOB, int * M, int *N,double * D, double *SEP,int *
 
 inline Maybe_error<std::tuple<Matrix<double>,DiagonalMatrix<double>,Matrix<double>>> Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind) {
     
-    assert(x.isSymmetric());
     using lapack::dsyevx_;
     
     /** DSYEVX computes the eigenvalues and, optionally, the left and/or right eigenvectors for SY matrices

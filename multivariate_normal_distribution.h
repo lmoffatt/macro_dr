@@ -607,7 +607,7 @@ private:
 
 public:
   multinomial_distribution(double N, Matrix<double> P) : m_N{N}, m_P{P} {
-    assert(std::abs(sum(P) - 1.0) <
+      assert(std::abs(var::sum(P) - 1.0) <
            std::numeric_limits<double>::epsilon() * 100);
   }
 

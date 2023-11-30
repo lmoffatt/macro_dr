@@ -151,11 +151,19 @@ Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind="lowe
 
 template <class T> class DiagPosDetMatrix;
 
-template <class Matrix>
-  requires(Matrix::is_Matrix)
-auto operator*(const Matrix &a, double b) {
-  return apply([&b](auto x) { return x * b; }, a);
+// template <class Matrix>
+//   requires(Matrix::is_Matrix)
+// auto operator*(const Matrix &a, double b) {
+//   return apply([&b](auto x) { return x * b; }, a);
+// }
+
+template <template<class> class Matrix, typename S>
+    requires(Matrix<S>::is_Matrix)
+auto operator*(const Matrix<S> &a, double b) {
+    return applyMap([&b](auto x) { return x * b; }, a);
 }
+
+
 
 template <class Matrix>
   requires(Matrix::is_Matrix)
@@ -360,6 +368,7 @@ public:
       out(0, j) = (*this)(i, j);
     return out;
   }
+  
   auto operator()(const char *ch, std::size_t j) const {
     assert(j < ncols() && std::strcmp(ch, ":") == 0);
     Matrix out(nrows(), 1);
@@ -379,16 +388,38 @@ public:
     if constexpr (!Matrix_uses_vector) //  std::cerr<<"release "<<size()<<"\n";
       delete[] x_;
   }
-
-  friend auto operator*(const Matrix &a, const Matrix &b) {
+  
+  template<class S>
+  requires (std::is_same_v<S,T>&&std::is_same_v<S,double>)
+  friend auto operator*(const Matrix &a, const Matrix<S> &b) {
     if (a.size() == 0)
       return a;
     else if (b.size() == 0)
       return b;
-
+     else 
     return lapack::Lapack_Full_Product(a, b, false, false);
   }
-
+  
+  template<class S>
+      requires (std::is_same_v<S,T>&&!std::is_same_v<S,double>)
+  friend auto operator*(const Matrix &a, const Matrix<S> &b) {
+      if (a.size() == 0)
+          return a;
+      else if (b.size() == 0)
+          return b;
+      else
+      {
+          Matrix<T> out(a.nrows(), b.ncols(),T{});
+          for (std::size_t i=0; i<a.nrows(); ++i)
+              for (std::size_t j=0; j<b.ncols(); ++j)
+                  for (std::size_t k=0; k<a.ncols(); ++k)
+                      out(i,j)+=a(i,k)*b(k,j);
+          return out; 
+      }
+  }
+  
+  
+  
   friend auto operator+(const Matrix &a, const Matrix &b) {
     if (a.size() == 0)
       return b;
@@ -664,12 +695,12 @@ public:
   friend auto operator*(const Matrix<double> &b, const SymmetricMatrix &a) {
     return lapack::Lapack_Sym_Product(a, b, false);
   }
-
-  friend SymmetricMatrix operator*(const SymmetricMatrix &a, double b) {
+  
+  friend SymmetricMatrix operator*(const SymmetricMatrix &a, T b) {
     return apply([&b](auto x) { return x * b; }, a);
   }
-
-  friend SymmetricMatrix operator*(double b, const SymmetricMatrix &a) {
+  
+  friend SymmetricMatrix operator*(T b, const SymmetricMatrix &a) {
     return apply([&b](auto x) { return x * b; }, a);
   }
 
@@ -1167,12 +1198,11 @@ public:
       out.set(i, i, out(i, i) + b(i, i));
     return out;
   }
-
-  friend SymPosDefMatrix operator*(const SymPosDefMatrix &a, double b) {
+  friend SymPosDefMatrix operator*(const SymPosDefMatrix &a, T b) {
     return SymPosDefMatrix(static_cast<SymmetricMatrix<T> const &>(a) * b);
   }
-
-  friend SymPosDefMatrix operator*(double b, const SymPosDefMatrix &a) {
+  
+  friend SymPosDefMatrix operator*(T b, const SymPosDefMatrix &a) {
     return SymPosDefMatrix(b * static_cast<SymmetricMatrix<T> const &>(a));
   }
 
@@ -1600,6 +1630,59 @@ void set(Matrix<T> &m, std::size_t i, std::size_t j, const T &x) {
   m.set(i, j, x);
 }
 
+template<class F,class T,template<class> class aMatrix>
+    requires(aMatrix<T>::is_Symmetric && ! aMatrix<T>::is_Diagonal)
+auto applyMap(F &&f, aMatrix<T> const &a) {
+    using S = std::decay_t<std::invoke_result_t<F, T>>;
+    aMatrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = i; j < x.ncols(); ++j)
+            set(x,i,j,f(a(i,j)));
+    return x;
+}
+
+template<class F,class T,template<class> class aMatrix>
+    requires(aMatrix<T>::is_Symmetric&& ! aMatrix<T>::is_Diagonal)
+auto applyMap(F &&f, aMatrix<T>  &a) {
+    using S = std::decay_t<std::invoke_result_t<F, T&>>;
+    aMatrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = i; j < x.ncols(); ++j)
+            set(x,i,j,f(a(i,j)));
+    return x;
+}
+
+template<class F,class T,template<class> class aMatrix>
+    requires(aMatrix<T>::is_Diagonal)
+auto applyMap(F &&f, aMatrix<T> const &a) {
+    using S = std::decay_t<std::invoke_result_t<F, T>>;
+    aMatrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.size(); ++i)
+        x[i]=f(a(i,i));
+    return x;
+}
+
+template<class F,class T,template<class> class aMatrix>
+    requires(aMatrix<T>::is_Diagonal)
+auto applyMap(F &&f, aMatrix<T>  &a) {
+    using S = std::decay_t<std::invoke_result_t<F, T&>>;
+    aMatrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.size(); ++i)
+        x[i]=f(a(i,i));
+                    return x;
+
+}
+
+
+
+template<class F,class T,template<class> class aMatrix>
+    requires(aMatrix<T>::is_Symmetric)
+auto operator*(const aMatrix<T>  &a, double b) {
+    return applyMap([b](auto const & x){return x*b;},a);
+}
+
+
+
 template <class T> auto IdM(std::size_t ndim) {
   return DiagPosDetMatrix<T>(ndim, ndim, T{1.0});
 }
@@ -1694,6 +1777,20 @@ auto XTX(const Matrix<double> &a) {
   else
     return lapack::Lapack_Product_Self_Transpose(a, true);
 }
+auto XTX(const Matrix<std::size_t> &a) {
+    if (a.size() == 0)
+        return SymPosDefMatrix<std::size_t>{};
+    else
+    {
+        SymPosDefMatrix<std::size_t> out(a.ncols(),a.ncols(),0ul);
+        for (std::size_t i=0; i<out.nrows(); ++i)
+            for (std::size_t j=i; j<out.ncols(); ++j)
+                for (std::size_t k=0; k<a.nrows(); ++k)
+                    out.set(i,j,out(i,j)+a(k,i)*a(k,j));
+        return out;
+    } 
+}
+
 
 template <template <class> class Matrix>
   requires(!Matrix<double>::is_Symmetric)

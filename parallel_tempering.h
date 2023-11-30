@@ -6,7 +6,9 @@
 #include "mcmc.h"
 #include "multivariate_normal_distribution.h"
 #include <algorithm>
+#include <cstddef>
 #include <fstream>
+#include <vector>
 
 
 
@@ -402,6 +404,38 @@ public:
 };
 //static_assert(is_Algorithm_conditions<less_than_max_iteration, thermo_mcmc>);
 
+
+
+template<class mcmc>
+class store_every_n_iter{
+    const std::size_t m_save_every;
+    const std::size_t m_max;
+    std::size_t m_current_iter=0ul;
+    std::vector<mcmc> m_values;
+public:
+    store_every_n_iter(std::size_t save_every, std::size_t max):m_save_every{save_every}, m_max{max}{m_values.reserve(max);}
+    friend auto checks_convergence(store_every_n_iter &&c,
+                                   const mcmc& t_mcmc) {
+        if (c.m_current_iter% c.m_save_every==0)
+            c.m_values.push_back(t_mcmc);
+        if (c.m_current_iter<c.m_max)
+        {
+            ++c.m_current_iter;
+            return std::pair(std::move(c), false);}
+        else {
+            return std::pair(std::move(c), true);
+        }
+    }
+};
+
+
+
+
+
+
+
+
+
 template <class Beta, class Var_ratio>
 bool compare_to_max_ratio(Beta const &beta, Var_ratio const &mean_logL,
                           Var_ratio const &var_ratio, double max_ratio);
@@ -770,6 +804,20 @@ public:
     }
 };
 
+struct no_save{
+    
+    template<class FunctionTable,class Parameters,class ...T>
+    friend void report(FunctionTable &&,std::size_t , no_save &,
+                       thermo_mcmc<Parameters> const &,T&&... ) {}
+    template <class Prior, class Likelihood, class Variables, class DataType>
+    friend void report_model(no_save &, Prior const &p, Likelihood const& , const DataType &,
+                             const Variables &, by_beta<double> const &) {
+    }
+    
+    template<class Parameters>
+    friend void report_title(no_save &, thermo_mcmc<Parameters> const &,...) {
+    }
+};
 
 
 #endif // PARALLEL_TEMPERING_H
