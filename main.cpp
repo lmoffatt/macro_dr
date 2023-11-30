@@ -15,7 +15,7 @@
 #include "allosteric_models.h"
 #include "cuevi.h"
 #include "parallel_tempering.h"
-//#include "micror_stochastic.h"
+#include "micror_stochastic.h"
 #include "qmodel.h"
 #include <algorithm>
 #include <chrono>
