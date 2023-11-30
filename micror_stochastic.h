@@ -229,7 +229,7 @@ N_channel_state_count
 calc_Ntotal_j_sum_iter(const thermo_mcmc<Micror_state> &data, std::size_t k,
                         std::size_t i_beta_1) {
   Matrix<std::size_t> u(1, k, 1ul);
-  return fold(
+  return foldMap(
       data.walkers,
       [i_beta_1, &u](std::vector<mcmc<Micror_state>> const &walker) {
         return N_channel_state_count(u * (get<N_channel_transition_count>(
@@ -245,7 +245,7 @@ calc_Ntotal_j_sum(std::size_t i_start, std::size_t i_end,
                    const std::vector<thermo_mcmc<Micror_state>> &data_chain,
                    std::size_t k, std::size_t i_beta_1) {
 
-  return fold(
+  return foldMap(
       i_start, i_end, data_chain,
       [k, i_beta_1](thermo_mcmc<Micror_state> const &x) {
         return calc_Ntotal_j_sum_iter(x, k, i_beta_1);
@@ -259,7 +259,7 @@ N_channel_state_XTX_count
 calc_Ntotal_j_XTX_iter(const thermo_mcmc<Micror_state> &data,
                             std::size_t k, std::size_t i_beta_1) {
   Matrix<std::size_t> u(1, k, 1ul);
-  return fold(
+  return foldMap(
       data.walkers,
       [i_beta_1, &u](std::vector<mcmc<Micror_state>> const &walker) {
           return N_channel_state_XTX_count(XTX(
@@ -277,7 +277,7 @@ calc_Ntotal_j_sum_XTX(std::size_t i_start, std::size_t i_end,
                        const std::vector<thermo_mcmc<Micror_state>> &data_chain,
                        std::size_t k, std::size_t i_beta_1) {
 
-  return fold(
+  return foldMap(
       i_start, i_end, data_chain,
       [k, i_beta_1](thermo_mcmc<Micror_state> const &x) {
         return calc_Ntotal_j_XTX_iter(x, k, i_beta_1);
@@ -314,7 +314,7 @@ auto calculate_Evidence_mean(std::size_t i_start, std::size_t i_end,
     const std::vector<thermo_mcmc<Micror_state>> &data_chain) {
   std::size_t n = i_end - i_start;
 
-  return fold(
+  return foldMap(
              i_start, i_end, data_chain,
              [](thermo_mcmc<Micror_state> const &data) {
                return calculate_Evidence_iter(data);
