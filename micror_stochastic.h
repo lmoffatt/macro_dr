@@ -22,7 +22,8 @@ class N_channel_transition_count
     : public var::Var<N_channel_transition_count, Matrix<std::size_t>> {};
 
 class N_channel_state_XTX_count
-    : public var::Var<N_channel_state_XTX_count, SymPosDefMatrix<std::size_t>> {};
+    : public var::Var<N_channel_state_XTX_count, SymPosDefMatrix<std::size_t>> {
+};
 
 class N_channel_state_count
     : public var::Var<N_channel_state_count, Matrix<std::size_t>> {};
@@ -75,24 +76,35 @@ auto N_total_ij__mean_to_count(std::mt19937_64 &mt,
   return N_channel_transition_count(out + rs);
 }
 
+template <uses_averaging_aproximation averaging>
 class Micror_parameters_distribution;
 
+template <uses_averaging_aproximation averaging>
 class Micror_state
-    : public var::Var<Micror_state, Vector_Space<N_channel_transition_count,
-                                                 N_channel_transition_mean>> {
-  Micror_state(std::mt19937_64 &mt, N_channel_transition_mean const &mean)
-      : base_type{Vector_Space(N_total_ij__mean_to_count(mt, mean), mean)} {}
+
+    : public var::Var<
+          Micror_state<averaging>,
+          Vector_Space<N_channel_transition_count, N_channel_transition_mean>> {
+    
+    
 
 public:
-  using base_type =
-      var::Var<Micror_state, Vector_Space<N_channel_transition_count,
-                                          N_channel_transition_mean>>;
+    Micror_state(std::mt19937_64 &mt, N_channel_transition_mean const &mean)
+        : base_type{Vector_Space(N_total_ij__mean_to_count(mt, mean), mean)} {}
+    // Micror_state(const Micror_state&)=default;
+    // Micror_state(Micror_state&&)=default;
+    // Micror_state& operator=(Micror_state&&)=default;
+    // Micror_state& operator=(Micror_state const&)=default;
+    // Micror_state()=default;
+  using base_type = var::Var<
+      Micror_state<averaging>,
+      Vector_Space<N_channel_transition_count, N_channel_transition_mean>>;
   using base_type::Var;
   auto size() const {
     return get<N_channel_transition_mean>((*this)())().size();
   }
 
-  friend class Micror_parameters_distribution;
+  friend class Micror_parameters_distribution<averaging>;
 
   friend auto stretch_move(std::mt19937_64 &mt,
                            std::uniform_real_distribution<double> &rdist,
@@ -121,39 +133,105 @@ public:
   }
 };
 
+template <uses_averaging_aproximation averaging>
 class Micror_parameters_distribution {
   N_Ch_mean_value m_N;
   dirchlet_distribution P_tra_dist;
   multinomial_distribution m_N_tra_dist;
 
 public:
-  Micror_state operator()(std::mt19937_64 &mt) {
+  Micror_parameters_distribution()=default;
+  Micror_state<averaging> operator()(std::mt19937_64 &mt) {
     auto r_Nij_mean = N_channel_transition_mean(P_tra_dist(mt) * m_N());
-    return Micror_state(mt, r_Nij_mean);
+    return Micror_state<averaging>(mt, r_Nij_mean);
   }
-
+  
+  template<class Ptotalij>
+      requires (std::is_same_v<Ptotalij,Ptotal_ij>&&averaging.value==2)
   Micror_parameters_distribution(N_Ch_mean_value const &N,
-                                 Ptotal_ij const &Ptotal)
+                                 Ptotalij const &Ptotal)
       : m_N{N}, P_tra_dist{Ptotal() * N()}, m_N_tra_dist{N(), Ptotal()} {}
-  Maybe_error<double> logP(const Micror_state &s) {
+  
+  template<class Ptotalj>
+      requires (std::is_same_v<Ptotalj,P_mean>&&averaging.value<2)
+  Micror_parameters_distribution(N_Ch_mean_value const &N,
+                                 Ptotalj const &Ptotal)
+      : m_N{N}, P_tra_dist{Ptotal() * N()}, m_N_tra_dist{N(), Ptotal()} {}
+  
+  Maybe_error<double> logP(const Micror_state<averaging> &s)const  {
     return m_N_tra_dist.logP(get<N_channel_transition_count>(s())());
   }
 };
 
+template <uses_averaging_aproximation averaging,
+          uses_variance_aproximation variance>
 class Micror_parameters_likelihood {
-  template <class FuncTable>
-  Maybe_error<double>
+  template <class FuncTable, class Qdt>
+  friend Maybe_error<double>
   logLikelihood(FuncTable &&f, Micror_parameters_likelihood,
-                Micror_state const &p, const Patch_current &y,
-                const Vector_Space<gmean_ij, gvar_ij, Current_Noise> &x) {
-    auto v_Nij = get<N_channel_transition_count>(p());
-    auto y_mean = var::sum(elemMult(get<gmean_ij>(x)(), v_Nij()));
-    auto y_var = var::sum(elemMult(get<gvar_ij>(x)(), v_Nij()));
-    auto r_var = get<Current_Noise>(x)() + y_var;
-    auto chi2 = sqr(y() - y_mean) / r_var;
+                Micror_state<averaging> const &p, const Patch_current &y,
+                  const Qdt &x) {
+    if constexpr (averaging.value==2) {
+      auto v_Nij = get<N_channel_transition_count>(p());
+      auto y_mean = var::sum(elemMult(get<gmean_ij>(x)(), v_Nij()));
+      auto r_var = get<Current_Noise>(x)();
+      if constexpr (variance.value)
+        r_var = r_var + var::sum(elemMult(get<gvar_ij>(x)(), v_Nij()));
+      auto chi2 = sqr(y() - y_mean) / r_var;
 
-    return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
+      return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
+    } else     if constexpr (averaging.value==1) {
+      auto v_Nj = get<N_channel_transition_count>(p());
+      auto y_mean = var::sum(elemMult(get<gmean_i>(x)(), v_Nj()));
+
+      auto r_var = get<Current_Noise>(x)();
+      if constexpr (variance.value)
+        r_var = r_var + var::sum(elemMult(get<gvar_i>(x)(), v_Nj()));
+      auto chi2 = sqr(y() - y_mean) / r_var;
+
+      return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
+    } else     /*if constexpr (averaging.value==0) */{
+        auto v_Nj = get<N_channel_transition_count>(p());
+        auto y_mean = var::sum(elemMult(get<g>(x)(), v_Nj()));
+        
+        auto r_var = get<Current_Noise>(x)();
+        auto chi2 = sqr(y() - y_mean) / r_var;
+        
+        return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
+    }
   }
+  
+  template < class Qdt>
+ friend
+ Patch_current     simulate(std::mt19937_64 & mt,Micror_parameters_likelihood,Micror_state<averaging> const &p,  const Qdt &x)
+  {
+      double y_mean;
+      double r_var;
+     if constexpr (averaging.value==2) {
+         auto v_Nij = get<N_channel_transition_count>(p());
+          y_mean = var::sum(elemMult(get<gmean_ij>(x)(), v_Nij()));
+         r_var = get<Current_Noise>(x)();
+         if constexpr (variance.value)
+             r_var = r_var + var::sum(elemMult(get<gvar_ij>(x)(), v_Nij()));
+         
+     } else     if constexpr (averaging.value==1) {
+         auto v_Nj = get<N_channel_transition_count>(p());
+          y_mean = var::sum(elemMult(get<gmean_i>(x)(), v_Nj()));
+         
+          r_var = get<Current_Noise>(x)();
+         if constexpr (variance.value)
+             r_var = r_var + var::sum(elemMult(get<gvar_i>(x)(), v_Nj()));
+         } else     /*if constexpr (averaging.value==0) */{
+         auto v_Nj = get<N_channel_transition_count>(p());
+         y_mean = var::sum(elemMult(get<g>(x)(), v_Nj()));
+         
+         r_var = get<Current_Noise>(x)();
+         
+     }
+     return Patch_current(std::normal_distribution<>{}(mt)*std::sqrt(r_var)+y_mean);
+     
+   }
+  
 };
 
 // the idea is to build a thermodynamic integration procedure to estimate the
@@ -225,13 +303,20 @@ class Micror_parameters_likelihood {
 ///
 ///
 
-N_channel_state_count
-calc_Ntotal_j_sum_iter(const thermo_mcmc<Micror_state> &data, std::size_t k,
-                        std::size_t i_beta_1) {
-  Matrix<std::size_t> u(1, k, 1ul);
+template <uses_averaging_aproximation averaging>
+N_channel_state_count calc_Ntotal_j_sum_iter(
+    const thermo_mcmc<Micror_state<averaging>> &data,
+    std::size_t k, std::size_t i_beta_1) {
+    Matrix<std::size_t> u;
+    if constexpr (averaging.value>1)
+        u=Matrix<std::size_t>(1, k, 1ul);
+    else
+        u=Matrix<std::size_t>(1, 1, 1ul);
   return foldMap(
       data.walkers,
-      [i_beta_1, &u](std::vector<mcmc<Micror_state>> const &walker) {
+      [i_beta_1, &u](
+          std::vector<mcmc<
+              Micror_state<averaging>>> const &walker) {
         return N_channel_state_count(u * (get<N_channel_transition_count>(
                                              walker[i_beta_1].parameter())()));
       },
@@ -240,14 +325,15 @@ calc_Ntotal_j_sum_iter(const thermo_mcmc<Micror_state> &data, std::size_t k,
       });
 }
 
+template <uses_averaging_aproximation averaging>
 N_channel_state_count
 calc_Ntotal_j_sum(std::size_t i_start, std::size_t i_end,
-                   const std::vector<thermo_mcmc<Micror_state>> &data_chain,
-                   std::size_t k, std::size_t i_beta_1) {
+                  const std::vector<thermo_mcmc<Micror_state<averaging>>> &data_chain,
+                  std::size_t k, std::size_t i_beta_1) {
 
   return foldMap(
       i_start, i_end, data_chain,
-      [k, i_beta_1](thermo_mcmc<Micror_state> const &x) {
+        [k, i_beta_1](thermo_mcmc<Micror_state<averaging>> const &x) {
         return calc_Ntotal_j_sum_iter(x, k, i_beta_1);
       },
       [](N_channel_state_count &&a, N_channel_state_count &&b) {
@@ -255,16 +341,22 @@ calc_Ntotal_j_sum(std::size_t i_start, std::size_t i_end,
       });
 }
 
+template <uses_averaging_aproximation averaging>
 N_channel_state_XTX_count
-calc_Ntotal_j_XTX_iter(const thermo_mcmc<Micror_state> &data,
-                            std::size_t k, std::size_t i_beta_1) {
-  Matrix<std::size_t> u(1, k, 1ul);
+calc_Ntotal_j_XTX_iter(const thermo_mcmc<Micror_state<averaging>> &data, std::size_t k,
+                       std::size_t i_beta_1) {
+    Matrix<std::size_t> u;
+    if constexpr (averaging.value>1)
+        u=Matrix<std::size_t>(1, k, 1ul);
+    else
+        u=Matrix<std::size_t>(1, 1, 1ul);
+        
   return foldMap(
       data.walkers,
-      [i_beta_1, &u](std::vector<mcmc<Micror_state>> const &walker) {
-          return N_channel_state_XTX_count(XTX(
-                  u * (get<N_channel_transition_count>(
-                          walker[i_beta_1].parameter())())));
+      [i_beta_1, &u](std::vector<mcmc<Micror_state<averaging>>> const &walker) {
+        return N_channel_state_XTX_count(XTX(
+            u *
+            (get<N_channel_transition_count>(walker[i_beta_1].parameter())())));
       },
       [](N_channel_state_XTX_count &&one,
          N_channel_state_XTX_count const &two) {
@@ -272,14 +364,15 @@ calc_Ntotal_j_XTX_iter(const thermo_mcmc<Micror_state> &data,
       });
 }
 
+template <uses_averaging_aproximation averaging>
 N_channel_state_XTX_count
 calc_Ntotal_j_sum_XTX(std::size_t i_start, std::size_t i_end,
-                       const std::vector<thermo_mcmc<Micror_state>> &data_chain,
-                       std::size_t k, std::size_t i_beta_1) {
+                      const std::vector<thermo_mcmc<Micror_state<averaging>>> &data_chain,
+                      std::size_t k, std::size_t i_beta_1) {
 
   return foldMap(
       i_start, i_end, data_chain,
-      [k, i_beta_1](thermo_mcmc<Micror_state> const &x) {
+      [k, i_beta_1](thermo_mcmc<Micror_state<averaging>> const &x) {
         return calc_Ntotal_j_XTX_iter(x, k, i_beta_1);
       },
       [](N_channel_state_XTX_count &&a, N_channel_state_XTX_count &&b) {
@@ -287,55 +380,66 @@ calc_Ntotal_j_sum_XTX(std::size_t i_start, std::size_t i_end,
       });
 }
 
-Vector_Space<P_mean,P_Cov> calculate_Pmean_cov(std::size_t i_start, std::size_t i_end,
-                       const std::vector<thermo_mcmc<Micror_state>> &data_chain,
-                       std::size_t k, std::size_t i_beta_1) {
-    auto N_sum =calc_Ntotal_j_sum(i_start,i_end,data_chain,k,i_beta_1);
-    auto N_sum_sqr =calc_Ntotal_j_sum_XTX(i_start,i_end,data_chain,k,i_beta_1);
-    auto n=data_chain[i_start].walkers.size()*(i_end-i_start);
-    auto N_mean=N_sum()*(1.0/n);
-    auto N=var::sum(N_mean);
-    auto v_P_mean=N_mean*(1.0/N);
-    
-    auto N_XTX_mean=N_sum_sqr()*1.0/n;
-    auto v_P_cov=(N_XTX_mean-XTX(N_mean))*(1.0/N);
-    
-    return Vector_Space(P_mean(v_P_mean),P_Cov(v_P_cov));
+template <uses_averaging_aproximation averaging>
+Vector_Space<P_mean, P_Cov>
+calculate_Pmean_cov(std::size_t i_start, std::size_t i_end,
+                    const std::vector<thermo_mcmc<Micror_state<averaging>>> &data_chain,
+                    std::size_t k) {
+  auto beta = data_chain[0].beta;
+  std::size_t i_beta_1 = 0;
+  if (beta[i_beta_1] != 1.0)
+    i_beta_1 = beta.size() - 1;
+
+  auto N_sum = calc_Ntotal_j_sum(i_start, i_end, data_chain, k, i_beta_1);
+  auto N_sum_sqr =
+      calc_Ntotal_j_sum_XTX(i_start, i_end, data_chain, k, i_beta_1);
+  auto n = data_chain[i_start].walkers.size() * (i_end - i_start);
+  auto N_mean = N_sum() * (1.0 / n);
+  auto N = var::sum(N_mean);
+  auto v_P_mean = N_mean * (1.0 / N);
+
+  auto N_XTX_mean = N_sum_sqr() * 1.0 / n;
+  auto v_P_cov = (N_XTX_mean - XTX(N_mean)) * (1.0 / N);
+
+  return Vector_Space(P_mean(v_P_mean), P_Cov(v_P_cov));
 }
 
-
-
-auto calculate_Evidence_iter(const thermo_mcmc<Micror_state> &data) {
+template <uses_averaging_aproximation averaging>
+auto calculate_Evidence_iter(const thermo_mcmc<Micror_state<averaging>> &data) {
   auto meanLik = mean_logL(data);
   return calculate_Evidence(data.beta, meanLik);
 }
 
-auto calculate_Evidence_mean(std::size_t i_start, std::size_t i_end,
-    const std::vector<thermo_mcmc<Micror_state>> &data_chain) {
+template <uses_averaging_aproximation averaging>
+auto calculate_Evidence_mean(
+    std::size_t i_start, std::size_t i_end,
+    const std::vector<thermo_mcmc<Micror_state<averaging>>> &data_chain) {
   std::size_t n = i_end - i_start;
 
-  return foldMap(
-             i_start, i_end, data_chain,
-             [](thermo_mcmc<Micror_state> const &data) {
-               return calculate_Evidence_iter(data);
-             },
-             [](auto one, auto two) { return one + two; }) /
-         n;
+  return plogL(foldMap(
+                   i_start, i_end, data_chain,
+                   [](thermo_mcmc<Micror_state<averaging>> const &data) {
+                     return calculate_Evidence_iter(data);
+                   },
+                   [](auto one, auto two) { return one + two; }) /
+               n);
 }
 
-auto
-get_Patch_State(std::size_t i_start, std::size_t i_end,const std::vector<thermo_mcmc<Micror_state>> &data_chain, std::size_t k, std::size_t i_beta_1) {
+template <uses_averaging_aproximation averaging>
+auto get_Patch_State(std::size_t i_start, std::size_t i_end,
+                     const std::vector<thermo_mcmc<Micror_state<averaging>>> &data_chain,
+                     std::size_t k) {
   //    Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
   //                 y_var, plogL, eplogL, vplogL>
-    
-    auto v_Evi=calculate_Evidence_mean(i_start,i_end,data_chain);
-    auto v_P=calculate_Pmean_cov(i_start,i_end,data_chain,k,i_beta_1);
-    return std::tuple(v_Evi,v_P);
-}
 
-template <uses_recursive_aproximation recursive,
-          uses_averaging_aproximation averaging,
-          uses_variance_aproximation variance, class FunctionTable,
+  auto v_Evi = calculate_Evidence_mean(i_start, i_end, data_chain);
+  auto v_P = calculate_Pmean_cov(i_start, i_end, data_chain, k);
+  return concatenate(Vector_Space(v_Evi), std::move(v_P));
+}
+ 
+template <uses_averaging_aproximation averaging,
+          uses_variance_aproximation variance,
+         class FunctionTable,
           class C_Patch_State, class C_Qdt, class C_Patch_Model, class C_double>
   requires(
       /*(U<std::decay_t<C_Patch_State>,
@@ -343,11 +447,12 @@ template <uses_recursive_aproximation recursive,
          Patch_State_and_Evolution> )&& U<C_Patch_Model, Patch_Model> &&*/
       U<C_double, double> && U<C_Qdt, Qdt>)
 
-Maybe_error<C_Patch_State>
-Micror_stochastic(FunctionTable &ftbl, C_Patch_State &&t_prior,
+auto
+Micror_stochastic(FunctionTable &ftbl, C_Patch_State t_prior,
                   C_Qdt const &t_Qdt, C_Patch_Model const &m,
                   C_double const &Nch, const Patch_current &p_y, double fs,
-                  std::size_t myseed) {
+                  std::size_t myseed,std::size_t number_of_samples,std::vector<double> calculation_intervals_nodes,
+                  std::size_t save_every_iter, std::size_t n_points_per_decade, double stops_at) {
 
   auto &p_P_cov = get<P_Cov>(t_prior);
   auto &p_P_mean = get<P_mean>(t_prior);
@@ -357,31 +462,72 @@ Micror_stochastic(FunctionTable &ftbl, C_Patch_State &&t_prior,
   std::string path = "";
   std::size_t num_scouts_per_ensemble =
       std::pow(2, std::ceil(std::log2(num_par)));
-
-  auto max_num_simultaneous_temperatures = 100;
+  
+  auto max_num_simultaneous_temperatures = 10000;
   auto thermo_jumps_every = 4ul;
-  auto max_iter_warming = 100ul;
-  auto max_iter_equilibrium = 10000ul;
-  auto n_points_per_decade = 6ul;
-  auto stops_at = 1e-2;
+  auto max_iter_equilibrium = number_of_samples*save_every_iter;
   bool includes_zero = true;
-
-  auto tmi = thermo_store_every<Micror_state>(
+  
+  std::vector<std::pair<double, double>> calculation_intervals =
+      MapAdj(calculation_intervals_nodes,[](auto one, auto two){return std::pair(one,two);});
+  auto tmi = thermo_store_every<Micror_state<averaging>>(
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
-      thermo_jumps_every, max_iter_warming, max_iter_equilibrium,
+      thermo_jumps_every, save_every_iter, max_iter_equilibrium,
       n_points_per_decade, stops_at, includes_zero, myseed);
+  
+  
+  Micror_parameters_distribution<averaging> r_prior;
+  if constexpr (averaging.value==2)
+  {
+      auto r_Pij = Ptotal_ij(diag(get<P_mean>(t_prior)()) * get<P>(t_Qdt)());
+  
+  r_prior =
+      Micror_parameters_distribution<averaging>(N_Ch_mean_value(Nch), r_Pij);
+  }
+  else
+  {
+      auto r_Pj = P_mean(get<P_mean>(t_prior)() * get<P>(t_Qdt)());
+      r_prior =
+          Micror_parameters_distribution<averaging>(N_Ch_mean_value(Nch), r_Pj);
+      
+      
+  }
+  auto k = p_P_cov().nrows();
 
-  auto r_Pij = Ptotal_ij(diag(get<P_mean>(t_prior)()) * get<P>(t_Qdt)());
-
-  auto r_prior = Micror_parameters_distribution(N_Ch_mean_value(Nch), r_Pij);
-
-  std::vector<thermo_mcmc<Micror_state>> chains =
-      evidence(ftbl, std::move(tmi), r_prior, Micror_parameters_likelihood{},
-               p_y,
+  auto res =
+      evidence(ftbl, std::move(tmi), r_prior,
+               Micror_parameters_likelihood<averaging, variance>{}, p_y,
                Vector_Space(get<gmean_ij>(t_Qdt), get<gvar_ij>(t_Qdt),
-                            get<Current_Noise>(m)))
-          .first;
+                            get<Current_Noise>(m)));
+  std::vector<thermo_mcmc<Micror_state<averaging>>> chains =std::move(res.first.chains());
+  
+  return Map(calculation_intervals,
+             [&chains, k](std::pair<double, double> inter) {
+               auto n = chains.size();
+               std::size_t i0 = inter.first * n;
+               std::size_t i1 = inter.second * n;
+               return get_Patch_State(i0, i1, chains, k);
+             });
 }
+
+
+template <uses_averaging_aproximation averaging,
+         uses_variance_aproximation variance>
+struct MicroR{
+    friend std::string ToString(MicroR){
+        std::string out="MicroR";
+        if (averaging.value==2)
+            out+="_2";
+        else
+            out+="__";
+        if (variance.value)
+            out+="_V";
+        else
+            out+="_M";
+        
+        return out; 
+    }
+};
 
 } // namespace macrodr
 

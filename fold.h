@@ -10,7 +10,54 @@
 #include <type_traits>
 #include <utility>
 
+template<template<class...> class Container,
+         class T,
+         class F>
+auto Map (Container<T>const & c, F&& f )
+{
+    using S=decltype(f(c[0]));
+    Container<S> out;
+    out.reserve(c.size());
+    for (auto & e:c)
+    {
+        auto v=f(e);
+        out.push_back(v);
+    }
+    return out;    
+}
 
+
+
+
+template<class F>
+auto Map (F&& f )
+{
+    return [&f](auto const& c) {return Map(c,std::forward<F>(f));};    
+}
+
+
+template<template<class...> class Container,
+         class T,
+         class F>
+auto MapAdj (Container<T>const & c, F&& f )
+{
+    using S=std::invoke_result_t<F,T,T>;
+    Container<S> out;
+    out.reserve(c.size()-1);
+    for (std::size_t i=1; i<c.size(); ++i)
+    {
+        auto v=std::invoke(std::forward<F>(f),c[i-1],c[i]);
+        out.push_back(v);
+    }
+    return out;    
+}
+
+
+template<class C, class F>
+auto operator | (C&& c, F&& f)->std::invoke_result_t<F,C>
+{
+    return std::invoke(std::forward<F>(f),std::forward<C>(c));
+}
 
 
 template<class Container,

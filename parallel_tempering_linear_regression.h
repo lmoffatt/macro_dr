@@ -4,6 +4,7 @@
 #include "function_measure_verification_and_optimization.h"
 #include "multivariate_normal_distribution.h"
 #include "parallel_tempering.h"
+#include <type_traits>
 
 class save_Evidence {
     
@@ -247,6 +248,7 @@ auto evidence(FunctionTable&& ff,thermodynamic_integration<Algorithm,Reporter>&&
     auto current = init_thermo_mcmc(f,n_walkers, beta_run, mts, prior, lik, y, x);
     //auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
+    
     std::size_t iter = 0;
     auto& rep=therm.reporter();
     report_title(rep, current, lik, y, x);
@@ -258,6 +260,7 @@ auto evidence(FunctionTable&& ff,thermodynamic_integration<Algorithm,Reporter>&&
             thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                              therm.thermo_jumps_every());
             report(f,iter, rep, current);
+            //using geg=typename decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         }
         if (it_beta_run_begin!=beta.rbegin()) {
@@ -279,7 +282,7 @@ auto evidence(FunctionTable&& ff,thermodynamic_integration<Algorithm,Reporter>&&
         }
     }
     
-    return std::pair(mcmc_run, current);
+    return std::pair(std::move(mcmc_run.first), current);
 }
 
 
@@ -363,6 +366,9 @@ auto thermo_by_max_iter(std::string path, std::string filename,
                                      thermo_jumps_every,
                                      n_points_per_decade, stops_at, includes_zero, initseed);
 }
+
+
+
 
 
 template<class Parameters>
