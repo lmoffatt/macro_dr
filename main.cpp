@@ -14,8 +14,8 @@
 // #include "multivariate_normal_distribution.h"
 #include "allosteric_models.h"
 #include "cuevi.h"
-#include "parallel_tempering.h"
 #include "micror_stochastic.h"
+#include "parallel_tempering.h"
 #include "qmodel.h"
 #include <algorithm>
 #include <chrono>
@@ -2018,7 +2018,7 @@ int main(int argc, char **argv) {
    * in a wide range of concentration and dt and for current model. (model0)
    *
    */
-  constexpr bool analyze_and_test_Qdt = true;
+  constexpr bool analyze_and_test_Qdt = false;
   if constexpr (analyze_and_test_Qdt) {
 
     auto orders = std::vector<std::size_t>{1, 2, 3, 5, 8, 12, 16};
@@ -2028,10 +2028,10 @@ int main(int argc, char **argv) {
     //     ATP_concentration(200),  ATP_concentration(500),
     //     ATP_concentration(1000), ATP_concentration(2000),
     //     ATP_concentration(5000), ATP_concentration(10000)};
-    
-    auto xs = std::vector<ATP_concentration>{
-                                             ATP_concentration(0),    ATP_concentration(10000)};
-    
+
+    auto xs = std::vector<ATP_concentration>{ATP_concentration(0.0),
+                                             ATP_concentration(10000.0)};
+
     auto dts = std::vector<double>();
     double dt_min = 1e-6;
     double dt_max = 1;
@@ -2087,7 +2087,9 @@ int main(int argc, char **argv) {
         //  , , , ,
         auto n = number_of_samples(dt * fs);
         auto step = ATP_step(n, x);
-        Qdt Qdtd = macrodr::Macro_DMR{}.calc_Qdt(ftbl.fork(var::I_thread(0)), m, step, fs).value();
+        Qdt Qdtd = macrodr::Macro_DMR{}
+                       .calc_Qdt(ftbl.fork(var::I_thread(0)), m, step, fs)
+                       .value();
         for (std::size_t i = 0; i < get<gmean_i>(Qdtd)().size(); ++i) {
           std::apply(
               [x, dt, i, &fo_i](auto const &...g_i) {
@@ -2111,21 +2113,22 @@ int main(int argc, char **argv) {
                           << "," << j << "," << g_ij()(i, j) << "\n"),
                    ...);
                 },
-                std::forward_as_tuple(get<P>(Qdtd),get<gtotal_ij>(Qdtd), get<gmean_ij>(Qdtd),
-                                      get<gtotal_sqr_ij>(Qdtd),
-                                      get<gtotal_var_ij>(Qdtd),
-                                      get<gvar_ij>(Qdtd)));
+                std::forward_as_tuple(
+                    get<P>(Qdtd), get<gtotal_ij>(Qdtd), get<gmean_ij>(Qdtd),
+                    get<gtotal_sqr_ij>(Qdtd), get<gtotal_var_ij>(Qdtd),
+                    get<gvar_ij>(Qdtd)));
           }
         }
 
         for (auto order : orders) {
           Qdt Q_dtb = macrodr::Macro_DMR{}
-                          .calc_Qdt_bisection(ftbl.fork(var::I_thread(0)), m, step, fs, order)
+                          .calc_Qdt_bisection(ftbl.fork(var::I_thread(0)), m,
+                                              step, fs, order)
                           .value();
 
           for (std::size_t i = 0; i < get<gmean_i>(Qdtd)().size(); ++i) {
             std::apply(
-                [x, dt, i, &fo_i,order](auto const &...g_i) {
+                [x, dt, i, &fo_i, order](auto const &...g_i) {
                   ((fo_i << x.value() << "," << dt << ","
                          << "Qdt_bis"
                          << "," << order << "," << className(g_i) << "," << i
@@ -2139,31 +2142,182 @@ int main(int argc, char **argv) {
             for (std::size_t j = 0; j < get<gtotal_ij>(Q_dtb)().ncols(); ++j) {
 
               std::apply(
-                  [x, dt, &fo_ij, i, j,order](auto const &...g_ij) {
+                  [x, dt, &fo_ij, i, j, order](auto const &...g_ij) {
                     ((fo_ij << x.value() << "," << dt << ","
                             << "Qdt_bis"
                             << "," << order << "," << className(g_ij) << ","
                             << i << "," << j << "," << g_ij()(i, j) << "\n"),
                      ...);
                   },
-                  std::forward_as_tuple(get<P>(Q_dtb),
-                      get<gtotal_ij>(Q_dtb), get<gmean_ij>(Q_dtb),
-                      get<gtotal_sqr_ij>(Q_dtb), get<gtotal_var_ij>(Q_dtb),
-                      get<gvar_ij>(Q_dtb)));
+                  std::forward_as_tuple(
+                      get<P>(Q_dtb), get<gtotal_ij>(Q_dtb),
+                      get<gmean_ij>(Q_dtb), get<gtotal_sqr_ij>(Q_dtb),
+                      get<gtotal_var_ij>(Q_dtb), get<gvar_ij>(Q_dtb)));
             }
           }
         }
       }
     }
   }
-  
-  
+
   constexpr bool analyze_and_test_Macror = true;
-  if constexpr (analyze_and_test_Macror)
-  {
-      
+  if constexpr (analyze_and_test_Macror) {
+
+    /// the idea is to run several Macror algorithms with their Micro_stochastic
+    /// counterparts. the Micro_stochastic algorithm has several parameters that
+    /// determine the sampling effort we want to see that the sampling effort is
+    /// big enough. the dimensions of sampling effort are the following
+    /// 1. warming up period
+    /// 2. number of samples
+    /// 3. betas:
+    /// 3. a number per decade
+    /// 3. b minimum beta
+    /// 4. number of walkers
+
+    std::string filename = "micro_stochastic";
+    std::ofstream fo_i(filename + ModelName + ".txt");
+    //  std::ofstream fo_ij(filename + ModelName + "_istate_jstate.txt");
+
+    fo_i << "i_t"
+         << ","
+         << "ATP"
+         << ","
+         << "dt"
+         << ","
+         << "algoritm"
+         << ","
+         << "number_of_samples"
+         << ","
+         << "interval"
+         << ","
+         << "save_every"
+         << ","
+         << "n_points_per_decade"
+         << ","
+         << "stops_at"
+         << ","
+         << "variable"
+         << ","
+         << "i_state"
+         << ","
+         << "j_state"
+         << ","
+         << "value"
+         << "\n";
+    constexpr const auto averaging = uses_averaging_aproximation(2);
+    constexpr const auto variance = uses_variance_aproximation(false);
+
+    std::size_t current_i = 0;
+    std::size_t current_i_s = 0;
+
+    auto save = [](auto &fo_i, std::size_t i_t, const std::string &algorithm,
+                   std::size_t number_of_samples, double interval,
+                   std::size_t n_points_per_decade, double stops_at,
+                   auto const &patch) {
+      auto r_PCov = get<P_Cov>(patch);
+      auto r_Pmean = get<P_mean>(patch);
+      auto r_logL = get<plogL>(patch);
+
+      fo_i << i_t << "," << algorithm << "," << number_of_samples << ","
+           << interval << "," << n_points_per_decade << "," << stops_at << ","
+           << "plogL"
+           << "," << 0 << "," << 0 << "," << r_logL << "\n";
+      for (std::size_t i = 0; i < r_PCov().nrows(); ++i)
+        fo_i << i_t << "," << algorithm << "," << number_of_samples << ","
+             << interval << "," << n_points_per_decade << "," << stops_at << ","
+             << "Pmean"
+             << "," << i << "," << 0 << "," << r_Pmean()[i] << "\n";
+      for (std::size_t i = 0; i < r_PCov().nrows(); ++i)
+        for (std::size_t j = i; j < r_PCov().ncols(); ++j)
+          fo_i << i_t << "," << algorithm << "," << number_of_samples << ","
+               << interval << "," << n_points_per_decade << "," << stops_at
+               << ","
+               << "PCov"
+               << "," << i << "," << j << "," << r_PCov()(i, j) << "\n";
+    };
+
+    auto ftbl2 = insert(
+        "micror_stoch", ftbl,
+        var::Time_it(
+            F(MacroR<uses_recursive_aproximation(true), averaging, variance>{},
+              [&fo_i, &current_i, &current_i_s, &mt, &save, averaging,
+               variance](auto &ft, Patch_State &&t_prior, Qdt const &t_Qdt,
+                         Patch_Model const &mo, double const &Nch,
+                         const Patch_current &p_y, double fs) {
+                std::vector<std::size_t> sampled_i = {2, 20, 30, 50};
+                if (current_i == sampled_i[current_i_s]) {
+                  ++current_i_s;
+                  std::vector<std::size_t> v_number_of_samples = {10000, 1000,
+                                                                  100};
+                  std::vector<double> calculation_intervals = {0.5, 0.625, 0.75,
+                                                               0.875, 1};
+                  std::size_t save_every_iter = 50;
+                  std::vector<std::size_t> v_n_points_per_decade = {24, 12, 6,
+                                                                    3};
+                  std::vector<double> v_stops_at = {1e-4, 1e-3, 1e-2};
+
+                  std::uniform_int_distribution<
+                      typename std::mt19937_64::result_type>
+                      useed;
+
+                  std::string algorithm;
+
+                  for (auto number_of_samples : v_number_of_samples) {
+                    for (auto n_points_per_decade : v_n_points_per_decade)
+                      for (auto stops_at : v_stops_at) {
+
+                          /*
+                           * FunctionTable &ftbl, C_Patch_State &&t_prior,
+                  C_Qdt const &t_Qdt, C_Patch_Model const &m,
+                  C_double const &Nch, const Patch_current &p_y, double fs,
+                  std::size_t myseed,std::size_t number_of_samples,std::vector<double> calculation_intervals,
+                  std::size_t save_every_iter, std::size_t n_points_per_decade, double stops_at
+                           * */
+
+                           auto myseed = useed(mt);
+
+                          auto micro =
+                            Micror_stochastic<averaging, variance>(
+                                ft, t_prior, t_Qdt, mo, Nch, p_y, fs, myseed,
+                                number_of_samples, calculation_intervals,
+                                save_every_iter, n_points_per_decade, stops_at)
+                                ;
+                        for (std::size_t i_interval = 0;
+                             i_interval < micro.size(); ++i_interval) {
+                          save(fo_i, current_i, algorithm, number_of_samples,
+                               calculation_intervals[i_interval],
+                               n_points_per_decade, stops_at,
+                               micro[i_interval]);
+                        }
+                      }
+                  }
+                }
+                auto m = Macro_DMR{};
+                auto out_Macro = m.Macror<uses_recursive_aproximation(true),
+                                          averaging, variance>(
+                    ft, std::move(t_prior), t_Qdt, mo, Nch, p_y, fs);
+                save(fo_i, current_i,
+                     ToString(MacroR<uses_recursive_aproximation(true),
+                                     averaging, variance>{}),
+                     0, 0, 0, 0, out_Macro.value());
+                return m.Macror<uses_recursive_aproximation(true),
+                                averaging, variance>(
+                    ft, std::move(t_prior), t_Qdt, mo, Nch, p_y, fs);
+              }),
+            num_scouts_per_ensemble / 2));
+
+    auto sim = Macro_DMR{}.sample(
+        mt, model0, param1, experiment,
+        Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
+        recording);
+    auto lik = Macro_DMR{}
+                   .log_Likelihood<uses_adaptive_aproximation(false),
+                                   uses_recursive_aproximation(true), averaging,
+                                   variance, return_predictions(false)>(
+                       ftbl2.fork(var::I_thread(0)), model0, param1, experiment,
+                       sim.value()());
   }
-  
+
   constexpr bool test_derivative = false;
 
   if constexpr (test_derivative) {

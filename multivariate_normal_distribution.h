@@ -576,6 +576,7 @@ private:
   Matrix<std::gamma_distribution<>> m_gammas;
 
 public:
+  dirchlet_distribution()=default;
   dirchlet_distribution(Matrix<double> alpha)
       : m_gammas{applyMap(
             [](double a) {
@@ -606,6 +607,7 @@ private:
 
 
 public:
+  multinomial_distribution()=default;
   multinomial_distribution(double N, Matrix<double> P) : m_N{N}, m_P{P} {
       assert(std::abs(var::sum(P) - 1.0) <
            std::numeric_limits<double>::epsilon() * 100);
@@ -626,7 +628,7 @@ public:
     out[k - 1] = N_remaining;
     return out;
   }
-  double logP(const Matrix<std::size_t> &Nij, std::size_t N) {
+  double logP(const Matrix<std::size_t> &Nij, std::size_t N)const  {
     double out = std::lgamma(N + 1.0);
     for (std::size_t i = 0; i < Nij.size(); ++i) {
       out = out + Nij[i] * std::log(m_P[i]) - std::lgamma(Nij[i] + 1.0);
@@ -634,7 +636,7 @@ public:
     return out;
   }
 
-  Maybe_error<double> logP(const Matrix<std::size_t> &Nij) {
+  Maybe_error<double> logP(const Matrix<std::size_t> &Nij) const {
     auto N = var::sum(Nij);
     auto r = N - m_N;
 

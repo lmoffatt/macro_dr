@@ -28,7 +28,8 @@ public:
   constexpr F(Id, Fun &&t_f) : m_f{std::move(t_f)} {}
   constexpr F(Fun &&t_f) : m_f{std::move(t_f)} {}
   template <class... Ts> constexpr auto operator()(Ts &&...ts) const {
-    return std::invoke(m_f, std::forward<Ts>(ts)...);
+      return m_f(std::forward<Ts>(ts)...);
+      
   }
 
   template <class... Ts> friend auto apply_F(F const me, Ts &&...ts) {
@@ -120,8 +121,8 @@ public:
         return out;
       }
     } else {
-      if constexpr (std::is_same_v<void, decltype(std::invoke(
-                                             m_f, std::forward<Ts>(ts)...))>) {
+      if constexpr (std::is_same_v<void, decltype(
+                                               m_f(std::forward<Ts>(ts)...))>) {
         std::invoke(m_f, std::forward<Ts>(ts)...);
         const auto end = std::chrono::high_resolution_clock::now();
         auto dur = end - start;
@@ -431,6 +432,8 @@ template <class... Fs> class FuncMap : public Fs... {
   std::string sep = ",";
 
 public:
+    
+  
   using Fs::operator[]...;
 
   template <class Id> Nothing operator[](Id) const { return Nothing{}; }
@@ -441,7 +444,14 @@ public:
   FuncMap(const std::string path, Fs &&...fs)
       : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {}
   
+  FuncMap( std::ofstream&& f, Fs &&...fs)
+      : Fs{std::move(fs)}..., m_file{std::move(f)} {}
   
+  FuncMap(const std::string path, Fs const&...fs)
+      : Fs{fs}..., m_file{std::ofstream(path + "_time_it.cvs")} {}
+  
+  FuncMap( std::ofstream&& f, Fs const&...fs)
+      : Fs{fs}..., m_file{std::move(f)} {}
   
   
   template <class... Context_data>
@@ -467,15 +477,15 @@ template <class... Fs, class F, class G>
 auto operator +(std::pair<FuncMap<Fs...>, F> && f, G const & g )
 {
     if constexpr(std::is_same_v<typename G::myId, typename F::myId>)
-        return std::pair(FuncMap<Fs...,F>(std::move(f.first[typename Fs::myId{}])...,f.second),f.second);
+        return std::pair(FuncMap<Fs...,F>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,f.second),f.second);
     else
-        return std::pair(FuncMap<Fs...,G>(std::move(f.first[typename Fs::myId{}])...,g),f.second);
+        return std::pair(FuncMap<Fs...,G>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,g),f.second);
 }
 
 template <class G,class... Fs,  class F>
-auto insert(FuncMap<G,Fs...> const & fun,  F const & f )
+auto insert(const std::string & path,FuncMap<G,Fs...> const & fun,  F const & f )
 {
-   return (std::pair(FuncMap<G>(fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
+   return (std::pair(FuncMap<G>(path,fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
 }
 
 

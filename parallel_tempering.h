@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
+#include <type_traits>
 #include <vector>
 
 
@@ -16,6 +17,7 @@ struct observer {
     observer() {}
     auto &operator[](std::size_t) const { return *this; }
 };
+
 
 template <class T> using ensemble = std::vector<T>;
 template <class T> using by_beta = std::vector<T>;
@@ -66,7 +68,9 @@ auto get_beta_list(double n_points_per_decade, double stops_at,
     return out;
 }
 
-template <class Parameters> struct thermo_mcmc {
+template <class Parameters>
+    requires std::is_assignable_v<Parameters, Parameters const&>
+struct thermo_mcmc {
     by_beta<double> beta;
     ensemble<by_beta<mcmc<Parameters>>> walkers;
     ensemble<by_beta<std::size_t>> i_walkers;
@@ -342,6 +346,21 @@ check_iterations(std::pair<std::size_t, std::size_t> current_max,
         return std::pair(std::pair(current_max.first + 1, current_max.second),
                          false);
 };
+struct no_save{
+    
+    template<class FunctionTable,class Parameters,class ...T>
+    friend void report(FunctionTable &&,std::size_t , no_save &,
+                       thermo_mcmc<Parameters> const &,T&&... ) {}
+    template <class Prior, class Likelihood, class Variables, class DataType>
+    friend void report_model(no_save &, Prior const &p, Likelihood const& , const DataType &,
+                             const Variables &, by_beta<double> const &) {
+    }
+    
+    template<class Parameters>
+    friend void report_title(no_save &, thermo_mcmc<Parameters> const &,...) {
+    }
+};
+
 
 template < class Algorithm, class Thermo_mcmc>
 concept is_Algorithm_conditions = requires(Algorithm &&a) {
@@ -407,13 +426,18 @@ public:
 
 
 template<class mcmc>
+    requires std::is_assignable_v<mcmc,mcmc const&>
 class store_every_n_iter{
-    const std::size_t m_save_every;
-    const std::size_t m_max;
+     std::size_t m_save_every;
+     std::size_t m_max;
     std::size_t m_current_iter=0ul;
     std::vector<mcmc> m_values;
 public:
+    
     store_every_n_iter(std::size_t save_every, std::size_t max):m_save_every{save_every}, m_max{max}{m_values.reserve(max);}
+    
+    auto& chains() {return m_values;}
+    
     friend auto checks_convergence(store_every_n_iter &&c,
                                    const mcmc& t_mcmc) {
         if (c.m_current_iter% c.m_save_every==0)
@@ -421,11 +445,12 @@ public:
         if (c.m_current_iter<c.m_max)
         {
             ++c.m_current_iter;
-            return std::pair(std::move(c), false);}
+            return std::pair<store_every_n_iter,bool>(std::move(c), false);}
         else {
-            return std::pair(std::move(c), true);
+            return std::pair<store_every_n_iter,bool>(std::move(c), true);
         }
     }
+    void reset(){}
 };
 
 
@@ -576,6 +601,7 @@ void step_stretch_thermo_mcmc(FunctionTable&& f,std::size_t &iter,
                         beta[ib] * (ca_logL.value() - current.walkers[iw][ib].logL);
                     auto pJump =
                         std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
+                    if constexpr (!std::is_same_v<Observer,no_save>)
                     observe_step_stretch_thermo_mcmc(
                         obs[iw][ib], jw, z, r, current.walkers[iw][ib].parameter,
                         current.walkers[jw][ib].parameter, current.walkers[iw][ib].logP,
@@ -623,6 +649,7 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
                     calc_logA(beta[ib], beta[ib + 1], current.walkers[iw][ib].logL,
                               current.walkers[jw][ib + 1].logL);
                 auto pJump = std::min(1.0, std::exp(logA));
+                if constexpr (!std::is_same_v<Observer,no_save>)
                 observe_thermo_jump_mcmc(
                     obs[iw][ib], jw, current.walkers[iw][ib].parameter,
                     current.walkers[jw][ib + 1].parameter, current.walkers[iw][ib].logL,
@@ -632,7 +659,7 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
                     std::swap(current.walkers[iw][ib], current.walkers[jw][ib + 1]);
                     std::swap(current.i_walkers[iw][ib], current.i_walkers[jw][ib + 1]);
                 }
-            }
+            } 
         }
     }
 }
@@ -804,20 +831,6 @@ public:
     }
 };
 
-struct no_save{
-    
-    template<class FunctionTable,class Parameters,class ...T>
-    friend void report(FunctionTable &&,std::size_t , no_save &,
-                       thermo_mcmc<Parameters> const &,T&&... ) {}
-    template <class Prior, class Likelihood, class Variables, class DataType>
-    friend void report_model(no_save &, Prior const &p, Likelihood const& , const DataType &,
-                             const Variables &, by_beta<double> const &) {
-    }
-    
-    template<class Parameters>
-    friend void report_title(no_save &, thermo_mcmc<Parameters> const &,...) {
-    }
-};
 
 
 #endif // PARALLEL_TEMPERING_H

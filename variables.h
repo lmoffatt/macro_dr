@@ -295,6 +295,13 @@ public:
     Vector_Space(){}
     Vector_Space(Vars&&...t_vars): Vars{std::move(t_vars)}...{}
     Vector_Space(Vars const&...t_vars): Vars{t_vars}...{}
+    
+    template<class... Vars2>
+    friend auto concatenate(Vector_Space&& one, Vector_Space<Vars2...>&& two)
+    {
+        return Vector_Space<Vars...,Vars2...>(std::move(get<Vars>(one))...,std::move(get<Vars2>(two))...);
+    }        
+     
    // Vector_Space(std::decay_t <decltype(std::declval<Vars const&>().value())> ... t_vars): Vars{std::move(t_vars)}...{}
     friend std::ostream& operator<<(std::ostream& os, const Vector_Space& tu)
     {

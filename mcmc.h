@@ -46,6 +46,11 @@ auto init_mt(typename std::mt19937_64::result_type initseed) {
     return std::mt19937_64(initseed);
 }
 
+template<class D, class T>
+    requires(is_Distribution_of<D,T>)
+auto logPrior(const D&d, const T& x )
+{return d.logP(x);}
+
 
 
 template <class Distribution, class Parameters>
@@ -88,7 +93,7 @@ concept is_likelihood_model = requires(FunctionTable&& f,
     }-> std::convertible_to<DataType>;
     
     {
-        logLikelihood(f,lik,p,var,y)
+        logLikelihood(std::forward<FunctionTable>(f),lik,p,y,var)
     }->std::convertible_to<Maybe_error<double>>;
 };
 
@@ -97,11 +102,6 @@ struct logLikelihood_f{
     friend constexpr std::string ToString(logLikelihood_f){ return "logLikelihood_f";}
 };
 
-
-template<class D, class T>
-    requires(is_Distribution_of<D,T>)
-auto logPrior(const D&d, const T& x )
-{return d.logP(x);}
 
 
 

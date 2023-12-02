@@ -4,6 +4,7 @@
 #include <cmath>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <variant>
 #include <vector>
 #include <sstream>
@@ -41,7 +42,8 @@ template <auto F> std::string function_name();
 struct Nothing{};
 
 
-template <class T> class Maybe_error;
+template <class T>     requires (!std::is_reference_v<T>)
+class Maybe_error;
 
 template <class T>
 concept is_Maybe_error = is_of_this_template_type_v<T, Maybe_error>;
@@ -137,7 +139,9 @@ inline std::string  ToString(const double& x)
 {std::stringstream ss; ss<<std::setprecision(12); ss<<x; return ss.str();}
 
 
-template <class T> class Maybe_error : private std::variant<T, error_message> {
+template <class T>
+    requires (!std::is_reference_v<T>)
+class Maybe_error : private std::variant<T, error_message> {
 public:
   using base_type = std::variant<T, error_message>;
 
