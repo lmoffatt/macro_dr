@@ -2160,7 +2160,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  constexpr bool analyze_and_test_Macror = true;
+    constexpr bool analyze_and_test_Macror = true;
   if constexpr (analyze_and_test_Macror) {
 
     /// the idea is to run several Macror algorithms with their Micro_stochastic
@@ -2247,20 +2247,18 @@ int main(int argc, char **argv) {
                 std::vector<std::size_t> sampled_i = {2, 20, 30, 50};
                 if (current_i == sampled_i[current_i_s]) {
                   ++current_i_s;
-                  std::vector<std::size_t> v_number_of_samples = {10000, 1000,
-                                                                  100};
+                  std::vector<std::size_t> v_number_of_samples = { 50};
                   std::vector<double> calculation_intervals = {0.5, 0.625, 0.75,
                                                                0.875, 1};
                   std::size_t save_every_iter = 50;
-                  std::vector<std::size_t> v_n_points_per_decade = {24, 12, 6,
-                                                                    3};
-                  std::vector<double> v_stops_at = {1e-4, 1e-3, 1e-2};
+                  std::vector<std::size_t> v_n_points_per_decade = {3};
+                  std::vector<double> v_stops_at = {1e-2};
 
                   std::uniform_int_distribution<
                       typename std::mt19937_64::result_type>
                       useed;
 
-                  std::string algorithm;
+                  std::string algorithm=ToString(MicroR<averaging, variance>{});
 
                   for (auto number_of_samples : v_number_of_samples) {
                     for (auto n_points_per_decade : v_n_points_per_decade)
@@ -2300,22 +2298,23 @@ int main(int argc, char **argv) {
                      ToString(MacroR<uses_recursive_aproximation(true),
                                      averaging, variance>{}),
                      0, 0, 0, 0, out_Macro.value());
+                ++current_i;
                 return m.Macror<uses_recursive_aproximation(true),
                                 averaging, variance>(
                     ft, std::move(t_prior), t_Qdt, mo, Nch, p_y, fs);
               }),
             num_scouts_per_ensemble / 2));
 
-    auto sim = Macro_DMR{}.sample(
+    auto sim_7 = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
         Simulation_Parameters(Number_of_simulation_sub_steps(100ul)),
-        recording);
-    auto lik = Macro_DMR{}
+        recording_7);
+    auto lik_7 = Macro_DMR{}
                    .log_Likelihood<uses_adaptive_aproximation(false),
                                    uses_recursive_aproximation(true), averaging,
                                    variance, return_predictions(false)>(
-                       ftbl2.fork(var::I_thread(0)), model0, param1, experiment,
-                       sim.value()());
+                       ftbl2.fork(var::I_thread(0)), model0, param1, experiment_7,
+                       sim_7.value()());
   }
 
   constexpr bool test_derivative = false;
