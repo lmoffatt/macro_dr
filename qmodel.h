@@ -311,8 +311,19 @@ class P : public Var<P, Matrix<double>> {
 
 class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
     friend std::string className(Ptotal_ij){return "Ptotal_ij";}
-};
-
+public:
+ };
+Maybe_error<Ptotal_ij>    make_Ptotal_ij(Matrix<double>&& x, double max_dt )
+{
+    for (std::size_t i=0; i<x.size(); ++i)
+    {
+        if ((x[i]< -max_dt)||(x[i]>max_dt +1))
+            return error_message(std::to_string(i)+"= "+std::to_string(x[i])+" istoo big or small ");
+        else
+            x[i]=std::min(1.0,std::max(0.0,x[i]));
+    }
+    return Ptotal_ij(x/var::sum(x));
+}
 
 class gmean_i : public Var<gmean_i, Matrix<double>> {
     friend std::string className(gmean_i){return "gmean_i";}

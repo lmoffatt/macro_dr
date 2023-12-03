@@ -902,7 +902,7 @@ auto init_mcmc_resample(FunctionTable &&f, ensemble<std::mt19937_64> &mt,
   auto n_walkers = current.walkers.size();
   auto n_frac = current.beta.size();
   for (std::size_t half = 0; half < 2; ++half)
-//#pragma omp parallel for
+#pragma omp parallel for
     for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
       auto iw = iiw + half * n_walkers / 2;
       for (std::size_t i_fr = 0; i_fr < n_frac; ++i_fr)

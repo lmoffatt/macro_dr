@@ -11,7 +11,9 @@
 #include "variables.h"
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <random>
+#include <utility>
 #include <vector>
 
 namespace macrodr {
@@ -55,25 +57,32 @@ static auto sample_Multinomial_state(std::mt19937_64 &mt,
 }
 
 auto N_total_ij__mean_to_count(std::mt19937_64 &mt,
-                               N_channel_transition_mean const &nr) {
+                               N_channel_transition_mean const &nr,
+                               double max_eps=std::sqrt(std::numeric_limits<double>::epsilon())) {
 
   double N_mean = var::sum(nr());
   std::size_t N_count = sample_N(mt, N_mean);
 
   auto v_Nr = N_channel_transition_mean(nr() * (N_count / N_mean));
   Matrix<std::size_t> out =
-      applyMap([](double N) { return std::size_t(std::floor(N)); }, v_Nr());
+      applyMap([max_eps](double N) {
+      return std::size_t(std::floor(N+max_eps)); }, v_Nr());
 
   Matrix<double> sum_r = v_Nr() - out;
-
-  assert(N_count > var::sum(out));
+  
+  assert(N_count >= var::sum(out));
   double Nr = N_count - var::sum(out);
-  Matrix<double> r = sum_r / Nr;
-  ;
+  if (Nr==0)
+      return N_channel_transition_count(out);
+  else  
+  {
+      Matrix<double> r = sum_r / Nr;
+  
 
   Matrix<std::size_t> rs = multinomial_distribution(Nr, r)(mt);
 
   return N_channel_transition_count(out + rs);
+  }
 }
 
 template <uses_averaging_aproximation averaging>
@@ -114,11 +123,12 @@ public:
 
     auto Nk = get<N_channel_transition_mean>(Xk());
     auto Nj = get<N_channel_transition_mean>(Xj());
-
-    N_channel_transition_mean out = Nj;
+    
+    N_channel_transition_mean out; 
     double z;
     double is_valid = false;
     while (!is_valid) {
+      out= Nj;
       z = std::pow(rdist(mt) + 1, 2) / 2.0;
       is_valid = true;
       for (std::size_t i = 0; i < Nj().size(); ++i) {
@@ -167,8 +177,8 @@ template <uses_averaging_aproximation averaging,
           uses_variance_aproximation variance>
 class Micror_parameters_likelihood {
   template <class FuncTable, class Qdt>
-  friend Maybe_error<double>
-  logLikelihood(FuncTable &&f, Micror_parameters_likelihood,
+  friend double
+  logLikelihoodd(FuncTable &&f, Micror_parameters_likelihood,
                 Micror_state<averaging> const &p, const Patch_current &y,
                   const Qdt &x) {
     if constexpr (averaging.value==2) {
@@ -178,7 +188,7 @@ class Micror_parameters_likelihood {
       if constexpr (variance.value)
         r_var = r_var + var::sum(elemMult(get<gvar_ij>(x)(), v_Nij()));
       auto chi2 = sqr(y() - y_mean) / r_var;
-
+      
       return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
     } else     if constexpr (averaging.value==1) {
       auto v_Nj = get<N_channel_transition_count>(p());
@@ -199,6 +209,18 @@ class Micror_parameters_likelihood {
         
         return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
     }
+  }
+  template <class FuncTable, class Qdt>
+  friend Maybe_error<double>
+  logLikelihood(FuncTable &&f, Micror_parameters_likelihood,
+                 Micror_state<averaging> const &p, const Patch_current &y,
+                 const Qdt &x) {
+      auto out=logLikelihoodd(std::forward<FuncTable>(f),Micror_parameters_likelihood{},p,y,x);
+      if (std::isfinite(out))
+          return out;
+      else
+          return error_message("not finite");
+    
   }
   
   template < class Qdt>
@@ -479,10 +501,11 @@ Micror_stochastic(FunctionTable &ftbl, C_Patch_State t_prior,
   Micror_parameters_distribution<averaging> r_prior;
   if constexpr (averaging.value==2)
   {
-      auto r_Pij = Ptotal_ij(diag(get<P_mean>(t_prior)()) * get<P>(t_Qdt)());
-  
-  r_prior =
-      Micror_parameters_distribution<averaging>(N_Ch_mean_value(Nch), r_Pij);
+      auto r_Pij = make_Ptotal_ij(diag(get<P_mean>(t_prior)()) * get<P>(t_Qdt)(),get<min_P>(m)());
+      
+      
+      r_prior =
+      Micror_parameters_distribution<averaging>(N_Ch_mean_value(Nch), r_Pij.value());
   }
   else
   {

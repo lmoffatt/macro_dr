@@ -241,7 +241,7 @@ auto evidence(FunctionTable&& ff,thermodynamic_integration<Algorithm,Reporter>&&
     auto mts = init_mts(mt, therm.num_scouts_per_ensemble() / 2);
     auto beta = get_beta_list(therm.n_points_per_decade(), therm.stops_at(), therm.includes_zero());
     
-    auto it_beta_run_begin=beta.rend()-2;
+    auto it_beta_run_begin=beta.rend()-beta.size();
     auto it_beta_run_end=beta.rend();
     auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
     
@@ -379,7 +379,7 @@ auto thermo_store_every(std::size_t num_scouts_per_ensemble,
                         std::size_t max_iter_equilibrium,
                         double n_points_per_decade, double stops_at,
                         bool includes_zero, std::size_t initseed) {
-    return thermodynamic_integration(store_every_n_iter<thermo_mcmc<Parameters>>(max_iter_equilibrium,save_every_iter),
+    return thermodynamic_integration(store_every_n_iter<thermo_mcmc<Parameters>>(save_every_iter,max_iter_equilibrium),
                                      no_save{},
                                      num_scouts_per_ensemble, max_num_simultaneous_temperatures,
                                      thermo_jumps_every,

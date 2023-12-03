@@ -609,8 +609,9 @@ private:
 public:
   multinomial_distribution()=default;
   multinomial_distribution(double N, Matrix<double> P) : m_N{N}, m_P{P} {
+      auto sumP=var::sum(P);
       assert(std::abs(var::sum(P) - 1.0) <
-           std::numeric_limits<double>::epsilon() * 100);
+             std::sqrt(std::numeric_limits<double>::epsilon()) );
   }
 
   Matrix<std::size_t> operator()(std::mt19937_64 &mt) {
@@ -631,7 +632,8 @@ public:
   double logP(const Matrix<std::size_t> &Nij, std::size_t N)const  {
     double out = std::lgamma(N + 1.0);
     for (std::size_t i = 0; i < Nij.size(); ++i) {
-      out = out + Nij[i] * std::log(m_P[i]) - std::lgamma(Nij[i] + 1.0);
+        if (Nij[i]>0)
+            out = out + Nij[i] * std::log(m_P[i]) - std::lgamma(Nij[i] + 1.0);
     }
     return out;
   }
@@ -644,7 +646,12 @@ public:
       return error_message("count mismatch");
     else {
       auto p = 1 - std::abs(r);
-      return logP(Nij, N) + log(p);
+      
+      auto out=logP(Nij, N) + log(p);
+      if (std::isfinite(out))
+          return out;
+      else
+          return error_message("not finite");
     }
   }
 };
