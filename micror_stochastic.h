@@ -473,21 +473,23 @@ auto
 Micror_stochastic(FunctionTable &ftbl, C_Patch_State t_prior,
                   C_Qdt const &t_Qdt, C_Patch_Model const &m,
                   C_double const &Nch, const Patch_current &p_y, double fs,
-                  std::size_t myseed,std::size_t number_of_samples,std::vector<double> calculation_intervals_nodes,
+                  std::size_t myseed,std::size_t number_Of_samples,std::vector<double> calculation_intervals_nodes,
                   std::size_t save_every_iter, std::size_t n_points_per_decade, double stops_at) {
 
   auto &p_P_cov = get<P_Cov>(t_prior);
   auto &p_P_mean = get<P_mean>(t_prior);
+  auto current_noise = get<Current_Noise>(m).value() * fs /
+           get<number_of_samples>(t_Qdt).value();
 
   std::size_t num_states = p_P_cov().nrows();
-  auto num_par = num_states * (num_states + 1);
+  auto num_par = num_states * (num_states);
   std::string path = "";
   std::size_t num_scouts_per_ensemble =
       std::pow(2, std::ceil(std::log2(num_par)));
   
   auto max_num_simultaneous_temperatures = 10000;
   auto thermo_jumps_every = 4ul;
-  auto max_iter_equilibrium = number_of_samples*save_every_iter;
+  auto max_iter_equilibrium = number_Of_samples*save_every_iter;
   bool includes_zero = true;
   
   std::vector<std::pair<double, double>> calculation_intervals =
@@ -521,7 +523,7 @@ Micror_stochastic(FunctionTable &ftbl, C_Patch_State t_prior,
       evidence(ftbl, std::move(tmi), r_prior,
                Micror_parameters_likelihood<averaging, variance>{}, p_y,
                Vector_Space(get<gmean_ij>(t_Qdt), get<gvar_ij>(t_Qdt),
-                            get<Current_Noise>(m)));
+                            Current_Noise(current_noise)));
   std::vector<thermo_mcmc<Micror_state<averaging>>> chains =std::move(res.first.chains());
   
   return Map(calculation_intervals,
