@@ -897,7 +897,7 @@ int main(int argc, char **argv) {
     auto p_k_MH2007 = std::vector<double>{
         15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
         540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53, 1e-5};
-    auto p_other = std::vector<double>{1, 4800, 1e-3, 1};
+    auto p_other = std::vector<double>{1, 48, 1e-3, 1};
 
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
     p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
@@ -2175,22 +2175,16 @@ int main(int argc, char **argv) {
     /// 4. number of walkers
 
     std::string filename = "micro_stochastic";
-    std::ofstream fo_i(filename + ModelName + ".txt");
+    std::ofstream fo_i(filename + ModelName +  time_now()+".txt");
     //  std::ofstream fo_ij(filename + ModelName + "_istate_jstate.txt");
 
     fo_i << "i_t"
-         << ","
-         << "ATP"
-         << ","
-         << "dt"
          << ","
          << "algoritm"
          << ","
          << "number_of_samples"
          << ","
          << "interval"
-         << ","
-         << "save_every"
          << ","
          << "n_points_per_decade"
          << ","
@@ -2234,6 +2228,7 @@ int main(int argc, char **argv) {
                << ","
                << "PCov"
                << "," << i << "," << j << "," << r_PCov()(i, j) << "\n";
+      fo_i.flush();
     };
 
     auto ftbl2 = insert(
@@ -2244,14 +2239,14 @@ int main(int argc, char **argv) {
                variance](auto &ft, Patch_State &&t_prior, Qdt const &t_Qdt,
                          Patch_Model const &mo, double const &Nch,
                          const Patch_current &p_y, double fs) {
-                std::vector<std::size_t> sampled_i = {2, 20, 30, 50};
+                std::vector<std::size_t> sampled_i = { 120};
                 if (current_i == sampled_i[current_i_s]) {
                   ++current_i_s;
-                  std::vector<std::size_t> v_number_of_samples = { 50};
-                  std::vector<double> calculation_intervals = {0.5, 0.625, 0.75,
-                                                               0.875, 1};
+                  std::vector<std::size_t> v_number_of_samples = { 50,500,5000};
+                  std::vector<double> calculation_intervals = {0.5,  0.75,
+                                                                1};
                   std::size_t save_every_iter = 50;
-                  std::vector<std::size_t> v_n_points_per_decade = {3};
+                  std::vector<std::size_t> v_n_points_per_decade = {6};
                   std::vector<double> v_stops_at = {1e-2};
 
                   std::uniform_int_distribution<
@@ -2280,6 +2275,7 @@ int main(int argc, char **argv) {
                                 number_of_samples, calculation_intervals,
                                 save_every_iter, n_points_per_decade, stops_at)
                                 ;
+                           std::cerr<<"done\n"<<number_of_samples<<" npoint "<<n_points_per_decade<<" stoś at"<<stops_at<<"\n";
                         for (std::size_t i_interval = 0;
                              i_interval < micro.size(); ++i_interval) {
                           save(fo_i, current_i, algorithm, number_of_samples,
