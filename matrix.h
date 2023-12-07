@@ -1116,8 +1116,8 @@ public:
   explicit SymPosDefMatrix(std::size_t _nrows, T value)
       : base_type(_nrows, value) {}
 
-  static SymPosDefMatrix I_sware_it_is_possitive(base_type &&x) {
-    return SymPosDefMatrix(std::move(x));
+  static SymPosDefMatrix I_sware_it_is_possitive(base_type x) {
+      return SymPosDefMatrix(std::move(x));
   }
   SymPosDefMatrix(const SymPosDefMatrix &x) : base_type(x) {}
   SymPosDefMatrix(SymPosDefMatrix &&x)

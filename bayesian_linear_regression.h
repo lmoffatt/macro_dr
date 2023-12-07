@@ -18,7 +18,7 @@ inline double digamma(double x) {
     else {
         double eps = 1e-6;
         double xp = x * (1 + eps);
-        return (std::lgamma(xp) - std::lgamma(x)) / (xp - x);
+        return (var::lgamma(xp) - var::lgamma(x)) / (xp - x);
     }
 }
 
@@ -239,7 +239,7 @@ auto evidence(conjugate,
     
     auto logE_n = -0.5 * n * std::log(2 * std::numbers::pi) +
                   0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-                  a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+                  a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
     return logE_n;
 }
 
@@ -285,21 +285,21 @@ auto evidence(conjugate,
 
 //  auto logE_n = -0.5 * n * std::log(2 * std::numbers::pi) +
 //                0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-//                a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+//                a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
 //  return std::tuple(
 //      logE_n, "beta_n", beta_n, "b_n", b_n, "b_n2", b_n2,
 
     //      "xtx(y)", xtx(y),
-    //      "0.5*( logdet(L_0)) + a_0 * log(b_0) - std::lgamma(a_0)",
-    //      0.5 * (logdet(L_0)) + a_0 * log(b_0) - std::lgamma(a_0),
-    //      "0.5*(-logdet(L_n)) - a_n * log(b_n) + std::lgamma(a_n)",
-    //      0.5 * (-logdet(L_n)) - a_n * log(b_n) + std::lgamma(a_n),
+    //      "0.5*( logdet(L_0)) + a_0 * log(b_0) - var::lgamma(a_0)",
+    //      0.5 * (logdet(L_0)) + a_0 * log(b_0) - var::lgamma(a_0),
+    //      "0.5*(-logdet(L_n)) - a_n * log(b_n) + var::lgamma(a_n)",
+    //      0.5 * (-logdet(L_n)) - a_n * log(b_n) + var::lgamma(a_n),
     //      "-0.5* n*std::log(2*std::numbers::pi)",
     //      -0.5 * n * std::log(2 * std::numbers::pi),
     //      "0.5*( logdet(L_0) -logdet(L_n))", 0.5 * (logdet(L_0) - logdet(L_n)),
     //      "a_0 * log(b_0) - a_n * log(b_n)", a_0 * log(b_0) - a_n * log(b_n),
-    //      "std::lgamma(a_n) - std::lgamma(a_0)",
-    //      std::lgamma(a_n) - std::lgamma(a_0),
+    //      "var::lgamma(a_n) - var::lgamma(a_0)",
+    //      var::lgamma(a_n) - var::lgamma(a_0),
     
     //      "sqrt(b_n / (a_n - 1))", sqrt(b_n / (a_n - 1)), "b_n / (a_n - 1)",
     //      b_n / (a_n - 1));
@@ -330,7 +330,7 @@ auto bayesian_linear_regression_calculate_Evidence(
     
     auto logE_n = -0.5 * n * std::log(2 * std::numbers::pi) +
                   0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-                  a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+                  a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
     return logE_n;
 }
 
@@ -364,7 +364,7 @@ auto  bayesian_linear_regression_calculate_Evidence(
     
     auto logE_n = -0.5 * n * std::log(2 * std::numbers::pi) +
                   0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-                  a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+                  a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
     return logE_n;
 }
 
@@ -573,7 +573,7 @@ auto bayesian_linear_regression_calculate_mean_logLik_posterior(
     
     auto logE_n = -0.5 * beta0 * n * std::log(2 * std::numbers::pi) +
                   0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-                  a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+                  a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
     
     double d_a_n = 1.0 * n / 2.0;
     auto d_b_n = 0.5 * xtx(ydiff.value());
