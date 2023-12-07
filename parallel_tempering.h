@@ -563,6 +563,7 @@ void step_stretch_thermo_mcmc(FunctionTable&& f,std::size_t &iter,
     auto n_beta = beta.size();
     auto n_par = current.walkers[0][0].parameter.size();
     
+    
     std::uniform_int_distribution<std::size_t> uniform_walker(0,
                                                               n_walkers / 2 - 1);
     std::vector<std::uniform_int_distribution<std::size_t>> udist(n_walkers,

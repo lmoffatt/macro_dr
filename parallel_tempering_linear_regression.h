@@ -387,6 +387,24 @@ auto thermo_store_every(std::size_t num_scouts_per_ensemble,
 }
 
 
+template<class Parameters>
+auto thermo_store_every_and_report(const std::string path, const std::string filename,std::size_t num_scouts_per_ensemble,
+                        std::size_t max_num_simultaneous_temperatures,
+                        std::size_t thermo_jumps_every,
+                        std::size_t save_every_iter,
+                        std::size_t max_iter_equilibrium,
+                        double n_points_per_decade, double stops_at,
+                        bool includes_zero, std::size_t initseed) {
+    return thermodynamic_integration(store_every_n_iter<thermo_mcmc<Parameters>>(save_every_iter,max_iter_equilibrium),
+                                     save_mcmc<Parameters,save_likelihood<Parameters>, save_Parameter<Parameters>, save_Evidence>(
+                                         path, filename, 10ul, 1000ul, 10ul),
+                                     num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+                                     thermo_jumps_every,
+                                     n_points_per_decade, stops_at, includes_zero, initseed);
+}
+
+
+
 
 
 
@@ -524,13 +542,13 @@ auto bayesian_linear_regression_calculate_mean_logLik(
         
         auto logE_n = -0.5 * beta[i] * n * std::log(2 * std::numbers::pi) +
                       0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-                      a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+                      a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
         //    std::cerr<<beta[i]<<"\t"<<"Ev"<<logE_n<<"\n";
         //    std::cerr<<beta[i]<<"\tL_0\t"<<L_0 <<"\n";
         //    std::cerr<<beta[i]<<"\tL_n\t"<<L_n<<"\n";
         //    std::cerr<<beta[i]<<"\tlogdet(L_0) - logdet(L_n)\t"<<logdet(L_0) - logdet(L_n)<<"\n";
         //    std::cerr<<beta[i]<<"\t+ a_0 * log(b_0) -a_n * log(b_n)\t"<<+ a_0 * log(b_0) -a_n * log(b_n)<<"\n";
-        //    std::cerr<<beta[i]<<"\t+ std::lgamma(a_n) - std::lgamma(a_0)\t"<<+ std::lgamma(a_n) - std::lgamma(a_0)<<"\n";
+        //    std::cerr<<beta[i]<<"\t+ var::lgamma(a_n) - var::lgamma(a_0)\t"<<+ var::lgamma(a_n) - var::lgamma(a_0)<<"\n";
         
         
         double d_a_n = 1.0 * n / 2.0;
@@ -548,7 +566,7 @@ auto bayesian_linear_regression_calculate_mean_logLik(
         //    mean_Ev.push_back(logE_n);
         //    diff_logdetLn.push_back(logdet(L_n));
         //    diff_alogb.push_back(a_n * log(b_n));
-        //    diff_lgamma.push_back(std::lgamma(a_n));
+        //    diff_lgamma.push_back(var::lgamma(a_n));
     }
     /*
   for (std::size_t i = 0; i < beta.size(); ++i) {
@@ -570,7 +588,7 @@ auto bayesian_linear_regression_calculate_mean_logLik(
     auto logE_n = -0.5 * beta[i] * n * std::log(2 * std::numbers::pi) +
                   0.5 * (logdet(L_0) - logdet(L_n)) +
                   a_0 * log(b_0) - a_n * log(b_n) +
-                  std::lgamma(a_n) - std::lgamma(a_0);
+                  var::lgamma(a_n) - var::lgamma(a_0);
     double d_a_n = 1.0 * n / 2.0;
     auto d_b_n = 0.5 * xtx(ydiff.value());
     std::cerr<<beta[i]<<"\t"<<"Ev"<<logE_n<<"\n\n";
@@ -587,7 +605,7 @@ auto bayesian_linear_regression_calculate_mean_logLik(
     std::cerr<<beta[i]<<"\t\t(a_n / b_n * d_b_n +log(b_n) * d_a_n)\t"<<(a_n / b_n * d_b_n +log(b_n) * d_a_n)<<"\n\n";
 
 
-    std::cerr<<beta[i]<<"\t\t-(diff_lgamma[i]-std::lgamma(a_n))\t"<<-(diff_lgamma[i]-std::lgamma(a_n))/(beta[i]-beta0[i])<<"\n";
+    std::cerr<<beta[i]<<"\t\t-(diff_lgamma[i]-var::lgamma(a_n))\t"<<-(diff_lgamma[i]-var::lgamma(a_n))/(beta[i]-beta0[i])<<"\n";
     std::cerr<<beta[i]<<"\t\tdigamma(a_n)  * d_a_n\t"<<+digamma(a_n)  * d_a_n<<"\n\n";
 
 

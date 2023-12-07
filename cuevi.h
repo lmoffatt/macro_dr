@@ -315,7 +315,7 @@ auto cuevi_evidence(
 
   auto logE_n = -0.5 * n * std::log(2 * std::numbers::pi) +
                 0.5 * (logdet(L_0) - logdet(L_n)) + a_0 * log(b_0) -
-                a_n * log(b_n) + std::lgamma(a_n) - std::lgamma(a_0);
+                a_n * log(b_n) + var::lgamma(a_n) - var::lgamma(a_0);
   return logE_n;
 }
 

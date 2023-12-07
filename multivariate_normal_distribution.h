@@ -2,11 +2,13 @@
 #define MULTIVARIATE_NORMAL_DISTRIBUTION_H
 
 #include "general_algorithm_on_containers.h"
+#include "lgamma.h"
 #include "matrix.h"
 #include "maybe_error.h"
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <vector>
 
@@ -62,6 +64,7 @@ private:
         logdetCov_{logdetCov} {}
 
 public:
+  multivariate_normal_distribution() = default;
   template <class Mat, class Cov, typename Te,
             //= std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
             class Covae>
@@ -353,7 +356,8 @@ class multivariate_normal_distribution_of_probabilities
 private:
   std::size_t m_excluded_row;
 
-  static auto expand(const Matrix<double> s, std::size_t excluded_row) {
+  static Maybe_error<Matrix<double>> expand(const Matrix<double> &s,
+                                            std::size_t excluded_row) {
     Matrix<double> out;
     if (s.nrows() == s.size()) {
       out = Matrix<double>(s.nrows() + 1, 1);
@@ -362,16 +366,25 @@ private:
     }
     for (std::size_t i = 0; i < out.size(); ++i) {
       if (i < excluded_row) {
-        out[i] = s[i];
+        if ((s[i] < 0) || (s[i] > 1))
+          return error_message("");
+        else
+          out[i] = s[i];
       } else if (i > excluded_row) {
-        out[i] = s[i - 1];
+        if ((s[i - 1] < 0) || (s[i - 1] > 1))
+          return error_message("");
+        else
+          out[i] = s[i - 1];
       } else {
-        out[i] = 1.0 - var::sum(s);
+        if (var::sum(s) > 1)
+          return error_message("");
+        else
+          out[i] = 1.0 - var::sum(s);
       }
     }
     return out;
   }
-  static auto reduce(const Matrix<double> s, std::size_t excluded_row) {
+  static auto reduce(const Matrix<double> &s, std::size_t excluded_row) {
     Matrix<double> out;
     if (s.nrows() == s.size()) {
       out = Matrix<double>(s.nrows() - 1, 1);
@@ -397,9 +410,9 @@ private:
   static auto reduce_cov(const SymPosDefMatrix<double> s,
                          std::size_t excluded_row) {
     SymPosDefMatrix<double> out(s.nrows() - 1, s.ncols() - 1);
-    for (std::size_t i = 0; i < out.size(); ++i) {
+    for (std::size_t i = 0; i < s.nrows(); ++i) {
       if (i != excluded_row) {
-        for (std::size_t j = 0; j < out.size(); ++j) {
+        for (std::size_t j = 0; j < s.ncols(); ++j) {
           if (j != excluded_row) {
             out.set(reduce(i, excluded_row), reduce(j, excluded_row), s(i, j));
           }
@@ -412,16 +425,20 @@ private:
   using base_type =
       multivariate_normal_distribution<double, SymPosDefMatrix<double>>;
 
+public:
   multivariate_normal_distribution_of_probabilities(base_type &&d,
                                                     std::size_t excluded_row)
       : base_type{std::move(d)}, m_excluded_row{excluded_row} {}
-
-public:
+  multivariate_normal_distribution_of_probabilities() = delete;
   friend Maybe_error<multivariate_normal_distribution_of_probabilities>
   make_multivariate_normal_distribution_of_probabilities(
-      Matrix<double> &&mean, SymPosDefMatrix<double> &&cov);
+      Matrix<double> mean, SymPosDefMatrix<double> cov);
 
-  std::size_t size() const { return base_type::mean().size() + 1; }
+  friend Maybe_error<multivariate_normal_distribution_of_probabilities>
+  make_multivariate_normal_distribution_of_probabilities(
+      Matrix<double> const &mean, SymPosDefMatrix<double> const &cov);
+  std::size_t size() const {
+      return base_type::mean().size() + 1; }
 
   static auto determine_excluded_row(SymPosDefMatrix<double> cov) {
     std::size_t excluded_row = 0;
@@ -438,8 +455,12 @@ public:
   }
 
   Matrix<double> operator()(std::mt19937_64 &mt) {
-    auto s = base_type::operator()(mt);
-    return expand(s, m_excluded_row);
+    Maybe_error<Matrix<double>> out(error_message(""));
+    while (!out) {
+      auto s = base_type::operator()(mt);
+      out = expand(s, m_excluded_row);
+    }
+    return std::move(out.value());
   }
 
   auto logDetCov() const { return base_type::logDetCov(); }
@@ -447,18 +468,19 @@ public:
     return base_type::chi2(reduce(x, m_excluded_row));
   }
   Maybe_error<double> logP(const Matrix<double> &x) const {
-    assert(size() == mean().size());
+    assert(size() == x.size());
     return base_type::logP(reduce(x, m_excluded_row));
   }
 };
 
 Maybe_error<multivariate_normal_distribution_of_probabilities>
 make_multivariate_normal_distribution_of_probabilities(
-    Matrix<double> &&mean, SymPosDefMatrix<double> &&cov) {
+    Matrix<double> mean, SymPosDefMatrix<double> cov) {
   using T = multivariate_normal_distribution_of_probabilities;
   std::size_t excluded_row = T::determine_excluded_row(cov);
   auto Maybe_dist = make_multivariate_normal_distribution(
-      T::reduce(mean, excluded_row), T::reduce_cov(cov, excluded_row));
+      T::reduce(std::move(mean), excluded_row),
+      T::reduce_cov(std::move(cov), excluded_row));
   if (!Maybe_dist)
     return Maybe_dist.error();
   else
@@ -473,7 +495,7 @@ private:
 public:
   inverse_gamma_distribution(double _alpha, double _beta)
       : g_{_alpha, _beta},
-        cte_int_{-std::lgamma(_alpha) + _alpha * std::log(_beta)} {}
+        cte_int_{-var::lgamma(_alpha) + _alpha * std::log(_beta)} {}
 
   double operator()(std::mt19937_64 &mt) { return 1.0 / g_(mt); }
 
@@ -496,7 +518,7 @@ private:
 public:
   log_inverse_gamma_distribution(double _alpha, double _beta)
       : g_{_alpha, 1.0 / _beta},
-        cte_int_{-std::lgamma(_alpha) + _alpha * std::log(_beta)} {}
+        cte_int_{-var::lgamma(_alpha) + _alpha * std::log(_beta)} {}
 
   double operator()(std::mt19937_64 &mt) { return -std::log(g_(mt)); }
 
@@ -574,15 +596,19 @@ public:
 class dirchlet_distribution {
 private:
   Matrix<std::gamma_distribution<>> m_gammas;
+  Matrix<double> m_alpha;
+  double m_alpha0;
+  double m_Ba;
 
 public:
-  dirchlet_distribution()=default;
+  dirchlet_distribution() = default;
   dirchlet_distribution(Matrix<double> alpha)
       : m_gammas{applyMap(
             [](double a) {
               return std::gamma_distribution<>{a, 1.0};
             },
-            alpha)} {}
+            alpha)},
+        m_alpha{std::move(alpha)}, m_alpha0{var::sum(m_alpha)} {}
 
   Matrix<double> operator()(std::mt19937_64 &mt) {
     Matrix<double> s = applyMap(
@@ -591,32 +617,32 @@ public:
   }
 };
 std::size_t sample_N(std::mt19937_64 &mt, double N) {
-    auto r = std::uniform_real_distribution{}(mt);
-    std::size_t out = std::floor(N);
-    auto p = N - out;
-    if (r < p)
-        return out + 1;
-    else
-        return out;
+  auto r = std::uniform_real_distribution{}(mt);
+  std::size_t out = std::floor(N);
+  auto p = N - out;
+  if (r < p)
+    return out + 1;
+  else
+    return out;
 }
 
 class multinomial_distribution {
 private:
-  double m_N;
   Matrix<double> m_P;
 
-
 public:
-  multinomial_distribution()=default;
-  multinomial_distribution(double N, Matrix<double> P) : m_N{N}, m_P{P} {
-      auto sumP=var::sum(P);
-      assert(std::abs(var::sum(P) - 1.0) <
-             std::sqrt(std::numeric_limits<double>::epsilon()) );
+  auto size() const { return m_P.size(); }
+  multinomial_distribution() = default;
+  multinomial_distribution(Matrix<double> P) : m_P{P} {
+    auto sumP = var::sum(P);
+    assert(std::abs(var::sum(P) - 1.0) <
+           std::sqrt(std::numeric_limits<double>::epsilon()));
   }
 
-  Matrix<std::size_t> operator()(std::mt19937_64 &mt) {
+  Matrix<std::size_t> operator()(std::mt19937_64 &mt, double N) {
+
     Matrix<std::size_t> out(m_P.nrows(), m_P.ncols());
-    std::size_t N_remaining = sample_N(mt, m_N);
+    std::size_t N_remaining = sample_N(mt, N);
     double p_remaining = 1;
     auto k = out.size();
     for (std::size_t i = 0; i + 1 < out.size(); ++i) {
@@ -629,29 +655,143 @@ public:
     out[k - 1] = N_remaining;
     return out;
   }
-  double logP(const Matrix<std::size_t> &Nij, std::size_t N)const  {
-    double out = std::lgamma(N + 1.0);
+
+  double logP(const Matrix<std::size_t> &Nij, std::size_t N) const {
+    double out = var::lgamma(N + 1.0);
     for (std::size_t i = 0; i < Nij.size(); ++i) {
-        if (Nij[i]>0)
-            out = out + Nij[i] * std::log(m_P[i]) - std::lgamma(Nij[i] + 1.0);
+      if (Nij[i] > 0)
+        out = out + Nij[i] * std::log(m_P[i]) - var::lgamma(Nij[i] + 1.0);
     }
     return out;
   }
 
-  Maybe_error<double> logP(const Matrix<std::size_t> &Nij) const {
+  Maybe_error<double> logP(const Matrix<std::size_t> &Nij, double t_N) const {
     auto N = var::sum(Nij);
-    auto r = N - m_N;
+    auto r = N - t_N;
 
     if (std::abs(r) > 1)
       return error_message("count mismatch");
     else {
       auto p = 1 - std::abs(r);
-      
-      auto out=logP(Nij, N) + log(p);
+
+      auto out = logP(Nij, N) + log(p);
       if (std::isfinite(out))
-          return out;
+        return out;
       else
-          return error_message("not finite");
+        return error_message("not finite");
+    }
+  }
+};
+
+class multinomial_transition_distribution {
+private:
+  Matrix<double> m_P;
+
+public:
+  multinomial_transition_distribution() = default;
+  multinomial_transition_distribution(Matrix<double> t_P) : m_P{t_P} {}
+
+  Matrix<std::size_t> operator()(std::mt19937_64 &mt, Matrix<std::size_t> Ni) {
+    assert(Ni.ncols() == m_P.nrows());
+    Matrix<std::size_t> out(m_P.nrows(), m_P.ncols(), 0ul);
+    for (std::size_t i = 0; i < m_P.nrows(); ++i) {
+      double p_remaining = 1;
+      std::size_t N_remaining = Ni[i];
+      auto k = m_P.ncols();
+      for (std::size_t j = 0; j + 1 < k; ++j) {
+        if (N_remaining > 0) {
+          auto n = std::binomial_distribution<std::size_t>(
+              N_remaining, m_P(i, j) / p_remaining)(mt);
+          N_remaining -= n;
+          p_remaining -= m_P(i, j);
+          out(i, j) = n;
+        }
+      }
+      out(i, k - 1) = N_remaining;
+    }
+    return out;
+  }
+  double logP(const Matrix<std::size_t> &Nij, std::size_t N,
+              std::size_t i) const {
+    double out = var::lgamma(N + 1.0);
+    for (std::size_t j = 0; j < Nij.ncols(); ++j) {
+      if (Nij(i, j) > 0)
+        out = out + Nij(i, j) * std::log(m_P(i, j)) -
+              var::lgamma(Nij(i, j) + 1.0);
+    }
+    return out;
+  }
+
+  Maybe_error<double> logP(const Matrix<std::size_t> &Nij,
+                           Matrix<std::size_t> Ni) const {
+
+    if (var::sum(Nij) != var::sum(Ni))
+      return error_message("count mismatch");
+    else {
+      double out;
+      for (std::size_t i = 0; i < Ni.size(); ++i)
+        out = out + logP(Nij, Ni[i], i);
+      if (std::isfinite(out))
+        return out;
+      else
+        return error_message("not finite");
+    }
+  }
+};
+
+class dirchlet_transition_distribution {
+private:
+  Matrix<double> m_P;
+
+public:
+  dirchlet_transition_distribution() = default;
+  dirchlet_transition_distribution(Matrix<double> t_P) : m_P{t_P} {}
+
+  Matrix<std::size_t> operator()(std::mt19937_64 &mt, Matrix<double> Ni) {
+    assert(Ni.nrows() == m_P.nrows());
+    Matrix<std::size_t> out(m_P.nrows(), m_P.ncols(), 0ul);
+    for (std::size_t i = 0; i < m_P.nrows(); ++i) {
+      double p_remaining = 1;
+      std::size_t N_remaining = Ni[i];
+      auto k = m_P.ncols();
+      for (std::size_t j = 0; j + 1 < k; ++j) {
+        if (N_remaining > 0) {
+          auto n = std::binomial_distribution<std::size_t>(
+              N_remaining, m_P(i, j) / p_remaining)(mt);
+          N_remaining -= n;
+          p_remaining -= m_P[i];
+          out(i, j) = n;
+        }
+      }
+      out(i, k - 1) = N_remaining;
+      return out;
+    }
+    return out;
+  }
+  double logP(const Matrix<std::size_t> &Nij, std::size_t N,
+              std::size_t i) const {
+    double out = var::lgamma(N + 1.0);
+    for (std::size_t j = 0; j < Nij.ncols(); ++i) {
+      if (Nij(i, j) > 0)
+        out = out + Nij(i, j) * std::log(m_P(i, j)) -
+              var::lgamma(Nij(i, j) + 1.0);
+    }
+    return out;
+  }
+
+  Maybe_error<double> logP(const Matrix<std::size_t> &Nij,
+                           Matrix<std::size_t> Ni) const {
+
+    if (var::sum(Nij) != var::sum(Ni))
+      return error_message("count mismatch");
+    else {
+      double out;
+      for (std::size_t i = 0; i < Ni.size(); ++i)
+        out = out + logP(Nij, Ni[i], i);
+      if (std::isfinite(out))
+        return out;
+      else
+        return error_message("not finite");
     }
   }
 };
