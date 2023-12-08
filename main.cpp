@@ -2297,10 +2297,10 @@ int main(int argc, char **argv) {
                     ft, std::move(t_prior), t_Qdt, mo, Nch, p_y, fs);
               }),
             num_scouts_per_ensemble / 2));
-
+    
     auto sim_7 = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_min_dt(1e-6)),
+        Simulation_Parameters(Simulation_n_sub_dt(1000)),
         recording_7);
     auto lik_7 = Macro_DMR{}
                    .log_Likelihood<uses_adaptive_aproximation(false),
@@ -2331,7 +2331,7 @@ int main(int argc, char **argv) {
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_min_dt(1e-6)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000)),
           recording);
       auto lik = Macro_DMR{}
                      .log_Likelihood<uses_adaptive_aproximation(false),
@@ -2439,11 +2439,11 @@ int main(int argc, char **argv) {
 
     std::string fname = "simulate_model";
     std::size_t nrep = 20;
-    std::vector<Simulated_Recording> out(20);
+    std::vector<Simulated_Recording<includes_N_state_evolution(false)>> out(20);
     for (std::size_t i = 0; i < nrep; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_min_dt(1e-6)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000)),
           recording);
       out[i] = sim.value();
     }
@@ -2622,7 +2622,7 @@ int main(int argc, char **argv) {
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_min_dt(1e-6)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000)),
           recording);
       for (std::size_t j = 0; j < algo.size(); ++j) {
         auto lik = logLik_by_algo(sim, algo[j]);
@@ -2800,11 +2800,11 @@ thermodynamic parameter
         uses_adaptive_aproximation(false), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)
 >(
-        model0, Simulation_min_dt(1e-6));
+        model0, Simulation_n_sub_dt(1000));
 
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_min_dt(1e-6)),
+        Simulation_Parameters(Simulation_n_sub_dt(1000)),
         recording);
     auto ftbl = FuncMap(
         path,
@@ -2973,11 +2973,11 @@ thermodynamic parameter
       auto modelLikelihood = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0, Simulation_min_dt(1e-6));
+          model0, Simulation_n_sub_dt(1000));
       
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_min_dt(1e-8)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000)),
           recording);
       
       if (sim) {
@@ -3153,7 +3153,7 @@ thermodynamic parameter
       }
   }
 
-  constexpr bool test_partial_logL = true;
+  constexpr bool test_partial_logL = false;
   if (test_partial_logL) {
     /**
      * @brief myseed defines the random number seed so all runs are identical
@@ -3181,11 +3181,11 @@ thermodynamic parameter
     auto modelLikelihood = make_Likelihood_Model<
         uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-        model0, Simulation_min_dt(1e-6));
+        model0, Simulation_n_sub_dt(1000));
 
-    auto sim = Macro_DMR{}.sample(
+    auto sim = Macro_DMR{}.sample_N(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_min_dt(1e-9)),
+        Simulation_Parameters(Simulation_n_sub_dt(1000)),
         recording);
 
     if (sim) {
@@ -3315,7 +3315,7 @@ thermodynamic parameter
     }
   }
   
-  constexpr bool cuevi_by_max_iter_cross_model = false;
+  constexpr bool cuevi_by_max_iter_cross_model = true;
   if (cuevi_by_max_iter_cross_model) {
       /**
      * @brief myseed defines the random number seed so all runs are identical
@@ -3416,23 +3416,31 @@ thermodynamic parameter
       auto modelLikelihood = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0, Simulation_min_dt(1e-6));
+          model0, Simulation_n_sub_dt(1000));
       
       auto modelLikelihood_alt = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0_alt, Simulation_min_dt(1e-6));
+          model0_alt, Simulation_n_sub_dt(1000));
       
-      auto sim = Macro_DMR{}.sample(
+      auto n_sub_dt=Simulation_n_sub_dt(10000);
+      
+      std::string min_dt_st="_n_sub_dt_"+std::to_string(n_sub_dt())+"_";
+      
+      auto sim_N = Macro_DMR{}.sample_N(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_min_dt(1e-6)),
+          Simulation_Parameters(n_sub_dt),
           recording);
       
-      auto sim_alt = Macro_DMR{}.sample(
+      auto sim=get<Recording>(sim_N.value()());
+      
+      auto sim_alt_N = Macro_DMR{}.sample_N(
           mt, model0_alt, param1_alt, experiment,
-          Simulation_Parameters(Simulation_min_dt(1e-6)),
+          Simulation_Parameters(n_sub_dt),
           recording);
-      if (sim.valid()&&sim_alt.valid()) {
+      auto sim_alt=get<Recording>(sim_alt_N.value()());
+      
+      if (sim_N.valid()&&sim_alt_N.valid()) {
           std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
           auto number_of_traces = 7;
           auto number_of_segments = t_segments.size();
@@ -3468,19 +3476,21 @@ thermodynamic parameter
           std::string prior_error_str =
               "_prior_error_" + std::to_string(prior_error) + "_";
           
-          std::string filename_0_0 ="sim_"+ ModelName +"_model_"+ModelName+ 
+          
+          
+          std::string filename_0_0 ="sim_"+min_dt_st+ ModelName +"_model_"+ModelName+ 
                                  prior_error_str+n_points_per_decade_str + time_now() + "_" +
                                  // std::to_string(bisection_count) + "_" +
                                  std::to_string(myseed);
-          std::string filename_0_alt ="sim_"+ ModelName +"_model_"+ModelName_alt+ 
+          std::string filename_0_alt ="sim_"+min_dt_st+ ModelName +"_model_"+ModelName_alt+ 
                                     prior_error_str+ n_points_per_decade_str + time_now() + "_" +
                                      // std::to_string(bisection_count) + "_" +
                                      std::to_string(myseed);
-          std::string filename_alt_0 ="sim_"+ ModelName_alt +"_model_"+ModelName+ 
+          std::string filename_alt_0 ="sim_"+min_dt_st+ ModelName_alt +"_model_"+ModelName+ 
                                      prior_error_str+n_points_per_decade_str + time_now() + "_" +
                                      // std::to_string(bisection_count) + "_" +
                                      std::to_string(myseed);
-          std::string filename_alt_alt ="sim_"+ ModelName_alt +"_model_"+ModelName_alt+ 
+          std::string filename_alt_alt ="sim_"+min_dt_st+ ModelName_alt +"_model_"+ModelName_alt+ 
                                      prior_error_str+n_points_per_decade_str + time_now() + "_" +
                                      // std::to_string(bisection_count) + "_" +
                                      std::to_string(myseed);
@@ -3953,8 +3963,8 @@ thermodynamic parameter
                                          uses_variance_correction_aproximation(false),
                                          return_predictions(true)>(
                              ftbl3_0_0.fork(var::I_thread(0)), model0, param1,
-                             experiment, sim.value()());
-          report(filename_0_0+"lik.csv",lik_0_0.value(),sim.value(), experiment);
+                             experiment, sim);
+          report(filename_0_0+"_lik.csv",lik_0_0.value(),sim_N.value(), experiment);
           auto lik_1_1 = Macro_DMR{}
                              .log_Likelihood<uses_adaptive_aproximation(false),
                                              uses_recursive_aproximation(true),
@@ -3963,10 +3973,10 @@ thermodynamic parameter
                                              uses_variance_correction_aproximation(false),
                                              return_predictions(true)>(
                                  ftbl3_alt_alt.fork(var::I_thread(0)), model0_alt, param1_alt,
-                                 experiment, sim_alt.value()());
-          report(filename_alt_alt+"lik.csv",lik_1_1.value(),sim_alt.value(), experiment);
+                                 experiment, sim_alt);
+          report(filename_alt_alt+"_lik.csv",lik_1_1.value(),sim_alt_N.value(), experiment);
           
-          if (false)
+          if (true)
           {
 #pragma omp parallel for
           for (auto i=0; i<4; ++i)
@@ -3974,17 +3984,17 @@ thermodynamic parameter
               if (i==0){
                                     
                   auto opt3 = evidence(ftbl3_0_0, std::move(cbc_0_0), param1_prior, modelLikelihood,
-                               sim.value()(), experiment, all_at_once);
+                               sim, experiment, all_at_once);
               }
               else if (i==1)
               {   auto opt3 = evidence(ftbl3_0_alt, std::move(cbc_0_alt), param_alt_prior, modelLikelihood_alt,
-                                       sim.value()(), experiment, all_at_once);
+                                       sim, experiment, all_at_once);
               }else if (i==2)
               {   auto opt3 = evidence(ftbl3_alt_0, std::move(cbc_alt_0), param1_prior, modelLikelihood,
-                                       sim_alt.value()(), experiment, all_at_once);
+                                       sim_alt, experiment, all_at_once);
               }else if (i==3)
               {   auto opt3 = evidence(ftbl3_alt_alt, std::move(cbc_alt_alt), param_alt_prior, modelLikelihood_alt,
-                                       sim_alt.value()(), experiment, all_at_once);
+                                       sim_alt, experiment, all_at_once);
               }}
           
       }
@@ -4001,7 +4011,7 @@ thermodynamic parameter
 
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_min_dt(1e-6)));
+        Simulation_Parameters(Simulation_n_sub_dt(1000)));
 
     auto test_der_Likelihood = var::test_Derivative(
         [&model0, &sim, &experiment, &ftbl](auto const &dparam1) {

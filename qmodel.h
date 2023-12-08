@@ -481,24 +481,44 @@ using Patch_State_and_Evolution =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
                  eplogL, vplogL, Patch_State_Evolution>;
 
-class Simulation_min_dt
-    : public Var<Simulation_min_dt, double> {};
+class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
-class Simulated_Recording : public Var<Simulated_Recording, Recording> {};
+class includes_N_state_evolution
+    : public var::struct_Var<includes_N_state_evolution, bool> {};
+class N_Ch_State_Evolution
+    : public Var<N_Ch_State_Evolution, std::vector<N_channel_state>> {};
 
-using Simulated_Step = Vector_Space<N_channel_state, Simulated_Recording>;
+template <includes_N_state_evolution keep_N_state>
+class Simulated_Recording
+    : public Var<
+          Simulated_Recording<keep_N_state>,
+          std::conditional_t<keep_N_state.value,
+                             Vector_Space<Recording, N_Ch_State_Evolution>,
+                             Vector_Space<Recording>>> {};
+
+template <includes_N_state_evolution keep_N_state>
+class Simulated_Step
+    : public Var<
+          Simulated_Step<keep_N_state>,
+          Vector_Space<N_channel_state, Simulated_Recording<keep_N_state>>> {
+  // using Vector_Space<N_channel_state,
+  // Simulated_Recording<keep_N_state>>::Vector_Space;
+};
 
 using Simulated_Sub_Step =
     Vector_Space<N_channel_state, number_of_samples, y_sum>;
 
-using Simulation_Parameters = Vector_Space<Simulation_min_dt>;
+using Simulation_Parameters = Vector_Space<Simulation_n_sub_dt>;
 
-void save(std::string name, Simulated_Recording const &r) {
+template <includes_N_state_evolution keep_N_state>
+void save(std::string name, Simulated_Recording<keep_N_state> const &r) {
   std::ofstream f(name + "_sim.txt");
   f << r << "\n";
 }
 
-void save(std::string name, std::vector<Simulated_Recording> const &r) {
+template <includes_N_state_evolution keep_N_state>
+void save(std::string name,
+          std::vector<Simulated_Recording<keep_N_state>> const &r) {
   std::ofstream f(name + "_sim.txt");
   f << "nrep"
     << ","
@@ -840,14 +860,13 @@ public:
       std::size_t N_remaining = N()[i];
       double p_remaining = 1;
       for (std::size_t j = 0; j + 1 < k; ++j) {
-          if (N_remaining>0)
-          {
-        auto n = std::binomial_distribution<std::size_t>(
-            N_remaining, t_P()(i, j) / p_remaining)(mt);
-        N_remaining -= n;
-        p_remaining -= t_P()(i, j);
-        out()[j] += n;
-          }
+        if (N_remaining > 0) {
+          auto n = std::binomial_distribution<std::size_t>(
+              N_remaining, t_P()(i, j) / p_remaining)(mt);
+          N_remaining -= n;
+          p_remaining -= t_P()(i, j);
+          out()[j] += n;
+        }
       }
       out()[k - 1] += N_remaining;
     }
@@ -2179,7 +2198,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     auto e = get<Current_Noise>(m).value() * fs /
              get<number_of_samples>(t_Qdt).value();
     auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
-    
+
     auto y_baseline = get<Current_Baseline>(m);
     auto N = Nch;
     Matrix<double> u(p_P_mean().size(), 1, 1.0);
@@ -2201,8 +2220,18 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
 
     r_y_mean =
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
-    r_y_var = build<y_var>(e + N * gSg+N*ms);
-
+    if (primitive(gSg) > 0) {
+      if (primitive(ms) > 0) {
+        r_y_var = build<y_var>(e + N * gSg + N * ms);
+      } else {
+        r_y_var = build<y_var>(e + N * gSg);
+      }
+    } else {
+      if (primitive(ms) > 0)
+        r_y_var = build<y_var>(e + N * ms);
+      else
+        r_y_var = build<y_var>(e);
+    }
     if (std::isnan(y)) {
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
@@ -2478,7 +2507,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
   template <class Patch_Model>
   Maybe_error<Simulated_Sub_Step>
   sub_sub_sample(std::mt19937_64 &mt, Simulated_Sub_Step const &t_sim_step,
-                 const Patch_Model &m, const ATP_step &t_s, double min_dt,
+                 const Patch_Model &m, const ATP_step &t_s, std::size_t n_sub_dt,
                  double fs) {
     auto &t_g = get<g>(m);
     auto N = get<N_channel_state>(t_sim_step);
@@ -2489,30 +2518,30 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     auto tQx = calc_Qx(m, get<ATP_concentration>(t_s));
 
     auto dt = n_samples / fs;
-    std::size_t n_sub=std::round(dt/min_dt);
-    assert( n_sub>10);
-    auto sub_dt = dt / n_sub;
+    auto sub_dt = dt / n_sub_dt;
 
-    double sub_sample = 1.0 * n_samples / n_sub;
+    double sub_sample = 1.0 * n_samples / n_sub_dt;
     auto t_P = calc_P(m, tQx, sub_dt, get<min_P>(m)());
-    for (std::size_t i = 0; i < n_sub; ++i) {
+    for (std::size_t i = 0; i < n_sub_dt; ++i) {
       N = sample_Multinomial(mt, t_P, N);
       ysum += getvalue(N() * t_g()) * sub_sample;
     }
     sum_samples += n_samples;
-    std::cerr<<N<<sum_samples<<"  "<<ysum<<"  "<<ysum/sum_samples<<"\n";
-    return Simulated_Sub_Step(N_channel_state(N), number_of_samples(sum_samples), y_sum(ysum));
+    std::cerr << N << sum_samples << "  " << ysum << "  " << ysum / sum_samples
+              << "\n";
+    return Simulated_Sub_Step(N_channel_state(N),
+                              number_of_samples(sum_samples), y_sum(ysum));
   }
 
   template <class Patch_Model>
   Maybe_error<Simulated_Sub_Step>
   sub_sub_sample(std::mt19937_64 &mt, Simulated_Sub_Step &&t_sim_step,
                  const Patch_Model &m, const std::vector<ATP_step> &t_s,
-                 double min_dt, double fs) {
+                 std::size_t n_sub_dt, double fs) {
 
     for (std::size_t i = 0; i < t_s.size(); ++i) {
       auto Maybe_sub_step =
-          sub_sub_sample(mt, std::move(t_sim_step), m, t_s[i], min_dt, fs);
+          sub_sub_sample(mt, std::move(t_sim_step), m, t_s[i], n_sub_dt, fs);
       if (!Maybe_sub_step)
         return Maybe_sub_step.error();
       else
@@ -2521,21 +2550,21 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     return t_sim_step;
   }
 
-  template <class Patch_Model>
-  Maybe_error<Simulated_Step>
-  sub_sample(std::mt19937_64 &mt, Simulated_Step &&t_sim_step,
-             const Patch_Model &m, const ATP_evolution &t_s, double min_dt,
+  template <includes_N_state_evolution keep_N_state, class Patch_Model>
+  Maybe_error<Simulated_Step<keep_N_state>>
+  sub_sample(std::mt19937_64 &mt, Simulated_Step<keep_N_state> &&t_sim_step,
+             const Patch_Model &m, const ATP_evolution &t_s, std::size_t n_sub_dt,
              double fs) {
-    auto &N = get<N_channel_state>(t_sim_step);
+    // auto &N = get<N_channel_state>(t_sim_step);
 
     // std::cerr<<N();
 
-    auto t_sub_step = Simulated_Sub_Step(get<N_channel_state>(t_sim_step),
+    auto t_sub_step = Simulated_Sub_Step(get<N_channel_state>(t_sim_step()),
                                          number_of_samples(0ul), y_sum(0.0));
 
     auto Maybe_t_sub_step = std::visit(
-        [this, &mt, &m, min_dt, &t_sub_step, fs](auto const &a) {
-          return sub_sub_sample(mt, std::move(t_sub_step), m, a, min_dt, fs);
+        [this, &mt, &m, n_sub_dt, &t_sub_step, fs](auto const &a) {
+          return sub_sub_sample(mt, std::move(t_sub_step), m, a, n_sub_dt, fs);
         },
         t_s());
 
@@ -2545,63 +2574,92 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
       t_sub_step = std::move(Maybe_t_sub_step.value());
       double y_mean =
           get<y_sum>(t_sub_step)() / get<number_of_samples>(t_sub_step)();
-      get<N_channel_state>(t_sim_step) = get<N_channel_state>(t_sub_step);
-      auto &t_e_step = get<Simulated_Recording>(t_sim_step);
+      get<N_channel_state>(t_sim_step()) = get<N_channel_state>(t_sub_step);
+
+      auto &t_e_step = get<Recording>(
+          get<Simulated_Recording<keep_N_state>>(t_sim_step())());
       double e =
           get<Current_Noise>(m)() * fs / get<number_of_samples>(t_sub_step)();
       auto y_baseline = get<Current_Baseline>(m);
 
-      t_e_step()().emplace_back(
+      t_e_step().emplace_back(
           Patch_current(y_mean + y_baseline() +
                         std::normal_distribution<double>()(mt) * std::sqrt(e)));
+      if constexpr (keep_N_state.value) {
+        get<N_Ch_State_Evolution>(
+            get<Simulated_Recording<keep_N_state>>(t_sim_step())())()
+            .push_back(get<N_channel_state>(t_sim_step()));
+      }
+
       return t_sim_step;
     }
   }
 
-  template <class Patch_Model>
-  Simulated_Step init_sim(std::mt19937_64 &mt, const Patch_Model &m,
-                          const Experiment &e) {
+  template <includes_N_state_evolution keep_N_state, class Patch_Model>
+  Simulated_Step<keep_N_state>
+  init_sim(std::mt19937_64 &mt, const Patch_Model &m, const Experiment &e) {
     auto initial_x = get<initial_ATP_concentration>(e);
     auto v_Qx = calc_Qx(m, initial_x());
     auto r_P_mean = P_mean(get<P_initial>(m)());
     auto N = get<N_Ch_mean>(m)()[0];
-    auto sim = Simulated_Recording(Recording{});
+    auto sim = Simulated_Recording<keep_N_state>{};
     auto N_state = sample_Multinomial(mt, r_P_mean, N);
-    return Simulated_Step(std::move(N_state), std::move(sim));
+    return Simulated_Step<keep_N_state>(
+        Vector_Space(std::move(N_state), Simulated_Recording<keep_N_state>{}));
   }
 
-  static Simulated_Recording copy_NaNs(Simulated_Recording &&sim,
-                                       const Recording &r) {
+  template <includes_N_state_evolution keep_N_state>
+  static Simulated_Recording<keep_N_state>
+  copy_NaNs(Simulated_Recording<keep_N_state> &&sim, const Recording &r) {
     for (std::size_t i = 0; i < size(r()); ++i)
       if (std::isnan(r()[i]()))
-        sim()()[i]() = r()[i]();
+        get<Recording>(sim())()[i]() = r()[i]();
 
     return std::move(sim);
   }
 
-  template <class Model, class Id>
-  Maybe_error<Simulated_Recording>
-  sample(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
-         const Experiment &e, const Simulation_Parameters &sim,
-         const Recording &r = Recording{}) {
+  template <includes_N_state_evolution keep_N_state, class Model, class Id>
+  Maybe_error<Simulated_Recording<keep_N_state>>
+  sample_(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
+          const Experiment &e, const Simulation_Parameters &sim,
+          const Recording &r = Recording{}) {
 
     auto m = model(par);
-    auto min_dt = get<Simulation_min_dt>(sim);
+    auto n_sub_dt = get<Simulation_n_sub_dt>(sim);
     auto fs = get<Frequency_of_Sampling>(e).value();
     auto sim_recording = Recording{};
 
-    auto ini = init_sim(mt, m, e);
-    auto run = fold(get<Recording_conditions>(e)(), ini,
-                    [this, &m, fs, min_dt, &mt](Simulated_Step &&t_sim_step,
-                                               Experiment_step const &t_step) {
-                      return Maybe_error<Simulated_Step>(sub_sample(
-                          mt, std::move(t_sim_step), m, t_step, min_dt(), fs));
-                    });
+    auto ini = init_sim<keep_N_state>(mt, m, e);
+    auto run = fold(
+        get<Recording_conditions>(e)(), ini,
+        [this, &m, fs, n_sub_dt, &mt](Simulated_Step<keep_N_state> &&t_sim_step,
+                                    Experiment_step const &t_step) {
+          return Maybe_error<Simulated_Step<keep_N_state>>(
+              sub_sample(mt, std::move(t_sim_step), m, t_step, n_sub_dt(), fs));
+        });
     if (!run)
       return run.error();
     else {
-      return copy_NaNs(std::move(get<Simulated_Recording>(run.value())), r);
+      return copy_NaNs(
+          std::move(get<Simulated_Recording<keep_N_state>>(run.value()())), r);
     }
+  }
+
+  template <class Model, class Id>
+  Maybe_error<Simulated_Recording<includes_N_state_evolution(false)>>
+  sample(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
+         const Experiment &e, const Simulation_Parameters &sim,
+         const Recording &r = Recording{}) {
+    return sample_<includes_N_state_evolution(false)>(mt, model, par, e, sim,
+                                                      r);
+  }
+
+  template <class Model, class Id>
+  Maybe_error<Simulated_Recording<includes_N_state_evolution(true)>>
+  sample_N(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
+           const Experiment &e, const Simulation_Parameters &sim,
+           const Recording &r = Recording{}) {
+    return sample_<includes_N_state_evolution(true)>(mt, model, par, e, sim, r);
   }
 };
 
@@ -2616,18 +2674,18 @@ template <
     uses_variance_correction_aproximation variance_correction, class Model>
 struct Likelihood_Model {
   Model m;
-  Simulation_min_dt min_dt;
-  Likelihood_Model(const Model &model, Simulation_min_dt t_min_dt)
-      : m{model}, min_dt{t_min_dt} {}
+  Simulation_n_sub_dt n_sub_dt;
+  Likelihood_Model(const Model &model, Simulation_n_sub_dt n_sub_dt)
+      : m{model}, n_sub_dt{n_sub_dt} {}
 };
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     uses_variance_correction_aproximation variance_correction, class Model>
-auto make_Likelihood_Model(const Model &m, Simulation_min_dt min_dt) {
+auto make_Likelihood_Model(const Model &m, Simulation_n_sub_dt n_sub_dt) {
   return Likelihood_Model<adaptive, recursive, averaging, variance,
-                          variance_correction, Model>(m, min_dt);
+                          variance_correction, Model>(m, n_sub_dt);
 }
 
 template <
@@ -2730,9 +2788,7 @@ auto simulate(std::mt19937_64 &mt,
               const Likelihood_Model<adaptive, recursive, averaging, variance,
                                      variance_correction, Model> &lik,
               Parameters const &p, const Variables &var) {
-  return Macro_DMR{}
-      .sample(mt, lik.m, p, var, lik.min_dt)
-      .value()();
+  return Macro_DMR{}.sample(mt, lik.m, p, var, lik.n_sub_dt).value()();
 }
 
 static Experiment_step average_Experimental_step(Experiment_step const &x) {
@@ -2959,47 +3015,71 @@ inline std::string ToString(const std::vector<ATP_step> &ev) {
 inline std::string ToString(const ATP_evolution &ev) {
   return std::visit([](auto const &a) { return ToString(a); }, ev());
 }
+
+template <includes_N_state_evolution keep_N_state>
 void report(std::string filename, const Patch_State_Evolution &predictions,
-            const Simulated_Recording &y, const Experiment& xs) {
-    auto& ys= y();
-    std::ofstream f(filename);
-    f << "i_x"
-      << ","
-      << "time"
-      << ","
-      << "num_samples"
-      << ","
-      << "ATP_step"
-      << ","
-      << "v_ev"
-      << ","
-      << "y"
-      << ","
-      << "y_mean"
-      << ","
-      << "y_var"
-      << ","
-      << "plogL"
-      << ","
-      << "eplogL"
-      << ","
-      << "logL"
+            const Simulated_Recording<keep_N_state> &y, const Experiment &xs) {
+  auto &ys = get<Recording>(y());
+  std::ofstream f(filename);
+  f << "i_x"
+    << ","
+    << "time"
+    << ","
+    << "num_samples"
+    << ","
+    << "ATP_step"
+    << ","
+    << "v_ev"
+    << ","
+    << "y"
+    << ","
+    << "y_mean"
+    << ","
+    << "y_var"
+    << ","
+    << "plogL"
+    << ","
+    << "eplogL"
+    << ","
+    << "logL"
+    << ","
+    << "i"
+    << ","
+    << "P_mean"
+    << ","
+    << "j"
+    << ","
+    << "P_Cov";
+  if constexpr (keep_N_state.value)
+    f << ","
+      << "N"
       << "\n";
-    for (std::size_t i_x = 0; i_x < size(ys); ++i_x) {
-      auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_x]);
-
-      f << i_x << "," << get<Time>(get<Recording_conditions>(xs)()[i_x]) << ","
-        << get_num_samples(v_ev) << "," << ToString(average_ATP_step(v_ev))
-        << "," << ToString(v_ev) << "," << ys()[i_x]() << ","
-        << get<y_mean>(predictions()[i_x]) << ","
-        << get<y_var>(predictions()[i_x]) << ","
-        << get<plogL>(predictions()[i_x]) << ","
-        << get<eplogL>(predictions()[i_x]) <<","
-        << get<logL>(predictions()[i_x]) << "\n";
-    }
-       
+  else
+    f << "\n";
+  for (std::size_t i_x = 0; i_x < size(ys); ++i_x) {
+    auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_x]);
+    for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_x])().nrows(); ++i)
+    {
+      for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_x])().ncols();
+           ++j) {
+        f << i_x << "," << get<Time>(get<Recording_conditions>(xs)()[i_x])
+          << "," << get_num_samples(v_ev) << ","
+          << ToString(average_ATP_step(v_ev)) << "," << ToString(v_ev) << ","
+          << ys()[i_x]() << "," << get<y_mean>(predictions()[i_x]) << ","
+          << get<y_var>(predictions()[i_x]) << ","
+          << get<plogL>(predictions()[i_x]) << ","
+          << get<eplogL>(predictions()[i_x]) << ","
+          << get<logL>(predictions()[i_x]) << "," << i << ","
+          << get<P_mean>(predictions()[i_x])()[i] << "," << j << ","
+          << get<P_Cov>(predictions()[i_x])()(i, j);
+        if constexpr (keep_N_state.value)
+            f << "," << get<N_Ch_State_Evolution>(y())()[i_x]()[i] << "\n";
+        else
+          f << "\n";
+      }
+  }
 }
-
+}
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType, class Parameters>
 void report(FunctionTable &&f, std::size_t iter,
