@@ -993,6 +993,7 @@ auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
             init_mcmc2(f.fork(var::I_thread(iiw)), mt[iiw], prior, lik, y, x);
       }
     }
+  
   return cuevi_mcmc<Parameters>{nsamples_out, beta_out, walker, i_walker,
                                 active_out};
 }
