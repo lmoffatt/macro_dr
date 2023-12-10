@@ -111,6 +111,7 @@ class error_message {
   std::string m_;
 
 public:
+  error_message()=default;
   error_message(std::string error) : m_{error} {}
 
   auto operator()() const { return m_; }

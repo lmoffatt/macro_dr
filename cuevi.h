@@ -1,24 +1,746 @@
 #ifndef CUEVI_H
 #define CUEVI_H
 #include "bayesian_linear_regression.h"
+#include "experiment.h"
 #include "function_measure_verification_and_optimization.h"
 #include "maybe_error.h"
 #include "mcmc.h"
 #include "parallel_tempering.h"
 #include "parallel_tempering_linear_regression.h"
 #include "random_samplers.h"
+#include "variables.h"
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <ostream>
 #include <random>
+#include <string>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
+namespace cuevi {
 
+class Th_Beta : public var::Var<Th_Beta, double> {};
+class Trial_count : public var::Constant<Trial_count, std::size_t> {};
+
+class Success_count : public var::Constant<Success_count, double> {};
+
+class Trial_statistics
+    : public var::Constant<Trial_statistics,
+                           var::Vector_Space<Trial_count, Success_count>> {
+public:
+  Trial_statistics &operator+=(const Trial_statistics other) {
+    get<Trial_count>((*this)())() += get<Trial_count>(other())();
+    get<Success_count>((*this)())() += get<Success_count>(other())();
+    return *this;
+  }
+
+  friend void succeeds(Trial_statistics &me) {
+    ++get<Trial_count>(me())();
+    ++get<Success_count>(me())();
+  }
+  friend void fails(Trial_statistics &me) { ++get<Trial_count>(me())(); }
+};
+
+class LogPrior : public var::Var<LogPrior, double> {};
+
+class LogLik_value : public var::Var<LogLik_value, double> {};
+
+class Fraction_Index : public var::Constant<Fraction_Index, std::size_t> {
+  Fraction_Index friend operator+(Fraction_Index one, std::size_t i) {
+    return Fraction_Index(one() + i);
+  }
+  Fraction_Index friend operator-(Fraction_Index one, std::size_t i) {
+    return Fraction_Index(one() - i);
+  }
+};
+
+class Cuevi_Index : public var::Constant<Cuevi_Index, std::size_t> {};
+
+class Number_of_Fractions
+    : public var::Constant<Number_of_Fractions, std::size_t> {};
+
+class Number_of_samples : public var::Constant<Number_of_samples, std::size_t> {
+};
+
+class Walker_id : public var::Constant<Walker_id, std::size_t> {};
+
+class Walker_Index : public var::Constant<Walker_Index, std::size_t> {};
+
+class LogLik_by_Fraction
+    : public var::Var<LogLik_by_Fraction,
+                      std::map<Fraction_Index, LogLik_value>> {
+public:
+  bool has(Fraction_Index i_fra) const {
+    return (*this)().find(i_fra) != (*this)().end();
+  }
+};
+
+class Num_Walkers_Per_Ensemble
+    : public var::Constant<Num_Walkers_Per_Ensemble, std::size_t> {};
+class Points_per_decade : public var::Constant<Points_per_decade, double> {};
+class Min_value : public var::Constant<Min_value, double> {};
+class Includes_zero : public var::Constant<Includes_zero, bool> {};
+
+class Th_Beta_Param
+    : public var::Constant<
+          Th_Beta_Param,
+          var::Vector_Space<Includes_zero, Min_value, Points_per_decade>> {};
+class Fractions_Param
+    : public var::Constant<Fractions_Param,
+                           var::Vector_Space<Min_value, Points_per_decade>> {};
+
+class Cuevi_temperatures_Param
+    : public var::Constant<Cuevi_temperatures_Param,
+                           var::Vector_Space<Th_Beta_Param, Fractions_Param>> {
+};
+
+class Prior_statistics
+    : public var::Constant<Prior_statistics, Trial_statistics> {};
+
+class Likelihood_statistics
+    : public var::Constant<Likelihood_statistics,
+                           std::map<Fraction_Index, Trial_statistics>> {
+public:
+  Likelihood_statistics &operator+=(const Likelihood_statistics &other) {
+    for (auto &e : other()) {
+      (*this)()[e.first] += e.second;
+    }
+    return *this;
+  }
+};
+
+class emcee_Step_statistics
+    : public var::Constant<emcee_Step_statistics, Trial_statistics> {};
+
+class Thermo_Jump_statistics
+    : public var::Constant<Thermo_Jump_statistics, Trial_statistics> {};
+
+class Cuevi_Jump_statistics
+    : public var::Constant<Cuevi_Jump_statistics, Trial_statistics> {};
+
+class Walker_statistics
+    : public var::Var<
+          Walker_statistics,
+          var::Vector_Space<Prior_statistics, Likelihood_statistics,
+                            emcee_Step_statistics, Thermo_Jump_statistics,
+                            Cuevi_Jump_statistics>> {};
+
+using Walker_statistics_pair =
+    std::pair<Walker_statistics &, Walker_statistics &>;
+
+class Init_seed
+    : public var::Constant<Init_seed, typename std::mt19937_64::result_type> {};
+using DataIndexes = std::vector<std::size_t>;
 template <class T> using by_fraction = std::vector<T>;
+
+class Cuevi_temperatures
+    : public var::Var<Cuevi_temperatures,
+                      std::vector<var::Vector_Space<Th_Beta, Fraction_Index>>> {
+};
+
+class Parameter {};
+class step_stretch_cuevi_mcmc;
+class step_stretch_cuevi_mcmc_per_walker;
+class thermo_cuevi_jump_mcmc;
+
+template <class ParameterType> class Cuevi_mcmc {
+
+  using myParameter = var::Var<Parameter, ParameterType>;
+
+  class Walker_value
+      : public var::Var<Walker_value,
+                        var::Vector_Space<var::Var<Parameter, ParameterType>,
+                                          LogPrior, LogLik_by_Fraction>> {
+    friend double thermo_step(const Walker_value &candidate,
+                              const Walker_value &current, Th_Beta beta,
+                              Fraction_Index i_fra) {
+      return get<LogPrior>(candidate()) - get<LogPrior>(current()) +
+             beta() * (get<LogLik_by_Fraction>(candidate())()[i_fra]() -
+                       get<LogLik_by_Fraction>(current())()[i_fra]());
+    }
+
+    friend double thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
+                              const Walker_value &candidate, Th_Beta cu_beta,
+                              Fraction_Index cu_fra,
+                              const Walker_value &current) {
+      auto current_sum =
+          ca_beta() * (get<LogLik_by_Fraction>(candidate())()[ca_fra]()) +
+          cu_beta() * (get<LogLik_by_Fraction>(current())()[cu_fra]());
+      auto after_jump_sum =
+          cu_beta() * (get<LogLik_by_Fraction>(candidate())()[cu_fra]()) +
+          ca_beta() * (get<LogLik_by_Fraction>(current())()[ca_fra]());
+      return after_jump_sum - current_sum;
+    }
+  };
+
+  class Walker
+      : public var::Var<Walker, var::Vector_Space<Walker_id, Walker_value,
+                                                  Walker_statistics>> {};
+
+  class Cuevi_statistics
+      : public var::Var<
+            Cuevi_statistics,
+            ensemble<std::vector<var::Vector_Space<
+                Prior_statistics, Likelihood_statistics, emcee_Step_statistics,
+                Thermo_Jump_statistics, Cuevi_Jump_statistics>>>> {};
+
+  class Walkers_ensemble
+      : public var::Var<Walkers_ensemble, ensemble<std::vector<Walker>>> {};
+
+  template <class FunctionTable, class logLikelihood, class Data,
+            class Variables>
+  static Maybe_error<bool>
+  calc_Likelihood(FunctionTable &&f, logLikelihood &&lik, Walker_value &w,
+                  const by_fraction<Data> &y, const by_fraction<Variables> &x,
+                  Fraction_Index i_frac, Walker_statistics_pair wa_sta) {
+
+    auto &r_logLikf = get<LogLik_by_Fraction>(w());
+    if (r_logLikf.has(i_frac))
+      return true;
+    else {
+      auto &ca_par = get<Parameter>(w());
+      auto v_logL = logLikelihood(std::forward<FunctionTable>(f), lik, ca_par(),
+                                  y[i_frac()], x[i_frac()]);
+      if (!v_logL) {
+        fails(get<Likelihood_statistics>(wa_sta.first())()[i_frac]);
+        fails(get<Likelihood_statistics>(wa_sta.second())()[i_frac]);
+        return v_logL.error();
+
+      } else {
+        succeeds(get<Likelihood_statistics>(wa_sta.first())()[i_frac]);
+        succeeds(get<Likelihood_statistics>(wa_sta.second())()[i_frac]);
+        r_logLikf()[i_frac] = v_logL.value();
+        return true;
+      }
+    }
+  }
+
+  template <class FunctionTable, class Sampler, class Prior,
+            class logLikelihood, class Data, class Variables>
+  static Maybe_error<double> thermo_jump_logProb(
+      FunctionTable &&f, logLikelihood &&lik, const by_fraction<Data> &y,
+      const by_fraction<Variables> &x, const Cuevi_temperatures &t,
+      Cuevi_Index i_0, Walker_value &w_0, Cuevi_Index i_1, Walker_value &w_1,
+      Walker_statistics_pair wa_sta_0, Walker_statistics_pair wa_sta_1) {
+    auto i_frac_0 = get<Fraction_Index>(t()[i_0()]);
+    auto i_frac_1 = get<Fraction_Index>(t()[i_1()]);
+
+    auto Maybe_0 = calc_Likelihood(std::forward<FunctionTable>(f), lik, w_0, y,
+                                   x, i_frac_1, wa_sta_0);
+    auto Maybe_1 = calc_Likelihood(std::forward<FunctionTable>(f), lik, w_1, y,
+                                   x, i_frac_0, wa_sta_1);
+
+    if (!Maybe_0.valid() || !Maybe_1.valid())
+      return error_message(Maybe_0.error()() + Maybe_1.error()());
+    else {
+      auto be_0 = get<Th_Beta>(t()[i_0()]);
+      auto be_1 = get<Th_Beta>(t()[i_1()]);
+      return thermo_jump(be_0, i_frac_0, w_0, be_1, i_frac_1, w_1);
+    }
+  }
+
+  template <class FunctionTable, class Sampler, class Prior,
+            class logLikelihood, class Data, class Variables>
+  static Maybe_error<Walker_value>
+  calc_Walker_value(FunctionTable &&f, myParameter &&ca_par, Prior &&p,
+                    logLikelihood &&lik, const by_fraction<Data> &y,
+                    const by_fraction<Variables> &x,
+                    const Cuevi_temperatures &t, Cuevi_Index i_cu,
+                    Walker_statistics_pair wa_sta) {
+    auto v_logP = logPrior(p, ca_par());
+    if (!v_logP) {
+      fails(get<Prior_statistics>(wa_sta.first())());
+      fails(get<Prior_statistics>(wa_sta.second())());
+      return v_logP.error();
+    } else {
+      succeeds(get<Prior_statistics>(wa_sta.first())());
+      succeeds(get<Prior_statistics>(wa_sta.second())());
+      Walker_value out(std::move(ca_par), std::move(v_logP.value()),
+                       LogLik_by_Fraction{});
+
+      auto i_frac = get<Fraction_Index>(t()[i_cu()]);
+      auto Maybe_succeed = calc_Likelihood(std::forward<FunctionTable>(f), lik,
+                                           out, y, x, i_frac, wa_sta);
+      if (!Maybe_succeed)
+        return Maybe_succeed.error();
+      else
+        return out;
+    }
+  }
+
+  template <class FunctionTable, class Sampler, class Prior,
+            class logLikelihood, class Data, class Variables>
+  static Maybe_error<Walker_value>
+  sample_Walker_for(FunctionTable &&f, std::mt19937_64 &mt, Sampler &&sampler,
+                    Prior &&p, logLikelihood &&lik, const by_fraction<Data> &y,
+                    const by_fraction<Variables> &x,
+                    const Cuevi_temperatures &t, Cuevi_Index i_cu,
+                    Walker_statistics_pair wa_sta, std::size_t max_trials) {
+    Maybe_error<Walker_value> v_walker(error_message{});
+    auto n_trial = 0ul;
+    while (!v_walker) {
+      auto ca_par = std::forward<Sampler>(sampler)(mt);
+      v_walker = calc_Walker_value(std::forward<FunctionTable>(f), mt, p, lik,
+                                   y, x, t, i_cu, wa_sta);
+      ++n_trial;
+      if (!v_walker.valid() && (n_trial > max_trials))
+        return error_message("more than " + std::to_string(max_trials) +
+                             " and not a single valid sample, last error " +
+                             v_walker.error()());
+    }
+    return v_walker.value();
+  }
+
+  template <class FunctionTable, class Prior, class logLikelihood, class Data,
+            class Variables>
+  static auto sample_Walker(FunctionTable &&f, std::mt19937_64 &mt, Prior &&p,
+                            logLikelihood &&lik, const by_fraction<Data> &y,
+                            const by_fraction<Variables> &x,
+                            const Cuevi_temperatures &t, std::size_t i_cu,
+                            Walker_statistics &w_sta, std::size_t max_trials) {
+    return sample_Walker_for(
+        std::forward<FunctionTable>(f), mt,
+        [&p](std::mt19937_64 &mt) { return sample(mt, p); }, p, lik, y, x, t,
+        i_cu, w_sta, max_trials);
+  }
+
+  template <class DataType>
+  static Cuevi_temperatures build_temperatures(const by_fraction<DataType> &y,
+                                               const Th_Beta_Param &p) {
+    auto n_points_per_decade_beta = get<Points_per_decade>(p());
+    auto stops_at = get<Min_value>(p());
+    auto includes_zero = get<Includes_zero>(p());
+
+    std::size_t num_beta =
+        std::ceil(-std::log10(stops_at()) * n_points_per_decade_beta()) + 1;
+
+    auto beta_size = num_beta;
+    if (includes_zero())
+      beta_size = beta_size + 1;
+
+    auto fraction_size = y.size();
+
+    auto out = Cuevi_temperatures{};
+    out().resize(beta_size + fraction_size - 1);
+
+    for (std::size_t i = includes_zero() ? 1 : 0; i < beta_size; ++i) {
+      get<Th_Beta>(out()[i])() = std::pow(10.0, -1.0 * (beta_size - i - 1) /
+                                                    n_points_per_decade_beta());
+      get<Fraction_Index>(out()[i])() = 0ul;
+    }
+    for (std::size_t i = beta_size; i < beta_size + fraction_size; ++i) {
+      get<Th_Beta>(out()[i])() = 1.0;
+      get<Fraction_Index>(out()[i])() = i;
+    }
+
+    return out;
+  }
+  template <class FunctionTable, class Prior, class logLikelihood, class Data,
+            class Variables>
+  static Maybe_error<Walkers_ensemble>
+  init_cuevi(FunctionTable &&f, ensemble<std::mt19937_64> &mts, Prior &&p,
+             logLikelihood &&lik, const by_fraction<Data> &y,
+             const by_fraction<Variables> &x, const Cuevi_temperatures &t,
+             Num_Walkers_Per_Ensemble n, Cuevi_statistics &sta,
+             std::size_t max_trials_per_sample) {
+    auto num_temp = t().size();
+
+    Walkers_ensemble out(n(), std::vector<Walker>(num_temp));
+
+    Maybe_error<bool> succeeds = true;
+    for (std::size_t half = 0; half < 2; ++half)
+#pragma omp parallel for
+      for (std::size_t iiw = 0; iiw < n() / 2; ++iiw) {
+        auto iw = half ? iiw + n() / 2 : iiw;
+        for (std::size_t i_cu = 0; i_cu < num_temp; ++i_cu) {
+          auto &wa_va = out()[iw]()[i_cu];
+          Walker_statistics_pair wa_sta(get<Walker_statistics>(wa_va()),
+                                        sta[iw][i_cu]);
+          get<Walker_id>(wa_va())() = iw + num_temp * i_cu;
+          auto Maybe_Walker_value =
+              sample_Walker(std::forward<FunctionTable>(f), mts[iiw], p, lik, y,
+                            x, t, i_cu, wa_sta, max_trials_per_sample);
+          if (Maybe_Walker_value)
+            get<Walker_value>(wa_va()) = std::move(Maybe_Walker_value.value());
+          else
+            succeeds = Maybe_Walker_value.error();
+        }
+      }
+    if (succeeds)
+      return out;
+    else
+      return succeeds.error();
+  }
+
+  auto &get_Walker(Walker_Index i, Cuevi_Index j) { return m_data()[i()][j()]; }
+  auto &get_Walker(Walker_Index i, Cuevi_Index j) const {
+    return m_data()[i()][j()];
+  }
+
+  auto get_Beta(Cuevi_Index i_cu) {
+    return get<Th_Beta>(m_temperatures()[i_cu()]);
+  }
+  auto get_Fraction(Cuevi_Index i_cu) {
+    return get<Fraction_Index>(m_temperatures()[i_cu()]);
+  }
+
+  auto &get_Walker_Value(Walker_Index i, Cuevi_Index j) {
+    return get<Walker_value>(m_data()[i()][j()]());
+  }
+  auto &get_Walker_Value(Walker_Index i, Cuevi_Index j) const {
+    return get<Walker_value>(m_data()[i()][j()]());
+  }
+  Walker_statistics_pair get_Walker_Statistics(Walker_Index i, Cuevi_Index j) {
+    return Walker_statistics_pair(get<Walker_statistics>(m_data()[i()][j()]()),
+                                  m_sta[i()][j()]);
+  }
+
+  auto &get_Cuevi_Temperatures() const { return m_temperatures; }
+
+  auto get_Walkers_number() const { return m_data().size(); }
+  auto get_Parameters_number() const {
+    return size(get<Parameter>(get<Walker_value>(m_data()[0][0]())));
+  }
+
+  Cuevi_temperatures m_temperatures;
+  Cuevi_statistics m_sta;
+  Walkers_ensemble m_data;
+
+  Cuevi_mcmc(Cuevi_temperatures &&t_temperatures, Cuevi_statistics t_sta,
+             Walkers_ensemble t_data)
+      : m_temperatures{std::move(t_temperatures)}, m_sta{std::move(t_sta)},
+        m_data{std::move(t_data)} {}
+
+public:
+  friend class step_stretch_cuevi_mcmc;
+  friend class step_stretch_cuevi_mcmc_per_walker;
+  friend class thermo_cuevi_jump_mcmc;
+
+  template <class FunctionTable, class Prior, class logLikelihood, class Data,
+            class Variables>
+  friend Maybe_error<Cuevi_mcmc>
+  init_Cuevi_mcmc(FunctionTable &&f, ensemble<std::mt19937_64> &mts,
+                  Prior &&prior, logLikelihood &&lik,
+                  const by_fraction<Data> &y, const by_fraction<Variables> &x,
+                  const Th_Beta_Param &beta, Num_Walkers_Per_Ensemble n,
+                  std::size_t max_trials_per_sample) {
+    auto t_temperatures = build_temperatures(y, beta);
+    auto t_sta = Cuevi_statistics(
+        n(), std::vector<Walker_statistics>(t_temperatures().size()));
+    auto Maybe_data =
+        init_cuevi(std::forward<FunctionTable>(f), mts, prior, lik, y, x,
+                   t_temperatures, n, t_sta, max_trials_per_sample);
+    if (!Maybe_data)
+      return Maybe_data.error();
+    else
+      return Cuevi_mcmc(std::move(t_temperatures), std::move(t_sta),
+                        std::move(Maybe_data.value()));
+  }
+};
+
+class step_stretch_cuevi_mcmc_per_walker {
+public:
+  friend std::string ToString(step_stretch_cuevi_mcmc_per_walker) {
+    return "step_stretch_cuevi_mcmc_per_walker";
+  }
+
+  template <class FunctionTable, class Observer, class Prior, class Likelihood,
+            class Variables, class DataType,
+            class Parameters = std::decay_t<decltype(sample(
+                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters,
+                                 Variables, DataType>)
+
+  void operator()(FunctionTable &&f, Cuevi_mcmc<Parameters> &current,
+                  ensemble<std::mt19937_64> &mts,
+                  std::vector<std::uniform_real_distribution<double>> &rdist,
+                  Prior const &prior, Likelihood const &lik,
+                  const by_fraction<DataType> &y,
+                  const by_fraction<Variables> &x, std::size_t n_par,
+                  std::size_t i, Walker_Index iw, Walker_Index jw,
+                  Cuevi_Index i_cu) const {
+    auto &wa_i = current.get_Walker_Value(iw, i_cu);
+    auto const &wa_j = current.get_Walker_Value(jw, i_cu);
+
+    auto &param_i = get<Parameter>(wa_i());
+    auto &param_j = get<Parameter>(wa_j());
+    auto &t = current.get_Cuevi_Temperatures();
+
+    auto [ca_par, z] = stretch_move(mts[i], rdist[i], param_i, param_j);
+    auto wa_sta = current.get_Walker_Statistics(iw, i_cu);
+    auto Maybe_Walker =
+        current.calc_Walker(std::forward<FunctionTable>(f), ca_par, prior, lik,
+                            y, x, t, i_cu, wa_sta);
+    if (!Maybe_Walker)
+      return Maybe_Walker.error();
+    else {
+      auto ca_wa = std::move(Maybe_Walker.value());
+      auto &cu_wa = current.get_Walker_Value(iw, i_cu);
+      auto dthLogL = thermo_step(ca_wa, cu_wa, current.get_Beta(i_cu),
+                                 current.get_Fraction(i_cu));
+      auto pJump = std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
+      auto r = rdist[i](mts[i]);
+      if (pJump < r) {
+        fails(get<emcee_Step_statistics>(wa_sta.first())());
+        fails(get<emcee_Step_statistics>(wa_sta.second())());
+      } else {
+        succeeds(get<emcee_Step_statistics>(wa_sta.first())());
+        succeeds(get<emcee_Step_statistics>(wa_sta.second())());
+        cu_wa = ca_wa;
+      }
+    }
+  }
+};
+
+class step_stretch_cuevi_mcmc {
+public:
+  friend std::string ToString(step_stretch_cuevi_mcmc) {
+    return "step_stretch_cuevi_mcmc";
+  }
+
+  template <class FunctionTable, class Observer, class Prior, class Likelihood,
+            class Variables, class DataType,
+            class Parameters = std::decay_t<decltype(sample(
+                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters,
+                                 Variables, DataType>)
+
+  void operator()(FunctionTable &&f, Cuevi_mcmc<Parameters> &current,
+                  ensemble<std::mt19937_64> &mts, Prior const &prior,
+                  Likelihood const &lik, const by_fraction<DataType> &y,
+                  const by_fraction<Variables> &x,
+                  double alpha_stretch = 2) const {
+    auto cuevi_temp = current.get_Cuevi_Temperatures();
+    auto n_walkers = current.get_Walkers_number();
+
+    auto &mt = mts[0];
+    auto n_par = current.get_Parameters_number();
+
+    WalkerIndexes shuffled_walker(n_walkers);
+    std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
+    std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
+
+    std::uniform_int_distribution<std::size_t> uniform_walker(0, n_walkers / 2 -
+                                                                     1);
+    std::vector<std::uniform_int_distribution<std::size_t>> udist(
+        n_walkers, uniform_walker);
+
+    std::uniform_real_distribution<double> uniform_stretch_zdist(
+        1.0 / alpha_stretch, alpha_stretch);
+    std::vector<std::uniform_real_distribution<double>> zdist(
+        n_walkers, uniform_stretch_zdist);
+
+    std::uniform_real_distribution<double> uniform_real(0, 1);
+    std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
+                                                              uniform_real);
+
+    for (bool half : {false, true}) {
+      if (half)
+        std::shuffle(shuffled_walker.begin(),
+                     shuffled_walker.begin() + n_walkers / 2, mt);
+
+#pragma omp parallel for
+      for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+        auto ii = half ? i + n_walkers / 2 : i;
+        auto jj = half ? i : i + n_walkers / 2;
+
+        auto iw = shuffled_walker[ii];
+        auto jw = shuffled_walker[jj];
+
+        for (std::size_t i_cu = 0; i_cu < size(cuevi_temp()); ++i_cu) {
+          //  f.fork(var::I_thread(i))
+          //     .f(
+          step_stretch_cuevi_mcmc_per_walker{}(
+              f, current, mts, rdist, prior, lik, y, x, n_par, i, iw, jw, i_cu);
+        }
+      }
+    }
+  }
+};
+
+class thermo_cuevi_jump_mcmc_per_walker {
+public:
+  friend std::string ToString(thermo_cuevi_jump_mcmc_per_walker) {
+    return "thermo_cuevi_jump_mcmc_per_walker";
+  }
+
+  template <class FunctionTable, class Prior, class Likelihood, class Variables,
+            class DataType, class Parameters>
+
+  void operator()(FunctionTable &&f, Cuevi_mcmc<Parameters> &current,
+                  Likelihood const &lik, const by_fraction<DataType> &y,
+                  const by_fraction<Variables> &x, double r, Walker_Index i_w,
+                  Walker_Index j_w, Cuevi_Index icu, Cuevi_Index jcu) const {
+    auto &t = current.get_Cuevi_Temperatures();
+    auto &w_0 = current.get_Walker_Value(i_w, icu);
+    auto &w_1 = current.get_Walker_Value(j_w, jcu);
+    auto wa_sta_0 = current.get_Walker_Statistics(i_w, icu);
+    auto wa_sta_1 = current.get_Walker_Statistics(j_w, jcu);
+    auto Maybe_logA = current.thermo_jump_log(f, lik, y, x, t, icu, w_0, jcu,
+                                              w_1, wa_sta_0, wa_sta_1);
+    if (Maybe_logA.valid()) {
+      auto logA = std::move(Maybe_logA.value());
+      auto pJump = std::min(1.0, std::exp(logA));
+      if (pJump > r) {
+        auto &W0 = current.get_Walker(i_w, icu);
+        auto &W1 = current.get_Walker(j_w, jcu);
+        succeeds(get<Thermo_Jump_statistics>(wa_sta_0.first())());
+        succeeds(get<Thermo_Jump_statistics>(wa_sta_0.second())());
+        succeeds(get<Thermo_Jump_statistics>(wa_sta_1.first())());
+        succeeds(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+
+        std::swap(W0, W1);
+      } else {
+        fails(get<Thermo_Jump_statistics>(wa_sta_0.first())());
+        fails(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+        fails(get<Thermo_Jump_statistics>(wa_sta_0.first())());
+        fails(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+      }
+    }
+  }
+};
+
+class thermo_cuevi_jump_mcmc {
+public:
+  friend std::string ToString(thermo_cuevi_jump_mcmc) {
+    return "thermo_cuevi_jump_mcmc";
+  }
+
+  template <class FunctionTable, class Prior, class Likelihood, class Variables,
+            class DataType,
+            class Parameters = std::decay_t<decltype(sample(
+                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+    requires(is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters,
+                                 Variables, DataType>)
+
+  void operator()(FunctionTable &&f, std::size_t iter,
+                  Cuevi_mcmc<Parameters> &current, std::mt19937_64 &mt,
+                  ensemble<std::mt19937_64> &mts, Prior const &,
+                  Likelihood const &lik, const by_fraction<DataType> &y,
+                  const by_fraction<Variables> &x,
+                  std::size_t thermo_jumps_every,
+                  bool randomize) const {
+    if (iter % (thermo_jumps_every) == 0) {
+      auto t = current.get_Cuevi_Temperatures();
+      auto n_walkers = current.get_Walkers_number();
+
+      std::uniform_real_distribution<double> uniform_real(0, 1);
+      auto n_par = current.get_Parameters_number();
+      WalkerIndexes shuffled_walker(n_walkers);
+      std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
+      std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
+      
+      
+      std::vector<std::size_t> shuffled_cuevi(t().size());
+      std::iota(shuffled_cuevi.begin(), shuffled_cuevi.end(), 0);
+      if (randomize)
+          std::shuffle(shuffled_cuevi.begin(), shuffled_cuevi.end(), mt);
+      
+      std::uniform_int_distribution<std::size_t> uniform_walker(
+          0, n_walkers / 2 - 1);
+      std::vector<std::uniform_int_distribution<std::size_t>> udist(
+          n_walkers, uniform_walker);
+
+      std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
+                                                                uniform_real);
+
+      Maybe_error<bool> success = true;
+
+#pragma omp parallel for
+      for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+
+        auto i_w = Walker_Index(shuffled_walker[i]);
+        auto j_w = Walker_Index(shuffled_walker[i + n_walkers / 2]);
+
+        for (std::size_t i_cu = 0; i_cu + 1 < size(t()); ++i_cu) {
+          auto icu = Cuevi_Index(shuffled_cuevi[i_cu]);
+          auto jcu = Cuevi_Index(shuffled_cuevi[i_cu + 1]);
+          double r = rdist[i](mts[i]);
+          thermo_cuevi_jump_mcmc_per_walker{}(f, current, lik, y, x, r, i_w,
+                                              j_w, icu, jcu);
+        }
+      }
+    }
+  }
+};
+
+
+
+struct Fractioner {};
+struct Reporter {};
+struct Finalizer {};
+
+template <class myFractioner, class t_Reporter, class t_Finalizer>
+class Cuevi_Algorithm
+    : public var::Var<Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer>,
+                      var::Vector_Space<Num_Walkers_Per_Ensemble,
+                                        var::Constant<Fractioner, myFractioner>,
+                                        var::Constant<Reporter, t_Reporter>,
+                                        var::Constant<Finalizer, t_Finalizer>,
+                                        Fractions_Param, Th_Beta_Param>> {};
+
+template <class FunctionTable, class myFractioner, class t_Reporter,
+          class t_Finalizer, class Prior, class Likelihood, class DataType,
+          class Variables>
+auto evidence(FunctionTable &&ff,
+              Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue,
+              Prior const &prior, Likelihood const &lik, const DataType &y,
+              const Variables &x, const Init_seed init_seed) {
+  using Parameter_Type =
+      std::decay_t<std::invoke_result_t<Prior, std::mt19937_64 &>>;
+
+  auto f = ff.fork(var::I_thread(0));
+  auto mt = init_mt(init_seed());
+  auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
+
+  auto mts = init_mts(mt, n_walkers / 2);
+  auto min_fraction = get<Min_value>(get<Fractions_Param>(cue)());
+  auto n_points_per_decade_fraction =
+      get<Points_per_decade>(get<Fractions_Param>(cue)());
+
+  auto [ys, xs] = get<Fractioner>(cue)()(y, x, mt, size(prior) * min_fraction(),
+                                         n_points_per_decade_fraction());
+  auto current =
+      Cuevi_mcmc<Parameter_Type>(std::forward<FunctionTable>(ff), mts, prior,
+                                 lik, y, x, get<Th_Beta_Param>(cue), n_walkers);
+  auto a = get<Finalizer>(cue());
+  auto mcmc_run = checks_convergence(std::move(a), current);
+
+  std::size_t iter = 0;
+  auto &rep = get<Reporter>(cue());
+  report_title(rep, current, prior, lik, ys, xs);
+  report_model(rep, prior, lik, ys, xs);
+  report_title(ff, "Iter");
+
+  while (!mcmc_run.second) {
+    f.f(step_stretch_cuevi_mcmc{}, current, rep, mts, prior, lik, ys, xs);
+    report_point(ff, iter);
+
+    ++iter;
+    f.f(thermo_cuevi_jump_mcmc{}, iter, current, rep, mt, mts, prior, lik, ys,
+        xs, cue.thermo_jumps_every(),false);
+    f.f(thermo_cuevi_jump_mcmc{},
+        iter + cue.thermo_jumps_every() % 2, current, rep, mt, mts, prior, lik,
+        ys, xs, cue.thermo_jumps_every(),true);
+
+    report_all(f, iter, rep, current, prior, lik, ys, xs);
+    mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
+  }
+  return std::pair(mcmc_run, current);
+}
+
+} // namespace cuevi
 
 template <class Parameters> struct mcmc2 : public mcmc<Parameters> {
   double logPa;
 };
+
+template <class T> using by_fraction = std::vector<T>;
 
 template <class Parameters> struct cuevi_mcmc {
   by_fraction<std::size_t> nsamples;
@@ -73,6 +795,43 @@ template <class Parameters> struct cuevi_mcmc {
     (report_title(static_cast<saving &>(f), data, ts...), ..., 1);
   }
 };
+template <class... T>
+std::ostream &print_i_walkers_title(std::ostream &os, const T &...ts) {
+  ((os << ts << ",") << ... << "i_frac");
+  os << ","
+     << "i_beta"
+     << ","
+     << "i_walker"
+     << ","
+     << "id_walker"
+     << "\n";
+  return os;
+}
+
+template <class Parameters, class... T>
+std::ostream &print_i_walkers(std::ostream &os,
+                              cuevi_mcmc<Parameters> const &data,
+                              const T &...ts) {
+  os << "i_walker"
+     << ","
+     << "i_frac"
+     << ","
+     << "i_beta"
+     << ","
+     << "id_walker"
+     << "\n";
+  for (std::size_t i_w = 0; i_w < data.i_walkers.size(); ++i_w) {
+    for (std::size_t i_frac = 0; i_frac < data.beta.size(); ++i_frac) {
+      for (std::size_t i_beta = 0; i_beta < data.beta[i_frac].size();
+           ++i_beta) {
+        ((os << ts << ",") << ... << "");
+        os << i_w << "," << i_frac << "," << i_beta << ","
+           << data.i_walkers[i_w][i_frac][i_beta] << "\n";
+      }
+    }
+  }
+  return os;
+}
 
 template <class Parameters> auto mean_logL(cuevi_mcmc<Parameters> const &mcmc) {
   auto out = by_fraction<by_beta<double>>{};
@@ -549,7 +1308,6 @@ void check_sanity(std::size_t iter, cuevi_mcmc<Parameters> const &data) {
                     << ib << " " << data.walkers[iw][i_frac][ib].logL << "\n";
 }
 
-
 struct step_stretch_cuevi_mcmc_per_walker {
   friend std::string ToString(step_stretch_cuevi_mcmc_per_walker) {
     return "step_stretch_cuevi_mcmc_per_walker";
@@ -574,8 +1332,9 @@ struct step_stretch_cuevi_mcmc_per_walker {
     if (current.is_active[i_fr][ib] == 1) {
       auto r = rdist[i](mt[i]);
       // candidate[ib].walkers[iw].
-      auto [ca_par,z] = stretch_move(mt[i],rdist[i],current.walkers[iw][i_fr][ib].parameter,
-                                 current.walkers[jw][i_fr][ib].parameter);
+      auto [ca_par, z] =
+          stretch_move(mt[i], rdist[i], current.walkers[iw][i_fr][ib].parameter,
+                       current.walkers[jw][i_fr][ib].parameter);
 
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 = i_fr > 0 ? f.f(logLikelihood_f{}, lik, ca_par,
@@ -708,8 +1467,9 @@ struct step_stretch_cuevi_mcmc {
     if (current.is_active[i_fr][ib] == 1) {
       auto r = rdist[i](mt[i]);
       // candidate[ib].walkers[iw].
-      auto [ca_par,z] = stretch_move(mt[i],rdist[i],current.walkers[iw][i_fr][ib].parameter,
-                                      current.walkers[jw][i_fr][ib].parameter);
+      auto [ca_par, z] =
+          stretch_move(mt[i], rdist[i], current.walkers[iw][i_fr][ib].parameter,
+                       current.walkers[jw][i_fr][ib].parameter);
 
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 =
@@ -993,7 +1753,7 @@ auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
             init_mcmc2(f.fork(var::I_thread(iiw)), mt[iiw], prior, lik, y, x);
       }
     }
-  
+
   return cuevi_mcmc<Parameters>{nsamples_out, beta_out, walker, i_walker,
                                 active_out};
 }
@@ -1028,13 +1788,18 @@ auto init_cuevi_mcmc_all(FunctionTable &&f, std::size_t n_walkers,
     walker_i[i] = by_beta<mcmc2<Parameters>>(beta_out[i].size());
   ensemble<by_fraction<by_beta<mcmc2<Parameters>>>> walker(n_walkers, walker_i);
 
-  auto r_i_walker = 0ul;
-  for (std::size_t i_frac = 0; i_frac < beta_out.size(); ++i_frac)
-    for (std::size_t ib = 0; ib < beta_out[i_frac].size(); ++ib)
-      for (std::size_t iw = 0; iw < n_walkers; ++iw) {
-        i_walker[iw][i_frac][ib] = r_i_walker;
-        ++r_i_walker;
+  for (std::size_t iw = 0; iw < n_walkers; ++iw) {
+    i_walker[iw][0][0] = iw;
+    for (std::size_t ib = 0; ib < beta_out[0].size(); ++ib) {
+      i_walker[iw][0][ib] = iw + ib * n_walkers;
+    }
+    for (std::size_t i_frac = 1; i_frac < beta_out.size(); ++i_frac) {
+      i_walker[iw][i_frac][0] = i_walker[iw][i_frac - 1].back();
+      for (std::size_t ib = 1; ib < beta_out[i_frac].size(); ++ib) {
+        i_walker[iw][i_frac][ib] = i_walker[iw][i_frac][ib - 1] + n_walkers;
       }
+    }
+  }
   auto current = cuevi_mcmc<Parameters>{nsamples_out, beta_out, walker,
                                         i_walker, active_out};
 
@@ -1282,8 +2047,6 @@ Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction(
   return calculate_current_Likelihoods(f, current, prior, lik, y, x);
 }
 
-
-
 struct thermo_cuevi_jump_mcmc {
   friend std::string ToString(thermo_cuevi_jump_mcmc) {
     return "thermo_cuevi_jump_mcmc";
@@ -1308,8 +2071,8 @@ struct thermo_cuevi_jump_mcmc {
       std::uniform_real_distribution<double> uniform_real(0, 1);
       auto n_walkers = mts.size() * 2;
       auto n_par = current.walkers[0][0][0].parameter.size();
-      
-      WalkerIndexes shuffled_walker(n_walkers );
+
+      WalkerIndexes shuffled_walker(n_walkers);
       std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
       std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
       std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
@@ -1317,8 +2080,8 @@ struct thermo_cuevi_jump_mcmc {
 
 #pragma omp parallel for // not currently working
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-        auto iw =shuffled_walker[i];
-        auto jw = shuffled_walker[i+n_walkers / 2];
+        auto iw = shuffled_walker[i];
+        auto jw = shuffled_walker[i + n_walkers / 2];
 
         if (size(current.beta) == 1)
           for (std::size_t i_fr = 0; i_fr < 1; ++i_fr) {
@@ -1628,8 +2391,8 @@ struct calculate_cuevi_walker {
   friend std::string ToString(calculate_cuevi_walker) {
     return "calculate_cuevi_walker";
   }
-  template <class FunctionTable, class Prior, class Likelihood,
-            class Variables, class DataType,
+  template <class FunctionTable, class Prior, class Likelihood, class Variables,
+            class DataType,
             class Parameters = std::decay_t<decltype(sample(
                 std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
@@ -1657,7 +2420,7 @@ struct calculate_cuevi_walker {
       mcmc2<Parameters> out0;
       mcmc2<Parameters> out1;
       if (beta[i_frac][ib] == 1.0) {
-        out0.parameter=ca_par;  
+        out0.parameter = ca_par;
         out0.logPa = ca_logPa;
         out0.logP = ca_logP0;
         out0.logL = ca_logL0;
@@ -1670,27 +2433,27 @@ struct calculate_cuevi_walker {
           else {
             auto ca_logP1 = ca_logPa + ca_logL_1.value();
             auto ca_logL1 = ca_logL_2.value() - ca_logL_1.value();
-            out1.parameter=ca_par;  
+            out1.parameter = ca_par;
             out1.logPa = ca_logPa;
             out1.logP = ca_logP1;
             out1.logL = ca_logL1;
           }
         }
-      } else  {
-        out1.parameter=ca_par;  
+      } else {
+        out1.parameter = ca_par;
         out1.logPa = ca_logPa;
         out1.logP = ca_logP0;
         out1.logL = ca_logL0;
-        if ((i_frac > 0)&&(beta[i_frac][ib] == 0.0)) {
-          auto ca_logL_00 =i_frac > 1 ?
-              f.f(logLikelihood_f{}, lik, ca_par, y[i_frac - 2], x[i_frac - 2]):
-                                  Maybe_error<double>(0.0);
+        if ((i_frac > 0) && (beta[i_frac][ib] == 0.0)) {
+          auto ca_logL_00 = i_frac > 1 ? f.f(logLikelihood_f{}, lik, ca_par,
+                                             y[i_frac - 2], x[i_frac - 2])
+                                       : Maybe_error<double>(0.0);
           if (!(ca_logL_00))
             return ca_logL_00.error();
           else {
             auto ca_logP00 = ca_logPa + ca_logL_00.value();
             auto ca_logL00 = ca_logL_0.value() - ca_logL_00.value();
-            out0.parameter=ca_par;  
+            out0.parameter = ca_par;
             out0.logPa = ca_logPa;
             out0.logP = ca_logP00;
             out0.logL = ca_logL00;
@@ -1705,8 +2468,8 @@ struct thermo_cuevi_randomized_jump_mcmc_per_walker {
   friend std::string ToString(thermo_cuevi_randomized_jump_mcmc_per_walker) {
     return "thermo_cuevi_randomized_jump_mcmc";
   }
-  template <class FunctionTable, class Prior, class Likelihood,
-            class Variables, class DataType,
+  template <class FunctionTable, class Prior, class Likelihood, class Variables,
+            class DataType,
             class Parameters = std::decay_t<decltype(sample(
                 std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
@@ -1793,11 +2556,12 @@ struct thermo_cuevi_randomized_jump_mcmc {
                   const by_fraction<Variables> &x,
                   std::size_t thermo_jumps_every) const {
     if (iter % (thermo_jumps_every) == 0) {
+      // print_i_walkers(std::cerr, current);
       std::uniform_real_distribution<double> uniform_real(0, 1);
       auto n_walkers = mts.size() * 2;
       auto n_par = current.walkers[0][0][0].parameter.size();
       std::uniform_int_distribution<std::size_t> booldist(0, 1);
-     
+
       WalkerIndexes shuffled_walker(n_walkers);
       std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
       std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
@@ -1812,7 +2576,7 @@ struct thermo_cuevi_randomized_jump_mcmc {
 #pragma omp parallel for // not currently working
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
         auto iw = shuffled_walker[i];
-        auto jw =shuffled_walker[i+n_walkers / 2];
+        auto jw = shuffled_walker[i + n_walkers / 2];
 
         for (std::size_t i_fr = 0; i_fr < n_fractions; ++i_fr) {
           auto i_frac_origin = i_fr;
@@ -1820,14 +2584,14 @@ struct thermo_cuevi_randomized_jump_mcmc {
           auto r = rdist[i](mts[i]);
 
           thermo_cuevi_randomized_jump_mcmc_per_walker{}(
-              f.fork(var::I_thread(i)), current, iw, jw, i_frac_origin, i_frac_destination, prior, lik,
-              y, x, r);
+              f.fork(var::I_thread(i)), current, iw, jw, i_frac_origin,
+              i_frac_destination, prior, lik, y, x, r);
         }
       }
+      // print_i_walkers(std::cerr, current);
     }
   }
 };
-
 
 template <class Parameters>
 auto derivative_var_ratio(by_fraction<by_beta<double>> const &mean,
@@ -1943,6 +2707,8 @@ auto evidence(FunctionTable &&ff,
                                                    mts, prior, lik, ys, xs)
                              : init_cuevi_mcmc(f, n_walkers, beta_init, mts,
                                                prior, lik, ys, xs);
+  // print_i_walkers(std::cerr, current);
+
   auto mcmc_run = checks_convergence(std::move(a), current);
   if ((current.beta.size() == beta_final.size()) &&
       (current.beta.back().back() == 1.0))
@@ -1960,16 +2726,21 @@ auto evidence(FunctionTable &&ff,
          (size(current.beta.back()) < size(beta_final.back())) ||
          !mcmc_run.second) {
     while (!mcmc_run.second) {
+      // print_i_walkers(std::cerr, current);
       f.f(step_stretch_cuevi_mcmc{}, current, rep, mts, prior, lik, ys, xs);
+      // print_i_walkers(std::cerr, current);
       // check_sanity(iter,current);
       report_point(ff, iter);
 
       ++iter;
+      // print_i_walkers(std::cerr, current);
       f.f(thermo_cuevi_jump_mcmc{}, iter, current, rep, mt, mts, prior, lik, ys,
           xs, cue.thermo_jumps_every());
-      f.f(thermo_cuevi_randomized_jump_mcmc{}, iter+cue.thermo_jumps_every()%2, current, rep, mt, mts, prior, lik, ys,
-          xs, cue.thermo_jumps_every());
-      
+      // print_i_walkers(std::cerr, current);
+      f.f(thermo_cuevi_randomized_jump_mcmc{},
+          iter + cue.thermo_jumps_every() % 2, current, rep, mt, mts, prior,
+          lik, ys, xs, cue.thermo_jumps_every());
+
       // check_sanity(iter,current);
 
       report_all(f, iter, rep, current, prior, lik, ys, xs);

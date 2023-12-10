@@ -2900,13 +2900,7 @@ public:
         v_ATP = add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i]));
       }
     }
-    std::cerr << "\nout_x\n****************************************************"
-                 "***********************\n";
-    std::cerr << out_x;
-    std::cerr << "\nout_y\n****************************************************"
-                 "***********************\n";
-    std::cerr << out_y;
-
+ 
     return std::tuple(Recording_conditions(out_x), Recording(out_y));
   }
 
@@ -2954,6 +2948,42 @@ public:
 
     return std::tuple(std::move(y_out), std::move(x_out), std::move(beta));
   }
+  
+  
+  auto operator()(const Recording &y, const Experiment &x, std::mt19937_64 &mt,
+                  std::size_t num_parameters, 
+                  double n_points_per_decade_fraction) const {
+      assert(size(y()) == size(get<Recording_conditions>(x)()));
+      assert(size(y()) == var::sum(segments));
+      
+      std::size_t num_samples = size(y());
+    //  std::size_t max_num_samples_per_segment = var::max(segments);
+      
+      auto cum_segments = var::cumsum(segments);
+      
+      auto indexes = generate_random_Indexes(
+          mt, num_samples, 1, n_points_per_decade_fraction, cum_segments);
+      std::cerr << "\nindexes\n**************************************************"
+                   "*************************\n";
+      std::cerr << indexes;
+      // std::abort();
+      auto n_frac = size(indexes);
+      by_fraction<Recording> y_out(n_frac);
+      by_fraction<Experiment> x_out(
+          n_frac,
+          Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
+                     get<initial_ATP_concentration>(x)));
+      y_out[n_frac - 1] = y;
+      x_out[n_frac - 1] = x;
+      
+      for (std::size_t i = n_frac - 1; i > 0; --i) {
+          std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
+              average_Recording(get<Recording_conditions>(x_out[i]), y_out[i],
+                                indexes[i], indexes[i - 1]);
+      }
+      return std::tuple(std::move(y_out), std::move(x_out));
+  }
+  
 };
 
 template <class Id, class... Ts>
