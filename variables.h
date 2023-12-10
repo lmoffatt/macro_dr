@@ -288,6 +288,11 @@ public:
     template<class Id>
     friend auto& get(Vector_Space & x){return static_cast<Id &>(x);}
     
+    template<class Id, class Id2>
+        requires requires (Vector_Space const & xx){{get<Id2>(get<Id>(xx))};}
+    friend auto const& get(Vector_Space const& x)
+    {return get<Id2>(get<Id>(x));}
+    
     
     
     static constexpr bool is_vector_space=true;
