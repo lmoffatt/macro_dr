@@ -3205,7 +3205,7 @@ new_cuevi_Model_by_iteration(
     std::string path, std::string filename,
     const std::vector<std::size_t> &t_segments,
     std::size_t t_min_number_of_samples, std::size_t num_scouts_per_ensemble,
-    std::size_t max_number_of_simultaneous_temperatures, double min_fraction,
+    std::size_t number_trials_until_give_up, double min_fraction,
     std::size_t thermo_jumps_every, std::size_t max_iter_warming,
     std::size_t max_iter_equilibrium, double max_ratio,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
@@ -3223,7 +3223,8 @@ new_cuevi_Model_by_iteration(
                        cuevi::Points_per_decade(n_points_per_decade_fraction))),
       cuevi::Th_Beta_Param(Vector_Space(
           cuevi::Includes_zero(includes_the_zero), cuevi::Min_value(stops_at),
-          cuevi::Points_per_decade(n_points_per_decade_beta))));
+          cuevi::Points_per_decade(n_points_per_decade_beta))),
+        cuevi::Number_trials_until_give_up(number_trials_until_give_up), cuevi::Thermo_Jumps_every(thermo_jumps_every));
 }
 
 template <class Id>

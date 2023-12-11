@@ -3158,6 +3158,7 @@ thermodynamic parameter
   
   constexpr bool new_cuevi_by_max_iter = true;
   if (new_cuevi_by_max_iter) {
+     
       /**
      * @brief myseed defines the random number seed so all runs are identical
      * for debugging purposes
@@ -3315,15 +3316,15 @@ thermodynamic parameter
           //                      sim.value()(), experiment);
           auto ftbl3 = FuncMap(
               path + filename,
-              Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+              Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+              Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
               Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
                         thermo_cuevi_randomized_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                             step_stretch_cuevi_mcmc_per_walker{}),
+              var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                             cuevi::step_stretch_cuevi_mcmc_per_walker{}),
                            num_scouts_per_ensemble / 2),
               var::Time_it(F(logLikelihood_f{},
                              [](auto &&...x) {
@@ -3481,15 +3482,15 @@ thermodynamic parameter
      
       auto ftbl3 = FuncMap(
           path + filename,
-          Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+          Time_it(F(step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc{}),
                   num_scouts_per_ensemble / 2),
-          Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+          Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                   num_scouts_per_ensemble / 2),
           Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
                     thermo_cuevi_randomized_jump_mcmc{}),
                   num_scouts_per_ensemble / 2),
-          var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                         step_stretch_cuevi_mcmc_per_walker{}),
+          var::Time_it(F(step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc_per_walker{},
+                         step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc_per_walker{}),
                        num_scouts_per_ensemble / 2),
           var::Time_it(F(logLikelihood_f{},
                          [](auto &&...x) {

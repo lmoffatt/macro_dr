@@ -87,6 +87,8 @@ class Includes_zero : public var::Constant<Includes_zero, bool> {};
 class Number_trials_until_give_up
     : public var::Constant<Number_trials_until_give_up, std::size_t> {};
 
+class Thermo_Jumps_every: public var::Constant<Thermo_Jumps_every,std::size_t>{};
+
 class Th_Beta_Param
     : public var::Constant<
           Th_Beta_Param,
@@ -561,7 +563,7 @@ public:
     return "step_stretch_cuevi_mcmc";
   }
 
-  template <class FunctionTable, class Observer, class Prior, class Likelihood,
+  template <class FunctionTable, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
                 std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
@@ -739,25 +741,26 @@ class Cuevi_Algorithm
               Num_Walkers_Per_Ensemble, var::Constant<Fractioner, myFractioner>,
               var::Constant<Reporter, t_Reporter>,
               var::Constant<Finalizer, t_Finalizer>, Fractions_Param,
-              Th_Beta_Param, Number_trials_until_give_up>> {
+              Th_Beta_Param, Number_trials_until_give_up, Thermo_Jumps_every>> {
   using base_type =
       var::Var<Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer>,
                var::Vector_Space<Num_Walkers_Per_Ensemble,
                                  var::Constant<Fractioner, myFractioner>,
                                  var::Constant<Reporter, t_Reporter>,
                                  var::Constant<Finalizer, t_Finalizer>,
-                                 Fractions_Param, Th_Beta_Param>>;
+                                 Fractions_Param, Th_Beta_Param, Number_trials_until_give_up, Thermo_Jumps_every>>;
 
 public:
   Cuevi_Algorithm(myFractioner &&frac, t_Reporter &&rep, t_Finalizer &&f,
                   Num_Walkers_Per_Ensemble n, Fractions_Param frac_param,
-                  Th_Beta_Param beta)
+                  Th_Beta_Param beta, Number_trials_until_give_up max_iter_for_sampling,
+                    Thermo_Jumps_every thermo_jumps_every)
       : base_type(var::Vector_Space(
             std::move(n),
             var::Constant<Fractioner, myFractioner>(std::move(frac)),
             var::Constant<Reporter, t_Reporter>(std::move(rep)),
             var::Constant<Finalizer, t_Finalizer>(std::move(f)),
-            std::move(frac_param), std::move(beta))) {}
+            std::move(frac_param), std::move(beta), std::move(max_iter_for_sampling), std::move(thermo_jumps_every))) {}
 };
 
 template <class myFractioner, class t_Reporter, class t_Finalizer>
@@ -814,20 +817,23 @@ auto evidence(FunctionTable &&ff,
     //report_title(ff, "Iter");
 
     while (!mcmc_run.second) {
-      f.f(step_stretch_cuevi_mcmc{}, current, rep, mts, prior, lik, ys, xs);
+      //f.f(
+        step_stretch_cuevi_mcmc{}(f, current, mts, prior, lik, ys, xs);
       report_point(ff, iter);
 
       ++iter;
-      f.f(thermo_cuevi_jump_mcmc{}, iter, current, rep, mt, mts, prior, lik, ys,
-          xs, cue.thermo_jumps_every(), false);
-      f.f(thermo_cuevi_jump_mcmc{}, iter + cue.thermo_jumps_every() % 2,
-          current, rep, mt, mts, prior, lik, ys, xs, cue.thermo_jumps_every(),
+     // f.f(
+      thermo_cuevi_jump_mcmc{}(f, iter, current, mt, mts, prior, lik, ys,
+          xs, get<Thermo_Jumps_every>(cue())(), false);
+      //f.f(
+          thermo_cuevi_jump_mcmc{}(f, iter + get<Thermo_Jumps_every>(cue())() % 2,
+          current,  mt, mts, prior, lik, ys, xs, get<Thermo_Jumps_every>(cue())(),
           true);
 
-      report_all(f, iter, rep, current, prior, lik, ys, xs);
+     // report_all(f, iter, rep, current, prior, lik, ys, xs);
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
-    return std::pair(mcmc_run, current);
+    return Return_Type(std::pair(mcmc_run.first, current));
   }
 }
 
