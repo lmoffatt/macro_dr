@@ -370,6 +370,42 @@ concept is_Algorithm_conditions = requires(Algorithm &&a) {
     } -> std::convertible_to<std::pair<Algorithm, bool>>;
 };
 
+class cuevi_less_than_max_iteration {
+    std::size_t current_iteration_;
+    std::size_t max_iter_final_;
+    
+public:
+    cuevi_less_than_max_iteration(std::size_t max_iter_final)
+        : current_iteration_{0ul}, max_iter_final_{max_iter_final} {}
+    
+    cuevi_less_than_max_iteration &operator++() {
+        ++current_iteration_;
+        return *this;
+    }
+    std::size_t current_iteration() const { return current_iteration_; }
+    std::size_t max_iteration_final() const { return max_iter_final_; }
+    
+    bool stop() const {
+            return current_iteration()>=max_iteration_final();
+  }
+    template <class Anything>
+    friend auto checks_convergence(cuevi_less_than_max_iteration &&c,
+                                   const Anything &) {
+        if (c.stop()) {
+            return std::pair(std::move(c), true);
+            
+        } else {
+            ++c;
+            return std::pair(std::move(c), false);
+        }
+    }
+    
+    void reset(){current_iteration_=0;}
+    
+};
+
+
+
 class less_than_max_iteration {
     std::size_t current_iteration_;
     std::size_t max_iter_warming_;
