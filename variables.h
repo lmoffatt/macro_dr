@@ -129,12 +129,15 @@ public:
     
     //operator Id()const {return Id(*this);}
     
+    
     constexpr Constant(T&& t_x):m_x{std::move(t_x)}{}
     constexpr Constant(T const& t_x):m_x{t_x}{}
     constexpr auto& operator()(){return m_x;}
     constexpr auto& operator()()const{return m_x;}
     constexpr auto& operator[](Constant<Id>){return *this;}
     constexpr auto& operator[](Constant<Id>) const{return *this;}
+    constexpr auto& operator[](Var<Id>){return *this;}
+    constexpr auto& operator[](Var<Id>) const{return *this;}
     
     template<class... Ts>
     constexpr auto operator()(const Ts&...){return Id(*this);}
@@ -284,9 +287,27 @@ class Vector_Space: public Vars...
 public:
     using Vars::operator[]...;
     template<class Id>
-    friend auto const& get(Vector_Space const& x){return static_cast<Id const&>(x);}
+        requires std::is_convertible_v<Vector_Space const&,Id const&>
+    friend auto const& get(Vector_Space const& x)
+    {return static_cast<Id const&>(x);}
+//
+    
     template<class Id>
-    friend auto& get(Vector_Space & x){return static_cast<Id &>(x);}
+        requires (!std::is_convertible_v<Vector_Space const&,Id const&>)
+    friend auto const& get(Vector_Space const& x)
+        { return x[Var<Id>{}];}  
+    //  
+    template<class Id>
+    friend auto& get(Vector_Space & x)
+       requires std::is_convertible_v<Vector_Space &,Id &>
+    {return static_cast<Id &>(x);}
+    
+    template<class Id>
+    friend auto& get(Vector_Space & x)
+        requires (!std::is_convertible_v<Vector_Space &,Id &>)
+       { return x[Var<Id>{}];}  
+    
+    
     
     template<class Id, class Id2>
         requires requires (Vector_Space const & xx){{get<Id2>(get<Id>(xx))};}
