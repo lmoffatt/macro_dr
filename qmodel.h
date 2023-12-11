@@ -3200,7 +3200,7 @@ cuevi::Cuevi_Algorithm<
     save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
               save_Parameter<Parameters<Id>>, save_Evidence,
               save_Predictions<Parameters<Id>>>,
-    less_than_max_iteration>
+    cuevi_less_than_max_iteration>
 new_cuevi_Model_by_iteration(
     std::string path, std::string filename,
     const std::vector<std::size_t> &t_segments,
@@ -3216,7 +3216,7 @@ new_cuevi_Model_by_iteration(
                 save_Parameter<Parameters<Id>>, save_Evidence,
                 save_Predictions<Parameters<Id>>>(path, filename, 10ul, 100ul,
                                                   10ul, 100ul),
-      less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
+      cuevi_less_than_max_iteration(max_iter_equilibrium),
       cuevi::Num_Walkers_Per_Ensemble(num_scouts_per_ensemble),
       cuevi::Fractions_Param(
           Vector_Space(cuevi::Min_value(min_fraction),

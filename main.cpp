@@ -2622,7 +2622,7 @@ int main(int argc, char **argv) {
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_n_sub_dt(1000)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
           recording);
       for (std::size_t j = 0; j < algo.size(); ++j) {
         auto lik = logLik_by_algo(sim, algo[j]);
@@ -2800,7 +2800,7 @@ thermodynamic parameter
         uses_adaptive_aproximation(false), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)
 >(
-        model0, Simulation_n_sub_dt(1000));
+        model0, Simulation_n_sub_dt(1000ul));
 
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
@@ -3482,15 +3482,15 @@ thermodynamic parameter
      
       auto ftbl3 = FuncMap(
           path + filename,
-          Time_it(F(step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc{}),
+          Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
                   num_scouts_per_ensemble / 2),
           Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                   num_scouts_per_ensemble / 2),
           Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
                     thermo_cuevi_randomized_jump_mcmc{}),
                   num_scouts_per_ensemble / 2),
-          var::Time_it(F(step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc_per_walker{},
-                         step_stretch_cuevi_mcmc::step_stretch_cuevi_mcmc_per_walker{}),
+          var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                         cuevi::step_stretch_cuevi_mcmc_per_walker{}),
                        num_scouts_per_ensemble / 2),
           var::Time_it(F(logLikelihood_f{},
                          [](auto &&...x) {
