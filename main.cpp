@@ -2300,7 +2300,7 @@ int main(int argc, char **argv) {
     
     auto sim_7 = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_n_sub_dt(1000)),
+        Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
         recording_7);
     auto lik_7 = Macro_DMR{}
                    .log_Likelihood<uses_adaptive_aproximation(false),
@@ -2331,7 +2331,7 @@ int main(int argc, char **argv) {
     for (std::size_t i = 0; i < number_replicates; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_n_sub_dt(1000)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
           recording);
       auto lik = Macro_DMR{}
                      .log_Likelihood<uses_adaptive_aproximation(false),
@@ -2443,7 +2443,7 @@ int main(int argc, char **argv) {
     for (std::size_t i = 0; i < nrep; ++i) {
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_n_sub_dt(1000)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
           recording);
       out[i] = sim.value();
     }
@@ -2873,6 +2873,9 @@ thermodynamic parameter
       auto opt = evidence(ftbl, std::move(tmi), param1_prior, modelLikelihood,
                           sim.value()(), experiment);
   }
+  
+  
+  
   constexpr bool cuevi_by_max_iter = false;
   if (cuevi_by_max_iter) {
       /**
@@ -3152,7 +3155,288 @@ thermodynamic parameter
                                    sim.value()(), experiment, all_at_once);
       }
   }
-
+  
+  constexpr bool new_cuevi_by_max_iter = true;
+  if (new_cuevi_by_max_iter) {
+      /**
+     * @brief myseed defines the random number seed so all runs are identical
+     * for debugging purposes
+     */
+      //   auto myseed = 9762841416869310605ul;
+      //    auto myseed = 2555984001541913735ul;
+      auto myseed = 0ul;
+      
+      myseed = calc_seed(myseed);
+      std::cerr << "myseed =" << myseed << "\n";
+      
+      /**
+     * @brief num_scouts_per_ensemble number of scouts per ensemble in the
+     * affine ensemble mcmc model
+     */
+      std::size_t num_scouts_per_ensemble = 16;
+      
+      /**
+     * @brief max_num_simultaneous_temperatures when the number of parallel
+     * temepratures reaches this number, it stops growing, the same scouts
+     * drifts on temperature
+     *
+     */
+      std::size_t max_num_simultaneous_temperatures = 1e5;
+      
+      /**
+     * @brief stops_at minimum value of beta greater than zero
+     */
+      double stops_at = 0.0001;
+      
+      /**
+     * @brief includes_zero considers also beta equal zero
+     */
+      bool includes_zero = true;
+      
+      /**
+     * @brief max_iter maximum number of iterations on each warming step
+     */
+      std::size_t max_iter_warming = 50;
+      
+      /**
+     * @brief max_iter maximum number of iterations on the equilibrium step
+     */
+      std::size_t max_iter_equilibrium = 8000;
+      
+      /**
+     * @brief path directory for the output
+     */
+      std::string path = "";
+      
+      /**
+     * @brief min_fraction fraction of the prior parameter size used as the
+     * minimal sample used for the cumulative sequence
+     */
+      double min_fraction = 2;
+      
+      /**
+     * @brief checks_derivative_every_model_size number of steps before every
+     * check of the derivative against the beta thermo parameter for stopping
+     */
+      std::size_t checks_derivative_every_model_size = 10;
+      
+      /**
+     * @brief max_ratio maximimum tolerated ratio for the beta derivative method
+     */
+      double max_ratio = 8000e16;
+      
+      /**
+     * @brief n_points_per_decade number of points per 10 times increment in
+     * beta thermodynamic parameter
+     */
+      
+      double n_points_per_decade = 6;
+      /**
+     * @brief n_points_per_decade_fraction number of points per 10 times
+     * increment in the number of samples
+     */
+      double n_points_per_decade_fraction = 6;
+      
+      /**
+     * @brief thermo_jumps_every factor that multiplied by the model size it
+     * produces the number of steps skipped until the next thermo jump
+     */
+      std::size_t thermo_jumps_every = param1().size() / 4;
+      
+      double prior_error = 2;
+      
+      auto param1_prior = var::prior_around(param1, prior_error);
+      
+      // auto& param1_prior = prior_model00_7;
+      
+      /**
+     * @brief tmi classical thermodynamic algorithm ends by maximum iteration
+     */
+      
+      auto modelLikelihood = make_Likelihood_Model<
+          uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
+          uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
+          model0, Simulation_n_sub_dt(1000));
+      
+      auto sim = Macro_DMR{}.sample(
+          mt, model0, param1, experiment,
+          Simulation_Parameters(Simulation_n_sub_dt(1000)),
+          recording);
+      
+      if (sim) {
+          std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
+          auto number_of_traces = 7;
+          auto number_of_segments = t_segments.size();
+          t_segments.reserve(number_of_traces * t_segments.size());
+          
+          for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
+              std::copy_n(t_segments.begin(), number_of_segments,
+                          std::back_inserter(t_segments));
+          std::cerr << "t_segments\n" << t_segments;
+          std::cerr << "cum t_segments\n" << var::cumsum(t_segments);
+          
+          std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
+          
+          std::size_t t_min_number_of_samples = 10;
+          
+          /**
+       * @brief cbc cumulative evidence algorithm, ends using convergence
+       * criteria
+       */
+          std::size_t bisection_count = 2ul;
+          std::string filename_bisection =
+              ModelName + "_bisection_" + std::to_string(bisection_count) + "_" +
+              std::to_string(myseed) + "_" + time_now();
+          
+          bool all_at_once = true;
+          
+          std::string all_at_once_str =
+              all_at_once ? "_all_at_once_" : "_progressive_";
+          
+          std::string n_points_per_decade_str =
+              "_" + std::to_string(n_points_per_decade) + "_";
+          
+          std::string filename = ModelName + "_sim_eig_4800ch_MRAdap_only_7_" +
+                                 all_at_once_str + "_randomized_jump_" +
+                                 n_points_per_decade_str + time_now() + "_" +
+                                 // std::to_string(bisection_count) + "_" +
+                                 std::to_string(myseed);
+          
+          auto &t_segments_used = t_segments_7;
+          
+          auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+              path, filename, t_segments_used, t_min_number_of_samples,
+              num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+              min_fraction, thermo_jumps_every, max_iter_warming,
+              max_iter_equilibrium, max_ratio, n_points_per_decade,
+              n_points_per_decade_fraction, stops_at, includes_zero, myseed);
+          
+          // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
+          //                      sim.value()(), experiment);
+          auto ftbl3 = FuncMap(
+              path + filename,
+              Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+                      num_scouts_per_ensemble / 2),
+              Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+                      num_scouts_per_ensemble / 2),
+              Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
+                        thermo_cuevi_randomized_jump_mcmc{}),
+                      num_scouts_per_ensemble / 2),
+              var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
+                             step_stretch_cuevi_mcmc_per_walker{}),
+                           num_scouts_per_ensemble / 2),
+              var::Time_it(F(logLikelihood_f{},
+                             [](auto &&...x) {
+                                 return logLikelihood(
+                                     std::forward<decltype(x)>(x)...);
+                             }),
+                           num_scouts_per_ensemble / 2),
+              var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                                    uses_averaging_aproximation(2),
+                                    uses_variance_aproximation(true)>{},
+                             [](auto &&...x) {
+                                 auto m = Macro_DMR{};
+                                 return m.Macror<uses_recursive_aproximation(true),
+                                                 uses_averaging_aproximation(2),
+                                                 uses_variance_aproximation(true),
+                                                 uses_variance_correction_aproximation(false)>(
+                                     std::forward<decltype(x)>(x)...);
+                             }),
+                           num_scouts_per_ensemble / 2),
+              var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                                    uses_averaging_aproximation(2),
+                                    uses_variance_aproximation(false)>{},
+                             [](auto &&...x) {
+                                 auto m = Macro_DMR{};
+                                 return m.Macror<uses_recursive_aproximation(true),
+                                                 uses_averaging_aproximation(2),
+                                                 uses_variance_aproximation(false),
+                                                 uses_variance_correction_aproximation(false)>(
+                                     std::forward<decltype(x)>(x)...);
+                             }),
+                           num_scouts_per_ensemble / 2),
+              var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                                    uses_averaging_aproximation(2),
+                                    uses_variance_aproximation(false)>{},
+                             [](auto &&...x) {
+                                 auto m = Macro_DMR{};
+                                 return m.Macror<uses_recursive_aproximation(false),
+                                                 uses_averaging_aproximation(2),
+                                                 uses_variance_aproximation(false),
+                                                 uses_variance_correction_aproximation(false)>(
+                                     std::forward<decltype(x)>(x)...);
+                             }),
+                           num_scouts_per_ensemble / 2),
+              // var::Thread_Memoizer(
+              //     var::F(Calc_Qdt_step{},
+              //            [](auto &&...x) {
+              //              auto m = Macro_DMR{};
+              //                auto bisection_order=16ul;
+              //              return m.calc_Qdt_bisection(
+              //                  std::forward<decltype(x)>(x)...,bisection_order);
+              //            }),
+              //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+              //     num_scouts_per_ensemble / 2),
+              var::Thread_Memoizer(
+                  var::F(Calc_Qdt_step{},
+                         [](auto &&...x) {
+                             auto m = Macro_DMR{};
+                             return m.calc_Qdt_ATP_step(
+                                 std::forward<decltype(x)>(x)...);
+                         }),
+                  var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+                  num_scouts_per_ensemble / 2),
+              // var::Time_it(
+              //     var::F(Calc_Qdt_step{},
+              //            [](auto &&...x) {
+              //              auto m = Macro_DMR{};
+              //              return
+              //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+              //            })),
+              
+              var::F(Calc_Qdt{},
+                     [](auto &&...x) {
+                         auto m = Macro_DMR{};
+                         return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                     }),
+              F(Calc_Qx{},
+                [](auto &&...x) {
+                    auto m = Macro_DMR{};
+                    return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                }),
+              var::Thread_Memoizer(
+                  F(Calc_eigen{},
+                    [](auto &&...x) {
+                        auto m = Macro_DMR{};
+                        return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                    }),
+                  var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
+                  num_scouts_per_ensemble / 2)
+              // var::Time_it(
+              //     F(Calc_eigen{},
+              //       [](auto &&...x) {
+              //           auto m = Macro_DMR{};
+              //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
+              //       }))
+              
+              );
+          auto lik = Macro_DMR{}
+                         .log_Likelihood<uses_adaptive_aproximation(false),
+                                         uses_recursive_aproximation(true),
+                                         uses_averaging_aproximation(2),
+                                         uses_variance_aproximation(false),
+                                         uses_variance_correction_aproximation(false),
+                                         return_predictions(true)>(
+                             ftbl3.fork(var::I_thread(0)), model0, param1,
+                             experiment, sim.value()());
+          report(filename+"_lik.csv",lik.value(),sim.value(), experiment);
+          if (false)
+              auto opt3 = cuevi::evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood,
+                                          sim.value()(), experiment, cuevi::Init_seed(seed));
+      }
+  }
+  
+  
   constexpr bool test_partial_logL = false;
   if (test_partial_logL) {
     /**
