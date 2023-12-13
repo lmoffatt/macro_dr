@@ -3147,6 +3147,69 @@ void report(FunctionTable &&f, std::size_t iter,
         }
 }
 
+template <class ParameterType, class FunctionTable, class Prior,
+          class t_logLikelihood, class Data, class Variables>
+void report(FunctionTable &&f, std::size_t iter,
+            save_Predictions<ParameterType> &s,
+            cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
+            t_logLikelihood &&lik, const by_fraction<Data> &ys,
+            const by_fraction<Variables> &xs) {
+
+  auto &t = data.get_Cuevi_Temperatures();
+  if (iter % s.save_every == 0) {
+    data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
+    for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
+         ++i_cu) {
+      auto icu = cuevi::Cuevi_Index(i_cu);
+      auto i_frac = data.get_Fraction(i_cu);
+      auto beta = data.get_Beta(icu);
+      auto nsamples = size(ys[i_frac()]);
+      for (std::size_t half = 0; half < 2; ++half)
+        // #pragma omp parallel for
+        for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
+          auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
+          auto iw = cuevi::Walker_Index(i_walker);
+          auto &wa = data.get_Walker(iw, icu);
+          auto &wav = data.get_Walker_Value(iw, icu);
+          auto par = data.get_Parameter(iw, i_cu);
+          auto prediction = logLikelihoodPredictions(
+              f.fork(var::I_thread(iiw)), lik, par, ys[i_frac()], xs[i_frac()]);
+          if (is_valid(prediction)) {
+            auto &predictions = prediction.value();
+            for (std::size_t i_x = 0; i_x < size(ys[i_frac()]); ++i_x) {
+              auto v_ev = get<ATP_evolution>(
+                  get<Recording_conditions>(xs[i_frac()])()[i_x]);
+
+              s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep
+                  << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
+                  << get<cuevi::Walker_id>(wa())() << s.sep << i_x << s.sep
+                  << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_x])
+                  << s.sep << get_num_samples(v_ev) << s.sep
+                  << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
+                  << s.sep << ys[i_frac()]()[i_x]() << s.sep
+                  << get<y_mean>(predictions()[i_x]) << s.sep
+                  << get<y_var>(predictions()[i_x]) << s.sep
+                  << get<plogL>(predictions()[i_x]) << s.sep
+                  << get<eplogL>(predictions()[i_x]) << "\n";
+            }
+          }
+        }
+    }
+  }
+}
+
+template <class ParameterType>
+void report_title(save_Predictions<ParameterType> &s,
+                  cuevi::Cuevi_mcmc<ParameterType> const &, ...) {
+
+  s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
+      << s.sep << "beta" << s.sep << "i_walker" << s.sep << "Walker_id" << s.sep
+      << "i_x" << s.sep << "Time" << s.sep << "num_samples" << s.sep
+      << "average_ATP_step" << s.sep << "v_ev" << s.sep << "Y_obs" << s.sep
+      << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL" << s.sep << "eplogL"
+      << "\n";
+}
+
 template <class Id>
 auto cuevi_Model_by_convergence(
     std::string path, std::string filename,
@@ -3209,13 +3272,17 @@ new_cuevi_Model_by_iteration(
     std::size_t thermo_jumps_every, std::size_t max_iter_warming,
     std::size_t max_iter_equilibrium, double max_ratio,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
-    double stops_at, bool includes_the_zero, std::size_t initseed) {
+    double stops_at, bool includes_the_zero, std::size_t initseed,
+    Saving_intervals sint) {
   return cuevi::Cuevi_Algorithm(
       experiment_fractioner(t_segments, t_min_number_of_samples),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
                 save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(path, filename, 10ul, 100ul,
-                                                  10ul, 100ul),
+                save_Predictions<Parameters<Id>>>(
+          path, filename, get<Save_Likelihood_every>(sint())(),
+          get<Save_Parameter_every>(sint())(),
+          get<Save_Evidence_every>(sint())(),
+          get<Save_Predictions_every>(sint())()),
       cuevi_less_than_max_iteration(max_iter_equilibrium),
       cuevi::Num_Walkers_Per_Ensemble(num_scouts_per_ensemble),
       cuevi::Fractions_Param(
@@ -3224,7 +3291,8 @@ new_cuevi_Model_by_iteration(
       cuevi::Th_Beta_Param(Vector_Space(
           cuevi::Includes_zero(includes_the_zero), cuevi::Min_value(stops_at),
           cuevi::Points_per_decade(n_points_per_decade_beta))),
-        cuevi::Number_trials_until_give_up(number_trials_until_give_up), cuevi::Thermo_Jumps_every(thermo_jumps_every));
+      cuevi::Number_trials_until_give_up(number_trials_until_give_up),
+      cuevi::Thermo_Jumps_every(thermo_jumps_every), std::move(sint));
 }
 
 template <class Id>

@@ -778,6 +778,7 @@ Maybe_error<by_beta<double>>  bayesian_linear_regression_calculate_mean_logLik(
 }
 
 
+
 template<class Parameters>
 class save_Parameter {
     

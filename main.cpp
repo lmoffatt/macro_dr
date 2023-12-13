@@ -2804,7 +2804,7 @@ thermodynamic parameter
 
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_n_sub_dt(1000)),
+        Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
         recording);
     auto ftbl = FuncMap(
         path,
@@ -2976,11 +2976,11 @@ thermodynamic parameter
       auto modelLikelihood = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0, Simulation_n_sub_dt(1000));
+          model0, Simulation_n_sub_dt(1000ul));
       
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_n_sub_dt(1000)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
           recording);
       
       if (sim) {
@@ -3187,7 +3187,7 @@ thermodynamic parameter
       /**
      * @brief stops_at minimum value of beta greater than zero
      */
-      double stops_at = 0.0001;
+      double stops_at = 1e-9;
       
       /**
      * @brief includes_zero considers also beta equal zero
@@ -3202,7 +3202,7 @@ thermodynamic parameter
       /**
      * @brief max_iter maximum number of iterations on the equilibrium step
      */
-      std::size_t max_iter_equilibrium = 8000;
+      std::size_t max_iter_equilibrium = 50000;
       
       /**
      * @brief path directory for the output
@@ -3231,7 +3231,7 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
       
-      double n_points_per_decade = 6;
+      double n_points_per_decade = 3;
       /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
@@ -3257,11 +3257,11 @@ thermodynamic parameter
       auto modelLikelihood = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0, Simulation_n_sub_dt(1000));
+          model0, Simulation_n_sub_dt(1000ul));
       
       auto sim = Macro_DMR{}.sample(
           mt, model0, param1, experiment,
-          Simulation_Parameters(Simulation_n_sub_dt(1000)),
+          Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
           recording);
       
       if (sim) {
@@ -3297,20 +3297,21 @@ thermodynamic parameter
           std::string n_points_per_decade_str =
               "_" + std::to_string(n_points_per_decade) + "_";
           
-          std::string filename = ModelName + "_sim_eig_4800ch_MRAdap_only_7_" +
-                                 all_at_once_str + "_randomized_jump_" +
+          std::string filename = ModelName + "_new_cuevi_sim_eig_4800ch_only_7_" +
                                  n_points_per_decade_str + time_now() + "_" +
                                  // std::to_string(bisection_count) + "_" +
                                  std::to_string(myseed);
           
           auto &t_segments_used = t_segments_7;
           
+          auto saving_itervals=Saving_intervals(Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),Save_Likelihood_every(num_scouts_per_ensemble),Save_Parameter_every(num_scouts_per_ensemble*10),Save_Predictions_every(num_scouts_per_ensemble*20)));
+          
           auto cbc = new_cuevi_Model_by_iteration<MyModel>(
               path, filename, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed);
+              n_points_per_decade_fraction, stops_at, includes_zero, myseed, saving_itervals);
           
           // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
           //                      sim.value()(), experiment);
@@ -3431,7 +3432,7 @@ thermodynamic parameter
                              ftbl3.fork(var::I_thread(0)), model0, param1,
                              experiment, sim.value()());
           report(filename+"_lik.csv",lik.value(),sim.value(), experiment);
-          if (false)
+          if (true)
               auto opt3 = cuevi::evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood,
                                           sim.value()(), experiment, cuevi::Init_seed(seed));
       }
@@ -3600,7 +3601,7 @@ thermodynamic parameter
     }
   }
   
-  constexpr bool cuevi_by_max_iter_cross_model = true;
+  constexpr bool cuevi_by_max_iter_cross_model = false;
   if (cuevi_by_max_iter_cross_model) {
       /**
      * @brief myseed defines the random number seed so all runs are identical

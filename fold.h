@@ -9,6 +9,21 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
+#include <vector>
+
+template<typename T>
+    requires requires (T x){{x()}->std::convertible_to<std::size_t>;}
+auto make_Range(T min, T max)
+{
+    std::vector<T> out(max()-min());
+    for (std::size_t i= 0; i<max()-min(); ++i)
+        out[i]()=min()+i;
+    return out;
+}
+
+
+
+
 
 template<template<class...> class Container,
          class T,
