@@ -155,6 +155,7 @@ public:
       : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {}
 
   void clear(I_thread i) {
+      assert(i.i<m_n_threads);
       m_memoiza[i.i % m_n_threads].clear();
   }
   constexpr Thread_Memoizer() {}
