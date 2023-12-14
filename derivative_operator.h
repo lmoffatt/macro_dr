@@ -4,6 +4,7 @@
 #include <concepts>
 #include <utility>
 #include <ostream>
+#include "matrix.h"
 #include "variables.h"
 namespace var {
 
@@ -271,7 +272,7 @@ decltype(auto) primitive(X&& x) { return std::forward<X>(x);}
 
 template <class X>
     requires (!is_derivative_v<X>)
-auto derivative(X&& x) { return NoDerivative{};}
+auto derivative(X&& ) { return NoDerivative{};}
 
 
 template<class X,class Y>
@@ -351,7 +352,7 @@ auto get_dx_of_dfdx()
 
 template<class T,class ...Ts>
     requires (!is_derivative_v<T>)
-auto get_dx_of_dfdx(const T& x, const Ts&...xs)
+auto get_dx_of_dfdx(const T& , const Ts&...xs)
 {
     return get_dx_of_dfdx(xs...);
 }

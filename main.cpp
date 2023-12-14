@@ -468,6 +468,7 @@ int main(int argc, char **argv) {
 
           auto Npar2 = Npar + 1;
           auto v_N0 = p[std::pair(Npar2 + 1, Npar2 + 1)];
+          
           return build<Patch_Model>(
               N_St(6),
               build<Q0>(var::build_<Matrix<double>>(
@@ -1037,7 +1038,7 @@ int main(int argc, char **argv) {
           auto k01 = p[0];
           auto k10 = p[1];
           auto k12 = p[2];
-          auto k21 = p[3];
+          auto k21 = p[3];  
           auto k23 = p[4];
           auto k32 = p[5];
           auto k34 = p[6];
@@ -1189,6 +1190,8 @@ int main(int argc, char **argv) {
           auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
           assert(Maybe_Q0Qag);
           auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
+          
+          
           auto Npar = names().size();
 
           auto v_Inac_rate = p()[Npar];
@@ -1196,11 +1199,11 @@ int main(int argc, char **argv) {
           auto v_curr_noise = p()[Npar + 2];
           auto v_baseline = logp()[Npar + 3];
           auto Nst = get<N_St>(m())();
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
           return add_Patch_inactivation(
               build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
                                  std::move(a_Qa),
-                                 build<P_initial>(var::build_<Matrix<double>>(
-                                     1, Nst, {{0, 0}}, {1.0})),
+                                 std::move(v_P_initial),
                                  std::move(a_g), build<N_Ch_mean>(v_N0),
                                  build<Current_Noise>(v_curr_noise),
                                  build<Current_Baseline>(v_baseline),
@@ -1316,10 +1319,11 @@ int main(int argc, char **argv) {
           auto v_curr_noise = p()[Npar + 1];
           auto v_baseline = logp()[Npar + 2];
           auto Nst = get<N_St>(m())();
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          
           return build<Patch_Model>(
               N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-              build<P_initial>(
-                  var::build_<Matrix<double>>(1, Nst, {{0, 0}}, {1.0})),
+              std::move(v_P_initial),
               std::move(a_g), build<N_Ch_mean>(v_N0),
               build<Current_Noise>(v_curr_noise),
               build<Current_Baseline>(v_baseline),
@@ -1481,11 +1485,12 @@ int main(int argc, char **argv) {
           auto v_N0 = tr_p()[std::pair{Npar, Npar}];
           auto v_curr_noise = tr_p()[Npar + 1];
           auto v_baseline = logp()[Npar + 2];
-          auto Nst = get<N_St>(m())();
+          auto Nst = get<N_St>(m());
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          
           return build<Patch_Model>(
               N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-              build<P_initial>(
-                  var::build_<Matrix<double>>(1, Nst, {{0, 0}}, {1.0})),
+              std::move(v_P_initial),
               std::move(a_g), build<N_Ch_mean>(v_N0),
               build<Current_Noise>(v_curr_noise),
               build<Current_Baseline>(v_baseline),
@@ -1605,11 +1610,12 @@ int main(int argc, char **argv) {
           auto v_curr_noise = p()[Npar + 2];
           auto v_baseline = logp()[Npar + 3];
           auto Nst = get<N_St>(m())();
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          
           return add_Patch_inactivation(
               build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
                                  std::move(a_Qa),
-                                 build<P_initial>(var::build_<Matrix<double>>(
-                                     1, Nst, {{0, 0}}, {1.0})),
+                                 std::move(v_P_initial),
                                  std::move(a_g), build<N_Ch_mean>(v_N0),
                                  build<Current_Noise>(v_curr_noise),
                                  build<Current_Baseline>(v_baseline),
@@ -1706,11 +1712,11 @@ int main(int argc, char **argv) {
               },
               a_g()));
           auto Nst = get<N_St>(m())();
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          
           return add_Patch_inactivation(
               build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
-                                 std::move(a_Qa),
-                                 build<P_initial>(var::build_<Matrix<double>>(
-                                     1, Nst, {{0, 0}}, {1.0})),
+                                 std::move(a_Qa),std::move(v_P_initial),
                                  std::move(v_g), build<N_Ch_mean>(v_N0),
                                  build<Current_Noise>(v_curr_noise),
                                  build<Current_Baseline>(v_baseline),
@@ -1800,11 +1806,12 @@ int main(int argc, char **argv) {
               },
               a_g()));
           auto Nst = get<N_St>(m())();
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          
           return add_Patch_inactivation(
               build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
                                  std::move(a_Qa),
-                                 build<P_initial>(var::build_<Matrix<double>>(
-                                     1, Nst, {{0, 0}}, {1.0})),
+                                 std::move(v_P_initial),
                                  std::move(v_g), build<N_Ch_mean>(v_N0),
                                  build<Current_Noise>(v_curr_noise),
                                  build<Current_Baseline>(v_baseline),
@@ -3156,7 +3163,7 @@ thermodynamic parameter
       }
   }
   
-  constexpr bool new_cuevi_by_max_iter = true;
+  constexpr bool new_cuevi_by_max_iter = false;
   if (new_cuevi_by_max_iter) {
      
       /**
@@ -3165,7 +3172,7 @@ thermodynamic parameter
      */
       //   auto myseed = 9762841416869310605ul;
       //    auto myseed = 2555984001541913735ul;
-      auto myseed = 0ul;
+      auto myseed = 16622511317871679999ul;
       
       myseed = calc_seed(myseed);
       std::cerr << "myseed =" << myseed << "\n";
@@ -3601,8 +3608,8 @@ thermodynamic parameter
     }
   }
   
-  constexpr bool cuevi_by_max_iter_cross_model = false;
-  if (cuevi_by_max_iter_cross_model) {
+  constexpr bool new_cuevi_by_max_iter_cross_model = true;
+  if (new_cuevi_by_max_iter_cross_model) {
       /**
      * @brief myseed defines the random number seed so all runs are identical
      * for debugging purposes
@@ -3618,7 +3625,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-      std::size_t num_scouts_per_ensemble = 16;
+      std::size_t num_scouts_per_ensemble = 32;
       
       /**
      * @brief max_num_simultaneous_temperatures when the number of parallel
@@ -3631,7 +3638,7 @@ thermodynamic parameter
       /**
      * @brief stops_at minimum value of beta greater than zero
      */
-      double stops_at = 0.0001;
+      double stops_at = 1e-9;
       
       /**
      * @brief includes_zero considers also beta equal zero
@@ -3675,7 +3682,7 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
       
-      double n_points_per_decade = 6;
+      double n_points_per_decade = 3;
       /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
@@ -3783,47 +3790,48 @@ thermodynamic parameter
           
           
           auto &t_segments_used = t_segments_7;
+          auto saving_itervals=Saving_intervals(Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),Save_Likelihood_every(num_scouts_per_ensemble),Save_Parameter_every(num_scouts_per_ensemble*10),Save_Predictions_every(num_scouts_per_ensemble*20)));
           
-          auto cbc_0_0 = cuevi_Model_by_iteration<MyModel>(
+          auto cbc_0_0 = new_cuevi_Model_by_iteration<MyModel>(
               path, filename_0_0, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed);
+              n_points_per_decade_fraction, stops_at, includes_zero, myseed, saving_itervals);
           
-          auto cbc_0_alt = cuevi_Model_by_iteration<MyModel_alt>(
+          auto cbc_0_alt = new_cuevi_Model_by_iteration<MyModel_alt>(
               path, filename_0_alt, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed);
-          auto cbc_alt_0 = cuevi_Model_by_iteration<MyModel>(
+              n_points_per_decade_fraction, stops_at, includes_zero, myseed,saving_itervals);
+          auto cbc_alt_0 = new_cuevi_Model_by_iteration<MyModel>(
               path, filename_alt_0, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed);
-          auto cbc_alt_alt = cuevi_Model_by_iteration<MyModel_alt>(
+              n_points_per_decade_fraction, stops_at, includes_zero, myseed,saving_itervals);
+          auto cbc_alt_alt = new_cuevi_Model_by_iteration<MyModel_alt>(
               path, filename_alt_alt, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed);
+              n_points_per_decade_fraction, stops_at, includes_zero, myseed,saving_itervals);
           
           // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
           //                      sim.value()(), experiment);
           auto ftbl3_0_0 = FuncMap(
               path + filename_0_0,
-              Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+              Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+              Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
+              var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                             cuevi::step_stretch_cuevi_mcmc_per_walker{}),
+                           num_scouts_per_ensemble / 2),
               Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
                         thermo_cuevi_randomized_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                             step_stretch_cuevi_mcmc_per_walker{}),
-                           num_scouts_per_ensemble / 2),
               var::Time_it(F(logLikelihood_f{},
                              [](auto &&...x) {
                                  return logLikelihood(
@@ -3921,15 +3929,12 @@ thermodynamic parameter
               );
           auto ftbl3_0_alt = FuncMap(
               path + filename_0_alt,
-              Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+              Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+              Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                        thermo_cuevi_randomized_jump_mcmc{}),
-                      num_scouts_per_ensemble / 2),
-              var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                             step_stretch_cuevi_mcmc_per_walker{}),
+              var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                             cuevi::step_stretch_cuevi_mcmc_per_walker{}),
                            num_scouts_per_ensemble / 2),
               var::Time_it(F(logLikelihood_f{},
                              [](auto &&...x) {
@@ -4028,15 +4033,12 @@ thermodynamic parameter
               );
           auto ftbl3_alt_0 = FuncMap(
               path + filename_alt_0,
-              Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+              Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+              Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                        thermo_cuevi_randomized_jump_mcmc{}),
-                      num_scouts_per_ensemble / 2),
-              var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                             step_stretch_cuevi_mcmc_per_walker{}),
+              var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                             cuevi::step_stretch_cuevi_mcmc_per_walker{}),
                            num_scouts_per_ensemble / 2),
               var::Time_it(F(logLikelihood_f{},
                              [](auto &&...x) {
@@ -4135,15 +4137,12 @@ thermodynamic parameter
               );
           auto ftbl3_alt_alt = FuncMap(
               path + filename_alt_alt,
-              Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+              Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+              Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
                       num_scouts_per_ensemble / 2),
-              Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                        thermo_cuevi_randomized_jump_mcmc{}),
-                      num_scouts_per_ensemble / 2),
-              var::Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                             step_stretch_cuevi_mcmc_per_walker{}),
+              var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                             cuevi::step_stretch_cuevi_mcmc_per_walker{}),
                            num_scouts_per_ensemble / 2),
               var::Time_it(F(logLikelihood_f{},
                              [](auto &&...x) {
@@ -4268,19 +4267,19 @@ thermodynamic parameter
           for (auto i=0; i<4; ++i)
           {
               if (i==0){
-                                    
-                  auto opt3 = evidence(ftbl3_0_0, std::move(cbc_0_0), param1_prior, modelLikelihood,
-                               sim, experiment, all_at_once);
+                  
+                  auto opt3 = cuevi::evidence(ftbl3_0_0, std::move(cbc_0_0), param1_prior, modelLikelihood,
+                               sim, experiment, cuevi::Init_seed(seed));
               }
               else if (i==1)
-              {   auto opt3 = evidence(ftbl3_0_alt, std::move(cbc_0_alt), param_alt_prior, modelLikelihood_alt,
-                                       sim, experiment, all_at_once);
+              {   auto opt3 = cuevi::evidence(ftbl3_0_alt, std::move(cbc_0_alt), param_alt_prior, modelLikelihood_alt,
+                                       sim, experiment, cuevi::Init_seed(seed));
               }else if (i==2)
-              {   auto opt3 = evidence(ftbl3_alt_0, std::move(cbc_alt_0), param1_prior, modelLikelihood,
-                                       sim_alt, experiment, all_at_once);
+              {   auto opt3 = cuevi::evidence(ftbl3_alt_0, std::move(cbc_alt_0), param1_prior, modelLikelihood,
+                                       sim_alt, experiment, cuevi::Init_seed(seed));
               }else if (i==3)
-              {   auto opt3 = evidence(ftbl3_alt_alt, std::move(cbc_alt_alt), param_alt_prior, modelLikelihood_alt,
-                                       sim_alt, experiment, all_at_once);
+              {   auto opt3 = cuevi::evidence(ftbl3_alt_alt, std::move(cbc_alt_alt), param_alt_prior, modelLikelihood_alt,
+                                       sim_alt, experiment, cuevi::Init_seed(seed));
               }}
           
       }

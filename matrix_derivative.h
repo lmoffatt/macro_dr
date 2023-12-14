@@ -4,6 +4,7 @@
 #include "derivative_operator.h"
 #include "matrix.h"
 #include "variables.h"
+#include <utility>
 namespace var {
 
 
@@ -133,12 +134,14 @@ public:
     auto operator[](std::size_t i)const
     {
         return Derivative<double,Matrix<double>>(primitive()[i],applyMap([i](auto const& m){return m[i];},derivative()));
-    }    
+    }
     
+    
+        
     
 };
 
-
+ 
 
 
 template<class Matrix>

@@ -1464,7 +1464,18 @@ public:
     }
     return out;
   }
-
+  
+  void set(std::size_t i, T x)
+  {
+      (*this)[i]=x;
+  }
+  
+  void set(std::size_t i, std::size_t j, T x)
+  {
+      assert(i==j);
+      (*this)[i]=x;
+  }
+  
   template <class F> friend auto apply(F &&f, DiagonalMatrix &&x) {
     for (std::size_t i = 0; i < x.size(); ++i)
       x[i] = f(x[i]);

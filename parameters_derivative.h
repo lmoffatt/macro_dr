@@ -3,6 +3,7 @@
 
 #include "derivative_operator.h"
 #include "parameters.h"
+#include <cstddef>
 //#include "matrix_derivative.h"
 
 namespace var {
@@ -328,6 +329,22 @@ public:
         return Derivative(f,f*x.derivative()());
     }
     
+    
+    friend auto max(const Derivative& x, double y){
+        if (x.primitive()<=y)
+            return x;
+        else 
+            return Derivative(y,0.0*x.derivative()());
+    }
+    
+    friend auto min(const Derivative& x, double y){
+        if (x.primitive()>=y)
+            return x;
+        else 
+            return Derivative(y,0.0*x.derivative()());
+    }
+    
+    
     friend auto log(const Derivative& x){
         auto f=log(x.primitive());
         return Derivative(f,x.derivative()()*(1.0/x.primitive()));
@@ -412,9 +429,11 @@ public:
         requires (std::constructible_from<primitive_type,P>)
     Derivative(P&& t_x):  m_x{std::forward<P>(t_x)},m_d{}{}
     
+    auto& primitive_non_const(){return m_x;}// {return static_cast<primitive_type&>(*this);}
     auto& primitive(){return m_x;}// {return static_cast<primitive_type&>(*this);}
     auto& primitive() const {return m_x;}//{return static_cast<primitive_type const&>(*this);}
     auto& derivative() {return m_d;}
+    auto& derivative_non_const() {return m_d;}
     auto& derivative()const {return m_d;}
     
     friend auto operator*(const Derivative& x, double y)
@@ -446,8 +465,14 @@ public:
     
     
     void set(std::size_t i, std::size_t j, double x) {
-        primitive()(i, j) = x;
-        
+        primitive_non_const()(i, j) = x;
+        for (std::size_t ij=0; ij<derivative()().size(); ++ij)
+            derivative_non_const()()[ij](i,j)=0;
+    }
+    void set(std::size_t i,double x) {
+        primitive_non_const()[i] = x;
+        for (std::size_t ij=0; ij<derivative()().size(); ++ij)
+            derivative_non_const()()[ij][i]=0;
     }
     
     
