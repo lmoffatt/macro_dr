@@ -131,10 +131,10 @@ public:
     return (*this)().find(i_fra) != (*this)().end();
   }
 
-  Maybe_error<LogLik_value> operator[](Fraction_Index i) const {
+  Maybe_error<double> operator[](Fraction_Index i) const {
     auto it = (*this)().find(i);
-    if (it != (*this)().end())
-      return it->second;
+      if (it != (*this)().end())
+          return it->second();
     else
       return error_message("");
   }
@@ -234,25 +234,25 @@ template <class ParameterType> class Cuevi_mcmc {
       : public var::Var<Walker_value,
                         var::Vector_Space<var::Var<Parameter, ParameterType>,
                                           LogPrior, LogLik_by_Fraction>> {
-    friend double thermo_step(const Walker_value &candidate,
+    friend auto thermo_step(const Walker_value &candidate,
                               const Walker_value &current, Th_Beta beta,
                               Fraction_Index i_fra) {
 
       return get<LogPrior>(candidate())() - get<LogPrior>(current())() +
-             beta() * (get<LogLik_by_Fraction>(candidate())[i_fra].value()() -
-                       get<LogLik_by_Fraction>(current())[i_fra].value()());
+               beta() * (get<LogLik_by_Fraction>(candidate())[i_fra] -
+                         get<LogLik_by_Fraction>(current())[i_fra]);
     }
-
-    friend double thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
+    
+    friend auto thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
                               const Walker_value &candidate, Th_Beta cu_beta,
                               Fraction_Index cu_fra,
                               const Walker_value &current) {
       auto current_sum =
-          ca_beta() * (get<LogLik_by_Fraction>(candidate())[ca_fra].value()()) +
-          cu_beta() * (get<LogLik_by_Fraction>(current())[cu_fra].value()());
+          ca_beta() * get<LogLik_by_Fraction>(candidate())[ca_fra] +
+          cu_beta() * get<LogLik_by_Fraction>(current())[cu_fra];
       auto after_jump_sum =
-          cu_beta() * (get<LogLik_by_Fraction>(candidate())[cu_fra].value()()) +
-          ca_beta() * (get<LogLik_by_Fraction>(current())[ca_fra].value()());
+          cu_beta() * get<LogLik_by_Fraction>(candidate())[cu_fra] +
+          ca_beta() * get<LogLik_by_Fraction>(current())[ca_fra];
       return after_jump_sum - current_sum;
     }
   };
@@ -489,8 +489,7 @@ public:
                           Walker_Index(get_Walkers_number())),
                [j, i_frac, this](auto i_w) {
                  return get<LogLik_by_Fraction>(
-                            get_Walker_Value(i_w, j)())[i_frac]
-                     .value()();
+                            get_Walker_Value(i_w, j)())[i_frac];
                },
                [](auto x, auto y) { return x + y; }) /
            get_Walkers_number();
@@ -508,8 +507,7 @@ public:
                             Walker_Index(get_Walkers_number())),
                  [j, i_frac, this](auto i_w) {
                    return get<LogLik_by_Fraction>(
-                              get_Walker_Value(i_w, j)())[i_frac - 1]
-                       .value()();
+                              get_Walker_Value(i_w, j)())[i_frac - 1];
                  },
                  [](auto x, auto y) { return x + y; }) /
              get_Walkers_number();
@@ -529,8 +527,7 @@ public:
                             Walker_Index(get_Walkers_number())),
                  [j, i_frac, this](auto i_w) {
                    return get<LogLik_by_Fraction>(
-                              get_Walker_Value(i_w, j)())[i_frac + 1]
-                       .value()();
+                              get_Walker_Value(i_w, j)())[i_frac + 1];
                  },
                  [](auto x, auto y) { return x + y; }) /
              get_Walkers_number();
@@ -705,13 +702,14 @@ public:
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
       for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
            ++i_walker) {
-        auto iw = Walker_Index(i_walker);
+          auto iw = Walker_Index(i_walker);
           auto &wav = data.get_Walker_Value(iw, Cuevi_Index(0));
-        auto logL1 = get<LogLik_by_Fraction>(wav())[Fraction_Index(0)];
+          auto logL1 = get<LogLik_by_Fraction>(wav())[Fraction_Index(0)];
           
-          using Maybe_L=decltype(logL1);
+        using Maybe_L = decltype(logL1);
         auto beta1 = 0.0;
-        double log_Evidence = 0;
+        Maybe_L log_Evidence = 0.0;
+        Maybe_L log_Evidence_no_0 = 0.0;
 
         for (Cuevi_Index i_cu = 0ul;
              i_cu() < data.get_Cuevi_Temperatures_Number(); ++i_cu) {
@@ -723,7 +721,7 @@ public:
           auto logPrior = get<LogPrior>(wav());
           double beta0;
           Maybe_L logL0;
-          double plog_Evidence;
+          Maybe_L plog_Evidence;
           Maybe_L logL1_1 = error_message{};
           Maybe_L logL1_0 = error_message{};
           Maybe_L logL1_2 = error_message{};
@@ -734,8 +732,14 @@ public:
             beta0 = beta1;
             logL1 = get<LogLik_by_Fraction>(wav())[i_fra];
             beta1 = data.get_Beta(i_cu)();
-            plog_Evidence = (beta1 - beta0) * (logL0.value()() + logL1.value()()) / 2;
-            log_Evidence += plog_Evidence;
+            plog_Evidence =
+                (beta1 - beta0) * (logL0 + logL1) / 2;
+            log_Evidence = log_Evidence+  plog_Evidence;
+            if (beta0==0)
+                log_Evidence_no_0 = log_Evidence_no_0+  beta1*logL1;
+            else
+                log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
+                
           } else {
             logL0 = logL1;
             beta0 = beta1;
@@ -745,19 +749,21 @@ public:
 
             auto &wav0 = data.get_Walker_Value(iw, icu - 1);
             logL0_1 = get<LogLik_by_Fraction>(wav0())[i_fra];
-            logL0_0 = get<LogLik_by_Fraction>(wav0())[i_fra-1];
-            logL0 = logL0_1.value() - logL0_0.value();
-            logL1 = logL1_1.value() - logL1_0.value();
+            logL0_0 = get<LogLik_by_Fraction>(wav0())[i_fra - 1];
+            logL0 = logL0_1 - logL0_0;
+            logL1 = logL1_1 - logL1_0;
             beta0 = 0;
             beta1 = data.get_Beta(i_cu)();
-            plog_Evidence = (beta1 - beta0) * (logL0.value()() + logL1.value()()) / 2;
-            log_Evidence += plog_Evidence;
+            plog_Evidence =
+                (beta1 - beta0) * (logL0 + logL1) / 2;
+            log_Evidence = log_Evidence+ plog_Evidence;
+            log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
           }
           s.f << iter << s.sep << i_cu << s.sep << i_fra() << s.sep << nsamples
               << s.sep << beta1 << s.sep << beta0 << s.sep << i_walker << s.sep
               << get<Walker_id>(wa())() << s.sep << logPrior << s.sep << logL1
               << s.sep << logL0 << s.sep << plog_Evidence << s.sep
-              << log_Evidence << s.sep << logL1_1 << s.sep << logL1_0 << s.sep
+              << log_Evidence << s.sep<< log_Evidence_no_0 << s.sep << logL1_1 << s.sep << logL1_0 << s.sep
               << logL1_2 << s.sep << logL0_1 << s.sep << logL0_0 << "\n";
         }
       }
@@ -769,11 +775,12 @@ public:
       
       s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
           << s.sep << "beta1" << s.sep << "beta0" << s.sep << "i_walker" << s.sep
-          << "walker_id" << s.sep << "logPrior" << s.sep << "logL1"
-          << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
-          << "log_Evidence" << s.sep << "logL1_1" << s.sep << "logL1_0" << s.sep
-          << "logL1_2" << s.sep << "logL0_1" << s.sep << "logL0_0" << "\n";
-    }
+          << "walker_id" << s.sep << "logPrior" << s.sep << "logL1" << s.sep
+          << "logL0" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"<< s.sep << "log_Evidence_no_0"
+          << s.sep << "logL1_1" << s.sep << "logL1_0" << s.sep << "logL1_2"
+          << s.sep << "logL0_1" << s.sep << "logL0_0"
+          << "\n";
+  }
 
   template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
             class Variables>
@@ -828,8 +835,9 @@ public:
       auto logL1_0 = data.calc_Mean_logLik_0(Cuevi_Index(0));
       auto logL1_2 = data.calc_Mean_logLik_2(Cuevi_Index(0));
 
-      auto beta1 = 0;
-      double log_Evidence = 0;
+      auto beta1 = 0.0;
+      Maybe_error<double> log_Evidence = 0.0;
+      Maybe_error<double> log_Evidence_no_0 = 0.0;
 
       for (Cuevi_Index i_cu = 0ul;
            i_cu() < data.get_Cuevi_Temperatures_Number(); ++i_cu) {
@@ -837,8 +845,8 @@ public:
         auto nsamples = size(y[i_frac()]);
         auto logPrior = data.calc_Mean_logPrior(i_cu);
         double beta0;
-        double logL0;
-        double plog_Evidence;
+        Maybe_error<double> logL0;
+        Maybe_error<double> plog_Evidence;
         Maybe_error<double> logL1_1 = error_message{};
         Maybe_error<double> logL1_0 = error_message{};
         Maybe_error<double> logL0_1 = error_message{};
@@ -849,7 +857,12 @@ public:
           logL1 = data.calc_Mean_logLik(i_cu);
           beta1 = data.get_Beta(i_cu)();
           plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
-          log_Evidence += plog_Evidence;
+          log_Evidence =log_Evidence+ plog_Evidence;
+          if (beta0==0)
+              log_Evidence_no_0 = log_Evidence_no_0+  beta1*logL1;
+          else
+              log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
+          
         } else {
           logL0 = logL1;
           beta0 = beta1;
@@ -859,17 +872,18 @@ public:
 
           logL0_1 = data.calc_Mean_logLik_2(i_cu - 1);
           logL0_0 = data.calc_Mean_logLik(i_cu - 1);
-          logL0 = logL0_1.value() - logL0_0.value();
-          logL1 = logL1_1.value() - logL1_0.value();
+          logL0 = logL0_1 - logL0_0;
+          logL1 = logL1_1 - logL1_0;
           beta0 = 0;
           beta1 = data.get_Beta(i_cu)();
           plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
-          log_Evidence += plog_Evidence;
+          log_Evidence = log_Evidence+plog_Evidence;
+          log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
         }
         s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep << nsamples
             << s.sep << beta1 << s.sep << beta0 << s.sep << logPrior << s.sep
             << logL1 << s.sep << logL0 << s.sep << plog_Evidence << s.sep
-            << log_Evidence << s.sep << logL1_1 << s.sep << logL1_0 << s.sep
+            << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1 << s.sep << logL1_0 << s.sep
             << logL1_2 << s.sep << logL0_1 << s.sep << logL0_0
 
             << "\n";
@@ -881,7 +895,7 @@ public:
 
     s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta1" << s.sep << "beta0" << s.sep << "logPrior" << s.sep
-        << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
+        << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep<< "plog_Evidence_no_0" << s.sep
         << "log_Evidence" << s.sep << "logL1_1" << s.sep << "logL1_0" << s.sep
         << "logL1_2" << s.sep << "logL0_1" << s.sep << "logL0_0"
 
@@ -934,7 +948,9 @@ public:
       auto &cu_wa = current.get_Walker_Value(iw, i_cu);
       auto dthLogL = thermo_step(ca_wa, cu_wa, current.get_Beta(i_cu),
                                  current.get_Fraction(i_cu));
-      auto pJump = std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
+      if (dthLogL)
+      {
+          auto pJump = std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL.value()));
       auto r = rdist[i](mts[i]);
       if (pJump < r) {
         fails(get<emcee_Step_statistics>(wa_sta.first())());
@@ -943,6 +959,7 @@ public:
         succeeds(get<emcee_Step_statistics>(wa_sta.first())());
         succeeds(get<emcee_Step_statistics>(wa_sta.second())());
         cu_wa = ca_wa;
+      }
       }
     }
   }

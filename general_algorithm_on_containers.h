@@ -49,6 +49,24 @@ auto max(is_Container auto const& c)
     return out; 
 }
 
+auto i_max(is_Container auto const& c)
+{
+    std::size_t im=0;
+    for (std::size_t i=1; i<c.size(); ++i)
+        if (c[im]<c[i])
+            im=i;
+    return im; 
+}
+
+auto i_min(is_Container auto const& c)
+{
+    std::size_t im=0;
+    for (std::size_t i=1; i<c.size(); ++i)
+        if (c[im]>c[i])
+            im=i;
+    return im; 
+}
+
 auto min(is_Container auto const& c)
 {
     using T=std::decay_t<decltype(c[0])>;

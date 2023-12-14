@@ -229,7 +229,42 @@ class Current_Noise : public var::Var<Current_Noise, double> {};
 
 class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
-class P_mean : public var::Var<P_mean, Matrix<double>> {};
+class P_mean : public var::Var<P_mean, Matrix<double>> {
+};
+
+template<class C_Matrix>
+auto to_Probability(C_Matrix const & x)
+{
+    
+    using std::min;
+    using std::max;
+    auto out= apply([](auto e){return min(max(e,0.0),1.0);}, x);
+    auto s=var::sum(out);
+    return out/s;
+}
+
+
+template<class C_Matrix>
+auto to_Transition_Probability(C_Matrix const & x)
+{
+    using std::min;
+    using std::max;
+    auto out= apply([](auto e){return min(max(e,0.0),1.0);}, x);
+    auto s=inv(diag(out*Matrix<double>(out.ncols(),1ul, 1.0))).value();
+    return s*out;
+}
+
+
+template<class C_Matrix>
+auto to_Transition_Probability_Eigenvalues(C_Matrix && lambda)
+{
+    auto i_max=var::i_max(primitive(lambda));
+    lambda.set(i_max,0.0);
+    return lambda;
+}
+
+
+
 
 class N_channel_state : public var::Var<N_channel_state, Matrix<double>> {};
 
@@ -777,13 +812,53 @@ public:
     requires U<C_Patch_Model, Patch_Model>
   auto calc_Qx(const C_Patch_Model &m, ATP_concentration x)
       -> Transfer_Op_to<C_Patch_Model, Qx> {
-    using Trans = transformation_type_t<C_Patch_Model>;
     auto v_Qx = build<Qx>(get<Q0>(m)() + get<Qa>(m)() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
     return v_Qx;
   }
-
+  template <class C_Q0, class C_Qa>
+      requires U<C_Q0, Q0>
+  auto calc_Qx(const C_Q0 &t_Q0,const C_Qa &t_Qa, ATP_concentration x)
+      -> Transfer_Op_to<C_Q0, Qx> {
+      auto v_Qx =build<Qx>( t_Q0() + t_Qa() * x.value());
+      Matrix<double> u(v_Qx().ncols(), 1, 1.0);
+      v_Qx() = v_Qx() - diag(v_Qx() * u);
+      return v_Qx;
+  }
+  
+  template <class C_Q0, class C_Qa>
+      requires U<C_Q0, Q0>
+  auto calc_Pinitial(const C_Q0 &t_Q0,const C_Qa &t_Qa, ATP_concentration x, N_St nstates)
+      -> Transfer_Op_to<C_Q0, P_initial> {
+      auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
+      auto t_Qx=calc_Qx(t_Q0,t_Qa,x);
+      auto v_eig_Qx = calc_eigen(t_Qx);
+      if (v_eig_Qx) {
+          
+          auto &landa = get<lambda>(v_eig_Qx.value())();
+          auto &Vv = get<V>(v_eig_Qx.value())();
+          auto &Wv = get<W>(v_eig_Qx.value())();
+          auto i_landa=var::i_max(primitive(landa));
+          auto ladt = primitive(landa)-primitive(landa);
+          ladt[i_landa]=1.0;
+          
+          
+          return build<P_initial>(to_Probability(p0 * Vv * ladt * Wv));
+          
+      } else {
+          std::cerr << "uses expm_sure\n";
+          auto P = expm_sure(t_Qx());
+          auto P2 = P * P;
+          while (maxAbs(primitive(P - P2)) > 1e-9) {
+              P = P2;
+              P2 = P * P;
+          }
+          return build<P_initial>(to_Probability(p0 * P2));
+      }
+  }
+  
+  
   template <class C_Qx>
   auto calc_eigen(const C_Qx &v_Qx)
       -> Maybe_error<Transfer_Op_to<C_Qx, Qx_eig>> {
@@ -795,7 +870,7 @@ public:
         return Maybe_W.error();
       else
         return build<Qx_eig>(std::move(v_Qx), build<V>(std::move(v_V)),
-                             build<lambda>(std::move(v_l)),
+                               build<lambda>(to_Transition_Probability_Eigenvalues(std::move(v_l))),
                              build<W>(std::move(Maybe_W.value())));
     } else
       return maybe_eig.error();
@@ -957,12 +1032,11 @@ public:
     return build<P_mean>(p0 * Vv * laexp * Wv);
   }
 
-  template <class C_Patch_Model, class C_Qx>
+  template <class C_Qx>
     requires(/*U<C_Patch_Model, Patch_Model> &&*/ U<C_Qx, Qx>)
-  auto calc_Peq(C_Qx const &t_Qx, const C_Patch_Model &m)
-      -> Transfer_Op_to<C_Patch_Model, P_mean> {
-    auto nstates = get<N_St>(m).value();
-    auto p0 = Matrix<double>(1ul, nstates, 1.0 / nstates);
+  auto calc_Peq(C_Qx const &t_Qx, N_St nstates)
+      -> Transfer_Op_to<C_Qx, P_mean> {
+      auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
     auto v_eig_Qx = calc_eigen(t_Qx);
     if (v_eig_Qx) {
 
