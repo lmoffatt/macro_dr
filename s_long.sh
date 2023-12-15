@@ -3,10 +3,10 @@
 ### Configuración del trabajo
 
 ### Nombre de la tarea
-#SBATCH --job-name=mdr
+#SBATCH --job-name=mdr32
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=short
+#SBATCH --partition=multi
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
@@ -14,7 +14,7 @@
 ### Cores a utilizar por nodo = procesos por nodo * cores por proceso
 #SBATCH --ntasks-per-node=1
 ### Cores por proceso (para MPI+OpenMP)
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 
 ### Tiempo de ejecucion. Formato dias-horas:minutos.
 ### short:  <= 1 hora
