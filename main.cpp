@@ -3220,7 +3220,7 @@ thermodynamic parameter
      * @brief min_fraction fraction of the prior parameter size used as the
      * minimal sample used for the cumulative sequence
      */
-      double min_fraction = 2;
+      double min_fraction = 1.5;
       
       /**
      * @brief checks_derivative_every_model_size number of steps before every
@@ -3238,12 +3238,12 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
       
-      double n_points_per_decade = 1;
+      double n_points_per_decade = 6;
       /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-      double n_points_per_decade_fraction = 3;
+      double n_points_per_decade_fraction = 6;
       
       /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
@@ -3285,7 +3285,7 @@ thermodynamic parameter
           
           std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
           
-          std::size_t t_min_number_of_samples = 10;
+          std::size_t t_min_number_of_samples = 20;
           
           /**
        * @brief cbc cumulative evidence algorithm, ends using convergence

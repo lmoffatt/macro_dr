@@ -3041,7 +3041,7 @@ public:
     auto cum_segments = var::cumsum(segments);
 
     auto indexes = generate_random_Indexes(
-        mt, num_samples, 1, n_points_per_decade_fraction, cum_segments);
+        mt, num_samples, num_parameters, n_points_per_decade_fraction, cum_segments);
     std::cerr << "\nindexes\n**************************************************"
                  "*************************\n";
     std::cerr << indexes;
