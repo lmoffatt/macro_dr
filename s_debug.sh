@@ -3,7 +3,7 @@
 ### Configuración del trabajo
 
 ### Nombre de la tarea
-#SBATCH --job-name=dmdr
+#SBATCH --job-name=mdr
 
 ### Cola a usar (gpu, mono, multi)
 #SBATCH --partition=debug
