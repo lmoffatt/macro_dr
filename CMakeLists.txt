@@ -10,9 +10,9 @@ set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0 -Werror=return-type -fconcept
 #find_package(Catch2 REQUIRED)
 #target_link_libraries(tests Catch2::Catch2)
 
-set(BLAS_DIR ~/opt/OpenBlas/)
+set(BLAS_DIR ~/opt/OpenBlas/lib)
 find_package(BLAS REQUIRED)
-set(LAPACK_DIR ~/opt/OpenBlas/)
+set(LAPACK_DIR ~/opt/OpenBlas/lib)
 find_package(LAPACK REQUIRED)
 
 #find_package(BLAS)
