@@ -63,6 +63,9 @@ add_executable(macro_dr main.cpp
     micror_stochastic.h
     lgamma.h
     s_first
+    Moffatt_Hume_2007_ATP_time.txt
+    Moffatt_Hume_2007_ATP_time_7.txt
+    Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
