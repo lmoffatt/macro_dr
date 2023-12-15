@@ -3181,7 +3181,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-      std::size_t num_scouts_per_ensemble = 16;
+      std::size_t num_scouts_per_ensemble = 32;
       
       /**
      * @brief max_num_simultaneous_temperatures when the number of parallel
