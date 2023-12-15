@@ -229,42 +229,23 @@ class Current_Noise : public var::Var<Current_Noise, double> {};
 
 class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
-class P_mean : public var::Var<P_mean, Matrix<double>> {
-};
+class P_mean : public var::Var<P_mean, Matrix<double>> {};
 
-template<class C_Matrix>
-auto to_Probability(C_Matrix const & x)
-{
-    
-    using std::min;
-    using std::max;
-    auto out= apply([](auto e){return min(max(e,0.0),1.0);}, x);
-    auto s=var::sum(out);
-    return out/s;
+template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
+
+  using std::max;
+  using std::min;
+  auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
+  auto s = var::sum(out);
+  return out * (1.0 / s);
 }
 
-
-template<class C_Matrix>
-auto to_Transition_Probability(C_Matrix const & x)
-{
-    using std::min;
-    using std::max;
-    auto out= apply([](auto e){return min(max(e,0.0),1.0);}, x);
-    auto s=inv(diag(out*Matrix<double>(out.ncols(),1ul, 1.0))).value();
-    return s*out;
+template <class C_Matrix>
+auto to_Transition_Probability_Eigenvalues(C_Matrix &&lambda) {
+  auto i_max = var::i_max(primitive(lambda));
+  lambda.set(i_max, 0.0);
+  return lambda;
 }
-
-
-template<class C_Matrix>
-auto to_Transition_Probability_Eigenvalues(C_Matrix && lambda)
-{
-    auto i_max=var::i_max(primitive(lambda));
-    lambda.set(i_max,0.0);
-    return lambda;
-}
-
-
-
 
 class N_channel_state : public var::Var<N_channel_state, Matrix<double>> {};
 
@@ -347,6 +328,21 @@ class Transition_rate_W
 class P : public Var<P, Matrix<double>> {
   friend std::string className(P) { return "P_ij"; }
 };
+
+template <class C_Matrix>
+Maybe_error<Transfer_Op_to<C_Matrix, P>>
+to_Transition_Probability(C_Matrix const &x) {
+  using std::max;
+  using std::min;
+  auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
+  auto sumP = out * Matrix<double>(out.ncols(), 1ul, 1.0);
+  auto s = inv(diag(sumP));
+  if (s)
+    // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
+    return build<P>(s.value() * out);
+  else
+    return s.error();
+}
 
 class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
   friend std::string className(Ptotal_ij) { return "Ptotal_ij"; }
@@ -818,47 +814,45 @@ public:
     return v_Qx;
   }
   template <class C_Q0, class C_Qa>
-      requires U<C_Q0, Q0>
-  auto calc_Qx(const C_Q0 &t_Q0,const C_Qa &t_Qa, ATP_concentration x)
+    requires U<C_Q0, Q0>
+  auto calc_Qx(const C_Q0 &t_Q0, const C_Qa &t_Qa, ATP_concentration x)
       -> Transfer_Op_to<C_Q0, Qx> {
-      auto v_Qx =build<Qx>( t_Q0() + t_Qa() * x.value());
-      Matrix<double> u(v_Qx().ncols(), 1, 1.0);
-      v_Qx() = v_Qx() - diag(v_Qx() * u);
-      return v_Qx;
+    auto v_Qx = build<Qx>(t_Q0() + t_Qa() * x.value());
+    Matrix<double> u(v_Qx().ncols(), 1, 1.0);
+    v_Qx() = v_Qx() - diag(v_Qx() * u);
+    return v_Qx;
   }
-  
+
   template <class C_Q0, class C_Qa>
-      requires U<C_Q0, Q0>
-  auto calc_Pinitial(const C_Q0 &t_Q0,const C_Qa &t_Qa, ATP_concentration x, N_St nstates)
-      -> Transfer_Op_to<C_Q0, P_initial> {
-      auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
-      auto t_Qx=calc_Qx(t_Q0,t_Qa,x);
-      auto v_eig_Qx = calc_eigen(t_Qx);
-      if (v_eig_Qx) {
-          
-          auto &landa = get<lambda>(v_eig_Qx.value())();
-          auto &Vv = get<V>(v_eig_Qx.value())();
-          auto &Wv = get<W>(v_eig_Qx.value())();
-          auto i_landa=var::i_max(primitive(landa));
-          auto ladt = primitive(landa)-primitive(landa);
-          ladt[i_landa]=1.0;
-          
-          
-          return build<P_initial>(to_Probability(p0 * Vv * ladt * Wv));
-          
-      } else {
-          std::cerr << "uses expm_sure\n";
-          auto P = expm_sure(t_Qx());
-          auto P2 = P * P;
-          while (maxAbs(primitive(P - P2)) > 1e-9) {
-              P = P2;
-              P2 = P * P;
-          }
-          return build<P_initial>(to_Probability(p0 * P2));
+    requires U<C_Q0, Q0>
+  auto calc_Pinitial(const C_Q0 &t_Q0, const C_Qa &t_Qa, ATP_concentration x,
+                     N_St nstates) -> Transfer_Op_to<C_Q0, P_initial> {
+    auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
+    auto t_Qx = calc_Qx(t_Q0, t_Qa, x);
+    auto v_eig_Qx = calc_eigen(t_Qx);
+    if (v_eig_Qx) {
+
+      auto &landa = get<lambda>(v_eig_Qx.value())();
+      auto &Vv = get<V>(v_eig_Qx.value())();
+      auto &Wv = get<W>(v_eig_Qx.value())();
+      auto i_landa = var::i_max(primitive(landa));
+      auto ladt = primitive(landa) - primitive(landa);
+      ladt[i_landa] = 1.0;
+
+      return build<P_initial>(to_Probability(p0 * Vv * ladt * Wv));
+
+    } else {
+      std::cerr << "uses expm_sure\n";
+      auto P = expm_sure(t_Qx());
+      auto P2 = P * P;
+      while (maxAbs(primitive(P - P2)) > 1e-9) {
+        P = P2;
+        P2 = P * P;
       }
+      return build<P_initial>(to_Probability(p0 * P2));
+    }
   }
-  
-  
+
   template <class C_Qx>
   auto calc_eigen(const C_Qx &v_Qx)
       -> Maybe_error<Transfer_Op_to<C_Qx, Qx_eig>> {
@@ -868,10 +862,22 @@ public:
       auto Maybe_W = inv(v_V);
       if (!Maybe_W)
         return Maybe_W.error();
-      else
-        return build<Qx_eig>(std::move(v_Qx), build<V>(std::move(v_V)),
-                               build<lambda>(to_Transition_Probability_Eigenvalues(std::move(v_l))),
-                             build<W>(std::move(Maybe_W.value())));
+      else {
+        auto v_W = std::move(Maybe_W.value());
+        // auto &la = primitive(v_l);
+        // auto i_lambda = var::i_max(la);
+        // auto la_dt_inf = DiagonalMatrix<double>(la.nrows(), la.ncols(), 0.0);
+        // la_dt_inf[i_lambda] = 1.0;
+        // auto Peq = to_Transition_Probability(v_V * la_dt_inf * v_W);
+        // if (!Peq)
+        //   return Peq.error();
+        // else
+        return build<Qx_eig>(
+            std::move(v_Qx), build<V>(std::move(v_V)),
+            build<lambda>(
+                to_Transition_Probability_Eigenvalues(std::move(v_l))),
+            build<W>(std::move(v_W)));
+      }
     } else
       return maybe_eig.error();
   }
@@ -1036,7 +1042,7 @@ public:
     requires(/*U<C_Patch_Model, Patch_Model> &&*/ U<C_Qx, Qx>)
   auto calc_Peq(C_Qx const &t_Qx, N_St nstates)
       -> Transfer_Op_to<C_Qx, P_mean> {
-      auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
+    auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
     auto v_eig_Qx = calc_eigen(t_Qx);
     if (v_eig_Qx) {
 
@@ -1066,7 +1072,7 @@ public:
       return build<P_mean>(p0 * Vv * laexp * Wv);
 
     } else {
-      std::cerr << "uses expm_sure\n";
+     // std::cerr << "uses expm_sure\n";
       auto P = expm_sure(t_Qx());
       auto P2 = P * P;
       while (maxAbs(primitive(P - P2)) > 1e-9) {
@@ -1113,17 +1119,22 @@ public:
     auto ladt = get<lambda>(t_Qx)() * dt;
 
     auto exp_ladt = apply([](double x) { return std::exp(x); }, ladt);
-    return normalize(P(get<V>(t_Qx)() * exp_ladt * get<W>(t_Qx)()), t_min_P);
+    //    return normalize(P(get<V>(t_Qx)() * exp_ladt * get<W>(t_Qx)()),
+    //    t_min_P);
+    return to_Transition_Probability(get<V>(t_Qx)() * exp_ladt *
+                                     get<W>(t_Qx)());
   }
 
   template <class Patch_Model>
   auto calc_P(const Patch_Model &m, const Qx &t_Qx, double dt, double t_min_P) {
     auto t_eigenQx = calc_eigen(t_Qx);
-    if (t_eigenQx)
-      return calc_P(m, t_eigenQx.value(), dt, t_min_P);
-    else
-
-      return normalize(P(expm_sure(t_Qx() * dt)), t_min_P);
+    if (t_eigenQx) {
+      auto Maybe_P = calc_P(m, t_eigenQx.value(), dt, t_min_P);
+      if (Maybe_P)
+        return Maybe_P;
+    }
+    //      return normalize(P(expm_sure(t_Qx() * dt)), t_min_P);
+    return to_Transition_Probability(expm_sure(t_Qx() * dt));
   }
 
   template <class Patch_Model>
@@ -1215,8 +1226,9 @@ public:
 
   template <class FunctionTable, class C_Patch_Model, class C_Qx_eig>
     requires(U<C_Patch_Model, Patch_Model> && U<C_Qx_eig, Qx_eig>)
-  auto calc_Qdt(FunctionTable &&f, const C_Patch_Model &m, const C_Qx_eig &t_Qx,
-                number_of_samples ns, double dt) {
+  Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>
+  calc_Qdt_eig(FunctionTable &&f, const C_Patch_Model &m, const C_Qx_eig &t_Qx,
+               number_of_samples ns, double dt) {
     using Trans = transformation_type_t<C_Patch_Model>;
     // const double eps=std::numeric_limits<double>::epsilon();
     auto &t_V = get<V>(t_Qx);
@@ -1232,170 +1244,122 @@ public:
         },
         v_ladt);
 
-    auto r_P = build<P>(t_V() * v_exp_ladt * t_W());
+    auto Maybe_r_P = to_Transition_Probability(t_V() * v_exp_ladt * t_W());
+    if (!Maybe_r_P)
+      return Maybe_r_P.error();
+    else {
+      auto r_P = std::move(Maybe_r_P.value());
 
-    std::size_t N = r_P().ncols();
+      std::size_t N = r_P().ncols();
 
-    SymmetricMatrix<Op_t<Trans, double>> E2m(N, N);
-    for (std::size_t i = 0; i < N; ++i) {
+      SymmetricMatrix<Op_t<Trans, double>> E2m(N, N);
+      for (std::size_t i = 0; i < N; ++i) {
 
-      for (std::size_t j = 0; j < i + 1; ++j) {
-        set(E2m, i, j,
-            Ee(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j], t_min_P()));
-      }
-    }
-
-    Matrix<Op_t<Trans, double>> WgV_E2(N, N);
-
-    auto v_WgV = t_W() * diag(t_g()) * t_V();
-
-    for (std::size_t i = 0; i < N; ++i)
-      for (std::size_t j = 0; j < N; ++j)
-        WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
-
-    auto r_gtotal_ij = build<gtotal_ij>(t_V() * WgV_E2 * t_W());
-
-    Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
-    for (std::size_t n1 = 0; n1 < N; n1++)
-      for (std::size_t n3 = 0; n3 < N; n3++)
-        for (std::size_t n2 = 0; n2 < N; n2++) {
-          //      std::cerr<<"\t"<<WgV_E3(n1, n3);
-
-          WgV_E3(n1, n3) =
-              WgV_E3(n1, n3) + v_WgV(n1, n2) * v_WgV(n2, n3) *
-                                   E3(v_ladt[n1], v_ladt[n2], v_ladt[n3],
-                                      v_exp_ladt[n1], v_exp_ladt[n2],
-                                      v_exp_ladt[n3], t_min_P()); // optimizable
+        for (std::size_t j = 0; j < i + 1; ++j) {
+          set(E2m, i, j,
+              Ee(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j],
+                 t_min_P()));
         }
-
-    auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
-
-    if constexpr (false) {
-      std::cerr << "\nr_gtotal_sqr_ij\n" << r_gtotal_sqr_ij;
-      std::cerr << "\nvar::outside_in(var::inside_out(r_gtotal_sqr_ij))\n"
-                << var::outside_in(var::inside_out(r_gtotal_sqr_ij()));
-
-      std::cerr << "\nvar::inside_out(r_gtotal_sqr_ij)\n"
-                << var::inside_out(r_gtotal_sqr_ij());
-    }
-
-    if constexpr (false) {
-      auto test_r_gtotal_sqr_ij = var::test_Derivative(
-          [this, &N, &t_min_P](const auto &t_V, const auto &t_W,
-                               const auto &v_WgV, const auto &v_ladt,
-                               const auto &v_exp_ladt) {
-            using Trans2 =
-                transformation_type_t<std::decay_t<decltype(v_ladt)>>;
-
-            Matrix<Op_t<Trans2, double>> WgV_E3(N, N,
-                                                Op_t<Trans2, double>(0.0));
-            for (std::size_t n1 = 0; n1 < N; n1++)
-              for (std::size_t n3 = 0; n3 < N; n3++)
-                for (std::size_t n2 = 0; n2 < N; n2++) {
-                  //      std::cerr<<"\t"<<WgV_E3(n1, n3);
-
-                  WgV_E3(n1, n3) =
-                      WgV_E3(n1, n3) + v_WgV(n1, n2) * v_WgV(n2, n3) *
-                                           E3(v_ladt[n1], v_ladt[n2],
-                                              v_ladt[n3], v_exp_ladt[n1],
-                                              v_exp_ladt[n2], v_exp_ladt[n3],
-                                              t_min_P()); // optimizable
-                }
-
-            //    return var::outside_in(WgV_E3);
-            return build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
-          },
-          1e-4, 1e-6, t_V, t_W, v_WgV, v_ladt, v_exp_ladt);
-      if (!test_r_gtotal_sqr_ij) {
-        std::cerr << "\n error in test_r_gtotal_sqr_ij!!\n"
-                  << test_r_gtotal_sqr_ij.error()();
-        std::abort();
       }
-    }
 
-    if constexpr (false) {
-      assert(test_conductance_variance(
-          r_gtotal_sqr_ij(), get<Conductance_variance_error_tolerance>(m)));
-    }
+      Matrix<Op_t<Trans, double>> WgV_E2(N, N);
 
-    if constexpr (true) {
-      r_gtotal_sqr_ij() =
-          truncate_negative_variance(std::move(r_gtotal_sqr_ij()));
+      auto v_WgV = t_W() * diag(t_g()) * t_V();
+
       for (std::size_t i = 0; i < N; ++i)
         for (std::size_t j = 0; j < N; ++j)
-          if (r_P()(i, j) == 0) {
-            r_gtotal_ij().set(i, j, 0.0);
-            r_gtotal_sqr_ij().set(i, j, 0.0);
+          WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
+
+      auto r_gtotal_ij = build<gtotal_ij>(t_V() * WgV_E2 * t_W());
+
+      Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
+      for (std::size_t n1 = 0; n1 < N; n1++)
+        for (std::size_t n3 = 0; n3 < N; n3++)
+          for (std::size_t n2 = 0; n2 < N; n2++) {
+            //      std::cerr<<"\t"<<WgV_E3(n1, n3);
+
+            WgV_E3(n1, n3) = WgV_E3(n1, n3) +
+                             v_WgV(n1, n2) * v_WgV(n2, n3) *
+                                 E3(v_ladt[n1], v_ladt[n2], v_ladt[n3],
+                                    v_exp_ladt[n1], v_exp_ladt[n2],
+                                    v_exp_ladt[n3], t_min_P()); // optimizable
           }
-    }
-    Matrix<double> U(1, t_g().size(), 1.0);
-    Matrix<double> UU(t_g().size(), t_g().size(), 1.0);
-    auto gmean_ij_p = X_plus_XT(t_g() * U) * (0.5);
 
-    auto gvar_ij_p =
-        apply([](auto x) { return abs(x); }, t_g() * U - tr(t_g() * U)) * (0.5);
+      auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
 
-    auto gmean_ij_tot = r_gtotal_ij(); // + gmean_ij_p * t_min_P();
-    // auto P_p = r_P() + UU * t_min_P();
-    auto r_gmean_ij =
-        build<gmean_ij>(elemDivSafe(gmean_ij_tot, r_P(), t_min_P()));
-    auto r_gtotal_var_ij = build<gtotal_var_ij>(
-        r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij()));
+      if constexpr (false) {
+        std::cerr << "\nr_gtotal_sqr_ij\n" << r_gtotal_sqr_ij;
+        std::cerr << "\nvar::outside_in(var::inside_out(r_gtotal_sqr_ij))\n"
+                  << var::outside_in(var::inside_out(r_gtotal_sqr_ij()));
 
-    if constexpr (false) {
-      auto test_elemMu = var::test_Derivative(
-          [&U](const auto &r_gtotal_sqr_ij, const auto &r_gtotal_ij,
-               const auto &r_gmean_ij) {
-            return r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij());
-          },
-          1e-4, 1e-6, r_gtotal_sqr_ij, r_gtotal_ij, r_gmean_ij);
-      if (!test_elemMu) {
-        std::cerr << "\n error in test_elemMu!!\n" << test_elemMu.error()();
-        std::abort();
+        std::cerr << "\nvar::inside_out(r_gtotal_sqr_ij)\n"
+                  << var::inside_out(r_gtotal_sqr_ij());
+      }
+
+      if constexpr (true) {
+        r_gtotal_sqr_ij() =
+            truncate_negative_variance(std::move(r_gtotal_sqr_ij()));
+        for (std::size_t i = 0; i < N; ++i)
+          for (std::size_t j = 0; j < N; ++j)
+            if (r_P()(i, j) == 0) {
+              r_gtotal_ij().set(i, j, 0.0);
+              r_gtotal_sqr_ij().set(i, j, 0.0);
+            }
+      }
+      Matrix<double> U(1, t_g().size(), 1.0);
+      Matrix<double> UU(t_g().size(), t_g().size(), 1.0);
+      auto gmean_ij_p = X_plus_XT(t_g() * U) * (0.5);
+
+      auto gvar_ij_p =
+          apply([](auto x) { return abs(x); }, t_g() * U - tr(t_g() * U)) *
+          (0.5);
+
+      auto gmean_ij_tot = r_gtotal_ij(); // + gmean_ij_p * t_min_P();
+      // auto P_p = r_P() + UU * t_min_P();
+      auto r_gmean_ij =
+          build<gmean_ij>(elemDivSafe(gmean_ij_tot, r_P(), t_min_P()));
+      auto r_gtotal_var_ij = build<gtotal_var_ij>(
+          r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij()));
+      
+      
+        /* truncate is not derivative safe yet*/
+        if constexpr (true) {
+          r_gtotal_var_ij() =
+              truncate_negative_variance(std::move(r_gtotal_var_ij()));
+        }
+
+        auto gvar_ij_tot = r_gtotal_var_ij(); // + gvar_ij_p * t_min_P();
+        auto r_gvar_ij =
+            build<gvar_ij>(elemDivSafe(gvar_ij_tot, r_P(), t_min_P()));
+       
+          Matrix<double> u(N, 1, 1.0);
+          auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+          auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
+          auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
+          if constexpr (true) {
+            r_gvar_i() = truncate_negative_variance(std::move(r_gvar_i()));
+          }
+       //   auto test_g_var = test_conductance_variance(primitive(r_gvar_i()), primitive(t_g()));
+       //   auto test_g_mean = test_conductance_mean(primitive(r_gmean_i()), primitive(t_g()));
+          // if (!test_g_mean || !test_g_var)
+          //     return error_message(test_g_var.error()()+test_g_mean.error()());
+          // else {
+
+          return build<Qdt>(ns, min_P(t_min_P), std::move(r_P),
+                            std::move(r_gmean_i), std::move(r_gtotal_ij),
+                            std::move(r_gmean_ij), std::move(r_gtotal_sqr_ij),
+                            std::move(r_gsqr_i), std::move(r_gvar_i),
+                            std::move(r_gtotal_var_ij), std::move(r_gvar_ij));
+        // }
       }
     }
-
-    //    std::cerr<<"\n---------------------fin---------------------------------------------------\n";
-    //    std::cerr<<"\n elemDiv(gmean_ij_tot,
-    //    P_p)"<<primitive(elemDiv(gmean_ij_tot, P_p)); std::cerr<<"\n
-    //    gmean_ij_tot"<<primitive(gmean_ij_tot); std::cerr<<"\n
-    //    P_p"<<primitive(P_p); std::cerr<<"\n elemDiv(primitive(gmean_ij_tot),
-    //    primitive(P_p))"<<elemDiv(primitive(gmean_ij_tot), primitive(P_p));
-
-    //    std::cerr<<"\n------------------------------------------------------------------------\n";
-
-    if constexpr (false) {
-      assert(test_conductance_variance(
-          r_gtotal_var_ij(), get<Conductance_variance_error_tolerance>(m)));
-    }
-
-    /* truncate is not derivative safe yet*/
-    if constexpr (true) {
-      r_gtotal_var_ij() =
-          truncate_negative_variance(std::move(r_gtotal_var_ij()));
-    }
-
-    auto gvar_ij_tot = r_gtotal_var_ij(); // + gvar_ij_p * t_min_P();
-    auto r_gvar_ij = build<gvar_ij>(elemDivSafe(gvar_ij_tot, r_P(), t_min_P()));
-    Matrix<double> u(N, 1, 1.0);
-    auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
-    auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
-    auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
-    if constexpr (true) {
-      r_gvar_i() = truncate_negative_variance(std::move(r_gvar_i()));
-    }
-
-    return build<Qdt>(ns, min_P(t_min_P), std::move(r_P), std::move(r_gmean_i),
-                      std::move(r_gtotal_ij), std::move(r_gmean_ij),
-                      std::move(r_gtotal_sqr_ij), std::move(r_gsqr_i),
-                      std::move(r_gvar_i), std::move(r_gtotal_var_ij),
-                      std::move(r_gvar_ij));
-  }
+  
 
   template <class C_Patch_Model, class C_Qx>
     requires(/*U<C_Patch_Model, Patch_Model> && */ U<C_Qx, Qx>)
-  auto calc_Qdt_taylor(const C_Patch_Model &m, const C_Qx &t_Qx,
-                       number_of_samples ns, double dt, std::size_t order) {
+  Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>
+  calc_Qdt_taylor(const C_Patch_Model &m, const C_Qx &t_Qx,
+                  number_of_samples ns, double dt, std::size_t order = 5ul) {
     auto v_Qrun = t_Qx() * dt;
     double max = maxAbs(primitive(v_Qrun));
     double desired = 0.125;
@@ -1403,13 +1367,19 @@ public:
     std::size_t n = std::max(0, k);
     double scale = std::pow(2, -n);
     auto t_Qrun_sub = v_Qrun * scale;
-    auto P_sub = build<P>(expm_taylor(t_Qrun_sub, order));
-    auto r_Qn = get_Qn(P_sub, get<g>(m), ns, get<min_P>(m));
-    for (std::size_t i = 0; i < n; ++n) {
-      r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
+    auto Maybe_P_sub =
+        to_Transition_Probability(expm_taylor(t_Qrun_sub, order));
+    if (!Maybe_P_sub) {
+      return Maybe_P_sub.error();
+    } else {
+      auto P_sub = std::move(Maybe_P_sub.value());
+      auto r_Qn = get_Qn(P_sub, get<g>(m), ns, get<min_P>(m));
+      for (std::size_t i = 0; i < n; ++i) {
+        r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
+      }
+      get<number_of_samples>(r_Qn) = ns;
+      return Qn_to_Qdt(r_Qn);
     }
-    get<number_of_samples>(r_Qn)() = ns;
-    return Qn_to_Qdt(r_Qn);
   }
 
   template <class C_Qdt>
@@ -1448,7 +1418,7 @@ public:
     get<PG_n>(one)() =
         (get<PG_n>(one)() * get<P>(two)()) + (get<P>(one)() * get<PG_n>(two)());
     get<P>(one) =
-        normalize(build<P>(get<P>(one)() * get<P>(two)()), get<min_P>(two)());
+        to_Transition_Probability(get<P>(one)() * get<P>(two)()).value();
     get<number_of_samples>(one)() = get<number_of_samples>(one)() + n1;
     return one;
   }
@@ -1464,7 +1434,7 @@ public:
     get<PG_n>(one)() = (get<PG_n>(one)() * get<P>(two)()) +
                        (get<P>(one)() * get<gtotal_ij>(two)()) * n1;
     get<P>(one) =
-        normalize(build<P>(get<P>(one)() * get<P>(two)()), get<min_P>(two)());
+        to_Transition_Probability(get<P>(one)() * get<P>(two)()).value();
     get<number_of_samples>(one)() = get<number_of_samples>(one)() + n1;
     return one;
   }
@@ -1508,8 +1478,7 @@ public:
                          const ATP_step &t_step, double fs)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     auto dt = get<number_of_samples>(t_step)() / fs;
-    auto t_Qx = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
-
+    auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
     if constexpr (false) {
       auto test_der_eigen = var::test_Derivative(
           [this, &t_step](auto l_m) {
@@ -1522,11 +1491,14 @@ public:
       }
     }
 
-    if (!t_Qx)
-      return t_Qx.error();
-    else {
-      return calc_Qdt(f, m, t_Qx.value(), get<number_of_samples>(t_step), dt);
+    if (t_Qeig) {
+      auto Maybe_Qdt = calc_Qdt_eig(f, m, t_Qeig.value(),
+                                    get<number_of_samples>(t_step), dt);
+      if (Maybe_Qdt)
+        return Maybe_Qdt;
     }
+    auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
+    return calc_Qdt_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
   }
 
   template <class FunctionTable, class C_Patch_Model>
@@ -1652,6 +1624,42 @@ public:
           return calc_Qdt_bisection(f, m, a, fs, order);
         },
         t_step());
+  }
+
+  Maybe_error<bool> test_conductance_mean(const Matrix<double> gmean,
+                                          const Matrix<double> g) {
+    auto max_g = var::max(g);
+    auto min_g = var::min(g);
+    Maybe_error<bool> out = true;
+    return reduce(
+        [max_g, min_g](Maybe_error<bool> succeeds,
+                       auto e) -> Maybe_error<bool> {
+          if (e < min_g) {
+            return error_message("conductance too negative");
+          } else if (e > max_g) {
+            return error_message("conductance too positve");
+          } else {
+            return succeeds;
+          }
+        },
+        out, gmean);
+  }
+
+  Maybe_error<bool> test_conductance_variance(const Matrix<double> gvar,
+                                              const Matrix<double> g) {
+    auto max_abs_g = maxAbs(g) * 0.5;
+    Maybe_error<bool> out = true;
+    return reduce(
+        [max_abs_g](Maybe_error<bool> succeeds, auto e) -> Maybe_error<bool> {
+          if (e < 0) {
+            return error_message("variance  negative");
+          } else if (e > max_abs_g) {
+            return error_message("variance too big");
+          } else {
+            return succeeds;
+          }
+        },
+        out, gvar);
   }
 
   template <class C_Matrix>
@@ -2095,7 +2103,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     if (std::isnan(y)) {
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
-      auto r_P_mean = build<P_mean>(p_P_mean() * t_P());
+      auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
       r_P_cov() = r_P_cov() + diag(r_P_mean());
       // std::cerr<<"\nPcov nana corr\n"<<P__cov<<"\nP_mean nana
       // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
@@ -2106,7 +2114,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
               Op_t<Transf, logL>(get<logL>(t_prior)()),
               Op_t<Transf, elogL>(get<elogL>(t_prior)()),
               Op_t<Transf, vlogL>(get<vlogL>(t_prior)()),
-              normalize(std::move(r_P_mean), t_min_P()),
+              build<P_mean>(to_Probability(std::move(r_P_mean))),
               normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
               std::move(r_y_var), plogL(NaN), eplogL(NaN), vplogL(NaN));
         else {
@@ -2309,20 +2317,17 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     if (std::isnan(y)) {
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
-      auto r_P_mean = build<P_mean>(p_P_mean() * t_P());
+      auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
       r_P_cov() = r_P_cov() + diag(r_P_mean());
       if constexpr (U<C_Patch_State, Patch_State>)
         return Op_t<Transf, Patch_State>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
-            Op_t<Transf, vlogL>(get<vlogL>(t_prior)()),
-            normalize(std::move(r_P_mean), t_min_P()),
-            normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
-            std::move(r_y_var), plogL(NaN), eplogL(NaN), vplogL(NaN));
+            Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
+            std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
+            plogL(NaN), eplogL(NaN), vplogL(NaN));
       else {
         auto &ev = get<Patch_State_Evolution>(t_prior);
-        r_P_mean = normalize(std::move(r_P_mean), t_min_P());
-        r_P_cov = normalize(std::move(r_P_cov), t_min_P());
         ev().push_back(Op_t<Transf, Patch_State>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
@@ -2343,7 +2348,7 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     Op_t<Transf, P_Cov> r_P_cov;
     auto gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
 
-    r_P_mean() = p_P_mean() * t_P() + chi * gS;
+    r_P_mean() = to_Probability(p_P_mean() * t_P() + chi * gS);
 
     r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
                 (N / r_y_var()) * XTX(gS);
@@ -2370,14 +2375,11 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
       return build<Patch_State>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
-          build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()),
-          normalize(std::move(r_P_mean), t_min_P()),
-          normalize(std::move(r_P_cov), t_min_P()), std::move(r_y_mean),
-          std::move(r_y_var), r_plogL, r_eplogL, r_vlogL);
+          build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
+          std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
+          r_eplogL, r_vlogL);
     else {
       auto &ev = get<Patch_State_Evolution>(t_prior);
-      r_P_mean = normalize(std::move(r_P_mean), t_min_P());
-      r_P_cov = normalize(std::move(r_P_cov), t_min_P());
       ev().push_back(build<Patch_State>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
@@ -2416,16 +2418,14 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
       if constexpr (!predictions.value)
 
         return Transfer_Op_to<C_Patch_Model, Patch_State>(
-            logL(0.0), elogL(0.0), vlogL(0.0),
-            normalize(std::move(r_P_mean), t_min_P()),
-            normalize(std::move(r_P_cov), t_min_P()), y_mean(NaN), y_var(NaN),
-            plogL(NaN), eplogL(NaN), vplogL(NaN));
+            logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
+            std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
+            eplogL(NaN), vplogL(NaN));
       else
         return Transfer_Op_to<C_Patch_Model, Patch_State_and_Evolution>(
-            logL(0.0), elogL(0.0), vlogL(0.0),
-            normalize(std::move(r_P_mean), t_min_P()),
-            normalize(std::move(r_P_cov), t_min_P()), y_mean(NaN), y_var(NaN),
-            plogL(NaN), eplogL(NaN), vplogL(NaN), Patch_State_Evolution());
+            logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
+            std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
+            eplogL(NaN), vplogL(NaN), Patch_State_Evolution());
 
     } else {
       return error_message("fails at init: " + r_test.error()());
@@ -2595,16 +2595,22 @@ v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
     auto sub_dt = dt / n_sub_dt;
 
     double sub_sample = 1.0 * n_samples / n_sub_dt;
-    auto t_P = calc_P(m, tQx, sub_dt, get<min_P>(m)());
-    for (std::size_t i = 0; i < n_sub_dt; ++i) {
-      N = sample_Multinomial(mt, t_P, N);
-      ysum += getvalue(N() * t_g()) * sub_sample;
+    auto Maybe_t_P = calc_P(m, tQx, sub_dt, get<min_P>(m)());
+    if (!Maybe_t_P)
+      return Maybe_t_P.error();
+    else {
+
+      auto t_P = std::move(Maybe_t_P.value());
+      for (std::size_t i = 0; i < n_sub_dt; ++i) {
+        N = sample_Multinomial(mt, t_P, N);
+        ysum += getvalue(N() * t_g()) * sub_sample;
+      }
+      sum_samples += n_samples;
+      std::cerr << N << sum_samples << "  " << ysum << "  "
+                << ysum / sum_samples << "\n";
+      return Simulated_Sub_Step(N_channel_state(N),
+                                number_of_samples(sum_samples), y_sum(ysum));
     }
-    sum_samples += n_samples;
-    std::cerr << N << sum_samples << "  " << ysum << "  " << ysum / sum_samples
-              << "\n";
-    return Simulated_Sub_Step(N_channel_state(N),
-                              number_of_samples(sum_samples), y_sum(ysum));
   }
 
   template <class Patch_Model>
