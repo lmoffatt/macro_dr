@@ -3163,7 +3163,7 @@ thermodynamic parameter
       }
   }
   
-  constexpr bool new_cuevi_by_max_iter = false;
+  constexpr bool new_cuevi_by_max_iter = true;
   if (new_cuevi_by_max_iter) {
      
       /**
@@ -3172,7 +3172,7 @@ thermodynamic parameter
      */
       //   auto myseed = 9762841416869310605ul;
       //    auto myseed = 2555984001541913735ul;
-      auto myseed = 16622511317871679999ul;
+      auto myseed = 0;
       
       myseed = calc_seed(myseed);
       std::cerr << "myseed =" << myseed << "\n";
@@ -3238,12 +3238,12 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
       
-      double n_points_per_decade = 3;
+      double n_points_per_decade = 1;
       /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-      double n_points_per_decade_fraction = 6;
+      double n_points_per_decade_fraction = 3;
       
       /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
@@ -3474,11 +3474,11 @@ thermodynamic parameter
     auto modelLikelihood = make_Likelihood_Model<
         uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
         uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-        model0, Simulation_n_sub_dt(1000));
+        model0, Simulation_n_sub_dt(1000ul));
 
     auto sim = Macro_DMR{}.sample_N(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_n_sub_dt(1000)),
+        Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
         recording);
 
     if (sim) {
@@ -3608,7 +3608,7 @@ thermodynamic parameter
     }
   }
   
-  constexpr bool new_cuevi_by_max_iter_cross_model = true;
+  constexpr bool new_cuevi_by_max_iter_cross_model = false;
   if (new_cuevi_by_max_iter_cross_model) {
       /**
      * @brief myseed defines the random number seed so all runs are identical
@@ -3709,14 +3709,14 @@ thermodynamic parameter
       auto modelLikelihood = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0, Simulation_n_sub_dt(1000));
+          model0, Simulation_n_sub_dt(1000ul));
       
       auto modelLikelihood_alt = make_Likelihood_Model<
           uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
           uses_averaging_aproximation(2), uses_variance_aproximation(false),                                     uses_variance_correction_aproximation(false)>(
-          model0_alt, Simulation_n_sub_dt(1000));
+          model0_alt, Simulation_n_sub_dt(1000ul));
       
-      auto n_sub_dt=Simulation_n_sub_dt(10000);
+      auto n_sub_dt=Simulation_n_sub_dt(10000ul);
       
       std::string min_dt_st="_n_sub_dt_"+std::to_string(n_sub_dt())+"_";
       
@@ -4296,7 +4296,7 @@ thermodynamic parameter
 
     auto sim = Macro_DMR{}.sample(
         mt, model0, param1, experiment,
-        Simulation_Parameters(Simulation_n_sub_dt(1000)));
+        Simulation_Parameters(Simulation_n_sub_dt(1000ul)));
 
     auto test_der_Likelihood = var::test_Derivative(
         [&model0, &sim, &experiment, &ftbl](auto const &dparam1) {
