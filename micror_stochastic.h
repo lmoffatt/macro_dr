@@ -18,7 +18,7 @@
 
 namespace macrodr {
 
-class mt_64 : public var::Var<mt_64, std::mt19937_64> {};
+class mt_64 : public var::Var<mt_64, mt_64i> {};
 
 class N_channel_transition_count
     : public var::Var<N_channel_transition_count, Matrix<std::size_t>> {};
@@ -39,7 +39,7 @@ class N_channel_transition_mean
   }
 };
 
-static auto sample_Multinomial_state(std::mt19937_64 &mt,
+static auto sample_Multinomial_state(mt_64i &mt,
                                      P_mean const &t_P_mean, std::size_t N) {
   auto k = t_P_mean().size();
   N_channel_state out(Matrix<double>(1, k));
@@ -56,7 +56,7 @@ static auto sample_Multinomial_state(std::mt19937_64 &mt,
   return out;
 }
 
-std::size_t sample_Real_to_Size(std::mt19937_64 &mt, double x) {
+std::size_t sample_Real_to_Size(mt_64i &mt, double x) {
   std::size_t out = std::floor(x);
   double r = std::uniform_real_distribution<double>{}(mt);
   if (r > x - out)
@@ -73,7 +73,7 @@ class Micror_state
     : public var::Var<Micror_state<averaging>, N_channel_transition_count> {
 
   auto N_total_ij__mean_to_count(
-      std::mt19937_64 &mt, N_channel_transition_mean const &nr,
+      mt_64i &mt, N_channel_transition_mean const &nr,
       double max_eps = std::sqrt(std::numeric_limits<double>::epsilon())) {
 
     double N_mean = var::sum(nr());
@@ -100,7 +100,7 @@ class Micror_state
   }
 
 public:
-  Micror_state(std::mt19937_64 &mt, N_channel_transition_mean const &mean)
+  Micror_state(mt_64i &mt, N_channel_transition_mean const &mean)
       : base_type{N_total_ij__mean_to_count(mt, mean)} {}
   // Micror_state(const Micror_state&)=default;
   // Micror_state(Micror_state&&)=default;
@@ -117,7 +117,7 @@ public:
 
   friend class Micror_parameters_distribution<averaging>;
 
-  friend auto stretch_move(std::mt19937_64 &mt,
+  friend auto stretch_move(mt_64i &mt,
                            std::uniform_real_distribution<double> &rdist,
                            const Micror_state &Xk, const Micror_state &Xj) {
     assert((Xj.size() == Xk.size()) &&
@@ -158,7 +158,7 @@ class Micror_parameters_distribution {
   multinomial_transition_distribution m_Ptransition;
 
   auto sample_N_mean_to_N_count(
-      std::mt19937_64 &mt, P_mean const &nr, N_Ch_mean_value N,
+      mt_64i &mt, P_mean const &nr, N_Ch_mean_value N,
       double max_eps = std::sqrt(std::numeric_limits<double>::epsilon())) {
 
     auto Nmean = nr() * N();
@@ -176,7 +176,7 @@ class Micror_parameters_distribution {
 
 public:
   Micror_parameters_distribution() = default;
-  Micror_state<averaging> operator()(std::mt19937_64 &mt) {
+  Micror_state<averaging> operator()(mt_64i &mt) {
     auto r_P = P_mean(m_Pmean(mt));
 
     auto Ni = sample_N_mean_to_N_count(mt, r_P, m_N);
@@ -249,7 +249,7 @@ class Micror_parameters_likelihood {
 
   template <class Qdt>
   friend Patch_current
-  simulate(std::mt19937_64 &mt, Micror_parameters_likelihood,
+  simulate(mt_64i &mt, Micror_parameters_likelihood,
            Micror_state<averaging> const &p, const Qdt &x) {
     double y_mean;
     double r_var;

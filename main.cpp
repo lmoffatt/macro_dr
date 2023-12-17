@@ -495,7 +495,7 @@ int main(int argc, char **argv) {
 
   auto prior_model00_7 = Custom_Distribution(
       9ul,
-      [](std::mt19937_64 &mt) {
+      [](mt_64i &mt) {
         double kon = 10.0;
         double koff = 100;
         double gating_on = 100;
@@ -653,7 +653,7 @@ int main(int argc, char **argv) {
 
   auto prior_model00 = Custom_Distribution(
       17ul,
-      [](std::mt19937_64 &mt) {
+      [](mt_64i &mt) {
         double kon = 10.0;
         double koff = 100;
         double gating_on = 100;
@@ -2002,9 +2002,9 @@ int main(int argc, char **argv) {
   }
 
   std::random_device rd;
-  typename std::mt19937_64::result_type seed = rd();
+  typename mt_64i::result_type seed = rd();
 
-  std::mt19937_64 mt(seed);
+  mt_64i mt(seed);
 
   /**
    * @brief analyze_and_test_Qdt
@@ -2254,7 +2254,7 @@ int main(int argc, char **argv) {
                   std::vector<double> v_stops_at = {1e-4};
 
                   std::uniform_int_distribution<
-                      typename std::mt19937_64::result_type>
+                      typename mt_64i::result_type>
                       useed;
 
                   std::string algorithm=ToString(MicroR<averaging, variance>{});

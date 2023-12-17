@@ -32,7 +32,7 @@ public:
     covariance_model(  std::size_t ndim,
                      Matrix<double>const& sigmas):
         ndim_{ndim},sigmas_{sigmas}{}
-    auto operator()(std::mt19937_64& mt )
+    auto operator()(mt_64i& mt )
     {
         auto X=sample(mt,normal_distribution{0,1},ndim_,ndim_);
         auto [Q,R]=qr(X);
@@ -60,7 +60,7 @@ public:
         std_mean_par_ {std_mean_par}
     {}
     
-    auto operator()(std::mt19937_64 &mt, std::size_t nsamples)
+    auto operator()(mt_64i &mt, std::size_t nsamples)
     {
         auto v_par_stds=sample(mt,normal_distribution( 0, log10_std_par_), 1, npar_);
         auto par_stds = apply([](auto const  &x) { return std::pow(10, x); },
@@ -117,7 +117,7 @@ Maybe_error<double> logLikelihood(FunctionTable&& f,linear_model, const Matrix<d
     }
 }
 
-auto simulate(std::mt19937_64 &mt, linear_model, const Matrix<double> &beta,
+auto simulate(mt_64i &mt, linear_model, const Matrix<double> &beta,
               const Matrix<double> &X) {
     assert(beta.ncols() - 1 == X.ncols() && "beta has the right number");
     auto [logvar,b]=get_parameters(linear_model{},beta);

@@ -28,7 +28,7 @@ public:
   auto cov() const { return n_.stddev() * n_.stddev(); }
   auto stddev() const { return n_.stddev(); }
 
-  double operator()(std::mt19937_64 &mt) { return n_(mt); }
+  double operator()(mt_64i &mt) { return n_(mt); }
 
   Maybe_error<double> logP(double x) const {
     double out = -0.5 * (log(2 * std::numbers::pi * cov()) +
@@ -93,7 +93,7 @@ public:
   auto &cov_inv() const { return cov_inv_; }
   auto &cholesky() const { return cho_; }
 
-  Matrix<double> operator()(std::mt19937_64 &mt) {
+  Matrix<double> operator()(mt_64i &mt) {
     auto z =
         sample(mt, normal_distribution(0, 1), mean().nrows(), mean().ncols());
     if (mean().nrows() == 1)
@@ -101,7 +101,7 @@ public:
     else
       return cholesky() * z + mean();
   }
-  auto operator()(std::mt19937_64 &mt, std::size_t n) {
+  auto operator()(mt_64i &mt, std::size_t n) {
     return sample(mt, normal_distribution(0.0, 1.0), n, mean().ncols()) *
            tr(cholesky());
   }
@@ -278,7 +278,7 @@ public:
 
   auto &cov_inv() const { return cov_inv_; }
 
-  Matrix<double> operator()(std::mt19937_64 &mt) {
+  Matrix<double> operator()(mt_64i &mt) {
     auto z =
         sample(mt, normal_distribution(0, 1), mean().nrows(), mean().ncols());
     if (mean().nrows() == 1)
@@ -286,7 +286,7 @@ public:
     else
       return m_Q * m_std * z + mean();
   }
-  auto operator()(std::mt19937_64 &mt, std::size_t n) {
+  auto operator()(mt_64i &mt, std::size_t n) {
     return sample(mt, normal_distribution(0.0, 1.0), n, mean().ncols()) *
            tr(m_Q * m_std);
   }
@@ -454,7 +454,7 @@ public:
     return logdet(reduce_cov(cov, excluded_row));
   }
 
-  Matrix<double> operator()(std::mt19937_64 &mt) {
+  Matrix<double> operator()(mt_64i &mt) {
     Maybe_error<Matrix<double>> out(error_message(""));
     while (!out) {
       auto s = base_type::operator()(mt);
@@ -497,7 +497,7 @@ public:
       : g_{_alpha, _beta},
         cte_int_{-var::lgamma(_alpha) + _alpha * std::log(_beta)} {}
 
-  double operator()(std::mt19937_64 &mt) { return 1.0 / g_(mt); }
+  double operator()(mt_64i &mt) { return 1.0 / g_(mt); }
 
   double alpha() const { return g_.alpha(); }
   double beta() const { return g_.beta(); }
@@ -520,7 +520,7 @@ public:
       : g_{_alpha, 1.0 / _beta},
         cte_int_{-var::lgamma(_alpha) + _alpha * std::log(_beta)} {}
 
-  double operator()(std::mt19937_64 &mt) { return -std::log(g_(mt)); }
+  double operator()(mt_64i &mt) { return -std::log(g_(mt)); }
 
   double alpha() const { return g_.alpha(); }
   double beta() const { return 1.0 / g_.beta(); }
@@ -554,7 +554,7 @@ public:
   multivariate_gamma_normal_distribution(log_inverse_gamma_distribution &&g,
                                          m_normal &&n)
       : log_inverse_gamma_distribution{std::move(g)}, m_normal{std::move(n)} {}
-  Matrix<double> operator()(std::mt19937_64 &mt) {
+  Matrix<double> operator()(mt_64i &mt) {
     auto k = m_normal::size();
     auto sample_logVar = log_inverse_gamma_distribution::operator()(mt);
     auto sample_b = m_normal::operator()(mt);
@@ -610,13 +610,13 @@ public:
             alpha)},
         m_alpha{std::move(alpha)}, m_alpha0{var::sum(m_alpha)} {}
 
-  Matrix<double> operator()(std::mt19937_64 &mt) {
+  Matrix<double> operator()(mt_64i &mt) {
     Matrix<double> s = applyMap(
         [&mt](std::gamma_distribution<> &g) { return g(mt); }, m_gammas);
     return s / var::sum(s);
   }
 };
-std::size_t sample_N(std::mt19937_64 &mt, double N) {
+std::size_t sample_N(mt_64i &mt, double N) {
   auto r = std::uniform_real_distribution{}(mt);
   std::size_t out = std::floor(N);
   auto p = N - out;
@@ -639,7 +639,7 @@ public:
            std::sqrt(std::numeric_limits<double>::epsilon()));
   }
 
-  Matrix<std::size_t> operator()(std::mt19937_64 &mt, double N) {
+  Matrix<std::size_t> operator()(mt_64i &mt, double N) {
 
     Matrix<std::size_t> out(m_P.nrows(), m_P.ncols());
     std::size_t N_remaining = sample_N(mt, N);
@@ -691,7 +691,7 @@ public:
   multinomial_transition_distribution() = default;
   multinomial_transition_distribution(Matrix<double> t_P) : m_P{t_P} {}
 
-  Matrix<std::size_t> operator()(std::mt19937_64 &mt, Matrix<std::size_t> Ni) {
+  Matrix<std::size_t> operator()(mt_64i &mt, Matrix<std::size_t> Ni) {
     assert(Ni.ncols() == m_P.nrows());
     Matrix<std::size_t> out(m_P.nrows(), m_P.ncols(), 0ul);
     for (std::size_t i = 0; i < m_P.nrows(); ++i) {
@@ -747,7 +747,7 @@ public:
   dirchlet_transition_distribution() = default;
   dirchlet_transition_distribution(Matrix<double> t_P) : m_P{t_P} {}
 
-  Matrix<std::size_t> operator()(std::mt19937_64 &mt, Matrix<double> Ni) {
+  Matrix<std::size_t> operator()(mt_64i &mt, Matrix<double> Ni) {
     assert(Ni.nrows() == m_P.nrows());
     Matrix<std::size_t> out(m_P.nrows(), m_P.ncols(), 0ul);
     for (std::size_t i = 0; i < m_P.nrows(); ++i) {

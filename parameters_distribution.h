@@ -17,7 +17,7 @@ public:
     using base_type=multivariate_normal_distribution<double,DiagPosDetMatrix<double>>;
     
     
-    Parameters<Id> operator()(std::mt19937_64 &mt) {
+    Parameters<Id> operator()(mt_64i &mt) {
         return base_type::operator ()(mt);
     }
     
