@@ -11,7 +11,7 @@ constexpr std::size_t large_prime = 654612646693;
 class mt_64i {
   std::mt19937_64 m_s;
   unsigned long long m_i;
-
+  
 public:
   using result_type = typename std::mt19937_64::result_type;
 
