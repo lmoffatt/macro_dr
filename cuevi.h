@@ -784,11 +784,11 @@ public:
   }
 
   template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
-            class Variables>
+            class Variables, class Finalizer>
   friend void report(FunctionTable &&f, std::size_t iter,
                      save_Parameter<ParameterType> &s, Cuevi_mcmc const &data,
                      Prior &&, t_logLikelihood &&, const by_fraction<Data> &y,
-                     const by_fraction<Variables> &,const std::vector<mt_64i>& mts,...) {
+                     const by_fraction<Variables> &,const std::vector<mt_64i>& mts,const Finalizer& mcmc,...) {
 
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
@@ -810,7 +810,9 @@ public:
                 << size(y[i_fra()]) << s.sep << get<Th_Beta>(t()[i_cu])()
                 << s.sep << i_walker << s.sep << get<Walker_id>(wa())() << s.sep
                 << i_mts << s.sep
-                  << mts[i_mts].pos() << s.sep << i_par << s.sep << get<Parameter>(wav())()[i_par] << "\n";
+                  << mts[i_mts].pos() << s.sep << i_par << s.sep << get<Parameter>(wav())()[i_par];
+              report_finalizer_data(s,mcmc);
+            s.f<< "\n";
           }
         }
       }
@@ -940,15 +942,17 @@ public:
     out.m_data = std::move(data);
     return std::pair(out, mts_pos);
   }
-
-  friend void report_title(save_Parameter<ParameterType> &s, Cuevi_mcmc const &,
+  
+  template<class mcmcm_type>
+  friend void report_title(save_Parameter<ParameterType> &s, Cuevi_mcmc const &,const mcmcm_type& mcmc,
                            ...) {
 
     s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta" << s.sep << "i_walker" << s.sep << "walker_id"
           << s.sep << "i_mt" << s.sep << "mt_pos"
-        << s.sep << "i_par" << s.sep << "parameter_value"
-        << "\n";
+          << s.sep << "i_par" << s.sep << "parameter_value";
+      report_finalizer_title(s,mcmc);
+       s.f << "\n";
   }
 
   template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
@@ -1376,14 +1380,14 @@ auto evidence_old(FunctionTable &&ff,
 
     auto current = std::move(Maybe_current.value());
     auto &rep = get<Reporter>(cue())();
-    report_title(rep, current, prior, lik, ys, xs);
-
+    
     auto a = get<Finalizer>(cue())();
     auto mcmc_run = checks_convergence(std::move(a), current);
 
     std::size_t iter = 0;
     // report_model(rep, prior, lik, ys, xs);
     report_title(ff, "Iter");
+    report_title(rep, current, prior, lik, ys, xs);
 
     while (!mcmc_run.second) {
       // f.f(
@@ -1411,7 +1415,8 @@ template <class FunctionTable, class ParameterType, class t_Reporter,
          class mcmc_type, class Prior, class Likelihood, class DataType,
          class Variables>
 auto evidence_loop(FunctionTable &&ff,
-                   mcmc_type& mcmc_run,t_Reporter& rep,
+                   std::pair<mcmc_type,bool>&& mcmc_run,
+                   t_Reporter& rep,
                    std::size_t iter,
                    Cuevi_mcmc<ParameterType>  & current,
                    
@@ -1419,7 +1424,8 @@ auto evidence_loop(FunctionTable &&ff,
                    Prior &&prior, Likelihood const &lik, const by_fraction<DataType> &ys,
                    const by_fraction<Variables> &xs ) {
     using Return_Type =
-        Maybe_error<std::pair<typename mcmc_type::first_type, Cuevi_mcmc<ParameterType>>>;
+        Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<ParameterType>>>;
+    report_title(rep, current, mcmc_run.first,prior, lik, ys, xs);
     auto f = ff.fork(var::I_thread(0));
     
     while (!mcmc_run.second) {
@@ -1436,7 +1442,7 @@ auto evidence_loop(FunctionTable &&ff,
                                  current, mts, prior, lik, ys, xs,
                                  v_thermo_jump_every, true);
         
-        report_all(f, iter, rep, current, prior, lik, ys, xs, mts, mcmc_run);
+        report_all(f, iter, rep, current, prior, lik, ys, xs, mts, mcmc_run.first);
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
     return Return_Type(std::pair(mcmc_run.first, current));
@@ -1484,7 +1490,6 @@ auto evidence(FunctionTable &&ff,
         
         auto current = std::move(Maybe_current.value());
         auto &rep = get<Reporter>(cue())();
-        report_title(rep, current, prior, lik, ys, xs);
         
         auto a = get<Finalizer>(cue())();
         auto mcmc_run = checks_convergence(std::move(a), current);
@@ -1497,7 +1502,7 @@ auto evidence(FunctionTable &&ff,
        // report_init(rep,v_thermo_jump_every,prior,lik,ys,xs);
         
         return evidence_loop(std::forward<FunctionTable>(ff),
-                             mcmc_run,rep,
+                             std::move(mcmc_run),rep,
                              iter,
                              current,
                               mts,

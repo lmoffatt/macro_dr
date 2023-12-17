@@ -171,4 +171,6 @@ CMatrix expm_sure(const CMatrix &x)
 }
 
 
+
+
 #endif // EXPONENTIAL_MATRIX_H

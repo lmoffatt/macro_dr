@@ -442,16 +442,16 @@ public:
 
   auto &file() { return m_file; }
   FuncMap(const std::string path, Fs &&...fs)
-      : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {}
+      : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
   
   FuncMap( std::ofstream&& f, Fs &&...fs)
       : Fs{std::move(fs)}..., m_file{std::move(f)} {}
   
   FuncMap(const std::string path, Fs const&...fs)
-      : Fs{fs}..., m_file{std::ofstream(path + "_time_it.cvs")} {}
+      : Fs{fs}..., m_file{std::ofstream(path + "_time_it.cvs")} {m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
   
   FuncMap( std::ofstream&& f, Fs const&...fs)
-      : Fs{fs}..., m_file{std::move(f)} {}
+      : Fs{fs}..., m_file{std::move(f)} {m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
   
   
   template <class... Context_data>

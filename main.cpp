@@ -1421,7 +1421,8 @@ int main(int argc, char **argv) {
     auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
         std::move(Maybe_modeltyple_formula.value());
     return std::tuple(
-        [names, m](const auto &logp) {
+        [names, m](const auto &logp)->Maybe_error<Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>>
+        {
           using std::pow;
           auto tr_p = build<Parameters<Allost1>>(
               apply([](const auto &x) { return pow(10.0, x); }, logp()));
@@ -1486,11 +1487,13 @@ int main(int argc, char **argv) {
           auto v_curr_noise = tr_p()[Npar + 1];
           auto v_baseline = logp()[Npar + 2];
           auto Nst = get<N_St>(m());
-          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst).value();
-          
+          auto Maybe_v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          if (!Maybe_v_P_initial)
+              return Maybe_v_P_initial.error();
+          else
           return build<Patch_Model>(
               N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                      std::move(v_P_initial),
+                  std::move(Maybe_v_P_initial.value()),
               std::move(a_g), build<N_Ch_mean>(v_N0),
               build<Current_Noise>(v_curr_noise),
               build<Current_Baseline>(v_baseline),
@@ -1900,9 +1903,9 @@ int main(int argc, char **argv) {
   auto qq =
       var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
                                   {dparam1()[2], dparam1()[3], dparam1()[4]});
-
-  auto m = model0(param1);
-  auto dm = model0(dparam1);
+  
+  auto m = model0(param1).value();
+  auto dm = model0(dparam1).value();
 
   // std::cerr<<"\n!--------------------------------------------------------------------------!\n";
   //  print(std::cerr,dm);
@@ -3181,7 +3184,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-      std::size_t num_scouts_per_ensemble = 16;
+      std::size_t num_scouts_per_ensemble = 8;
       
       /**
      * @brief max_num_simultaneous_temperatures when the number of parallel
@@ -3311,7 +3314,7 @@ thermodynamic parameter
           
           auto &t_segments_used = t_segments_7;
           
-          auto saving_itervals=Saving_intervals(Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),Save_Likelihood_every(num_scouts_per_ensemble),Save_Parameter_every(num_scouts_per_ensemble*10),Save_Predictions_every(num_scouts_per_ensemble*20)));
+          auto saving_itervals=Saving_intervals(Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),Save_Likelihood_every(num_scouts_per_ensemble),Save_Parameter_every(num_scouts_per_ensemble),Save_Predictions_every(num_scouts_per_ensemble*20)));
           
           auto cbc = new_cuevi_Model_by_iteration<MyModel>(
               path, filename, t_segments_used, t_min_number_of_samples,

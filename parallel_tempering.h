@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -371,40 +372,6 @@ concept is_Algorithm_conditions = requires(Algorithm &&a) {
     } -> std::convertible_to<std::pair<Algorithm, bool>>;
 };
 
-class cuevi_less_than_max_iteration {
-    std::size_t current_iteration_;
-    std::size_t max_iter_final_;
-    
-public:
-    cuevi_less_than_max_iteration(std::size_t max_iter_final)
-        : current_iteration_{0ul}, max_iter_final_{max_iter_final} {}
-    
-    cuevi_less_than_max_iteration &operator++() {
-        ++current_iteration_;
-        return *this;
-    }
-    std::size_t current_iteration() const { return current_iteration_; }
-    std::size_t max_iteration_final() const { return max_iter_final_; }
-    
-    bool stop() const {
-            return current_iteration()>=max_iteration_final();
-  }
-    template <class Anything>
-    friend auto checks_convergence(cuevi_less_than_max_iteration &&c,
-                                   const Anything &) {
-        if (c.stop()) {
-            return std::pair(std::move(c), true);
-            
-        } else {
-            ++c;
-            return std::pair(std::move(c), false);
-        }
-    }
-    
-    void reset(){current_iteration_=0;}
-    
-};
-
 
 
 class less_than_max_iteration {
@@ -732,7 +699,7 @@ public:
     std::size_t save_every = 1;
     save_likelihood(std::string const &path, std::size_t interval)
         : f{std::ofstream(path + "__i_beta__i_walker.csv")},
-        save_every{interval} {}
+        save_every{interval} {f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
     
     friend void report_title(save_likelihood &s,
                              thermo_mcmc<Parameters> const &,...) {
@@ -812,7 +779,7 @@ public:
     std::size_t save_every;
     save_Parameter(std::string const &path, std::size_t interval)
         : f{std::ofstream(path + "__i_beta__i_walker__i_par.csv")},
-        save_every{interval} {}
+        save_every{interval} {f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
     
     friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,...) {
         
@@ -840,6 +807,8 @@ public:
 };
 
 
+
+
 template<class Parameters>
 class save_Predictions {
     
@@ -849,7 +818,7 @@ public:
     std::size_t save_every;
     save_Predictions(std::string const &path, std::size_t interval)
         : f{std::ofstream(path + "__i_beta__i_walker__i_x.csv")},
-        save_every{interval} {}
+        save_every{interval} {f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
     
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_Predictions &, const Prior&, const Likelihood&, const DataType &,
@@ -891,6 +860,54 @@ public:
     friend void report_title(save_mcmc &f, thermo_mcmc<Parameters> const &data,...) {
         (report_title(static_cast<saving &>(f), data), ..., 1);
     }
+};
+
+
+
+class cuevi_less_than_max_iteration {
+    std::size_t current_iteration_;
+    std::size_t max_iter_final_;
+    
+public:
+    cuevi_less_than_max_iteration(std::size_t max_iter_final)
+        : current_iteration_{0ul}, max_iter_final_{max_iter_final} {}
+    
+    cuevi_less_than_max_iteration &operator++() {
+        ++current_iteration_;
+        return *this;
+    }
+    std::size_t current_iteration() const { return current_iteration_; }
+    std::size_t max_iteration_final() const { return max_iter_final_; }
+    
+    bool stop() const {
+        return current_iteration()>=max_iteration_final();
+    }
+    template <class Anything>
+    friend auto checks_convergence(cuevi_less_than_max_iteration &&c,
+                                   const Anything &) {
+        if (c.stop()) {
+            return std::pair(std::move(c), true);
+            
+        } else {
+            ++c;
+            return std::pair(std::move(c), false);
+        }
+    }
+    
+    void reset(){current_iteration_=0;}
+    
+    template<class P>
+    friend void report_finalizer_data(save_Parameter<P>& s, const cuevi_less_than_max_iteration& mcmc)
+    {
+        s.f<<s.sep<<mcmc.current_iteration();
+    }
+    
+    template<class P>
+    friend void report_finalizer_title(save_Parameter<P>& s, const cuevi_less_than_max_iteration& )
+    {
+        s.f<<s.sep<<"current_iter";
+    }
+    
 };
 
 
