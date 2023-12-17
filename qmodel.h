@@ -432,11 +432,11 @@ using Patch_Model =
 
 void save(const std::string name, const Patch_Model &m) {
   std::ofstream f_Q0(name + "_Q0.txt");
-  f_Q0 << get<Q0>(m) << "\n";
+  f_Q0 <<std::setprecision(std::numeric_limits<double>::digits10 + 1)<< get<Q0>(m) << "\n";
   std::ofstream f_Qa(name + "_Qa.txt");
-  f_Qa << get<Qa>(m) << "\n";
+  f_Qa<<std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<Qa>(m) << "\n";
   std::ofstream f_g(name + "_g.txt");
-  f_g << get<g>(m) << "\n";
+  f_g<<std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<g>(m) << "\n";
 }
 
 template <class Id> struct Model_Patch {
@@ -544,7 +544,8 @@ using Simulation_Parameters = Vector_Space<Simulation_n_sub_dt>;
 template <includes_N_state_evolution keep_N_state>
 void save(std::string name, Simulated_Recording<keep_N_state> const &r) {
   std::ofstream f(name + "_sim.txt");
-  f << r << "\n";
+    
+  f <<std::setprecision(std::numeric_limits<double>::digits10 + 1)<< r << "\n";
 }
 
 template <includes_N_state_evolution keep_N_state>
@@ -3138,7 +3139,8 @@ void report(std::string filename, const Patch_State_Evolution &predictions,
             const Simulated_Recording<keep_N_state> &y, const Experiment &xs) {
   auto &ys = get<Recording>(y());
   std::ofstream f(filename);
-  f << "i_x"
+  f <<std::setprecision(std::numeric_limits<double>::digits10 + 1)
+    << "i_x"
     << ","
     << "time"
     << ","
