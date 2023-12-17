@@ -5,6 +5,7 @@
 #include "lgamma.h"
 #include "matrix.h"
 #include "maybe_error.h"
+#include "random_samplers.h"
 #include <cmath>
 #include <cstddef>
 #include <iostream>
@@ -40,6 +41,7 @@ public:
   }
 };
 
+template <class Parameters> class save_Parameter;
 template <typename T, class Cova>
   requires Covariance<T, Cova>
 class multivariate_normal_distribution {
@@ -437,8 +439,7 @@ public:
   friend Maybe_error<multivariate_normal_distribution_of_probabilities>
   make_multivariate_normal_distribution_of_probabilities(
       Matrix<double> const &mean, SymPosDefMatrix<double> const &cov);
-  std::size_t size() const {
-      return base_type::mean().size() + 1; }
+  std::size_t size() const { return base_type::mean().size() + 1; }
 
   static auto determine_excluded_row(SymPosDefMatrix<double> cov) {
     std::size_t excluded_row = 0;

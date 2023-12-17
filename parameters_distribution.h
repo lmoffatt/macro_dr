@@ -3,7 +3,10 @@
 
 #include "parameters.h"
 #include "multivariate_normal_distribution.h"
+#include "random_samplers.h"
+#include <cstddef>
 #include <vector>
+#include <fstream>
 
 namespace var {
 
@@ -31,6 +34,20 @@ public:
     }
     
     
+    template<class Parameter>
+    friend void report_model(save_Parameter<Parameter>& s, Parameters_Normal_Distribution const & d)
+    {
+        std::ofstream f(s.fname+"_prior.csv");
+        f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+        auto m=static_cast<base_type const &>(d).mean();
+        auto cov=static_cast<base_type const &>(d).cov();
+        auto n=m.size();
+        for (auto i_par=0ul; i_par<n; ++i_par)
+            f<<i_par<<s.sep<<"mean"<<s.sep<<m[i_par]<<"\n";
+        for (auto i_par=0ul; i_par<n; ++i_par)
+            f<<i_par<<s.sep<<"covar"<<s.sep<<cov(i_par, i_par)<<"\n";
+        
+    }
     
     
 };

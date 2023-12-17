@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <fstream>
 #include <istream>
 #include <ostream>
 #include <random>
@@ -152,7 +153,14 @@ class Number_trials_until_give_up
     : public var::Constant<Number_trials_until_give_up, std::size_t> {};
 
 class Thermo_Jumps_every
-    : public var::Constant<Thermo_Jumps_every, std::size_t> {};
+    : public var::Constant<Thermo_Jumps_every, std::size_t> {
+    
+    friend void report_model(save_Evidence& s, Thermo_Jumps_every n)
+    {
+        std::ofstream f(s.fname+"_thermo_jumps_every");
+        f<<std::setprecision(std::numeric_limits<double>::digits10 + 1)<<n()<<"\n";
+    }
+};
 
 class Th_Beta_Param
     : public var::Constant<
@@ -1031,7 +1039,7 @@ public:
     s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta1" << s.sep << "beta0" << s.sep << "logPrior" << s.sep
         << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
-        << "plog_Evidence_no_0" << s.sep << "log_Evidence" << s.sep << "logL1_1"
+        << "log_Evidence" << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1"
         << s.sep << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1"
         << s.sep << "logL0_0"
 
@@ -1336,6 +1344,17 @@ void report_all(FunctionTable &&f, std::size_t iter,
   (report(f, iter, static_cast<saving &>(s), data, ts...), ..., 1);
 }
 
+template <class Parameter,class... saving>
+void report_model_all(save_mcmc<Parameter, saving...> &) {
+}
+
+template <class Parameter,class... saving, class T, class... Ts>
+void report_model_all(save_mcmc<Parameter, saving...> &s,T const& t, Ts const &...ts) {
+    (report_model(static_cast<saving &>(s), t), ..., report_model_all(s, ts...));
+}
+
+
+
 template <class myFractioner, class t_Reporter, class t_Finalizer>
 Cuevi_Algorithm(myFractioner &&frac, t_Reporter &&rep, t_Finalizer &&f,
                 Num_Walkers_Per_Ensemble n, Fractions_Param frac_param,
@@ -1495,9 +1514,9 @@ auto evidence(FunctionTable &&ff,
         auto mcmc_run = checks_convergence(std::move(a), current);
         
         std::size_t iter = 0;
-      //  report_model(rep, v_thermo_jump_every,prior, lik, ys, xs);
         report_title(ff, "Iter");
         auto v_thermo_jump_every=get<Thermo_Jumps_every>(cue());
+        report_model_all(rep, v_thermo_jump_every,prior, lik, ys, xs);
         
        // report_init(rep,v_thermo_jump_every,prior,lik,ys,xs);
         
@@ -2097,6 +2116,11 @@ template <class Prior, class Likelihood, class Variables, class DataType>
 void report_model(save_Evidence &, Prior const &, Likelihood const &,
                   const DataType &, const Variables &,
                   by_fraction<by_beta<double>> const &) {}
+
+
+void report_model(save_Evidence &,...) {}
+
+
 
 template <class FunctionTable, class Parameters, class T>
 void report(FunctionTable &&f, std::size_t iter, save_Evidence &s,

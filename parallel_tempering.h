@@ -713,6 +713,9 @@ public:
     friend void report_model(save_likelihood &,const Prior &, const Likelihood&,  const DataType &,
                              const Variables &, by_beta<double> const &) {}
     
+    friend void report_model(save_likelihood &,...) {}
+    
+    
     template<class FunctionTable>
     friend void report(FunctionTable&& f,std::size_t iter, save_likelihood &s,
                        thermo_mcmc<Parameters> const &data,...) {
@@ -775,10 +778,11 @@ public:
     };
     
     separator sep=",";
+    std::string fname;
     std::ofstream f;
     std::size_t save_every;
     save_Parameter(std::string const &path, std::size_t interval)
-        : f{std::ofstream(path + "__i_beta__i_walker__i_par.csv")},
+        : fname{path},f{std::ofstream(path + "__i_beta__i_walker__i_par.csv")},
         save_every{interval} {f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
     
     friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,...) {
@@ -791,6 +795,9 @@ public:
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_Parameter &, const Prior&, const Likelihood&, const DataType &,
                              const Variables &, by_beta<double> const &) {}
+    
+    friend void report_model(save_Parameter &,...) {}
+    
     template<class FunctionTable>
     friend void report(FunctionTable&& f,std::size_t iter, save_Parameter &s,
                        thermo_mcmc<Parameters> const &data,...) {
@@ -823,6 +830,9 @@ public:
     template <class Prior, class Likelihood, class Variables, class DataType>
     friend void report_model(save_Predictions &, const Prior&, const Likelihood&, const DataType &,
                              const Variables &, by_beta<double> const &) {}
+    
+    friend void report_model(save_Predictions &,...) {}
+    
     
    };
 

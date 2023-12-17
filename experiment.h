@@ -1,9 +1,12 @@
 #ifndef EXPERIMENT_H
 #define EXPERIMENT_H
 
+#include "parallel_tempering.h"
 #include "variables.h"
+#include <cstddef>
 #include <fstream>
 #include <limits>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -24,6 +27,26 @@ using ATP_evoltype= std::variant<ATP_step,std::vector<ATP_step>>;
 class ATP_evolution: public Var<ATP_evolution, std::variant<ATP_step,std::vector<ATP_step>>>{
     using Var<ATP_evolution, std::variant<ATP_step,std::vector<ATP_step>>>::Var;
 };
+
+
+std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, std::vector<ATP_step> const& v)
+{
+    for (std::size_t i=0; i<v.size(); ++i)
+        f<<i_frac<<sep<<i_step<<sep<<time<<sep<<i_step+(i+0.5)/v.size()<<sep<<get<number_of_samples>(v[i])<<sep
+          <<get<ATP_concentration>(v[i])<<"\n";
+    return f; 
+}
+std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, ATP_step const& x)
+{
+        f<<i_frac<<sep<<i_step<<sep<<time<<sep<<i_step+0.5<<sep<<get<number_of_samples>(x)<<sep
+          <<get<ATP_concentration>(x)<<"\n";
+    return f; 
+}
+
+std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, ATP_evolution const& v)
+{
+    return std::visit([&f,sep,i_frac,i_step,time](auto& e)->decltype(auto){return put(f,sep,i_frac,i_step,time,e);},v());
+}
 
 
 class Patch_current : public Var<Patch_current, double> {};
@@ -47,8 +70,57 @@ class initial_ATP_concentration
 
 
 using Experiment=var::Vector_Space<Recording_conditions,Frequency_of_Sampling, initial_ATP_concentration>;
+}
+
+template<class Parameter>
+class save_Parameter;
+namespace macrodr {
+template<class Parameter>
+void report_model(save_Parameter<Parameter>& s, std::vector<Experiment> const & e)
+{
+    std::ofstream f(s.fname+"_experiment.csv");
+    f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    f<<"frequency_of_sampling\n"<<get<Frequency_of_Sampling>(e[0])()<<"\n";
+    f<<"initial_ATP_concentration\n"<<get<initial_ATP_concentration>(e[0])()<<"\n";
+    
+    f<<"i_frac"<<s.sep<<"i_step"<<s.sep<<"time"<<s.sep<<"i_step_f"<<s.sep<<"number_of_samples"<<s.sep
+      <<"ATP"<<"\n";
+    
+                                                                            
+    for (auto i_frac=0ul; i_frac<e.size(); ++i_frac)
+    {
+        auto r=get<Recording_conditions>(e[i_frac]);
+        for (auto i_step=0ul; i_step<r().size(); ++i_step)
+        {
+            auto sa=r()[i_step];
+            auto t=get<Time>(sa)();
+            auto ev=get<ATP_evolution>(sa);
+            put(f,s.sep,i_frac,i_step,t,ev);
+        }
+        
+    }
+    
+}
 
 
+template<class Parameter>
+void report_model(save_Parameter<Parameter>& s, std::vector<Recording> const & e)
+{
+    std::ofstream f(s.fname+"_recording.csv");
+    f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    
+    f<<"i_frac"<<s.sep<<"i_step"<<s.sep<<"patch_current"<<"\n";
+    
+    for (auto i_frac=0ul; i_frac<e.size(); ++i_frac)
+    {
+        for (auto i_step=0ul; i_step<e[i_frac]().size(); ++i_step)
+        {
+            f<<i_frac<<s.sep<<i_step<<s.sep<<e[i_frac]()[i_step]()<<"\n";
+        }
+        
+    }
+    
+}
 
 
 
