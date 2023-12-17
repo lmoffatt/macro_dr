@@ -10,6 +10,15 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
+
+inline std::string git_Commit_Hash() {
+#ifndef GIT_COMMIT_HASH
+#define GIT_COMMIT_HASH "0000000" // 0000000 means uninitialized
+#endif
+    std::cout << "GIT_COMMIT_HASH[" << GIT_COMMIT_HASH << "]"; // 4f34ee8
+    return GIT_COMMIT_HASH;    
+}
+
 inline std::string leadingZero(int i) {
     if (i == 0)
         return "00";
@@ -28,7 +37,7 @@ inline std::string time_now() {
     struct std::tm *t;
     time(&rawtime);
     t = localtime(&rawtime);
-    return leadingZero(t->tm_hour) + leadingZero(t->tm_min) +
+    return git_Commit_Hash()+"_"+leadingZero(t->tm_hour) + leadingZero(t->tm_min) +
            leadingZero(t->tm_sec) + "s" + std::to_string(tcount);
 }
 
