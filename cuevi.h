@@ -1213,7 +1213,7 @@ public:
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, std::size_t iter,
-                  Cuevi_mcmc<Parameters> &current, std::mt19937_64 &mt,
+                  Cuevi_mcmc<Parameters> &current, 
                   ensemble<std::mt19937_64> &mts, Prior const &,
                   Likelihood const &lik, const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
@@ -1226,12 +1226,12 @@ public:
       auto n_par = current.get_Parameters_number();
       WalkerIndexes shuffled_walker(n_walkers);
       std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
-      std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
+      std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mts[0]);
 
       std::vector<std::size_t> shuffled_cuevi(t().size());
       std::iota(shuffled_cuevi.begin(), shuffled_cuevi.end(), 0);
       if (randomize)
-        std::shuffle(shuffled_cuevi.begin(), shuffled_cuevi.end(), mt);
+        std::shuffle(shuffled_cuevi.begin(), shuffled_cuevi.end(), mts[0]);
 
       std::uniform_int_distribution<std::size_t> uniform_walker(
           0, n_walkers / 2 - 1);
@@ -1316,7 +1316,7 @@ Cuevi_Algorithm(myFractioner &&frac, t_Reporter &&rep, t_Finalizer &&f,
 template <class FunctionTable, class myFractioner, class t_Reporter,
           class t_Finalizer, class Prior, class Likelihood, class DataType,
           class Variables>
-auto evidence(FunctionTable &&ff,
+auto evidence_old(FunctionTable &&ff,
               Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue,
               Prior &&prior, Likelihood const &lik, const DataType &y,
               const Variables &x, const Init_seed init_seed) {
@@ -1380,6 +1380,103 @@ auto evidence(FunctionTable &&ff,
     return Return_Type(std::pair(mcmc_run.first, current));
   }
 }
+
+
+template <class FunctionTable, class ParameterType, class t_Reporter,
+         class mcmc_type, class Prior, class Likelihood, class DataType,
+         class Variables>
+auto evidence_loop(FunctionTable &&ff,
+                   std::size_t v_thermo_jump_every,mcmc_type& mcmc_run,t_Reporter& rep,
+                   std::size_t iter,
+                   Cuevi_mcmc<ParameterType>  & current,
+                   
+                   std::vector<std::mt19937_64>& mts,
+                   Prior &&prior, Likelihood const &lik, const by_fraction<DataType> &ys,
+                   const by_fraction<Variables> &xs ) {
+    using Return_Type =
+        Maybe_error<std::pair<typename mcmc_type::first_type, Cuevi_mcmc<ParameterType>>>;
+    auto f = ff.fork(var::I_thread(0));
+    
+    while (!mcmc_run.second) {
+        // f.f(
+        step_stretch_cuevi_mcmc{}(f, current, mts, prior, lik, ys, xs);
+        report_point(ff, iter);
+        
+        ++iter;
+        // f.f(
+        thermo_cuevi_jump_mcmc{}(f, iter, current, mts, prior, lik, ys, xs,
+                                 v_thermo_jump_every, false);
+        // f.f(
+        thermo_cuevi_jump_mcmc{}(f, iter + v_thermo_jump_every % 2,
+                                 current, mts, prior, lik, ys, xs,
+                                 v_thermo_jump_every, true);
+        
+        report_all(f, iter, rep, current, prior, lik, ys, xs);
+        mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
+    }
+    return Return_Type(std::pair(mcmc_run.first, current));
+}
+
+
+
+
+
+template <class FunctionTable, class myFractioner, class t_Reporter,
+         class t_Finalizer, class Prior, class Likelihood, class DataType,
+         class Variables>
+auto evidence(FunctionTable &&ff,
+              Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue,
+              Prior &&prior, Likelihood const &lik, const DataType &y,
+              const Variables &x, const Init_seed init_seed) {
+    using Parameter_Type =
+        std::decay_t<std::invoke_result_t<Prior, std::mt19937_64 &>>;
+    
+    using mcmc_type = std::decay_t<decltype(get<Finalizer>(cue())())>;
+    
+    using Return_Type =
+        Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<Parameter_Type>>>;
+    
+    auto f = ff.fork(var::I_thread(0));
+    auto mt = init_mt(init_seed());
+    auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
+    
+    auto mts = init_mts(mt, n_walkers() / 2);
+    auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
+    auto n_points_per_decade_fraction =
+        get<Points_per_decade>(get<Fractions_Param>(cue())());
+    
+    auto [ys, xs] = get<Fractioner>(cue())()(
+        y, x, mt, size(prior) * min_fraction(), n_points_per_decade_fraction());
+    
+    auto Maybe_current = Cuevi_mcmc<Parameter_Type>::init(
+        std::forward<FunctionTable>(ff), mts, std::forward<Prior>(prior), lik, ys,
+        xs, get<Th_Beta_Param>(cue()), n_walkers,
+        get<Number_trials_until_give_up>(cue()));
+    
+    if (!Maybe_current)
+        return Return_Type(Maybe_current.error());
+    else {
+        
+        auto current = std::move(Maybe_current.value());
+        auto &rep = get<Reporter>(cue())();
+        report_title(rep, current, prior, lik, ys, xs);
+        
+        auto a = get<Finalizer>(cue())();
+        auto mcmc_run = checks_convergence(std::move(a), current);
+        
+        std::size_t iter = 0;
+        // report_model(rep, prior, lik, ys, xs);
+        report_title(ff, "Iter");
+        std::size_t v_thermo_jump_every=get<Thermo_Jumps_every>(cue())();
+        return evidence_loop(std::forward<FunctionTable>(ff),
+                             v_thermo_jump_every,mcmc_run,rep,
+                             iter,
+                             current,
+                              mts,
+                             std::forward<Prior>(prior), lik,ys,xs );        
+       }
+}
+
 
 } // namespace cuevi
 
