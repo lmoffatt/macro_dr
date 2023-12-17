@@ -788,7 +788,7 @@ public:
   friend void report(FunctionTable &&f, std::size_t iter,
                      save_Parameter<ParameterType> &s, Cuevi_mcmc const &data,
                      Prior &&, t_logLikelihood &&, const by_fraction<Data> &y,
-                     const by_fraction<Variables> &,...) {
+                     const by_fraction<Variables> &,const std::vector<mt_64i>& mts,...) {
 
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
@@ -801,12 +801,16 @@ public:
           auto iw = Walker_Index(i_walker);
           auto &wa = data.get_Walker(iw, icu);
           auto &wav = data.get_Walker_Value(iw, icu);
+          
+          auto i_mts=iw()%2;
+          
           for (std::size_t i_par = 0; i_par < data.get_Parameters_number();
                ++i_par) {
             s.f << iter << s.sep << i_cu << s.sep << i_fra() << s.sep
                 << size(y[i_fra()]) << s.sep << get<Th_Beta>(t()[i_cu])()
                 << s.sep << i_walker << s.sep << get<Walker_id>(wa())() << s.sep
-                << i_par << s.sep << get<Parameter>(wav())()[i_par] << "\n";
+                << i_mts << s.sep
+                  << mts[i_mts].pos() << s.sep << i_par << s.sep << get<Parameter>(wav())()[i_par] << "\n";
           }
         }
       }
@@ -815,7 +819,7 @@ public:
 
   template <bool verifying, class Prior, class t_logLikelihood, class Data,
             class Variables>
-  static Maybe_error<Cuevi_mcmc>
+  static Maybe_error<std::pair<Cuevi_mcmc, std::vector<unsigned long long>>>
   extract_iter(save_Parameter<ParameterType> &s, std::string &last_line,
                std::size_t &iter0, std::size_t &npar, std::size_t &nwalkers,
                std::size_t &n_cuevi) {
@@ -825,6 +829,9 @@ public:
     double beta0;
     std::size_t i_walker0;
     std::size_t walker_id0;
+    
+    std::size_t i_mt0;
+    std::size_t mt_pos0;
     std::size_t i_par0;
     double par_value0;
 
@@ -835,6 +842,8 @@ public:
     double beta;
     std::size_t i_walker;
     std::size_t walker_id;
+    std::size_t i_mt;
+    std::size_t mt_pos;
     std::size_t i_par;
     double par_value;
 
@@ -848,6 +857,7 @@ public:
 
     ss >> iter0 >> s.sep >> i_cu0 >> s.sep >> i_fra0 >> s.sep >> nsamples0 >>
         s.sep >> beta0 >> s.sep >> i_walker0 >> s.sep >> walker_id0 >> s.sep >>
+        i_mt0 >> s.sep >> mt_pos0 >> s.sep >>
         i_par0 >> s.sep >> par_value0;
 
     iter = iter0;
@@ -857,9 +867,12 @@ public:
     t().reserve(n_cuevi);
     std::vector<std::vector<Walker>> d;
     d.reserve(n_cuevi);
+    std::vector<unsigned long long> mts_pos0;
+    std::vector<unsigned long long> mts_pos;
     while (iter == iter0) {
 
       std::vector<Walker> wav;
+      mts_pos.reserve(nwalkers/2);
       wav.reserve(nwalkers);
       while (i_cu == i_cu0) {
         std::vector<double> par;
@@ -870,6 +883,7 @@ public:
 
           ss2 >> iter >> s.sep >> i_cu >> s.sep >> i_fra >> s.sep >> nsamples >>
               s.sep >> beta >> s.sep >> i_walker >> s.sep >> walker_id >>
+              i_mt >> s.sep >> mt_pos >> s.sep >>
               s.sep >> i_par >> s.sep >> par_value;
           if constexpr (verifying) {
             if (par.size() != i_par0)
@@ -893,6 +907,9 @@ public:
         get<Parameter>(get<Walker_value>(wa())())() = ParameterType(par);
         wav.push_back(std::move(wa));
         walker_id0 = walker_id;
+        mts_pos.push_back(mt_pos0);
+        mt_pos0=mt_pos;
+        
       }
       nwalkers = wav.size();
       if constexpr (verifying) {
@@ -904,6 +921,13 @@ public:
       beta0 = beta;
       i_fra0 = i_fra;
       i_cu0 = i_cu;
+      if constexpr (verifying)
+      {
+          if (mts_pos0.size()>0)
+              if (mts_pos0!=mts_pos)
+                  return error_message("mts_pos differ beween i_cusr");
+      }
+      mts_pos0=mts_pos;
     }
     n_cuevi = d.size();
     Walkers_ensemble data(
@@ -914,7 +938,7 @@ public:
     Cuevi_mcmc out;
     out.m_temperatures = std::move(t);
     out.m_data = std::move(data);
-    return out;
+    return std::pair(out, mts_pos);
   }
 
   friend void report_title(save_Parameter<ParameterType> &s, Cuevi_mcmc const &,
@@ -922,6 +946,7 @@ public:
 
     s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta" << s.sep << "i_walker" << s.sep << "walker_id"
+          << s.sep << "i_mt" << s.sep << "mt_pos"
         << s.sep << "i_par" << s.sep << "parameter_value"
         << "\n";
   }
