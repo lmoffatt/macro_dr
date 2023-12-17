@@ -466,6 +466,26 @@ template <class Id> struct Model_Patch {
     auto operator()(const P &t_p) const {
       return std::invoke(std::get<F>(m_f), t_p);
     }
+    
+    template<class P>
+    friend void report_model(save_Parameter<P>& s, const Model& m)
+    {
+        std::ofstream f(s.fname+"_model.csv");
+        f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+        f<<"Parameters Names\n";
+        f<<m.names()();
+        f<<"<<\n---------------------\n";
+        f<<"Q0_formula\n";
+        f<<m.get_Q0_formula();
+        f<<"<<\n---------------------\n";
+        f<<"Qa_formula\n";
+        f<<m.get_Qa_formula();
+        f<<"<<\n---------------------\n";
+        f<<"g_formula\n";
+        f<<m.get_g_formula();
+        f<<"<<\n---------------------\n";
+       }
+   
   };
   template <class F>
   Model(F &&f)->Model_Patch<Id>::
@@ -2860,6 +2880,21 @@ struct Likelihood_Model {
   Simulation_n_sub_dt n_sub_dt;
   Likelihood_Model(const Model &model, Simulation_n_sub_dt n_sub_dt)
       : m{model}, n_sub_dt{n_sub_dt} {}
+  
+  template<class Parameter>
+  friend void report_model(save_Parameter<Parameter>& s, Likelihood_Model const & d)
+  {
+      std::ofstream f(s.fname+"_likelihood_model.csv");
+      f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+      f<<"adaptive: "<<adaptive<<"\n";
+      f<<"recursive: "<<recursive<<"\n";
+      f<<"averaging: "<<averaging<<"\n";
+      f<<"variance: "<<variance<<"\n";
+      f<<"variance_correction: "<<variance_correction<<"\n";
+      f<<"Simulation_n_sub_dt: "<<d.n_sub_dt<<"\n";
+      report_model(s,d.m);
+  }
+ 
 };
 
 template <
