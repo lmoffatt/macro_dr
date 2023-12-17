@@ -85,7 +85,6 @@ void report_model(save_Parameter<Parameter>& s, std::vector<Experiment> const & 
     
     f<<"i_frac"<<s.sep<<"i_step"<<s.sep<<"time"<<s.sep<<"i_step_f"<<s.sep<<"number_of_samples"<<s.sep
       <<"ATP"<<"\n";
-    plogEvidence_no_0
                                                                             
     for (auto i_frac=0ul; i_frac<e.size(); ++i_frac)
     {
