@@ -3198,7 +3198,12 @@ thermodynamic parameter
       /**
      * @brief stops_at minimum value of beta greater than zero
      */
-      double stops_at = 1e-9;
+      double stops_at = 1e-15;
+      
+      /**
+     * @brief beta where the slope changes     */
+      double medium_beta = 1e-2;
+      
       
       /**
      * @brief includes_zero considers also beta equal zero
@@ -3242,12 +3247,12 @@ thermodynamic parameter
      * beta thermodynamic parameter
      */
       
-      double n_points_per_decade = 6;
+      double n_points_per_decade = 0.5;
       /**
      * @brief n_points_per_decade_fraction number of points per 10 times
      * increment in the number of samples
      */
-      double n_points_per_decade_fraction = 6;
+      double n_points_per_decade_fraction = 3;
       
       /**
      * @brief thermo_jumps_every factor that multiplied by the model size it
@@ -3322,7 +3327,7 @@ thermodynamic parameter
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed, saving_itervals);
+              n_points_per_decade_fraction, stops_at, medium_beta,includes_zero, myseed, saving_itervals);
           
           // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
           //                      sim.value()(), experiment);
@@ -3645,7 +3650,12 @@ thermodynamic parameter
       /**
      * @brief stops_at minimum value of beta greater than zero
      */
-      double stops_at = 1e-9;
+      double stops_at = 1e-15;
+      
+      /**
+     * @brief beta where the slope changes     */
+      double medium_beta = 1e-2;
+      
       
       /**
      * @brief includes_zero considers also beta equal zero
@@ -3804,26 +3814,26 @@ thermodynamic parameter
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed, saving_itervals);
+              n_points_per_decade_fraction, stops_at, medium_beta,includes_zero, myseed, saving_itervals);
           
           auto cbc_0_alt = new_cuevi_Model_by_iteration<MyModel_alt>(
               path, filename_0_alt, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed,saving_itervals);
+              n_points_per_decade_fraction, stops_at,  medium_beta,includes_zero, myseed,saving_itervals);
           auto cbc_alt_0 = new_cuevi_Model_by_iteration<MyModel>(
               path, filename_alt_0, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed,saving_itervals);
+              n_points_per_decade_fraction, stops_at,  medium_beta,includes_zero, myseed,saving_itervals);
           auto cbc_alt_alt = new_cuevi_Model_by_iteration<MyModel_alt>(
               path, filename_alt_alt, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, includes_zero, myseed,saving_itervals);
+              n_points_per_decade_fraction, stops_at,  medium_beta,includes_zero, myseed,saving_itervals);
           
           // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
           //                      sim.value()(), experiment);
