@@ -16,6 +16,7 @@
 #include <istream>
 #include <ostream>
 #include <random>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -133,8 +134,8 @@ public:
 
   Maybe_error<double> operator[](Fraction_Index i) const {
     auto it = (*this)().find(i);
-      if (it != (*this)().end())
-          return it->second();
+    if (it != (*this)().end())
+      return it->second();
     else
       return error_message("");
   }
@@ -235,18 +236,18 @@ template <class ParameterType> class Cuevi_mcmc {
                         var::Vector_Space<var::Var<Parameter, ParameterType>,
                                           LogPrior, LogLik_by_Fraction>> {
     friend auto thermo_step(const Walker_value &candidate,
-                              const Walker_value &current, Th_Beta beta,
-                              Fraction_Index i_fra) {
+                            const Walker_value &current, Th_Beta beta,
+                            Fraction_Index i_fra) {
 
       return get<LogPrior>(candidate())() - get<LogPrior>(current())() +
-               beta() * (get<LogLik_by_Fraction>(candidate())[i_fra] -
-                         get<LogLik_by_Fraction>(current())[i_fra]);
+             beta() * (get<LogLik_by_Fraction>(candidate())[i_fra] -
+                       get<LogLik_by_Fraction>(current())[i_fra]);
     }
-    
+
     friend auto thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
-                              const Walker_value &candidate, Th_Beta cu_beta,
-                              Fraction_Index cu_fra,
-                              const Walker_value &current) {
+                            const Walker_value &candidate, Th_Beta cu_beta,
+                            Fraction_Index cu_fra,
+                            const Walker_value &current) {
       auto current_sum =
           ca_beta() * get<LogLik_by_Fraction>(candidate())[ca_fra] +
           cu_beta() * get<LogLik_by_Fraction>(current())[cu_fra];
@@ -489,7 +490,7 @@ public:
                           Walker_Index(get_Walkers_number())),
                [j, i_frac, this](auto i_w) {
                  return get<LogLik_by_Fraction>(
-                            get_Walker_Value(i_w, j)())[i_frac];
+                     get_Walker_Value(i_w, j)())[i_frac];
                },
                [](auto x, auto y) { return x + y; }) /
            get_Walkers_number();
@@ -507,7 +508,7 @@ public:
                             Walker_Index(get_Walkers_number())),
                  [j, i_frac, this](auto i_w) {
                    return get<LogLik_by_Fraction>(
-                              get_Walker_Value(i_w, j)())[i_frac - 1];
+                       get_Walker_Value(i_w, j)())[i_frac - 1];
                  },
                  [](auto x, auto y) { return x + y; }) /
              get_Walkers_number();
@@ -527,7 +528,7 @@ public:
                             Walker_Index(get_Walkers_number())),
                  [j, i_frac, this](auto i_w) {
                    return get<LogLik_by_Fraction>(
-                              get_Walker_Value(i_w, j)())[i_frac + 1];
+                       get_Walker_Value(i_w, j)())[i_frac + 1];
                  },
                  [](auto x, auto y) { return x + y; }) /
              get_Walkers_number();
@@ -702,10 +703,10 @@ public:
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
       for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
            ++i_walker) {
-          auto iw = Walker_Index(i_walker);
-          auto &wav = data.get_Walker_Value(iw, Cuevi_Index(0));
-          auto logL1 = get<LogLik_by_Fraction>(wav())[Fraction_Index(0)];
-          
+        auto iw = Walker_Index(i_walker);
+        auto &wav = data.get_Walker_Value(iw, Cuevi_Index(0));
+        auto logL1 = get<LogLik_by_Fraction>(wav())[Fraction_Index(0)];
+
         using Maybe_L = decltype(logL1);
         auto beta1 = 0.0;
         Maybe_L log_Evidence = 0.0;
@@ -732,14 +733,13 @@ public:
             beta0 = beta1;
             logL1 = get<LogLik_by_Fraction>(wav())[i_fra];
             beta1 = data.get_Beta(i_cu)();
-            plog_Evidence =
-                (beta1 - beta0) * (logL0 + logL1) / 2;
-            log_Evidence = log_Evidence+  plog_Evidence;
-            if (beta0==0)
-                log_Evidence_no_0 = log_Evidence_no_0+  beta1*logL1;
+            plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
+            log_Evidence = log_Evidence + plog_Evidence;
+            if (beta0 == 0)
+              log_Evidence_no_0 = log_Evidence_no_0 + beta1 * logL1;
             else
-                log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
-                
+              log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
+
           } else {
             logL0 = logL1;
             beta0 = beta1;
@@ -754,17 +754,17 @@ public:
             logL1 = logL1_1 - logL1_0;
             beta0 = 0;
             beta1 = data.get_Beta(i_cu)();
-            plog_Evidence =
-                (beta1 - beta0) * (logL0 + logL1) / 2;
-            log_Evidence = log_Evidence+ plog_Evidence;
-            log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
+            plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
+            log_Evidence = log_Evidence + plog_Evidence;
+            log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
           }
           s.f << iter << s.sep << i_cu << s.sep << i_fra() << s.sep << nsamples
               << s.sep << beta1 << s.sep << beta0 << s.sep << i_walker << s.sep
               << get<Walker_id>(wa())() << s.sep << logPrior << s.sep << logL1
               << s.sep << logL0 << s.sep << plog_Evidence << s.sep
-              << log_Evidence << s.sep<< log_Evidence_no_0 << s.sep << logL1_1 << s.sep << logL1_0 << s.sep
-              << logL1_2 << s.sep << logL0_1 << s.sep << logL0_0 << "\n";
+              << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1
+              << s.sep << logL1_0 << s.sep << logL1_2 << s.sep << logL0_1
+              << s.sep << logL0_0 << "\n";
         }
       }
     }
@@ -772,14 +772,15 @@ public:
 
   friend void report_title(save_likelihood<ParameterType> &s,
                            Cuevi_mcmc const &...) {
-      
-      s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
-          << s.sep << "beta1" << s.sep << "beta0" << s.sep << "i_walker" << s.sep
-          << "walker_id" << s.sep << "logPrior" << s.sep << "logL1" << s.sep
-          << "logL0" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"<< s.sep << "log_Evidence_no_0"
-          << s.sep << "logL1_1" << s.sep << "logL1_0" << s.sep << "logL1_2"
-          << s.sep << "logL0_1" << s.sep << "logL0_0"
-          << "\n";
+
+    s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
+        << s.sep << "beta1" << s.sep << "beta0" << s.sep << "i_walker" << s.sep
+        << "walker_id" << s.sep << "logPrior" << s.sep << "logL1" << s.sep
+        << "logL0" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
+        << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1" << s.sep
+        << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1" << s.sep
+        << "logL0_0"
+        << "\n";
   }
 
   template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
@@ -810,6 +811,110 @@ public:
         }
       }
     }
+  }
+
+  template <bool verifying, class Prior, class t_logLikelihood, class Data,
+            class Variables>
+  static Maybe_error<Cuevi_mcmc>
+  extract_iter(save_Parameter<ParameterType> &s, std::string &last_line,
+               std::size_t &iter0, std::size_t &npar, std::size_t &nwalkers,
+               std::size_t &n_cuevi) {
+    std::size_t i_cu0;
+    std::size_t i_fra0;
+    std::size_t nsamples0;
+    double beta0;
+    std::size_t i_walker0;
+    std::size_t walker_id0;
+    std::size_t i_par0;
+    double par_value0;
+
+    std::size_t iter;
+    std::size_t i_cu;
+    std::size_t i_fra;
+    std::size_t nsamples;
+    double beta;
+    std::size_t i_walker;
+    std::size_t walker_id;
+    std::size_t i_par;
+    double par_value;
+
+    if (last_line.empty()) {
+      std::getline(s.f, last_line);
+      if (!s.f)
+        return error_message("no more iterations");
+    }
+
+    std::stringstream ss(last_line);
+
+    ss >> iter0 >> s.sep >> i_cu0 >> s.sep >> i_fra0 >> s.sep >> nsamples0 >>
+        s.sep >> beta0 >> s.sep >> i_walker0 >> s.sep >> walker_id0 >> s.sep >>
+        i_par0 >> s.sep >> par_value0;
+
+    iter = iter0;
+    i_cu = i_cu0;
+    i_walker = i_walker0;
+    Cuevi_temperatures t;
+    t().reserve(n_cuevi);
+    std::vector<std::vector<Walker>> d;
+    d.reserve(n_cuevi);
+    while (iter == iter0) {
+
+      std::vector<Walker> wav;
+      wav.reserve(nwalkers);
+      while (i_cu == i_cu0) {
+        std::vector<double> par;
+        par.reserve(npar);
+        while (i_walker == i_walker0) {
+          std::getline(s.f, last_line);
+          std::stringstream ss2(last_line);
+
+          ss2 >> iter >> s.sep >> i_cu >> s.sep >> i_fra >> s.sep >> nsamples >>
+              s.sep >> beta >> s.sep >> i_walker >> s.sep >> walker_id >>
+              s.sep >> i_par >> s.sep >> par_value;
+          if constexpr (verifying) {
+            if (par.size() != i_par0)
+              return error_message("i_par out of order");
+            if (walker_id != walker_id0)
+              return error_message("walker_id out of order");
+            if (i_fra != i_fra0)
+              return error_message("i_fra out of order");
+            if (i_cu != i_cu0)
+              return error_message("i_cu out of order");
+            if (iter != iter0)
+              return error_message("iter out of order");
+          }
+          par.push_back(par_value0);
+          par_value0 = par_value;
+          i_par0 = i_par;
+        }
+        npar = par.size();
+        auto wa = Walker{};
+        get<Walker_id>(wa())() = walker_id0;
+        get<Parameter>(get<Walker_value>(wa())())() = ParameterType(par);
+        wav.push_back(std::move(wa));
+        walker_id0 = walker_id;
+      }
+      nwalkers = wav.size();
+      if constexpr (verifying) {
+        if (t().size() != i_cu0)
+          return error_message("i_cu out of order");
+      }
+      t().push_back(var::Vector_Space(Th_Beta(beta0), Fraction_Index(i_fra0)));
+      d.push_back(wav);
+      beta0 = beta;
+      i_fra0 = i_fra;
+      i_cu0 = i_cu;
+    }
+    n_cuevi = d.size();
+    Walkers_ensemble data(
+        std::vector(nwalkers, std::vector(n_cuevi, Walker{})));
+    for (std::size_t iw = 0; iw < nwalkers; ++iw)
+      for (std::size_t icu = 0; icu < n_cuevi; ++icu)
+        data()[iw][icu] = d[icu][iw];
+    Cuevi_mcmc out;
+    out.m_temperatures = std::move(t);
+    out.m_data = std::move(data);
+    return out;
   }
 
   friend void report_title(save_Parameter<ParameterType> &s, Cuevi_mcmc const &,
@@ -857,12 +962,12 @@ public:
           logL1 = data.calc_Mean_logLik(i_cu);
           beta1 = data.get_Beta(i_cu)();
           plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
-          log_Evidence =log_Evidence+ plog_Evidence;
-          if (beta0==0)
-              log_Evidence_no_0 = log_Evidence_no_0+  beta1*logL1;
+          log_Evidence = log_Evidence + plog_Evidence;
+          if (beta0 == 0)
+            log_Evidence_no_0 = log_Evidence_no_0 + beta1 * logL1;
           else
-              log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
-          
+            log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
+
         } else {
           logL0 = logL1;
           beta0 = beta1;
@@ -877,14 +982,15 @@ public:
           beta0 = 0;
           beta1 = data.get_Beta(i_cu)();
           plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
-          log_Evidence = log_Evidence+plog_Evidence;
-          log_Evidence_no_0 = log_Evidence_no_0+  plog_Evidence;
+          log_Evidence = log_Evidence + plog_Evidence;
+          log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
         }
         s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep << nsamples
             << s.sep << beta1 << s.sep << beta0 << s.sep << logPrior << s.sep
             << logL1 << s.sep << logL0 << s.sep << plog_Evidence << s.sep
-            << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1 << s.sep << logL1_0 << s.sep
-            << logL1_2 << s.sep << logL0_1 << s.sep << logL0_0
+            << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1
+            << s.sep << logL1_0 << s.sep << logL1_2 << s.sep << logL0_1 << s.sep
+            << logL0_0
 
             << "\n";
       }
@@ -895,13 +1001,32 @@ public:
 
     s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta1" << s.sep << "beta0" << s.sep << "logPrior" << s.sep
-        << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep<< "plog_Evidence_no_0" << s.sep
-        << "log_Evidence" << s.sep << "logL1_1" << s.sep << "logL1_0" << s.sep
-        << "logL1_2" << s.sep << "logL0_1" << s.sep << "logL0_0"
+        << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
+        << "plog_Evidence_no_0" << s.sep << "log_Evidence" << s.sep << "logL1_1"
+        << s.sep << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1"
+        << s.sep << "logL0_0"
 
         << "\n";
   }
 };
+
+template <class ParameterType> auto extract_parameters_last(std::string const &filename, std::size_t iter) {
+  save_Parameter<ParameterType> s(filename, 1);
+  std::string last_line;
+  std::size_t npar = 0ul;
+  std::size_t nwalkers = 0ul;
+  std::size_t n_cuevi = 0ul;
+  bool cont = true;
+  Maybe_error<Cuevi_mcmc<ParameterType>> out = error_message{};
+  while (cont) {
+    auto outnew = Cuevi_mcmc<ParameterType>::template extract_iter<false>(
+        s, last_line, iter, npar, nwalkers, n_cuevi);
+    cont = outnew.valid();
+    if (outnew)
+      out = outnew;
+  }
+  return out;
+}
 
 template <class... saving, class... Ts, class Parameters>
 void report_title(save_mcmc<Parameters, saving...> &f,
@@ -948,18 +1073,18 @@ public:
       auto &cu_wa = current.get_Walker_Value(iw, i_cu);
       auto dthLogL = thermo_step(ca_wa, cu_wa, current.get_Beta(i_cu),
                                  current.get_Fraction(i_cu));
-      if (dthLogL)
-      {
-          auto pJump = std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL.value()));
-      auto r = rdist[i](mts[i]);
-      if (pJump < r) {
-        fails(get<emcee_Step_statistics>(wa_sta.first())());
-        fails(get<emcee_Step_statistics>(wa_sta.second())());
-      } else {
-        succeeds(get<emcee_Step_statistics>(wa_sta.first())());
-        succeeds(get<emcee_Step_statistics>(wa_sta.second())());
-        cu_wa = ca_wa;
-      }
+      if (dthLogL) {
+        auto pJump =
+            std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL.value()));
+        auto r = rdist[i](mts[i]);
+        if (pJump < r) {
+          fails(get<emcee_Step_statistics>(wa_sta.first())());
+          fails(get<emcee_Step_statistics>(wa_sta.second())());
+        } else {
+          succeeds(get<emcee_Step_statistics>(wa_sta.first())());
+          succeeds(get<emcee_Step_statistics>(wa_sta.second())());
+          cu_wa = ca_wa;
+        }
       }
     }
   }

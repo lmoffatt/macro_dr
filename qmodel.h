@@ -825,8 +825,8 @@ public:
 
   template <class C_Q0, class C_Qa>
     requires U<C_Q0, Q0>
-  auto calc_Pinitial(const C_Q0 &t_Q0, const C_Qa &t_Qa, ATP_concentration x,
-                     N_St nstates) -> Transfer_Op_to<C_Q0, P_initial> {
+  Maybe_error<Transfer_Op_to<C_Q0, P_initial>>  calc_Pinitial(const C_Q0 &t_Q0, const C_Qa &t_Qa, ATP_concentration x,
+                     N_St nstates) {
     auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
     auto t_Qx = calc_Qx(t_Q0, t_Qa, x);
     auto v_eig_Qx = calc_eigen(t_Qx);
@@ -842,14 +842,23 @@ public:
       return build<P_initial>(to_Probability(p0 * Vv * ladt * Wv));
 
     } else {
-      std::cerr << "uses expm_sure\n";
-      auto P = expm_sure(t_Qx());
-      auto P2 = P * P;
-      while (maxAbs(primitive(P - P2)) > 1e-9) {
-        P = P2;
-        P2 = P * P;
+      //  std::cerr << "uses expm_sure\n";
+      auto Maybe_P = to_Transition_Probability(expm_sure(t_Qx()));
+      if (!Maybe_P)
+        return Maybe_P.error();
+      else {
+        auto P = std::move(Maybe_P.value());
+        auto Maybe_P2 = to_Transition_Probability(P() * P());
+        while (Maybe_P2.valid() &&
+               maxAbs(primitive(P() - Maybe_P2.value()())) > 1e-6) {
+          P = std::move(Maybe_P2.value());
+          Maybe_P2 = to_Transition_Probability(P() * P());
+        }
+        if (!Maybe_P2)
+          return Maybe_P2.error();
+        else
+            return build<P_initial>(to_Probability(p0 * Maybe_P2.value()()));
       }
-      return build<P_initial>(to_Probability(p0 * P2));
     }
   }
 
@@ -1072,7 +1081,7 @@ public:
       return build<P_mean>(p0 * Vv * laexp * Wv);
 
     } else {
-     // std::cerr << "uses expm_sure\n";
+      // std::cerr << "uses expm_sure\n";
       auto P = expm_sure(t_Qx());
       auto P2 = P * P;
       while (maxAbs(primitive(P - P2)) > 1e-9) {
@@ -1320,40 +1329,39 @@ public:
           build<gmean_ij>(elemDivSafe(gmean_ij_tot, r_P(), t_min_P()));
       auto r_gtotal_var_ij = build<gtotal_var_ij>(
           r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij()));
-      
-      
-        /* truncate is not derivative safe yet*/
-        if constexpr (true) {
-          r_gtotal_var_ij() =
-              truncate_negative_variance(std::move(r_gtotal_var_ij()));
-        }
 
-        auto gvar_ij_tot = r_gtotal_var_ij(); // + gvar_ij_p * t_min_P();
-        auto r_gvar_ij =
-            build<gvar_ij>(elemDivSafe(gvar_ij_tot, r_P(), t_min_P()));
-       
-          Matrix<double> u(N, 1, 1.0);
-          auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
-          auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
-          auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
-          if constexpr (true) {
-            r_gvar_i() = truncate_negative_variance(std::move(r_gvar_i()));
-          }
-       //   auto test_g_var = test_conductance_variance(primitive(r_gvar_i()), primitive(t_g()));
-       //   auto test_g_mean = test_conductance_mean(primitive(r_gmean_i()), primitive(t_g()));
-          // if (!test_g_mean || !test_g_var)
-          //     return error_message(test_g_var.error()()+test_g_mean.error()());
-          // else {
-
-          return build<Qdt>(ns, min_P(t_min_P), std::move(r_P),
-                            std::move(r_gmean_i), std::move(r_gtotal_ij),
-                            std::move(r_gmean_ij), std::move(r_gtotal_sqr_ij),
-                            std::move(r_gsqr_i), std::move(r_gvar_i),
-                            std::move(r_gtotal_var_ij), std::move(r_gvar_ij));
-        // }
+      /* truncate is not derivative safe yet*/
+      if constexpr (true) {
+        r_gtotal_var_ij() =
+            truncate_negative_variance(std::move(r_gtotal_var_ij()));
       }
+
+      auto gvar_ij_tot = r_gtotal_var_ij(); // + gvar_ij_p * t_min_P();
+      auto r_gvar_ij =
+          build<gvar_ij>(elemDivSafe(gvar_ij_tot, r_P(), t_min_P()));
+
+      Matrix<double> u(N, 1, 1.0);
+      auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+      auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
+      auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
+      if constexpr (true) {
+        r_gvar_i() = truncate_negative_variance(std::move(r_gvar_i()));
+      }
+      //   auto test_g_var = test_conductance_variance(primitive(r_gvar_i()),
+      //   primitive(t_g())); auto test_g_mean =
+      //   test_conductance_mean(primitive(r_gmean_i()), primitive(t_g()));
+      // if (!test_g_mean || !test_g_var)
+      //     return error_message(test_g_var.error()()+test_g_mean.error()());
+      // else {
+
+      return build<Qdt>(ns, min_P(t_min_P), std::move(r_P),
+                        std::move(r_gmean_i), std::move(r_gtotal_ij),
+                        std::move(r_gmean_ij), std::move(r_gtotal_sqr_ij),
+                        std::move(r_gsqr_i), std::move(r_gvar_i),
+                        std::move(r_gtotal_var_ij), std::move(r_gvar_ij));
+      // }
     }
-  
+  }
 
   template <class C_Patch_Model, class C_Qx>
     requires(/*U<C_Patch_Model, Patch_Model> && */ U<C_Qx, Qx>)
@@ -1718,11 +1726,11 @@ public:
   }
 
   /*
-template<uses_recursive_aproximation recursive,uses_averaging_aproximation
-averaging, uses_variance_aproximation variance> auto run_old(const Patch_State
-&t_prior, Qdt const &t_Qdt, Patch_Model const &m, const Experiment_step &p,
-double fs) const { auto &p_y = get<Patch_current>(p); auto &p_P_mean =
-get<P_mean>(t_prior); auto &p_P_Cov = get<P_Cov>(t_prior);
+  template<uses_recursive_aproximation recursive,uses_averaging_aproximation
+  averaging, uses_variance_aproximation variance> auto run_old(const Patch_State
+  &t_prior, Qdt const &t_Qdt, Patch_Model const &m, const Experiment_step &p,
+  double fs) const { auto &p_y = get<Patch_current>(p); auto &p_P_mean =
+  get<P_mean>(t_prior); auto &p_P_Cov = get<P_Cov>(t_prior);
 
   double e =
       get<Current_Noise>(m).value() * fs/ get<number_of_samples>(p).value();
@@ -1751,7 +1759,7 @@ get<P_mean>(t_prior); auto &p_P_Cov = get<P_Cov>(t_prior);
     v_P_cov() = v_P_cov() + diag(v_P_mean());
 
     return Patch_State(logL(get<logL>(t_prior)()),v_P_mean, v_P_cov, v_y_mean,
-v_y_var, v_plogL, v_eplogL, v_vplogL);
+  v_y_var, v_plogL, v_eplogL, v_vplogL);
     // std::cerr<<"\nPcov nana corr\n"<<P__cov<<"\nP_mean nana
     // corr\n"<<P_mean<<"\nQ.P \n"<<Q_dt.P();
     //      auto test = mp_state_information::test(P_mean, P__cov,
@@ -1798,10 +1806,10 @@ v_y_var, v_plogL, v_eplogL, v_vplogL);
   //      ss.str());
   //    } else
   return Patch_State(logL(get<logL>(t_prior)()+v_plogL()),v_P_mean, v_P_cov,
-v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
-}
+  v_y_mean, v_y_var, v_plogL, v_eplogL, v_vplogL);
+  }
 
-*/
+  */
 
   //    Maybe_error<Patch_State> DVR(const Patch_State &t_prior, Qdt const
   //    &t_Qdt,
@@ -3040,8 +3048,9 @@ public:
 
     auto cum_segments = var::cumsum(segments);
 
-    auto indexes = generate_random_Indexes(
-        mt, num_samples, num_parameters, n_points_per_decade_fraction, cum_segments);
+    auto indexes =
+        generate_random_Indexes(mt, num_samples, num_parameters,
+                                n_points_per_decade_fraction, cum_segments);
     std::cerr << "\nindexes\n**************************************************"
                  "*************************\n";
     std::cerr << indexes;
