@@ -1486,11 +1486,11 @@ int main(int argc, char **argv) {
           auto v_curr_noise = tr_p()[Npar + 1];
           auto v_baseline = logp()[Npar + 2];
           auto Nst = get<N_St>(m());
-          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst);
+          auto v_P_initial =macrodr::Macro_DMR{}.calc_Pinitial(a_Q0,a_Qa,ATP_concentration(0.0),Nst).value();
           
           return build<Patch_Model>(
               N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-              std::move(v_P_initial),
+                      std::move(v_P_initial),
               std::move(a_g), build<N_Ch_mean>(v_N0),
               build<Current_Noise>(v_curr_noise),
               build<Current_Baseline>(v_baseline),
@@ -1854,11 +1854,11 @@ int main(int argc, char **argv) {
       "k32",         "k34",          "k43",   "conductance", "Num_Chan_0",
       "Num_Chan_eq", "Num_Chan_tau", "noise", "baseline"};
 
-  auto &model0 = model4;
+  auto &model0 = model6_Eff_no_inactivation;
   auto &param1Names = model0.names();
   auto &param1 = model0.parameters();
-  std::string ModelName = "model4";
-  using MyModel = Model0;
+  std::string ModelName = "model6_Eff_no_inactivation";
+  using MyModel = Allost1;
   
   auto &model0_alt = model6_Eff_no_inactivation;
   auto &param1Names_alt = model0_alt.names();
@@ -3181,7 +3181,7 @@ thermodynamic parameter
      * @brief num_scouts_per_ensemble number of scouts per ensemble in the
      * affine ensemble mcmc model
      */
-      std::size_t num_scouts_per_ensemble = 32;
+      std::size_t num_scouts_per_ensemble = 16;
       
       /**
      * @brief max_num_simultaneous_temperatures when the number of parallel

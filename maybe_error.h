@@ -1,15 +1,15 @@
 #ifndef MAYBE_ERROR_H
 #define MAYBE_ERROR_H
 
+#include <chrono>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
 #include <variant>
 #include <vector>
-#include <sstream>
-#include <iomanip>
-#include <chrono>
 inline std::string leadingZero(int i) {
     if (i == 0)
         return "00";
@@ -61,10 +61,10 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 template <auto F> std::string function_name();
 
-struct Nothing{};
+struct Nothing {};
 
-
-template <class T>     requires (!std::is_reference_v<T>)
+template <class T>
+    requires(!std::is_reference_v<T>)
 class Maybe_error;
 
 template <class T>
@@ -104,14 +104,13 @@ template <class C, class T>
 concept contains_value =
     std::convertible_to<decltype(get_value(std::declval<C>())), T>;
 
-
 template <class T> auto get_error(const Maybe_error<T> &x) { return x.error(); }
 
 class error_message {
   std::string m_;
 
 public:
-  error_message()=default;
+  error_message() = default;
   error_message(std::string error) : m_{error} {}
 
   auto operator()() const { return m_; }
@@ -121,7 +120,6 @@ template <class T>
 auto get_error(const T &) {
   return error_message("");
 }
-
 
 namespace err {
 
@@ -158,12 +156,15 @@ public:
 };
 } // namespace err
 
-inline std::string  ToString(const double& x)
-{std::stringstream ss; ss<<std::setprecision(12); ss<<x; return ss.str();}
-
+inline std::string ToString(const double &x) {
+    std::stringstream ss;
+    ss << std::setprecision(12);
+    ss << x;
+    return ss.str();
+}
 
 template <class T>
-    requires (!std::is_reference_v<T>)
+    requires(!std::is_reference_v<T>)
 class Maybe_error : private std::variant<T, error_message> {
 public:
   using base_type = std::variant<T, error_message>;
@@ -208,33 +209,29 @@ public:
   }
 };
 
-template <class T>
-Maybe_error(T&&)->Maybe_error<T>;
+template <class T> Maybe_error(T &&) -> Maybe_error<T>;
 
-template <class T>
-Maybe_error(T const &)->Maybe_error<T>;
-
+template <class T> Maybe_error(T const &) -> Maybe_error<T>;
 
 template <class T>
   requires std::is_class_v<typename T::base_type>
-class Maybe_error<T *> : public Maybe_error<typename T::base_type*> {
-  T * m_value;
+class Maybe_error<T *> : public Maybe_error<typename T::base_type *> {
+    T *m_value;
+    
 public:
-  using base_type = Maybe_error<typename T::base_type*>;
+    using base_type = Maybe_error<typename T::base_type *>;
   using base_type::operator bool;
+    using base_type::error;
   using base_type::valid;
-  using base_type::error;
 
   Maybe_error() = default;
   Maybe_error(error_message &&x) : base_type{(std::move(x))} {}
   Maybe_error(const error_message &x) : base_type{x} {}
-  Maybe_error(T *t) :base_type{t},m_value{t} {}
+  Maybe_error(T *t) : base_type{t}, m_value{t} {}
   
-
-  constexpr const T* value() const  noexcept { return m_value; }
-   constexpr T* value(){ return m_value; }
+  constexpr const T *value() const noexcept { return m_value; }
+  constexpr T *value() { return m_value; }
   
- 
   friend std::ostream &operator<<(std::ostream &os, const Maybe_error &x) {
     if (x)
       os << x.value();
@@ -295,8 +292,8 @@ auto operator+(const T &x, const S &y) {
   if (is_valid(x) && is_valid(y))
     return Maybe_error(get_value(x) + get_value(y));
   else
-    return Maybe_error<std::decay_t<decltype(get_value(x) + get_value(y))>>(error_message(
-        get_error(x)() + " multiplies " + get_error(y)()));
+      return Maybe_error<std::decay_t<decltype(get_value(x) + get_value(y))>>(
+          error_message(get_error(x)() + " multiplies " + get_error(y)()));
 }
 
 template <class T, class S>
@@ -304,19 +301,30 @@ template <class T, class S>
 auto operator-(const T &x, const S &y) {
   if (is_valid(x) && is_valid(y))
     return Maybe_error(get_value(x) - get_value(y));
-  else
-    return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
-        get_error(x)() + " multiplies " + get_error(y)());
-}
+  else{
+      if (!get_error(x)().empty() || !get_error(y)().empty())
+          
+      return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
+          get_error(x)() + " multiplies " + get_error(y)());
+      else
+          return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
+              error_message{});
+  }}
 
 template <class T, class S>
   requires(is_Maybe_error<T> || is_Maybe_error<S>)
 auto operator/(const T &x, const S &y) {
   if (is_valid(x) && is_valid(y))
     return Maybe_error(get_value(x) / get_value(y));
-  else
-    return Maybe_error<std::decay_t<decltype(get_value(x) / get_value(y))>>(
-        get_error(x)() + " divides " + get_error(y)());
+  else {
+      if (!get_error(x)().empty() || !get_error(y)().empty())
+          
+          return Maybe_error<std::decay_t<decltype(get_value(x) / get_value(y))>>(
+              get_error(x)() + " divides " + get_error(y)());
+      else
+          return Maybe_error<std::decay_t<decltype(get_value(x) / get_value(y))>>(
+              error_message{});
+  }
 }
 
 template <class T, class S>
@@ -464,9 +472,5 @@ std::ostream &put(std::ostream &os, const T &t) {
   os << t << "\n";
   return os;
 }
-
-
-
-
 
 #endif // MAYBE_ERROR_H

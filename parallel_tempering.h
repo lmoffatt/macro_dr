@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -783,7 +784,30 @@ template<class Parameters>
 class save_Parameter {
     
 public:
-    std::string sep = ",";
+    class separator:public std::string{
+    public:
+        using std::string::string;
+     //   separator(std::string s):std::string(std::move(s)){}
+        
+        std::string operator()()const {return *this;}
+        friend std::ostream& operator<<(std::ostream& os, const separator& sep)
+        {
+            return os<<sep();
+        }
+        friend std::istream& operator>>(std::istream& is, const separator& sep)
+        {
+            std::string ss=sep();
+            for (std::size_t i=0; i<ss.size(); ++i)
+            {
+                is.get(ss[i]);
+            }
+            if (ss!=sep())
+                is.setstate(std::ios::failbit);
+            return is;  
+        }        
+    };
+    
+    separator sep=",";
     std::ofstream f;
     std::size_t save_every;
     save_Parameter(std::string const &path, std::size_t interval)
