@@ -146,7 +146,9 @@ class Num_Walkers_Per_Ensemble
     : public var::Constant<Num_Walkers_Per_Ensemble, std::size_t> {};
 
 class Points_per_decade : public var::Constant<Points_per_decade, double> {};
+class Points_per_decade_low : public var::Constant<Points_per_decade_low, double> {};
 class Min_value : public var::Constant<Min_value, double> {};
+class Med_value : public var::Constant<Med_value, double> {};
 class Includes_zero : public var::Constant<Includes_zero, bool> {};
 
 class Number_trials_until_give_up
@@ -165,11 +167,11 @@ class Thermo_Jumps_every
 class Th_Beta_Param
     : public var::Constant<
           Th_Beta_Param,
-          var::Vector_Space<Includes_zero, Min_value, Points_per_decade>> {
+          var::Vector_Space<Includes_zero, Med_value,Points_per_decade,Min_value, Points_per_decade_low>> {
 public:
   using var::Constant<
       Th_Beta_Param,
-      var::Vector_Space<Includes_zero, Min_value, Points_per_decade>>::Constant;
+      var::Vector_Space<Includes_zero, Med_value,Points_per_decade,Min_value, Points_per_decade_low>>::Constant;
 };
 class Fractions_Param
     : public var::Constant<Fractions_Param,
@@ -608,16 +610,26 @@ public:
   static Cuevi_temperatures build_temperatures(const by_fraction<DataType> &y,
                                                const Th_Beta_Param &p) {
     auto n_points_per_decade_beta = get<Points_per_decade>(p());
+    auto first_stops_at = get<Med_value>(p());
+    auto n_points_per_decade_beta_low = get<Points_per_decade_low>(p());
     auto stops_at = get<Min_value>(p());
     auto includes_zero = get<Includes_zero>(p());
 
-    std::size_t num_beta =
-        std::ceil(-std::log10(stops_at()) * n_points_per_decade_beta()) + 1;
-
-    auto beta_size = num_beta;
+    std::size_t num_beta_high =
+        std::ceil(-std::log10(first_stops_at()) * n_points_per_decade_beta());
+    std::size_t num_beta_low =
+        std::ceil((std::log10(first_stops_at())-std::log10(stops_at())) * n_points_per_decade_beta_low());
+    
+    
+    auto beta_size = 1+num_beta_high+num_beta_low;
     if (includes_zero())
-      beta_size = beta_size + 1;
-
+    {
+        num_beta_low= num_beta_low+1;
+        beta_size = beta_size + 1;
+    }
+    auto beta_mid=std::pow(10.0, -1.0 *num_beta_high /
+                                       n_points_per_decade_beta());
+    
     auto fraction_size = y.size();
 
     auto out = Cuevi_temperatures{};
@@ -629,10 +641,15 @@ public:
       get<Fraction_Index>(out()[0])() = 0ul;
     }
 
-    for (std::size_t i = includes_zero() ? 1 : 0; i < beta_size; ++i) {
-      get<Th_Beta>(out()[i])() = std::pow(10.0, -1.0 * (beta_size - i - 1) /
-                                                    n_points_per_decade_beta());
+    for (std::size_t i = includes_zero() ? 1 : 0; i < num_beta_low; ++i) {
+      get<Th_Beta>(out()[i])() = beta_mid*std::pow(10.0, -1.0 * (num_beta_low - i) /
+                                                    n_points_per_decade_beta_low());
       get<Fraction_Index>(out()[i])() = 0ul;
+    }
+    for (std::size_t i =  0; i < num_beta_high+1; ++i) {
+        get<Th_Beta>(out()[i+num_beta_low])() = std::pow(10.0, -1.0 * (num_beta_high - i) /
+                                                      n_points_per_decade_beta());
+        get<Fraction_Index>(out()[i+num_beta_low])() = 0ul;
     }
     for (std::size_t i = 1; i < fraction_size; ++i) {
       get<Th_Beta>(out()[i + beta_size - 1])() = 1.0;
