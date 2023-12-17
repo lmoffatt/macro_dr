@@ -68,6 +68,7 @@ add_executable(macro_dr main.cpp
     Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
     s_debug.sh
     s_long.sh
+    continuation.h
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

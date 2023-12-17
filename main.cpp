@@ -3440,8 +3440,11 @@ thermodynamic parameter
                              experiment, sim.value()());
           report(filename+"_lik.csv",lik.value(),sim.value(), experiment);
           if (true)
+          {
               auto opt3 = cuevi::evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood,
                                           sim.value()(), experiment, cuevi::Init_seed(seed));
+              //auto opt4= cuevi::continue_evidence(filename, 2* maxiter);
+          }
       }
   }
   
