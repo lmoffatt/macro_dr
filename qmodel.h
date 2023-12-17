@@ -924,7 +924,7 @@ public:
     return C_P_mean(var::outside_in(p));
   }
 
-  static auto sample_Multinomial(std::mt19937_64 &mt, P_mean const t_P_mean,
+  static auto sample_Multinomial(mt_64i &mt, P_mean const t_P_mean,
                                  std::size_t N) {
     auto k = t_P_mean().size();
     N_channel_state out(Matrix<double>(1, k));
@@ -941,7 +941,7 @@ public:
     return out;
   }
 
-  static auto sample_Multinomial(std::mt19937_64 &mt, P const t_P,
+  static auto sample_Multinomial(mt_64i &mt, P const t_P,
                                  N_channel_state N) {
     assert(t_P().nrows() == t_P().ncols());
     auto k = N().size();
@@ -2588,7 +2588,7 @@ public:
 
   template <class Patch_Model>
   Maybe_error<Simulated_Sub_Step>
-  sub_sub_sample(std::mt19937_64 &mt, Simulated_Sub_Step const &t_sim_step,
+  sub_sub_sample(mt_64i &mt, Simulated_Sub_Step const &t_sim_step,
                  const Patch_Model &m, const ATP_step &t_s,
                  std::size_t n_sub_dt, double fs) {
     auto &t_g = get<g>(m);
@@ -2623,7 +2623,7 @@ public:
 
   template <class Patch_Model>
   Maybe_error<Simulated_Sub_Step>
-  sub_sub_sample(std::mt19937_64 &mt, Simulated_Sub_Step &&t_sim_step,
+  sub_sub_sample(mt_64i &mt, Simulated_Sub_Step &&t_sim_step,
                  const Patch_Model &m, const std::vector<ATP_step> &t_s,
                  std::size_t n_sub_dt, double fs) {
 
@@ -2640,7 +2640,7 @@ public:
 
   template <includes_N_state_evolution keep_N_state, class Patch_Model>
   Maybe_error<Simulated_Step<keep_N_state>>
-  sub_sample(std::mt19937_64 &mt, Simulated_Step<keep_N_state> &&t_sim_step,
+  sub_sample(mt_64i &mt, Simulated_Step<keep_N_state> &&t_sim_step,
              const Patch_Model &m, const ATP_evolution &t_s,
              std::size_t n_sub_dt, double fs) {
     // auto &N = get<N_channel_state>(t_sim_step);
@@ -2685,7 +2685,7 @@ public:
 
   template <includes_N_state_evolution keep_N_state, class Patch_Model>
   Simulated_Step<keep_N_state>
-  init_sim(std::mt19937_64 &mt, const Patch_Model &m, const Experiment &e) {
+  init_sim(mt_64i &mt, const Patch_Model &m, const Experiment &e) {
     auto initial_x = get<initial_ATP_concentration>(e);
     auto v_Qx = calc_Qx(m, initial_x());
     auto r_P_mean = P_mean(get<P_initial>(m)());
@@ -2708,7 +2708,7 @@ public:
 
   template <includes_N_state_evolution keep_N_state, class Model, class Id>
   Maybe_error<Simulated_Recording<keep_N_state>>
-  sample_(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
+  sample_(mt_64i &mt, const Model &model, const Parameters<Id> &par,
           const Experiment &e, const Simulation_Parameters &sim,
           const Recording &r = Recording{}) {
 
@@ -2735,7 +2735,7 @@ public:
 
   template <class Model, class Id>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(false)>>
-  sample(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
+  sample(mt_64i &mt, const Model &model, const Parameters<Id> &par,
          const Experiment &e, const Simulation_Parameters &sim,
          const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(false)>(mt, model, par, e, sim,
@@ -2744,7 +2744,7 @@ public:
 
   template <class Model, class Id>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(true)>>
-  sample_N(std::mt19937_64 &mt, const Model &model, const Parameters<Id> &par,
+  sample_N(mt_64i &mt, const Model &model, const Parameters<Id> &par,
            const Experiment &e, const Simulation_Parameters &sim,
            const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(true)>(mt, model, par, e, sim, r);
@@ -2872,7 +2872,7 @@ template <
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     uses_variance_correction_aproximation variance_correction, class Model,
     class Parameters, class Variables>
-auto simulate(std::mt19937_64 &mt,
+auto simulate(mt_64i &mt,
               const Likelihood_Model<adaptive, recursive, averaging, variance,
                                      variance_correction, Model> &lik,
               Parameters const &p, const Variables &var) {
@@ -2992,7 +2992,7 @@ public:
     return std::tuple(Recording_conditions(out_x), Recording(out_y));
   }
 
-  auto operator()(const Recording &y, const Experiment &x, std::mt19937_64 &mt,
+  auto operator()(const Recording &y, const Experiment &x, mt_64i &mt,
                   std::size_t num_parameters, double n_points_per_decade_beta,
                   double n_points_per_decade_fraction, double stops_at,
                   bool includes_zero) const {
@@ -3037,7 +3037,7 @@ public:
     return std::tuple(std::move(y_out), std::move(x_out), std::move(beta));
   }
 
-  auto operator()(const Recording &y, const Experiment &x, std::mt19937_64 &mt,
+  auto operator()(const Recording &y, const Experiment &x, mt_64i &mt,
                   std::size_t num_parameters,
                   double n_points_per_decade_fraction) const {
     assert(size(y()) == size(get<Recording_conditions>(x)()));
@@ -3201,7 +3201,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 void report(FunctionTable &&f, std::size_t iter,
             save_Predictions<Parameters> &s, cuevi_mcmc<Parameters> const &data,
             Prior const &prior, Likelihood const &lik, const DataType &ys,
-            const Variables &xs) {
+            const Variables &xs,...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
       for (std::size_t i_beta = 0; i_beta < size(data.beta[i_frac]); ++i_beta)
@@ -3242,7 +3242,7 @@ void report(FunctionTable &&f, std::size_t iter,
             save_Predictions<ParameterType> &s,
             cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
             t_logLikelihood &&lik, const by_fraction<Data> &ys,
-            const by_fraction<Variables> &xs) {
+            const by_fraction<Variables> &xs,...) {
 
   auto &t = data.get_Cuevi_Temperatures();
   if (iter % s.save_every == 0) {

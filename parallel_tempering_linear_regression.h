@@ -145,7 +145,7 @@ class thermo {
 template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
           class Variables, class DataType, class Reporter,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_Algorithm_conditions<Algorithm, thermo_mcmc<Parameters>> &&
            is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
@@ -331,7 +331,7 @@ public:
   template <class FunctionTable, class Prior, class Likelihood, class Variables,
             class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
@@ -352,7 +352,7 @@ public:
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
@@ -435,7 +435,7 @@ auto thermo_store_every_and_report(
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)

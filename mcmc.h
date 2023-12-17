@@ -30,20 +30,20 @@ auto operator-(const Parameters &x, const Parameters &y) {
   return out;
 }
 */
-auto calc_seed(typename std::mt19937_64::result_type initseed) {
+auto calc_seed(typename mt_64i::result_type initseed) {
     
     if (initseed == 0) {
         std::random_device rd;
-        std::uniform_int_distribution<typename std::mt19937_64::result_type> useed;
+        std::uniform_int_distribution<typename mt_64i::result_type> useed;
         
         return useed(rd);
     } else
         return initseed;
 }
 
-auto init_mt(typename std::mt19937_64::result_type initseed) {
+auto init_mt(typename mt_64i::result_type initseed) {
     initseed = calc_seed(initseed);
-    return std::mt19937_64(initseed);
+    return mt_64i(initseed);
 }
 
 template<class D, class T>
@@ -56,7 +56,7 @@ auto logPrior(const D&d, const T& x )
 template <class Distribution, class Parameters>
 concept is_sampler = requires(Distribution & dist) {
     {
-        sample(std::declval<std::mt19937_64 &>(),dist)
+        sample(std::declval<mt_64i &>(),dist)
     } -> std::convertible_to<Parameters>;
 };
 
@@ -89,7 +89,7 @@ concept is_likelihood_model = requires(FunctionTable&& f,
                                        const DataType& y) {
     
     {
-        simulate(std::declval<std::mt19937_64 &>(),lik,p,var)
+        simulate(std::declval<mt_64i &>(),lik,p,var)
     }-> std::convertible_to<DataType>;
     
     {
@@ -116,9 +116,9 @@ struct mcmc {
 
 template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
          class Parameters=std::decay_t<
-             decltype(sample(std::declval<std::mt19937_64 &>(), std::declval<Prior&>()))>>
+             decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
  //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_mcmc(FunctionTable&& f, std::mt19937_64 &mt, Prior const & pr, const Lik& lik,
+auto init_mcmc(FunctionTable&& f, mt_64i &mt, Prior const & pr, const Lik& lik,
                const DataType &y, const Variables &x) {
     auto priorsampler=sampler(pr);
     auto par = sample(mt,priorsampler);

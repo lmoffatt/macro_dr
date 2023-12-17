@@ -9,15 +9,16 @@
 #include <random>
 #include <type_traits>
 #include <utility>
+#include "random_samplers.h"
 
 template <class Distribution>
 concept is_Distribution = requires(Distribution &m, Distribution const& m_const) {
     {
-        m(std::declval<std::mt19937_64 &>())
+        m(std::declval<mt_64i &>())
     } ;
     
     {
-        m_const.logP(m(std::declval<std::mt19937_64 &>()))
+        m_const.logP(m(std::declval<mt_64i &>()))
     }->std::convertible_to<Maybe_error<double>>;
     
 };
@@ -27,11 +28,11 @@ concept is_Distribution = requires(Distribution &m, Distribution const& m_const)
 template <class Distribution, class T>
 concept is_Distribution_of = requires(Distribution &m, Distribution const& m_const) {
     {
-        m(std::declval<std::mt19937_64 &>())
+        m(std::declval<mt_64i &>())
     } ->std::convertible_to<T>;
     
     {
-        m_const.logP(m(std::declval<std::mt19937_64 &>()))
+        m_const.logP(m(std::declval<mt_64i &>()))
     }->std::convertible_to<Maybe_error<double>>;
 };
 
@@ -44,10 +45,10 @@ class Custom_Distribution
     Sampler m_s;
     ProbabilityFunction m_p;
 public:
-    using T=std::invoke_result_t<Sampler,std::mt19937_64&>;
+    using T=std::invoke_result_t<Sampler,mt_64i&>;
     Custom_Distribution(std::size_t t_size,Sampler&& s, ProbabilityFunction&& f):m_size{t_size},m_s{std::move(s)}, m_p{std::move(f)}{}
     
-    auto operator()(std::mt19937_64& mt){ return std::invoke(m_s,mt);}
+    auto operator()(mt_64i& mt){ return std::invoke(m_s,mt);}
     Maybe_error<double> logP(const T& x)const { return std::invoke(m_p,x);}
     
     auto size()const {return m_size;}
@@ -69,7 +70,7 @@ concept index_accesible=requires(T a)
 
 template <class Distribution>
 concept is_vector_sampler = requires(Distribution &m) {
-    { m(std::declval<std::mt19937_64 &>,0)}->index_accesible;
+    { m(std::declval<mt_64i &>,0)}->index_accesible;
 };
 
 template<class T>
@@ -142,7 +143,7 @@ auto concatenate_to_columns(Xs&&...xs)
 template<class Dist>
 concept Multivariate=requires (Dist& d)
 {
-    {d(std::declval<std::mt19937_64&>())}->std::convertible_to<Matrix<double>>;
+    {d(std::declval<mt_64i&>())}->std::convertible_to<Matrix<double>>;
 };
 
 double logP_impl(const Matrix<double>& , std::size_t, double partial_logP)
@@ -177,7 +178,7 @@ Maybe_error<double> logP_impl(const Matrix<double>& x, std::size_t ipos, double 
 
 template<class D>
     requires(is_Distribution<D>)
-auto sample(std::mt19937_64& mt, D&d)
+auto sample(mt_64i& mt, D&d)
 {return d(mt);}
 
 template<class D>
@@ -188,14 +189,14 @@ auto sampler(const D&d)
 
 template<class D>
     requires(is_vector_sampler<D>)
-auto sample(std::mt19937_64& mt, D&d, std::size_t n)
+auto sample(mt_64i& mt, D&d, std::size_t n)
 {
     return d(mt,n);
 }
 
 template<class D>
     requires(is_Distribution<D>)
-auto sample(std::mt19937_64& mt, D&&d, std::size_t nrows, std::size_t ncols)
+auto sample(mt_64i& mt, D&&d, std::size_t nrows, std::size_t ncols)
 {
     Matrix<double> out(nrows,ncols,false);
     for (std::size_t i=0; i<out.size(); ++i)
@@ -214,7 +215,7 @@ class distributions: public ds...
 {
 public:
     
-    auto operator()(std::mt19937_64& mt)
+    auto operator()(mt_64i& mt)
     {
         return concatenate_to_columns(ds::operator()(mt)...);
     }

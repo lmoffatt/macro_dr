@@ -12,7 +12,7 @@
 
 
 template<class distribution>
-auto random_matrix(std::mt19937_64& mt,distribution&& d,std::size_t nrows,std::size_t ncols)
+auto random_matrix(mt_64i& mt,distribution&& d,std::size_t nrows,std::size_t ncols)
 {
     Matrix<double> out(nrows,ncols,false);
     for (std::size_t i=0; i<out.size(); ++i)
@@ -21,19 +21,19 @@ auto random_matrix(std::mt19937_64& mt,distribution&& d,std::size_t nrows,std::s
 }
 
 
-auto random_matrix_normal(std::mt19937_64& mt,std::size_t nrows,std::size_t ncols, double mean=0, double stddev=1)
+auto random_matrix_normal(mt_64i& mt,std::size_t nrows,std::size_t ncols, double mean=0, double stddev=1)
 {
     return random_matrix(mt,std::normal_distribution<double>{mean,stddev},nrows,ncols);
 }
 
-auto random_matrix_exponential(std::mt19937_64& mt,std::size_t nrows,std::size_t ncols, double lambda)
+auto random_matrix_exponential(mt_64i& mt,std::size_t nrows,std::size_t ncols, double lambda)
 {
     return random_matrix(mt,std::exponential_distribution<double>{lambda},nrows,ncols);
 }
 
 
 
-//auto random_covariance(std::mt19937_64& mt, std::size_t ndim, std::initializer_list<double> sigmas )
+//auto random_covariance(mt_64i& mt, std::size_t ndim, std::initializer_list<double> sigmas )
 //{
 //    auto X=random_matrix_normal(mt,ndim,ndim);
 //    auto [Q,R]=qr(X);
@@ -42,7 +42,7 @@ auto random_matrix_exponential(std::mt19937_64& mt,std::size_t nrows,std::size_t
 //    return cov;
 //}
 
-auto random_covariance(std::mt19937_64& mt, std::size_t ndim, const Matrix<double>& sigmas )
+auto random_covariance(mt_64i& mt, std::size_t ndim, const Matrix<double>& sigmas )
 {
     auto X=sample(mt,normal_distribution{0,1},ndim,ndim);
     auto [Q,R]=qr(X);

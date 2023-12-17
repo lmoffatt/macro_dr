@@ -25,7 +25,7 @@ template <class T> using by_beta = std::vector<T>;
 template <class T> using by_iteration = std::vector<T>;
 
 template<class Parameters>
-auto stretch_move(std::mt19937_64& ,const Parameters &Xk, const Parameters &Xj, double z) {
+auto stretch_move(mt_64i& ,const Parameters &Xk, const Parameters &Xj, double z) {
     assert((Xj.size() == Xk.size()) && "sum of vector fields of different sizes");
     auto out = Xj;
     for (std::size_t i = 0; i < Xj.size(); ++i)
@@ -34,7 +34,7 @@ auto stretch_move(std::mt19937_64& ,const Parameters &Xk, const Parameters &Xj, 
 }
 
 template<class Parameters>
-auto stretch_move(std::mt19937_64& mt,std::uniform_real_distribution<double>& rdist, const Parameters &Xk, const Parameters &Xj) {
+auto stretch_move(mt_64i& mt,std::uniform_real_distribution<double>& rdist, const Parameters &Xk, const Parameters &Xj) {
     assert((Xj.size() == Xk.size()) && "sum of vector fields of different sizes");
     auto z = std::pow(rdist(mt) + 1, 2) / 2.0;
     
@@ -45,9 +45,9 @@ auto stretch_move(std::mt19937_64& mt,std::uniform_real_distribution<double>& rd
 }
 
 
-auto init_mts(std::mt19937_64 &mt, std::size_t n) {
-    std::uniform_int_distribution<typename std::mt19937_64::result_type> useed;
-    std::vector<std::mt19937_64> out;
+auto init_mts(mt_64i &mt, std::size_t n) {
+    std::uniform_int_distribution<typename mt_64i::result_type> useed;
+    std::vector<mt_64i> out;
     out.reserve(n);
     for (std::size_t i = 0; i < n; ++i)
         out.emplace_back(useed(mt));
@@ -314,10 +314,10 @@ auto mixing_var_ratio(by_beta<double> const &mean_var,
 
 template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
-             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 auto init_thermo_mcmc(FunctionTable&&  f,std::size_t n_walkers, by_beta<double> const &beta,
-                      ensemble<std::mt19937_64> &mt, Prior const &prior, Likelihood const& lik,
+                      ensemble<mt_64i> &mt, Prior const &prior, Likelihood const& lik,
                       const DataType &y, const Variables &x) {
     
     ensemble<by_beta<std::size_t>> i_walker(n_walkers,
@@ -587,12 +587,12 @@ void observe_thermo_jump_mcmc(Observer &obs, std::size_t jlanding,
 
 template <class FunctionTable,class Observer, class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
-             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 void step_stretch_thermo_mcmc(FunctionTable&& f,std::size_t &iter,
                               thermo_mcmc<Parameters> &current, Observer &obs,
                               const by_beta<double> &beta,
-                              ensemble<std::mt19937_64> &mt, Prior const &prior, Likelihood const& lik,
+                              ensemble<mt_64i> &mt, Prior const &prior, Likelihood const& lik,
                               const DataType &y, const Variables &x,
                               double alpha_stretch = 2) {
     assert(beta.size() == num_betas(current));
@@ -662,7 +662,7 @@ double calc_logA(double betai, double betaj, double logLi, double logLj) {
 template <class Parameters, class Observer>
 void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
                       Observer &obs, const by_beta<double> &beta,
-                      std::mt19937_64 &mt, ensemble<std::mt19937_64> &mts,
+                      mt_64i &mt, ensemble<mt_64i> &mts,
                       std::size_t thermo_jumps_every) {
     if (iter % (thermo_jumps_every) == 0) {
         std::uniform_real_distribution<double> uniform_real(0, 1);
@@ -704,10 +704,10 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
 
 template <class FunctionTable,class Prior, class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
-             std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 auto push_back_new_beta(FunctionTable&& f,std::size_t &iter, thermo_mcmc<Parameters> &current,
-                        ensemble<std::mt19937_64> &mts,
+                        ensemble<mt_64i> &mts,
                         by_beta<double> const &new_beta, Prior const &prior, Likelihood const& lik,
                         const DataType &y, const Variables &x) {
     auto n_walkers = current.walkers.size();

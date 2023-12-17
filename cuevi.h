@@ -207,7 +207,7 @@ using Walker_statistics_pair =
     std::pair<Walker_statistics &, Walker_statistics &>;
 
 class Init_seed
-    : public var::Constant<Init_seed, typename std::mt19937_64::result_type> {};
+    : public var::Constant<Init_seed, typename mt_64i::result_type> {};
 using DataIndexes = std::vector<std::size_t>;
 template <class T> using by_fraction = std::vector<T>;
 
@@ -350,7 +350,7 @@ template <class ParameterType> class Cuevi_mcmc {
   template <class FunctionTable, class Sampler, class Prior,
             class logLikelihood, class Data, class Variables>
   static Maybe_error<Walker_value>
-  sample_Walker_for(FunctionTable &&f, std::mt19937_64 &mt, Sampler &&sampler,
+  sample_Walker_for(FunctionTable &&f, mt_64i &mt, Sampler &&sampler,
                     Prior &&p, logLikelihood &&lik, const by_fraction<Data> &y,
                     const by_fraction<Variables> &x,
                     const Cuevi_temperatures &t, Cuevi_Index i_cu,
@@ -376,7 +376,7 @@ template <class ParameterType> class Cuevi_mcmc {
 
   template <class FunctionTable, class Prior, class logLikelihood, class Data,
             class Variables>
-  static auto sample_Walker(FunctionTable &&f, std::mt19937_64 &mt, Prior &&p,
+  static auto sample_Walker(FunctionTable &&f, mt_64i &mt, Prior &&p,
                             logLikelihood &&lik, const by_fraction<Data> &y,
                             const by_fraction<Variables> &x,
                             const Cuevi_temperatures &t, Cuevi_Index i_cu,
@@ -384,7 +384,7 @@ template <class ParameterType> class Cuevi_mcmc {
                             Number_trials_until_give_up max_trials) {
     return sample_Walker_for(
         std::forward<FunctionTable>(f), mt,
-        [&p](std::mt19937_64 &mt) {
+        [&p](mt_64i &mt) {
           return sample(mt, std::forward<Prior>(p));
         },
         p, lik, y, x, t, i_cu, w_sta, max_trials);
@@ -393,7 +393,7 @@ template <class ParameterType> class Cuevi_mcmc {
   template <class FunctionTable, class Prior, class logLikelihood, class Data,
             class Variables>
   Maybe_error<Walkers_ensemble> friend init_cuevi(
-      FunctionTable &&f, ensemble<std::mt19937_64> &mts, Prior &&p,
+      FunctionTable &&f, ensemble<mt_64i> &mts, Prior &&p,
       logLikelihood &&lik, const by_fraction<Data> &y,
       const by_fraction<Variables> &x, const Cuevi_temperatures &t,
       Num_Walkers_Per_Ensemble n, Cuevi_statistics &sta,
@@ -430,7 +430,7 @@ template <class ParameterType> class Cuevi_mcmc {
   template <class FunctionTable, class Prior, class logLikelihood, class Data,
             class Variables>
   static Maybe_error<typename Cuevi_mcmc<ParameterType>::Walkers_ensemble>
-  init_walkers_ensemble(FunctionTable &&f, ensemble<std::mt19937_64> &mts,
+  init_walkers_ensemble(FunctionTable &&f, ensemble<mt_64i> &mts,
                         Prior &&p, logLikelihood &&lik,
                         const by_fraction<Data> &y,
                         const by_fraction<Variables> &x,
@@ -642,7 +642,7 @@ public:
   template <class FunctionTable, class Prior, class logLikelihood, class Data,
             class Variables>
   Maybe_error<Cuevi_mcmc> static init(
-      FunctionTable &&f, ensemble<std::mt19937_64> &mts, Prior &&prior,
+      FunctionTable &&f, ensemble<mt_64i> &mts, Prior &&prior,
       logLikelihood &&lik, const by_fraction<Data> &y,
       const by_fraction<Variables> &x, const Th_Beta_Param &beta,
       Num_Walkers_Per_Ensemble num_walkers,
@@ -696,7 +696,7 @@ public:
   friend void
   report(FunctionTable &&f, std::size_t iter, save_likelihood<ParameterType> &s,
          Cuevi_mcmc &data, Prior &&, t_logLikelihood &&lik,
-         const by_fraction<Data> &y, const by_fraction<Variables> &x) {
+         const by_fraction<Data> &y, const by_fraction<Variables> &x,...) {
 
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
@@ -788,7 +788,7 @@ public:
   friend void report(FunctionTable &&f, std::size_t iter,
                      save_Parameter<ParameterType> &s, Cuevi_mcmc const &data,
                      Prior &&, t_logLikelihood &&, const by_fraction<Data> &y,
-                     const by_fraction<Variables> &) {
+                     const by_fraction<Variables> &,...) {
 
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
@@ -931,7 +931,7 @@ public:
   friend void report(FunctionTable &&f, std::size_t iter, save_Evidence &s,
                      Cuevi_mcmc &data, Prior &&, t_logLikelihood &&lik,
                      const by_fraction<Data> &y,
-                     const by_fraction<Variables> &x) {
+                     const by_fraction<Variables> &x,...) {
 
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
@@ -1043,13 +1043,13 @@ public:
   template <class FunctionTable, class Prior, class Likelihood, class Variables,
             class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   auto operator()(FunctionTable &&f, Cuevi_mcmc<Parameters> &current,
-                  ensemble<std::mt19937_64> &mts,
+                  ensemble<mt_64i> &mts,
                   std::vector<std::uniform_real_distribution<double>> &rdist,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
@@ -1099,13 +1099,13 @@ public:
   template <class FunctionTable, class Prior, class Likelihood, class Variables,
             class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, Cuevi_mcmc<Parameters> &current,
-                  ensemble<std::mt19937_64> &mts, Prior const &prior,
+                  ensemble<mt_64i> &mts, Prior const &prior,
                   Likelihood const &lik, const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
                   double alpha_stretch = 2) const {
@@ -1207,18 +1207,18 @@ public:
   template <class FunctionTable, class Prior, class Likelihood, class Variables,
             class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, std::size_t iter,
                   Cuevi_mcmc<Parameters> &current, 
-                  ensemble<std::mt19937_64> &mts, Prior const &,
+                  ensemble<mt_64i> &mts, Prior const &,
                   Likelihood const &lik, const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
-                  std::size_t thermo_jumps_every, bool randomize) const {
-    if (iter % (thermo_jumps_every) == 0) {
+                  Thermo_Jumps_every thermo_jumps_every, bool randomize) const {
+      if (iter % (thermo_jumps_every()) == 0) {
       auto t = current.get_Cuevi_Temperatures();
       auto n_walkers = current.get_Walkers_number();
 
@@ -1321,7 +1321,7 @@ auto evidence_old(FunctionTable &&ff,
               Prior &&prior, Likelihood const &lik, const DataType &y,
               const Variables &x, const Init_seed init_seed) {
   using Parameter_Type =
-      std::decay_t<std::invoke_result_t<Prior, std::mt19937_64 &>>;
+      std::decay_t<std::invoke_result_t<Prior, mt_64i &>>;
 
   using mcmc_type = std::decay_t<decltype(get<Finalizer>(cue())())>;
 
@@ -1329,9 +1329,9 @@ auto evidence_old(FunctionTable &&ff,
       Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<Parameter_Type>>>;
 
   auto f = ff.fork(var::I_thread(0));
-  auto mt = init_mt(init_seed());
   auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
-
+  
+  auto mt = init_mt(init_seed());
   auto mts = init_mts(mt, n_walkers() / 2);
   auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
   auto n_points_per_decade_fraction =
@@ -1386,11 +1386,11 @@ template <class FunctionTable, class ParameterType, class t_Reporter,
          class mcmc_type, class Prior, class Likelihood, class DataType,
          class Variables>
 auto evidence_loop(FunctionTable &&ff,
-                   std::size_t v_thermo_jump_every,mcmc_type& mcmc_run,t_Reporter& rep,
+                   mcmc_type& mcmc_run,t_Reporter& rep,
                    std::size_t iter,
                    Cuevi_mcmc<ParameterType>  & current,
                    
-                   std::vector<std::mt19937_64>& mts,
+                   std::vector<mt_64i>& mts,Thermo_Jumps_every v_thermo_jump_every,
                    Prior &&prior, Likelihood const &lik, const by_fraction<DataType> &ys,
                    const by_fraction<Variables> &xs ) {
     using Return_Type =
@@ -1407,11 +1407,11 @@ auto evidence_loop(FunctionTable &&ff,
         thermo_cuevi_jump_mcmc{}(f, iter, current, mts, prior, lik, ys, xs,
                                  v_thermo_jump_every, false);
         // f.f(
-        thermo_cuevi_jump_mcmc{}(f, iter + v_thermo_jump_every % 2,
+        thermo_cuevi_jump_mcmc{}(f, iter + v_thermo_jump_every() % 2,
                                  current, mts, prior, lik, ys, xs,
                                  v_thermo_jump_every, true);
         
-        report_all(f, iter, rep, current, prior, lik, ys, xs);
+        report_all(f, iter, rep, current, prior, lik, ys, xs, mts, mcmc_run);
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
     return Return_Type(std::pair(mcmc_run.first, current));
@@ -1429,7 +1429,7 @@ auto evidence(FunctionTable &&ff,
               Prior &&prior, Likelihood const &lik, const DataType &y,
               const Variables &x, const Init_seed init_seed) {
     using Parameter_Type =
-        std::decay_t<std::invoke_result_t<Prior, std::mt19937_64 &>>;
+        std::decay_t<std::invoke_result_t<Prior, mt_64i &>>;
     
     using mcmc_type = std::decay_t<decltype(get<Finalizer>(cue())())>;
     
@@ -1437,9 +1437,71 @@ auto evidence(FunctionTable &&ff,
         Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<Parameter_Type>>>;
     
     auto f = ff.fork(var::I_thread(0));
-    auto mt = init_mt(init_seed());
-    auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
     
+    auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
+    auto mt = init_mt(init_seed());
+    auto mts = init_mts(mt, n_walkers() / 2);
+    auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
+    auto n_points_per_decade_fraction =
+        get<Points_per_decade>(get<Fractions_Param>(cue())());
+    
+    auto [ys, xs] = get<Fractioner>(cue())()(
+        y, x, mt, size(prior) * min_fraction(), n_points_per_decade_fraction());
+    
+    auto Maybe_current = Cuevi_mcmc<Parameter_Type>::init(
+        std::forward<FunctionTable>(ff), mts, std::forward<Prior>(prior), lik, ys,
+        xs, get<Th_Beta_Param>(cue()), n_walkers,
+        get<Number_trials_until_give_up>(cue()));
+    
+    if (!Maybe_current)
+        return Return_Type(Maybe_current.error());
+    else {
+        
+        auto current = std::move(Maybe_current.value());
+        auto &rep = get<Reporter>(cue())();
+        report_title(rep, current, prior, lik, ys, xs);
+        
+        auto a = get<Finalizer>(cue())();
+        auto mcmc_run = checks_convergence(std::move(a), current);
+        
+        std::size_t iter = 0;
+      //  report_model(rep, v_thermo_jump_every,prior, lik, ys, xs);
+        report_title(ff, "Iter");
+        auto v_thermo_jump_every=get<Thermo_Jumps_every>(cue());
+        
+       // report_init(rep,v_thermo_jump_every,prior,lik,ys,xs);
+        
+        return evidence_loop(std::forward<FunctionTable>(ff),
+                             mcmc_run,rep,
+                             iter,
+                             current,
+                              mts,
+                             v_thermo_jump_every,std::forward<Prior>(prior), lik,ys,xs );        
+       }
+}
+
+
+
+
+template <class FunctionTable, class myFractioner, class t_Reporter,
+         class t_Finalizer, class Prior, class Likelihood, class DataType,
+         class Variables>
+auto continue_evidence(FunctionTable &&ff,
+              Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue,
+              Prior &&prior, Likelihood const &lik, const DataType &y,
+              const Variables &x, const Init_seed init_seed) {
+    using Parameter_Type =
+        std::decay_t<std::invoke_result_t<Prior, mt_64i &>>;
+    
+    using mcmc_type = std::decay_t<decltype(get<Finalizer>(cue())())>;
+    
+    using Return_Type =
+        Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<Parameter_Type>>>;
+    
+    auto f = ff.fork(var::I_thread(0));
+    
+    auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
+    auto mt = init_mt(init_seed());
     auto mts = init_mts(mt, n_walkers() / 2);
     auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
     auto n_points_per_decade_fraction =
@@ -1467,15 +1529,19 @@ auto evidence(FunctionTable &&ff,
         std::size_t iter = 0;
         // report_model(rep, prior, lik, ys, xs);
         report_title(ff, "Iter");
-        std::size_t v_thermo_jump_every=get<Thermo_Jumps_every>(cue())();
+        std::size_t v_thermo_jump_every=get<Thermo_Jumps_every>(cue());
+        
         return evidence_loop(std::forward<FunctionTable>(ff),
                              v_thermo_jump_every,mcmc_run,rep,
                              iter,
                              current,
-                              mts,
+                             mts,
                              std::forward<Prior>(prior), lik,ys,xs );        
-       }
+    }
 }
+
+
+
 
 
 } // namespace cuevi
@@ -2060,13 +2126,13 @@ struct step_stretch_cuevi_mcmc_per_walker {
   template <class FunctionTable, class Observer, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, cuevi_mcmc<Parameters> &current,
-                  Observer &obs, ensemble<std::mt19937_64> &mt,
+                  Observer &obs, ensemble<mt_64i> &mt,
                   std::vector<std::uniform_real_distribution<double>> &rdist,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
@@ -2143,14 +2209,14 @@ struct step_stretch_cuevi_mcmc {
   template <class FunctionTable, class Observer, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void
   operator()(FunctionTable &&f, cuevi_mcmc<Parameters> &current, Observer &obs,
-             ensemble<std::mt19937_64> &mt, Prior const &prior,
+             ensemble<mt_64i> &mt, Prior const &prior,
              Likelihood const &lik, const by_fraction<DataType> &y,
              const by_fraction<Variables> &x, double alpha_stretch = 2) const {
     assert(current.beta.size() == num_betas(current));
@@ -2195,13 +2261,13 @@ struct step_stretch_cuevi_mcmc {
   template <class FunctionTable, class Observer, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, cuevi_mcmc<Parameters> &current,
-                  Observer &obs, ensemble<std::mt19937_64> &mt,
+                  Observer &obs, ensemble<mt_64i> &mt,
                   std::vector<std::uniform_real_distribution<double>> &rdist,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
@@ -2272,7 +2338,7 @@ struct step_stretch_cuevi_mcmc {
 
 using DataIndexes = std::vector<std::size_t>;
 
-auto generate_random_Indexes(std::mt19937_64 &mt, std::size_t num_samples,
+auto generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
                              std::size_t min_num_extra_samples,
                              double num_jumps_per_decade,
                              std::vector<std::size_t> initial_samples = {}) {
@@ -2322,7 +2388,7 @@ auto generate_random_Indexes(std::mt19937_64 &mt, std::size_t num_samples,
 
 struct fractioner {
   auto operator()(const Matrix<double> &y, const Matrix<double> &x,
-                  std::mt19937_64 &mt, std::size_t num_parameters,
+                  mt_64i &mt, std::size_t num_parameters,
                   double n_points_per_decade_beta,
                   double n_points_per_decade_fraction, double stops_at,
                   bool includes_zero) const {
@@ -2364,12 +2430,12 @@ struct fractioner {
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto init_mcmc2(FunctionTable &&f, std::mt19937_64 &mt, const Prior &prior,
+auto init_mcmc2(FunctionTable &&f, mt_64i &mt, const Prior &prior,
                 const Likelihood &lik, const by_fraction<DataType> &y,
                 const by_fraction<Variables> &x) {
   auto prior_sampler = sampler(prior);
@@ -2393,12 +2459,12 @@ auto init_mcmc2(FunctionTable &&f, std::mt19937_64 &mt, const Prior &prior,
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto init_mcmc_resample(FunctionTable &&f, ensemble<std::mt19937_64> &mt,
+auto init_mcmc_resample(FunctionTable &&f, ensemble<mt_64i> &mt,
                         cuevi_mcmc<Parameters> &current, const Prior &prior,
                         const Likelihood &lik, const by_fraction<DataType> &y,
                         const by_fraction<Variables> &x) {
@@ -2465,13 +2531,13 @@ auto init_mcmc_resample(FunctionTable &&f, ensemble<std::mt19937_64> &mt,
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
 auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
-                     by_beta<double> const &beta, ensemble<std::mt19937_64> &mt,
+                     by_beta<double> const &beta, ensemble<mt_64i> &mt,
                      Prior const &prior, Likelihood const &lik,
                      const by_fraction<DataType> &y,
                      const by_fraction<Variables> &x) {
@@ -2505,14 +2571,14 @@ auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
 auto init_cuevi_mcmc_all(FunctionTable &&f, std::size_t n_walkers,
                          by_fraction<by_beta<double>> const &beta_out,
-                         ensemble<std::mt19937_64> &mt, Prior const &prior,
+                         ensemble<mt_64i> &mt, Prior const &prior,
                          Likelihood const &lik, const by_fraction<DataType> &y,
                          const by_fraction<Variables> &x) {
   by_fraction<std::size_t> nsamples_out(beta_out.size());
@@ -2563,7 +2629,7 @@ std::size_t next_id_walker(const cuevi_mcmc<Parameters> &c) {
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
@@ -2618,7 +2684,7 @@ calculate_Likelihoods_sample(FunctionTable &&f, cuevi_mcmc<Parameters> &current,
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
@@ -2650,13 +2716,13 @@ Maybe_error<cuevi_mcmc<Parameters>> calculate_current_Likelihoods(
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 auto create_new_walkers(FunctionTable &&f,
                         const cuevi_mcmc<Parameters> &current,
-                        ensemble<std::mt19937_64> &mts, Prior const &prior,
+                        ensemble<mt_64i> &mts, Prior const &prior,
                         Likelihood const &lik, const by_fraction<DataType> &y,
                         const by_fraction<Variables> &x) {
 
@@ -2757,13 +2823,13 @@ void insert_new_walkers(cuevi_mcmc<Parameters> &current,
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 Maybe_error<cuevi_mcmc<Parameters>> push_back_new_fraction(
     FunctionTable &&f, const cuevi_mcmc<Parameters> &current_old,
-    ensemble<std::mt19937_64> &mts,
+    ensemble<mt_64i> &mts,
     const by_fraction<by_beta<double>> &final_beta,
     std::size_t max_number_of_simultaneous_temperatures, Prior const &prior,
     Likelihood const &lik, const by_fraction<DataType> &y,
@@ -2799,14 +2865,14 @@ struct thermo_cuevi_jump_mcmc {
   template <class FunctionTable, class Observer, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, std::size_t iter,
                   cuevi_mcmc<Parameters> &current, Observer &obs,
-                  std::mt19937_64 &mt, ensemble<std::mt19937_64> &mts,
+                  mt_64i &mt, ensemble<mt_64i> &mts,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
@@ -3138,7 +3204,7 @@ struct calculate_cuevi_walker {
   template <class FunctionTable, class Prior, class Likelihood, class Variables,
             class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
@@ -3215,7 +3281,7 @@ struct thermo_cuevi_randomized_jump_mcmc_per_walker {
   template <class FunctionTable, class Prior, class Likelihood, class Variables,
             class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
@@ -3287,14 +3353,14 @@ struct thermo_cuevi_randomized_jump_mcmc {
   template <class FunctionTable, class Observer, class Prior, class Likelihood,
             class Variables, class DataType,
             class Parameters = std::decay_t<decltype(sample(
-                std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+                std::declval<mt_64i &>(), std::declval<Prior &>()))>>
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, std::size_t iter,
                   cuevi_mcmc<Parameters> &current, Observer &obs,
-                  std::mt19937_64 &mt, ensemble<std::mt19937_64> &mts,
+                  mt_64i &mt, ensemble<mt_64i> &mts,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
@@ -3424,7 +3490,7 @@ public:
 template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
           class Variables, class DataType, class Fractioner, class Reporter,
           class Parameters = std::decay_t<decltype(sample(
-              std::declval<std::mt19937_64 &>(), std::declval<Prior &>()))>>
+              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_Algorithm_conditions<Algorithm, cuevi_mcmc<Parameters>> &&
            is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
