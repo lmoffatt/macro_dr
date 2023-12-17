@@ -3327,7 +3327,7 @@ thermodynamic parameter
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, medium_beta,includes_zero, myseed, saving_itervals);
+              n_points_per_decade_fraction, medium_beta, stops_at,includes_zero, myseed, saving_itervals);
           
           // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
           //                      sim.value()(), experiment);
@@ -3814,26 +3814,26 @@ thermodynamic parameter
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at, medium_beta,includes_zero, myseed, saving_itervals);
+              n_points_per_decade_fraction, medium_beta, stops_at,includes_zero, myseed, saving_itervals);
           
           auto cbc_0_alt = new_cuevi_Model_by_iteration<MyModel_alt>(
               path, filename_0_alt, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at,  medium_beta,includes_zero, myseed,saving_itervals);
+              n_points_per_decade_fraction, medium_beta, stops_at, includes_zero, myseed,saving_itervals);
           auto cbc_alt_0 = new_cuevi_Model_by_iteration<MyModel>(
               path, filename_alt_0, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at,  medium_beta,includes_zero, myseed,saving_itervals);
+              n_points_per_decade_fraction, medium_beta, stops_at, includes_zero, myseed,saving_itervals);
           auto cbc_alt_alt = new_cuevi_Model_by_iteration<MyModel_alt>(
               path, filename_alt_alt, t_segments_used, t_min_number_of_samples,
               num_scouts_per_ensemble, max_num_simultaneous_temperatures,
               min_fraction, thermo_jumps_every, max_iter_warming,
               max_iter_equilibrium, max_ratio, n_points_per_decade,
-              n_points_per_decade_fraction, stops_at,  medium_beta,includes_zero, myseed,saving_itervals);
+              n_points_per_decade_fraction,medium_beta, stops_at,includes_zero, myseed,saving_itervals);
           
           // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
           //                      sim.value()(), experiment);
