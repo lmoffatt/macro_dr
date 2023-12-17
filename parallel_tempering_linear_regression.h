@@ -13,7 +13,7 @@ public:
   std::ofstream f;
   std::size_t save_every = 1;
   save_Evidence(std::string const &path, std::size_t interval)
-      : f{std::ofstream(path + "__i_iter.csv")}, save_every{interval} {}
+      : f{std::ofstream(path + "__i_iter.csv")}, save_every{interval} {f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
 
   template <class Parameters>
   friend void report_title(save_Evidence &s, thermo_mcmc<Parameters> const &,
