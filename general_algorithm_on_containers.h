@@ -1,6 +1,7 @@
 #ifndef GENERAL_ALGORITHM_ON_CONTAINERS_H
 #define GENERAL_ALGORITHM_ON_CONTAINERS_H
 
+#include <cmath>
 #include <limits>
 #include <type_traits>
 namespace var{
@@ -40,10 +41,8 @@ auto cumsum(is_Container auto const& c)
 
 auto max(is_Container auto const& c)
 {
-    using T=std::decay_t<decltype(c[0])>;
-    using std::numeric_limits;
-    auto out=numeric_limits<T>::min();
-    for (std::size_t i=0; i<c.size(); ++i)
+    auto out=c[0];
+    for (std::size_t i=1; i<c.size(); ++i)
         if (out<c[i])
             out=c[i];
     return out; 
@@ -71,10 +70,8 @@ auto i_min(is_Container auto const& c)
 
 auto min(is_Container auto const& c)
 {
-    using T=std::decay_t<decltype(c[0])>;
-    using std::numeric_limits;
-    auto out=numeric_limits<T>::max();
-    for (std::size_t i=0; i<c.size(); ++i)
+    auto out=c[0];
+    for (std::size_t i=1; i<c.size(); ++i)
         if (out>c[i])
             out=c[i];
     return out; 
