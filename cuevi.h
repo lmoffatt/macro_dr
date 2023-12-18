@@ -846,11 +846,14 @@ public:
           Maybe_L logL0_1 = error_message{};
           Maybe_L logL0_0 = error_message{};
           if (i_fra() == 0) {
+             beta1 = data.get_Beta(i_cu)();
             logL0 = logL1;
             beta0 = beta1;
             logL1 = get<LogLik_by_Fraction>(wav())[i_fra];
             logL1_1 = logL1;
-            beta1 = data.get_Beta(i_cu)();
+            if (beta1==1.0)
+                logL1_2 = get<LogLik_by_Fraction>(wav())[i_fra + 1];
+                
             plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
             log_Evidence = log_Evidence + plog_Evidence;
             if (beta0 == 0)
