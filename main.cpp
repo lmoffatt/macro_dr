@@ -1826,7 +1826,7 @@ thermodynamic parameter
      * @brief min_fraction fraction of the prior parameter size used as the
      * minimal sample used for the cumulative sequence
      */
-      double min_fraction = 1.5;
+      double min_fraction = 4;
       
       /**
      * @brief checks_derivative_every_model_size number of steps before every

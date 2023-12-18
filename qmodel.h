@@ -254,8 +254,8 @@ bool crude_lambda_violations(DiagonalMatrix<double> const& l)
 template <class C_Matrix>
 auto to_Transition_Probability_Eigenvalues(C_Matrix &&lambda) {
     
-    if (crude_lambda_violations(primitive(lambda)))
-        std::cerr<<"crude lambda violations\n";        
+    // if (crude_lambda_violations(primitive(lambda)))
+    //     std::cerr<<"crude lambda violations\n";        
      
   auto i_max = var::i_max(primitive(lambda));
   lambda.set(i_max, 0.0);
@@ -929,13 +929,9 @@ public:
   
   static bool crude_Qx_violations(Qx const& q)
   {
-      auto eps=std::numeric_limits<double>::epsilon()*1000;
       auto Qu=q()*Matrix<double>(q().ncols(),1ul,1.0);
       if (maxAbs(Qu)>1e-5)
       {
-          auto qn=q()-diag(Qu);
-          auto Quu=qn*Matrix<double>(q().ncols(),1ul,1.0);
-          
           return true;
       }
       else
@@ -951,8 +947,8 @@ public:
     auto v_Qx = build<Qx>(get<Q0>(m)() + get<Qa>(m)() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
-    if (crude_Qx_violations(primitive(v_Qx)))
-            std::cerr<<"Qx violation\n";
+    // if (crude_Qx_violations(primitive(v_Qx)))
+    //         std::cerr<<"Qx violation\n";
     return v_Qx;
   }
   template <class C_Q0, class C_Qa>
@@ -962,8 +958,8 @@ public:
     auto v_Qx = build<Qx>(t_Q0() + t_Qa() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
-    if (crude_Qx_violations(primitive(v_Qx)))
-        std::cerr<<"Qx violation\n";
+    // if (crude_Qx_violations(primitive(v_Qx)))
+    //     std::cerr<<"Qx violation\n";
     return v_Qx;
   }
 
@@ -1422,8 +1418,8 @@ public:
       for (std::size_t i = 0; i < N; ++i)
         for (std::size_t j = 0; j < N; ++j)
           WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
-
-      auto r_gtotal_ij = build<gtotal_ij>(t_V() * WgV_E2 * t_W());
+      
+      auto r_gtotal_ij = force_gmean_in_range(build<gtotal_ij>(t_V() * WgV_E2 * t_W()),t_g);
 
       Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
       for (std::size_t n1 = 0; n1 < N; n1++)
@@ -1459,18 +1455,9 @@ public:
               r_gtotal_sqr_ij().set(i, j, 0.0);
             }
       }
-      Matrix<double> U(1, t_g().size(), 1.0);
-      Matrix<double> UU(t_g().size(), t_g().size(), 1.0);
-      auto gmean_ij_p = X_plus_XT(t_g() * U) * (0.5);
-
-      auto gvar_ij_p =
-          apply([](auto x) { return abs(x); }, t_g() * U - tr(t_g() * U)) *
-          (0.5);
-
-      auto gmean_ij_tot = r_gtotal_ij(); // + gmean_ij_p * t_min_P();
-      // auto P_p = r_P() + UU * t_min_P();
-      auto r_gmean_ij =
-          build<gmean_ij>(elemDivSafe(gmean_ij_tot, r_P(), t_min_P()));
+      
+      auto r_gmean_ij =force_gmean_in_range(
+          build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), t_min_P())),t_g);
       auto r_gtotal_var_ij = build<gtotal_var_ij>(
           r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij()));
 
@@ -1480,14 +1467,13 @@ public:
             truncate_negative_variance(std::move(r_gtotal_var_ij()));
       }
 
-      auto gvar_ij_tot = r_gtotal_var_ij(); // + gvar_ij_p * t_min_P();
       auto r_gvar_ij =
-          build<gvar_ij>(elemDivSafe(gvar_ij_tot, r_P(), t_min_P()));
+          build<gvar_ij>(elemDivSafe(r_gtotal_var_ij(), r_P(), t_min_P()));
 
       Matrix<double> u(N, 1, 1.0);
-      auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
-      if (crude_gmean_violation(primitive(r_gmean_i), primitive(get<g>(m))))
-          std::cerr<<"gmean_violation\n";
+      auto r_gmean_i = force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u),t_g);
+      // if (crude_gmean_violation(primitive(r_gmean_i), primitive(get<g>(m))))
+      //     std::cerr<<"gmean_violation\n";
       
       auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
       auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
@@ -1623,11 +1609,30 @@ public:
       auto min_g_m=var::min(v_gm());
       auto max_g=var::max(v_g());
       auto min_g=var::min(v_g());
-      if ((max_g_m<max_g)&& (min_g_m>min_g))
+      if ((max_g_m<=max_g)&& (min_g_m>=min_g))
           return false;
       else
           return true;
   }
+  
+  template <class C_gmean, class C_g>
+      requires((U<C_gmean, gmean_i>||U<C_gmean, gtotal_ij>||U<C_gmean, gmean_ij>)&&U<C_g,g>)
+  auto force_gmean_in_range(C_gmean&& g_mean, const C_g& v_g)
+  {
+      auto gmax=var::max(primitive(v_g()));
+      auto gmin=var::min(primitive(v_g()));
+      for (std::size_t i=0; i<g_mean().size(); ++i)
+      {
+          if (primitive(g_mean()[i])<gmin)
+              g_mean().set(i,gmin);
+          else if (primitive(g_mean()[i])>gmax)
+              g_mean().set(i,gmax);
+      }
+      return std::move(g_mean);                      
+  }      
+  
+  
+  
   
    template <class C_Qn>
     requires(U<C_Qn, Qn>)
@@ -2487,10 +2492,10 @@ public:
     
     auto r_y_mean_min=min_possible_value_of_ymean(N_Ch_mean_value(primitive(Nch)),primitive(get<g>(m)), primitive(y_baseline));
     
-    if (primitive(r_y_mean())*0.99>r_y_mean_max())
-        std::cerr<<"max violation\n";
-    if (primitive(r_y_mean())*0.99<r_y_mean_min())
-        std::cerr<<"min violation\n";
+    if ((primitive(r_y_mean())-r_y_mean_max())>std::max(std::abs(primitive(r_y_mean())),std::abs(r_y_mean_max()))*1e-5)
+        std::cerr<<"\n max violation"<<r_y_mean()<<"  vs  max: "<<r_y_mean_max();
+    if ((r_y_mean_min()-primitive(r_y_mean()))>std::max(std::abs(primitive(r_y_mean())),std::abs(r_y_mean_min()))*1e-5)
+        std::cerr<<"\n min violation\n"<<r_y_mean()<<"  vs  min: "<<r_y_mean_min();
     
     
     
