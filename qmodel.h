@@ -4,9 +4,11 @@
 #include "fold.h"
 #include "function_memoization.h"
 #include "matrix.h"
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <functional>
+#include <limits>
 #include <numeric>
 #include <random>
 #include <set>
@@ -239,11 +241,31 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
   auto s = var::sum(out);
   return out * (1.0 / s);
 }
+bool crude_lambda_violations(DiagonalMatrix<double> const& l)
+{
+    
+    if (var::max(l)>1e-2)
+        return true;
+    else
+        return false;
+}
+
 
 template <class C_Matrix>
 auto to_Transition_Probability_Eigenvalues(C_Matrix &&lambda) {
+    
+    if (crude_lambda_violations(primitive(lambda)))
+        std::cerr<<"crude lambda violations\n";        
+     
   auto i_max = var::i_max(primitive(lambda));
   lambda.set(i_max, 0.0);
+  auto j_max = var::i_max(primitive(lambda));
+  while (primitive(lambda[j_max])>0.0)
+  {
+      lambda.set(j_max, 0.0);
+      j_max = var::i_max(primitive(lambda));
+  }
+  
   return lambda;
 }
 
@@ -904,6 +926,24 @@ class Macro_DMR {
   }
 
 public:
+  
+  static bool crude_Qx_violations(Qx const& q)
+  {
+      auto eps=std::numeric_limits<double>::epsilon()*1000;
+      auto Qu=q()*Matrix<double>(q().ncols(),1ul,1.0);
+      if (maxAbs(Qu)>1e-5)
+      {
+          auto qn=q()-diag(Qu);
+          auto Quu=qn*Matrix<double>(q().ncols(),1ul,1.0);
+          
+          return true;
+      }
+      else
+          return false;
+  }
+  
+  
+
   template <class C_Patch_Model>
     requires U<C_Patch_Model, Patch_Model>
   auto calc_Qx(const C_Patch_Model &m, ATP_concentration x)
@@ -911,6 +951,8 @@ public:
     auto v_Qx = build<Qx>(get<Q0>(m)() + get<Qa>(m)() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
+    if (crude_Qx_violations(primitive(v_Qx)))
+            std::cerr<<"Qx violation\n";
     return v_Qx;
   }
   template <class C_Q0, class C_Qa>
@@ -920,6 +962,8 @@ public:
     auto v_Qx = build<Qx>(t_Q0() + t_Qa() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
+    if (crude_Qx_violations(primitive(v_Qx)))
+        std::cerr<<"Qx violation\n";
     return v_Qx;
   }
 
@@ -1442,6 +1486,9 @@ public:
 
       Matrix<double> u(N, 1, 1.0);
       auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+      if (crude_gmean_violation(primitive(r_gmean_i), primitive(get<g>(m))))
+          std::cerr<<"gmean_violation\n";
+      
       auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
       auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
       if constexpr (true) {
@@ -1556,8 +1603,33 @@ public:
     else
       return true;
   }
-
-  template <class C_Qn>
+  
+  
+  
+  static y_mean max_possible_value_of_ymean(N_Ch_mean_value t_N, const g &t_g, Current_Baseline b)
+  {
+      return y_mean(t_N()*var::max(t_g())+b()); 
+  }
+  
+  static y_mean min_possible_value_of_ymean(N_Ch_mean_value t_N, g t_g, Current_Baseline b)
+  {
+      return y_mean(t_N()*var::min(t_g())+b()); 
+  }
+  
+  
+  static bool crude_gmean_violation(gmean_i const& v_gm, const g &v_g)
+  {
+      auto max_g_m=var::max(v_gm());
+      auto min_g_m=var::min(v_gm());
+      auto max_g=var::max(v_g());
+      auto min_g=var::min(v_g());
+      if ((max_g_m<max_g)&& (min_g_m>min_g))
+          return false;
+      else
+          return true;
+  }
+  
+   template <class C_Qn>
     requires(U<C_Qn, Qn>)
   static auto Qn_to_Qdt(const C_Qn &x) {
     auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
@@ -2410,6 +2482,18 @@ public:
 
     r_y_mean =
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
+    
+    auto r_y_mean_max=max_possible_value_of_ymean(N_Ch_mean_value(primitive(Nch)),primitive(get<g>(m)), primitive(y_baseline));
+    
+    auto r_y_mean_min=min_possible_value_of_ymean(N_Ch_mean_value(primitive(Nch)),primitive(get<g>(m)), primitive(y_baseline));
+    
+    if (primitive(r_y_mean())*0.99>r_y_mean_max())
+        std::cerr<<"max violation\n";
+    if (primitive(r_y_mean())*0.99<r_y_mean_min())
+        std::cerr<<"min violation\n";
+    
+    
+    
     if (primitive(gSg) > 0) {
       if (primitive(ms) > 0) {
         r_y_var = build<y_var>(e + N * gSg + N * ms);
