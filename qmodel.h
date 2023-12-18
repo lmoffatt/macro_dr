@@ -442,7 +442,8 @@ void save(const std::string name, const Patch_Model &m) {
       << get<g>(m) << "\n";
 }
 
-template <class Id> struct Model_Patch {
+template <class Id>
+struct Model_Patch {
   template <class F> class Model {
     std::tuple<F, Parameters<Id>, typename Parameters<Id>::Names, Q0_formula,
                Qa_formula, g_formula>
