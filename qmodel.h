@@ -3489,7 +3489,7 @@ new_cuevi_Model_by_iteration(
     std::size_t max_iter_equilibrium, double max_ratio,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double medium_beta, double stops_at, bool includes_the_zero,
-    std::size_t initseed, Saving_intervals sint) {
+    std::size_t initseed, Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm(
       experiment_fractioner(t_segments, t_min_number_of_samples),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
@@ -3513,7 +3513,7 @@ new_cuevi_Model_by_iteration(
               cuevi::Min_value(stops_at),
               cuevi::Points_per_decade_low(n_points_per_decade_beta))),
       cuevi::Number_trials_until_give_up(number_trials_until_give_up),
-      cuevi::Thermo_Jumps_every(thermo_jumps_every), std::move(sint));
+        cuevi::Thermo_Jumps_every(thermo_jumps_every), cuevi::Random_jumps(random_jumps),std::move(sint));
 }
 
 template <class Id>
