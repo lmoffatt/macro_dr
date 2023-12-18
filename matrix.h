@@ -360,6 +360,9 @@ public:
   void set(std::size_t i, std::size_t j, T &&x) {
     operator()(i, j) = std::move(x);
   }
+  void set(std::size_t i, T x) {
+      operator[](i) = x;
+  }
 
   auto operator()(std::size_t i, const char *ch) const {
     assert(i < nrows() && std::strcmp(ch, ":") == 0);
