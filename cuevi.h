@@ -286,14 +286,15 @@ template <class ParameterType> class Cuevi_mcmc {
       else {
         auto fra_0 = get<Fraction_Index>(t()[i()]);
         auto fra_1 = get<Fraction_Index>(t()[i() + 1]);
-        auto logL_0 = get<LogLik_by_Fraction>(w())[fra_0];
-        auto logL_1 = get<LogLik_by_Fraction>(w())[fra_1];
-        auto beta_0 = get<Th_Beta>(t()[i()])();
-        if (beta_0 == 1)
+        if (fra_0() != fra_1()) {
+          auto logL_0 = get<LogLik_by_Fraction>(w())[fra_0];
+          auto logL_1 = get<LogLik_by_Fraction>(w())[fra_1];
           return (logL_1 - logL_0) * 0.5;
-        else {
+        } else {
+          auto logL_1 = get<LogLik_by_Fraction>(w())[fra_1];
+          auto beta_0 = get<Th_Beta>(t()[i()])();
           auto beta_1 = get<Th_Beta>(t()[i() + 1])();
-          return (beta_1 - beta_0) * 0.5 * (logL_1 - logL_0);
+          return (beta_1 - beta_0) * 0.5 * logL_1;
         }
       }
     }
@@ -406,13 +407,13 @@ template <class ParameterType> class Cuevi_mcmc {
       Walker_statistics_pair wa_sta_0, Walker_statistics_pair wa_sta_1) {
 
     auto Maybe_00 = calc_Relevant_Likelihoods(std::forward<FunctionTable>(f),
-                                              lik, y, x, t,w_0, i_0, wa_sta_0);
+                                              lik, y, x, t, w_0, i_0, wa_sta_0);
     auto Maybe_01 = calc_Relevant_Likelihoods(std::forward<FunctionTable>(f),
-                                              lik, y, x, t,w_0, i_1,  wa_sta_0);
+                                              lik, y, x, t, w_0, i_1, wa_sta_0);
     auto Maybe_10 = calc_Relevant_Likelihoods(std::forward<FunctionTable>(f),
-                                              lik, y, x, t,w_1, i_0, wa_sta_1);
+                                              lik, y, x, t, w_1, i_0, wa_sta_1);
     auto Maybe_11 = calc_Relevant_Likelihoods(std::forward<FunctionTable>(f),
-                                              lik, y, x,t, w_1, i_1, wa_sta_1);
+                                              lik, y, x, t, w_1, i_1, wa_sta_1);
 
     if (!Maybe_00.valid() || !Maybe_01.valid() || !Maybe_10.valid() ||
         !Maybe_11.valid())
@@ -1319,8 +1320,8 @@ public:
     auto &w_1 = current.get_Walker_Value(j_w, jcu);
     auto wa_sta_0 = current.get_Walker_Statistics(i_w, icu);
     auto wa_sta_1 = current.get_Walker_Statistics(j_w, jcu);
-    auto Maybe_logA = current.cuevi_jump_logProb(f, lik, y, x, t, icu, w_0,
-                                                  jcu, w_1, wa_sta_0, wa_sta_1);
+    auto Maybe_logA = current.thermo_jump_logProb(f, lik, y, x, t, icu, w_0, jcu,
+                                                 w_1, wa_sta_0, wa_sta_1);
     if (Maybe_logA.valid()) {
       auto logA = std::move(Maybe_logA.value());
       auto pJump = std::min(1.0, std::exp(logA));
