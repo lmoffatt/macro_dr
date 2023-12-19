@@ -344,7 +344,7 @@ struct dx_of_dfdx<d_d_<X,Y>>
 template<class ...T>
 using    dx_of_dfdx_t=typename std::decay_t<dx_of_dfdx<T...>>::type;
 
-auto get_dx_of_dfdx()
+inline auto get_dx_of_dfdx()
 {
     return NoDerivative{};
 }

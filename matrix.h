@@ -120,7 +120,7 @@ Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a);
 Maybe_error<SymmetricMatrix<double>>
 Lapack_Symm_inv(const SymmetricMatrix<double> &a);
 
-Maybe_error<SymPosDefMatrix<double>>
+ Maybe_error<SymPosDefMatrix<double>>
 Lapack_SymmPosDef_inv(const SymPosDefMatrix<double> &a);
 Maybe_error<DownTrianMatrix<double>>
 Lapack_chol(const SymPosDefMatrix<double> &x);
@@ -132,7 +132,7 @@ template <class T>
 Maybe_error<SymPosDefMatrix<T>>
 Lapack_LT_Cholesky_inv(const DownTrianMatrix<T> &x);
 
-Maybe_error<DownTrianMatrix<double>>
+inline Maybe_error<DownTrianMatrix<double>>
 Lapack_LT_inv(const DownTrianMatrix<double> &x, bool ones_in_diag);
 
 Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double> &x,
@@ -843,7 +843,7 @@ template <class F, class T> auto apply(F &&f, const SymmetricMatrix<T> &x) {
   return out;
 }
 
-auto elemMult(const Matrix<double> &x, const Matrix<double> &y) {
+inline auto elemMult(const Matrix<double> &x, const Matrix<double> &y) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
     out[i] = x[i] * y[i];
@@ -861,21 +861,21 @@ auto elemMult(const Matrix<S> &x, const Matrix<T> &y) ->Matrix<std::decay_t<decl
 
 
 
-auto elemDiv(const Matrix<double> &x, const Matrix<double> &y) {
+inline auto elemDiv(const Matrix<double> &x, const Matrix<double> &y) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
     out[i] = x[i] / y[i];
   return out;
 }
 
-auto elemDivSafe(const Matrix<double> &x, const Matrix<double> &y, double eps) {
+inline auto elemDivSafe(const Matrix<double> &x, const Matrix<double> &y, double eps) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
     out[i] = elemDivSafe(x[i], y[i], eps);
   return out;
 }
 
-auto elemDivSafe(const Matrix<double> &x, double y, double eps) {
+inline auto elemDivSafe(const Matrix<double> &x, double y, double eps) {
   auto out = x;
   for (std::size_t i = 0; i < x.size(); ++i)
     out[i] = elemDivSafe(x[i], y, eps);
@@ -1759,7 +1759,7 @@ template <class T> auto diagpos(const Matrix<T> &a) {
 
 template <class T> auto qr(const Matrix<T> &a) { return lapack::Lapack_QR(a); }
 
-auto eigs(const Matrix<double> &x, bool does_permutations = false,
+inline auto eigs(const Matrix<double> &x, bool does_permutations = false,
           bool does_diagonal_scaling = false,
           bool computes_eigenvalues_condition_numbers = false,
           bool computes_eigenvectors_condition_numbers = false) {
@@ -1770,14 +1770,14 @@ auto eigs(const Matrix<double> &x, bool does_permutations = false,
 
 
 
-auto eigs(const SymmetricMatrix<double> &x) {
+inline auto eigs(const SymmetricMatrix<double> &x) {
     return lapack::Lapack_Symm_EigenSystem(x);
 }
 
 
 
 
-auto XXT(const Matrix<double> &a) {
+inline auto XXT(const Matrix<double> &a) {
   return lapack::Lapack_Product_Self_Transpose(a, false);
 }
 
@@ -1785,13 +1785,13 @@ template <class T> auto XXT(const DiagonalMatrix<T> &a) {
   return DiagPosDetMatrix<T>(a * a);
 }
 
-auto XTX(const Matrix<double> &a) {
+inline auto XTX(const Matrix<double> &a) {
   if (a.size() == 0)
     return SymPosDefMatrix<double>{};
   else
     return lapack::Lapack_Product_Self_Transpose(a, true);
 }
-auto XTX(const Matrix<std::size_t> &a) {
+inline auto XTX(const Matrix<std::size_t> &a) {
     if (a.size() == 0)
         return SymPosDefMatrix<std::size_t>{};
     else

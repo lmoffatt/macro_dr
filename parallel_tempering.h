@@ -46,7 +46,7 @@ auto stretch_move(mt_64i& mt,std::uniform_real_distribution<double>& rdist, cons
 }
 
 
-auto init_mts(mt_64i &mt, std::size_t n) {
+inline auto init_mts(mt_64i &mt, std::size_t n) {
     std::uniform_int_distribution<typename mt_64i::result_type> useed;
     std::vector<mt_64i> out;
     out.reserve(n);
@@ -55,7 +55,7 @@ auto init_mts(mt_64i &mt, std::size_t n) {
     return out;
 }
 
-auto get_beta_list(double n_points_per_decade, double stops_at,
+inline auto get_beta_list(double n_points_per_decade, double stops_at,
                    bool includes_zero) {
     std::size_t num_beta =
         std::ceil(-std::log10(stops_at) * n_points_per_decade) + 1;
@@ -171,7 +171,7 @@ auto var_logL(by_iteration<thermo_mcmc<Parameters>> const &series,
     return out;
 }
 
-auto derivative_var_ratio_beta(by_beta<double> const &mean,
+inline auto derivative_var_ratio_beta(by_beta<double> const &mean,
                                by_beta<double> const &var,
                                by_beta<double> const &beta) {
     by_beta<double> out(mean.size() - 1);
@@ -204,10 +204,10 @@ auto mean_logL_walker(by_iteration<thermo_mcmc<Parameters>> const &series) {
                     series[i].walkers[iwalker][ibeta].logL / num_samples(series);
     return out;
 }
-double calcEvidence(double b1, double b2, double L1, double L2) {
+inline double calcEvidence(double b1, double b2, double L1, double L2) {
     return 0.5 * (L2 + L1) * (b2 - b1);
 }
-double calcEvidence_(double b1, double b2, double L1, double L2) {
+inline double calcEvidence_(double b1, double b2, double L1, double L2) {
     if (b1 == 0)
         return calcEvidence(b1, b2, L1, L2);
     auto db = b2 - b1;
@@ -218,7 +218,7 @@ double calcEvidence_(double b1, double b2, double L1, double L2) {
                           std::log(b1) * db);
 }
 
-double calcEvidence(double b1, double b2, double L1, double L2, double dL1,
+inline double calcEvidence(double b1, double b2, double L1, double L2, double dL1,
                     double dL2) {
     auto dL = dL2 - dL1;
     auto db = b2 - b1;
@@ -227,12 +227,12 @@ double calcEvidence(double b1, double b2, double L1, double L2, double dL1,
            1.0 / 6.0 * (std::pow(b2, 3) - std::pow(b1, 3)) * dL / db;
 }
 
-double calcEvidence(double b0, double L0, double dL0) {
+inline double calcEvidence(double b0, double L0, double dL0) {
     return L0 * b0 - 0.5 * dL0 * b0 * b0;
 }
-double calcEvidence(double b0, double L0) { return L0 * b0; }
+inline double calcEvidence(double b0, double L0) { return L0 * b0; }
 
-double calculate_Evidence(by_beta<double> const &beta,
+inline double calculate_Evidence(by_beta<double> const &beta,
                           by_beta<double> const &meanLik) {
     auto nb = beta.size();
     
@@ -249,7 +249,7 @@ double calculate_Evidence(by_beta<double> const &beta,
     }
 }
 
-double calculate_Evidence(by_beta<double> const &beta,
+inline double calculate_Evidence(by_beta<double> const &beta,
                           by_beta<double> const &meanLik,
                           by_beta<double> const &varLik) {
     auto nb = beta.size();
@@ -469,7 +469,7 @@ template <class Beta, class Var_ratio>
 bool compare_to_max_ratio(Beta const &beta, Var_ratio const &mean_logL,
                           Var_ratio const &var_ratio, double max_ratio);
 
-bool compare_to_max_ratio(by_beta<double> const &beta,
+inline bool compare_to_max_ratio(by_beta<double> const &beta,
                           by_beta<double> const &mean_logL,
                           by_beta<double> const &var_ratio, double max_ratio) {
     for (std::size_t i = 0; i < var_ratio.size(); ++i) {
@@ -622,7 +622,7 @@ void step_stretch_thermo_mcmc(FunctionTable&& f,std::size_t &iter,
     ++iter;
 }
 
-double calc_logA(double betai, double betaj, double logLi, double logLj) {
+inline double calc_logA(double betai, double betaj, double logLi, double logLj) {
     return -(betai - betaj) * (logLi - logLj);
 }
 

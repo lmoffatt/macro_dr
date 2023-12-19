@@ -178,7 +178,7 @@ public:
   }
 };
 
-Maybe_error<typed_program<Lexer, Compiler>>
+inline Maybe_error<typed_program<Lexer, Compiler>>
 compile_program(Compiler &cm, const untyped_program<Lexer, Compiler> &s) {
   typed_program<Lexer, Compiler> out;
   for (auto &e : s.statements()) {

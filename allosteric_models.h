@@ -471,7 +471,7 @@ struct Conformational_model
 
 namespace impl {
 
-auto make_Conformational_change_state_vector(
+inline auto make_Conformational_change_state_vector(
     const Conformational_model_scheme &model, std::size_t n) {
   auto number_units = get<Conformational_change_scheme>(model())().size();
 
@@ -481,7 +481,7 @@ auto make_Conformational_change_state_vector(
   return Conformational_change_state_vector(std::move(out));
 }
 
-Conformational_interactions_state_vector
+inline Conformational_interactions_state_vector
 make_Conformational_interaction_state_vector(
     const Conformational_model_scheme &model,
     const Conformational_change_state_vector &state) {
@@ -516,7 +516,7 @@ make_Conformational_interaction_state_vector(
   return Conformational_interactions_state_vector(std::move(out));
 }
 
-auto make_Conformational_state_vector(const Conformational_model_scheme &model,
+inline auto make_Conformational_state_vector(const Conformational_model_scheme &model,
                                       std::size_t n) {
   auto v_change = make_Conformational_change_state_vector(model, n);
   auto v_inter = make_Conformational_interaction_state_vector(model, v_change);
@@ -524,7 +524,7 @@ auto make_Conformational_state_vector(const Conformational_model_scheme &model,
       Vector_Space(std::move(v_change), std::move(v_inter)));
 }
 
-Maybe_error<Conformational_state_count>
+inline Maybe_error<Conformational_state_count>
 to_state_count(const Conformational_model_scheme &model,
                const Conformational_state_vector &state) {
   if (get<Conformational_change_state_vector>(state())().size() !=
@@ -545,7 +545,7 @@ to_state_count(const Conformational_model_scheme &model,
   }
 }
 
-Conductance_state_count
+inline Conductance_state_count
 to_state_conductance_count(const Conformational_model_scheme &model,
                            const Conformational_state_vector &state_vector)
 
@@ -568,7 +568,7 @@ to_state_conductance_count(const Conformational_model_scheme &model,
   return Conductance_state_count(std::move(out));
 }
 
-Maybe_error<Conformational_state_index>
+inline Maybe_error<Conformational_state_index>
 to_state_index(const Conformational_state_count_to_index &model,
                const Conformational_state_count &state_count) {
   if (auto it = model().find(state_count); it == model().end())
@@ -577,14 +577,14 @@ to_state_index(const Conformational_state_count_to_index &model,
     return it->second;
 }
 
-auto change_conformation(const Conformational_change_state_vector &state,
+inline auto change_conformation(const Conformational_change_state_vector &state,
                          std::size_t ith_domain) {
   Conformational_change_state_vector out(state);
   out()[ith_domain]() = !out()[ith_domain]();
   return out;
 }
 
-auto change_conformation(const Conformational_model_scheme &model,
+inline auto change_conformation(const Conformational_model_scheme &model,
                          const Conformational_state_vector &state,
                          std::size_t ith_domain) {
   auto v_change = change_conformation(
@@ -594,7 +594,7 @@ auto change_conformation(const Conformational_model_scheme &model,
       Vector_Space(std::move(v_change), std::move(v_inter)));
 }
 
-Maybe_error<
+inline Maybe_error<
     std::tuple<Conformational_states, Conformational_state_count_to_index>>
 make_Conformational_states_and_index(const Conformational_model_scheme &model) {
   auto number_units = get<Conformational_change_scheme>(model())().size();
@@ -617,7 +617,7 @@ make_Conformational_states_and_index(const Conformational_model_scheme &model) {
   return std::tuple(std::move(out), std::move(map));
 }
 
-Maybe_error<Conformational_transition_list> make_Conformational_transition_list(
+inline Maybe_error<Conformational_transition_list> make_Conformational_transition_list(
     const Conformational_model_scheme &model,
     const Conformational_states states,
     const Conformational_state_count_to_index &map) {
@@ -676,7 +676,7 @@ Maybe_error<Conformational_transition_list> make_Conformational_transition_list(
   return Conformational_transition_list(std::move(out));
 }
 
-Maybe_error<Conformational_change_scheme> make_Conformational_change_scheme(
+inline Maybe_error<Conformational_change_scheme> make_Conformational_change_scheme(
     Agonist_dependency_map &&t_agonist_map,
     std::vector<Conformational_change_label> &&t_scheme) {
   std::vector<Conformational_change> out(t_scheme.size());
@@ -694,7 +694,7 @@ Maybe_error<Conformational_change_scheme> make_Conformational_change_scheme(
   return Conformational_change_scheme(std::move(out));
 }
 
-Maybe_error<bool> check_Conformational_interaction(
+inline Maybe_error<bool> check_Conformational_interaction(
     const Conformational_change_scheme &t_scheme,
     Conformational_interaction const &t_interaction) {
 
@@ -729,7 +729,7 @@ Maybe_error<bool> check_Conformational_interaction(
   return out;
 }
 
-Maybe_error<Conformational_model_scheme> make_Conformational_model_scheme(
+inline Maybe_error<Conformational_model_scheme> make_Conformational_model_scheme(
     Agonist_dependency_map &&t_agonist_map,
     std::vector<Conformational_change_label> &&t_scheme,
     std::vector<Conformational_interaction> &&t_interactions,
@@ -1030,7 +1030,7 @@ auto make_g_formula(const Conformational_model &model,
   return v_g;
 }
 
-auto get_conformational_change_names(const Conformational_change_scheme &sch) {
+inline auto get_conformational_change_names(const Conformational_change_scheme &sch) {
   std::vector<std::string> out;
   std::set<std::string> labels;
   for (auto &e : sch()) {
@@ -1044,7 +1044,7 @@ auto get_conformational_change_names(const Conformational_change_scheme &sch) {
   return out;
 }
 
-auto get_conformational_interaction_names(
+inline auto get_conformational_interaction_names(
     const Conformational_interaction_scheme &sch) {
   std::vector<std::string> out;
   std::set<std::string> labels;
@@ -1061,7 +1061,7 @@ auto get_conformational_interaction_names(
   return out;
 }
 
-auto get_conductance_names(const Conductance_interaction_scheme &sch) {
+inline auto get_conductance_names(const Conductance_interaction_scheme &sch) {
   std::vector<std::string> out;
   std::set<std::string> labels;
   for (auto &e : sch()) {
@@ -1074,11 +1074,11 @@ auto get_conductance_names(const Conductance_interaction_scheme &sch) {
   return out;
 }
 
-auto get_states_structure(const Conformational_states &states) {}
+inline auto get_states_structure(const Conformational_states &states) {}
 
 } // namespace impl
 
-Maybe_error<Conformational_model> make_Conformational_model(
+inline Maybe_error<Conformational_model> make_Conformational_model(
     Agonist_dependency_map &&t_agonist_map,
     std::vector<Conformational_change_label> &&t_scheme,
     std::vector<Conformational_interaction> &&t_interactions,
@@ -1108,7 +1108,7 @@ Maybe_error<Conformational_model> make_Conformational_model(
   }
 }
 
-auto get_states_structure(const Conformational_model &model) {
+inline auto get_states_structure(const Conformational_model &model) {
   return impl::get_states_structure(get<Conformational_states>(model()));
 }
 

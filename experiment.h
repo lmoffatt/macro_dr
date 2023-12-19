@@ -29,21 +29,21 @@ class ATP_evolution: public Var<ATP_evolution, std::variant<ATP_step,std::vector
 };
 
 
-std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, std::vector<ATP_step> const& v)
+inline std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, std::vector<ATP_step> const& v)
 {
     for (std::size_t i=0; i<v.size(); ++i)
         f<<i_frac<<sep<<i_step<<sep<<time<<sep<<i_step+(i+0.5)/v.size()<<sep<<get<number_of_samples>(v[i])<<sep
           <<get<ATP_concentration>(v[i])<<"\n";
     return f; 
 }
-std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, ATP_step const& x)
+inline std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, ATP_step const& x)
 {
         f<<i_frac<<sep<<i_step<<sep<<time<<sep<<i_step+0.5<<sep<<get<number_of_samples>(x)<<sep
           <<get<ATP_concentration>(x)<<"\n";
     return f; 
 }
 
-std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, ATP_evolution const& v)
+inline std::ostream& put(std::ostream& f,std::string sep, std::size_t i_frac, std::size_t i_step, double time, ATP_evolution const& v)
 {
     return std::visit([&f,sep,i_frac,i_step,time](auto& e)->decltype(auto){return put(f,sep,i_frac,i_step,time,e);},v());
 }
@@ -124,7 +124,7 @@ void report_model(save_Parameter<Parameter>& s, std::vector<Recording> const & e
 
 
 
-auto &extract_double(std::istream &is, double &r) {
+inline auto &extract_double(std::istream &is, double &r) {
   std::string s;
   is >> s;
   if ((s == "nan") || (s == "NAN") || (s == "NaN"))
@@ -134,7 +134,7 @@ auto &extract_double(std::istream &is, double &r) {
   return is;
 }
 
-std::tuple<Recording_conditions,Recording> load_recording(const std::string filename) {
+inline std::tuple<Recording_conditions,Recording> load_recording(const std::string filename) {
   std::ifstream f(filename);
   std::vector<Experiment_step> out0;
   std::vector<Patch_current> out1;
@@ -155,7 +155,7 @@ std::tuple<Recording_conditions,Recording> load_recording(const std::string file
   return std::tuple(Recording_conditions(out0), Recording(out1));
 }
 
-std::tuple<Experiment, Recording>
+inline std::tuple<Experiment, Recording>
 load_experiment(const std::string filename, double frequency_of_sampling, double initial_ATP) {
   auto [v_recording_conditions,v_recording]=load_recording(filename);
   

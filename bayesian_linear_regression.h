@@ -84,7 +84,7 @@ public:
 
 
 
-auto get_parameters(linear_model, const Matrix<double> &beta)
+inline auto get_parameters(linear_model, const Matrix<double> &beta)
 {
     double logvar = beta[0];
     auto b = Matrix<double>(1, size(beta)-1, false);
@@ -117,7 +117,7 @@ Maybe_error<double> logLikelihood(FunctionTable&& f,linear_model, const Matrix<d
     }
 }
 
-auto simulate(mt_64i &mt, linear_model, const Matrix<double> &beta,
+inline auto simulate(mt_64i &mt, linear_model, const Matrix<double> &beta,
               const Matrix<double> &X) {
     assert(beta.ncols() - 1 == X.ncols() && "beta has the right number");
     auto [logvar,b]=get_parameters(linear_model{},beta);
@@ -167,7 +167,7 @@ make_bayesian_linear_model(double prior_eps_df, double prior_eps_variance,
         return error_message( prior.error()() + "\n in make_bayesian_linear_model");
 }
 
-auto make_bayesian_linear_model(double prior_eps_df,
+inline auto make_bayesian_linear_model(double prior_eps_df,
                                 double prior_eps_variance,
                                 std::size_t npar,
                                 double mean_b,

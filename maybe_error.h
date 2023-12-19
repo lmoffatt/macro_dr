@@ -266,7 +266,7 @@ auto operator*(const T &x, const S &y) {
         get_error(x)() + " multiplies " + get_error(y)());
 }
 
-Maybe_error<bool> operator>>(std::string &&context_message,
+inline Maybe_error<bool> operator>>(std::string &&context_message,
                              Maybe_error<bool> &&x) {
   if (x)
     return x;
@@ -274,7 +274,7 @@ Maybe_error<bool> operator>>(std::string &&context_message,
     return error_message(context_message + x.error()());
 }
 
-Maybe_error<bool> operator&&(Maybe_error<bool> &&one, Maybe_error<bool> &&two) {
+inline Maybe_error<bool> operator&&(Maybe_error<bool> &&one, Maybe_error<bool> &&two) {
   if ((one) && (two))
     return true;
   else

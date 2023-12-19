@@ -474,7 +474,7 @@ public:
   }
 };
 
-Maybe_error<multivariate_normal_distribution_of_probabilities>
+inline Maybe_error<multivariate_normal_distribution_of_probabilities>
 make_multivariate_normal_distribution_of_probabilities(
     Matrix<double> mean, SymPosDefMatrix<double> cov) {
   using T = multivariate_normal_distribution_of_probabilities;
@@ -617,7 +617,7 @@ public:
     return s / var::sum(s);
   }
 };
-std::size_t sample_N(mt_64i &mt, double N) {
+inline std::size_t sample_N(mt_64i &mt, double N) {
   auto r = std::uniform_real_distribution{}(mt);
   std::size_t out = std::floor(N);
   auto p = N - out;
