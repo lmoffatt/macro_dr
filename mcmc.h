@@ -30,7 +30,7 @@ auto operator-(const Parameters &x, const Parameters &y) {
   return out;
 }
 */
-auto calc_seed(typename mt_64i::result_type initseed) {
+inline auto calc_seed(typename mt_64i::result_type initseed) {
     
     if (initseed == 0) {
         std::random_device rd;
@@ -41,7 +41,7 @@ auto calc_seed(typename mt_64i::result_type initseed) {
         return initseed;
 }
 
-auto init_mt(typename mt_64i::result_type initseed) {
+inline auto init_mt(typename mt_64i::result_type initseed) {
     initseed = calc_seed(initseed);
     return mt_64i(initseed);
 }

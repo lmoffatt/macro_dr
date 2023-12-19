@@ -56,7 +56,7 @@ static auto sample_Multinomial_state(mt_64i &mt,
   return out;
 }
 
-std::size_t sample_Real_to_Size(mt_64i &mt, double x) {
+inline std::size_t sample_Real_to_Size(mt_64i &mt, double x) {
   std::size_t out = std::floor(x);
   double r = std::uniform_real_distribution<double>{}(mt);
   if (r > x - out)

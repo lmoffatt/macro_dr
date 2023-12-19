@@ -198,7 +198,7 @@ public:
    * @param s
    *  Use outside parallel for
    */
-  friend std::ostream &report_title(std::ostream &os, const std::string &sep,
+ inline  friend std::ostream &report_title(std::ostream &os, const std::string &sep,
                                     Time_it const &me) {
     os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count";
     for (std::size_t i = 0; i < me.m_count.size(); ++i)
@@ -360,7 +360,7 @@ public:
    * @param s
    *  Use outside parallel for
    */
-  friend std::ostream &report_title(std::ostream &os, const std::string &sep,
+  inline friend std::ostream &report_title(std::ostream &os, const std::string &sep,
                                     Test_it const &me) {
     os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count";
     for (std::size_t i = 0; i < me.m_count.size(); ++i)
@@ -391,11 +391,11 @@ public:
 template <class F> class F_on_thread;
 template <class... Fs> class FuncMap;
 
-std::ostream &report_title(std::ostream &os, const std::string &, ...) {
+inline std::ostream &report_title(std::ostream &os, const std::string &, ...) {
   return os;
 }
 
-std::ostream &report_point(std::ostream &os, const std::string &, ...) {
+inline std::ostream &report_point(std::ostream &os, const std::string &, ...) {
 
   return os;
 }

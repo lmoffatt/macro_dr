@@ -15,7 +15,7 @@ std::ostream& print(std::ostream& os, T x)
     return os;
 }
 
-std::ostream& print(std::ostream& os, const std::string& s)
+inline std::ostream& print(std::ostream& os, const std::string& s)
 {
     return os<<s;   
 }

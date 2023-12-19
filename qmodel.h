@@ -241,7 +241,7 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
   auto s = var::sum(out);
   return out * (1.0 / s);
 }
-bool crude_lambda_violations(DiagonalMatrix<double> const& l)
+inline bool crude_lambda_violations(DiagonalMatrix<double> const& l)
 {
     
     if (var::max(l)>1e-2)
@@ -371,7 +371,7 @@ class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
 
 public:
 };
-Maybe_error<Ptotal_ij> make_Ptotal_ij(Matrix<double> &&x, double max_dt) {
+inline Maybe_error<Ptotal_ij> make_Ptotal_ij(Matrix<double> &&x, double max_dt) {
   for (std::size_t i = 0; i < x.size(); ++i) {
     if ((x[i] < -max_dt) || (x[i] > max_dt + 1))
       return error_message(std::to_string(i) + "= " + std::to_string(x[i]) +
@@ -452,7 +452,7 @@ using Patch_Model =
                  Binomial_magical_number, min_P, Probability_error_tolerance,
                  Conductance_variance_error_tolerance>;
 
-void save(const std::string name, const Patch_Model &m) {
+inline void save(const std::string name, const Patch_Model &m) {
   std::ofstream f_Q0(name + "_Q0.txt");
   f_Q0 << std::setprecision(std::numeric_limits<double>::digits10 + 1)
        << get<Q0>(m) << "\n";
@@ -3315,7 +3315,7 @@ void report_title(save_Predictions<Parameters<Id>> &s,
       << "\n";
 }
 
-void report_title(save_Predictions<Matrix<double>> &s,
+inline void report_title(save_Predictions<Matrix<double>> &s,
                   thermo_mcmc<Matrix<double>> const &, ...) {}
 
 template <class Id, class FunctionTable>

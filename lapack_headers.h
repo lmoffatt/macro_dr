@@ -19,7 +19,7 @@ extern "C" void dgeqrf_(int *M, int *N, double *A, int *LDA, double *TAU,
 extern "C" void dorgqr_(int *M, int *N, int *K, double *A, int *LDA,
                         double *TAU, double *WORK, int *LWORK, int *INFO);
 
-auto Lapack_UT(const Matrix<double> &x) {
+inline auto Lapack_UT(const Matrix<double> &x) {
   Matrix<double> out(x.nrows(), x.ncols(), false);
   for (std::size_t i = 0; i < out.ncols(); ++i)
     for (std::size_t j = 0; j < out.nrows(); ++j)
@@ -27,7 +27,7 @@ auto Lapack_UT(const Matrix<double> &x) {
   return out;
 }
 
-auto Lapack_LT(const Matrix<double> &x) {
+inline auto Lapack_LT(const Matrix<double> &x) {
   Matrix<double> out(x.nrows(), x.ncols(), false);
   for (std::size_t i = 0; i < x.ncols(); ++i)
     for (std::size_t j = 0; j < x.nrows(); ++j)
@@ -35,7 +35,7 @@ auto Lapack_LT(const Matrix<double> &x) {
   return out;
 }
 
-std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> &x) {
+inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> &x) {
   int M = x.nrows();
   /*    [in]	M
 
@@ -152,7 +152,7 @@ Purpose:
   return std::pair(std::move(q), std::move(r));
 }
 
-Matrix<double> &Lapack_Full_Product(const Matrix<double> &x,
+inline Matrix<double> &Lapack_Full_Product(const Matrix<double> &x,
                                     const Matrix<double> &y, Matrix<double> &z,
                                     bool transpose_x, bool transpose_y,
                                     double alpha = 1.0, double beta = 0.0) {
@@ -238,7 +238,7 @@ Matrix<double> &Lapack_Full_Product(const Matrix<double> &x,
   return z;
 }
 
-Matrix<double> Lapack_Full_Product(const Matrix<double> &x,
+inline Matrix<double> Lapack_Full_Product(const Matrix<double> &x,
                                    const Matrix<double> &y, bool transpose_x,
                                    bool transpose_y, double alpha,
                                    double beta) {
@@ -328,7 +328,7 @@ extern "C" void dsymm_(char *SIDE, char *UPLO, int *M, int *N, double *ALPHA,
                        double *A, int *LDA, double *B, int *LDB, double *BETA,
                        double *C, int *LDC);
 
-Matrix<double> Lapack_Sym_Product(const SymmetricMatrix<double> &x,
+inline Matrix<double> Lapack_Sym_Product(const SymmetricMatrix<double> &x,
                                   const Matrix<double> &y,
                                   bool first_symmetric_c, double alpha,
                                   double beta) {
@@ -528,7 +528,7 @@ extern "C" void dgetri_(int *n, double *B, int *dla, int *ipiv, double *work1,
 extern "C" double dlange_(char *NORM, int *M, int *N, double *A, int *LDA,
                           double *WORK);
 
-Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a);
+inline Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a);
 } // namespace lapack
 template <> constexpr std::string function_name<&lapack::Lapack_Full_inv>() {
   return "Lapack_Full_inv";
@@ -536,7 +536,7 @@ template <> constexpr std::string function_name<&lapack::Lapack_Full_inv>() {
 
 namespace lapack {
 
-Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a)
+inline Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a)
 
 {
   return_error<Matrix<double>, Lapack_Full_inv> Error;
@@ -664,7 +664,7 @@ template <> constexpr std::string function_name<&lapack::Lapack_EigenSystem>() {
 
 namespace lapack {
 
-Maybe_error<SymmetricMatrix<double>>
+inline Maybe_error<SymmetricMatrix<double>>
 Lapack_Symm_inv(const SymmetricMatrix<double> &a) {
   return_error<SymmetricMatrix<double>, Lapack_Full_inv> Error;
 
@@ -980,7 +980,7 @@ extern "C" void dpocon_(char *UPLO, int *N,
 extern "C" void dpotrf_(char *UPLO, int *N, double *A, int *LDA, int *INFO);
 extern "C" void dpotri_(char *UPLO, int *N, double *A, int *LDA, int *INFO);
 
-Maybe_error<SymPosDefMatrix<double>>
+inline Maybe_error<SymPosDefMatrix<double>>
 Lapack_SymmPosDef_inv(const SymPosDefMatrix<double> &x) {
   return_error<SymPosDefMatrix<double>, Lapack_SymmPosDef_inv> Error;
 
@@ -1670,7 +1670,7 @@ extern "C" void dsyevx_(char *JOBZ, char *RANGE, char *UPLO, int *N,
 extern "C" void ddisna_(char *JOB, int * M, int *N,double * D, double *SEP,int * INFO );
 
 
-inline Maybe_error<std::tuple<Matrix<double>,DiagonalMatrix<double>,Matrix<double>>> Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind) {
+inline  Maybe_error<std::tuple<Matrix<double>,DiagonalMatrix<double>,Matrix<double>>> Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind) {
     
     using lapack::dsyevx_;
     
@@ -2273,7 +2273,7 @@ Parameters
 extern "C" void dsyrk_(char *UPLO, char *TRANS, int *N, int *K, double *ALPHA,
                        double *A, int *LDA, double *BETA, double *C, int *LDC);
 
-auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
+inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
                                         SymPosDefMatrix<double> &c,
                                         bool first_transposed_in_c,
                                         char UPLO_in_c = 'U', double alpha = 1,
@@ -2450,7 +2450,7 @@ Parameters
 
  * */
 
-SymPosDefMatrix<double>
+inline SymPosDefMatrix<double>
 Lapack_Product_Self_Transpose(const Matrix<double> &a,
                               bool first_transposed_in_c, char UPLO_in_c,
                               double alpha, double beta) {
@@ -2461,7 +2461,7 @@ Lapack_Product_Self_Transpose(const Matrix<double> &a,
   return c;
 };
 
-Maybe_error<DownTrianMatrix<double>>
+inline Maybe_error<DownTrianMatrix<double>>
 Lapack_chol(const SymPosDefMatrix<double> &x) {
   return_error<DownTrianMatrix<double>, Lapack_chol> Error;
   assert(x.nrows() == x.ncols());
@@ -2564,7 +2564,7 @@ extern "C" void dtrmm_(char *SIDE, char *UPLO, char *TRANSA, char *DIAG, int *M,
                        int *N, double *ALPHA, double *A, int *LDA, double *B,
                        int *LDB);
 
-Matrix<double>
+inline Matrix<double>
 Lapack_Triang_Product(const Matrix<double> &a, const Matrix<double> &b,
                       bool up_triangular_in_c, bool triangular_first_in_c,
                       bool transpose_A_in_c, bool ones_in_diag, double alpha) {
@@ -2745,7 +2745,7 @@ Parameters
 extern "C" void dtrtri_(char *UPLO, char *DIAG, int *N, double *A, int *LDA,
                         int *INFO);
 
-Maybe_error<DownTrianMatrix<double>>
+inline Maybe_error<DownTrianMatrix<double>>
 Lapack_LT_inv(const DownTrianMatrix<double> &x, bool ones_in_diag) {
 
   return_error<DownTrianMatrix<double>, Lapack_LT_inv> Error;
@@ -2851,7 +2851,7 @@ Parameters
     return a;
 }
 
-Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double> &x,
+inline Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double> &x,
                                                  bool ones_in_diag) {
 
   return_error<UpTrianMatrix<double>, Lapack_UT_inv> Error;

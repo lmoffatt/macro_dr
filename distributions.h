@@ -85,13 +85,13 @@ auto get_at(T& v, std::size_t i)->std::decay_t<decltype(v[i])>
 {
     return v[i];
 }
-double get_at(double const& x,std::size_t i){
+inline double get_at(double const& x,std::size_t i){
     assert(i==0);
     return x;
 }
 
 
-double& get_at(double& x,std::size_t i){
+inline double& get_at(double& x,std::size_t i){
     assert(i==0);
     return x;
 }
@@ -115,7 +115,7 @@ auto operator|(F&& f, T&& x )->std::invoke_result_t<F,T>
 }
 
 
-auto& append_to(Matrix<double>& m, std::size_t )
+inline auto& append_to(Matrix<double>& m, std::size_t )
 {
     return m;
 }
@@ -146,7 +146,7 @@ concept Multivariate=requires (Dist& d)
     {d(std::declval<mt_64i&>())}->std::convertible_to<Matrix<double>>;
 };
 
-double logP_impl(const Matrix<double>& , std::size_t, double partial_logP)
+inline double logP_impl(const Matrix<double>& , std::size_t, double partial_logP)
 {
     return partial_logP;
 }

@@ -821,7 +821,7 @@ public:
       for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
            ++i_walker) {
         auto iw = Walker_Index(i_walker);
-        auto &wav = data.get_Walker_Value(iw, Cuevi_Index(0));
+        auto &wav = data.get_Walker_Value(iw, Cuevi_Index(0ul));
         auto logL1 = get<LogLik_by_Fraction>(wav())[Fraction_Index(0)];
 
         using Maybe_L = decltype(logL1);
@@ -907,7 +907,7 @@ public:
   template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
             class Variables, class Finalizer>
   friend void
-  report(FunctionTable &&f, std::size_t iter, save_Parameter<ParameterType> &s,
+  report(FunctionTable &&, std::size_t iter, save_Parameter<ParameterType> &s,
          Cuevi_mcmc const &data, Prior &&, t_logLikelihood &&,
          const by_fraction<Data> &y, const by_fraction<Variables> &,
          const std::vector<mt_64i> &mts, const Finalizer &mcmc, ...) {
@@ -1084,9 +1084,9 @@ public:
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
-      auto logL1 = data.calc_Mean_logLik(Cuevi_Index(0));
-      auto logL1_0 = data.calc_Mean_logLik_0(Cuevi_Index(0));
-      auto logL1_2 = data.calc_Mean_logLik_2(Cuevi_Index(0));
+      auto logL1 = data.calc_Mean_logLik(Cuevi_Index(0ul));
+      auto logL1_0 = data.calc_Mean_logLik_0(Cuevi_Index(0ul));
+      auto logL1_2 = data.calc_Mean_logLik_2(Cuevi_Index(0ul));
 
       auto beta1 = 0.0;
       Maybe_error<double> log_Evidence = 0.0;
@@ -1890,7 +1890,7 @@ auto var_logL(by_iteration<cuevi_mcmc<Parameters>> const &series,
   return out;
 }
 
-by_fraction<double>
+inline by_fraction<double>
 calculate_Evidence(by_fraction<by_beta<double>> const &beta,
                    by_fraction<by_beta<double>> const &meanLik) {
   auto nfraction = beta.size();
@@ -1901,7 +1901,7 @@ calculate_Evidence(by_fraction<by_beta<double>> const &beta,
   return out;
 }
 
-by_fraction<double>
+inline by_fraction<double>
 calculate_Evidence(by_fraction<by_beta<double>> const &beta,
                    by_fraction<by_beta<double>> const &meanLik,
                    by_fraction<by_beta<double>> const &varLik) {
@@ -2095,7 +2095,7 @@ auto bayesian_linear_regression_calculate_mean_logLik(
 }
 
 template <class FunctionTable, class Parameters>
-void report(FunctionTable &&f, std::size_t iter, save_likelihood<Parameters> &s,
+void report(FunctionTable &&, std::size_t iter, save_likelihood<Parameters> &s,
             cuevi_mcmc<Parameters> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
@@ -2114,7 +2114,7 @@ void report(FunctionTable &&f, std::size_t iter, save_likelihood<Parameters> &s,
 }
 
 template <class FunctionTable, class Parameters>
-void report(FunctionTable &&f, std::size_t iter, save_Parameter<Parameters> &s,
+void report(FunctionTable &&, std::size_t iter, save_Parameter<Parameters> &s,
             cuevi_mcmc<Parameters> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
@@ -2211,10 +2211,10 @@ void report_model(save_Evidence &, Prior const &, Likelihood const &,
                   const DataType &, const Variables &,
                   by_fraction<by_beta<double>> const &) {}
 
-void report_model(save_Evidence &, ...) {}
+inline void report_model(save_Evidence &, ...) {}
 
 template <class FunctionTable, class Parameters, class T>
-void report(FunctionTable &&f, std::size_t iter, save_Evidence &s,
+void report(FunctionTable &&, std::size_t iter, save_Evidence &s,
             cuevi_mcmc<Parameters> const &data, T const &...) {
   if (iter % s.save_every == 0) {
 
@@ -2277,7 +2277,7 @@ struct step_stretch_cuevi_mcmc_per_walker {
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, cuevi_mcmc<Parameters> &current,
-                  Observer &obs, ensemble<mt_64i> &mt,
+                  Observer &, ensemble<mt_64i> &mt,
                   std::vector<std::uniform_real_distribution<double>> &rdist,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
@@ -2411,8 +2411,8 @@ struct step_stretch_cuevi_mcmc {
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
 
-  void operator()(FunctionTable &&f, cuevi_mcmc<Parameters> &current,
-                  Observer &obs, ensemble<mt_64i> &mt,
+  void operator()(FunctionTable &&, cuevi_mcmc<Parameters> &current,
+                  Observer &, ensemble<mt_64i> &mt,
                   std::vector<std::uniform_real_distribution<double>> &rdist,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
@@ -2483,7 +2483,7 @@ struct step_stretch_cuevi_mcmc {
 
 using DataIndexes = std::vector<std::size_t>;
 
-auto generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
+inline auto generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
                              std::size_t min_num_extra_samples,
                              double num_jumps_per_decade,
                              std::vector<std::size_t> initial_samples = {}) {
@@ -2514,7 +2514,6 @@ auto generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
       std::swap(index, new_index);
       it = index.begin();
       std::advance(it, initial_samples.size());
-      auto f = *it;
     }
     it = randomly_extract_n(mt, it, index.end(),
                             indexsizes[0] - num_initial_samples);
@@ -2579,7 +2578,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto init_mcmc2(FunctionTable &&f, mt_64i &mt, const Prior &prior,
+inline auto init_mcmc2(FunctionTable &&f, mt_64i &mt, const Prior &prior,
                 const Likelihood &lik, const by_fraction<DataType> &y,
                 const by_fraction<Variables> &x) {
   auto prior_sampler = sampler(prior);
@@ -2608,7 +2607,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto init_mcmc_resample(FunctionTable &&f, ensemble<mt_64i> &mt,
+inline auto init_mcmc_resample(FunctionTable &&f, ensemble<mt_64i> &mt,
                         cuevi_mcmc<Parameters> &current, const Prior &prior,
                         const Likelihood &lik, const by_fraction<DataType> &y,
                         const by_fraction<Variables> &x) {
@@ -2680,7 +2679,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
+inline auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
                      by_beta<double> const &beta, ensemble<mt_64i> &mt,
                      Prior const &prior, Likelihood const &lik,
                      const by_fraction<DataType> &y,
@@ -2720,7 +2719,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto init_cuevi_mcmc_all(FunctionTable &&f, std::size_t n_walkers,
+inline auto init_cuevi_mcmc_all(FunctionTable &&f, std::size_t n_walkers,
                          by_fraction<by_beta<double>> const &beta_out,
                          ensemble<mt_64i> &mt, Prior const &prior,
                          Likelihood const &lik, const by_fraction<DataType> &y,
@@ -2778,7 +2777,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-Maybe_error<bool>
+inline Maybe_error<bool>
 calculate_Likelihoods_sample(FunctionTable &&f, cuevi_mcmc<Parameters> &current,
                              Prior const &prior, Likelihood const &lik,
                              const by_fraction<DataType> &y,
@@ -2864,7 +2863,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
-auto create_new_walkers(FunctionTable &&f,
+inline auto create_new_walkers(FunctionTable &&f,
                         const cuevi_mcmc<Parameters> &current,
                         ensemble<mt_64i> &mts, Prior const &prior,
                         Likelihood const &lik, const by_fraction<DataType> &y,
@@ -3015,7 +3014,7 @@ struct thermo_cuevi_jump_mcmc {
 
   void operator()(FunctionTable &&f, std::size_t iter,
                   cuevi_mcmc<Parameters> &current, Observer &obs, mt_64i &mt,
-                  ensemble<mt_64i> &mts, Prior const &prior,
+                  ensemble<mt_64i> &mts, Prior const &,
                   Likelihood const &lik, const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
                   std::size_t thermo_jumps_every) const {
@@ -3501,7 +3500,7 @@ struct thermo_cuevi_randomized_jump_mcmc {
                                  Variables, DataType>)
 
   void operator()(FunctionTable &&f, std::size_t iter,
-                  cuevi_mcmc<Parameters> &current, Observer &obs, mt_64i &mt,
+                  cuevi_mcmc<Parameters> &current, Observer &, mt_64i &mt,
                   ensemble<mt_64i> &mts, Prior const &prior,
                   Likelihood const &lik, const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
@@ -3557,8 +3556,8 @@ auto derivative_var_ratio(by_fraction<by_beta<double>> const &mean,
   return out;
 }
 
-template <>
-bool compare_to_max_ratio(by_fraction<by_beta<double>> const &beta,
+  template <>
+inline bool compare_to_max_ratio(by_fraction<by_beta<double>> const &beta,
                           by_fraction<by_beta<double>> const &mean_logL,
                           by_fraction<by_beta<double>> const &var_ratio,
                           double max_ratio) {
@@ -3637,7 +3636,7 @@ template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
 
-auto evidence(FunctionTable &&ff,
+ auto evidence(FunctionTable &&ff,
               cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
               Prior const &prior, Likelihood const &lik, const DataType &y,
               const Variables &x, bool all_at_once) {

@@ -129,7 +129,7 @@ public:
 class Compiler;
 // template<class Lexer>
 
-Maybe_error<std::pair<std::unique_ptr<untyped_identifier<Lexer, Compiler>>, std::size_t>>
+inline Maybe_error<std::pair<std::unique_ptr<untyped_identifier<Lexer, Compiler>>, std::size_t>>
 extract_identifier(const std::string &s, std::size_t pos) {
 
   auto pos0 = Lexer::alfa.find(s[pos]);
@@ -147,7 +147,7 @@ extract_identifier(const std::string &s, std::size_t pos) {
   }
 }
 
-Maybe_error<
+inline Maybe_error<
     std::pair<std::unique_ptr<untyped_string_literal<Lexer, Compiler>>, std::size_t>>
 extract_string(const std::string &s, std::size_t pos) {
   auto ch = std::string(Lexer::label_delimiters);
@@ -168,7 +168,7 @@ extract_string(const std::string &s, std::size_t pos) {
   }
 }
 
-Maybe_error<
+inline Maybe_error<
     std::pair<std::unique_ptr<untyped_literal_comment<Lexer, Compiler>>, std::size_t>>
 extract_comment(const std::string &s, std::size_t pos) {
   if (!Lexer::is_start_of_comment(s, pos)) {
@@ -186,12 +186,12 @@ extract_comment(const std::string &s, std::size_t pos) {
 
 
 
-bool is_equal_at_pos(const std::string &s, std::size_t pos,
+inline bool is_equal_at_pos(const std::string &s, std::size_t pos,
                      std::string_view n) {
   return s.substr(pos, n.size()) == n;
 }
 
-Maybe_error<
+inline Maybe_error<
     std::pair<std::unique_ptr<untyped_numeric_literal<Lexer, Compiler>>, std::size_t>>
 extract_numeric(const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_plus_or_minus(s, pos);
@@ -220,15 +220,15 @@ extract_numeric(const std::string &s, std::size_t pos) {
                      last_pos};
   }
 }
-Maybe_error<std::pair<std::unique_ptr<untyped_statement<Lexer, Compiler>>, std::size_t>>
+inline Maybe_error<std::pair<std::unique_ptr<untyped_statement<Lexer, Compiler>>, std::size_t>>
 extract_statement(const std::string &s, std::size_t pos);
 
 
 
-Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer, Compiler>>, std::size_t>>
+inline Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer, Compiler>>, std::size_t>>
 extract_expression(const std::string &s, std::size_t pos);
 
-Maybe_error<std::pair<std::unique_ptr<untyped_assignment<Lexer, Compiler>>, std::size_t>>
+inline Maybe_error<std::pair<std::unique_ptr<untyped_assignment<Lexer, Compiler>>, std::size_t>>
 extract_assignment(const std::unique_ptr<untyped_identifier<Lexer, Compiler>> &id,
                    const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_whitespace(s, pos);
@@ -250,7 +250,7 @@ extract_assignment(const std::unique_ptr<untyped_identifier<Lexer, Compiler>> &i
   }
 }
 
-Maybe_error<
+inline Maybe_error<
     std::pair<std::unique_ptr<untyped_argument_list<Lexer, Compiler>>, std::size_t>>
 extract_argument_list(const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_whitespace(s, pos);
@@ -296,7 +296,7 @@ extract_argument_list(const std::string &s, std::size_t pos) {
   }
 }
 
-Maybe_error<
+inline Maybe_error<
     std::pair<std::unique_ptr<untyped_function_evaluation<Lexer, Compiler>>, std::size_t>>
 extract_function_evaluation(
     const std::unique_ptr<untyped_identifier<Lexer, Compiler>> &id, const std::string &s,
@@ -313,7 +313,7 @@ extract_function_evaluation(
 
 
 
-Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer, Compiler>>, std::size_t>>
+inline Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer, Compiler>>, std::size_t>>
 extract_expression(const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_whitespaceline(s, pos);
   auto maybe_identifier = extract_identifier(s, last_pos);
@@ -374,7 +374,7 @@ extract_expression(const std::string &s, std::size_t pos) {
                        "\n is not a well formed expression");
 }
 
-Maybe_error<std::pair<std::unique_ptr<untyped_statement<Lexer, Compiler>>, std::size_t>>
+inline Maybe_error<std::pair<std::unique_ptr<untyped_statement<Lexer, Compiler>>, std::size_t>>
 extract_statement(const std::string &s, std::size_t pos) {
   auto last_pos = Lexer::skip_whitespaceline(s, pos);
   auto maybe_identifier = extract_identifier(s, last_pos);
@@ -445,7 +445,7 @@ extract_statement(const std::string &s, std::size_t pos) {
 }
 
 
-Maybe_error<untyped_program<Lexer, Compiler>> extract_program(const std::string &s) {
+inline Maybe_error<untyped_program<Lexer, Compiler>> extract_program(const std::string &s) {
   untyped_program<Lexer, Compiler> out;
   auto last_pos = 0ul;
   last_pos = Lexer::skip_whitespaceline(s, last_pos);
