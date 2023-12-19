@@ -81,6 +81,7 @@ add_executable(macro_dr main.cpp
     s_long.sh
     continuation.h
     models.h
+    old_code_in_main.cpp
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
