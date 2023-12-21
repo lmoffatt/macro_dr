@@ -464,54 +464,6 @@ inline void save(const std::string name, const Patch_Model &m) {
       << get<g>(m) << "\n";
 }
 
-template <class Id>
-struct Model_Patch {
-  template <class F> class Model {
-    std::tuple<F, Parameters<Id>, typename Parameters<Id>::Names, Q0_formula,
-               Qa_formula, g_formula>
-        m_f;
-
-  public:
-    static constexpr bool is_Model_Patch = true;
-    template <class G> Model(G &&t_g) : m_f{std::forward<G>(t_g)()} {}
-
-    auto &names() const {
-      return std::get<typename Parameters<Id>::Names>(m_f);
-    }
-    auto &parameters() const { return std::get<Parameters<Id>>(m_f); }
-
-    auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
-    auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
-    auto &get_g_formula() const { return std::get<g_formula>(m_f); }
-
-    template <class P>
-      requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
-    auto operator()(const P &t_p) const {
-      return std::invoke(std::get<F>(m_f), t_p);
-    }
-
-    template <class P>
-    friend void report_model(save_Parameter<P> &s, const Model &m) {
-      std::ofstream f(s.fname + "_model.csv");
-      f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-      f << "Parameters Names\n";
-      f << m.names()();
-      f << "<<\n---------------------\n";
-      f << "Q0_formula\n";
-      f << m.get_Q0_formula();
-      f << "<<\n---------------------\n";
-      f << "Qa_formula\n";
-      f << m.get_Qa_formula();
-      f << "<<\n---------------------\n";
-      f << "g_formula\n";
-      f << m.get_g_formula();
-      f << "<<\n---------------------\n";
-    }
-  };
-  template <class F>
-  Model(F &&f)->Model_Patch<Id>::
-      Model<std::tuple_element_t<0, decltype(std::declval<F &&>()())>>;
-};
 
 using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
                                  y_var, plogL, eplogL, vplogL>;
@@ -2954,10 +2906,6 @@ public:
   }
 };
 
-struct Model0 : public Model_Patch<Model0> {};
-struct Model1 : public Model_Patch<Model1> {};
-
-struct Allost1 : public Model_Patch<Allost1> {};
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
@@ -3575,11 +3523,11 @@ new_cuevi_Model_by_iteration(
     const std::vector<std::size_t> &t_segments,
     std::size_t t_min_number_of_samples, std::size_t num_scouts_per_ensemble,
     std::size_t number_trials_until_give_up, double min_fraction,
-    std::size_t thermo_jumps_every, std::size_t max_iter_warming,
-    std::size_t max_iter_equilibrium, double max_ratio,
+    std::size_t thermo_jumps_every,
+    std::size_t max_iter_equilibrium, 
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double medium_beta, double stops_at, bool includes_the_zero,
-    std::size_t initseed, Saving_intervals sint, bool random_jumps) {
+    Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm(
       experiment_fractioner(t_segments, t_min_number_of_samples),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,

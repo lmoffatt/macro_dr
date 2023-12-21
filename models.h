@@ -1,8 +1,77 @@
 #ifndef MODELS_H
 #define MODELS_H
 #include "allosteric_models.h"
+#include "maybe_error.h"
 #include "qmodel.h"
+#include "variables.h"
+#include <type_traits>
 namespace macrodr {
+template <class Id>
+struct Model_Patch {
+    template <class F> class Model {
+        std::tuple<F, Parameters<Id>, typename Parameters<Id>::Names, Q0_formula,
+                   Qa_formula, g_formula>
+            m_f;
+        
+    public:
+        using my_Id=Id;
+        static constexpr bool is_Model_Patch = true;
+        template <class G> Model(G &&t_g) : m_f{std::forward<G>(t_g)()} {}
+        
+        Model(const Model& x): m_f{x.m_f}{};
+        Model(){}
+        auto &names() const {
+            return std::get<typename Parameters<Id>::Names>(m_f);
+        }
+        auto &parameters() const { return std::get<Parameters<Id>>(m_f); }
+        
+        auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
+        auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
+        auto &get_g_formula() const { return std::get<g_formula>(m_f); }
+        
+        
+        template <class P>
+            requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+        auto operator()(const P &t_p) const {
+            return std::invoke(std::get<F>(m_f), t_p);
+        }
+        
+        template <class P>
+        friend void report_model(save_Parameter<P> &s, const Model &m) {
+            std::ofstream f(s.fname + "_model.csv");
+            f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+            f << "Parameters Names\n";
+            f << m.names()();
+            f << "<<\n---------------------\n";
+            f << "Q0_formula\n";
+            f << m.get_Q0_formula();
+            f << "<<\n---------------------\n";
+            f << "Qa_formula\n";
+            f << m.get_Qa_formula();
+            f << "<<\n---------------------\n";
+            f << "g_formula\n";
+            f << m.get_g_formula();
+            f << "<<\n---------------------\n";
+        }
+    };
+    
+    template <class F>
+    requires (!is_of_this_template_type_v<F,Model>)
+    Model(F &&f)->Model_Patch<Id>::
+        Model<std::tuple_element_t<0, decltype(std::declval<F &&>()())>>;
+    template <class F>
+        requires (std::is_same_v<F,Model<F>>)
+    Model(Model<F> &&f)->Model_Patch<Id>::
+        Model<F>;
+    
+};
+
+struct Model0 : public Model_Patch<Model0> {};
+struct Model1 : public Model_Patch<Model1> {};
+
+struct Allost1 : public Model_Patch<Allost1> {};
+
+class Model00_7;
 
 static auto model00_7 = Model0::Model([]() {
   auto names_model = std::vector<std::string>{"kon",
@@ -81,6 +150,10 @@ static auto model00_7 = Model0::Model([]() {
       logp, typename Parameters<Model0>::Names(names_model),
       std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula));
 });
+
+
+
+
 
 static auto prior_model00_7 = Custom_Distribution(
     9ul,
@@ -1393,6 +1466,24 @@ static auto model9 = Allost1::Model([]() {
       },
       logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
+
+
+
+
+inline auto get_model(std::string modelName)->std::variant<decltype(&model4), decltype(&model6)>
+{
+    using return_type=std::variant<decltype(&model4), decltype(&model6)>;
+    
+    if (modelName=="model4")
+        return return_type(&model4);
+    else
+        return return_type(&model6);
+        
+}
+
+using Model_v=decltype(get_model(std::string{}));
+
+
 } // namespace macrodr
 
 #endif // MODELS_H
