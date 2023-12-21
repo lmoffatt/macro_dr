@@ -82,6 +82,14 @@ add_executable(macro_dr main.cpp
     continuation.h
     models.h
     old_code_in_main.cpp
+    CLI_macrodr_commands.h
+    run_evidence.txt
+    prior_model4.txt
+    likelihood_model4.txt
+    simulation_mode4_7.txt
+    experiment_7.txt
+    algorithm_cuevi_standard.txt
+    function_table_standard.txt
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

@@ -1,0 +1,2 @@
+getLikelihood(model= model4, adaptive_aproximation= true, recursive_approximation= true, averaging_approximation=2,
+variance_correction_approximation= true, variance_approximation =false, n_sub_dt =1000)

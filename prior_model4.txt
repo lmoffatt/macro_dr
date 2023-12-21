@@ -1,0 +1,2 @@
+model4_parameters= get_parameters(model= model4)
+get_prior(center=  model4_parameters, error =2.0) 
