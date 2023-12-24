@@ -227,7 +227,7 @@ public:
   {
       if constexpr (std::is_void_v<T>)
            return new typed_literal<Lexer,Compiler,T>();
-       else  
+       else   
       return new typed_literal<Lexer,Compiler,T>(run(env));
   }
        base_typed_expression<Lexer, Compiler> *compile_identifier(Identifier<Lexer> id) {

@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
   cm.push_function(
       "get_function_Table_maker",
       dcli::to_typed_function<std::string, std::size_t>(
-          &get_function_Table_maker, "filename", "num_scouts_per_ensemble"));
+          &get_function_Table_maker_value, "filename", "num_scouts_per_ensemble"));
 
   /*
 auto get_Experiment(
@@ -68,7 +68,14 @@ auto get_Experiment(
       "get_Experiment",
       dcli::to_typed_function<std::string, double, double>(
           &get_Experiment, "filename", "frequency_of_sampling", "initial_ATP"));
-
+  
+  
+  
+  cm.push_function(
+      "get_Observations",
+      dcli::to_typed_function<std::string>(
+          &get_Observations, "filename"));
+  
   /**
    *
    * auto get_Prior(
