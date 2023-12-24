@@ -226,8 +226,11 @@ public:
   virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *> run_expression(dcli::Environment<Lexer, Compiler> &env) const override
   {
       if constexpr (std::is_void_v<T>)
+      {
+          run(env);
            return new typed_literal<Lexer,Compiler,T>();
-       else   
+      }
+      else   
       return new typed_literal<Lexer,Compiler,T>(run(env));
   }
        base_typed_expression<Lexer, Compiler> *compile_identifier(Identifier<Lexer> id) {
@@ -289,7 +292,8 @@ public:
                             typed_expression<Lexer, Compiler, Args> *...t_args)
       : m_f{t_f}, m_args{t_args...} {}
   
-  typed_function_evaluation(std::tuple<std::unique_ptr<typed_expression<Lexer,Compiler,Args>>...> && t):m_args{std::move(t)}{}
+  typed_function_evaluation(F t_f,
+                            std::tuple<std::unique_ptr<typed_expression<Lexer,Compiler,Args>>...> && t):m_f{t_f},m_args{std::move(t)}{}
   
   // typed_expression interface
   public:
@@ -304,10 +308,11 @@ public:
   virtual T run(const Environment<Lexer, Compiler> &env) const override
   {
    // return T{};
-    return std::apply([this, &env](auto& ...args){return std::invoke(this->m_f,args->run(env)...);},m_args);
+      return std::apply([this, &env](auto& ...args){return this->m_f(args->run(env)...);},m_args);
+//   return std::apply([this, &env](auto& ...args){return std::invoke(this->m_f,args->run(env)...);},m_args);
   }
   
-  
+    
 };
 
 template <class Lexer, class Compiler, class T>

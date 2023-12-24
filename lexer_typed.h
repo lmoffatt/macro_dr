@@ -238,7 +238,7 @@ Maybe_unique<base_typed_expression<Lexer, Compiler>>
           return Maybe_tuple.error();
       else
       {
-          return new typed_function_evaluation<Lexer,Compiler,F,Args...>(std::move(Maybe_tuple.value()));
+          return new typed_function_evaluation<Lexer,Compiler,F,Args...>(m_f,std::move(Maybe_tuple.value()));
       }
   }
   
