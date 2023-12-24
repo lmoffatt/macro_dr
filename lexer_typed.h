@@ -14,6 +14,9 @@ template <class Lexer, class Compiler, class T> class typed_expression;
 
 template <class Lexer, class Compiler, class T>
 class typed_identifier;
+
+template <class Lexer, class Compiler, class T>
+class typed_literal;
 template <class Lexer, class Compiler>
 class untyped_argument_list;
 class Lexer;
@@ -27,8 +30,29 @@ template <class Lexer, class Compiler> class untyped_program ;
 template <class Lexer, class Compiler> class typed_program ;
 
 template <class Lexer, class Compiler, class...T>
-class typed_argument_typed_list; 
+class typed_argument_typed_list;
 
+template <class Lexer, class Compiler, class T> class typed_expression;
+template <class Lexer, class Compiler>
+class untyped_expression;
+
+template <class Lexer, class Compiler> class untyped_statement;
+
+template <class Lexer, class Compiler>
+class untyped_numeric_literal;
+
+template <class Lexer, class Compiler>
+class untyped_identifier;
+
+
+template <class Lexer, class Compiler>
+class untyped_assignment;
+
+template <class Lexer, class Compiler>
+class untyped_literal;
+
+template <class Lexer, class Compiler>
+class untyped_function_evaluation; 
 
 template <class Lexer, class Compiler> class base_Identifier_compiler {
 
@@ -77,9 +101,128 @@ public:
   
 };
 
+template <class Lexer, class Compiler, class T>
+class field_compiler 
+{
+    Identifier<Lexer> m_id;
+    
+public:
+    field_compiler(Identifier<Lexer> &&x) : m_id(std::move(x)) {}
+    field_compiler(Identifier<Lexer> const &x) : m_id(x) {}
+    
+    auto& id()const { return m_id;}
+    
+    Maybe_unique<typed_expression<Lexer, Compiler, T>>
+    compile_this_argument(Compiler const& cm, untyped_identifier<Lexer, Compiler> const & t_arg)const
+    {
+        auto Maybe_id=cm.get_Identifier(t_arg());
+        if (!Maybe_id)
+            return Maybe_id.error();
+        else
+        {
+            auto expr=std::move(Maybe_id.value());
+            auto ptr=dynamic_cast<typed_expression<Lexer, Compiler,T> *>(expr.get());
+            if (ptr!=nullptr)
+            {
+                return dynamic_cast<typed_expression<Lexer, Compiler,T> *>(expr.release());
+            }
+            else
+            {
+                return error_message("unexpected type");
+            }
+            
+        }
+    }
+    
+    Maybe_unique<typed_expression<Lexer, Compiler, T>>
+    compile_this_argument(Compiler const& , untyped_literal<Lexer, Compiler> const & t_arg)const
+    {
+        auto Maybe_T=Lexer::template get<T>(t_arg());
+        if (!Maybe_T)
+            return Maybe_T.error();
+        else{
+            return new typed_literal<Lexer,Compiler,T>(std::move(Maybe_T.value()));
+        }
+        
+    }
+    
+    Maybe_unique<typed_expression<Lexer, Compiler, T>>
+    compile_this_argument(Compiler const& cm, untyped_function_evaluation<Lexer, Compiler> const & t_arg)const
+    {
+        auto cmc=cm;
+        auto Maybe_expr=t_arg.compile_expression(cmc);
+        
+        if (!Maybe_expr)
+            return Maybe_expr.error();
+        else{
+            auto expr=std::move(Maybe_expr.value());
+            auto exp_ptr=dynamic_cast<typed_expression<Lexer, Compiler, T>const *>(expr.get());
+            if (exp_ptr!=nullptr)
+            {
+                return dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.release());
+            }
+            else return error_message("type mismatch");
+        }
+        
+    }      
+  
+    
+    Maybe_unique<typed_expression<Lexer, Compiler, T> >
+    compile_this_argument(Compiler const& cm, untyped_expression<Lexer, Compiler> const & t_arg)const
+    {
+        auto ptr=dynamic_cast<untyped_identifier<Lexer, Compiler>const *>(&t_arg);
+        if (ptr!=nullptr)
+            return compile_this_argument(cm,*ptr);
+        else{
+            auto li_ptr=dynamic_cast<untyped_literal<Lexer, Compiler>const *>(&t_arg);
+            if (li_ptr!=nullptr)
+                return compile_this_argument(cm,*li_ptr);
+            else{
+                auto f_ptr=dynamic_cast<untyped_function_evaluation<Lexer, Compiler>const *>(&t_arg);
+                if (f_ptr!=nullptr)
+                    return compile_this_argument(cm,*f_ptr);
+                else
+                    return error_message("nj");
+                
+            }          
+        }
+    }
+    
+    Maybe_unique<typed_expression<Lexer, Compiler, T>>
+    compile_this_argument(Compiler const& cm, std::unique_ptr<untyped_statement<Lexer, Compiler>> const & t_arg) const {
+        
+        auto ptr=dynamic_cast<untyped_assignment<Lexer, Compiler> const *>(t_arg.get());
+        if (ptr!=nullptr)
+        {
+            bool is_argument_id_congruent=ptr->id()()()==this->id()();
+            if(! is_argument_id_congruent)
+                return error_message("the argument id expected: "+id()()+ " found: "+ptr->id()()());
+            else
+            {
+                return compile_this_argument(cm,ptr->expression());
+                
+            }
+        }
+        else
+        {
+            auto ptr2=dynamic_cast<untyped_expression<Lexer, Compiler> const *>(t_arg.get());
+            
+            if (ptr2!=nullptr){
+                return compile_this_argument(cm,*ptr2);
+            }
+            else
+                return error_message("if it is  neither an assigment nor an expression, what the fuck is it?");
+            
+        }      
+        
+    }
+    
+};
+
+
 template <class Lexer, class Compiler, class F, class... Args>
 class function_compiler : public base_function_compiler<Lexer, Compiler> {
-  std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, Args>>...>
+  std::tuple<field_compiler<Lexer, Compiler, Args>...>
       m_args;
   F m_f;
   
@@ -90,12 +233,12 @@ Maybe_unique<base_typed_expression<Lexer, Compiler>>
       std::index_sequence<Is...>, Compiler const &cm, 
       const untyped_argument_list<Lexer, Compiler>& args)
       const {
-      auto Maybe_tuple=promote_Maybe_error(std::tuple(std::get<Is>(m_args)->compile_this_argument(cm,args.arg()[Is])...));
+      auto Maybe_tuple=promote_Maybe_error(std::tuple(std::get<Is>(m_args).compile_this_argument(cm,args.arg()[Is])...));
       if (!Maybe_tuple)
           return Maybe_tuple.error();
       else
       {
-          return new typed_argument_typed_list<Lexer,Compiler,Args...>(std::move(Maybe_tuple.value()));
+          return new typed_function_evaluation<Lexer,Compiler,F,Args...>(std::move(Maybe_tuple.value()));
       }
   }
   
@@ -104,18 +247,15 @@ Maybe_unique<base_typed_expression<Lexer, Compiler>>
   
   
 public:
-  function_compiler(F t_f, typed_expression<Lexer, Compiler, Args> *...t_args)
-      : m_f{t_f}, m_args{t_args...} {}
+  function_compiler(F t_f, field_compiler<Lexer, Compiler, Args>&&...t_args)
+        : m_f{t_f}, m_args{std::move(t_args)...} {}
   
-  function_compiler(function_compiler const & x)
-      : m_f{x.m_f}, m_args{clone_tuple(x.m_args)} {}
   
   virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
   compile_function_evaluation(
       Compiler const &cm,
       const untyped_argument_list<Lexer, Compiler>& args) const {
       
-     // using jeje=typename decltype(compile_function_evaluation_impl(std::index_sequence_for<Args...>(), cm,args.arg()))::kk;
       return compile_function_evaluation_impl(std::index_sequence_for<Args...>(), cm,args.arg());
       
   }
@@ -127,6 +267,10 @@ public:
       return new function_compiler(*this);
   }
 };
+
+
+
+
 
 class Compiler {
   std::map<Identifier<Lexer>,

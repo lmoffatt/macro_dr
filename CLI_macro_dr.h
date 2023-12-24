@@ -3,6 +3,7 @@
 
 
 
+#include "lexer_typed.h"
 #include "lexer_untyped.h"
 #include <string>
 namespace dcli {
@@ -13,7 +14,7 @@ template <class... Args, class F, class... String>
 auto to_typed_function(F t_f, String &&...args) {
     
     return new function_compiler<Lexer, Compiler, F, Args...>(
-      t_f, new typed_identifier<Lexer, Compiler, Args>(
+      t_f, field_compiler<Lexer, Compiler, Args>(
                  to_Identifier<Lexer>(std::string(args)).value())...);
 }
 
