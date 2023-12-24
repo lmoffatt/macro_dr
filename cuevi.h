@@ -620,7 +620,7 @@ public:
     assert(j() < get_Cuevi_Temperatures_Number());
     auto i_frac = get_Fraction(j);
     auto beta = get_Beta(j);
-    if (beta < 1)
+    if (beta < 1.0)
       return error_message();
     else if (i_frac() + 1 >= m_max_i_frac)
       return error_message();

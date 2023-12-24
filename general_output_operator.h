@@ -1,7 +1,10 @@
 #ifndef GENERAL_OUTPUT_OPERATOR_H
 #define GENERAL_OUTPUT_OPERATOR_H
+#include "distributions.h"
 #include <variant>
 #include <ostream>
+#include <istream>
+
 #include <map>
 #include <optional>
 #include <vector>
@@ -52,9 +55,30 @@ std::ostream& print(std::ostream& os, std::variant<Ts...>const & x)
     }, x);
 }
 
-
-
-
+namespace impl{
+class sep:public std::string{
+public:
+    using std::string::string;
+    //   separator(std::string s):std::string(std::move(s)){}
+    
+    std::string operator()()const {return *this;}
+    friend std::ostream& operator<<(std::ostream& os, const sep& se)
+    {
+        return os<<se();
+    }
+    friend std::istream& operator>>(std::istream& is, const sep& se)
+    {
+        std::string ss=se();
+        for (std::size_t i=0; i<ss.size(); ++i)
+        {
+            is.get(ss[i]);
+        }
+        if (ss!=se())
+            is.setstate(std::ios::failbit);
+        return is;  
+    }        
+};
+}
 template<class K, class T>
 std::ostream& operator<<(std::ostream& os, std::pair<K,T>const & x)
 {
@@ -62,6 +86,15 @@ std::ostream& operator<<(std::ostream& os, std::pair<K,T>const & x)
     return os;
     
 }
+
+template<class K, class T>
+std::istream& operator>>(std::istream& is, std::pair<K,T> & x)
+{
+    is>>x.first>>impl::sep(", ")>>x.second;
+    return is;
+    
+}
+
 
 template<class K, class T>
 std::ostream& print(std::ostream& os, std::pair<K,T>const & x)
@@ -82,8 +115,21 @@ std::ostream& operator<<(std::ostream& os, std::map<K,T>const & x)
     for (auto it=x.begin(); it!=x.end(); ++it)
         os<<it->first<<"--> "<<it->second<<"\n";
     return os;
-    
 }
+
+template<class K, class T>
+std::istream& operator>>(std::istream& is, std::map<K,T> & x)
+{
+    K k; T e;
+    while(is>>k>>impl::sep("--> ")>>e>>impl::sep("\n"))
+        x.insert({k,e});
+    
+    if (!x.empty())
+        is.setstate(std::ios::goodbit);
+    return is;
+}
+
+
 
 template<class K, class T>
 std::ostream& print(std::ostream& os, std::map<K,T>const & x)
@@ -99,16 +145,42 @@ std::ostream& print(std::ostream& os, std::map<K,T>const & x)
     
 }
 
+template <class Ts>
+std::istream & operator>>(std::istream &is,  std::vector<Ts> &v) {
+    Ts e;
+    while(is>>e)
+    {
+        v.push_back(e);
+        if constexpr (has_size<Ts>)
+            is>>impl::sep("\n ");
+        else
+            is>>impl::sep(", ");
+    }    
+    if (!v.empty())
+        is.setstate(std::ios::goodbit);
+    return is;
+}
 
-template <class... Ts>
-std::ostream &operator<<(std::ostream &os, const std::tuple<Ts...> &tu) {
+template <class T,class... Ts>
+std::ostream &operator<<(std::ostream &os, const std::tuple<T,Ts...> &tu) {
     return std::apply(
-        [&os](auto &...x) -> std::ostream & {
-            (put(os, x), ...);
+        [&os](T const & x,Ts const &...xs) -> std::ostream & {
+            ((os<< x),...,(os<<", "<<xs));
             return os;
         },
         tu);
 }
+
+template <class T,class... Ts>
+std::istream &operator>>(std::istream &is,  std::tuple<T,Ts...> &tu) {
+    return std::apply(
+        [&is](T  & x,Ts  &...xs)  -> std::istream & {
+            ((is>> x),...,(is>>impl::sep(", ")>>xs));
+            return is;
+        },
+        tu);
+}
+
 
 template <class... Ts>
 std::ostream &print(std::ostream &os, const std::tuple<Ts...> &tu) {
@@ -124,10 +196,19 @@ std::ostream &print(std::ostream &os, const std::tuple<Ts...> &tu) {
 
 
 template <class Ts>
+    requires(!has_size<Ts>)
+std::ostream & operator<<(std::ostream &os, const std::vector<Ts> &v) {
+    for (std::size_t i = 0; i < v.size(); ++i)
+        os << v[i] << ", ";
+    //  os<<"\n";
+    return os;
+}
+
+template <class Ts>
+    requires(has_size<Ts>)
 std::ostream & operator<<(std::ostream &os, const std::vector<Ts> &v) {
     for (std::size_t i = 0; i < v.size(); ++i)
         os << v[i] << "\n";
-    //  os<<"\n";
     return os;
 }
 
@@ -152,5 +233,13 @@ std::ostream& operator<<(std::ostream& os, std::variant<Ts...>const & x)
     }, x);
 }
 
+template<class ...Ts>
+std::istream& operator>>(std::istream& is, std::variant<Ts...> & x)
+{
+    return std::visit([&is](auto& a)->std::istream&{
+        is>>a;
+        return is;
+    }, x);
+}
 
 #endif // GENERAL_OUTPUT_OPERATOR_H

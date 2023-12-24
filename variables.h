@@ -109,6 +109,8 @@ public:
     
     friend bool operator<(const Var& one,const Var& two){ return one.value()<two.value();}
     friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
+    friend auto& operator>>(std::istream& is, Var& x){ is>>x(); return is;}
+    
     friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
 };
 
@@ -157,6 +159,7 @@ public:
     friend bool operator<(const Constant& one,const Constant& two){ return one.value()<two.value();}
     
     friend auto& operator<<(std::ostream& os, const Constant& x){ os<<x.value(); return os;}
+    friend auto& operator>>(std::istream& is,  Constant& x){ is>>x(); return is;}
     friend auto& put(std::ostream& os, const Constant& x){ os<<x.value()<<"\t"; return os;}
 };
 
@@ -332,6 +335,11 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Vector_Space& tu)
     {
         return ((os<<static_cast<Vars const&>(tu).value()<<"\t"),...);
+    }
+    
+    friend std::istream& operator>>(std::istream& is,  Vector_Space& tu)
+    {
+        return ((is>>static_cast<Vars &>(tu)()>>impl::sep("\t")),...);
     }
     
     friend std::ostream& print(std::ostream& os, const Vector_Space& tu)

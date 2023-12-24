@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -15,7 +16,7 @@ inline std::string git_Commit_Hash() {
 #ifndef GIT_COMMIT_HASH
 #define GIT_COMMIT_HASH "0000000" // 0000000 means uninitialized
 #endif
-    return GIT_COMMIT_HASH;    
+    return GIT_COMMIT_HASH;
 }
 
 inline std::string leadingZero(int i) {
@@ -36,8 +37,9 @@ inline std::string time_now() {
     struct std::tm *t;
     time(&rawtime);
     t = localtime(&rawtime);
-    return git_Commit_Hash()+"_"+leadingZero(t->tm_hour) + leadingZero(t->tm_min) +
-           leadingZero(t->tm_sec) + "s" + std::to_string(tcount);
+    return git_Commit_Hash() + "_" + leadingZero(t->tm_hour) +
+           leadingZero(t->tm_min) + leadingZero(t->tm_sec) + "s" +
+           std::to_string(tcount);
 }
 
 constexpr auto NaN = std::numeric_limits<double>::quiet_NaN();
@@ -83,6 +85,9 @@ template <class T> struct make_Maybe_error {
 };
 
 template <class T> using Maybe_error_t = typename make_Maybe_error<T>::type;
+
+template <class T> using Maybe_unique= Maybe_error<std::unique_ptr<T>>;
+
 
 template <class T> constexpr bool is_valid(const Maybe_error<T> &v) {
   return v.valid();
@@ -179,7 +184,7 @@ public:
 
   template <typename U>
     requires std::constructible_from<T, U>
-  Maybe_error(U &&u) : base_type(std::forward<U>(u)) {}
+  Maybe_error(U &&u) : base_type(T(std::forward<U>(u))) {}
   Maybe_error() = default;
   Maybe_error(error_message &&x) : base_type{(std::move(x))} {}
   Maybe_error(const error_message &x) : base_type{x} {}
@@ -228,7 +233,7 @@ class Maybe_error<T *> : public Maybe_error<typename T::base_type *> {
     
 public:
     using base_type = Maybe_error<typename T::base_type *>;
-  using base_type::operator bool;
+    using base_type::operator bool;
     using base_type::error;
   using base_type::valid;
 
@@ -267,14 +272,15 @@ auto operator*(const T &x, const S &y) {
 }
 
 inline Maybe_error<bool> operator>>(std::string &&context_message,
-                             Maybe_error<bool> &&x) {
+                                    Maybe_error<bool> &&x) {
   if (x)
     return x;
   else
     return error_message(context_message + x.error()());
 }
 
-inline Maybe_error<bool> operator&&(Maybe_error<bool> &&one, Maybe_error<bool> &&two) {
+inline Maybe_error<bool> operator&&(Maybe_error<bool> &&one,
+                                    Maybe_error<bool> &&two) {
   if ((one) && (two))
     return true;
   else
@@ -293,6 +299,36 @@ promote_Maybe_error(std::vector<Maybe_error<T>> const &x) {
       return error_message("error at " + std::to_string(i) + x[i].error()());
   return out;
 }
+/*
+template <class... Ts>
+Maybe_error<std::tuple<Ts...>>
+promote_Maybe_error(std::tuple<Maybe_error<Ts>...> &&x) {
+    return std::apply(
+        [](auto &&...e) -> Maybe_error<std::tuple<Ts...>> {
+            if ((e.valid() && ... && true))
+                return std::tuple(std::move(e.value())...);
+            else
+                return error_message((e.error()() + ... + ""));
+        },
+        std::move(x));
+}
+*/
+
+template <class... Ts>
+Maybe_error<std::tuple<std::unique_ptr<Ts>...>>
+promote_Maybe_error(std::tuple<Maybe_unique<Ts>...> &&x) {
+    return std::apply(
+        [](auto &&...e) -> Maybe_error<std::tuple<std::unique_ptr<Ts>...>> {
+            if ((e.valid() && ... && true))
+                return std::tuple(std::move(e.value())...);
+            else
+                return error_message((e.error()() + ... + ""));
+        },
+        std::move(x));
+}
+
+
+
 
 template <class T, class S>
   requires(is_Maybe_error<T> || is_Maybe_error<S>)
@@ -309,15 +345,16 @@ template <class T, class S>
 auto operator-(const T &x, const S &y) {
   if (is_valid(x) && is_valid(y))
     return Maybe_error(get_value(x) - get_value(y));
-  else{
+  else {
       if (!get_error(x)().empty() || !get_error(y)().empty())
           
-      return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
-          get_error(x)() + " multiplies " + get_error(y)());
+          return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
+              get_error(x)() + " multiplies " + get_error(y)());
       else
           return Maybe_error<std::decay_t<decltype(get_value(x) - get_value(y))>>(
               error_message{});
-  }}
+  }
+}
 
 template <class T, class S>
   requires(is_Maybe_error<T> || is_Maybe_error<S>)
