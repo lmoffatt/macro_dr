@@ -5,6 +5,7 @@
 #include <utility>
 #include <ostream>
 #include "matrix.h"
+#include "maybe_error.h"
 #include "variables.h"
 namespace var {
 
@@ -95,7 +96,16 @@ struct Derivative_Op{
     using type=Derivative<F,X>;
 };
 
+struct Maybe_error_Op{
+    template<class X>
+    using type=Maybe_error<X>;
+};
 
+template<class X>
+struct Maybe_error_Derivative_Op{
+    template<class F>
+    using type=Maybe_error<Derivative<F,X>>;
+};
 
 
 
@@ -103,6 +113,17 @@ template<class T, class X>
 struct untransformed_type<Derivative<T,X>>{
     using type=T;
 };
+
+template<class T>
+struct untransformed_type<Maybe_error<T>>{
+    using type=T;
+};
+
+template<class T, class X>
+struct untransformed_type<Maybe_error<Derivative<T,X>>>{
+    using type=T;
+};
+
 
 
 template<class T, class X>
@@ -383,15 +404,37 @@ auto build(Derivative<T,X>&& x){return Derivative<var,X>(std::move(x));}
 
 template<class var, class... T>
     requires (std::constructible_from<var,untransformed_type_t<T>...>&&
-             (is_derivative_v<T>||...||false))
+             (is_derivative_v<T>||...||false)&&(!is_Maybe_error<T>&&...&&true))
 auto build(T...x){
     using X=dx_of_dfdx_t<T...>;
     return Derivative<var,X>(std::forward<T>(x)...);}
 
 
+template<class var, class... T>
+    requires (std::constructible_from<var,untransformed_type_t<T>...>&&
+             (is_derivative_v<T>||...||false)&&(is_Maybe_error<T>||...||false))
+auto build(T...x){
+    using X=dx_of_dfdx_t<T...>;
+    if ((is_valid(x)&&...&&true))
+        return Maybe_error<Derivative<var,X>>(std::forward<T>(x)...);
+    else
+        return Maybe_error<Derivative<var,X>>(error_message((get_error(x)()+...+"")));        
+}
+
+template<class var, class... T>
+    requires (std::constructible_from<var,untransformed_type_t<T>...>&&
+             (!is_derivative_v<T>&&...&&true)&&(is_Maybe_error<T>||...||false))
+auto build(T...x){
+    if ((is_valid(x)&&...&&true))
+        return Maybe_error<var>(std::forward<T>(x)...);
+    else
+        return Maybe_error<var>(error_message((get_error(x)()+...+"")));        
+}
+
+
 template<template<class...>class Vector_Space, class... T>
     requires (std::constructible_from<Vector_Space<untransformed_type_t<T>...>,untransformed_type_t<T>...>&&
-             (is_derivative_v<T>||...||false))
+             (is_derivative_v<T>||...||false)&&(!is_Maybe_error<T>&&...&&true))
 auto build(T...x){
     using X=dx_of_dfdx_t<T...>;
     return Derivative<Vector_Space<untransformed_type_t<T>...>,X>(std::forward<T>(x)...);
@@ -399,22 +442,50 @@ auto build(T...x){
 
 template<template<class...>class Vector_Space, class... T>
     requires (std::constructible_from<Vector_Space<untransformed_type_t<T>...>,untransformed_type_t<T>...>&&
-             (!is_derivative_v<T>&&...&&true))
+             (is_derivative_v<T>||...||false)&&(is_Maybe_error<T>||...||false))
+auto build(T...x){
+    using X=dx_of_dfdx_t<T...>;
+    if ((is_valid(x)&&...&&true))
+        return Maybe_error<Derivative<Vector_Space<untransformed_type_t<T>...>,X>>(std::forward<T>(x)...);
+    else
+        return error_message((get_error(x)()+...+""));        
+}
+
+
+
+template<template<class...>class Vector_Space, class... T>
+    requires (std::constructible_from<Vector_Space<untransformed_type_t<T>...>,untransformed_type_t<T>...>&&
+             (!is_derivative_v<T>&&...&&true)&&(!is_Maybe_error<T>&&...&&true))
 auto build(T...x){
     return Vector_Space<untransformed_type_t<T>...>(std::forward<T>(x)...);
 }
 
 
+template<template<class...>class Vector_Space, class... T>
+    requires (std::constructible_from<Vector_Space<untransformed_type_t<T>...>,untransformed_type_t<T>...>&&
+             (!is_derivative_v<T>&&...&&true)&&(is_Maybe_error<T>||...||true))
+auto build(T...x){
+    if ((is_valid(x)&&...&&true))
+        return Maybe_error<Vector_Space<untransformed_type_t<T>...>>(std::forward<T>(x)...);
+    else
+        return error_message((get_error(x)()+...+""));        
+}
+
+
+
+
+
+
 template<template<class...> class var, class Id, class F, class... T>
     requires (std::constructible_from<var<Id,F,T...>,Var<Id>,F,T...>&&(std::is_same_v<var<Id,T...>,Fun<Id,T...>>)&&
-             (!is_derivative_v<T>&&...&&true))
+             (!is_derivative_v<T>&&...&&true)&&(!is_Maybe_error<T>&&...&&true))
 var<Id,F,std::decay_t<T>...> build(Var<Id>,F&& t_f,T&&...t_x){return var(Var<Id>{},std::forward<F>(t_f),std::forward<T>(t_x)...);}
 
 
 template<template<class...> class var, class Id, class F,class... T>
     requires (std::constructible_from<var<Id,F,untransformed_type_t<T>...>,Var<Id>,F,untransformed_type_t<T>...>&&
              (std::is_same_v<var<Id,F,untransformed_type_t<T>...>,Fun<Id,F,untransformed_type_t<T>...>>)&&
-             (is_derivative_v<T>||...||false))
+             (is_derivative_v<T>||...||false)&&(!is_Maybe_error<T>&&...&&true))
 auto build(Var<Id>,F&& t_f,T&&...t_x){
     using X=dx_of_dfdx_t<std::decay_t<T>...>;
     return Derivative<Fun<Id,F,untransformed_type_t<std::decay_t<T>>...>,X>(

@@ -35,8 +35,7 @@ auto Map (Container<T>const & c, F&& f )
     out.reserve(c.size());
     for (auto & e:c)
     {
-        auto v=f(e);
-        out.push_back(v);
+        out.push_back(f(e));
     }
     return out;    
 }

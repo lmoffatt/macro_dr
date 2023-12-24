@@ -88,10 +88,10 @@ auto get_Experiment(
 
   cm.push_function(
       "get_Likelihood",
-      dcli::to_typed_function<std::string, bool, bool, int, bool, std::size_t>(
+      dcli::to_typed_function<std::string, bool, bool, int, bool, bool, std::size_t>(
           &get_Likelihood, "model", "adaptive_aproximation",
           "recursive_approximation", "averaging_approximation",
-          "variance_correction_approximation", "n_sub_dt"));
+          "variance_correction_approximation", "variance_approximation","n_sub_dt"));
 
   /**    auto get_CueviAlgorithm(
           std::size_t num_scouts_per_ensemble = 16,
@@ -114,7 +114,20 @@ auto get_Experiment(
           "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
           "min_fraction", "n_points_per_decade", "n_points_per_decade_fraction",
           "t_min_number_of_samples", "filename", "thermo_jumps_every"));
-
+  
+  cm.push_function(
+      "evidence",
+      dcli::to_typed_function<prior_type  , likelihood_type , recording_type ,experiment_type  ,
+                              algo_type,tablefun_value_type, std::size_t >(
+          &calc_evidence,  "prior", "likelihoodModel","data" , "experiment","algorithm" , "function_table" , "init_seed"));
+  
+  
+  
+  // (prior_type prior, likelihood_type likelihood,
+  //  recording_type recording, experiment_type experiment,
+  //  algo_type algorithm, tablefun_value_type ft,
+  //  std::size_t myseed)
+  
   std::cout << "\n read file " << filename << "\n" << s << "\n";
   auto p = dcli::extract_program(s);
 
@@ -123,7 +136,7 @@ auto get_Experiment(
   if (p) {
     auto c = dcli::compile_program(cm, p.value());
     if (!c) {
-      std::cerr << c.error()();
+        std::cerr <<"\n --------------Error--------\n"<< c.error()()<<"\n --------------Error--------\n";
     } else {
       auto exec = c.value().run();
     }

@@ -37,9 +37,6 @@
 
 namespace macrodr {
 
-
-
-
 auto get_function_Table(std::string filename,
                         std::size_t num_scouts_per_ensemble) {
     using namespace macrodr;
@@ -155,15 +152,19 @@ auto get_function_Table(std::string filename,
         );
 }
 
-
+auto get_function_Table_maker_value(std::string filename,
+                                    std::size_t num_scouts_per_ensemble) {
+    return std::pair(filename, num_scouts_per_ensemble);
+}
 auto get_function_Table_maker(std::string filename,
-                        std::size_t num_scouts_per_ensemble) {
+                              std::size_t num_scouts_per_ensemble) {
     using namespace macrodr;
-    return [filename,num_scouts_per_ensemble](){return  FuncMap(
-        filename,
-        Time_it(
-            F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-            num_scouts_per_ensemble / 2),
+    return [filename, num_scouts_per_ensemble]() {
+        return FuncMap(
+            filename,
+            Time_it(F(cuevi::step_stretch_cuevi_mcmc{},
+                      cuevi::step_stretch_cuevi_mcmc{}),
+                    num_scouts_per_ensemble / 2),
         Time_it(
             F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
             num_scouts_per_ensemble / 2),
@@ -173,48 +174,48 @@ auto get_function_Table_maker(std::string filename,
         var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                        cuevi::step_stretch_cuevi_mcmc_per_walker{}),
                      num_scouts_per_ensemble / 2),
-        var::Time_it(F(logLikelihood_f{},
-                       [](auto &&...x) {
-                           return logLikelihood(std::forward<decltype(x)>(x)...);
+            var::Time_it(F(logLikelihood_f{},
+                           [](auto &&...x) {
+                               return logLikelihood(std::forward<decltype(x)>(x)...);
                        }),
                      num_scouts_per_ensemble / 2),
         var::Time_it(
             F(MacroR<uses_recursive_aproximation(true),
                      uses_averaging_aproximation(2),
-                     uses_variance_aproximation(true)>{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.Macror<uses_recursive_aproximation(true),
-                                  uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(true),
-                                  uses_variance_correction_aproximation(false)>(
-                      std::forward<decltype(x)>(x)...);
+                         uses_variance_aproximation(true)>{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.Macror<uses_recursive_aproximation(true),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(true),
+                                      uses_variance_correction_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
               }),
             num_scouts_per_ensemble / 2),
         var::Time_it(
             F(MacroR<uses_recursive_aproximation(true),
                      uses_averaging_aproximation(2),
-                     uses_variance_aproximation(false)>{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.Macror<uses_recursive_aproximation(true),
-                                  uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
-                      std::forward<decltype(x)>(x)...);
+                         uses_variance_aproximation(false)>{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.Macror<uses_recursive_aproximation(true),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(false),
+                                      uses_variance_correction_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
               }),
             num_scouts_per_ensemble / 2),
         var::Time_it(
             F(MacroR<uses_recursive_aproximation(false),
                      uses_averaging_aproximation(2),
-                     uses_variance_aproximation(false)>{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.Macror<uses_recursive_aproximation(false),
-                                  uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
-                      std::forward<decltype(x)>(x)...);
+                         uses_variance_aproximation(false)>{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.Macror<uses_recursive_aproximation(false),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(false),
+                                      uses_variance_correction_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
               }),
             num_scouts_per_ensemble / 2),
         // var::Thread_Memoizer(
@@ -228,10 +229,11 @@ auto get_function_Table_maker(std::string filename,
         //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
         //     num_scouts_per_ensemble / 2),
         var::Thread_Memoizer(
-            var::F(Calc_Qdt_step{},
-                   [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                       return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+                var::F(Calc_Qdt_step{},
+                       [](auto &&...x) {
+                           auto m = Macro_DMR{};
+                           return m.calc_Qdt_ATP_step(
+                               std::forward<decltype(x)>(x)...);
                    }),
             var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
             num_scouts_per_ensemble / 2),
@@ -240,24 +242,24 @@ auto get_function_Table_maker(std::string filename,
         //            [](auto &&...x) {
         //              auto m = Macro_DMR{};
         //              return
-        //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
-        //            })),
-        
-        var::F(Calc_Qdt{},
-               [](auto &&...x) {
-                   auto m = Macro_DMR{};
-                   return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+            //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+            //            })),
+            
+            var::F(Calc_Qdt{},
+                   [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.calc_Qdt(std::forward<decltype(x)>(x)...);
                }),
-        F(Calc_Qx{},
-          [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.calc_Qx(std::forward<decltype(x)>(x)...);
-          }),
-        var::Thread_Memoizer(
-            F(Calc_eigen{},
+            F(Calc_Qx{},
               [](auto &&...x) {
                   auto m = Macro_DMR{};
-                  return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                  return m.calc_Qx(std::forward<decltype(x)>(x)...);
+          }),
+        var::Thread_Memoizer(
+                F(Calc_eigen{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.calc_eigen(std::forward<decltype(x)>(x)...);
               }),
             var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
             num_scouts_per_ensemble / 2)
@@ -265,13 +267,12 @@ auto get_function_Table_maker(std::string filename,
         //     F(Calc_eigen{},
         //       [](auto &&...x) {
         //           auto m = Macro_DMR{};
-        //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
-        //       }))
-                                                       
-                                                       );};
+            //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
+            //       }))
+            
+            );
+    };
 }
-
-
 
 auto get_Experiment(
     std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
@@ -290,28 +291,20 @@ auto get_Observations(
     return recording;
 }
 
-
-
-
-auto get_Prior(
-    double prior_error ,
-    const std::string modelname) {
+auto get_Prior(double prior_error, const std::string modelname) {
     
-    return std::pair(prior_error,modelname);
-    
+    return std::pair(prior_error, modelname);
 }
 
-auto get_Likelihood(const std::string& model, bool adaptive_aproximation, bool recursive_approximation, int averaging_approximation,
-                   bool variance_correction_approximation,  std::size_t n_sub_dt) {
+auto get_Likelihood(const std::string &model, bool adaptive_aproximation,
+                    bool recursive_approximation, int averaging_approximation,
+                    bool variance_correction_approximation,
+                    bool variance_correction, std::size_t n_sub_dt) {
     
-    return std::tuple(model,  adaptive_aproximation,  recursive_approximation,  averaging_approximation,
-                       variance_correction_approximation,  n_sub_dt);
-    }
-
-
-
-
-
+    return std::tuple(model, adaptive_aproximation, recursive_approximation,
+                      averaging_approximation, variance_correction_approximation,
+                      variance_correction, n_sub_dt);
+}
 
 auto get_CueviAlgorithm(
     std::size_t num_scouts_per_ensemble = 16,
@@ -355,8 +348,7 @@ auto get_CueviAlgorithm(
     double n_points_per_decade_fraction = 6,
     
     std::size_t t_min_number_of_samples = 20, std::string filename = "haha",
-    std::size_t thermo_jumps_every = 10)
-    {
+    std::size_t thermo_jumps_every = 10) {
     using namespace macrodr;
     
     std::vector<std::size_t> t_segments_used = {73, 33, 22, 22};
@@ -367,145 +359,153 @@ auto get_CueviAlgorithm(
                      Save_Parameter_every(num_scouts_per_ensemble),
                      Save_Predictions_every(num_scouts_per_ensemble * 20)));
     
-    
-    return std::tuple(
-        path, filename, t_segments_used, t_min_number_of_samples,
-        num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
-        thermo_jumps_every, max_iter_equilibrium, n_points_per_decade,
-        n_points_per_decade_fraction, medium_beta, stops_at, includes_zero,
-        saving_itervals, random_jumps);
-    
+    return std::tuple(path, filename, t_segments_used, t_min_number_of_samples,
+                      num_scouts_per_ensemble, number_trials_until_give_up,
+                      min_fraction, thermo_jumps_every, max_iter_equilibrium,
+                      n_points_per_decade, n_points_per_decade_fraction,
+                      medium_beta, stops_at, includes_zero, saving_itervals,
+                      random_jumps);
 }
-    
-    template<class T>
-struct  return_type;
 
-template <class R, class... A>
-struct return_type<R (*)(A...)>
-{
-    using type=R;
+template <class T> struct return_type;
+
+template <class R, class... A> struct return_type<R (*)(A...)> {
+    using type = R;
 };
 
+using tablefun_type = typename return_type<
+    std::decay_t<decltype(&get_function_Table_maker)>>::type;
+using tablefun_value_type = typename return_type<
+    std::decay_t<decltype(&get_function_Table_maker_value)>>::type;
 
-using tablefun_type=typename return_type<std::decay_t<decltype(&get_function_Table_maker)>>::type;
+using algo_type =
+    typename return_type<std::decay_t<decltype(&get_CueviAlgorithm)>>::type;
+using experiment_type =
+    typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;
+using recording_type =
+    typename return_type<std::decay_t<decltype(&get_Observations)>>::type;
+using prior_type =
+    typename return_type<std::decay_t<decltype(&get_Prior)>>::type;
+using likelihood_type =
+    typename return_type<std::decay_t<decltype(&get_Likelihood)>>::type;
 
-using algo_type=typename return_type<std::decay_t<decltype(&get_CueviAlgorithm)>>::type;
-using experiment_type=typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;
-using recording_type=typename return_type<std::decay_t<decltype(&get_Observations)>>::type;
-using prior_type=typename return_type<std::decay_t<decltype(&get_Prior)>>::type;
-using likelihood_type=typename return_type<std::decay_t<decltype(&get_Likelihood)>>::type;
+// evidence(prior= prior_model, likelihoodModel= likelihood, data = simulation,
+// experiment = experiment, algorithm= algorithm, function_table
+// =function_table, init_seed =0)
 
-
-template <class TableFunction>
-void calc_evidence(tablefun_type ftbl3,experiment_type experiment, recording_type recording,prior_type  prior, likelihood_type likelihood,
-                   algo_type const & algorithm, std::size_t myseed) {
+void calc_evidence(prior_type prior, likelihood_type likelihood,
+                   recording_type recording, experiment_type experiment,
+                   algo_type algorithm, tablefun_value_type ft,
+                   std::size_t myseed) {
     using namespace macrodr;
-    auto [prior_error_d,modelName]=std::move(prior);
-    auto prior_error=prior_error_d;
-   
-    auto model_v=get_model(modelName);
-    return std::visit([&ftbl3, &experiment,&recording,&prior,&likelihood,&algorithm,&myseed,prior_error](auto model0)
-    {
+    auto [filename, num_scouts_per_ensemble] = std::move(ft);
+    auto ftbl3 = get_function_Table_maker(filename, num_scouts_per_ensemble);
+    auto [prior_error_d, modelName] = std::move(prior);
+    auto prior_error = prior_error_d;
     
-    myseed = calc_seed(myseed);
-    mt_64i mt(myseed);
-    
-auto [        path, filename, t_segments_used, t_min_number_of_samples,
-     num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
-     thermo_jump_factor, max_iter_equilibrium, n_points_per_decade,
-     n_points_per_decade_fraction, medium_beta, stops_at, includes_zero,
-     saving_itervals, random_jumps ]=std::move(algorithm);
-    
-    auto [model,  adaptive_aproximation,  recursive_approximation,  averaging_approximation,
-      variance_correction_approximation,  n_sub_dt]=likelihood;
-    
-    auto &param1 = model0->parameters();
-    using MyModel=typename decltype(*model0)::my_Id;
-    
-    std::string ModelName = "model6_Eff_no_inactivation";
-    
-    std::size_t thermo_jumps_every = param1().size() * thermo_jump_factor;
-    
-    auto param1_prior = var::prior_around(param1, prior_error);
-    
-    
-    auto sim = Macro_DMR{}.sample(
-        mt, *model0, param1, experiment,
-        Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
-    
-    if (sim) {
-        std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
-        auto number_of_traces = 7;
-        auto number_of_segments = t_segments.size();
-        t_segments.reserve(number_of_traces * t_segments.size());
-        
-        for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
-            std::copy_n(t_segments.begin(), number_of_segments,
-                        std::back_inserter(t_segments));
-        
-        std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
-        
-        std::size_t t_min_number_of_samples = 20;
-        
-        /**
-     * @brief cbc cumulative evidence algorithm, ends using convergence
-     * criteria
-     */
-        std::size_t bisection_count = 2ul;
-        std::string filename_bisection = ModelName + "_bisection_" +
-                                         std::to_string(bisection_count) + "_" +
-                                         std::to_string(myseed) + "_" + time_now();
-        
-        std::string n_points_per_decade_str =
-            "_" + std::to_string(n_points_per_decade) + "_";
-        
-        std::string filename = ModelName + "_new_cuevi_sim_eig_4800ch_only_7_" +
-                               n_points_per_decade_str + time_now() + "_" +
-                               // std::to_string(bisection_count) + "_" +
-                               std::to_string(myseed);
-        
-        auto &t_segments_used = t_segments_7;
-        
-        auto saving_itervals = Saving_intervals(
-            Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),
-                         Save_Likelihood_every(num_scouts_per_ensemble),
-                         Save_Parameter_every(num_scouts_per_ensemble),
-                         Save_Predictions_every(num_scouts_per_ensemble * 20)));
-        
-        
-        auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-            path, filename, t_segments_used, t_min_number_of_samples,
-            num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
-            thermo_jumps_every, max_iter_equilibrium, n_points_per_decade,
-            n_points_per_decade_fraction, medium_beta, stops_at, includes_zero,
-            saving_itervals, random_jumps);
-        
-        auto modelLikelihood = make_Likelihood_Model<
-            uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
-            uses_averaging_aproximation(2), uses_variance_aproximation(false),
-            uses_variance_correction_aproximation(false)>(
-            *model0, Simulation_n_sub_dt(n_sub_dt));
-        auto lik = Macro_DMR{}
-                       .log_Likelihood<uses_adaptive_aproximation(false),
-                                       uses_recursive_aproximation(true),
-                                       uses_averaging_aproximation(2),
-                                       uses_variance_aproximation(false),
-                                       uses_variance_correction_aproximation(false),
-                                       return_predictions(true)>(
-                           ftbl3().fork(var::I_thread(0)), model0, param1, experiment,
-                           sim.value()());
-        report(filename + "_lik.csv", lik.value(), sim.value(), experiment);
-        auto opt3 =
-            cuevi::evidence(ftbl3(), std::move(cbc), param1_prior, modelLikelihood,
-                            sim.value()(), experiment, cuevi::Init_seed(myseed));
-    }
-    },model_v);
+    auto model_v = get_model(modelName);
+    return std::visit(
+        [&ftbl3, &experiment, &recording, &prior, &likelihood, &algorithm,
+         &myseed, prior_error](auto model0ptr) {
+            auto& model0=*model0ptr;
+            myseed = calc_seed(myseed);
+            mt_64i mt(myseed);
+            
+            auto [path, filename, t_segments_used, t_min_number_of_samples,
+                  num_scouts_per_ensemble, number_trials_until_give_up,
+                  min_fraction, thermo_jump_factor, max_iter_equilibrium,
+                  n_points_per_decade, n_points_per_decade_fraction, medium_beta,
+                  stops_at, includes_zero, saving_itervals, random_jumps] =
+                std::move(algorithm);
+            
+            auto [model, adaptive_aproximation, recursive_approximation,
+                  averaging_approximation, variance_correction_approximation,
+                  variance_correction, n_sub_dt] = likelihood;
+            
+            auto &param1 = model0.parameters();
+            using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
+            
+            std::string ModelName = "model6_Eff_no_inactivation";
+            
+            std::size_t thermo_jumps_every = param1().size() * thermo_jump_factor;
+            
+            auto param1_prior = var::prior_around(param1, prior_error);
+            
+            auto sim = Macro_DMR{}.sample(
+                mt, model0, param1, experiment,
+                Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+            
+            if (sim) {
+                std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
+                auto number_of_traces = 7;
+                auto number_of_segments = t_segments.size();
+                t_segments.reserve(number_of_traces * t_segments.size());
+                
+                for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
+                    std::copy_n(t_segments.begin(), number_of_segments,
+                                std::back_inserter(t_segments));
+                
+                std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
+                
+                std::size_t t_min_number_of_samples = 20;
+                
+                /**
+           * @brief cbc cumulative evidence algorithm, ends using convergence
+           * criteria
+           */
+                std::size_t bisection_count = 2ul;
+                std::string filename_bisection =
+                    ModelName + "_bisection_" + std::to_string(bisection_count) +
+                                                 "_" + std::to_string(myseed) + "_" + time_now();
+                
+                std::string n_points_per_decade_str =
+                    "_" + std::to_string(n_points_per_decade) + "_";
+                
+                std::string filename = ModelName +
+                                       "_new_cuevi_sim_eig_4800ch_only_7_" +
+                                       n_points_per_decade_str + time_now() + "_" +
+                                       // std::to_string(bisection_count) + "_" +
+                                       std::to_string(myseed);
+                
+                auto &t_segments_used = t_segments_7;
+                
+                auto saving_itervals = Saving_intervals(Vector_Space(
+                    Save_Evidence_every(num_scouts_per_ensemble),
+                    Save_Likelihood_every(num_scouts_per_ensemble),
+                    Save_Parameter_every(num_scouts_per_ensemble),
+                    Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                
+                auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+                    path, filename, t_segments_used, t_min_number_of_samples,
+                    num_scouts_per_ensemble, number_trials_until_give_up,
+                    min_fraction, thermo_jumps_every, max_iter_equilibrium,
+                    n_points_per_decade, n_points_per_decade_fraction, medium_beta,
+                    stops_at, includes_zero, saving_itervals, random_jumps);
+                
+                auto modelLikelihood = make_Likelihood_Model<
+                    uses_adaptive_aproximation(true),
+                    uses_recursive_aproximation(true), uses_averaging_aproximation(2),
+                    uses_variance_aproximation(false),
+                    uses_variance_correction_aproximation(false)>(
+                    model0, Simulation_n_sub_dt(n_sub_dt));
+                auto lik =
+                    Macro_DMR{}
+                               .log_Likelihood<uses_adaptive_aproximation(false),
+                                               uses_recursive_aproximation(true),
+                                               uses_averaging_aproximation(2),
+                                               uses_variance_aproximation(false),
+                                               uses_variance_correction_aproximation(false),
+                                               return_predictions(true)>(
+                                   ftbl3().fork(var::I_thread(0)), model0, param1,
+                                   experiment, sim.value()());
+                report(filename + "_lik.csv", lik.value(), sim.value(), experiment);
+                auto opt3 = cuevi::evidence(ftbl3(), std::move(cbc), param1_prior,
+                                            modelLikelihood, sim.value()(),
+                                            experiment, cuevi::Init_seed(myseed));
+            }
+        },
+        model_v);
 }
-
-
-
-
-
 
 /**
    * @brief fuck
@@ -527,8 +527,8 @@ auto [        path, filename, t_segments_used, t_min_number_of_samples,
  */
 
 template <class TableFunction>
-auto calc_evidence_old(TableFunction ftbl3,
-    typename mt_64i::result_type myseed,
+auto calc_evidence_old(
+    TableFunction ftbl3, typename mt_64i::result_type myseed,
     std::string Efilename_7 = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
     std::size_t num_scouts_per_ensemble = 16,
     std::size_t number_trials_until_give_up = 1e5, double stops_at = 1e-15,
@@ -591,7 +591,7 @@ auto calc_evidence_old(TableFunction ftbl3,
     
     auto experiment_7 =
         Experiment(std::move(recording_conditions_7), Frequency_of_Sampling(50e3),
-                   initial_ATP_concentration(ATP_concentration(0.0)));
+                                   initial_ATP_concentration(ATP_concentration(0.0)));
     auto &experiment = experiment_7;
     auto &recording = recording_7;
     
@@ -672,7 +672,7 @@ auto calc_evidence_old(TableFunction ftbl3,
         report(filename + "_lik.csv", lik.value(), sim.value(), experiment);
         auto opt3 =
             cuevi::evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood,
-                            sim.value()(), experiment, cuevi::Init_seed(myseed));
+                                    sim.value()(), experiment, cuevi::Init_seed(myseed));
         // auto opt4= cuevi::continue_evidence(filename, 2* maxiter);
     }
 }

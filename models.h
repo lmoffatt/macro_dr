@@ -554,7 +554,8 @@ static auto model4 = Model0::Model([]() {
       Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
 
   return std::tuple(
-      [](const auto &logp) {
+      [](const auto &logp)           -> Maybe_error<
+                               Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>>{
         using std::pow;
         auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
         auto Nst = 9ul;
@@ -853,9 +854,10 @@ static auto model6 = Allost1::Model([]() {
         auto Nst = get<N_St>(m())();
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+        if (v_P_initial.valid())
         return add_Patch_inactivation(
             build<Patch_Model>(N_St(get<N_St>(m())), std::move(a_Q0),
-                               std::move(a_Qa), std::move(v_P_initial),
+                                   std::move(a_Qa), std::move(v_P_initial),
                                std::move(a_g), build<N_Ch_mean>(v_N0),
                                build<Current_Noise>(v_curr_noise),
                                build<Current_Baseline>(v_baseline),
@@ -864,6 +866,7 @@ static auto model6 = Allost1::Model([]() {
                                Probability_error_tolerance(1e-2),
                                Conductance_variance_error_tolerance(1e-2)),
             v_Inac_rate);
+        else return v_P_initial.error();
       },
       logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
@@ -1470,14 +1473,14 @@ static auto model9 = Allost1::Model([]() {
 
 
 
-inline auto get_model(std::string modelName)->std::variant<decltype(&model4), decltype(&model6)>
+inline auto get_model(std::string modelName)->std::variant</*decltype(&model4),*/ decltype(&model6_Eff_no_inactivation)>
 {
-    using return_type=std::variant<decltype(&model4), decltype(&model6)>;
+    using return_type=std::variant</*decltype(&model4), */decltype(&model6_Eff_no_inactivation)>;
     
-    if (modelName=="model4")
-        return return_type(&model4);
-    else
-        return return_type(&model6);
+  //  if (modelName=="model4")
+    //     return return_type(&model4);
+    // else
+        return return_type(&model6_Eff_no_inactivation);
         
 }
 

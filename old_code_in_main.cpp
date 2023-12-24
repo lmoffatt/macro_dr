@@ -1001,7 +1001,7 @@ int main_old(int argc, char **argv) {
         
         auto m = model0(param1);
         
-        save(ModelName, m);
+        //save(ModelName, m);
         
         std::string fname = "simulate_model";
         std::size_t nrep = 20;

@@ -1,22 +1,19 @@
-num_scouts_per_ensemble = 16
-
-algorithm =get_CueviAlgorithm(num_scouts_per_ensemble = num_scouts_per_ensemble,
+algorithm =get_CueviAlgorithm(num_scouts_per_ensemble = 16,
 number_trials_until_give_up = 1e5,  stops_at = 1e-15,  medium_beta = 1e-2,
-includes_zero = true, random_jumps = true, max_iter_equilibrium = 50000,
-path = "", min_fraction = 4, n_points_per_decade = 1, n_points_per_decade_fraction = 6,
+includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,
+path = "p", min_fraction = 4, n_points_per_decade = 1, n_points_per_decade_fraction = 6,
 t_min_number_of_samples = 20, filename = "haha",thermo_jumps_every = 10)
 
-model = model4
+model = "model4"
 
-parameters =  get_parameters(model= model)
 
-prior_model = get_prior(center=  model, error =2.0) 
+prior_model = get_Prior(prior_error= 2.0, modelname=  model) 
 
-likelihood = get_Likelihood(model= model, adaptive_aproximation= true, recursive_approximation= true, averaging_approximation=2,variance_correction_approximation= true, variance_approximation =false, n_sub_dt =1000)
+likelihood = get_Likelihood(model= model, adaptive_aproximation= 1, recursive_approximation= 1, averaging_approximation=2,variance_correction_approximation= 1, variance_approximation =0, n_sub_dt =1000)
 
 experiment = get_Experiment(filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt", frequency_of_sampling = 50e3, initial_ATP = 0) 
 
 
-function_table = get_function_Table_maker(filename= filename, num_scouts_per_ensemble = num_scouts_per_ensemble) 
+function_table = get_function_Table_maker(filename= filename, num_scouts_per_ensemble = 16) 
 
 evidence(prior= prior_model, likelihoodModel= likelihood, data = simulation, experiment = experiment, algorithm= algorithm, function_table =function_table, init_seed =0)

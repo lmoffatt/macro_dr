@@ -2,8 +2,9 @@
 #define CLI_MACRO_DR_H
 
 
-#include "lexer_typed.h"
 
+#include "lexer_untyped.h"
+#include <string>
 namespace dcli {
 
 template <class... Args, class F, class... String>

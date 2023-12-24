@@ -1,16 +1,34 @@
 #ifndef GRAMMAR_UNTYPED_H
 #define GRAMMAR_UNTYPED_H
 
+#include "fold.h"
 #include "grammar_Identifier.h"
 #include "grammar_typed.h"
+#include "maybe_error.h"
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 namespace dcli {
 
 template <class Abstract> auto clone(const std::unique_ptr<Abstract> &x) {
   return std::unique_ptr<Abstract>(x->clone());
 }
+template <class Abstract> std::vector<std::unique_ptr<Abstract>> clone(const std::vector<std::unique_ptr<Abstract>> &x) {
+    return Map(x,[](auto & e) {return std::unique_ptr<Abstract>(e->clone());});
+}
+
+template <class... Abstract> std::tuple<std::unique_ptr<Abstract>...> clone_tuple(const std::tuple<std::unique_ptr<Abstract>...> &x) {
+    return std::apply([](auto const&... e)->std::tuple<std::unique_ptr<Abstract>...> 
+                      {return std::tuple<std::unique_ptr<Abstract>...>(std::unique_ptr<Abstract>(e->clone())...);},x);
+}
+
+
+
+
+
+template <class Lexer, class Compiler> class base_typed_statement;
+template <class Lexer, class Compiler> class base_typed_expression;
 
 template <class Lexer, class Compiler> class untyped_statement {
 public:
@@ -18,8 +36,10 @@ public:
   virtual std::string str() const = 0;
   virtual untyped_statement *clone() const = 0;
   virtual std::string type_of_statement() const = 0;
-  virtual Maybe_error<base_typed_statement<Lexer, Compiler> *>
-  compile_statement(const Compiler &cm) const = 0;
+  virtual Maybe_unique<base_typed_statement<Lexer, Compiler>>
+  compile_statement( Compiler &cm) const = 0;
+  
+  
 };
 
 
@@ -29,17 +49,22 @@ public:
   virtual ~untyped_expression(){};
   virtual untyped_expression *clone() const = 0;
 
-  virtual Maybe_error<base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &cm) const = 0;
-
-  virtual Maybe_error<base_typed_statement<Lexer, Compiler> *>
-  compile_statement(const Compiler &cm) const {
+  virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
+  compile_expression( Compiler &cm) const = 0;
+  
+ 
+  
+  virtual Maybe_unique<base_typed_statement<Lexer, Compiler> >
+  compile_statement( Compiler &cm) const override {
     auto Maybe_exp = compile_expression(cm);
     if (!Maybe_exp)
       return Maybe_exp.error();
     else
-      return Maybe_exp.value();
+        return Maybe_exp.value().release();
   }
+  
+  
+  
 };
 
 template <class Lexer, class Compiler>
@@ -93,10 +118,11 @@ public:
   auto &operator()() const { return m_expression; };
 
 public:
-  virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &) const override {
+  virtual Maybe_unique<dcli::base_typed_expression<Lexer, Compiler>>
+  compile_expression( Compiler &) const override {
     return error_message("this should not happen");
   }
+ 
 };
 
 template <class Lexer, class Compiler>
@@ -112,12 +138,15 @@ public:
   static std::string statement_type() { return "untyped_numeric_value"; }
 
 public:
-  virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &) const override {
-    double out = std::stod(this->str());
-    return new typed_literal<Lexer, Compiler, double>(out);
+  virtual Maybe_unique<dcli::base_typed_expression<Lexer, Compiler> >
+  compile_expression( Compiler &) const override {
+      double out = std::stod(this->str());
+      return new typed_literal<Lexer, Compiler, double>(out);
   }
+
 };
+
+
 
 template <class Lexer, class Compiler>
 class untyped_string_literal : public untyped_literal<Lexer, Compiler> {
@@ -138,8 +167,8 @@ public:
   static std::string statement_type() { return "untyped_string_value"; }
 
 public:
-  virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &) const override {
+  virtual Maybe_unique<dcli::base_typed_expression<Lexer, Compiler> >
+  compile_expression( Compiler &) const override {
     return new typed_literal<Lexer, Compiler, std::string>(this->str());
   }
 };
@@ -189,8 +218,8 @@ public:
   static std::string statement_type() { return "untyped_identifier"; }
 
 public:
-  virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &cm) const override {
+  virtual Maybe_unique<dcli::base_typed_expression<Lexer, Compiler>>
+  compile_expression( Compiler &cm) const override {
     return  cm.get_Identifier(m_id);
   }
 };
@@ -227,13 +256,19 @@ public:
   static std::string statement_type() { return "untyped_assignment"; }
 
 public:
-  virtual Maybe_error<dcli::base_typed_statement<Lexer, Compiler> *>
-  compile_statement(const Compiler &cm) const override {
+  virtual Maybe_unique<dcli::base_typed_statement<Lexer, Compiler> >
+  compile_statement( Compiler &cm) const override {
     auto Maybe_typed_expr = expression().compile_expression(cm);
     if (!Maybe_typed_expr)
       return Maybe_typed_expr.error();
     else
-      return Maybe_typed_expr.value()->compile_assigment(id()());
+    {
+        auto cid=Maybe_typed_expr.value()->compile_identifier();
+         cm.push_back(id()(), cid);
+        return std::unique_ptr<base_typed_statement<Lexer, Compiler>>(
+             Maybe_typed_expr.value()->compile_assigment(id()()));
+        
+    }
   }
 };
 
@@ -285,15 +320,15 @@ public:
   }
 
 public:
-  virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &cm) const override {
+  virtual Maybe_unique<dcli::base_typed_expression<Lexer, Compiler> >
+  compile_expression( Compiler &cm) const override {
     auto out = compile_argument_list(cm);
     if (!out) return out.error();
     else return out.value();
   }
   
   virtual Maybe_error<typed_argument_list<Lexer, Compiler> *>
-  compile_argument_list(const Compiler &cm) const  {
+  compile_argument_list( Compiler &cm) const  {
     auto out = new typed_argument_list<Lexer, Compiler>{};
     for (auto &e : arg()) {
       auto v_c = e->compile_statement(cm);
@@ -341,22 +376,73 @@ public:
 
   // untyped_expression interface
 public:
-  virtual Maybe_error<dcli::base_typed_expression<Lexer, Compiler> *>
-  compile_expression(const Compiler &cm) const override {
+  virtual Maybe_unique<base_typed_expression<Lexer, Compiler> >
+  compile_expression( Compiler &cm) const override {
     auto Maybe_fn = cm.get_function(fid()());
     if (!Maybe_fn)
       return Maybe_fn.error();
     else {
-      auto maybe_args = args().compile_argument_list(cm);
-      if (!maybe_args)
-        return maybe_args.error();
-      else
-      {
-        return Maybe_fn.value()->compile_function_evaluation(cm, maybe_args.value());
-      }
+         auto cmc=cm;
+      //   auto maybe_args = args().com<pile_argument_list(cmc);
+      // if (!maybe_args)
+      //   return maybe_args.error();
+      // else
+      // {
+          return Maybe_fn.value()->compile_function_evaluation(cmc, args());
+      // }
     }
   }
 };
+
+
+template<class Lexer, class Compiler>
+inline Maybe_error<typed_program<Lexer, Compiler>>
+compile_program(Compiler &cm, const untyped_program<Lexer, Compiler> &s) {
+    typed_program<Lexer, Compiler> out;
+    for (auto &e : s.statements()) {
+        auto Maybe_compiled_statement = e->compile_statement(cm);
+        if (!Maybe_compiled_statement)
+            return Maybe_compiled_statement.error();
+        else
+        {
+            out.push_back(Maybe_compiled_statement.value());
+        }
+    }
+    return out;
+}
+
+inline Maybe_error<typed_program<Lexer, Compiler>>
+compile_and_run_program_line_by_line(Compiler &cm, const untyped_program<Lexer, Compiler> &s) {
+    typed_program<Lexer, Compiler> out;
+    for (auto &e : s.statements()) {
+        auto Maybe_compiled_statement = e->compile_statement(cm);
+        if (!Maybe_compiled_statement)
+            return Maybe_compiled_statement.error();
+        else
+            out.push_back(Maybe_compiled_statement.value().release());
+    }
+    return out;
+}
+inline Maybe_error<typed_program<Lexer, Compiler>>
+compile_program(Compiler &cm, const untyped_program<Lexer, Compiler> &s) {
+    typed_program<Lexer, Compiler> out;
+    for (auto &e : s.statements()) {
+        auto Maybe_compiled_statement = e->compile_statement(cm);
+        if (!Maybe_compiled_statement)
+            return Maybe_compiled_statement.error();
+        else
+        {
+            out.push_back(Maybe_compiled_statement.value().release());
+        }
+    }
+    return out;
+}
+
+
+
+
+
+
 
 } // namespace dcli
 
