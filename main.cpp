@@ -54,6 +54,30 @@ read_from_input_fines(std::vector<std::string> const args) {
 auto get_compiler() {
     auto cm = dcli::Compiler{};
     
+    cm.push_function(
+        "get_random_Id",
+        dcli::to_typed_function<std::string>(
+            &get_random_id, "prefix"));
+    
+    
+    cm.push_function(
+        "load_Parameter",
+        dcli::to_typed_function<std::string,std::string>(
+            &load_Parameter_value, "filename", "separator"));
+    
+    
+    cm.push_function(
+        "load_Prior",
+        dcli::to_typed_function<std::string,std::string>(
+            &load_Prior_value, "filename", "separator"));
+    
+    
+    
+    cm.push_function("get_Observations", dcli::to_typed_function<std::string>(
+                                             &get_Observations, "filename"));
+    
+    
+    
     cm.push_function("load_experiment",
                      dcli::to_typed_function<std::string, double, double>(
                          &macrodr::load_experiment, "filename",
@@ -124,9 +148,29 @@ variance_correction_approximation,  std::size_t n_sub_dt)
             "min_fraction", "n_points_per_decade", "n_points_per_decade_fraction",
             "t_min_number_of_samples", "filename", "thermo_jumps_every"));
     
+    
+    /**
+     * bool run_simulation(std::string filename,recording_type recording, experiment_type experiment,
+                    std::size_t myseed, std::string modelName,Matrix<double> parameter_values,bool includeN,std::size_t n_sub_dt) {
+
+     * */
+    
+    cm.push_function(
+        "simulate",
+        dcli::to_typed_function<std::string ,recording_type , experiment_type ,
+                                std::size_t , std::string ,parameters_value_type ,bool ,std::size_t>(
+            &run_simulation, "output","recording","experiment",
+             "init_seed", "modelName","parameter_values","includeN","n_sub_dt"));
+    /**
+     * prior_value_type prior, likelihood_type likelihood,
+                   recording_value_type recording, experiment_type experiment,
+                   algo_type algorithm, tablefun_value_type ft,
+                   std::size_t myseed
+     * */
+    
     cm.push_function(
         "evidence",
-        dcli::to_typed_function<prior_type, likelihood_type, recording_type,
+        dcli::to_typed_function<prior_value_type, likelihood_type, std::string,
                                 experiment_type, algo_type, tablefun_value_type,
                                 std::size_t>(
             &calc_evidence, "prior", "likelihoodModel", "data", "experiment",
@@ -153,7 +197,7 @@ int main(int argc, char **argv) {
         std::cerr << p;
         
         if (p) {
-      auto c = dcli::compile_program(cm, p.value());
+        auto c = dcli::compile_program(cm, p.value());
             if (!c) {
           std::cerr << "\n --------------Error--------\n"
                           << c.error()() << "\n --------------Error--------\n";

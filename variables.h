@@ -339,7 +339,7 @@ public:
     
     friend std::istream& operator>>(std::istream& is,  Vector_Space& tu)
     {
-        return ((is>>static_cast<Vars &>(tu)()>>impl::sep("\t")),...);
+        return ((is>>static_cast<Vars &>(tu)()>>septr("\t")),...);
     }
     
     friend std::ostream& print(std::ostream& os, const Vector_Space& tu)

@@ -10,6 +10,8 @@
 #include "lexer_typed.h"
 #include "matrix.h"
 #include "maybe_error.h"
+#include "mcmc.h"
+#include "parameters.h"
 #include "parameters_derivative.h"
 #include "parameters_distribution.h"
 #include "random_samplers.h"
@@ -36,6 +38,32 @@
 #include <vector>
 
 namespace macrodr {
+
+
+auto get_random_id(std::string prefix)
+{
+    
+    return prefix+std::to_string(calc_seed(0ul));
+}
+
+
+auto load_Parameter_value(const std::string filename, std::string separator)
+{
+    return std::pair(filename,separator);
+}
+
+
+auto load_Prior_value(std::string filename , std::string separator= ",")
+{
+    return std::pair(filename,separator);
+    
+}
+
+auto load_Recording_value(std::string filename , std::string separator= ",")
+{
+    return std::pair(filename,separator);
+}
+
 
 auto get_function_Table(std::string filename,
                         std::size_t num_scouts_per_ensemble) {
@@ -291,6 +319,10 @@ auto get_Observations(
     return recording;
 }
 
+
+
+
+
 auto get_Prior(double prior_error, const std::string modelname) {
     
     return std::pair(prior_error, modelname);
@@ -384,8 +416,12 @@ using experiment_type =
     typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;
 using recording_type =
     typename return_type<std::decay_t<decltype(&get_Observations)>>::type;
-using prior_type =
-    typename return_type<std::decay_t<decltype(&get_Prior)>>::type;
+using recording_value_type =
+    typename return_type<std::decay_t<decltype(&load_Recording_value)>>::type;
+using prior_value_type =
+    typename return_type<std::decay_t<decltype(&load_Prior_value)>>::type;
+using parameters_value_type =
+    typename return_type<std::decay_t<decltype(&load_Parameter_value)>>::type;
 using likelihood_type =
     typename return_type<std::decay_t<decltype(&get_Likelihood)>>::type;
 
@@ -393,20 +429,21 @@ using likelihood_type =
 // experiment = experiment, algorithm= algorithm, function_table
 // =function_table, init_seed =0)
 
-void calc_evidence(prior_type prior, likelihood_type likelihood,
-                   recording_type recording, experiment_type experiment,
+void calc_likelihood(std::string outfilename,parameters_value_type par, likelihood_type likelihood,
+                   recording_value_type recording, experiment_type experiment,
                    algo_type algorithm, tablefun_value_type ft,
                    std::size_t myseed) {
     using namespace macrodr;
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     auto ftbl3 = get_function_Table_maker(filename, num_scouts_per_ensemble);
-    auto [prior_error_d, modelName] = std::move(prior);
-    auto prior_error = prior_error_d;
     
-    auto model_v = get_model(modelName);
+    auto Maybe_model_v = get_model(std::get<0>(likelihood));
+    if (Maybe_model_v)
+    {
+        auto model_v=std::move(Maybe_model_v.value());        
     return std::visit(
-        [&ftbl3, &experiment, &recording, &prior, &likelihood, &algorithm,
-         &myseed, prior_error](auto model0ptr) {
+        [outfilename,&par,&ftbl3, &experiment, &recording, &likelihood, &algorithm,
+         &myseed](auto model0ptr) {
             auto& model0=*model0ptr;
             myseed = calc_seed(myseed);
             mt_64i mt(myseed);
@@ -422,20 +459,22 @@ void calc_evidence(prior_type prior, likelihood_type likelihood,
                   averaging_approximation, variance_correction_approximation,
                   variance_correction, n_sub_dt] = likelihood;
             
-            auto &param1 = model0.parameters();
             using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
             
-            std::string ModelName = "model6_Eff_no_inactivation";
             
-            std::size_t thermo_jumps_every = param1().size() * thermo_jump_factor;
+            auto Maybe_param1 = var::load_Parameters<MyModel>(par.first,par.second);
+            Simulated_Recording<includes_N_state_evolution(true)> y;
+            auto Maybe_y= load_Simulated_Recording(recording.first,recording.second,y);
+            if (!Maybe_param1.valid()|| !Maybe_y.valid())
+                {
+                std::cerr<<  Maybe_param1.error()()<<Maybe_y.error()();              
+            }else
+                {
+                
+                auto param1=std::move(Maybe_param1.value());
+                
+                       
             
-            auto param1_prior = var::prior_around(param1, prior_error);
-            
-            auto sim = Macro_DMR{}.sample(
-                mt, model0, param1, experiment,
-                Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
-            
-            if (sim) {
                 std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
                 auto number_of_traces = 7;
                 auto number_of_segments = t_segments.size();
@@ -446,42 +485,6 @@ void calc_evidence(prior_type prior, likelihood_type likelihood,
                                 std::back_inserter(t_segments));
                 
                 std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
-                
-                std::size_t t_min_number_of_samples = 20;
-                
-                /**
-           * @brief cbc cumulative evidence algorithm, ends using convergence
-           * criteria
-           */
-                std::size_t bisection_count = 2ul;
-                std::string filename_bisection =
-                    ModelName + "_bisection_" + std::to_string(bisection_count) +
-                                                 "_" + std::to_string(myseed) + "_" + time_now();
-                
-                std::string n_points_per_decade_str =
-                    "_" + std::to_string(n_points_per_decade) + "_";
-                
-                std::string filename = ModelName +
-                                       "_new_cuevi_sim_eig_4800ch_only_7_" +
-                                       n_points_per_decade_str + time_now() + "_" +
-                                       // std::to_string(bisection_count) + "_" +
-                                       std::to_string(myseed);
-                
-                auto &t_segments_used = t_segments_7;
-                
-                auto saving_itervals = Saving_intervals(Vector_Space(
-                    Save_Evidence_every(num_scouts_per_ensemble),
-                    Save_Likelihood_every(num_scouts_per_ensemble),
-                    Save_Parameter_every(num_scouts_per_ensemble),
-                    Save_Predictions_every(num_scouts_per_ensemble * 20)));
-                
-                auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-                    path, filename, t_segments_used, t_min_number_of_samples,
-                    num_scouts_per_ensemble, number_trials_until_give_up,
-                    min_fraction, thermo_jumps_every, max_iter_equilibrium,
-                    n_points_per_decade, n_points_per_decade_fraction, medium_beta,
-                    stops_at, includes_zero, saving_itervals, random_jumps);
-                
                 auto modelLikelihood = make_Likelihood_Model<
                     uses_adaptive_aproximation(true),
                     uses_recursive_aproximation(true), uses_averaging_aproximation(2),
@@ -497,15 +500,186 @@ void calc_evidence(prior_type prior, likelihood_type likelihood,
                                                uses_variance_correction_aproximation(false),
                                                return_predictions(true)>(
                                    ftbl3().fork(var::I_thread(0)), model0, param1,
-                                   experiment, sim.value()());
-                report(filename + "_lik.csv", lik.value(), sim.value(), experiment);
-                auto opt3 = cuevi::evidence(ftbl3(), std::move(cbc), param1_prior,
-                                            modelLikelihood, sim.value()(),
-                                            experiment, cuevi::Init_seed(myseed));
+                                   experiment, get<Recording>(y()));
+                if (lik)
+                   save_Likelihood_Predictions(outfilename, lik.value(), y, experiment);
+                else
+                    std::cerr<<lik.error()();
+            }
+        
+        },
+        model_v);
+    }
+}
+
+
+void calc_evidence(prior_value_type prior, likelihood_type likelihood,
+                   std::string recording, experiment_type experiment,
+                   algo_type algorithm, tablefun_value_type ft,
+                   std::size_t myseed) {
+    using namespace macrodr;
+    auto [filename, num_scouts_per_ensemble] = std::move(ft);
+    auto ftbl3 = get_function_Table_maker(filename, num_scouts_per_ensemble);
+    
+    auto Maybe_model_v = get_model(std::get<0>(likelihood));
+    if (Maybe_model_v)
+    {
+        auto model_v=std::move(Maybe_model_v.value());        
+    return std::visit(
+        [&ftbl3, &experiment, &recording, &prior, &likelihood, &algorithm,
+         &myseed](auto model0ptr) {
+            auto& model0=*model0ptr;
+            myseed = calc_seed(myseed);
+            mt_64i mt(myseed);
+            
+            auto [path, filename, t_segments_used, t_min_number_of_samples,
+                  num_scouts_per_ensemble, number_trials_until_give_up,
+                  min_fraction, thermo_jump_factor, max_iter_equilibrium,
+                  n_points_per_decade, n_points_per_decade_fraction, medium_beta,
+                  stops_at, includes_zero, saving_itervals, random_jumps] =
+                std::move(algorithm);
+            
+            auto [model, adaptive_aproximation, recursive_approximation,
+                  averaging_approximation, variance_correction_approximation,
+                  variance_correction, n_sub_dt] = likelihood;
+            
+            using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
+            
+            std::string ModelName = "model6_Eff_no_inactivation";
+            
+            auto Maybe_param1_prior = var::load_Prior<MyModel>(prior.first,prior.second);
+            if (!Maybe_param1_prior)
+            {
+                std::cerr<<  Maybe_param1_prior.error()();              
+            }else
+            {
+                auto param1_prior=std::move(Maybe_param1_prior.value());
+                std::size_t thermo_jumps_every = param1_prior.size() * thermo_jump_factor;
+                
+                
+                Recording y;
+                auto Maybe_y = load_Recording_Data(recording, ",", y);                
+                if (Maybe_y) {
+                    std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
+                    auto number_of_traces = 7;
+                    auto number_of_segments = t_segments.size();
+                    t_segments.reserve(number_of_traces * t_segments.size());
+                    
+                    for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
+                        std::copy_n(t_segments.begin(), number_of_segments,
+                                    std::back_inserter(t_segments));
+                    
+                    std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
+                    
+                    std::size_t t_min_number_of_samples = 20;
+                    
+                    /**
+           * @brief cbc cumulative evidence algorithm, ends using convergence
+           * criteria
+           */
+                    std::size_t bisection_count = 2ul;
+                    std::string filename_bisection =
+                        ModelName + "_bisection_" + std::to_string(bisection_count) +
+                        "_" + std::to_string(myseed) + "_" + time_now();
+                    
+                    std::string n_points_per_decade_str =
+                        "_" + std::to_string(n_points_per_decade) + "_";
+                    
+                    std::string filename = ModelName +
+                                           "_new_cuevi_sim_eig_4800ch_only_7_" +
+                                           n_points_per_decade_str + time_now() + "_" +
+                                           // std::to_string(bisection_count) + "_" +
+                                           std::to_string(myseed);
+                    
+                    auto &t_segments_used = t_segments_7;
+                    
+                    auto saving_itervals = Saving_intervals(Vector_Space(
+                        Save_Evidence_every(num_scouts_per_ensemble),
+                        Save_Likelihood_every(num_scouts_per_ensemble),
+                        Save_Parameter_every(num_scouts_per_ensemble),
+                        Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                    
+                    auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+                        path, filename, t_segments_used, t_min_number_of_samples,
+                        num_scouts_per_ensemble, number_trials_until_give_up,
+                        min_fraction, thermo_jumps_every, max_iter_equilibrium,
+                        n_points_per_decade, n_points_per_decade_fraction, medium_beta,
+                        stops_at, includes_zero, saving_itervals, random_jumps);
+                    
+                    auto modelLikelihood = make_Likelihood_Model<
+                        uses_adaptive_aproximation(true),
+                        uses_recursive_aproximation(true), uses_averaging_aproximation(2),
+                        uses_variance_aproximation(false),
+                        uses_variance_correction_aproximation(false)>(
+                        model0, Simulation_n_sub_dt(n_sub_dt));
+                    auto opt3 = cuevi::evidence(ftbl3(), std::move(cbc), param1_prior,
+                                                modelLikelihood, y,
+                                                experiment, cuevi::Init_seed(myseed));
+                }
             }
         },
         model_v);
+    }
 }
+
+
+
+
+std::string run_simulation(std::string filename,recording_type recording, experiment_type experiment,
+                    std::size_t myseed, std::string modelName,parameters_value_type parameter_files,bool includeN,std::size_t n_sub_dt) {
+    using namespace macrodr;
+    
+    
+    auto Maybe_model_v = get_model(modelName);
+    if (!Maybe_model_v)
+        return Maybe_model_v.error()();
+  else  {
+        auto model_v=std::move(Maybe_model_v.value());        
+    
+    return std::visit(
+        [&filename, &experiment, &recording,&myseed,&parameter_files,n_sub_dt, includeN](auto model0ptr)->std::string
+        {
+            auto& model0=*model0ptr;
+            myseed = calc_seed(myseed);
+            mt_64i mt(myseed);
+            using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
+            auto Maybe_parameter_values=var::load_Parameters<MyModel>(parameter_files.first,parameter_files.second);
+            if (!Maybe_parameter_values)
+                return Maybe_parameter_values.error()();
+            else{
+                auto param1 =std::move(Maybe_parameter_values.value()) ;
+            save_Parameter<Parameters<MyModel>> s(filename, 1);
+            if (includeN)
+                {
+            auto sim = Macro_DMR{}.sample(
+                mt, model0, param1, experiment,
+                Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+            if (!sim)
+                return "";
+            else
+                {
+                 report_model(s,sim.value());
+                return filename+"_simulation.csv";
+                }
+            }
+            else
+                {
+                auto sim = Macro_DMR{}.sample_N(
+                    mt, model0, param1, experiment,
+                    Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+            if (!sim)
+                    return sim.error()();
+            else
+            {
+                report_model(s,sim.value());
+                return filename+"_simulation.csv";
+            }
+        }}},
+        model_v);
+}
+}
+
+
 
 /**
    * @brief fuck

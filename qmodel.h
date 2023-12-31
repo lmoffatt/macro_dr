@@ -1,6 +1,6 @@
 #pragma once
 #include "cuevi.h"
-#include "experiment.h"
+//#include "experiment.h"
 #include "fold.h"
 #include "function_memoization.h"
 #include "matrix.h"
@@ -12,6 +12,7 @@
 #include <numeric>
 #include <random>
 #include <set>
+#include <sstream>
 #include <type_traits>
 #include <vector>
 #ifndef QMODEL_H
@@ -241,27 +242,24 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
   auto s = var::sum(out);
   return out * (1.0 / s);
 }
-inline bool crude_lambda_violations(DiagonalMatrix<double> const& l)
-{
+inline bool crude_lambda_violations(DiagonalMatrix<double> const &l) {
     
-    if (var::max(l)>1e-2)
+    if (var::max(l) > 1e-2)
         return true;
     else
         return false;
 }
 
-
 template <class C_Matrix>
 auto to_Transition_Probability_Eigenvalues(C_Matrix &&lambda) {
     
     // if (crude_lambda_violations(primitive(lambda)))
-    //     std::cerr<<"crude lambda violations\n";        
-     
-  auto i_max = var::i_max(primitive(lambda));
+    //     std::cerr<<"crude lambda violations\n";
+    
+    auto i_max = var::i_max(primitive(lambda));
   lambda.set(i_max, 0.0);
   auto j_max = var::i_max(primitive(lambda));
-  while (primitive(lambda[j_max])>0.0)
-  {
+  while (primitive(lambda[j_max]) > 0.0) {
       lambda.set(j_max, 0.0);
       j_max = var::i_max(primitive(lambda));
   }
@@ -371,7 +369,8 @@ class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
 
 public:
 };
-inline Maybe_error<Ptotal_ij> make_Ptotal_ij(Matrix<double> &&x, double max_dt) {
+inline Maybe_error<Ptotal_ij> make_Ptotal_ij(Matrix<double> &&x,
+                                             double max_dt) {
   for (std::size_t i = 0; i < x.size(); ++i) {
     if ((x[i] < -max_dt) || (x[i] > max_dt + 1))
       return error_message(std::to_string(i) + "= " + std::to_string(x[i]) +
@@ -464,7 +463,6 @@ inline void save(const std::string name, const Patch_Model &m) {
       << get<g>(m) << "\n";
 }
 
-
 using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
                                  y_var, plogL, eplogL, vplogL>;
 
@@ -538,7 +536,8 @@ using Simulated_Sub_Step =
 using Simulation_Parameters = Vector_Space<Simulation_n_sub_dt>;
 
 template <includes_N_state_evolution keep_N_state>
-void save(std::string name, Simulated_Recording<keep_N_state> const &r) {
+void save_simulation(std::string name,
+                     Simulated_Recording<keep_N_state> const &r) {
   std::ofstream f(name + "_sim.txt");
 
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << r
@@ -546,8 +545,16 @@ void save(std::string name, Simulated_Recording<keep_N_state> const &r) {
 }
 
 template <includes_N_state_evolution keep_N_state>
-void save(std::string name,
-          std::vector<Simulated_Recording<keep_N_state>> const &r) {
+void load_simulation(std::string name, Simulated_Recording<keep_N_state> &r) {
+    std::ofstream f(name + "_sim.txt");
+    
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << r
+      << "\n";
+}
+
+template <includes_N_state_evolution keep_N_state>
+void save_simulation(std::string name,
+                     std::vector<Simulated_Recording<keep_N_state>> const &r) {
   std::ofstream f(name + "_sim.txt");
   f << "nrep"
     << ","
@@ -876,22 +883,16 @@ class Macro_DMR {
     } else
       return error_message("");
   }
-
-public:
   
-  static bool crude_Qx_violations(Qx const& q)
-  {
-      auto Qu=q()*Matrix<double>(q().ncols(),1ul,1.0);
-      if (maxAbs(Qu)>1e-5)
-      {
+  public:
+  static bool crude_Qx_violations(Qx const &q) {
+      auto Qu = q() * Matrix<double>(q().ncols(), 1ul, 1.0);
+      if (maxAbs(Qu) > 1e-5) {
           return true;
-      }
-      else
+      } else
           return false;
   }
   
-  
-
   template <class C_Patch_Model>
     requires U<C_Patch_Model, Patch_Model>
   auto calc_Qx(const C_Patch_Model &m, ATP_concentration x)
@@ -1368,10 +1369,11 @@ public:
       auto v_WgV = t_W() * diag(t_g()) * t_V();
 
       for (std::size_t i = 0; i < N; ++i)
-        for (std::size_t j = 0; j < N; ++j)
-          WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
+          for (std::size_t j = 0; j < N; ++j)
+              WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
       
-      auto r_gtotal_ij = force_gmean_in_range(build<gtotal_ij>(t_V() * WgV_E2 * t_W()),t_g);
+      auto r_gtotal_ij =
+          force_gmean_in_range(build<gtotal_ij>(t_V() * WgV_E2 * t_W()), t_g);
 
       Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
       for (std::size_t n1 = 0; n1 < N; n1++)
@@ -1408,8 +1410,8 @@ public:
             }
       }
       
-      auto r_gmean_ij =force_gmean_in_range(
-          build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), t_min_P())),t_g);
+      auto r_gmean_ij = force_gmean_in_range(
+          build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), t_min_P())), t_g);
       auto r_gtotal_var_ij = build<gtotal_var_ij>(
           r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij()));
 
@@ -1423,7 +1425,8 @@ public:
           build<gvar_ij>(elemDivSafe(r_gtotal_var_ij(), r_P(), t_min_P()));
 
       Matrix<double> u(N, 1, 1.0);
-      auto r_gmean_i = force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u),t_g);
+      auto r_gmean_i =
+          force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u), t_g);
       // if (crude_gmean_violation(primitive(r_gmean_i), primitive(get<g>(m))))
       //     std::cerr<<"gmean_violation\n";
       
@@ -1542,51 +1545,44 @@ public:
       return true;
   }
   
-  
-  
-  static y_mean max_possible_value_of_ymean(N_Ch_mean_value t_N, const g &t_g, Current_Baseline b)
-  {
-      return y_mean(t_N()*var::max(t_g())+b()); 
+  static y_mean max_possible_value_of_ymean(N_Ch_mean_value t_N, const g &t_g,
+                                            Current_Baseline b) {
+      return y_mean(t_N() * var::max(t_g()) + b());
   }
   
-  static y_mean min_possible_value_of_ymean(N_Ch_mean_value t_N, g t_g, Current_Baseline b)
-  {
-      return y_mean(t_N()*var::min(t_g())+b()); 
+  static y_mean min_possible_value_of_ymean(N_Ch_mean_value t_N, g t_g,
+                                            Current_Baseline b) {
+      return y_mean(t_N() * var::min(t_g()) + b());
   }
   
-  
-  static bool crude_gmean_violation(gmean_i const& v_gm, const g &v_g)
-  {
-      auto max_g_m=var::max(v_gm());
-      auto min_g_m=var::min(v_gm());
-      auto max_g=var::max(v_g());
-      auto min_g=var::min(v_g());
-      if ((max_g_m<=max_g)&& (min_g_m>=min_g))
+  static bool crude_gmean_violation(gmean_i const &v_gm, const g &v_g) {
+      auto max_g_m = var::max(v_gm());
+      auto min_g_m = var::min(v_gm());
+      auto max_g = var::max(v_g());
+      auto min_g = var::min(v_g());
+      if ((max_g_m <= max_g) && (min_g_m >= min_g))
           return false;
       else
           return true;
   }
   
   template <class C_gmean, class C_g>
-      requires((U<C_gmean, gmean_i>||U<C_gmean, gtotal_ij>||U<C_gmean, gmean_ij>)&&U<C_g,g>)
-  auto force_gmean_in_range(C_gmean&& g_mean, const C_g& v_g)
-  {
-      auto gmax=var::max(primitive(v_g()));
-      auto gmin=var::min(primitive(v_g()));
-      for (std::size_t i=0; i<g_mean().size(); ++i)
-      {
-          if (primitive(g_mean()[i])<gmin)
-              g_mean().set(i,gmin);
-          else if (primitive(g_mean()[i])>gmax)
-              g_mean().set(i,gmax);
+      requires((U<C_gmean, gmean_i> || U<C_gmean, gtotal_ij> ||
+                U<C_gmean, gmean_ij>) &&
+               U<C_g, g>)
+  auto force_gmean_in_range(C_gmean &&g_mean, const C_g &v_g) {
+      auto gmax = var::max(primitive(v_g()));
+      auto gmin = var::min(primitive(v_g()));
+      for (std::size_t i = 0; i < g_mean().size(); ++i) {
+          if (primitive(g_mean()[i]) < gmin)
+              g_mean().set(i, gmin);
+          else if (primitive(g_mean()[i]) > gmax)
+              g_mean().set(i, gmax);
       }
-      return std::move(g_mean);                      
-  }      
+      return std::move(g_mean);
+  }
   
-  
-  
-  
-   template <class C_Qn>
+  template <class C_Qn>
     requires(U<C_Qn, Qn>)
   static auto Qn_to_Qdt(const C_Qn &x) {
     auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
@@ -2440,16 +2436,24 @@ public:
     r_y_mean =
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
     
-    auto r_y_mean_max=max_possible_value_of_ymean(N_Ch_mean_value(primitive(Nch)),primitive(get<g>(m)), primitive(y_baseline));
+    auto r_y_mean_max = max_possible_value_of_ymean(
+        N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)),
+        primitive(y_baseline));
     
-    auto r_y_mean_min=min_possible_value_of_ymean(N_Ch_mean_value(primitive(Nch)),primitive(get<g>(m)), primitive(y_baseline));
+    auto r_y_mean_min = min_possible_value_of_ymean(
+        N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)),
+        primitive(y_baseline));
     
-    if ((primitive(r_y_mean())-r_y_mean_max())>std::max(std::abs(primitive(r_y_mean())),std::abs(r_y_mean_max()))*1e-5)
-        std::cerr<<"\n max violation"<<r_y_mean()<<"  vs  max: "<<r_y_mean_max();
-    if ((r_y_mean_min()-primitive(r_y_mean()))>std::max(std::abs(primitive(r_y_mean())),std::abs(r_y_mean_min()))*1e-5)
-        std::cerr<<"\n min violation\n"<<r_y_mean()<<"  vs  min: "<<r_y_mean_min();
-    
-    
+    if ((primitive(r_y_mean()) - r_y_mean_max()) >
+        std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_max())) *
+                                                       1e-5)
+        std::cerr << "\n max violation" << r_y_mean()
+                  << "  vs  max: " << r_y_mean_max();
+    if ((r_y_mean_min() - primitive(r_y_mean())) >
+        std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_min())) *
+                                                       1e-5)
+        std::cerr << "\n min violation\n"
+                  << r_y_mean() << "  vs  min: " << r_y_mean_min();
     
     if (primitive(gSg) > 0) {
       if (primitive(ms) > 0) {
@@ -2604,10 +2608,10 @@ public:
              std::conditional_t<predictions.value, Patch_State_and_Evolution,
                                 Patch_State>>;
     auto Maybe_m = model(par);
-    if (!Maybe_m)
-      return Maybe_m.error();
+    if (!is_valid(Maybe_m))
+        return get_error(Maybe_m);
     else {
-      auto m = std::move(Maybe_m.value());
+        auto m = std::move(get_value(Maybe_m));
       auto fs = get<Frequency_of_Sampling>(e).value();
       auto ini = init<predictions>(m, get<initial_ATP_concentration>(e));
 
@@ -2905,7 +2909,6 @@ public:
     return sample_<includes_N_state_evolution(true)>(mt, model, par, e, sim, r);
   }
 };
-
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
@@ -3264,7 +3267,7 @@ void report_title(save_Predictions<Parameters<Id>> &s,
 }
 
 inline void report_title(save_Predictions<Matrix<double>> &s,
-                  thermo_mcmc<Matrix<double>> const &, ...) {}
+                         thermo_mcmc<Matrix<double>> const &, ...) {}
 
 template <class Id, class FunctionTable>
 void report(FunctionTable &&f, std::size_t iter,
@@ -3361,6 +3364,73 @@ void report(std::string filename, const Patch_State_Evolution &predictions,
     }
   }
 }
+
+template <includes_N_state_evolution keep_N_state>
+void save_Likelihood_Predictions(std::string filename,
+                                 const Patch_State_Evolution &predictions,
+                                 const Simulated_Recording<keep_N_state> &y,
+                                 const Experiment &xs) {
+    auto &ys = get<Recording>(y());
+    std::ofstream f(filename);
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_x"
+      << ","
+      << "time"
+      << ","
+      << "num_samples"
+      << ","
+      << "ATP_step"
+      << ","
+      << "v_ev"
+      << ","
+      << "y"
+      << ","
+      << "y_mean"
+      << ","
+      << "y_var"
+      << ","
+      << "plogL"
+      << ","
+      << "eplogL"
+      << ","
+      << "logL"
+      << ","
+      << "i"
+      << ","
+      << "P_mean"
+      << ","
+      << "j"
+      << ","
+      << "P_Cov";
+    if constexpr (keep_N_state.value)
+        f << ","
+          << "N"
+          << "\n";
+    else
+        f << "\n";
+    for (std::size_t i_x = 0; i_x < size(ys); ++i_x) {
+        auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_x]);
+        for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_x])().nrows(); ++i) {
+            for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_x])().ncols();
+                 ++j) {
+                f << i_x << "," << get<Time>(get<Recording_conditions>(xs)()[i_x])
+                  << "," << get_num_samples(v_ev) << ","
+                  << ToString(average_ATP_step(v_ev)) << "," << ToString(v_ev) << ","
+                  << ys()[i_x]() << "," << get<y_mean>(predictions()[i_x]) << ","
+                  << get<y_var>(predictions()[i_x]) << ","
+                  << get<plogL>(predictions()[i_x]) << ","
+                  << get<eplogL>(predictions()[i_x]) << ","
+                  << get<logL>(predictions()[i_x]) << "," << i << ","
+                  << get<P_mean>(predictions()[i_x])()[i] << "," << j << ","
+                  << get<P_Cov>(predictions()[i_x])()(i, j);
+                if constexpr (keep_N_state.value)
+                    f << "," << get<N_Ch_State_Evolution>(y())()[i_x]()[i] << "\n";
+                else
+                    f << "\n";
+            }
+        }
+    }
+}
+
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType, class Parameters>
 void report(FunctionTable &&f, std::size_t iter,
@@ -3523,8 +3593,7 @@ new_cuevi_Model_by_iteration(
     const std::vector<std::size_t> &t_segments,
     std::size_t t_min_number_of_samples, std::size_t num_scouts_per_ensemble,
     std::size_t number_trials_until_give_up, double min_fraction,
-    std::size_t thermo_jumps_every,
-    std::size_t max_iter_equilibrium, 
+    std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double medium_beta, double stops_at, bool includes_the_zero,
     Saving_intervals sint, bool random_jumps) {
@@ -3549,9 +3618,10 @@ new_cuevi_Model_by_iteration(
               cuevi::Med_value(medium_beta),
               cuevi::Points_per_decade(n_points_per_decade_fraction),
               cuevi::Min_value(stops_at),
-              cuevi::Points_per_decade_low(n_points_per_decade_beta))),
-      cuevi::Number_trials_until_give_up(number_trials_until_give_up),
-        cuevi::Thermo_Jumps_every(thermo_jumps_every), cuevi::Random_jumps(random_jumps),std::move(sint));
+                cuevi::Points_per_decade_low(n_points_per_decade_beta))),
+        cuevi::Number_trials_until_give_up(number_trials_until_give_up),
+        cuevi::Thermo_Jumps_every(thermo_jumps_every),
+        cuevi::Random_jumps(random_jumps), std::move(sint));
 }
 
 template <class Id>
@@ -3572,6 +3642,158 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
       thermo_jumps_every, n_points_per_decade, stops_at, includes_zero,
       initseed);
+}
+
+template <class Parameter, includes_N_state_evolution includesN>
+void report_model(save_Parameter<Parameter> &s,
+                  Simulated_Recording<includesN> const &sim) {
+    std::ofstream f(s.fname + "_simulation.csv");
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    
+    f << "i_step" << s.sep << "patch_current";
+    if constexpr (includesN.value)
+        f << s.sep << "i_state" << s.sep << "N_mean";
+    f << "\n";
+    
+    if constexpr (includesN.value) {
+        auto N = get<N_Ch_State_Evolution>(sim());
+        auto y = get<Recording>(sim());
+        for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
+            for (auto i_state = 0ul; i_state < N()[i_step]().size(); ++i_step) {
+                f << i_step << s.sep << y()[i_step]() << i_state << s.sep
+                  << N()[i_step]()[i_state] << "\n";
+            }
+        }
+    } else {
+        auto y = get<Recording>(sim());
+        for (auto i_step = 0ul; i_step < y().size(); ++i_step) {
+            f << i_step << s.sep << y()[i_step]() << "\n";
+        }
+    }
+}
+
+template <includes_N_state_evolution includesN>
+Maybe_error<bool>
+load_Simulated_Recording(std::string const &filename,
+                         const std::string &separator,
+                         Simulated_Recording<includesN> &sim) {
+    std::ifstream f(filename);
+    
+    std::string line;
+    std::getline(f, line);
+    std::stringstream ss(line);
+    
+    if (!(ss >> septr("i_step") >> septr(separator) >> septr("patch_current")))
+        return error_message("wrong column titles");
+    else {
+        if constexpr (includesN.value) {
+            if (!(ss >> septr(separator) >> septr("i_state") >> septr(separator) >>
+                  septr("N_mean"))) {
+                return error_message("wrong column titles");
+            } else {
+                std::size_t i_step;
+                std::size_t i_state;
+                double y;
+                double N;
+                std::size_t n_states;
+                std::getline(f, line);
+                ss = std::stringstream(line);
+                std::size_t i_step0 = 0;
+                std::vector<double> vN;
+                std::vector<double> vy;
+                bool eofile = false;
+                bool eofstate = false;
+                bool have_n_states = false;
+                double y0;
+                while ((ss) && !have_n_states) {
+                    std::getline(f, line);
+                    ss = std::stringstream(line);
+                    ss >> i_step >> septr(separator) >> y >> septr(separator) >>
+                        i_state >> septr(separator) >> N;
+                    if (i_step == i_step0) {
+                        vN.push_back(N);
+                        y0 = y;
+                    } else {
+                        have_n_states = true;
+                    }
+                }
+                N_channel_state Ns(Matrix<double>(1, vN.size(), vN));
+                get<N_Ch_State_Evolution>(sim())().push_back(Ns);
+                get<Recording>(sim())().push_back(Patch_current(y0));
+                get<Recording>(sim())().push_back(Patch_current(y));
+                i_step0 = i_step;
+                
+                while (ss) {
+                    while ((ss) && (i_step == i_step0)) {
+                        Ns()[i_state] = N;
+                        if (y0 != y)
+                            return error_message("y change within a measurement");
+                        std::getline(f, line);
+                        ss = std::stringstream(line);
+                        ss >> i_step >> septr(separator) >> y >> septr(separator) >>
+                            i_state >> septr(separator) >> N;
+                    }
+                    get<N_Ch_State_Evolution>(sim())().push_back(Ns);
+                    get<Recording>(sim())().push_back(Patch_current(y));
+                    i_step0 = i_step;
+                }
+                return true;
+            }
+        } else {
+            std::size_t i_step;
+            double y;
+            while (ss >> i_step >> septr(separator) >> y) {
+                get<Recording>(sim())().push_back(y);
+                std::getline(f, line);
+                ss = std::stringstream(line);
+            }
+            return true;
+        }
+    }
+}
+
+template <includes_N_state_evolution includesN>
+void save_Simulated_Recording(std::string const &filename,
+                              const std::string &separator,
+                              Simulated_Recording<includesN> const &sim) {
+    std::ofstream f(filename);
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    
+    f << "i_step" << separator << "patch_current";
+    if constexpr (includesN.value)
+        f << separator << "i_state" << separator << "N_mean";
+    f << "\n";
+    
+    if constexpr (includesN.value) {
+        auto N = get<N_Ch_State_Evolution>(sim());
+        auto y = get<Recording>(sim());
+        for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
+            for (auto i_state = 0ul; i_state < N()[i_step]().size(); ++i_step) {
+                f << i_step << separator << y()[i_step]() << separator << i_state
+                  << separator << N()[i_step]()[i_state] << "\n";
+            }
+        }
+    } else {
+        auto y = get<Recording>(sim());
+        for (auto i_step = 0ul; i_step < y().size(); ++i_step) {
+            f << i_step << separator << y()[i_step]() << "\n";
+        }
+    }
+}
+
+template <class Id>
+void report_model(save_Parameter<Parameters<Id>> &s, Parameters<Id> const &m) {
+    std::ofstream f(s.fname + "_parameter.csv");
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    auto n = m.size();
+    f << "i_par" << s.sep << "moment" << s.sep << "value"
+      << "\n";
+    for (auto i_par = 0ul; i_par < n; ++i_par)
+        f << i_par << s.sep << "mean" << s.sep << m[i_par] << "\n";
+}
+template <class Id>
+Maybe_error<Parameters<Id>> load_Parameters(save_Parameter<Parameters<Id>> &s) {
+    return load_Parameters<Id>(s.fname + "_parameter.csv", s.sep);
 }
 
 } // namespace macrodr
