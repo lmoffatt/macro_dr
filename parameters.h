@@ -5,6 +5,7 @@
 #include "maybe_error.h"
 #include "general_output_operator.h"
 #include <cstddef>
+#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
@@ -88,6 +89,51 @@ public:
     
 };
 
+template<class Id>
+void report_model(std::string filename, std::string sep, Parameters<Id> const & m)
+{
+    std::ofstream f(filename);
+    f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    auto n=m.size();
+    f<<"i_par"<<sep<<"moment"<<sep<<"value"<<"\n";
+    for (auto i_par=0ul; i_par<n; ++i_par)
+        f<<i_par<<sep<<"mean"<<sep<<m[i_par]<<"\n";
+    
+}
+
+template<class Id>
+Maybe_error<Parameters<Id>> load_Parameters(const std::string filename, std::string separator)
+{
+    std::ifstream f(filename);
+    if (!f)
+        return error_message("file "+filename+ " does not exists or cannot be opened");
+    else
+    {
+        f>>::septr("i_par")>>::septr(separator)>>::septr("moment")>>::septr(separator)>>::septr("value");
+        if (!f)
+            return error_message("file "+filename+ " column titles do not correspond");
+        else
+        {
+        
+        std::size_t i_par;
+        double value;
+        std::vector<double> v;
+        while (f>>i_par>>::septr(separator)>>::septr("mean")>>::septr(separator)>>value)
+        {
+            if (i_par!=v.size())
+                return error_message("i_par out of order: i_par="+std::to_string(i_par)+" size="+std::to_string(v.size()));
+            else
+            {
+                v.push_back(value);
+                std::string line;
+                std::getline(f,line);
+            }
+        }
+        return Parameters<Id>(std::move(v));
+    }
+        
+    }
+}
 
 
 } // namespace var

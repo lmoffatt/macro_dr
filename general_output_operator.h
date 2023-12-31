@@ -55,18 +55,18 @@ std::ostream& print(std::ostream& os, std::variant<Ts...>const & x)
     }, x);
 }
 
-namespace impl{
-class sep:public std::string{
+class septr:public std::string{
 public:
     using std::string::string;
     //   separator(std::string s):std::string(std::move(s)){}
+    septr(std::string x): std::string(x){}
     
     std::string operator()()const {return *this;}
-    friend std::ostream& operator<<(std::ostream& os, const sep& se)
+    friend std::ostream& operator<<(std::ostream& os, const septr& se)
     {
         return os<<se();
     }
-    friend std::istream& operator>>(std::istream& is, const sep& se)
+    friend std::istream& operator>>(std::istream& is, const septr& se)
     {
         std::string ss=se();
         for (std::size_t i=0; i<ss.size(); ++i)
@@ -78,7 +78,7 @@ public:
         return is;  
     }        
 };
-}
+
 template<class K, class T>
 std::ostream& operator<<(std::ostream& os, std::pair<K,T>const & x)
 {
@@ -90,7 +90,7 @@ std::ostream& operator<<(std::ostream& os, std::pair<K,T>const & x)
 template<class K, class T>
 std::istream& operator>>(std::istream& is, std::pair<K,T> & x)
 {
-    is>>x.first>>impl::sep(", ")>>x.second;
+    is>>x.first>>septr(", ")>>x.second;
     return is;
     
 }
@@ -121,7 +121,7 @@ template<class K, class T>
 std::istream& operator>>(std::istream& is, std::map<K,T> & x)
 {
     K k; T e;
-    while(is>>k>>impl::sep("--> ")>>e>>impl::sep("\n"))
+    while(is>>k>>septr("--> ")>>e>>septr("\n"))
         x.insert({k,e});
     
     if (!x.empty())
@@ -152,9 +152,9 @@ std::istream & operator>>(std::istream &is,  std::vector<Ts> &v) {
     {
         v.push_back(e);
         if constexpr (has_size<Ts>)
-            is>>impl::sep("\n ");
+            is>>septr("\n ");
         else
-            is>>impl::sep(", ");
+            is>>septr(", ");
     }    
     if (!v.empty())
         is.setstate(std::ios::goodbit);
@@ -175,7 +175,7 @@ template <class T,class... Ts>
 std::istream &operator>>(std::istream &is,  std::tuple<T,Ts...> &tu) {
     return std::apply(
         [&is](T  & x,Ts  &...xs)  -> std::istream & {
-            ((is>> x),...,(is>>impl::sep(", ")>>xs));
+            ((is>> x),...,(is>>septr(", ")>>xs));
             return is;
         },
         tu);

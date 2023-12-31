@@ -1013,7 +1013,7 @@ int main_old(int argc, char **argv) {
                 recording);
             out[i] = sim.value();
         }
-        save(ModelName, out);
+        save_simulation(ModelName, out);
     }
     
     constexpr bool test_derivative_per_algorithm = false;

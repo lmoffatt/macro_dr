@@ -60,7 +60,7 @@ public:
   virtual ~base_Identifier_compiler(){};
   virtual base_Identifier_compiler *clone() const = 0;
   
-  virtual Maybe_error<std::unique_ptr<base_typed_expression<Lexer, Compiler>>>
+  virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
   compile_Identifier(const Identifier<Lexer> &id) const = 0;
 };
 
@@ -77,7 +77,7 @@ public:
   Identifier_compiler(typed_expression<Lexer, Compiler, T> *t_expr)
       : m_expr{t_expr} {}
   
-  virtual Maybe_error<std::unique_ptr<base_typed_expression<Lexer, Compiler>>>
+  virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
   compile_Identifier(const Identifier<Lexer> &id) const {
     return new typed_identifier<Lexer, Compiler, T>(id);
   }
@@ -254,7 +254,7 @@ public:
   virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
   compile_function_evaluation(
       Compiler const &cm,
-      const untyped_argument_list<Lexer, Compiler>& args) const {
+      const untyped_argument_list<Lexer, Compiler>& args) const override {
       
       return compile_function_evaluation_impl(std::index_sequence_for<Args...>(), cm,args.arg());
       

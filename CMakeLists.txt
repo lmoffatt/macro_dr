@@ -34,13 +34,13 @@ add_executable(macro_dr main.cpp
    maybe_error.h
    CLI_regular_types.h
    qmodel.h
-   run_script.txt
+   scripts/run_script.txt
    CLI_macro_dr.h
    CLI_grammar.h
    grammar_untyped.h
     grammar_Identifier.h
     lexer_untyped.h
-    test.txt
+    scripts/test.txt
     matrix.h
     lapack_headers.h
     experiment.h
@@ -74,22 +74,23 @@ add_executable(macro_dr main.cpp
     micror_stochastic.h
     lgamma.h
     s_first
-    Moffatt_Hume_2007_ATP_time.txt
-    Moffatt_Hume_2007_ATP_time_7.txt
-    Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
+    experiments/Moffatt_Hume_2007_ATP_time.txt
+    experiments/Moffatt_Hume_2007_ATP_time_7.txt
+    experiments/Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
     s_debug.sh
     s_long.sh
     continuation.h
     models.h
     old_code_in_main.cpp
     CLI_macrodr_commands.h
-    run_evidence.txt
-    prior_model4.txt
-    likelihood_model4.txt
-    simulation_mode4_7.txt
-    experiment_7.txt
-    algorithm_cuevi_standard.txt
-    function_table_standard.txt
+    scripts/run_evidence.txt
+    scripts/prior_model4.txt
+    scripts/likelihood_model4.txt
+    scripts/simulation_mode4_7.txt
+    experiments/experiment_7.txt
+    scripts/algorithm_cuevi_standard.txt
+    scripts/function_table_standard.txt
+    models/model6_prior.csv models/model6_parameters.csv
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

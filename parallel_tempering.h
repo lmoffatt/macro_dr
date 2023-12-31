@@ -922,4 +922,7 @@ public:
 
 
 
+
+
+
 #endif // PARALLEL_TEMPERING_H
