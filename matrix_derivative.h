@@ -72,6 +72,7 @@ public:
         return Derivative<double,double>(primitive()[i],derivative()[i]);
     }
     
+    auto& dx()const {return m_d.dx();}
     auto ncols()const {return m_x.ncols();}
     auto nrows()const {return m_x.nrows();}
     auto size()const {return m_x.size();}
@@ -95,7 +96,8 @@ public:
     
     auto& primitive(){return m_x;}
     auto& primitive()const {return m_x;}
-    auto& derivative()const {return m_d;}    
+    auto& derivative()const {return m_d;}
+    auto& dx()const {return m_d.dx();}
     
     
 };
@@ -124,7 +126,8 @@ public:
     
     auto& primitive() {return m_x;}
     auto& primitive()const {return m_x;}
-    auto& derivative()const {return m_d;}    
+    auto& derivative()const {return m_d;}
+    auto& dx()const {return m_d.dx();}
     
     auto operator()(std::size_t i, std::size_t j)const
     {

@@ -462,7 +462,7 @@ void calc_likelihood(std::string outfilename,parameters_value_type par, likeliho
             using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
             
             
-            auto Maybe_param1 = var::load_Parameters<MyModel>(par.first,par.second);
+            auto Maybe_param1 = var::load_Parameters<MyModel>(par.first,par.second,model0.model_name(),model0.names());
             Simulated_Recording<includes_N_state_evolution(true)> y;
             auto Maybe_y= load_Simulated_Recording(recording.first,recording.second,y);
             if (!Maybe_param1.valid()|| !Maybe_y.valid())
@@ -547,7 +547,7 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
             
             std::string ModelName = "model6_Eff_no_inactivation";
             
-            auto Maybe_param1_prior = var::load_Prior<MyModel>(prior.first,prior.second);
+            auto Maybe_param1_prior = var::load_Prior<MyModel>(prior.first,prior.second,model0.model_name(),model0.names());
             if (!Maybe_param1_prior)
             {
                 std::cerr<<  Maybe_param1_prior.error()();              
@@ -643,7 +643,7 @@ std::string run_simulation(std::string filename,recording_type recording, experi
             myseed = calc_seed(myseed);
             mt_64i mt(myseed);
             using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
-            auto Maybe_parameter_values=var::load_Parameters<MyModel>(parameter_files.first,parameter_files.second);
+            auto Maybe_parameter_values=var::load_Parameters<MyModel>(parameter_files.first,parameter_files.second,model0.model_name(),model0.names());
             if (!Maybe_parameter_values)
                 return Maybe_parameter_values.error()();
             else{
