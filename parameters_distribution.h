@@ -71,6 +71,33 @@ public:
     
 };
 
+
+template<class Id>
+void write_Prior(const std::string filename, const std::string separator,Parameters_Normal_Distribution<Id> const & d)
+{
+    std::ofstream f(filename);
+    using base_type= typename Parameters_Normal_Distribution<Id>::base_type;
+    f<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    auto m=static_cast<base_type const &>(d).mean();
+    auto cov=static_cast<base_type const &>(d).cov();
+    auto n=m.size();
+    f << "model_name" << separator << "i_par" << separator << "parameter_name" << separator
+      << "moment" << separator << "value"
+      << "\n";
+    
+    for (auto i_par=0ul; i_par<n; ++i_par)
+        f << d.IdName() << separator << i_par << separator << d.names()[i_par] << separator << "mean"
+          << separator << m[i_par] << "\n";
+    for (auto i_par=0ul; i_par<n; ++i_par)
+        f << d.IdName() << separator << i_par << separator << d.names()[i_par] << separator << "covar"
+          <<separator<<cov(i_par, i_par)<<"\n";
+    
+}
+
+
+
+
+
 template<class Id>
 Maybe_error<Parameters_Normal_Distribution<Id>> load_Prior(const std::string filename, const std::string separator,const std::string& ModelName, const std::vector<std::string> & ParamNames)
 {

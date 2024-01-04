@@ -137,6 +137,22 @@ void report_model(std::string filename, std::string sep,
 }
 
 template <class Id>
+void write_Parameters(std::string filename, std::string sep,
+                  Parameters<Id> const &m) {
+    std::ofstream f(filename);
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    auto n = m.size();
+    f << "model_name" << sep << "i_par" << sep << "parameter_name" << sep
+      << "moment" << sep << "value"
+      << "\n";
+    for (auto i_par = 0ul; i_par < n; ++i_par)
+        f << m.IdName() << sep << i_par << sep << m.names()[i_par] << sep << "mean"
+          << sep << m[i_par] << "\n";
+}
+
+
+
+template <class Id>
 Maybe_error<Parameters<Id>>
 load_Parameters(const std::string filename, std::string separator,
                 std::string const &ModelName,
