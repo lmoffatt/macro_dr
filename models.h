@@ -138,7 +138,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-4, 1, 1000});
+      9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 1, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -158,8 +158,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
         //  auto v_Num_ch_mean=p[Npar+2];
         //  auto v_std_log_Num_ch=p[Npar+3];
 
-        auto Npar2 = Npar + 1;
-        auto v_N0 = p[std::pair(Npar2 + 1, Npar2 + 1)];
+        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
 
         return build<Patch_Model>(
             N_St(6),
@@ -233,9 +232,9 @@ static auto prior_model00_7 = Custom_Distribution(
       double gating_off = 100;
       double inactivation_rate = 1e-4;
       double unitary_current = 0.5;
-      double current_noise = 1e-4;
+      double current_noise = 1e-3;
       double current_baseline = 1; // zero after log10
-      double Num_ch_mean = 1000;
+      double Num_ch_mean = 4000;
       double global_std_log10_par = 2.0;
 
       auto parv = std::vector<double>{kon,
@@ -269,7 +268,7 @@ static auto model00 = Model0::Model("model00", []() {
                                               "inactivation_rate",
                                               "unitary_current"};
   auto names_other = std::vector<std::string>{
-      "Current_Noise", "Current_Baseline", "Num_ch_mean", "Num_ch_stddev",
+      "Current_Noise", "Current_Baseline",// "Num_ch_mean", "Num_ch_stddev",
       "Num_ch_0",      "Num_ch_1",         "Num_ch_2",    "Num_ch_3",
       "Num_ch_4",      "Num_ch_5",         "Num_ch_6"};
 
@@ -293,10 +292,10 @@ static auto model00 = Model0::Model("model00", []() {
   v_g_formula()[4] = "unitary_current";
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-  auto p = Matrix<double>(17, 1,
-                          std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-4,
-                                                     1, 1000, 100, 1000, 1000, 1000,
-                                                     1000, 1000, 1000, 1000});
+  auto p = Matrix<double>(15, 1,
+                          std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3,
+                                                     1, 5000, 5000, 5000,
+                                                     5000, 5000, 5000, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -316,7 +315,7 @@ static auto model00 = Model0::Model("model00", []() {
         //  auto v_Num_ch_mean=p[Npar+2];
         //  auto v_std_log_Num_ch=p[Npar+3];
 
-        auto Npar2 = Npar + 3;
+        auto Npar2 = Npar + 1;
         auto v_N0 = p[std::pair(Npar2 + 1, Npar2 + 7)];
         return build<Patch_Model>(
             N_St(6),
@@ -450,7 +449,7 @@ static auto model01 = Model0::Model("model01", []() {
                                               "inactivation_rate",
                                               "unitary_current"};
   auto names_other =
-      std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
+      std::vector<std::string>{ "Current_Noise", "Current_Baseline","Num_ch"};
 
   std::size_t N = 6ul;
 
@@ -473,7 +472,7 @@ static auto model01 = Model0::Model("model01", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1000, 1e-4, 1});
+      9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1,  1e-3, 1,5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -490,9 +489,9 @@ static auto model01 = Model0::Model("model01", []() {
         auto inactivation_rate = p[4];
         auto v_unitary_current = p[5] * -1.0;
         auto Npar = 6ul;
-        auto v_N0 = p[std::pair(Npar, Npar)];
-        auto v_curr_noise = p[Npar + 1];
-        auto v_baseline = logp()[Npar + 2];
+        auto v_curr_noise = p[Npar ];
+        auto v_baseline = logp()[Npar + 1];
+        auto v_N0 = p[std::pair(Npar+2, Npar+2)];
         return build<Patch_Model>(
             N_St(6),
             build<Q0>(var::build_<Matrix<double>>(
@@ -533,7 +532,7 @@ static auto model4 = Model0::Model("model4", []() {
                                               "k08",
                                               "unitary_current"};
   auto names_other =
-      std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
+      std::vector<std::string>{ "Current_Noise", "Current_Baseline","Num_ch"};
 
   std::size_t N = 9ul;
 
@@ -574,7 +573,7 @@ static auto model4 = Model0::Model("model4", []() {
   auto p_k_MH2007 =
       std::vector<double>{15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
                           540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53, 1e-5};
-  auto p_other = std::vector<double>{1, 4800, 1e-3, 1};
+  auto p_other = std::vector<double>{1,  1e-3, 1,5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
@@ -610,9 +609,9 @@ static auto model4 = Model0::Model("model4", []() {
         auto k08 = p[15];
         auto v_g = p[16] * -1.0;
         auto Npar = 17ul;
-        auto v_N0 = p[std::pair(Npar, Npar)];
-        auto v_curr_noise = p[Npar + 1];
-        auto v_baseline = logp()[Npar + 2];
+        auto v_curr_noise = p[Npar ];
+        auto v_baseline = logp()[Npar + 1];
+        auto v_N0 = p[std::pair(Npar+2, Npar+2)];
 
         return build<Patch_Model>(
             N_St(Nst),
@@ -710,7 +709,7 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
   p_kinetics[12] = 100;
   p_kinetics[15] = 1e-3;
 
-  auto p_other = std::vector<double>{0.1, 1000, 1e-3, 1};
+  auto p_other = std::vector<double>{1, 1e-3, 1,5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -741,9 +740,9 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
         auto k08 = p[15];
         auto v_g = logp()[16];
         auto Npar = 17ul;
-        auto v_N0 = p[std::pair(Npar, Npar)];
-        auto v_curr_noise = p[Npar + 1];
-        auto v_baseline = logp()[Npar + 2];
+        auto v_curr_noise = p[Npar ];
+        auto v_baseline = logp()[Npar + 1];
+        auto v_N0 = p[std::pair(Npar+2, Npar+2)];
 
         return build<Patch_Model>(
             N_St(Nst),
@@ -829,11 +828,11 @@ static auto model6 = Allost1::Model("model6", []() {
       "BR_1",       "BG",          "BG_0",       "BG_1",
       "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
   auto names_other = std::vector<std::string>{
-      "Inactivation_rate", "Num_ch", "Current_Noise", "Current_Baseline"};
+      "Inactivation_rate",  "Current_Noise", "Current_Baseline","Num_ch"};
 
   auto p_kinetics = std::vector<double>{
       10, 10000, 100, 10000, 1, 10000, 10, 1, 1, 10, 1, 1, 10, 1, 1, 1};
-  auto p_other = std::vector<double>{1e-3, 1000, 1e-3, 1};
+  auto p_other = std::vector<double>{1e-3, 1e-3, 1,5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -878,9 +877,9 @@ static auto model6 = Allost1::Model("model6", []() {
         auto Npar = names().size();
 
         auto v_Inac_rate = p()[Npar];
-        auto v_N0 = p()[std::pair{Npar + 1, Npar + 1}];
-        auto v_curr_noise = p()[Npar + 2];
-        auto v_baseline = logp()[Npar + 3];
+        auto v_curr_noise = p()[Npar + 1];
+        auto v_baseline = logp()[Npar + 2];
+        auto v_N0 = p()[std::pair{Npar + 3, Npar + 3}];
         auto Nst = get<N_St>(m());
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -949,8 +948,8 @@ static auto model6_no_inactivation =
         "Gating_on",  "Gating_off",  "BR",         "BR_0",
         "BR_1",       "BG",          "BG_0",       "BG_1",
         "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
-    auto names_other = std::vector<std::string>{"Num_ch", "Current_Noise",
-                                                "Current_Baseline"};
+    auto names_other = std::vector<std::string>{ "Current_Noise",
+                                                "Current_Baseline","Num_ch"};
     
     auto p_kinetics = std::vector<double>{
                                           10, 1000, 1000, 100000, 1, 100, 100, 1, 1, 1, 1, 1, 100, 1, 1, 1};
@@ -958,7 +957,7 @@ static auto model6_no_inactivation =
                                                           9.28,   1871,      2547.88,  295207, 0.220378,  150.312,
         74.865, 0.0323846, 0.187903, 1.77,   -0.457748, 1,
         123,    1,         1.3411,   1};
-    auto p_other = std::vector<double>{1000, 1e-3, 1};
+    auto p_other = std::vector<double>{ 1e-3,1.0, 5000};
     
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
     auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1002,9 +1001,9 @@ static auto model6_no_inactivation =
             auto Npar = names().size();
             
             // auto v_Inac_rate = p()[Npar];
-            auto v_N0 = p()[std::pair{Npar, Npar}];
-            auto v_curr_noise = p()[Npar + 1];
-            auto v_baseline = logp()[Npar + 2];
+            auto v_curr_noise = p()[Npar ];
+            auto v_baseline = logp()[Npar + 1];
+            auto v_N0 = p()[std::pair{Npar+2, Npar+2}];
             auto Nst = get<N_St>(m())();
             auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -1086,13 +1085,13 @@ static auto model6_Eff_no_inactivation =
                                               "RG_Gon",
                                               "Gating_Current"};
     
-    auto names_other = std::vector<std::string>{"Num_ch", "Current_Noise",
-                                                "Current_Baseline"};
+    auto names_other = std::vector<std::string>{ "Current_Noise",
+                                                "Current_Baseline","Num_ch"};
     
     auto p_kinetics = std::vector<double>{
                                           9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
         33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
-    auto p_other = std::vector<double>{4800, 1e-3, 1};
+    auto p_other = std::vector<double>{ 1e-3, 1,4800};
     
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
     auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1172,9 +1171,9 @@ static auto model6_Eff_no_inactivation =
             auto Npar = names().size();
             
             // auto v_Inac_rate = p()[Npar];
-            auto v_N0 = tr_p()[std::pair{Npar, Npar}];
-            auto v_curr_noise = tr_p()[Npar + 1];
-            auto v_baseline = logp()[Npar + 2];
+            auto v_curr_noise = tr_p()[Npar ];
+            auto v_baseline = logp()[Npar + 1];
+            auto v_N0 = tr_p()[std::pair{Npar+2, Npar+2}];
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -1240,11 +1239,11 @@ static auto model7 = Allost1::Model("model7", []() {
       "BR_1",       "BG",          "BG_0",       "BG_1",
       "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
   auto names_other = std::vector<std::string>{
-      "Inactivation_rate", "Num_ch", "Current_Noise", "Current_Baseline"};
+      "Inactivation_rate",  "Current_Noise", "Current_Baseline","Num_ch"};
 
   auto p_kinetics = std::vector<double>{
       10, 10000, 100, 10000, 1, 10000, 10, 1, 1, 10, 1, 1, 10, 1, 1, 1};
-  auto p_other = std::vector<double>{1, 5000, 20, 1};
+  auto p_other = std::vector<double>{1,  1e-3, 1, 5000};
   
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   
@@ -1345,12 +1344,12 @@ static auto model8 = Allost1::Model("model8", []() {
           "Rocking_off", "RBR",         "RBR_0",
           "RBR_1",       "RBR_2",       "Rocking_Current_factor"}; //--> 8
   auto names_other =
-      std::vector<std::string>{"Inactivation_rate", "Leaking_current", "Num_ch",
-                               "Current_Noise", "Current_Baseline"};
+      std::vector<std::string>{"Inactivation_rate", "Leaking_current", 
+                               "Current_Noise", "Current_Baseline","Num_ch"};
 
   auto p_kinetics =
       std::vector<double>{10, 10000, 100, 10000, 100, 1.0, 1e-2, 1.0, 100};
-  auto p_other = std::vector<double>{1, 100, 20, 1000, 1e-3};
+  auto p_other = std::vector<double>{1e-4,0.01, 1e-3,1,5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1384,9 +1383,9 @@ static auto model8 = Allost1::Model("model8", []() {
 
         auto v_Inac_rate = p()[Npar];
         auto v_leaking_current = p()[Npar + 1];
-        auto v_N0 = p()[Npar + 2];
-        auto v_curr_noise = p()[Npar + 3];
-        auto v_baseline = logp()[Npar + 4];
+        auto v_curr_noise = p()[Npar + 2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
 
         auto v_g = build<g>(apply(
             [&v_leaking_current](const auto &x) {
@@ -1442,11 +1441,11 @@ static auto model9 = Allost1::Model("model9", []() {
                                "RB",         "RB_0",
                                "RB_1",       "Rocking_Current_factor"}; //--> 8
   auto names_other = std::vector<std::string>{
-      "Inactivation_rate", "Num_ch", "Current_Noise", "Current_Baseline"};
+      "Inactivation_rate", "Current_Noise", "Current_Baseline", "Num_ch"};
 
   auto p_kinetics =
       std::vector<double>{10, 10000, 100, 10000, 100, 1.0, 1e-2, 100};
-  auto p_other = std::vector<double>{1, 100, 20, 1};
+  auto p_other = std::vector<double>{1e-3, 1e-3, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1478,9 +1477,9 @@ static auto model9 = Allost1::Model("model9", []() {
 
         auto v_Inac_rate = p()[Npar];
         auto v_leaking_current = p()[Npar + 1];
-        auto v_N0 = p()[Npar + 2];
-        auto v_curr_noise = p()[Npar + 3];
-        auto v_baseline = logp()[Npar + 4];
+        auto v_curr_noise = p()[Npar + 2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p()[std::pair(Npar + 4,Npar+4)];
 
         auto v_g = build<g>(apply(
             [&v_leaking_current](const auto &x) {
