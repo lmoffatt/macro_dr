@@ -2,11 +2,13 @@
 #define MODELS_H
 #include "allosteric_models.h"
 #include "maybe_error.h"
+#include "parameters.h"
 #include "qmodel.h"
 #include "variables.h"
 #include <optional>
 #include <type_traits>
 #include <variant>
+#include <vector>
 namespace macrodr {
 
 template <class... Ts, class S>
@@ -26,9 +28,10 @@ operator||(std::variant<std::monostate, Ts *...> one,
 template <class Id> struct Model_Patch {
     template <class F> class Model {
         std::string m_name;
-        std::tuple<F, Parameters<Id>, typename Parameters<Id>::Names, Q0_formula,
+        std::tuple<F, Matrix<double>, std::vector<std::string>, Q0_formula,
                    Qa_formula, g_formula>
             m_f;
+        Parameters<Id> m_par;
         
     public:
         using my_Id = Id;
@@ -37,7 +40,9 @@ template <class Id> struct Model_Patch {
         Model(std::string t_name, G &&t_g)
             : m_name{t_name}, m_f{std::forward<G>(t_g)()} {}
         
-        Model(const Model &x) : m_name{x.m_name}, m_f{x.m_f} {};
+        Model(const Model &x) : m_name{x.m_name}, m_f{x.m_f},
+            m_par{Parameters<Id>(m_name,std::get<std::vector<std::string>>(m_f),
+                                   std::get<Matrix<double>>(m_f))} {}
         Model() {}
         auto &model_name() const { return m_name; }
         
@@ -49,9 +54,9 @@ template <class Id> struct Model_Patch {
         }
         
         auto &names() const {
-            return std::get<typename Parameters<Id>::Names>(m_f);
+            return std::get<std::vector<std::string>>(m_f);
         }
-        auto &parameters() const { return std::get<Parameters<Id>>(m_f); }
+        auto &parameters() const { return m_par; }
         
         auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
         auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
@@ -69,7 +74,7 @@ template <class Id> struct Model_Patch {
             f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
             f << "Model Name\t" << m.model_name() << "\n";
             f << "Parameters Names\n";
-            f << m.names()();
+            f << m.names();
             f << "<<\n---------------------\n";
             f << "Q0_formula\n";
             f << m.get_Q0_formula();
@@ -130,11 +135,10 @@ static auto model00_7 = Model0::Model("model00_7", []() {
   v_g_formula()[4] = "unitary_current";
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-  auto p = Parameters<Model0>(
+  auto p = Matrix<double>(9,1,
       std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-4, 1, 1000});
 
-  auto logp =
-      Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   return std::tuple(
       [](const auto &logp) {
@@ -174,7 +178,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
             Probability_error_tolerance(1e-2),
             Conductance_variance_error_tolerance(1e-2));
       },
-      logp, typename Parameters<Model0>::Names(names_model),
+      logp, names_model,
       std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula));
 });
 
@@ -217,7 +221,7 @@ static auto prior_model00_7 = Custom_Distribution(
 
       // now recalculate the N_ch_numbers according to segements
 
-      return Parameters<Model0>(sample_par);
+      return Parameters<Model0>(model00_7.model_name(),model00_7.names(),sample_par);
     },
     [](Parameters<Model0> const &logp) {
       double kon = 10.0;
@@ -286,12 +290,11 @@ static auto model00 = Model0::Model("model00", []() {
   v_g_formula()[4] = "unitary_current";
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-  auto p = Parameters<Model0>(
+  auto p = Matrix<double>(17,1,
       std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-4, 1, 1000, 100, 1000,
                           1000, 1000, 1000, 1000, 1000, 1000});
 
-  auto logp =
-      Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   return std::tuple(
       [](const auto &logp) {
@@ -329,7 +332,7 @@ static auto model00 = Model0::Model("model00", []() {
             min_P(1e-7), Probability_error_tolerance(1e-2),
             Conductance_variance_error_tolerance(1e-2));
       },
-      logp, typename Parameters<Model0>::Names(names_model),
+      logp, names_model,
       std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula));
 });
 
@@ -387,7 +390,7 @@ static auto prior_model00 = Custom_Distribution(
             sample_par[i] / global_std_log10_par * s_std_log_Num_ch_cv +
             s_log_Num_ch_mean;
 
-      return Parameters<Model0>(sample_par);
+      return Parameters<Model0>(model00.model_name(),model00.names(),sample_par);
     },
     [](Parameters<Model0> const &logp) {
       double kon = 10.0;
@@ -464,11 +467,10 @@ static auto model01 = Model0::Model("model01", []() {
   v_g_formula()[4] = "unitary_current";
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-  auto p = Parameters<Model0>(
+  auto p = Matrix<double>(9,1,
       std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1000, 1e-4, 1});
 
-  auto logp =
-      Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   return std::tuple(
       [](const auto &logp)       -> Maybe_error<
@@ -502,7 +504,7 @@ static auto model01 = Model0::Model("model01", []() {
             min_P(1e-7), Probability_error_tolerance(1e-2),
             Conductance_variance_error_tolerance(1e-2));
       },
-      logp, typename Parameters<Model0>::Names(names_model),
+      logp, names_model,
       std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula));
 });
 
@@ -572,10 +574,9 @@ static auto model4 = Model0::Model("model4", []() {
   p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
 
   //    auto p = Parameters<Model0>(p_kinetics);
-  auto p = Parameters<Model0>(p_k_MH2007);
+  auto p = Matrix<double>(p_k_MH2007.size(),1,p_k_MH2007);
 
-  auto logp =
-      Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   return std::tuple(
       [](const auto &logp)
@@ -706,10 +707,9 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
   auto p_other = std::vector<double>{0.1, 1000, 1e-3, 1};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-  auto p = Parameters<Model0>(p_kinetics);
+  auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
 
-  auto logp =
-      Parameters<Model0>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   return std::tuple(
       [](const auto &logp) {
@@ -830,10 +830,9 @@ static auto model6 = Allost1::Model("model6", []() {
   auto p_other = std::vector<double>{1e-3, 1000, 1e-3, 1};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-  auto p = Parameters<Allost1>(p_kinetics);
+  auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
 
-  auto logp =
-      Parameters<Allost1>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   assert(names() == names_vec);
 
@@ -956,10 +955,10 @@ static auto model6_no_inactivation =
     auto p_other = std::vector<double>{1000, 1e-3, 1};
     
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-    auto p = Parameters<Allost1>(p_kinetics);
+    auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
     
-    auto logp =
-        Parameters<Allost1>(apply([](auto x) { return std::log10(x); }, p()));
+    
+    auto logp =apply([](auto x) { return std::log10(x); }, p);
     
     assert(names() == names_vec);
     
@@ -1091,10 +1090,9 @@ static auto model6_Eff_no_inactivation =
     auto p_other = std::vector<double>{4800, 1e-3, 1};
     
     p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-    auto p = Parameters<Allost1>(p_kinetics);
+    auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
     
-    auto logp =
-        Parameters<Allost1>(apply([](auto x) { return std::log10(x); }, p()));
+    auto logp =apply([](auto x) { return std::log10(x); }, p);
     
     assert(names() == names_vec_untransformed);
     
@@ -1109,7 +1107,7 @@ static auto model6_Eff_no_inactivation =
         -> Maybe_error<
                 Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
             using std::pow;
-            auto tr_p = build<Parameters<Allost1>>(
+            auto tr_p = build<Parameters<Allost1>>(logp.IdName(), logp.names(),
                 apply([](const auto &x) { return pow(10.0, x); }, logp()));
             auto Binding_on = tr_p()[0];
             auto Binding_off = tr_p()[1];
@@ -1243,10 +1241,10 @@ static auto model7 = Allost1::Model("model7", []() {
   auto p_other = std::vector<double>{1, 1, 100, 20, 1000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-  auto p = Parameters<Allost1>(p_kinetics);
+  
+  auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
 
-  auto logp =
-      Parameters<Allost1>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   assert(names() == names_vec);
 
@@ -1349,10 +1347,10 @@ static auto model8 = Allost1::Model("model8", []() {
   auto p_other = std::vector<double>{1, 1, 100, 20, 1000, 1e-3};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-  auto p = Parameters<Allost1>(p_kinetics);
+  auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
+  
 
-  auto logp =
-      Parameters<Allost1>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   assert(names() == names_vec);
 
@@ -1446,10 +1444,10 @@ static auto model9 = Allost1::Model("model9", []() {
   auto p_other = std::vector<double>{1, 1, 100, 20, 1000, 1e-3};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-  auto p = Parameters<Allost1>(p_kinetics);
+  auto p = Matrix<double>(p_kinetics.size(),1,p_kinetics);
+  
 
-  auto logp =
-      Parameters<Allost1>(apply([](auto x) { return std::log10(x); }, p()));
+  auto logp =apply([](auto x) { return std::log10(x); }, p);
 
   assert(names() == names_vec);
 
@@ -1510,6 +1508,7 @@ public:
     using Model_type = std::variant<Ms *...>;
     Models_Library(Ms *...m) : m_models{m...} {}
     
+    auto operator()()const{ return m_models;}
     Maybe_error<Model_type> operator[](const std::string &name) {
         auto out = std::apply(
             [&name](auto... models) { return (... || (*models)[name]); }, m_models);
@@ -1535,6 +1534,19 @@ inline auto get_model(std::string modelName) {
     Models_Library( &model4,&model6_Eff_no_inactivation);
     return allmodels[modelName];
 }
+
+
+inline void print_model_Priors()
+{
+    auto allmodels =
+        Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
+                                     &model6, &model6_no_inactivation,
+                                     &model6_Eff_no_inactivation, &model7, &model8, &model9);
+    
+    
+    
+}
+
 
 inline auto get_model_old(std::string modelName) -> std::variant<
     /*decltype(&model4),*/ decltype(&model6_Eff_no_inactivation)> {

@@ -83,7 +83,7 @@ Maybe_error<bool>
 test_Derivative(F f, double dx, double eps, const Xs&...xs)
 {
     using Y=dx_of_dfdx_t<Xs...>;
-    auto x=get_dx_of_dfdx(xs...);
+    decltype(auto) x=get_dx_of_dfdx(xs...);
     
     auto out=Maybe_error<bool>(true);
     

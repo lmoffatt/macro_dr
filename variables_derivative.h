@@ -30,7 +30,7 @@ public:
     auto& primitive()const {return m_x.primitive();}
     auto& derivative()const {return m_x.derivative();}
     
-    
+    auto& dx()const {return m_x.dx();}
     friend auto& print(std::ostream& os, const Derivative& x){ os<<typeid(Id).name()<<": \n";
         print(os,x.value());
         os<<"\n"; return os;
@@ -62,6 +62,7 @@ public:
     
     constexpr Derivative(){}
     
+    decltype(auto) dx()const {return std::apply([](auto&...ds)->decltype(auto) {return get_dx_of_dfdx(ds...);},m_x);}
     
     friend auto& print(std::ostream& os, const Derivative& x){ os<<typeid(Id).name()<<": \n";
         print(os,x.m_x);
@@ -98,6 +99,7 @@ public:
     
     Vector_Space<Ids...> primitive()const {return Vector_Space<Ids...>(var::primitive(get<Ids>(*this))...);}
     
+    
 };
 
 template<class...Ids, class X>
@@ -105,6 +107,8 @@ auto get_dx_of_dfdx(const Derivative<Vector_Space<Ids...>,X>& f)
 {
     return get_dx_of_dfdx(get<Ids>(f)...);
 }
+
+
 
 template<class...Ids, class X, class Parameters>
 auto Taylor_first(const Derivative<Vector_Space<Ids...>,X>& f, const Parameters& x , double eps)
@@ -127,7 +131,10 @@ public:
     Derivative(base_type&& m):base_type{std::move(m)}{}
     Derivative(base_type const & m):base_type{m}{}
     Derivative(){}
+    
+    auto& dx()const{return base_type::dx();}
 };
+
 
 
 template<class Id, class T, class X>

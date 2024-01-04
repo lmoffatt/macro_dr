@@ -386,11 +386,11 @@ int main_old(int argc, char **argv) {
     //    N,auto...){return N;},9.0 )),Parameters<Model0>>;
     // using tetw=typename dsge::ik;
     
-    auto param11 = Parameters<Model0>(apply(
-        [](auto x) { return std::log10(x); },
-        Matrix<double>(1, 14,
-                       std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
-                                           0.5, 100, 50, 1000, 1e-4, 1.0})));
+    // auto param11 = Parameters<Model0>(model00.model_name(),model00.names(),apply(
+    //     [](auto x) { return std::log10(x); },
+    //     Matrix<double>(1, 14,
+    //                    std::vector<double>{18, 12, 6, 210, 420, 630, 1680, 54,
+    //                                        0.5, 100, 50, 1000, 1e-4, 1.0})));
     
     auto param4 = model4.parameters();
     auto param4Names = model4.names();
@@ -426,7 +426,7 @@ int main_old(int argc, char **argv) {
     using MyModel_alt = Allost1;
     
     
-    assert(param1Names().size() == param1.size());
+    assert(param1Names.size() == param1.size());
     auto dparam1 = var::selfDerivative(param1);
     
     auto NNN = build<Fun>(
@@ -455,6 +455,7 @@ int main_old(int argc, char **argv) {
     // auto n = build<N_Ch_mean>(dparam1()[0]);
     
     auto dp0 = dparam1()[0];
+//    using dp0_type= typename decltype(dp0.dx())::no_type;
     
     auto qq =
         var::build_<Matrix<double>>(5, 5, {{0, 1}, {1, 2}, {2, 3}},
