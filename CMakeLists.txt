@@ -73,12 +73,12 @@ add_executable(macro_dr main.cpp
     function_memoization.h
     micror_stochastic.h
     lgamma.h
-    s_first
+    slurm/s_first
     experiments/Moffatt_Hume_2007_ATP_time.txt
     experiments/Moffatt_Hume_2007_ATP_time_7.txt
     experiments/Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
-    s_debug.sh
-    s_long.sh
+    slurm/s_debug.sh
+    slurm/s_long.sh
     continuation.h
     models.h
     old_code_in_main.cpp
@@ -98,6 +98,11 @@ add_executable(macro_dr main.cpp
     scripts/evidence_data.txt
     scripts/model.txt
     models/model9_prior.csv models/model9_par.csv models/model8_prior.csv models/model8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
+    multi_task/multi_task_slurm.sh
+    slurm/s_multi_debug.sh
+    multi_task/simulation_4.sh
+    models/model00_7.txt
+    models/model6.txt models/model9.txt models/model8.txt models/model7.txt models/model4.txt models/model4_g_lin.txt models/model01.txt models/model00.txt models/model6_no_inactivation.txt models/model6_Eff_no_inactivation.txt models/model00_7.txt
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
