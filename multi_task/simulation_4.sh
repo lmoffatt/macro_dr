@@ -1,6 +1,6 @@
 #!/bin/bash
 
-case $(($SLURM_TASK_ID % 4)) in
+case $(($SLURM_TASK_ID % 8)) in
 0)
 /home/lmoffatt/macro_dr/macro_dr/macro_dr ../macro_dr/models/model00_7.txt ../macro_dr/scripts/experiment_7.txt  ../macro_dr/scripts/simulation.txt ../macro_dr/scripts/evidence_data.txt
 ;;
