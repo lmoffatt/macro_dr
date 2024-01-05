@@ -477,6 +477,7 @@ extract_program(const std::string &s) {
     auto maybe_expr = extract_statement(s, last_pos);
     if (maybe_expr) {
       out.push_back(maybe_expr.value().first.release());
+      out.push_back(s.substr(last_pos, maybe_expr.value().second-last_pos));  
       last_pos = maybe_expr.value().second;
       last_pos = Lexer::skip_whitespaceline(s, last_pos);
 
