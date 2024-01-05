@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -44,6 +45,19 @@ auto get_random_id(std::string prefix)
 {
     
     return prefix+"_"+std::to_string(calc_seed(0ul));
+}
+
+void write_text(std::string filename, std::string s)
+{
+    std::ofstream f(filename);
+    f<<s;
+    
+}
+
+constexpr auto temp_script_file="temp_script_file.txt";
+void write_script(std::string program_name)
+{
+    rename(temp_script_file,program_name.c_str());
 }
 
 

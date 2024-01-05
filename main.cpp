@@ -33,7 +33,7 @@
 using namespace macrodr;
 
 Maybe_error<std::string>
-read_from_input_fines(std::vector<std::string> const args) {
+read_from_input_files(std::vector<std::string> const args) {
     std::string s;
     for (std::size_t i = 1; i < args.size(); ++i) {
         auto filename = args[i];
@@ -58,6 +58,17 @@ auto get_compiler() {
         "get_random_Id",
         dcli::to_typed_function<std::string>(
             &get_random_id, "prefix"));
+    
+    
+    cm.push_function(
+            "write_text",
+            dcli::to_typed_function<std::string,std::string>(
+                &write_text, "filename", "text"));
+    
+    cm.push_function(
+        "write_script",
+        dcli::to_typed_function<std::string>(
+            &write_script, "script_name"));
     
     
     cm.push_function(
@@ -185,7 +196,7 @@ int main(int argc, char **argv) {
     for (auto i = 0; i < argc; ++i)
       arguments[i] = argv[i];
   
-  auto Maybe_script = read_from_input_fines(arguments);
+  auto Maybe_script = read_from_input_files(arguments);
     if (!Maybe_script)
         std::cerr << "Error: \n" << Maybe_script.error()();
     else {
@@ -193,9 +204,13 @@ int main(int argc, char **argv) {
         
         auto s = std::move(Maybe_script.value());
         std::cout << "\n read files " << arguments << "\n" << s << "\n";
+        ///Horrible hack to force the script to write itself at the start
+        write_text(temp_script_file,s);
+        
         auto p = dcli::extract_program(s);
         
         std::cerr << p;
+        
         
         if (p) {
         auto c = dcli::compile_program(cm, p.value());

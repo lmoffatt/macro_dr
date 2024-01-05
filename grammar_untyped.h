@@ -69,20 +69,28 @@ public:
 
 template <class Lexer, class Compiler>
 class untyped_program {
-  std::vector<std::unique_ptr<untyped_statement<Lexer, Compiler>>> m_statements;
+    std::string m_unformatted;
+    std::vector<std::unique_ptr<untyped_statement<Lexer, Compiler>>> m_statements;
 
 public:
   untyped_program() {}
   untyped_program(const untyped_program &other)
-      : m_statements{clone(other.m_statements)} {}
+      :m_unformatted{other.m_unformatted}, m_statements{clone(other.m_statements)} {}
 
   untyped_program(untyped_program &&other)
-      : m_statements{std::move(other.m_statements)} {}
+      :m_unformatted{std::move(other.m_unformatted)}, m_statements{std::move(other.m_statements)} {}
 
   auto &push_back(untyped_statement<Lexer, Compiler> *t_expr) {
     m_statements.emplace_back(t_expr);
     return *this;
   }
+  
+  auto &push_back(const std::string& s) {
+      m_unformatted+=s + std::string(Lexer::statement_sep);
+      return *this;
+  }
+  
+  
   std::string str() const {
     std::string out = "";
     for (auto &elem : m_statements)
@@ -90,9 +98,11 @@ public:
     return out;
   };
   
+  auto& unformatted()const {return m_unformatted;}
   friend std::ostream& operator<<(std::ostream& os, untyped_program const &p)
   {
     os<<p.str();
+    os<<"\nunfomatted\n"<<p.unformatted()<<"\n";  
     return os;
   }
   auto &statements() const { return m_statements; }
