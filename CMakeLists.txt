@@ -91,6 +91,13 @@ add_executable(macro_dr main.cpp
     scripts/algorithm_cuevi_standard.txt
     scripts/function_table_standard.txt
     models/model6_prior.csv models/model6_parameters.csv
+    scripts/mode6_Eff_no_inactivation.txt
+    scripts/experiment_7.txt
+    scripts/simulation.txt
+    scripts/evidence_simulation.txt
+    scripts/evidence_data.txt
+    scripts/model.txt
+    models/model9_prior.csv models/model9_par.csv models/model8_prior.csv models/model8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

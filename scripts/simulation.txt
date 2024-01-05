@@ -1,0 +1,6 @@
+simulation_Id= get_random_Id(prefix="Sim") 
+
+simfile=simulate(output=simulation_Id, recording= observations, experiment=experiment,
+init_seed=0, modelName= model, parameter_values= modelParameter, includeN=1 ,n_sub_dt=100)
+
+likelihood = get_Likelihood(model= model, adaptive_aproximation= 1, recursive_approximation= 1, averaging_approximation=2, variance_correction_approximation= 1, variance_approximation =0, n_sub_dt =1000)
