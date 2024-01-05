@@ -43,7 +43,6 @@ public:
     auto &names() const { return m_names; }
     auto &operator[](std::size_t i) const { return m_names[i]; }
     
-    
     Maybe_error<std::size_t> operator[](const std::string &name) const {
       auto it = m_index_map.find(name);
       if (it != m_index_map.end())
@@ -60,35 +59,29 @@ public:
     
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
-  Parameters(std::string const &IdName,
+    Parameters(std::string const &IdName,
                std::vector<std::string> const &ParNames, MatrixType &&x)
         : ptr_IdName{&IdName}, ptr_ParNames{&ParNames},
         m_values{std::forward<MatrixType>(x)} {}
     
     template <class VectorType>
         requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
-  Parameters(std::string const &IdName,
+    Parameters(std::string const &IdName,
                std::vector<std::string> const &ParNames, VectorType &&x)
         : ptr_IdName{&IdName}, ptr_ParNames{&ParNames},
         m_values{x.size(), 1, std::forward<VectorType>(x)} {}
     
-    
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
-    Parameters create(MatrixType &&x)const
-        {
+    Parameters create(MatrixType &&x) const {
         return Parameters(IdName(), names(), std::forward<MatrixType>(x));
     }
-
+    
     template <class VectorType>
         requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
-     Parameters create(VectorType &&x)
-    {
+    Parameters create(VectorType &&x) {
         return Parameters(IdName(), names(), std::forward<VectorType>(x));
     }
-    
-    
-    
     
     Parameters(std::string const &IdName,
                std::vector<std::string> const &ParNames)
@@ -138,7 +131,7 @@ void report_model(std::string filename, std::string sep,
 
 template <class Id>
 void write_Parameters(std::string filename, std::string sep,
-                  Parameters<Id> const &m) {
+                      Parameters<Id> const &m) {
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     auto n = m.size();
@@ -149,8 +142,6 @@ void write_Parameters(std::string filename, std::string sep,
         f << m.IdName() << sep << i_par << sep << m.names()[i_par] << sep << "mean"
           << sep << m[i_par] << "\n";
 }
-
-
 
 template <class Id>
 Maybe_error<Parameters<Id>>
@@ -172,31 +163,30 @@ load_Parameters(const std::string filename, std::string separator,
             ::septr(separator) >> ::septr("parameter_name") >> ::septr(separator) >>
             ::septr("moment") >> ::septr(separator) >> ::septr("value");
         if (!ss)
-                return error_message("file " + filename + " column titles" + line +
-                                     " do not correspond ");
-            else {
+            return error_message("file " + filename + " column titles" + line +
+                                 " do not correspond ");
+        else {
             Parameters<Id> out(ModelName, ParamNames);
-            std::size_t i_par;
+            std::size_t i_par=0;
             std::getline(f, line);
             ss = std::stringstream(line);
-            std::vector<Maybe_error<bool>> has_par(ParamNames.size(),error_message("not provided "));
-            while (ss >> ::septr(ModelName) >> ::septr(separator) >> i_par >>
-                   ::septr(separator) >> ::septr(ParamNames[i_par]) >>
-                   ::septr(separator) >> ::septr("mean") >> ::septr(separator) >>
-                   out[i_par]) {
-                has_par[i_par]=true;
-                std::getline(f, line);
-                ss = std::stringstream(line);
+            std::vector<Maybe_error<bool>> has_par(ParamNames.size(),
+                                                   error_message("not provided "));
+            while (bool((ss >> ::septr(ModelName) >> ::septr(separator))) &&
+                   bool((ss >> i_par >> ::septr(separator))) &&
+                   bool((ss >> ::septr(ParamNames[i_par]) >> ::septr(separator)) && bool((ss >> ::septr("mean") >> ::septr(separator) >> out[i_par])))) {
+        has_par[i_par] = true;
+        std::getline(f, line);
+        ss = std::stringstream(line);
             }
-            auto allPars=promote_Maybe_error(has_par);
+            auto allPars = promote_Maybe_error(has_par);
             if (!allPars)
                 return allPars.error();
             else
                 return std::move(out);
-        }
     }
+  }
 }
-
 
 } // namespace var
 

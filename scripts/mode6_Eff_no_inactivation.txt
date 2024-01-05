@@ -1,0 +1,5 @@
+model = "model6_Eff_no_inactivation"
+
+modelParameter = load_Parameter(filename = "../macro_dr/models/model6_Eff_no_inactivation_par.csv", separator="," )
+
+prior_model = load_Prior(filename = "../macro_dr/models/model6_Eff_no_inactivation_prior.csv", separator= ",")

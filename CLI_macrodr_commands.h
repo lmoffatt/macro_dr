@@ -43,7 +43,7 @@ namespace macrodr {
 auto get_random_id(std::string prefix)
 {
     
-    return prefix+std::to_string(calc_seed(0ul));
+    return prefix+"_"+std::to_string(calc_seed(0ul));
 }
 
 
@@ -532,7 +532,7 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
             myseed = calc_seed(myseed);
             mt_64i mt(myseed);
             
-            auto [path, filename, t_segments_used, t_min_number_of_samples,
+            auto [path, file_name, t_segments_used, t_min_number_of_samples,
                   num_scouts_per_ensemble, number_trials_until_give_up,
                   min_fraction, thermo_jump_factor, max_iter_equilibrium,
                   n_points_per_decade, n_points_per_decade_fraction, medium_beta,
@@ -545,7 +545,7 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
             
             using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
             
-            std::string ModelName = "model6_Eff_no_inactivation";
+            std::string ModelName = model0.model_name();
             
             auto Maybe_param1_prior = var::load_Prior<MyModel>(prior.first,prior.second,model0.model_name(),model0.names());
             if (!Maybe_param1_prior)
@@ -577,18 +577,9 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
            * @brief cbc cumulative evidence algorithm, ends using convergence
            * criteria
            */
-                    std::size_t bisection_count = 2ul;
-                    std::string filename_bisection =
-                        ModelName + "_bisection_" + std::to_string(bisection_count) +
-                        "_" + std::to_string(myseed) + "_" + time_now();
                     
-                    std::string n_points_per_decade_str =
-                        "_" + std::to_string(n_points_per_decade) + "_";
-                    
-                    std::string filename = ModelName +
-                                           "_new_cuevi_sim_eig_4800ch_only_7_" +
-                                           n_points_per_decade_str + time_now() + "_" +
-                                           // std::to_string(bisection_count) + "_" +
+                    std::string filename = file_name+"_"+ModelName +"_"+
+                                           time_now() + "_" +
                                            std::to_string(myseed);
                     
                     auto &t_segments_used = t_segments_7;

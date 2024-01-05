@@ -38,4 +38,4 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 module load amdblis
 module load amdlibflame
 # Lanzar el programa
-srun /home/lmoffatt/macro_dr/macro_dr/macro_dr
+srun /home/lmoffatt/macro_dr/macro_dr/macro_dr ../macro_dr/scripts/model.txt ../macro_dr/scripts/experiment_7.txt  ../macro_dr/scripts/simulation.txt ../macro_dr/scripts/evidence_simulation.txt
