@@ -43,7 +43,7 @@ namespace cuevi {
 class Th_Beta : public var::Var<Th_Beta, double> {};
 class Trial_count : public var::Constant<Trial_count, std::size_t> {};
 
-class Success_count : public var::Constant<Success_count, double> {};
+class Success_count : public var::Constant<Success_count, std::size_t> {};
 
 class Trial_statistics
     : public var::Constant<Trial_statistics,
@@ -54,12 +54,23 @@ public:
     get<Success_count>((*this)())() += get<Success_count>(other())();
     return *this;
   }
+  
 
   friend void succeeds(Trial_statistics &me) {
     ++get<Trial_count>(me())();
     ++get<Success_count>(me())();
   }
   friend void fails(Trial_statistics &me) { ++get<Trial_count>(me())(); }
+  
+  void reset() {
+      get<Trial_count>((*this)())() = 0;
+      get<Success_count>((*this)())() = 0;
+  }
+  auto count() const { return get<Trial_count>((*this)())(); }
+  double rate() const {
+      return 1.0 * get<Success_count>((*this)())() /
+             get<Trial_count>((*this)())();
+  }
 };
 
 class LogPrior : public var::Var<LogPrior, double> {};
@@ -205,6 +216,14 @@ public:
     }
     return *this;
   }
+  
+  Trial_statistics operator[](Fraction_Index i) const {
+      auto it = (*this)().find(i);
+      if (it != (*this)().end())
+          return it->second;
+      else
+          return Trial_statistics{};
+  }
 };
 
 class emcee_Step_statistics
@@ -221,7 +240,26 @@ class Walker_statistics
           Walker_statistics,
           var::Vector_Space<Prior_statistics, Likelihood_statistics,
                             emcee_Step_statistics, Thermo_Jump_statistics,
-                            Cuevi_Jump_statistics>> {};
+                            Cuevi_Jump_statistics>> {
+public:
+    void reset() {
+        get<Prior_statistics>((*this)())().reset();
+        get<Likelihood_statistics>((*this)())().clear();
+        get<emcee_Step_statistics>((*this)())().reset();
+        get<Thermo_Jump_statistics>((*this)())().reset();
+        get<Cuevi_Jump_statistics>((*this)())().reset();
+    }
+    
+    Walker_statistics &operator+=(const Walker_statistics &other) {
+        get<Prior_statistics>((*this)())()+=get<Prior_statistics>(other())();
+        get<Likelihood_statistics>((*this)())+=get<Likelihood_statistics>(other());
+        get<emcee_Step_statistics>((*this)())()+=get<emcee_Step_statistics>(other())();
+        get<Thermo_Jump_statistics>((*this)())()+=get<Thermo_Jump_statistics>(other())();
+        get<Cuevi_Jump_statistics>((*this)())()+=get<Cuevi_Jump_statistics>(other())();
+        return *this;
+       }
+    
+};
 
 using Walker_statistics_pair =
     std::pair<Walker_statistics &, Walker_statistics &>;
@@ -243,7 +281,20 @@ class thermo_cuevi_jump_mcmc;
 
 class Cuevi_statistics
     : public var::Var<Cuevi_statistics,
-                      ensemble<std::vector<Walker_statistics>>> {};
+                      ensemble<std::vector<Walker_statistics>>> {
+    
+public:
+    auto operator[](Cuevi_Index icu)
+    {
+        Walker_statistics out={};
+        for (std::size_t i=0; i<(*this)().size(); ++i)
+        {
+            out+=(*this)()[i][icu()];
+        }
+        return out;
+    }
+    
+};
 
 template <class ParameterType> class Cuevi_mcmc;
 
@@ -692,6 +743,11 @@ public:
     assert(i_cu() < get_Cuevi_Temperatures_Number());
     return get<Th_Beta>(m_temperatures()[i_cu()]);
   }
+  
+  auto get_Cuevi_Statistics(Cuevi_Index i_cu){
+      return m_sta[i_cu];
+  }
+  
   auto get_Fraction(Cuevi_Index i_cu) {
     assert(i_cu() < get_Cuevi_Temperatures_Number());
 
@@ -836,6 +892,17 @@ public:
           auto icu = Cuevi_Index(i_cu);
           auto &wa = data.get_Walker(iw, icu);
           auto &wav = data.get_Walker_Value(iw, icu);
+          auto &stat = get<Walker_statistics>(wa());
+          
+          auto &prior_sta = get<Prior_statistics>(stat());
+          auto lik_sta_2 = get<Likelihood_statistics>(stat())[i_fra + 1];
+          auto lik_sta_1 = get<Likelihood_statistics>(stat())[i_fra];
+          auto lik_sta_0 = get<Likelihood_statistics>(stat())[i_fra - 1];
+          
+          auto &emcee_sta = get<emcee_Step_statistics>(stat());
+          auto &th_sta = get<Thermo_Jump_statistics>(stat());
+          auto &cuevi_sta = get<Cuevi_Jump_statistics>(stat());
+          
           auto logPrior = get<LogPrior>(wav());
           double beta0;
           Maybe_L logL0;
@@ -846,14 +913,14 @@ public:
           Maybe_L logL0_1 = error_message{};
           Maybe_L logL0_0 = error_message{};
           if (i_fra() == 0) {
-             beta1 = data.get_Beta(i_cu)();
+              beta1 = data.get_Beta(i_cu)();
             logL0 = logL1;
             beta0 = beta1;
             logL1 = get<LogLik_by_Fraction>(wav())[i_fra];
             logL1_1 = logL1;
-            if (beta1==1.0)
+            if (beta1 == 1.0)
                 logL1_2 = get<LogLik_by_Fraction>(wav())[i_fra + 1];
-                
+            
             plog_Evidence = (beta1 - beta0) * (logL0 + logL1) / 2;
             log_Evidence = log_Evidence + plog_Evidence;
             if (beta0 == 0)
@@ -885,7 +952,16 @@ public:
               << s.sep << logL0 << s.sep << plog_Evidence << s.sep
               << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1
               << s.sep << logL1_0 << s.sep << logL1_2 << s.sep << logL0_1
-              << s.sep << logL0_0 << "\n";
+              << s.sep << logL0_0 << s.sep
+              
+              << prior_sta().count() << s.sep << prior_sta().rate() << s.sep
+              << lik_sta_0.count() << s.sep << lik_sta_0.rate() << s.sep
+              << lik_sta_1.count() << s.sep << lik_sta_1.rate() << s.sep
+              << lik_sta_2.count() << s.sep << lik_sta_2.rate() << s.sep
+              << emcee_sta().count() << s.sep << emcee_sta().rate() << s.sep
+              << th_sta().count() << s.sep << th_sta().rate() << s.sep
+              << cuevi_sta().count() << s.sep << cuevi_sta().rate() << "\n";
+          stat.reset();
         }
       }
     }
@@ -900,8 +976,16 @@ public:
         << "logL0" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
         << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1" << s.sep
         << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1" << s.sep
-        << "logL0_0"
-        << "\n";
+          << "logL0_0" << s.sep
+          
+          << "prior_sta_count" << s.sep << "prior_sta_rate" << s.sep
+          << "lik_sta_0_count" << s.sep << "lik_sta_0_rate" << s.sep
+          << "lik_sta_1_count" << s.sep << "lik_sta_1_rate" << s.sep
+          << "lik_sta_2_count" << s.sep << "lik_sta_2_rate" << s.sep
+          << "emcee_sta_count" << s.sep << "emcee_sta_rate" << s.sep
+          << "th_sta_count" << s.sep << "th_sta_rate" << s.sep
+          << "cuevi_sta_count" << s.sep << "cuevi_sta_rate"
+          << "\n";
   }
 
   template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
@@ -1104,6 +1188,20 @@ public:
         Maybe_error<double> logL1_0 = error_message{};
         Maybe_error<double> logL0_1 = error_message{};
         Maybe_error<double> logL0_0 = error_message{};
+        
+        auto stat = data.get_Cuevi_Statistics(i_cu);
+        
+        auto &prior_sta = get<Prior_statistics>(stat());
+        auto lik_sta_2 = get<Likelihood_statistics>(stat())[i_frac + 1];
+        auto lik_sta_1 = get<Likelihood_statistics>(stat())[i_frac];
+        auto lik_sta_0 = get<Likelihood_statistics>(stat())[i_frac - 1];
+        
+        auto &emcee_sta = get<emcee_Step_statistics>(stat());
+        auto &th_sta = get<Thermo_Jump_statistics>(stat());
+        auto &cuevi_sta = get<Cuevi_Jump_statistics>(stat());
+        
+        
+        
         if (i_frac() == 0) {
           logL0 = logL1;
           beta0 = beta1;
@@ -1138,8 +1236,14 @@ public:
             << logL1 << s.sep << logL0 << s.sep << plog_Evidence << s.sep
             << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1
             << s.sep << logL1_0 << s.sep << logL1_2 << s.sep << logL0_1 << s.sep
-            << logL0_0
-
+            << logL0_0<<s.sep
+            << prior_sta().count() << s.sep << prior_sta().rate() << s.sep
+            << lik_sta_0.count() << s.sep << lik_sta_0.rate() << s.sep
+            << lik_sta_1.count() << s.sep << lik_sta_1.rate() << s.sep
+            << lik_sta_2.count() << s.sep << lik_sta_2.rate() << s.sep
+            << emcee_sta().count() << s.sep << emcee_sta().rate() << s.sep
+            << th_sta().count() << s.sep << th_sta().rate() << s.sep
+            << cuevi_sta().count() << s.sep << cuevi_sta().rate()
             << "\n";
       }
     }
@@ -1152,7 +1256,14 @@ public:
         << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
         << "log_Evidence" << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1"
         << s.sep << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1"
-        << s.sep << "logL0_0"
+          << s.sep << "logL0_0"<<s.sep
+          << "prior_sta_count" << s.sep << "prior_sta_rate" << s.sep
+          << "lik_sta_0_count" << s.sep << "lik_sta_0_rate" << s.sep
+          << "lik_sta_1_count" << s.sep << "lik_sta_1_rate" << s.sep
+          << "lik_sta_2_count" << s.sep << "lik_sta_2_rate" << s.sep
+          << "emcee_sta_count" << s.sep << "emcee_sta_rate" << s.sep
+          << "th_sta_count" << s.sep << "th_sta_rate" << s.sep
+          << "cuevi_sta_count" << s.sep << "cuevi_sta_rate"
 
         << "\n";
   }
@@ -1317,31 +1428,46 @@ public:
   void operator()(FunctionTable &&f, Cuevi_mcmc<Parameters> &current,
                   Likelihood const &lik, const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x, double r, Walker_Index i_w,
-                  Walker_Index j_w, Cuevi_Index icu, Cuevi_Index jcu) const {
+                  Walker_Index j_w, Cuevi_Index icu, Cuevi_Index jcu,
+                  Random_jumps randomize) const {
     auto &t = current.get_Cuevi_Temperatures();
     auto &w_0 = current.get_Walker_Value(i_w, icu);
     auto &w_1 = current.get_Walker_Value(j_w, jcu);
     auto wa_sta_0 = current.get_Walker_Statistics(i_w, icu);
     auto wa_sta_1 = current.get_Walker_Statistics(j_w, jcu);
-    auto Maybe_logA = current.thermo_jump_logProb(f, lik, y, x, t, icu, w_0, jcu,
-                                                 w_1, wa_sta_0, wa_sta_1);
+    auto Maybe_logA = current.thermo_jump_logProb(f, lik, y, x, t, icu, w_0,
+                                                  jcu, w_1, wa_sta_0, wa_sta_1);
     if (Maybe_logA.valid()) {
       auto logA = std::move(Maybe_logA.value());
       auto pJump = std::min(1.0, std::exp(logA));
       if (pJump > r) {
         auto &W0 = current.get_Walker(i_w, icu);
         auto &W1 = current.get_Walker(j_w, jcu);
-        succeeds(get<Thermo_Jump_statistics>(wa_sta_0.first())());
-        succeeds(get<Thermo_Jump_statistics>(wa_sta_0.second())());
-        succeeds(get<Thermo_Jump_statistics>(wa_sta_1.first())());
-        succeeds(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+        if (randomize()) {
+            succeeds(get<Cuevi_Jump_statistics>(wa_sta_0.first())());
+            succeeds(get<Cuevi_Jump_statistics>(wa_sta_0.second())());
+            succeeds(get<Cuevi_Jump_statistics>(wa_sta_1.first())());
+            succeeds(get<Cuevi_Jump_statistics>(wa_sta_1.second())());
+        } else {
+            succeeds(get<Thermo_Jump_statistics>(wa_sta_0.first())());
+            succeeds(get<Thermo_Jump_statistics>(wa_sta_0.second())());
+            succeeds(get<Thermo_Jump_statistics>(wa_sta_1.first())());
+            succeeds(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+        }
 
         std::swap(W0, W1);
       } else {
-        fails(get<Thermo_Jump_statistics>(wa_sta_0.first())());
-        fails(get<Thermo_Jump_statistics>(wa_sta_1.second())());
-        fails(get<Thermo_Jump_statistics>(wa_sta_0.first())());
-        fails(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+          if (randomize()) {
+              fails(get<Cuevi_Jump_statistics>(wa_sta_0.first())());
+              fails(get<Cuevi_Jump_statistics>(wa_sta_1.second())());
+              fails(get<Cuevi_Jump_statistics>(wa_sta_0.first())());
+              fails(get<Cuevi_Jump_statistics>(wa_sta_1.second())());
+          } else {
+              fails(get<Thermo_Jump_statistics>(wa_sta_0.first())());
+              fails(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+              fails(get<Thermo_Jump_statistics>(wa_sta_0.first())());
+              fails(get<Thermo_Jump_statistics>(wa_sta_1.second())());
+          }
       }
     }
   }
@@ -1404,7 +1530,8 @@ public:
           auto jcu = Cuevi_Index(shuffled_cuevi[i_cu + 1]);
           double r = rdist[i](mts[i]);
           thermo_cuevi_jump_mcmc_per_walker{}(f.fork(var::I_thread(i)), current,
-                                              lik, y, x, r, i_w, j_w, icu, jcu);
+                                              lik, y, x, r, i_w, j_w, icu, jcu,
+                                              randomize);
         }
       }
     }
@@ -2410,9 +2537,9 @@ struct step_stretch_cuevi_mcmc {
     requires(is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters,
                                  Variables, DataType>)
-
-  void operator()(FunctionTable &&, cuevi_mcmc<Parameters> &current,
-                  Observer &, ensemble<mt_64i> &mt,
+  
+  void operator()(FunctionTable &&, cuevi_mcmc<Parameters> &current, Observer &,
+                  ensemble<mt_64i> &mt,
                   std::vector<std::uniform_real_distribution<double>> &rdist,
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
@@ -2483,10 +2610,11 @@ struct step_stretch_cuevi_mcmc {
 
 using DataIndexes = std::vector<std::size_t>;
 
-inline auto generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
-                             std::size_t min_num_extra_samples,
-                             double num_jumps_per_decade,
-                             std::vector<std::size_t> initial_samples = {}) {
+inline auto
+generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
+                        std::size_t min_num_extra_samples,
+                        double num_jumps_per_decade,
+                        std::vector<std::size_t> initial_samples = {}) {
 
   std::size_t num_initial_samples = size(initial_samples);
   std::size_t n_jumps = std::max(
@@ -2579,8 +2707,8 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
                                DataType>)
 
 inline auto init_mcmc2(FunctionTable &&f, mt_64i &mt, const Prior &prior,
-                const Likelihood &lik, const by_fraction<DataType> &y,
-                const by_fraction<Variables> &x) {
+                       const Likelihood &lik, const by_fraction<DataType> &y,
+                       const by_fraction<Variables> &x) {
   auto prior_sampler = sampler(prior);
   auto par = sample(mt, prior_sampler);
   auto logP = logPrior(prior, par);
@@ -2608,9 +2736,10 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
                                DataType>)
 
 inline auto init_mcmc_resample(FunctionTable &&f, ensemble<mt_64i> &mt,
-                        cuevi_mcmc<Parameters> &current, const Prior &prior,
-                        const Likelihood &lik, const by_fraction<DataType> &y,
-                        const by_fraction<Variables> &x) {
+                               cuevi_mcmc<Parameters> &current,
+                               const Prior &prior, const Likelihood &lik,
+                               const by_fraction<DataType> &y,
+                               const by_fraction<Variables> &x) {
   auto prior_sampler = sampler(prior);
   auto n_walkers = current.walkers.size();
   auto n_frac = current.beta.size();
@@ -2680,10 +2809,10 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
                                DataType>)
 
 inline auto init_cuevi_mcmc(FunctionTable &&f, std::size_t n_walkers,
-                     by_beta<double> const &beta, ensemble<mt_64i> &mt,
-                     Prior const &prior, Likelihood const &lik,
-                     const by_fraction<DataType> &y,
-                     const by_fraction<Variables> &x) {
+                            by_beta<double> const &beta, ensemble<mt_64i> &mt,
+                            Prior const &prior, Likelihood const &lik,
+                            const by_fraction<DataType> &y,
+                            const by_fraction<Variables> &x) {
   by_fraction<std::size_t> nsamples_out(1, size(y[0]));
   by_fraction<by_beta<double>> beta_out(1, beta);
   auto active_beta = by_beta<int>(beta.size(), 1);
@@ -2720,10 +2849,11 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
                                DataType>)
 
 inline auto init_cuevi_mcmc_all(FunctionTable &&f, std::size_t n_walkers,
-                         by_fraction<by_beta<double>> const &beta_out,
-                         ensemble<mt_64i> &mt, Prior const &prior,
-                         Likelihood const &lik, const by_fraction<DataType> &y,
-                         const by_fraction<Variables> &x) {
+                                by_fraction<by_beta<double>> const &beta_out,
+                                ensemble<mt_64i> &mt, Prior const &prior,
+                                Likelihood const &lik,
+                                const by_fraction<DataType> &y,
+                                const by_fraction<Variables> &x) {
   by_fraction<std::size_t> nsamples_out(beta_out.size());
   for (std::size_t i = 0; i < beta_out.size(); ++i)
     nsamples_out[i] = size(y[i]);
@@ -2863,11 +2993,11 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
-inline auto create_new_walkers(FunctionTable &&f,
-                        const cuevi_mcmc<Parameters> &current,
-                        ensemble<mt_64i> &mts, Prior const &prior,
-                        Likelihood const &lik, const by_fraction<DataType> &y,
-                        const by_fraction<Variables> &x) {
+inline auto
+create_new_walkers(FunctionTable &&f, const cuevi_mcmc<Parameters> &current,
+                   ensemble<mt_64i> &mts, Prior const &prior,
+                   Likelihood const &lik, const by_fraction<DataType> &y,
+                   const by_fraction<Variables> &x) {
 
   auto n_walkers = current.walkers.size();
   auto sum_walkers = next_id_walker(current);
@@ -3014,8 +3144,8 @@ struct thermo_cuevi_jump_mcmc {
 
   void operator()(FunctionTable &&f, std::size_t iter,
                   cuevi_mcmc<Parameters> &current, Observer &obs, mt_64i &mt,
-                  ensemble<mt_64i> &mts, Prior const &,
-                  Likelihood const &lik, const by_fraction<DataType> &y,
+                  ensemble<mt_64i> &mts, Prior const &, Likelihood const &lik,
+                  const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x,
                   std::size_t thermo_jumps_every) const {
     if (iter % (thermo_jumps_every) == 0) {
@@ -3556,11 +3686,11 @@ auto derivative_var_ratio(by_fraction<by_beta<double>> const &mean,
   return out;
 }
 
-  template <>
+template <>
 inline bool compare_to_max_ratio(by_fraction<by_beta<double>> const &beta,
-                          by_fraction<by_beta<double>> const &mean_logL,
-                          by_fraction<by_beta<double>> const &var_ratio,
-                          double max_ratio) {
+                                 by_fraction<by_beta<double>> const &mean_logL,
+                                 by_fraction<by_beta<double>> const &var_ratio,
+                                 double max_ratio) {
   for (std::size_t i_frac = 0; i_frac < size(var_ratio); ++i_frac) {
     for (std::size_t ib = 0; ib < size(var_ratio[i_frac]); ++ib) {
       std::cerr << "(" << beta[i_frac][ib] << "[~" << mean_logL[i_frac][ib]
@@ -3634,9 +3764,9 @@ template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
   requires(is_Algorithm_conditions<Algorithm, cuevi_mcmc<Parameters>> &&
            is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
-                               DataType>)
+                                                                                                                                                   DataType>)
 
- auto evidence(FunctionTable &&ff,
+auto evidence(FunctionTable &&ff,
               cuevi_integration<Algorithm, Fractioner, Reporter> &&cue,
               Prior const &prior, Likelihood const &lik, const DataType &y,
               const Variables &x, bool all_at_once) {
