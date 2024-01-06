@@ -124,7 +124,7 @@ class Constant<Id>{};
 
 template<class Id, class T>
 class Constant<Id,T>{
-    T m_x;
+    T m_x={};
 public:
     static constexpr bool is_variable=true;
     static constexpr bool is_constant=true;
@@ -147,7 +147,9 @@ public:
     template<class... Ts>
     constexpr auto operator()(const Ts&...)const {return Id(*this);}
     
-    constexpr Constant(){}
+    constexpr Constant(){
+        
+    }
     constexpr auto& value()const {return m_x;}
     friend auto& print(std::ostream& os, const Constant& x){
         os<<typeid(Id).name()<<": \n";
