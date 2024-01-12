@@ -4,6 +4,7 @@
 #include "variables.h"
 #include <map>
 #include <optional>
+#include <string>
 namespace macrodr {
 
 struct Conformational_change_label
@@ -244,17 +245,41 @@ struct Conformational_interaction_subposition
 struct Conformational_interactions_domain_state
     : public Constant<
           Conformational_interactions_domain_state,
-          std::multiset<Vector_Space<Conformational_interaction_index,
-                                   Conformational_interaction_subposition>>> {
-
+          std::map<Vector_Space<Conformational_interaction_index,
+                                   Conformational_interaction_subposition>,int>> {
+    using Constant<          Conformational_interactions_domain_state,
+        std::map<Vector_Space<Conformational_interaction_index,
+                                         Conformational_interaction_subposition>,int>>::Constant;
   friend std::ostream &
   print(std::ostream &os, Conformational_interactions_domain_state const &x) {
     // os<<"Interactions:[";
-    for (auto &e : x())
-      os << get<Conformational_interaction_index>(e)() << "_"
-         << get<Conformational_interaction_subposition>(e)() << " ";
+      for (auto &e : x()){
+      os << get<Conformational_interaction_index>(e.first)() << "_"
+             << get<Conformational_interaction_subposition>(e.first)() << "^"<<e.second;
+        }
     // os<<"]";
     return os;
+  }
+  
+  void insert(Vector_Space<Conformational_interaction_index,
+                           Conformational_interaction_subposition> e)
+  {
+      (*this)()[e]+=1;
+  }
+  
+  
+  friend Conformational_interactions_domain_state operator-(const Conformational_interactions_domain_state& one,const Conformational_interactions_domain_state& subtract)
+  {
+      Conformational_interactions_domain_state out;
+      for (auto e: one())
+      {
+          out()[e.first]+=e.second;
+      }
+      for (auto e: subtract())
+      {
+          out()[e.first]-=e.second;
+      }
+      return out;
   }
 };
 
@@ -469,6 +494,57 @@ struct Conformational_model
   }
 };
 
+struct Conformation_change_standard_state:
+                                            public Constant<Conformation_change_standard_state,Conformational_interactions_domain_state>{};
+
+
+struct Conformation_change_standard_map:
+                                            public Constant<Conformation_change_standard_map,
+                                                      std::map<Conformational_change_label,Conformation_change_standard_state>>
+{
+    
+    std::optional<Conformational_interactions_domain_state>
+    operator[](const Conformational_change_label& la)const
+    {
+        auto it=(*this)().find(la);
+        if (it!=(*this)().end())
+        {
+            return it->second();
+        }
+        else {
+            return std::optional<Conformational_interactions_domain_state>{};
+        }
+    }
+    
+    
+    friend std::ostream& print (std::ostream& os,Conformation_change_standard_map const & x )
+    {
+        for (auto &e:x()){
+                print(os,e.first);
+            print(os,e.second());
+                os<<"\n";
+        }
+        return os;
+    }};
+
+struct Conformational_model_standarized
+    : public Constant<
+          Conformational_model,
+          Vector_Space<N_St, Conformational_model_scheme, Conformational_states,
+                       Conformational_transition_list,
+                       Conformation_change_standard_map>> {
+    friend std::ostream &print(std::ostream &os, Conformational_model_standarized const &x) {
+        os << "Conformational model\n";
+        print(os, get<Conformational_model_scheme>(x()));
+        print(os, get<Conformational_states>(x()));
+        print(os, get<Conformational_transition_list>(x()));
+        print(os, get<Conformation_change_standard_map>(x()));
+        return os;
+    }
+};
+
+
+
 namespace impl {
 
 inline auto make_Conformational_change_state_vector(
@@ -507,7 +583,7 @@ make_Conformational_interaction_state_vector(
           }
         }
         if (includes_all_other && includes_i)
-          out[i]().insert(Vector_Space(
+          out[i].insert(Vector_Space(
               Conformational_interaction_index(j),
               Conformational_interaction_subposition(i_sub_position)));
       }
@@ -757,17 +833,23 @@ inline Maybe_error<Conformational_model_scheme> make_Conformational_model_scheme
   }
 }
 
+
+
+
+
 template <class Id, class P>
   requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
               const typename Parameters<Id>::Names &names, const P &par,
-              const Conformational_transition &tr)
+              const Conformational_transition &tr,
+              const Conformational_interactions_domain_state& v_int)
     -> Maybe_error<var::Op_t<transformation_type_t<P>, double>> {
   auto ag = get<Agonist_dependency>(tr());
   auto d = get<Conformational_transition_direction>(tr());
   auto chla = get<Conformational_change_label>(tr());
-  auto v_int = get<Conformational_interactions_domain_state>(tr());
   auto n = get<Conformational_transition_mulitplicity>(tr());
+  
+  
 
   auto Maybe_i_base = d() ? names[chla() + "_on"] : names[chla() + "_off"];
 
@@ -778,9 +860,12 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
       auto out = n() * par()[i_base];
     for (auto ii = v_int().begin(); ii!=v_int().end(); ++ii) {
       auto factor_la = get<Conformational_interaction_label>(
-          inter()[get<Conformational_interaction_index>(*ii)()]())();
+            inter()[get<Conformational_interaction_index>(ii->first)()]())();
       auto factor_ipos =
-          get<Conformational_interaction_subposition>(*ii)();
+          get<Conformational_interaction_subposition>(ii->first)();
+      
+      auto factor_power =ii->second;
+      
       auto Maybe_i_Factor = names[factor_la];
       auto Maybe_i_Factor_pos =
           names[factor_la + "_" + std::to_string(factor_ipos)];
@@ -793,24 +878,52 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 
         using std::pow;
         if (d())
-            out = out * pow(par()[i_Factor], par()[i_Factor_pos]);
+            out = out * pow(par()[i_Factor], factor_power*par()[i_Factor_pos]);
         else
-            out = out * pow(par()[i_Factor], par()[i_Factor_pos] - 1.0);
+            out = out * pow(par()[i_Factor], factor_power*(par()[i_Factor_pos] - 1.0));
       }
     }
     return out;
   }
 }
 
+
+template <class Id, class P>
+    requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+auto calc_Qij(const Conformational_interaction_scheme &inter,
+              const typename Parameters<Id>::Names &names, const P &par,
+              const Conformational_transition &tr,
+              const Conformation_change_standard_map& st)
+    -> Maybe_error<var::Op_t<transformation_type_t<P>, double>> {
+    auto chla = get<Conformational_change_label>(tr());
+    auto v_int = get<Conformational_interactions_domain_state>(tr());
+    
+    auto opt_st=st[chla];
+    if (opt_st.has_value())
+        v_int=v_int-opt_st.value();
+    return calc_Qij<Id>(inter,names,par,tr,v_int);
+}
+
+template <class Id, class P>
+    requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+auto calc_Qij(const Conformational_interaction_scheme &inter,
+              const typename Parameters<Id>::Names &names, const P &par,
+              const Conformational_transition &tr)
+    -> Maybe_error<var::Op_t<transformation_type_t<P>, double>> {
+    auto v_int = get<Conformational_interactions_domain_state>(tr());
+    return calc_Qij<Id>(inter,names,par,tr,v_int);
+}
+
+
 template <class Id>
 auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
                       const typename Parameters<Id>::Names &names,
-                      const Conformational_transition &tr)
+                      const Conformational_transition &tr,
+                      const Conformational_interactions_domain_state& v_int)
     -> Maybe_error<std::string> {
   auto ag = get<Agonist_dependency>(tr());
   auto d = get<Conformational_transition_direction>(tr());
   auto chla = get<Conformational_change_label>(tr());
-  auto v_int = get<Conformational_interactions_domain_state>(tr());
   auto n = get<Conformational_transition_mulitplicity>(tr());
 
   auto Maybe_i_base = d() ? names[chla() + "_on"] : names[chla() + "_off"];
@@ -822,9 +935,11 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
     auto out = std::to_string(n()) + " * " + names.names()[i_base];
     for (auto  ii = v_int().begin(); ii!= v_int().end(); ++ii) {
       auto factor_la = get<Conformational_interaction_label>(
-          inter()[get<Conformational_interaction_index>(*ii)()]())();
+            inter()[get<Conformational_interaction_index>(ii->first)()]())();
       auto factor_ipos =
-          get<Conformational_interaction_subposition>(*ii)();
+          get<Conformational_interaction_subposition>(ii->first)();
+      auto factor_power =ii->second;
+      
       auto Maybe_i_Factor = names[factor_la];
       auto Maybe_i_Factor_pos =
           names[factor_la + "_" + std::to_string(factor_ipos)];
@@ -838,10 +953,12 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
         using std::pow;
         if (d())
           out = out + "* pow(" + names()[i_Factor] + "," +
+                  std::to_string(factor_power)+"*"+
                 names()[i_Factor_pos] + ")";
         else
           out = out + "* pow(" + names()[i_Factor] + "," +
-                names()[i_Factor_pos] + "-1.0)";
+                  std::to_string(factor_power)+"*("+
+                names()[i_Factor_pos] + "-1.0))";
         //      out = out * pow(par[i_Factor], par[i_Factor_pos] - 1.0);
       }
     }
@@ -849,9 +966,40 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
   }
 }
 
-template <class Id, class P>
-  requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
-auto make_Q0_Qa(const Conformational_model &model,
+
+template <class Id>
+auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
+                      const typename Parameters<Id>::Names &names,
+                      const Conformational_transition &tr,
+                      const Conformation_change_standard_map& st)
+     -> Maybe_error<std::string> {
+    auto chla = get<Conformational_change_label>(tr());
+    auto v_int = get<Conformational_interactions_domain_state>(tr());
+    
+    auto opt_st=st[chla];
+    if (opt_st.has_value())
+        v_int=v_int-opt_st.value();
+    return calc_Qij_formula<Id>(inter,names,tr,v_int);
+}
+
+
+template <class Id>
+auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
+                      const typename Parameters<Id>::Names &names,
+                      const Conformational_transition &tr)
+    -> Maybe_error<std::string> {
+    auto v_int = get<Conformational_interactions_domain_state>(tr());
+    return calc_Qij_formula<Id>(inter,names,tr,v_int);
+}
+
+
+
+
+
+template <class Id,class Conformational_model_, class P>
+    requires (std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>&&(
+                 std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>))
+auto make_Q0_Qa(const Conformational_model_ &model,
                 const typename Parameters<Id>::Names &names, const P &par)
     -> Maybe_error<std::tuple<Transfer_Op_to<P, Q0>, Transfer_Op_to<P, Qa>>> {
 
@@ -874,7 +1022,11 @@ auto make_Q0_Qa(const Conformational_model &model,
       auto ag = get<Agonist_dependency>(trr());
       auto d = get<Conformational_transition_direction>(trr());
       
-      auto Maybe_qij = calc_Qij<Id>(inter, names, par, trr);
+      Maybe_error<var::Op_t<transformation_type_t<P>, double>> Maybe_qij;
+      if constexpr(std::is_same_v<Conformational_model_,Conformational_model_standarized>)
+          Maybe_qij = calc_Qij<Id>(inter, names, par, trr,get<Conformation_change_standard_map>(model()));
+      else
+          Maybe_qij = calc_Qij<Id>(inter, names, par, trr);
       if (!Maybe_qij)
         return Maybe_qij.error();
       else if (!ag()|| !d()) {
@@ -889,8 +1041,13 @@ auto make_Q0_Qa(const Conformational_model &model,
   return std::tuple(v_Q0, v_Qa);
 }
 
-template <class Id>
-auto make_Q0_Qa_formula(const Conformational_model &model,
+
+
+
+
+template <class Id,class Conformational_model_>
+    requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
+auto make_Q0_Qa_formula(const Conformational_model_ &model,
                         const typename Parameters<Id>::Names &names)
     -> Maybe_error<std::tuple<Q0_formula, Qa_formula>> {
 
@@ -911,7 +1068,11 @@ auto make_Q0_Qa_formula(const Conformational_model &model,
       assert(v_i()() == i);
       auto v_j = get<Conformational_transition_landing_state_index>(trr());
       auto ag = get<Agonist_dependency>(trr());
-      auto Maybe_qij = calc_Qij_formula<Id>(inter, names, trr);
+      Maybe_error<std::string> Maybe_qij;
+      if constexpr(std::is_same_v<Conformational_model_,Conformational_model_standarized>)
+          Maybe_qij = calc_Qij_formula<Id>(inter, names, trr,get<Conformation_change_standard_map>(model()));
+      else
+          Maybe_qij = calc_Qij_formula<Id>(inter, names, trr);
       if (!Maybe_qij)
         return Maybe_qij.error();
       else if (!ag()) {
@@ -972,9 +1133,10 @@ auto calc_gi_formula(const Conductance_interaction_scheme &scheme,
   return out;
 }
 
-template <class Id, class P>
-  requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
-auto make_g(const Conformational_model &model,
+template <class Id,class Conformational_model_, class P>
+    requires (std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>&&(
+                 std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>))
+auto make_g(const Conformational_model_ &model,
             const typename Parameters<Id>::Names &names, const P &par)
     -> Maybe_error<Transfer_Op_to<P, g>> {
   using Trans = transformation_type_t<P>;
@@ -1002,8 +1164,9 @@ auto make_g(const Conformational_model &model,
   return v_g;
 }
 
-template <class Id>
-auto make_g_formula(const Conformational_model &model,
+template <class Id,class Conformational_model_>
+    requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
+auto make_g_formula(const Conformational_model_ &model,
                     const typename Parameters<Id>::Names &names)
     -> Maybe_error<g_formula> {
 
@@ -1108,31 +1271,74 @@ inline Maybe_error<Conformational_model> make_Conformational_model(
   }
 }
 
+
+inline Maybe_error<Conformational_model_standarized> make_Conformational_model_standarized(
+    Agonist_dependency_map &&t_agonist_map,
+    std::vector<Conformational_change_label> &&t_scheme,
+    std::vector<Conformational_interaction> &&t_interactions,
+    std::vector<Conductance_interaction> &&t_conductance,
+    std::map<Conformational_change_label,Conformation_change_standard_state> &&t_standard_states) {
+    auto Maybe_scheme = impl::make_Conformational_model_scheme(
+        std::move(t_agonist_map), std::move(t_scheme), std::move(t_interactions),
+        std::move(t_conductance));
+    if (!Maybe_scheme)
+        return Maybe_scheme.error();
+    else {
+        auto &scheme = Maybe_scheme.value();
+        auto Maybe_tuple = impl::make_Conformational_states_and_index(scheme);
+        if (!Maybe_tuple)
+            return Maybe_tuple.error();
+        else {
+            auto [states, map] = std::move(Maybe_tuple.value());
+            auto Maybe_transition =
+                impl::make_Conformational_transition_list(scheme, states, map);
+            if (!Maybe_transition)
+                return Maybe_transition.error();
+            else {
+                return Conformational_model_standarized(Vector_Space(
+                    N_St(states().size()), std::move(scheme), std::move(states),
+                    std::move(Maybe_transition.value()),
+                    Conformation_change_standard_map{std::move(t_standard_states)}));
+            }
+        }
+    }
+}
+
+
+
+
+
 inline auto get_states_structure(const Conformational_model &model) {
   return impl::get_states_structure(get<Conformational_states>(model()));
 }
 
-template <class Id, class P>
-  requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
-auto make_Model(const Conformational_model &model,
+template <class Id,class Conformational_model_, class P>
+    requires (std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>&&(
+                 std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>))
+auto make_Model(const Conformational_model_ &model,
                 const typename Parameters<Id>::Names &names, const P &p)
     -> Maybe_error<std::tuple<Transfer_Op_to<P, Q0>, Transfer_Op_to<P, Qa>,
                               Transfer_Op_to<P, g>>>
 
 {
-  auto Maybe_Q0Qa = impl::make_Q0_Qa<Id>(model, names, p);
-  auto Maybe_g = impl::make_g<Id>(model, names, p);
-  if (!Maybe_Q0Qa || !Maybe_g)
-    return error_message(Maybe_Q0Qa.error()() + Maybe_g.error()());
-  else {
-    auto [v_Q0, v_Qa] = std::move(Maybe_Q0Qa.value());
-    auto v_g = std::move(Maybe_g.value());
-    return std::tuple(std::move(v_Q0), std::move(v_Qa), std::move(v_g));
-  }
+    auto Maybe_Q0Qa = impl::make_Q0_Qa<Id>(model, names, p);
+    auto Maybe_g = impl::make_g<Id>(model, names, p);
+    if (!Maybe_Q0Qa || !Maybe_g)
+        return error_message(Maybe_Q0Qa.error()() + Maybe_g.error()());
+    else {
+        auto [v_Q0, v_Qa] = std::move(Maybe_Q0Qa.value());
+        auto v_g = std::move(Maybe_g.value());
+        return std::tuple(std::move(v_Q0), std::move(v_Qa), std::move(v_g));
+    }
 }
 
-template <class Id>
-auto make_Model_Formulas(const Conformational_model &model,
+
+
+
+
+template <class Id,class Conformational_model_>
+    requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
+auto make_Model_Formulas(const Conformational_model_ &model,
                          const typename Parameters<Id>::Names &names)
     -> Maybe_error<std::tuple<Q0_formula, Qa_formula, g_formula>>
 
@@ -1148,8 +1354,9 @@ auto make_Model_Formulas(const Conformational_model &model,
   }
 }
 
-template <class Id>
-auto make_ModelNames(const Conformational_model &confmodel) {
+template <class Id,class Conformational_model_>
+    requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
+auto make_ModelNames(const Conformational_model_ &confmodel) {
   auto &model = get<Conformational_model_scheme>(confmodel());
   auto con_names = impl::get_conformational_change_names(
       get<Conformational_change_scheme>(model()));

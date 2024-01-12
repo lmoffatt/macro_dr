@@ -16,88 +16,88 @@ template <class... Ts, class S>
 std::variant<std::monostate, Ts *..., S *>
 operator||(std::variant<std::monostate, Ts *...> one,
            std::variant<std::monostate, S *> next) {
-    if (!std::holds_alternative<std::monostate>(one))
-        return std::visit(
-            [](auto x) { return std::variant<std::monostate, Ts *..., S *>(x); },
-            one);
-    else
-        return std::visit(
-            [](auto x) { return std::variant<std::monostate, Ts *..., S *>(x); },
-            next);
+  if (!std::holds_alternative<std::monostate>(one))
+    return std::visit(
+        [](auto x) { return std::variant<std::monostate, Ts *..., S *>(x); },
+        one);
+  else
+    return std::visit(
+        [](auto x) { return std::variant<std::monostate, Ts *..., S *>(x); },
+        next);
 }
 
 template <class Id> struct Model_Patch {
-    template <class F> class Model {
-        std::string m_name;
-        std::tuple<F, Matrix<double>, std::vector<std::string>, Q0_formula,
-                   Qa_formula, g_formula>
-            m_f;
-        Parameters<Id> m_par;
-        
-    public:
-        using my_Id = Id;
-        static constexpr bool is_Model_Patch = true;
-        template <class G>
-        Model(std::string t_name, G &&t_g)
-            : m_name{t_name}, m_f{std::forward<G>(t_g)()},
-            m_par{Parameters<Id>(m_name, std::get<std::vector<std::string>>(m_f),
-                                   std::get<Matrix<double>>(m_f))} {}
-        
-        Model(const Model &x)
-            : m_name{x.m_name}, m_f{x.m_f},
-            m_par{Parameters<Id>(m_name, std::get<std::vector<std::string>>(m_f),
-                                   std::get<Matrix<double>>(m_f))} {}
-        Model() {}
-        auto &model_name() const { return m_name; }
-        
-        std::variant<std::monostate, Model *> operator[](const std::string &name) {
-            if (name == m_name)
-                return this;
-            else
-                return std::monostate();
-        }
-        
-        auto &names() const { return std::get<std::vector<std::string>>(m_f); }
-        auto &parameters() const { return m_par; }
-        
-        auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
-        auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
-        auto &get_g_formula() const { return std::get<g_formula>(m_f); }
-        
-        template <class P>
-            requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
-        auto operator()(const P &t_p) const {
-            return std::invoke(std::get<F>(m_f), t_p);
-        }
-        
-        template <class P>
-        friend void report_model(save_Parameter<P> &s, const Model &m) {
-            std::ofstream f(s.fname + "_model.csv");
-            f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-            f << "Model Name\t" << m.model_name() << "\n";
-            f << "Parameters Names\n";
-            f << m.names();
-            f << "<<\n---------------------\n";
-            f << "Q0_formula\n";
-            f << m.get_Q0_formula();
-            f << "<<\n---------------------\n";
-            f << "Qa_formula\n";
-            f << m.get_Qa_formula();
-            f << "<<\n---------------------\n";
-            f << "g_formula\n";
-            f << m.get_g_formula();
-            f << "<<\n---------------------\n";
-        }
-    };
-    
-    template <class F>
-        requires(!is_of_this_template_type_v<F, Model>)
-    Model(std::string, F &&f)
-        ->Model_Patch<Id>::Model<
-            std::tuple_element_t<0, decltype(std::declval<F &&>()())>>;
-    template <class F>
-        requires(std::is_same_v<F, Model<F>>)
-    Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
+  template <class F> class Model {
+    std::string m_name;
+    std::tuple<F, Matrix<double>, std::vector<std::string>, Q0_formula,
+               Qa_formula, g_formula>
+        m_f;
+    Parameters<Id> m_par;
+
+  public:
+    using my_Id = Id;
+    static constexpr bool is_Model_Patch = true;
+    template <class G>
+    Model(std::string t_name, G &&t_g)
+        : m_name{t_name}, m_f{std::forward<G>(t_g)()},
+          m_par{Parameters<Id>(m_name, std::get<std::vector<std::string>>(m_f),
+                               std::get<Matrix<double>>(m_f))} {}
+
+    Model(const Model &x)
+        : m_name{x.m_name}, m_f{x.m_f},
+          m_par{Parameters<Id>(m_name, std::get<std::vector<std::string>>(m_f),
+                               std::get<Matrix<double>>(m_f))} {}
+    Model() {}
+    auto &model_name() const { return m_name; }
+
+    std::variant<std::monostate, Model *> operator[](const std::string &name) {
+      if (name == m_name)
+        return this;
+      else
+        return std::monostate();
+    }
+
+    auto &names() const { return std::get<std::vector<std::string>>(m_f); }
+    auto &parameters() const { return m_par; }
+
+    auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
+    auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
+    auto &get_g_formula() const { return std::get<g_formula>(m_f); }
+
+    template <class P>
+      requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+    auto operator()(const P &t_p) const {
+      return std::invoke(std::get<F>(m_f), t_p);
+    }
+
+    template <class P>
+    friend void report_model(save_Parameter<P> &s, const Model &m) {
+      std::ofstream f(s.fname + "_model.csv");
+      f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+      f << "Model Name\t" << m.model_name() << "\n";
+      f << "Parameters Names\n";
+      f << m.names();
+      f << "<<\n---------------------\n";
+      f << "Q0_formula\n";
+      f << m.get_Q0_formula();
+      f << "<<\n---------------------\n";
+      f << "Qa_formula\n";
+      f << m.get_Qa_formula();
+      f << "<<\n---------------------\n";
+      f << "g_formula\n";
+      f << m.get_g_formula();
+      f << "<<\n---------------------\n";
+    }
+  };
+
+  template <class F>
+    requires(!is_of_this_template_type_v<F, Model>)
+  Model(std::string, F &&f)
+      ->Model_Patch<Id>::Model<
+          std::tuple_element_t<0, decltype(std::declval<F &&>()())>>;
+  template <class F>
+    requires(std::is_same_v<F, Model<F>>)
+  Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
 };
 
 struct Model0 : public Model_Patch<Model0> {};
@@ -144,8 +144,8 @@ static auto model00_7 = Model0::Model("model00_7", []() {
 
   return std::tuple(
       [](const auto &logp)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
         using std::pow;
         auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
         auto kon = p[0];
@@ -213,17 +213,17 @@ static auto prior_model00_7 = Custom_Distribution(
 
       auto par = Matrix<double>(parv.size(), 1ul, parv);
       auto logpar = apply([](auto x) { return std::log10(x); }, par);
-      
+
       auto s_logpar = std::vector<double>(n_parv, global_std_log10_par);
-      
+
       auto covPar = DiagPosDetMatrix<double>(s_logpar);
-      
+
       auto distPar = make_multivariate_normal_distribution(logpar, covPar);
-      
+
       auto sample_par = distPar.value()(mt);
-      
+
       // now recalculate the N_ch_numbers according to segements
-      
+
       return Parameters<Model0>(model00_7.model_name(), model00_7.names(),
                                 sample_par);
     },
@@ -296,15 +296,15 @@ static auto model00 = Model0::Model("model00", []() {
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(15, 1,
                           std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3,
-                                                     1, 5000, 5000, 5000, 5000, 5000,
-                                                     5000, 5000});
+                                              1, 5000, 5000, 5000, 5000, 5000,
+                                              5000, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
   return std::tuple(
       [](const auto &logp)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
         using std::pow;
         auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
         auto kon = p[0];
@@ -392,12 +392,12 @@ static auto prior_model00 = Custom_Distribution(
 
       auto s_log_Num_ch_mean = sample_par[n_parv - 2];
       auto s_std_log_Num_ch_cv = std::pow(10.0, sample_par[n_parv - 1]);
-      
+
       for (std::size_t i = n_parv; i < par.size(); ++i)
-          sample_par[i] =
-              sample_par[i] / global_std_log10_par * s_std_log_Num_ch_cv +
-                          s_log_Num_ch_mean;
-      
+        sample_par[i] =
+            sample_par[i] / global_std_log10_par * s_std_log_Num_ch_cv +
+            s_log_Num_ch_mean;
+
       return Parameters<Model0>(model00.model_name(), model00.names(),
                                 sample_par);
     },
@@ -483,8 +483,8 @@ static auto model01 = Model0::Model("model01", []() {
 
   return std::tuple(
       [](const auto &logp)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
         using std::pow;
         auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
         auto kon = p[0];
@@ -592,8 +592,8 @@ static auto model4 = Model0::Model("model4", []() {
 
   return std::tuple(
       [](const auto &logp)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
         using std::pow;
         auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
         auto Nst = 9ul;
@@ -725,8 +725,8 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
 
   return std::tuple(
       [](const auto &logp)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
         using std::pow;
         auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
         auto Nst = 9ul;
@@ -858,11 +858,11 @@ static auto model6 = Allost1::Model("model6", []() {
       std::move(Maybe_modeltyple_formula.value());
   return std::tuple(
       [names, m](const auto &logp)
-      -> Maybe_error<
+          -> Maybe_error<
               Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
-          using std::pow;
-          auto p = build<Parameters<Allost1>>(
-              logp.IdName(), logp.names(),
+        using std::pow;
+        auto p = build<Parameters<Allost1>>(
+            logp.IdName(), logp.names(),
             apply([](const auto &x) { return pow(10.0, x); }, logp()));
 
         p()[names["BR_0"].value()] =
@@ -896,126 +896,126 @@ static auto model6 = Allost1::Model("model6", []() {
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
         if (v_P_initial.valid())
-            return add_Patch_inactivation(
-                build<Patch_Model>(
-                    N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                    std::move(v_P_initial.value()), std::move(a_g),
-                    build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                    build<Current_Baseline>(v_baseline),
-                    N_Ch_mean_time_segment_duration(120000),
-                    Binomial_magical_number(5.0), min_P(1e-7),
-                    Probability_error_tolerance(1e-2),
-                    Conductance_variance_error_tolerance(1e-2)),
-                v_Inac_rate);
+          return add_Patch_inactivation(
+              build<Patch_Model>(
+                  N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+                  std::move(v_P_initial.value()), std::move(a_g),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline),
+                  N_Ch_mean_time_segment_duration(120000),
+                  Binomial_magical_number(5.0), min_P(1e-7),
+                  Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2)),
+              v_Inac_rate);
         else
-            return v_P_initial.error();
+          return v_P_initial.error();
       },
       logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
 
 static auto model6_no_inactivation =
     Allost1::Model("model6_no_inactivation", []() {
-    auto v_binding = Conformational_change_label{"Binding"};
-    auto v_rocking = Conformational_change_label{"Rocking"};
-    auto v_gating = Conformational_change_label{"Gating"};
-    
-    auto mo = make_Conformational_model(
-        Agonist_dependency_map{
-                               
-            std::map<Conformational_change_label, Agonist_dependency>{
-                                                                      {v_binding, Agonist_dependency{Agonist_label{"ATP"}}},
-                {v_rocking, Agonist_dependency{}},
-                {v_gating, Agonist_dependency{}}}},
-        std::vector<Conformational_change_label>{
-                                                 v_binding, v_binding, v_binding, v_rocking, v_gating},
-        std::vector<Conformational_interaction>{
-                                                {Vector_Space{
-                             Conformational_interaction_label{"BR"},
-                    Conformational_interaction_players{{v_binding, v_rocking}},
-                    Conformational_interaction_positions{
-                                                         {{0, 3}, {1, 3}, {2, 3}}}},
-                Vector_Space{
-                             Conformational_interaction_label{"BG"},
-                    Conformational_interaction_players{{v_binding, v_gating}},
-                    Conformational_interaction_positions{
-                                                         {{0, 4}, {1, 4}, {2, 4}}}},
-                Vector_Space{
-                             Conformational_interaction_label{"RG"},
-                    Conformational_interaction_players{{v_rocking, v_gating}},
-                    Conformational_interaction_positions{{{3, 4}}}}
-                
-            }},
-        std::vector<Conductance_interaction>{
-                                             Vector_Space{Conductance_interaction_label{"Gating_Current"},
-                         Conductance_interaction_players{{v_gating}},
-                         Conductance_interaction_positions{{{{4}}}}}});
-    
-    assert(mo);
-    auto m = std::move(mo.value());
-    
-    auto names = make_ModelNames<Allost1>(m);
-    
-    auto names_vec = std::vector<std::string>{
-                                              "Binding_on", "Binding_off", "Rocking_on", "Rocking_off",
-        "Gating_on",  "Gating_off",  "BR",         "BR_0",
-        "BR_1",       "BG",          "BG_0",       "BG_1",
-        "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
-    auto names_other = std::vector<std::string>{"Current_Noise",
-                                                "Current_Baseline", "Num_ch"};
-    
-    auto p_kinetics = std::vector<double>{
-                                          10, 1000, 1000, 100000, 1, 100, 100, 1, 1, 1, 1, 1, 100, 1, 1, 1};
-    auto p_Moffatt_Hume_transformed = std::vector<double>{
-                                                          9.28,   1871,      2547.88,  295207, 0.220378,  150.312,
-        74.865, 0.0323846, 0.187903, 1.77,   -0.457748, 1,
-        123,    1,         1.3411,   1};
-    auto p_other = std::vector<double>{1e-3, 1.0, 5000};
-    
-    p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-    auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
-    
-    auto logp = apply([](auto x) { return std::log10(x); }, p);
-    
-    assert(names() == names_vec);
-    
-    names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
-    
-    auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
-    assert(Maybe_modeltyple_formula);
-    auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
-        std::move(Maybe_modeltyple_formula.value());
-    return std::tuple(
-        [names, m](const auto &logp)
-        -> Maybe_error<
-            Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+      auto v_binding = Conformational_change_label{"Binding"};
+      auto v_rocking = Conformational_change_label{"Rocking"};
+      auto v_gating = Conformational_change_label{"Gating"};
+
+      auto mo = make_Conformational_model(
+          Agonist_dependency_map{
+
+              std::map<Conformational_change_label, Agonist_dependency>{
+                  {v_binding, Agonist_dependency{Agonist_label{"ATP"}}},
+                  {v_rocking, Agonist_dependency{}},
+                  {v_gating, Agonist_dependency{}}}},
+          std::vector<Conformational_change_label>{
+              v_binding, v_binding, v_binding, v_rocking, v_gating},
+          std::vector<Conformational_interaction>{
+              {Vector_Space{
+                   Conformational_interaction_label{"BR"},
+                   Conformational_interaction_players{{v_binding, v_rocking}},
+                   Conformational_interaction_positions{
+                       {{0, 3}, {1, 3}, {2, 3}}}},
+               Vector_Space{
+                   Conformational_interaction_label{"BG"},
+                   Conformational_interaction_players{{v_binding, v_gating}},
+                   Conformational_interaction_positions{
+                       {{0, 4}, {1, 4}, {2, 4}}}},
+               Vector_Space{
+                   Conformational_interaction_label{"RG"},
+                   Conformational_interaction_players{{v_rocking, v_gating}},
+                   Conformational_interaction_positions{{{3, 4}}}}
+
+              }},
+          std::vector<Conductance_interaction>{
+              Vector_Space{Conductance_interaction_label{"Gating_Current"},
+                           Conductance_interaction_players{{v_gating}},
+                           Conductance_interaction_positions{{{{4}}}}}});
+
+      assert(mo);
+      auto m = std::move(mo.value());
+
+      auto names = make_ModelNames<Allost1>(m);
+
+      auto names_vec = std::vector<std::string>{
+          "Binding_on", "Binding_off", "Rocking_on", "Rocking_off",
+          "Gating_on",  "Gating_off",  "BR",         "BR_0",
+          "BR_1",       "BG",          "BG_0",       "BG_1",
+          "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
+      auto names_other = std::vector<std::string>{"Current_Noise",
+                                                  "Current_Baseline", "Num_ch"};
+
+      auto p_kinetics = std::vector<double>{
+          10, 1000, 1000, 100000, 1, 100, 100, 1, 1, 1, 1, 1, 100, 1, 1, 1};
+      auto p_Moffatt_Hume_transformed = std::vector<double>{
+          9.28,   1871,      2547.88,  295207, 0.220378,  150.312,
+          74.865, 0.0323846, 0.187903, 1.77,   -0.457748, 1,
+          123,    1,         1.3411,   1};
+      auto p_other = std::vector<double>{1e-3, 1.0, 5000};
+
+      p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
+      auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
+
+      auto logp = apply([](auto x) { return std::log10(x); }, p);
+
+      assert(names() == names_vec);
+
+      names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
+
+      auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
+      assert(Maybe_modeltyple_formula);
+      auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
+          std::move(Maybe_modeltyple_formula.value());
+      return std::tuple(
+          [names, m](const auto &logp)
+              -> Maybe_error<
+                  Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
             using std::pow;
             auto p = build<Parameters<Allost1>>(
                 logp.IdName(), logp.names(),
-                
+
                 apply([](const auto &x) { return pow(10.0, x); }, logp()));
-            
+
             p()[names["BR_0"].value()] =
                 p()[names["BR_0"].value()] / (1.0 + p()[names["BR_0"].value()]);
             p()[names["BR_1"].value()] =
                 p()[names["BR_1"].value()] / (1.0 + p()[names["BR_1"].value()]);
-            
+
             p()[names["BG_0"].value()] =
                 p()[names["BG_0"].value()] / (1.0 + p()[names["BG_0"].value()]);
             p()[names["BG_1"].value()] =
                 p()[names["BG_1"].value()] / (1.0 + p()[names["BG_1"].value()]);
-            
+
             p()[names["RG_0"].value()] =
                 p()[names["RG_0"].value()] / (1.0 + p()[names["RG_0"].value()]);
             p()[names["RG_1"].value()] =
                 p()[names["RG_1"].value()] / (1.0 + p()[names["RG_1"].value()]);
-            
+
             p()[names["Gating_Current"].value()] =
                 p()[names["Gating_Current"].value()] * -1.0;
             auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
             assert(Maybe_Q0Qag);
             auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
             auto Npar = names().size();
-            
+
             // auto v_Inac_rate = p()[Npar];
             auto v_curr_noise = p()[Npar];
             auto v_baseline = logp()[Npar + 1];
@@ -1024,111 +1024,110 @@ static auto model6_no_inactivation =
             auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
             if (v_P_initial.valid())
-                
-                return build<Patch_Model>(
-                    N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                    std::move(v_P_initial.value()), std::move(a_g),
-                    build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                    build<Current_Baseline>(v_baseline),
-                    N_Ch_mean_time_segment_duration(120000),
-                    Binomial_magical_number(5.0), min_P(1e-7),
-                    Probability_error_tolerance(1e-2),
-                    Conductance_variance_error_tolerance(1e-2));
+
+              return build<Patch_Model>(
+                  N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+                  std::move(v_P_initial.value()), std::move(a_g),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline),
+                  N_Ch_mean_time_segment_duration(120000),
+                  Binomial_magical_number(5.0), min_P(1e-7),
+                  Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2));
             else
-                return v_P_initial.error();
-        },
-        logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
-});
+              return v_P_initial.error();
+          },
+          logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
+    });
 
 static auto model6_Eff_no_inactivation =
     Allost1::Model("model6_Eff_no_inactivation", []() {
-    auto v_binding = Conformational_change_label{"Binding"};
-    auto v_rocking = Conformational_change_label{"Rocking"};
-    auto v_gating = Conformational_change_label{"Gating"};
-    
-    auto mo = make_Conformational_model(
-        Agonist_dependency_map{
-                               
-            std::map<Conformational_change_label, Agonist_dependency>{
-                                                                      {v_binding, Agonist_dependency{Agonist_label{"ATP"}}},
-                {v_rocking, Agonist_dependency{}},
-                {v_gating, Agonist_dependency{}}}},
-        std::vector<Conformational_change_label>{
-                                                 v_binding, v_binding, v_binding, v_rocking, v_gating},
-        std::vector<Conformational_interaction>{
-                                                {Vector_Space{
-                             Conformational_interaction_label{"BR"},
-                    Conformational_interaction_players{{v_binding, v_rocking}},
-                    Conformational_interaction_positions{
-                                                         {{0, 3}, {1, 3}, {2, 3}}}},
-                Vector_Space{
-                             Conformational_interaction_label{"BG"},
-                    Conformational_interaction_players{{v_binding, v_gating}},
-                    Conformational_interaction_positions{
-                                                         {{0, 4}, {1, 4}, {2, 4}}}},
-                Vector_Space{
-                             Conformational_interaction_label{"RG"},
-                    Conformational_interaction_players{{v_rocking, v_gating}},
-                    Conformational_interaction_positions{{{3, 4}}}}
-                
-            }},
-        std::vector<Conductance_interaction>{
-                                             Vector_Space{Conductance_interaction_label{"Gating_Current"},
-                         Conductance_interaction_players{{v_gating}},
-                         Conductance_interaction_positions{{{{4}}}}}});
-    
-    assert(mo);
-    auto m = std::move(mo.value());
-    
-    auto names = make_ModelNames<Allost1>(m);
-    
-    auto names_vec_untransformed = std::vector<std::string>{
-                                                            "Binding_on", "Binding_off", "Rocking_on", "Rocking_off",
-        "Gating_on",  "Gating_off",  "BR",         "BR_0",
-        "BR_1",       "BG",          "BG_0",       "BG_1",
-        "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
-    auto names_vec = std::vector<std::string>{"Binding_Act_on",
-                                              "Binding_Act_off",
-                                              "Rocking_on_B",
-                                              "Rocking_off_B",
-                                              "Gating_on_BR",
-                                              "Gating_off_BR",
-                                              "BR",
-                                              "BR_Bon",
-                                              "BR_Ron",
-                                              "BG",
-                                              "BG_Bon",
-                                              "BG_Gon",
-                                              "RG",
-                                              "RG_Ron",
-                                              "RG_Gon",
-                                              "Gating_Current"};
-    
-    auto names_other = std::vector<std::string>{"Current_Noise",
-                                                "Current_Baseline", "Num_ch"};
-    
-    auto p_kinetics = std::vector<double>{
-                                          9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
-        33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
-    auto p_other = std::vector<double>{1e-3, 1, 4800};
-    
-    p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-    auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
-    
-    auto logp = apply([](auto x) { return std::log10(x); }, p);
-    
-    assert(names() == names_vec_untransformed);
-    
-    names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
-    
-    auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
-    assert(Maybe_modeltyple_formula);
-    auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
-        std::move(Maybe_modeltyple_formula.value());
-    return std::tuple(
-        [names, m](const auto &logp)
-        -> Maybe_error<
-            Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+      auto v_binding = Conformational_change_label{"Binding"};
+      auto v_rocking = Conformational_change_label{"Rocking"};
+      auto v_gating = Conformational_change_label{"Gating"};
+
+      auto mo = make_Conformational_model(
+          Agonist_dependency_map{
+              std::map<Conformational_change_label, Agonist_dependency>{
+                  {v_binding, Agonist_dependency{Agonist_label{"ATP"}}},
+                  {v_rocking, Agonist_dependency{}},
+                  {v_gating, Agonist_dependency{}}}},
+          std::vector<Conformational_change_label>{
+              v_binding, v_binding, v_binding, v_rocking, v_gating},
+          std::vector<Conformational_interaction>{
+              {Vector_Space{
+                   Conformational_interaction_label{"BR"},
+                   Conformational_interaction_players{{v_binding, v_rocking}},
+                   Conformational_interaction_positions{
+                       {{0, 3}, {1, 3}, {2, 3}}}},
+               Vector_Space{
+                   Conformational_interaction_label{"BG"},
+                   Conformational_interaction_players{{v_binding, v_gating}},
+                   Conformational_interaction_positions{
+                       {{0, 4}, {1, 4}, {2, 4}}}},
+               Vector_Space{
+                   Conformational_interaction_label{"RG"},
+                   Conformational_interaction_players{{v_rocking, v_gating}},
+                   Conformational_interaction_positions{{{3, 4}}}}
+
+              }},
+          std::vector<Conductance_interaction>{
+              Vector_Space{Conductance_interaction_label{"Gating_Current"},
+                           Conductance_interaction_players{{v_gating}},
+                           Conductance_interaction_positions{{{{4}}}}}});
+
+      assert(mo);
+      auto m = std::move(mo.value());
+
+      auto names = make_ModelNames<Allost1>(m);
+
+      auto names_vec_untransformed = std::vector<std::string>{
+          "Binding_on", "Binding_off", "Rocking_on", "Rocking_off",
+          "Gating_on",  "Gating_off",  "BR",         "BR_0",
+          "BR_1",       "BG",          "BG_0",       "BG_1",
+          "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
+      auto names_vec = std::vector<std::string>{"Binding_Act_on",
+                                                "Binding_Act_off",
+                                                "Rocking_on_B",
+                                                "Rocking_off_B",
+                                                "Gating_on_BR",
+                                                "Gating_off_BR",
+                                                "BR",
+                                                "BR_Bon",
+                                                "BR_Ron",
+                                                "BG",
+                                                "BG_Bon",
+                                                "BG_Gon",
+                                                "RG",
+                                                "RG_Ron",
+                                                "RG_Gon",
+                                                "Gating_Current"};
+
+      auto names_other = std::vector<std::string>{"Current_Noise",
+                                                  "Current_Baseline", "Num_ch"};
+
+      auto p_kinetics = std::vector<double>{
+          9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
+          33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
+      auto p_other = std::vector<double>{1e-3, 1, 4800};
+
+      p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
+      auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
+
+      auto logp = apply([](auto x) { return std::log10(x); }, p);
+
+      assert(names() == names_vec_untransformed);
+
+      names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
+
+      auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
+      assert(Maybe_modeltyple_formula);
+      auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
+          std::move(Maybe_modeltyple_formula.value());
+      return std::tuple(
+          [names, m](const auto &logp)
+              -> Maybe_error<
+                  Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
             using std::pow;
             auto tr_p = build<Parameters<Allost1>>(
                 logp.IdName(), logp.names(),
@@ -1137,7 +1136,7 @@ static auto model6_Eff_no_inactivation =
             auto Binding_off = tr_p()[1];
             auto Rocking_on_B = tr_p()[2];
             auto Rocking_off_B = tr_p()[3];
-            
+
             auto Gating_on_BR = tr_p()[4];
             auto Gating_off_BR = tr_p()[5];
             auto BR = tr_p()[6];
@@ -1150,45 +1149,45 @@ static auto model6_Eff_no_inactivation =
             auto RG_Ron = tr_p()[13];
             auto RG_Gon = tr_p()[14];
             auto Gating_Current = tr_p()[15] * (-1.0);
-            
+
             auto Rocking_on = Rocking_on_B / pow(BR_Bon, 3);
             auto Rocking_off = Rocking_off_B * pow(BR / BR_Bon, 3);
-            
+
             auto Gating_on = Gating_off_BR / pow(BG_Gon, 3) / RG_Gon;
             auto Gating_off = Gating_off_BR * pow(BG / BG_Gon, 3) * RG / RG_Gon;
-            
+
             auto BR_0 = log(BR_Bon) / log(BR);
             auto BR_1 = log(BR_Ron) / log(BR);
-            
+
             auto BG_0 = log(BG_Bon) / log(BG);
             auto BG_1 = log(BG_Gon) / log(BG);
-            
+
             auto RG_0 = log(RG_Ron) / log(RG);
             auto RG_1 = log(RG_Gon) / log(RG);
-            
+
             auto p = tr_p;
             p()[2] = Rocking_on;
             p()[3] = Rocking_off;
-            
+
             p()[4] = Gating_on;
             p()[5] = Gating_off;
-            
+
             p()[7] = BR_0;
             p()[8] = BR_1;
-            
+
             p()[10] = BG_0;
             p()[11] = BG_1;
-            
+
             p()[13] = RG_0;
             p()[14] = RG_1;
             p()[15] = Gating_Current;
             auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
             // std::cerr<<"parameters\n"<<p();
-            
+
             assert(Maybe_Q0Qag);
             auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
             auto Npar = names().size();
-            
+
             // auto v_Inac_rate = p()[Npar];
             auto v_curr_noise = tr_p()[Npar];
             auto v_baseline = logp()[Npar + 1];
@@ -1197,19 +1196,209 @@ static auto model6_Eff_no_inactivation =
             auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
-                return Maybe_v_P_initial.error();
+              return Maybe_v_P_initial.error();
             else
-                return build<Patch_Model>(
-                    N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                    std::move(Maybe_v_P_initial.value()), std::move(a_g),
-                    build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                    build<Current_Baseline>(v_baseline),
-                    N_Ch_mean_time_segment_duration(120000),
-                    Binomial_magical_number(5.0), min_P(1e-7),
-                    Probability_error_tolerance(1e-2),
-                    Conductance_variance_error_tolerance(1e-2));
-        },
-        logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
+              return build<Patch_Model>(
+                  N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+                  std::move(Maybe_v_P_initial.value()), std::move(a_g),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline),
+                  N_Ch_mean_time_segment_duration(120000),
+                  Binomial_magical_number(5.0), min_P(1e-7),
+                  Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2));
+          },
+          logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
+    });
+
+static auto model6_Eff_std = Allost1::Model("model6_Eff_std", []() {
+  auto v_binding = Conformational_change_label{"Binding"};
+  auto v_rocking = Conformational_change_label{"Rocking"};
+  auto v_gating = Conformational_change_label{"Gating"};
+
+  auto mo = make_Conformational_model_standarized(
+      Agonist_dependency_map{
+          std::map<Conformational_change_label, Agonist_dependency>{
+              {v_binding, Agonist_dependency{Agonist_label{"ATP"}}},
+              {v_rocking, Agonist_dependency{}},
+              {v_gating, Agonist_dependency{}}}},
+      std::vector<Conformational_change_label>{v_binding, v_binding, v_binding,
+                                               v_rocking, v_gating},
+      std::vector<Conformational_interaction>{
+          {Vector_Space{
+               Conformational_interaction_label{"BR"},
+               Conformational_interaction_players{{v_binding, v_rocking}},
+               Conformational_interaction_positions{{{0, 3}, {1, 3}, {2, 3}}}},
+           Vector_Space{
+               Conformational_interaction_label{"BG"},
+               Conformational_interaction_players{{v_binding, v_gating}},
+               Conformational_interaction_positions{{{0, 4}, {1, 4}, {2, 4}}}},
+           Vector_Space{
+               Conformational_interaction_label{"RG"},
+               Conformational_interaction_players{{v_rocking, v_gating}},
+               Conformational_interaction_positions{{{3, 4}}}}
+
+          }},
+      std::vector<Conductance_interaction>{
+          Vector_Space{Conductance_interaction_label{"Gating_Current"},
+                       Conductance_interaction_players{{v_gating}},
+                       Conductance_interaction_positions{{{{4}}}}}},
+      std::map<Conformational_change_label, Conformation_change_standard_state>{
+          {v_rocking,
+           Conformation_change_standard_state{
+               Conformational_interactions_domain_state{std::map<
+                   Vector_Space<Conformational_interaction_index,
+                                Conformational_interaction_subposition>,
+                   int>{
+                   {Vector_Space{Conformational_interaction_index{0ul},
+                                 Conformational_interaction_subposition{1}},
+                    3}}}}},
+          {v_gating,
+           Conformation_change_standard_state{
+               Conformational_interactions_domain_state{std::map<
+                   Vector_Space<Conformational_interaction_index,
+                                Conformational_interaction_subposition>,
+                   int>{
+                   {Vector_Space{Conformational_interaction_index{1ul},
+                                 Conformational_interaction_subposition{1}},
+                    3},
+                   {Vector_Space{Conformational_interaction_index{2ul},
+                                 Conformational_interaction_subposition{1}},
+                    1}}}}}});
+
+  assert(mo);
+  auto m = std::move(mo.value());
+
+  auto names = make_ModelNames<Allost1>(m);
+
+  auto names_vec_untransformed = std::vector<std::string>{
+      "Binding_on", "Binding_off", "Rocking_on", "Rocking_off",
+      "Gating_on",  "Gating_off",  "BR",         "BR_0",
+      "BR_1",       "BG",          "BG_0",       "BG_1",
+      "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
+  auto names_vec = std::vector<std::string>{"Binding_Act_on",
+                                            "Binding_Act_off",
+                                            "Rocking_on_B",
+                                            "Rocking_off_B",
+                                            "Gating_on_BR",
+                                            "Gating_off_BR",
+                                            "BR",
+                                            "BR_Bon",
+                                            "BR_Ron",
+                                            "BG",
+                                            "BG_Bon",
+                                            "BG_Gon",
+                                            "RG",
+                                            "RG_Ron",
+                                            "RG_Gon",
+                                            "Gating_Current"};
+
+  auto names_other =
+      std::vector<std::string>{"Current_Noise", "Current_Baseline", "Num_ch"};
+
+  auto p_kinetics =
+      std::vector<double>{9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
+                          33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
+  auto p_other = std::vector<double>{1e-3, 1, 4800};
+
+  p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
+  auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
+
+  auto logp = apply([](auto x) { return std::log10(x); }, p);
+
+  assert(names() == names_vec_untransformed);
+
+  names_vec.insert(names_vec.end(), names_other.begin(), names_other.end());
+
+  auto Maybe_modeltyple_formula = make_Model_Formulas<Allost1>(m, names);
+  assert(Maybe_modeltyple_formula);
+  auto [a_Q0_formula, a_Qa_formula, a_g_formula] =
+      std::move(Maybe_modeltyple_formula.value());
+  return std::tuple(
+      [names, m](const auto &logp)
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+        using std::pow;
+        auto tr_p = build<Parameters<Allost1>>(
+            logp.IdName(), logp.names(),
+            apply([](const auto &x) { return pow(10.0, x); }, logp()));
+        auto Binding_on = tr_p()[0];
+        auto Binding_off = tr_p()[1];
+        auto Rocking_on_B = tr_p()[2];
+        auto Rocking_off_B = tr_p()[3];
+
+        auto Gating_on_BR = tr_p()[4];
+        auto Gating_off_BR = tr_p()[5];
+        auto BR = tr_p()[6];
+        auto BR_Bon = tr_p()[7];
+        auto BR_Ron = tr_p()[8];
+        auto BG = tr_p()[9];
+        auto BG_Bon = tr_p()[10];
+        auto BG_Gon = tr_p()[11];
+        auto RG = tr_p()[12];
+        auto RG_Ron = tr_p()[13];
+        auto RG_Gon = tr_p()[14];
+        auto Gating_Current = tr_p()[15] * (-1.0);
+
+        auto Rocking_on = Rocking_on_B ;
+        auto Rocking_off = Rocking_off_B ;
+
+        auto Gating_on = Gating_off_BR ;
+        auto Gating_off = Gating_off_BR;
+
+        auto BR_0 = log(BR_Bon) / log(BR);
+        auto BR_1 = log(BR_Ron) / log(BR);
+
+        auto BG_0 = log(BG_Bon) / log(BG);
+        auto BG_1 = log(BG_Gon) / log(BG);
+
+        auto RG_0 = log(RG_Ron) / log(RG);
+        auto RG_1 = log(RG_Gon) / log(RG);
+
+        auto p = tr_p;
+        p()[2] = Rocking_on;
+        p()[3] = Rocking_off;
+
+        p()[4] = Gating_on;
+        p()[5] = Gating_off;
+
+        p()[7] = BR_0;
+        p()[8] = BR_1;
+
+        p()[10] = BG_0;
+        p()[11] = BG_1;
+
+        p()[13] = RG_0;
+        p()[14] = RG_1;
+        p()[15] = Gating_Current;
+        auto Maybe_Q0Qag = make_Model<Allost1>(m, names, p);
+        // std::cerr<<"parameters\n"<<p();
+
+        assert(Maybe_Q0Qag);
+        auto [a_Q0, a_Qa, a_g] = std::move(Maybe_Q0Qag.value());
+        auto Npar = names().size();
+
+        // auto v_Inac_rate = p()[Npar];
+        auto v_curr_noise = tr_p()[Npar];
+        auto v_baseline = logp()[Npar + 1];
+        auto v_N0 = tr_p()[std::pair{Npar + 2, Npar + 2}];
+        auto Nst = get<N_St>(m());
+        auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
+            a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+        if (!Maybe_v_P_initial)
+          return Maybe_v_P_initial.error();
+        else
+          return build<Patch_Model>(
+              N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+              std::move(Maybe_v_P_initial.value()), std::move(a_g),
+              build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+              build<Current_Baseline>(v_baseline),
+              N_Ch_mean_time_segment_duration(120000),
+              Binomial_magical_number(5.0), min_P(1e-7),
+              Probability_error_tolerance(1e-2),
+              Conductance_variance_error_tolerance(1e-2));
+      },
+      logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
 
 static auto model7 = Allost1::Model("model7", []() {
@@ -1263,9 +1452,9 @@ static auto model7 = Allost1::Model("model7", []() {
   auto p_kinetics = std::vector<double>{
       10, 10000, 100, 10000, 1, 10000, 10, 1, 1, 10, 1, 1, 10, 1, 1, 1};
   auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
-  
+
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
-  
+
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
@@ -1280,11 +1469,11 @@ static auto model7 = Allost1::Model("model7", []() {
       std::move(Maybe_modeltyple_formula.value());
   return std::tuple(
       [names, m](const auto &logp)
-      -> Maybe_error<
+          -> Maybe_error<
               Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
-          using std::pow;
-          auto p = build<Parameters<Allost1>>(
-              logp.IdName(), logp.names(),
+        using std::pow;
+        auto p = build<Parameters<Allost1>>(
+            logp.IdName(), logp.names(),
 
             apply([](const auto &x) { return pow(10.0, x); }, logp()));
 
@@ -1317,21 +1506,21 @@ static auto model7 = Allost1::Model("model7", []() {
         auto Nst = get<N_St>(m());
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
-        
+
         if (v_P_initial.valid())
-            return add_Patch_inactivation(
-                build<Patch_Model>(
-                    N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                    std::move(v_P_initial.value()), std::move(a_g),
-                    build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                    build<Current_Baseline>(v_baseline),
-                    N_Ch_mean_time_segment_duration(120000),
-                    Binomial_magical_number(5.0), min_P(1e-7),
-                    Probability_error_tolerance(1e-2),
-                    Conductance_variance_error_tolerance(1e-2)),
-                v_Inac_rate);
+          return add_Patch_inactivation(
+              build<Patch_Model>(
+                  N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+                  std::move(v_P_initial.value()), std::move(a_g),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline),
+                  N_Ch_mean_time_segment_duration(120000),
+                  Binomial_magical_number(5.0), min_P(1e-7),
+                  Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2)),
+              v_Inac_rate);
         else
-            return v_P_initial.error();
+          return v_P_initial.error();
       },
       logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
@@ -1380,7 +1569,7 @@ static auto model8 = Allost1::Model("model8", []() {
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
-  
+
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
   assert(names() == names_vec);
@@ -1393,11 +1582,11 @@ static auto model8 = Allost1::Model("model8", []() {
       std::move(Maybe_modeltyple_formula.value());
   return std::tuple(
       [names, m](const auto &logp)
-      -> Maybe_error<
+          -> Maybe_error<
               Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
-          using std::pow;
-          auto p = build<Parameters<Allost1>>(
-              logp.IdName(), logp.names(),
+        using std::pow;
+        auto p = build<Parameters<Allost1>>(
+            logp.IdName(), logp.names(),
 
             apply([](const auto &x) { return pow(10.0, x); }, logp()));
         p()[names["RBR_0"].value()] =
@@ -1426,21 +1615,21 @@ static auto model8 = Allost1::Model("model8", []() {
         auto Nst = get<N_St>(m());
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
-        
+
         if (v_P_initial.valid())
-            return add_Patch_inactivation(
-                build<Patch_Model>(
-                    N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                    std::move(v_P_initial.value()), std::move(v_g),
-                    build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                    build<Current_Baseline>(v_baseline),
-                    N_Ch_mean_time_segment_duration(120000),
-                    Binomial_magical_number(5.0), min_P(1e-7),
-                    Probability_error_tolerance(1e-2),
-                    Conductance_variance_error_tolerance(1e-2)),
-                v_Inac_rate);
+          return add_Patch_inactivation(
+              build<Patch_Model>(
+                  N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+                  std::move(v_P_initial.value()), std::move(v_g),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline),
+                  N_Ch_mean_time_segment_duration(120000),
+                  Binomial_magical_number(5.0), min_P(1e-7),
+                  Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2)),
+              v_Inac_rate);
         else
-            return v_P_initial.error();
+          return v_P_initial.error();
       },
       logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
@@ -1475,8 +1664,9 @@ static auto model9 = Allost1::Model("model9", []() {
                                "Rocking_on", "Rocking_off",
                                "RB",         "RB_0",
                                "RB_1",       "Rocking_Current_factor"}; //--> 8
-  auto names_other = std::vector<std::string>{
-      "Inactivation_rate", "leaking_current","Current_Noise", "Current_Baseline", "Num_ch"};
+  auto names_other =
+      std::vector<std::string>{"Inactivation_rate", "leaking_current",
+                               "Current_Noise", "Current_Baseline", "Num_ch"};
 
   auto p_kinetics =
       std::vector<double>{10, 10000, 100, 10000, 100, 1.0, 1e-2, 100};
@@ -1484,7 +1674,7 @@ static auto model9 = Allost1::Model("model9", []() {
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
-  
+
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
   assert(names() == names_vec);
@@ -1497,11 +1687,11 @@ static auto model9 = Allost1::Model("model9", []() {
       std::move(Maybe_modeltyple_formula.value());
   return std::tuple(
       [names, m](const auto &logp)
-      -> Maybe_error<
+          -> Maybe_error<
               Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
-          using std::pow;
-          auto p = build<Parameters<Allost1>>(
-              logp.IdName(), logp.names(),
+        using std::pow;
+        auto p = build<Parameters<Allost1>>(
+            logp.IdName(), logp.names(),
             apply([](const auto &x) { return pow(10.0, x); }, logp()));
         p()[names["RB_0"].value()] =
             p()[names["RB_0"].value()] / (1.0 + p()[names["RB_0"].value()]);
@@ -1528,90 +1718,90 @@ static auto model9 = Allost1::Model("model9", []() {
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
         if (v_P_initial.valid())
-            
-            return add_Patch_inactivation(
-                build<Patch_Model>(
-                    N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
-                    std::move(v_P_initial.value()), std::move(v_g),
-                    build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                    build<Current_Baseline>(v_baseline),
-                    N_Ch_mean_time_segment_duration(120000),
-                    Binomial_magical_number(5.0), min_P(1e-7),
-                    Probability_error_tolerance(1e-2),
-                    Conductance_variance_error_tolerance(1e-2)),
-                v_Inac_rate);
+
+          return add_Patch_inactivation(
+              build<Patch_Model>(
+                  N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
+                  std::move(v_P_initial.value()), std::move(v_g),
+                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<Current_Baseline>(v_baseline),
+                  N_Ch_mean_time_segment_duration(120000),
+                  Binomial_magical_number(5.0), min_P(1e-7),
+                  Probability_error_tolerance(1e-2),
+                  Conductance_variance_error_tolerance(1e-2)),
+              v_Inac_rate);
         else
-            return v_P_initial.error();
+          return v_P_initial.error();
       },
       logp, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula);
 });
 
 template <class... Ms> class Models_Library {
-    std::tuple<Ms *...> m_models;
-    
+  std::tuple<Ms *...> m_models;
+
 public:
-    using Model_type = std::variant<Ms *...>;
-    Models_Library(Ms *...m) : m_models{m...} {}
-    
-    auto operator()() const { return m_models; }
-    Maybe_error<Model_type> operator[](const std::string &name) {
-        auto out = std::apply(
-            [&name](auto... models) { return (... || (*models)[name]); }, m_models);
-        return std::visit(
-            [&name](auto x) -> Maybe_error<Model_type> {
-                if constexpr (std::is_same_v<std::monostate, decltype(x)>)
-                    return error_message(name + " is not a model");
-                else
-                    
-                    return Maybe_error<Model_type>(x);
-            },
-            out);
-    }
+  using Model_type = std::variant<Ms *...>;
+  Models_Library(Ms *...m) : m_models{m...} {}
+
+  auto operator()() const { return m_models; }
+  Maybe_error<Model_type> operator[](const std::string &name) {
+    auto out = std::apply(
+        [&name](auto... models) { return (... || (*models)[name]); }, m_models);
+    return std::visit(
+        [&name](auto x) -> Maybe_error<Model_type> {
+          if constexpr (std::is_same_v<std::monostate, decltype(x)>)
+            return error_message(name + " is not a model");
+          else
+
+            return Maybe_error<Model_type>(x);
+        },
+        out);
+  }
 };
 
 template <class... Ms> Models_Library(Ms *...m) -> Models_Library<Ms...>;
 
 inline auto get_model(std::string modelName) {
-    auto allmodels =
-        // Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
-        //                             &model6, &model6_no_inactivation,
-        //                             &model6_Eff_no_inactivation, &model7,
-        //                             &model8, &model9);
-        Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
-                       &model6, &model6_no_inactivation,
-                       &model6_Eff_no_inactivation, &model7,&model8,&model9);
-    return allmodels[modelName];
+  auto allmodels =
+      // Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
+      //                             &model6, &model6_no_inactivation,
+      //                             &model6_Eff_no_inactivation, &model7,
+      //                             &model8, &model9);
+      Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
+                     &model6, &model6_no_inactivation,
+                     &model6_Eff_no_inactivation, &model6_Eff_std,&model7, &model8, &model9);
+  return allmodels[modelName];
 }
 
 inline void print_model_Priors(double covar) {
-    auto allmodels =
-        Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
-                                    &model6, &model6_no_inactivation,
-                                    &model6_Eff_no_inactivation, &model7, &model8, &model9);
-    
-    std::apply(
-        [&covar](auto... ptr_models) {
-            (
-                [&covar](auto modelp) {
+  auto allmodels =
+      Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
+                     &model6, &model6_no_inactivation,
+                     &model6_Eff_no_inactivation, &model7, &model8, &model9);
+
+  std::apply(
+      [&covar](auto... ptr_models) {
+        (
+            [&covar](auto modelp) {
               auto &par = modelp->parameters();
               auto prior = var::prior_around(par, covar);
               var::write_Parameters(par.IdName() + "_par.csv", ",", par);
-                    write_Prior(par.IdName() + "_prior.csv", ",", prior);
-                }(ptr_models),
-                ...);
-        },
-        allmodels());
+              write_Prior(par.IdName() + "_prior.csv", ",", prior);
+            }(ptr_models),
+            ...);
+      },
+      allmodels());
 }
 
 inline auto get_model_old(std::string modelName) -> std::variant<
     /*decltype(&model4),*/ decltype(&model6_Eff_no_inactivation)> {
-    using return_type = std::variant<
-        /*decltype(&model4), */ decltype(&model6_Eff_no_inactivation)>;
-    
-    //  if (modelName=="model4")
-    //     return return_type(&model4);
-    // else
-    return return_type(&model6_Eff_no_inactivation);
+  using return_type = std::variant<
+      /*decltype(&model4), */ decltype(&model6_Eff_no_inactivation)>;
+
+  //  if (modelName=="model4")
+  //     return return_type(&model4);
+  // else
+  return return_type(&model6_Eff_no_inactivation);
 }
 
 using Model_v = decltype(get_model(std::string{}));
