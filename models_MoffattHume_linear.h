@@ -1,16 +1,18 @@
-#ifndef MODELS_H
-#define MODELS_H
+#ifndef MODELS_MOFFATTHUME_LINEAR_H
+#define MODELS_MOFFATTHUME_LINEAR_H
 #include "allosteric_models.h"
 #include "maybe_error.h"
 #include "parameters.h"
 #include "parameters_distribution.h"
 #include "qmodel.h"
 #include "variables.h"
+#include <cstddef>
 #include <optional>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
-namespace macrodr_old {
+namespace macrodr {
 
 template <class... Ts, class S>
 std::variant<std::monostate, Ts *..., S *>
@@ -100,12 +102,448 @@ template <class Id> struct Model_Patch {
   Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
 };
 
+template <class Id, class F>
+auto add_Patch_inactivation_to_model(
+    typename Model_Patch<Id>::template Model<F> const &model,
+    double inactivation_value) {
+  return typename Model_Patch<Id>::Model(
+      model.model_name() + "_inact", [model, inactivation_value]() {
+        auto names_model = model.names();
+        auto names_other = std::vector<std::string>{"inactivation_rate"};
+        names_model.insert(names_model.end(), names_other.begin(),
+                           names_other.end());
+
+        auto v_Q0_formula = model.get_Q0_formula();
+        std::size_t N = v_Q0_formula().size();
+        auto v_Q0_inactivation_formula =
+            insert_new_formula(v_Q0_formula, 0ul, N, "inactivation_rate");
+        auto v_Qa_formula = model.get_Qa_formula();
+        auto v_Qa_inactivation_formula =
+            change_states_number(v_Qa_formula, N + 1);
+
+        auto v_g_formula = model.get_g_formula();
+        auto v_g_inactiavation_formula =
+            change_states_number(v_g_formula, N + 1);
+
+        auto logp = model.parameters()();
+
+        Matrix<double> logp_inactivation(N, 1, 0.0);
+        for (std::size_t i = 0; i < logp.size(); ++i)
+          logp_inactivation[i] = logp[i];
+        logp_inactivation[N - 1] = inactivation_value;
+
+        return std::tuple(
+            [model](const auto &logp)
+                -> Maybe_error<
+                    Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+              auto n = logp.size();
+              auto &inactivation = logp[n - 1];
+              return add_Patch_inactivation(model(logp), inactivation);
+            },
+            logp_inactivation, names_model,
+            std::move(v_Q0_inactivation_formula),
+            std::move(v_Qa_inactivation_formula),
+            std::move(v_g_inactiavation_formula));
+      });
+}
+
 struct Model0 : public Model_Patch<Model0> {};
 struct Model1 : public Model_Patch<Model1> {};
 
 struct Allost1 : public Model_Patch<Allost1> {};
 
 class Model00_7;
+
+static auto scheme_1 = Model0::Model("scheme_1", []() {
+  auto names_model = std::vector<std::string>{"kon", "koff", "gating_on",
+                                              "gating_off", "unitary_current"};
+  auto names_other = std::vector<std::string>{
+      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+
+  std::size_t N = 5ul;
+
+  auto v_Q0_formula = Q0_formula(N);
+  v_Q0_formula()[1][0] = "koff";
+  v_Q0_formula()[2][1] = "2*koff";
+  v_Q0_formula()[3][2] = "3*koff";
+  v_Q0_formula()[3][4] = "gating_on";
+  v_Q0_formula()[4][3] = "gating_off";
+
+  auto v_Qa_formula = Qa_formula(N);
+  v_Qa_formula()[0][1] = "3*kon";
+  v_Qa_formula()[1][2] = "2*kon";
+  v_Qa_formula()[2][3] = "kon";
+  auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+  v_g_formula()[4] = "unitary_current";
+
+  names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+  auto p = Matrix<double>(
+      8, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 1, 5000});
+
+  auto logp = apply([](auto x) { return std::log10(x); }, p);
+
+  return std::tuple(
+      [](const auto &logp)
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+        using std::pow;
+        auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+        auto kon = p[0];
+        auto koff = p[1];
+        auto gating_on = p[2];
+        auto gating_off = p[3];
+        auto v_unitary_current = p[4] * -1.0;
+        auto Npar = 5ul;
+        auto v_curr_noise = p[Npar];
+        auto v_baseline = logp()[Npar + 1];
+        //  auto v_Num_ch_mean=p[Npar+2];
+        //  auto v_std_log_Num_ch=p[Npar+3];
+
+        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+
+        auto N = N_St(5);
+        return build<Patch_Model>(
+            N_St(N()),
+            build<Q0>(var::build_<Matrix<double>>(
+                N(), N(), {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
+                {koff, koff * 2.0, koff * 3.0, gating_on, gating_off})),
+            build<Qa>(var::build_<Matrix<double>>(N(), N(),
+                                                  {{0, 1}, {1, 2}, {2, 3}},
+                                                  {kon * 3.0, kon * 2.0, kon})),
+            build<P_initial>(
+                var::build_<Matrix<double>>(1, N(), {{0, 0}}, {1.0})),
+            build<g>(var::build_<Matrix<double>>(N(), 1, {{4, 0}},
+                                                 {v_unitary_current})),
+            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<Current_Baseline>(v_baseline),
+            N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
+            min_P(1e-7), Probability_error_tolerance(1e-2),
+            Conductance_variance_error_tolerance(1e-2));
+      },
+      logp, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
+      std::move(v_g_formula));
+});
+
+
+static auto scheme_2 = Model0::Model("scheme_2", []() {
+  auto names_model = std::vector<std::string>{
+      "kon",       "koff",       "flipping_on",    "flipping_off",
+      "gating_on", "gating_off", "unitary_current"};
+  auto names_other = std::vector<std::string>{
+      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+
+  std::size_t N = 6ul;
+
+  auto v_Q0_formula = Q0_formula(N);
+  v_Q0_formula()[1][0] = "koff";
+  v_Q0_formula()[2][1] = "2*koff";
+  v_Q0_formula()[3][2] = "3*koff";
+  v_Q0_formula()[3][4] = "flipping_on";
+  v_Q0_formula()[4][3] = "flipping_off";
+  v_Q0_formula()[4][5] = "gating_on";
+  v_Q0_formula()[5][4] = "gating_off";
+
+  auto v_Qa_formula = Qa_formula(N);
+  v_Qa_formula()[0][1] = "3*kon";
+  v_Qa_formula()[1][2] = "2*kon";
+  v_Qa_formula()[2][3] = "kon";
+  auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+  v_g_formula()[5] = "unitary_current";
+
+  names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+  auto p = Matrix<double>(
+      8, 1,
+      std::vector<double>{7.90, 121, 632, 42.1, 382, 1100, 1, 1e-3, 1, 5000});
+
+  auto logp = apply([](auto x) { return std::log10(x); }, p);
+
+  return std::tuple(
+      [N](const auto &logp)
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+        using std::pow;
+        auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+        auto kon = p[0];
+        auto koff = p[1];
+        auto flipping_on = p[2];
+        auto flipping_off = p[3];
+        auto gating_on = p[4];
+        auto gating_off = p[5];
+        auto v_unitary_current = p[6] * -1.0;
+        auto Npar = 7ul;
+            auto v_curr_noise = p[Npar];
+            auto v_baseline = logp()[Npar + 1];
+            //  auto v_Num_ch_mean=p[Npar+2];
+            //  auto v_std_log_Num_ch=p[Npar+3];
+            
+            auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+            
+            return build<Patch_Model>(
+                N_St(N),
+                build<Q0>(var::build_<Matrix<double>>(
+                    N, N, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3},{4,5},{5,4}},
+                    {koff, koff * 2.0, koff * 3.0, flipping_on,flipping_off,gating_on, gating_off})),
+                build<Qa>(var::build_<Matrix<double>>(
+                    N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon * 3.0, kon * 2.0, kon})),
+                build<P_initial>(
+                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
+                build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}},
+                                                     {v_unitary_current})),
+                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<Current_Baseline>(v_baseline),
+                N_Ch_mean_time_segment_duration(121),
+                Binomial_magical_number(5.0), min_P(1e-7),
+                Probability_error_tolerance(1e-2),
+                Conductance_variance_error_tolerance(1e-2));
+      },
+      logp, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
+      std::move(v_g_formula));
+});
+
+static auto scheme_3 = Model0::Model("scheme_3", []() {
+    auto names_model = std::vector<std::string>{"kon",
+                                                "koff",
+                                                "gating_on_0",
+                                                "gating_off_0",
+                                                "gating_on_1",
+                                                "gating_off_1",
+                                                "desensitization_on_0",
+                                                "desensitization_off_0",
+                                                "desensitization_on_1",
+                                                "unitary_current"};
+    auto names_other = std::vector<std::string>{
+                                                "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+    
+    std::size_t N = 7ul;
+    
+    auto v_Q0_formula = Q0_formula(N);
+    v_Q0_formula()[1][0] = "koff_0";
+    v_Q0_formula()[2][1] = "koff_1";
+    v_Q0_formula()[3][2] = "koff_2";
+    v_Q0_formula()[3][4] = "gating_on_0";
+    v_Q0_formula()[4][3] = "gating_off_0";
+    v_Q0_formula()[3][5] = "gating_on_1";
+    v_Q0_formula()[5][3] = "gating_off_1";
+    
+    v_Q0_formula()[4][6] = "desensitization_on_0";
+    v_Q0_formula()[6][4] = "desensitization_off_0";
+    v_Q0_formula()[5][6] = "desensitization_on_1";
+    v_Q0_formula()[6][5] = "(desensitization_off_0 * gating_off_0 * gating_on_1 "
+                           "* desensitization_on_1)/ (gating_off_1 * gating_on_0 "
+                           "* desensitization_on_0)";
+    
+    auto v_Qa_formula = Qa_formula(N);
+    v_Qa_formula()[0][1] = "kon_0";
+    v_Qa_formula()[1][2] = "kon_1";
+    v_Qa_formula()[2][3] = "kon_2";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[5] = "unitary_current";
+    
+    names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+    
+    auto p_k_MH2007 =
+        std::vector<double>{18, 0.017, 16.8,  175,   8.42,  4541, 
+                            24.08,   29,  3198, 1189, 0.298, 1936, 5.9e7};
+    auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+    
+    p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
+    auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
+    
+    auto logp = apply([](auto x) { return std::log10(x); }, p);
+    
+    return std::tuple(
+        [N](const auto &logp)
+        -> Maybe_error<
+            Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+            using std::pow;
+            auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+            auto kon_0 = p[0];
+            auto koff_0 = p[1];
+            auto kon_1 = p[2];
+            auto koff_1 = p[3];
+            auto kon_2 = p[4];
+            auto koff_2 = p[5];
+            auto gating_on_0 = p[6];
+            auto gating_off_0 = p[7];
+            auto gating_on_1 = p[8];
+            auto gating_off_1 = p[9];
+            auto desensitization_on_0 = p[10];
+            auto desensitization_off_0 = p[11];
+            auto desensitization_on_1 = p[12];
+            auto desensitization_off_1 =
+                (desensitization_off_0 * gating_off_0 * gating_on_1 *
+                 desensitization_on_1) /
+                (gating_off_1 * gating_on_0 * desensitization_on_0);
+            auto v_unitary_current = p[13] * -1.0;
+            auto Npar = 14ul;
+            auto v_curr_noise = p[Npar];
+            auto v_baseline = logp()[Npar + 1];
+            //  auto v_Num_ch_mean=p[Npar+2];
+            //  auto v_std_log_Num_ch=p[Npar+3];
+            
+            auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+            
+            return build<Patch_Model>(
+                N_St(N),
+                build<Q0>(var::build_<Matrix<double>>(
+                    N, N, {{1, 0},
+                     {2, 1},
+                     {3, 2},
+                     {3, 4},
+                     {4, 3},
+                     {3, 5},
+                     {5, 3},
+                     {4, 6},
+                     {6, 4},
+                     {5, 6},
+                     {6, 5}},
+                    {koff_0, koff_1, koff_2,  gating_on_0, gating_off_0,gating_on_1, gating_off_1,desensitization_on_0,desensitization_off_0,desensitization_on_1,desensitization_off_1})),
+                build<Qa>(var::build_<Matrix<double>>(
+                    N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon_0, kon_1, kon_2})),
+                build<P_initial>(
+                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
+                build<g>(var::build_<Matrix<double>>(N, 1, {{4, 0}, {5, 0}},
+                                                     {v_unitary_current, v_unitary_current})),
+                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<Current_Baseline>(v_baseline),
+                N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
+                min_P(1e-7), Probability_error_tolerance(1e-2),
+                Conductance_variance_error_tolerance(1e-2));
+        },
+        logp, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
+        std::move(v_g_formula));
+});
+
+
+static auto scheme_4 = Model0::Model("scheme_4", []() {
+  auto names_model = std::vector<std::string>{"kon",
+                                              "koff",
+                                              "flipping_on",
+                                              "flipping_off",
+                                              "gating_on_0",
+                                              "gating_off_0",
+                                              "gating_on_1",
+                                              "gating_off_1",
+                                              "desensitization_on_0",
+                                              "desensitization_off_0",
+                                              "desensitization_on_1",
+                                              "unitary_current"};
+  auto names_other = std::vector<std::string>{
+      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+
+  std::size_t N = 8ul;
+
+  auto v_Q0_formula = Q0_formula(N);
+  v_Q0_formula()[1][0] = "koff_0";
+  v_Q0_formula()[2][1] = "koff_1";
+  v_Q0_formula()[3][2] = "koff_2";
+  v_Q0_formula()[3][4] = "flipping_on";
+  v_Q0_formula()[4][3] = "flipping_off";
+  v_Q0_formula()[4][5] = "gating_on_0";
+  v_Q0_formula()[5][4] = "gating_off_0";
+  v_Q0_formula()[4][6] = "gating_on_1";
+  v_Q0_formula()[6][4] = "gating_off_1";
+
+  v_Q0_formula()[5][7] = "desensitization_on_0";
+  v_Q0_formula()[7][5] = "desensitization_off_0";
+  v_Q0_formula()[6][7] = "desensitization_on_1";
+  v_Q0_formula()[7][6] = "(desensitization_off_0 * gating_off_0 * gating_on_1 "
+                         "* desensitization_on_1)/ (gating_off_1 * gating_on_0 "
+                         "* desensitization_on_0)";
+
+  auto v_Qa_formula = Qa_formula(N);
+  v_Qa_formula()[0][1] = "kon_0";
+  v_Qa_formula()[1][2] = "kon_1";
+  v_Qa_formula()[2][3] = "kon_2";
+  auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+  v_g_formula()[5] = "unitary_current";
+
+  names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+
+  auto p_k_MH2007 =
+      std::vector<double>{15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
+                          540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53};
+  auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+
+  p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
+  auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
+
+  auto logp = apply([](auto x) { return std::log10(x); }, p);
+
+  return std::tuple(
+      [N](const auto &logp)
+          -> Maybe_error<
+              Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
+        using std::pow;
+        auto p = apply([](const auto &x) { return pow(10.0, x); }, logp());
+        auto kon_0 = p[0];
+        auto koff_0 = p[1];
+        auto kon_1 = p[2];
+        auto koff_1 = p[3];
+        auto kon_2 = p[4];
+        auto koff_2 = p[5];
+        auto flipping_on = p[6];
+        auto flipping_off = p[7];
+        auto gating_on_0 = p[8];
+        auto gating_off_0 = p[9];
+        auto gating_on_1 = p[10];
+        auto gating_off_1 = p[11];
+        auto desensitization_on_0 = p[12];
+        auto desensitization_off_0 = p[13];
+        auto desensitization_on_1 = p[14];
+        auto desensitization_off_1 =
+            (desensitization_off_0 * gating_off_0 * gating_on_1 *
+             desensitization_on_1) /
+            (gating_off_1 * gating_on_0 * desensitization_on_0);
+        auto v_unitary_current = p[15] * -1.0;
+        auto Npar = 16ul;
+        auto v_curr_noise = p[Npar];
+        auto v_baseline = logp()[Npar + 1];
+        //  auto v_Num_ch_mean=p[Npar+2];
+        //  auto v_std_log_Num_ch=p[Npar+3];
+
+        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+
+        return build<Patch_Model>(
+            N_St(N),
+            build<Q0>(var::build_<Matrix<double>>(
+                N, N, {{1, 0},
+                       {2, 1},
+                       {3, 2},
+                       {3, 4},
+                       {4, 3},
+                       {4, 5},
+                       {5, 4},
+                       {4, 6},
+                       {6, 4},
+                       {5, 7},
+                       {7, 5},
+                       {6, 7},
+                       {7, 6}},
+                {koff_0, koff_1, koff_2, flipping_on, flipping_off,
+                 gating_on_0, gating_off_0,gating_on_1, gating_off_1,desensitization_on_0,desensitization_off_0,desensitization_on_1,desensitization_off_1})),
+            build<Qa>(var::build_<Matrix<double>>(
+                N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon_0, kon_1, kon_2})),
+            build<P_initial>(
+                var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
+            build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}, {6, 0}},
+                                                 {v_unitary_current, v_unitary_current})),
+            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<Current_Baseline>(v_baseline),
+            N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
+            min_P(1e-7), Probability_error_tolerance(1e-2),
+            Conductance_variance_error_tolerance(1e-2));
+      },
+      logp, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
+      std::move(v_g_formula));
+});
+
+
+static auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(scheme_1, 1e-5);
+static auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(scheme_2, 1e-5);
+static auto scheme_3_d = add_Patch_inactivation_to_model<Model0>(scheme_3, 1e-5);
+static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(scheme_4, 1e-5);
+
 
 static auto model00_7 = Model0::Model("model00_7", []() {
   auto names_model = std::vector<std::string>{"kon",
@@ -119,8 +557,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
 
   std::size_t N = 6ul;
 
-  auto v_Q0_formula = Q0_formula(std::vector<std::vector<std::string>>(
-      N, std::vector<std::string>(N, "")));
+  auto v_Q0_formula = Q0_formula(N);
   v_Q0_formula()[1][0] = "koff";
   v_Q0_formula()[2][1] = "2*koff";
   v_Q0_formula()[3][2] = "3*koff";
@@ -128,8 +565,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
   v_Q0_formula()[4][3] = "gating_off";
   v_Q0_formula()[0][5] = "inactivation_rate";
 
-  auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
-      N, std::vector<std::string>(N, "")));
+  auto v_Qa_formula = Qa_formula(N);
   v_Qa_formula()[0][1] = "3*kon";
   v_Qa_formula()[1][2] = "2*kon";
   v_Qa_formula()[2][3] = "kon";
@@ -184,6 +620,10 @@ static auto model00_7 = Model0::Model("model00_7", []() {
       logp, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
       std::move(v_g_formula));
 });
+
+
+
+
 
 static auto prior_model00_7 = Custom_Distribution(
     9ul,
@@ -285,8 +725,7 @@ static auto model00 = Model0::Model("model00", []() {
   v_Q0_formula()[4][3] = "gating_off";
   v_Q0_formula()[0][5] = "inactivation_rate";
 
-  auto v_Qa_formula = Qa_formula(std::vector<std::vector<std::string>>(
-      N, std::vector<std::string>(N, "")));
+  auto v_Qa_formula = Qa_formula(N);
   v_Qa_formula()[0][1] = "3*kon";
   v_Qa_formula()[1][2] = "2*kon";
   v_Qa_formula()[2][3] = "kon";
@@ -1340,10 +1779,10 @@ static auto model6_Eff_std = Allost1::Model("model6_Eff_std", []() {
         auto RG_Gon = tr_p()[14];
         auto Gating_Current = tr_p()[15] * (-1.0);
 
-        auto Rocking_on = Rocking_on_B ;
-        auto Rocking_off = Rocking_off_B ;
+        auto Rocking_on = Rocking_on_B;
+        auto Rocking_off = Rocking_off_B;
 
-        auto Gating_on = Gating_off_BR ;
+        auto Gating_on = Gating_off_BR;
         auto Gating_off = Gating_off_BR;
 
         auto BR_0 = log(BR_Bon) / log(BR);
@@ -1769,9 +2208,18 @@ inline auto get_model(std::string modelName) {
       //                             &model8, &model9);
       Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
                      &model6, &model6_no_inactivation,
-                     &model6_Eff_no_inactivation, &model6_Eff_std,&model7, &model8, &model9);
+                     &model6_Eff_no_inactivation, &model6_Eff_std, &model7,
+                     &model8, &model9);
   return allmodels[modelName];
 }
+
+inline auto get_model_scheme(std::string modelName) {
+    auto allmodels =
+        Models_Library(&scheme_1,&scheme_2,&scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,&scheme_4_d);
+    return allmodels[modelName];
+}
+
+
 
 inline void print_model_Priors(double covar) {
   auto allmodels =
@@ -1793,6 +2241,8 @@ inline void print_model_Priors(double covar) {
       allmodels());
 }
 
+
+
 inline auto get_model_old(std::string modelName) -> std::variant<
     /*decltype(&model4),*/ decltype(&model6_Eff_no_inactivation)> {
   using return_type = std::variant<
@@ -1808,4 +2258,4 @@ using Model_v = decltype(get_model(std::string{}));
 
 } // namespace macrodr
 
-#endif // MODELS_H
+#endif // MODELS_MOFFATTHUME_LINEAR_H
