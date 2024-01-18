@@ -21,9 +21,10 @@
 #include "allosteric_models.h"
 #include "cuevi.h"
 #include "micror_stochastic.h"
-#include "models.h"
+//#include "models.h"
 #include "parallel_tempering.h"
 #include "qmodel.h"
+#include "models_MoffattHume_linear.h"
 #include <algorithm>
 #include <chrono>
 #include <cstddef>

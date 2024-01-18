@@ -17,6 +17,7 @@
 #include "micror_stochastic.h"
 #include "parallel_tempering.h"
 #include "qmodel.h"
+#include "models_MoffattHume_linear.h"
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -28,7 +29,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
-#include "models.h"
+//#include "models.h"
 
 using namespace macrodr;
 

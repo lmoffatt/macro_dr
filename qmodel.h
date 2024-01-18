@@ -168,10 +168,28 @@ public:
 */
 
 class Q0 : public var::Var<Q0, Matrix<double>> {};
+
+inline std::size_t get_max_state(std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::string>>const & new_formulas)
+{
+    std::size_t out=0; 
+    for (auto& e: new_formulas)
+    {
+        if (e.first.first>out)
+            out=e.first.first;
+        if (e.first.second>out)
+            out=e.first.second;
+    }
+    return out;
+}
 class Q0_formula
     : public var::Var<Q0_formula, std::vector<std::vector<std::string>>> {
 public:
-  friend std::ostream &operator<<(std::ostream &os, Q0_formula const &x) {
+    using var::Var<Q0_formula, std::vector<std::vector<std::string>>>::Var;
+    
+    Q0_formula(std::size_t N):
+        var::Var<Q0_formula, std::vector<std::vector<std::string>>>{std::vector<std::vector<std::string>>{N,std::vector<std::string>{N,""}}}{}
+    
+   friend std::ostream &operator<<(std::ostream &os, Q0_formula const &x) {
     os << "Q0 formula"
        << "\n";
     for (std::size_t i = 0; i < x().size(); ++i) {
@@ -189,6 +207,10 @@ class Qa : public var::Var<Qa, Matrix<double>> {};
 class Qa_formula
     : public var::Var<Qa_formula, std::vector<std::vector<std::string>>> {
 public:
+    using base_type= var::Var<Qa_formula, std::vector<std::vector<std::string>>>;
+    using base_type::Var;
+    Qa_formula(std::size_t N):
+        var::Var<Qa_formula, std::vector<std::vector<std::string>>>{std::vector<std::vector<std::string>>{N,std::vector<std::string>{N,""}}}{}
   friend std::ostream &operator<<(std::ostream &os, Qa_formula const &x) {
     os << "Q0 formula"
        << "\n";
@@ -202,12 +224,47 @@ public:
     return os;
   }
 };
+template<class Q_formula>
+    requires (std::is_same_v<Q_formula,Q0_formula>||std::is_same_v<Q_formula,Qa_formula>)
+auto change_states_number(const Q_formula& f,std::size_t N)
+{
+    Q_formula out(N);
+    for (std::size_t i= 0; i<f().size(); ++i)
+        for (std::size_t j= 0; j<f().size(); ++j)
+            out()[i][j]=f()[i][j];
+    
+    return out;
+}
+
+template<class Q_formula>
+    requires (std::is_same_v<Q_formula,Q0_formula>||std::is_same_v<Q_formula,Qa_formula>)
+auto insert_new_formula(const Q_formula& f, std::size_t i_ini, std::size_t i_end, std::string&& formula)
+{
+    auto N=std::max(i_ini,i_end)+1;
+    auto out=change_states_number(f,N);
+     out()[i_ini][i_end]=std::move(formula);
+    
+    return out;
+}
+
+
+
+
+
 
 class Qx : public var::Var<Qx, Matrix<double>> {};
 class P_initial : public var::Var<P_initial, Matrix<double>> {};
 
 class g : public var::Var<g, Matrix<double>> {};
 class g_formula : public var::Var<g_formula, std::vector<std::string>> {};
+
+inline auto change_states_number(const g_formula& f,std::size_t N)
+{
+    g_formula out(std::vector<std::string>{N,""});
+    for (std::size_t i= 0; i<f().size(); ++i)
+            out()[i]=f()[i];
+     return out;
+}
 
 class N_St : public var::Constant<N_St, std::size_t> {};
 
@@ -2629,7 +2686,7 @@ class Macro_DMR {
               auto time = get<Time>(get<Recording_conditions>(e)()[i_step])();
               auto time_segment = get<N_Ch_mean_time_segment_duration>(m)();
               auto Nchs = get<N_Ch_mean>(m)();
-              std::size_t i_segment = std::floor(time / time_segment);
+              std::size_t i_segment = std::min(Nchs.size() - 1.0,std::floor(time / time_segment));
               auto j_segment = std::min(Nchs.size() - 1, i_segment + 1);
               auto r = std::max(1.0, time / time_segment - i_segment);
               auto Nch = Nchs[i_segment] * (1 - r) + r * Nchs[j_segment];

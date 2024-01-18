@@ -103,6 +103,8 @@ add_executable(macro_dr main.cpp
     multi_task/simulation_4.sh
     models/model00_7.txt
     models/model6.txt models/model9.txt models/model8.txt models/model7.txt models/model4.txt models/model4_g_lin.txt models/model01.txt models/model00.txt models/model6_no_inactivation.txt models/model6_Eff_no_inactivation.txt models/model00_7.txt
+    models_MoffattHume_linear.h
+    models_MoffattHume_allosteric.h
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
