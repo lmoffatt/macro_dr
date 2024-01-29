@@ -6,7 +6,7 @@
 #SBATCH --job-name=mdb
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=multi
+#SBATCH --partition=short
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
