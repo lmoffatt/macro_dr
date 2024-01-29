@@ -127,10 +127,11 @@ auto add_Patch_inactivation_to_model(
 
         auto logp = model.parameters()();
 
-        Matrix<double> logp_inactivation(N, 1, 0.0);
+        Matrix<double> logp_inactivation(logp.size()+1, 1, 0.0);
         for (std::size_t i = 0; i < logp.size(); ++i)
           logp_inactivation[i] = logp[i];
-        logp_inactivation[N - 1] = inactivation_value;
+        using std::log10;
+        logp_inactivation[logp.size()] = log10(inactivation_value);
 
         return std::tuple(
             [model](const auto &logp)
@@ -138,7 +139,11 @@ auto add_Patch_inactivation_to_model(
                     Transfer_Op_to<std::decay_t<decltype(logp)>, Patch_Model>> {
               auto n = logp.size();
               auto &inactivation = logp[n - 1];
-              return add_Patch_inactivation(model(logp), inactivation);
+              auto mo=model(logp);
+              if (!mo)
+                  return mo.error();
+              else
+                  return add_Patch_inactivation(std::move(mo.value()), inactivation);
             },
             logp_inactivation, names_model,
             std::move(v_Q0_inactivation_formula),
@@ -252,7 +257,7 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      8, 1,
+      10, 1,
       std::vector<double>{7.90, 121, 632, 42.1, 382, 1100, 1, 1e-3, 1, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
@@ -301,8 +306,12 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
 });
 
 static auto scheme_3 = Model0::Model("scheme_3", []() {
-    auto names_model = std::vector<std::string>{"kon",
-                                                "koff",
+    auto names_model = std::vector<std::string>{"kon_0",
+                                                "koff_0",
+                                                "kon_1",
+                                                "koff_1",
+                                                "kon_2",
+                                                "koff_2",
                                                 "gating_on_0",
                                                 "gating_off_0",
                                                 "gating_on_1",
@@ -416,9 +425,13 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
 
 
 static auto scheme_4 = Model0::Model("scheme_4", []() {
-  auto names_model = std::vector<std::string>{"kon",
-                                              "koff",
-                                              "flipping_on",
+  auto names_model = std::vector<std::string>{"kon_0",
+                                                "koff_0",
+                                                "kon_1",
+                                                "koff_1",
+                                                "kon_2",
+                                                "koff_2",
+                                                "flipping_on",
                                               "flipping_off",
                                               "gating_on_0",
                                               "gating_off_0",
@@ -2206,7 +2219,8 @@ inline auto get_model(std::string modelName) {
       //                             &model6, &model6_no_inactivation,
       //                             &model6_Eff_no_inactivation, &model7,
       //                             &model8, &model9);
-      Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
+      Models_Library(&scheme_1,&scheme_2,&scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,&scheme_4_d,
+                       &model00, &model00_7, &model01, &model4, &model4_g_lin,
                      &model6, &model6_no_inactivation,
                      &model6_Eff_no_inactivation, &model6_Eff_std, &model7,
                      &model8, &model9);
@@ -2223,7 +2237,8 @@ inline auto get_model_scheme(std::string modelName) {
 
 inline void print_model_Priors(double covar) {
   auto allmodels =
-      Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
+      Models_Library(&scheme_1,&scheme_2,&scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,&scheme_4_d,
+                                    &model00, &model00_7, &model01, &model4, &model4_g_lin,
                      &model6, &model6_no_inactivation,
                      &model6_Eff_no_inactivation, &model7, &model8, &model9);
 

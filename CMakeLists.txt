@@ -105,6 +105,17 @@ add_executable(macro_dr main.cpp
     models/model6.txt models/model9.txt models/model8.txt models/model7.txt models/model4.txt models/model4_g_lin.txt models/model01.txt models/model00.txt models/model6_no_inactivation.txt models/model6_Eff_no_inactivation.txt models/model00_7.txt
     models_MoffattHume_linear.h
     models_MoffattHume_allosteric.h
+    multi_task/MH_Li7.sh
+    models/scheme_1.txt
+    models/scheme_2.txt
+    models/scheme_3.txt
+    models/scheme_4.txt
+    models/scheme_4_prior.csv models/scheme_4_par.csv models/scheme_4_inact_prior.csv models/scheme_4_inact_par.csv models/scheme_3_prior.csv models/scheme_3_par.csv models/scheme_3_inact_prior.csv models/scheme_3_inact_par.csv models/scheme_2_prior.csv models/scheme_2_par.csv models/scheme_2_inact_prior.csv models/scheme_2_inact_par.csv models/scheme_1_prior.csv models/scheme_1_par.csv models/scheme_1_inact_prior.csv models/scheme_1_inact_par.csv
+    experiments/Moffatt_Hume_2007_ATP_time_7_recording.txt
+    scripts/experiment.txt
+    experiments/Moffatt_Hume_2007_ATP_time_7_segments.txt
+    experiments/Moffatt_Hume_2007_ATP_time_segments.txt
+    multi_task/MH_Li7_sim.sh
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)

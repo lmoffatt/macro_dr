@@ -33,6 +33,10 @@
 #include <vector>
 using namespace macrodr;
 
+
+
+
+
 Maybe_error<std::string>
 read_from_input_files(std::vector<std::string> const args) {
     std::string s;
@@ -51,6 +55,54 @@ read_from_input_files(std::vector<std::string> const args) {
     }
     return s;
 }
+
+Maybe_error<std::string>
+append_files_content(std::string&& s,std::string const& filename) {
+        std::ifstream f(filename);
+        if (!f)
+            return error_message(filename + " does not exist or cannot be opened");
+        else {
+            while (f) {
+                std::string line;
+                std::getline(f, line);
+                s += line + "\n";
+            }
+        }
+        return std::move(s);
+}
+
+
+Maybe_error<std::string>
+append_command(std::string&& s,std::string const& line) {
+    if (line[line.size()-1]!='"')
+        return error_message("does not have a "" in"+ line);
+    s += line.substr(1,line.size()-2) + "\n";
+    return std::move(s);
+}
+
+
+Maybe_error<std::string>
+read_from_input_files_or_commands(std::vector<std::string> const args) {
+    std::string s;
+    for (std::size_t i = 1; i < args.size(); ++i) {
+        auto filename_or_command = args[i];
+        Maybe_error<std::string> Maybe_s;
+        if (filename_or_command.find('"')!=filename_or_command.npos)
+        {
+            s+=filename_or_command+ "\n";
+        }
+        else
+        {
+            auto Maybe_s=append_files_content(std::move(s),filename_or_command);
+            if (!Maybe_s)
+               return Maybe_s.error();
+            else
+               s=std::move(Maybe_s.value());
+        }            
+    }
+    return s;
+}
+
 
 auto get_compiler() {
     auto cm = dcli::Compiler{};
@@ -183,21 +235,23 @@ variance_correction_approximation,  std::size_t n_sub_dt)
     cm.push_function(
         "evidence",
         dcli::to_typed_function<prior_value_type, likelihood_type, std::string,
-                                experiment_type, algo_type, tablefun_value_type,
+                                experiment_type, std::string,algo_type, tablefun_value_type,
                                 std::size_t>(
-            &calc_evidence, "prior", "likelihoodModel", "data", "experiment",
+            &calc_evidence, "prior", "likelihoodModel", "data", "experiment", "segments",
             "algorithm", "function_table", "init_seed"));
     return cm;
 }
 
 int main(int argc, char **argv) {
     
+    
+    
     print_model_Priors(2.0);
   std::vector<std::string> arguments(argc);
     for (auto i = 0; i < argc; ++i)
       arguments[i] = argv[i];
   
-  auto Maybe_script = read_from_input_files(arguments);
+  auto Maybe_script = read_from_input_files_or_commands(arguments);
     if (!Maybe_script)
         std::cerr << "Error: \n" << Maybe_script.error()();
     else {

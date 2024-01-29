@@ -1,0 +1,12 @@
+model_name,i_par,parameter_name,moment,value
+scheme_2_inact,0,kon,mean,0.8976270912904414
+scheme_2_inact,1,koff,mean,2.08278537031645
+scheme_2_inact,2,flipping_on,mean,2.800717078282385
+scheme_2_inact,3,flipping_off,mean,1.624282095835668
+scheme_2_inact,4,gating_on,mean,2.582063362911709
+scheme_2_inact,5,gating_off,mean,3.041392685158225
+scheme_2_inact,6,unitary_current,mean,0
+scheme_2_inact,7,Current_Noise,mean,-3
+scheme_2_inact,8,Current_Baseline,mean,0
+scheme_2_inact,9,Num_ch_mean,mean,3.698970004336019
+scheme_2_inact,10,inactivation_rate,mean,-5

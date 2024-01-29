@@ -1,0 +1,17 @@
+model_name,i_par,parameter_name,moment,value
+scheme_1,0,kon,mean,0.8280150642239769
+scheme_1,1,koff,mean,2.220108088040055
+scheme_1,2,gating_on,mean,2.870988813760575
+scheme_1,3,gating_off,mean,1.656098202012832
+scheme_1,4,unitary_current,mean,0
+scheme_1,5,Current_Noise,mean,-3
+scheme_1,6,Current_Baseline,mean,0
+scheme_1,7,Num_ch_mean,mean,3.698970004336019
+scheme_1,0,kon,covar,2
+scheme_1,1,koff,covar,2
+scheme_1,2,gating_on,covar,2
+scheme_1,3,gating_off,covar,2
+scheme_1,4,unitary_current,covar,2
+scheme_1,5,Current_Noise,covar,2
+scheme_1,6,Current_Baseline,covar,2
+scheme_1,7,Num_ch_mean,covar,2
