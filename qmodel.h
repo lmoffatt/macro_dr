@@ -3546,7 +3546,7 @@ void report(FunctionTable &&f, std::size_t iter,
       auto beta = data.get_Beta(icu);
       auto nsamples = size(ys[i_frac()]);
       for (std::size_t half = 0; half < 2; ++half)
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
           auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
           auto iw = cuevi::Walker_Index(i_walker);

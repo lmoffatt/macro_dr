@@ -6,7 +6,7 @@
 #SBATCH --job-name=MH_Li7
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=short
+#SBATCH --partition=multi
 
 ### Cantidad de nodos a usar		
 #SBATCH --nodes=1

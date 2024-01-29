@@ -601,7 +601,7 @@ template <class ParameterType> class Cuevi_mcmc {
 
     Maybe_error<bool> succeeds = true;
     for (std::size_t half = 0; half < 2; ++half)
-      // #pragma omp parallel for
+      #pragma omp parallel for
       for (std::size_t iiw = 0; iiw < n() / 2; ++iiw) {
         auto iw = half ? iiw + n() / 2 : iiw;
         for (std::size_t i_cu = 0; i_cu < num_temp; ++i_cu) {
@@ -840,7 +840,7 @@ public:
       FunctionTable &&f, t_logLikelihood &&lik, const by_fraction<Data> &y,
       const by_fraction<Variables> &x) {
     for (std::size_t half = 0; half < 2; ++half)
-      // #pragma omp parallel for
+      #pragma omp parallel for
       for (std::size_t iiw = 0; iiw < get_Walkers_number() / 2; ++iiw)
 
       {
