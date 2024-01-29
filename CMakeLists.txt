@@ -118,6 +118,12 @@ add_executable(macro_dr main.cpp
     multi_task/MH_Li7_sim.sh
     slurm/s_MH_Li7_sim.sh
     slurm/s_MH_Li7.sh
+    multi_task/MH_Li_sim.sh
+    multi_task/MH_Li.sh
+    models/scheme_2_inact.txt models/scheme_3_inact.txt models/scheme_4_inact.txt
+    slurm/s_MH_Li.sh
+    slurm/s_MH_Li_sim.sh
+    
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
