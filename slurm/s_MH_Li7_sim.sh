@@ -34,6 +34,7 @@
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
+export SLURM_TASK_ID=$SLURM_TASK_ID
 # Cargar los módulos para la tarea
 module load amdblis
 module load amdlibflame
