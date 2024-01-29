@@ -3,10 +3,10 @@
 ### Configuración del trabajo
 
 ### Nombre de la tarea
-#SBATCH --job-name=mdb
+#SBATCH --job-name=MH_Li7_sim
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=short
+#SBATCH --partition=multi
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
@@ -19,7 +19,7 @@
 ### Tiempo de ejecucion. Formato dias-horas:minutos.
 ### short:  <= 1 hora
 ### multi:  <= 2 días
-#SBATCH --time 0-1:00
+#SBATCH --time 2-0:00
 
 #---------------------------------------------------
 
