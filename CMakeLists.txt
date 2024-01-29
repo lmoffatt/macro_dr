@@ -123,6 +123,7 @@ add_executable(macro_dr main.cpp
     models/scheme_2_inact.txt models/scheme_3_inact.txt models/scheme_4_inact.txt
     slurm/s_MH_Li.sh
     slurm/s_MH_Li_sim.sh
+    slurm/s_MH_Li_short.sh
     
     
 )
