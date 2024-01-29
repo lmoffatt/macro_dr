@@ -116,6 +116,8 @@ add_executable(macro_dr main.cpp
     experiments/Moffatt_Hume_2007_ATP_time_7_segments.txt
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt
     multi_task/MH_Li7_sim.sh
+    slurm/s_MH_Li7_sim.sh
+    slurm/s_MH_Li7.sh
     
 )
 target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
