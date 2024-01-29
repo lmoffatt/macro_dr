@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "SLURM_PROCID=$SLURM_TASK_ID"
+echo "SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID"
 echo "SLURM_PROCID 4=$($SLURM_PROCID % 4)"
 
 case $(($SLURM_TASK_ID%4)) in
