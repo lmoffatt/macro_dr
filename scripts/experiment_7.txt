@@ -1,3 +1,5 @@
 experiment = get_Experiment(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7.txt", frequency_of_sampling = 50e3, initial_ATP = 0) 
 
-observations = get_Observations(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7.txt") 
+observations = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7_recording.txt"
+
+segments = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7_segments.txt"

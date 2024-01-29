@@ -1,10 +1,10 @@
-runIdName= get_random_Id(prefix="EviSimul_")
+runIdName= get_random_Id(prefix=runIdNamePre)
 
 write_script(script_name=runIdName)
 
 
-algorithm =get_CueviAlgorithm(num_scouts_per_ensemble = 16,number_trials_until_give_up = 100000,  stops_at = 1e-15,  medium_beta = 1e-2, includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,path = "p", min_fraction = 4, n_points_per_decade = 1, n_points_per_decade_fraction = 6,t_min_number_of_samples = 20, filename = runIdName ,thermo_jumps_every = 10)
+algorithm =get_CueviAlgorithm(num_scouts_per_ensemble = 16,number_trials_until_give_up = 100000,  stops_at = 1e-15,  medium_beta = 1e-2, includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,path = "./", min_fraction = 4, n_points_per_decade = 1, n_points_per_decade_fraction = 6,t_min_number_of_samples = 20, filename = runIdName ,thermo_jumps_every = 10)
 
 function_table = get_function_Table_maker(filename= runIdName, num_scouts_per_ensemble = 16) 
 
-evidence(prior= prior_model, likelihoodModel= likelihood, data = simfile, experiment = experiment, algorithm= algorithm, function_table =function_table, init_seed =0)
+evidence(prior= prior_model, likelihoodModel= likelihood, data = simfile, experiment = experiment, segments= segments, algorithm= algorithm, function_table =function_table, init_seed =0)

@@ -4,7 +4,7 @@
 #include "general_output_operator.h"
 #include "maybe_error.h"
 #include "parallel_tempering.h"
-#include "qmodel.h"
+//#include "qmodel.h"
 #include "variables.h"
 #include <cstddef>
 #include <fstream>
@@ -85,7 +85,15 @@ inline auto &extract_double(std::istream &is, double &r) {
     if ((s == "nan") || (s == "NAN") || (s == "NaN"))
         r = std::numeric_limits<double>::quiet_NaN();
     else
-        r = std::stod(s);
+    {
+        try{
+          r = std::stod(s);
+        }
+        catch(...)
+        {
+            is.setstate(std::ios::failbit);
+        }
+    }
     return is;
 }
 
@@ -153,6 +161,30 @@ Maybe_error<Recording> load_recording(save_Parameter<Parameter> &s) {
     }
 }
 
+inline Maybe_error<Recording> load_Recording(std::string filename, const std::string separator) {
+    std::ifstream f(filename);
+    Recording out;
+    std::size_t i_step;
+    auto sep=septr(separator);
+    double current;
+    f >> septr("i_step") >> sep >> septr("patch_current") >> septr("\n");
+    if (!f)
+        return error_message("not even titles");
+    else {
+        while (extract_double(f >> i_step >> sep, current)) {
+            if (i_step != out().size())
+                return error_message("i_step mismatch " + std::to_string(i_step) +
+                                     " size: " + std::to_string(out().size()));
+            else
+                out().push_back(Patch_current(current));
+            std::string line;
+            std::getline(f, line);
+        }
+        return out;
+    }
+}
+
+
 template <class Parameter>
 void report_model(save_Parameter<Parameter> &s, Recording const &e) {
     std::ofstream f(s.fname + "_recording.csv");
@@ -197,7 +229,7 @@ inline Maybe_error<bool> load_Recording_Data(std::string const &fname,
             ss = std::stringstream(line);
             std::size_t i_step;
             double val;
-            while (ss >> i_step >> septr(separator) >> val) {
+            while (extract_double(ss >> i_step >> septr(separator), val)) {
                 if (i_step != e().size())
                     return error_message("i_step missmatch expected" +
                                          std::to_string(e().size()) +
