@@ -3,12 +3,12 @@
 ### Configuración del trabajo
 
 ### Nombre de la tarea
-#SBATCH --job-name=mdb
+#SBATCH --job-name=MH_Li7
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=debug
+#SBATCH --partition=short
 
-### Cantidad de nodos a usar
+### Cantidad de nodos a usar		
 #SBATCH --nodes=1
 
 ### Cores a utilizar por nodo = procesos por nodo * cores por proceso
