@@ -124,6 +124,7 @@ add_executable(macro_dr main.cpp
     slurm/s_MH_Li.sh
     slurm/s_MH_Li_sim.sh
     slurm/s_MH_Li_short.sh
+    experiments/Moffatt_Hume_2007_ATP_time_segments.txt experiments/Moffatt_Hume_2007_ATP_time_recording.txt
     
     
 )
