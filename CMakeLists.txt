@@ -21,13 +21,13 @@ set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0 -Werror=return-type -fconcept
 #find_package(Catch2 REQUIRED)
 #target_link_libraries(tests Catch2::Catch2)
 
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
+#find_package(BLAS REQUIRED)
+#find_package(LAPACK REQUIRED)
 
 
-if(LAPACK_FOUND AND BLAS_FOUND)
-   set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-endif()
+#if(LAPACK_FOUND AND BLAS_FOUND)
+#   set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+#endif()
 
 add_executable(macro_dr main.cpp
    # CLI_base.h
