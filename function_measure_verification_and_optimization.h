@@ -39,9 +39,13 @@ public:
   constexpr F() {}
   constexpr auto &operator[](Id) { return *this; }
   constexpr auto &operator[](Id) const { return *this; }
+  
+  constexpr auto &operator+=(F) const { return *this; }
+  
 };
 
 template <class, class> class Time_it;
+template <class, class> class Time_it_st;
 
 template <class, class...> class Test_it;
 
@@ -70,6 +74,115 @@ template <class T> void clearit(T &&me) {
   if constexpr (has_clear_method_v<T, void>)
     me.clear();
 }
+
+template <class Id, class... Fun, template <class...> class F>
+    requires(std::is_trivial_v<Id>)
+class Time_it_st<Id, F<Id, Fun...>> {
+    F<Id, Fun...> m_f;
+    std::chrono::nanoseconds m_sum;
+    std::size_t m_count;
+    
+public:
+    using myId=Id;
+    void clear(I_thread i) { clearit(m_f, i); }
+    
+    auto &get_Fun() { return m_f.get_Fun(); }
+    
+    constexpr Time_it_st(F<Id, Fun...> &&t_f)
+        : m_f{std::move(t_f)}, m_sum{std::chrono::nanoseconds::zero()},
+        m_count{ 0ul} {}
+    constexpr Time_it_st() = default;
+    auto &operator[](Id) { return *this; }
+    auto &operator[](Id) const { return *this; }
+    
+    auto naked_function() const { return m_f; }
+    
+    
+    template <class... Ts> auto operator()(Ts &&...ts) {
+        const auto start = std::chrono::high_resolution_clock::now();
+             if constexpr (std::is_same_v<void, decltype(
+                                                   m_f(std::forward<Ts>(ts)...))>) {
+                std::invoke(m_f, std::forward<Ts>(ts)...);
+                const auto end = std::chrono::high_resolution_clock::now();
+                auto dur = end - start;
+                m_sum += dur;
+                ++m_count;
+            } else {
+                auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
+                const auto end = std::chrono::high_resolution_clock::now();
+                auto dur = end - start;
+                m_sum += dur;
+                ++m_count;
+                return out;
+            }
+    }
+    template <class... Ts>
+    friend auto apply_time(Time_it_st &me,  Ts &&...ts) {
+        
+        const auto start = std::chrono::high_resolution_clock::now();
+    
+            auto out = apply_F(me.m_f, std::forward<Ts>(ts)...);
+            const auto end = std::chrono::high_resolution_clock::now();
+            auto dur = end - start;
+            me.m_sum += dur;
+            ++me.m_count;
+            return out;
+        
+    }
+    
+    auto& operator+=(Time_it_st const& other)
+    {
+        m_sum+=other.m_sum;
+        m_count+=other.m_count;
+    }
+    
+    
+    
+    auto mean_duration() const {
+        m_sum/m_count;    
+    }
+    
+    auto total_duration() const {
+        return std::chrono::duration<double>(m_sum).count();
+    }
+    
+    auto count() const { return m_count; }
+    
+    void reset() {
+            m_sum= std::chrono::nanoseconds::zero();
+            m_count = 0ul;
+    }
+    
+    /**
+   * @brief report_title
+   * @param me
+   * @param s
+   *  Use outside parallel for
+   */
+    inline  friend std::ostream &report_title(std::ostream &os, const std::string &sep,
+                                             Time_it_st const &) {
+        os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count"<< sep << ToString(Id{}) << "_average_time";
+        return os;
+       
+    }
+    
+    /**
+   * @brief report_title
+   * @param me
+   * @param s
+   *  Use outside parallel for
+   */
+    friend std::ostream &report_point(std::ostream &os, const std::string &sep,
+                                      Time_it_st &me) {
+        
+        os << me.total_duration() << sep << me.count()<< sep << me.mean_duration();
+        me.reset();
+        return os;
+    }
+};
+
+
+
 
 template <class Id, class... Fun, template <class...> class F>
   requires(std::is_trivial_v<Id>)
