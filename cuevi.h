@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <fstream>
 #include <istream>
+#include <limits>
 #include <ostream>
 #include <random>
 #include <sstream>
@@ -306,27 +307,48 @@ template <class ParameterType> class Cuevi_mcmc {
       : public var::Var<Walker_value,
                         var::Vector_Space<var::Var<Parameter, ParameterType>,
                                           LogPrior, LogLik_by_Fraction>> {
-    friend auto thermo_step(const Walker_value &candidate,
+      friend Maybe_error<double> thermo_step(const Walker_value &candidate,
                             const Walker_value &current, Th_Beta beta,
                             Fraction_Index i_fra) {
-
-      return get<LogPrior>(candidate())() - get<LogPrior>(current())() +
-             beta() * (get<LogLik_by_Fraction>(candidate())[i_fra] -
-                       get<LogLik_by_Fraction>(current())[i_fra]);
+        
+      auto th_ca= get<LogPrior>(candidate())()+
+                     beta() * get<LogLik_by_Fraction>(candidate())[i_fra] ;
+      auto th_cu =   get<LogPrior>(current())() +
+                   beta() *  get<LogLik_by_Fraction>(current())[i_fra];
+      
+      if (!th_cu.valid()&& th_ca.valid())
+          return 100.0;
+      else
+          return th_ca-th_cu;
     }
-
-    friend auto thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
+    
+    friend Maybe_error<double> thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
                             const Walker_value &candidate, Th_Beta cu_beta,
                             Fraction_Index cu_fra,
                             const Walker_value &current) {
-
+        
+        auto logL_ca_ca=get<LogLik_by_Fraction>(candidate())[ca_fra];
+        auto logL_cu_cu=get<LogLik_by_Fraction>(current())[cu_fra];
+        
+        auto logL_ca_cu=get<LogLik_by_Fraction>(candidate())[cu_fra];
+        auto logL_cu_ca=get<LogLik_by_Fraction>(current())[ca_fra];
+                 
+        
       auto current_sum =
-          ca_beta() * get<LogLik_by_Fraction>(candidate())[ca_fra] +
-          cu_beta() * get<LogLik_by_Fraction>(current())[cu_fra];
+          ca_beta() * logL_ca_ca +
+          cu_beta() * logL_cu_cu;
       auto after_jump_sum =
-          cu_beta() * get<LogLik_by_Fraction>(candidate())[cu_fra] +
-          ca_beta() * get<LogLik_by_Fraction>(current())[ca_fra];
-      return after_jump_sum - current_sum;
+          cu_beta() * logL_ca_cu +
+          ca_beta() * logL_cu_ca;
+      
+      bool current_is_big_0_is_NaN=(cu_fra()>ca_fra())&&(!logL_cu_ca.valid())&&(logL_cu_ca.valid());
+      bool candidate_is_big_0_is_NaN=((cu_fra()<ca_fra())&&(logL_cu_ca.valid())&&(!logL_cu_ca.valid()));
+      bool current_sum_is_NaN_after_is_not=(!current_sum.valid()&&after_jump_sum.valid());
+      
+      if (current_is_big_0_is_NaN || candidate_is_big_0_is_NaN || current_sum_is_NaN_after_is_not)
+          return 0.0; // takes exponential---> prob 1
+      else      
+          return after_jump_sum - current_sum;
     }
 
     friend Maybe_error<double>
@@ -395,6 +417,7 @@ template <class ParameterType> class Cuevi_mcmc {
       if (!v_logL) {
         fails(get<Likelihood_statistics>(wa_sta.first())()[i_frac]);
         fails(get<Likelihood_statistics>(wa_sta.second())()[i_frac]);
+        //r_logLikf()[i_frac] = LogLik_value(-std::numeric_limits<double>::infinity());
         return v_logL.error();
 
       } else {
@@ -424,7 +447,10 @@ template <class ParameterType> class Cuevi_mcmc {
     }
     return true;
   }
-
+  
+  
+ 
+  
   template <class FunctionTable, class logLikelihood, class Data,
             class Variables>
   static Maybe_error<double> thermo_jump_logProb(
@@ -439,14 +465,14 @@ template <class ParameterType> class Cuevi_mcmc {
                                    x, i_frac_1, wa_sta_0);
     auto Maybe_1 = calc_Likelihood(std::forward<FunctionTable>(f), lik, w_1, y,
                                    x, i_frac_0, wa_sta_1);
+    auto be_0 = get<Th_Beta>(t()[i_0()]);
+    auto be_1 = get<Th_Beta>(t()[i_1()]);
 
-    if (!Maybe_0.valid() || !Maybe_1.valid())
-      return error_message(Maybe_0.error()() + Maybe_1.error()());
-    else {
-      auto be_0 = get<Th_Beta>(t()[i_0()]);
-      auto be_1 = get<Th_Beta>(t()[i_1()]);
+    // if (!Maybe_0.valid() || !Maybe_1.valid())
+    //   return error_message(Maybe_0.error()() + Maybe_1.error()());
+    // else {
       return thermo_jump(be_0, i_frac_0, w_0, be_1, i_frac_1, w_1);
-    }
+   // }
   }
 
   template <class FunctionTable, class logLikelihood, class Data,
