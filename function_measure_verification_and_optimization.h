@@ -9,6 +9,7 @@
 #include <functional>
 #include <ostream>
 #include <ratio>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -181,6 +182,9 @@ public:
     }
 };
 
+
+template <class Id, class... Fun, template <class...> class F>
+Time_it_st(F<Id, Fun...>) -> Time_it_st<Id, F<Id, Fun...>>;
 
 
 
@@ -600,6 +604,105 @@ auto insert(const std::string & path,FuncMap<G,Fs...> const & fun,  F const & f 
 {
    return (std::pair(FuncMap<G>(path,fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
 }
+
+
+
+template <class... Fs> class FuncMap_St : public Fs... {
+    std::string m_filename;
+    std::string sep = ",";
+    std::ofstream m_file;
+    
+public:
+    using Fs::operator[]...;
+    
+    template <class Id> Nothing operator[](Id) const { return Nothing{}; }
+    
+    void clear() { (clearit(static_cast<Fs &>(*this)), ...); }
+    
+    
+    auto& file()const{ return m_filename;}
+    
+    FuncMap_St(const std::string path, Fs &&...fs)
+        : Fs{std::move(fs)}..., m_filename{path}{}
+    
+    FuncMap_St(const std::string path, Fs const&...fs)
+        : Fs{fs}..., m_filename{path} {}
+    
+    template <class Id, class... Ts> auto f(Id, Ts &&...ts) {
+        auto &fun = (*this)[Id{}];
+        return fun(*this, std::forward<Ts>(ts)...);
+    }
+    
+    
+    
+    template <class... Context_data>
+    friend auto &report_point(FuncMap_St<Fs...> &f, const Context_data &...s) {
+        if (!f.m_file.is_open())
+        {
+            f.m_file.open(f.m_filename+"_funcmap.csv");
+            f.m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+        }
+        ((f.m_file << s << f.sep), ...);
+        ((report_point(f.m_file, f.sep, static_cast<Fs &>(f)) << f.sep), ...);
+        f.m_file << "\n";
+        return f.m_file;
+    }
+    template <class... Context_string>
+    friend auto &report_title(FuncMap_St<Fs...> &f, const Context_string &...s) {
+        if (!f.m_file.is_open())
+        {
+            f.m_file.open(f.m_filename+"_funcmap.csv");
+            f.m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+        }
+        ((f.m_file << s << f.sep), ...);
+        ((report_title(f.m_file, f.sep, static_cast<Fs &>(f)) << f.sep), ...);
+        f.m_file << "\n";
+        return f.m_file;
+    }
+    
+    auto fork(std::size_t n) {
+        std::vector<FuncMap_St>  out;
+        out.reserve(n);
+        for (std::size_t i=0; i<n; ++i)
+        {
+            out.emplace_back(m_filename+"_"+std::to_string(i),static_cast<Fs const&>(*this)...);
+        }
+        return out;
+    }
+    
+    auto& operator+=(const FuncMap_St& other)
+    {
+        ((static_cast<Fs&>(*this)+=static_cast<Fs const&>(other)),...);
+        return *this;
+    }
+    auto& operator+=(const std::vector<FuncMap_St>& other)
+    {
+        for (auto& e:other)
+            (*this)+=e;
+        return *this;
+    }
+    
+};
+
+
+
+
+template <class... Fs, class F, class G>
+auto operator +(std::pair<FuncMap_St<Fs...>, F> && f, G const & g )
+{
+    if constexpr(std::is_same_v<typename G::myId, typename F::myId>)
+        return std::pair(FuncMap_St<Fs...,F>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,f.second),f.second);
+    else
+        return std::pair(FuncMap_St<Fs...,G>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,g),f.second);
+}
+
+template <class G,class... Fs,  class F>
+auto insert(const std::string & path,FuncMap_St<G,Fs...> const & fun,  F const & f )
+{
+    return (std::pair(FuncMap_St<G>(path,fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
+}
+
+
 
 
 } // namespace var
