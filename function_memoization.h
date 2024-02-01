@@ -192,6 +192,72 @@ Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
     -> Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
 
 
+
+
+
+
+
+template <class, class, class> class Single_Thread_Memoizer;
+
+template <class Id, class... Fun, class Y, class... Xs,
+         template <class...> class F,
+         template <class, class...> class Memoizer>
+//  requires(std::is_convertible_v<std::invoke_result_t<F<Id, Fun...>, Xs...>, Y>)
+class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
+    F<Id, Fun...> m_f;
+    Memoizer<Y, Xs...> m_memoiza;
+    
+public:
+    using myId=Id;
+    
+    auto &get_Fun() { return m_f.get_Fun(); }
+    
+    constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer<Y, Xs...>)
+        : m_f{std::move(t_f)}, m_memoiza{} {}
+    
+    void clear() {
+        m_memoiza.clear();
+    }
+    constexpr Single_Thread_Memoizer() {}
+    auto &operator[](Id) { return *this; }
+    auto &operator[](Id) const { return *this; }
+    
+    
+    template <class... Ts>
+    auto &operator()(Ts&&... ts) {
+            return m_memoiza.get_or_calc(m_f, std::forward<Ts>(ts)...);
+    }
+    
+    template <class... Ts> friend auto apply_F(Single_Thread_Memoizer& me, Ts &&...ts) {
+        
+        return me(std::forward<Ts>(ts)...);
+    }
+    
+    constexpr auto& operator+=(Single_Thread_Memoizer const&){return *this;}
+    
+};
+
+template <class Id, class... Fun, class Y, class... Xs,
+         template <class...> class F,
+         template <class, class...> class Memoizer>
+Single_Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>, std::size_t)
+    -> Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
+
+template <class Id, class... Fun, class Y, class... Xs,
+         template <class...> class F,
+         template <class, class...> class Memoizer>
+Single_Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
+    -> Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
+
+
+
+
+
+
+
+
+
+
 } // namespace var
 
 #endif // FUNCTION_MEMOIZATION_H
