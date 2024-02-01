@@ -18,16 +18,16 @@ add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0 -Werror=return-type -fconcepts-diagnostics-depth=4" )
-#find_package(Catch2 REQUIRED)
-#target_link_libraries(tests Catch2::Catch2)
+find_package(Catch2 REQUIRED)
+target_link_libraries(tests Catch2::Catch2)
 
-#find_package(BLAS REQUIRED)
-#find_package(LAPACK REQUIRED)
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
 
 
-#if(LAPACK_FOUND AND BLAS_FOUND)
-#   set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-#endif()
+if(LAPACK_FOUND AND BLAS_FOUND)
+  set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+endif()
 
 add_executable(macro_dr main.cpp
    # CLI_base.h
