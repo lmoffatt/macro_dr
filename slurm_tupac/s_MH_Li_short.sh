@@ -19,7 +19,7 @@
 ### Tiempo de ejecucion. Formato dias-horas:minutos.
 ### short:  <= 1 hora
 ### multi:  <= 2 días
-#SBATCH --time 0-1:00
+#SBATCH --time 0-1:00:00
 
 #---------------------------------------------------
 
@@ -38,5 +38,5 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 #module load amdblis
 #module load amdlibflame
 # Lanzar el programa
-srun /home/lmoffatt/macro_dr/macro_dr/multi_task/MH_Li.sh
+srun /home/lmoffatt/Code/macro_dr/macro_dr/multi_task/MH_Li.sh
 
