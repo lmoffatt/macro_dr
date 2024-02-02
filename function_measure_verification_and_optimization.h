@@ -43,6 +43,7 @@ public:
   
   constexpr auto &operator+=(F) const { return *this; }
   
+  void clear()const{}  
 };
 
 template <class, class> class Time_it;
@@ -72,7 +73,6 @@ template <class T, class I> void clearit(T &&me, I i) {
     me.clear(i);
 }
 template <class T> void clearit(T &&me) {
-  if constexpr (has_clear_method_v<T, void>)
     me.clear();
 }
 
@@ -85,7 +85,7 @@ class Time_it_st<Id, F<Id, Fun...>> {
     
 public:
     using myId=Id;
-    void clear(I_thread i) { clearit(m_f, i); }
+    void clear() { clearit(m_f); }
     
     auto &get_Fun() { return m_f.get_Fun(); }
     
@@ -141,8 +141,8 @@ public:
     
     
     auto mean_duration() const {
-       return  m_sum/m_count;    
-    }
+        return  m_sum/std::min(m_count,1ul);
+        }
     
     auto total_duration() const {
         return std::chrono::duration<double>(m_sum).count();
