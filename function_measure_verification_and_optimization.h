@@ -135,12 +135,13 @@ public:
     {
         m_sum+=other.m_sum;
         m_count+=other.m_count;
+        return *this;
     }
     
     
     
     auto mean_duration() const {
-        m_sum/m_count;    
+       return  m_sum/m_count;    
     }
     
     auto total_duration() const {
@@ -633,6 +634,10 @@ public:
         return fun(*this, std::forward<Ts>(ts)...);
     }
     
+    template <class Id, class... Ts> auto fstop(Id, Ts &&...ts) {
+        auto &fun = (*this)[Id{}];
+        return fun(std::forward<Ts>(ts)...);
+    }
     
     
     template <class... Context_data>

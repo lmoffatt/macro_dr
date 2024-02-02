@@ -1894,25 +1894,20 @@ thermodynamic parameter
             
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
-            auto ftbl3 = FuncMap(
+            auto ftbl3 = FuncMap_St(
                 path + filename,
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                          thermo_cuevi_randomized_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                               cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(logLikelihood_f{},
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
+                Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+                Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
+                          thermo_cuevi_randomized_jump_mcmc{})),
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                               cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+                var::Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(true)>{},
                                [](auto &&...x) {
@@ -1922,9 +1917,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(true),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -1934,9 +1928,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(false),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -1946,8 +1939,7 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
+                               })),
                 // var::Thread_Memoizer(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -1958,15 +1950,14 @@ thermodynamic parameter
                 //            }),
                 //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
                 //     num_scouts_per_ensemble / 2),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     var::F(Calc_Qdt_step{},
                            [](auto &&...x) {
                                auto m = Macro_DMR{};
                                return m.calc_Qdt_ATP_step(
                                    std::forward<decltype(x)>(x)...);
                            }),
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-                    num_scouts_per_ensemble / 2),
+                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
                 // var::Time_it(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -1985,14 +1976,13 @@ thermodynamic parameter
                       auto m = Macro_DMR{};
                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
                   }),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     F(Calc_eigen{},
                       [](auto &&...x) {
                           auto m = Macro_DMR{};
                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
                       }),
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
-                    num_scouts_per_ensemble / 2)
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
                 // var::Time_it(
                 //     F(Calc_eigen{},
                 //       [](auto &&...x) {
@@ -2008,7 +1998,7 @@ thermodynamic parameter
                                            uses_variance_aproximation(false),
                                            uses_variance_correction_aproximation(false),
                                            return_predictions(true)>(
-                               ftbl3.fork(var::I_thread(0)), model0, param1,
+                               ftbl3, model0, param1,
                                experiment, sim.value()());
             report(filename+"_lik.csv",lik.value(),sim.value(), experiment);
             if (true)
@@ -2405,25 +2395,20 @@ thermodynamic parameter
             
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
-            auto ftbl3_0_0 = FuncMap(
+            auto ftbl3_0_0 = FuncMap_St(
                 path + filename_0_0,
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                               cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                             num_scouts_per_ensemble / 2),
-                Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                          thermo_cuevi_randomized_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                var::Time_it(F(logLikelihood_f{},
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
+                Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                               cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+                Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
+                          thermo_cuevi_randomized_jump_mcmc{})),
+                var::Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(true)>{},
                                [](auto &&...x) {
@@ -2433,9 +2418,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(true),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2445,9 +2429,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(false),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2457,8 +2440,7 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
+                               })),
                 // var::Thread_Memoizer(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2469,15 +2451,14 @@ thermodynamic parameter
                 //            }),
                 //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
                 //     num_scouts_per_ensemble / 2),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     var::F(Calc_Qdt_step{},
                            [](auto &&...x) {
                                auto m = Macro_DMR{};
                                return m.calc_Qdt_ATP_step(
                                    std::forward<decltype(x)>(x)...);
                            }),
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-                    num_scouts_per_ensemble / 2),
+                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
                 // var::Time_it(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2496,14 +2477,13 @@ thermodynamic parameter
                       auto m = Macro_DMR{};
                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
                   }),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     F(Calc_eigen{},
                       [](auto &&...x) {
                           auto m = Macro_DMR{};
                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
                       }),
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
-                    num_scouts_per_ensemble / 2)
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
                 // var::Time_it(
                 //     F(Calc_eigen{},
                 //       [](auto &&...x) {
@@ -2512,22 +2492,18 @@ thermodynamic parameter
                 //       }))
                 
                 );
-            auto ftbl3_0_alt = FuncMap(
+            auto ftbl3_0_alt = FuncMap_St(
                 path + filename_0_alt,
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                               cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(logLikelihood_f{},
+                Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
+                Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                               cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+                var::Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(true)>{},
                                [](auto &&...x) {
@@ -2537,9 +2513,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(true),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2549,9 +2524,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(false),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2561,8 +2535,7 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
+                               })),
                 // var::Thread_Memoizer(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2573,15 +2546,14 @@ thermodynamic parameter
                 //            }),
                 //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
                 //     num_scouts_per_ensemble / 2),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     var::F(Calc_Qdt_step{},
                            [](auto &&...x) {
                                auto m = Macro_DMR{};
                                return m.calc_Qdt_ATP_step(
                                    std::forward<decltype(x)>(x)...);
                            }),
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-                    num_scouts_per_ensemble / 2),
+                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
                 // var::Time_it(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2600,14 +2572,13 @@ thermodynamic parameter
                       auto m = Macro_DMR{};
                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
                   }),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     F(Calc_eigen{},
                       [](auto &&...x) {
                           auto m = Macro_DMR{};
                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
                       }),
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
-                    num_scouts_per_ensemble / 2)
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
                 // var::Time_it(
                 //     F(Calc_eigen{},
                 //       [](auto &&...x) {
@@ -2616,22 +2587,18 @@ thermodynamic parameter
                 //       }))
                 
                 );
-            auto ftbl3_alt_0 = FuncMap(
+            auto ftbl3_alt_0 = FuncMap_St(
                 path + filename_alt_0,
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                               cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(logLikelihood_f{},
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
+                Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                               cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+                var::Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(true)>{},
                                [](auto &&...x) {
@@ -2641,9 +2608,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(true),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2653,9 +2619,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(false),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2665,8 +2630,7 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
+                               })),
                 // var::Thread_Memoizer(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2677,15 +2641,14 @@ thermodynamic parameter
                 //            }),
                 //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
                 //     num_scouts_per_ensemble / 2),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     var::F(Calc_Qdt_step{},
                            [](auto &&...x) {
                                auto m = Macro_DMR{};
                                return m.calc_Qdt_ATP_step(
                                    std::forward<decltype(x)>(x)...);
                            }),
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-                    num_scouts_per_ensemble / 2),
+                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
                 // var::Time_it(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2704,14 +2667,13 @@ thermodynamic parameter
                       auto m = Macro_DMR{};
                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
                   }),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     F(Calc_eigen{},
                       [](auto &&...x) {
                           auto m = Macro_DMR{};
                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
                       }),
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
-                    num_scouts_per_ensemble / 2)
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
                 // var::Time_it(
                 //     F(Calc_eigen{},
                 //       [](auto &&...x) {
@@ -2720,22 +2682,18 @@ thermodynamic parameter
                 //       }))
                 
                 );
-            auto ftbl3_alt_alt = FuncMap(
+            auto ftbl3_alt_alt = FuncMap_St(
                 path + filename_alt_alt,
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                var::Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                               cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(logLikelihood_f{},
+                Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
+                Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+                var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                               cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+                var::Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(true)>{},
                                [](auto &&...x) {
@@ -2745,9 +2703,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(true),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2757,9 +2714,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                var::Time_it(F(MacroR<uses_recursive_aproximation(false),
+                               })),
+                var::Time_it_st(F(MacroR<uses_recursive_aproximation(false),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2769,8 +2725,7 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
+                               })),
                 // var::Thread_Memoizer(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2781,15 +2736,14 @@ thermodynamic parameter
                 //            }),
                 //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
                 //     num_scouts_per_ensemble / 2),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     var::F(Calc_Qdt_step{},
                            [](auto &&...x) {
                                auto m = Macro_DMR{};
                                return m.calc_Qdt_ATP_step(
                                    std::forward<decltype(x)>(x)...);
                            }),
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-                    num_scouts_per_ensemble / 2),
+                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
                 // var::Time_it(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2808,14 +2762,13 @@ thermodynamic parameter
                       auto m = Macro_DMR{};
                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
                   }),
-                var::Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     F(Calc_eigen{},
                       [](auto &&...x) {
                           auto m = Macro_DMR{};
                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
                       }),
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
-                    num_scouts_per_ensemble / 2)
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
                 // var::Time_it(
                 //     F(Calc_eigen{},
                 //       [](auto &&...x) {
@@ -2832,7 +2785,7 @@ thermodynamic parameter
                                                uses_variance_aproximation(false),
                                                uses_variance_correction_aproximation(false),
                                                return_predictions(true)>(
-                                   ftbl3_0_0.fork(var::I_thread(0)), model0, param1,
+                                   ftbl3_0_0, model0, param1,
                                    experiment, sim);
             report(filename_0_0+"_lik.csv",lik_0_0.value(),sim_N.value(), experiment);
             auto lik_1_1 = Macro_DMR{}
@@ -2842,7 +2795,7 @@ thermodynamic parameter
                                                uses_variance_aproximation(false),
                                                uses_variance_correction_aproximation(false),
                                                return_predictions(true)>(
-                                   ftbl3_alt_alt.fork(var::I_thread(0)), model0_alt, param1_alt,
+                                   ftbl3_alt_alt, model0_alt, param1_alt,
                                    experiment, sim_alt);
             report(filename_alt_alt+"_lik.csv",lik_1_1.value(),sim_alt_N.value(), experiment);
             
