@@ -58,6 +58,9 @@ using std::max;
 using var::F;
 using var::FuncMap;
 using var::Time_it;
+using var::Time_it_st;
+using var::FuncMap_St;
+
 
 template <class T> T sqr(T x) { return x * x; }
 
