@@ -22,20 +22,18 @@ class F {
   Fun m_f;
 
 public:
-  using myId=Id;
+  using myId = Id;
   static constexpr bool is_threadable = false;
 
   auto &get_Fun() { return m_f; }
   constexpr F(Id, Fun &&t_f) : m_f{std::move(t_f)} {}
   constexpr F(Fun &&t_f) : m_f{std::move(t_f)} {}
-  constexpr F(Fun const&t_f) : m_f{t_f} {}
+  constexpr F(Fun const &t_f) : m_f{t_f} {}
   template <class... Ts> constexpr auto operator()(Ts &&...ts) const {
       return m_f(std::forward<Ts>(ts)...);
-      
   }
   
-  
-  F create()const {return F(m_f);}
+  F create() const { return F(m_f); }
   
   template <class... Ts> friend auto apply_F(F const me, Ts &&...ts) {
 
@@ -47,13 +45,10 @@ public:
   
   constexpr auto &operator+=(F) const { return *this; }
   
-  void clear()const{}  
+  void clear() const {}
 };
 
-
-
 template <class, class> class Time_it_st;
-
 
 struct I_thread {
   std::size_t i;
@@ -76,9 +71,7 @@ template <class T, class I> void clearit(T &&me, I i) {
   if constexpr (has_clear_method_v<T, I>)
     me.clear(i);
 }
-template <class T> void clearit(T &&me) {
-    me.clear();
-}
+template <class T> void clearit(T &&me) { me.clear(); }
 
 template <class Id, class... Fun, template <class...> class F>
     requires(std::is_trivial_v<Id>)
@@ -88,64 +81,60 @@ class Time_it_st<Id, F<Id, Fun...>> {
     std::size_t m_count;
     
 public:
-    using myId=Id;
+    using myId = Id;
     
     auto &get_Fun() { return m_f.get_Fun(); }
     
     constexpr Time_it_st(F<Id, Fun...> &&t_f)
         : m_f{std::move(t_f)}, m_sum{std::chrono::nanoseconds::zero()},
-        m_count{ 0ul} {}
+        m_count{0ul} {}
     constexpr Time_it_st() = default;
     auto &operator[](Id) { return *this; }
     auto &operator[](Id) const { return *this; }
     
     auto naked_function() const { return m_f; }
-    auto create()const{return Time_it_st(m_f.create());}
+    auto create() const { return Time_it_st(m_f.create()); }
     
     template <class... Ts> auto operator()(Ts &&...ts) {
         const auto start = std::chrono::high_resolution_clock::now();
-             if constexpr (std::is_same_v<void, decltype(
-                                                   m_f(std::forward<Ts>(ts)...))>) {
-                std::invoke(m_f, std::forward<Ts>(ts)...);
-                const auto end = std::chrono::high_resolution_clock::now();
-                auto dur = end - start;
-                m_sum += dur;
-                ++m_count;
-            } else {
-                auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
-                const auto end = std::chrono::high_resolution_clock::now();
-                auto dur = end - start;
-                m_sum += dur;
-                ++m_count;
-                return out;
-            }
-    }
-    template <class... Ts>
-    friend auto apply_time(Time_it_st &me,  Ts &&...ts) {
-        
-        const auto start = std::chrono::high_resolution_clock::now();
-    
-            auto out = apply_F(me.m_f, std::forward<Ts>(ts)...);
+        if constexpr (std::is_same_v<void,
+                                     decltype(m_f(std::forward<Ts>(ts)...))>) {
+            std::invoke(m_f, std::forward<Ts>(ts)...);
             const auto end = std::chrono::high_resolution_clock::now();
             auto dur = end - start;
-            me.m_sum += dur;
-            ++me.m_count;
+            m_sum += dur;
+            ++m_count;
+        } else {
+            auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
+            const auto end = std::chrono::high_resolution_clock::now();
+            auto dur = end - start;
+            m_sum += dur;
+            ++m_count;
             return out;
+        }
+    }
+    template <class... Ts> friend auto apply_time(Time_it_st &me, Ts &&...ts) {
         
+        const auto start = std::chrono::high_resolution_clock::now();
+        
+        auto out = apply_F(me.m_f, std::forward<Ts>(ts)...);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur = end - start;
+        me.m_sum += dur;
+        ++me.m_count;
+        return out;
     }
     
-    auto& operator+=(Time_it_st const& other)
-    {
-        m_sum+=other.m_sum;
-        m_count+=other.m_count;
+    auto &operator+=(Time_it_st const &other) {
+        m_sum += other.m_sum;
+        m_count += other.m_count;
         return *this;
     }
     
-    
-    
     auto mean_duration() const {
-        return  m_sum/std::min(m_count,1ul);
-        }
+        return std::chrono::duration<double>(m_sum / std::max(m_count, 1ul))
+            .count();
+    }
     
     auto total_duration() const {
         return std::chrono::duration<double>(m_sum).count();
@@ -154,8 +143,8 @@ public:
     auto count() const { return m_count; }
     
     void reset() {
-            m_sum= std::chrono::nanoseconds::zero();
-            m_count = 0ul;
+        m_sum = std::chrono::nanoseconds::zero();
+        m_count = 0ul;
     }
     
     /**
@@ -164,11 +153,11 @@ public:
    * @param s
    *  Use outside parallel for
    */
-    inline  friend std::ostream &report_title(std::ostream &os, const std::string &sep,
-                                             Time_it_st const &) {
-        os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count"<< sep << ToString(Id{}) << "_average_time";
+    inline friend std::ostream &
+    report_title(std::ostream &os, const std::string &sep, Time_it_st const &) {
+        os  << sep << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count"
+           << sep << ToString(Id{}) << "_average_time";
         return os;
-       
     }
     
     /**
@@ -180,12 +169,11 @@ public:
     friend std::ostream &report_point(std::ostream &os, const std::string &sep,
                                       Time_it_st &me) {
         
-        os << me.total_duration() << sep << me.count()<< sep << me.mean_duration();
+        os << sep<<me.total_duration() << sep << me.count() << sep << me.mean_duration();
         me.reset();
         return os;
     }
 };
-
 
 template <class Id, class... Fun, template <class...> class F>
 Time_it_st(F<Id, Fun...>) -> Time_it_st<Id, F<Id, Fun...>>;
@@ -199,11 +187,10 @@ inline std::ostream &report_point(std::ostream &os, const std::string &, ...) {
     return os;
 }
 
-
-
 template <class... Fs> class FuncMap_St : public Fs... {
     std::string m_filename;
     std::string sep = ",";
+    std::size_t m_save_every;
     std::ofstream m_file;
     
 public:
@@ -213,18 +200,17 @@ public:
     
     void clear() { (clearit(static_cast<Fs &>(*this)), ...); }
     
+    auto &file() const { return m_filename; }
     
-    auto& file()const{ return m_filename;}
+    FuncMap_St(const std::string path, std::size_t save_every, Fs &&...fs)
+        : Fs{std::move(fs)}..., m_filename{path}, m_save_every{save_every} {}
     
-    FuncMap_St(const std::string path, Fs &&...fs)
-        : Fs{std::move(fs)}..., m_filename{path}{}
+    FuncMap_St(const std::string path, std::size_t save_every, Fs const &...fs)
+        : Fs{fs}..., m_filename{path}, m_save_every{save_every} {}
     
-    FuncMap_St(const std::string path, Fs const&...fs)
-        : Fs{fs}..., m_filename{path} {}
-    
-    FuncMap_St create(const std::string& suffix)const
-    {
-        return FuncMap_St(file()+suffix,static_cast<Fs const&>(*this).create()...);
+    FuncMap_St create(const std::string &suffix) const {
+        return FuncMap_St(file() + suffix, m_save_every,
+                          static_cast<Fs const &>(*this).create()...);
     }
     
     template <class Id, class... Ts> auto f(Id, Ts &&...ts) {
@@ -237,74 +223,77 @@ public:
         return fun(std::forward<Ts>(ts)...);
     }
     
-    
     template <class... Context_data>
-    friend auto &report_point(FuncMap_St<Fs...> &f, const Context_data &...s) {
-        if (!f.m_file.is_open())
-        {
-            f.m_file.open(f.m_filename+"_funcmap.csv");
-            f.m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
-        }
-        ((f.m_file << s << f.sep), ...);
-        ((report_point(f.m_file, f.sep, static_cast<Fs &>(f)) << f.sep), ...);
-        f.m_file << "\n";
+    friend auto &report_point(FuncMap_St<Fs...> &f, std::size_t iter,
+                              const Context_data &...s) {
+        //if (iter % std::max(1,f.m_save_every ) == 0) {
+            if (!f.m_file.is_open()) {
+                f.m_file.open(f.m_filename + "_funcmap.csv", std::ios::app);
+                f.m_file << std::setprecision(std::numeric_limits<double>::digits10 +
+                                              1);
+            }
+            f.m_file <<iter;
+            ((f.m_file << f.sep<< s ), ...);
+            (report_point(f.m_file, f.sep, static_cast<Fs &>(f)), ...);
+            f.m_file << "\n";   
+            f.m_file.flush();
         return f.m_file;
     }
     template <class... Context_string>
-    friend auto &report_title(FuncMap_St<Fs...> &f, const Context_string &...s) {
-        if (!f.m_file.is_open())
-        {
-            f.m_file.open(f.m_filename+"_funcmap.csv");
-            f.m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    friend auto &report_title(FuncMap_St<Fs...> &f, const std::string iter,const Context_string &...s) {
+        if (!f.m_file.is_open()) {
+            f.m_file.open(f.m_filename + "_funcmap.csv");
+            f.m_file << std::setprecision(std::numeric_limits<double>::digits10 + 1);
         }
-        ((f.m_file << s << f.sep), ...);
-        ((report_title(f.m_file, f.sep, static_cast<Fs &>(f)) << f.sep), ...);
+        f.m_file <<iter;
+        ((f.m_file << f.sep << s), ...);
+        (report_title(f.m_file, f.sep, static_cast<Fs &>(f)), ...);
         f.m_file << "\n";
+        f.m_file.flush();
         return f.m_file;
     }
     
     auto fork(std::size_t n) {
-        std::vector<FuncMap_St>  out;
+        std::vector<FuncMap_St> out;
         out.reserve(n);
-        for (std::size_t i=0; i<n; ++i)
-        {
-            out.emplace_back(this->create("_"+std::to_string(i)));
+        for (std::size_t i = 0; i < n; ++i) {
+            out.emplace_back(this->create("_" + std::to_string(i)));
         }
         return out;
     }
     
-    auto& operator+=(const FuncMap_St& other)
-    {
-        ((static_cast<Fs&>(*this)+=static_cast<Fs const&>(other)),...);
+    auto &operator+=(const FuncMap_St &other) {
+            ((static_cast<Fs &>(*this) += static_cast<Fs const &>(other)), ...);
         return *this;
     }
-    auto& operator+=(const std::vector<FuncMap_St>& other)
-    {
-        for (auto& e:other)
-            (*this)+=e;
+    auto &operator+=(const std::vector<FuncMap_St> &other) {
+        for (auto &e : other)
+            (*this) += e;
         return *this;
     }
-    
 };
 
-
-
-
 template <class... Fs, class F, class G>
-auto operator +(std::pair<FuncMap_St<Fs...>, F> && f, G const & g )
-{
-    if constexpr(std::is_same_v<typename G::myId, typename F::myId>)
-        return std::pair(FuncMap_St<Fs...,F>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,f.second),f.second);
+auto operator+(std::pair<FuncMap_St<Fs...>, F> &&f, G const &g) {
+    if constexpr (std::is_same_v<typename G::myId, typename F::myId>)
+        return std::pair(FuncMap_St<Fs..., F>(
+                             std::move(f.first.file()),
+                             std::move(f.first[typename Fs::myId{}])..., f.second),
+                         f.second);
     else
-        return std::pair(FuncMap_St<Fs...,G>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,g),f.second);
+        return std::pair(
+            FuncMap_St<Fs..., G>(std::move(f.first.file()),
+                                 std::move(f.first[typename Fs::myId{}])..., g),
+            f.second);
 }
 
-template <class G,class... Fs,  class F>
-auto insert(const std::string & path,FuncMap_St<G,Fs...> const & fun,  F const & f )
-{
-    return (std::pair(FuncMap_St<G>(path,fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
+template <class G, class... Fs, class F>
+auto insert(const std::string &path, FuncMap_St<G, Fs...> const &fun,
+            F const &f) {
+    return (std::pair(FuncMap_St<G>(path, fun[typename G::myId{}]), f) + ... +
+            fun[typename Fs::myId{}])
+        .first;
 }
-
 
 namespace partially_implemented {
 
@@ -320,7 +309,7 @@ class Test_it<Id, F<Id, Fun...>, Preconditions, Postconditions> {
     std::size_t m_n_threads{};
     
 public:
-    using myId=Id;
+    using myId = Id;
     
     static constexpr bool is_threadable = true;
     
@@ -345,7 +334,7 @@ public:
         if constexpr (m_f.is_threadable) {
             if constexpr (std::is_same_v<void, decltype(std::invoke(
                                                    m_f, i_thread,
-                                                   std::forward<Ts>(ts)...))>) {
+                                                                    std::forward<Ts>(ts)...))>) {
                 std::invoke(m_f, i_thread, std::forward<Ts>(ts)...);
                 const auto end = std::chrono::high_resolution_clock::now();
                 auto dur = end - start;
@@ -438,8 +427,8 @@ public:
    * @param s
    *  Use outside parallel for
    */
-    inline friend std::ostream &report_title(std::ostream &os, const std::string &sep,
-                                             Test_it const &me) {
+    inline friend std::ostream &
+    report_title(std::ostream &os, const std::string &sep, Test_it const &me) {
         os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count";
         for (std::size_t i = 0; i < me.m_count.size(); ++i)
             os << sep << ToString(Id{}) << "_" << i << "_sum_time" << sep
@@ -466,10 +455,9 @@ public:
     }
 };
 
-}
+} // namespace partially_implemented
 
-namespace deprecated{
-
+namespace deprecated {
 
 template <class, class> class Time_it;
 
@@ -482,9 +470,9 @@ class Time_it<Id, F<Id, Fun...>> {
   std::size_t m_n_threads{};
 
 public:
-  using myId=Id;
-  
-  static constexpr bool is_threadable = true;
+  using myId = Id;
+    
+    static constexpr bool is_threadable = true;
 
   void clear(I_thread i) { clearit(m_f, i); }
 
@@ -523,8 +511,8 @@ public:
         return out;
       }
     } else {
-      if constexpr (std::is_same_v<void, decltype(
-                                               m_f(std::forward<Ts>(ts)...))>) {
+      if constexpr (std::is_same_v<void,
+                                     decltype(m_f(std::forward<Ts>(ts)...))>) {
         std::invoke(m_f, std::forward<Ts>(ts)...);
         const auto end = std::chrono::high_resolution_clock::now();
         auto dur = end - start;
@@ -600,8 +588,8 @@ public:
    * @param s
    *  Use outside parallel for
    */
- inline  friend std::ostream &report_title(std::ostream &os, const std::string &sep,
-                                    Time_it const &me) {
+  inline friend std::ostream &
+  report_title(std::ostream &os, const std::string &sep, Time_it const &me) {
     os << ToString(Id{}) << "_sum_time" << sep << ToString(Id{}) << "_count";
     for (std::size_t i = 0; i < me.m_count.size(); ++i)
       os << sep << ToString(Id{}) << "_" << i << "_sum_time" << sep
@@ -634,12 +622,8 @@ Time_it(F<Id, Fun...>, std::size_t) -> Time_it<Id, F<Id, Fun...>>;
 template <class Id, class... Fun, template <class...> class F>
 Time_it(F<Id, Fun...>) -> Time_it<Id, F<Id, Fun...>>;
 
-
-
-
 template <class F> class F_on_thread;
 template <class... Fs> class FuncMap;
-
 
 template <class F> class F_on_thread {
   F &m_f;
@@ -673,8 +657,6 @@ template <class... Fs> class FuncMap : public Fs... {
   std::string sep = ",";
 
 public:
-    
-  
   using Fs::operator[]...;
 
   template <class Id> Nothing operator[](Id) const { return Nothing{}; }
@@ -683,17 +665,22 @@ public:
 
   auto &file() { return m_file; }
   FuncMap(const std::string path, Fs &&...fs)
-      : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
+      : Fs{std::move(fs)}..., m_file{std::ofstream(path + "_time_it.cvs")} {
+      m_file << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+  }
   
-  FuncMap( std::ofstream&& f, Fs &&...fs)
+  FuncMap(std::ofstream &&f, Fs &&...fs)
       : Fs{std::move(fs)}..., m_file{std::move(f)} {}
   
-  FuncMap(const std::string path, Fs const&...fs)
-      : Fs{fs}..., m_file{std::ofstream(path + "_time_it.cvs")} {m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
+  FuncMap(const std::string path, Fs const &...fs)
+      : Fs{fs}..., m_file{std::ofstream(path + "_time_it.cvs")} {
+      m_file << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+  }
   
-  FuncMap( std::ofstream&& f, Fs const&...fs)
-      : Fs{fs}..., m_file{std::move(f)} {m_file<<std::setprecision(std::numeric_limits<double>::digits10 + 1);}
-  
+  FuncMap(std::ofstream &&f, Fs const &...fs)
+      : Fs{fs}..., m_file{std::move(f)} {
+      m_file << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+  }
   
   template <class... Context_data>
   friend auto &report_point(FuncMap<Fs...> &f, const Context_data &...s) {
@@ -713,27 +700,28 @@ public:
   F_on_thread<FuncMap> fork(I_thread i) { return F_on_thread(*this).fork(i); }
 };
 
-
 template <class... Fs, class F, class G>
-auto operator +(std::pair<FuncMap<Fs...>, F> && f, G const & g )
-{
-    if constexpr(std::is_same_v<typename G::myId, typename F::myId>)
-        return std::pair(FuncMap<Fs...,F>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,f.second),f.second);
+auto operator+(std::pair<FuncMap<Fs...>, F> &&f, G const &g) {
+    if constexpr (std::is_same_v<typename G::myId, typename F::myId>)
+        return std::pair(
+            FuncMap<Fs..., F>(std::move(f.first.file()),
+                              std::move(f.first[typename Fs::myId{}])..., f.second),
+            f.second);
     else
-        return std::pair(FuncMap<Fs...,G>(std::move(f.first.file()),std::move(f.first[typename Fs::myId{}])...,g),f.second);
+        return std::pair(
+            FuncMap<Fs..., G>(std::move(f.first.file()),
+                              std::move(f.first[typename Fs::myId{}])..., g),
+            f.second);
 }
 
-template <class G,class... Fs,  class F>
-auto insert(const std::string & path,FuncMap<G,Fs...> const & fun,  F const & f )
-{
-   return (std::pair(FuncMap<G>(path,fun[typename G::myId{}]),f)+...+fun[typename Fs::myId{}]).first;
+template <class G, class... Fs, class F>
+auto insert(const std::string &path, FuncMap<G, Fs...> const &fun, F const &f) {
+    return (std::pair(FuncMap<G>(path, fun[typename G::myId{}]), f) + ... +
+            fun[typename Fs::myId{}])
+        .first;
 }
 
-
-}  // namespace deprecated
-
-
-
+} // namespace deprecated
 
 } // namespace var
 #endif // FUNCTION_MEASURE_VERIFICATION_AND_OPTIMIZATION_H

@@ -1897,7 +1897,7 @@ thermodynamic parameter
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
             auto ftbl3 = FuncMap_St(
-                path + filename,
+                path + filename,num_scouts_per_ensemble,
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 // Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
@@ -2057,7 +2057,7 @@ thermodynamic parameter
             
             
             auto ftbl3 = FuncMap_St(
-                path + filename,
+                path + filename,num_scouts_per_ensemble,
                 Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
@@ -2387,7 +2387,7 @@ thermodynamic parameter
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
             auto ftbl3_0_0 = var::FuncMap_St(
-                path + filename_0_0,
+                path + filename_0_0,num_scouts_per_ensemble,
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
@@ -2482,7 +2482,7 @@ thermodynamic parameter
                 
                 );
             auto ftbl3_0_alt = FuncMap_St(
-                path + filename_0_alt,
+                path + filename_0_alt,num_scouts_per_ensemble,
                 Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
@@ -2577,7 +2577,7 @@ thermodynamic parameter
                 
                 );
             auto ftbl3_alt_0 = FuncMap_St(
-                path + filename_alt_0,
+                path + filename_alt_0,num_scouts_per_ensemble,
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
@@ -2672,7 +2672,7 @@ thermodynamic parameter
                 
                 );
             auto ftbl3_alt_alt = FuncMap_St(
-                path + filename_alt_alt,
+                path + filename_alt_alt,num_scouts_per_ensemble,
                 Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
