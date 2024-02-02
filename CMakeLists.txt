@@ -86,12 +86,12 @@ add_executable(macro_dr main.cpp
     function_memoization.h
     micror_stochastic.h
     lgamma.h
-    slurm/s_first
+    slurm_Serafin/s_first
     experiments/Moffatt_Hume_2007_ATP_time.txt
     experiments/Moffatt_Hume_2007_ATP_time_7.txt
     experiments/Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
-    slurm/s_debug.sh
-    slurm/s_long.sh
+    slurm_Serafin/s_debug.sh
+    slurm_Serafin/s_long.sh
     continuation.h
     models.h
     old_code_in_main.cpp
@@ -112,7 +112,7 @@ add_executable(macro_dr main.cpp
     scripts/model.txt
     models/model9_prior.csv models/model9_par.csv models/model8_prior.csv models/model8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
     multi_task/multi_task_slurm.sh
-    slurm/s_multi_debug.sh
+    slurm_Serafin/s_multi_debug.sh
     multi_task/simulation_4.sh
     models/model00_7.txt
     models/model6.txt models/model9.txt models/model8.txt models/model7.txt models/model4.txt models/model4_g_lin.txt models/model01.txt models/model00.txt models/model6_no_inactivation.txt models/model6_Eff_no_inactivation.txt models/model00_7.txt
@@ -129,15 +129,16 @@ add_executable(macro_dr main.cpp
     experiments/Moffatt_Hume_2007_ATP_time_7_segments.txt
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt
     multi_task/MH_Li7_sim.sh
-    slurm/s_MH_Li7_sim.sh
-    slurm/s_MH_Li7.sh
+    slurm_Serafin/s_MH_Li7_sim.sh
+    slurm_Serafin/s_MH_Li7.sh
     multi_task/MH_Li_sim.sh
     multi_task/MH_Li.sh
     models/scheme_2_inact.txt models/scheme_3_inact.txt models/scheme_4_inact.txt
-    slurm/s_MH_Li.sh
-    slurm/s_MH_Li_sim.sh
-    slurm/s_MH_Li_short.sh
+    slurm_Serafin/s_MH_Li.sh
+    slurm_Serafin/s_MH_Li_sim.sh
+    slurm_Serafin/s_MH_Li_short.sh
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt experiments/Moffatt_Hume_2007_ATP_time_recording.txt
+    slurm_tupac/s_MH_Li7.sh slurm_tupac/s_MH_Li7_sim.sh slurm_tupac/s_MH_Li_sim.sh slurm_tupac/s_MH_Li.sh slurm_tupac/s_MH_Li_short.sh
     
     
 )
