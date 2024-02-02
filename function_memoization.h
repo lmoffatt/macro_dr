@@ -132,68 +132,6 @@ public:
   }
 };
 
-template <class, class, class> class Thread_Memoizer;
-
-template <class Id, class... Fun, class Y, class... Xs,
-          template <class...> class F,
-          template <class, class...> class Memoizer>
-//  requires(std::is_convertible_v<std::invoke_result_t<F<Id, Fun...>, Xs...>, Y>)
-class Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
-  F<Id, Fun...> m_f;
-  std::vector<Memoizer<Y, Xs...>> m_memoiza;
-  std::size_t m_n_threads;
-
-public:
-  using myId=Id;
-  
-  static constexpr bool is_threadable= true; 
-  
-  auto &get_Fun() { return m_f.get_Fun(); }
-
-  constexpr Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer<Y, Xs...>,
-                            std::size_t n_threads)
-      : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {}
-
-  void clear(I_thread i) {
-      assert(i.i<m_n_threads);
-      m_memoiza[i.i % m_n_threads].clear();
-  }
-  constexpr Thread_Memoizer() {}
-  auto &operator[](Id) { return *this; }
-  auto &operator[](Id) const { return *this; }
-
-  auto n_threads() const { return m_n_threads; }
-
-  template <class... Ts>
-  auto &operator()(I_thread i_thread, Ts&&... ts) {
-      if constexpr( m_f.is_threadable)
-          return m_memoiza[i_thread.i%m_n_threads].get_or_calc(m_f, i_thread,std::forward<Ts>(ts)...);
-      else
-          return m_memoiza[i_thread.i%m_n_threads].get_or_calc(m_f, std::forward<Ts>(ts)...);
-  }
-  
-  template <class... Ts> friend auto apply_F(Thread_Memoizer& me, I_thread i_thread,Ts &&...ts) {
-      
-      return me(i_thread,std::forward<Ts>(ts)...);
-  }
-  
-};
-
-template <class Id, class... Fun, class Y, class... Xs,
-          template <class...> class F,
-          template <class, class...> class Memoizer>
-Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>, std::size_t)
-    -> Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
-
-template <class Id, class... Fun, class Y, class... Xs,
-         template <class...> class F,
-         template <class, class...> class Memoizer>
-Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
-    -> Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
-
-
-
-
 
 
 
@@ -219,9 +157,6 @@ public:
     constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f)
         : m_f{std::move(t_f)}, m_memoiza{} {}
     
-    void clear() {
-        m_memoiza.clear();
-    }
     constexpr Single_Thread_Memoizer() {}
     auto &operator[](Id) { return *this; }
     auto &operator[](Id) const { return *this; }
@@ -257,7 +192,71 @@ Single_Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
 
 
 
+namespace deprecated{
+template <class, class, class> class Thread_Memoizer;
 
+template <class Id, class... Fun, class Y, class... Xs,
+         template <class...> class F,
+         template <class, class...> class Memoizer>
+//  requires(std::is_convertible_v<std::invoke_result_t<F<Id, Fun...>, Xs...>, Y>)
+class Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
+    F<Id, Fun...> m_f;
+    std::vector<Memoizer<Y, Xs...>> m_memoiza;
+    std::size_t m_n_threads;
+    
+public:
+    using myId=Id;
+    
+    static constexpr bool is_threadable= true; 
+    
+    auto &get_Fun() { return m_f.get_Fun(); }
+    
+    constexpr Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer<Y, Xs...>,
+                              std::size_t n_threads)
+        : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {}
+    
+    void clear(I_thread i) {
+        assert(i.i<m_n_threads);
+        m_memoiza[i.i % m_n_threads].clear();
+    }
+    constexpr Thread_Memoizer() {}
+    auto &operator[](Id) { return *this; }
+    auto &operator[](Id) const { return *this; }
+    
+    auto n_threads() const { return m_n_threads; }
+    
+    template <class... Ts>
+    auto &operator()(I_thread i_thread, Ts&&... ts) {
+        if constexpr( m_f.is_threadable)
+            return m_memoiza[i_thread.i%m_n_threads].get_or_calc(m_f, i_thread,std::forward<Ts>(ts)...);
+        else
+            return m_memoiza[i_thread.i%m_n_threads].get_or_calc(m_f, std::forward<Ts>(ts)...);
+    }
+    
+    template <class... Ts> friend auto apply_F(Thread_Memoizer& me, I_thread i_thread,Ts &&...ts) {
+        
+        return me(i_thread,std::forward<Ts>(ts)...);
+    }
+    
+};
+
+template <class Id, class... Fun, class Y, class... Xs,
+         template <class...> class F,
+         template <class, class...> class Memoizer>
+Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>, std::size_t)
+    -> Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
+
+template <class Id, class... Fun, class Y, class... Xs,
+         template <class...> class F,
+         template <class, class...> class Memoizer>
+Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
+    -> Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
+
+
+
+
+
+}
 
 
 
