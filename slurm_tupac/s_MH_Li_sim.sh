@@ -6,7 +6,7 @@
 #SBATCH --job-name=MH_Li_sim
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=multi
+#SBATCH --partition=free-rider
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
@@ -34,9 +34,8 @@
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-# Cargar los módulos para la tarea
-module load amdblis
-module load amdlibflame
+export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/macro_dr/
+
 # Lanzar el programa
 srun /home/lmoffatt/macro_dr/macro_dr/multi_task/MH_Li_sim.sh
 
