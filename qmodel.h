@@ -1666,6 +1666,7 @@ class Macro_DMR {
   }
 
   template <class FunctionTable, class C_Patch_Model>
+      requires (!is_of_this_template_type_v<FunctionTable,FuncMap_St>)
   // requires(U<C_Patch_Model, Patch_Model>)
   auto calc_Qdt_ATP_step(FunctionTable &&f, const C_Patch_Model &m,
                          const ATP_step &t_step, double fs)
@@ -1693,7 +1694,39 @@ class Macro_DMR {
     auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
     return calc_Qdt_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
   }
-
+  
+  
+  template <class FunctionTable, class C_Patch_Model>
+      requires (is_of_this_template_type_v<FunctionTable,FuncMap_St>)
+  // requires(U<C_Patch_Model, Patch_Model>)
+  auto calc_Qdt_ATP_step(FunctionTable &f, const C_Patch_Model &m,
+                         const ATP_step &t_step, double fs)
+      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+      auto dt = get<number_of_samples>(t_step)() / fs;
+      auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+      if constexpr (false) {
+          auto test_der_eigen = var::test_Derivative(
+              [this, &t_step](auto l_m) {
+                  return calc_eigen(l_m, get<ATP_concentration>(t_step));
+              },
+              1, 1e-9, m);
+          if (!test_der_eigen) {
+              std::cerr << test_der_eigen.error()();
+              return test_der_eigen.error();
+          }
+      }
+      
+      if (t_Qeig) {
+          auto Maybe_Qdt = calc_Qdt_eig(f, m, t_Qeig.value(),
+                                        get<number_of_samples>(t_step), dt);
+          if (Maybe_Qdt)
+              return Maybe_Qdt;
+      }
+      auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
+      return calc_Qdt_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
+  }
+  
+  
   template <class FunctionTable, class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model>)
   auto calc_Qdt(FunctionTable &&f, const C_Patch_Model &m,
@@ -2652,6 +2685,7 @@ class Macro_DMR {
             uses_variance_correction_aproximation variance_correction,
             return_predictions predictions, class FuncTable, class C_Parameters,
             class Model>
+      requires (!is_of_this_template_type_v<FuncTable, FuncMap_St>)
   auto log_Likelihood(FuncTable &&f, const Model &model,
                       const C_Parameters &par, const Experiment &e,
                       const Recording &y)
@@ -2797,6 +2831,166 @@ class Macro_DMR {
       }
     }
   }
+  
+  
+  
+  template <uses_adaptive_aproximation adaptive,
+           uses_recursive_aproximation recursive,
+           uses_averaging_aproximation averaging,
+           uses_variance_aproximation variance,
+           uses_variance_correction_aproximation variance_correction,
+           return_predictions predictions, class FuncTable, class C_Parameters,
+           class Model>
+      requires (is_of_this_template_type_v<FuncTable, FuncMap_St>)
+  auto log_Likelihood(FuncTable &f, const Model &model,
+                      const C_Parameters &par, const Experiment &e,
+                      const Recording &y)
+      -> Maybe_error<Transfer_Op_to<
+          C_Parameters,
+          std::conditional_t<predictions.value, Patch_State_Evolution,
+                             Vector_Space<logL, elogL, vlogL>>>> {
+      
+      f.clear();
+      
+      using Transf = transformation_type_t<C_Parameters>;
+      using C_Patch_State =
+          Op_t<Transf,
+               std::conditional_t<predictions.value, Patch_State_and_Evolution,
+                                  Patch_State>>;
+      auto Maybe_m = model(par);
+      if (!is_valid(Maybe_m))
+          return get_error(Maybe_m);
+      else {
+          auto m = std::move(get_value(Maybe_m));
+          auto fs = get<Frequency_of_Sampling>(e).value();
+          auto ini = init<predictions>(m, get<initial_ATP_concentration>(e));
+          
+          auto gege = 0;
+          if (!ini)
+              return ini.error();
+          else {
+              auto run = fold(
+                  0ul, y().size(), std::move(ini).value(),
+                  [this, &f, &m, fs, &e, &y, &gege](C_Patch_State &&t_prior,
+                                                    std::size_t i_step) {
+                      ATP_evolution const &t_step =
+                          get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
+                      
+                      auto time = get<Time>(get<Recording_conditions>(e)()[i_step])();
+                      auto time_segment = get<N_Ch_mean_time_segment_duration>(m)();
+                      auto Nchs = get<N_Ch_mean>(m)();
+                      std::size_t i_segment = std::min(Nchs.size() - 1.0,std::floor(time / time_segment));
+                      auto j_segment = std::min(Nchs.size() - 1, i_segment + 1);
+                      auto r = std::max(1.0, time / time_segment - i_segment);
+                      auto Nch = Nchs[i_segment] * (1 - r) + r * Nchs[j_segment];
+                      
+                      auto Maybe_t_Qdt = calc_Qdt(f, m, t_step, fs);
+                      if (!Maybe_t_Qdt)
+                          return Maybe_error<C_Patch_State>(Maybe_t_Qdt.error());
+                      else {
+                          auto t_Qdt = std::move(Maybe_t_Qdt.value());
+                          
+                          //
+                          if constexpr (false) {
+                              auto test_der_t_Qdt = var::test_Derivative(
+                                  [this, &t_step, &fs, &gege, &f](auto const &l_m,
+                                                                  auto const &l_Qx) {
+                                      return calc_Qdt(f, l_m, t_step, fs);
+                                  },
+                                  1e-6, 1e-2, m, t_Qdt);
+                              if (true && !test_der_t_Qdt) {
+                                  std::cerr << test_der_t_Qdt.error()();
+                                  std::cerr << "\nt_step\n" << t_step;
+                                  return Maybe_error<C_Patch_State>(test_der_t_Qdt.error());
+                              }
+                          }
+                          if constexpr (false) {
+                              if (gege < 10)
+                                  ++gege;
+                              else
+                                  abort();
+                          }
+                          if (false) {
+                              auto test_Qdt =
+                                  test(t_Qdt, get<Conductance_variance_error_tolerance>(m));
+                              
+                              if (!test_Qdt)
+                                  return Maybe_error<C_Patch_State>(test_Qdt.error());
+                          }
+                          
+                          if constexpr (false) {
+                              auto test_der_Macror = var::test_Derivative(
+                                  [this, &t_step, &fs, &f](auto const &l_m,
+                                                           auto const &l_prior,
+                                                           auto const &l_Qdt) {
+                                      return f.ff(
+                                          MacroR<uses_recursive_aproximation(false),
+                                                 uses_averaging_aproximation(1),
+                                                 uses_variance_aproximation(false)>{})(
+                                          l_prior, l_Qdt, l_m, fs);
+                                  },
+                                  1e-7, 1e-14, m, t_prior, t_Qdt);
+                              if (!test_der_Macror) {
+                                  std::cerr << "\nt_step\n" << t_step;
+                                  std::cerr << test_der_Macror.error()();
+                                  std::cerr << "\nt_step\n" << t_step;
+                                  //   return
+                                  //   Maybe_error<C_Patch_State>(test_der_Macror.error());
+                              }
+                          }
+                          
+                          if constexpr (false) {
+                              
+                              std::cerr << "\nplogL\n" << get<plogL>(t_prior);
+                              std::cerr << "\nlogL\n" << get<logL>(t_prior);
+                              std::cerr << "\nt_step\n" << t_step << "\n";
+                          }
+                          if constexpr (!adaptive.value) {
+                              return f.f(MacroR<recursive, averaging, variance>{},
+                                         std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
+                                         fs);
+                          } else {
+                              double mg = getvalue(primitive(get<P_mean>(t_prior)()) *
+                                                   primitive(get<gmean_i>(t_Qdt)()));
+                              double g_max = var::max(get<gmean_i>(primitive(t_Qdt))());
+                              double g_min = var::min(get<gmean_i>(primitive(t_Qdt))());
+                              double g_range = g_max - g_min;
+                              auto N = primitive(Nch);
+                              auto p_bi = (g_max - mg) / g_range;
+                              auto q_bi = (mg - g_min) / g_range;
+                              bool test_Binomial = is_Binomial_Approximation_valid(
+                                  N, p_bi, q_bi, get<Binomial_magical_number>(m)());
+                              if (test_Binomial) {
+                                  // using egsr=typename decltype(f.f(MacroR<recursive,
+                                  // averaging, variance>{}))::ege;
+                                  //  auto r=egsr();
+                                  return f.f(MacroR<recursive, averaging, variance>{},
+                                             std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
+                                             fs);
+                              } else {
+                                  return f.f(
+                                      MacroR<uses_recursive_aproximation(false), averaging,
+                                             uses_variance_aproximation(false)>{},
+                                      std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                              }
+                          }
+                      }
+                  });
+              if (!run)
+                  return run.error();
+              else if constexpr (predictions.value)
+                  return get<Patch_State_Evolution>(run.value());
+              else
+                  return build<Vector_Space<logL, elogL, vlogL>>(
+                      get<logL>(run.value()), get<elogL>(run.value()),
+                      get<vlogL>(run.value()));
+          }
+      }
+  }
+  
+  
+  
+  
   template <class Patch_Model>
   Maybe_error<Simulated_Sub_Step>
   sub_sub_sample(mt_64i &mt, Simulated_Sub_Step const &t_sim_step,
@@ -3533,6 +3727,7 @@ void report(FunctionTable &&f, std::size_t iter,
 
 template <class ParameterType, class FunctionTable, class Prior,
           class t_logLikelihood, class Data, class Variables>
+    requires (!is_of_this_template_type_v<FunctionTable,FuncMap_St>)
 void report(FunctionTable &&f, std::size_t iter,
             save_Predictions<ParameterType> &s,
             cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
@@ -3581,6 +3776,61 @@ void report(FunctionTable &&f, std::size_t iter,
     }
   }
 }
+
+
+template <class ParameterType, class FunctionTable, class Prior,
+         class t_logLikelihood, class Data, class Variables>
+    requires (is_of_this_template_type_v<FunctionTable,FuncMap_St>)
+void report(FunctionTable &f, std::size_t iter,
+            save_Predictions<ParameterType> &s,
+            cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
+            t_logLikelihood &&lik, const by_fraction<Data> &ys,
+            const by_fraction<Variables> &xs, ...) {
+    
+    auto &t = data.get_Cuevi_Temperatures();
+    if (iter % s.save_every == 0) {
+        data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
+        auto ff=f.fork(data.get_Walkers_number() / 2);
+        for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
+             ++i_cu) {
+            auto icu = cuevi::Cuevi_Index(i_cu);
+            auto i_frac = data.get_Fraction(i_cu);
+            auto beta = data.get_Beta(icu);
+            auto nsamples = size(ys[i_frac()]);
+            for (std::size_t half = 0; half < 2; ++half)
+                // #pragma omp parallel for
+                for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
+                    auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
+                    auto iw = cuevi::Walker_Index(i_walker);
+                    auto &wa = data.get_Walker(iw, icu);
+                    auto &wav = data.get_Walker_Value(iw, icu);
+                    auto par = data.get_Parameter(iw, i_cu);
+                    auto prediction = logLikelihoodPredictions(
+                        ff[iiw], lik, par, ys[i_frac()], xs[i_frac()]);
+                    if (is_valid(prediction)) {
+                        auto &predictions = prediction.value();
+                        for (std::size_t i_x = 0; i_x < size(ys[i_frac()]); ++i_x) {
+                            auto v_ev = get<ATP_evolution>(
+                                get<Recording_conditions>(xs[i_frac()])()[i_x]);
+                            
+                            s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep
+                                << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
+                                << get<cuevi::Walker_id>(wa())() << s.sep << i_x << s.sep
+                                << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_x])
+                                << s.sep << get_num_samples(v_ev) << s.sep
+                                << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
+                                << s.sep << ys[i_frac()]()[i_x]() << s.sep
+                                << get<y_mean>(predictions()[i_x]) << s.sep
+                                << get<y_var>(predictions()[i_x]) << s.sep
+                                << get<plogL>(predictions()[i_x]) << s.sep
+                                << get<eplogL>(predictions()[i_x]) << "\n";
+                        }
+                    }
+                }
+        }
+    }
+}
+
 
 template <class ParameterType>
 void report_title(save_Predictions<ParameterType> &s,

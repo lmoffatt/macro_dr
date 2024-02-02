@@ -765,7 +765,7 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
                    std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto ftbl3 = get_function_Table_maker(filename, num_scouts_per_ensemble);
+  auto ftbl3 = get_function_Table_maker_St(filename)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
@@ -854,7 +854,7 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
                                         uses_variance_correction_aproximation(
                                             false)>(
                       model0, Simulation_n_sub_dt(n_sub_dt));
-              auto opt3 = cuevi::evidence(ftbl3(), std::move(cbc), param1_prior,
+              auto opt3 = cuevi::evidence(ftbl3, std::move(cbc), param1_prior,
                                           modelLikelihood, y, experiment,
                                           cuevi::Init_seed(myseed));
             }
@@ -872,7 +872,7 @@ void calc_evidence_continuation(prior_value_type prior,
                                 tablefun_value_type ft, std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto ftbl3 = get_function_Table_maker(filename, num_scouts_per_ensemble);
+  auto ftbl3 = get_function_Table_maker_St(filename)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
@@ -957,7 +957,7 @@ void calc_evidence_continuation(prior_value_type prior,
                                         uses_variance_correction_aproximation(
                                             false)>(
                       model0, Simulation_n_sub_dt(n_sub_dt));
-              auto opt3 = cuevi::evidence(ftbl3(), std::move(cbc), param1_prior,
+              auto opt3 = cuevi::evidence(ftbl3, std::move(cbc), param1_prior,
                                           modelLikelihood, y, experiment,
                                           cuevi::Init_seed(myseed));
             }
