@@ -210,9 +210,13 @@ class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
 public:
     using myId=Id;
     
+    
+    
     auto &get_Fun() { return m_f.get_Fun(); }
     
     constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer<Y, Xs...>)
+        : m_f{std::move(t_f)}, m_memoiza{} {}
+    constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f)
         : m_f{std::move(t_f)}, m_memoiza{} {}
     
     void clear() {
@@ -222,6 +226,7 @@ public:
     auto &operator[](Id) { return *this; }
     auto &operator[](Id) const { return *this; }
     
+    auto create()const {return Single_Thread_Memoizer(m_f.create());}
     
     template <class... Ts>
     auto &operator()(Ts&&... ts) {

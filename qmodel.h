@@ -2850,7 +2850,6 @@ class Macro_DMR {
           std::conditional_t<predictions.value, Patch_State_Evolution,
                              Vector_Space<logL, elogL, vlogL>>>> {
       
-      f.clear();
       
       using Transf = transformation_type_t<C_Parameters>;
       using C_Patch_State =
@@ -2866,12 +2865,13 @@ class Macro_DMR {
           auto ini = init<predictions>(m, get<initial_ATP_concentration>(e));
           
           auto gege = 0;
+          auto f_local=f.create("_lik");
           if (!ini)
               return ini.error();
           else {
               auto run = fold(
                   0ul, y().size(), std::move(ini).value(),
-                  [this, &f, &m, fs, &e, &y, &gege](C_Patch_State &&t_prior,
+                  [this, &f_local, &m, fs, &e, &y, &gege](C_Patch_State &&t_prior,
                                                     std::size_t i_step) {
                       ATP_evolution const &t_step =
                           get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
@@ -2884,7 +2884,7 @@ class Macro_DMR {
                       auto r = std::max(1.0, time / time_segment - i_segment);
                       auto Nch = Nchs[i_segment] * (1 - r) + r * Nchs[j_segment];
                       
-                      auto Maybe_t_Qdt = calc_Qdt(f, m, t_step, fs);
+                      auto Maybe_t_Qdt = calc_Qdt(f_local, m, t_step, fs);
                       if (!Maybe_t_Qdt)
                           return Maybe_error<C_Patch_State>(Maybe_t_Qdt.error());
                       else {
@@ -2893,9 +2893,9 @@ class Macro_DMR {
                           //
                           if constexpr (false) {
                               auto test_der_t_Qdt = var::test_Derivative(
-                                  [this, &t_step, &fs, &gege, &f](auto const &l_m,
+                                  [this, &t_step, &fs, &gege, &f_local](auto const &l_m,
                                                                   auto const &l_Qx) {
-                                      return calc_Qdt(f, l_m, t_step, fs);
+                                      return calc_Qdt(f_local, l_m, t_step, fs);
                                   },
                                   1e-6, 1e-2, m, t_Qdt);
                               if (true && !test_der_t_Qdt) {
@@ -2920,10 +2920,10 @@ class Macro_DMR {
                           
                           if constexpr (false) {
                               auto test_der_Macror = var::test_Derivative(
-                                  [this, &t_step, &fs, &f](auto const &l_m,
+                                  [this, &t_step, &fs, &f_local](auto const &l_m,
                                                            auto const &l_prior,
                                                            auto const &l_Qdt) {
-                                      return f.ff(
+                                      return f_local.ff(
                                           MacroR<uses_recursive_aproximation(false),
                                                  uses_averaging_aproximation(1),
                                                  uses_variance_aproximation(false)>{})(
@@ -2946,7 +2946,7 @@ class Macro_DMR {
                               std::cerr << "\nt_step\n" << t_step << "\n";
                           }
                           if constexpr (!adaptive.value) {
-                              return f.f(MacroR<recursive, averaging, variance>{},
+                              return f_local.f(MacroR<recursive, averaging, variance>{},
                                          std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
                                          fs);
                           } else {
@@ -2964,11 +2964,11 @@ class Macro_DMR {
                                   // using egsr=typename decltype(f.f(MacroR<recursive,
                                   // averaging, variance>{}))::ege;
                                   //  auto r=egsr();
-                                  return f.f(MacroR<recursive, averaging, variance>{},
+                                  return f_local.f(MacroR<recursive, averaging, variance>{},
                                              std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
                                              fs);
                               } else {
-                                  return f.f(
+                                  return f_local.f(
                                       MacroR<uses_recursive_aproximation(false), averaging,
                                              uses_variance_aproximation(false)>{},
                                       std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
@@ -2976,6 +2976,7 @@ class Macro_DMR {
                           }
                       }
                   });
+              f+=f_local;
               if (!run)
                   return run.error();
               else if constexpr (predictions.value)

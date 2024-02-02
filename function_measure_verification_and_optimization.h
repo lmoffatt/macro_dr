@@ -28,11 +28,15 @@ public:
   auto &get_Fun() { return m_f; }
   constexpr F(Id, Fun &&t_f) : m_f{std::move(t_f)} {}
   constexpr F(Fun &&t_f) : m_f{std::move(t_f)} {}
+  constexpr F(Fun const&t_f) : m_f{t_f} {}
   template <class... Ts> constexpr auto operator()(Ts &&...ts) const {
       return m_f(std::forward<Ts>(ts)...);
       
   }
-
+  
+  
+  F create()const {return F(m_f);}
+  
   template <class... Ts> friend auto apply_F(F const me, Ts &&...ts) {
 
     return me.m_f(std::forward<Ts>(ts)...);
@@ -97,7 +101,7 @@ public:
     auto &operator[](Id) const { return *this; }
     
     auto naked_function() const { return m_f; }
-    
+    auto create()const{return Time_it_st(m_f.create());}
     
     template <class... Ts> auto operator()(Ts &&...ts) {
         const auto start = std::chrono::high_resolution_clock::now();
@@ -629,6 +633,11 @@ public:
     FuncMap_St(const std::string path, Fs const&...fs)
         : Fs{fs}..., m_filename{path} {}
     
+    FuncMap_St create(const std::string& suffix)const
+    {
+        return FuncMap_St(file()+suffix,static_cast<Fs const&>(*this).create()...);
+    }
+    
     template <class Id, class... Ts> auto f(Id, Ts &&...ts) {
         auto &fun = (*this)[Id{}];
         return fun(*this, std::forward<Ts>(ts)...);
@@ -670,7 +679,7 @@ public:
         out.reserve(n);
         for (std::size_t i=0; i<n; ++i)
         {
-            out.emplace_back(m_filename+"_"+std::to_string(i),static_cast<Fs const&>(*this)...);
+            out.emplace_back(this->create("_"+std::to_string(i)));
         }
         return out;
     }
