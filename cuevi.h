@@ -334,6 +334,8 @@ class step_stretch_cuevi_mcmc;
 class step_stretch_cuevi_mcmc_per_walker;
 class thermo_cuevi_jump_mcmc;
 
+
+
 class Cuevi_statistics
     : public var::Var<Cuevi_statistics,
                       ensemble<std::vector<Walker_statistics>>> {
@@ -350,6 +352,8 @@ public:
     }
     
 };
+
+
 
 template <class ParameterType> class Cuevi_mcmc;
 
@@ -452,7 +456,8 @@ template <class ParameterType> class Cuevi_mcmc {
 
   class Walkers_ensemble
       : public var::Var<Walkers_ensemble, ensemble<std::vector<Walker>>> {};
-
+  
+  
   template <class FunctionTable, class t_logLikelihood, class Data,
             class Variables>
   static Maybe_error<bool>
@@ -466,7 +471,7 @@ template <class ParameterType> class Cuevi_mcmc {
       return true;
     else {
       auto &ca_par = get<Parameter>(w());
-      auto v_logL = logLikelihood(f, lik, ca_par(),
+      auto v_logL = f.f(logLikelihood_f{}, lik, ca_par(),
                                   y[i_frac()], x[i_frac()]);
       if (!v_logL) {
         fails(get<Likelihood_statistics>(wa_sta.first())()[i_frac]);
@@ -482,7 +487,10 @@ template <class ParameterType> class Cuevi_mcmc {
       }
     }
   }
-
+  
+  
+  
+  
   template <class FunctionTable, class t_logLikelihood, class Data,
             class Variables>
   static Maybe_error<bool> calc_Relevant_Likelihoods(
@@ -1497,6 +1505,7 @@ public:
         }
       }
     }
+    f+=ff;
   }
 };
 
@@ -1734,16 +1743,16 @@ auto evidence_old(FunctionTable &ff,
     report_title(rep, current, prior, lik, ys, xs);
 
     while (!mcmc_run.second) {
-      // f.f(
-      step_stretch_cuevi_mcmc{}(f, current, mts, prior, lik, ys, xs);
+    f.f(
+      step_stretch_cuevi_mcmc{}, current, mts, prior, lik, ys, xs);
       report_point(ff, iter);
 
       ++iter;
-      // f.f(
-      thermo_cuevi_jump_mcmc{}(f, iter, current, mt, mts, prior, lik, ys, xs,
+      f.f(
+      thermo_cuevi_jump_mcmc{}, iter, current, mt, mts, prior, lik, ys, xs,
                                get<Thermo_Jumps_every>(cue())(), false);
-      // f.f(
-      thermo_cuevi_jump_mcmc{}(f, iter + get<Thermo_Jumps_every>(cue())() % 2,
+       f.f(
+      thermo_cuevi_jump_mcmc{}, iter + get<Thermo_Jumps_every>(cue())() % 2,
                                current, mt, mts, prior, lik, ys, xs,
                                get<Thermo_Jumps_every>(cue())(), true);
 
@@ -1770,17 +1779,17 @@ auto evidence_loop(FunctionTable &f, std::pair<mcmc_type, bool> &&mcmc_run,
   report_title(rep, current, mcmc_run.first, prior, lik, ys, xs);
  
   while (!mcmc_run.second) {
-    // f.f(
-    step_stretch_cuevi_mcmc{}(f, current, mts, prior, lik, ys, xs);
+    f.f(
+    step_stretch_cuevi_mcmc{}, current, mts, prior, lik, ys, xs);
     report_point(f, iter);
 
     ++iter;
-    // f.f(
-    thermo_cuevi_jump_mcmc{}(f, iter, current, mts, prior, lik, ys, xs,
+    f.f(
+    thermo_cuevi_jump_mcmc{}, iter, current, mts, prior, lik, ys, xs,
                              v_thermo_jump_every, Random_jumps(false));
-    // f.f(
     if (randomjumps())
-      thermo_cuevi_jump_mcmc{}(f, iter + v_thermo_jump_every() % 2, current,
+    f.f(
+      thermo_cuevi_jump_mcmc{}, iter + v_thermo_jump_every() % 2, current,
                                mts, prior, lik, ys, xs, v_thermo_jump_every,
                                Random_jumps(true));
 

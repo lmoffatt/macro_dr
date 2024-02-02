@@ -193,10 +193,10 @@ auto get_function_Table(std::string filename,
 }
 
 }
-auto get_function_Table_St(std::string filename) {
+auto get_function_Table_St(std::string filename, std::size_t save_every) {
     using namespace macrodr;
     return var::FuncMap_St(
-        filename,
+        filename,save_every,
         Time_it_st(
             F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
         Time_it_st(
@@ -430,11 +430,11 @@ auto get_function_Table_maker(std::string filename,
 auto get_function_Table_maker_value_St(std::string filename) {
     return filename;
 }
-auto get_function_Table_maker_St(std::string filename) {
+auto get_function_Table_maker_St(std::string filename, std::size_t save_every) {
     using namespace macrodr;
-    return [filename]() {
+    return [filename, save_every]() {
         return var::FuncMap_St(
-            filename,
+            filename,save_every,
             Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{},
                       cuevi::step_stretch_cuevi_mcmc{})),
             Time_it_st(
@@ -671,7 +671,8 @@ void calc_likelihood(std::string outfilename, parameters_value_type par,
                      tablefun_value_type ft, std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto ftbl3 = get_function_Table_maker_St(filename)();
+  auto save_every=num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
@@ -779,7 +780,8 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
                    std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto ftbl3 = get_function_Table_maker_St(filename)();
+  auto save_every=num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
@@ -886,7 +888,8 @@ void calc_evidence_continuation(prior_value_type prior,
                                 tablefun_value_type ft, std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto ftbl3 = get_function_Table_maker_St(filename)();
+  auto save_every=num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {

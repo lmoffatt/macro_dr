@@ -102,6 +102,9 @@ struct logLikelihood_f{
     friend constexpr std::string ToString(logLikelihood_f){ return "logLikelihood_f";}
 };
 
+struct calc_logLikelihood_f{
+    friend constexpr std::string ToString(calc_logLikelihood_f){ return "calc_logLikelihood_f";}
+};
 
 
 

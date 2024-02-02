@@ -3830,6 +3830,7 @@ void report(FunctionTable &f, std::size_t iter,
                     }
                 }
         }
+        f+=ff;
     }
 }
 
