@@ -34,9 +34,11 @@
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
+export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/macro_dr/
+
 # Cargar los módulos para la tarea
 #module load amdblis
 #module load amdlibflame
 # Lanzar el programa
-srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/MH_Li.sh
+srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/multi_task_slurm.sh
 
