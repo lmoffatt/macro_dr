@@ -79,7 +79,7 @@ auto get_function_Table(std::string filename,
   using namespace macrodr;
     using namespace var::deprecated;
   
-  return FuncMap(
+  return var::deprecated::FuncMap(
       filename,
       Time_it(
           F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
@@ -87,8 +87,8 @@ auto get_function_Table(std::string filename,
       Time_it(
           F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
           num_scouts_per_ensemble / 2),
-      Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                thermo_cuevi_randomized_jump_mcmc{}),
+        Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
               num_scouts_per_ensemble / 2),
       Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                      cuevi::step_stretch_cuevi_mcmc_per_walker{}),
@@ -201,8 +201,8 @@ auto get_function_Table_St(std::string filename) {
             F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
         Time_it_st(
             F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
-        Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
-                  thermo_cuevi_randomized_jump_mcmc{})),
+    //    Time_it_st(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+    //              ::deprecated::thermo_cuevi_randomized_jump_mcmc{})),
         var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                        cuevi::step_stretch_cuevi_mcmc_per_walker{})),
         var::Time_it_st(F(logLikelihood_f{},
@@ -312,7 +312,7 @@ auto get_function_Table_maker(std::string filename,
                               std::size_t num_scouts_per_ensemble) {
   using namespace macrodr;
   return [filename, num_scouts_per_ensemble]() {
-    return FuncMap(
+      return var::deprecated::FuncMap(
         filename,
         Time_it(F(cuevi::step_stretch_cuevi_mcmc{},
                   cuevi::step_stretch_cuevi_mcmc{}),
@@ -320,8 +320,8 @@ auto get_function_Table_maker(std::string filename,
         Time_it(
             F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
             num_scouts_per_ensemble / 2),
-        Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                  thermo_cuevi_randomized_jump_mcmc{}),
+          Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                  ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                 num_scouts_per_ensemble / 2),
         Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                        cuevi::step_stretch_cuevi_mcmc_per_walker{}),
@@ -439,8 +439,8 @@ auto get_function_Table_maker_St(std::string filename) {
                       cuevi::step_stretch_cuevi_mcmc{})),
             Time_it_st(
                 F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
-            Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
-                      thermo_cuevi_randomized_jump_mcmc{})),
+            // Time_it_st(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+            //           ::deprecated::thermo_cuevi_randomized_jump_mcmc{})),
             var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                            cuevi::step_stretch_cuevi_mcmc_per_walker{})),
             var::Time_it_st(F(logLikelihood_f{},

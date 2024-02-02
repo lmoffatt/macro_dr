@@ -39,6 +39,61 @@ class Saving_intervals
           Saving_intervals,
           var::Vector_Space<Save_Evidence_every, Save_Likelihood_every,
                             Save_Parameter_every, Save_Predictions_every>> {};
+
+inline void report_model(save_Evidence &, ...) {}
+
+using DataIndexes = std::vector<std::size_t>;
+
+inline auto
+generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
+                        std::size_t min_num_extra_samples,
+                        double num_jumps_per_decade,
+                        std::vector<std::size_t> initial_samples = {}) {
+    
+    std::size_t num_initial_samples = size(initial_samples);
+    std::size_t n_jumps = std::max(
+        0.0,
+        std::floor(num_jumps_per_decade *
+                   (std::log10(num_samples) -
+                    std::log10(min_num_extra_samples + num_initial_samples))));
+    auto indexsizes = DataIndexes(n_jumps + 1);
+    
+    for (std::size_t i = 0; i < n_jumps + 1; ++i)
+        indexsizes[i] = num_samples * std::pow(10.0, -(1.0 * (n_jumps - i)) /
+                                                         num_jumps_per_decade);
+    auto out = std::vector<DataIndexes>(n_jumps + 1);
+    if (n_jumps > 0) {
+        auto index = DataIndexes(num_samples);
+        std::iota(index.begin(), index.end(), 0u);
+        auto it = index.begin();
+        if (num_initial_samples > 0) {
+            auto new_index = DataIndexes{};
+            std::copy(initial_samples.begin(), initial_samples.end(),
+                      std::back_inserter(new_index));
+            std::set_difference(index.begin(), index.end(), initial_samples.begin(),
+                                initial_samples.end(), std::back_inserter(new_index));
+            
+            std::swap(index, new_index);
+            it = index.begin();
+            std::advance(it, initial_samples.size());
+        }
+        it = randomly_extract_n(mt, it, index.end(),
+                                indexsizes[0] - num_initial_samples);
+        auto res = DataIndexes(index.begin(), it);
+        std::sort(res.begin(), res.end());
+        out[0] = std::move(res);
+        for (auto i = 1u; i < n_jumps + 1; ++i) {
+            auto n = (indexsizes[i] - indexsizes[i - 1]);
+            it = randomly_extract_n(mt, it, index.end(), n);
+            std::sort(index.begin(), it);
+            out[i] = DataIndexes(index.begin(), it);
+        }
+    }
+    return out;
+}
+
+
+
 namespace cuevi {
 
 class Th_Beta : public var::Var<Th_Beta, double> {};
@@ -267,7 +322,6 @@ using Walker_statistics_pair =
 
 class Init_seed
     : public var::Constant<Init_seed, typename mt_64i::result_type> {};
-using DataIndexes = std::vector<std::size_t>;
 template <class T> using by_fraction = std::vector<T>;
 
 class Cuevi_temperatures
@@ -1847,6 +1901,8 @@ auto continue_evidence(
 
 } // namespace cuevi
 
+namespace deprecated{
+
 template <class Parameters> struct mcmc2 : public mcmc<Parameters> {
   double logPa;
 };
@@ -2054,7 +2110,7 @@ calculate_Evidence(by_fraction<by_beta<double>> const &beta,
   auto nfraction = beta.size();
   auto out = by_fraction<double>(nfraction, 0.0);
   for (std::size_t i_frac = 0; i_frac < nfraction; ++i_frac) {
-    out[i_frac] = calculate_Evidence(beta[i_frac], meanLik[i_frac]);
+      out[i_frac] = ::calculate_Evidence(beta[i_frac], meanLik[i_frac]);
   }
   return out;
 }
@@ -2067,7 +2123,7 @@ calculate_Evidence(by_fraction<by_beta<double>> const &beta,
   auto out = by_fraction<double>(nfraction, 0.0);
   for (std::size_t i_frac = 0; i_frac < nfraction; ++i_frac) {
     out[i_frac] =
-        calculate_Evidence(beta[i_frac], meanLik[i_frac], varLik[i_frac]);
+          ::calculate_Evidence(beta[i_frac], meanLik[i_frac], varLik[i_frac]);
   }
   return out;
 }
@@ -2345,7 +2401,7 @@ void report_model(save_Evidence &s, Prior const &prior, Likelihood const &lik,
   Maybe_error<double> sum_partial_Evidence = 0.0;
 
   for (std::size_t i_frac = 0; i_frac < size(beta0); ++i_frac) {
-    expected_partial_evidence_by_logLik[i_frac] = calculate_Evidence(
+      expected_partial_evidence_by_logLik[i_frac] = ::calculate_Evidence(
         beta0[i_frac], promote_Maybe_error(expected_meanLik[i_frac]).value());
     sum_partial_Evidence =
         sum_partial_Evidence + expected_partial_evidence_by_logLik[i_frac];
@@ -2368,9 +2424,8 @@ template <class Prior, class Likelihood, class Variables, class DataType>
 void report_model(save_Evidence &, Prior const &, Likelihood const &,
                   const DataType &, const Variables &,
                   by_fraction<by_beta<double>> const &) {}
-
-inline void report_model(save_Evidence &, ...) {}
-
+}
+namespace deprecated {
 template <class FunctionTable, class Parameters, class T>
 void report(FunctionTable &&, std::size_t iter, save_Evidence &s,
             cuevi_mcmc<Parameters> const &data, T const &...) {
@@ -2640,54 +2695,6 @@ struct step_stretch_cuevi_mcmc {
 };
 
 using DataIndexes = std::vector<std::size_t>;
-
-inline auto
-generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
-                        std::size_t min_num_extra_samples,
-                        double num_jumps_per_decade,
-                        std::vector<std::size_t> initial_samples = {}) {
-
-  std::size_t num_initial_samples = size(initial_samples);
-  std::size_t n_jumps = std::max(
-      0.0,
-      std::floor(num_jumps_per_decade *
-                 (std::log10(num_samples) -
-                  std::log10(min_num_extra_samples + num_initial_samples))));
-  auto indexsizes = DataIndexes(n_jumps + 1);
-
-  for (std::size_t i = 0; i < n_jumps + 1; ++i)
-    indexsizes[i] = num_samples * std::pow(10.0, -(1.0 * (n_jumps - i)) /
-                                                     num_jumps_per_decade);
-  auto out = std::vector<DataIndexes>(n_jumps + 1);
-  if (n_jumps > 0) {
-    auto index = DataIndexes(num_samples);
-    std::iota(index.begin(), index.end(), 0u);
-    auto it = index.begin();
-    if (num_initial_samples > 0) {
-      auto new_index = DataIndexes{};
-      std::copy(initial_samples.begin(), initial_samples.end(),
-                std::back_inserter(new_index));
-      std::set_difference(index.begin(), index.end(), initial_samples.begin(),
-                          initial_samples.end(), std::back_inserter(new_index));
-
-      std::swap(index, new_index);
-      it = index.begin();
-      std::advance(it, initial_samples.size());
-    }
-    it = randomly_extract_n(mt, it, index.end(),
-                            indexsizes[0] - num_initial_samples);
-    auto res = DataIndexes(index.begin(), it);
-    std::sort(res.begin(), res.end());
-    out[0] = std::move(res);
-    for (auto i = 1u; i < n_jumps + 1; ++i) {
-      auto n = (indexsizes[i] - indexsizes[i - 1]);
-      it = randomly_extract_n(mt, it, index.end(), n);
-      std::sort(index.begin(), it);
-      out[i] = DataIndexes(index.begin(), it);
-    }
-  }
-  return out;
-}
 
 struct fractioner {
   auto operator()(const Matrix<double> &y, const Matrix<double> &x, mt_64i &mt,
@@ -3716,11 +3723,12 @@ auto derivative_var_ratio(by_fraction<by_beta<double>> const &mean,
   }
   return out;
 }
+}
 
 template <>
-inline bool compare_to_max_ratio(by_fraction<by_beta<double>> const &beta,
-                                 by_fraction<by_beta<double>> const &mean_logL,
-                                 by_fraction<by_beta<double>> const &var_ratio,
+inline bool compare_to_max_ratio(deprecated::by_fraction<by_beta<double>> const &beta,
+                                 deprecated::by_fraction<by_beta<double>> const &mean_logL,
+                                 deprecated::by_fraction<by_beta<double>> const &var_ratio,
                                  double max_ratio) {
   for (std::size_t i_frac = 0; i_frac < size(var_ratio); ++i_frac) {
     for (std::size_t ib = 0; ib < size(var_ratio[i_frac]); ++ib) {
@@ -3737,6 +3745,7 @@ inline bool compare_to_max_ratio(by_fraction<by_beta<double>> const &beta,
   return true;
 }
 
+namespace deprecated{
 template <class Algorithm, class Fractioner, class Reporter>
 //    requires(is_Algorithm_conditions<Algorithm, cuevi_mcmc<Parameters>>)
 class cuevi_integration {
@@ -3912,5 +3921,5 @@ auto cuevi_by_convergence(std::string path, std::string filename,
       thermo_jumps_every, n_points_per_decade_beta,
       n_points_per_decade_fraction, stops_at, includes_zero, initseed);
 }
-
+} // namespace deprecated
 #endif // CUEVI_H

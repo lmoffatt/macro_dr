@@ -242,17 +242,17 @@ int main_old(int argc, char **argv) {
         auto ModelName = "Model";
         
         using namespace var::deprecated;
-        auto ftbl = FuncMap(
+        auto ftbl = var::deprecated::FuncMap(
             path + ModelName + std::to_string(myseed) + "_" + time_now(),
-            Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+            Time_it(F(::deprecated::step_stretch_cuevi_mcmc{}, ::deprecated::step_stretch_cuevi_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+            Time_it(F(::deprecated::thermo_cuevi_jump_mcmc{}, ::deprecated::thermo_cuevi_jump_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                      thermo_cuevi_randomized_jump_mcmc{}),
+            Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                      ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                           step_stretch_cuevi_mcmc_per_walker{}),
+            Time_it(F(::deprecated::step_stretch_cuevi_mcmc_per_walker{},
+                           ::deprecated::step_stretch_cuevi_mcmc_per_walker{}),
                          num_scouts_per_ensemble / 2),
             Time_it(F(logLikelihood_f{},
                            [](auto &&...x) {
@@ -335,7 +335,7 @@ int main_old(int argc, char **argv) {
        * @brief cbc cumulative evidence algorithm, ends using convergence
        * criteria
        */
-            auto cbc = cuevi_by_convergence<Matrix<double>>(
+            auto cbc = ::deprecated::cuevi_by_convergence<Matrix<double>>(
                 path, "exp_cuevi_40", num_scouts_per_ensemble,
                 max_num_simultaneous_temperatures, min_fraction, thermo_jumps_every,
                 checks_derivative_every_model_size, max_ratio, n_points_per_decade,
@@ -489,17 +489,17 @@ int main_old(int argc, char **argv) {
     //  auto t_Qdt = macrodr::Macro_DMR{}.calc_Qdt(m, t_Qx.value(),1e-3);
     auto num_scouts_per_ensemble = 16ul;
     using namespace var::deprecated;
-    auto ftbl = FuncMap(
+    auto ftbl = var::deprecated::FuncMap(
         "_" + time_now(),
-        Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+        Time_it(F(::deprecated::step_stretch_cuevi_mcmc{}, ::deprecated::step_stretch_cuevi_mcmc{}),
                 num_scouts_per_ensemble / 2),
-        Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+        Time_it(F(::deprecated::thermo_cuevi_jump_mcmc{}, ::deprecated::thermo_cuevi_jump_mcmc{}),
                 num_scouts_per_ensemble / 2),
-        Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                  thermo_cuevi_randomized_jump_mcmc{}),
+        Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                  ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                 num_scouts_per_ensemble / 2),
-        Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                       step_stretch_cuevi_mcmc_per_walker{}),
+        Time_it(F(::deprecated::step_stretch_cuevi_mcmc_per_walker{},
+                       ::deprecated::step_stretch_cuevi_mcmc_per_walker{}),
                      num_scouts_per_ensemble / 2),
         Time_it(F(logLikelihood_f{},
                        [](auto &&...x) {
@@ -1042,17 +1042,17 @@ int main_old(int argc, char **argv) {
         // std::vector<SymPosDefMatrix<double>> Cov_edlogL(algo.size());
         
         std::string path = "derivative";
-        auto ftb = FuncMap(
+        auto ftb = var::deprecated::FuncMap(
             ModelName,
-            Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+            Time_it(F(::deprecated::step_stretch_cuevi_mcmc{}, ::deprecated::step_stretch_cuevi_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+            Time_it(F(::deprecated::thermo_cuevi_jump_mcmc{}, ::deprecated::thermo_cuevi_jump_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                      thermo_cuevi_randomized_jump_mcmc{}),
+            Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                      ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                           step_stretch_cuevi_mcmc_per_walker{}),
+            Time_it(F(::deprecated::step_stretch_cuevi_mcmc_per_walker{},
+                           ::deprecated::step_stretch_cuevi_mcmc_per_walker{}),
                          num_scouts_per_ensemble / 2),
             
             Time_it(F(logLikelihood_f{},
@@ -1376,18 +1376,18 @@ thermodynamic parameter
             mt, model0, param1, experiment,
             Simulation_Parameters(Simulation_n_sub_dt(1000ul)),
             recording);
-        auto ftbl = FuncMap(
+        auto ftbl = var::deprecated::FuncMap(
             path,
-            Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+            Time_it(F(::deprecated::step_stretch_cuevi_mcmc{}, ::deprecated::step_stretch_cuevi_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+            Time_it(F(::deprecated::thermo_cuevi_jump_mcmc{}, ::deprecated::thermo_cuevi_jump_mcmc{}),
                     num_scouts_per_ensemble / 2),
-            Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                      thermo_cuevi_randomized_jump_mcmc{}),
+            Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                      ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                     num_scouts_per_ensemble / 2),
             
-            Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                           step_stretch_cuevi_mcmc_per_walker{}),
+            Time_it(F(::deprecated::step_stretch_cuevi_mcmc_per_walker{},
+                           ::deprecated::step_stretch_cuevi_mcmc_per_walker{}),
                          num_scouts_per_ensemble / 2),
             Time_it(F(logLikelihood_f{},
                            [](auto &&...x) {
@@ -1603,17 +1603,17 @@ thermodynamic parameter
             
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
-            auto ftbl3 = FuncMap(
+            auto ftbl3 = var::deprecated::FuncMap(
                 path + filename,
-                Time_it(F(step_stretch_cuevi_mcmc{}, step_stretch_cuevi_mcmc{}),
+                Time_it(F(::deprecated::step_stretch_cuevi_mcmc{}, ::deprecated::step_stretch_cuevi_mcmc{}),
                         num_scouts_per_ensemble / 2),
-                Time_it(F(thermo_cuevi_jump_mcmc{}, thermo_cuevi_jump_mcmc{}),
+                Time_it(F(::deprecated::thermo_cuevi_jump_mcmc{}, ::deprecated::thermo_cuevi_jump_mcmc{}),
                         num_scouts_per_ensemble / 2),
-                Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                          thermo_cuevi_randomized_jump_mcmc{}),
+                Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+                          ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                         num_scouts_per_ensemble / 2),
-                Time_it(F(step_stretch_cuevi_mcmc_per_walker{},
-                               step_stretch_cuevi_mcmc_per_walker{}),
+                Time_it(F(::deprecated::step_stretch_cuevi_mcmc_per_walker{},
+                               ::deprecated::step_stretch_cuevi_mcmc_per_walker{}),
                              num_scouts_per_ensemble / 2),
                 Time_it(F(logLikelihood_f{},
                                [](auto &&...x) {
@@ -1900,8 +1900,8 @@ thermodynamic parameter
                 path + filename,
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
-                Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
-                          thermo_cuevi_randomized_jump_mcmc{})),
+                // Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
+                //           thermo_cuevi_randomized_jump_mcmc{})),
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                                cuevi::step_stretch_cuevi_mcmc_per_walker{})),
                 var::Time_it_st(F(logLikelihood_f{},
@@ -2055,25 +2055,19 @@ thermodynamic parameter
                                    std::to_string(myseed);
             
             
-            auto ftbl3 = FuncMap(
+            
+            auto ftbl3 = FuncMap_St(
                 path + filename,
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(thermo_cuevi_randomized_jump_mcmc{},
-                          thermo_cuevi_randomized_jump_mcmc{}),
-                        num_scouts_per_ensemble / 2),
-                Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                               cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                             num_scouts_per_ensemble / 2),
-                Time_it(F(logLikelihood_f{},
+                Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
+                Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+                Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                               cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+                Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(true)>{},
                                [](auto &&...x) {
@@ -2083,9 +2077,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(true),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                Time_it(F(MacroR<uses_recursive_aproximation(true),
+                               })),
+                Time_it_st(F(MacroR<uses_recursive_aproximation(true),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2095,9 +2088,8 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
-                Time_it(F(MacroR<uses_recursive_aproximation(false),
+                               })),
+                Time_it_st(F(MacroR<uses_recursive_aproximation(false),
                                       uses_averaging_aproximation(2),
                                       uses_variance_aproximation(false)>{},
                                [](auto &&...x) {
@@ -2107,8 +2099,7 @@ thermodynamic parameter
                                                    uses_variance_aproximation(false),
                                                    uses_variance_correction_aproximation(false)>(
                                        std::forward<decltype(x)>(x)...);
-                               }),
-                             num_scouts_per_ensemble / 2),
+                               })),
                 // var::Thread_Memoizer(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2119,15 +2110,14 @@ thermodynamic parameter
                 //            }),
                 //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
                 //     num_scouts_per_ensemble / 2),
-                Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     var::F(Calc_Qdt_step{},
                            [](auto &&...x) {
                                auto m = Macro_DMR{};
                                return m.calc_Qdt_ATP_step(
                                    std::forward<decltype(x)>(x)...);
                            }),
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-                    num_scouts_per_ensemble / 2),
+                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
                 // Time_it(
                 //     var::F(Calc_Qdt_step{},
                 //            [](auto &&...x) {
@@ -2146,14 +2136,13 @@ thermodynamic parameter
                       auto m = Macro_DMR{};
                       return m.calc_Qx(std::forward<decltype(x)>(x)...);
                   }),
-                Thread_Memoizer(
+                var::Single_Thread_Memoizer(
                     F(Calc_eigen{},
                       [](auto &&...x) {
                           auto m = Macro_DMR{};
                           return m.calc_eigen(std::forward<decltype(x)>(x)...);
                       }),
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{},
-                    num_scouts_per_ensemble / 2)
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
                 // Time_it(
                 //     F(Calc_eigen{},
                 //       [](auto &&...x) {
@@ -2169,7 +2158,7 @@ thermodynamic parameter
                                            uses_variance_aproximation(false),
                                            uses_variance_correction_aproximation(false),
                                            return_predictions(true)>(
-                               ftbl3.fork(var::I_thread(0)), model0, param1,
+                               ftbl3, model0, param1,
                                experiment, sim.value()());
             report(filename+"_lik.csv",lik.value(),sim.value(), experiment);
         }
@@ -2397,14 +2386,12 @@ thermodynamic parameter
             
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
-            auto ftbl3_0_0 = FuncMap_St(
+            auto ftbl3_0_0 = var::FuncMap_St(
                 path + filename_0_0,
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
                 Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
                                cuevi::step_stretch_cuevi_mcmc_per_walker{})),
-                Time_it_st(F(thermo_cuevi_randomized_jump_mcmc{},
-                          thermo_cuevi_randomized_jump_mcmc{})),
                 var::Time_it_st(F(logLikelihood_f{},
                                [](auto &&...x) {
                                    return logLikelihood(

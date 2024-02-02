@@ -3357,6 +3357,9 @@ static ATP_evolution add_ATP_step(ATP_evolution &&x, ATP_evolution &&e) {
       e());
 }
 
+
+
+
 class experiment_fractioner {
   std::vector<std::size_t> segments = {73, 33, 22, 22, 4};
   std::size_t min_number_of_samples = 10;
@@ -3424,7 +3427,7 @@ public:
     std::size_t max_num_samples_per_segment = var::max(segments);
 
     auto cum_segments = var::cumsum(segments);
-
+    
     auto indexes = generate_random_Indexes(
         mt, num_samples, 1, n_points_per_decade_fraction, cum_segments);
     std::cerr << "\nindexes\n**************************************************"
@@ -3432,8 +3435,8 @@ public:
     std::cerr << indexes;
     // std::abort();
     auto n_frac = size(indexes);
-    by_fraction<Recording> y_out(n_frac);
-    by_fraction<Experiment> x_out(
+    deprecated::by_fraction<Recording> y_out(n_frac);
+    deprecated::by_fraction<Experiment> x_out(
         n_frac,
         Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
                    get<initial_ATP_concentration>(x)));
@@ -3452,7 +3455,7 @@ public:
                                    (n_frac > 1 ? size(indexes[0]) : 1),
                                includes_zero);
     by_beta<double> betan = {0, 1};
-    by_fraction<by_beta<double>> beta(n_frac, betan);
+    deprecated::by_fraction<by_beta<double>> beta(n_frac, betan);
     beta[0] = std::move(beta0);
 
     return std::tuple(std::move(y_out), std::move(x_out), std::move(beta));
@@ -3477,8 +3480,8 @@ public:
     std::cerr << indexes;
     // std::abort();
     auto n_frac = size(indexes);
-    by_fraction<Recording> y_out(n_frac);
-    by_fraction<Experiment> x_out(
+    deprecated::by_fraction<Recording> y_out(n_frac);
+    deprecated::by_fraction<Experiment> x_out(
         n_frac,
         Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
                    get<initial_ATP_concentration>(x)));
@@ -3496,7 +3499,7 @@ public:
 
 template <class Id, class... Ts>
 void report_title(save_Predictions<Parameters<Id>> &s,
-                  cuevi_mcmc<Parameters<Id>> const &, const Ts &...t) {
+                  deprecated::cuevi_mcmc<Parameters<Id>> const &, const Ts &...t) {
 
   s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
       << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
@@ -3687,7 +3690,7 @@ void save_Likelihood_Predictions(std::string filename,
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType, class Parameters>
 void report(FunctionTable &&f, std::size_t iter,
-            save_Predictions<Parameters> &s, cuevi_mcmc<Parameters> const &data,
+            save_Predictions<Parameters> &s, deprecated::cuevi_mcmc<Parameters> const &data,
             Prior const &prior, Likelihood const &lik, const DataType &ys,
             const Variables &xs, ...) {
   if (iter % s.save_every == 0)
@@ -3730,8 +3733,8 @@ template <class ParameterType, class FunctionTable, class Prior,
 void report(FunctionTable &&f, std::size_t iter,
             save_Predictions<ParameterType> &s,
             cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
-            t_logLikelihood &&lik, const by_fraction<Data> &ys,
-            const by_fraction<Variables> &xs, ...) {
+            t_logLikelihood &&lik, const deprecated::by_fraction<Data> &ys,
+            const deprecated::by_fraction<Variables> &xs, ...) {
 
   auto &t = data.get_Cuevi_Temperatures();
   if (iter % s.save_every == 0) {
@@ -3783,8 +3786,8 @@ template <class ParameterType, class FunctionTable, class Prior,
 void report(FunctionTable &f, std::size_t iter,
             save_Predictions<ParameterType> &s,
             cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
-            t_logLikelihood &&lik, const by_fraction<Data> &ys,
-            const by_fraction<Variables> &xs, ...) {
+            t_logLikelihood &&lik, const cuevi::by_fraction<Data> &ys,
+            const cuevi::by_fraction<Variables> &xs, ...) {
     
     auto &t = data.get_Cuevi_Temperatures();
     if (iter % s.save_every == 0) {
@@ -3854,7 +3857,7 @@ auto cuevi_Model_by_convergence(
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double stops_at, bool includes_zero, std::size_t initseed) {
   return cuevi_integration(
-      checks_derivative_var_ratio<cuevi_mcmc, Parameters<Id>>(max_iter,
+        checks_derivative_var_ratio<deprecated::cuevi_mcmc, Parameters<Id>>(max_iter,
                                                               max_ratio),
       experiment_fractioner(t_segments, t_min_number_of_samples),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
@@ -3865,6 +3868,8 @@ auto cuevi_Model_by_convergence(
       n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
       includes_zero, initseed);
 }
+
+
 
 template <class Id>
 auto cuevi_Model_by_iteration(
@@ -3878,7 +3883,7 @@ auto cuevi_Model_by_iteration(
     std::size_t max_iter_equilibrium, double max_ratio,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double stops_at, bool includes_zero, std::size_t initseed) {
-  return cuevi_integration(
+    return deprecated::cuevi_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
       experiment_fractioner(t_segments, t_min_number_of_samples),
       save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
