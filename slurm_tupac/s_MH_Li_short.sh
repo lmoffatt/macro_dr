@@ -38,5 +38,5 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 #module load amdblis
 #module load amdlibflame
 # Lanzar el programa
-srun /home/lmoffatt/Code/macro_dr/macro_dr/multi_task/MH_Li.sh
+srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/MH_Li.sh
 
