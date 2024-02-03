@@ -14,6 +14,7 @@
 #include <set>
 #include <sstream>
 #include <type_traits>
+#include <utility>
 #include <vector>
 #ifndef QMODEL_H
 #define QMODEL_H
@@ -3211,7 +3212,7 @@ logLikelihood(FuncTable &&f,
       Macro_DMR{}
           .log_Likelihood<adaptive, recursive, averaging, variance,
                           variance_correction, return_predictions(false)>(
-              f, lik.m, p, y, var);
+                          std::forward<FuncTable>(f), lik.m, p, y, var);
   if (!v_logL)
     return v_logL.error();
   else
@@ -3231,7 +3232,7 @@ Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
     Parameters const &p, const Variables &var, const DataType &y) {
   return Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
-                      variance_correction, return_predictions(true)>(f, lik.m,
+                      variance_correction, return_predictions(true)>(std::forward<FunctionTable>(f), lik.m,
                                                                      p, y, var);
 }
 
