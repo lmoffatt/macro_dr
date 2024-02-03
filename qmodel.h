@@ -1388,7 +1388,7 @@ class Macro_DMR {
   template <class FunctionTable, class C_Patch_Model, class C_Qx_eig>
     requires(U<C_Patch_Model, Patch_Model> && U<C_Qx_eig, Qx_eig>)
   Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>
-  calc_Qdt_eig(FunctionTable &&f, const C_Patch_Model &m, const C_Qx_eig &t_Qx,
+  calc_Qdt_eig(FunctionTable &&, const C_Patch_Model &m, const C_Qx_eig &t_Qx,
                number_of_samples ns, double dt) {
     using Trans = transformation_type_t<C_Patch_Model>;
     // const double eps=std::numeric_limits<double>::epsilon();
@@ -1769,7 +1769,7 @@ class Macro_DMR {
   auto calc_Qdt_bisection(FunctionTable &&f, const C_Patch_Model &m,
                           const ATP_step &t_step, double fs, std::size_t order)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
-    auto maybe_Qn = calc_Qn_bisection(f, m, t_step, fs, order);
+      auto maybe_Qn = calc_Qn_bisection(std::forward<FunctionTable>(f), m, t_step, fs, order);
     if (!maybe_Qn)
       return maybe_Qn.error();
     else {
@@ -1785,13 +1785,13 @@ class Macro_DMR {
     if (t_step.empty())
       return error_message("Emtpy ATP step");
     else {
-      auto v_Qdt0 = calc_Qdt(f, m, t_step[0], fs);
+      auto v_Qdt0 = calc_Qdt(std::forward<FunctionTable>(f), m, t_step[0], fs);
       if (!v_Qdt0)
         return v_Qdt0.error();
       else {
         auto v_Qrun = get_Qn(v_Qdt0.value());
         for (std::size_t i = 1; i < t_step.size(); ++i) {
-          auto v_Qdti = calc_Qdt(f, m, t_step[i], fs);
+          auto v_Qdti = calc_Qdt(std::forward<FunctionTable>(f), m, t_step[i], fs);
           if (!v_Qdti)
             return v_Qdti.error();
           else
@@ -1811,13 +1811,13 @@ class Macro_DMR {
     if (t_step.empty())
       return error_message("Emtpy ATP step");
     else {
-      auto v_Qn0 = calc_Qn_bisection(f, m, t_step[0], fs, order);
+      auto v_Qn0 = calc_Qn_bisection(std::forward<FunctionTable>(f), m, t_step[0], fs, order);
       if (!v_Qn0)
         return v_Qn0.error();
       else {
         auto v_Qrun = v_Qn0.value();
         for (std::size_t i = 1; i < t_step.size(); ++i) {
-          auto v_Qni = calc_Qn_bisection(f, m, t_step[i], fs, order);
+          auto v_Qni = calc_Qn_bisection(std::forward<FunctionTable>(f), m, t_step[i], fs, order);
           if (!v_Qni)
             return v_Qni.error();
           else
@@ -1834,7 +1834,7 @@ class Macro_DMR {
                 const ATP_evolution &t_step, double fs)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     return std::visit(
-        [this, &m, &f, fs](auto &&a) { return calc_Qdt(f, m, a, fs); },
+        [this, &m, &f, fs](auto &&a) { return calc_Qdt(std::forward<FunctionTable>(f), m, a, fs); },
         t_step());
   }
 
@@ -1846,7 +1846,7 @@ class Macro_DMR {
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     return std::visit(
         [this, &m, &f, fs, order](auto &&a) {
-          return calc_Qdt_bisection(f, m, a, fs, order);
+          return calc_Qdt_bisection(std::forward<FunctionTable>(f), m, a, fs, order);
         },
         t_step());
   }
@@ -3527,7 +3527,7 @@ inline void report_title(save_Predictions<Matrix<double>> &s,
                          thermo_mcmc<Matrix<double>> const &, ...) {}
 
 template <class Id, class FunctionTable>
-void report(FunctionTable &&f, std::size_t iter,
+void report(FunctionTable &&, std::size_t iter,
             save_Predictions<Parameters<Id>> &s,
             thermo_mcmc<Parameters<Id>> const &data, ...) {
   if (iter % s.save_every == 0)

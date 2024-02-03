@@ -126,7 +126,7 @@ auto init_mcmc(FunctionTable&& f, mt_64i &mt, Prior const & pr, const Lik& lik,
     auto priorsampler=sampler(pr);
     auto par = sample(mt,priorsampler);
     auto logP = logPrior(pr,par);
-    auto logL = logLikelihood(f,lik,par, y,x);
+    auto logL = logLikelihood(std::forward<FunctionTable>(f),lik,par, y,x);
     while(!(logP)||!(logL))
     {
         par = sample(mt,priorsampler);
