@@ -105,7 +105,7 @@ public:
             m_sum += dur;
             ++m_count;
         } else {
-            auto out = std::invoke(m_f, std::forward<Ts>(ts)...);
+            auto out = m_f(std::forward<Ts>(ts)...);
             const auto end = std::chrono::high_resolution_clock::now();
             auto dur = end - start;
             m_sum += dur;
