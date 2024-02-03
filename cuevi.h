@@ -1858,7 +1858,7 @@ template <class FunctionTable, class myFractioner, class t_Reporter,
           class t_Finalizer, class Prior, class Likelihood, class DataType,
           class Variables>
 auto continue_evidence(
-    FunctionTable &ff,
+    FunctionTable &f,
     Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue, Prior &&prior,
     Likelihood const &lik, const DataType &y, const Variables &x,
     const Init_seed init_seed) {
@@ -1869,8 +1869,7 @@ auto continue_evidence(
   using Return_Type =
       Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<Parameter_Type>>>;
 
-  auto f = ff.fork(var::I_thread(0));
-
+ 
   auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
   auto mt = init_mt(init_seed());
   auto mts = init_mts(mt, n_walkers() / 2);
@@ -1882,7 +1881,7 @@ auto continue_evidence(
       y, x, mt, size(prior) * min_fraction(), n_points_per_decade_fraction());
 
   auto Maybe_current = Cuevi_mcmc<Parameter_Type>::init(
-      std::forward<FunctionTable>(ff), mts, std::forward<Prior>(prior), lik, ys,
+      f, mts, std::forward<Prior>(prior), lik, ys,
       xs, get<Th_Beta_Param>(cue()), n_walkers,
       get<Number_trials_until_give_up>(cue()));
 
@@ -1902,7 +1901,7 @@ auto continue_evidence(
     report_title(ff, "Iter");
     std::size_t v_thermo_jump_every = get<Thermo_Jumps_every>(cue());
 
-    return evidence_loop(std::forward<FunctionTable>(ff), v_thermo_jump_every,
+    return evidence_loop(ff, v_thermo_jump_every,
                          mcmc_run, rep, iter, current, mts,
                          std::forward<Prior>(prior), lik, ys, xs);
   }
