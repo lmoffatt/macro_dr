@@ -1898,10 +1898,10 @@ auto continue_evidence(
 
     std::size_t iter = 0;
     // report_model(rep, prior, lik, ys, xs);
-    report_title(ff, "Iter");
+    report_title(f, "Iter");
     std::size_t v_thermo_jump_every = get<Thermo_Jumps_every>(cue());
 
-    return evidence_loop(ff, v_thermo_jump_every,
+    return evidence_loop(f, v_thermo_jump_every,
                          mcmc_run, rep, iter, current, mts,
                          std::forward<Prior>(prior), lik, ys, xs);
   }
