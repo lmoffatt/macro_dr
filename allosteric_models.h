@@ -7,8 +7,10 @@
 #include <string>
 namespace macrodr {
 
+
+using var::Constant;
 struct Conformational_change_label
-    : public Constant<Conformational_change_label, std::string> {
+    : public var::Constant<Conformational_change_label, std::string> {
   using Constant::Constant;
 };
 

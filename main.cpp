@@ -1,3 +1,4 @@
+#include "type_algebra.h"
 #include "CLI_macro_dr.h"
 #include "distributions.h"
 #include "experiment.h"
