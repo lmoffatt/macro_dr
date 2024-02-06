@@ -4,6 +4,7 @@
 #include "fold.h"
 #include "function_memoization.h"
 #include "matrix.h"
+//#include "models_MoffattHume_linear.h"
 #include <cmath>
 #include <cstddef>
 #include <fstream>
@@ -33,6 +34,7 @@
 #include "parameters.h"
 #include "parameters_distribution.h"
 #include "variables.h"
+#include "type_algebra.h"
 namespace macrodr {
 
 using var::Parameters;
@@ -3189,6 +3191,96 @@ struct Likelihood_Model {
   }
 };
 
+struct Likelihood_Model_v{
+    using v_uses_adaptive_aproximation=
+        std::variant<::V<uses_adaptive_aproximation(false)>,::V<uses_adaptive_aproximation(true)>>;
+    
+    using v_uses_recursive_aproximation=
+        std::variant<::V<uses_recursive_aproximation(false)>,::V<uses_recursive_aproximation(true)>>;
+    
+    using v_uses_averaging_aproximation=
+        std::variant<::V<uses_averaging_aproximation(0)>,::V<uses_averaging_aproximation(1)>,::V<uses_averaging_aproximation(2)>>;
+    
+    using v_uses_variance_aproximation=
+        std::variant<::V<uses_variance_aproximation(false)>,::V<uses_variance_aproximation(true)>>;
+    
+    using v_uses_variance_correction_aproximation=
+        std::variant<::V<uses_variance_correction_aproximation(false)>,::V<uses_variance_correction_aproximation(true)>>;
+    
+    
+    template <
+        uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
+        uses_averaging_aproximation averaging, uses_variance_aproximation variance,
+        uses_variance_correction_aproximation variance_correction, class Model>
+    auto operator()(::V<adaptive>,::V<recursive>,::V<averaging>,::V<variance>,::V<variance_correction>,const Model &model, Simulation_n_sub_dt n_sub_dt)const
+    {
+        return Likelihood_Model<adaptive,recursive,averaging,variance,variance_correction, Model>(model,n_sub_dt);
+    }
+    
+    template<class...Models>
+    auto operator()(v_uses_adaptive_aproximation t_adaptive,
+                    v_uses_recursive_aproximation t_recursive,
+                    v_uses_averaging_aproximation t_averaging,
+                    v_uses_variance_aproximation t_variance,
+                    v_uses_variance_correction_aproximation t_var_corr,
+                    std::variant<Models...> const& model
+                    , Simulation_n_sub_dt n_sub_dt)const
+    {
+        return Apply_variant([this, n_sub_dt](auto const&... x)
+                             {return (*this)(x..., n_sub_dt);}, std::tuple(t_adaptive,t_recursive,t_averaging,t_variance,t_var_corr,model));
+    };
+    
+    template <
+        class... Models, class Model>
+    auto operator()(uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
+                    uses_averaging_aproximation averaging, uses_variance_aproximation variance,
+                    uses_variance_correction_aproximation variance_correction, const Model &model, Simulation_n_sub_dt n_sub_dt)const
+        {
+            v_uses_adaptive_aproximation t_adaptive;
+            if (adaptive.value)
+               t_adaptive=::V<uses_adaptive_aproximation(true)>{};
+            else
+                t_adaptive=::V<uses_adaptive_aproximation(false)>{};
+            
+            v_uses_recursive_aproximation t_recursive;
+            if (recursive.value)
+                t_recursive=::V<uses_recursive_aproximation(true)>{};
+            else
+                t_recursive=::V<uses_recursive_aproximation(false)>{};
+            
+            v_uses_averaging_aproximation t_averaging;
+            if (averaging.value==0)
+                t_averaging=::V<uses_averaging_aproximation(0)>{};
+            else  if (averaging.value==1)
+                
+                t_averaging=::V<uses_averaging_aproximation(1)>{};
+            else
+                t_averaging=::V<uses_averaging_aproximation(2)>{};
+            
+            v_uses_variance_aproximation t_variance;
+            if (variance.value)
+                t_variance=::V<uses_variance_aproximation(true)>{};
+            else
+                t_variance=::V<uses_variance_aproximation(false)>{};
+            
+            v_uses_variance_correction_aproximation t_var_corr;
+            if (variance_correction.value)
+                t_var_corr=::V<uses_variance_correction_aproximation(true)>{};
+            else
+                t_var_corr=::V<uses_variance_correction_aproximation(false)>{};
+            
+            
+            return (*this)(t_adaptive,t_recursive,t_averaging,t_variance,t_var_corr,std::variant<Models...>(model),n_sub_dt);
+            
+            
+       }
+};
+
+
+
+
+
+
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
@@ -3197,6 +3289,13 @@ auto make_Likelihood_Model(const Model &m, Simulation_n_sub_dt n_sub_dt) {
   return Likelihood_Model<adaptive, recursive, averaging, variance,
                           variance_correction, Model>(m, n_sub_dt);
 }
+
+
+
+
+
+
+
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,

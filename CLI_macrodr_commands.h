@@ -1,6 +1,7 @@
 #ifndef CLI_MACRODR_COMMANDS_H
 #define CLI_MACRODR_COMMANDS_H
 
+#include "type_algebra.h"
 #include "CLI_macro_dr.h"
 #include "distributions.h"
 #include "experiment.h"
@@ -559,6 +560,23 @@ auto get_Observations(
   return out;
 }
 
+/*
+make_Likelihood_Model<uses_adaptive_aproximation(true),
+                      uses_recursive_aproximation(true),
+                      uses_averaging_aproximation(2),
+                      uses_variance_aproximation(false),
+                      uses_variance_correction_aproximation(
+                          false)>
+
+*/
+
+auto get_Likelihood_Algorithm(bool use_adaptive_approx,bool use_recursive_approx, std::size_t n_point_averaging, bool variance_approximation, bool uses_variance_approximation_correction, std::string model, double )
+{
+    
+    
+                  
+}
+
 auto get_Prior(double prior_error, const std::string modelname) {
 
   return std::pair(prior_error, modelname);
@@ -665,10 +683,11 @@ using likelihood_type =
 // experiment = experiment, algorithm= algorithm, function_table
 // =function_table, init_seed =0)
 
-void calc_likelihood(std::string outfilename, parameters_value_type par,
+void calc_likelihood(std::string outfilename,
+                     parameters_value_type par,
                      likelihood_type likelihood, recording_value_type recording,
                      experiment_type experiment, algo_type algorithm,
-                     tablefun_value_type ft, std::size_t myseed) {
+                     tablefun_value_type ft) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
   auto save_every=num_scouts_per_ensemble;
@@ -679,11 +698,9 @@ void calc_likelihood(std::string outfilename, parameters_value_type par,
     auto model_v = std::move(Maybe_model_v.value());
     return std::visit(
         [outfilename, &par, &ftbl3, &experiment, &recording, &likelihood,
-         &algorithm, &myseed](auto model0ptr) {
+         &algorithm](auto model0ptr) {
           auto &model0 = *model0ptr;
-          myseed = calc_seed(myseed);
-          mt_64i mt(myseed);
-
+        
           auto [path, filename, t_segments_used, t_min_number_of_samples,
                 num_scouts_per_ensemble, number_trials_until_give_up,
                 min_fraction, thermo_jump_factor, max_iter_equilibrium,
@@ -771,6 +788,94 @@ inline Maybe_error<std::vector<std::size_t>> load_segments_length_for_fractionin
     return out;
     
 }
+
+void calc_derivative_likelihood(std::string outfilename,
+                                     parameters_value_type par,
+                                     likelihood_type likelihood,
+                                     recording_value_type recording,
+                                experiment_type experiment,
+                                algo_type algorithm,
+                     tablefun_value_type ft, std::size_t myseed) {
+    using namespace macrodr;
+    auto [filename, num_scouts_per_ensemble] = std::move(ft);
+    auto save_every=num_scouts_per_ensemble;
+    auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
+    
+    auto Maybe_model_v = get_model(std::get<0>(likelihood));
+    if (Maybe_model_v) {
+        auto model_v = std::move(Maybe_model_v.value());
+        return std::visit(
+            [outfilename, &par, &ftbl3, &experiment, &recording, &likelihood,
+             &algorithm, &myseed](auto model0ptr) {
+                auto &model0 = *model0ptr;
+                myseed = calc_seed(myseed);
+                mt_64i mt(myseed);
+                
+                auto [path, filename, t_segments_used, t_min_number_of_samples,
+                      num_scouts_per_ensemble, number_trials_until_give_up,
+                      min_fraction, thermo_jump_factor, max_iter_equilibrium,
+                      n_points_per_decade, n_points_per_decade_fraction, medium_beta,
+                      stops_at, includes_zero, saving_itervals, random_jumps] =
+                    std::move(algorithm);
+                
+                auto [model, adaptive_aproximation, recursive_approximation,
+                      averaging_approximation, variance_correction_approximation,
+                      variance_correction, n_sub_dt] = likelihood;
+                
+                using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
+                
+                auto Maybe_param1 = var::load_Parameters<MyModel>(
+                    par.first, par.second, model0.model_name(), model0.names());
+                Simulated_Recording<includes_N_state_evolution(true)> y;
+                auto Maybe_y =
+                    load_Simulated_Recording(recording.first, recording.second, y);
+                if (!Maybe_param1.valid() || !Maybe_y.valid()) {
+                    std::cerr << Maybe_param1.error()() << Maybe_y.error()();
+                } else {
+                    
+                    auto param1 = std::move(Maybe_param1.value());
+                    
+                    std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
+                    auto number_of_traces = 7;
+                    auto number_of_segments = t_segments.size();
+                    t_segments.reserve(number_of_traces * t_segments.size());
+                    
+                    for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
+                        std::copy_n(t_segments.begin(), number_of_segments,
+                                    std::back_inserter(t_segments));
+                    
+                    std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
+                    auto modelLikelihood =
+                        make_Likelihood_Model<uses_adaptive_aproximation(true),
+                                              uses_recursive_aproximation(true),
+                                              uses_averaging_aproximation(2),
+                                              uses_variance_aproximation(false),
+                                              uses_variance_correction_aproximation(
+                                                  false)>(
+                            model0, Simulation_n_sub_dt(n_sub_dt));
+                    auto lik =
+                        Macro_DMR{}
+                            .log_Likelihood<uses_adaptive_aproximation(false),
+                                            uses_recursive_aproximation(true),
+                                            uses_averaging_aproximation(2),
+                                            uses_variance_aproximation(false),
+                                            uses_variance_correction_aproximation(
+                                                false),
+                                            return_predictions(true)>(
+                                ftbl3, model0, param1,
+                                experiment, get<Recording>(y()));
+                    if (lik)
+                        save_Likelihood_Predictions(outfilename, lik.value(), y,
+                                                    experiment);
+                    else
+                        std::cerr << lik.error()();
+                }
+            },
+            model_v);
+    }
+}
+    
+
 
 
 void calc_evidence(prior_value_type prior, likelihood_type likelihood,
@@ -875,6 +980,8 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
                                           cuevi::Init_seed(myseed));
             }
             }
+            else
+                std::cerr<<Maybe_y.error()();
           }
         },
         model_v);

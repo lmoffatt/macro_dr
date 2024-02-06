@@ -140,6 +140,9 @@ add_executable(macro_dr main.cpp
     slurm_Serafin/s_MH_Li_short.sh
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt experiments/Moffatt_Hume_2007_ATP_time_recording.txt
     slurm_tupac/s_MH_Li7.sh slurm_tupac/s_MH_Li7_sim.sh slurm_tupac/s_MH_Li_sim.sh slurm_tupac/s_MH_Li.sh slurm_tupac/s_MH_Li_short.sh
+    scripts/simulation_seed.txt
+    type_algebra.h
+    
     
     
 )
