@@ -2,6 +2,7 @@
 #define FUNCTION_MEASURE_VERIFICATION_AND_OPTIMIZATION_H
 
 #include "maybe_error.h"
+#include "type_algebra.h"
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -47,6 +48,50 @@ public:
   
   void clear() const {}
 };
+
+template<template<auto...> class MacroR,auto... t >
+auto make_F(MacroR<t...> )
+{
+    return F(MacroR<t...>{},
+          [](auto &&...x) {
+                 return MacroR<t...>{}(
+                  std::forward<decltype(x)>(x)...);
+          });
+}
+
+template<template<class...> class MacroR,class... t >
+auto make_F(MacroR<t...> )
+{
+    return F(MacroR<t...>{},
+             [](auto &&...x) {
+                 return MacroR<t...>{}(
+                     std::forward<decltype(x)>(x)...);
+             });
+}
+
+template<template<class...> class MacroR,class... T >
+auto make_F_P(in_progress::P<T...>)
+{
+//    using m00=typename Co<MacroR>::en_make_F_Ts;
+ //   using m0=typename std::tuple<T...>::en_make_F_Ts;
+ //   using m1=typename MacroR<T...>::en_make_F;
+    
+    return F(MacroR<T...>{},
+             [](auto &&...x) {
+                 return MacroR<T...>{}(
+                     std::forward<decltype(x)>(x)...);
+             });
+}
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
 
 template <class, class> class Time_it_st;
 
@@ -178,6 +223,10 @@ public:
 template <class Id, class... Fun, template <class...> class F>
 Time_it_st(F<Id, Fun...>) -> Time_it_st<Id, F<Id, Fun...>>;
 
+
+
+
+
 inline std::ostream &report_title(std::ostream &os, const std::string &, ...) {
     return os;
 }
@@ -213,7 +262,12 @@ public:
                           static_cast<Fs const &>(*this).create()...);
     }
     
-    template <class Id, class... Ts> auto f(Id, Ts &&...ts) {
+   
+    template <class Id, class... Ts>
+    //    requires(!std::is_same_v<Nothing,std::decay_t<decltype(FuncMap_St{}[Id{}])>>)
+    auto f(Id, Ts &&...ts) {
+        if constexpr(std::is_same_v<Nothing,decltype((*this)[Id{}])>)
+            static_assert(false);
         auto &fun = (*this)[Id{}];
         return fun(*this, std::forward<Ts>(ts)...);
     }
@@ -262,6 +316,12 @@ public:
         return out;
     }
     
+    template<class... Fs2>
+    auto append(Fs2 const& ... fs2)const
+    {
+        return FuncMap_St<Fs...,Fs2...>(m_filename,m_save_every,static_cast<Fs const&>(*this)...,fs2...);
+    }
+       
     auto &operator+=(const FuncMap_St &other) {
             ((static_cast<Fs &>(*this) += static_cast<Fs const &>(other)), ...);
         return *this;
@@ -271,6 +331,25 @@ public:
             (*this) += e;
         return *this;
     }
+    
+    template<template<class...> class MacroR,class...Ps >
+        requires (is_of_this_template_type_v<Ps,in_progress::P>&&...)
+    auto append_Fs_S(in_progress::S<Ps...> )const
+    {
+        return append(make_F_P<MacroR>(Ps{})...);
+    }
+    
+    
+    template<template<class...> class MacroR,class...Ss >
+        requires (is_of_this_template_type_v<Ss,in_progress::S>&&...)
+    auto append_Fs(in_progress::P<Ss...> )const
+    {
+        auto ss=(...*Ss{});
+        //using test=typename decltype(ss)::multi;
+        return this->append_Fs_S<MacroR>(ss);
+    }
+    
+    
 };
 
 template <class... Fs, class F, class G>
@@ -287,13 +366,25 @@ auto operator+(std::pair<FuncMap_St<Fs...>, F> &&f, G const &g) {
             f.second);
 }
 
-template <class G, class... Fs, class F>
-auto insert(const std::string &path, FuncMap_St<G, Fs...> const &fun,
-            F const &f) {
-    return (std::pair(FuncMap_St<G>(path, fun[typename G::myId{}]), f) + ... +
-            fun[typename Fs::myId{}])
-        .first;
+template <class G,class... Fs>
+auto insert(const std::string &path, FuncMap_St<G, Fs...> const &fun) {
+    return fun;
 }
+
+
+template <class G, class... Fs, class F, class... FFS>
+auto insert(const std::string &path, FuncMap_St<G, Fs...> const &fun,
+            F const &f, FFS const&... ff) {
+    return insert(path,
+                  (std::pair(FuncMap_St<G>(path, fun[typename G::myId{}]), f) + ... +
+            fun[typename Fs::myId{}])
+                            .first,
+                  ff...);
+}
+
+
+
+
 
 namespace partially_implemented {
 

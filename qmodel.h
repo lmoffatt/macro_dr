@@ -653,6 +653,10 @@ struct MacroR {
   }
 };
 
+
+
+
+
 struct Calc_Qdt {
   friend std::string ToString(Calc_Qdt) { return "Calc_Qdt"; }
 };
@@ -745,6 +749,11 @@ Maybe_error<Transfer_Op_to<CQx, P>> expm_sure(const CQx &x) {
     return expm_taylor_scaling_squaring(x);
 }
 
+template <class  recursive,
+         class averaging,
+         class variance,
+         class variance_correction>
+struct MacroR2;
 class Macro_DMR {
   static double E1(double x) {
     if (std::abs(x) < std::numeric_limits<double>::epsilon() * 100)
@@ -2694,7 +2703,10 @@ class Macro_DMR {
           C_Parameters,
           std::conditional_t<predictions.value, Patch_State_Evolution,
                              Vector_Space<logL, elogL, vlogL>>>> {
-
+      
+      
+            
+      
     f.clear();
 
     using Transf = transformation_type_t<C_Parameters>;
@@ -2814,8 +2826,10 @@ class Macro_DMR {
                                fs);
                   } else {
                     return f.f(
-                        MacroR<uses_recursive_aproximation(false), averaging,
-                               uses_variance_aproximation(false)>{},
+                          MacroR<
+                              uses_recursive_aproximation(false),
+                          averaging,
+                              uses_variance_aproximation(false)>{},
                         std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
                   }
                 }
@@ -2851,6 +2865,11 @@ class Macro_DMR {
           std::conditional_t<predictions.value, Patch_State_Evolution,
                              Vector_Space<logL, elogL, vlogL>>>> {
       
+      using v_adaptive=::V<adaptive>;
+      using v_recursive=::V<recursive>;
+      using v_averaging=::V<averaging>;
+      using v_variance=::V<variance>;
+      using v_variance_correction=::V<variance_correction>;
       
       using Transf = transformation_type_t<C_Parameters>;
       using C_Patch_State =
@@ -2947,7 +2966,7 @@ class Macro_DMR {
                               std::cerr << "\nt_step\n" << t_step << "\n";
                           }
                           if constexpr (!adaptive.value) {
-                              return f_local.f(MacroR<recursive, averaging, variance>{},
+                              return f_local.f(MacroR2<v_recursive, v_averaging, v_variance,v_variance_correction>{},
                                          std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
                                          fs);
                           } else {
@@ -2965,13 +2984,14 @@ class Macro_DMR {
                                   // using egsr=typename decltype(f.f(MacroR<recursive,
                                   // averaging, variance>{}))::ege;
                                   //  auto r=egsr();
-                                  return f_local.f(MacroR<recursive, averaging, variance>{},
+                                  return f_local.f(MacroR2<v_recursive, v_averaging, v_variance,v_variance_correction>{},
                                              std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
                                              fs);
                               } else {
                                   return f_local.f(
-                                      MacroR<uses_recursive_aproximation(false), averaging,
-                                             uses_variance_aproximation(false)>{},
+                                      MacroR2<::V<uses_recursive_aproximation(false)>, v_averaging,
+                                              ::V<uses_variance_aproximation(false)>,
+                                              ::V<uses_variance_correction_aproximation(false)>>{},
                                       std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
                               }
                           }
@@ -3166,6 +3186,51 @@ class Macro_DMR {
   }
 };
 
+
+template <class  recursive,
+         class averaging,
+         class variance,
+         class variance_correction>
+struct MacroR2 {
+    friend std::string ToString(MacroR2) {
+        std::string out = "MacroR";
+        if (recursive{}.value.value)
+            out += "_R";
+        else
+            out += "_NR";
+        if (averaging{}.value.value == 2)
+            out += "_2";
+        else
+            out += "__";
+        if (variance{}.value.value)
+            out += "_V";
+        else
+            out += "_M";
+        if (variance_correction{}.value.value)
+            out += "_V";
+        else
+            out += "_M";
+        
+        
+        return out;
+    }
+    
+    template<class... Ts>
+    auto operator()(Ts&&...x)
+    {
+        auto m = Macro_DMR{};
+        
+        return m.Macror<recursive{}.value,
+             averaging{}.value,
+             variance{}.value,
+             variance_correction{}.value>(
+            std::forward<Ts>(x)...);
+    }
+    
+};
+
+
+
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
@@ -3212,27 +3277,35 @@ struct Likelihood_Model_v{
         uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
         uses_averaging_aproximation averaging, uses_variance_aproximation variance,
         uses_variance_correction_aproximation variance_correction, class Model>
-    auto operator()(::V<adaptive>,::V<recursive>,::V<averaging>,::V<variance>,::V<variance_correction>,const Model &model, Simulation_n_sub_dt n_sub_dt)const
+    auto template_op(::V<adaptive>,::V<recursive>,::V<averaging>,::V<variance>,::V<variance_correction>,const Model &model, Simulation_n_sub_dt n_sub_dt)const
     {
         return Likelihood_Model<adaptive,recursive,averaging,variance,variance_correction, Model>(model,n_sub_dt);
     }
     
-    template<class...Models>
-    auto operator()(v_uses_adaptive_aproximation t_adaptive,
+    template<class Model>
+    auto variant_op(v_uses_adaptive_aproximation t_adaptive,
                     v_uses_recursive_aproximation t_recursive,
                     v_uses_averaging_aproximation t_averaging,
                     v_uses_variance_aproximation t_variance,
                     v_uses_variance_correction_aproximation t_var_corr,
-                    std::variant<Models...> const& model
+                    Model const& model
                     , Simulation_n_sub_dt n_sub_dt)const
     {
-        return Apply_variant([this, n_sub_dt](auto const&... x)
-                             {return (*this)(x..., n_sub_dt);}, std::tuple(t_adaptive,t_recursive,t_averaging,t_variance,t_var_corr,model));
-    };
+        
+        auto tu=  std::tuple(t_adaptive,t_recursive,t_averaging,t_variance,t_var_corr);
+        return Apply_variant([this, &model,n_sub_dt](auto const&... x)
+                             {
+            
+            //using m11=decltype(template_op(x...,model, n_sub_dt))::llego_aquiÑ;
+         //   return m11{};
+            return this->template_op(x...,model, n_sub_dt);
+            
+        },tu);
+    }
     
     template <
-        class... Models, class Model>
-    auto operator()(uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
+         class Model>
+    auto bool_op(uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
                     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
                     uses_variance_correction_aproximation variance_correction, const Model &model, Simulation_n_sub_dt n_sub_dt)const
         {
@@ -3269,8 +3342,7 @@ struct Likelihood_Model_v{
             else
                 t_var_corr=::V<uses_variance_correction_aproximation(false)>{};
             
-            
-            return (*this)(t_adaptive,t_recursive,t_averaging,t_variance,t_var_corr,std::variant<Models...>(model),n_sub_dt);
+            return this->variant_op(t_adaptive,t_recursive,t_averaging,t_variance,t_var_corr,model,n_sub_dt);
             
             
        }

@@ -1,7 +1,6 @@
 #ifndef CLI_MACRODR_COMMANDS_H
 #define CLI_MACRODR_COMMANDS_H
 
-#include "type_algebra.h"
 #include "CLI_macro_dr.h"
 #include "distributions.h"
 #include "experiment.h"
@@ -16,6 +15,7 @@
 #include "parameters_derivative.h"
 #include "parameters_distribution.h"
 #include "random_samplers.h"
+#include "type_algebra.h"
 #include "variables.h"
 #include "variables_derivative.h"
 // #include "multivariate_normal_distribution.h"
@@ -53,33 +53,34 @@ inline void write_text(std::string filename, std::string s) {
   f << s;
 }
 
-static constexpr auto temp_script_file = "temp_script_file.txt";
+static constexpr inline auto temp_script_file = "temp_script_file.txt";
 inline void write_script(std::string program_name) {
   rename(temp_script_file, program_name.c_str());
 }
 
-inline auto load_Parameter_value(const std::string filename, std::string separator) {
+inline auto load_Parameter_value(const std::string filename,
+                                 std::string separator) {
   return std::pair(filename, separator);
 }
 
-auto load_Prior_value(std::string filename, std::string separator = ",") {
+inline auto load_Prior_value(std::string filename, std::string separator = ",") {
   return std::pair(filename, separator);
 }
 
-inline auto load_Recording_value(std::string filename, std::string separator = ",") {
+inline auto load_Recording_value(std::string filename,
+                                 std::string separator = ",") {
   return std::pair(filename, separator);
 }
 
-namespace deprecated{
+namespace deprecated {
 
-
-namespace deprecated{
+namespace deprecated {
 using namespace var::deprecated;
-auto get_function_Table(std::string filename,
+inline auto get_function_Table(std::string filename,
                         std::size_t num_scouts_per_ensemble) {
   using namespace macrodr;
-    using namespace var::deprecated;
-  
+  using namespace var::deprecated;
+
   return var::deprecated::FuncMap(
       filename,
       Time_it(
@@ -88,56 +89,53 @@ auto get_function_Table(std::string filename,
       Time_it(
           F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
           num_scouts_per_ensemble / 2),
-        Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+      Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
                 ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
               num_scouts_per_ensemble / 2),
       Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                     cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                   num_scouts_per_ensemble / 2),
+                cuevi::step_stretch_cuevi_mcmc_per_walker{}),
+              num_scouts_per_ensemble / 2),
       Time_it(F(logLikelihood_f{},
-                     [](auto &&...x) {
-                       return logLikelihood(std::forward<decltype(x)>(x)...);
-                     }),
-                   num_scouts_per_ensemble / 2),
-      Time_it(
-          F(MacroR<uses_recursive_aproximation(true),
-                   uses_averaging_aproximation(2),
-                   uses_variance_aproximation(true)>{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.Macror<uses_recursive_aproximation(true),
-                              uses_averaging_aproximation(2),
-                              uses_variance_aproximation(true),
-                              uses_variance_correction_aproximation(false)>(
-                  std::forward<decltype(x)>(x)...);
-            }),
-          num_scouts_per_ensemble / 2),
-      Time_it(
-          F(MacroR<uses_recursive_aproximation(true),
-                   uses_averaging_aproximation(2),
-                   uses_variance_aproximation(false)>{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.Macror<uses_recursive_aproximation(true),
-                              uses_averaging_aproximation(2),
-                              uses_variance_aproximation(false),
-                              uses_variance_correction_aproximation(false)>(
-                  std::forward<decltype(x)>(x)...);
-            }),
-          num_scouts_per_ensemble / 2),
-      Time_it(
-          F(MacroR<uses_recursive_aproximation(false),
-                   uses_averaging_aproximation(2),
-                   uses_variance_aproximation(false)>{},
-            [](auto &&...x) {
-              auto m = Macro_DMR{};
-              return m.Macror<uses_recursive_aproximation(false),
-                              uses_averaging_aproximation(2),
-                              uses_variance_aproximation(false),
-                              uses_variance_correction_aproximation(false)>(
-                  std::forward<decltype(x)>(x)...);
-            }),
-          num_scouts_per_ensemble / 2),
+                [](auto &&...x) {
+                  return logLikelihood(std::forward<decltype(x)>(x)...);
+                }),
+              num_scouts_per_ensemble / 2),
+      Time_it(F(MacroR<uses_recursive_aproximation(true),
+                       uses_averaging_aproximation(2),
+                       uses_variance_aproximation(true)>{},
+                [](auto &&...x) {
+                  auto m = Macro_DMR{};
+                  return m.Macror<uses_recursive_aproximation(true),
+                                  uses_averaging_aproximation(2),
+                                  uses_variance_aproximation(true),
+                                  uses_variance_correction_aproximation(false)>(
+                      std::forward<decltype(x)>(x)...);
+                }),
+              num_scouts_per_ensemble / 2),
+      Time_it(F(MacroR<uses_recursive_aproximation(true),
+                       uses_averaging_aproximation(2),
+                       uses_variance_aproximation(false)>{},
+                [](auto &&...x) {
+                  auto m = Macro_DMR{};
+                  return m.Macror<uses_recursive_aproximation(true),
+                                  uses_averaging_aproximation(2),
+                                  uses_variance_aproximation(false),
+                                  uses_variance_correction_aproximation(false)>(
+                      std::forward<decltype(x)>(x)...);
+                }),
+              num_scouts_per_ensemble / 2),
+      Time_it(F(MacroR<uses_recursive_aproximation(false),
+                       uses_averaging_aproximation(2),
+                       uses_variance_aproximation(false)>{},
+                [](auto &&...x) {
+                  auto m = Macro_DMR{};
+                  return m.Macror<uses_recursive_aproximation(false),
+                                  uses_averaging_aproximation(2),
+                                  uses_variance_aproximation(false),
+                                  uses_variance_correction_aproximation(false)>(
+                      std::forward<decltype(x)>(x)...);
+                }),
+              num_scouts_per_ensemble / 2),
       // var::Thread_Memoizer(
       //     var::F(Calc_Qdt_step{},
       //            [](auto &&.   ..x) {
@@ -191,129 +189,126 @@ auto get_function_Table(std::string filename,
 
   );
 }
-}
+} // namespace deprecated
 
-}
-auto get_function_Table_St(std::string filename, std::size_t save_every) {
-    using namespace macrodr;
-    return var::FuncMap_St(
-        filename,save_every,
-        Time_it_st(
-            F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
-        Time_it_st(
-            F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
-    //    Time_it_st(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
-    //              ::deprecated::thermo_cuevi_randomized_jump_mcmc{})),
-        var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                       cuevi::step_stretch_cuevi_mcmc_per_walker{})),
-        var::Time_it_st(F(logLikelihood_f{},
-                       [](auto &&...x) {
-                           return logLikelihood(std::forward<decltype(x)>(x)...);
-                       })),
-        var::Time_it_st(
-            F(MacroR<uses_recursive_aproximation(true),
-                     uses_averaging_aproximation(2),
-                     uses_variance_aproximation(true)>{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.Macror<uses_recursive_aproximation(true),
-                                  uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(true),
-                                  uses_variance_correction_aproximation(false)>(
-                      std::forward<decltype(x)>(x)...);
-              })),
-        var::Time_it_st(
-            F(MacroR<uses_recursive_aproximation(true),
-                     uses_averaging_aproximation(2),
-                     uses_variance_aproximation(false)>{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.Macror<uses_recursive_aproximation(true),
-                                  uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
-                      std::forward<decltype(x)>(x)...);
-              })),
-        var::Time_it_st(
-            F(MacroR<uses_recursive_aproximation(false),
-                     uses_averaging_aproximation(2),
-                     uses_variance_aproximation(false)>{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.Macror<uses_recursive_aproximation(false),
-                                  uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
-                      std::forward<decltype(x)>(x)...);
-              })),
-        // var::Thread_Memoizer(
-        //     var::F(Calc_Qdt_step{},
-        //            [](auto &&.   ..x) {
-        //              auto m = Macro_DMR{};
-        //                auto bisection_order=16ul;
-        //              return m.calc_Qdt_bisection(
-        //                  std::forward<decltype(x)>(x)...,bisection_order);
-        //            }),
-        //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-        //     num_scouts_per_ensemble / 2),
-        var::Single_Thread_Memoizer(
-            var::F(Calc_Qdt_step{},
-                   [](auto &&...x) {
-                       auto m = Macro_DMR{};
-                       return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
-                   }),
-            var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
-        // var::Time_it(
-        //     var::F(Calc_Qdt_step{},
-        //            [](auto &&...x) {
-        //              auto m = Macro_DMR{};
-        //              return
-        //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
-        //            })),
-        
-        var::F(Calc_Qdt{},
-               [](auto &&...x) {
-                   auto m = Macro_DMR{};
-                   return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-               }),
-        F(Calc_Qx{},
-          [](auto &&...x) {
+} // namespace deprecated
+inline auto get_function_Table_St(std::string filename, std::size_t save_every) {
+  using namespace macrodr;
+  return var::FuncMap_St(
+      filename, save_every,
+      Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{},
+                   cuevi::step_stretch_cuevi_mcmc{})),
+      Time_it_st(
+          F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
+      //    Time_it_st(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+      //              ::deprecated::thermo_cuevi_randomized_jump_mcmc{})),
+      var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                        cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+      var::Time_it_st(F(logLikelihood_f{},
+                        [](auto &&...x) {
+                          return logLikelihood(std::forward<decltype(x)>(x)...);
+                        })),
+      var::Time_it_st(
+          F(MacroR<uses_recursive_aproximation(true),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(true)>{},
+            [](auto &&...x) {
               auto m = Macro_DMR{};
-              return m.calc_Qx(std::forward<decltype(x)>(x)...);
-          }),
-        var::Single_Thread_Memoizer(
-            F(Calc_eigen{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.calc_eigen(std::forward<decltype(x)>(x)...);
-              }),
-            var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
-        // var::Time_it(
-        //     F(Calc_eigen{},
-        //       [](auto &&...x) {
-        //           auto m = Macro_DMR{};
-        //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
-        //       }))
-        
-        );
+              return m.Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(true),
+                              uses_variance_correction_aproximation(false)>(
+                  std::forward<decltype(x)>(x)...);
+            })),
+      var::Time_it_st(
+          F(MacroR<uses_recursive_aproximation(true),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+              auto m = Macro_DMR{};
+              return m.Macror<uses_recursive_aproximation(true),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false),
+                              uses_variance_correction_aproximation(false)>(
+                  std::forward<decltype(x)>(x)...);
+            })),
+      var::Time_it_st(
+          F(MacroR<uses_recursive_aproximation(false),
+                   uses_averaging_aproximation(2),
+                   uses_variance_aproximation(false)>{},
+            [](auto &&...x) {
+              auto m = Macro_DMR{};
+              return m.Macror<uses_recursive_aproximation(false),
+                              uses_averaging_aproximation(2),
+                              uses_variance_aproximation(false),
+                              uses_variance_correction_aproximation(false)>(
+                  std::forward<decltype(x)>(x)...);
+            })),
+      // var::Thread_Memoizer(
+      //     var::F(Calc_Qdt_step{},
+      //            [](auto &&.   ..x) {
+      //              auto m = Macro_DMR{};
+      //                auto bisection_order=16ul;
+      //              return m.calc_Qdt_bisection(
+      //                  std::forward<decltype(x)>(x)...,bisection_order);
+      //            }),
+      //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
+      //     num_scouts_per_ensemble / 2),
+      var::Single_Thread_Memoizer(
+          var::F(Calc_Qdt_step{},
+                 [](auto &&...x) {
+                   auto m = Macro_DMR{};
+                   return m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+                 }),
+          var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
+      // var::Time_it(
+      //     var::F(Calc_Qdt_step{},
+      //            [](auto &&...x) {
+      //              auto m = Macro_DMR{};
+      //              return
+      //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+      //            })),
+
+      var::F(Calc_Qdt{},
+             [](auto &&...x) {
+               auto m = Macro_DMR{};
+               return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+             }),
+      F(Calc_Qx{},
+        [](auto &&...x) {
+          auto m = Macro_DMR{};
+          return m.calc_Qx(std::forward<decltype(x)>(x)...);
+        }),
+      var::Single_Thread_Memoizer(
+          F(Calc_eigen{},
+            [](auto &&...x) {
+              auto m = Macro_DMR{};
+              return m.calc_eigen(std::forward<decltype(x)>(x)...);
+            }),
+          var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
+      // var::Time_it(
+      //     F(Calc_eigen{},
+      //       [](auto &&...x) {
+      //           auto m = Macro_DMR{};
+      //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
+      //       }))
+
+  );
 }
 
-
-
-auto get_function_Table_maker_value(std::string filename,
+inline auto get_function_Table_maker_value(std::string filename,
                                     std::size_t num_scouts_per_ensemble) {
   return std::pair(filename, num_scouts_per_ensemble);
 }
 
-namespace deprecated{
+namespace deprecated {
 using namespace var::deprecated;
 
-
-auto get_function_Table_maker(std::string filename,
+inline auto get_function_Table_maker(std::string filename,
                               std::size_t num_scouts_per_ensemble) {
   using namespace macrodr;
   return [filename, num_scouts_per_ensemble]() {
-      return var::deprecated::FuncMap(
+    return var::deprecated::FuncMap(
         filename,
         Time_it(F(cuevi::step_stretch_cuevi_mcmc{},
                   cuevi::step_stretch_cuevi_mcmc{}),
@@ -321,17 +316,17 @@ auto get_function_Table_maker(std::string filename,
         Time_it(
             F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{}),
             num_scouts_per_ensemble / 2),
-          Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+        Time_it(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
                   ::deprecated::thermo_cuevi_randomized_jump_mcmc{}),
                 num_scouts_per_ensemble / 2),
         Time_it(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                       cuevi::step_stretch_cuevi_mcmc_per_walker{}),
-                     num_scouts_per_ensemble / 2),
+                  cuevi::step_stretch_cuevi_mcmc_per_walker{}),
+                num_scouts_per_ensemble / 2),
         Time_it(F(logLikelihood_f{},
-                       [](auto &&...x) {
-                         return logLikelihood(std::forward<decltype(x)>(x)...);
-                       }),
-                     num_scouts_per_ensemble / 2),
+                  [](auto &&...x) {
+                    return logLikelihood(std::forward<decltype(x)>(x)...);
+                  }),
+                num_scouts_per_ensemble / 2),
         Time_it(
             F(MacroR<uses_recursive_aproximation(true),
                      uses_averaging_aproximation(2),
@@ -427,123 +422,140 @@ auto get_function_Table_maker(std::string filename,
   };
 }
 
+} // namespace deprecated
+inline auto get_function_Table_maker_value_St(std::string filename) {
+  return filename;
 }
-auto get_function_Table_maker_value_St(std::string filename) {
-    return filename;
-}
-auto get_function_Table_maker_St(std::string filename, std::size_t save_every) {
-    using namespace macrodr;
-    return [filename, save_every]() {
-        return var::FuncMap_St(
-            filename,save_every,
-            Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{},
-                      cuevi::step_stretch_cuevi_mcmc{})),
-            Time_it_st(
-                F(cuevi::thermo_cuevi_jump_mcmc{}, cuevi::thermo_cuevi_jump_mcmc{})),
-            // Time_it_st(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
-            //           ::deprecated::thermo_cuevi_randomized_jump_mcmc{})),
-            var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
-                           cuevi::step_stretch_cuevi_mcmc_per_walker{})),
-            var::Time_it_st(F(logLikelihood_f{},
-                           [](auto &&...x) {
-                               return logLikelihood(std::forward<decltype(x)>(x)...);
-                           })),
-            var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(true),
-                         uses_averaging_aproximation(2),
-                         uses_variance_aproximation(true)>{},
-                  [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.Macror<uses_recursive_aproximation(true),
-                                      uses_averaging_aproximation(2),
-                                      uses_variance_aproximation(true),
-                                      uses_variance_correction_aproximation(false)>(
-                          std::forward<decltype(x)>(x)...);
-                  })),
-            var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(true),
-                         uses_averaging_aproximation(2),
-                         uses_variance_aproximation(false)>{},
-                  [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.Macror<uses_recursive_aproximation(true),
-                                      uses_averaging_aproximation(2),
-                                      uses_variance_aproximation(false),
-                                      uses_variance_correction_aproximation(false)>(
-                          std::forward<decltype(x)>(x)...);
-                  })),
-            var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(false),
-                         uses_averaging_aproximation(2),
-                         uses_variance_aproximation(false)>{},
-                  [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.Macror<uses_recursive_aproximation(false),
-                                      uses_averaging_aproximation(2),
-                                      uses_variance_aproximation(false),
-                                      uses_variance_correction_aproximation(false)>(
-                          std::forward<decltype(x)>(x)...);
-                  })),
-            // var::Thread_Memoizer(
-            //     var::F(Calc_Qdt_step{},
-            //            [](auto &&.   ..x) {
-            //              auto m = Macro_DMR{};
-            //                auto bisection_order=16ul;
-            //              return m.calc_Qdt_bisection(
-            //                  std::forward<decltype(x)>(x)...,bisection_order);
-            //            }),
-            //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{},
-            //     num_scouts_per_ensemble / 2),
-            var::Single_Thread_Memoizer(
-                var::F(Calc_Qdt_step{},
-                       [](auto &&...x) {
-                           auto m = Macro_DMR{};
-                           return m.calc_Qdt_ATP_step(
-                               std::forward<decltype(x)>(x)...);
-                       }),
-                var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>{}),
-            // var::Time_it(
-            //     var::F(Calc_Qdt_step{},
-            //            [](auto &&...x) {
-            //              auto m = Macro_DMR{};
-            //              return
-            //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
-            //            })),
-            
-            var::F(Calc_Qdt{},
+inline auto get_function_Table_maker_St(std::string filename, std::size_t save_every) {
+  using namespace macrodr;
+  return [filename, save_every]() {
+    return var::FuncMap_St(
+               filename, save_every,
+               Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{},
+                            cuevi::step_stretch_cuevi_mcmc{})),
+               Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{},
+                            cuevi::thermo_cuevi_jump_mcmc{})),
+               // Time_it_st(F(::deprecated::thermo_cuevi_randomized_jump_mcmc{},
+               //           ::deprecated::thermo_cuevi_randomized_jump_mcmc{})),
+               var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                                 cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+               var::Time_it_st(F(logLikelihood_f{},
+                                 [](auto &&...x) {
+                                   return logLikelihood(
+                                       std::forward<decltype(x)>(x)...);
+                                 })),
+               var::Time_it_st(F(
+                   MacroR<uses_recursive_aproximation(true),
+                          uses_averaging_aproximation(2),
+                          uses_variance_aproximation(true)>{},
                    [](auto &&...x) {
+                     auto m = Macro_DMR{};
+                     return m
+                         .Macror<uses_recursive_aproximation(true),
+                                 uses_averaging_aproximation(2),
+                                 uses_variance_aproximation(true),
+                                 uses_variance_correction_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                   })),
+               var::Time_it_st(F(
+                   MacroR<uses_recursive_aproximation(true),
+                          uses_averaging_aproximation(2),
+                          uses_variance_aproximation(false)>{},
+                   [](auto &&...x) {
+                     auto m = Macro_DMR{};
+                     return m
+                         .Macror<uses_recursive_aproximation(true),
+                                 uses_averaging_aproximation(2),
+                                 uses_variance_aproximation(false),
+                                 uses_variance_correction_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                   })),
+               var::Time_it_st(F(
+                   MacroR<uses_recursive_aproximation(false),
+                          uses_averaging_aproximation(2),
+                          uses_variance_aproximation(false)>{},
+                   [](auto &&...x) {
+                     auto m = Macro_DMR{};
+                     return m
+                         .Macror<uses_recursive_aproximation(false),
+                                 uses_averaging_aproximation(2),
+                                 uses_variance_aproximation(false),
+                                 uses_variance_correction_aproximation(false)>(
+                             std::forward<decltype(x)>(x)...);
+                   })),
+               // var::Thread_Memoizer(
+               //     var::F(Calc_Qdt_step{},
+               //            [](auto &&.   ..x) {
+               //              auto m = Macro_DMR{};
+               //                auto bisection_order=16ul;
+               //              return m.calc_Qdt_bisection(
+               //                  std::forward<decltype(x)>(x)...,bisection_order);
+               //            }),
+               //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step,
+               //     double>{}, num_scouts_per_ensemble / 2),
+               var::Single_Thread_Memoizer(
+                   var::F(Calc_Qdt_step{},
+                          [](auto &&...x) {
+                            auto m = Macro_DMR{};
+                            return m.calc_Qdt_ATP_step(
+                                std::forward<decltype(x)>(x)...);
+                          }),
+                   var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step,
+                                           double>{}),
+               // var::Time_it(
+               //     var::F(Calc_Qdt_step{},
+               //            [](auto &&...x) {
+               //              auto m = Macro_DMR{};
+               //              return
+               //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+               //            })),
+
+               var::F(Calc_Qdt{},
+                      [](auto &&...x) {
+                        auto m = Macro_DMR{};
+                        return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                      }),
+               F(Calc_Qx{},
+                 [](auto &&...x) {
+                   auto m = Macro_DMR{};
+                   return m.calc_Qx(std::forward<decltype(x)>(x)...);
+                 }),
+               var::Single_Thread_Memoizer(
+                   F(Calc_eigen{},
+                     [](auto &&...x) {
                        auto m = Macro_DMR{};
-                       return m.calc_Qdt(std::forward<decltype(x)>(x)...);
-                   }),
-            F(Calc_Qx{},
-              [](auto &&...x) {
-                  auto m = Macro_DMR{};
-                  return m.calc_Qx(std::forward<decltype(x)>(x)...);
-              }),
-            var::Single_Thread_Memoizer(
-                F(Calc_eigen{},
-                  [](auto &&...x) {
-                      auto m = Macro_DMR{};
-                      return m.calc_eigen(std::forward<decltype(x)>(x)...);
-                  }),
-                var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>{})
-            // var::Time_it(
-            //     F(Calc_eigen{},
-            //       [](auto &&...x) {
-            //           auto m = Macro_DMR{};
-            //           return m.calc_eigen(std::forward<decltype(x)>(x)...);
-            //       }))
-            
-            );
-    };
+                       return m.calc_eigen(std::forward<decltype(x)>(x)...);
+                     }),
+                   var::Memoiza_all_values<Maybe_error<Qx_eig>,
+                                           ATP_concentration>{})
+               // var::Time_it(
+               //     F(Calc_eigen{},
+               //       [](auto &&...x) {
+               //           auto m = Macro_DMR{};
+               //           return
+               //           m.calc_eigen(std::forward<decltype(x)>(x)...);
+               //       }))
+
+               )
+        .append_Fs<MacroR2> (
+            in_progress::P<
+                in_progress::S<::V<uses_recursive_aproximation(false)>,
+                               ::V<uses_recursive_aproximation(true)>>,
+                in_progress::S<::V<uses_averaging_aproximation(0)>,
+                               ::V<uses_averaging_aproximation(1)>,
+                               ::V<uses_averaging_aproximation(2)>>,
+                in_progress::S<::V<uses_variance_aproximation(false)>,
+                               ::V<uses_variance_aproximation(true)>>,
+                in_progress::S<
+                    ::V<uses_variance_correction_aproximation(false)>,
+                    ::V<uses_variance_correction_aproximation(true)>>
+                                             >{});
+  };
 }
 
-
-
-
-auto get_Experiment(
-    std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
-    double frequency_of_sampling = 50e3, double initial_ATP = 0) {
+inline auto get_Experiment(
+        std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
+        double frequency_of_sampling = 50e3, double initial_ATP = 0) {
   using namespace macrodr;
   auto [recording_conditions, recording] = macrodr::load_recording(filename);
 
@@ -552,7 +564,7 @@ auto get_Experiment(
                     initial_ATP_concentration(ATP_concentration(initial_ATP)));
 }
 
-auto get_Observations(
+inline auto get_Observations(
     std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt") {
   auto [recording_conditions, recording] = macrodr::load_recording(filename);
   std::string out = filename.substr(0, filename.size() - 4) + "_recording.txt";
@@ -570,19 +582,19 @@ make_Likelihood_Model<uses_adaptive_aproximation(true),
 
 */
 
-auto get_Likelihood_Algorithm(bool use_adaptive_approx,bool use_recursive_approx, std::size_t n_point_averaging, bool variance_approximation, bool uses_variance_approximation_correction, std::string model, double )
-{
-    
-    
-                  
-}
+inline auto get_Likelihood_Algorithm(bool use_adaptive_approx,
+                              bool use_recursive_approx,
+                              std::size_t n_point_averaging,
+                              bool variance_approximation,
+                              bool uses_variance_approximation_correction,
+                              std::string model, double) {}
 
-auto get_Prior(double prior_error, const std::string modelname) {
+inline auto get_Prior(double prior_error, const std::string modelname) {
 
   return std::pair(prior_error, modelname);
 }
 
-auto get_Likelihood(const std::string &model, bool adaptive_aproximation,
+inline auto get_Likelihood(const std::string &model, bool adaptive_aproximation,
                     bool recursive_approximation, int averaging_approximation,
                     bool variance_correction_approximation,
                     bool variance_correction, std::size_t n_sub_dt) {
@@ -592,7 +604,7 @@ auto get_Likelihood(const std::string &model, bool adaptive_aproximation,
                     variance_correction, n_sub_dt);
 }
 
-auto get_CueviAlgorithm(
+inline auto get_CueviAlgorithm(
     std::size_t num_scouts_per_ensemble = 16,
     std::size_t number_trials_until_give_up = 1e5, double stops_at = 1e-15,
     double medium_beta = 1e-2,
@@ -659,8 +671,6 @@ template <class R, class... A> struct return_type<R (*)(A...)> {
   using type = R;
 };
 
-
-
 using tablefun_value_type = typename return_type<
     std::decay_t<decltype(&get_function_Table_maker_value)>>::type;
 
@@ -683,15 +693,14 @@ using likelihood_type =
 // experiment = experiment, algorithm= algorithm, function_table
 // =function_table, init_seed =0)
 
-void calc_likelihood(std::string outfilename,
-                     parameters_value_type par,
+inline void calc_likelihood(std::string outfilename, parameters_value_type par,
                      likelihood_type likelihood, recording_value_type recording,
                      experiment_type experiment, algo_type algorithm,
                      tablefun_value_type ft) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto save_every=num_scouts_per_ensemble;
-  auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
+  auto save_every = num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
@@ -700,7 +709,7 @@ void calc_likelihood(std::string outfilename,
         [outfilename, &par, &ftbl3, &experiment, &recording, &likelihood,
          &algorithm](auto model0ptr) {
           auto &model0 = *model0ptr;
-        
+
           auto [path, filename, t_segments_used, t_min_number_of_samples,
                 num_scouts_per_ensemble, number_trials_until_give_up,
                 min_fraction, thermo_jump_factor, max_iter_equilibrium,
@@ -752,8 +761,7 @@ void calc_likelihood(std::string outfilename,
                                     uses_variance_correction_aproximation(
                                         false),
                                     return_predictions(true)>(
-                        ftbl3, model0, param1,
-                        experiment, get<Recording>(y()));
+                        ftbl3, model0, param1, experiment, get<Recording>(y()));
             if (lik)
               save_Likelihood_Predictions(outfilename, lik.value(), y,
                                           experiment);
@@ -765,135 +773,129 @@ void calc_likelihood(std::string outfilename,
   }
 }
 
-inline Maybe_error<std::vector<std::size_t>> load_segments_length_for_fractioning(const std::string& filename, std::string sep)
-{
-    std::ifstream f(filename);
-    if (!f)
-        return error_message(filename+ " cannot be opened");
-    std::string line;
-    std::getline(f,line);
-    if (!f)
-        return error_message(filename+ " has no data");
-    
-    std::stringstream ss(line);
-    std::vector<std::size_t> out;
-    std::size_t number_of_samples;
-    
-    while (ss>>number_of_samples)
-    {
-        out.push_back(number_of_samples);
-        ss>>septr(sep);
-    }
-    
-    return out;
-    
+inline Maybe_error<std::vector<std::size_t>>
+load_segments_length_for_fractioning(const std::string &filename,
+                                     std::string sep) {
+  std::ifstream f(filename);
+  if (!f)
+    return error_message(filename + " cannot be opened");
+  std::string line;
+  std::getline(f, line);
+  if (!f)
+    return error_message(filename + " has no data");
+
+  std::stringstream ss(line);
+  std::vector<std::size_t> out;
+  std::size_t number_of_samples;
+
+  while (ss >> number_of_samples) {
+    out.push_back(number_of_samples);
+    ss >> septr(sep);
+  }
+
+  return out;
 }
 
-void calc_derivative_likelihood(std::string outfilename,
-                                     parameters_value_type par,
-                                     likelihood_type likelihood,
-                                     recording_value_type recording,
-                                experiment_type experiment,
-                                algo_type algorithm,
-                     tablefun_value_type ft, std::size_t myseed) {
-    using namespace macrodr;
-    auto [filename, num_scouts_per_ensemble] = std::move(ft);
-    auto save_every=num_scouts_per_ensemble;
-    auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
-    
-    auto Maybe_model_v = get_model(std::get<0>(likelihood));
-    if (Maybe_model_v) {
-        auto model_v = std::move(Maybe_model_v.value());
-        return std::visit(
-            [outfilename, &par, &ftbl3, &experiment, &recording, &likelihood,
-             &algorithm, &myseed](auto model0ptr) {
-                auto &model0 = *model0ptr;
-                myseed = calc_seed(myseed);
-                mt_64i mt(myseed);
-                
-                auto [path, filename, t_segments_used, t_min_number_of_samples,
-                      num_scouts_per_ensemble, number_trials_until_give_up,
-                      min_fraction, thermo_jump_factor, max_iter_equilibrium,
-                      n_points_per_decade, n_points_per_decade_fraction, medium_beta,
-                      stops_at, includes_zero, saving_itervals, random_jumps] =
-                    std::move(algorithm);
-                
-                auto [model, adaptive_aproximation, recursive_approximation,
-                      averaging_approximation, variance_correction_approximation,
-                      variance_correction, n_sub_dt] = likelihood;
-                
-                using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
-                
-                auto Maybe_param1 = var::load_Parameters<MyModel>(
-                    par.first, par.second, model0.model_name(), model0.names());
-                Simulated_Recording<includes_N_state_evolution(true)> y;
-                auto Maybe_y =
-                    load_Simulated_Recording(recording.first, recording.second, y);
-                if (!Maybe_param1.valid() || !Maybe_y.valid()) {
-                    std::cerr << Maybe_param1.error()() << Maybe_y.error()();
-                } else {
-                    
-                    auto param1 = std::move(Maybe_param1.value());
-                    
-                    std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
-                    auto number_of_traces = 7;
-                    auto number_of_segments = t_segments.size();
-                    t_segments.reserve(number_of_traces * t_segments.size());
-                    
-                    for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
-                        std::copy_n(t_segments.begin(), number_of_segments,
-                                    std::back_inserter(t_segments));
-                    
-                    std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
-                    auto modelLikelihood =
-                        make_Likelihood_Model<uses_adaptive_aproximation(true),
-                                              uses_recursive_aproximation(true),
-                                              uses_averaging_aproximation(2),
-                                              uses_variance_aproximation(false),
-                                              uses_variance_correction_aproximation(
-                                                  false)>(
-                            model0, Simulation_n_sub_dt(n_sub_dt));
-                    auto lik =
-                        Macro_DMR{}
-                            .log_Likelihood<uses_adaptive_aproximation(false),
-                                            uses_recursive_aproximation(true),
-                                            uses_averaging_aproximation(2),
-                                            uses_variance_aproximation(false),
-                                            uses_variance_correction_aproximation(
-                                                false),
-                                            return_predictions(true)>(
-                                ftbl3, model0, param1,
-                                experiment, get<Recording>(y()));
-                    if (lik)
-                        save_Likelihood_Predictions(outfilename, lik.value(), y,
-                                                    experiment);
-                    else
-                        std::cerr << lik.error()();
-                }
-            },
-            model_v);
-    }
-}
-    
-
-
-
-void calc_evidence(prior_value_type prior, likelihood_type likelihood,
-                   std::string recording, experiment_type experiment,
-                   std::string segments,
-                   algo_type algorithm, tablefun_value_type ft,
-                   std::size_t myseed) {
+inline void calc_derivative_likelihood(std::string outfilename,
+                                parameters_value_type par,
+                                likelihood_type likelihood,
+                                recording_value_type recording,
+                                experiment_type experiment, algo_type algorithm,
+                                tablefun_value_type ft, std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto save_every=num_scouts_per_ensemble;
-  auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
+  auto save_every = num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
     auto model_v = std::move(Maybe_model_v.value());
     return std::visit(
-        [&ftbl3, &experiment, &recording,&segments, &prior, &likelihood, &algorithm,
-         &myseed](auto model0ptr) {
+        [outfilename, &par, &ftbl3, &experiment, &recording, &likelihood,
+         &algorithm, &myseed](auto model0ptr) {
+          auto &model0 = *model0ptr;
+          myseed = calc_seed(myseed);
+          mt_64i mt(myseed);
+
+          auto [path, filename, t_segments_used, t_min_number_of_samples,
+                num_scouts_per_ensemble, number_trials_until_give_up,
+                min_fraction, thermo_jump_factor, max_iter_equilibrium,
+                n_points_per_decade, n_points_per_decade_fraction, medium_beta,
+                stops_at, includes_zero, saving_itervals, random_jumps] =
+              std::move(algorithm);
+
+          auto [model, adaptive_aproximation, recursive_approximation,
+                averaging_approximation, variance_correction_approximation,
+                variance_correction, n_sub_dt] = likelihood;
+
+          using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
+
+          auto Maybe_param1 = var::load_Parameters<MyModel>(
+              par.first, par.second, model0.model_name(), model0.names());
+          Simulated_Recording<includes_N_state_evolution(true)> y;
+          auto Maybe_y =
+              load_Simulated_Recording(recording.first, recording.second, y);
+          if (!Maybe_param1.valid() || !Maybe_y.valid()) {
+            std::cerr << Maybe_param1.error()() << Maybe_y.error()();
+          } else {
+
+            auto param1 = std::move(Maybe_param1.value());
+
+            std::vector<std::size_t> t_segments = {73, 33, 22, 22, 1, 1, 1, 1};
+            auto number_of_traces = 7;
+            auto number_of_segments = t_segments.size();
+            t_segments.reserve(number_of_traces * t_segments.size());
+
+            for (std::size_t i = 0; i + 1 < number_of_traces; ++i)
+              std::copy_n(t_segments.begin(), number_of_segments,
+                          std::back_inserter(t_segments));
+
+            std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
+            auto modelLikelihood =
+                make_Likelihood_Model<uses_adaptive_aproximation(true),
+                                      uses_recursive_aproximation(true),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(false),
+                                      uses_variance_correction_aproximation(
+                                          false)>(
+                    model0, Simulation_n_sub_dt(n_sub_dt));
+            auto lik =
+                Macro_DMR{}
+                    .log_Likelihood<uses_adaptive_aproximation(false),
+                                    uses_recursive_aproximation(true),
+                                    uses_averaging_aproximation(2),
+                                    uses_variance_aproximation(false),
+                                    uses_variance_correction_aproximation(
+                                        false),
+                                    return_predictions(true)>(
+                        ftbl3, model0, param1, experiment, get<Recording>(y()));
+            if (lik)
+              save_Likelihood_Predictions(outfilename, lik.value(), y,
+                                          experiment);
+            else
+              std::cerr << lik.error()();
+          }
+        },
+        model_v);
+  }
+}
+
+inline void calc_evidence(prior_value_type prior, likelihood_type likelihood,
+                   std::string recording, experiment_type experiment,
+                   std::string segments, algo_type algorithm,
+                   tablefun_value_type ft, std::size_t myseed) {
+  using namespace macrodr;
+  auto [filename, num_scouts_per_ensemble] = std::move(ft);
+  auto save_every = num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
+
+  auto Maybe_model_v = get_model(std::get<0>(likelihood));
+
+  if (Maybe_model_v) {
+    auto model_v = std::move(Maybe_model_v.value());
+    return std::visit(
+        [&ftbl3, &experiment, &recording, &segments, &prior, &likelihood,
+         &algorithm, &myseed](auto model0ptr) {
           auto &model0 = *model0ptr;
           myseed = calc_seed(myseed);
           mt_64i mt(myseed);
@@ -906,8 +908,8 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
               std::move(algorithm);
 
           auto [model, adaptive_aproximation, recursive_approximation,
-                averaging_approximation, variance_correction_approximation,
-                variance_correction, n_sub_dt] = likelihood;
+                averaging_approximation, variance_correction,
+                variance_correction_approximation, n_sub_dt] = likelihood;
 
           using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
 
@@ -946,57 +948,64 @@ void calc_evidence(prior_value_type prior, likelihood_type likelihood,
 
               std::string filename = file_name + "_" + ModelName + "_" +
                                      time_now() + "_" + std::to_string(myseed);
-              
-              auto Maybe_t_segments_used = load_segments_length_for_fractioning(segments,",");
-              
-              if (Maybe_t_segments_used)
-              {
-                  auto t_segments_used=std::move(Maybe_t_segments_used.value());
 
-              auto saving_itervals = Saving_intervals(Vector_Space(
-                  Save_Evidence_every(num_scouts_per_ensemble),
-                  Save_Likelihood_every(num_scouts_per_ensemble),
-                  Save_Parameter_every(num_scouts_per_ensemble),
-                  Save_Predictions_every(num_scouts_per_ensemble * 20)));
+              auto Maybe_t_segments_used =
+                  load_segments_length_for_fractioning(segments, ",");
 
-              auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-                  path, filename, t_segments_used, t_min_number_of_samples,
-                  num_scouts_per_ensemble, number_trials_until_give_up,
-                  min_fraction, thermo_jumps_every, max_iter_equilibrium,
-                  n_points_per_decade, n_points_per_decade_fraction,
-                  medium_beta, stops_at, includes_zero, saving_itervals,
-                  random_jumps);
+              if (Maybe_t_segments_used) {
+                auto t_segments_used = std::move(Maybe_t_segments_used.value());
 
-              auto modelLikelihood =
-                  make_Likelihood_Model<uses_adaptive_aproximation(true),
-                                        uses_recursive_aproximation(true),
-                                        uses_averaging_aproximation(2),
-                                        uses_variance_aproximation(false),
-                                        uses_variance_correction_aproximation(
-                                            false)>(
-                      model0, Simulation_n_sub_dt(n_sub_dt));
-              auto opt3 = cuevi::evidence(ftbl3, std::move(cbc), param1_prior,
-                                          modelLikelihood, y, experiment,
-                                          cuevi::Init_seed(myseed));
-            }
-            }
-            else
-                std::cerr<<Maybe_y.error()();
+                auto saving_itervals = Saving_intervals(Vector_Space(
+                    Save_Evidence_every(num_scouts_per_ensemble),
+                    Save_Likelihood_every(num_scouts_per_ensemble),
+                    Save_Parameter_every(num_scouts_per_ensemble),
+                    Save_Predictions_every(num_scouts_per_ensemble * 20)));
+
+                auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+                    path, filename, t_segments_used, t_min_number_of_samples,
+                    num_scouts_per_ensemble, number_trials_until_give_up,
+                    min_fraction, thermo_jumps_every, max_iter_equilibrium,
+                    n_points_per_decade, n_points_per_decade_fraction,
+                    medium_beta, stops_at, includes_zero, saving_itervals,
+                    random_jumps);
+
+                auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
+                    uses_adaptive_aproximation(adaptive_aproximation),
+                    uses_recursive_aproximation(recursive_approximation),
+                    uses_averaging_aproximation(averaging_approximation),
+                    uses_variance_aproximation(variance_correction),
+                    uses_variance_correction_aproximation(
+                        variance_correction_approximation),
+                    model0, Simulation_n_sub_dt(n_sub_dt));
+                // using m2=typename
+                // decltype(modelLikelihood_v)::paseModelLikelihoodv;
+
+                std::visit(
+                    [&ftbl3, &cbc, &param1_prior, &y, &experiment,
+                     &myseed](auto &modelLikelihood) {
+                      auto opt3 = cuevi::evidence(
+                          ftbl3, std::move(cbc), param1_prior, modelLikelihood,
+                          y, experiment, cuevi::Init_seed(myseed));
+                    },
+                    modelLikelihood_v);
+              }
+            } else
+              std::cerr << Maybe_y.error()();
           }
         },
         model_v);
   }
 }
 
-void calc_evidence_continuation(prior_value_type prior,
+inline void calc_evidence_continuation(prior_value_type prior,
                                 likelihood_type likelihood,
                                 std::string recording,
                                 experiment_type experiment, algo_type algorithm,
                                 tablefun_value_type ft, std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto save_every=num_scouts_per_ensemble;
-  auto ftbl3 = get_function_Table_maker_St(filename,save_every)();
+  auto save_every = num_scouts_per_ensemble;
+  auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
 
   auto Maybe_model_v = get_model(std::get<0>(likelihood));
   if (Maybe_model_v) {
@@ -1091,7 +1100,7 @@ void calc_evidence_continuation(prior_value_type prior,
   }
 }
 
-std::string run_simulation(std::string filename, recording_type recording_file,
+inline std::string run_simulation(std::string filename, recording_type recording_file,
                            experiment_type experiment, std::size_t myseed,
                            std::string modelName,
                            parameters_value_type parameter_files, bool includeN,
@@ -1174,7 +1183,7 @@ std::string run_simulation(std::string filename, recording_type recording_file,
  */
 
 template <class TableFunction>
-auto calc_evidence_old(
+inline auto calc_evidence_old(
     TableFunction ftbl3, typename mt_64i::result_type myseed,
     std::string Efilename_7 = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
     std::size_t num_scouts_per_ensemble = 16,
