@@ -80,6 +80,36 @@ template<class... T> struct S{
     }
    
 };
+
+
+template<class... T> struct Set_of_Types{
+    
+    template<class S>
+        requires(std::is_same_v<T,S>||...||false)
+    auto operator ||(Set_of_Types<S>)const
+    {
+        return Set_of_Types{};
+    }
+    
+    template<class S>
+        requires(!(std::is_same_v<T,S>||...||false))
+    auto operator ||(Set_of_Types<S>)const
+    {
+        return Set_of_Types<T...,S>{};
+    }
+    
+    
+    template<template<class...> class Co>
+    using transport=Co<T...>;    
+    
+};
+
+template<class S,template<class...> class Co>
+using transport_t=typename S::template transport<Co>;
+
+template<class...T>
+using set_of_types_t=decltype((Set_of_Types<>{}||...||Set_of_Types<T>{}));
+
 }
 
 template<auto x>
@@ -195,10 +225,16 @@ auto Apply_variant(F&& f,std::tuple<Vs ...> const&x)
 
 namespace safe_visitor{
 
+
+
+
+
+
 template<class F, class... Ts>
 auto safe_visit(F&&f, std::variant<Ts...>const &x)
 {
-    using return_type=std::variant<std::invoke_result_t<F,Ts const&>...>;
+    
+    using return_type=in_progress::transport_t<in_progress::set_of_types_t<std::invoke_result_t<F,Ts const&>...>,std::variant>;
     return std::visit([f](auto const& e)
                       { return return_type(std::invoke(std::forward<F>(f),e));},x);
         
