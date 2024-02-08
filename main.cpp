@@ -183,15 +183,15 @@ variance_correction_approximation,  std::size_t n_sub_dt)
 
 */
     
-    cm.push_function("get_Likelihood",
+    cm.push_function("set_Likelihood_algorithm",
                      dcli::to_typed_function<std::string, bool, bool, int, bool,
                                              bool, std::size_t>(
-                         &get_Likelihood, "model", "adaptive_aproximation",
+                         &set_Likelihood_algorithm, "model", "adaptive_aproximation",
                          "recursive_approximation", "averaging_approximation",
                          "variance_correction_approximation",
                          "variance_approximation", "n_sub_dt"));
     
-    /**    auto get_CueviAlgorithm(
+    /**    auto set_CueviAlgorithm(
         std::size_t num_scouts_per_ensemble = 16,
         std::size_t number_trials_until_give_up = 1e5, double stops_at =
    1e-15, double medium_beta = 1e-2, bool includes_zero = true, bool
@@ -203,11 +203,11 @@ variance_correction_approximation,  std::size_t n_sub_dt)
    "haha", std::size_t thermo_jumps_every = 10);
    */
     cm.push_function(
-        "get_CueviAlgorithm",
+        "set_CueviAlgorithm",
         dcli::to_typed_function<std::size_t, std::size_t, double, double, bool,
                                 bool, std::size_t, std::string, double, double,
                                 double, std::size_t, std::string, std::size_t>(
-            &get_CueviAlgorithm, "num_scouts_per_ensemble",
+            &set_CueviAlgorithm, "num_scouts_per_ensemble",
             "number_trials_until_give_up", "stops_at", "medium_beta",
             "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
             "min_fraction", "n_points_per_decade", "n_points_per_decade_fraction",
@@ -223,11 +223,33 @@ variance_correction_approximation,  std::size_t n_sub_dt)
     cm.push_function(
         "simulate",
         dcli::to_typed_function<std::string ,recording_type , experiment_type ,
-                                std::size_t , std::string ,parameters_value_type ,bool ,std::size_t>(
+                                std::size_t , std::string ,parameters_value_type ,simulation_algo_type>(
             &run_simulation, "output","recording","experiment",
-             "init_seed", "modelName","parameter_values","includeN","n_sub_dt"));
+             "init_seed", "modelName","parameter_values","simulation_algorithm"));
+    
     /**
-     * prior_value_type prior, likelihood_type likelihood,
+     *inline void calc_likelihood(std::string outfilename, parameters_value_type par,
+                     likelihood_algo_type likelihood, recording_value_type recording,
+                     experiment_type experiment, algo_type algorithm,
+                     tablefun_value_type ft) 
+     */
+    
+    cm.push_function(
+        "likelihood",
+        dcli::to_typed_function<std::string , parameters_value_type ,
+                                likelihood_algo_type , recording_value_type ,
+                                experiment_type , algo_type ,
+                                tablefun_value_type >(
+            &calc_likelihood, "output","parameter_values","likelihoodModel",
+            "recording", "experiment","algorithm","function_table"));
+    
+    
+    
+    
+    
+    
+    /**
+     * prior_value_type prior, likelihood_algo_type likelihood,
                    recording_value_type recording, experiment_type experiment,
                    algo_type algorithm, tablefun_value_type ft,
                    std::size_t myseed
@@ -235,7 +257,7 @@ variance_correction_approximation,  std::size_t n_sub_dt)
     
     cm.push_function(
         "evidence",
-        dcli::to_typed_function<prior_value_type, likelihood_type, std::string,
+        dcli::to_typed_function<prior_value_type, likelihood_algo_type, std::string,
                                 experiment_type, std::string,algo_type, tablefun_value_type,
                                 std::size_t>(
             &calc_evidence, "prior", "likelihoodModel", "data", "experiment", "segments",

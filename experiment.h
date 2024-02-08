@@ -228,14 +228,20 @@ inline Maybe_error<bool> load_Recording_Data(std::string const &fname,
             std::getline(f, line);
             ss = std::stringstream(line);
             std::size_t i_step;
+            std::size_t i_step_prev=std::numeric_limits<std::size_t>::max();
+            
             double val;
             while (extract_double(ss >> i_step >> septr(separator), val)) {
+                if (i_step_prev!=i_step){
                 if (i_step != e().size())
                     return error_message("i_step missmatch expected" +
                                          std::to_string(e().size()) +
                                          " found:" + std::to_string(i_step));
                 else {
                     e().push_back(Patch_current(val));
+                    i_step_prev=i_step;
+                }
+                
                 }
                 std::getline(f, line);
                 ss = std::stringstream(line);

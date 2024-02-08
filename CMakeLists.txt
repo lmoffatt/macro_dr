@@ -100,7 +100,7 @@ add_executable(macro_dr main.cpp
     scripts/run_evidence.txt
     scripts/prior_model4.txt
     scripts/likelihood_model4.txt
-    scripts/simulation_mode4_7.txt
+    
     experiments/experiment_7.txt
     scripts/algorithm_cuevi_standard.txt
     scripts/function_table_standard.txt
