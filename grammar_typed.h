@@ -279,6 +279,8 @@ public:
 };
 
 template <class Lexer, class Compiler, class F, class... Args>
+    requires (std::is_class_v<std::invoke_result_t<F,Args...>>||
+             std::is_void_v<std::invoke_result_t<F,Args...>>)
 class typed_function_evaluation
     : public typed_expression<Lexer, Compiler,
                               std::invoke_result_t<F, Args...>> {
