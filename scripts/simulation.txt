@@ -1,6 +1,7 @@
 simulation_Id= get_random_Id(prefix="Sim") 
 
-simfile=simulate(output=simulation_Id, recording= observations, experiment=experiment,
-init_seed=0, modelName= model, parameter_values= modelParameter, includeN=1 ,n_sub_dt=100)
+sim_algo= simulation_algorithm (include_N_states=1,number_of_substeps=100)
 
-likelihood_algorithm = set_Likelihood_algorithm(model= model, adaptive_aproximation= 1, recursive_approximation= 1, averaging_approximation=2, variance_correction_approximation= 1, variance_approximation =0, n_sub_dt =1000)
+simfile=simulate(output=simulation_Id, recording= observations, experiment=experiment,
+init_seed=0, modelName= model, parameter_values= modelParameter, simulation_algorithm=sim_algo)
+

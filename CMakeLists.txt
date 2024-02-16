@@ -18,7 +18,7 @@ add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_BUILD_TYPE "Release")
-set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcepts-diagnostics-depth=4 -fmax-errors=50" )
+set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcepts-diagnostics-depth=4 -fmax-errors=5" )
 #find_package(Catch2 REQUIRED)
 #target_link_libraries(tests Catch2::Catch2)
 
@@ -102,7 +102,7 @@ add_executable(macro_dr main.cpp
     scripts/likelihood_model4.txt
     
     experiments/experiment_7.txt
-    scripts/algorithm_cuevi_standard.txt
+    
     scripts/function_table_standard.txt
     models/model6_prior.csv models/model6_parameters.csv
     scripts/mode6_Eff_no_inactivation.txt
@@ -142,6 +142,7 @@ add_executable(macro_dr main.cpp
     slurm_tupac/s_MH_Li7.sh slurm_tupac/s_MH_Li7_sim.sh slurm_tupac/s_MH_Li_sim.sh slurm_tupac/s_MH_Li.sh slurm_tupac/s_MH_Li_short.sh
     scripts/simulation_seed.txt
     type_algebra.h
+    scripts/likelihood.txt
     
     
     

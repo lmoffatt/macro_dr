@@ -184,34 +184,142 @@ variance_correction_approximation,  std::size_t n_sub_dt)
 */
     
     cm.push_function("set_Likelihood_algorithm",
-                     dcli::to_typed_function<std::string, bool, bool, int, bool,
+                     dcli::to_typed_function<bool, bool, int, bool,
                                              bool, std::size_t>(
-                         &set_Likelihood_algorithm, "model", "adaptive_aproximation",
+                         &set_Likelihood_algorithm, "adaptive_aproximation",
                          "recursive_approximation", "averaging_approximation",
                          "variance_correction_approximation",
                          "variance_approximation", "n_sub_dt"));
     
-    /**    auto set_CueviAlgorithm(
-        std::size_t num_scouts_per_ensemble = 16,
-        std::size_t number_trials_until_give_up = 1e5, double stops_at =
-   1e-15, double medium_beta = 1e-2, bool includes_zero = true, bool
-   random_jumps = true, std::size_t max_iter_equilibrium = 50000, std::string
-   path = "", double min_fraction = 4, double n_points_per_decade = 1, double
-   n_points_per_decade_fraction = 6,
+    /**
+inline auto set_Fraction_algorithm(
+    double min_fraction ,
+    double n_points_per_decade_fraction ,
+    std::string segments)     
+ * */
+    
+    cm.push_function("set_fraction_algorithm",
+                     dcli::to_typed_function<    double  ,
+                                             double  ,
+                                             std::string >(
+                         &set_Fraction_algorithm, "min_fraction", "n_points_per_decade_fraction",
+                         "segments"));
+    
+    
+    /**
+     * calc_experiment_fractions(std::string save_name,std::string recording, experiment_type experiment,                                  fraction_algo_type fraction_algo, std::string model,std::size_t i_seed )
+     * */
+    
+    cm.push_function("fraction_experiment",
+                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , std::string ,std::size_t >(
+                         &calc_experiment_fractions, "save_name", "recording",
+                         "experiment","fraction_algo","model","i_seed"));
+    
+    
+    
+    /**
+     * inline Maybe_error<std::tuple<std::string, std::string, double, double>>
+calc_simulation_fractions(std::string save_name,std::string simulation, experiment_type experiment,                                  fraction_algo_type fraction_algo, std::string model,std::size_t i_seed )
 
-        std::size_t t_min_number_of_samples = 20, std::string filename =
-   "haha", std::size_t thermo_jumps_every = 10);
-   */
+     * */
+    
+    cm.push_function("fraction_simulation",
+                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , std::string ,std::size_t >(
+                         &calc_simulation_fractions, "save_name", "simulation",
+                         "experiment","fraction_algo","model","i_seed"));
+    
+    
+    /**
+     * calc_fraction_likelihood(const std::string file_name,
+                                            std::string model,
+                                     parameters_value_type par,
+                                     fractioned_simulation_type  Maybe_frac_simulation,
+                                     likelihood_algo_type likelihood_algo,
+                                     tablefun_value_type ft)
+     * */
+    
+    cm.push_function("fraction_likelihood",
+                     dcli::to_typed_function<   std::string ,
+                                             std::string ,
+                                             parameters_value_type ,
+                                             fractioned_simulation_type  ,
+                                             likelihood_algo_type ,
+                                             tablefun_value_type  >(
+                         &calc_fraction_likelihood, "file_name", "model",
+                         "parameter","fractioned_simulation","likelihood_algo","function_table"));
+    
+    
+    
+    /**
+     * inline void calc_fraction_evidence(std::string model,
+                          prior_value_type prior,
+                          likelihood_algo_type likelihood,
+                          fractioned_simulation_type Maybe_frac_experiment,
+                          fraction_algo_type fraction_algo,
+                          cuevi_algo_type cuevi_algorithm,
+                          tablefun_value_type ft, std::size_t myseed)
+     * */
+    
+    cm.push_function("fraction_likelihood",
+                     dcli::to_typed_function< std::string ,
+                                             prior_value_type ,
+                                             likelihood_algo_type ,
+                                             fractioned_simulation_type ,
+                                             fraction_algo_type ,
+                                             cuevi_algo_type ,
+                                             tablefun_value_type , std::size_t  >(
+                         &calc_fraction_evidence, "model", "prior",
+                         "likelihood","Maybe_frac_experiment","fraction_algorithm","cuevi_algorithm","ft","myseed"));
+    
+    
+    
+    
+    /**    inline auto set_CueviAlgorithm(
+    std::size_t num_scouts_per_ensemble = 16,
+    std::size_t number_trials_until_give_up = 1e5,
+    double stops_at = 1e-15,
+    double medium_beta = 1e-2,
+    bool includes_zero = true,
+    bool random_jumps = true,
+    std::size_t max_iter_equilibrium = 50000,
+    std::string path = "",
+    double n_points_per_decade = 1,
+    std::size_t t_min_number_of_samples = 20,
+    std::string filename = "haha",
+    std::size_t thermo_jumps_every = 10)   */
+    
+    
     cm.push_function(
         "set_CueviAlgorithm",
-        dcli::to_typed_function<std::size_t, std::size_t, double, double, bool,
-                                bool, std::size_t, std::string, double, double,
-                                double, std::size_t, std::string, std::size_t>(
+        dcli::to_typed_function<    std::size_t ,
+                                std::size_t  ,
+                                double  ,
+                                double ,
+                                bool ,
+                                bool ,
+                                std::size_t ,
+                                std::string ,
+                                double ,
+                                std::size_t ,
+                                std::string ,
+                                std::size_t >(
             &set_CueviAlgorithm, "num_scouts_per_ensemble",
             "number_trials_until_give_up", "stops_at", "medium_beta",
             "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
-            "min_fraction", "n_points_per_decade", "n_points_per_decade_fraction",
+             "n_points_per_decade",
             "t_min_number_of_samples", "filename", "thermo_jumps_every"));
+    
+    /**
+     *  auto set_simulation_algorithm(bool includeN, std::size_t n_sub_dt)
+     * 
+     * */
+    
+    cm.push_function(
+        "simulation_algorithm",
+        dcli::to_typed_function<bool, std::size_t>(
+            &set_simulation_algorithm, "include_N_states","number_of_substeps"));
+    
+    
     
     
     /**
@@ -227,21 +335,27 @@ variance_correction_approximation,  std::size_t n_sub_dt)
             &run_simulation, "output","recording","experiment",
              "init_seed", "modelName","parameter_values","simulation_algorithm"));
     
+    
+    
+    
     /**
-     *inline void calc_likelihood(std::string outfilename, parameters_value_type par,
-                     likelihood_algo_type likelihood, recording_value_type recording,
-                     experiment_type experiment, algo_type algorithm,
-                     tablefun_value_type ft) 
+     *inline void calc_likelihood(std::string outfilename,
+                            std::string model,
+                            parameters_value_type par,
+                            likelihood_algo_type likelihood,
+                            recording_value_type recording,
+                            experiment_type experiment, cuevi_algo_type algorithm,
+                            tablefun_value_type ft) 
      */
     
     cm.push_function(
         "likelihood",
-        dcli::to_typed_function<std::string , parameters_value_type ,
+        dcli::to_typed_function<std::string , std::string,parameters_value_type ,
                                 likelihood_algo_type , recording_value_type ,
-                                experiment_type , algo_type ,
+                                experiment_type , cuevi_algo_type ,
                                 tablefun_value_type >(
-            &calc_likelihood, "output","parameter_values","likelihoodModel",
-            "recording", "experiment","algorithm","function_table"));
+            &calc_likelihood, "output","model","parameter_values","likelihood_algorithm",
+            "recording", "experiment","cuevi_algorithm","function_table"));
     
     
     
@@ -249,19 +363,20 @@ variance_correction_approximation,  std::size_t n_sub_dt)
     
     
     /**
-     * prior_value_type prior, likelihood_algo_type likelihood,
-                   recording_value_type recording, experiment_type experiment,
-                   algo_type algorithm, tablefun_value_type ft,
-                   std::size_t myseed
-     * */
+     * std::string model,
+                          prior_value_type prior,
+                          likelihood_algo_type likelihood,
+                          std::string recording, experiment_type experiment,
+                          fraction_algo_type fraction_algo, cuevi_algo_type cuevi_algorithm,
+                          tablefun_value_type ft, std::size_t myseed     * */
     
     cm.push_function(
         "evidence",
-        dcli::to_typed_function<prior_value_type, likelihood_algo_type, std::string,
-                                experiment_type, std::string,algo_type, tablefun_value_type,
+        dcli::to_typed_function<std::string,prior_value_type, likelihood_algo_type, std::string,
+                                experiment_type, fraction_algo_type,cuevi_algo_type, tablefun_value_type,
                                 std::size_t>(
-            &calc_evidence, "prior", "likelihoodModel", "data", "experiment", "segments",
-            "algorithm", "function_table", "init_seed"));
+            &calc_evidence, "model","prior", "likelihood_algorithm", "data", "experiment", "fraction_algorithm",
+            "cuevi_algorithm", "function_table", "init_seed"));
     return cm;
 }
 

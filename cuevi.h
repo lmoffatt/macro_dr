@@ -1799,6 +1799,9 @@ auto evidence_loop(FunctionTable &f, std::pair<mcmc_type, bool> &&mcmc_run,
   return Return_Type(std::pair(mcmc_run.first, current));
 }
 
+
+
+
 template <class FunctionTable, class myFractioner, class t_Reporter,
           class t_Finalizer, class Prior, class Likelihood, class DataType,
           class Variables>
@@ -1853,6 +1856,65 @@ auto evidence(FunctionTable &f,
                          ys, xs);
   }
 }
+
+
+
+template <class FunctionTable, class myFractioner, class t_Reporter,
+         class t_Finalizer, class Prior, class Likelihood, class DataType,
+         class Variables>
+auto evidence_fraction(FunctionTable &f,
+              Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue,
+                       Prior &&prior, Likelihood const &lik, const std::vector<DataType> &ys,
+                       const std::vector<Variables> &xs, const Init_seed init_seed) {
+    using Parameter_Type = std::decay_t<std::invoke_result_t<Prior, mt_64i &>>;
+    
+    using mcmc_type = std::decay_t<decltype(get<Finalizer>(cue())())>;
+    
+    using Return_Type =
+        Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<Parameter_Type>>>;
+    
+    
+    auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
+    auto mt = init_mt(init_seed());
+    auto mts = init_mts(mt, n_walkers() / 2);
+ //   auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
+    // auto n_points_per_decade_fraction =
+    //     get<Points_per_decade>(get<Fractions_Param>(cue())());
+    
+    // auto [ys, xs] = get<Fractioner>(cue())()(
+    //     y, x, mt, size(prior) * min_fraction(), n_points_per_decade_fraction());
+    
+    auto Maybe_current = Cuevi_mcmc<Parameter_Type>::init(
+        f, mts, std::forward<Prior>(prior), lik, ys,
+        xs, get<Th_Beta_Param>(cue()), n_walkers,
+        get<Number_trials_until_give_up>(cue()));
+    
+    if (!Maybe_current)
+        return Return_Type(Maybe_current.error());
+    else {
+        
+        auto current = std::move(Maybe_current.value());
+        auto &rep = get<Reporter>(cue())();
+        
+        auto a = get<Finalizer>(cue())();
+        auto mcmc_run = checks_convergence(std::move(a), current);
+        
+        std::size_t iter = 0;
+        report_title(f, "Iter");
+        auto v_random_jumps = get<Random_jumps>(cue());
+        auto v_thermo_jump_every = get<Thermo_Jumps_every>(cue());
+        report_model_all(rep, v_thermo_jump_every, prior, lik, ys, xs);
+        
+        // report_init(rep,v_thermo_jump_every,prior,lik,ys,xs);
+        
+        return evidence_loop(f, std::move(mcmc_run),
+                             rep, iter, current, mts, v_random_jumps,
+                             v_thermo_jump_every, std::forward<Prior>(prior), lik,
+                             ys, xs);
+    }
+}
+
+
 
 template <class FunctionTable, class myFractioner, class t_Reporter,
           class t_Finalizer, class Prior, class Likelihood, class DataType,

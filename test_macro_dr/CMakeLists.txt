@@ -7,7 +7,8 @@ enable_testing()
 SET(CMAKE_CXX_STANDARD 20)
 
 
-add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp)
+add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp
+    examples/N_simulation.csv)
 add_test(NAME test_macro_dr COMMAND test_macro_dr)
 
 
