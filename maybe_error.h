@@ -181,7 +181,7 @@ template <class T>
 class Maybe_error : private std::variant<T, error_message> {
 public:
   using base_type = std::variant<T, error_message>;
-
+    using value_type=T;
   template <typename U>
     requires std::constructible_from<T, U>
   Maybe_error(U &&u) : base_type(T(std::forward<U>(u))) {}

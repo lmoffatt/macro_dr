@@ -3,9 +3,11 @@
 
 #include "maybe_error.h"
 #include "general_output_operator.h"
+#include <cmath>
 #include <map>
 #include <ostream>
 #include <functional>
+#include <type_traits>
 namespace var {
 
  
@@ -69,6 +71,22 @@ class Var<Id>{};
 template<class Id, class T>
 class Var<Id,T>{
     T m_x;
+    
+    template <class K>
+        requires (std::is_same_v<K,T>&&!std::is_same_v<K,double>)
+    static bool is_equal(const K& x, const K& y)
+    {return x==y;}
+    
+    template <class K>
+        requires (std::is_same_v<K,T>&&std::is_same_v<K,double>)
+    static bool is_equal(const K& x, const K& y)
+    {
+        if (std::isnan(x)&&std::isnan(y))
+            return true;
+        else
+            return x==y;
+    }
+    
 public:
     static constexpr bool is_variable=true;
     static constexpr bool is_constant=false;
@@ -108,6 +126,11 @@ public:
     friend Id  operator-(const Var& one, const Var& two){return Id(one()-two());}
     
     friend bool operator<(const Var& one,const Var& two){ return one.value()<two.value();}
+    friend bool operator==(const Var& one,const Var& two){
+        return Var::is_equal(one.value(),two.value());
+    }
+    
+    
     friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
     friend auto& operator>>(std::istream& is, Var& x){ is>>x(); return is;}
     
@@ -289,6 +312,10 @@ class Vector_Space: public Vars...
         else return islessthan(a,b);
     }
     
+    
+    
+    
+    
 public:
     using Vars::operator[]...;
     template<class Id>
@@ -358,6 +385,12 @@ public:
     {
         return islessthan<Vars...>(a,b);
     }
+    
+    friend bool operator==(const Vector_Space& a,const Vector_Space& b)
+    {
+        return ((get<Vars>(a)()==get<Vars>(b)())&&...&&true);
+    }
+    
     
     friend Vector_Space operator- (const Vector_Space& one, const Vector_Space& two)
     {

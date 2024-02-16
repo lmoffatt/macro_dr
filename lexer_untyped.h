@@ -91,8 +91,8 @@ public:
   }
   
   static bool is_argument_separator(const std::string &s, std::size_t pos) {
-    return (s.substr(pos, Lexer::argument_list_sep.size()) ==
-            Lexer::argument_list_sep);
+      return ((pos!=std::string::npos)&&(s.substr(pos, Lexer::argument_list_sep.size()) ==
+                                             Lexer::argument_list_sep));
   }
 
   static bool is_end_of_argument_list(const std::string &s, std::size_t pos) {
@@ -126,6 +126,7 @@ public:
   }
   
   template<class T>
+      requires (!is_of_this_template_type_v<T,Maybe_error>)
   static Maybe_error<T> get(const std::string& s)
   {
       std::stringstream ss(s);
@@ -135,6 +136,15 @@ public:
       else
           return error_message("extraction fails");
   }
+  
+  template<class T>
+      requires (is_of_this_template_type_v<T,Maybe_error>)
+  static T get(const std::string& s)
+  {
+      return get<typename T::value_type>(s);
+  }
+  
+  
   
   template<class T>
   static std::string put(const T& e)

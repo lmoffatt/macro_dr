@@ -14,7 +14,6 @@ simfile=simulate(output=simulation_Id, recording= observations, experiment=exper
 init_seed=0, modelName= model, parameter_values= modelParameter, includeN=1 ,n_sub_dt=100)
 
 
-likelihood_algorithm = set_Likelihood_algorithm(model= model, adaptive_aproximation= 1, recursive_approximation= 1, averaging_approximation=2, variance_correction_approximation= 1, variance_approximation =0, n_sub_dt =1000)
 
 runIdName= get_random_Id(prefix="EviSim")
 
