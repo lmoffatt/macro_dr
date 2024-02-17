@@ -565,6 +565,8 @@ inline auto get_Observations(
     save_Recording(out, ",", recording);
     return out;
 }
+using recording_type =
+    typename return_type<std::decay_t<decltype(&get_Observations)>>::type;
 
 using experiment_type =
     typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;

@@ -143,6 +143,8 @@ add_executable(macro_dr main.cpp
     scripts/simulation_seed.txt
     type_algebra.h
     scripts/likelihood.txt
+    CLI_function_table.h
+    CLI_macro_dr_base.h
     
     
     

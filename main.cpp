@@ -1,36 +1,16 @@
-#include "type_algebra.h"
 #include "CLI_macro_dr.h"
-#include "distributions.h"
 #include "experiment.h"
-#include "function_measure_verification_and_optimization.h"
-#include "function_memoization.h"
-#include "lapack_headers.h"
 #include "lexer_typed.h"
-#include "matrix.h"
 #include "maybe_error.h"
-#include "parameters_derivative.h"
-#include "parameters_distribution.h"
-#include "variables.h"
-#include "variables_derivative.h"
-// #include "multivariate_normal_distribution.h"
-#include "CLI_macrodr_commands.h"
-#include "allosteric_models.h"
-#include "cuevi.h"
-#include "micror_stochastic.h"
 #include "models_MoffattHume_linear.h"
-//#include "models.h"
-#include "parallel_tempering.h"
+#include "CLI_function_table.h"
+#include "lapack_headers.h"
+
 #include "qmodel.h"
-#include <algorithm>
-#include <chrono>
 #include <cstddef>
 #include <fstream>
 #include <iostream>
-#include <iterator>
-#include <map>
-#include <random>
 #include <string>
-#include <tuple>
 #include <vector>
 using namespace macrodr;
 
