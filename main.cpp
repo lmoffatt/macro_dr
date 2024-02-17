@@ -211,9 +211,9 @@ inline auto set_Fraction_algorithm(
      * */
     
     cm.push_function("fraction_experiment",
-                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , std::string ,std::size_t >(
+                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , std::size_t ,std::size_t >(
                          &calc_experiment_fractions, "save_name", "recording",
-                         "experiment","fraction_algo","model","i_seed"));
+                         "experiment","fraction_algo","number_of_parameters","i_seed"));
     
     
     
@@ -224,9 +224,9 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
      * */
     
     cm.push_function("fraction_simulation",
-                     dcli::to_typed_function<  std::string ,std::string , cmd::experiment_type ,                                  fraction_algo_type , std::string ,std::size_t >(
+                     dcli::to_typed_function<  std::string ,std::string , cmd::experiment_type ,                                  fraction_algo_type , std::size_t ,std::size_t >(
                          &cmd::calc_simulation_fractions, "save_name", "simulation",
-                         "experiment","fraction_algo","model","i_seed"));
+                         "experiment","fraction_algo","number_of_parameters","i_seed"));
     
     
     /**
@@ -398,7 +398,7 @@ int main(int argc, char **argv) {
         auto s = std::move(Maybe_script.value());
         std::cout << "\n read files " << arguments << "\n" << s << "\n";
         ///Horrible hack to force the script to write itself at the start
-        write_text(temp_script_file,s);
+        cmd::write_text(cmd::temp_script_file,s);
         
         auto p = dcli::extract_program(s);
         

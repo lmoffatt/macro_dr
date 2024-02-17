@@ -1897,7 +1897,7 @@ thermodynamic parameter
             
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
-            auto ftbl3 =get_function_Table_maker_St(path + filename, num_scouts_per_ensemble)(); 
+            auto ftbl3 =cmd::get_function_Table_maker_St(path + filename, num_scouts_per_ensemble)(); 
                 FuncMap_St(
                 path + filename,num_scouts_per_ensemble,
                 var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{}, cuevi::step_stretch_cuevi_mcmc{})),
@@ -2058,7 +2058,7 @@ thermodynamic parameter
             
             
             
-            auto ftbl3 = get_function_Table_maker_St(
+            auto ftbl3 = macrodr::cmd::get_function_Table_maker_St(
                 path + filename,num_scouts_per_ensemble)();
             auto lik = Macro_DMR{}
                            .log_Likelihood<uses_adaptive_aproximation(false),
@@ -2295,14 +2295,14 @@ thermodynamic parameter
             
             // auto opt3 = evidence(std::move(cbc), param1_prior, modelLikelihood,
             //                      sim.value()(), experiment);
-            auto ftbl3_0_0 =get_function_Table_maker_St(
+            auto ftbl3_0_0 =macrodr::cmd::get_function_Table_maker_St(
                 path + filename_0_0,num_scouts_per_ensemble)();
-            auto ftbl3_0_alt = get_function_Table_maker_St(
+            auto ftbl3_0_alt = macrodr::cmd::get_function_Table_maker_St(
                 path + filename_0_alt,num_scouts_per_ensemble)();
-            auto ftbl3_alt_0 = get_function_Table_maker_St(
+            auto ftbl3_alt_0 = macrodr::cmd::get_function_Table_maker_St(
                 path + filename_alt_0,num_scouts_per_ensemble)();
-                
-            auto ftbl3_alt_alt = get_function_Table_maker_St(
+            
+            auto ftbl3_alt_alt = macrodr::cmd::get_function_Table_maker_St(
                 path + filename_alt_alt,num_scouts_per_ensemble)();
             
             auto lik_0_0 = Macro_DMR{}
