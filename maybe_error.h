@@ -63,6 +63,14 @@ template <typename C, template <typename, auto...> class V>
 inline constexpr bool is_of_this_template_value_type_v =
     is_of_this_template_value_type<C, V>::value;
 
+template <class T> struct return_type;
+
+template <class R, class... A> struct return_type<R (*)(A...)> {
+    using type = R;
+};
+
+
+
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
@@ -72,6 +80,25 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 template <auto F> std::string function_name();
 
 struct Nothing {};
+
+
+template<class T>
+concept has_size= requires(const T& a)
+{
+    {a.size()}->std::convertible_to<std::size_t>;
+};
+
+template<class T>
+concept index_accesible=requires(T a)
+{
+    {a[std::size_t{}]}->std::same_as<double&>;
+};
+
+
+
+
+
+
 
 template <class T>
     requires(!std::is_reference_v<T>)
@@ -206,20 +233,20 @@ public:
       return std::get<1>(*this);
   }
 
-  friend std::ostream &operator<<(std::ostream &os, const Maybe_error &x) {
-    if (x)
-      os << x.value();
-    else
-      os << x.error()();
-    return os;
-  }
-  friend std::ostream &operator<<(std::ostream &os, Maybe_error &&x) {
-    if (x)
-      os << x.value();
-    else
-      os << x.error()();
-    return os;
-  }
+  // friend std::ostream &operator<<(std::ostream &os, const Maybe_error &x) {
+  //   if (x)
+  //     os << x.value();
+  //   else
+  //     os << x.error()();
+  //   return os;
+  // }
+  // friend std::ostream &operator<<(std::ostream &os, Maybe_error &&x) {
+  //   if (x)
+  //     os << x.value();
+  //   else
+  //     os << x.error()();
+  //   return os;
+  // }
 };
 
 template <class T> Maybe_error(T &&) -> Maybe_error<T>;

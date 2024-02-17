@@ -43,12 +43,7 @@
 
 namespace macrodr {
 
-template <class T> struct return_type;
-
-template <class R, class... A> struct return_type<R (*)(A...)> {
-  using type = R;
-};
-
+namespace cmd {
 inline auto get_random_id(std::string prefix) {
 
   return prefix + "_" + std::to_string(calc_seed(0ul));
@@ -79,18 +74,15 @@ inline auto load_Recording_value(std::string filename,
   return std::pair(filename, separator);
 }
 
-
 inline auto load_fractioned_Recording_value(std::string filename,
-                                 std::string separator = ",") {
-    return std::pair(filename, separator);
-}
-
-inline auto load_fractioned_Experiment(std::string filename,
                                             std::string separator = ",") {
     return std::pair(filename, separator);
 }
 
-
+inline auto load_fractioned_Experiment(std::string filename,
+                                       std::string separator = ",") {
+    return std::pair(filename, separator);
+}
 
 namespace deprecated {
 
@@ -575,24 +567,7 @@ inline auto get_function_Table_maker_St(std::string filename,
   };
 }
 
-inline auto get_Experiment(
-    std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
-    double frequency_of_sampling = 50e3, double initial_ATP = 0) {
-  using namespace macrodr;
-  auto [recording_conditions, recording] = macrodr::load_recording(filename);
 
-  return Experiment(std::move(recording_conditions),
-                    Frequency_of_Sampling(frequency_of_sampling),
-                    initial_ATP_concentration(ATP_concentration(initial_ATP)));
-}
-
-inline auto get_Observations(
-    std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt") {
-  auto [recording_conditions, recording] = macrodr::load_recording(filename);
-  std::string out = filename.substr(0, filename.size() - 4) + "_recording.txt";
-  save_Recording(out, ",", recording);
-  return out;
-}
 
 /*
 make_Likelihood_Model<uses_adaptive_aproximation(true),
@@ -624,28 +599,16 @@ inline auto set_Likelihood_algorithm(bool adaptive_aproximation,
   return std::tuple(adaptive_aproximation, recursive_approximation,
                     averaging_approximation, variance_correction_approximation,
                     variance_correction, n_sub_dt);
-}
-
-inline auto set_Fraction_algorithm(double min_fraction,
-                                   double n_points_per_decade_fraction,
-                                   std::string segments) {
-  return std::tuple(min_fraction, n_points_per_decade_fraction, segments);
-}
-using fraction_algo_type =
-    typename return_type<std::decay_t<decltype(&set_Fraction_algorithm)>>::type;
-
+    }
+    
+  
 inline auto set_CueviAlgorithm(
     std::size_t num_scouts_per_ensemble = 16,
-    std::size_t number_trials_until_give_up = 1e5,
-    double stops_at = 1e-15,
-    double medium_beta = 1e-2,
-    bool includes_zero = true,
-    bool random_jumps = true,
-    std::size_t max_iter_equilibrium = 50000,
-    std::string path = "",
-    double n_points_per_decade = 1,
-    std::size_t t_min_number_of_samples = 20,
-    std::string filename = "haha",
+    std::size_t number_trials_until_give_up = 1e5, double stops_at = 1e-15,
+    double medium_beta = 1e-2, bool includes_zero = true,
+    bool random_jumps = true, std::size_t max_iter_equilibrium = 50000,
+    std::string path = "", double n_points_per_decade = 1,
+    std::size_t t_min_number_of_samples = 20, std::string filename = "haha",
     std::size_t thermo_jumps_every = 10) {
   using namespace macrodr;
 
@@ -667,8 +630,6 @@ using tablefun_value_type = typename return_type<
 
 using cuevi_algo_type =
     typename return_type<std::decay_t<decltype(&set_CueviAlgorithm)>>::type;
-using experiment_type =
-    typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;
 using recording_type =
     typename return_type<std::decay_t<decltype(&get_Observations)>>::type;
 using recording_value_type =
@@ -678,113 +639,6 @@ using prior_value_type =
 using parameters_value_type =
     typename return_type<std::decay_t<decltype(&load_Parameter_value)>>::type;
 
-inline Maybe_error<std::vector<std::size_t>>
-load_segments_length_for_fractioning(const std::string &filename,
-                                     std::string sep) {
-    
-    std::ifstream f(filename);
-    if (!f)
-        return error_message(filename + " cannot be opened");
-    std::string line;
-    std::getline(f, line);
-    if (!f)
-        return error_message(filename + " has no data");
-    
-    std::stringstream ss(line);
-    std::vector<std::size_t> out;
-    std::size_t number_of_samples;
-    
-    while (ss >> number_of_samples) {
-        out.push_back(number_of_samples);
-        ss >> septr(sep);
-    }
-    
-    return out;
-}
-
-
-inline Maybe_error<std::tuple<std::string, std::string, double, double>>
-calc_experiment_fractions(std::string save_name,std::string recording, experiment_type experiment,                                  fraction_algo_type fraction_algo, std::string model,std::size_t i_seed )
-{
-    auto myseed = calc_seed(i_seed);
-    
-    auto init_seed=calc_seed(i_seed);
-    mt_64i mt(init_seed);
-    
-    auto [min_fraction, n_points_per_decade_fraction, segments] =
-        std::move(fraction_algo);
-    
-    auto Maybe_segments=load_segments_length_for_fractioning(segments,",");
-    if (!Maybe_segments)
-        return Maybe_segments.error();
-    Recording y;
-    auto Maybe_y = load_Recording_Data(recording, ",", y);
-    
-    macrodr::experiment_fractioner frac(Maybe_segments.value(),0);
-    
-    auto maybe_model=get_model(model);
-    if (!maybe_model)
-        return maybe_model.error();
-    
-    auto param_size=  std::visit([&](auto model0ptr) {
-        return model0ptr->parameters().size();},maybe_model.value());
-    
-    auto [ys, xs] = frac(
-        y, experiment, mt, param_size * min_fraction, n_points_per_decade_fraction);
-    auto filename=save_name+"_"+std::to_string(myseed);
-    save_fractioned_experiment(filename+"_experiment.csv",",",xs);
-    save_fractioned_Recording(filename+"_recording.csv",",",ys);
-    return std::tuple(filename+"_experiment.csv",filename+"_recording.csv", get<Frequency_of_Sampling>(experiment)(),get<initial_ATP_concentration>(experiment)()());
-    
-    
-}
-
-
-inline Maybe_error<std::tuple<std::string, std::string, double, double>>
-calc_simulation_fractions(std::string save_name,std::string simulation, experiment_type experiment,                                  fraction_algo_type fraction_algo, std::string model,std::size_t i_seed )
-{
-    auto myseed = calc_seed(i_seed);
-    
-    auto init_seed=calc_seed(i_seed);
-    mt_64i mt(init_seed);
-    
-    auto [min_fraction, n_points_per_decade_fraction, segments] =
-        std::move(fraction_algo);
-    
-    auto Maybe_segments=load_segments_length_for_fractioning(segments,",");
-    if (!Maybe_segments)
-        return Maybe_segments.error();
-    Simulated_Recording<includes_N_state_evolution(true)> y;
-    auto Maybe_y = load_Simulated_Recording(simulation, ",", y);
-    if (!Maybe_y)
-        return Maybe_y.error();
-    
-    macrodr::experiment_fractioner frac(Maybe_segments.value(),0);
-    
-    auto maybe_model=get_model(model);
-    if (!maybe_model)
-        return maybe_model.error();
-    
-    auto param_size=  std::visit([&](auto model0ptr) {
-        return model0ptr->parameters().size();},maybe_model.value());
-    
-    auto [ys, xs] = frac(
-        y, experiment, mt, param_size * min_fraction, n_points_per_decade_fraction);
-    auto filename=save_name+"_"+std::to_string(myseed);
-    save_fractioned_experiment(filename+"_frac_experiment.csv",",",xs);
-    save_fractioned_Recording(filename+"_frac_recording.csv",",",ys);
-    return std::tuple(filename+"_frac_experiment.csv",filename+"_frac_recording.csv", get<Frequency_of_Sampling>(experiment)(),get<initial_ATP_concentration>(experiment)()());
-    
-    
-}
-
-
-using fractioned_experiment_type =
-    typename return_type<std::decay_t<decltype(&calc_experiment_fractions)>>::type;
-
-
-using fractioned_simulation_type =
-    typename return_type<std::decay_t<decltype(&calc_simulation_fractions)>>::type;
 
 using likelihood_algo_type = typename return_type<
     std::decay_t<decltype(&set_Likelihood_algorithm)>>::type;
@@ -793,18 +647,12 @@ using likelihood_algo_type = typename return_type<
 // experiment = experiment, algorithm= algorithm, function_table
 // =function_table, init_seed =0)
 
-
-
-
-
-
-inline void calc_likelihood(std::string outfilename,
-                            std::string model,
+inline void calc_likelihood(std::string outfilename, std::string model,
                             parameters_value_type par,
                             likelihood_algo_type likelihood,
                             recording_value_type recording,
-                            experiment_type experiment, cuevi_algo_type algorithm,
-                            tablefun_value_type ft) {
+                            experiment_type experiment,
+                            cuevi_algo_type algorithm, tablefun_value_type ft) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
   auto save_every = num_scouts_per_ensemble;
@@ -833,8 +681,7 @@ inline void calc_likelihood(std::string outfilename,
           auto Maybe_param1 = var::load_Parameters<MyModel>(
               par.first, par.second, model0.model_name(), model0.names());
           Simulated_Recording<includes_N_state_evolution(true)> y;
-          auto Maybe_y =
-              load_Simulated_Recording(recording.first, recording.second, y);
+          auto Maybe_y = load_simulation(recording.first, recording.second, y);
           if (!Maybe_param1.valid() || !Maybe_y.valid()) {
             std::cerr << Maybe_param1.error()() << Maybe_y.error()();
           } else {
@@ -870,16 +717,13 @@ inline void calc_likelihood(std::string outfilename,
   }
 }
 
-
-inline std::string calc_fraction_likelihood( std::string file_name,
-                                            std::string model,
-                                     parameters_value_type par,
-                                     fractioned_simulation_type  Maybe_frac_simulation,
-                                     likelihood_algo_type likelihood_algo,
-                                     tablefun_value_type ft) {
+inline std::string calc_fraction_likelihood(
+    std::string file_name, std::string model, parameters_value_type par,
+    fractioned_simulation_type Maybe_frac_simulation,
+    likelihood_algo_type likelihood_algo, tablefun_value_type ft) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
-  auto save_every=num_scouts_per_ensemble;
+  auto save_every = num_scouts_per_ensemble;
   
   auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
   
@@ -889,12 +733,12 @@ inline std::string calc_fraction_likelihood( std::string file_name,
   auto model_v = std::move(Maybe_model_v.value());
   if (!Maybe_frac_simulation)
       return Maybe_frac_simulation.error()();
-  auto frac_simulation=std::move(Maybe_frac_simulation.value());
+  auto frac_simulation = std::move(Maybe_frac_simulation.value());
   return std::visit(
       [&ftbl3, &frac_simulation, &likelihood_algo, &par,
        &file_name](auto model0ptr) {
         auto &model0 = *model0ptr;
-          auto [experiment,simulation, fs,iniATP]=frac_simulation;
+          auto [experiment, simulation, fs, iniATP] = frac_simulation;
 
         auto [adaptive_aproximation, recursive_approximation,
               averaging_approximation, variance_correction,
@@ -908,18 +752,17 @@ inline std::string calc_fraction_likelihood( std::string file_name,
         
         std::vector<Experiment> xs;
         std::vector<Simulated_Recording<includes_N_state_evolution(true)>> ys;
-        auto Maybe_e = load_fractioned_experiment(experiment, ",",
-                                                  fs,iniATP,xs);
+        auto Maybe_e =
+            load_fractioned_experiment(experiment, ",", fs, iniATP, xs);
         
-        auto Maybe_y = load_fractioned_simulation(simulation, ",",
-                                                  ys);
+        auto Maybe_y = load_fractioned_simulation(simulation, ",", ys);
         
-        if (xs.size()!=ys.size())
-            return std::string()+"number of fractions mismatch between recordings and experiments";
+        if (xs.size() != ys.size())
+            return std::string() + "number of fractions mismatch between "
+                                   "recordings and experiments";
         
-        if (!(Maybe_e.valid()&&Maybe_y.valid() && Maybe_param1.valid()))
-            return Maybe_e.error()()+Maybe_y.error()() + Maybe_param1.error()();
-        
+        if (!(Maybe_e.valid() && Maybe_y.valid() && Maybe_param1.valid()))
+            return Maybe_e.error()() + Maybe_y.error()() + Maybe_param1.error()();
         
         auto param1 = std::move(Maybe_param1.value());
 
@@ -935,16 +778,15 @@ inline std::string calc_fraction_likelihood( std::string file_name,
             model0, Simulation_n_sub_dt(n_sub_dt));
 
         return std::visit(
-            [&ftbl3, &param1, &ys, &xs,
-             &filename](auto &modelLikelihood) {
-              auto Maybe_lik = fractioned_logLikelihoodPredictions(ftbl3, modelLikelihood,
-                                                        param1, ys, xs);
+            [&ftbl3, &param1, &ys, &xs, &filename](auto &modelLikelihood) {
+              auto Maybe_lik = fractioned_logLikelihoodPredictions(
+                    ftbl3, modelLikelihood, param1, ys, xs);
               if (!Maybe_lik)
                 return Maybe_lik.error()();
-              else
-                  {
-                 save_fractioned_Likelihood_Predictions(filename+"frac_likelihood.csv", Maybe_lik.value(), ys,
-                                            xs);
+              else {
+                  save_fractioned_Likelihood_Predictions(
+                      filename + "frac_likelihood.csv", Maybe_lik.value(), ys,
+                      xs);
                   return filename;
               }
             },
@@ -953,17 +795,15 @@ inline std::string calc_fraction_likelihood( std::string file_name,
       model_v);
 }
 
-inline void calc_fraction_evidence(std::string model,
-                          prior_value_type prior,
-                          likelihood_algo_type likelihood,
-                          fractioned_simulation_type Maybe_frac_experiment,
-                          fraction_algo_type fraction_algo,
-                          cuevi_algo_type cuevi_algorithm,
-                          tablefun_value_type ft, std::size_t myseed) {
+inline void calc_fraction_evidence(
+    std::string model, prior_value_type prior, likelihood_algo_type likelihood,
+    fractioned_simulation_type Maybe_frac_experiment,
+    fraction_algo_type fraction_algo, cuevi_algo_type cuevi_algorithm,
+    tablefun_value_type ft, std::size_t myseed) {
     using namespace macrodr;
-    if (! Maybe_frac_experiment)
+    if (!Maybe_frac_experiment)
         return;
-    auto frac_experiment=Maybe_frac_experiment.value();
+    auto frac_experiment = Maybe_frac_experiment.value();
     
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     
@@ -975,19 +815,19 @@ inline void calc_fraction_evidence(std::string model,
     if (Maybe_model_v) {
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
-            [&ftbl3, &frac_experiment,   &prior, &likelihood,
-             &fraction_algo, &cuevi_algorithm, &myseed](auto model0ptr) {
+            [&ftbl3, &frac_experiment, &prior, &likelihood, &fraction_algo,
+             &cuevi_algorithm, &myseed](auto model0ptr) {
                 auto &model0 = *model0ptr;
                 myseed = calc_seed(myseed);
                 mt_64i mt(myseed);
-                auto [fname_experiment,fname_simulation, fs,iniATP]=frac_experiment;
+                auto [fname_experiment, fname_simulation, fs, iniATP] =
+                    frac_experiment;
                 std::vector<Experiment> xs;
                 std::vector<Recording> ys;
-                auto Maybe_e = load_fractioned_experiment(fname_experiment, ",",
-                                                          fs,iniATP,xs);
+                auto Maybe_e =
+                    load_fractioned_experiment(fname_experiment, ",", fs, iniATP, xs);
                 
-                auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",",
-                                                          ys);
+                auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",", ys);
                 
                 auto [min_fraction, n_points_per_decade_fraction, segments] =
                     std::move(fraction_algo);
@@ -1014,7 +854,7 @@ inline void calc_fraction_evidence(std::string model,
                     std::size_t thermo_jumps_every =
                         param1_prior.size() * thermo_jump_factor;
                     
-                    if (Maybe_ys.valid()&& Maybe_e.valid()) {
+                    if (Maybe_ys.valid() && Maybe_e.valid()) {
                         
                         std::string filename = file_name + "_" + ModelName + "_" +
                                                time_now() + "_" + std::to_string(myseed);
@@ -1067,13 +907,9 @@ inline void calc_fraction_evidence(std::string model,
     }
 }
 
-
-
-inline void calc_evidence(std::string model,
-                          prior_value_type prior,
+inline void calc_evidence(std::string model, prior_value_type prior,
                           likelihood_algo_type likelihood,
-                          std::string recording,
-                          experiment_type experiment,
+                          std::string recording, experiment_type experiment,
                           fraction_algo_type fraction_algo,
                           cuevi_algo_type cuevi_algorithm,
                           tablefun_value_type ft, std::size_t myseed) {
@@ -1088,8 +924,8 @@ inline void calc_evidence(std::string model,
   if (Maybe_model_v) {
     auto model_v = std::move(Maybe_model_v.value());
     return std::visit(
-        [&ftbl3, &experiment, &recording,  &prior, &likelihood,
-        &fraction_algo, &cuevi_algorithm, &myseed](auto model0ptr) {
+        [&ftbl3, &experiment, &recording, &prior, &likelihood, &fraction_algo,
+         &cuevi_algorithm, &myseed](auto model0ptr) {
           auto &model0 = *model0ptr;
           myseed = calc_seed(myseed);
           mt_64i mt(myseed);
@@ -1174,9 +1010,10 @@ inline void calc_evidence(std::string model,
   }
 }
 
-inline void calc_evidence_continuation(std::string model,
-    prior_value_type prior, likelihood_algo_type likelihood,
-    std::string recording, experiment_type experiment,fraction_algo_type fraction_algo, cuevi_algo_type algorithm,
+inline void calc_evidence_continuation(
+    std::string model, prior_value_type prior, likelihood_algo_type likelihood,
+    std::string recording, experiment_type experiment,
+    fraction_algo_type fraction_algo, cuevi_algo_type algorithm,
     tablefun_value_type ft, std::size_t myseed) {
   using namespace macrodr;
   auto [filename, num_scouts_per_ensemble] = std::move(ft);
@@ -1187,8 +1024,8 @@ inline void calc_evidence_continuation(std::string model,
   if (Maybe_model_v) {
     auto model_v = std::move(Maybe_model_v.value());
     return std::visit(
-        [&ftbl3, &experiment, &recording, &prior, &likelihood, &fraction_algo,&algorithm,
-         &myseed](auto model0ptr) {
+        [&ftbl3, &experiment, &recording, &prior, &likelihood, &fraction_algo,
+         &algorithm, &myseed](auto model0ptr) {
           auto &model0 = *model0ptr;
           myseed = calc_seed(myseed);
           mt_64i mt(myseed);
@@ -1202,13 +1039,11 @@ inline void calc_evidence_continuation(std::string model,
           auto [min_fraction, n_points_per_decade_fraction, segments] =
               std::move(fraction_algo);
           
-          
           auto [path, file_name, t_min_number_of_samples,
                 num_scouts_per_ensemble, number_trials_until_give_up,
                 thermo_jump_factor, max_iter_equilibrium, n_points_per_decade,
-                 medium_beta, stops_at,
-                includes_zero, saving_itervals, random_jumps] =
-              std::move(algorithm);
+                medium_beta, stops_at, includes_zero, saving_itervals,
+                random_jumps] = std::move(algorithm);
 
           auto [adaptive_aproximation, recursive_approximation,
                 averaging_approximation, variance_correction_approximation,
@@ -1341,7 +1176,8 @@ inline std::string run_simulation(std::string filename_prefix,
                 if (!sim)
                   return "";
                 else {
-                    save_Recording(filename + "_simulation.csv",",", get<Recording>(sim.value()()));
+                    save_Recording(filename + "_simulation.csv", ",",
+                                   get<Recording>(sim.value()()));
                   return filename + "_simulation.csv";
                 }
               } else {
@@ -1352,7 +1188,8 @@ inline std::string run_simulation(std::string filename_prefix,
                 if (!sim)
                   return sim.error()();
                 else {
-                  save_Simulated_Recording(filename + "_N_simulation.csv",",", sim.value());
+                  save_Simulated_Recording(filename + "_N_simulation.csv", ",",
+                                             sim.value());
                   return filename + "_N_simulation.csv";
                 }
               }
@@ -1532,6 +1369,8 @@ inline auto calc_evidence_old(
     // auto opt4= cuevi::continue_evidence(filename, 2* maxiter);
   }
 }
+} // namespace cmd
+
 } // namespace macrodr
 
 #endif // CLI_MACRODR_COMMANDS_H

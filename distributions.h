@@ -55,18 +55,6 @@ public:
 };
     
 
-template<class T>
-concept has_size= requires(const T& a)
-{
-    {a.size()}->std::convertible_to<std::size_t>;
-};
-
-template<class T>
-concept index_accesible=requires(T a)
-{
-    {a[std::size_t{}]}->std::same_as<double&>;
-};
-
 
 template <class Distribution>
 concept is_vector_sampler = requires(Distribution &m) {

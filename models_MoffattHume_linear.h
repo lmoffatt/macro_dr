@@ -2228,6 +2228,19 @@ inline auto get_model(std::string modelName) {
         return allmodels[modelName];
 }
 
+
+inline Maybe_error<std::size_t> get_num_parameters(std::string model)
+{
+    auto maybe_model = get_model(model);
+    if (!maybe_model)
+        return maybe_model.error();
+    
+    return    std::visit([&](auto model0ptr) { return model0ptr->parameters().size(); },
+                   maybe_model.value());
+    
+}
+
+
 inline auto get_model_scheme(std::string modelName) {
     auto allmodels =//Models_Library(&scheme_1);
         Models_Library(&scheme_1,&scheme_2,&scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,&scheme_4_d);
