@@ -3,6 +3,7 @@
 #include "../catch2/catch.hpp"
 #include "../experiment.h"
 #include "../qmodel.h"
+#include <cstddef>
 
 
 TEST_CASE("calculation of fractions of a simulation with N_states", "[save_fractioned_simulation/load_fractioned_simulation]")
@@ -14,7 +15,7 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
     using namespace macrodr;
     using namespace cmd ;
     
-    std::string save_name ="../macro_dr/test_macro_dr/examples/fractions_N_simulation_3";
+    std::string save_name ="../macro_dr/test_macro_dr/examples/fractions_N_simulation";
     std::string save_name_2 ="../macro_dr/test_macro_dr/examples/fractions_N_simulation_2";
         
     
@@ -60,6 +61,25 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
     REQUIRE(b0.str()==b1.str());
     
     
+    // now check with recordings
+    
+    std::vector<Recording> rs;
+    
+    auto Maybe_rs = load_fractioned_Recording(simulation, ",", rs);
+    
+    REQUIRE(Maybe_rs);
+    
+    for (std::size_t i_frac=0; i_frac<ys.size(); ++i_frac)
+        REQUIRE(get<Recording>(ys[i_frac]())==rs[i_frac]);
+    
+    std::string rec_name ="../macro_dr/test_macro_dr/examples/fractions_recording.csv";
+    save_fractioned_Recording(rec_name , ",", rs);
+    
+    std::vector<Recording> rs2;
+    auto Maybe_rs2 = load_fractioned_Recording(rec_name, ",", rs2);
+    
+    REQUIRE(Maybe_rs2);
+    REQUIRE(rs==rs2);
     
     
     
