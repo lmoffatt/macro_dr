@@ -1,6 +1,6 @@
 #ifndef GENERAL_OUTPUT_OPERATOR_H
 #define GENERAL_OUTPUT_OPERATOR_H
-#include "distributions.h"
+#include "maybe_error.h"
 #include <variant>
 #include <ostream>
 #include <istream>
@@ -240,6 +240,15 @@ std::istream& operator>>(std::istream& is, std::variant<Ts...> & x)
         is>>a;
         return is;
     }, x);
+}
+
+template <class T>
+std::ostream &operator<<(std::ostream &os, const Maybe_error<T> &x) {
+    if (x)
+        os << x.value();
+    else
+        os << x.error()();
+    return os;
 }
 
 #endif // GENERAL_OUTPUT_OPERATOR_H

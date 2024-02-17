@@ -84,8 +84,8 @@ template <class Parameter> class save_Parameter;
 namespace macrodr {
 inline auto &extract_double(std::istream &is, double &r, char sep) {
   std::stringstream ss;
-   is.get(*ss.rdbuf(),sep);
-  auto s=ss.str();
+    is.get(*ss.rdbuf(), sep);
+  auto s = ss.str();
   if ((s == "nan") || (s == "NAN") || (s == "NaN"))
     r = std::numeric_limits<double>::quiet_NaN();
   else {
@@ -100,7 +100,7 @@ inline auto &extract_double(std::istream &is, double &r, char sep) {
 
 inline auto &extract_double(std::istream &is, double &r) {
     std::string s;
-    is>>s;
+    is >> s;
     if ((s == "nan") || (s == "NAN") || (s == "NaN"))
         r = std::numeric_limits<double>::quiet_NaN();
     else {
@@ -112,7 +112,6 @@ inline auto &extract_double(std::istream &is, double &r) {
     }
     return is;
 }
-
 
 template <class Parameter>
 void report_model(save_Parameter<Parameter> &s,
@@ -246,8 +245,6 @@ inline void save_fractioned_Recording(std::string const &fname,
   }
 }
 
-
-
 inline Maybe_error<bool> load_fractioned_Recording(std::string const &fname,
                                                    std::string const &separator,
                                                    std::vector<Recording> &v) {
@@ -272,8 +269,9 @@ inline Maybe_error<bool> load_fractioned_Recording(std::string const &fname,
     std::size_t i_step_prev = std::numeric_limits<std::size_t>::max();
     Recording rec;
     double val;
-    while (extract_double(
-        ss >> i_frac >> septr(separator) >> i_step >> septr(separator), val, separator[0])) {
+    while (extract_double(ss >> i_frac >> septr(separator) >> i_step >>
+                              septr(separator),
+                          val, separator[0])) {
       if (i_frac_prev != i_frac) {
 
         if (i_frac != v.size())
@@ -326,7 +324,8 @@ inline Maybe_error<bool> load_Recording_Data(std::string const &fname,
       std::size_t i_step_prev = std::numeric_limits<std::size_t>::max();
 
       double val;
-      while (extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
+      while (
+          extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
         if (i_step_prev != i_step) {
           if (i_step != e().size())
             return error_message("i_step missmatch expected" +
@@ -447,8 +446,7 @@ inline void save_fractioned_experiment(const std::string filename,
 
 inline Maybe_error<bool>
 load_fractioned_experiment(const std::string filename, std::string separator,
-                           double frequency_of_sampling,
-                           double initial_ATP,
+                           double frequency_of_sampling, double initial_ATP,
 
                            std::vector<Experiment> &e) {
 
@@ -490,57 +488,86 @@ load_fractioned_experiment(const std::string filename, std::string separator,
   while ((ss >> i_frac >> septr(separator) >> i_step >> septr(separator) >> t >>
           septr(separator) >> i_sub_step >> septr(separator) >>
           v_number_of_samples >> septr(separator) >> val)) {
+      if (i_step_prev != i_step) {
+          if ((i_step > 0) && (i_step != rec().size() + 1))
+              return error_message("i_step missmatch expected " +
+                                   std::to_string(rec().size() + 1) +
+                                   " found:" + std::to_string(i_step));
+         if  (i_frac>=i_frac_prev)
+              {
+                  if (as.size()==0)
+                      return error_message("mismatch here");
+                  else  {
+                  if (as.size() == 1)
+                      rec().emplace_back(Time(t_prev), as[0]);
+                  else
+                      rec().emplace_back(Time(t_prev), as);
+                  as.clear();
+              }
+              i_step_prev = i_step;
+              i_sub_step_prev = std::numeric_limits<std::size_t>::max();
+           }
+    }
     if (i_frac_prev != i_frac) {
-
-      if (i_frac != e.size())
-        return error_message("i_frac missmatch expected" +
-                             std::to_string(e.size()) +
+          
+          if ((i_frac>0)&&(i_frac != e.size()+1))
+            return error_message("i_frac missmatch expected " +
+                             std::to_string(e.size()+1) +
                              " found:" + std::to_string(i_frac));
-      else {
+      
         if (i_frac > 0)
-              e.emplace_back(rec, Frequency_of_Sampling(frequency_of_sampling), initial_ATP_concentration(ATP_concentration(initial_ATP)));
+              e.emplace_back(
+                rec, Frequency_of_Sampling(frequency_of_sampling),
+                initial_ATP_concentration(ATP_concentration(initial_ATP)));
         i_frac_prev = i_frac;
         rec().clear();
         i_step_prev = std::numeric_limits<std::size_t>::max();
-        i_sub_step_prev = std::numeric_limits<std::size_t>::max();
-      }
+      
     }
 
-    if (i_step_prev != i_step) {
-      if (i_step != rec().size())
-        return error_message("i_step missmatch expected" +
-                             std::to_string(rec().size()) +
-                             " found:" + std::to_string(i_step));
-      else {
-        if (as.size() > 0) {
-          if (as.size() == 1)
-            rec().emplace_back(Time(t_prev), as[0]);
-          else
-            rec().emplace_back(Time(t_prev), as);
-        }
-        i_step_prev = i_step;
-        as.clear();
-      }
-    }
     if (i_sub_step_prev != i_sub_step) {
-      if (i_step != as.size())
+        if (i_sub_step != as.size())
         return error_message("i_sub_step missmatch expected" +
                              std::to_string(as.size()) +
                              " found:" + std::to_string(i_sub_step));
-      else {
-        as.push_back(ATP_step(number_of_samples(v_number_of_samples),
-                              ATP_concentration(val)));
-        i_step_prev = i_step;
-      }
     }
+    else return error_message("i_sub_step missmatch expected" +
+                             std::to_string(as.size()) +
+                             " found:" + std::to_string(i_sub_step));
+    as.push_back(ATP_step(number_of_samples(v_number_of_samples),
+                          ATP_concentration(val)));
+    i_sub_step_prev = i_sub_step;
     if (i_sub_step_prev == 0)
       t_prev = t;
-
     std::getline(f, line);
     ss = std::stringstream(line);
   }
   return true;
 }
+
+namespace cmd {
+inline auto get_Experiment(
+    std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
+    double frequency_of_sampling = 50e3, double initial_ATP = 0) {
+    using namespace macrodr;
+    auto [recording_conditions, recording] = macrodr::load_recording(filename);
+    
+    return Experiment(std::move(recording_conditions),
+                      Frequency_of_Sampling(frequency_of_sampling),
+                      initial_ATP_concentration(ATP_concentration(initial_ATP)));
+}
+inline auto get_Observations(
+    std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt") {
+    auto [recording_conditions, recording] = macrodr::load_recording(filename);
+    std::string out = filename.substr(0, filename.size() - 4) + "_recording.txt";
+    save_Recording(out, ",", recording);
+    return out;
+}
+
+using experiment_type =
+    typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;
+
+} // namespace cmd
 
 } // namespace macrodr
 

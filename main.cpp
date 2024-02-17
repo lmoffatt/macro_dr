@@ -107,7 +107,7 @@ read_from_input_files_or_commands(std::vector<std::string> const args) {
 
 auto get_compiler() {
     auto cm = dcli::Compiler{};
-    
+    using namespace cmd; 
     cm.push_function(
         "get_random_Id",
         dcli::to_typed_function<std::string>(
@@ -224,8 +224,8 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
      * */
     
     cm.push_function("fraction_simulation",
-                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , std::string ,std::size_t >(
-                         &calc_simulation_fractions, "save_name", "simulation",
+                     dcli::to_typed_function<  std::string ,std::string , cmd::experiment_type ,                                  fraction_algo_type , std::string ,std::size_t >(
+                         &cmd::calc_simulation_fractions, "save_name", "simulation",
                          "experiment","fraction_algo","model","i_seed"));
     
     
