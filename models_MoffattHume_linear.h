@@ -1,6 +1,7 @@
 #ifndef MODELS_MOFFATTHUME_LINEAR_H
 #define MODELS_MOFFATTHUME_LINEAR_H
 //#include "allosteric_models.h"
+#include "allosteric_models.h"
 #include "maybe_error.h"
 #include "parameters.h"
 #include "parameters_distribution.h"

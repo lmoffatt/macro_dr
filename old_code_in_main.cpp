@@ -1,31 +1,27 @@
-#include "CLI_macro_dr.h"
-#include "CLI_macrodr_commands.h"
+#include "CLI_function_table.h"
 #include "distributions.h"
 #include "experiment.h"
 #include "function_measure_verification_and_optimization.h"
 #include "function_memoization.h"
-#include "lapack_headers.h"
-#include "lexer_typed.h"
 #include "matrix.h"
+#include "lapack_headers.h"
+
 #include "maybe_error.h"
 #include "parameters_derivative.h"
 #include "parameters_distribution.h"
 #include "variables.h"
 #include "variables_derivative.h"
 // #include "multivariate_normal_distribution.h"
-#include "allosteric_models.h"
 #include "cuevi.h"
 #include "micror_stochastic.h"
 #include "parallel_tempering.h"
 #include "qmodel.h"
 #include "models_MoffattHume_linear.h"
 #include <algorithm>
-#include <chrono>
 #include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <iterator>
-#include <map>
 #include <random>
 #include <string>
 #include <tuple>
