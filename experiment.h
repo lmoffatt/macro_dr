@@ -273,8 +273,8 @@ inline Maybe_error<bool> load_fractioned_Recording(std::string const &fname,
                               septr(separator),
                           val, separator[0])) {
       if (i_frac_prev != i_frac) {
-
-        if (i_frac != v.size())
+            
+            if ((i_frac>0)&&(i_frac != v.size()+1))
           return error_message("i_frac missmatch expected" +
                                std::to_string(v.size()) +
                                " found:" + std::to_string(i_frac));
@@ -299,6 +299,8 @@ inline Maybe_error<bool> load_fractioned_Recording(std::string const &fname,
       std::getline(f, line);
       ss = std::stringstream(line);
     }
+    v.push_back(rec);
+    
     return true;
   }
 }
