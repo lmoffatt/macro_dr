@@ -71,7 +71,7 @@ class Frequency_of_Sampling : public var::Var<Frequency_of_Sampling, double> {};
 
 class initial_ATP_concentration
     : public Var<initial_ATP_concentration, ATP_concentration> {
-    using Var<initial_ATP_concentration, ATP_concentration>::Var;
+  using Var<initial_ATP_concentration, ATP_concentration>::Var;
 };
 
 using Experiment =
@@ -84,7 +84,7 @@ template <class Parameter> class save_Parameter;
 namespace macrodr {
 inline auto &extract_double(std::istream &is, double &r, char sep) {
   std::stringstream ss;
-    is.get(*ss.rdbuf(), sep);
+  is.get(*ss.rdbuf(), sep);
   auto s = ss.str();
   if ((s == "nan") || (s == "NAN") || (s == "NaN"))
     r = std::numeric_limits<double>::quiet_NaN();
@@ -99,18 +99,18 @@ inline auto &extract_double(std::istream &is, double &r, char sep) {
 }
 
 inline auto &extract_double(std::istream &is, double &r) {
-    std::string s;
-    is >> s;
-    if ((s == "nan") || (s == "NAN") || (s == "NaN"))
-        r = std::numeric_limits<double>::quiet_NaN();
-    else {
-        try {
-            r = std::stod(s);
-        } catch (...) {
-            is.setstate(std::ios::failbit);
-        }
+  std::string s;
+  is >> s;
+  if ((s == "nan") || (s == "NAN") || (s == "NaN"))
+    r = std::numeric_limits<double>::quiet_NaN();
+  else {
+    try {
+      r = std::stod(s);
+    } catch (...) {
+      is.setstate(std::ios::failbit);
     }
-    return is;
+  }
+  return is;
 }
 
 template <class Parameter>
@@ -273,8 +273,8 @@ inline Maybe_error<bool> load_fractioned_Recording(std::string const &fname,
                               septr(separator),
                           val, separator[0])) {
       if (i_frac_prev != i_frac) {
-            
-            if ((i_frac>0)&&(i_frac != v.size()+1))
+
+        if ((i_frac > 0) && (i_frac != v.size() + 1))
           return error_message("i_frac missmatch expected" +
                                std::to_string(v.size()) +
                                " found:" + std::to_string(i_frac));
@@ -300,7 +300,7 @@ inline Maybe_error<bool> load_fractioned_Recording(std::string const &fname,
       ss = std::stringstream(line);
     }
     v.push_back(rec);
-    
+
     return true;
   }
 }
@@ -413,6 +413,7 @@ inline void save_fractioned_experiment(const std::string filename,
                                        std::string sep,
                                        std::vector<Experiment> const &e) {
   std::ofstream f(filename);
+  f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   f << "i_frac" << sep << "i_step" << sep << "time" << sep << "i_sub_step"
     << sep << "number_of_samples" << sep << "ATP_concentration"
     << "\n";
@@ -490,52 +491,50 @@ load_fractioned_experiment(const std::string filename, std::string separator,
   while ((ss >> i_frac >> septr(separator) >> i_step >> septr(separator) >> t >>
           septr(separator) >> i_sub_step >> septr(separator) >>
           v_number_of_samples >> septr(separator) >> val)) {
-      if (i_step_prev != i_step) {
-          if ((i_step > 0) && (i_step != rec().size() + 1))
-              return error_message("i_step missmatch expected " +
-                                   std::to_string(rec().size() + 1) +
-                                   " found:" + std::to_string(i_step));
-         if  (i_frac>=i_frac_prev)
-              {
-                  if (as.size()==0)
-                      return error_message("mismatch here");
-                  else  {
-                  if (as.size() == 1)
-                      rec().emplace_back(Time(t_prev), as[0]);
-                  else
-                      rec().emplace_back(Time(t_prev), as);
-                  as.clear();
-              }
-              i_step_prev = i_step;
-              i_sub_step_prev = std::numeric_limits<std::size_t>::max();
-           }
+    if (i_step_prev != i_step) {
+      if ((i_step > 0) && (i_step != rec().size() + 1))
+        return error_message("i_step missmatch expected " +
+                             std::to_string(rec().size() + 1) +
+                             " found:" + std::to_string(i_step));
+      if (i_frac >= i_frac_prev) {
+        if (as.size() == 0)
+          return error_message("mismatch here");
+        else {
+          if (as.size() == 1)
+            rec().emplace_back(Time(t_prev), as[0]);
+          else
+            rec().emplace_back(Time(t_prev), as);
+          as.clear();
+        }
+        i_step_prev = i_step;
+        i_sub_step_prev = std::numeric_limits<std::size_t>::max();
+      }
     }
     if (i_frac_prev != i_frac) {
-          
-          if ((i_frac>0)&&(i_frac != e.size()+1))
-            return error_message("i_frac missmatch expected " +
-                             std::to_string(e.size()+1) +
+
+      if ((i_frac > 0) && (i_frac != e.size() + 1))
+        return error_message("i_frac missmatch expected " +
+                             std::to_string(e.size() + 1) +
                              " found:" + std::to_string(i_frac));
-      
-        if (i_frac > 0)
-              e.emplace_back(
-                rec, Frequency_of_Sampling(frequency_of_sampling),
-                initial_ATP_concentration(ATP_concentration(initial_ATP)));
-        i_frac_prev = i_frac;
-        rec().clear();
-        i_step_prev = std::numeric_limits<std::size_t>::max();
-      
+
+      if (i_frac > 0)
+        e.emplace_back(
+            rec, Frequency_of_Sampling(frequency_of_sampling),
+            initial_ATP_concentration(ATP_concentration(initial_ATP)));
+      i_frac_prev = i_frac;
+      rec().clear();
+      i_step_prev = std::numeric_limits<std::size_t>::max();
     }
 
     if (i_sub_step_prev != i_sub_step) {
-        if (i_sub_step != as.size())
+      if (i_sub_step != as.size())
         return error_message("i_sub_step missmatch expected" +
                              std::to_string(as.size()) +
                              " found:" + std::to_string(i_sub_step));
-    }
-    else return error_message("i_sub_step missmatch expected" +
-                             std::to_string(as.size()) +
-                             " found:" + std::to_string(i_sub_step));
+    } else
+      return error_message("i_sub_step missmatch expected" +
+                           std::to_string(as.size()) +
+                           " found:" + std::to_string(i_sub_step));
     as.push_back(ATP_step(number_of_samples(v_number_of_samples),
                           ATP_concentration(val)));
     i_sub_step_prev = i_sub_step;
@@ -544,6 +543,13 @@ load_fractioned_experiment(const std::string filename, std::string separator,
     std::getline(f, line);
     ss = std::stringstream(line);
   }
+  if (as.size() == 1)
+    rec().emplace_back(Time(t_prev), as[0]);
+  else
+    rec().emplace_back(Time(t_prev), as);
+  e.emplace_back(rec, Frequency_of_Sampling(frequency_of_sampling),
+                 initial_ATP_concentration(ATP_concentration(initial_ATP)));
+
   return true;
 }
 
@@ -551,19 +557,19 @@ namespace cmd {
 inline auto get_Experiment(
     std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
     double frequency_of_sampling = 50e3, double initial_ATP = 0) {
-    using namespace macrodr;
-    auto [recording_conditions, recording] = macrodr::load_recording(filename);
-    
-    return Experiment(std::move(recording_conditions),
-                      Frequency_of_Sampling(frequency_of_sampling),
-                      initial_ATP_concentration(ATP_concentration(initial_ATP)));
+  using namespace macrodr;
+  auto [recording_conditions, recording] = macrodr::load_recording(filename);
+
+  return Experiment(std::move(recording_conditions),
+                    Frequency_of_Sampling(frequency_of_sampling),
+                    initial_ATP_concentration(ATP_concentration(initial_ATP)));
 }
 inline auto get_Observations(
     std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt") {
-    auto [recording_conditions, recording] = macrodr::load_recording(filename);
-    std::string out = filename.substr(0, filename.size() - 4) + "_recording.txt";
-    save_Recording(out, ",", recording);
-    return out;
+  auto [recording_conditions, recording] = macrodr::load_recording(filename);
+  std::string out = filename.substr(0, filename.size() - 4) + "_recording.txt";
+  save_Recording(out, ",", recording);
+  return out;
 }
 using recording_type =
     typename return_type<std::decay_t<decltype(&get_Observations)>>::type;

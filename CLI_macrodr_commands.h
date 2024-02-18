@@ -1,44 +1,26 @@
 #ifndef CLI_MACRODR_COMMANDS_H
 #define CLI_MACRODR_COMMANDS_H
 
-#include "CLI_macro_dr.h"
-#include "distributions.h"
 #include "experiment.h"
 #include "function_measure_verification_and_optimization.h"
 #include "function_memoization.h"
-#include "lapack_headers.h"
-#include "lexer_typed.h"
 #include "matrix.h"
 #include "maybe_error.h"
 #include "mcmc.h"
 #include "parameters.h"
-#include "parameters_derivative.h"
 #include "parameters_distribution.h"
 #include "random_samplers.h"
-#include "type_algebra.h"
 #include "variables.h"
-#include "variables_derivative.h"
 // #include "multivariate_normal_distribution.h"
-#include "allosteric_models.h"
 #include "cuevi.h"
-#include "micror_stochastic.h"
 // #include "models.h"
 #include "models_MoffattHume_linear.h"
-#include "parallel_tempering.h"
 #include "qmodel.h"
 #include <algorithm>
-#include <chrono>
 #include <cstddef>
 #include <cstdio>
-#include <fstream>
-#include <iostream>
 #include <iterator>
-#include <map>
-#include <random>
-#include <sstream>
 #include <string>
-#include <tuple>
-#include <type_traits>
 #include <vector>
 
 namespace macrodr {

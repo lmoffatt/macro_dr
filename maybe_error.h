@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -11,6 +12,7 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
+#include <fstream>
 
 inline std::string git_Commit_Hash() {
 #ifndef GIT_COMMIT_HASH
@@ -543,6 +545,41 @@ template <class T>
 std::ostream &put(std::ostream &os, const T &t) {
   os << t << "\n";
   return os;
+}
+
+inline std::string file_contents(const std::string& x)
+{
+    std::ifstream f0(x);
+    std::stringstream b0;
+    b0 << f0.rdbuf();
+    
+    return b0.str();
+}
+
+inline Maybe_error<bool> compare_file_contents(const std::string& one, const std::string & two, std::size_t max_errors=10)
+{
+    auto s0=file_contents(one);
+    auto s1=file_contents(two);
+    if (s0==s1) return true;
+    std::stringstream ss0(s0);
+    std::stringstream ss1(s1);
+    std::string line0;
+    std::string line1;
+    std::size_t i=0;
+    std::size_t n_errors=0;
+    std::string message;
+    while ((n_errors<max_errors)&&(std::getline(ss0,line0))&&(std::getline(ss1,line1)))
+    {
+      if (line0!=line1)
+        {
+            message+="\nline "+std::to_string(i)+":\n\t"+line0+"\n\t"+line1+"\n";
+          
+          ++n_errors; 
+        }
+      ++i;
+    }
+    return error_message(message);
+    
 }
 
 #endif // MAYBE_ERROR_H
