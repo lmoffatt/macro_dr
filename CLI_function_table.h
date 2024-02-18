@@ -3,6 +3,7 @@
 
 #include "CLI_macro_dr_base.h"
 #include "cuevi.h"
+#include "maybe_error.h"
 #include "models_MoffattHume_linear.h"
 #include "qmodel.h"
 #include <string>
@@ -415,7 +416,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
     }
 }
 
-inline std::string calc_fraction_likelihood(
+inline Maybe_error<std::string> calc_fraction_likelihood(
     std::string file_name, std::string model, parameters_value_type par,
     fractioned_simulation_type Maybe_frac_simulation,
     likelihood_algo_type likelihood_algo, tablefun_value_type ft) {
@@ -434,7 +435,7 @@ inline std::string calc_fraction_likelihood(
     auto frac_simulation = std::move(Maybe_frac_simulation.value());
     return std::visit(
         [&ftbl3, &frac_simulation, &likelihood_algo, &par,
-         &file_name](auto model0ptr) {
+         &file_name](auto model0ptr)->Maybe_error<std::string> {
             auto &model0 = *model0ptr;
             auto [experiment, simulation, fs, iniATP] = frac_simulation;
             
@@ -456,11 +457,11 @@ inline std::string calc_fraction_likelihood(
             auto Maybe_y = load_fractioned_simulation(simulation, ",", ys);
             
             if (xs.size() != ys.size())
-                return std::string() + "number of fractions mismatch between "
-                                       "recordings and experiments";
+                return error_message( "number of fractions mismatch between "
+                                     "recordings and experiments");
             
             if (!(Maybe_e.valid() && Maybe_y.valid() && Maybe_param1.valid()))
-                return Maybe_e.error()() + Maybe_y.error()() + Maybe_param1.error()();
+                return error_message(Maybe_e.error()() + Maybe_y.error()() + Maybe_param1.error()());
             
             auto param1 = std::move(Maybe_param1.value());
             
@@ -476,11 +477,11 @@ inline std::string calc_fraction_likelihood(
                 model0, Simulation_n_sub_dt(n_sub_dt));
             
             return std::visit(
-                [&ftbl3, &param1, &ys, &xs, &filename](auto &modelLikelihood) {
+                [&ftbl3, &param1, &ys, &xs, &filename](auto &modelLikelihood)->Maybe_error<std::string> {
                     auto Maybe_lik = fractioned_logLikelihoodPredictions(
                         ftbl3, modelLikelihood, param1, ys, xs);
                     if (!Maybe_lik)
-                        return Maybe_lik.error()();
+                        return Maybe_lik.error();
                     else {
                         save_fractioned_Likelihood_Predictions(
                             filename + "frac_likelihood.csv", Maybe_lik.value(), ys,

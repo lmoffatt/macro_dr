@@ -51,14 +51,8 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
     save_fractioned_experiment(save_name_2 + "_frac_experiment.csv", ",", xs);
     save_fractioned_simulation(save_name_2 + "_frac_simulation.csv", ",", ys);
     
-    std::ifstream f0(simulation);
-    std::stringstream b0;
-    b0 << f0.rdbuf();
-    
-    std::ifstream f1(save_name_2 + "_frac_simulation.csv");
-    std::stringstream b1;
-    b1 << f1.rdbuf();
-    REQUIRE(b0.str()==b1.str());
+    REQUIRE(compare_file_contents(simulation,save_name_2 + "_frac_simulation.csv"));
+    REQUIRE(compare_file_contents(experiment,save_name_2 + "_frac_experiment.csv"));
     
     
     // now check with recordings
