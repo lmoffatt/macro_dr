@@ -9,6 +9,7 @@ find_package(BLAS )
 find_package(LAPACK )
 find_package(OpenMP REQUIRED)
 
+set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcepts-diagnostics-depth=4 -fmax-errors=5" )
 
 if(LAPACK_FOUND AND BLAS_FOUND)
   set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
@@ -21,7 +22,8 @@ endif()
 add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp
     examples/N_simulation.csv
     tst_cli_macrodr_command.cpp
-    tst_cli_likelihood.cpp)
+    tst_cli_likelihood.cpp
+    tst_macror_validation.cpp)
 add_test(NAME test_macro_dr COMMAND test_macro_dr)
 
 target_link_libraries(test_macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
