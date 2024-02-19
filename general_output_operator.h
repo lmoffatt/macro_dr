@@ -217,7 +217,7 @@ std::ostream & operator<<(std::ostream &os, const std::vector<Ts> &v) {
 template <class Ts>
 std::ostream &print(std::ostream &os, const std::vector<Ts> &v) {
     for (std::size_t i = 0; i < v.size(); ++i)
-    {print(os,v[i]);
+    {print(os<<i<<":\n",v[i]);
         os<< "\n";
     }
     os<< "\n";

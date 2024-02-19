@@ -302,6 +302,40 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
   auto s = var::sum(out);
   return out * (1.0 / s);
 }
+
+inline bool all_Probability_elements(Matrix<double> const &x) {
+    
+    for(std::size_t i=0; i<x.size(); ++i)
+    {if (x[i]>1.0)
+            return false;
+        else if (x[i]<0.0)
+            return false;            
+    }
+    return true;
+}
+
+template <class C_Matrix>
+inline bool all_Covariance_elements(C_Matrix const &x) {
+    if (x.ncols()!=x.nrows())return false;
+    for(std::size_t i=0; i<x.nrows(); ++i)
+    {
+        if (x(i,i)<0)
+            return false;
+        for(std::size_t j=0; j<i; ++j)
+            if ((x(i,i)>0)&&(x(j,j)>0)){
+                if (x(i,j)*x(i,j)/x(i,i)/x(j,j)>1.0)
+                    return false;
+            }
+             else
+            {
+                if (x(i,j)!=0) return false;
+            }
+        
+    }
+    return true;
+}
+
+
 inline bool crude_lambda_violations(DiagonalMatrix<double> const &l) {
 
   if (var::max(l) > 1e-2)
@@ -494,6 +528,12 @@ class vlogL : public var::Var<vlogL, double> {
   friend std::string className(vlogL) { return "vlogL"; }
 };
 
+class macror_algorithm : public var::Constant<macror_algorithm, std::string> {
+    using var::Constant<macror_algorithm, std::string>::Constant;
+    friend std::string className(macror_algorithm) { return "macror_algorithm"; }
+};
+
+
 class PGn : public var::Var<PGn, Matrix<double>> {};
 class PGG_n : public var::Var<PGG_n, Matrix<double>> {};
 class PG_n : public var::Var<PG_n, Matrix<double>> {};
@@ -526,7 +566,7 @@ inline void save(const std::string name, const Patch_Model &m) {
 }
 
 using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
-                                 y_var, plogL, eplogL, vplogL>;
+                                 y_var, plogL, eplogL, vplogL, macror_algorithm>;
 
 template <class C_Patch_Model, class C_double>
 C_Patch_Model add_Patch_inactivation(C_Patch_Model &&m,
@@ -566,7 +606,7 @@ class Patch_State_Evolution
 
 using Patch_State_and_Evolution =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
-                 eplogL, vplogL, Patch_State_Evolution>;
+                 eplogL, vplogL, macror_algorithm,Patch_State_Evolution>;
 
 class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
@@ -2823,8 +2863,9 @@ public:
                                     C_Qdt const &t_Qdt, C_Patch_Model const &m,
                                     C_double const &Nch,
                                     const Patch_current &p_y, double fs) const {
-
-    using Transf = transformation_type_t<C_Qdt>;
+      
+     get<macror_algorithm>(t_prior)()=ToString(MacroR2<::V<recursive>,::V<averaging>,::V<variance>,::V<variance_correction>>{}); 
+     using Transf = transformation_type_t<C_Qdt>;
     auto &p_P_mean = get<P_mean>(t_prior);
     auto SmD = get<P_Cov>(t_prior)() - diag(p_P_mean());
     auto &y = p_y.value();
@@ -2833,6 +2874,7 @@ public:
     auto &t_min_P = get<min_P>(m);
     auto e = get<Current_Noise>(m).value() * fs /
              get<number_of_samples>(t_Qdt).value();
+    
     auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
 
     auto y_baseline = get<Current_Baseline>(m);
@@ -2889,6 +2931,8 @@ public:
         r_y_var = build<y_var>(e);
     }
     if (std::isnan(y)) {
+        get<macror_algorithm>(t_prior)()=ToString(MacroR2<::V<uses_recursive_aproximation(false)>,
+                                                            ::V<averaging>,::V<variance>,::V<variance_correction>>{}); 
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
       auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
@@ -2899,20 +2943,22 @@ public:
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
             Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
             std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
-            plogL(NaN), eplogL(NaN), vplogL(NaN));
+            plogL(NaN), eplogL(NaN), vplogL(NaN),get<macror_algorithm>(t_prior)
+              );
       else {
         auto &ev = get<Patch_State_Evolution>(t_prior);
         ev().push_back(Op_t<Transf, Patch_State>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
             Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), r_P_mean, r_P_cov,
-            r_y_mean, r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN)));
+            r_y_mean, r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN),get<macror_algorithm>(t_prior)
+            ));
         return Op_t<Transf, Patch_State_and_Evolution>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
             Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
             std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
-            plogL(NaN), eplogL(NaN), vplogL(NaN), std::move(ev));
+            plogL(NaN), eplogL(NaN), vplogL(NaN),get<macror_algorithm>(t_prior),std::move(ev));
       }
     }
 
@@ -2920,12 +2966,27 @@ public:
     auto chi = dy / r_y_var();
     Op_t<Transf, P_mean> r_P_mean;
     Op_t<Transf, P_Cov> r_P_cov;
-    auto gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
+    
+    
+    auto    gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
 
-    r_P_mean() = to_Probability(p_P_mean() * t_P() + chi * gS);
-
+    r_P_mean() =p_P_mean() * t_P() + chi * gS;
+    
+    
     r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
                 (N / r_y_var()) * XTX(gS);
+    
+    if (!all_Probability_elements(r_P_mean())|| ! all_Covariance_elements(r_P_cov()))
+    {
+        r_P_mean() =p_P_mean() * t_P() ;
+        
+        
+        r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) ;
+        
+        get<macror_algorithm>(t_prior)()=ToString(MacroR2<::V<uses_recursive_aproximation(false)>,
+                                                            ::V<averaging>,::V<variance>,::V<variance_correction>>{}); 
+    }
+
 
     auto chi2 = dy * chi;
 
@@ -2947,7 +3008,7 @@ public:
     {
         std::stringstream ss;
         ss<<"likelihood is nan \n patch current=";
-        print(ss,p_y)<<"Qdt";                                                                                                                           
+        print(ss,p_y)<<"Qdt";                                                                                                               
         print(ss,t_Qdt)<<"tprior";
         print(ss,t_prior);                                                                                                  
         return error_message(ss.str());                                                                                                                                                                                                                                                 
@@ -2958,20 +3019,20 @@ public:
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
           std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
-          r_eplogL, r_vlogL);
+          r_eplogL, r_vlogL,get<macror_algorithm>(t_prior));
     else {
       auto &ev = get<Patch_State_Evolution>(t_prior);
       ev().push_back(build<Patch_State>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), r_P_mean, r_P_cov,
-          r_y_mean, r_y_var, r_plogL, r_eplogL, r_vlogL));
+          r_y_mean, r_y_var, r_plogL, r_eplogL, r_vlogL,get<macror_algorithm>(t_prior)));
       return build<Patch_State_and_Evolution>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
           std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
-          r_eplogL, r_vlogL, std::move(ev));
+          r_eplogL, r_vlogL, get<macror_algorithm>(t_prior),std::move(ev));
     }
   }
 
@@ -3001,12 +3062,12 @@ public:
         return Transfer_Op_to<C_Patch_Model, Patch_State>(
             logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
             std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
-            eplogL(NaN), vplogL(NaN));
+              eplogL(NaN), vplogL(NaN),macror_algorithm(""));
       else
         return Transfer_Op_to<C_Patch_Model, Patch_State_and_Evolution>(
             logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
             std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
-            eplogL(NaN), vplogL(NaN), Patch_State_Evolution());
+              eplogL(NaN), vplogL(NaN), macror_algorithm(""),Patch_State_Evolution());
 
     } else {
       return error_message("fails at init: " + r_test.error()());
