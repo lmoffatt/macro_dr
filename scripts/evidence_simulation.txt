@@ -10,7 +10,9 @@ fraction_algorithm= set_fraction_algorithm(min_fraction = 4, n_points_per_decade
 
 func_table = get_function_Table_maker(filename= runIdName, num_scouts_per_ensemble = 32) 
 
-fraction_sim = fraction_simulation(save_name =runIdName, simulation= simfile, experiment = experiment, fraction_algo= fraction_algorithm, model = model, i_seed=0)
+
+
+fraction_sim = fraction_simulation(save_name =runIdName, simulation= simfile, experiment = experiment, fraction_algo= fraction_algorithm, number_of_parameters = get_num_parameters(model= model), i_seed=0)
 
 
 fl= fraction_likelihood(file_name =runIdName, model= model, parameter= modelParameter ,fractioned_simulation=fraction_sim, likelihood_algo= likelihood_algorithm,function_table= func_table)
