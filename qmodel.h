@@ -4803,9 +4803,14 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_experiment_fractions(std::string save_name, std::string recording,
                           experiment_type experiment,
                           fraction_algo_type fraction_algo,
-                          std::size_t num_param, std::size_t i_seed) {
+                          Maybe_error<std::size_t> Maybe_num_param, std::size_t i_seed) {
   auto myseed = calc_seed(i_seed);
-
+    
+    if (!Maybe_num_param)
+      return Maybe_num_param.error();
+    auto num_param=Maybe_num_param.value();
+        
+  
   auto init_seed = calc_seed(i_seed);
   mt_64i mt(init_seed);
 
@@ -4834,9 +4839,13 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_simulation_fractions(std::string save_name, std::string simulation,
                           experiment_type experiment,
                           fraction_algo_type fraction_algo,
-                          std::size_t num_param, std::size_t i_seed) {
-  auto myseed = calc_seed(i_seed);
-
+                          Maybe_error<std::size_t> Maybe_num_param, std::size_t i_seed) {
+    if (!Maybe_num_param)
+        return Maybe_num_param.error();
+    auto num_param=Maybe_num_param.value();
+    auto myseed = calc_seed(i_seed);
+  
+  
   auto init_seed = calc_seed(i_seed);
   mt_64i mt(init_seed);
 

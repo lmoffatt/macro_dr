@@ -146,6 +146,11 @@ double frequency_of_sampling = 50e3, double initial_ATP = 0)
     cm.push_function("get_Observations", dcli::to_typed_function<std::string>(
                                              &get_Observations, "filename"));
     
+    
+        
+     cm.push_function("get_num_parameters", dcli::to_typed_function<std::string>(
+                                                     &get_num_parameters, "model"));
+    
     /**
  *
  * auto get_Prior(
@@ -191,7 +196,7 @@ inline auto set_Fraction_algorithm(
      * */
     
     cm.push_function("fraction_experiment",
-                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , std::size_t ,std::size_t >(
+                     dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , Maybe_error<std::size_t> ,std::size_t >(
                          &calc_experiment_fractions, "save_name", "recording",
                          "experiment","fraction_algo","number_of_parameters","i_seed"));
     
@@ -204,7 +209,7 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
      * */
     
     cm.push_function("fraction_simulation",
-                     dcli::to_typed_function<  std::string ,std::string , cmd::experiment_type ,                                  fraction_algo_type , std::size_t ,std::size_t >(
+                     dcli::to_typed_function<  std::string ,std::string , cmd::experiment_type ,                                  fraction_algo_type , Maybe_error<std::size_t> ,std::size_t >(
                          &cmd::calc_simulation_fractions, "save_name", "simulation",
                          "experiment","fraction_algo","number_of_parameters","i_seed"));
     
