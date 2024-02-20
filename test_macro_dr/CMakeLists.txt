@@ -23,7 +23,8 @@ add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp
     examples/N_simulation.csv
     tst_cli_macrodr_command.cpp
     tst_cli_likelihood.cpp
-    tst_macror_validation.cpp)
+    tst_macror_validation.cpp
+    tst_fractioner.cpp)
 add_test(NAME test_macro_dr COMMAND test_macro_dr)
 
 target_link_libraries(test_macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
