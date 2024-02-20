@@ -484,14 +484,14 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
                         return Maybe_lik.error();
                     else {
                         save_fractioned_Likelihood_Predictions(
-                            filename + "frac_likelihood.csv", Maybe_lik.value(), ys,
+                            filename + "frac_likelihood.csv", ",",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              Maybe_lik.value(), ys,
                             xs);
                         return filename;
                     }
                 },
                 modelLikelihood_v);
         },
-        model_v);
+        model_v);                                                                                                                                                                                                                              
 }
 
 inline void calc_fraction_evidence(

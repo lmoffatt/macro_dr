@@ -304,37 +304,34 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
 }
 
 inline bool all_Probability_elements(Matrix<double> const &x) {
-    
-    for(std::size_t i=0; i<x.size(); ++i)
-    {if (x[i]>1.0)
-            return false;
-        else if (x[i]<0.0)
-            return false;            
-    }
-    return true;
+
+  for (std::size_t i = 0; i < x.size(); ++i) {
+    if (x[i] > 1.0)
+      return false;
+    else if (x[i] < 0.0)
+      return false;
+  }
+  return true;
 }
 
 template <class C_Matrix>
 inline bool all_Covariance_elements(C_Matrix const &x) {
-    if (x.ncols()!=x.nrows())return false;
-    for(std::size_t i=0; i<x.nrows(); ++i)
-    {
-        if (x(i,i)<0)
-            return false;
-        for(std::size_t j=0; j<i; ++j)
-            if ((x(i,i)>0)&&(x(j,j)>0)){
-                if (x(i,j)*x(i,j)/x(i,i)/x(j,j)>1.0)
-                    return false;
-            }
-             else
-            {
-                if (x(i,j)!=0) return false;
-            }
-        
-    }
-    return true;
+  if (x.ncols() != x.nrows())
+    return false;
+  for (std::size_t i = 0; i < x.nrows(); ++i) {
+    if (x(i, i) < 0)
+      return false;
+    for (std::size_t j = 0; j < i; ++j)
+      if ((x(i, i) > 0) && (x(j, j) > 0)) {
+        if (x(i, j) * x(i, j) / x(i, i) / x(j, j) > 1.0)
+          return false;
+      } else {
+        if (x(i, j) != 0)
+          return false;
+      }
+  }
+  return true;
 }
-
 
 inline bool crude_lambda_violations(DiagonalMatrix<double> const &l) {
 
@@ -529,10 +526,9 @@ class vlogL : public var::Var<vlogL, double> {
 };
 
 class macror_algorithm : public var::Constant<macror_algorithm, std::string> {
-    using var::Constant<macror_algorithm, std::string>::Constant;
-    friend std::string className(macror_algorithm) { return "macror_algorithm"; }
+  using var::Constant<macror_algorithm, std::string>::Constant;
+  friend std::string className(macror_algorithm) { return "macror_algorithm"; }
 };
-
 
 class PGn : public var::Var<PGn, Matrix<double>> {};
 class PGG_n : public var::Var<PGG_n, Matrix<double>> {};
@@ -565,8 +561,9 @@ inline void save(const std::string name, const Patch_Model &m) {
       << get<g>(m) << "\n";
 }
 
-using Patch_State = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean,
-                                 y_var, plogL, eplogL, vplogL, macror_algorithm>;
+using Patch_State =
+    Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
+                 eplogL, vplogL, macror_algorithm>;
 
 template <class C_Patch_Model, class C_double>
 C_Patch_Model add_Patch_inactivation(C_Patch_Model &&m,
@@ -606,7 +603,7 @@ class Patch_State_Evolution
 
 using Patch_State_and_Evolution =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
-                 eplogL, vplogL, macror_algorithm,Patch_State_Evolution>;
+                 eplogL, vplogL, macror_algorithm, Patch_State_Evolution>;
 
 class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
@@ -624,11 +621,10 @@ class Simulated_Recording
                              Vector_Space<Recording>>> {
 public:
   constexpr static const bool includes_N = keep_N_state.value;
-  using   Var<
-      Simulated_Recording<keep_N_state>,
-      std::conditional_t<keep_N_state.value,
-                         Vector_Space<Recording, N_Ch_State_Evolution>,
-                         Vector_Space<Recording>>>::Var;
+  using Var<Simulated_Recording<keep_N_state>,
+            std::conditional_t<keep_N_state.value,
+                               Vector_Space<Recording, N_Ch_State_Evolution>,
+                               Vector_Space<Recording>>>::Var;
 };
 
 using v_Simulated_Recording =
@@ -652,29 +648,29 @@ using Simulation_Parameters = Vector_Space<Simulation_n_sub_dt>;
 template <includes_N_state_evolution includesN>
 void save_simulation(std::string const &filename, const std::string &separator,
                      Simulated_Recording<includesN> const &sim) {
-    std::ofstream f(filename);
-    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-    
-    f << "i_step" << separator << "patch_current";
-    if constexpr (includesN.value)
-        f << separator << "i_state" << separator << "N_state";
-    f << "\n";
-    
-    if constexpr (includesN.value) {
-        auto N = get<N_Ch_State_Evolution>(sim());
-        auto y = get<Recording>(sim());
-        for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
-            for (auto i_state = 0ul; i_state < N()[i_step]().size(); ++i_state) {
-                f << i_step << separator << y()[i_step]() << separator << i_state
-                  << separator << N()[i_step]()[i_state] << "\n";
-            }
-        }
-    } else {
-        auto y = get<Recording>(sim());
-        for (auto i_step = 0ul; i_step < y().size(); ++i_step) {
-            f << i_step << separator << y()[i_step]() << "\n";
-        }
+  std::ofstream f(filename);
+  f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+
+  f << "i_step" << separator << "patch_current";
+  if constexpr (includesN.value)
+    f << separator << "i_state" << separator << "N_state";
+  f << "\n";
+
+  if constexpr (includesN.value) {
+    auto N = get<N_Ch_State_Evolution>(sim());
+    auto y = get<Recording>(sim());
+    for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
+      for (auto i_state = 0ul; i_state < N()[i_step]().size(); ++i_state) {
+        f << i_step << separator << y()[i_step]() << separator << i_state
+          << separator << N()[i_step]()[i_state] << "\n";
+      }
     }
+  } else {
+    auto y = get<Recording>(sim());
+    for (auto i_step = 0ul; i_step < y().size(); ++i_step) {
+      f << i_step << separator << y()[i_step]() << "\n";
+    }
+  }
 }
 
 template <includes_N_state_evolution keep_N_state>
@@ -690,18 +686,18 @@ Maybe_error<bool> load_simulation(std::string const &fname,
 
   if constexpr (keep_N_state.value) {
     if (!(ss >> septr("i_step") >> septr(separator) >> septr("patch_current") >>
-            septr(separator) >> septr("i_state") >> septr(separator) >>
-            septr("N_state")))
+          septr(separator) >> septr("i_state") >> septr(separator) >>
+          septr("N_state")))
       return error_message("titles are wrong : expected  \ni_step" + separator +
-                             "patch_current" + separator + "i_state" + separator +
-                             "N_state\n found:\n" + line);
+                           "patch_current" + separator + "i_state" + separator +
+                           "N_state\n found:\n" + line);
   } else {
     if (!(ss))
       return error_message("titles are wrong : expected  i_state" + separator +
                            "N_state\n found:\n" + line);
     if (!(ss >> septr("i_step") >> septr(separator) >> septr("patch_current")))
-        return error_message("titles are wrong : expected  i_step:" + separator +
-                             "patch_current; found:" + line);
+      return error_message("titles are wrong : expected  i_step:" + separator +
+                           "patch_current; found:" + line);
   }
   std::getline(f, line);
   ss = std::stringstream(line);
@@ -713,7 +709,7 @@ Maybe_error<bool> load_simulation(std::string const &fname,
 
   if constexpr (!keep_N_state.value) {
     while (
-          extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
+        extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
       if (i_step_prev != i_step) {
         if (i_step != e().size())
           return error_message("i_step missmatch expected" +
@@ -734,36 +730,36 @@ Maybe_error<bool> load_simulation(std::string const &fname,
     while (
         (extract_double(ss >> i_step >> septr(separator), val, separator[0]) >>
          septr(separator) >> i_state >> septr(separator) >> N)) {
-        if (i_step_prev >= i_step) {
-            if (i_state != N_state.size())
-                return error_message(
+      if (i_step_prev >= i_step) {
+        if (i_state != N_state.size())
+          return error_message(
               "i_state missmatch expected =" + std::to_string(N_state.size()) +
               " found " + std::to_string(i_state));
         N_state.push_back(N);
         if (i_step_prev > i_step)
-            e().push_back(Patch_current(val));
-        
-        } else {
+          e().push_back(Patch_current(val));
+
+      } else {
         if (i_step != e().size())
           return error_message("i_step missmatch expected" +
                                std::to_string(e().size()) +
                                " found:" + std::to_string(i_step));
         e().push_back(Patch_current(val));
         if (n_channel_states == 0)
-            n_channel_states = N_state.size();
+          n_channel_states = N_state.size();
         else if (n_channel_states != N_state.size())
-            return error_message("n_channel_states missmatch expected" +
-                                 std::to_string(n_channel_states) +
-                                 " found:" + std::to_string(N_state.size()));
+          return error_message("n_channel_states missmatch expected" +
+                               std::to_string(n_channel_states) +
+                               " found:" + std::to_string(N_state.size()));
         auto &Ns = get<N_Ch_State_Evolution>(r());
         Ns().emplace_back(
             N_channel_state(Matrix<double>(1, n_channel_states, N_state)));
         N_state.clear();
         N_state.push_back(N);
-        }
-        i_step_prev = i_step;
-        
-        std::getline(f, line);
+      }
+      i_step_prev = i_step;
+
+      std::getline(f, line);
       ss = std::stringstream(line);
     }
     if (n_channel_states != N_state.size())
@@ -782,37 +778,37 @@ template <includes_N_state_evolution includesN>
 void save_fractioned_simulation(
     std::string filename, std::string separator,
     std::vector<Simulated_Recording<includesN>> const &vsim) {
-    std::ofstream f(filename);
-    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-    
-    f << "i_frac" << separator << "i_step" << separator << "patch_current";
-    if constexpr (includesN.value)
-        f << separator << "i_state" << separator << "N_state";
-    f << "\n";
-    
-    if constexpr (includesN.value) {
-        for (std::size_t i_frac = 0; i_frac < vsim.size(); ++i_frac) {
-            auto &sim = vsim[i_frac];
-            auto N = get<N_Ch_State_Evolution>(sim());
-            auto y = get<Recording>(sim());
-            for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
-                for (auto i_state = 0ul; i_state < N()[i_step]().size(); ++i_state) {
-                    f << i_frac << separator << i_step << separator << y()[i_step]()
-                      << separator << i_state << separator << N()[i_step]()[i_state]
-                      << "\n";
-                }
-            }
+  std::ofstream f(filename);
+  f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+
+  f << "i_frac" << separator << "i_step" << separator << "patch_current";
+  if constexpr (includesN.value)
+    f << separator << "i_state" << separator << "N_state";
+  f << "\n";
+
+  if constexpr (includesN.value) {
+    for (std::size_t i_frac = 0; i_frac < vsim.size(); ++i_frac) {
+      auto &sim = vsim[i_frac];
+      auto N = get<N_Ch_State_Evolution>(sim());
+      auto y = get<Recording>(sim());
+      for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
+        for (auto i_state = 0ul; i_state < N()[i_step]().size(); ++i_state) {
+          f << i_frac << separator << i_step << separator << y()[i_step]()
+            << separator << i_state << separator << N()[i_step]()[i_state]
+            << "\n";
         }
-    } else {
-        for (std::size_t i_frac = 0; i_frac < vsim.size(); ++i_frac) {
-            auto &sim = vsim[i_frac];
-            auto y = get<Recording>(sim());
-            for (auto i_step = 0ul; i_step < y().size(); ++i_step) {
-                f << i_frac << separator << i_step << separator << y()[i_step]()
-                  << "\n";
-            }
+      }
     }
+  } else {
+    for (std::size_t i_frac = 0; i_frac < vsim.size(); ++i_frac) {
+      auto &sim = vsim[i_frac];
+      auto y = get<Recording>(sim());
+      for (auto i_step = 0ul; i_step < y().size(); ++i_step) {
+        f << i_frac << separator << i_step << separator << y()[i_step]()
+          << "\n";
+      }
     }
+  }
 }
 
 template <includes_N_state_evolution keep_N_state>
@@ -848,8 +844,8 @@ load_fractioned_simulation(std::string const &fname, std::string separator,
 
   if constexpr (!keep_N_state.value) {
     while (extract_double(ss >> i_frac >> septr(separator) >> i_step >>
-                                septr(separator),
-                            val, separator[0])) {
+                              septr(separator),
+                          val, separator[0])) {
       if (i_frac_prev != i_frac) {
         if (i_frac != rs.size())
           return error_message("i_step missmatch expected " +
@@ -875,44 +871,46 @@ load_fractioned_simulation(std::string const &fname, std::string separator,
     }
     return true;
   } else {
-    double val_prev=std::numeric_limits<double>::max();
+    double val_prev = std::numeric_limits<double>::max();
     std::size_t i_state;
     double N;
     std::vector<double> N_state;
     auto n_channel_states = N_state.size();
     while ((extract_double(ss >> i_frac >> septr(separator) >> i_step >>
                                septr(separator),
-                           val,separator[0]) >>
+                           val, separator[0]) >>
             septr(separator) >> i_state >> septr(separator) >> N)) {
-        if (i_frac_prev != i_frac) {
-            if ((i_frac>0)&&(i_frac != rs.size()+1))
-                return error_message("i_frac missmatch expected: " +
-                                     std::to_string(rs.size()) +
-                                     " found: " + std::to_string(i_frac));
-            if (i_frac > 0) {
-                auto &Ns = get<N_Ch_State_Evolution>(r());
-                Ns().emplace_back(
-                    N_channel_state(Matrix<double>(1, n_channel_states, N_state)));
-                rs.push_back(r);
-                N_state.clear();
-                r = Simulated_Recording<keep_N_state>{};
-            }
-            i_frac_prev=i_frac;
+      if (i_frac_prev != i_frac) {
+        if ((i_frac > 0) && (i_frac != rs.size() + 1))
+          return error_message(
+              "i_frac missmatch expected: " + std::to_string(rs.size()) +
+              " found: " + std::to_string(i_frac));
+        if (i_frac > 0) {
+          auto &Ns = get<N_Ch_State_Evolution>(r());
+          Ns().emplace_back(
+              N_channel_state(Matrix<double>(1, n_channel_states, N_state)));
+          rs.push_back(r);
+          N_state.clear();
+          r = Simulated_Recording<keep_N_state>{};
         }
-        
+        i_frac_prev = i_frac;
+      }
+
       auto &e = get<Recording>(r());
       if (i_step_prev == i_step) {
-          if ((val!=val_prev)&&!(std::isnan(val)&&std::isnan(val_prev)))
-            return error_message("change patch current in same i_step val="+std::to_string(val)+" prev_val="+std::to_string(val_prev));
+        if ((val != val_prev) && !(std::isnan(val) && std::isnan(val_prev)))
+          return error_message(
+              "change patch current in same i_step val=" + std::to_string(val) +
+              " prev_val=" + std::to_string(val_prev));
         N_state.push_back(N);
 
       } else {
         if (i_step != e().size())
-          return error_message("i_step missmatch expected: " +
-                               std::to_string(e().size()) +
-                               " found: " + std::to_string(i_step));
+          return error_message(
+              "i_step missmatch expected: " + std::to_string(e().size()) +
+              " found: " + std::to_string(i_step));
         e().push_back(Patch_current(val));
-        val_prev=val;
+        val_prev = val;
         if (i_step > i_step_prev) {
           if (n_channel_states == 0)
             n_channel_states = N_state.size();
@@ -924,7 +922,6 @@ load_fractioned_simulation(std::string const &fname, std::string separator,
           Ns().emplace_back(
               N_channel_state(Matrix<double>(1, n_channel_states, N_state)));
           N_state.clear();
-          
         }
         N_state.push_back(N);
         i_step_prev = i_step;
@@ -940,7 +937,7 @@ load_fractioned_simulation(std::string const &fname, std::string separator,
     Ns().emplace_back(
         N_channel_state(Matrix<double>(1, n_channel_states, N_state)));
     rs.push_back(r);
-    
+
     return true;
   }
 }
@@ -2863,9 +2860,11 @@ public:
                                     C_Qdt const &t_Qdt, C_Patch_Model const &m,
                                     C_double const &Nch,
                                     const Patch_current &p_y, double fs) const {
-      
-     get<macror_algorithm>(t_prior)()=ToString(MacroR2<::V<recursive>,::V<averaging>,::V<variance>,::V<variance_correction>>{}); 
-     using Transf = transformation_type_t<C_Qdt>;
+
+    get<macror_algorithm>(t_prior)() =
+        ToString(MacroR2<::V<recursive>, ::V<averaging>, ::V<variance>,
+                         ::V<variance_correction>>{});
+    using Transf = transformation_type_t<C_Qdt>;
     auto &p_P_mean = get<P_mean>(t_prior);
     auto SmD = get<P_Cov>(t_prior)() - diag(p_P_mean());
     auto &y = p_y.value();
@@ -2874,7 +2873,7 @@ public:
     auto &t_min_P = get<min_P>(m);
     auto e = get<Current_Noise>(m).value() * fs /
              get<number_of_samples>(t_Qdt).value();
-    
+
     auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
 
     auto y_baseline = get<Current_Baseline>(m);
@@ -2931,8 +2930,9 @@ public:
         r_y_var = build<y_var>(e);
     }
     if (std::isnan(y)) {
-        get<macror_algorithm>(t_prior)()=ToString(MacroR2<::V<uses_recursive_aproximation(false)>,
-                                                            ::V<averaging>,::V<variance>,::V<variance_correction>>{}); 
+      get<macror_algorithm>(t_prior)() = ToString(
+          MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
+                  ::V<variance>, ::V<variance_correction>>{});
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
       auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
@@ -2943,22 +2943,23 @@ public:
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
             Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
             std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
-            plogL(NaN), eplogL(NaN), vplogL(NaN),get<macror_algorithm>(t_prior)
-              );
+            plogL(NaN), eplogL(NaN), vplogL(NaN),
+            get<macror_algorithm>(t_prior));
       else {
         auto &ev = get<Patch_State_Evolution>(t_prior);
         ev().push_back(Op_t<Transf, Patch_State>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
             Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), r_P_mean, r_P_cov,
-            r_y_mean, r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN),get<macror_algorithm>(t_prior)
-            ));
+            r_y_mean, r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN),
+            get<macror_algorithm>(t_prior)));
         return Op_t<Transf, Patch_State_and_Evolution>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
             Op_t<Transf, elogL>(get<elogL>(t_prior)()),
             Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
             std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
-            plogL(NaN), eplogL(NaN), vplogL(NaN),get<macror_algorithm>(t_prior),std::move(ev));
+            plogL(NaN), eplogL(NaN), vplogL(NaN),
+            get<macror_algorithm>(t_prior), std::move(ev));
       }
     }
 
@@ -2966,27 +2967,24 @@ public:
     auto chi = dy / r_y_var();
     Op_t<Transf, P_mean> r_P_mean;
     Op_t<Transf, P_Cov> r_P_cov;
-    
-    
-    auto    gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
 
-    r_P_mean() =p_P_mean() * t_P() + chi * gS;
-    
-    
+    auto gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
+
+    r_P_mean() = p_P_mean() * t_P() + chi * gS;
+
     r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
                 (N / r_y_var()) * XTX(gS);
-    
-    if (!all_Probability_elements(r_P_mean())|| ! all_Covariance_elements(r_P_cov()))
-    {
-        r_P_mean() =p_P_mean() * t_P() ;
-        
-        
-        r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) ;
-        
-        get<macror_algorithm>(t_prior)()=ToString(MacroR2<::V<uses_recursive_aproximation(false)>,
-                                                            ::V<averaging>,::V<variance>,::V<variance_correction>>{}); 
-    }
 
+    if (!all_Probability_elements(primitive(r_P_mean())) ||
+        !all_Covariance_elements(primitive(r_P_cov()))) {
+      r_P_mean() = p_P_mean() * t_P();
+
+      r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P());
+
+      get<macror_algorithm>(t_prior)() = ToString(
+          MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
+                  ::V<variance>, ::V<variance_correction>>{});
+    }
 
     auto chi2 = dy * chi;
 
@@ -3004,35 +3002,34 @@ public:
     Op_t<Transf, eplogL> r_eplogL(-0.5 * log(2 * std::numbers::pi * r_y_var()) -
                                   0.5);
     vplogL r_vlogL(0.5);
-    if (std::isnan(primitive(r_plogL())))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
-    {
-        std::stringstream ss;
-        ss<<"likelihood is nan \n patch current=";
-        print(ss,p_y)<<"Qdt";                                                                                                               
-        print(ss,t_Qdt)<<"tprior";
-        print(ss,t_prior);                                                                                                  
-        return error_message(ss.str());                                                                                                                                                                                                                                                 
-    }
-    else if constexpr (U<C_Patch_State, Patch_State>)
+    if (std::isnan(primitive(r_plogL()))) {
+      std::stringstream ss;
+      ss << "likelihood is nan \n patch current=";
+      print(ss, p_y) << "Qdt";
+      print(ss, primitive(t_Qdt)) << "tprior";
+      print(ss, primitive(t_prior));
+      return error_message(ss.str());
+    } else if constexpr (U<C_Patch_State, Patch_State>)
       return build<Patch_State>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
           std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
-          r_eplogL, r_vlogL,get<macror_algorithm>(t_prior));
+          r_eplogL, r_vlogL, get<macror_algorithm>(t_prior));
     else {
       auto &ev = get<Patch_State_Evolution>(t_prior);
       ev().push_back(build<Patch_State>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), r_P_mean, r_P_cov,
-          r_y_mean, r_y_var, r_plogL, r_eplogL, r_vlogL,get<macror_algorithm>(t_prior)));
+          r_y_mean, r_y_var, r_plogL, r_eplogL, r_vlogL,
+          get<macror_algorithm>(t_prior)));
       return build<Patch_State_and_Evolution>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
           build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
           std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
-          r_eplogL, r_vlogL, get<macror_algorithm>(t_prior),std::move(ev));
+          r_eplogL, r_vlogL, get<macror_algorithm>(t_prior), std::move(ev));
     }
   }
 
@@ -3062,12 +3059,13 @@ public:
         return Transfer_Op_to<C_Patch_Model, Patch_State>(
             logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
             std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
-              eplogL(NaN), vplogL(NaN),macror_algorithm(""));
+            eplogL(NaN), vplogL(NaN), macror_algorithm(""));
       else
         return Transfer_Op_to<C_Patch_Model, Patch_State_and_Evolution>(
             logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
             std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
-              eplogL(NaN), vplogL(NaN), macror_algorithm(""),Patch_State_Evolution());
+            eplogL(NaN), vplogL(NaN), macror_algorithm(""),
+            Patch_State_Evolution());
 
     } else {
       return error_message("fails at init: " + r_test.error()());
@@ -4017,8 +4015,8 @@ public:
 
           out_x[ii] = Experiment_step(get<Time>(e()[i]), v_ATP);
           if constexpr (keep_N_state.value)
-              out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
-          
+            out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
+
           sum_y = 0;
           sum_samples = 0;
           v_ATP = std::vector<ATP_step>{};
@@ -4033,12 +4031,11 @@ public:
       }
     }
     Simulated_Recording<keep_N_state> out_sim;
-    get<Recording>(out_sim())()=std::move(out_y);
+    get<Recording>(out_sim())() = std::move(out_y);
     if constexpr (keep_N_state.value)
-        get<N_Ch_State_Evolution>(out_sim())()=std::move(out_N);
-    
+      get<N_Ch_State_Evolution>(out_sim())() = std::move(out_N);
+
     return std::tuple(Recording_conditions(out_x), std::move(out_sim));
-    
   }
 
   auto operator()(const Recording &y, const Experiment &x, mt_64i &mt,
@@ -4129,7 +4126,7 @@ public:
                   double n_points_per_decade_fraction) const {
     auto &yr = get<Recording>(sim());
     assert(size(yr()) == size(get<Recording_conditions>(x)()));
-    assert(size(yr()) == var::sum(segments));
+    assert(size(segments)==0||size(yr()) == var::sum(segments));
 
     std::size_t num_samples = size(yr());
     //  std::size_t max_num_samples_per_segment = var::max(segments);
@@ -4264,7 +4261,8 @@ void report(std::string filename, const Patch_State_Evolution &predictions,
   f << "\n";
   for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
     auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
-    for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows(); ++i) {
+    for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows();
+         ++i) {
       for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_step])().ncols();
            ++j) {
         f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step])
@@ -4330,7 +4328,8 @@ void save_Likelihood_Predictions(std::string filename,
     f << "\n";
   for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
     auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
-    for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows(); ++i) {
+    for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows();
+         ++i) {
       for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_step])().ncols();
            ++j) {
         f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step])
@@ -4364,42 +4363,17 @@ inline void save_Likelihood_Predictions(
 
 template <includes_N_state_evolution keep_N_state>
 void save_fractioned_Likelihood_Predictions(
-    std::string filename,
+    std::string filename, const std::string &sep,
     const std::vector<Patch_State_Evolution> &v_predictions,
     const std::vector<Simulated_Recording<keep_N_state>> &v_y,
     const std::vector<Experiment> &v_xs) {
   std::ofstream f(filename);
-  f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_frac"
-    << ","
-    << "i_step"
-    << ","
-    << "time"
-    << ","
-    << "num_samples"
-    << ","
-    << "ATP_step"
-    << ","
-    << "v_ev"
-    << ","
-    << "y"
-    << ","
-    << "y_mean"
-    << ","
-    << "y_var"
-    << ","
-    << "plogL"
-    << ","
-    << "eplogL"
-    << ","
-    << "logL"
-    << ","
-    << "i"
-    << ","
-    << "P_mean"
-    << ","
-    << "j"
-    << ","
-    << "P_Cov";
+  f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+  f << "i_frac" << sep << "i_step" << sep << "t_ini"<< sep << "time" << sep << "i_sub_step"
+    << sep << "number_of_samples" << sep << "ATP_concentration" << sep
+    << "macror_algorithm" << sep << "y" << sep << "y_mean" << sep << "y_var"
+    << sep << "plogL" << sep << "eplogL" << sep << "logL" << sep << "i_state"
+    << sep << "P_mean" << sep << "j_state" << sep << "P_Cov";
   if constexpr (keep_N_state.value)
     f << ","
       << "N"
@@ -4407,37 +4381,44 @@ void save_fractioned_Likelihood_Predictions(
   else
     f << "\n";
   for (std::size_t i_frac = 0; i_frac < v_y.size(); ++i_frac) {
+      double t_ini=0; 
     auto &y = v_y[i_frac];
     auto &ys = get<Recording>(y());
     auto &xs = v_xs[i_frac];
     auto &predictions = v_predictions[i_frac];
     for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
       auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
-      for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows();
-           ++i) {
-        for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_step])().ncols();
-             ++j) {
-          f << i_frac << "," << i_step << ","
-            << get<Time>(get<Recording_conditions>(xs)()[i_step]) << ","
-            << get_num_samples(v_ev) << "," << ToString(average_ATP_step(v_ev))
-            << "," << ToString(v_ev) << "," << ys()[i_step]() << ","
-            << get<y_mean>(predictions()[i_step]) << ","
-            << get<y_var>(predictions()[i_step]) << ","
-            << get<plogL>(predictions()[i_step]) << ","
-            << get<eplogL>(predictions()[i_step]) << ","
-            << get<logL>(predictions()[i_step]) << "," << i << ","
-            << get<P_mean>(predictions()[i_step])()[i] << "," << j << ","
-            << get<P_Cov>(predictions()[i_step])()(i, j);
-          if constexpr (keep_N_state.value)
-            f << "," << get<N_Ch_State_Evolution>(y())()[i_step]()[i] << "\n";
-          else
-            f << "\n";
+      for (std::size_t i_sub_step = 0; i_sub_step < v_ev.size(); ++i_sub_step) {
+        for (std::size_t i_state = 0;
+             i_state < get<P_Cov>(predictions()[i_step])().nrows(); ++i_state) {
+          for (std::size_t j_state = 0;
+               j_state < get<P_Cov>(predictions()[i_step])().ncols();
+               ++j_state) {
+                f << i_frac << sep << i_step << sep<<t_ini<<sep
+              << get<Time>(get<Recording_conditions>(xs)()[i_step]) << sep
+              << i_sub_step << sep << get<number_of_samples>(v_ev[i_sub_step])
+              << sep << get<ATP_concentration>(v_ev[i_sub_step]) << sep
+              <<get<macror_algorithm>(predictions()[i_step])<<sep
+              << ys()[i_step]() << sep << get<y_mean>(predictions()[i_step])
+              << sep << get<y_var>(predictions()[i_step]) << sep
+              << get<plogL>(predictions()[i_step]) << sep
+              << get<eplogL>(predictions()[i_step]) << sep
+              << get<logL>(predictions()[i_step]) << sep << i_state << sep
+              << get<P_mean>(predictions()[i_step])()[i_state] << sep << j_state
+              << sep << get<P_Cov>(predictions()[i_step])()(i_state, j_state);
+            if constexpr (keep_N_state.value)
+              f << sep << get<N_Ch_State_Evolution>(y())()[i_step]()[i_state]
+                << "\n";
+            else
+              f << "\n";
+          }
         }
+        t_ini+=get<number_of_samples>(v_ev[i_sub_step])()/get<Frequency_of_Sampling>(xs)();  
+        
       }
     }
   }
 }
-
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType, class Parameters>
 void report(FunctionTable &&f, std::size_t iter,
@@ -4509,14 +4490,16 @@ void report(FunctionTable &&f, std::size_t iter,
               f.fork(var::I_thread(iiw)), lik, par, ys[i_frac()], xs[i_frac()]);
           if (is_valid(prediction)) {
             auto &predictions = prediction.value();
-            for (std::size_t i_step = 0; i_step < size(ys[i_frac()]); ++i_step) {
+            for (std::size_t i_step = 0; i_step < size(ys[i_frac()]);
+                 ++i_step) {
               auto v_ev = get<ATP_evolution>(
                   get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
               s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep
                   << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
                   << get<cuevi::Walker_id>(wa())() << s.sep << i_step << s.sep
-                  << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_step])
+                  << get<Time>(
+                         get<Recording_conditions>(xs[i_frac()])()[i_step])
                   << s.sep << get_num_samples(v_ev) << s.sep
                   << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
                   << s.sep << ys[i_frac()]()[i_step]() << s.sep
@@ -4562,14 +4545,16 @@ void report(FunctionTable &f, std::size_t iter,
               ff[iiw], lik, par, ys[i_frac()], xs[i_frac()]);
           if (is_valid(prediction)) {
             auto &predictions = prediction.value();
-            for (std::size_t i_step = 0; i_step < size(ys[i_frac()]); ++i_step) {
+            for (std::size_t i_step = 0; i_step < size(ys[i_frac()]);
+                 ++i_step) {
               auto v_ev = get<ATP_evolution>(
                   get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
               s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep
                   << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
                   << get<cuevi::Walker_id>(wa())() << s.sep << i_step << s.sep
-                  << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_step])
+                  << get<Time>(
+                         get<Recording_conditions>(xs[i_frac()])()[i_step])
                   << s.sep << get_num_samples(v_ev) << s.sep
                   << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
                   << s.sep << ys[i_frac()]()[i_step]() << s.sep
@@ -4784,7 +4769,7 @@ namespace cmd {
 inline auto set_Fraction_algorithm(double min_fraction,
                                    double n_points_per_decade_fraction,
                                    std::string segments) {
-    return std::tuple(min_fraction, n_points_per_decade_fraction, segments);
+  return std::tuple(min_fraction, n_points_per_decade_fraction, segments);
 }
 
 using fraction_algo_type =
@@ -4793,25 +4778,25 @@ using fraction_algo_type =
 inline Maybe_error<std::vector<std::size_t>>
 load_segments_length_for_fractioning(const std::string &filename,
                                      std::string sep) {
-    
-    std::ifstream f(filename);
-    if (!f)
-        return error_message(filename + " cannot be opened");
-    std::string line;
-    std::getline(f, line);
-    if (!f)
-        return error_message(filename + " has no data");
-    
-    std::stringstream ss(line);
-    std::vector<std::size_t> out;
-    std::size_t number_of_samples;
-    
-    while (ss >> number_of_samples) {
-        out.push_back(number_of_samples);
-        ss >> septr(sep);
-    }
-    
-    return out;
+
+  std::ifstream f(filename);
+  if (!f)
+    return error_message(filename + " cannot be opened");
+  std::string line;
+  std::getline(f, line);
+  if (!f)
+    return error_message(filename + " has no data");
+
+  std::stringstream ss(line);
+  std::vector<std::size_t> out;
+  std::size_t number_of_samples;
+
+  while (ss >> number_of_samples) {
+    out.push_back(number_of_samples);
+    ss >> septr(sep);
+  }
+
+  return out;
 }
 
 inline Maybe_error<std::tuple<std::string, std::string, double, double>>
@@ -4819,30 +4804,30 @@ calc_experiment_fractions(std::string save_name, std::string recording,
                           experiment_type experiment,
                           fraction_algo_type fraction_algo,
                           std::size_t num_param, std::size_t i_seed) {
-    auto myseed = calc_seed(i_seed);
-    
-    auto init_seed = calc_seed(i_seed);
-    mt_64i mt(init_seed);
-    
-    auto [min_fraction, n_points_per_decade_fraction, segments] =
-        std::move(fraction_algo);
-    
-    auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
-    if (!Maybe_segments)
-        return Maybe_segments.error();
-    Recording y;
-    auto Maybe_y = load_Recording_Data(recording, ",", y);
-    
-    macrodr::experiment_fractioner frac(Maybe_segments.value(), 0);
-    
-    auto [ys, xs] = frac(y, experiment, mt, num_param * min_fraction,
-                         n_points_per_decade_fraction);
-    auto filename = save_name + "_" + std::to_string(myseed);
-    save_fractioned_experiment(filename + "_experiment.csv", ",", xs);
-    save_fractioned_Recording(filename + "_recording.csv", ",", ys);
-    return std::tuple(filename + "_experiment.csv", filename + "_recording.csv",
-                      get<Frequency_of_Sampling>(experiment)(),
-                      get<initial_ATP_concentration>(experiment)()());
+  auto myseed = calc_seed(i_seed);
+
+  auto init_seed = calc_seed(i_seed);
+  mt_64i mt(init_seed);
+
+  auto [min_fraction, n_points_per_decade_fraction, segments] =
+      std::move(fraction_algo);
+
+  auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
+  if (!Maybe_segments)
+    return Maybe_segments.error();
+  Recording y;
+  auto Maybe_y = load_Recording_Data(recording, ",", y);
+
+  macrodr::experiment_fractioner frac(Maybe_segments.value(), 0);
+
+  auto [ys, xs] = frac(y, experiment, mt, num_param * min_fraction,
+                       n_points_per_decade_fraction);
+  auto filename = save_name + "_" + std::to_string(myseed);
+  save_fractioned_experiment(filename + "_experiment.csv", ",", xs);
+  save_fractioned_Recording(filename + "_recording.csv", ",", ys);
+  return std::tuple(filename + "_experiment.csv", filename + "_recording.csv",
+                    get<Frequency_of_Sampling>(experiment)(),
+                    get<initial_ATP_concentration>(experiment)()());
 }
 
 inline Maybe_error<std::tuple<std::string, std::string, double, double>>
@@ -4850,33 +4835,33 @@ calc_simulation_fractions(std::string save_name, std::string simulation,
                           experiment_type experiment,
                           fraction_algo_type fraction_algo,
                           std::size_t num_param, std::size_t i_seed) {
-    auto myseed = calc_seed(i_seed);
-    
-    auto init_seed = calc_seed(i_seed);
-    mt_64i mt(init_seed);
-    
-    auto [min_fraction, n_points_per_decade_fraction, segments] =
-        std::move(fraction_algo);
-    
-    auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
-    if (!Maybe_segments)
-        return Maybe_segments.error();
-    Simulated_Recording<includes_N_state_evolution(true)> y;
-    auto Maybe_y = load_simulation(simulation, ",", y);
-    if (!Maybe_y)
-        return Maybe_y.error();
-    
-    macrodr::experiment_fractioner frac(Maybe_segments.value(), 0);
-    
-    auto [ys, xs] = frac(y, experiment, mt, num_param * min_fraction,
-                         n_points_per_decade_fraction);
-    auto filename = save_name + "_" + std::to_string(myseed);
-    save_fractioned_experiment(filename + "_frac_experiment.csv", ",", xs);
-    save_fractioned_simulation(filename + "_frac_recording.csv", ",", ys);
-    return std::tuple(filename + "_frac_experiment.csv",
-                      filename + "_frac_recording.csv",
-                      get<Frequency_of_Sampling>(experiment)(),
-                      get<initial_ATP_concentration>(experiment)()());
+  auto myseed = calc_seed(i_seed);
+
+  auto init_seed = calc_seed(i_seed);
+  mt_64i mt(init_seed);
+
+  auto [min_fraction, n_points_per_decade_fraction, segments] =
+      std::move(fraction_algo);
+
+  auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
+  if (!Maybe_segments)
+    return Maybe_segments.error();
+  Simulated_Recording<includes_N_state_evolution(true)> y;
+  auto Maybe_y = load_simulation(simulation, ",", y);
+  if (!Maybe_y)
+    return Maybe_y.error();
+
+  macrodr::experiment_fractioner frac(Maybe_segments.value(), 0);
+
+  auto [ys, xs] = frac(y, experiment, mt, num_param * min_fraction,
+                       n_points_per_decade_fraction);
+  auto filename = save_name + "_" + std::to_string(myseed);
+  save_fractioned_experiment(filename + "_frac_experiment.csv", ",", xs);
+  save_fractioned_simulation(filename + "_frac_recording.csv", ",", ys);
+  return std::tuple(filename + "_frac_experiment.csv",
+                    filename + "_frac_recording.csv",
+                    get<Frequency_of_Sampling>(experiment)(),
+                    get<initial_ATP_concentration>(experiment)()());
 }
 
 using fractioned_experiment_type = typename return_type<

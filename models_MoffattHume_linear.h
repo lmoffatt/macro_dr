@@ -141,10 +141,11 @@ auto add_Patch_inactivation_to_model(
               auto n = logp.size();
               auto &inactivation = logp[n - 1];
               auto mo=model(logp);
+              using std::pow;
               if (!mo)
                   return mo.error();
               else
-                  return add_Patch_inactivation(std::move(mo.value()), inactivation);
+                  return add_Patch_inactivation(std::move(mo.value()), pow(10.0,inactivation));
             },
             logp_inactivation, names_model,
             std::move(v_Q0_inactivation_formula),

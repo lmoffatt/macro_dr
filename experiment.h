@@ -12,6 +12,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <vector>
 namespace macrodr {
 
@@ -29,6 +30,38 @@ using ATP_evoltype = std::variant<ATP_step, std::vector<ATP_step>>;
 
 class ATP_evolution
     : public Var<ATP_evolution, std::variant<ATP_step, std::vector<ATP_step>>> {
+public:
+    auto size()const{return std::visit([](auto const& x)
+                          {
+            if constexpr (std::is_same_v<std::decay_t<decltype(x)>,ATP_step>)
+                return 1ul;
+            else return x.size();},(*this)());
+    }
+    
+    ATP_step& operator[](std::size_t i){
+        return std::visit([i](auto& x)->ATP_step&
+                          {
+                              if constexpr (std::is_same_v<std::decay_t<decltype(x)>,ATP_step>)
+                                  return x;
+                              else
+                                  return x[i];
+        }
+         ,(*this)());
+    }
+    
+    ATP_step const& operator[](std::size_t i)const {
+        return std::visit([i](auto const& x)->ATP_step const&
+                          {
+                              if constexpr (std::is_same_v<std::decay_t<decltype(x)>,ATP_step>)
+                                  return x;
+                              else
+                                  return x[i];
+                          }
+                          ,(*this)());
+    }
+            
+        
+    
   using Var<ATP_evolution, std::variant<ATP_step, std::vector<ATP_step>>>::Var;
 };
 
@@ -183,22 +216,28 @@ inline Maybe_error<Recording> load_Recording(std::string filename,
   std::size_t i_step;
   auto sep = septr(separator);
   double current;
-  f >> septr("i_step") >> sep >> septr("patch_current") >> septr("\n");
-  if (!f)
+  std::string line;
+  std::getline(f, line);
+  std::stringstream ss(line);  
+  
+  ss >> septr("i_step") >> sep >> septr("patch_current");
+  if (!ss)
     return error_message("not even titles");
-  else {
-    while (extract_double(f >> i_step >> sep, current, separator[0])) {
+  std::getline(f, line);
+  ss=std::stringstream(line);  
+  
+  while (extract_double(ss >> i_step >> sep, current, separator[0])) {
       if (i_step != out().size())
         return error_message("i_step mismatch " + std::to_string(i_step) +
                              " size: " + std::to_string(out().size()));
       else
         out().push_back(Patch_current(current));
-      std::string line;
       std::getline(f, line);
+      ss=std::stringstream(line);  
+      
     }
     return out;
-  }
-}
+ }
 
 template <class Parameter>
 void report_model(save_Parameter<Parameter> &s, Recording const &e) {
