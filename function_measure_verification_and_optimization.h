@@ -264,10 +264,10 @@ public:
     
    
     template <class Id, class... Ts>
-    //    requires(!std::is_same_v<Nothing,std::decay_t<decltype(FuncMap_St{}[Id{}])>>)
+    //   requires(!std::is_same_v<Nothing,std::decay_t<decltype(FuncMap_St{}[Id{}])>>)
     auto f(Id, Ts &&...ts) {
-        if constexpr(std::is_same_v<Nothing,decltype((*this)[Id{}])>)
-            static_assert(false);
+    //     if constexpr(std::is_same_v<Nothing,decltype((*this)[Id{}])>)
+    //         static_assert(false);
         auto &fun = (*this)[Id{}];
         return fun(*this, std::forward<Ts>(ts)...);
     }
