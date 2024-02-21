@@ -10,7 +10,7 @@ TEST_CASE("calculation of fractions of a simulation with N_states", "[save_fract
 {
     /**
      *inline Maybe_error<std::tuple<std::string, std::string, double, double>>
-calc_simulation_fractions(std::string save_name,std::string simulation, experiment_type experiment,                                  fraction_algo_type fraction_algo, std::string model,std::size_t i_seed )
+calc_simulation_fractions(std::string save_name,std::string simulation, experiment_type experiment,                                  fraction_algo_type fraction_algo, std::string model,std::size_t init_seed )
      */
     using namespace macrodr;
     using namespace cmd ;

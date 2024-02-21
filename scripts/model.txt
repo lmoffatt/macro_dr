@@ -1,5 +1,0 @@
-model = "model7"
-
-modelParameter = load_Parameter(filename = "../macro_dr/models/model7_par.csv", separator="," )
-
-prior_model = load_Prior(filename = "../macro_dr/models/model7_prior.csv", separator= ",")

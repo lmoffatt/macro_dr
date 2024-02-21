@@ -158,7 +158,7 @@ double frequency_of_sampling = 50e3, double initial_ATP = 0)
   const std::string& modelname*/
     
     cm.push_function("get_Prior", dcli::to_typed_function<double, std::string>(
-                                      &get_Prior, "prior_error", "modelname"));
+                                      &get_Prior, "prior_error", "model"));
     
     /**
 
@@ -198,7 +198,7 @@ inline auto set_Fraction_algorithm(
     cm.push_function("fraction_experiment",
                      dcli::to_typed_function<  std::string ,std::string , experiment_type ,                                  fraction_algo_type , Maybe_error<std::size_t> ,std::size_t >(
                          &calc_experiment_fractions, "save_name", "recording",
-                         "experiment","fraction_algo","number_of_parameters","i_seed"));
+                         "experiment","fraction_algorithm","number_of_parameters","init_seed"));
     
     
     
@@ -211,7 +211,7 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
     cm.push_function("fraction_simulation",
                      dcli::to_typed_function<  std::string ,std::string , cmd::experiment_type ,                                  fraction_algo_type , Maybe_error<std::size_t> ,std::size_t >(
                          &cmd::calc_simulation_fractions, "save_name", "simulation",
-                         "experiment","fraction_algo","number_of_parameters","i_seed"));
+                         "experiment","fraction_algorithm","number_of_parameters","init_seed"));
     
     
     /**
@@ -231,7 +231,7 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
                                              likelihood_algo_type ,
                                              tablefun_value_type  >(
                          &calc_fraction_likelihood, "file_name", "model",
-                         "parameter","fractioned_simulation","likelihood_algo","function_table"));
+                         "parameter","fractioned_simulation","likelihood_algorithm","function_table"));
     
     
     
@@ -245,16 +245,15 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
                           tablefun_value_type ft, std::size_t myseed)
      * */
     
-    cm.push_function("fraction_likelihood",
+    cm.push_function("evidence_fraction",
                      dcli::to_typed_function< std::string ,
                                              prior_value_type ,
                                              likelihood_algo_type ,
                                              fractioned_simulation_type ,
-                                             fraction_algo_type ,
                                              cuevi_algo_type ,
                                              tablefun_value_type , std::size_t  >(
                          &calc_fraction_evidence, "model", "prior",
-                         "likelihood","Maybe_frac_experiment","fraction_algorithm","cuevi_algorithm","ft","myseed"));
+                         "likelihood_algorithm","fractioned_experiment","cuevi_algorithm","function_table", "init_seed"));
     
     
     
@@ -285,13 +284,14 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
                                 std::size_t ,
                                 std::string ,
                                 double ,
+                                double ,
                                 std::size_t ,
                                 std::string ,
                                 std::size_t >(
             &set_CueviAlgorithm, "num_scouts_per_ensemble",
             "number_trials_until_give_up", "stops_at", "medium_beta",
             "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
-             "n_points_per_decade",
+             "n_points_per_decade_beta_high","n_points_per_decade_beta_low",
             "t_min_number_of_samples", "filename", "thermo_jumps_every"));
     
     /**

@@ -2221,8 +2221,9 @@ inline auto get_model(std::string modelName) {
       //                             &model6, &model6_no_inactivation,
       //                             &model6_Eff_no_inactivation, &model7,
       //                             &model8, &model9);
-  Models_Library(&scheme_1,&scheme_2,&scheme_4_d);
-//,&scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,&scheme_4_d,
+  Models_Library(//&scheme_1,&scheme_2,
+            //           &scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,
+            &scheme_4_d);
  //                      &model00, &model00_7, &model01, &model4, &model4_g_lin,
  //                    &model6, &model6_no_inactivation,
  //                    &model6_Eff_no_inactivation, &model6_Eff_std, &model7,

@@ -11,13 +11,14 @@ namespace macrodr {
 namespace cmd {
 
 inline auto set_CueviAlgorithm(
-    std::size_t num_scouts_per_ensemble = 16,
-    std::size_t number_trials_until_give_up = 1e5, double stops_at = 1e-15,
-    double medium_beta = 1e-2, bool includes_zero = true,
-    bool random_jumps = true, std::size_t max_iter_equilibrium = 50000,
-    std::string path = "", double n_points_per_decade = 1,
-    std::size_t t_min_number_of_samples = 20, std::string filename = "haha",
-    std::size_t thermo_jumps_every = 10) {
+    std::size_t num_scouts_per_ensemble ,
+    std::size_t number_trials_until_give_up , double stops_at ,
+    double medium_beta , bool includes_zero ,
+    bool random_jumps , std::size_t max_iter_equilibrium ,
+    std::string path , double n_points_per_decade_beta_high ,
+    double n_points_per_decade_beta_low ,
+    std::size_t t_min_number_of_samples , std::string filename ,
+    std::size_t thermo_jumps_every ) {
     using namespace macrodr;
     
     auto saving_itervals = Saving_intervals(
@@ -29,7 +30,7 @@ inline auto set_CueviAlgorithm(
     return std::tuple(path, filename, t_min_number_of_samples,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jumps_every, max_iter_equilibrium,
-                      n_points_per_decade, medium_beta, stops_at, includes_zero,
+                      n_points_per_decade_beta_high,n_points_per_decade_beta_low, medium_beta, stops_at, includes_zero,
                       saving_itervals, random_jumps);
 }
 
@@ -146,6 +147,14 @@ inline auto get_function_Table_maker_St(std::string filename,
                    //       }))
                    
                    )
+            // .append_Fs<MacroR2>(
+            //     in_progress::P<
+            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
+            //                        ::V<uses_recursive_aproximation(true)>>,
+            //         in_progress::S<::V<uses_averaging_aproximation(2)>>,
+            //         in_progress::S<::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<
+            //             ::V<uses_variance_correction_aproximation(false)>>>{});
             .append_Fs<MacroR2>(
                 in_progress::P<
                     in_progress::S<::V<uses_recursive_aproximation(false)>,
@@ -367,8 +376,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                 
                 auto [path, filename, t_min_number_of_samples,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade,
-                      medium_beta, stops_at, includes_zero, saving_itervals,
+                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
+                      n_points_per_decade_beta_low,medium_beta, stops_at, includes_zero, saving_itervals,
                       random_jumps] = std::move(algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
@@ -496,8 +505,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
 
 inline void calc_fraction_evidence(
     std::string model, prior_value_type prior, likelihood_algo_type likelihood,
-    fractioned_simulation_type Maybe_frac_experiment,
-    fraction_algo_type fraction_algo, cuevi_algo_type cuevi_algorithm,
+    fractioned_simulation_type Maybe_frac_experiment, cuevi_algo_type cuevi_algorithm,
     tablefun_value_type ft, std::size_t myseed) {
     using namespace macrodr;
     if (!Maybe_frac_experiment)
@@ -514,7 +522,7 @@ inline void calc_fraction_evidence(
     if (Maybe_model_v) {
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
-            [&ftbl3, &frac_experiment, &prior, &likelihood, &fraction_algo,
+            [&ftbl3, &frac_experiment, &prior, &likelihood, 
              &cuevi_algorithm, &myseed](auto model0ptr) {
                 auto &model0 = *model0ptr;
                 myseed = calc_seed(myseed);
@@ -528,11 +536,10 @@ inline void calc_fraction_evidence(
                 
                 auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",", ys);
                 
-                auto [min_fraction, n_points_per_decade_fraction, segments] =
-                    std::move(fraction_algo);
-                auto [path, file_name, t_min_number_of_samples,
+               auto [path, file_name, t_min_number_of_samples,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade,
+                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
+                      n_points_per_decade_beta_low,
                       medium_beta, stops_at, includes_zero, saving_itervals,
                       random_jumps] = std::move(cuevi_algorithm);
                 
@@ -558,11 +565,7 @@ inline void calc_fraction_evidence(
                         std::string filename = file_name + "_" + ModelName + "_" +
                                                time_now() + "_" + std::to_string(myseed);
                         
-                        auto Maybe_t_segments_used =
-                            load_segments_length_for_fractioning(segments, ",");
                         
-                        if (Maybe_t_segments_used) {
-                            auto t_segments_used = std::move(Maybe_t_segments_used.value());
                             
                             auto saving_itervals = Saving_intervals(Vector_Space(
                                 Save_Evidence_every(num_scouts_per_ensemble),
@@ -570,11 +573,12 @@ inline void calc_fraction_evidence(
                                 Save_Parameter_every(num_scouts_per_ensemble),
                                 Save_Predictions_every(num_scouts_per_ensemble * 20)));
                             
-                            auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-                                path, filename, t_segments_used, t_min_number_of_samples,
+                            auto cbc = new_cuevi_Model_already_fraction_by_iteration<MyModel>(
+                                path, filename, 
                                 num_scouts_per_ensemble, number_trials_until_give_up,
-                                min_fraction, thermo_jumps_every, max_iter_equilibrium,
-                                n_points_per_decade, n_points_per_decade_fraction,
+                                 thermo_jumps_every, max_iter_equilibrium,
+                                n_points_per_decade_beta_high,
+                                n_points_per_decade_beta_low,
                                 medium_beta, stops_at, includes_zero, saving_itervals,
                                 random_jumps);
                             
@@ -597,7 +601,7 @@ inline void calc_fraction_evidence(
                                         ys, xs, cuevi::Init_seed(myseed));
                                 },
                                 modelLikelihood_v);
-                        }
+                        
                     } else
                         std::cerr << Maybe_ys.error()();
                 }
@@ -633,7 +637,8 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                     std::move(fraction_algo);
                 auto [path, file_name, t_min_number_of_samples,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade,
+                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
+                      n_points_per_decade_beta_low,
                       medium_beta, stops_at, includes_zero, saving_itervals,
                       random_jumps] = std::move(cuevi_algorithm);
                 
@@ -677,7 +682,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 path, filename, t_segments_used, t_min_number_of_samples,
                                 num_scouts_per_ensemble, number_trials_until_give_up,
                                 min_fraction, thermo_jumps_every, max_iter_equilibrium,
-                                n_points_per_decade, n_points_per_decade_fraction,
+                                n_points_per_decade_beta_low, n_points_per_decade_fraction,
                                 medium_beta, stops_at, includes_zero, saving_itervals,
                                 random_jumps);
                             
@@ -740,7 +745,8 @@ inline void calc_evidence_continuation(
                 
                 auto [path, file_name, t_min_number_of_samples,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade,
+                      thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
+                      n_points_per_decade_beta_low,
                       medium_beta, stops_at, includes_zero, saving_itervals,
                       random_jumps] = std::move(algorithm);
                 
@@ -798,7 +804,7 @@ inline void calc_evidence_continuation(
                             path, filename, t_segments_used, t_min_number_of_samples,
                             num_scouts_per_ensemble, number_trials_until_give_up,
                             min_fraction, thermo_jumps_every, max_iter_equilibrium,
-                            n_points_per_decade, n_points_per_decade_fraction,
+                            n_points_per_decade_beta_low, n_points_per_decade_fraction,
                             medium_beta, stops_at, includes_zero, saving_itervals,
                             random_jumps);
                         
