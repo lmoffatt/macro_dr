@@ -18,7 +18,10 @@ add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_BUILD_TYPE "Release")
+
 set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcepts-diagnostics-depth=4 -fmax-errors=5" )
+
+
 #find_package(Catch2 REQUIRED)
 #target_link_libraries(tests Catch2::Catch2)
 
@@ -48,7 +51,7 @@ add_executable(macro_dr main.cpp
    maybe_error.h
    CLI_regular_types.h
    qmodel.h
-   scripts/run_script.txt
+   
    CLI_macro_dr.h
    CLI_grammar.h
    grammar_untyped.h
@@ -95,22 +98,22 @@ add_executable(macro_dr main.cpp
     slurm_Serafin/s_long.sh
     continuation.h
     models.h
-    old_code_in_main.cpp
+   # old_code_in_main.cpp
     CLI_macrodr_commands.h
     scripts/run_evidence.txt
-    scripts/prior_model4.txt
-    scripts/likelihood_model4.txt
     
-    experiments/experiment_7.txt
     
-    scripts/function_table_standard.txt
+    
+    
+    
+    
     models/model6_prior.csv models/model6_parameters.csv
-    scripts/mode6_Eff_no_inactivation.txt
+    
     scripts/experiment_7.txt
     scripts/simulation.txt
     scripts/evidence_simulation.txt
     scripts/evidence_data.txt
-    scripts/model.txt
+    
     models/model9_prior.csv models/model9_par.csv models/model8_prior.csv models/model8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
     multi_task/multi_task_slurm.sh
     slurm_Serafin/s_multi_debug.sh
@@ -145,6 +148,8 @@ add_executable(macro_dr main.cpp
     scripts/likelihood.txt
     CLI_function_table.h
     CLI_macro_dr_base.h
+    scripts/evidence_fraction_simulation.txt
+    scripts/evidence_fraction_data.txt
     
     
     

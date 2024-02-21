@@ -4673,6 +4673,45 @@ new_cuevi_Model_by_iteration(
       cuevi::Random_jumps(random_jumps), std::move(sint));
 }
 
+
+template <class Id>
+cuevi::Cuevi_Algorithm_no_Fractioner<
+    save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
+              save_Parameter<Parameters<Id>>, save_Evidence,
+              save_Predictions<Parameters<Id>>>,
+    cuevi_less_than_max_iteration>
+new_cuevi_Model_already_fraction_by_iteration(
+    std::string path, std::string filename,std::size_t num_scouts_per_ensemble,
+    std::size_t number_trials_until_give_up,
+    std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
+    double n_points_per_decade_beta_high, double n_points_per_decade_beta_low,
+    double medium_beta, double stops_at, bool includes_the_zero,
+    Saving_intervals sint, bool random_jumps) {
+    return cuevi::Cuevi_Algorithm_no_Fractioner(
+        save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
+                  save_Parameter<Parameters<Id>>, save_Evidence,
+                  save_Predictions<Parameters<Id>>>(
+            path, filename, get<Save_Likelihood_every>(sint())(),
+            get<Save_Parameter_every>(sint())(),
+            get<Save_Evidence_every>(sint())(),
+            get<Save_Predictions_every>(sint())()),
+        cuevi_less_than_max_iteration(max_iter_equilibrium),
+        cuevi::Num_Walkers_Per_Ensemble(num_scouts_per_ensemble),
+          cuevi::Th_Beta_Param(
+            Vector_Space( // Includes_zero,
+                // Med_value,Points_per_decade,Min_value,
+                // Points_per_decade_low
+                cuevi::Includes_zero(includes_the_zero),
+                cuevi::Med_value(medium_beta),
+                cuevi::Points_per_decade(n_points_per_decade_beta_high),
+                cuevi::Min_value(stops_at),
+                cuevi::Points_per_decade_low(n_points_per_decade_beta_low))),
+        cuevi::Number_trials_until_give_up(number_trials_until_give_up),
+        cuevi::Thermo_Jumps_every(thermo_jumps_every),
+        cuevi::Random_jumps(random_jumps), std::move(sint));
+}
+
+
 template <class Id>
 auto thermo_Model_by_max_iter(std::string path, std::string filename,
                               std::size_t num_scouts_per_ensemble,

@@ -1674,6 +1674,42 @@ public:
             std::move(randomize), std::move(saving_intervals))) {}
 };
 
+
+template <class t_Reporter, class t_Finalizer>
+class Cuevi_Algorithm_no_Fractioner
+    : public var::Var<
+          Cuevi_Algorithm_no_Fractioner< t_Reporter, t_Finalizer>,
+          var::Vector_Space<
+              Num_Walkers_Per_Ensemble, 
+              var::Constant<Reporter, t_Reporter>,
+              var::Constant<Finalizer, t_Finalizer>, 
+              Th_Beta_Param, Number_trials_until_give_up, Thermo_Jumps_every,
+              Random_jumps, Saving_intervals>> {
+    using base_type = var::Var<
+        Cuevi_Algorithm_no_Fractioner< t_Reporter, t_Finalizer>,
+        var::Vector_Space<Num_Walkers_Per_Ensemble,
+                          var::Constant<Reporter, t_Reporter>,
+                          var::Constant<Finalizer, t_Finalizer>, 
+                          Th_Beta_Param, Number_trials_until_give_up,
+                          Thermo_Jumps_every, Random_jumps, Saving_intervals>>;
+    
+public:
+    Cuevi_Algorithm_no_Fractioner(t_Reporter &&rep, t_Finalizer &&f,
+                    Num_Walkers_Per_Ensemble n, 
+                    Th_Beta_Param beta,
+                    Number_trials_until_give_up max_iter_for_sampling,
+                    Thermo_Jumps_every thermo_jumps_every, Random_jumps randomize,
+                    Saving_intervals saving_intervals)
+        : base_type(var::Vector_Space(
+            std::move(n),
+            var::Constant<Reporter, t_Reporter>(std::move(rep)),
+            var::Constant<Finalizer, t_Finalizer>(std::move(f)),
+             std::move(beta),
+            std::move(max_iter_for_sampling), std::move(thermo_jumps_every),
+            std::move(randomize), std::move(saving_intervals))) {}
+};
+
+
 template <class FunctionTable, class Parameters, class... saving, class... T>
 void report_all(FunctionTable &f, std::size_t iter,
                 save_mcmc<Parameters, saving...> &s,
@@ -1859,11 +1895,11 @@ auto evidence(FunctionTable &f,
 
 
 
-template <class FunctionTable, class myFractioner, class t_Reporter,
+template <class FunctionTable,  class t_Reporter,
          class t_Finalizer, class Prior, class Likelihood, class DataType,
          class Variables>
 auto evidence_fraction(FunctionTable &f,
-              Cuevi_Algorithm<myFractioner, t_Reporter, t_Finalizer> &&cue,
+              Cuevi_Algorithm_no_Fractioner< t_Reporter, t_Finalizer> &&cue,
                        Prior &&prior, Likelihood const &lik, const std::vector<DataType> &ys,
                        const std::vector<Variables> &xs, const Init_seed init_seed) {
     using Parameter_Type = std::decay_t<std::invoke_result_t<Prior, mt_64i &>>;
