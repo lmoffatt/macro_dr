@@ -34,7 +34,7 @@
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-export PATH_MACRO_DR=/home/lmoffatt/macro_dr/macro_dr/
+export PATH_MACRO_DR=/home/lmoffatt/macro_dr/v6/
 
 # Cargar los módulos para la tarea
 module load amdblis
