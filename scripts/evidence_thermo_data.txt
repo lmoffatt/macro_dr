@@ -1,0 +1,11 @@
+runIdName= get_random_Id(prefix=runIdNamePre)
+write_script(script_name=runIdName)
+   
+               
+thermo_algorithm =   set_ThermoAlgorithm(num_scouts_per_ensemble = 32,number_trials_until_give_up = 100000,  stops_at = 1e-15, beta_upper_value =1e-2, beta_medium_value 1e-5, includes_zero = 1, max_iter_equilibrium = 50000, path = "./", beta_size =16, beta_upper_size = 6, beta_medium_size=3,  filename = runIdName ,thermo_jumps_every = 10,max_num_simultaneous_temperatures=12)
+
+function_table = get_function_Table_maker(filename= runIdName, num_scouts_per_ensemble = 32) 
+
+
+thermo_evidence(model = model, prior= prior_model, likelihood_algorithm= likelihood_algorithm, data = observations, experiment = experiment, thermo_algorithm= thermo_algorithm, function_table =function_table, init_seed =0)
+
