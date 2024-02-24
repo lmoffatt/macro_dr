@@ -148,8 +148,8 @@ add_executable(macro_dr main.cpp
     scripts/likelihood.txt
     CLI_function_table.h
     CLI_macro_dr_base.h
-    scripts/evidence_fraction_simulation.txt
-    scripts/evidence_fraction_data.txt
+    scripts/evidence_thermo_simulation.txt
+    scripts/evidence_thermo_data.txt
     CLI_thermo_evidence.h
     scripts/evidence_thermo_data.txt
     scripts/evidence_thermo_simulation.txt
