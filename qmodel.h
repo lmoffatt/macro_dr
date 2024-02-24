@@ -4313,16 +4313,34 @@ void report(FunctionTable &f, std::size_t iter,
   if (iter % s.save_every != 0)
     return;
   auto ff = f.fork(data.get_Walkers_number() / 2);
+
+  auto all_Predictions =
+      std::vector<std::vector<std::decay_t<decltype(logLikelihoodPredictions(
+          ff[0], lik, data.get_Parameter(0, 0), y, x))>>>(
+          data.get_Walkers_number());
+
   auto beta = data.get_Beta();
-  auto num_samples=size(y);
+  auto num_samples = size(y);
   for (std::size_t half = 0; half < 2; ++half) {
 #pragma omp parallel for
     for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
       auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
       for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-          auto par = data.get_Parameter(i_walker,i_b);
+        auto par = data.get_Parameter(i_walker, i_b);
         auto walker_id = data.get_Walker(i_walker, i_b);
-        auto prediction = logLikelihoodPredictions(ff[iiw], lik, par, y, x);
+        all_Predictions[i_walker].push_back(
+            logLikelihoodPredictions(ff[iiw], lik, par, y, x));
+      }
+    }
+  }
+  f += ff;
+  for (std::size_t half = 0; half < 2; ++half) {
+    for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
+      auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
+      for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+        auto par = data.get_Parameter(i_walker, i_b);
+        auto walker_id = data.get_Walker(i_walker, i_b);
+        auto prediction = all_Predictions[i_walker][i_b];
         if (is_valid(prediction)) {
           auto &predictions = prediction.value();
           for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
@@ -4346,7 +4364,6 @@ void report(FunctionTable &f, std::size_t iter,
       }
     }
   }
-  f += ff;
 }
 
 inline std::string ToString(const ATP_step &ev) {
