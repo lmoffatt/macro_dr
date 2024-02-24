@@ -326,6 +326,16 @@ public:
 };
 
 
+template <class FunctionTable, class Parameters, class... saving, class... T>
+void report_all(FunctionTable &f, std::size_t iter,
+                save_mcmc<Parameters, saving...> &s,
+                thermo_mcmc<Parameters> &data, T const &...ts) {
+    (report(f, iter, static_cast<saving &>(s), data, ts...), ..., 1);
+}
+
+
+
+
 template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
           class Variables, class DataType, class Reporter>
     requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
@@ -432,7 +442,9 @@ auto thermo_evidence(FunctionTable &&f,
                                      y, x);
             thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                              therm.thermo_jumps_every());
-            report(f, iter, rep, current);
+          //  report(f, iter, rep, current);
+            report_all(f, iter, rep, current, prior, lik, y, x, mts, mcmc_run.first);
+            
             // using geg=typename
             // decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;
             mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
