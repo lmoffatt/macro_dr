@@ -131,6 +131,18 @@ struct thermo_mcmc {
   by_beta<double> beta;
   ensemble<by_beta<mcmc<Parameters>>> walkers;
   ensemble<by_beta<std::size_t>> i_walkers;
+  auto get_Walkers_number()const {return walkers.size();}
+  auto& get_Beta()const {return beta;}
+  auto& get_Parameter(std::size_t iw, std::size_t i_b)const
+  {
+      return walkers[iw][i_b].parameter;
+  }
+  
+  auto get_Walker(std::size_t iw, std::size_t i_b)const
+  {
+      return i_walkers[iw][i_b];
+  }
+  
 };
 
 template <template <class> class Thermo_mcmc, class Parameters>

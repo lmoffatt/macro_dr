@@ -3344,14 +3344,15 @@ public:
                   std::cerr << "\nt_step\n" << t_step << "\n";
                 }
                 if constexpr (!adaptive.value) {
-                  // return f_local.f(MacroR2<v_recursive, v_averaging, v_variance,
+                  // return f_local.f(MacroR2<v_recursive, v_averaging,
+                  // v_variance,
                   //                          v_variance_correction>{},
                   //                  std::move(t_prior), t_Qdt, m, Nch,
                   //                  y()[i_step], fs);
-                    return MacroR2<v_recursive, v_averaging, v_variance,
-                                 v_variance_correction>{}(f_local,
-                                     std::move(t_prior), t_Qdt, m, Nch,
-                                     y()[i_step], fs);
+                  return MacroR2<v_recursive, v_averaging, v_variance,
+                                 v_variance_correction>{}(
+                      f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
+                      fs);
                 } else {
                   double mg = getvalue(primitive(get<P_mean>(t_prior)()) *
                                        primitive(get<gmean_i>(t_Qdt)()));
@@ -3367,14 +3368,14 @@ public:
                     // using egsr=typename decltype(f.f(MacroR<recursive,
                     // averaging, variance>{}))::ege;
                     //  auto r=egsr();
-                      // return f_local.f(
-                      //     MacroR2<v_recursive, v_averaging, v_variance,
-                      //             v_variance_correction>{},
-                      //     std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
-                    return 
-                        MacroR2<v_recursive, v_averaging, v_variance,
-                                   v_variance_correction>{}(f_local,
-                        std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                    // return f_local.f(
+                    //     MacroR2<v_recursive, v_averaging, v_variance,
+                    //             v_variance_correction>{},
+                    //     std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                    return MacroR2<v_recursive, v_averaging, v_variance,
+                                   v_variance_correction>{}(
+                        f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
+                        fs);
                   } else {
                     return
                         //   f_local.f(
@@ -3384,13 +3385,13 @@ public:
                         //         ::V<uses_variance_correction_aproximation(
                         //             false)>>{},
                         // std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
-                      
-                          MacroR2<::V<uses_recursive_aproximation(false)>,
-                                  v_averaging,
-                                  ::V<uses_variance_aproximation(false)>,
-                                  ::V<uses_variance_correction_aproximation(
-                                      false)>>{}(f_local,
-                          std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+
+                        MacroR2<::V<uses_recursive_aproximation(false)>,
+                                v_averaging,
+                                ::V<uses_variance_aproximation(false)>,
+                                ::V<uses_variance_correction_aproximation(
+                                    false)>>{}(f_local, std::move(t_prior),
+                                               t_Qdt, m, Nch, y()[i_step], fs);
                   }
                 }
               }
@@ -3606,11 +3607,12 @@ struct MacroR2 {
     return out;
   }
 
-  template <class T, class... Ts> auto operator()(T&& x,Ts &&...xs) {
+  template <class T, class... Ts> auto operator()(T &&x, Ts &&...xs) {
     auto m = Macro_DMR{};
 
     return m.Macror<recursive{}.value, averaging{}.value, variance{}.value,
-                    variance_correction{}.value>(std::forward<T>(x),std::forward<Ts>(xs)...);
+                    variance_correction{}.value>(std::forward<T>(x),
+                                                 std::forward<Ts>(xs)...);
   }
 };
 
@@ -3740,86 +3742,84 @@ struct Likelihood_Model_v_all {
 };
 
 struct Likelihood_Model_v {
-    using v_uses_adaptive_aproximation =
-        std::variant<::V<uses_adaptive_aproximation(false)>>;
-    
-    using v_uses_recursive_aproximation =
-        std::variant<::V<uses_recursive_aproximation(false)>,
-                     ::V<uses_recursive_aproximation(true)>>;
-    
-    using v_uses_averaging_aproximation =
-        std::variant<::V<uses_averaging_aproximation(2)>>;
-    
-    using v_uses_variance_aproximation =
-        std::variant<::V<uses_variance_aproximation(true)>>;
-    
-    using v_uses_variance_correction_aproximation =
-        std::variant<::V<uses_variance_correction_aproximation(false)>>;
-    
-    template <uses_adaptive_aproximation adaptive,
-             uses_recursive_aproximation recursive,
-             uses_averaging_aproximation averaging,
-             uses_variance_aproximation variance,
-             uses_variance_correction_aproximation variance_correction,
-             class Model>
-    auto template_op(::V<adaptive>, ::V<recursive>, ::V<averaging>, ::V<variance>,
-                     ::V<variance_correction>, const Model &model,
-                     Simulation_n_sub_dt n_sub_dt) const {
-        return Likelihood_Model<adaptive, recursive, averaging, variance,
-                                variance_correction, Model>(model, n_sub_dt);
-    }
-    
-    template <class Model>
-    auto variant_op(v_uses_adaptive_aproximation t_adaptive,
-                    v_uses_recursive_aproximation t_recursive,
-                    v_uses_averaging_aproximation t_averaging,
-                    v_uses_variance_aproximation t_variance,
-                    v_uses_variance_correction_aproximation t_var_corr,
-                    Model const &model, Simulation_n_sub_dt n_sub_dt) const {
-        
-        auto tu = std::tuple(t_adaptive, t_recursive, t_averaging, t_variance,
-                             t_var_corr);
-        return Apply_variant(
-            [this, &model, n_sub_dt](auto const &...x) {
-                // using m11=decltype(template_op(x...,model,
-                // n_sub_dt))::llego_aquiÑ;
-                //   return m11{};
-                return this->template_op(x..., model, n_sub_dt);
-            },
-            tu);
-    }
-    
-    template <class Model>
-    auto bool_op(uses_adaptive_aproximation adaptive,
-                 uses_recursive_aproximation recursive,
-                 uses_averaging_aproximation averaging,
-                 uses_variance_aproximation variance,
-                 uses_variance_correction_aproximation variance_correction,
-                 const Model &model, Simulation_n_sub_dt n_sub_dt) const {
-        v_uses_adaptive_aproximation t_adaptive;
-            t_adaptive = ::V<uses_adaptive_aproximation(false)>{};
-        
-        v_uses_recursive_aproximation t_recursive;
-        if (recursive.value)
-            t_recursive = ::V<uses_recursive_aproximation(true)>{};
-        else
-            t_recursive = ::V<uses_recursive_aproximation(false)>{};
-        
-        v_uses_averaging_aproximation t_averaging;
-         t_averaging = ::V<uses_averaging_aproximation(2)>{};
-        
-        v_uses_variance_aproximation t_variance;
-            t_variance = ::V<uses_variance_aproximation(true)>{};
-        
-        v_uses_variance_correction_aproximation t_var_corr;
-            t_var_corr = ::V<uses_variance_correction_aproximation(false)>{};
-        
-        return this->variant_op(t_adaptive, t_recursive, t_averaging, t_variance,
-                                t_var_corr, model, n_sub_dt);
-    }
+  using v_uses_adaptive_aproximation =
+      std::variant<::V<uses_adaptive_aproximation(false)>>;
+
+  using v_uses_recursive_aproximation =
+      std::variant<::V<uses_recursive_aproximation(false)>,
+                   ::V<uses_recursive_aproximation(true)>>;
+
+  using v_uses_averaging_aproximation =
+      std::variant<::V<uses_averaging_aproximation(2)>>;
+
+  using v_uses_variance_aproximation =
+      std::variant<::V<uses_variance_aproximation(true)>>;
+
+  using v_uses_variance_correction_aproximation =
+      std::variant<::V<uses_variance_correction_aproximation(false)>>;
+
+  template <uses_adaptive_aproximation adaptive,
+            uses_recursive_aproximation recursive,
+            uses_averaging_aproximation averaging,
+            uses_variance_aproximation variance,
+            uses_variance_correction_aproximation variance_correction,
+            class Model>
+  auto template_op(::V<adaptive>, ::V<recursive>, ::V<averaging>, ::V<variance>,
+                   ::V<variance_correction>, const Model &model,
+                   Simulation_n_sub_dt n_sub_dt) const {
+    return Likelihood_Model<adaptive, recursive, averaging, variance,
+                            variance_correction, Model>(model, n_sub_dt);
+  }
+
+  template <class Model>
+  auto variant_op(v_uses_adaptive_aproximation t_adaptive,
+                  v_uses_recursive_aproximation t_recursive,
+                  v_uses_averaging_aproximation t_averaging,
+                  v_uses_variance_aproximation t_variance,
+                  v_uses_variance_correction_aproximation t_var_corr,
+                  Model const &model, Simulation_n_sub_dt n_sub_dt) const {
+
+    auto tu = std::tuple(t_adaptive, t_recursive, t_averaging, t_variance,
+                         t_var_corr);
+    return Apply_variant(
+        [this, &model, n_sub_dt](auto const &...x) {
+          // using m11=decltype(template_op(x...,model,
+          // n_sub_dt))::llego_aquiÑ;
+          //   return m11{};
+          return this->template_op(x..., model, n_sub_dt);
+        },
+        tu);
+  }
+
+  template <class Model>
+  auto bool_op(uses_adaptive_aproximation adaptive,
+               uses_recursive_aproximation recursive,
+               uses_averaging_aproximation averaging,
+               uses_variance_aproximation variance,
+               uses_variance_correction_aproximation variance_correction,
+               const Model &model, Simulation_n_sub_dt n_sub_dt) const {
+    v_uses_adaptive_aproximation t_adaptive;
+    t_adaptive = ::V<uses_adaptive_aproximation(false)>{};
+
+    v_uses_recursive_aproximation t_recursive;
+    if (recursive.value)
+      t_recursive = ::V<uses_recursive_aproximation(true)>{};
+    else
+      t_recursive = ::V<uses_recursive_aproximation(false)>{};
+
+    v_uses_averaging_aproximation t_averaging;
+    t_averaging = ::V<uses_averaging_aproximation(2)>{};
+
+    v_uses_variance_aproximation t_variance;
+    t_variance = ::V<uses_variance_aproximation(true)>{};
+
+    v_uses_variance_correction_aproximation t_var_corr;
+    t_var_corr = ::V<uses_variance_correction_aproximation(false)>{};
+
+    return this->variant_op(t_adaptive, t_recursive, t_averaging, t_variance,
+                            t_var_corr, model, n_sub_dt);
+  }
 };
-
-
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
@@ -4224,7 +4224,7 @@ public:
                   double n_points_per_decade_fraction) const {
     auto &yr = get<Recording>(sim());
     assert(size(yr()) == size(get<Recording_conditions>(x)()));
-    assert(size(segments)==0||size(yr()) == var::sum(segments));
+    assert(size(segments) == 0 || size(yr()) == var::sum(segments));
 
     std::size_t num_samples = size(yr());
     //  std::size_t max_num_samples_per_segment = var::max(segments);
@@ -4266,7 +4266,7 @@ void report_title(save_Predictions<Parameters<Id>> &s,
       << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
       << "id_walker" << s.sep << "i_step" << s.sep << "time" << s.sep
       << "num_samples" << s.sep << "ATP" << s.sep << "ATPevol" << s.sep
-      << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_std" << s.sep << "plogL"
+      << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL"
       << s.sep << "pelogL"
       << "\n";
 }
@@ -4278,7 +4278,7 @@ void report_title(save_Predictions<Parameters<Id>> &s,
   s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep << "i_walker"
       << s.sep << "id_walker" << s.sep << "i_step" << s.sep << "time" << s.sep
       << "num_samples" << s.sep << "ATP" << s.sep << "ATP_evolution" << s.sep
-      << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_std" << s.sep << "plogL"
+      << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL"
       << s.sep << "pelogL"
       << "\n";
 }
@@ -4287,6 +4287,7 @@ inline void report_title(save_Predictions<Matrix<double>> &s,
                          thermo_mcmc<Matrix<double>> const &, ...) {}
 
 template <class Id, class FunctionTable>
+  requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &&, std::size_t iter,
             save_Predictions<Parameters<Id>> &s,
             thermo_mcmc<Parameters<Id>> const &data, ...) {
@@ -4299,6 +4300,53 @@ void report(FunctionTable &&, std::size_t iter,
               << s.sep << i_walker << s.sep << data.i_walkers[i_walker][i_beta]
               << s.sep << i_par << s.sep
               << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
+}
+
+template <class Id, class ParameterType, class FunctionTable, class Prior,
+          class t_logLikelihood, class Data, class Variables>
+  requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
+void report(FunctionTable &f, std::size_t iter,
+            save_Predictions<ParameterType> &s,
+            thermo_mcmc<Parameters<Id>> const &data, Prior &&,
+            t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
+
+  if (iter % s.save_every != 0)
+    return;
+  auto ff = f.fork(data.get_Walkers_number() / 2);
+  auto beta = data.get_Beta();
+  auto num_samples=size(y);
+  for (std::size_t half = 0; half < 2; ++half) {
+#pragma omp parallel for
+    for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
+      auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
+      for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+          auto par = data.get_Parameter(i_walker,i_b);
+        auto walker_id = data.get_Walker(i_walker, i_b);
+        auto prediction = logLikelihoodPredictions(ff[iiw], lik, par, y, x);
+        if (is_valid(prediction)) {
+          auto &predictions = prediction.value();
+          for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
+            auto v_ev =
+                get<ATP_evolution>(get<Recording_conditions>(x)()[i_step]);
+
+            auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
+            auto num_smples = get_num_samples(v_ev);
+
+            s.f << beta.size() << s.sep << iter << s.sep << beta[i_b] << s.sep
+                << i_walker << s.sep << walker_id << s.sep << i_step << s.sep
+                << time << s.sep << num_samples << s.sep
+                << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
+                << s.sep << y()[i_step]() << s.sep
+                << get<y_mean>(predictions()[i_step]) << s.sep
+                << get<y_var>(predictions()[i_step]) << s.sep
+                << get<plogL>(predictions()[i_step]) << s.sep
+                << get<eplogL>(predictions()[i_step]) << "\n";
+          }
+        }
+      }
+    }
+  }
+  f += ff;
 }
 
 inline std::string ToString(const ATP_step &ev) {
@@ -4467,11 +4515,11 @@ void save_fractioned_Likelihood_Predictions(
     const std::vector<Experiment> &v_xs) {
   std::ofstream f(filename);
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-  f << "i_frac" << sep << "i_step" << sep << "t_ini"<< sep << "time" << sep << "i_sub_step"
-    << sep << "number_of_samples" << sep << "ATP_concentration" << sep
-    << "macror_algorithm" << sep << "y" << sep << "y_mean" << sep << "y_var"
-    << sep << "plogL" << sep << "eplogL" << sep << "logL" << sep << "i_state"
-    << sep << "P_mean" << sep << "j_state" << sep << "P_Cov";
+  f << "i_frac" << sep << "i_step" << sep << "t_ini" << sep << "time" << sep
+    << "i_sub_step" << sep << "number_of_samples" << sep << "ATP_concentration"
+    << sep << "macror_algorithm" << sep << "y" << sep << "y_mean" << sep
+    << "y_var" << sep << "plogL" << sep << "eplogL" << sep << "logL" << sep
+    << "i_state" << sep << "P_mean" << sep << "j_state" << sep << "P_Cov";
   if constexpr (keep_N_state.value)
     f << ","
       << "N"
@@ -4479,7 +4527,7 @@ void save_fractioned_Likelihood_Predictions(
   else
     f << "\n";
   for (std::size_t i_frac = 0; i_frac < v_y.size(); ++i_frac) {
-      double t_ini=0; 
+    double t_ini = 0;
     auto &y = v_y[i_frac];
     auto &ys = get<Recording>(y());
     auto &xs = v_xs[i_frac];
@@ -4492,11 +4540,11 @@ void save_fractioned_Likelihood_Predictions(
           for (std::size_t j_state = 0;
                j_state < get<P_Cov>(predictions()[i_step])().ncols();
                ++j_state) {
-                f << i_frac << sep << i_step << sep<<t_ini<<sep
+            f << i_frac << sep << i_step << sep << t_ini << sep
               << get<Time>(get<Recording_conditions>(xs)()[i_step]) << sep
               << i_sub_step << sep << get<number_of_samples>(v_ev[i_sub_step])
               << sep << get<ATP_concentration>(v_ev[i_sub_step]) << sep
-              <<get<macror_algorithm>(predictions()[i_step])<<sep
+              << get<macror_algorithm>(predictions()[i_step]) << sep
               << ys()[i_step]() << sep << get<y_mean>(predictions()[i_step])
               << sep << get<y_var>(predictions()[i_step]) << sep
               << get<plogL>(predictions()[i_step]) << sep
@@ -4511,8 +4559,8 @@ void save_fractioned_Likelihood_Predictions(
               f << "\n";
           }
         }
-        t_ini+=get<number_of_samples>(v_ev[i_sub_step])()/get<Frequency_of_Sampling>(xs)();  
-        
+        t_ini += get<number_of_samples>(v_ev[i_sub_step])() /
+                 get<Frequency_of_Sampling>(xs)();
       }
     }
   }
@@ -4771,7 +4819,6 @@ new_cuevi_Model_by_iteration(
       cuevi::Random_jumps(random_jumps), std::move(sint));
 }
 
-
 template <class Id>
 cuevi::Cuevi_Algorithm_no_Fractioner<
     save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
@@ -4779,64 +4826,58 @@ cuevi::Cuevi_Algorithm_no_Fractioner<
               save_Predictions<Parameters<Id>>>,
     cuevi_less_than_max_iteration>
 new_cuevi_Model_already_fraction_by_iteration(
-    std::string path, std::string filename,std::size_t num_scouts_per_ensemble,
-    std::size_t number_trials_until_give_up,
-    std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
-    double n_points_per_decade_beta_high, double n_points_per_decade_beta_low,
-    double medium_beta, double stops_at, bool includes_the_zero,
-    Saving_intervals sint, bool random_jumps) {
-    return cuevi::Cuevi_Algorithm_no_Fractioner(
-        save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                  save_Parameter<Parameters<Id>>, save_Evidence,
-                  save_Predictions<Parameters<Id>>>(
-            path, filename, get<Save_Likelihood_every>(sint())(),
-            get<Save_Parameter_every>(sint())(),
-            get<Save_Evidence_every>(sint())(),
-            get<Save_Predictions_every>(sint())()),
-        cuevi_less_than_max_iteration(max_iter_equilibrium),
-        cuevi::Num_Walkers_Per_Ensemble(num_scouts_per_ensemble),
-          cuevi::Th_Beta_Param(
-            Vector_Space( // Includes_zero,
-                // Med_value,Points_per_decade,Min_value,
-                // Points_per_decade_low
-                cuevi::Includes_zero(includes_the_zero),
-                cuevi::Med_value(medium_beta),
-                cuevi::Points_per_decade(n_points_per_decade_beta_high),
-                cuevi::Min_value(stops_at),
-                cuevi::Points_per_decade_low(n_points_per_decade_beta_low))),
-        cuevi::Number_trials_until_give_up(number_trials_until_give_up),
-        cuevi::Thermo_Jumps_every(thermo_jumps_every),
-        cuevi::Random_jumps(random_jumps), std::move(sint));
+    std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
+    std::size_t number_trials_until_give_up, std::size_t thermo_jumps_every,
+    std::size_t max_iter_equilibrium, double n_points_per_decade_beta_high,
+    double n_points_per_decade_beta_low, double medium_beta, double stops_at,
+    bool includes_the_zero, Saving_intervals sint, bool random_jumps) {
+  return cuevi::Cuevi_Algorithm_no_Fractioner(
+      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
+                save_Parameter<Parameters<Id>>, save_Evidence,
+                save_Predictions<Parameters<Id>>>(
+          path, filename, get<Save_Likelihood_every>(sint())(),
+          get<Save_Parameter_every>(sint())(),
+          get<Save_Evidence_every>(sint())(),
+          get<Save_Predictions_every>(sint())()),
+      cuevi_less_than_max_iteration(max_iter_equilibrium),
+      cuevi::Num_Walkers_Per_Ensemble(num_scouts_per_ensemble),
+      cuevi::Th_Beta_Param(
+          Vector_Space( // Includes_zero,
+                        // Med_value,Points_per_decade,Min_value,
+                        // Points_per_decade_low
+              cuevi::Includes_zero(includes_the_zero),
+              cuevi::Med_value(medium_beta),
+              cuevi::Points_per_decade(n_points_per_decade_beta_high),
+              cuevi::Min_value(stops_at),
+              cuevi::Points_per_decade_low(n_points_per_decade_beta_low))),
+      cuevi::Number_trials_until_give_up(number_trials_until_give_up),
+      cuevi::Thermo_Jumps_every(thermo_jumps_every),
+      cuevi::Random_jumps(random_jumps), std::move(sint));
 }
 template <class Id>
-auto new_thermo_Model_by_max_iter(std::string path, std::string filename,
-                              std::size_t num_scouts_per_ensemble,
-                              std::size_t max_num_simultaneous_temperatures,
-                              std::size_t thermo_jumps_every,
-                              std::size_t max_iter_equilibrium,
-                                  std::size_t beta_size,
-                                  std::size_t beta_upper_size,
-                                  std::size_t beta_medium_size,
-                                  double beta_upper_value,
-                                  double beta_medium_value,
-                                        
-                               double stops_at,
-                              bool includes_zero, Saving_intervals sint,std::size_t initseed) {
-    return new_thermodynamic_integration(
-        thermo_less_than_max_iteration(max_iter_equilibrium),
-        save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                  save_Parameter<Parameters<Id>>, save_Evidence,
-                  save_Predictions<Parameters<Id>>>(
-            path, filename, get<Save_Likelihood_every>(sint())(),
-            get<Save_Parameter_every>(sint())(),
-            get<Save_Evidence_every>(sint())(),
-            get<Save_Predictions_every>(sint())()),
-        num_scouts_per_ensemble, max_num_simultaneous_temperatures,
-        thermo_jumps_every, beta_size,beta_upper_size,beta_medium_size,beta_upper_value, beta_medium_value,stops_at, includes_zero,
-        initseed);
+auto new_thermo_Model_by_max_iter(
+    std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
+    std::size_t max_num_simultaneous_temperatures,
+    std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
+    std::size_t beta_size, std::size_t beta_upper_size,
+    std::size_t beta_medium_size, double beta_upper_value,
+    double beta_medium_value,
+
+    double stops_at, bool includes_zero, Saving_intervals sint,
+    std::size_t initseed) {
+  return new_thermodynamic_integration(
+      thermo_less_than_max_iteration(max_iter_equilibrium),
+      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
+                save_Parameter<Parameters<Id>>, save_Evidence,
+                save_Predictions<Parameters<Id>>>(
+          path, filename, get<Save_Likelihood_every>(sint())(),
+          get<Save_Parameter_every>(sint())(),
+          get<Save_Evidence_every>(sint())(),
+          get<Save_Predictions_every>(sint())()),
+      num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+      thermo_jumps_every, beta_size, beta_upper_size, beta_medium_size,
+      beta_upper_value, beta_medium_value, stops_at, includes_zero, initseed);
 }
-
-
 
 template <class Id>
 auto thermo_Model_by_max_iter(std::string path, std::string filename,
@@ -4968,14 +5009,14 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_experiment_fractions(std::string save_name, std::string recording,
                           experiment_type experiment,
                           fraction_algo_type fraction_algo,
-                          Maybe_error<std::size_t> Maybe_num_param, std::size_t i_seed) {
+                          Maybe_error<std::size_t> Maybe_num_param,
+                          std::size_t i_seed) {
   auto myseed = calc_seed(i_seed);
-    
-    if (!Maybe_num_param)
-      return Maybe_num_param.error();
-    auto num_param=Maybe_num_param.value();
-        
-  
+
+  if (!Maybe_num_param)
+    return Maybe_num_param.error();
+  auto num_param = Maybe_num_param.value();
+
   auto init_seed = calc_seed(i_seed);
   mt_64i mt(init_seed);
 
@@ -5004,13 +5045,13 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_simulation_fractions(std::string save_name, std::string simulation,
                           experiment_type experiment,
                           fraction_algo_type fraction_algo,
-                          Maybe_error<std::size_t> Maybe_num_param, std::size_t i_seed) {
-    if (!Maybe_num_param)
-        return Maybe_num_param.error();
-    auto num_param=Maybe_num_param.value();
-    auto myseed = calc_seed(i_seed);
-  
-  
+                          Maybe_error<std::size_t> Maybe_num_param,
+                          std::size_t i_seed) {
+  if (!Maybe_num_param)
+    return Maybe_num_param.error();
+  auto num_param = Maybe_num_param.value();
+  auto myseed = calc_seed(i_seed);
+
   auto init_seed = calc_seed(i_seed);
   mt_64i mt(init_seed);
 
