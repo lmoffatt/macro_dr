@@ -4808,6 +4808,34 @@ new_cuevi_Model_already_fraction_by_iteration(
         cuevi::Thermo_Jumps_every(thermo_jumps_every),
         cuevi::Random_jumps(random_jumps), std::move(sint));
 }
+template <class Id>
+auto new_thermo_Model_by_max_iter(std::string path, std::string filename,
+                              std::size_t num_scouts_per_ensemble,
+                              std::size_t max_num_simultaneous_temperatures,
+                              std::size_t thermo_jumps_every,
+                              std::size_t max_iter_equilibrium,
+                                  std::size_t beta_size,
+                                  std::size_t beta_upper_size,
+                                  std::size_t beta_medium_size,
+                                  double beta_upper_value,
+                                  double beta_medium_value,
+                                        
+                               double stops_at,
+                              bool includes_zero, Saving_intervals sint,std::size_t initseed) {
+    return new_thermodynamic_integration(
+        thermo_less_than_max_iteration(max_iter_equilibrium),
+        save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
+                  save_Parameter<Parameters<Id>>, save_Evidence,
+                  save_Predictions<Parameters<Id>>>(
+            path, filename, get<Save_Likelihood_every>(sint())(),
+            get<Save_Parameter_every>(sint())(),
+            get<Save_Evidence_every>(sint())(),
+            get<Save_Predictions_every>(sint())()),
+        num_scouts_per_ensemble, max_num_simultaneous_temperatures,
+        thermo_jumps_every, beta_size,beta_upper_size,beta_medium_size,beta_upper_value, beta_medium_value,stops_at, includes_zero,
+        initseed);
+}
+
 
 
 template <class Id>

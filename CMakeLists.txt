@@ -150,7 +150,9 @@ add_executable(macro_dr main.cpp
     CLI_macro_dr_base.h
     scripts/evidence_fraction_simulation.txt
     scripts/evidence_fraction_data.txt
-    CLI_theromo_evidence.h
+    CLI_thermo_evidence.h
+    scripts/evidence_thermo_data.txt
+    scripts/evidence_thermo_simulation.txt
     
     
     

@@ -25,20 +25,6 @@
 #include <utility>
 #include <vector>
 
-class Save_Parameter_every
-    : public var::Var<Save_Parameter_every, std::size_t> {};
-class Save_Predictions_every
-    : public var::Var<Save_Predictions_every, std::size_t> {};
-class Save_Likelihood_every
-    : public var::Var<Save_Likelihood_every, std::size_t> {};
-class Save_Evidence_every
-    : public var::Var<Save_Likelihood_every, std::size_t> {};
-
-class Saving_intervals
-    : public var::Var<
-          Saving_intervals,
-          var::Vector_Space<Save_Evidence_every, Save_Likelihood_every,
-                            Save_Parameter_every, Save_Predictions_every>> {};
 
 inline void report_model(save_Evidence &, ...) {}
 
@@ -1685,14 +1671,6 @@ void report_all(FunctionTable &f, std::size_t iter,
   (report(f, iter, static_cast<saving &>(s), data, ts...), ..., 1);
 }
 
-template <class Parameter, class... saving>
-void report_model_all(save_mcmc<Parameter, saving...> &) {}
-
-template <class Parameter, class... saving, class T, class... Ts>
-void report_model_all(save_mcmc<Parameter, saving...> &s, T const &t,
-                      Ts const &...ts) {
-  (report_model(static_cast<saving &>(s), t), ..., report_model_all(s, ts...));
-}
 
 template <class myFractioner, class t_Reporter, class t_Finalizer>
 Cuevi_Algorithm(myFractioner &&frac, t_Reporter &&rep, t_Finalizer &&f,
