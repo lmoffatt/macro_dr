@@ -4262,12 +4262,12 @@ void report_title(save_Predictions<Parameters<Id>> &s,
                   deprecated::cuevi_mcmc<Parameters<Id>> const &,
                   const Ts &...t) {
 
-  s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep<< "iter_time" << s.sep
-      << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
-      << "id_walker" << s.sep << "i_step" << s.sep << "time" << s.sep
-      << "num_samples" << s.sep << "ATP" << s.sep << "ATPevol" << s.sep
-      << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL"
-      << s.sep << "pelogL"
+  s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
+      << "iter_time" << s.sep << "nsamples" << s.sep << "beta" << s.sep
+      << "i_walker" << s.sep << "id_walker" << s.sep << "i_step" << s.sep
+      << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
+      << "ATPevol" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var"
+      << s.sep << "plogL" << s.sep << "pelogL"
       << "\n";
 }
 
@@ -4275,11 +4275,11 @@ template <class Id>
 void report_title(save_Predictions<Parameters<Id>> &s,
                   thermo_mcmc<Parameters<Id>> const &, ...) {
 
-  s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep<< "beta" << s.sep << "i_walker"
-      << s.sep << "id_walker" << s.sep << "i_step" << s.sep << "time" << s.sep
-      << "num_samples" << s.sep << "ATP" << s.sep << "ATP_evolution" << s.sep
-      << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL"
-      << s.sep << "pelogL"
+  s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep << "beta"
+      << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
+      << s.sep << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
+      << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
+      << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
       << "\n";
 }
 
@@ -4288,7 +4288,7 @@ inline void report_title(save_Predictions<Matrix<double>> &s,
 
 template <class Id, class FunctionTable, class Duration>
   requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
-void report(FunctionTable &&, std::size_t iter,const Duration& dur,
+void report(FunctionTable &&, std::size_t iter, const Duration &dur,
             save_Predictions<Parameters<Id>> &s,
             thermo_mcmc<Parameters<Id>> const &data, ...) {
   if (iter % s.save_every == 0)
@@ -4296,16 +4296,16 @@ void report(FunctionTable &&, std::size_t iter,const Duration& dur,
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
         for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
 
-          s.f << num_betas(data) << s.sep << iter << s.sep<< dur<<s.sep << data.beta[i_beta]
-              << s.sep << i_walker << s.sep << data.i_walkers[i_walker][i_beta]
-              << s.sep << i_par << s.sep
+          s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
+              << data.beta[i_beta] << s.sep << i_walker << s.sep
+              << data.i_walkers[i_walker][i_beta] << s.sep << i_par << s.sep
               << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
 }
 
-template <class Id, class ParameterType, class FunctionTable, class Duration,class Prior,
-          class t_logLikelihood, class Data, class Variables>
+template <class Id, class ParameterType, class FunctionTable, class Duration,
+          class Prior, class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
-void report(FunctionTable &f, std::size_t iter,const Duration& dur,
+void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Predictions<ParameterType> &s,
             thermo_mcmc<Parameters<Id>> const &data, Prior &&,
             t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
@@ -4350,9 +4350,9 @@ void report(FunctionTable &f, std::size_t iter,const Duration& dur,
             auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
             auto num_smples = get_num_samples(v_ev);
 
-            s.f << beta.size() << s.sep << iter << s.sep << dur<<s.sep<< beta[i_b] << s.sep
-                << i_walker << s.sep << walker_id << s.sep << i_step << s.sep
-                << time << s.sep << num_samples << s.sep
+            s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
+                << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                << i_step << s.sep << time << s.sep << num_samples << s.sep
                 << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
                 << s.sep << y()[i_step]() << s.sep
                 << get<y_mean>(predictions()[i_step]) << s.sep
@@ -4582,9 +4582,9 @@ void save_fractioned_Likelihood_Predictions(
     }
   }
 }
-template <class FunctionTable, class Duration,class Prior, class Likelihood, class Variables,
-          class DataType, class Parameters>
-void report(FunctionTable &&f, std::size_t iter,const Duration& dur,
+template <class FunctionTable, class Duration, class Prior, class Likelihood,
+          class Variables, class DataType, class Parameters>
+void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
             save_Predictions<Parameters> &s,
             deprecated::cuevi_mcmc<Parameters> const &data, Prior const &prior,
             Likelihood const &lik, const DataType &ys, const Variables &xs,
@@ -4606,8 +4606,9 @@ void report(FunctionTable &&f, std::size_t iter,const Duration& dur,
                   get<Recording_conditions>(xs[i_frac])()[i_step]);
 
               s.f << size(data.beta) << s.sep << size(data.beta[i_frac])
-                  << s.sep << iter << s.sep<< dur<<s.sep << data.nsamples[i_frac] << s.sep
-                  << data.beta[i_frac][i_beta] << s.sep << i_walker << s.sep
+                  << s.sep << iter << s.sep << dur << s.sep
+                  << data.nsamples[i_frac] << s.sep << data.beta[i_frac][i_beta]
+                  << s.sep << i_walker << s.sep
                   << data.i_walkers[i_walker][i_frac][i_beta] << s.sep << i_step
                   << s.sep
                   << get<Time>(get<Recording_conditions>(xs[i_frac])()[i_step])
@@ -4623,10 +4624,10 @@ void report(FunctionTable &&f, std::size_t iter,const Duration& dur,
         }
 }
 
-template <class ParameterType, class FunctionTable, class Duration,class Prior,
+template <class ParameterType, class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>
   requires(!is_of_this_template_type_v<FunctionTable, FuncMap_St>)
-void report(FunctionTable &&f, std::size_t iter,const Duration& dur,
+void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
             save_Predictions<ParameterType> &s,
             cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
             t_logLikelihood &&lik, const deprecated::by_fraction<Data> &ys,
@@ -4658,9 +4659,10 @@ void report(FunctionTable &&f, std::size_t iter,const Duration& dur,
               auto v_ev = get<ATP_evolution>(
                   get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
-              s.f << iter << s.sep << dur<<s.sep<< i_cu << s.sep << i_frac() << s.sep
-                  << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
-                  << get<cuevi::Walker_id>(wa())() << s.sep << i_step << s.sep
+              s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
+                  << s.sep << nsamples << s.sep << beta() << s.sep << i_walker
+                  << s.sep << get<cuevi::Walker_id>(wa())() << s.sep << i_step
+                  << s.sep
                   << get<Time>(
                          get<Recording_conditions>(xs[i_frac()])()[i_step])
                   << s.sep << get_num_samples(v_ev) << s.sep
@@ -4677,10 +4679,10 @@ void report(FunctionTable &&f, std::size_t iter,const Duration& dur,
   }
 }
 
-template <class ParameterType, class FunctionTable, class Duration,class Prior,
+template <class ParameterType, class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
-void report(FunctionTable &f, std::size_t iter,const Duration& dur,
+void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Predictions<ParameterType> &s,
             cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
             t_logLikelihood &&lik, const cuevi::by_fraction<Data> &ys,
@@ -4689,7 +4691,35 @@ void report(FunctionTable &f, std::size_t iter,const Duration& dur,
   auto &t = data.get_Cuevi_Temperatures();
   if (iter % s.save_every == 0) {
     data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
+
     auto ff = f.fork(data.get_Walkers_number() / 2);
+    using Predition_type = std::decay_t<decltype(logLikelihoodPredictions(
+        ff[0], lik,
+        data.get_Parameter(cuevi::Walker_Index(0), cuevi::Cuevi_Index(0)),
+        ys[0], xs[0]))>;
+    auto allPredictions = std::vector<std::vector<Predition_type>>(
+        data.get_Cuevi_Temperatures_Number(),
+        std::vector<Predition_type>(data.get_Walkers_number()));
+    for (std::size_t half = 0; half < 2; ++half)
+#pragma omp parallel for
+      for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
+        auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
+        auto iw = cuevi::Walker_Index(i_walker);
+        for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
+             ++i_cu) {
+          auto icu = cuevi::Cuevi_Index(i_cu);
+          auto i_frac = data.get_Fraction(i_cu);
+          auto beta = data.get_Beta(icu);
+          auto nsamples = size(ys[i_frac()]);
+          auto &wa = data.get_Walker(iw, icu);
+          auto &wav = data.get_Walker_Value(iw, icu);
+          auto par = data.get_Parameter(iw, i_cu);
+          auto prediction = logLikelihoodPredictions(
+              ff[iiw], lik, par, ys[i_frac()], xs[i_frac()]);
+          allPredictions[i_cu][i_walker] = std::move(prediction);
+        }
+      }
+    f += ff;
     for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
          ++i_cu) {
       auto icu = cuevi::Cuevi_Index(i_cu);
@@ -4697,15 +4727,13 @@ void report(FunctionTable &f, std::size_t iter,const Duration& dur,
       auto beta = data.get_Beta(icu);
       auto nsamples = size(ys[i_frac()]);
       for (std::size_t half = 0; half < 2; ++half)
-        // #pragma omp parallel for
         for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
           auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
           auto iw = cuevi::Walker_Index(i_walker);
           auto &wa = data.get_Walker(iw, icu);
           auto &wav = data.get_Walker_Value(iw, icu);
           auto par = data.get_Parameter(iw, i_cu);
-          auto prediction = logLikelihoodPredictions(
-              ff[iiw], lik, par, ys[i_frac()], xs[i_frac()]);
+          auto &prediction = allPredictions[i_cu][i_walker];
           if (is_valid(prediction)) {
             auto &predictions = prediction.value();
             for (std::size_t i_step = 0; i_step < size(ys[i_frac()]);
@@ -4713,9 +4741,10 @@ void report(FunctionTable &f, std::size_t iter,const Duration& dur,
               auto v_ev = get<ATP_evolution>(
                   get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
-              s.f << iter << s.sep << dur<<s.sep<< i_cu << s.sep << i_frac() << s.sep
-                  << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
-                  << get<cuevi::Walker_id>(wa())() << s.sep << i_step << s.sep
+              s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
+                  << s.sep << nsamples << s.sep << beta() << s.sep << i_walker
+                  << s.sep << get<cuevi::Walker_id>(wa())() << s.sep << i_step
+                  << s.sep
                   << get<Time>(
                          get<Recording_conditions>(xs[i_frac()])()[i_step])
                   << s.sep << get_num_samples(v_ev) << s.sep
@@ -4729,7 +4758,6 @@ void report(FunctionTable &f, std::size_t iter,const Duration& dur,
           }
         }
     }
-    f += ff;
   }
 }
 
@@ -4737,11 +4765,12 @@ template <class ParameterType>
 void report_title(save_Predictions<ParameterType> &s,
                   cuevi::Cuevi_mcmc<ParameterType> const &, ...) {
 
-  s.f << "iter" << s.sep << "iter_time" << s.sep<< "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
-      << s.sep << "beta" << s.sep << "i_walker" << s.sep << "Walker_id" << s.sep
-      << "i_step" << s.sep << "Time" << s.sep << "num_samples" << s.sep
-      << "average_ATP_step" << s.sep << "v_ev" << s.sep << "Y_obs" << s.sep
-      << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL" << s.sep << "eplogL"
+  s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep << "i_frac"
+      << s.sep << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
+      << "Walker_id" << s.sep << "i_step" << s.sep << "Time" << s.sep
+      << "num_samples" << s.sep << "average_ATP_step" << s.sep << "v_ev"
+      << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep
+      << "plogL" << s.sep << "eplogL"
       << "\n";
 }
 
