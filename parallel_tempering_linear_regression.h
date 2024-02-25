@@ -21,14 +21,14 @@ public:
   friend void report_title(save_Evidence &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep
+    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep<< "beta" << s.sep
         << "meanPrior" << s.sep << "meanLik" << s.sep << "varLik" << s.sep
         << "plog_Evidence" << s.sep << "log_Evidence"
         << "\n";
   }
 
-  template <class FunctionTable, class Parameters>
-  friend void report(FunctionTable &&f, std::size_t iter, save_Evidence &s,
+  template <class FunctionTable, class Duration, class Parameters>
+  friend void report(FunctionTable &&f, std::size_t iter, const Duration& dur,save_Evidence &s,
                      thermo_mcmc<Parameters> const &data, ...) {
     if (iter % s.save_every == 0) {
 
@@ -48,7 +48,7 @@ public:
               logL=meanLik[i_beta-1];
               double plog_Evidence = (beta - beta0) * (logL0 + logL) / 2;
               log_Evidence+=plog_Evidence;
-               s.f << num_betas(data) << s.sep << iter << s.sep << beta
+               s.f << num_betas(data) << s.sep << iter << s.sep << dur<<s.sep<< beta
               << s.sep << meanPrior[i_beta-1] << s.sep <<logL << s.sep
               << varLik[i_beta-1] << s.sep << plog_Evidence << s.sep << log_Evidence
               << "\n";
@@ -141,6 +141,7 @@ class thermo {
     auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
     std::size_t iter = 0;
+    const auto start = std::chrono::high_resolution_clock::now();
     report_title(rep, current, lik, y, x);
     report_model(rep, prior, lik, y, x, beta);
 
@@ -150,7 +151,9 @@ class thermo {
                                  lik, y, x);
         thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                          thermo_jumps_every);
-        report(f, iter, rep, current, prior, lik, y, x);
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur =std::chrono::duration<double>( end - start);
+        report(f, iter, dur, rep, current, prior, lik, y, x);
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
       }
       if (beta_run.size() < beta.size()) {
@@ -201,6 +204,8 @@ auto thermo_impl(FunctionTable &&f, const Algorithm &alg, Prior const &prior,
   auto n_par = current.walkers[0][0].parameter.size();
   auto mcmc_run = checks_convergence(std::move(a), current);
   std::size_t iter = 0;
+  const auto start = std::chrono::high_resolution_clock::now();
+  
   report_title(rep, current, lik, y, x);
   report_model(rep, prior, lik, y, x, beta);
 
@@ -210,7 +215,9 @@ auto thermo_impl(FunctionTable &&f, const Algorithm &alg, Prior const &prior,
                                y, x);
       thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                        thermo_jumps_every);
-      report(f, iter, rep, current);
+      const auto end = std::chrono::high_resolution_clock::now();
+      auto dur =std::chrono::duration<double>( end - start);
+      report(f, iter, dur,rep, current);
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
     if (beta_run.size() < beta.size()) {
@@ -326,11 +333,11 @@ public:
 };
 
 
-template <class FunctionTable, class Parameters, class... saving, class... T>
-void report_all(FunctionTable &f, std::size_t iter,
+template <class FunctionTable, class Duration,class Parameters, class... saving, class... T>
+void report_all(FunctionTable &f, std::size_t iter,const Duration& dur,
                 save_mcmc<Parameters, saving...> &s,
                 thermo_mcmc<Parameters> &data, T const &...ts) {
-    (report(f, iter, static_cast<saving &>(s), data, ts...), ..., 1);
+    (report(f, iter, dur,static_cast<saving &>(s), data, ts...), ..., 1);
 }
 
 
@@ -366,6 +373,7 @@ auto evidence(FunctionTable &&ff,
   auto mcmc_run = checks_convergence(std::move(a), current);
 
   std::size_t iter = 0;
+  const auto start = std::chrono::high_resolution_clock::now();
   auto &rep = therm.reporter();
   report_title(rep, current, lik, y, x);
   report_model(rep, prior, lik, y, x, beta);
@@ -376,7 +384,9 @@ auto evidence(FunctionTable &&ff,
                                y, x);
       thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                        therm.thermo_jumps_every());
-      report(f, iter, rep, current);
+      const auto end = std::chrono::high_resolution_clock::now();
+      auto dur =std::chrono::duration<double>( end - start);
+      report(f, iter, dur,rep, current);
       // using geg=typename
       // decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
@@ -433,6 +443,7 @@ auto thermo_evidence(FunctionTable &&f,
     auto mcmc_run = checks_convergence(std::move(a), current);
     
     std::size_t iter = 0;
+    const auto start = std::chrono::high_resolution_clock::now();
     auto &rep = therm.reporter();
     report_title(rep, current, lik, y, x);
     report_model_all(rep, prior, lik, y, x, beta);
@@ -443,7 +454,9 @@ auto thermo_evidence(FunctionTable &&f,
             thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                              therm.thermo_jumps_every());
           //  report(f, iter, rep, current);
-            report_all(f, iter, rep, current, prior, lik, y, x, mts, mcmc_run.first);
+            const auto end = std::chrono::high_resolution_clock::now();
+            auto dur =std::chrono::duration<double>( end - start);
+            report_all(f, iter, dur,rep, current, prior, lik, y, x, mts, mcmc_run.first);
             
             // using geg=typename
             // decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;

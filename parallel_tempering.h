@@ -887,7 +887,7 @@ public:
   friend void report_title(save_likelihood &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep
+    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep<< "beta" << s.sep
         << "i_walker" << s.sep << "id_walker" << s.sep << "logP" << s.sep
         << "logLik" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
         << "\n";
@@ -899,8 +899,8 @@ public:
 
   friend void report_model(save_likelihood &, ...) {}
 
-  template <class FunctionTable>
-  friend void report(FunctionTable &&, std::size_t iter, save_likelihood &s,
+  template <class FunctionTable, class Duration>
+  friend void report(FunctionTable &&, std::size_t iter, const Duration& dur, save_likelihood &s,
                      thermo_mcmc<Parameters> const &data, ...) {
     if (iter % s.save_every == 0) {
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker) {
@@ -914,7 +914,7 @@ public:
           beta = data.beta[i_beta-1];
           double plog_Evidence = (beta - beta0) * (logL0 + logL) / 2;
           log_Evidence += plog_Evidence;
-          s.f << num_betas(data) << s.sep << iter << s.sep << beta << s.sep
+          s.f << num_betas(data) << s.sep << iter << s.sep << dur<<s.sep<< beta << s.sep
               << i_walker << s.sep << data.i_walkers[i_walker][i_beta-1] << s.sep
               << data.walkers[i_walker][i_beta-1].logP << s.sep << logL << s.sep
               << plog_Evidence << s.sep << log_Evidence << "\n";
@@ -980,7 +980,7 @@ public:
   friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "beta" << s.sep
+    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep<< "beta" << s.sep
         << "i_walker" << s.sep << "id_walker" << s.sep << "i_par" << s.sep
         << "par_value"
         << "\n";
@@ -992,15 +992,15 @@ public:
 
   friend void report_model(save_Parameter &, ...) {}
 
-  template <class FunctionTable>
-  friend void report(FunctionTable &&f, std::size_t iter, save_Parameter &s,
+  template <class FunctionTable, class Duration>
+  friend void report(FunctionTable &&f, std::size_t iter, const Duration& dur, save_Parameter &s,
                      thermo_mcmc<Parameters> const &data, ...) {
     if (iter % s.save_every == 0)
       for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
           for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
 
-            s.f << num_betas(data) << s.sep << iter << s.sep
+            s.f << num_betas(data) << s.sep << iter << s.sep<< dur<<s.sep
                 << data.beta[i_beta] << s.sep << i_walker << s.sep
                 << data.i_walkers[i_walker][i_beta] << s.sep << i_par << s.sep
                 << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
@@ -1046,10 +1046,10 @@ public:
       : saving{dir + filename_prefix, 1ul}..., directory_{dir},
         filename_prefix_{filename_prefix} {}
 
-  template <class FunctionTable, class... T>
-  friend void report(FunctionTable &&f, std::size_t iter, save_mcmc &smcmc,
+  template <class FunctionTable, class Duration,class... T>
+  friend void report(FunctionTable &&f, std::size_t iter,const Duration& dur, save_mcmc &smcmc,
                      thermo_mcmc<Parameters> const &data, T &&...ts) {
-    (report(f, iter, static_cast<saving &>(smcmc), data,
+    (report(f, iter, dur,static_cast<saving &>(smcmc), data,
             std::forward<T>(ts)...),
      ..., 1);
   }
