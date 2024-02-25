@@ -921,10 +921,10 @@ public:
     f += ff;
   }
 
-  template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
+  template <class FunctionTable, class Duration,class Prior, class t_logLikelihood, class Data,
             class Variables>
   friend void
-  report(FunctionTable &f, std::size_t iter, save_likelihood<ParameterType> &s,
+  report(FunctionTable &f, std::size_t iter, const Duration& dur,save_likelihood<ParameterType> &s,
          Cuevi_mcmc &data, Prior &&, t_logLikelihood &&lik,
          const by_fraction<Data> &y, const by_fraction<Variables> &x, ...) {
 
@@ -1003,7 +1003,7 @@ public:
             log_Evidence = log_Evidence + plog_Evidence;
             log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
           }
-          s.f << iter << s.sep << i_cu << s.sep << i_fra() << s.sep << nsamples
+          s.f << iter << s.sep<< dur << s.sep << i_cu << s.sep << i_fra() << s.sep << nsamples
               << s.sep << beta1 << s.sep << beta0 << s.sep << i_walker << s.sep
               << get<Walker_id>(wa())() << s.sep << logPrior << s.sep << logL1
               << s.sep << logL0 << s.sep << plog_Evidence << s.sep
@@ -1027,7 +1027,7 @@ public:
   friend void report_title(save_likelihood<ParameterType> &s,
                            Cuevi_mcmc const &...) {
 
-    s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
+    s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta1" << s.sep << "beta0" << s.sep << "i_walker" << s.sep
         << "walker_id" << s.sep << "logPrior" << s.sep << "logL1" << s.sep
         << "logL0" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
@@ -1045,10 +1045,10 @@ public:
         << "\n";
   }
 
-  template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
+  template <class FunctionTable,class Duration, class Prior, class t_logLikelihood, class Data,
             class Variables, class Finalizer>
   friend void
-  report(FunctionTable &, std::size_t iter, save_Parameter<ParameterType> &s,
+  report(FunctionTable &, std::size_t iter, const Duration& dur,save_Parameter<ParameterType> &s,
          Cuevi_mcmc const &data, Prior &&, t_logLikelihood &&,
          const by_fraction<Data> &y, const by_fraction<Variables> &,
          const std::vector<mt_64i> &mts, const Finalizer &mcmc, ...) {
@@ -1069,7 +1069,7 @@ public:
 
           for (std::size_t i_par = 0; i_par < data.get_Parameters_number();
                ++i_par) {
-            s.f << iter << s.sep << i_cu << s.sep << i_fra() << s.sep
+            s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_fra() << s.sep
                 << size(y[i_fra()]) << s.sep << get<Th_Beta>(t()[i_cu])()
                 << s.sep << i_walker << s.sep << get<Walker_id>(wa())() << s.sep
                 << i_mts << s.sep << mts[i_mts].pos() << s.sep << i_par << s.sep
@@ -1207,7 +1207,7 @@ public:
   friend void report_title(save_Parameter<ParameterType> &s, Cuevi_mcmc const &,
                            const mcmcm_type &mcmc, ...) {
 
-    s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
+    s.f << "iter" << s.sep << "iter_time" << s.sep<< "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta" << s.sep << "i_walker" << s.sep << "walker_id"
         << s.sep << "i_mt" << s.sep << "mt_pos" << s.sep << "i_par" << s.sep
         << "parameter_value";
@@ -1215,9 +1215,9 @@ public:
     s.f << "\n";
   }
 
-  template <class FunctionTable, class Prior, class t_logLikelihood, class Data,
+  template <class FunctionTable, class Duration,class Prior, class t_logLikelihood, class Data,
             class Variables>
-  friend void report(FunctionTable &f, std::size_t iter, save_Evidence &s,
+  friend void report(FunctionTable &f, std::size_t iter, const Duration& dur,save_Evidence &s,
                      Cuevi_mcmc &data, Prior &&, t_logLikelihood &&lik,
                      const by_fraction<Data> &y,
                      const by_fraction<Variables> &x, ...) {
@@ -1286,7 +1286,7 @@ public:
           log_Evidence = log_Evidence + plog_Evidence;
           log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
         }
-        s.f << iter << s.sep << i_cu << s.sep << i_frac() << s.sep << nsamples
+        s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac() << s.sep << nsamples
             << s.sep << beta1 << s.sep << beta0 << s.sep << logPrior << s.sep
             << logL1 << s.sep << logL0 << s.sep << plog_Evidence << s.sep
             << log_Evidence << s.sep << log_Evidence_no_0 << s.sep << logL1_1
@@ -1305,7 +1305,7 @@ public:
 
   friend void report_title(save_Evidence &s, Cuevi_mcmc const &, ...) {
 
-    s.f << "iter" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
+    s.f << "iter" << s.sep << "iter_time" << s.sep<< "i_cu" << s.sep << "i_frac" << s.sep << "nsamples"
         << s.sep << "beta1" << s.sep << "beta0" << s.sep << "logPrior" << s.sep
         << "logL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
         << "log_Evidence" << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1"
@@ -1664,11 +1664,11 @@ public:
             std::move(saving_intervals))) {}
 };
 
-template <class FunctionTable, class Parameters, class... saving, class... T>
-void report_all(FunctionTable &f, std::size_t iter,
+template <class FunctionTable, class Duration,class Parameters, class... saving, class... T>
+void report_all(FunctionTable &f, std::size_t iter,const Duration& dur,
                 save_mcmc<Parameters, saving...> &s,
                 Cuevi_mcmc<Parameters> &data, T const &...ts) {
-  (report(f, iter, static_cast<saving &>(s), data, ts...), ..., 1);
+  (report(f, iter, dur,static_cast<saving &>(s), data, ts...), ..., 1);
 }
 
 
@@ -1720,6 +1720,7 @@ auto evidence_old(FunctionTable &ff,
     auto mcmc_run = checks_convergence(std::move(a), current);
 
     std::size_t iter = 0;
+    const auto start = std::chrono::high_resolution_clock::now();
     // report_model(rep, prior, lik, ys, xs);
     report_title(ff, "Iter");
     report_title(rep, current, prior, lik, ys, xs);
@@ -1734,8 +1735,10 @@ auto evidence_old(FunctionTable &ff,
       f.f(thermo_cuevi_jump_mcmc{}, iter + get<Thermo_Jumps_every>(cue())() % 2,
           current, mt, mts, prior, lik, ys, xs,
           get<Thermo_Jumps_every>(cue())(), true);
-
-      report_all(f, iter, rep, current, prior, lik, ys, xs);
+      
+      const auto end = std::chrono::high_resolution_clock::now();
+      auto dur =std::chrono::duration<double>( end - start);
+      report_all(f, iter, dur,rep, current, prior, lik, ys, xs);
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
     return Return_Type(std::pair(mcmc_run.first, current));
@@ -1756,7 +1759,8 @@ auto evidence_loop(FunctionTable &f, std::pair<mcmc_type, bool> &&mcmc_run,
   using Return_Type =
       Maybe_error<std::pair<mcmc_type, Cuevi_mcmc<ParameterType>>>;
   report_title(rep, current, mcmc_run.first, prior, lik, ys, xs);
-
+  const auto start = std::chrono::high_resolution_clock::now();
+  
   while (!mcmc_run.second) {
     f.f(step_stretch_cuevi_mcmc{}, current, mts, prior, lik, ys, xs);
     report_point(f, iter);
@@ -1767,8 +1771,10 @@ auto evidence_loop(FunctionTable &f, std::pair<mcmc_type, bool> &&mcmc_run,
     if (randomjumps())
       f.f(thermo_cuevi_jump_mcmc{}, iter + v_thermo_jump_every() % 2, current,
           mts, prior, lik, ys, xs, v_thermo_jump_every, Random_jumps(true));
-
-    report_all(f, iter, rep, current, prior, lik, ys, xs, mts, mcmc_run.first);
+    
+    const auto end = std::chrono::high_resolution_clock::now();
+    auto dur =std::chrono::duration<double>( end - start);
+    report_all(f, iter, dur,rep, current, prior, lik, ys, xs, mts, mcmc_run.first);
     mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
   }
   return Return_Type(std::pair(mcmc_run.first, current));
@@ -1964,7 +1970,7 @@ template <class Parameters> struct cuevi_mcmc {
   friend void report_title(save_likelihood<Parameters> &s,
                            cuevi_mcmc<Parameters> const &, ...) {
 
-    s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
+    s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep<< "iter_time" << s.sep
         << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
         << "id_walker" << s.sep << "logPa" << s.sep << "logP" << s.sep
         << "logLik"
@@ -1972,7 +1978,7 @@ template <class Parameters> struct cuevi_mcmc {
   }
   friend void report_title(save_Evidence &s, cuevi_mcmc const &, ...) {
 
-    s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
+    s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep<< "iter_time" << s.sep
         << "nsamples" << s.sep << "beta" << s.sep << "meanPrior" << s.sep
         << "meanLik" << s.sep << "varLik" << s.sep
         << "fraction_Evidence_by_mean" << s.sep << "fraction_Evidence_by_var"
@@ -1983,7 +1989,7 @@ template <class Parameters> struct cuevi_mcmc {
   friend void report_title(save_Parameter<Parameters> &s, cuevi_mcmc const &,
                            ...) {
 
-    s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
+    s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep<< "iter_time" << s.sep
         << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep
         << "id_walker" << s.sep << "i_par" << s.sep << "par_value"
         << "\n";
@@ -2341,8 +2347,8 @@ auto bayesian_linear_regression_calculate_mean_logLik(
   return mean_logLi;
 }
 
-template <class FunctionTable, class Parameters>
-void report(FunctionTable &&, std::size_t iter, save_likelihood<Parameters> &s,
+template <class FunctionTable, class Duration,class Parameters>
+void report(FunctionTable &&, std::size_t iter, const Duration& dur, save_likelihood<Parameters> &s,
             cuevi_mcmc<Parameters> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
@@ -2352,7 +2358,7 @@ void report(FunctionTable &&, std::size_t iter, save_likelihood<Parameters> &s,
                ++i_walker)
 
             s.f << size(data.beta) << s.sep << size(data.beta[i_frac]) << s.sep
-                << iter << s.sep << data.nsamples[i_frac] << s.sep
+                << iter << s.sep << dur << s.sep << data.nsamples[i_frac] << s.sep
                 << data.beta[i_frac][i_beta] << s.sep << i_walker << s.sep
                 << data.i_walkers[i_walker][i_frac][i_beta] << s.sep
                 << data.walkers[i_walker][i_frac][i_beta].logPa << s.sep
@@ -2360,8 +2366,8 @@ void report(FunctionTable &&, std::size_t iter, save_likelihood<Parameters> &s,
                 << data.walkers[i_walker][i_frac][i_beta].logL << "\n";
 }
 
-template <class FunctionTable, class Parameters>
-void report(FunctionTable &&, std::size_t iter, save_Parameter<Parameters> &s,
+template <class FunctionTable,class Duration, class Parameters>
+void report(FunctionTable &&, std::size_t iter, const Duration& dur,save_Parameter<Parameters> &s,
             cuevi_mcmc<Parameters> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
@@ -2374,7 +2380,7 @@ void report(FunctionTable &&, std::size_t iter, save_Parameter<Parameters> &s,
                  ++i_par)
 
               s.f << size(data.beta) << s.sep << size(data.beta[i_frac])
-                  << s.sep << iter << s.sep << data.nsamples[i_frac] << s.sep
+                    << s.sep << iter <<s.sep << dur<<s.sep<<data.nsamples[i_frac] << s.sep
                   << data.beta[i_frac][i_beta] << s.sep << i_walker << s.sep
                   << data.i_walkers[i_walker][i_frac][i_beta] << s.sep << i_par
                   << s.sep
@@ -2459,8 +2465,8 @@ void report_model(save_Evidence &, Prior const &, Likelihood const &,
                   by_fraction<by_beta<double>> const &) {}
 } // namespace deprecated
 namespace deprecated {
-template <class FunctionTable, class Parameters, class T>
-void report(FunctionTable &&, std::size_t iter, save_Evidence &s,
+template <class FunctionTable, class Duration, class Parameters, class T>
+void report(FunctionTable &&, std::size_t iter,const Duration& dur, save_Evidence &s,
             cuevi_mcmc<Parameters> const &data, T const &...) {
   if (iter % s.save_every == 0) {
 
@@ -2481,7 +2487,7 @@ void report(FunctionTable &&, std::size_t iter, save_Evidence &s,
       for (std::size_t i_beta = 0; i_beta < size(data.beta[i_frac]); ++i_beta)
         if (data.beta[i_frac].back() == 1) {
           s.f << size(data.beta) << s.sep << size(data.beta[i_frac]) << s.sep
-              << iter << s.sep << data.nsamples[i_frac] << s.sep
+              << iter << s.sep << dur<<s.sep<< data.nsamples[i_frac] << s.sep
               << data.beta[i_frac][i_beta] << s.sep << meanPrior[i_frac][i_beta]
               << s.sep << meanLik[i_frac][i_beta] << s.sep
               << varLik[i_frac][i_beta] << s.sep << partial_Evidence1[i_frac]
@@ -2491,11 +2497,11 @@ void report(FunctionTable &&, std::size_t iter, save_Evidence &s,
   }
 }
 
-template <class FunctionTable, class Parameters, class... saving, class... T>
-void report_all(FunctionTable &&f, std::size_t iter,
+template <class FunctionTable, class Duration,class Parameters, class... saving, class... T>
+void report_all(FunctionTable &&f, std::size_t iter,const Duration& dur,
                 save_mcmc<Parameters, saving...> &s,
                 cuevi_mcmc<Parameters> const &data, T const &...ts) {
-  (report(f, iter, static_cast<saving &>(s), data, ts...), ..., 1);
+  (report(f, iter,dur, static_cast<saving &>(s), data, ts...), ..., 1);
 }
 
 template <class Parameters>
@@ -3869,6 +3875,7 @@ auto evidence(FunctionTable &&ff,
     mcmc_run.first.we_reach_final_temperature();
 
   std::size_t iter = 0;
+  const auto start = std::chrono::high_resolution_clock::now();
   auto &rep = cue.reporter();
   report_title(rep, current, prior, lik, ys, xs);
   report_model(rep, prior, lik, ys, xs, beta_final);
@@ -3896,8 +3903,10 @@ auto evidence(FunctionTable &&ff,
           lik, ys, xs, cue.thermo_jumps_every());
 
       // check_sanity(iter,current);
-
-      report_all(f, iter, rep, current, prior, lik, ys, xs);
+      
+      const auto end = std::chrono::high_resolution_clock::now();
+      auto dur =std::chrono::duration<double>( end - start);
+      report_all(f, iter, dur,rep, current, prior, lik, ys, xs);
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
     if ((current.nsamples.back() < size(ys[size(ys) - 1])) ||
