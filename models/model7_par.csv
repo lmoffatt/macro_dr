@@ -17,5 +17,7 @@ model7,14,RG_1,mean,0
 model7,15,Gating_Current,mean,0
 model7,16,Inactivation_rate,mean,0
 model7,17,Current_Noise,mean,-3
-model7,18,Current_Baseline,mean,0
-model7,19,Num_ch,mean,3.698970004336019
+model7,18,Pink_Noise,mean,0.6989700043360189
+model7,19,Proportional_Noise,mean,-2
+model7,20,Current_Baseline,mean,0
+model7,21,Num_ch,mean,3.698970004336019

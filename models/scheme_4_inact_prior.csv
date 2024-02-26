@@ -16,9 +16,11 @@ scheme_4_inact,13,desensitization_off_0,mean,1.897627091290441
 scheme_4_inact,14,desensitization_on_1,mean,0.6560982020128319
 scheme_4_inact,15,unitary_current,mean,0
 scheme_4_inact,16,Current_Noise,mean,-3
-scheme_4_inact,17,Current_Baseline,mean,0
-scheme_4_inact,18,Num_ch_mean,mean,3.698970004336019
-scheme_4_inact,19,inactivation_rate,mean,-5
+scheme_4_inact,17,Pink_Noise,mean,0.6989700043360189
+scheme_4_inact,18,Proportional_Noise,mean,-2
+scheme_4_inact,19,Current_Baseline,mean,0
+scheme_4_inact,20,Num_ch_mean,mean,3.698970004336019
+scheme_4_inact,21,inactivation_rate,mean,-5
 scheme_4_inact,0,kon_0,covar,2
 scheme_4_inact,1,koff_0,covar,2
 scheme_4_inact,2,kon_1,covar,2
@@ -36,6 +38,8 @@ scheme_4_inact,13,desensitization_off_0,covar,2
 scheme_4_inact,14,desensitization_on_1,covar,2
 scheme_4_inact,15,unitary_current,covar,2
 scheme_4_inact,16,Current_Noise,covar,2
-scheme_4_inact,17,Current_Baseline,covar,2
-scheme_4_inact,18,Num_ch_mean,covar,2
-scheme_4_inact,19,inactivation_rate,covar,2
+scheme_4_inact,17,Pink_Noise,covar,2
+scheme_4_inact,18,Proportional_Noise,covar,2
+scheme_4_inact,19,Current_Baseline,covar,2
+scheme_4_inact,20,Num_ch_mean,covar,2
+scheme_4_inact,21,inactivation_rate,covar,2

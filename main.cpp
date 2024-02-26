@@ -243,7 +243,7 @@ fraction_algo, std::string model,std::size_t i_seed )
   std::size_t max_iter_equilibrium = 50000,
   std::string path = "",
   double n_points_per_decade = 1,
-  std::size_t t_min_number_of_samples = 20,
+  bool average_the_ATP_evolution = true,
   std::string filename = "haha",
   std::size_t thermo_jumps_every = 10)   */
 
@@ -256,7 +256,7 @@ fraction_algo, std::string model,std::size_t i_seed )
           "number_trials_until_give_up", "stops_at", "medium_beta",
           "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
           "n_points_per_decade_beta_high", "n_points_per_decade_beta_low",
-          "t_min_number_of_samples", "filename", "thermo_jumps_every"));
+          "average_the_ATP_evolution", "filename", "thermo_jumps_every"));
 
   /**
    * set_ThermoAlgorithm(std::size_t num_scouts_per_ensemble,

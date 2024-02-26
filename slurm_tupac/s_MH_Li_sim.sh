@@ -34,7 +34,7 @@
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/v7/
+export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/v8/
 
 # Lanzar el programa
 srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/MH_Li_sim.sh

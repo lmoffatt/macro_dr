@@ -165,7 +165,7 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
   auto names_model = std::vector<std::string>{"kon", "koff", "gating_on",
                                               "gating_off", "unitary_current"};
   auto names_other = std::vector<std::string>{
-      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
 
   std::size_t N = 5ul;
 
@@ -185,7 +185,7 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      8, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 1, 5000});
+      10, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 5, 1e-2, 1, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -202,11 +202,15 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
         auto v_unitary_current = p[4] * -1.0;
         auto Npar = 5ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
         //  auto v_Num_ch_mean=p[Npar+2];
         //  auto v_std_log_Num_ch=p[Npar+3];
 
-        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+        
+        
 
         auto N = N_St(5);
         return build<Patch_Model>(
@@ -221,7 +225,12 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
                 var::build_<Matrix<double>>(1, N(), {{0, 0}}, {1.0})),
             build<g>(var::build_<Matrix<double>>(N(), 1, {{4, 0}},
                                                  {v_unitary_current})),
-            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<N_Ch_mean>(v_N0),
+            
+            build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
+            
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
             min_P(1e-7), Probability_error_tolerance(1e-2),
@@ -237,7 +246,7 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
       "kon",       "koff",       "flipping_on",    "flipping_off",
       "gating_on", "gating_off", "unitary_current"};
   auto names_other = std::vector<std::string>{
-      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
 
   std::size_t N = 6ul;
 
@@ -259,8 +268,8 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      10, 1,
-      std::vector<double>{7.90, 121, 632, 42.1, 382, 1100, 1, 1e-3, 1, 5000});
+      12, 1,
+      std::vector<double>{7.90, 121, 632, 42.1, 382, 1100, 1, 1e-3, 5, 1e-2, 1, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -279,11 +288,13 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
         auto v_unitary_current = p[6] * -1.0;
         auto Npar = 7ul;
             auto v_curr_noise = p[Npar];
-            auto v_baseline = logp()[Npar + 1];
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+            auto v_baseline = logp()[Npar + 3];
             //  auto v_Num_ch_mean=p[Npar+2];
             //  auto v_std_log_Num_ch=p[Npar+3];
             
-            auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+            auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
             
             return build<Patch_Model>(
                 N_St(N),
@@ -296,7 +307,10 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
                     var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
                 build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}},
                                                      {v_unitary_current})),
-                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<N_Ch_mean>(v_N0),
+                build<Current_Noise>(v_curr_noise),
+                build<Pink_Noise>(v_pink_noise),
+                build<Proportional_Noise>(v_prop_noise),
                 build<Current_Baseline>(v_baseline),
                 N_Ch_mean_time_segment_duration(121),
                 Binomial_magical_number(5.0), min_P(1e-7),
@@ -323,7 +337,7 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                                                 "desensitization_on_1",
                                                 "unitary_current"};
     auto names_other = std::vector<std::string>{
-                                                "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+                                                "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
     
     std::size_t N = 7ul;
     
@@ -355,7 +369,7 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
     auto p_k_MH2007 =
         std::vector<double>{18, 0.017, 16.8,  175,   8.42,  4541, 
                             24.08,   29,  3198, 1189, 0.298, 1936, 5.9e7};
-    auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+    auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
     
     p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
     auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
@@ -388,11 +402,13 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
             auto v_unitary_current = p[13] * -1.0;
             auto Npar = 14ul;
             auto v_curr_noise = p[Npar];
-            auto v_baseline = logp()[Npar + 1];
+            auto v_pink_noise = p[Npar+1];
+            auto v_prop_noise = p[Npar+2];
+            auto v_baseline = logp()[Npar + 3];
             //  auto v_Num_ch_mean=p[Npar+2];
             //  auto v_std_log_Num_ch=p[Npar+3];
             
-            auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+            auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
             
             return build<Patch_Model>(
                 N_St(N),
@@ -415,7 +431,10 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                     var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
                 build<g>(var::build_<Matrix<double>>(N, 1, {{4, 0}, {5, 0}},
                                                      {v_unitary_current, v_unitary_current})),
-                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<N_Ch_mean>(v_N0),
+                build<Current_Noise>(v_curr_noise),
+                build<Pink_Noise>(v_pink_noise),
+                build<Proportional_Noise>(v_prop_noise),
                 build<Current_Baseline>(v_baseline),
                 N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
                 min_P(1e-7), Probability_error_tolerance(1e-2),
@@ -444,7 +463,7 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
                                               "desensitization_on_1",
                                               "unitary_current"};
   auto names_other = std::vector<std::string>{
-      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
 
   std::size_t N = 8ul;
 
@@ -478,7 +497,7 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
   auto p_k_MH2007 =
       std::vector<double>{15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
                           540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53};
-  auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
 
   p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
@@ -513,11 +532,12 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
         auto v_unitary_current = p[15] * -1.0;
         auto Npar = 16ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
         //  auto v_Num_ch_mean=p[Npar+2];
         //  auto v_std_log_Num_ch=p[Npar+3];
-
-        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
 
         return build<Patch_Model>(
             N_St(N),
@@ -543,7 +563,10 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
                 var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
             build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}, {6, 0}},
                                                  {v_unitary_current, v_unitary_current})),
-            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<N_Ch_mean>(v_N0),
+            build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
             min_P(1e-7), Probability_error_tolerance(1e-2),
@@ -568,7 +591,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
                                               "inactivation_rate",
                                               "unitary_current"};
   auto names_other = std::vector<std::string>{
-      "Current_Noise", "Current_Baseline", "Num_ch_mean"};
+      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
 
   std::size_t N = 6ul;
 
@@ -589,7 +612,7 @@ static auto model00_7 = Model0::Model("model00_7", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 1, 5000});
+      11, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 5, 1e-2, 1, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -607,12 +630,11 @@ static auto model00_7 = Model0::Model("model00_7", []() {
         auto v_unitary_current = p[5] * -1.0;
         auto Npar = 6ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
-        //  auto v_Num_ch_mean=p[Npar+2];
-        //  auto v_std_log_Num_ch=p[Npar+3];
-
-        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
-
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+        
         return build<Patch_Model>(
             N_St(6),
             build<Q0>(var::build_<Matrix<double>>(
@@ -625,7 +647,10 @@ static auto model00_7 = Model0::Model("model00_7", []() {
                 var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
             build<g>(var::build_<Matrix<double>>(6, 1, {{4, 0}},
                                                  {v_unitary_current})),
-            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<N_Ch_mean>(v_N0),
+            build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(12100),
             Binomial_magical_number(5.0), min_P(1e-7),
@@ -725,7 +750,7 @@ static auto model00 = Model0::Model("model00", []() {
                                               "inactivation_rate",
                                               "unitary_current"};
   auto names_other = std::vector<std::string>{
-      "Current_Noise", "Current_Baseline", // "Num_ch_mean", "Num_ch_stddev",
+      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", // "Num_ch_mean", "Num_ch_stddev",
       "Num_ch_0",      "Num_ch_1",         "Num_ch_2", "Num_ch_3",
       "Num_ch_4",      "Num_ch_5",         "Num_ch_6"};
 
@@ -769,11 +794,13 @@ static auto model00 = Model0::Model("model00", []() {
         auto v_unitary_current = p[5] * -1.0;
         auto Npar = 6ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
         //  auto v_Num_ch_mean=p[Npar+2];
         //  auto v_std_log_Num_ch=p[Npar+3];
 
-        auto Npar2 = Npar + 1;
+        auto Npar2 = Npar + 3;
         auto v_N0 = p[std::pair(Npar2 + 1, Npar2 + 7)];
         return build<Patch_Model>(
             N_St(6),
@@ -787,7 +814,10 @@ static auto model00 = Model0::Model("model00", []() {
                 var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
             build<g>(var::build_<Matrix<double>>(6, 1, {{4, 0}},
                                                  {v_unitary_current})),
-            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<N_Ch_mean>(v_N0),
+            build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(12100),
             Binomial_magical_number(5.0), min_P(1e-7),
@@ -908,7 +938,7 @@ static auto model01 = Model0::Model("model01", []() {
                                               "inactivation_rate",
                                               "unitary_current"};
   auto names_other =
-      std::vector<std::string>{"Current_Noise", "Current_Baseline", "Num_ch"};
+      std::vector<std::string>{"Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch"};
 
   std::size_t N = 6ul;
 
@@ -931,7 +961,7 @@ static auto model01 = Model0::Model("model01", []() {
 
   names_model.insert(names_model.end(), names_other.begin(), names_other.end());
   auto p = Matrix<double>(
-      9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 1, 5000});
+      11, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 5, 1e-2, 1, 5000});
 
   auto logp = apply([](auto x) { return std::log10(x); }, p);
 
@@ -949,8 +979,10 @@ static auto model01 = Model0::Model("model01", []() {
         auto v_unitary_current = p[5] * -1.0;
         auto Npar = 6ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
-        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
         return build<Patch_Model>(
             N_St(6),
             build<Q0>(var::build_<Matrix<double>>(
@@ -963,7 +995,10 @@ static auto model01 = Model0::Model("model01", []() {
                 var::build_<Matrix<double>>(1, 6, {{0, 0}}, {1.0})),
             build<g>(var::build_<Matrix<double>>(6, 1, {{4, 0}},
                                                  {v_unitary_current})),
-            build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+            build<N_Ch_mean>(v_N0),
+            build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(12100),
             Binomial_magical_number(5.0), min_P(1e-7),
@@ -993,7 +1028,7 @@ static auto model4 = Model0::Model("model4", []() {
                                               "k08",
                                               "unitary_current"};
   auto names_other =
-      std::vector<std::string>{"Current_Noise", "Current_Baseline", "Num_ch"};
+      std::vector<std::string>{"Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch"};
 
   std::size_t N = 9ul;
 
@@ -1034,7 +1069,7 @@ static auto model4 = Model0::Model("model4", []() {
   auto p_k_MH2007 =
       std::vector<double>{15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
                           540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53, 1e-5};
-  auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
@@ -1071,9 +1106,11 @@ static auto model4 = Model0::Model("model4", []() {
         auto v_g = p[16] * -1.0;
         auto Npar = 17ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
-        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
-
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+        
         return build<Patch_Model>(
             N_St(Nst),
             build<Q0>(var::build_<Matrix<double>>(Nst, Nst,
@@ -1101,8 +1138,10 @@ static auto model4 = Model0::Model("model4", []() {
             build<g>(var::build_<Matrix<double>>(Nst, 1, {{5, 0}, {6, 0}},
                                                  {v_g, v_g})),
             build<N_Ch_mean>(v_N0),
-
+            
             build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(121000),
             Binomial_magical_number(5.0), min_P(1e-14),
@@ -1132,7 +1171,7 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
                                               "k08",
                                               "unitary_current"};
   auto names_other =
-      std::vector<std::string>{"Num_ch", "Current_Noise", "Current_Baseline"};
+      std::vector<std::string>{"Num_ch", "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline"};
 
   std::size_t N = 9ul;
 
@@ -1170,7 +1209,7 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
   p_kinetics[12] = 100;
   p_kinetics[15] = 1e-3;
 
-  auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1204,8 +1243,10 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
         auto v_g = logp()[16];
         auto Npar = 17ul;
         auto v_curr_noise = p[Npar];
-        auto v_baseline = logp()[Npar + 1];
-        auto v_N0 = p[std::pair(Npar + 2, Npar + 2)];
+        auto v_pink_noise = p[Npar+1];
+        auto v_prop_noise = p[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
 
         return build<Patch_Model>(
             N_St(Nst),
@@ -1234,8 +1275,10 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
             build<g>(var::build_<Matrix<double>>(Nst, 1, {{5, 0}, {6, 0}},
                                                  {v_g, v_g})),
             build<N_Ch_mean>(v_N0),
-
+            
             build<Current_Noise>(v_curr_noise),
+            build<Pink_Noise>(v_pink_noise),
+            build<Proportional_Noise>(v_prop_noise),
             build<Current_Baseline>(v_baseline),
             N_Ch_mean_time_segment_duration(121000),
             Binomial_magical_number(5.0), min_P(1e-7),
@@ -1291,11 +1334,11 @@ static auto model6 = Allost1::Model("model6", []() {
       "BR_1",       "BG",          "BG_0",       "BG_1",
       "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
   auto names_other = std::vector<std::string>{
-      "Inactivation_rate", "Current_Noise", "Current_Baseline", "Num_ch"};
+      "Inactivation_rate", "Current_Noise","Pink_Noise","Proportional_Noise","Current_Baseline", "Num_ch"};
 
   auto p_kinetics = std::vector<double>{
       10, 10000, 100, 10000, 1, 10000, 10, 1, 1, 10, 1, 1, 10, 1, 1, 1};
-  auto p_other = std::vector<double>{1e-3, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1e-3, 1e-3, 5, 1e-2, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1344,8 +1387,10 @@ static auto model6 = Allost1::Model("model6", []() {
 
         auto v_Inac_rate = p()[Npar];
         auto v_curr_noise = p()[Npar + 1];
-        auto v_baseline = logp()[Npar + 2];
-        auto v_N0 = p()[std::pair{Npar + 3, Npar + 3}];
+        auto v_pink_noise = p()[Npar+2];
+        auto v_prop_noise = p()[Npar+3];
+        auto v_baseline = logp()[Npar + 4];
+        auto v_N0 = p()[std::pair{Npar + 5, Npar + 5}];
         auto Nst = get<N_St>(m());
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -1354,8 +1399,11 @@ static auto model6 = Allost1::Model("model6", []() {
               build<Patch_Model>(
                   N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
                   std::move(v_P_initial.value()), std::move(a_g),
-                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                  build<Current_Baseline>(v_baseline),
+                  build<N_Ch_mean>(v_N0),
+                    build<Current_Noise>(v_curr_noise),
+                    build<Pink_Noise>(v_pink_noise),
+                    build<Proportional_Noise>(v_prop_noise),
+                    build<Current_Baseline>(v_baseline),
                   N_Ch_mean_time_segment_duration(120000),
                   Binomial_magical_number(5.0), min_P(1e-7),
                   Probability_error_tolerance(1e-2),
@@ -1414,7 +1462,7 @@ static auto model6_no_inactivation =
           "Gating_on",  "Gating_off",  "BR",         "BR_0",
           "BR_1",       "BG",          "BG_0",       "BG_1",
           "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
-      auto names_other = std::vector<std::string>{"Current_Noise",
+      auto names_other = std::vector<std::string>{"Current_Noise","Pink_Noise","Proportional_Noise",
                                                   "Current_Baseline", "Num_ch"};
 
       auto p_kinetics = std::vector<double>{
@@ -1472,8 +1520,10 @@ static auto model6_no_inactivation =
 
             // auto v_Inac_rate = p()[Npar];
             auto v_curr_noise = p()[Npar];
-            auto v_baseline = logp()[Npar + 1];
-            auto v_N0 = p()[std::pair{Npar + 2, Npar + 2}];
+            auto v_pink_noise = p()[Npar+1];
+            auto v_prop_noise = p()[Npar+2];
+            auto v_baseline = logp()[Npar + 3];
+            auto v_N0 = p()[std::pair{Npar + 4, Npar + 4}];
             auto Nst = get<N_St>(m());
             auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -1482,8 +1532,11 @@ static auto model6_no_inactivation =
               return build<Patch_Model>(
                   N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
                   std::move(v_P_initial.value()), std::move(a_g),
-                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                  build<Current_Baseline>(v_baseline),
+                  build<N_Ch_mean>(v_N0),
+                    build<Current_Noise>(v_curr_noise),
+                    build<Pink_Noise>(v_pink_noise),
+                    build<Proportional_Noise>(v_prop_noise),
+                    build<Current_Baseline>(v_baseline),
                   N_Ch_mean_time_segment_duration(120000),
                   Binomial_magical_number(5.0), min_P(1e-7),
                   Probability_error_tolerance(1e-2),
@@ -1557,13 +1610,13 @@ static auto model6_Eff_no_inactivation =
                                                 "RG_Gon",
                                                 "Gating_Current"};
 
-      auto names_other = std::vector<std::string>{"Current_Noise",
+      auto names_other = std::vector<std::string>{"Current_Noise","Pink_Noise","Proportional_Noise",
                                                   "Current_Baseline", "Num_ch"};
 
       auto p_kinetics = std::vector<double>{
           9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
           33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
-      auto p_other = std::vector<double>{1e-3, 1, 4800};
+      auto p_other = std::vector<double>{1e-3, 5, 1e-2, 1, 4800};
 
       p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
       auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1644,8 +1697,10 @@ static auto model6_Eff_no_inactivation =
 
             // auto v_Inac_rate = p()[Npar];
             auto v_curr_noise = tr_p()[Npar];
-            auto v_baseline = logp()[Npar + 1];
-            auto v_N0 = tr_p()[std::pair{Npar + 2, Npar + 2}];
+            auto v_pink_noise = tr_p()[Npar+1];
+            auto v_prop_noise = tr_p()[Npar+2];
+            auto v_baseline = logp()[Npar + 3];
+            auto v_N0 = tr_p()[std::pair{Npar + 4, Npar + 4}];
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -1655,8 +1710,11 @@ static auto model6_Eff_no_inactivation =
               return build<Patch_Model>(
                   N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
                   std::move(Maybe_v_P_initial.value()), std::move(a_g),
-                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                  build<Current_Baseline>(v_baseline),
+                  build<N_Ch_mean>(v_N0),
+                    build<Current_Noise>(v_curr_noise),
+                    build<Pink_Noise>(v_pink_noise),
+                    build<Proportional_Noise>(v_prop_noise),
+                    build<Current_Baseline>(v_baseline),
                   N_Ch_mean_time_segment_duration(120000),
                   Binomial_magical_number(5.0), min_P(1e-7),
                   Probability_error_tolerance(1e-2),
@@ -1748,12 +1806,12 @@ static auto model6_Eff_std = Allost1::Model("model6_Eff_std", []() {
                                             "Gating_Current"};
 
   auto names_other =
-      std::vector<std::string>{"Current_Noise", "Current_Baseline", "Num_ch"};
+      std::vector<std::string>{"Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch"};
 
   auto p_kinetics =
       std::vector<double>{9.28, 1871, 3875, 1.07, 914, 776, 65.1 * 1.15, 1.15,
                           33.3, 1.77, 0.77, 1.77, 123, 123, 635,         1};
-  auto p_other = std::vector<double>{1e-3, 1, 4800};
+  auto p_other = std::vector<double>{1e-3,  5, 1e-2,1, 4800};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -1834,8 +1892,10 @@ static auto model6_Eff_std = Allost1::Model("model6_Eff_std", []() {
 
         // auto v_Inac_rate = p()[Npar];
         auto v_curr_noise = tr_p()[Npar];
-        auto v_baseline = logp()[Npar + 1];
-        auto v_N0 = tr_p()[std::pair{Npar + 2, Npar + 2}];
+        auto v_pink_noise = tr_p()[Npar+1];
+        auto v_prop_noise = tr_p()[Npar+2];
+        auto v_baseline = logp()[Npar + 3];
+        auto v_N0 = tr_p()[std::pair{Npar + 4, Npar + 4}];
         auto Nst = get<N_St>(m());
         auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -1845,8 +1905,11 @@ static auto model6_Eff_std = Allost1::Model("model6_Eff_std", []() {
           return build<Patch_Model>(
               N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
               std::move(Maybe_v_P_initial.value()), std::move(a_g),
-              build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-              build<Current_Baseline>(v_baseline),
+              build<N_Ch_mean>(v_N0),
+                build<Current_Noise>(v_curr_noise),
+                build<Pink_Noise>(v_pink_noise),
+                build<Proportional_Noise>(v_prop_noise),
+                build<Current_Baseline>(v_baseline),
               N_Ch_mean_time_segment_duration(120000),
               Binomial_magical_number(5.0), min_P(1e-7),
               Probability_error_tolerance(1e-2),
@@ -1901,11 +1964,11 @@ static auto model7 = Allost1::Model("model7", []() {
       "BR_1",       "BG",          "BG_0",       "BG_1",
       "RG",         "RG_0",        "RG_1",       "Gating_Current"}; //--> 8
   auto names_other = std::vector<std::string>{
-      "Inactivation_rate", "Current_Noise", "Current_Baseline", "Num_ch"};
+      "Inactivation_rate", "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch"};
 
   auto p_kinetics = std::vector<double>{
       10, 10000, 100, 10000, 1, 10000, 10, 1, 1, 10, 1, 1, 10, 1, 1, 1};
-  auto p_other = std::vector<double>{1, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
 
@@ -1955,8 +2018,10 @@ static auto model7 = Allost1::Model("model7", []() {
 
         auto v_Inac_rate = p()[Npar];
         auto v_curr_noise = p()[Npar + 1];
-        auto v_baseline = logp()[Npar + 2];
-        auto v_N0 = p[std::pair(Npar + 3, Npar + 3)];
+        auto v_pink_noise = p()[Npar+2];
+        auto v_prop_noise = p()[Npar+3];
+        auto v_baseline = logp()[Npar + 4];
+        auto v_N0 = p[std::pair(Npar + 5, Npar + 5)];
         auto Nst = get<N_St>(m());
         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
@@ -2015,11 +2080,11 @@ static auto model8 = Allost1::Model("model8", []() {
           "RBR_1",       "RBR_2",       "Rocking_Current_factor"}; //--> 8
   auto names_other =
       std::vector<std::string>{"Inactivation_rate", "Leaking_current",
-                               "Current_Noise", "Current_Baseline", "Num_ch"};
+                               "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch"};
 
   auto p_kinetics =
       std::vector<double>{10, 10000, 100, 10000, 100, 1.0, 1e-2, 1.0, 100};
-  auto p_other = std::vector<double>{1e-4, 0.01, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1e-4, 0.01, 1e-3, 5, 1e-2, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -2058,8 +2123,10 @@ static auto model8 = Allost1::Model("model8", []() {
         auto v_Inac_rate = p()[Npar];
         auto v_leaking_current = p()[Npar + 1];
         auto v_curr_noise = p()[Npar + 2];
-        auto v_baseline = logp()[Npar + 3];
-        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+        auto v_pink_noise = p()[Npar+3];
+        auto v_prop_noise = p()[Npar+4];
+        auto v_baseline = logp()[Npar + 5];
+        auto v_N0 = p[std::pair(Npar + 6, Npar + 6)];
 
         auto v_g = build<g>(apply(
             [&v_leaking_current](const auto &x) {
@@ -2075,8 +2142,11 @@ static auto model8 = Allost1::Model("model8", []() {
               build<Patch_Model>(
                   N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
                   std::move(v_P_initial.value()), std::move(v_g),
-                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
-                  build<Current_Baseline>(v_baseline),
+                  build<N_Ch_mean>(v_N0),
+                    build<Current_Noise>(v_curr_noise),
+                    build<Pink_Noise>(v_pink_noise),
+                    build<Proportional_Noise>(v_prop_noise),
+                    build<Current_Baseline>(v_baseline),
                   N_Ch_mean_time_segment_duration(120000),
                   Binomial_magical_number(5.0), min_P(1e-7),
                   Probability_error_tolerance(1e-2),
@@ -2120,11 +2190,11 @@ static auto model9 = Allost1::Model("model9", []() {
                                "RB_1",       "Rocking_Current_factor"}; //--> 8
   auto names_other =
       std::vector<std::string>{"Inactivation_rate", "leaking_current",
-                               "Current_Noise", "Current_Baseline", "Num_ch"};
+                               "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch"};
 
   auto p_kinetics =
       std::vector<double>{10, 10000, 100, 10000, 100, 1.0, 1e-2, 100};
-  auto p_other = std::vector<double>{1e-3, 1e-2, 1e-3, 1, 5000};
+  auto p_other = std::vector<double>{1e-3, 1e-2, 1e-3, 5, 1e-2, 1, 5000};
 
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
@@ -2160,8 +2230,10 @@ static auto model9 = Allost1::Model("model9", []() {
         auto v_Inac_rate = p()[Npar];
         auto v_leaking_current = p()[Npar + 1];
         auto v_curr_noise = p()[Npar + 2];
-        auto v_baseline = logp()[Npar + 3];
-        auto v_N0 = p()[std::pair(Npar + 4, Npar + 4)];
+        auto v_pink_noise = p()[Npar+3];
+        auto v_prop_noise = p()[Npar+4];
+        auto v_baseline = logp()[Npar + 5];
+        auto v_N0 = p()[std::pair(Npar + 6, Npar + 6)];
 
         auto v_g = build<g>(apply(
             [&v_leaking_current](const auto &x) {
@@ -2177,7 +2249,10 @@ static auto model9 = Allost1::Model("model9", []() {
               build<Patch_Model>(
                   N_St(get<N_St>(m())), std::move(a_Q0), std::move(a_Qa),
                   std::move(v_P_initial.value()), std::move(v_g),
-                  build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                  build<N_Ch_mean>(v_N0),
+                    build<Current_Noise>(v_curr_noise),
+                    build<Pink_Noise>(v_pink_noise),
+                    build<Proportional_Noise>(v_prop_noise),
                   build<Current_Baseline>(v_baseline),
                   N_Ch_mean_time_segment_duration(120000),
                   Binomial_magical_number(5.0), min_P(1e-7),

@@ -17,7 +17,7 @@ inline auto set_CueviAlgorithm(
     bool random_jumps , std::size_t max_iter_equilibrium ,
     std::string path , double n_points_per_decade_beta_high ,
     double n_points_per_decade_beta_low ,
-    std::size_t t_min_number_of_samples , std::string filename ,
+    bool average_the_ATP_evolution , std::string filename ,
     std::size_t thermo_jumps_every ) {
     using namespace macrodr;
     
@@ -27,7 +27,7 @@ inline auto set_CueviAlgorithm(
                      Save_Parameter_every(num_scouts_per_ensemble),
                      Save_Predictions_every(num_scouts_per_ensemble * 20)));
     
-    return std::tuple(path, filename, t_min_number_of_samples,
+    return std::tuple(path, filename, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high,n_points_per_decade_beta_low, medium_beta, stops_at, includes_zero,
@@ -271,7 +271,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
              &algorithm](auto model0ptr) {
                 auto &model0 = *model0ptr;
                 
-                auto [path, filename, t_min_number_of_samples,
+                auto [path, filename, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
                       n_points_per_decade_beta_low,medium_beta, stops_at, includes_zero, saving_itervals,
@@ -433,7 +433,7 @@ inline void calc_fraction_evidence(
                 
                 auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",", ys);
                 
-               auto [path, file_name, t_min_number_of_samples,
+               auto [path, file_name, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
                       n_points_per_decade_beta_low,
@@ -468,7 +468,7 @@ inline void calc_fraction_evidence(
                                 Save_Evidence_every(num_scouts_per_ensemble),
                                 Save_Likelihood_every(num_scouts_per_ensemble),
                                 Save_Parameter_every(num_scouts_per_ensemble),
-                                Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                                Save_Predictions_every(num_scouts_per_ensemble *20)));
                             
                             auto cbc = new_cuevi_Model_already_fraction_by_iteration<MyModel>(
                                 path, filename, 
@@ -532,7 +532,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                 
                 auto [min_fraction, n_points_per_decade_fraction, segments] =
                     std::move(fraction_algo);
-                auto [path, file_name, t_min_number_of_samples,
+                auto [path, file_name, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
                       n_points_per_decade_beta_low,
@@ -576,7 +576,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 Save_Predictions_every(num_scouts_per_ensemble * 20)));
                             
                             auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-                                path, filename, t_segments_used, t_min_number_of_samples,
+                                path, filename, t_segments_used, average_the_ATP_evolution,
                                 num_scouts_per_ensemble, number_trials_until_give_up,
                                 min_fraction, thermo_jumps_every, max_iter_equilibrium,
                                 n_points_per_decade_beta_low, n_points_per_decade_fraction,
@@ -631,7 +631,7 @@ inline void calc_evidence_continuation(
                 myseed = calc_seed(myseed);
                 mt_64i mt(myseed);
                 /*
-           * path, filename, t_min_number_of_samples,
+           * path, filename, average_the_ATP_evolution,
                     num_scouts_per_ensemble, number_trials_until_give_up,
                     thermo_jumps_every, max_iter_equilibrium,
                     n_points_per_decade, medium_beta, stops_at, includes_zero,
@@ -640,7 +640,7 @@ inline void calc_evidence_continuation(
                 auto [min_fraction, n_points_per_decade_fraction, segments] =
                     std::move(fraction_algo);
                 
-                auto [path, file_name, t_min_number_of_samples,
+                auto [path, file_name, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
                       n_points_per_decade_beta_low,
@@ -679,7 +679,7 @@ inline void calc_evidence_continuation(
                         
                         std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
                         
-                        std::size_t t_min_number_of_samples = 20;
+                        bool average_the_ATP_evolution = true;
                         
                         /**
                * @brief cbc cumulative evidence algorithm, ends using
@@ -695,10 +695,10 @@ inline void calc_evidence_continuation(
                             Save_Evidence_every(num_scouts_per_ensemble),
                             Save_Likelihood_every(num_scouts_per_ensemble),
                             Save_Parameter_every(num_scouts_per_ensemble),
-                            Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                            Save_Predictions_every(num_scouts_per_ensemble * 20 )));
                         
                         auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-                            path, filename, t_segments_used, t_min_number_of_samples,
+                            path, filename, t_segments_used, average_the_ATP_evolution,
                             num_scouts_per_ensemble, number_trials_until_give_up,
                             min_fraction, thermo_jumps_every, max_iter_equilibrium,
                             n_points_per_decade_beta_low, n_points_per_decade_fraction,

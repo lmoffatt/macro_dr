@@ -6,5 +6,7 @@ model00_7,3,gating_off,mean,1.698970004336019
 model00_7,4,inactivation_rate,mean,-5
 model00_7,5,unitary_current,mean,0
 model00_7,6,Current_Noise,mean,-3
-model00_7,7,Current_Baseline,mean,0
-model00_7,8,Num_ch_mean,mean,3.698970004336019
+model00_7,7,Pink_Noise,mean,0.6989700043360189
+model00_7,8,Proportional_Noise,mean,-2
+model00_7,9,Current_Baseline,mean,0
+model00_7,10,Num_ch_mean,mean,3.698970004336019

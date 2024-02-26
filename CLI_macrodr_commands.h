@@ -413,7 +413,7 @@ inline auto calc_evidence_old(
 
     std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
 
-    std::size_t t_min_number_of_samples = 20;
+    bool average_the_ATP_evolution = true;
 
     /**
      * @brief cbc cumulative evidence algorithm, ends using convergence
@@ -438,10 +438,10 @@ inline auto calc_evidence_old(
         Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),
                      Save_Likelihood_every(num_scouts_per_ensemble),
                      Save_Parameter_every(num_scouts_per_ensemble),
-                     Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                     Save_Predictions_every(num_scouts_per_ensemble * 1)));
 
     auto cbc = new_cuevi_Model_by_iteration<MyModel>(
-        path, filename, t_segments_used, t_min_number_of_samples,
+        path, filename, t_segments_used, average_the_ATP_evolution,
         num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
         thermo_jumps_every, max_iter_equilibrium, n_points_per_decade,
         n_points_per_decade_fraction, medium_beta, stops_at, includes_zero,

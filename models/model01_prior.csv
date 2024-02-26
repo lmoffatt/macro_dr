@@ -6,8 +6,10 @@ model01,3,gating_off,mean,1.698970004336019
 model01,4,inactivation_rate,mean,-5
 model01,5,unitary_current,mean,0
 model01,6,Current_Noise,mean,-3
-model01,7,Current_Baseline,mean,0
-model01,8,Num_ch,mean,3.698970004336019
+model01,7,Pink_Noise,mean,0.6989700043360189
+model01,8,Proportional_Noise,mean,-2
+model01,9,Current_Baseline,mean,0
+model01,10,Num_ch,mean,3.698970004336019
 model01,0,kon,covar,2
 model01,1,koff,covar,2
 model01,2,gatin_on,covar,2
@@ -15,5 +17,7 @@ model01,3,gating_off,covar,2
 model01,4,inactivation_rate,covar,2
 model01,5,unitary_current,covar,2
 model01,6,Current_Noise,covar,2
-model01,7,Current_Baseline,covar,2
-model01,8,Num_ch,covar,2
+model01,7,Pink_Noise,covar,2
+model01,8,Proportional_Noise,covar,2
+model01,9,Current_Baseline,covar,2
+model01,10,Num_ch,covar,2

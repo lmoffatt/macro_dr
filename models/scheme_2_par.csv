@@ -7,5 +7,7 @@ scheme_2,4,gating_on,mean,2.582063362911709
 scheme_2,5,gating_off,mean,3.041392685158225
 scheme_2,6,unitary_current,mean,0
 scheme_2,7,Current_Noise,mean,-3
-scheme_2,8,Current_Baseline,mean,0
-scheme_2,9,Num_ch_mean,mean,3.698970004336019
+scheme_2,8,Pink_Noise,mean,0.6989700043360189
+scheme_2,9,Proportional_Noise,mean,-2
+scheme_2,10,Current_Baseline,mean,0
+scheme_2,11,Num_ch_mean,mean,3.698970004336019

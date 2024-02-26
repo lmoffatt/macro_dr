@@ -16,5 +16,7 @@ model6_Eff_no_inactivation,13,RG_Ron,mean,2.089905111439398
 model6_Eff_no_inactivation,14,RG_Gon,mean,2.802773725291976
 model6_Eff_no_inactivation,15,Gating_Current,mean,0
 model6_Eff_no_inactivation,16,Current_Noise,mean,-3
-model6_Eff_no_inactivation,17,Current_Baseline,mean,0
-model6_Eff_no_inactivation,18,Num_ch,mean,3.681241237375587
+model6_Eff_no_inactivation,17,Pink_Noise,mean,0.6989700043360189
+model6_Eff_no_inactivation,18,Proportional_Noise,mean,-2
+model6_Eff_no_inactivation,19,Current_Baseline,mean,0
+model6_Eff_no_inactivation,20,Num_ch,mean,3.681241237375587
