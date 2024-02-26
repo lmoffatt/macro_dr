@@ -17,5 +17,7 @@ model4,14,k67,mean,0.6560982020128319
 model4,15,k08,mean,-5
 model4,16,unitary_current,mean,0
 model4,17,Current_Noise,mean,-3
-model4,18,Current_Baseline,mean,0
-model4,19,Num_ch,mean,3.698970004336019
+model4,18,Pink_Noise,mean,0.6989700043360189
+model4,19,Proportional_Noise,mean,-2
+model4,20,Current_Baseline,mean,0
+model4,21,Num_ch,mean,3.698970004336019

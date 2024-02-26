@@ -10,5 +10,7 @@ model9,7,Rocking_Current_factor,mean,2
 model9,8,Inactivation_rate,mean,-3
 model9,9,leaking_current,mean,-2
 model9,10,Current_Noise,mean,-3
-model9,11,Current_Baseline,mean,0
-model9,12,Num_ch,mean,3.698970004336019
+model9,11,Pink_Noise,mean,0.6989700043360189
+model9,12,Proportional_Noise,mean,-2
+model9,13,Current_Baseline,mean,0
+model9,14,Num_ch,mean,3.698970004336019

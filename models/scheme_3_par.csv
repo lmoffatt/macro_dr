@@ -14,5 +14,7 @@ scheme_3,11,desensitization_off_0,mean,3.286905352972375
 scheme_3,12,desensitization_on_1,mean,7.770852011642144
 scheme_3,13,unitary_current,mean,0
 scheme_3,14,Current_Noise,mean,-3
-scheme_3,15,Current_Baseline,mean,0
-scheme_3,16,Num_ch_mean,mean,3.698970004336019
+scheme_3,15,Pink_Noise,mean,0.6989700043360189
+scheme_3,16,Proportional_Noise,mean,-2
+scheme_3,17,Current_Baseline,mean,0
+scheme_3,18,Num_ch_mean,mean,3.698970004336019
