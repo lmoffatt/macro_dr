@@ -38,6 +38,15 @@ public:
             else return x.size();},(*this)());
     }
     
+    bool is_zero()const
+    {
+        for (std::size_t i=0; i<size(); ++i)
+            if (get<ATP_concentration>((*this)[i])()!=0)
+                return false;
+        return true;
+    }
+    
+    
     ATP_step& operator[](std::size_t i){
         return std::visit([i](auto& x)->ATP_step&
                           {
@@ -591,6 +600,34 @@ load_fractioned_experiment(const std::string filename, std::string separator,
 
   return true;
 }
+
+
+
+
+
+// inline
+//     std::pair<std::size_t, std::size_t>
+// next_ATP_Pulse(const Recording_conditions& x, std::size_t pos)
+// {
+//     while (get<ATP_evolution>(x()[pos])     
+// }
+
+
+
+// inline Recording_conditions
+// Idealize_ATP_pulse(std::string save_name,Recording_conditions experiment) {
+//     auto filename = save_name ;
+    
+    
+    
+//     // save_fractioned_experiment(filename + "_experiment.csv", ",", xs);
+//     // save_fractioned_Recording(filename + "_recording.csv", ",", ys);
+//     // return std::tuple(filename + "_experiment.csv", filename + "_recording.csv",
+//     //                   get<Frequency_of_Sampling>(experiment)(),
+//     //                   get<initial_ATP_concentration>(experiment)()());
+// }
+
+
 
 namespace cmd {
 inline auto get_Experiment(

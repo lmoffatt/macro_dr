@@ -5111,6 +5111,9 @@ calc_experiment_fractions(std::string save_name, std::string recording,
                     get<initial_ATP_concentration>(experiment)()());
 }
 
+
+
+
 inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_simulation_fractions(std::string save_name, std::string simulation,
                           experiment_type experiment,
@@ -5154,6 +5157,10 @@ using fractioned_experiment_type = typename return_type<
 
 using fractioned_simulation_type = typename return_type<
     std::decay_t<decltype(&calc_simulation_fractions)>>::type;
+
+
+
+
 
 } // namespace cmd
 
