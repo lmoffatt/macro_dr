@@ -3,6 +3,7 @@
 
 
 #include "mcmc.h"
+#include <cstddef>
 #include <string>
 #include <fstream>
 namespace macrodr {
@@ -12,6 +13,9 @@ inline auto get_random_id(std::string prefix) {
     
     return prefix + "_" + std::to_string(calc_seed(0ul));
 }
+
+inline std::size_t get_number(std::size_t number){return number;}
+
 
 inline void write_text(std::string filename, std::string s) {
     std::ofstream f(filename);

@@ -65,8 +65,8 @@ read_from_input_files_or_commands(std::vector<std::string> const args) {
   for (std::size_t i = 1; i < args.size(); ++i) {
     auto filename_or_command = args[i];
     Maybe_error<std::string> Maybe_s;
-    if (filename_or_command.find('"') != filename_or_command.npos) {
-      s += filename_or_command + "\n";
+    if (filename_or_command.starts_with("--")) {
+        s += filename_or_command.substr(2) + "\n";
     } else {
       auto Maybe_s = append_files_content(std::move(s), filename_or_command);
       if (!Maybe_s)
@@ -83,7 +83,10 @@ auto get_compiler() {
   using namespace cmd;
   cm.push_function("get_random_Id", dcli::to_typed_function<std::string>(
                                         &get_random_id, "prefix"));
-
+  
+  cm.push_function("get_number", dcli::to_typed_function<std::size_t>(
+                                        &get_number, "n"));
+  
   cm.push_function("write_text",
                    dcli::to_typed_function<std::string, std::string>(
                        &write_text, "filename", "text"));

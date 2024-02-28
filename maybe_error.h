@@ -256,7 +256,7 @@ template <class T> Maybe_error(T &&) -> Maybe_error<T>;
 template <class T> Maybe_error(T const &) -> Maybe_error<T>;
 
 template <class T>
-  requires std::is_class_v<typename T::base_type>
+  requires std::is_object_v<typename T::base_type>
 class Maybe_error<T *> : public Maybe_error<typename T::base_type *> {
     T *m_value;
     

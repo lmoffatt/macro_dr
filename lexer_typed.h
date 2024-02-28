@@ -24,7 +24,7 @@ class Lexer;
 template <class Lexer, class Compiler> class typed_argument_list;
 
 template <class Lexer, class Compiler, class F, class... Args>
-    requires (std::is_class_v<std::invoke_result_t<F,Args...>>||
+    requires (std::is_object_v<std::invoke_result_t<F,Args...>>||
              std::is_void_v<std::invoke_result_t<F,Args...>>)
 class typed_function_evaluation;
 
@@ -224,7 +224,7 @@ public:
 
 
 template <class Lexer, class Compiler, class F, class... Args>
-    requires(std::is_void_v<std::invoke_result_t<F,Args...>>||std::is_class_v<std::invoke_result_t<F,Args...>>)
+    requires(std::is_void_v<std::invoke_result_t<F,Args...>>||std::is_object_v<std::invoke_result_t<F,Args...>>)
 class function_compiler : public base_function_compiler<Lexer, Compiler> {
   std::tuple<field_compiler<Lexer, Compiler, Args>...>
       m_args;
