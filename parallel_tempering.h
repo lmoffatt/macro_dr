@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
+#include <omp.h>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -37,9 +38,6 @@ class Saving_intervals
           Saving_intervals,
           var::Vector_Space<Save_Evidence_every, Save_Likelihood_every,
                             Save_Parameter_every, Save_Predictions_every>> {};
-
-
-
 
 template <class Parameters>
 auto stretch_move(mt_64i &, const Parameters &Xk, const Parameters &Xj,
@@ -87,25 +85,30 @@ inline auto get_beta_list(double n_points_per_decade, double stops_at,
   return out;
 }
 
-inline auto new_get_beta_list(std::size_t beta_size, std::size_t beta_upper_size,
+inline auto new_get_beta_list(std::size_t beta_size,
+                              std::size_t beta_upper_size,
                               std::size_t beta_medium_size,
-                              double beta_upper_value,double beta_medium_value, double stops_at,
-                              bool includes_zero) {
+                              double beta_upper_value, double beta_medium_value,
+                              double stops_at, bool includes_zero) {
   assert(beta_size > beta_upper_size);
-    
+
   assert(beta_upper_size > beta_medium_size);
   assert(beta_upper_value > beta_medium_value && beta_upper_value < 1);
-  assert(beta_medium_value>stops_at&& stops_at>0);
-  
+  assert(beta_medium_value > stops_at && stops_at > 0);
+
   std::size_t num_beta = includes_zero ? beta_size - 1 : beta_size;
-  std::size_t beta_inferior_size = num_beta - beta_upper_size - beta_medium_size- 1;
+  std::size_t beta_inferior_size =
+      num_beta - beta_upper_size - beta_medium_size - 1;
   auto out = std::vector<double>(beta_size, 0.0);
- 
-  double n_points_per_decade_high = -(1.0 * beta_upper_size / std::log10(beta_upper_value));
-  double n_points_per_decade_med = -(1.0 * beta_medium_size / std::log10(beta_medium_value/beta_upper_value));
-  double n_points_per_decade_low = -(1.0 * beta_inferior_size / std::log10(stops_at/beta_medium_value));
-  
-  
+
+  double n_points_per_decade_high =
+      -(1.0 * beta_upper_size / std::log10(beta_upper_value));
+  double n_points_per_decade_med =
+      -(1.0 * beta_medium_size /
+        std::log10(beta_medium_value / beta_upper_value));
+  double n_points_per_decade_low =
+      -(1.0 * beta_inferior_size / std::log10(stops_at / beta_medium_value));
+
   for (std::size_t i = 0; i < beta_upper_size; ++i)
     out[beta_size - 1 - i] =
         std::pow(10.0, -(1.0 * i) / n_points_per_decade_high);
@@ -113,14 +116,16 @@ inline auto new_get_beta_list(std::size_t beta_size, std::size_t beta_upper_size
     out[beta_size - 1 - i - beta_upper_size] =
         beta_upper_value * std::pow(10.0, -(1.0 * i) / n_points_per_decade_med);
   for (std::size_t i = 0; i < beta_inferior_size; ++i)
-      out[beta_size - 1 - i - beta_upper_size-beta_medium_size] =
-          beta_medium_value * std::pow(10.0, -(1.0 * i) / n_points_per_decade_low);
+    out[beta_size - 1 - i - beta_upper_size - beta_medium_size] =
+        beta_medium_value *
+        std::pow(10.0, -(1.0 * i) / n_points_per_decade_low);
   out[beta_size - num_beta] = stops_at;
   assert(includes_zero ? (out[0] == 0) && (out[1] == stops_at)
                        : out[0] == stops_at);
   assert(out.back() == 1.0);
   assert(out[beta_size - beta_upper_size - 1] == beta_upper_value);
-  assert(out[beta_size - beta_upper_size -beta_medium_size- 1] == beta_medium_value);
+  assert(out[beta_size - beta_upper_size - beta_medium_size - 1] ==
+         beta_medium_value);
 
   return out;
 }
@@ -131,18 +136,15 @@ struct thermo_mcmc {
   by_beta<double> beta;
   ensemble<by_beta<mcmc<Parameters>>> walkers;
   ensemble<by_beta<std::size_t>> i_walkers;
-  auto get_Walkers_number()const {return walkers.size();}
-  auto& get_Beta()const {return beta;}
-  auto& get_Parameter(std::size_t iw, std::size_t i_b)const
-  {
-      return walkers[iw][i_b].parameter;
+  auto get_Walkers_number() const { return walkers.size(); }
+  auto &get_Beta() const { return beta; }
+  auto &get_Parameter(std::size_t iw, std::size_t i_b) const {
+    return walkers[iw][i_b].parameter;
   }
-  
-  auto get_Walker(std::size_t iw, std::size_t i_b)const
-  {
-      return i_walkers[iw][i_b];
+
+  auto get_Walker(std::size_t iw, std::size_t i_b) const {
+    return i_walkers[iw][i_b];
   }
-  
 };
 
 template <template <class> class Thermo_mcmc, class Parameters>
@@ -429,15 +431,16 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
                                           by_beta<std::size_t>(beta.size()));
   ensemble<by_beta<mcmc<Parameters>>> walker(
       n_walkers, by_beta<mcmc<Parameters>>(beta.size()));
-  auto ff = f.fork(n_walkers / 2);
+  auto ff = f.fork(omp_get_max_threads());
 
   for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
     for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
-      auto iw = iiw + half * n_walkers / 2;
       for (std::size_t i = 0; i < beta.size(); ++i) {
+        auto iw = iiw + half * n_walkers / 2;
         i_walker[iw][i] = iw + i * n_walkers;
-        walker[iw][i] = init_mcmc(ff[iiw], mt[iiw], prior, lik, y, x);
+        auto i_th = omp_get_thread_num();
+        walker[iw][i] = init_mcmc(ff[i_th], mt[i_th], prior, lik, y, x);
       }
     }
   f += ff;
@@ -756,25 +759,27 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
   std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
                                                             uniform_real);
 
-  auto ff = f.fork(n_walkers / 2);
+  auto ff = f.fork(omp_get_max_threads());
   for (bool half : {false, true})
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-      auto iw = half ? i + n_walkers / 2 : i;
-      auto j = udist[i](mt[i]);
-      auto jw = half ? j : j + n_walkers / 2;
       for (std::size_t ib = 0; ib < n_beta; ++ib) {
+        auto i_th = omp_get_thread_num();
+
+        auto iw = half ? i + n_walkers / 2 : i;
+        auto j = udist[i_th](mt[i_th]);
+        auto jw = half ? j : j + n_walkers / 2;
         // we can try in the outer loop
 
-        auto r = rdist[i](mt[i]);
+        auto r = rdist[i_th](mt[i_th]);
 
         // candidate[ib].walkers[iw].
-        auto [ca_par, z] =
-            stretch_move(mt[i], rdist[i], current.walkers[iw][ib].parameter,
-                         current.walkers[jw][ib].parameter);
+        auto [ca_par, z] = stretch_move(mt[i_th], rdist[i_th],
+                                        current.walkers[iw][ib].parameter,
+                                        current.walkers[jw][ib].parameter);
 
         auto ca_logP = logPrior(prior, ca_par);
-        auto ca_logL = logLikelihood(ff[i], lik, ca_par, y, x);
+        auto ca_logL = logLikelihood(ff[i_th], lik, ca_par, y, x);
 
         if ((ca_logP.valid()) && (ca_logL.valid())) {
           auto dthLogL =
@@ -811,23 +816,24 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
                       ensemble<mt_64i> &mts, std::size_t thermo_jumps_every) {
   if (iter % (thermo_jumps_every) == 0) {
     std::uniform_real_distribution<double> uniform_real(0, 1);
-    auto n_walkers = mts.size() * 2;
+    auto n_walkers = current.get_Walkers_number();
     auto n_beta = beta.size();
     auto n_par = current.walkers[0][0].parameter.size();
 
     WalkerIndexes shuffeld_walkers(n_walkers);
     std::iota(shuffeld_walkers.begin(), shuffeld_walkers.end(), 0);
     std::shuffle(shuffeld_walkers.begin(), shuffeld_walkers.end(), mt);
-    std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
+    std::vector<std::uniform_real_distribution<double>> rdist(omp_get_max_threads(),
                                                               uniform_real);
 
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-      auto iw = shuffeld_walkers[i];
-      auto jw = shuffeld_walkers[i + n_walkers / 2];
       for (std::size_t ib = 0; ib < n_beta - 1; ++ib) {
+            auto i_th = omp_get_thread_num();
+            auto iw = shuffeld_walkers[i];
+            auto jw = shuffeld_walkers[i + n_walkers / 2];
 
-        auto r = rdist[i](mts[i]);
+        auto r = rdist[i_th](mts[i_th]);
         double logA =
             calc_logA(beta[ib], beta[ib + 1], current.walkers[iw][ib].logL,
                       current.walkers[jw][ib + 1].logL);
@@ -887,9 +893,10 @@ public:
   friend void report_title(save_likelihood &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep<< "beta" << s.sep
-        << "i_walker" << s.sep << "id_walker" << s.sep << "logP" << s.sep
-        << "logLik" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
+    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep
+        << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
+        << "logP" << s.sep << "logLik" << s.sep << "plog_Evidence" << s.sep
+        << "log_Evidence"
         << "\n";
   }
   template <class Prior, class Likelihood, class Variables, class DataType>
@@ -900,24 +907,26 @@ public:
   friend void report_model(save_likelihood &, ...) {}
 
   template <class FunctionTable, class Duration>
-  friend void report(FunctionTable &&, std::size_t iter, const Duration& dur, save_likelihood &s,
-                     thermo_mcmc<Parameters> const &data, ...) {
+  friend void report(FunctionTable &&, std::size_t iter, const Duration &dur,
+                     save_likelihood &s, thermo_mcmc<Parameters> const &data,
+                     ...) {
     if (iter % s.save_every == 0) {
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker) {
         double logL = 0;
         double beta = 0;
         double log_Evidence = 0;
-        for (std::size_t i_beta = num_betas(data); i_beta >0 ; --i_beta) {
+        for (std::size_t i_beta = num_betas(data); i_beta > 0; --i_beta) {
           double logL0 = logL;
           double beta0 = beta;
-          logL = data.walkers[i_walker][i_beta-1].logL;
-          beta = data.beta[i_beta-1];
+          logL = data.walkers[i_walker][i_beta - 1].logL;
+          beta = data.beta[i_beta - 1];
           double plog_Evidence = (beta - beta0) * (logL0 + logL) / 2;
           log_Evidence += plog_Evidence;
-          s.f << num_betas(data) << s.sep << iter << s.sep << dur<<s.sep<< beta << s.sep
-              << i_walker << s.sep << data.i_walkers[i_walker][i_beta-1] << s.sep
-              << data.walkers[i_walker][i_beta-1].logP << s.sep << logL << s.sep
-              << plog_Evidence << s.sep << log_Evidence << "\n";
+          s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
+              << beta << s.sep << i_walker << s.sep
+              << data.i_walkers[i_walker][i_beta - 1] << s.sep
+              << data.walkers[i_walker][i_beta - 1].logP << s.sep << logL
+              << s.sep << plog_Evidence << s.sep << log_Evidence << "\n";
         }
       }
     }
@@ -980,9 +989,9 @@ public:
   friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep<< "beta" << s.sep
-        << "i_walker" << s.sep << "id_walker" << s.sep << "i_par" << s.sep
-        << "par_value"
+    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep
+        << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
+        << "i_par" << s.sep << "par_value"
         << "\n";
   }
   template <class Prior, class Likelihood, class Variables, class DataType>
@@ -993,14 +1002,15 @@ public:
   friend void report_model(save_Parameter &, ...) {}
 
   template <class FunctionTable, class Duration>
-  friend void report(FunctionTable &&f, std::size_t iter, const Duration& dur, save_Parameter &s,
-                     thermo_mcmc<Parameters> const &data, ...) {
+  friend void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
+                     save_Parameter &s, thermo_mcmc<Parameters> const &data,
+                     ...) {
     if (iter % s.save_every == 0)
       for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
           for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
 
-            s.f << num_betas(data) << s.sep << iter << s.sep<< dur<<s.sep
+            s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
                 << data.beta[i_beta] << s.sep << i_walker << s.sep
                 << data.i_walkers[i_walker][i_beta] << s.sep << i_par << s.sep
                 << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
@@ -1046,10 +1056,11 @@ public:
       : saving{dir + filename_prefix, 1ul}..., directory_{dir},
         filename_prefix_{filename_prefix} {}
 
-  template <class FunctionTable, class Duration,class... T>
-  friend void report(FunctionTable &&f, std::size_t iter,const Duration& dur, save_mcmc &smcmc,
-                     thermo_mcmc<Parameters> const &data, T &&...ts) {
-    (report(f, iter, dur,static_cast<saving &>(smcmc), data,
+  template <class FunctionTable, class Duration, class... T>
+  friend void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
+                     save_mcmc &smcmc, thermo_mcmc<Parameters> const &data,
+                     T &&...ts) {
+    (report(f, iter, dur, static_cast<saving &>(smcmc), data,
             std::forward<T>(ts)...),
      ..., 1);
   }
@@ -1066,17 +1077,14 @@ public:
   }
 };
 
-
 template <class Parameter, class... saving>
 void report_model_all(save_mcmc<Parameter, saving...> &) {}
 
 template <class Parameter, class... saving, class T, class... Ts>
 void report_model_all(save_mcmc<Parameter, saving...> &s, T const &t,
                       Ts const &...ts) {
-    (report_model(static_cast<saving &>(s), t), ..., report_model_all(s, ts...));
+  (report_model(static_cast<saving &>(s), t), ..., report_model_all(s, ts...));
 }
-
-
 
 class thermo_less_than_max_iteration {
   std::size_t current_iteration_;

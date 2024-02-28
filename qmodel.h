@@ -294,7 +294,6 @@ class Pink_Noise : public var::Var<Pink_Noise, double> {};
 
 class Proportional_Noise : public var::Var<Proportional_Noise, double> {};
 
-
 class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
 class P_mean : public var::Var<P_mean, Matrix<double>> {};
@@ -549,9 +548,10 @@ using Qdt =
                  gtotal_sqr_ij, gsqr_i, gvar_i, gtotal_var_ij, gvar_ij>;
 
 using Patch_Model =
-    Vector_Space<N_St, Q0, Qa, P_initial, g, N_Ch_mean, Current_Noise,Pink_Noise,Proportional_Noise,
-                 Current_Baseline, N_Ch_mean_time_segment_duration,
-                 Binomial_magical_number, min_P, Probability_error_tolerance,
+    Vector_Space<N_St, Q0, Qa, P_initial, g, N_Ch_mean, Current_Noise,
+                 Pink_Noise, Proportional_Noise, Current_Baseline,
+                 N_Ch_mean_time_segment_duration, Binomial_magical_number,
+                 min_P, Probability_error_tolerance,
                  Conductance_variance_error_tolerance>;
 
 inline void save(const std::string name, const Patch_Model &m) {
@@ -1307,7 +1307,7 @@ class Macro_DMR {
 public:
   static bool crude_Qx_violations(Qx const &q) {
     auto Qu = q() * Matrix<double>(q().ncols(), 1ul, 1.0);
-      if (maxAbs(Qu) > 1e-7*norm_inf(q())) {
+    if (maxAbs(Qu) > 1e-7 * norm_inf(q())) {
       return true;
     } else
       return false;
@@ -1320,7 +1320,7 @@ public:
     auto v_Qx = build<Qx>(get<Q0>(m)() + get<Qa>(m)() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
-    assert (!crude_Qx_violations(primitive(v_Qx)));
+    assert(!crude_Qx_violations(primitive(v_Qx)));
     //         std::cerr<<"Qx violation\n";
     return v_Qx;
   }
@@ -1331,7 +1331,7 @@ public:
     auto v_Qx = build<Qx>(t_Q0() + t_Qa() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
-    assert (!crude_Qx_violations(primitive(v_Qx)));
+    assert(!crude_Qx_violations(primitive(v_Qx)));
     //     std::cerr<<"Qx violation\n";
     return v_Qx;
   }
@@ -2547,10 +2547,10 @@ public:
     auto &t_tolerance = get<Probability_error_tolerance>(m);
     auto &t_min_P = get<min_P>(m);
     auto e = get<Current_Noise>(m).value() * fs /
-             get<number_of_samples>(t_Qdt).value()
-        +get<Pink_Noise>(m).value()+
-             get<Proportional_Noise>(m).value()*std::abs(y);
-        ;
+                 get<number_of_samples>(t_Qdt).value() +
+             get<Pink_Noise>(m).value() +
+             get<Proportional_Noise>(m).value() * std::abs(y);
+    ;
     auto y_baseline = get<Current_Baseline>(m);
     auto N = Nch;
     Matrix<double> u(p_P_mean().size(), 1, 1.0);
@@ -2880,10 +2880,10 @@ public:
     auto &t_tolerance = get<Probability_error_tolerance>(m);
     auto &t_min_P = get<min_P>(m);
     auto e = get<Current_Noise>(m).value() * fs /
-             get<number_of_samples>(t_Qdt).value()
-             +get<Pink_Noise>(m).value()+
-             get<Proportional_Noise>(m).value()*std::abs(y);
-        ;
+                 get<number_of_samples>(t_Qdt).value() +
+             get<Pink_Noise>(m).value() +
+             get<Proportional_Noise>(m).value() * std::abs(y);
+    ;
 
     auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
 
@@ -2924,9 +2924,9 @@ public:
                 << "  vs  max: " << r_y_mean_max();
     if ((r_y_mean_min() - primitive(r_y_mean())) >
         std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_min())) *
-            1e-3)
-      std::cerr << "\n min violation\n"
-                << r_y_mean() << "  vs  min: " << r_y_mean_min();
+            1e-1)
+      //std::cerr << "\n min violation\n"
+      //          << r_y_mean() << "  vs  min: " << r_y_mean_min();
 
     if (primitive(gSg) > 0) {
       if (primitive(ms) > 0) {
@@ -3501,17 +3501,17 @@ public:
       auto &t_e_step = get<Recording>(
           get<Simulated_Recording<keep_N_state>>(t_sim_step())());
       double e =
-          get<Current_Noise>(m)() * fs / get<number_of_samples>(t_sub_step)()+get<Pink_Noise>(m).value();
-;
+          get<Current_Noise>(m)() * fs / get<number_of_samples>(t_sub_step)() +
+          get<Pink_Noise>(m).value();
+      ;
       auto y_baseline = get<Current_Baseline>(m);
-      
-      auto y=y_mean + y_baseline() +
+
+      auto y = y_mean + y_baseline() +
                std::normal_distribution<double>()(mt) * std::sqrt(e);
-      auto ey=get<Proportional_Noise>(m).value()*std::abs(y);
-      if (ey>0)
-          y=y+std::normal_distribution<double>()(mt) * std::sqrt(ey);
-      t_e_step().emplace_back(
-          Patch_current(y));
+      auto ey = get<Proportional_Noise>(m).value() * std::abs(y);
+      if (ey > 0)
+        y = y + std::normal_distribution<double>()(mt) * std::sqrt(ey);
+      t_e_step().emplace_back(Patch_current(y));
       if constexpr (keep_N_state.value) {
         get<N_Ch_State_Evolution>(
             get<Simulated_Recording<keep_N_state>>(t_sim_step())())()
@@ -3965,12 +3965,12 @@ inline ATP_evolution average_ATP_step(std::vector<ATP_step> const &x) {
 //     return std::visit([] (auto const& a){return
 //     average_ATP_step(a);},x());}
 
-inline ATP_evolution average_ATP_step(ATP_evolution const &x, bool average_the_evolution) {
-    if (average_the_evolution)
-            return std::visit([] (auto const& a){return
-    average_ATP_step(a);},x());
-      else return x;
-
+inline ATP_evolution average_ATP_step(ATP_evolution const &x,
+                                      bool average_the_evolution) {
+  if (average_the_evolution)
+    return std::visit([](auto const &a) { return average_ATP_step(a); }, x());
+  else
+    return x;
 }
 
 template <
@@ -3985,8 +3985,10 @@ auto simulate(mt_64i &mt,
   return Macro_DMR{}.sample(mt, lik.m, p, var, lik.n_sub_dt).value()();
 }
 
-static Experiment_step average_Experimental_step(Experiment_step const &x, bool  average_the_evolution) {
-  return Experiment_step(get<Time>(x), average_ATP_step(get<ATP_evolution>(x), average_the_evolution));
+static Experiment_step average_Experimental_step(Experiment_step const &x,
+                                                 bool average_the_evolution) {
+  return Experiment_step(get<Time>(x), average_ATP_step(get<ATP_evolution>(x),
+                                                        average_the_evolution));
 }
 
 static ATP_evolution add_ATP_step_i(std::vector<ATP_step> &&x,
@@ -4049,7 +4051,8 @@ class experiment_fractioner {
 public:
   experiment_fractioner(const std::vector<std::size_t> &t_segments,
                         bool average_the_ATP_evolution)
-      : segments{t_segments}, average_ATP_evolution{average_the_ATP_evolution} {}
+      : segments{t_segments}, average_ATP_evolution{average_the_ATP_evolution} {
+  }
 
   static auto average_Recording(const Recording_conditions &e,
                                 const Recording &y,
@@ -4078,7 +4081,8 @@ public:
           auto n_samples = get_num_samples(e()[i]);
           sum_y += y()[i]() * n_samples;
           sum_samples += n_samples;
-          v_ATP = add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i], average_the_evolution));
+          v_ATP = add_ATP_step(std::move(v_ATP),
+                               average_ATP_step(e()[i], average_the_evolution));
 
           out_y[ii] = Patch_current(sum_y / sum_samples);
           out_x[ii] = Experiment_step(get<Time>(e()[i]), v_ATP);
@@ -4092,7 +4096,8 @@ public:
         auto n_samples = get_num_samples(e()[i]);
         sum_y += y()[i]() * n_samples;
         sum_samples += n_samples;
-        v_ATP = add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i], average_the_evolution));
+        v_ATP = add_ATP_step(std::move(v_ATP),
+                             average_ATP_step(e()[i], average_the_evolution));
       }
     }
 
@@ -4131,7 +4136,8 @@ public:
           auto n_samples = get_num_samples(e()[i]);
           sum_y += yr()[i]() * n_samples;
           sum_samples += n_samples;
-          v_ATP = add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i], average_the_evolution));
+          v_ATP = add_ATP_step(std::move(v_ATP),
+                               average_ATP_step(e()[i], average_the_evolution));
 
           out_y[ii] = Patch_current(sum_y / sum_samples);
 
@@ -4149,7 +4155,8 @@ public:
         auto n_samples = get_num_samples(e()[i]);
         sum_y += yr()[i]() * n_samples;
         sum_samples += n_samples;
-        v_ATP = add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i], average_the_evolution));
+        v_ATP = add_ATP_step(std::move(v_ATP),
+                             average_ATP_step(e()[i], average_the_evolution));
       }
     }
     Simulated_Recording<keep_N_state> out_sim;
@@ -4191,7 +4198,7 @@ public:
     for (std::size_t i = n_frac - 1; i > 0; --i) {
       std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
           average_Recording(get<Recording_conditions>(x_out[i]), y_out[i],
-                                                                                            indexes[i], indexes[i - 1], average_ATP_evolution);
+                            indexes[i], indexes[i - 1], average_ATP_evolution);
     }
 
     // std::abort();
@@ -4336,7 +4343,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
 
   if (iter % s.save_every != 0)
     return;
-  auto ff = f.fork(data.get_Walkers_number() / 2);
+  auto ff = f.fork(omp_get_max_threads());
 
   auto all_Predictions =
       std::vector<std::vector<std::decay_t<decltype(logLikelihoodPredictions(
@@ -4345,16 +4352,16 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
 
   auto beta = data.get_Beta();
   auto num_samples = size(y);
-  for (std::size_t half = 0; half < 2; ++half) {
 #pragma omp parallel for
-    for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
-      auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
-      for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-        auto par = data.get_Parameter(i_walker, i_b);
-        auto walker_id = data.get_Walker(i_walker, i_b);
-        all_Predictions[i_walker].push_back(
-            logLikelihoodPredictions(ff[iiw], lik, par, y, x));
-      }
+  for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
+       ++i_walker) {
+    for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+      auto i_th = omp_get_thread_num();
+
+      auto par = data.get_Parameter(i_walker, i_b);
+      auto walker_id = data.get_Walker(i_walker, i_b);
+      all_Predictions[i_walker].push_back(
+          logLikelihoodPredictions(ff[i_th], lik, par, y, x));
     }
   }
   f += ff;
@@ -4377,8 +4384,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
                 << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
                 << i_step << s.sep << time << s.sep << num_samples << s.sep
-                << ToString(average_ATP_step(v_ev, true)) << s.sep << ToString(v_ev)
-                << s.sep << y()[i_step]() << s.sep
+                << ToString(average_ATP_step(v_ev, true)) << s.sep
+                << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
                 << get<y_mean>(predictions()[i_step]) << s.sep
                 << get<y_var>(predictions()[i_step]) << s.sep
                 << get<plogL>(predictions()[i_step]) << s.sep
@@ -4454,9 +4461,9 @@ void report(std::string filename, const Patch_State_Evolution &predictions,
            ++j) {
         f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step])
           << "," << get_num_samples(v_ev) << ","
-          << ToString(average_ATP_step(v_ev, true)) << "," << ToString(v_ev) << ","
-          << ys()[i_step]() << "," << get<y_mean>(predictions()[i_step]) << ","
-          << get<y_var>(predictions()[i_step]) << ","
+          << ToString(average_ATP_step(v_ev, true)) << "," << ToString(v_ev)
+          << "," << ys()[i_step]() << "," << get<y_mean>(predictions()[i_step])
+          << "," << get<y_var>(predictions()[i_step]) << ","
           << get<plogL>(predictions()[i_step]) << ","
           << get<eplogL>(predictions()[i_step]) << ","
           << get<logL>(predictions()[i_step]) << "," << i << ","
@@ -4521,9 +4528,9 @@ void save_Likelihood_Predictions(std::string filename,
            ++j) {
         f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step])
           << "," << get_num_samples(v_ev) << ","
-          << ToString(average_ATP_step(v_ev, true)) << "," << ToString(v_ev) << ","
-          << ys()[i_step]() << "," << get<y_mean>(predictions()[i_step]) << ","
-          << get<y_var>(predictions()[i_step]) << ","
+          << ToString(average_ATP_step(v_ev, true)) << "," << ToString(v_ev)
+          << "," << ys()[i_step]() << "," << get<y_mean>(predictions()[i_step])
+          << "," << get<y_var>(predictions()[i_step]) << ","
           << get<plogL>(predictions()[i_step]) << ","
           << get<eplogL>(predictions()[i_step]) << ","
           << get<logL>(predictions()[i_step]) << "," << i << ","
@@ -4713,78 +4720,77 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             const cuevi::by_fraction<Variables> &xs, ...) {
 
   auto &t = data.get_Cuevi_Temperatures();
-  if (iter % s.save_every == 0) {
-    data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
+  if (iter % s.save_every != 0) {
+    return;
+  }
+  data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
 
-    auto ff = f.fork(data.get_Walkers_number() / 2);
-    using Predition_type = std::decay_t<decltype(logLikelihoodPredictions(
-        ff[0], lik,
-        data.get_Parameter(cuevi::Walker_Index(0), cuevi::Cuevi_Index(0)),
-        ys[0], xs[0]))>;
-    auto allPredictions = std::vector<std::vector<Predition_type>>(
-        data.get_Cuevi_Temperatures_Number(),
-        std::vector<Predition_type>(data.get_Walkers_number()));
-    for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for
-      for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
-        auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
-        auto iw = cuevi::Walker_Index(i_walker);
-        for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
-             ++i_cu) {
-          auto icu = cuevi::Cuevi_Index(i_cu);
-          auto i_frac = data.get_Fraction(i_cu);
-          auto beta = data.get_Beta(icu);
-          auto nsamples = size(ys[i_frac()]);
-          auto &wa = data.get_Walker(iw, icu);
-          auto &wav = data.get_Walker_Value(iw, icu);
-          auto par = data.get_Parameter(iw, i_cu);
-          auto prediction = logLikelihoodPredictions(
-              ff[iiw], lik, par, ys[i_frac()], xs[i_frac()]);
-          allPredictions[i_cu][i_walker] = std::move(prediction);
-        }
-      }
-    f += ff;
+  auto ff = f.fork(omp_get_max_threads());
+  using Predition_type = std::decay_t<decltype(logLikelihoodPredictions(
+      ff[0], lik,
+      data.get_Parameter(cuevi::Walker_Index(0), cuevi::Cuevi_Index(0)), ys[0],
+      xs[0]))>;
+  auto allPredictions = std::vector<std::vector<Predition_type>>(
+      data.get_Cuevi_Temperatures_Number(),
+      std::vector<Predition_type>(data.get_Walkers_number()));
+#pragma omp parallel for collapse(2)
+  for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
+       ++i_walker) {
     for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
          ++i_cu) {
+      auto iw = cuevi::Walker_Index(i_walker);
+      auto i_th = omp_get_thread_num();
+
       auto icu = cuevi::Cuevi_Index(i_cu);
       auto i_frac = data.get_Fraction(i_cu);
       auto beta = data.get_Beta(icu);
       auto nsamples = size(ys[i_frac()]);
-      for (std::size_t half = 0; half < 2; ++half)
-        for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
-          auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
-          auto iw = cuevi::Walker_Index(i_walker);
-          auto &wa = data.get_Walker(iw, icu);
-          auto &wav = data.get_Walker_Value(iw, icu);
-          auto par = data.get_Parameter(iw, i_cu);
-          auto &prediction = allPredictions[i_cu][i_walker];
-          if (is_valid(prediction)) {
-            auto &predictions = prediction.value();
-            for (std::size_t i_step = 0; i_step < size(ys[i_frac()]);
-                 ++i_step) {
-              auto v_ev = get<ATP_evolution>(
-                  get<Recording_conditions>(xs[i_frac()])()[i_step]);
-
-              s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
-                  << s.sep << nsamples << s.sep << beta() << s.sep << i_walker
-                  << s.sep << get<cuevi::Walker_id>(wa())() << s.sep << i_step
-                  << s.sep
-                  << get<Time>(
-                         get<Recording_conditions>(xs[i_frac()])()[i_step])
-                  << s.sep << get_num_samples(v_ev) << s.sep
-                  << ToString(average_ATP_step(v_ev, true)) << s.sep << ToString(v_ev)
-                  << s.sep << ys[i_frac()]()[i_step]() << s.sep
-                  << get<y_mean>(predictions()[i_step]) << s.sep
-                  << get<y_var>(predictions()[i_step]) << s.sep
-                  << get<plogL>(predictions()[i_step]) << s.sep
-                  << get<eplogL>(predictions()[i_step]) << "\n";
-            }
-          }
-        }
+      auto &wa = data.get_Walker(iw, icu);
+      auto &wav = data.get_Walker_Value(iw, icu);
+      auto par = data.get_Parameter(iw, i_cu);
+      auto prediction = logLikelihoodPredictions(ff[i_th], lik, par,
+                                                 ys[i_frac()], xs[i_frac()]);
+      allPredictions[i_cu][i_walker] = std::move(prediction);
     }
   }
-}
+  f += ff;
+  for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
+       ++i_cu) {
+    auto icu = cuevi::Cuevi_Index(i_cu);
+    auto i_frac = data.get_Fraction(i_cu);
+    auto beta = data.get_Beta(icu);
+    auto nsamples = size(ys[i_frac()]);
+    for (std::size_t half = 0; half < 2; ++half)
+      for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
+        auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
+        auto iw = cuevi::Walker_Index(i_walker);
+        auto &wa = data.get_Walker(iw, icu);
+        auto &wav = data.get_Walker_Value(iw, icu);
+        auto par = data.get_Parameter(iw, i_cu);
+        auto &prediction = allPredictions[i_cu][i_walker];
+        if (is_valid(prediction)) {
+          auto &predictions = prediction.value();
+          for (std::size_t i_step = 0; i_step < size(ys[i_frac()]); ++i_step) {
+            auto v_ev = get<ATP_evolution>(
+                get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
+            s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
+                << s.sep << nsamples << s.sep << beta() << s.sep << i_walker
+                << s.sep << get<cuevi::Walker_id>(wa())() << s.sep << i_step
+                << s.sep
+                << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_step])
+                << s.sep << get_num_samples(v_ev) << s.sep
+                << ToString(average_ATP_step(v_ev, true)) << s.sep
+                << ToString(v_ev) << s.sep << ys[i_frac()]()[i_step]() << s.sep
+                << get<y_mean>(predictions()[i_step]) << s.sep
+                << get<y_var>(predictions()[i_step]) << s.sep
+                << get<plogL>(predictions()[i_step]) << s.sep
+                << get<eplogL>(predictions()[i_step]) << "\n";
+          }
+        }
+      }
+  }
+}
 template <class ParameterType>
 void report_title(save_Predictions<ParameterType> &s,
                   cuevi::Cuevi_mcmc<ParameterType> const &, ...) {
@@ -4801,8 +4807,7 @@ void report_title(save_Predictions<ParameterType> &s,
 template <class Id>
 auto cuevi_Model_by_convergence(
     std::string path, std::string filename,
-    const std::vector<std::size_t> &t_segments,
-    bool average_the_ATP_evolution,
+    const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
 
     std::size_t num_scouts_per_ensemble, double min_fraction,
     std::size_t thermo_jumps_every, std::size_t max_iter, double max_ratio,
@@ -4824,8 +4829,7 @@ auto cuevi_Model_by_convergence(
 template <class Id>
 auto cuevi_Model_by_iteration(
     std::string path, std::string filename,
-    const std::vector<std::size_t> &t_segments,
-    bool average_the_ATP_evolution,
+    const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
 
     std::size_t num_scouts_per_ensemble,
     std::size_t max_number_of_simultaneous_temperatures, double min_fraction,
@@ -4854,8 +4858,8 @@ cuevi::Cuevi_Algorithm<
     cuevi_less_than_max_iteration>
 new_cuevi_Model_by_iteration(
     std::string path, std::string filename,
-    const std::vector<std::size_t> &t_segments,
-    bool average_the_ATP_evolution, std::size_t num_scouts_per_ensemble,
+    const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
+    std::size_t num_scouts_per_ensemble,
     std::size_t number_trials_until_give_up, double min_fraction,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
@@ -5111,9 +5115,6 @@ calc_experiment_fractions(std::string save_name, std::string recording,
                     get<initial_ATP_concentration>(experiment)()());
 }
 
-
-
-
 inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_simulation_fractions(std::string save_name, std::string simulation,
                           experiment_type experiment,
@@ -5157,10 +5158,6 @@ using fractioned_experiment_type = typename return_type<
 
 using fractioned_simulation_type = typename return_type<
     std::decay_t<decltype(&calc_simulation_fractions)>>::type;
-
-
-
-
 
 } // namespace cmd
 

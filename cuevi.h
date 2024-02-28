@@ -16,6 +16,7 @@
 #include <fstream>
 #include <istream>
 #include <limits>
+#include <omp.h>
 #include <ostream>
 #include <random>
 #include <sstream>
@@ -600,42 +601,7 @@ template <class ParameterType> class Cuevi_mcmc {
         p, lik, y, x, t, i_cu, w_sta, max_trials);
   }
 
-  template <class FunctionTable, class Prior, class logLikelihood, class Data,
-            class Variables>
-  Maybe_error<Walkers_ensemble> friend init_cuevi(
-      FunctionTable &f, ensemble<mt_64i> &mts, Prior &&p, logLikelihood &&lik,
-      const by_fraction<Data> &y, const by_fraction<Variables> &x,
-      const Cuevi_temperatures &t, Num_Walkers_Per_Ensemble n,
-      Cuevi_statistics &sta, std::size_t max_trials_per_sample) {
-    auto num_temp = t().size();
-
-    Walkers_ensemble out(n(), std::vector<Walker>(num_temp));
-
-    Maybe_error<bool> succeeds = true;
-    for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for
-      for (std::size_t iiw = 0; iiw < n() / 2; ++iiw) {
-        auto iw = half ? iiw + n() / 2 : iiw;
-        for (std::size_t i_cu = 0; i_cu < num_temp; ++i_cu) {
-          auto &wa_va = out()[iw]()[i_cu];
-          Walker_statistics_pair wa_sta(get<Walker_statistics>(wa_va()),
-                                        sta()[iw][i_cu]);
-          get<Walker_id>(wa_va())() = iw + num_temp * i_cu;
-          auto Maybe_Walker_value =
-              sample_Walker(f.fork(var::I_thread(iiw)), mts[iiw], p, lik, y, x,
-                            t, i_cu, wa_sta, max_trials_per_sample);
-          if (Maybe_Walker_value)
-            get<Walker_value>(wa_va()) = std::move(Maybe_Walker_value.value());
-          else
-            succeeds = Maybe_Walker_value.error();
-        }
-      }
-    if (succeeds)
-      return out;
-    else
-      return succeeds.error();
-  }
-
+ 
   template <class FunctionTable, class Prior, class logLikelihood, class Data,
             class Variables>
   static Maybe_error<typename Cuevi_mcmc<ParameterType>::Walkers_ensemble>
@@ -654,31 +620,34 @@ template <class ParameterType> class Cuevi_mcmc {
     ;
     Walkers_ensemble out(std::vector(n(), std::vector<Walker>(num_temp)));
 
-    auto ff = f.fork(n() / 2);
-    Maybe_error<bool> succeeds = true;
-    for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for
-      for (std::size_t iiw = 0; iiw < n() / 2; ++iiw) {
-        auto iw = half ? iiw + n() / 2 : iiw;
-        for (std::size_t i_cu = 0; i_cu < num_temp; ++i_cu) {
-          auto &wa_va = out()[iw][i_cu];
-          Walker_statistics_pair wa_sta(get<Walker_statistics>(wa_va()),
-                                        sta()[iw][i_cu]);
-          get<Walker_id>(wa_va())() = iw + num_temp * i_cu;
-          auto Maybe_Walker_value = sample_Walker(
-              ff[iiw], mts[iiw], std::forward<Prior>(p), lik, y, x, t,
-              Cuevi_Index(i_cu), wa_sta, max_trials_per_sample);
-          if (Maybe_Walker_value)
-            get<Walker_value>(wa_va()) = std::move(Maybe_Walker_value.value());
-          else
-            succeeds = Maybe_Walker_value.error();
-        }
+    auto ff = f.fork(omp_get_max_threads());
+    std::vector<Maybe_error<bool>> succeeds(omp_get_max_threads());
+#pragma omp parallel for collapse(2)
+    for (std::size_t iw = 0; iw < n(); ++iw) {
+      for (std::size_t i_cu = 0; i_cu < num_temp; ++i_cu) {
+        auto i_th = omp_get_thread_num();
+        auto &wa_va = out()[iw][i_cu];
+        Walker_statistics_pair wa_sta(get<Walker_statistics>(wa_va()),
+                                      sta()[iw][i_cu]);
+        get<Walker_id>(wa_va())() = iw + num_temp * i_cu;
+        auto Maybe_Walker_value = sample_Walker(
+            ff[i_th], mts[i_th], std::forward<Prior>(p), lik, y, x, t,
+            Cuevi_Index(i_cu), wa_sta, max_trials_per_sample);
+        if (Maybe_Walker_value) {
+          succeeds[i_th] = true;
+          get<Walker_value>(wa_va()) = std::move(Maybe_Walker_value.value());
+        } else
+          succeeds[i_th] = error_message(succeeds[i_th].error()() +
+                                         Maybe_Walker_value.error()());
       }
+    }
     f += ff;
-    if (succeeds)
+    auto success = consolidate(succeeds);
+
+    if (success)
       return out;
     else
-      return succeeds.error();
+      return success.error();
   }
 
   Cuevi_temperatures m_temperatures;
@@ -777,7 +746,7 @@ public:
 
   auto get_Cuevi_Temperatures_Number() const { return m_temperatures().size(); }
 
-  auto get_Walkers_number() const { return m_data().size(); }
+  std::size_t get_Walkers_number() const { return m_data().size(); }
   auto get_Parameters_number() const {
     return size(get<Parameter>(get<Walker_value>(m_data()[0][0]())())());
   }
@@ -894,29 +863,30 @@ public:
   void calculate_Likelihoods_for_Evidence_calulation(
       FunctionTable &f, t_logLikelihood &&lik, const by_fraction<Data> &y,
       const by_fraction<Variables> &x) {
-    auto ff = f.fork(get_Walkers_number() / 2);
-    for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for
-      for (std::size_t iiw = 0; iiw < get_Walkers_number() / 2; ++iiw)
+    auto ff = f.fork(omp_get_max_threads());
+    std::size_t num_walk = this->get_Walkers_number();
 
-      {
-        Walker_Index i_w(half ? iiw + get_Walkers_number() / 2 : iiw);
-        for (Cuevi_Index i_cu = Cuevi_Index(0ul);
-             i_cu < this->get_Cuevi_Temperatures_Number(); ++i_cu) {
-          auto i_frac = this->get_Fraction(i_cu)();
-          auto beta = this->get_Beta(i_cu)();
-          if (beta == 1) {
-            Walker_value &wa = this->get_Walker_Value(i_w, i_cu);
-            Walker_statistics_pair wa_sta =
-                this->get_Walker_Statistics(i_w, i_cu);
-            for (std::size_t i = std::max(1ul, i_frac) - 1;
-                 i < std::min(i_frac + 2, m_max_i_frac); ++i) {
-              Fraction_Index ifrac = Fraction_Index(i);
-              calc_Likelihood(ff[iiw], lik, wa, y, x, ifrac, wa_sta);
-            }
+#pragma omp parallel for collapse(2)
+    for (std::size_t iwa = 0; iwa < num_walk; ++iwa) {
+        for (std::size_t icu =0;
+           icu < this->get_Cuevi_Temperatures_Number(); ++icu) {
+        Cuevi_Index i_cu = Cuevi_Index(icu);
+        auto i_th = omp_get_thread_num();
+        Walker_Index i_w(iwa);
+        auto i_frac = this->get_Fraction(i_cu)();
+        auto beta = this->get_Beta(i_cu)();
+        if (beta == 1) {
+          Walker_value &wa = this->get_Walker_Value(i_w, i_cu);
+          Walker_statistics_pair wa_sta =
+              this->get_Walker_Statistics(i_w, i_cu);
+          for (std::size_t i = std::max(1ul, i_frac) - 1;
+               i < std::min(i_frac + 2, m_max_i_frac); ++i) {
+            Fraction_Index ifrac = Fraction_Index(i);
+            calc_Likelihood(ff[i_th], lik, wa, y, x, ifrac, wa_sta);
           }
         }
       }
+    }
     f += ff;
   }
 
@@ -1372,7 +1342,7 @@ public:
                   Prior const &prior, Likelihood const &lik,
                   const by_fraction<DataType> &y,
                   const by_fraction<Variables> &x, std::size_t n_par,
-                  std::size_t i, Walker_Index iw, Walker_Index jw,
+                  std::size_t i_th, Walker_Index iw, Walker_Index jw,
                   Cuevi_Index i_cu) const {
     auto &wa_i = current.get_Walker_Value(iw, i_cu);
     auto const &wa_j = current.get_Walker_Value(jw, i_cu);
@@ -1381,7 +1351,7 @@ public:
     auto &param_j = get<Parameter>(wa_j())();
     auto &t = current.get_Cuevi_Temperatures();
 
-    auto [ca_par, z] = stretch_move(mts[i], rdist[i], param_i, param_j);
+    auto [ca_par, z] = stretch_move(mts[i_th], rdist[i_th], param_i, param_j);
     auto wa_sta = current.get_Walker_Statistics(iw, i_cu);
     auto Maybe_Walker = current.calc_Walker_value(f, std::move(ca_par), prior,
                                                   lik, y, x, t, i_cu, wa_sta);
@@ -1393,7 +1363,7 @@ public:
       if (dthLogL) {
         auto pJump =
             std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL.value()));
-        auto r = rdist[i](mts[i]);
+        auto r = rdist[i_th](mts[i_th]);
         if (pJump < r) {
           fails(get<emcee_Step_statistics>(wa_sta.first())());
           fails(get<emcee_Step_statistics>(wa_sta.second())());
@@ -1432,9 +1402,9 @@ public:
     auto &mt = mts[0];
     auto n_par = current.get_Parameters_number();
 
-    WalkerIndexes shuffled_walker(n_walkers);
-    std::iota(shuffled_walker.begin(), shuffled_walker.end(), 0);
-    std::shuffle(shuffled_walker.begin(), shuffled_walker.end(), mt);
+    WalkerIndexes i_shuffled_walker(n_walkers);
+    std::iota(i_shuffled_walker.begin(), i_shuffled_walker.end(), 0);
+    std::shuffle(i_shuffled_walker.begin(), i_shuffled_walker.end(), mt);
 
     std::uniform_int_distribution<std::size_t> uniform_walker(0, n_walkers / 2 -
                                                                      1);
@@ -1450,23 +1420,25 @@ public:
     std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
                                                               uniform_real);
 
-    auto ff = f.fork(n_walkers / 2);
+    auto j_shuffled_walker = i_shuffled_walker;
+    std::shuffle(j_shuffled_walker.begin(),
+                 j_shuffled_walker.begin() + n_walkers / 2, mt);
+
+    auto ff = f.fork(omp_get_max_threads());
     for (bool half : {false, true}) {
-      if (half)
-        std::shuffle(shuffled_walker.begin(),
-                     shuffled_walker.begin() + n_walkers / 2, mt);
-
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-        auto ii = half ? i + n_walkers / 2 : i;
-        auto jj = half ? i : i + n_walkers / 2;
-
-        auto iw = Walker_Index(shuffled_walker[ii]);
-        auto jw = Walker_Index(shuffled_walker[jj]);
 
         for (std::size_t i_cu = 0; i_cu < size(cuevi_temp()); ++i_cu) {
-          ff[i].f(step_stretch_cuevi_mcmc_per_walker{}, current, mts, rdist,
-                  prior, lik, y, x, n_par, i, iw, jw, Cuevi_Index(i_cu));
+          auto i_th = omp_get_thread_num();
+
+          auto ii = half ? i + n_walkers / 2 : i;
+          auto jj = half ? i : i + n_walkers / 2;
+
+          auto iw = Walker_Index(i_shuffled_walker[ii]);
+          auto jw = Walker_Index(j_shuffled_walker[jj]);
+          ff[i_th].f(step_stretch_cuevi_mcmc_per_walker{}, current, mts, rdist,
+                     prior, lik, y, x, n_par, i_th, iw, jw, Cuevi_Index(i_cu));
         }
       }
     }
@@ -1569,28 +1541,25 @@ public:
 
       std::uniform_int_distribution<std::size_t> uniform_walker(
           0, n_walkers / 2 - 1);
-      std::vector<std::uniform_int_distribution<std::size_t>> udist(
-          n_walkers, uniform_walker);
 
-      std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
-                                                                uniform_real);
+      std::vector<std::uniform_real_distribution<double>> rdist(
+          omp_get_max_threads(), uniform_real);
 
       Maybe_error<bool> success = true;
 
-      auto ff = f.fork(n_walkers / 2);
+      auto ff = f.fork(omp_get_max_threads());
 
 #pragma omp parallel for
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-
-        auto i_w = Walker_Index(shuffled_walker[i]);
-        auto j_w = Walker_Index(shuffled_walker[i + n_walkers / 2]);
-
         for (std::size_t i_cu = 0; i_cu + 1 < size(t()); ++i_cu) {
+          auto i_th = omp_get_thread_num();
+          auto i_w = Walker_Index(shuffled_walker[i]);
+          auto j_w = Walker_Index(shuffled_walker[i + n_walkers / 2]);
           auto icu = Cuevi_Index(shuffled_cuevi[i_cu]);
           auto jcu = Cuevi_Index(shuffled_cuevi[i_cu + 1]);
-          double r = rdist[i](mts[i]);
-          thermo_cuevi_jump_mcmc_per_walker{}(ff[i], current, lik, y, x, r, i_w,
-                                              j_w, icu, jcu, randomize);
+          double r = rdist[i_th](mts[i_th]);
+          thermo_cuevi_jump_mcmc_per_walker{}(ff[i_th], current, lik, y, x, r,
+                                              i_w, j_w, icu, jcu, randomize);
         }
       }
       f += ff;
@@ -1802,7 +1771,7 @@ auto evidence(FunctionTable &f,
 
   auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
   auto mt = init_mt(init_seed());
-  auto mts = init_mts(mt, n_walkers() / 2);
+  auto mts = init_mts(mt, omp_get_max_threads());
   auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
   auto n_points_per_decade_fraction =
       get<Points_per_decade>(get<Fractions_Param>(cue())());
@@ -1855,7 +1824,7 @@ auto evidence_fraction(
 
   auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
   auto mt = init_mt(init_seed());
-  auto mts = init_mts(mt, n_walkers() / 2);
+  auto mts = init_mts(mt, omp_get_max_threads());
   //   auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
   // auto n_points_per_decade_fraction =
   //     get<Points_per_decade>(get<Fractions_Param>(cue())());
@@ -1910,7 +1879,7 @@ auto continue_evidence(
 
   auto n_walkers = get<Num_Walkers_Per_Ensemble>(cue());
   auto mt = init_mt(init_seed());
-  auto mts = init_mts(mt, n_walkers() / 2);
+  auto mts = init_mts(mt, omp_get_max_threads());
   auto min_fraction = get<Min_value>(get<Fractions_Param>(cue())());
   auto n_points_per_decade_fraction =
       get<Points_per_decade>(get<Fractions_Param>(cue())());

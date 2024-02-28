@@ -328,6 +328,20 @@ promote_Maybe_error(std::vector<Maybe_error<T>> const &x) {
       return error_message("error at " + std::to_string(i) + x[i].error()());
   return out;
 }
+
+inline Maybe_error<bool>
+consolidate(std::vector<Maybe_error<bool>> const &x) {
+    Maybe_error<bool> err;
+    for (std::size_t i = 0; i < size(x); ++i)
+        if (!x[i])
+        {
+            err.value()=false;
+            err.error()()+= x[i].error()();
+        }
+    return err;
+}
+
+
 /*
 template <class... Ts>
 Maybe_error<std::tuple<Ts...>>
