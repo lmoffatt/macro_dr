@@ -429,7 +429,7 @@ auto thermo_evidence(FunctionTable &&f,
     auto a = therm.algorithm();
     auto mt = init_mt(therm.initseed());
     auto n_walkers = therm.num_scouts_per_ensemble();
-    auto mts = init_mts(mt, therm.num_scouts_per_ensemble() / 2);
+    auto mts = init_mts(mt, omp_get_max_threads());
     auto beta = new_get_beta_list(therm.beta_size(), therm.beta_upper_size(),therm.beta_medium_size(),therm.beta_upper_value(),therm.beta_medium_value(),therm.stops_at(),
                               therm.includes_zero());
     
