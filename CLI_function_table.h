@@ -6,6 +6,7 @@
 #include "maybe_error.h"
 #include "models_MoffattHume_linear.h"
 #include "qmodel.h"
+#include <cstddef>
 #include <string>
 namespace macrodr {
 namespace cmd {
@@ -18,20 +19,16 @@ inline auto set_CueviAlgorithm(
     std::string path , double n_points_per_decade_beta_high ,
     double n_points_per_decade_beta_low ,
     bool average_the_ATP_evolution , std::string filename ,
-    std::size_t thermo_jumps_every ) {
+    std::size_t thermo_jumps_every,
+    std::size_t save_every_param_factor    ) {
     using namespace macrodr;
     
-    auto saving_itervals = Saving_intervals(
-        Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),
-                     Save_Likelihood_every(num_scouts_per_ensemble),
-                     Save_Parameter_every(num_scouts_per_ensemble),
-                     Save_Predictions_every(num_scouts_per_ensemble * 20)));
     
     return std::tuple(path, filename, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high,n_points_per_decade_beta_low, medium_beta, stops_at, includes_zero,
-                      saving_itervals, random_jumps);
+                       random_jumps, save_every_param_factor);
 }
 
 
@@ -274,8 +271,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                 auto [path, filename, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
-                      n_points_per_decade_beta_low,medium_beta, stops_at, includes_zero, saving_itervals,
-                      random_jumps] = std::move(algorithm);
+                      n_points_per_decade_beta_low,medium_beta, stops_at, includes_zero,
+                      random_jumps, save_every_param_factor] = std::move(algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction_approximation,
@@ -437,8 +434,8 @@ inline void calc_fraction_evidence(
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
                       n_points_per_decade_beta_low,
-                      medium_beta, stops_at, includes_zero, saving_itervals,
-                      random_jumps] = std::move(cuevi_algorithm);
+                      medium_beta, stops_at, includes_zero,
+                      random_jumps, save_every_param_factor] = std::move(cuevi_algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction,
@@ -465,10 +462,10 @@ inline void calc_fraction_evidence(
                         
                             
                             auto saving_itervals = Saving_intervals(Vector_Space(
-                                Save_Evidence_every(num_scouts_per_ensemble),
-                                Save_Likelihood_every(num_scouts_per_ensemble),
-                                Save_Parameter_every(num_scouts_per_ensemble),
-                                Save_Predictions_every(num_scouts_per_ensemble *20)));
+                            Save_Evidence_every(save_every_param_factor*param1_prior.size()),
+                                Save_Likelihood_every(save_every_param_factor*param1_prior.size()),
+                                Save_Parameter_every(save_every_param_factor*param1_prior.size()),
+                                Save_Predictions_every(save_every_param_factor*param1_prior.size() *20)));
                             
                             auto cbc = new_cuevi_Model_already_fraction_by_iteration<MyModel>(
                                 path, filename, 
@@ -644,8 +641,8 @@ inline void calc_evidence_continuation(
                       num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jump_factor, max_iter_equilibrium, n_points_per_decade_beta_high,
                       n_points_per_decade_beta_low,
-                      medium_beta, stops_at, includes_zero, saving_itervals,
-                      random_jumps] = std::move(algorithm);
+                      medium_beta, stops_at, includes_zero,
+                      random_jumps, save_every_param_factor] = std::move(algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction_approximation,
@@ -692,10 +689,10 @@ inline void calc_evidence_continuation(
                         auto &t_segments_used = t_segments_7;
                         
                         auto saving_itervals = Saving_intervals(Vector_Space(
-                            Save_Evidence_every(num_scouts_per_ensemble),
-                            Save_Likelihood_every(num_scouts_per_ensemble),
-                            Save_Parameter_every(num_scouts_per_ensemble),
-                            Save_Predictions_every(num_scouts_per_ensemble * 20 )));
+                            Save_Evidence_every(param1_prior.size()*save_every_param_factor),
+                            Save_Likelihood_every(param1_prior.size()*save_every_param_factor),
+                            Save_Parameter_every(param1_prior.size()*save_every_param_factor),
+                            Save_Predictions_every(param1_prior.size()*save_every_param_factor * 20 )));
                         
                         auto cbc = new_cuevi_Model_by_iteration<MyModel>(
                             path, filename, t_segments_used, average_the_ATP_evolution,

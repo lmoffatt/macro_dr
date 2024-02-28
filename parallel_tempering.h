@@ -136,6 +136,19 @@ struct thermo_mcmc {
   by_beta<double> beta;
   ensemble<by_beta<mcmc<Parameters>>> walkers;
   ensemble<by_beta<std::size_t>> i_walkers;
+  by_beta<emcee_Step_statistics> emcee_stat;
+  by_beta<Thermo_Jump_statistics> thermo_stat;
+  
+  
+  void reset_statistics()
+  {
+      for (auto& e: emcee_stat)
+          e().reset();
+      for (auto& e: thermo_stat)
+          e().reset();
+      
+  }
+  
   auto get_Walkers_number() const { return walkers.size(); }
   auto &get_Beta() const { return beta; }
   auto &get_Parameter(std::size_t iw, std::size_t i_b) const {
@@ -400,7 +413,10 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
                                           by_beta<std::size_t>(beta.size()));
   ensemble<by_beta<mcmc<Parameters>>> walker(
       n_walkers, by_beta<mcmc<Parameters>>(beta.size()));
-
+  
+  by_beta<emcee_Step_statistics> emcee_stat(beta.size());
+  by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
+  
   for (std::size_t half = 0; half < 2; ++half)
 #pragma omp parallel for
     for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
@@ -411,7 +427,7 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
             init_mcmc(f.fork(var::I_thread(iiw)), mt[iiw], prior, lik, y, x);
       }
     }
-  return thermo_mcmc<Parameters>{beta, walker, i_walker};
+  return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
@@ -431,6 +447,8 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
                                           by_beta<std::size_t>(beta.size()));
   ensemble<by_beta<mcmc<Parameters>>> walker(
       n_walkers, by_beta<mcmc<Parameters>>(beta.size()));
+  by_beta<emcee_Step_statistics> emcee_stat(beta.size());
+  by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
   auto ff = f.fork(omp_get_max_threads());
 
   for (std::size_t half = 0; half < 2; ++half)
@@ -444,7 +462,7 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
       }
     }
   f += ff;
-  return thermo_mcmc<Parameters>{beta, walker, i_walker};
+  return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
 }
 
 template <class Parameters>
@@ -760,6 +778,8 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
                                                             uniform_real);
 
   auto ff = f.fork(omp_get_max_threads());
+  std::vector<by_beta<emcee_Step_statistics>> emcee_stat(omp_get_max_threads(), by_beta<emcee_Step_statistics>(n_beta));
+  
   for (bool half : {false, true})
 #pragma omp parallel for collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
@@ -780,8 +800,11 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
 
         auto ca_logP = logPrior(prior, ca_par);
         auto ca_logL = logLikelihood(ff[i_th], lik, ca_par, y, x);
-
-        if ((ca_logP.valid()) && (ca_logL.valid())) {
+        
+        if (!((ca_logP.valid()) && (ca_logL.valid()))) {
+            fails(emcee_stat[i_th][ib]());
+        }
+        else{
           auto dthLogL =
               ca_logP.value() - current.walkers[iw][ib].logP +
               beta[ib] * (ca_logL.value() - current.walkers[iw][ib].logL);
@@ -796,11 +819,21 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
             current.walkers[iw][ib].parameter = std::move(ca_par);
             current.walkers[iw][ib].logP = ca_logP.value();
             current.walkers[iw][ib].logL = ca_logL.value();
+            succeeds(emcee_stat[i_th][ib]());
+          }
+          else
+          {
+              fails(emcee_stat[i_th][ib]());
           }
         }
       }
+      
     }
-
+for (std::size_t ib = 0; ib < n_beta; ++ib)
+  {
+      for(auto& e:emcee_stat)
+        current.emcee_stat[ib]()+=e[ib]();
+  }
   f += ff;
   ++iter;
 }
@@ -825,6 +858,9 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
     std::shuffle(shuffeld_walkers.begin(), shuffeld_walkers.end(), mt);
     std::vector<std::uniform_real_distribution<double>> rdist(omp_get_max_threads(),
                                                               uniform_real);
+    
+    std::vector<by_beta<Thermo_Jump_statistics>> thermo_stat(omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta-1));
+   
 
 #pragma omp parallel for collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
@@ -847,9 +883,22 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
         if (pJump > r) {
           std::swap(current.walkers[iw][ib], current.walkers[jw][ib + 1]);
           std::swap(current.i_walkers[iw][ib], current.i_walkers[jw][ib + 1]);
+          succeeds(thermo_stat[i_th][ib]());
+        }
+        else
+        {
+            fails(thermo_stat[i_th][ib]());
         }
       }
     }
+    
+    for (std::size_t ib = 0; ib < n_beta-1; ++ib)
+    {
+        for(auto& e:thermo_stat)
+            current.thermo_stat[ib]()+=e[ib]();
+    }
+    
+    
   }
 }
 
@@ -926,7 +975,8 @@ public:
               << beta << s.sep << i_walker << s.sep
               << data.i_walkers[i_walker][i_beta - 1] << s.sep
               << data.walkers[i_walker][i_beta - 1].logP << s.sep << logL
-              << s.sep << plog_Evidence << s.sep << log_Evidence << "\n";
+              << s.sep << plog_Evidence << s.sep << log_Evidence
+              <<"\n";
         }
       }
     }

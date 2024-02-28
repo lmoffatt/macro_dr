@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include "distributions.h"
+#include "variables.h"
 //using Parameters = Matrix<double>;
 using Data = Matrix<double>;
 
@@ -106,6 +107,46 @@ struct calc_logLikelihood_f{
     friend constexpr std::string ToString(calc_logLikelihood_f){ return "calc_logLikelihood_f";}
 };
 
+
+class Trial_count : public var::Constant<Trial_count, std::size_t> {};
+
+
+
+
+class Success_count : public var::Constant<Success_count, std::size_t> {};
+
+class Trial_statistics
+    : public var::Constant<Trial_statistics,
+                           var::Vector_Space<Trial_count, Success_count>> {
+public:
+    Trial_statistics &operator+=(const Trial_statistics other) {
+        get<Trial_count>((*this)())() += get<Trial_count>(other())();
+        get<Success_count>((*this)())() += get<Success_count>(other())();
+        return *this;
+    }
+    
+    friend void succeeds(Trial_statistics &me) {
+        ++get<Trial_count>(me())();
+        ++get<Success_count>(me())();
+    }
+    friend void fails(Trial_statistics &me) { ++get<Trial_count>(me())(); }
+    
+    void reset() {
+        get<Trial_count>((*this)())() = 0;
+        get<Success_count>((*this)())() = 0;
+    }
+    auto count() const { return get<Trial_count>((*this)())(); }
+    double rate() const {
+        return 1.0 * get<Success_count>((*this)())() /
+               get<Trial_count>((*this)())();
+    }
+};
+
+class emcee_Step_statistics
+    : public var::Constant<emcee_Step_statistics, Trial_statistics> {};
+
+class Thermo_Jump_statistics
+    : public var::Constant<Thermo_Jump_statistics, Trial_statistics> {};
 
 
 

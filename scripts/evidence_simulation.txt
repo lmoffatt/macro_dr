@@ -2,7 +2,7 @@ runIdName= get_random_Id(prefix=runIdNamePre)
 
 write_script(script_name=runIdName)
 
-cuevi_algorithm =set_CueviAlgorithm(num_scouts_per_ensemble = 32,number_trials_until_give_up = 100000,  stops_at = 1e-15,  medium_beta = 1e-2, includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,path = "./", n_points_per_decade_beta_high = 6, n_points_per_decade_beta_low = 1,  average_the_ATP_evolution = 1, filename = runIdName ,thermo_jumps_every = 10)
+cuevi_algorithm =set_CueviAlgorithm(num_scouts_per_ensemble = 32,number_trials_until_give_up = 100000,  stops_at = 1e-15,  medium_beta = 1e-2, includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,path = "./", n_points_per_decade_beta_high = 6, n_points_per_decade_beta_low = 1,  average_the_ATP_evolution = 1, filename = runIdName ,thermo_jump_factor = 2)
 
 fraction_algorithm= set_fraction_algorithm(min_fraction = 4, n_points_per_decade_fraction = 24, segments = segments)
 
