@@ -155,6 +155,10 @@ add_executable(macro_dr main.cpp
     scripts/evidence_thermo_simulation.txt
     scripts/evidence_fraction_data.txt scripts/evidence_fraction_simulation.txt
     single_task/MH_Li_4.sh
+    slurm_tupac/s_MH_Li_4.sh
+    slurm_tupac/s_MH_Li_4_sim.sh
+    slurm_tupac/s_MH_Li_2.sh
+    slurm_tupac/s_MH_Li_2_sim.sh
     
     
     
