@@ -16,20 +16,15 @@ set_ThermoAlgorithm(std::size_t num_scouts_per_ensemble,
                     std::string path, std::size_t beta_size,
                     std::size_t beta_upper_size, std::size_t beta_medium_size,
                     std::string filename, std::size_t thermo_jumps_every,
-                    std::size_t max_num_simultaneous_temperatures) {
+                    std::size_t save_every_param_size_factor) {
   using namespace macrodr;
 
-  auto saving_itervals = Saving_intervals(
-      Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),
-                   Save_Likelihood_every(num_scouts_per_ensemble),
-                   Save_Parameter_every(num_scouts_per_ensemble),
-                   Save_Predictions_every(num_scouts_per_ensemble * 20)));
-
+ 
   return std::tuple(
       path, filename, num_scouts_per_ensemble, number_trials_until_give_up,
       thermo_jumps_every, max_iter_equilibrium, beta_size, beta_upper_size,
       beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
-      includes_zero, saving_itervals, max_num_simultaneous_temperatures);
+      includes_zero, save_every_param_size_factor);
 }
 
 using thermo_algo_type =
@@ -62,8 +57,8 @@ inline void calc_thermo_evidence(std::string model, prior_value_type prior,
                 number_trials_until_give_up, thermo_jump_factor,
                 max_iter_equilibrium, beta_size, beta_upper_size,
                 beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
-                includes_zero, saving_intervals,
-                max_num_simultaneous_temperatures] =
+                includes_zero,
+                save_every_param_size_factor] =
               std::move(thermo_algorithm);
 
           auto [adaptive_aproximation, recursive_approximation,
@@ -89,10 +84,17 @@ inline void calc_thermo_evidence(std::string model, prior_value_type prior,
 
               std::string filename = file_name + "_" + ModelName + "_" +
                                      time_now() + "_" + std::to_string(myseed);
-
+                
+                auto saving_intervals = Saving_intervals(Vector_Space(
+                    Save_Evidence_every(save_every_param_size_factor*param1_prior.size()),
+                    Save_Likelihood_every(save_every_param_size_factor*param1_prior.size()),
+                    Save_Parameter_every(save_every_param_size_factor*param1_prior.size()),
+                    Save_Predictions_every(save_every_param_size_factor*param1_prior.size() *20)));
+              
+              
               auto tmi = new_thermo_Model_by_max_iter<MyModel>(
                   path, filename, num_scouts_per_ensemble,
-                  max_num_simultaneous_temperatures, thermo_jumps_every,
+                   thermo_jumps_every,
                   max_iter_equilibrium, beta_size, beta_upper_size,
                   beta_medium_size, beta_upper_value, beta_medium_value,
 

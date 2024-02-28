@@ -251,12 +251,12 @@ fraction_algo, std::string model,std::size_t i_seed )
       "set_CueviAlgorithm",
       dcli::to_typed_function<std::size_t, std::size_t, double, double, bool,
                               bool, std::size_t, std::string, double, double,
-                              std::size_t, std::string, std::size_t>(
+                              std::size_t, std::string, std::size_t, std::size_t>(
           &set_CueviAlgorithm, "num_scouts_per_ensemble",
           "number_trials_until_give_up", "stops_at", "medium_beta",
           "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
           "n_points_per_decade_beta_high", "n_points_per_decade_beta_low",
-          "average_the_ATP_evolution", "filename", "thermo_jumps_every"));
+          "average_the_ATP_evolution", "filename", "thermo_jump_factor", "save_every_param_size_factor"));
 
   /**
    * set_ThermoAlgorithm(std::size_t num_scouts_per_ensemble,
@@ -285,8 +285,8 @@ fraction_algo, std::string model,std::size_t i_seed )
           "beta_medium_value",
           "includes_zero",
           "max_iter_equilibrium", "path", "beta_size", "beta_upper_size",
-          "beta_medium_size", "filename", "thermo_jumps_every",
-          "max_num_simultaneous_temperatures"));
+          "beta_medium_size", "filename", "thermo_jump_factor",
+          "save_every_param_size_factor"));
 
   /**
    *calc_thermo_evidence(std::string model,

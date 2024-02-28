@@ -17,7 +17,7 @@ init_seed=0, modelName= model, parameter_values= modelParameter, includeN=1 ,n_s
 
 runIdName= get_random_Id(prefix="EviSim")
 
-algorithm =set_CueviAlgorithm(num_scouts_per_ensemble = 32,number_trials_until_give_up = 100000,  stops_at = 1e-15,  medium_beta = 1e-2, includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,path = "./", min_fraction = 4, n_points_per_decade_beta_high = 6, n_points_per_decade_beta_low = 1,  n_points_per_decade_fraction = 6,average_the_ATP_evolution = 1, filename = runIdName ,thermo_jumps_every = 10)
+algorithm =set_CueviAlgorithm(num_scouts_per_ensemble = 32,number_trials_until_give_up = 100000,  stops_at = 1e-15,  medium_beta = 1e-2, includes_zero = 1, random_jumps = 1, max_iter_equilibrium = 50000,path = "./", min_fraction = 4, n_points_per_decade_beta_high = 6, n_points_per_decade_beta_low = 1,  n_points_per_decade_fraction = 6,average_the_ATP_evolution = 1, filename = runIdName ,thermo_jump_factor = 2)
 
 
 function_table = get_function_Table_maker(filename= runIdName, num_scouts_per_ensemble = 32) 

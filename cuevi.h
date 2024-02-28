@@ -81,36 +81,6 @@ generate_random_Indexes(mt_64i &mt, std::size_t num_samples,
 namespace cuevi {
 
 class Th_Beta : public var::Var<Th_Beta, double> {};
-class Trial_count : public var::Constant<Trial_count, std::size_t> {};
-
-class Success_count : public var::Constant<Success_count, std::size_t> {};
-
-class Trial_statistics
-    : public var::Constant<Trial_statistics,
-                           var::Vector_Space<Trial_count, Success_count>> {
-public:
-  Trial_statistics &operator+=(const Trial_statistics other) {
-    get<Trial_count>((*this)())() += get<Trial_count>(other())();
-    get<Success_count>((*this)())() += get<Success_count>(other())();
-    return *this;
-  }
-
-  friend void succeeds(Trial_statistics &me) {
-    ++get<Trial_count>(me())();
-    ++get<Success_count>(me())();
-  }
-  friend void fails(Trial_statistics &me) { ++get<Trial_count>(me())(); }
-
-  void reset() {
-    get<Trial_count>((*this)())() = 0;
-    get<Success_count>((*this)())() = 0;
-  }
-  auto count() const { return get<Trial_count>((*this)())(); }
-  double rate() const {
-    return 1.0 * get<Success_count>((*this)())() /
-           get<Trial_count>((*this)())();
-  }
-};
 
 class LogPrior : public var::Var<LogPrior, double> {};
 
@@ -265,14 +235,14 @@ public:
   }
 };
 
-class emcee_Step_statistics
-    : public var::Constant<emcee_Step_statistics, Trial_statistics> {};
-
-class Thermo_Jump_statistics
-    : public var::Constant<Thermo_Jump_statistics, Trial_statistics> {};
 
 class Cuevi_Jump_statistics
     : public var::Constant<Cuevi_Jump_statistics, Trial_statistics> {};
+
+
+
+    
+
 
 class Walker_statistics
     : public var::Var<

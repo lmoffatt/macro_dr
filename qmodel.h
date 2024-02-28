@@ -4931,7 +4931,6 @@ new_cuevi_Model_already_fraction_by_iteration(
 template <class Id>
 auto new_thermo_Model_by_max_iter(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
-    std::size_t max_num_simultaneous_temperatures,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     std::size_t beta_size, std::size_t beta_upper_size,
     std::size_t beta_medium_size, double beta_upper_value,
@@ -4948,8 +4947,7 @@ auto new_thermo_Model_by_max_iter(
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
-      num_scouts_per_ensemble, max_num_simultaneous_temperatures,
-      thermo_jumps_every, beta_size, beta_upper_size, beta_medium_size,
+      num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size, beta_medium_size,
       beta_upper_value, beta_medium_value, stops_at, includes_zero, initseed);
 }
 
