@@ -4,10 +4,12 @@
 //#include "grammar_untyped.h"
 #include "lexer_typed.h"
 #include "maybe_error.h"
+#include "mcmc.h"
 #include "qmodel.h"
 #include <functional>
 #include <map>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <typeinfo>
@@ -279,7 +281,7 @@ public:
 };
 
 template <class Lexer, class Compiler, class F, class... Args>
-    requires (std::is_class_v<std::invoke_result_t<F,Args...>>||
+    requires (std::is_object_v<std::invoke_result_t<F,Args...>>||
              std::is_void_v<std::invoke_result_t<F,Args...>>)
 class typed_function_evaluation
     : public typed_expression<Lexer, Compiler,
@@ -337,6 +339,9 @@ public:
   virtual T run(Environment<Lexer, Compiler> const &) const override{
     return m_value;
   }
+  
+
+  
   
   // typed_expression interface
   public:
