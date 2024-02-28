@@ -2922,9 +2922,9 @@ public:
             1e-3)
       std::cerr << "\n max violation" << r_y_mean()
                 << "  vs  max: " << r_y_mean_max();
-    if ((r_y_mean_min() - primitive(r_y_mean())) >
-        std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_min())) *
-            1e-1)
+    // if ((r_y_mean_min() - primitive(r_y_mean())) >
+    //     std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_min())) *
+    //         1e-1)
       //std::cerr << "\n min violation\n"
       //          << r_y_mean() << "  vs  min: " << r_y_mean_min();
 
