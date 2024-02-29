@@ -765,16 +765,16 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
 
   std::uniform_int_distribution<std::size_t> uniform_walker(0,
                                                             n_walkers / 2 - 1);
-  std::vector<std::uniform_int_distribution<std::size_t>> udist(n_walkers,
+  std::vector<std::uniform_int_distribution<std::size_t>> udist(omp_get_max_threads(),
                                                                 uniform_walker);
 
   std::uniform_real_distribution<double> uniform_stretch_zdist(
       1.0 / alpha_stretch, alpha_stretch);
   std::vector<std::uniform_real_distribution<double>> zdist(
-      n_walkers, uniform_stretch_zdist);
+      omp_get_max_threads(), uniform_stretch_zdist);
 
   std::uniform_real_distribution<double> uniform_real(0, 1);
-  std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
+  std::vector<std::uniform_real_distribution<double>> rdist(omp_get_max_threads(),
                                                             uniform_real);
 
   auto ff = f.fork(omp_get_max_threads());
