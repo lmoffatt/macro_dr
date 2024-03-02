@@ -1,5 +1,6 @@
 #ifndef ALLOSTERIC_MODELS_H
 #define ALLOSTERIC_MODELS_H
+#include "parameters.h"
 #include "qmodel.h"
 #include "variables.h"
 #include <map>
@@ -840,9 +841,9 @@ inline Maybe_error<Conformational_model_scheme> make_Conformational_model_scheme
 
 
 template <class Id, class P>
-  requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+  requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
-              const typename Parameters<Id>::Names &names, const P &par,
+              const typename var::Parameters_Transformations<Id>::Names &names, const P &par,
               const Conformational_transition &tr,
               const Conformational_interactions_domain_state& v_int)
     -> Maybe_error<var::Op_t<transformation_type_t<P>, double>> {
@@ -891,9 +892,9 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 
 
 template <class Id, class P>
-    requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+    requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
-              const typename Parameters<Id>::Names &names, const P &par,
+              const typename var::Parameters_Transformations<Id>::Names &names, const P &par,
               const Conformational_transition &tr,
               const Conformation_change_standard_map& st)
     -> Maybe_error<var::Op_t<transformation_type_t<P>, double>> {
@@ -907,9 +908,9 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 }
 
 template <class Id, class P>
-    requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+    requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
-              const typename Parameters<Id>::Names &names, const P &par,
+              const typename  var::Parameters_Transformations<Id>::Names &names, const P &par,
               const Conformational_transition &tr)
     -> Maybe_error<var::Op_t<transformation_type_t<P>, double>> {
     auto v_int = get<Conformational_interactions_domain_state>(tr());
@@ -919,7 +920,7 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 
 template <class Id>
 auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
-                      const typename Parameters<Id>::Names &names,
+                      const typename var::Parameters_Transformations<Id>::Names &names,
                       const Conformational_transition &tr,
                       const Conformational_interactions_domain_state& v_int)
     -> Maybe_error<std::string> {
@@ -971,7 +972,7 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
 
 template <class Id>
 auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
-                      const typename Parameters<Id>::Names &names,
+                      const typename var::Parameters_Transformations<Id>::Names &names,
                       const Conformational_transition &tr,
                       const Conformation_change_standard_map& st)
      -> Maybe_error<std::string> {
@@ -987,7 +988,7 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
 
 template <class Id>
 auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
-                      const typename Parameters<Id>::Names &names,
+                      const typename var::Parameters_Transformations<Id>::Names &names,
                       const Conformational_transition &tr)
     -> Maybe_error<std::string> {
     auto v_int = get<Conformational_interactions_domain_state>(tr());
@@ -999,10 +1000,10 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
 
 
 template <class Id,class Conformational_model_, class P>
-    requires (std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>&&(
+    requires (std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>&&(
                  std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>))
 auto make_Q0_Qa(const Conformational_model_ &model,
-                const typename Parameters<Id>::Names &names, const P &par)
+                const typename var::Parameters_Transformations<Id>::Names &names, const P &par)
     -> Maybe_error<std::tuple<Transfer_Op_to<P, Q0>, Transfer_Op_to<P, Qa>>> {
 
   using Trans = transformation_type_t<P>;
@@ -1050,7 +1051,7 @@ auto make_Q0_Qa(const Conformational_model_ &model,
 template <class Id,class Conformational_model_>
     requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
 auto make_Q0_Qa_formula(const Conformational_model_ &model,
-                        const typename Parameters<Id>::Names &names)
+                        const typename var::Parameters_Transformations<Id>::Names &names)
     -> Maybe_error<std::tuple<Q0_formula, Qa_formula>> {
 
   auto N = get<N_St>(model())();
@@ -1090,9 +1091,9 @@ auto make_Q0_Qa_formula(const Conformational_model_ &model,
 }
 
 template <class Id, class P>
-  requires std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>
+  requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
 auto calc_gi(const Conductance_interaction_scheme &scheme,
-             const typename Parameters<Id>::Names &names, const P &par,
+             const typename var::Parameters_Transformations<Id>::Names &names, const P &par,
              const Conductance_state_count &count)
     -> Maybe_error<Transfer_Op_to<P, double>> {
   Transfer_Op_to<P, double> out = 0.0;
@@ -1113,7 +1114,7 @@ auto calc_gi(const Conductance_interaction_scheme &scheme,
 
 template <class Id>
 auto calc_gi_formula(const Conductance_interaction_scheme &scheme,
-                     const typename Parameters<Id>::Names &names,
+                     const typename var::Parameters_Transformations<Id>::Names &names,
                      const Conductance_state_count &count)
     -> Maybe_error<std::string> {
   std::string out = "";
@@ -1136,10 +1137,10 @@ auto calc_gi_formula(const Conductance_interaction_scheme &scheme,
 }
 
 template <class Id,class Conformational_model_, class P>
-    requires (std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>&&(
+    requires (std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>&&(
                  std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>))
 auto make_g(const Conformational_model_ &model,
-            const typename Parameters<Id>::Names &names, const P &par)
+            const typename var::Parameters_Transformations<Id>::Names &names, const P &par)
     -> Maybe_error<Transfer_Op_to<P, g>> {
   using Trans = transformation_type_t<P>;
 
@@ -1169,7 +1170,7 @@ auto make_g(const Conformational_model_ &model,
 template <class Id,class Conformational_model_>
     requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
 auto make_g_formula(const Conformational_model_ &model,
-                    const typename Parameters<Id>::Names &names)
+                    const typename var::Parameters_Transformations<Id>::Names &names)
     -> Maybe_error<g_formula> {
 
   auto &v_states = get<Conformational_states>(model());
@@ -1315,10 +1316,10 @@ inline auto get_states_structure(const Conformational_model &model) {
 }
 
 template <class Id,class Conformational_model_, class P>
-    requires (std::is_same_v<var::untransformed_type_t<P>, Parameters<Id>>&&(
+    requires (std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>&&(
                  std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>))
 auto make_Model(const Conformational_model_ &model,
-                const typename Parameters<Id>::Names &names, const P &p)
+                const typename var::Parameters_Transformations<Id>::Names &names, const P &p)
     -> Maybe_error<std::tuple<Transfer_Op_to<P, Q0>, Transfer_Op_to<P, Qa>,
                               Transfer_Op_to<P, g>>>
 
@@ -1341,7 +1342,7 @@ auto make_Model(const Conformational_model_ &model,
 template <class Id,class Conformational_model_>
     requires (std::is_same_v<Conformational_model_,Conformational_model>||std::is_same_v<Conformational_model_,Conformational_model_standarized>)
 auto make_Model_Formulas(const Conformational_model_ &model,
-                         const typename Parameters<Id>::Names &names)
+                         const typename var::Parameters_Transformations<Id>::Names &names)
     -> Maybe_error<std::tuple<Q0_formula, Qa_formula, g_formula>>
 
 {
@@ -1370,7 +1371,7 @@ auto make_ModelNames(const Conformational_model_ &confmodel) {
   con_names.insert(con_names.end(), inter_names.begin(), inter_names.end());
   con_names.insert(con_names.end(), cond_names.begin(), cond_names.end());
 
-  return typename Parameters<Id>::Names(con_names);
+  return typename var::Parameters_Transformations<Id>::Names(con_names);
 }
 
 ///**

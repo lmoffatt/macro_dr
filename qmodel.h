@@ -38,7 +38,7 @@
 #include "variables.h"
 namespace macrodr {
 
-using var::Parameters;
+using var::Parameters_Transformations;
 using var::Power;
 using var::Product;
 using var::Var;
@@ -3264,6 +3264,7 @@ public:
         Op_t<Transf,
              std::conditional_t<predictions.value, Patch_State_and_Evolution,
                                 Patch_State>>;
+    
     auto Maybe_m = model(par);
     if (!is_valid(Maybe_m))
       return get_error(Maybe_m);
@@ -3547,7 +3548,7 @@ public:
 
   template <includes_N_state_evolution keep_N_state, class Model, class Id>
   Maybe_error<Simulated_Recording<keep_N_state>>
-  sample_(mt_64i &mt, const Model &model, const Parameters<Id> &par,
+  sample_(mt_64i &mt, const Model &model, const var::Parameters_values<Id> &par,
           const Experiment &e, const Simulation_Parameters &sim,
           const Recording &r = Recording{}) {
 
@@ -3582,7 +3583,7 @@ public:
   }
   template <class Model, class Id>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(false)>>
-  sample(mt_64i &mt, const Model &model, const Parameters<Id> &par,
+  sample(mt_64i &mt, const Model &model, const var::Parameters_values<Id> &par,
          const Experiment &e, const Simulation_Parameters &sim,
          const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(false)>(mt, model, par, e, sim,
@@ -3591,7 +3592,7 @@ public:
 
   template <class Model, class Id>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(true)>>
-  sample_N(mt_64i &mt, const Model &model, const Parameters<Id> &par,
+  sample_N(mt_64i &mt, const Model &model, const var::Parameters_values<Id> &par,
            const Experiment &e, const Simulation_Parameters &sim,
            const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(true)>(mt, model, par, e, sim, r);
@@ -4289,8 +4290,8 @@ public:
 };
 
 template <class Id, class... Ts>
-void report_title(save_Predictions<Parameters<Id>> &s,
-                  deprecated::cuevi_mcmc<Parameters<Id>> const &,
+void report_title(save_Predictions<var::Parameters_transformed<Id>> &s,
+                  deprecated::cuevi_mcmc<var::Parameters_transformed<Id>> const &,
                   const Ts &...t) {
 
   s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
@@ -4303,8 +4304,8 @@ void report_title(save_Predictions<Parameters<Id>> &s,
 }
 
 template <class Id>
-void report_title(save_Predictions<Parameters<Id>> &s,
-                  thermo_mcmc<Parameters<Id>> const &, ...) {
+void report_title(save_Predictions<var::Parameters_transformed<Id>> &s,
+                  thermo_mcmc<var::Parameters_transformed<Id>> const &, ...) {
 
   s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep << "beta"
       << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
@@ -4320,8 +4321,8 @@ inline void report_title(save_Predictions<Matrix<double>> &s,
 template <class Id, class FunctionTable, class Duration>
   requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &&, std::size_t iter, const Duration &dur,
-            save_Predictions<Parameters<Id>> &s,
-            thermo_mcmc<Parameters<Id>> const &data, ...) {
+            save_Predictions<var::Parameters_transformed<Id>> &s,
+            thermo_mcmc<var::Parameters_transformed<Id>> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
@@ -4333,12 +4334,12 @@ void report(FunctionTable &&, std::size_t iter, const Duration &dur,
               << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
 }
 
-template <class Id, class ParameterType, class FunctionTable, class Duration,
+template <class Id, class FunctionTable, class Duration,
           class Prior, class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &f, std::size_t iter, const Duration &dur,
-            save_Predictions<ParameterType> &s,
-            thermo_mcmc<Parameters<Id>> const &data, Prior &&,
+            save_Predictions<var::Parameters_transformed<Id>> &s,
+            thermo_mcmc<var::Parameters_transformed<Id>> const &data, Prior &&,
             t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
 
   if (iter % s.save_every != 0)
@@ -4361,7 +4362,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
       auto par = data.get_Parameter(i_walker, i_b);
       auto walker_id = data.get_Walker(i_walker, i_b);
       all_Predictions[i_walker].push_back(
-          logLikelihoodPredictions(ff[i_th], lik, par, y, x));
+          logLikelihoodPredictions(ff[i_th], lik, par.to_value(), y, x));
     }
   }
   f += ff;
@@ -4748,7 +4749,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
       auto &wa = data.get_Walker(iw, icu);
       auto &wav = data.get_Walker_Value(iw, icu);
       auto par = data.get_Parameter(iw, i_cu);
-      auto prediction = logLikelihoodPredictions(ff[i_th], lik, par,
+      auto prediction = logLikelihoodPredictions(ff[i_th], lik, par.to_value(),
                                                  ys[i_frac()], xs[i_frac()]);
       allPredictions[i_cu][i_walker] = std::move(prediction);
     }
@@ -4814,12 +4815,12 @@ auto cuevi_Model_by_convergence(
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double stops_at, bool includes_zero, std::size_t initseed) {
   return cuevi_integration(
-      checks_derivative_var_ratio<deprecated::cuevi_mcmc, Parameters<Id>>(
+      checks_derivative_var_ratio<deprecated::cuevi_mcmc, var::Parameters_transformed<Id>>(
           max_iter, max_ratio),
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(path, filename, 100ul, 100ul,
+      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+                save_Predictions<var::Parameters_transformed<Id>>>(path, filename, 100ul, 100ul,
                                                   100ul, 100ul),
       num_scouts_per_ensemble, min_fraction, thermo_jumps_every,
       n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
@@ -4840,9 +4841,9 @@ auto cuevi_Model_by_iteration(
   return deprecated::cuevi_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(path, filename, 10ul, 100ul,
+      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+                save_Predictions<var::Parameters_transformed<Id>>>(path, filename, 10ul, 100ul,
                                                   10ul, 100ul),
       num_scouts_per_ensemble, max_number_of_simultaneous_temperatures,
       min_fraction, thermo_jumps_every, n_points_per_decade_beta,
@@ -4852,9 +4853,9 @@ auto cuevi_Model_by_iteration(
 template <class Id>
 cuevi::Cuevi_Algorithm<
     experiment_fractioner,
-    save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-              save_Parameter<Parameters<Id>>, save_Evidence,
-              save_Predictions<Parameters<Id>>>,
+    save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+              save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+              save_Predictions<var::Parameters_transformed<Id>>>,
     cuevi_less_than_max_iteration>
 new_cuevi_Model_by_iteration(
     std::string path, std::string filename,
@@ -4867,9 +4868,9 @@ new_cuevi_Model_by_iteration(
     Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm(
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(
+      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+                save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -4895,9 +4896,9 @@ new_cuevi_Model_by_iteration(
 
 template <class Id>
 cuevi::Cuevi_Algorithm_no_Fractioner<
-    save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-              save_Parameter<Parameters<Id>>, save_Evidence,
-              save_Predictions<Parameters<Id>>>,
+    save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+              save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+              save_Predictions<var::Parameters_transformed<Id>>>,
     cuevi_less_than_max_iteration>
 new_cuevi_Model_already_fraction_by_iteration(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
@@ -4906,9 +4907,9 @@ new_cuevi_Model_already_fraction_by_iteration(
     double n_points_per_decade_beta_low, double medium_beta, double stops_at,
     bool includes_the_zero, Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm_no_Fractioner(
-      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(
+      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+                save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -4940,9 +4941,9 @@ auto new_thermo_Model_by_max_iter(
     std::size_t initseed) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
-      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(
+      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+                save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -4962,9 +4963,9 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
                               bool includes_zero, std::size_t initseed) {
   return thermodynamic_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
-      save_mcmc<Parameters<Id>, save_likelihood<Parameters<Id>>,
-                save_Parameter<Parameters<Id>>, save_Evidence,
-                save_Predictions<Parameters<Id>>>(path, filename, 10ul, 10ul,
+      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
+                save_Predictions<var::Parameters_transformed<Id>>>(path, filename, 10ul, 10ul,
                                                   10ul, 100ul),
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
       thermo_jumps_every, n_points_per_decade, stops_at, includes_zero,
@@ -5029,7 +5030,7 @@ void save_Simulated_Recording(std::string const &filename,
 }
 
 template <class Id>
-void report_model(save_Parameter<Parameters<Id>> &s, Parameters<Id> const &m) {
+void report_model(save_Parameter<var::Parameters_transformed<Id>> &s, Parameters_Transformations<Id> const &m) {
   std::ofstream f(s.fname + "_parameter.csv");
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   auto n = m.size();
@@ -5039,7 +5040,7 @@ void report_model(save_Parameter<Parameters<Id>> &s, Parameters<Id> const &m) {
     f << i_par << s.sep << "mean" << s.sep << m[i_par] << "\n";
 }
 template <class Id>
-Maybe_error<Parameters<Id>> load_Parameters(save_Parameter<Parameters<Id>> &s) {
+Maybe_error<Parameters_Transformations<Id>> load_Parameters(save_Parameter<var::Parameters_transformed<Id>> &s) {
   return load_Parameters<Id>(s.fname + "_parameter.csv", s.sep);
 }
 

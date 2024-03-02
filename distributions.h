@@ -171,6 +171,12 @@ auto sample(mt_64i& mt, D&d)
 
 template<class D>
     requires(is_Distribution<D>)
+auto sample(mt_64i& mt, D const &d)
+{return d(mt);}
+
+
+template<class D>
+    requires(is_Distribution<D>)
 auto sampler(const D&d)
 {return D(d);}
 
@@ -181,6 +187,14 @@ auto sample(mt_64i& mt, D&d, std::size_t n)
 {
     return d(mt,n);
 }
+
+template<class D>
+    requires(is_vector_sampler<D>)
+auto sample(mt_64i& mt, D const &d, std::size_t n)
+{
+    return d(mt,n);
+}
+
 
 template<class D>
     requires(is_Distribution<D>)

@@ -140,7 +140,11 @@ static auto model00_7 = Model0::Model("model00_7", []() {
   auto p = Matrix<double>(
       9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 1, 5000});
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   return std::tuple(
       [](const auto &logp)
@@ -299,7 +303,11 @@ static auto model00 = Model0::Model("model00", []() {
                                               1, 5000, 5000, 5000, 5000, 5000,
                                               5000, 5000});
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   return std::tuple(
       [](const auto &logp)
@@ -479,7 +487,11 @@ static auto model01 = Model0::Model("model01", []() {
   auto p = Matrix<double>(
       9, 1, std::vector<double>{10, 200, 1500, 50, 1e-5, 1, 1e-3, 1, 5000});
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   return std::tuple(
       [](const auto &logp)
@@ -588,7 +600,11 @@ static auto model4 = Model0::Model("model4", []() {
   //    auto p = Parameters<Model0>(p_kinetics);
   auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   return std::tuple(
       [](const auto &logp)
@@ -721,7 +737,11 @@ static auto model4_g_lin = Model0::Model("model4_g_lin", []() {
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   return std::tuple(
       [](const auto &logp)
@@ -846,7 +866,11 @@ static auto model6 = Allost1::Model("model6", []() {
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   assert(names() == names_vec);
 
@@ -974,7 +998,11 @@ static auto model6_no_inactivation =
       p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
       auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-      auto logp = apply([](auto x) { return std::log10(x); }, p);
+       auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
       assert(names() == names_vec);
 
@@ -1114,7 +1142,11 @@ static auto model6_Eff_no_inactivation =
       p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
       auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-      auto logp = apply([](auto x) { return std::log10(x); }, p);
+       auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
       assert(names() == names_vec_untransformed);
 
@@ -1304,7 +1336,11 @@ static auto model6_Eff_std = Allost1::Model("model6_Eff_std", []() {
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   assert(names() == names_vec_untransformed);
 
@@ -1457,7 +1493,11 @@ static auto model7 = Allost1::Model("model7", []() {
 
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   assert(names() == names_vec);
 
@@ -1570,7 +1610,11 @@ static auto model8 = Allost1::Model("model8", []() {
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   assert(names() == names_vec);
 
@@ -1675,7 +1719,11 @@ static auto model9 = Allost1::Model("model9", []() {
   p_kinetics.insert(p_kinetics.end(), p_other.begin(), p_other.end());
   auto p = Matrix<double>(p_kinetics.size(), 1, p_kinetics);
 
-  auto logp = apply([](auto x) { return std::log10(x); }, p);
+   auto tr=std::vector<std::string>(p.size(),"Log10");
+  tr[tr.size()-2]= "Linear";
+  assert(tr.size()==p.size());
+  auto tr_param=var::MyTranformations::from_strings(tr).value();
+
 
   assert(names() == names_vec);
 

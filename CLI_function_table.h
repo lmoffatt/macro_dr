@@ -5,6 +5,7 @@
 #include "cuevi.h"
 #include "maybe_error.h"
 #include "models_MoffattHume_linear.h"
+#include "parameters.h"
 #include "qmodel.h"
 #include <cstddef>
 #include <string>
@@ -214,8 +215,8 @@ inline std::string run_simulation(std::string filename_prefix,
                     if (!Maybe_parameter_values)
                         return Maybe_parameter_values.error()();
                     else {
-                        auto param1 = std::move(Maybe_parameter_values.value());
-                        save_Parameter<Parameters<MyModel>> s(filename, 1);
+                        auto param1 = Maybe_parameter_values.value().standard_parameter();
+                        save_Parameter<var::Parameters_transformed<MyModel>> s(filename, 1);
                         if (!includeN) {
                             auto sim = Macro_DMR{}.sample(
                                 mt, model0, param1, experiment,
@@ -288,7 +289,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                     std::cerr << Maybe_param1.error()() << Maybe_y.error()();
                 } else {
                     
-                    auto param1 = std::move(Maybe_param1.value());
+                    auto param1 = Maybe_param1.value().standard_parameter();
                     
                     auto modelLikelihood =
                         make_Likelihood_Model<uses_adaptive_aproximation(true),
@@ -366,7 +367,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
             if (!(Maybe_e.valid() && Maybe_y.valid() && Maybe_param1.valid()))
                 return error_message(Maybe_e.error()() + Maybe_y.error()() + Maybe_param1.error()());
             
-            auto param1 = std::move(Maybe_param1.value());
+            auto param1 = Maybe_param1.value().standard_parameter();
             
             std::string filename = file_name + "_" + ModelName + "_" + time_now();
             

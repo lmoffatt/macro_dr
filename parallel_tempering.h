@@ -799,7 +799,7 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
                                         current.walkers[jw][ib].parameter);
 
         auto ca_logP = logPrior(prior, ca_par);
-        auto ca_logL = logLikelihood(ff[i_th], lik, ca_par, y, x);
+        auto ca_logL = logLikelihood(ff[i_th], lik, ca_par.to_value(), y, x);
         
         if (!((ca_logP.valid()) && (ca_logL.valid()))) {
             fails(emcee_stat[i_th][ib]());
