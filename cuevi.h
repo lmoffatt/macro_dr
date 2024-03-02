@@ -421,7 +421,7 @@ template <class ParameterType> class Cuevi_mcmc {
     else {
       auto &ca_par = get<Parameter>(w());
       auto v_logL =
-          f.f(logLikelihood_f{}, lik, ca_par(), y[i_frac()], x[i_frac()]);
+          f.f(logLikelihood_f{}, lik, ca_par().to_value(), y[i_frac()], x[i_frac()]);
       if (!v_logL) {
         fails(get<Likelihood_statistics>(wa_sta.first())()[i_frac]);
         fails(get<Likelihood_statistics>(wa_sta.second())()[i_frac]);
@@ -542,7 +542,7 @@ template <class ParameterType> class Cuevi_mcmc {
                     Walker_statistics_pair wa_sta,
                     Number_trials_until_give_up max_trials) {
     assert(i_cu() < t().size());
-
+    
     Maybe_error<Walker_value> v_walker(error_message{});
     auto n_trial = 0ul;
     while (!v_walker && n_trial < max_trials) {
@@ -2631,9 +2631,9 @@ struct step_stretch_cuevi_mcmc {
 
       auto ca_logPa_ = logPrior(prior, ca_par);
       auto ca_logL_0 =
-          i_fr > 0 ? logLikelihood(lik, ca_par, y[i_fr - 1], x[i_fr - 1])
+          i_fr > 0 ? logLikelihood(lik, ca_par.to_value(), y[i_fr - 1], x[i_fr - 1])
                    : Maybe_error(0.0);
-      auto ca_logL_1 = logLikelihood(lik, ca_par, y[i_fr], x[i_fr]);
+      auto ca_logL_1 = logLikelihood(lik, ca_par.to_value(), y[i_fr], x[i_fr]);
       if (is_valid(ca_logPa_) && is_valid(ca_logL_0) && is_valid(ca_logL_1)) {
         auto ca_logPa = ca_logPa_.value();
         auto ca_logP0 = ca_logPa_.value() + ca_logL_0.value();
@@ -2737,8 +2737,8 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 inline auto init_mcmc2(FunctionTable &&f, mt_64i &mt, const Prior &prior,
                        const Likelihood &lik, const by_fraction<DataType> &y,
                        const by_fraction<Variables> &x) {
-  auto prior_sampler = sampler(prior);
-  auto par = sample(mt, prior_sampler);
+  auto& prior_sampler = prior;
+  auto par = sample(mt, prior);
   auto logP = logPrior(prior, par);
   auto logL = logLikelihood(f, lik, par, y[0], x[0]);
   auto logPa = logP;
@@ -2768,7 +2768,7 @@ inline auto init_mcmc_resample(FunctionTable &&f, ensemble<mt_64i> &mt,
                                const Prior &prior, const Likelihood &lik,
                                const by_fraction<DataType> &y,
                                const by_fraction<Variables> &x) {
-  auto prior_sampler = sampler(prior);
+  auto& prior_sampler = prior;
   auto n_walkers = current.walkers.size();
   auto n_frac = current.beta.size();
   for (std::size_t half = 0; half < 2; ++half)

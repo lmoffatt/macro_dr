@@ -95,7 +95,7 @@ public:
   auto &cov_inv() const { return cov_inv_; }
   auto &cholesky() const { return cho_; }
 
-  Matrix<double> operator()(mt_64i &mt) {
+  Matrix<double> operator()(mt_64i &mt) const {
     auto z =
         sample(mt, normal_distribution(0, 1), mean().nrows(), mean().ncols());
     if (mean().nrows() == 1)
@@ -103,7 +103,7 @@ public:
     else
       return cholesky() * z + mean();
   }
-  auto operator()(mt_64i &mt, std::size_t n) {
+  auto operator()(mt_64i &mt, std::size_t n) const {
     return sample(mt, normal_distribution(0.0, 1.0), n, mean().ncols()) *
            tr(cholesky());
   }

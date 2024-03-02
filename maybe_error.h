@@ -163,6 +163,9 @@ auto get_error(const T &) {
   return error_message("");
 }
 
+
+
+
 namespace err {
 
 template <class T> class Maybe_error : public std::variant<T, error_message> {
@@ -197,6 +200,20 @@ public:
   }
 };
 } // namespace err
+
+template <class T>
+Maybe_unique<T> operator||(Maybe_unique<T>&& one, Maybe_unique<T>&& two)
+{
+    if (one)return std::move(one);
+    else if(two) return std::move(two);
+    else
+    {
+        
+        std::string error=one.error()() +"\n" + two.error()();        
+        return error_message(error);
+    }
+}
+
 
 inline std::string ToString(const double &x) {
     std::stringstream ss;

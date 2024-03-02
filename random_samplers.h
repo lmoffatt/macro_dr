@@ -8,6 +8,8 @@
 #include <random>
 #include <vector>
 constexpr std::size_t large_prime = 654612646693;
+
+
 class mt_64i {
   std::mt19937_64 m_s;
   unsigned long long m_i;
@@ -54,6 +56,13 @@ public:
 
   auto pos() const { return m_i; }
 };
+
+
+class normal_mt_64: public mt_64i
+{
+    
+};
+
 
 template <class bidiiter>
 bidiiter randomly_extract_n(mt_64i &mt, bidiiter begin, bidiiter end,
