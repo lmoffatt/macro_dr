@@ -2909,7 +2909,7 @@ public:
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
     
     
-    constexpr bool PoissonDif=false;
+    constexpr bool PoissonDif=true;
     if constexpr(PoissonDif)
     e=e+get<Proportional_Noise>(m).value() * std::abs(y-r_y_mean);
     else
