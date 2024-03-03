@@ -2881,8 +2881,7 @@ public:
     auto &t_min_P = get<min_P>(m);
     auto e = get<Current_Noise>(m).value() * fs /
                  get<number_of_samples>(t_Qdt).value() +
-             get<Pink_Noise>(m).value() +
-             get<Proportional_Noise>(m).value() * std::abs(y);
+             get<Pink_Noise>(m).value() ;
     ;
 
     auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
@@ -2908,7 +2907,14 @@ public:
 
     r_y_mean =
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
-
+    
+    
+    constexpr bool PoissonDif=false;
+    if constexpr(PoissonDif)
+    e=e+get<Proportional_Noise>(m).value() * std::abs(y-r_y_mean);
+    else
+        e=e+get<Proportional_Noise>(m).value() * std::abs(y);
+        
     auto r_y_mean_max = max_possible_value_of_ymean(
         N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)),
         primitive(y_baseline));
@@ -2979,7 +2985,7 @@ public:
     Op_t<Transf, P_mean> r_P_mean;
     Op_t<Transf, P_Cov> r_P_cov;
     
-    if constexpr (recursive.value)
+    if constexpr (!recursive.value)
     {
         r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
         r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
