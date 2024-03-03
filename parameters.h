@@ -95,6 +95,27 @@ public:
   transformations_vector &operator=(transformations_vector const &) = default;
 
   auto &fixed_set() const { return m_fixed; }
+  
+  
+  auto remove_fixed(std::vector<double>const & x)const
+  {
+      std::vector<double> out(size()-fixed_set().size());
+      std::size_t out_i=0;
+      std::size_t fixed_i=0;
+      for (std::size_t i=0; i<size(); ++i)
+      {
+          if ((fixed_i<fixed_set().size())&&(i==fixed_set()[fixed_i]))
+          {
+              ++fixed_i;
+          }
+          else
+          {
+              out[out_i]=x[i];
+              ++out_i;
+          }
+      }
+      return out;
+  }  
 };
 
 struct Identity_Tr {

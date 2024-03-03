@@ -35,7 +35,7 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 # configurar el path
-export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/v9/
+export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/v10/
 
 # Lanzar el programa
-srun $PATH_MACRO_DR/macro_dr ../macro_dr/models/scheme_4_inact_NP.txt ../macro_dr/scripts/experiment.txt  ../macro_dr/scripts/simulation.txt "--runIdNamePre= \"MH_Li_inact_9a\""  "--num_scouts_per_ensemble = get_number(n=32)"  ../macro_dr/scripts/likelihood.txt ../macro_dr/scripts/evidence_thermo_simulation.txt
+srun $PATH_MACRO_DR/macro_dr ../macro_dr/models/scheme_4.txt ../macro_dr/scripts/experiment_7.txt  ../macro_dr/scripts/load_simulation.txt "--runIdNamePre= \"v10_NR_7_\""  "--num_scouts_per_ensemble = get_number(n=32)"  ../macro_dr/scripts/likelihood_NR.txt ../macro_dr/scripts/evidence_thermo_simulation.txt

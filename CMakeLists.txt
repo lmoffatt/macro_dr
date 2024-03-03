@@ -44,8 +44,6 @@ endif()
 #endif()
 
 
-
-
 add_executable(macro_dr main.cpp
    # CLI_base.h
    maybe_error.h
@@ -101,12 +99,6 @@ add_executable(macro_dr main.cpp
    # old_code_in_main.cpp
     CLI_macrodr_commands.h
     scripts/run_evidence.txt
-    
-    
-    
-    
-    
-    
     models/model6_prior.csv models/model6_parameters.csv
     
     scripts/experiment_7.txt
@@ -159,6 +151,15 @@ add_executable(macro_dr main.cpp
     slurm_tupac/s_MH_Li_4_sim.sh
     slurm_tupac/s_MH_Li_2.sh
     slurm_tupac/s_MH_Li_2_sim.sh
+    scripts/likelihood_NR.txt
+    models/scheme_4_inact_NP_par.csv models/scheme_4_inact_NP_prior.csv models/scheme_4_NP_par.csv models/scheme_4_NP_prior.csv
+    scripts/load_simulation.txt
+    experiments/Sim_scheme_4_NP_N_simulation.csv
+    slurm_tupac/s_v10_MacroNR.sh
+    models/scheme_4_NP.txt
+    models/scheme_4_inact_NP.txt
+    slurm_tupac/s_v10_MacroDRPD.sh slurm_tupac/s_v10_MacroDRP.sh slurm_tupac/s_v10_MacroNRPD.sh 
+    slurm_tupac/s_v10_MacroNRP.sh  slurm_tupac/s_v10_MacroDR.sh  
     
     
     

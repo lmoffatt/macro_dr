@@ -59,7 +59,30 @@ public:
       return Parameters_Normal_Distribution(t_par, 
                                             dist);
   }
-
+  
+  
+  static Maybe_error<Parameters_Normal_Distribution>
+  create(const std::string& ModelName,const std::vector<std::string>& ParamNames, transformations_vector&& trs,
+         std::vector<double> values,
+std::vector<double> variances){
+      if (ParamNames.size()!=trs.size())
+          return error_message("number of paremeters is different from number of transformations");
+      if (!(trs.size()==values.size()&& values.size()==variances.size()))
+          return error_message("number of paremeters is different from values and variances");
+      auto param=Parameters_Transformations<Id>(ModelName,ParamNames,std::move(trs),values);
+      auto tr_values=param.tr(param.standard_values());
+      auto tr_variance= param.transf().remove_fixed(variances);
+      auto Maybe_dist = make_multivariate_normal_distribution(tr_values,
+          DiagPosDetMatrix<double>(tr_variance));
+      if (!Maybe_dist)
+          return Maybe_dist.error();
+      
+      return Parameters_Normal_Distribution(std::move(param),
+                                            std::move(Maybe_dist.value()));
+  }
+  
+  
+  
   auto &IdName() const { return m_tr.IdName(); }
 
   auto &names() const { return m_tr.names(); }
@@ -162,7 +185,7 @@ load_Prior(const std::string filename, const std::string separator,
       while (ss >> ::septr(ModelName) >> ::septr(separator) >> i_par >>
              ::septr(separator) >> ::septr(ParamNames[i_par]) >>
              ::septr(separator) >> transformation_and_sep >>
-             value >> ::septr(separator) >> mean >> ::septr(separator) >> var) {
+             value) {
         if (i_par != v.size())
           return error_message(
               "i_par out of order: i_par=" + std::to_string(i_par) +
@@ -171,26 +194,31 @@ load_Prior(const std::string filename, const std::string separator,
         auto Maybe_tr = MyTranformations::from_string(transformation_and_sep());
         if (!Maybe_tr)
           return Maybe_tr.error();
-        if (Maybe_tr.value()->tr(value)!=mean)
-            mean=Maybe_tr.value()->tr(value);
         trs.push_back(std::move(Maybe_tr.value()));
         v.push_back(value);
+        if (!trs.back()->is_fixed())
+        {
+            ss >> ::septr(separator) >> mean >> ::septr(separator) >> var;
+            if (trs.back()->tr(value)!=mean)
+                 mean=trs.back()->tr(value);
+            means.push_back(mean);
+            vars.push_back(var);
         
-        means.push_back(mean);
-        vars.push_back(var);
+        }
+        
         std::getline(f, line);
         ss = std::stringstream(line);
       }
-
-      auto Maybe_dist = make_multivariate_normal_distribution(
-          Matrix<double>(means.size(), 1, means),
-          DiagPosDetMatrix<double>(vars));
+      auto param=Parameters_Transformations<Id>(ModelName,ParamNames,std::move(trs),v);
+      auto tr_values=param.tr(param.standard_values());
+      auto Maybe_dist = make_multivariate_normal_distribution(tr_values,
+                                                              DiagPosDetMatrix<double>(vars));
       if (!Maybe_dist)
-        return Maybe_dist.error();
-      else
-          return Parameters_Normal_Distribution<Id>(
-            Parameters_Transformations<Id>(ModelName, ParamNames, std::move(trs),v),
-              std::move(Maybe_dist.value()));
+          return Maybe_dist.error();
+      
+      return Parameters_Normal_Distribution(std::move(param),
+                                            std::move(Maybe_dist.value()));
+      
     }
   }
 }
