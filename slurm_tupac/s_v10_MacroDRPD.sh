@@ -38,4 +38,4 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/v11/
 
 # Lanzar el programa
-srun $PATH_MACRO_DR/macro_dr ../macro_dr/models/scheme_4.txt ../macro_dr/scripts/experiment_7.txt  ../macro_dr/scripts/load_simulation.txt "--runIdNamePre= \"v10_NR_7_\""  "--num_scouts_per_ensemble = get_number(n=32)"  ../macro_dr/scripts/likelihood.txt ../macro_dr/scripts/evidence_thermo_simulation.txt
+srun $PATH_MACRO_DR/macro_dr ../macro_dr/models/scheme_4.txt ../macro_dr/scripts/experiment_7.txt  ../macro_dr/scripts/load_simulation.txt "--runIdNamePre= \"v11_DRPD_7_\""  "--num_scouts_per_ensemble = get_number(n=32)"  ../macro_dr/scripts/likelihood.txt ../macro_dr/scripts/evidence_thermo_simulation.txt
