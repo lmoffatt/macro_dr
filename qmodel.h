@@ -2910,8 +2910,9 @@ public:
     
     
     constexpr bool PoissonDif=true;
+  
     if constexpr(PoissonDif)
-    e=e+get<Proportional_Noise>(m).value() * std::abs(y-r_y_mean);
+        e=e+get<Proportional_Noise>(m).value() * std::abs(y-r_y_mean());
     else
         e=e+get<Proportional_Noise>(m).value() * std::abs(y);
         
