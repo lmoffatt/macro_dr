@@ -2978,14 +2978,24 @@ public:
     auto chi = dy / r_y_var();
     Op_t<Transf, P_mean> r_P_mean;
     Op_t<Transf, P_Cov> r_P_cov;
-
+    
+    if constexpr (recursive.value)
+    {
+        r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
+        r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
+        r_P_cov() = r_P_cov() + diag(r_P_mean());
+        
+    }
+    else
+    {
     auto gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
 
     r_P_mean() = p_P_mean() * t_P() + chi * gS;
 
     r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
                 (N / r_y_var()) * XTX(gS);
-
+    
+    
     if (!all_Probability_elements(primitive(r_P_mean())) ||
         !all_Covariance_elements(primitive(r_P_cov()))) {
       r_P_mean() = p_P_mean() * t_P();
@@ -2996,7 +3006,7 @@ public:
           MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
                   ::V<variance>, ::V<variance_correction>>{});
     }
-
+    }
     auto chi2 = dy * chi;
 
     Op_t<Transf, plogL> r_plogL;

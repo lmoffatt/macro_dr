@@ -43,7 +43,8 @@ inline void calc_thermo_evidence(std::string model, prior_value_type prior,
   auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
 
   auto Maybe_model_v = get_model(model);
-
+  
+  
   if (Maybe_model_v) {
     auto model_v = std::move(Maybe_model_v.value());
     return std::visit(
@@ -72,7 +73,7 @@ inline void calc_thermo_evidence(std::string model, prior_value_type prior,
           auto Maybe_param1_prior = var::load_Prior<MyModel>(
               prior.first, prior.second, model0.model_name(), model0.names());
           if (!Maybe_param1_prior) {
-            std::cerr << Maybe_param1_prior.error()();
+              std::cerr <<"\n-------------errror------------\n"<< Maybe_param1_prior.error()();
           } else {
             auto param1_prior = std::move(Maybe_param1_prior.value());
             std::size_t thermo_jumps_every =
