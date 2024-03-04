@@ -36,13 +36,21 @@ else()
     set(lapackblas_libraries /nfs/home/lmoffatt/.nix-profile/lib/libcblas.so /nfs/home/lmoffatt/.nix-profile/lib/liblapack.so)
 endif()
 
+
+
 if(GSL_FOUND)
   set(gsl_library ${GSL_LIBRARY})
 else()
     set(gsl_library /nfs/home/lmoffatt/.nix-profile/lib/libgsl.so )
 endif()
 
+if(GSL_FOUND)
+  set(gsl_dir ${GSL_INCLUDE_DIR})
+else()
+    set(gsl_dir /nix/store/snnl5y7hbk7b49cvfi8mhvgzrknjwz1p-gsl-2.7.1-dev/include/ )
+endif()
 
+include_directories({$gsl_dir})
 
 #find_package(BLAS REQUIRED)
 #find_package(LAPACK REQUIRED)
@@ -177,7 +185,7 @@ add_executable(macro_dr main.cpp
     
 )
 
-target_link_libraries(macro_dr ${lapackblas_libraries} ${gsl_library}  OpenMP::OpenMP_CXX)
+target_link_libraries(macro_dr ${lapackblas_libraries} ${gsl_library} OpenMP::OpenMP_CXX)
 
 include(GNUInstallDirs)
 install(TARGETS macro_dr
