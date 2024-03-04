@@ -27,6 +27,7 @@ set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcep
 
 find_package(BLAS )
 find_package(LAPACK )
+find_package(GSL )
 
 
 if(LAPACK_FOUND AND BLAS_FOUND)
@@ -159,13 +160,16 @@ add_executable(macro_dr main.cpp
     models/scheme_4_NP.txt
     models/scheme_4_inact_NP.txt
     slurm_tupac/s_v10_MacroDRPD.sh slurm_tupac/s_v10_MacroDRP.sh slurm_tupac/s_v10_MacroNRPD.sh 
-    slurm_tupac/s_v10_MacroNRP.sh  slurm_tupac/s_v10_MacroDR.sh  
+    slurm_tupac/s_v10_MacroNRP.sh  slurm_tupac/s_v10_MacroDR.sh
+    gsl_integrate.h
+    slurm_tupac/s_v12_MacroDRPD.sh
+    slurm_tupac/s_v12_MacroNRPD.sh  
     
     
     
 )
 
-target_link_libraries(macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
+target_link_libraries(macro_dr ${lapackblas_libraries} ${GSL_LIBRARY}  OpenMP::OpenMP_CXX)
 
 include(GNUInstallDirs)
 install(TARGETS macro_dr

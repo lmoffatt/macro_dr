@@ -36,6 +36,7 @@
 #include "parameters_distribution.h"
 #include "type_algebra.h"
 #include "variables.h"
+#include "gsl_integrate.h"
 namespace macrodr {
 
 using var::Parameters_Transformations;
@@ -2873,20 +2874,24 @@ public:
         ToString(MacroR2<::V<recursive>, ::V<averaging>, ::V<variance>,
                          ::V<variance_correction>>{});
     using Transf = transformation_type_t<C_Qdt>;
+    
+    
+    
     auto &p_P_mean = get<P_mean>(t_prior);
     auto SmD = get<P_Cov>(t_prior)() - diag(p_P_mean());
     auto &y = p_y.value();
 
     auto &t_tolerance = get<Probability_error_tolerance>(m);
     auto &t_min_P = get<min_P>(m);
+    auto y_baseline = get<Current_Baseline>(m);
     auto e = get<Current_Noise>(m).value() * fs /
                  get<number_of_samples>(t_Qdt).value() +
-             get<Pink_Noise>(m).value() ;
-    ;
+             get<Pink_Noise>(m).value();
+    
+    Op_t<Transf, double> ms = 0;
+    if constexpr (variance.value)
+        ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
 
-    auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
-
-    auto y_baseline = get<Current_Baseline>(m);
     auto N = Nch;
     Matrix<double> u(p_P_mean().size(), 1, 1.0);
 
@@ -2908,18 +2913,17 @@ public:
     r_y_mean =
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
     
+    constexpr bool PoissonDif = true;
     
-    constexpr bool PoissonDif=true;
-  
-    if constexpr(PoissonDif)
-        e=e+get<Proportional_Noise>(m).value() * std::abs(y-r_y_mean());
+    if constexpr (PoissonDif)
+        e = e + get<Proportional_Noise>(m).value() * std::abs(y - r_y_mean());
     else
-        e=e+get<Proportional_Noise>(m).value() * std::abs(y);
-        
+        e = e + get<Proportional_Noise>(m).value() * std::abs(y);
+    
     auto r_y_mean_max = max_possible_value_of_ymean(
         N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)),
         primitive(y_baseline));
-
+    
     auto r_y_mean_min = min_possible_value_of_ymean(
         N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)),
         primitive(y_baseline));
@@ -2932,8 +2936,8 @@ public:
     // if ((r_y_mean_min() - primitive(r_y_mean())) >
     //     std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_min())) *
     //         1e-1)
-      //std::cerr << "\n min violation\n"
-      //          << r_y_mean() << "  vs  min: " << r_y_mean_min();
+    // std::cerr << "\n min violation\n"
+    //          << r_y_mean() << "  vs  min: " << r_y_mean_min();
 
     if (primitive(gSg) > 0) {
       if (primitive(ms) > 0) {
@@ -2986,22 +2990,56 @@ public:
     Op_t<Transf, P_mean> r_P_mean;
     Op_t<Transf, P_Cov> r_P_cov;
     
-    if constexpr (!recursive.value)
-    {
+    if constexpr (!recursive.value) {
         r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
         r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
         r_P_cov() = r_P_cov() + diag(r_P_mean());
         
+    } else if constexpr (!variance_correction.value) {
+        auto gS =
+            TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
+        
+        r_P_mean() = p_P_mean() * t_P() + chi * gS;
+        
+        r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
+                    (N / r_y_var()) * XTX(gS);
+    } else {
+        auto &t_gtotal_var_ij = get<gtotal_var_ij>(t_Qdt);
+        auto &t_gvar_ij = get<gvar_ij>(t_Qdt);
+        auto &t_gtotal_ij = get<gtotal_ij>(t_Qdt);
+        auto &t_gvar_i = get<gvar_i>(t_Qdt);
+        auto gSg =
+            getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i()) +
+                   getvalue(p_P_mean() * (elemMult(t_gtotal_ij(), t_gmean_ij()) * u));
+        
+        auto sSg = getvalue(TranspMult(t_gvar_i(), SmD) * t_gmean_i()) +
+                   getvalue(p_P_mean() *(elemMult(t_gtotal_var_ij(), t_gmean_ij()) * u));
+        auto sSs = getvalue(TranspMult(t_gvar_i(), SmD) * t_gvar_i()) +
+                   getvalue(p_P_mean() *
+                                                                                 (elemMult(t_gtotal_var_ij(), t_gvar_ij()) * u));
+        
+        auto delta_emu = var::max(sqr(ms + e / N) - 2.0 / N * sSs, 0.0);
+        auto ms0 = (ms - e / N) / 2 + std::sqrt(delta_emu) / 2;
+        
+        auto e_mu = e + N * ms0;
+        r_y_mean() = N * getvalue(p_P_mean() * t_gmean_i()) -
+                     N * 0.5 / e_mu * sSg + y_baseline();
+        auto zeta = N / (2 * sqr(e_mu) + N * sSs);
+        r_y_var() = var::max(e, e + N * ms0 + N * gSg - N * zeta * sqr(sSg));
+        auto gS =
+            TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
+        auto sS =
+            TranspMult(t_gvar_i(), SmD) * t_P() + p_P_mean() * t_gtotal_var_ij();
+        r_P_mean() =
+            p_P_mean() * t_P() + chi * gS - (chi * zeta * sSg + 0.5 / e_mu) * sS;
+        
+        r_P_cov() =
+            AT_B_A(t_P(), SmD) + diag(r_P_mean() * t_P()) -
+            (zeta + N / r_y_var() * sqr(zeta * sSg)) * XTX(sS) +
+            (2.0 * N / r_y_var() * zeta * sSg) * X_plus_XT(TranspMult(sS, gS)) -
+            (N / r_y_var()) * XTX(gS);
+        
     }
-    else
-    {
-    auto gS = TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
-
-    r_P_mean() = p_P_mean() * t_P() + chi * gS;
-
-    r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
-                (N / r_y_var()) * XTX(gS);
-    
     
     if (!all_Probability_elements(primitive(r_P_mean())) ||
         !all_Covariance_elements(primitive(r_P_cov()))) {
@@ -3013,13 +3051,16 @@ public:
           MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
                   ::V<variance>, ::V<variance_correction>>{});
     }
-    }
+    
     auto chi2 = dy * chi;
 
     Op_t<Transf, plogL> r_plogL;
-    if (primitive(r_y_var()) > 0.0)
-      r_plogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5 * chi2;
-    else {
+    if (primitive(r_y_var()) > 0.0){
+        if (get<Proportional_Noise>(m).value()==0)
+             r_plogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5 * chi2;
+        else
+            r_plogL() =-log(Poisson_noise_normalization(r_y_var(),get<Proportional_Noise>(m).value()))-0.5*chi2;
+    }else {
       std::stringstream ss;
       ss << "Negative variance!!\n";
       ss << "\nr_y_var=\t" << r_y_var;
@@ -3060,7 +3101,12 @@ public:
           r_eplogL, r_vlogL, get<macror_algorithm>(t_prior), std::move(ev));
     }
   }
-
+  
+  
+  
+  
+  
+  
   template <return_predictions predictions, class C_Patch_Model>
     requires U<C_Patch_Model, Patch_Model>
   auto init(const C_Patch_Model &m, initial_ATP_concentration initial_x)
@@ -3609,9 +3655,9 @@ public:
 
   template <class Model, class Id>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(true)>>
-  sample_N(mt_64i &mt, const Model &model, const var::Parameters_values<Id> &par,
-           const Experiment &e, const Simulation_Parameters &sim,
-           const Recording &r = Recording{}) {
+  sample_N(mt_64i &mt, const Model &model,
+           const var::Parameters_values<Id> &par, const Experiment &e,
+           const Simulation_Parameters &sim, const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(true)>(mt, model, par, e, sim, r);
   }
 };
@@ -4307,9 +4353,10 @@ public:
 };
 
 template <class Id, class... Ts>
-void report_title(save_Predictions<var::Parameters_transformed<Id>> &s,
-                  deprecated::cuevi_mcmc<var::Parameters_transformed<Id>> const &,
-                  const Ts &...t) {
+void report_title(
+    save_Predictions<var::Parameters_transformed<Id>> &s,
+    deprecated::cuevi_mcmc<var::Parameters_transformed<Id>> const &,
+    const Ts &...t) {
 
   s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
       << "iter_time" << s.sep << "nsamples" << s.sep << "beta" << s.sep
@@ -4351,8 +4398,8 @@ void report(FunctionTable &&, std::size_t iter, const Duration &dur,
               << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
 }
 
-template <class Id, class FunctionTable, class Duration,
-          class Prior, class t_logLikelihood, class Data, class Variables>
+template <class Id, class FunctionTable, class Duration, class Prior,
+         class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Predictions<var::Parameters_transformed<Id>> &s,
@@ -4832,13 +4879,15 @@ auto cuevi_Model_by_convergence(
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double stops_at, bool includes_zero, std::size_t initseed) {
   return cuevi_integration(
-      checks_derivative_var_ratio<deprecated::cuevi_mcmc, var::Parameters_transformed<Id>>(
-          max_iter, max_ratio),
+      checks_derivative_var_ratio<deprecated::cuevi_mcmc,
+                                    var::Parameters_transformed<Id>>(max_iter,
+                                                                     max_ratio),
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+      save_mcmc<var::Parameters_transformed<Id>,
+                  save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(path, filename, 100ul, 100ul,
-                                                  100ul, 100ul),
+                save_Predictions<var::Parameters_transformed<Id>>>(
+            path, filename, 100ul, 100ul, 100ul, 100ul),
       num_scouts_per_ensemble, min_fraction, thermo_jumps_every,
       n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
       includes_zero, initseed);
@@ -4858,10 +4907,11 @@ auto cuevi_Model_by_iteration(
   return deprecated::cuevi_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+      save_mcmc<var::Parameters_transformed<Id>,
+                  save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(path, filename, 10ul, 100ul,
-                                                  10ul, 100ul),
+                save_Predictions<var::Parameters_transformed<Id>>>(
+            path, filename, 10ul, 100ul, 10ul, 100ul),
       num_scouts_per_ensemble, max_number_of_simultaneous_temperatures,
       min_fraction, thermo_jumps_every, n_points_per_decade_beta,
       n_points_per_decade_fraction, stops_at, includes_zero, initseed);
@@ -4870,7 +4920,8 @@ auto cuevi_Model_by_iteration(
 template <class Id>
 cuevi::Cuevi_Algorithm<
     experiment_fractioner,
-    save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+    save_mcmc<var::Parameters_transformed<Id>,
+              save_likelihood<var::Parameters_transformed<Id>>,
               save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
               save_Predictions<var::Parameters_transformed<Id>>>,
     cuevi_less_than_max_iteration>
@@ -4885,7 +4936,8 @@ new_cuevi_Model_by_iteration(
     Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm(
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+      save_mcmc<var::Parameters_transformed<Id>,
+                  save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
                 save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
@@ -4913,7 +4965,8 @@ new_cuevi_Model_by_iteration(
 
 template <class Id>
 cuevi::Cuevi_Algorithm_no_Fractioner<
-    save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+    save_mcmc<var::Parameters_transformed<Id>,
+              save_likelihood<var::Parameters_transformed<Id>>,
               save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
               save_Predictions<var::Parameters_transformed<Id>>>,
     cuevi_less_than_max_iteration>
@@ -4924,7 +4977,8 @@ new_cuevi_Model_already_fraction_by_iteration(
     double n_points_per_decade_beta_low, double medium_beta, double stops_at,
     bool includes_the_zero, Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm_no_Fractioner(
-      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+      save_mcmc<var::Parameters_transformed<Id>,
+                  save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
                 save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
@@ -4958,15 +5012,17 @@ auto new_thermo_Model_by_max_iter(
     std::size_t initseed) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
-      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+      save_mcmc<var::Parameters_transformed<Id>,
+                  save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
                 save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
-      num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size, beta_medium_size,
-      beta_upper_value, beta_medium_value, stops_at, includes_zero, initseed);
+      num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
+        beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
+        includes_zero, initseed);
 }
 
 template <class Id>
@@ -4980,10 +5036,11 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
                               bool includes_zero, std::size_t initseed) {
   return thermodynamic_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
-      save_mcmc<var::Parameters_transformed<Id>, save_likelihood<var::Parameters_transformed<Id>>,
+      save_mcmc<var::Parameters_transformed<Id>,
+                  save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(path, filename, 10ul, 10ul,
-                                                  10ul, 100ul),
+                save_Predictions<var::Parameters_transformed<Id>>>(
+            path, filename, 10ul, 10ul, 10ul, 100ul),
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
       thermo_jumps_every, n_points_per_decade, stops_at, includes_zero,
       initseed);
@@ -5047,7 +5104,8 @@ void save_Simulated_Recording(std::string const &filename,
 }
 
 template <class Id>
-void report_model(save_Parameter<var::Parameters_transformed<Id>> &s, Parameters_Transformations<Id> const &m) {
+void report_model(save_Parameter<var::Parameters_transformed<Id>> &s,
+                  Parameters_Transformations<Id> const &m) {
   std::ofstream f(s.fname + "_parameter.csv");
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   auto n = m.size();
@@ -5057,7 +5115,8 @@ void report_model(save_Parameter<var::Parameters_transformed<Id>> &s, Parameters
     f << i_par << s.sep << "mean" << s.sep << m[i_par] << "\n";
 }
 template <class Id>
-Maybe_error<Parameters_Transformations<Id>> load_Parameters(save_Parameter<var::Parameters_transformed<Id>> &s) {
+Maybe_error<Parameters_Transformations<Id>>
+load_Parameters(save_Parameter<var::Parameters_transformed<Id>> &s) {
   return load_Parameters<Id>(s.fname + "_parameter.csv", s.sep);
 }
 

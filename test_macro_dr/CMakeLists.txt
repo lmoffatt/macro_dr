@@ -5,6 +5,7 @@ project(test_macro_dr LANGUAGES CXX)
 enable_testing()
 
 SET(CMAKE_CXX_STANDARD 20)
+find_package(GSL )
 find_package(BLAS )
 find_package(LAPACK )
 find_package(OpenMP REQUIRED)
@@ -18,16 +19,17 @@ else()
 endif()
 
 
-
 add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp
     examples/N_simulation.csv
-    tst_cli_macrodr_command.cpp
-    tst_cli_likelihood.cpp
-    tst_macror_validation.cpp
-    tst_fractioner.cpp)
+   # tst_cli_macrodr_command.cpp
+   # tst_cli_likelihood.cpp
+   # tst_macror_validation.cpp
+   # tst_fractioner.cpp
+    tst_poisson_noise_integration.cpp
+)
 add_test(NAME test_macro_dr COMMAND test_macro_dr)
 
-target_link_libraries(test_macro_dr ${lapackblas_libraries}  OpenMP::OpenMP_CXX)
+target_link_libraries(test_macro_dr ${lapackblas_libraries} ${GSL_LIBRARY} OpenMP::OpenMP_CXX)
 
 include(GNUInstallDirs)
 install(TARGETS test_macro_dr
