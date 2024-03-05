@@ -1,7 +1,7 @@
 #ifndef GSL_INTEGRATE_H
 #define GSL_INTEGRATE_H
 #include <cmath>
-#include <gsl/gsl_integration.h>
+#include "gsl/gsl_integration.h"
 #include <limits>
 #include <tuple>
 
