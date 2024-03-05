@@ -2,7 +2,7 @@ runIdName= get_random_Id(prefix=runIdNamePre)
 write_script(script_name=runIdName)
    
                
-thermo_algorithm = set_ThermoAlgorithm (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  stops_at = 1e-15, beta_upper_value = 1e-2, beta_medium_value = 1e-5, includes_zero = 1, max_iter_equilibrium = 500000, path = "./", beta_size =24, beta_upper_size = 12, beta_medium_size=6,  filename = runIdName ,thermo_jump_factor = 2, save_every_param_size_factor= 1)
+thermo_algorithm = set_ThermoAlgorithm (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  stops_at = 1e-15, beta_upper_value = 1e-2, beta_medium_value = 1e-5, includes_zero = 1, max_iter_equilibrium = 500000, path = "./", beta_size =32, beta_upper_size = 18, beta_medium_size=8,  filename = runIdName ,thermo_jump_factor = 4, save_every_param_size_factor=1) 
 
 function_table = get_function_Table_maker(filename= runIdName, num_scouts_per_ensemble = num_scouts_per_ensemble) 
 

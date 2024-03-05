@@ -445,6 +445,7 @@ auto thermo_evidence(FunctionTable &&f,
   const auto start = std::chrono::high_resolution_clock::now();
   auto &rep = therm.reporter();
   report_title(rep, current, lik, y, x);
+  report_title(f, "Iter");
   report_model_all(rep, prior, lik, y, x, beta);
 
   while (!mcmc_run.second) {
@@ -452,11 +453,11 @@ auto thermo_evidence(FunctionTable &&f,
                              y, x);
     thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                      therm.thermo_jumps_every());
-    //  report(f, iter, rep, current);
     const auto end = std::chrono::high_resolution_clock::now();
     auto dur = std::chrono::duration<double>(end - start);
     report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
                mcmc_run.first);
+    //report_point(f, iter);
     
 
     // using geg=typename
