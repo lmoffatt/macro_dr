@@ -280,7 +280,7 @@ public:
     template <class... Context_data>
     friend auto &report_point(FuncMap_St<Fs...> &f, std::size_t iter,
                               const Context_data &...s) {
-        //if (iter % std::max(1,f.m_save_every ) == 0) {
+        if (iter % std::max(1ul,f.m_save_every ) == 0) {
             if (!f.m_file.is_open()) {
                 f.m_file.open(f.m_filename + "_funcmap.csv", std::ios::app);
                 f.m_file << std::setprecision(std::numeric_limits<double>::digits10 +
@@ -291,6 +291,7 @@ public:
             (report_point(f.m_file, f.sep, static_cast<Fs &>(f)), ...);
             f.m_file << "\n";   
             f.m_file.flush();
+       }
         return f.m_file;
     }
     template <class... Context_string>
