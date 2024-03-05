@@ -50,7 +50,6 @@ else()
     set(gsl_dir /nix/store/snnl5y7hbk7b49cvfi8mhvgzrknjwz1p-gsl-2.7.1-dev/include/ )
 endif()
 
-include_directories({$gsl_dir})
 
 #find_package(BLAS REQUIRED)
 #find_package(LAPACK REQUIRED)
@@ -184,6 +183,7 @@ add_executable(macro_dr main.cpp
     
     
 )
+include_directories( ${gsl_dir})
 
 target_link_libraries(macro_dr ${lapackblas_libraries} ${gsl_library} OpenMP::OpenMP_CXX)
 
