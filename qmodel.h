@@ -3055,11 +3055,19 @@ public:
     auto chi2 = dy * chi;
 
     Op_t<Transf, plogL> r_plogL;
+    Op_t<Transf, eplogL> r_eplogL(-0.5 * log(2 * std::numbers::pi * r_y_var()) -
+                                  0.5);
     if (primitive(r_y_var()) > 0.0){
         if (get<Proportional_Noise>(m).value()==0)
+        {
              r_plogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5 * chi2;
+            r_eplogL()=  -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5;
+        }
         else
-            r_plogL() =-log(Poisson_noise_normalization(r_y_var(),get<Proportional_Noise>(m).value()))-0.5*chi2;
+        {
+            r_plogL() =  -log(Poisson_noise_normalization(r_y_var(),get<Proportional_Noise>(m).value()))-0.5*chi2;
+            r_eplogL() = -log(Poisson_noise_expected_logL(r_y_var(),get<Proportional_Noise>(m).value()));
+        }
     }else {
       std::stringstream ss;
       ss << "Negative variance!!\n";
@@ -3068,8 +3076,6 @@ public:
       return error_message(ss.str());
     }
 
-    Op_t<Transf, eplogL> r_eplogL(-0.5 * log(2 * std::numbers::pi * r_y_var()) -
-                                  0.5);
     vplogL r_vlogL(0.5);
     if (std::isnan(primitive(r_plogL()))) {
       std::stringstream ss;

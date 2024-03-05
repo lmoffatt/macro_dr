@@ -178,7 +178,17 @@ add_executable(macro_dr main.cpp
     slurm_tupac/s_v10_MacroNRP.sh  slurm_tupac/s_v10_MacroDR.sh
     gsl_integrate.h
     slurm_tupac/s_v12_MacroDRPD.sh
-    slurm_tupac/s_v12_MacroNRPD.sh  
+    slurm_tupac/s_v12_MacroNRPD.sh
+    scripts/load_simulation_7.txt
+    experiments/Sim_6465237192204259400_scheme_4_inact_NP_N_simulation.csv
+    slurm_tupac/s_v13_4_sim_DR.sh
+    slurm_tupac/s_v13_4_DR.sh 
+    slurm_tupac/s_v13_4_NR.sh 
+    slurm_tupac/s_v13_4_sim_NR.sh
+    slurm_tupac/s_v13_4_DRPD.sh 
+    slurm_tupac/s_v13_4_sim_NRPD.sh 
+    slurm_tupac/s_v13_4_sim_DRPD.sh
+    slurm_tupac/s_v13_4_sim_NRPD.sh 
     
     
     
