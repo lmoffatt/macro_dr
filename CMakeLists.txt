@@ -188,7 +188,8 @@ add_executable(macro_dr main.cpp
     slurm_tupac/s_v13_4_DRPD.sh 
     slurm_tupac/s_v13_4_sim_NRPD.sh 
     slurm_tupac/s_v13_4_sim_DRPD.sh
-    slurm_tupac/s_v13_4_sim_NRPD.sh 
+    slurm_tupac/s_v13_4_sim_NRPD.sh
+    slurm_tupac/s_v13_4_NRPD.sh 
     
     
     
