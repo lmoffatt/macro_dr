@@ -520,15 +520,6 @@ class vplogL : public var::Var<vplogL, double> {
   friend std::string className(vplogL) { return "vplogL"; }
 };
 
-class logL : public var::Var<logL, double> {
-  friend std::string className(logL) { return "logL"; }
-};
-class elogL : public var::Var<elogL, double> {
-  friend std::string className(elogL) { return "elogL"; }
-};
-class vlogL : public var::Var<vlogL, double> {
-  friend std::string className(vlogL) { return "vlogL"; }
-};
 
 class macror_algorithm : public var::Constant<macror_algorithm, std::string> {
   using var::Constant<macror_algorithm, std::string>::Constant;
@@ -3066,7 +3057,7 @@ public:
         else
         {
             r_plogL() =  -log(Poisson_noise_normalization(r_y_var(),get<Proportional_Noise>(m).value()))-0.5*chi2;
-            r_eplogL() = -log(Poisson_noise_expected_logL(r_y_var(),get<Proportional_Noise>(m).value()));
+            r_eplogL() = Poisson_noise_expected_logL(r_y_var(),get<Proportional_Noise>(m).value());
         }
     }else {
       std::stringstream ss;
@@ -3921,7 +3912,7 @@ template <
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     uses_variance_correction_aproximation variance_correction, class FuncTable,
     class Model, class Parameters, class Variables, class DataType>
-Maybe_error<double>
+Maybe_error<logLs>
 logLikelihood(FuncTable &&f,
               const Likelihood_Model<adaptive, recursive, averaging, variance,
                                      variance_correction, Model> &lik,
@@ -3934,7 +3925,7 @@ logLikelihood(FuncTable &&f,
   if (!v_logL)
     return v_logL.error();
   else
-    return get<logL>(v_logL.value())();
+      return logLs(get<logL>(v_logL.value()),get<elogL>(v_logL.value()),get<vlogL>(v_logL.value()));
 }
 
 template <

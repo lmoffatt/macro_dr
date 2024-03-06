@@ -5,6 +5,7 @@
 #include "matrix.h"
 #include "matrix_random.h"
 #include "multivariate_normal_distribution.h"
+#include "variables.h"
 //#include "parallel_tempering.h"
 #include <cmath>
 
@@ -94,7 +95,7 @@ inline auto get_parameters(linear_model, const Matrix<double> &beta)
 }
 
 template<class FunctionTable>
-Maybe_error<double> logLikelihood(FunctionTable&& f,linear_model, const Matrix<double> &beta,
+    Maybe_error<var::Vector_Space<logL,elogL,vlogL>> logLikelihood(FunctionTable&& f,linear_model, const Matrix<double> &beta,
                                   const Matrix<double> &y,
                                   const Matrix<double> &X) {
     assert(beta.ncols() - 1 == X.ncols() && "beta has the right number");
@@ -108,8 +109,10 @@ Maybe_error<double> logLikelihood(FunctionTable&& f,linear_model, const Matrix<d
     double SS = xtx(ydiff);
     double chi2 = SS / var;
     double out = -0.5 * (n * log(2 * std::numbers::pi) + n * logvar + chi2);
+    double t_elogL=-0.5 * (n * log(2 * std::numbers::pi) + n * logvar + 1);
+    double t_vlogL=0.5;
     if (std::isfinite(out))
-        return out;
+        return var::Vector_Space(logL(out),elogL(t_elogL),vlogL(t_vlogL));
     else {
         std::cerr << std::string("likelihood error: ") + std::to_string(out)
                   << "\n";

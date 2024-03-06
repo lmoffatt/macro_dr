@@ -25,18 +25,21 @@ public:
                            ...) {
 
     s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep
-        << "beta" << s.sep << "meanPrior" << s.sep << "meanLik" << s.sep
-        << "varLik" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
-          <<s.sep<<"emcee_stat_count"<<s.sep<<"emcee_stat_rate"
-          <<s.sep<<"thermo_jump_stat_count"<<s.sep<<"thermo_jump_rate"
+        << "beta" << s.sep << "meanPrior" << s.sep << "logL" << s.sep << "elogL"
+          << s.sep << "vlogL" << s.sep << "var_logL" << s.sep << "var_elogL"
+          << s.sep << "var_vlogL" << s.sep << "plog_Evidence" << s.sep
+          << "eplog_Evidence" << s.sep << "vplog_Evidence" << s.sep
+          << "log_Evidence" << s.sep << "elog_Evidence" << s.sep
+          << "vlog_Evidence" << s.sep << "emcee_stat_count" << s.sep
+          << "emcee_stat_rate" << s.sep << "thermo_jump_stat_count" << s.sep
+          << "thermo_jump_rate"
           
-        << "\n";
+          << "\n";
   }
 
   template <class FunctionTable, class Duration, class Parameters>
   friend void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
-                     save_Evidence &s, thermo_mcmc<Parameters>  &data,
-                     ...) {
+                     save_Evidence &s, thermo_mcmc<Parameters> &data, ...) {
     if (iter % s.save_every == 0) {
 
       auto meanLik = mean_logL(data);
@@ -44,26 +47,24 @@ public:
 
       auto varLik = var_logL(data, meanLik);
       if (data.beta[0] == 1) {
-        double logL = 0;
+          logLs r_logL = {};
         double beta = 0;
-        double log_Evidence = 0;
+          logLs log_Evidence = {};
         for (std::size_t i_beta = num_betas(data); i_beta > 0; --i_beta) {
-          double logL0 = logL;
+          auto logL0 = r_logL;
           double beta0 = beta;
           beta = data.beta[i_beta - 1];
-          logL = meanLik[i_beta - 1];
-          double plog_Evidence = (beta - beta0) * (logL0 + logL) / 2;
-          log_Evidence += plog_Evidence;
+          r_logL = meanLik[i_beta - 1];
+          auto plog_Evidence = (beta - beta0) * (logL0 + r_logL) / 2;
+          log_Evidence = log_Evidence + plog_Evidence;
           s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
-              << beta << s.sep << meanPrior[i_beta - 1] << s.sep << logL
-              << s.sep << varLik[i_beta - 1] << s.sep << plog_Evidence << s.sep
-              << log_Evidence << s.sep
+              << beta << s.sep << meanPrior[i_beta - 1] << r_logL.sep(s.sep)
+              << varLik[i_beta - 1].sep(s.sep) << plog_Evidence.sep(s.sep)
+              << log_Evidence.sep(s.sep)
               << data.emcee_stat[std::max(2ul, i_beta) - 2]().count() << s.sep
               << data.emcee_stat[std::max(2ul, i_beta) - 2]().rate() << s.sep
               << data.thermo_stat[std::max(2ul, i_beta) - 2]().count() << s.sep
-              << data.thermo_stat[std::max(2ul, i_beta) - 2]().rate()
-              << "\n";
-          
+              << data.thermo_stat[std::max(2ul, i_beta) - 2]().rate() << "\n";
         }
       }
       data.reset_statistics();
@@ -457,9 +458,8 @@ auto thermo_evidence(FunctionTable &&f,
     auto dur = std::chrono::duration<double>(end - start);
     report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
                mcmc_run.first);
-    //report_point(f, iter);
+    // report_point(f, iter);
     
-
     // using geg=typename
     // decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;
     mcmc_run = checks_convergence(std::move(mcmc_run.first), current);

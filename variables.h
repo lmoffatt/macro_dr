@@ -3,7 +3,9 @@
 
 #include "maybe_error.h"
 #include "general_output_operator.h"
+#include <charconv>
 #include <cmath>
+#include <cstddef>
 #include <map>
 #include <ostream>
 #include <functional>
@@ -316,7 +318,28 @@ class Vector_Space: public Vars...
     
     
     
+    
 public:
+    class format
+    {
+        Vector_Space const* v=NULL;
+        std::string sep;
+    public:
+        format(Vector_Space const & x, const std::string s):v{&x},sep{s}{}
+        format(const std::string s):sep{s}{}
+        
+        friend std::ostream& operator<<(std::ostream& os,const format& x)
+        {
+            if (x.v!=NULL)
+                return ((os<<x.sep<<static_cast<Vars const&>(*x.v).value()),...);
+            else
+            {
+                for (std::size_t i=0; i<sizeof...(Vars); ++i)
+                    os<<x.sep;
+                return os;
+            }     
+        }
+    };
     using Vars::operator[]...;
     template<class Id>
         requires std::is_convertible_v<Vector_Space const&,Id const&>
@@ -353,6 +376,11 @@ public:
     Vector_Space(){}
     Vector_Space(Vars&&...t_vars): Vars{std::move(t_vars)}...{}
     Vector_Space(Vars const&...t_vars): Vars{t_vars}...{}
+    
+    auto sep(const std::string& s)const
+    {
+        return format(*this,s);
+    }
     
     template<class... Vars2>
     friend auto concatenate(Vector_Space&& one, Vector_Space<Vars2...>&& two)
@@ -397,7 +425,52 @@ public:
         return Vector_Space(Vars(get<Vars>(one)()-get<Vars>(two)())...);
     }
     
+    friend Vector_Space operator/ (const Vector_Space& one, double d)
+    {
+        return Vector_Space(Vars(get<Vars>(one)()/d)...);
+    }
+    friend Vector_Space operator+ (const Vector_Space& one, const Vector_Space& two)
+    {
+        return Vector_Space(Vars(get<Vars>(one)()+get<Vars>(two)())...);
+    }
+    
+    friend Vector_Space pow(const Vector_Space& one, double d)
+    {
+        using std::pow;
+        return Vector_Space(Vars(pow(get<Vars>(one)(),d))...);
+    }
+    
+    friend Vector_Space operator* (const Vector_Space& one, double d)
+    {
+        return Vector_Space(Vars(get<Vars>(one)()*d)...);
+    }
+    friend Vector_Space operator* (double d,const Vector_Space& one)
+    {
+        return Vector_Space(Vars(d*get<Vars>(one)())...);
+    }
+    
 };
+
+
+
+template<class...Vars>
+auto sep(Maybe_error<Vector_Space<Vars...>> const& x, const std::string& s)
+{
+    if (!x)
+        return typename Vector_Space<Vars...>::format(s);
+    else
+        return x.value().sep(s);
+}
+
+template<class Id,class...Vars>
+auto getv(Maybe_error<Vector_Space<Vars...>> const& x)
+    ->Maybe_error<Id>
+{
+    if (! x)
+        return x.error();
+    else
+        return get<Id>(x.value());
+}   
 
 template<class Id,class...Vars>
 auto const& fun(Vector_Space<Vars...> const& x){return x[Var<Id>{}];}
