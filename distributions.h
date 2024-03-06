@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <utility>
 #include "random_samplers.h"
+#include "variables.h"
 
 template <class Distribution>
 concept is_Distribution = requires(Distribution &m, Distribution const& m_const) {
@@ -231,6 +232,19 @@ public:
     explicit distributions(ds const &... d): ds{d}...{}
 };
 
+
+
+class logL : public var::Var<logL, double> {
+    friend std::string className(logL) { return "logL"; }
+};
+class elogL : public var::Var<elogL, double> {
+    friend std::string className(elogL) { return "elogL"; }
+};
+class vlogL : public var::Var<vlogL, double> {
+    friend std::string className(vlogL) { return "vlogL"; }
+};
+
+using logLs=var::Vector_Space<logL,elogL,vlogL>;
 
 
 

@@ -84,7 +84,7 @@ class Th_Beta : public var::Var<Th_Beta, double> {};
 
 class LogPrior : public var::Var<LogPrior, double> {};
 
-class LogLik_value : public var::Var<LogLik_value, double> {
+class LogLik_value : public var::Var<LogLik_value, logLs> {
 public:
   friend std::ostream &operator<<(std::ostream &os, const LogLik_value &x) {
     return os << x();
@@ -158,7 +158,7 @@ public:
     return (*this)().find(i_fra) != (*this)().end();
   }
 
-  Maybe_error<double> operator[](Fraction_Index i) const {
+  Maybe_error<logLs> operator[](Fraction_Index i) const {
     auto it = (*this)().find(i);
     if (it != (*this)().end())
       return it->second();
@@ -235,14 +235,8 @@ public:
   }
 };
 
-
 class Cuevi_Jump_statistics
     : public var::Constant<Cuevi_Jump_statistics, Trial_statistics> {};
-
-
-
-    
-
 
 class Walker_statistics
     : public var::Var<
@@ -317,18 +311,17 @@ template <class ParameterType> class Cuevi_mcmc {
     friend Maybe_error<double> thermo_step(const Walker_value &candidate,
                                            const Walker_value &current,
                                            Th_Beta beta, Fraction_Index i_fra) {
-
-      auto th_ca = get<LogPrior>(candidate())() +
-                   beta() * get<LogLik_by_Fraction>(candidate())[i_fra];
-      auto th_cu = get<LogPrior>(current())() +
-                   beta() * get<LogLik_by_Fraction>(current())[i_fra];
+        
+        auto th_ca = get<LogLik_by_Fraction>(candidate())[i_fra];
+      auto th_cu = get<LogLik_by_Fraction>(current())[i_fra];
 
       if (!th_cu.valid() && th_ca.valid())
         return 100.0;
       else
-        return th_ca - th_cu;
+        return get<LogPrior>(candidate())() +
+                 beta() * get<logL>(th_ca.value())() -
+                 get<LogPrior>(current())() - beta() * get<logL>(th_cu.value())();
     }
-
     friend Maybe_error<double>
     thermo_jump(Th_Beta ca_beta, Fraction_Index ca_fra,
                 const Walker_value &candidate, Th_Beta cu_beta,
@@ -356,7 +349,7 @@ template <class ParameterType> class Cuevi_mcmc {
           current_sum_is_NaN_after_is_not)
         return 0.0; // takes exponential---> prob 1
       else
-        return after_jump_sum - current_sum;
+          return get<logL>((after_jump_sum - current_sum).value())();
     }
 
     friend Maybe_error<double>
@@ -420,8 +413,8 @@ template <class ParameterType> class Cuevi_mcmc {
       return true;
     else {
       auto &ca_par = get<Parameter>(w());
-      auto v_logL =
-          f.f(logLikelihood_f{}, lik, ca_par().to_value(), y[i_frac()], x[i_frac()]);
+      auto v_logL = f.f(logLikelihood_f{}, lik, ca_par().to_value(),
+                        y[i_frac()], x[i_frac()]);
       if (!v_logL) {
         fails(get<Likelihood_statistics>(wa_sta.first())()[i_frac]);
         fails(get<Likelihood_statistics>(wa_sta.second())()[i_frac]);
@@ -542,8 +535,8 @@ template <class ParameterType> class Cuevi_mcmc {
                     Walker_statistics_pair wa_sta,
                     Number_trials_until_give_up max_trials) {
     assert(i_cu() < t().size());
-    
-    Maybe_error<Walker_value> v_walker(error_message{});
+      
+      Maybe_error<Walker_value> v_walker(error_message{});
     auto n_trial = 0ul;
     while (!v_walker && n_trial < max_trials) {
       auto ca_par = std::forward<Sampler>(sampler)(mt);
@@ -570,8 +563,7 @@ template <class ParameterType> class Cuevi_mcmc {
         f, mt, [&p](mt_64i &mt) { return sample(mt, std::forward<Prior>(p)); },
         p, lik, y, x, t, i_cu, w_sta, max_trials);
   }
-
- 
+  
   template <class FunctionTable, class Prior, class logLikelihood, class Data,
             class Variables>
   static Maybe_error<typename Cuevi_mcmc<ParameterType>::Walkers_ensemble>
@@ -645,7 +637,7 @@ public:
            get_Walkers_number();
   }
 
-  Maybe_error<double> calc_Mean_logLik_0(Cuevi_Index j) {
+  Maybe_error<logLs> calc_Mean_logLik_0(Cuevi_Index j) {
     assert(j() < get_Cuevi_Temperatures_Number());
 
     auto i_frac = get_Fraction(j);
@@ -663,7 +655,7 @@ public:
              get_Walkers_number();
   }
 
-  Maybe_error<double> calc_Mean_logLik_2(Cuevi_Index j) {
+  Maybe_error<logLs> calc_Mean_logLik_2(Cuevi_Index j) {
     assert(j() < get_Cuevi_Temperatures_Number());
     auto i_frac = get_Fraction(j);
     auto beta = get_Beta(j);
@@ -838,8 +830,8 @@ public:
 
 #pragma omp parallel for collapse(2)
     for (std::size_t iwa = 0; iwa < num_walk; ++iwa) {
-        for (std::size_t icu =0;
-           icu < this->get_Cuevi_Temperatures_Number(); ++icu) {
+        for (std::size_t icu = 0; icu < this->get_Cuevi_Temperatures_Number();
+             ++icu) {
         Cuevi_Index i_cu = Cuevi_Index(icu);
         auto i_th = omp_get_thread_num();
         Walker_Index i_w(iwa);
@@ -880,8 +872,8 @@ public:
         using Maybe_L = decltype(logL1);
         auto beta1 = 0.0;
         double beta0 = 0.0;
-        Maybe_L log_Evidence = 0.0;
-        Maybe_L log_Evidence_no_0 = 0.0;
+        Maybe_L log_Evidence = {};
+        Maybe_L log_Evidence_no_0 = {};
 
         for (Cuevi_Index i_cu = 0ul;
              i_cu() < data.get_Cuevi_Temperatures_Number(); ++i_cu) {
@@ -946,11 +938,11 @@ public:
           s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_fra()
               << s.sep << nsamples << s.sep << beta1 << s.sep << beta0 << s.sep
               << i_walker << s.sep << get<Walker_id>(wa())() << s.sep
-              << logPrior << s.sep << logL1 << s.sep << logL0 << s.sep
-              << plog_Evidence << s.sep << log_Evidence << s.sep
-              << log_Evidence_no_0 << s.sep << logL1_1 << s.sep << logL1_0
-              << s.sep << logL1_2 << s.sep << logL0_1 << s.sep << logL0_0
-              << s.sep
+              << logPrior << sep(logL1, s.sep) << s.sep << getv<logL>(logL0)
+              << sep(plog_Evidence, s.sep) << sep(log_Evidence, s.sep) << s.sep
+              << getv<logL>(log_Evidence_no_0) << sep(logL1_1, s.sep) << s.sep
+              << getv<logL>(logL1_0) << s.sep << getv<logL>(logL1_2) << s.sep
+              << getv<logL>(logL0_1) << s.sep << getv<logL>(logL0_0) << s.sep
 
               << prior_sta().count() << s.sep << prior_sta().rate() << s.sep
               << lik_sta_0.count() << s.sep << lik_sta_0.rate() << s.sep
@@ -967,24 +959,26 @@ public:
 
   friend void report_title(save_likelihood<ParameterType> &s,
                            Cuevi_mcmc const &...) {
-
-    s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep
-        << "i_frac" << s.sep << "nsamples" << s.sep << "beta1" << s.sep
-        << "beta0" << s.sep << "i_walker" << s.sep << "walker_id" << s.sep
-        << "logPrior" << s.sep << "logL1" << s.sep << "logL0" << s.sep
-        << "plog_Evidence" << s.sep << "log_Evidence" << s.sep
-        << "log_Evidence_no_0" << s.sep << "logL1_1" << s.sep << "logL1_0"
-        << s.sep << "logL1_2" << s.sep << "logL0_1" << s.sep << "logL0_0"
-        << s.sep
-
-        << "prior_sta_count" << s.sep << "prior_sta_rate" << s.sep
-        << "lik_sta_0_count" << s.sep << "lik_sta_0_rate" << s.sep
-        << "lik_sta_1_count" << s.sep << "lik_sta_1_rate" << s.sep
-        << "lik_sta_2_count" << s.sep << "lik_sta_2_rate" << s.sep
-        << "emcee_sta_count" << s.sep << "emcee_sta_rate" << s.sep
-        << "th_sta_count" << s.sep << "th_sta_rate" << s.sep
-        << "cuevi_sta_count" << s.sep << "cuevi_sta_rate"
-        << "\n";
+      
+      s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep
+          << "i_frac" << s.sep << "nsamples" << s.sep << "beta1" << s.sep
+          << "beta0" << s.sep << "i_walker" << s.sep << "walker_id" << s.sep
+          << "logPrior" << s.sep << "logL1" << s.sep << "elogL1" << s.sep
+          << "vlogL1" << s.sep << "logL0" << s.sep << "plog_Evidence" << s.sep
+          << "eplog_Evidence" << s.sep << "vplog_Evidence" << s.sep
+          << "log_Evidence" << s.sep << "elog_Evidence" << s.sep
+          << "vlog_Evidence" << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1"
+          << s.sep << "elogL1_1" << s.sep << "vlogL1_1" << s.sep << "logL1_0"
+          << s.sep << "logL1_2" << s.sep << "logL0_1" << s.sep << "logL0_0"
+          
+          << s.sep << "prior_sta_count" << s.sep << "prior_sta_rate" << s.sep
+          << "lik_sta_0_count" << s.sep << "lik_sta_0_rate" << s.sep
+          << "lik_sta_1_count" << s.sep << "lik_sta_1_rate" << s.sep
+          << "lik_sta_2_count" << s.sep << "lik_sta_2_rate" << s.sep
+          << "emcee_sta_count" << s.sep << "emcee_sta_rate" << s.sep
+          << "th_sta_count" << s.sep << "th_sta_rate" << s.sep
+          << "cuevi_sta_count" << s.sep << "cuevi_sta_rate"
+          << "\n";
   }
 
   template <class FunctionTable, class Duration, class Prior,
@@ -1174,8 +1168,8 @@ public:
       auto logL1_2 = data.calc_Mean_logLik_2(Cuevi_Index(0ul));
 
       auto beta1 = 0.0;
-      Maybe_error<double> log_Evidence = 0.0;
-      Maybe_error<double> log_Evidence_no_0 = 0.0;
+      Maybe_error<logLs> log_Evidence = {};
+      Maybe_error<logLs> log_Evidence_no_0 = {};
 
       for (Cuevi_Index i_cu = 0ul;
            i_cu() < data.get_Cuevi_Temperatures_Number(); ++i_cu) {
@@ -1183,12 +1177,12 @@ public:
         auto nsamples = size(y[i_frac()]);
         auto logPrior = data.calc_Mean_logPrior(i_cu);
         double beta0;
-        Maybe_error<double> logL0;
-        Maybe_error<double> plog_Evidence;
-        Maybe_error<double> logL1_1 = error_message{};
-        Maybe_error<double> logL1_0 = error_message{};
-        Maybe_error<double> logL0_1 = error_message{};
-        Maybe_error<double> logL0_0 = error_message{};
+        Maybe_error<logLs> logL0;
+        Maybe_error<logLs> plog_Evidence;
+        Maybe_error<logLs> logL1_1 = error_message{};
+        Maybe_error<logLs> logL1_0 = error_message{};
+        Maybe_error<logLs> logL0_1 = error_message{};
+        Maybe_error<logLs> logL0_0 = error_message{};
 
         auto stat = data.get_Cuevi_Statistics(i_cu);
 
@@ -1232,10 +1226,11 @@ public:
         }
         s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
             << s.sep << nsamples << s.sep << beta1 << s.sep << beta0 << s.sep
-            << logPrior << s.sep << logL1 << s.sep << logL0 << s.sep
-            << plog_Evidence << s.sep << log_Evidence << s.sep
-            << log_Evidence_no_0 << s.sep << logL1_1 << s.sep << logL1_0
-            << s.sep << logL1_2 << s.sep << logL0_1 << s.sep << logL0_0 << s.sep
+            << logPrior << sep(logL1, s.sep) << sep(logL0, s.sep)
+            << sep(plog_Evidence, s.sep) << sep(log_Evidence, s.sep)<<s.sep
+            << getv<logL>(log_Evidence_no_0) << sep(logL1_1, s.sep) << s.sep
+            << getv<logL>(logL1_0) << s.sep << getv<logL>(logL1_2) << s.sep
+            << getv<logL>(logL0_1) << s.sep << getv<logL>(logL0_0) << s.sep
             << prior_sta().count() << s.sep << prior_sta().rate() << s.sep
             << lik_sta_0.count() << s.sep << lik_sta_0.rate() << s.sep
             << lik_sta_1.count() << s.sep << lik_sta_1.rate() << s.sep
@@ -1248,22 +1243,31 @@ public:
   }
 
   friend void report_title(save_Evidence &s, Cuevi_mcmc const &, ...) {
-
-    s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep
-        << "i_frac" << s.sep << "nsamples" << s.sep << "beta1" << s.sep
-        << "beta0" << s.sep << "logPrior" << s.sep << "logL1" << s.sep
-        << "logL0" << s.sep << "plog_Evidence" << s.sep << "log_Evidence"
-        << s.sep << "log_Evidence_no_0" << s.sep << "logL1_1" << s.sep
-        << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1" << s.sep
-        << "logL0_0" << s.sep << "prior_sta_count" << s.sep << "prior_sta_rate"
-        << s.sep << "lik_sta_0_count" << s.sep << "lik_sta_0_rate" << s.sep
-        << "lik_sta_1_count" << s.sep << "lik_sta_1_rate" << s.sep
-        << "lik_sta_2_count" << s.sep << "lik_sta_2_rate" << s.sep
-        << "emcee_sta_count" << s.sep << "emcee_sta_rate" << s.sep
-        << "th_sta_count" << s.sep << "th_sta_rate" << s.sep
-        << "cuevi_sta_count" << s.sep << "cuevi_sta_rate"
-
-        << "\n";
+      
+      
+      s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep
+          << "i_frac" << s.sep << "nsamples" << s.sep << "beta1" << s.sep
+          << "beta0" << s.sep << "logPrior" << s.sep
+          
+          << "logL1" << s.sep << "elogL1" << s.sep << "vlogL1" << s.sep
+          << "logL0" << s.sep << "elogL0" << s.sep << "vlogL0" << s.sep
+          << "plog_Evidence" << s.sep << "eplog_Evidence" << s.sep
+          << "vplog_Evidence" << s.sep << "log_Evidence" << s.sep
+          << "elog_Evidence" << s.sep << "vlog_Evidence" << s.sep
+          << "log_Evidence_no_0" << s.sep << "logL1_1" << s.sep << "elogL1_1"
+          << s.sep << "vlogL1_1" << s.sep
+          
+          << "logL1_0" << s.sep << "logL1_2" << s.sep << "logL0_1" << s.sep
+          << "logL0_0" << s.sep << "prior_sta_count" << s.sep
+          << "prior_sta_rate" << s.sep << "lik_sta_0_count" << s.sep
+          << "lik_sta_0_rate" << s.sep << "lik_sta_1_count" << s.sep
+          << "lik_sta_1_rate" << s.sep << "lik_sta_2_count" << s.sep
+          << "lik_sta_2_rate" << s.sep << "emcee_sta_count" << s.sep
+          << "emcee_sta_rate" << s.sep << "th_sta_count" << s.sep
+          << "th_sta_rate" << s.sep << "cuevi_sta_count" << s.sep
+          << "cuevi_sta_rate"
+          
+          << "\n";
   }
 };
 
@@ -2630,9 +2634,9 @@ struct step_stretch_cuevi_mcmc {
                        current.walkers[jw][i_fr][ib].parameter);
 
       auto ca_logPa_ = logPrior(prior, ca_par);
-      auto ca_logL_0 =
-          i_fr > 0 ? logLikelihood(lik, ca_par.to_value(), y[i_fr - 1], x[i_fr - 1])
-                   : Maybe_error(0.0);
+      auto ca_logL_0 = i_fr > 0 ? logLikelihood(lik, ca_par.to_value(),
+                                                y[i_fr - 1], x[i_fr - 1])
+                                : Maybe_error(0.0);
       auto ca_logL_1 = logLikelihood(lik, ca_par.to_value(), y[i_fr], x[i_fr]);
       if (is_valid(ca_logPa_) && is_valid(ca_logL_0) && is_valid(ca_logL_1)) {
         auto ca_logPa = ca_logPa_.value();
@@ -2737,7 +2741,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 inline auto init_mcmc2(FunctionTable &&f, mt_64i &mt, const Prior &prior,
                        const Likelihood &lik, const by_fraction<DataType> &y,
                        const by_fraction<Variables> &x) {
-  auto& prior_sampler = prior;
+  auto &prior_sampler = prior;
   auto par = sample(mt, prior);
   auto logP = logPrior(prior, par);
   auto logL = logLikelihood(f, lik, par, y[0], x[0]);
@@ -2768,7 +2772,7 @@ inline auto init_mcmc_resample(FunctionTable &&f, ensemble<mt_64i> &mt,
                                const Prior &prior, const Likelihood &lik,
                                const by_fraction<DataType> &y,
                                const by_fraction<Variables> &x) {
-  auto& prior_sampler = prior;
+  auto &prior_sampler = prior;
   auto n_walkers = current.walkers.size();
   auto n_frac = current.beta.size();
   for (std::size_t half = 0; half < 2; ++half)

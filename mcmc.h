@@ -95,7 +95,7 @@ concept is_likelihood_model = requires(FunctionTable&& f,
     
     {
         logLikelihood(std::forward<FunctionTable>(f),lik,p.to_value(),y,var)
-    }->std::convertible_to<Maybe_error<double>>;
+    }->std::convertible_to<Maybe_error<logLs>>;
 };
 
 
@@ -155,8 +155,8 @@ template<class Parameters>
 struct mcmc {
     Parameters parameter;
     double logP;
-    double logL;
-};
+    logLs logL;
+  };
 
 template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
          class Parameters=std::decay_t<
@@ -167,15 +167,15 @@ auto init_mcmc(FunctionTable&& f, mt_64i &mt, Prior const & pr, const Lik& lik,
     auto& priorsampler=pr;
     auto par = sample(mt,priorsampler);
     auto logP = logPrior(pr,par);
-    auto logL = logLikelihood(std::forward<FunctionTable>(f),lik,par.to_value(), y,x);
-    while(!(logP)||!(logL))
+    auto t_logLs = logLikelihood(std::forward<FunctionTable>(f),lik,par.to_value(), y,x);
+    while(!(logP)||!(t_logLs))
     {
         par = sample(mt,priorsampler);
         logP = logPrior(pr,par);
-        logL = logLikelihood(f,lik,par.to_value(), y,x);
+        t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
         
     }
-    return mcmc<Parameters>{std::move(par), logP.value(), logL.value()};
+    return mcmc<Parameters>{std::move(par), logP.value(), t_logLs.value()};
 }
 
 #endif // MCMC_H
