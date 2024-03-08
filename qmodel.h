@@ -5009,11 +5009,11 @@ auto new_thermo_Model_by_max_iter(
     std::size_t initseed) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
-      save_mcmc<var::Parameters_transformed<Id>,
+      save_mcmc<var::Parameters_transformed<Id>,save_Iter,
                   save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
                 save_Predictions<var::Parameters_transformed<Id>>>(
-          path, filename, get<Save_Likelihood_every>(sint())(),
+          path, filename, 1ul,get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),

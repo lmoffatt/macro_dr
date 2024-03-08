@@ -4,8 +4,52 @@
 #include "function_measure_verification_and_optimization.h"
 #include "multivariate_normal_distribution.h"
 #include "parallel_tempering.h"
+#include <chrono>
 #include <cstddef>
 #include <type_traits>
+
+class save_Iter {
+    
+public:
+    std::string sep = ",";
+    std::string fname;
+    std::ofstream f;
+    std::size_t save_every = 1;
+    std::chrono::duration<double> m_prev_dur;
+    save_Iter(std::string const &path, std::size_t interval)
+        : fname{path}, f{std::ofstream(path + "_iter_time.csv")},
+        save_every{interval} {
+        f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    }
+    
+    template <class mcmc>
+    friend void report_title(save_Iter &s, mcmc const &,
+                             ...) {
+        
+        s.f <<  "iter" << s.sep << "iter_time" << s.sep<<"iter_dur"
+            << "\n";
+    }
+    
+    template <class FunctionTable>
+    friend void report(FunctionTable &&, std::size_t iter,const std::chrono::duration<double> dur,
+                       save_Iter &s,  ...) {
+        if (iter % s.save_every == 0) {
+            
+            s.f << iter << s.sep << dur << s.sep<<dur-s.m_prev_dur<< "\n";
+            s.m_prev_dur=dur;
+            }
+        
+    }
+    
+    friend void report_model(save_Iter &,...) {
+        
+    }
+    
+    
+};
+
+
+
 
 class save_Evidence {
 
@@ -540,9 +584,9 @@ auto thermo_max_iter(FunctionTable &&f, const Prior &prior,
   return thermo_impl(
       f, less_than_max_iteration(max_iter_warming, max_iter_equilibrium), prior,
       lik, y, x,
-      save_mcmc<Parameters, save_likelihood<Parameters>,
+      save_mcmc<Parameters, save_Iter,save_likelihood<Parameters>,
                 save_Parameter<Parameters>, save_Evidence,
-                save_Predictions<Parameters>>(path, filename, 10ul, 10ul, 10ul,
+                save_Predictions<Parameters>>(path, filename, 1ul,10ul, 10ul, 10ul,
                                               100ul),
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
       thermo_jumps_every, n_points_per_decade, stops_at, includes_zero,
