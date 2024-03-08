@@ -2188,11 +2188,7 @@ public:
   auto calc_Qdt(FunctionTable &&f, const C_Patch_Model &m,
                 const ATP_evolution &t_step, double fs)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
-    return std::visit(
-        [this, &m, &f, fs](auto &&a) {
-          return calc_Qdt(std::forward<FunctionTable>(f), m, a, fs);
-        },
-        t_step());
+      return calc_Qdt(std::forward<FunctionTable>(f), m, t_step(), fs);
   }
 
   template <class FunctionTable, class C_Patch_Model>
@@ -2201,13 +2197,9 @@ public:
                           const ATP_evolution &t_step, double fs,
                           std::size_t order)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
-    return std::visit(
-        [this, &m, &f, fs, order](auto &&a) {
-          return calc_Qdt_bisection(std::forward<FunctionTable>(f), m, a, fs,
+              return calc_Qdt_bisection(std::forward<FunctionTable>(f), m, t_step(), fs,
                                     order);
-        },
-        t_step());
-  }
+   }
 
   Maybe_error<bool> test_conductance_mean(const Matrix<double> gmean,
                                           const Matrix<double> g) {
@@ -3545,12 +3537,8 @@ public:
     auto t_sub_step = Simulated_Sub_Step(get<N_channel_state>(t_sim_step()),
                                          number_of_samples(0ul), y_sum(0.0));
 
-    auto Maybe_t_sub_step = std::visit(
-        [this, &mt, &m, n_sub_dt, &t_sub_step, fs](auto const &a) {
-          return sub_sub_sample(mt, std::move(t_sub_step), m, a, n_sub_dt, fs);
-        },
-        t_s());
-
+    auto Maybe_t_sub_step =  sub_sub_sample(mt, std::move(t_sub_step), m, t_s(), n_sub_dt, fs);
+     
     if (!Maybe_t_sub_step)
       return Maybe_t_sub_step.error();
     else {
@@ -3986,16 +3974,16 @@ inline auto get_num_samples(const std::vector<ATP_step> &e) {
 }
 
 inline auto get_num_samples(const ATP_evolution &e) {
-  return std::visit([](auto const &a) { return get_num_samples(a); }, e());
+    return get_num_samples(e());
 }
 
-inline ATP_evolution average_ATP_step(ATP_step const &x) { return x; }
+inline ATP_evolution average_ATP_step(ATP_step const &x) { return std::vector<ATP_step>(1,x); }
 
 inline ATP_evolution average_ATP_step(std::vector<ATP_step> const &x) {
   if (x.empty())
     return x;
   else if (x.size() == 1)
-    return x[0];
+    return x;
   else {
     auto out = std::vector<ATP_step>{x[0]};
     for (std::size_t i = 1; i < x.size(); ++i) {
@@ -4015,10 +4003,7 @@ inline ATP_evolution average_ATP_step(std::vector<ATP_step> const &x) {
         get<ATP_concentration>(out.back())() = new_ATP;
       }
     }
-    if (out.size() == 1)
-      return std::move(out[0]);
-    else
-      return out;
+    return out;
   }
 }
 
@@ -4029,7 +4014,7 @@ inline ATP_evolution average_ATP_step(std::vector<ATP_step> const &x) {
 inline ATP_evolution average_ATP_step(ATP_evolution const &x,
                                       bool average_the_evolution) {
   if (average_the_evolution)
-    return std::visit([](auto const &a) { return average_ATP_step(a); }, x());
+        return average_ATP_step(x());
   else
     return x;
 }
@@ -4075,7 +4060,8 @@ static ATP_evolution add_ATP_step_i(ATP_step &&x, std::vector<ATP_step> &&y) {
 
 static ATP_evolution add_ATP_step_i(std::vector<ATP_step> &&x, ATP_step &&e) {
   if (x.empty()) {
-    return e;
+        x.push_back(e);
+        return x;
   } else if (get<ATP_concentration>(x.back())() ==
              get<ATP_concentration>(e)()) {
     get<number_of_samples>(x.back())() += get<number_of_samples>(e)();
@@ -4087,23 +4073,15 @@ static ATP_evolution add_ATP_step_i(std::vector<ATP_step> &&x, ATP_step &&e) {
 static ATP_evolution add_ATP_step_i(ATP_step &&x, ATP_step &&e) {
   if (get<ATP_concentration>(x)() == get<ATP_concentration>(e)()) {
     get<number_of_samples>(x)() += get<number_of_samples>(e)();
-    return x;
+      return std::vector<ATP_step>{std::move(x)};
   } else {
     return std::vector<ATP_step>{std::move(x), std::move(e)};
   }
 }
 
 static ATP_evolution add_ATP_step(ATP_evolution &&x, ATP_evolution &&e) {
-  return std::visit(
-      [&x](auto &&a) {
-        return std::visit(
-            [&a](auto &&ax) {
-              return add_ATP_step_i(std::move(ax), std::move(a));
-            },
-            x());
-      },
-      e());
-}
+    return add_ATP_step_i(std::move(x()), std::move(e()));
+ }
 
 class experiment_fractioner {
   std::vector<std::size_t> segments = {73, 33, 22, 22, 4};
@@ -4473,7 +4451,7 @@ inline std::string ToString(const std::vector<ATP_step> &ev) {
 }
 
 inline std::string ToString(const ATP_evolution &ev) {
-  return std::visit([](auto const &a) { return ToString(a); }, ev());
+    return ToString(ev());
 }
 
 template <includes_N_state_evolution keep_N_state>

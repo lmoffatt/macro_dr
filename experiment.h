@@ -28,50 +28,22 @@ using ATP_step = var::Vector_Space<number_of_samples, ATP_concentration>;
 
 using ATP_evoltype = std::variant<ATP_step, std::vector<ATP_step>>;
 
-class ATP_evolution
-    : public Var<ATP_evolution, std::variant<ATP_step, std::vector<ATP_step>>> {
+class ATP_evolution : public Var<ATP_evolution, std::vector<ATP_step>> {
 public:
-    auto size()const{return std::visit([](auto const& x)
-                          {
-            if constexpr (std::is_same_v<std::decay_t<decltype(x)>,ATP_step>)
-                return 1ul;
-            else return x.size();},(*this)());
-    }
+    auto size() const { return (*this)().size(); }
     
-    bool is_zero()const
-    {
-        for (std::size_t i=0; i<size(); ++i)
-            if (get<ATP_concentration>((*this)[i])()!=0)
+    bool is_zero() const {
+        for (std::size_t i = 0; i < size(); ++i)
+            if (get<ATP_concentration>((*this)[i])() != 0)
                 return false;
         return true;
     }
     
+    ATP_step &operator[](std::size_t i) { return (*this)()[i]; }
     
-    ATP_step& operator[](std::size_t i){
-        return std::visit([i](auto& x)->ATP_step&
-                          {
-                              if constexpr (std::is_same_v<std::decay_t<decltype(x)>,ATP_step>)
-                                  return x;
-                              else
-                                  return x[i];
-        }
-         ,(*this)());
-    }
+    ATP_step const &operator[](std::size_t i) const { return (*this)()[i]; }
     
-    ATP_step const& operator[](std::size_t i)const {
-        return std::visit([i](auto const& x)->ATP_step const&
-                          {
-                              if constexpr (std::is_same_v<std::decay_t<decltype(x)>,ATP_step>)
-                                  return x;
-                              else
-                                  return x[i];
-                          }
-                          ,(*this)());
-    }
-            
-        
-    
-  using Var<ATP_evolution, std::variant<ATP_step, std::vector<ATP_step>>>::Var;
+    using Var<ATP_evolution, std::vector<ATP_step>>::Var;
 };
 
 inline std::ostream &put(std::ostream &f, std::string sep, std::size_t i_frac,
@@ -93,11 +65,7 @@ inline std::ostream &put(std::ostream &f, std::string sep, std::size_t i_frac,
 inline std::ostream &put(std::ostream &f, std::string sep, std::size_t i_frac,
                          std::size_t i_step, double time,
                          ATP_evolution const &v) {
-  return std::visit(
-      [&f, sep, i_frac, i_step, time](auto &e) -> decltype(auto) {
-        return put(f, sep, i_frac, i_step, time, e);
-      },
-      v());
+    return put(f, sep, i_frac, i_step, time, v());
 }
 
 class Patch_current : public Var<Patch_current, double> {};
@@ -227,26 +195,25 @@ inline Maybe_error<Recording> load_Recording(std::string filename,
   double current;
   std::string line;
   std::getline(f, line);
-  std::stringstream ss(line);  
+  std::stringstream ss(line);
   
   ss >> septr("i_step") >> sep >> septr("patch_current");
   if (!ss)
     return error_message("not even titles");
   std::getline(f, line);
-  ss=std::stringstream(line);  
+  ss = std::stringstream(line);
   
   while (extract_double(ss >> i_step >> sep, current, separator[0])) {
       if (i_step != out().size())
-        return error_message("i_step mismatch " + std::to_string(i_step) +
-                             " size: " + std::to_string(out().size()));
+          return error_message("i_step mismatch " + std::to_string(i_step) +
+                               " size: " + std::to_string(out().size()));
       else
-        out().push_back(Patch_current(current));
+          out().push_back(Patch_current(current));
       std::getline(f, line);
-      ss=std::stringstream(line);  
-      
-    }
-    return out;
- }
+      ss = std::stringstream(line);
+  }
+  return out;
+}
 
 template <class Parameter>
 void report_model(save_Parameter<Parameter> &s, Recording const &e) {
@@ -408,8 +375,8 @@ load_recording(const std::string filename) {
       double v_time, v_ns, v_ATP, v_current;
       extract_double(ss >> v_time >> v_ns >> v_ATP, v_current);
       ATP_evolution step;
-      step() = ATP_step(number_of_samples(std::size_t(v_ns)),
-                        ATP_concentration(v_ATP));
+      step().push_back(ATP_step(number_of_samples(std::size_t(v_ns)),
+                                ATP_concentration(v_ATP)));
       out0.emplace_back(Time(v_time / 1000), std::move(step));
       out1.emplace_back(Patch_current(v_current));
     }
@@ -441,19 +408,9 @@ inline void save_experiment(const std::string filename, std::string sep,
     Experiment_step const &s = r()[i];
     auto &t = get<Time>(s);
     auto const &a = get<ATP_evolution>(s);
-    std::visit(overloaded(
-                   [&t, &f, i, &sep](const ATP_step &a0) {
-                     f << i << sep << t << sep << 0 << sep
-                       << get<number_of_samples>(a0) << sep
-                       << get<ATP_concentration>(a0) << "\n";
-                   },
-                   [&t, &f, i, &sep](const std::vector<ATP_step> &av) {
-                     for (auto j = 0ul; j < av.size(); ++j)
-                       f << i << sep << t << sep << j << sep
-                         << get<number_of_samples>(av[j]) << sep
-                         << get<ATP_concentration>(av[j]) << "\n";
-                   }),
-               a());
+    for (auto j = 0ul; j < a().size(); ++j)
+        f << i << sep << t << sep << j << sep << get<number_of_samples>(a()[j])
+          << sep << get<ATP_concentration>(a()[j]) << "\n";
   }
 }
 
@@ -473,24 +430,14 @@ inline void save_fractioned_experiment(const std::string filename,
     for (auto i = 0ul; i < r().size(); ++i) {
       Experiment_step const &s = r()[i];
       auto &t = get<Time>(s);
-      auto const &a = get<ATP_evolution>(s);
-      std::visit(
-          overloaded(
-              [&t, &f, k, i, &sep](const ATP_step &a0) {
-                f << k << sep << i << sep << t() << sep << 0 << sep
-                  << get<number_of_samples>(a0) << sep
-                  << get<ATP_concentration>(a0) << "\n";
-              },
-              [&t, &f, i, k, &fs, &sep](const std::vector<ATP_step> &av) {
-                for (auto j = 0ul; j < av.size(); ++j)
+      auto const &av = get<ATP_evolution>(s)();
+                     for (auto j = 0ul; j < av.size(); ++j)
 
                   f << k << sep << i << sep
                     << (j > 0 ? t() + get<number_of_samples>(av[j - 1])() / fs()
                               : t())
                     << sep << j << sep << get<number_of_samples>(av[j]) << sep
                     << get<ATP_concentration>(av[j]) << "\n";
-              }),
-          a());
     }
   }
 }
@@ -548,10 +495,7 @@ load_fractioned_experiment(const std::string filename, std::string separator,
         if (as.size() == 0)
           return error_message("mismatch here");
         else {
-          if (as.size() == 1)
-            rec().emplace_back(Time(t_prev), as[0]);
-          else
-            rec().emplace_back(Time(t_prev), as);
+          rec().emplace_back(Time(t_prev), as);
           as.clear();
         }
         i_step_prev = i_step;
@@ -591,43 +535,31 @@ load_fractioned_experiment(const std::string filename, std::string separator,
     std::getline(f, line);
     ss = std::stringstream(line);
   }
-  if (as.size() == 1)
-    rec().emplace_back(Time(t_prev), as[0]);
-  else
-    rec().emplace_back(Time(t_prev), as);
+  rec().emplace_back(Time(t_prev), as);
   e.emplace_back(rec, Frequency_of_Sampling(frequency_of_sampling),
                  initial_ATP_concentration(ATP_concentration(initial_ATP)));
 
   return true;
 }
 
-
-
-
-
 // inline
 //     std::pair<std::size_t, std::size_t>
 // next_ATP_Pulse(const Recording_conditions& x, std::size_t pos)
 // {
-//     while (get<ATP_evolution>(x()[pos])     
+//     while (get<ATP_evolution>(x()[pos])
 // }
-
-
 
 // inline Recording_conditions
 // Idealize_ATP_pulse(std::string save_name,Recording_conditions experiment) {
 //     auto filename = save_name ;
-    
-    
-    
+
 //     // save_fractioned_experiment(filename + "_experiment.csv", ",", xs);
 //     // save_fractioned_Recording(filename + "_recording.csv", ",", ys);
-//     // return std::tuple(filename + "_experiment.csv", filename + "_recording.csv",
+//     // return std::tuple(filename + "_experiment.csv", filename +
+//     "_recording.csv",
 //     //                   get<Frequency_of_Sampling>(experiment)(),
 //     //                   get<initial_ATP_concentration>(experiment)()());
 // }
-
-
 
 namespace cmd {
 inline auto get_Experiment(
@@ -640,6 +572,18 @@ inline auto get_Experiment(
                     Frequency_of_Sampling(frequency_of_sampling),
                     initial_ATP_concentration(ATP_concentration(initial_ATP)));
 }
+
+inline auto idealize_Experiment_Pulse(
+    std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
+    double frequency_of_sampling = 50e3, double initial_ATP = 0) {
+    using namespace macrodr;
+    auto [recording_conditions, recording] = macrodr::load_recording(filename);
+    
+    return Experiment(std::move(recording_conditions),
+                      Frequency_of_Sampling(frequency_of_sampling),
+                      initial_ATP_concentration(ATP_concentration(initial_ATP)));
+}
+
 inline auto get_Observations(
     std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt") {
   auto [recording_conditions, recording] = macrodr::load_recording(filename);
