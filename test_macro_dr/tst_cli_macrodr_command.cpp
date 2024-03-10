@@ -77,4 +77,53 @@ calc_simulation_fractions(std::string save_name,std::string simulation, experime
     
     
     
+    
+    
+    
+    
+}
+
+
+
+
+
+TEST_CASE("loading and saving experiments work together", "[save_experiment/load_experiment]")
+{
+    using namespace macrodr;
+    using namespace cmd ;
+    
+    std::string save_name ="../macro_dr/test_macro_dr/examples/saved_experiment.txt";
+    
+    std::string exp_filename="../macro_dr/experiments/Moffatt_Hume_2007_ATP_time.txt";
+    
+    experiment_type fexperiment=get_Experiment(exp_filename,50e3,  0);
+    std::string sep=",";
+    save_experiment(save_name, sep,
+                    fexperiment);
+    
+    Experiment exp_again;
+    auto Maybe_exp=load_experiment(save_name,sep,50e3,0.0,exp_again);
+    
+    REQUIRE(Maybe_exp);
+    
+    CHECK(fexperiment==exp_again);
+    
+    std::string i_name ="../macro_dr/test_macro_dr/examples/idealized_experiment.txt";
+    idealize_Experiment(exp_filename,sep,i_name);
+    Experiment exp_ideal;
+    auto Maybe_exp2=load_experiment(i_name,sep,50e3,0.0,exp_ideal);
+    REQUIRE(Maybe_exp2);
+    std::string i_name2 ="../macro_dr/test_macro_dr/examples/idealized_experiment_2.txt";
+    
+    save_experiment(i_name2, sep,
+                    exp_ideal);
+    
+    CHECK(compare_file_contents(i_name,i_name2));
+    
+    
+    
+    
+    
+    
+    
 }

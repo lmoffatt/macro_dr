@@ -54,7 +54,7 @@ public:
   virtual bool is_fixed() const override { return Transformation{}.isfixed(); }
 };
 
-auto clone(const std::vector<std::unique_ptr<base_transformation>> &p) {
+inline auto clone(const std::vector<std::unique_ptr<base_transformation>> &p) {
   std::vector<std::unique_ptr<base_transformation>> out;
   out.reserve(p.size());
   for (auto &e : p) {
