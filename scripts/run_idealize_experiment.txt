@@ -1,0 +1,1 @@
+idealize_Experiment(experiment_filename= "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time.txt", sep=",", idealized_filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_idealized.txt")

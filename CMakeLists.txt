@@ -189,7 +189,11 @@ add_executable(macro_dr main.cpp
     slurm_tupac/s_v13_4_sim_NRPD.sh 
     slurm_tupac/s_v13_4_sim_DRPD.sh
     slurm_tupac/s_v13_4_sim_NRPD.sh
-    slurm_tupac/s_v13_4_NRPD.sh 
+    slurm_tupac/s_v13_4_NRPD.sh
+    scripts/idealize_experiment.txt
+    scripts/idealize_experiment_7.txt
+    scripts/run_idealize_experiment.txt
+    slurm_tupac/s_v15_4_DR.sh 
     
     
     

@@ -286,7 +286,10 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                 Simulated_Recording<includes_N_state_evolution(true)> y;
                 auto Maybe_y = load_simulation(recording.first, recording.second, y);
                 if (!Maybe_param1.valid() || !Maybe_y.valid()) {
+                    std::cerr<<"---------ERROR_______________\n";
                     std::cerr << Maybe_param1.error()() << Maybe_y.error()();
+                    std::cerr<<"---------ERROR_______________\n";
+                    
                 } else {
                     
                     auto param1 = Maybe_param1.value().standard_parameter();
@@ -312,8 +315,11 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                     if (lik)
                         save_Likelihood_Predictions(outfilename, lik.value(), y,
                                                     experiment);
-                    else
+                    else{
+                        std::cerr<<"---------ERROR_______________\n";
                         std::cerr << lik.error()();
+                        std::cerr<<"---------ERROR_______________\n";
+                    }
                 }
             },
             model_v);
