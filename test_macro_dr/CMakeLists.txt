@@ -21,10 +21,10 @@ endif()
 
 add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp
     examples/N_simulation.csv
-   # tst_cli_macrodr_command.cpp
-   # tst_cli_likelihood.cpp
-   # tst_macror_validation.cpp
-   # tst_fractioner.cpp
+    tst_cli_macrodr_command.cpp
+    tst_cli_likelihood.cpp
+    tst_macror_validation.cpp
+    tst_fractioner.cpp
     tst_poisson_noise_integration.cpp
 )
 add_test(NAME test_macro_dr COMMAND test_macro_dr)

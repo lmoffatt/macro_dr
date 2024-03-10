@@ -105,10 +105,10 @@ auto get_compiler() {
   cm.push_function("get_Observations", dcli::to_typed_function<std::string>(
                                            &get_Observations, "filename"));
 
-  cm.push_function("load_experiment",
-                   dcli::to_typed_function<std::string, double, double>(
-                       &macrodr::load_experiment, "filename",
-                       "frequency_of_sampling", "initial_ATP"));
+  // cm.push_function("load_experiment",
+  //                  dcli::to_typed_function<std::string, double, double>(
+  //                      &macrodr::load_experiment, "filename",
+  //                      "frequency_of_sampling", "initial_ATP"));
 
   cm.push_function("get_function_Table_maker",
                    dcli::to_typed_function<std::string, std::size_t>(

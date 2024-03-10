@@ -10,7 +10,7 @@ TEST_CASE("calculation of the likelihood of  fractions of a simulation with N_st
     
     std::string lik_name ="../macro_dr/test_macro_dr/examples/fractions_likelihood";
 
-  std::string model ="scheme_4_inact";
+   std::string model ="scheme_4_inact";
   macrodr::cmd::parameters_value_type par=macrodr::cmd::load_Parameter_value("../macro_dr/models/scheme_4_inact_par.csv", ",");
     
     
