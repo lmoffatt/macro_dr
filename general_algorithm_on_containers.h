@@ -1,8 +1,13 @@
 #ifndef GENERAL_ALGORITHM_ON_CONTAINERS_H
 #define GENERAL_ALGORITHM_ON_CONTAINERS_H
 
+#include "maybe_error.h"
 #include <cmath>
+#include <concepts>
+#include <cstddef>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <type_traits>
 namespace var{
 
@@ -87,8 +92,59 @@ auto count_nan(is_Container auto const& c)
     return out; 
 }
 
+template<class T>
+    requires (std::integral<T>|| std::is_constructible_v<std::string,T>)
+inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, std::size_t =1)
+{
+    if (s0!=s1)
+    {
+        std::stringstream ss;
+        ss<<"different :\n"<<s0<<"\n"<<s1;
+        return error_message(ss.str());
+    }
+    else
+        return true;
+}
 
 
+
+inline Maybe_error<bool> compare_contents(std::floating_point auto s0, std::floating_point auto s1,double RelError=std::numeric_limits<double>::epsilon()*100, std::size_t=1)
+{
+    if (std::abs(s0-s1)>RelError*std::max(std::abs(s0), std::abs(s1)))
+    {
+        std::stringstream ss;
+        ss<< std::setprecision(std::numeric_limits<double>::digits10 + 1);
+        ss<<"relative difference greater than"<<RelError<<":\n"<<s0<<"\n"<<s1;
+        return error_message(ss.str());
+    }
+    else
+        return true;
+}
+
+inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Container auto const& s1,double RelError=std::numeric_limits<double>::epsilon()*100, std::size_t max_errors=10)
+{
+    if (s0==s1) return true;
+    std::size_t n_errors=0;
+    std::string message;
+    if (s0.size()!=s1.size())
+    {
+       message+= "differ in size: "+std::to_string(s0.size())+" vs "+std::to_string(s0.size());
+        ++n_errors;
+    }
+    std::size_t i=0;
+    auto n=std::min(s0.size(),s1.size());
+    while ((n_errors<max_errors)&&(i<n))
+    {
+        auto Maybe_equal=compare_contents(s0[i], s1[i],RelError);
+        if (!Maybe_equal)
+        {
+            message+="\n "+std::to_string(i)+"th element "+Maybe_equal.error()();
+            ++n_errors; 
+        }
+        ++i;
+    }
+    return error_message(message);
+}
 
 
 

@@ -1,6 +1,7 @@
 #ifndef VARIABLES_H
 #define VARIABLES_H
 
+#include "general_algorithm_on_containers.h"
 #include "maybe_error.h"
 #include "general_output_operator.h"
 #include <charconv>
@@ -131,6 +132,12 @@ public:
     friend bool operator==(const Var& one,const Var& two){
         return Var::is_equal(one.value(),two.value());
     }
+    
+    friend  Maybe_error<bool> compare_contents(const Var& s0, const Var& s1,double RelError, std::size_t max_errors)
+    {
+        return compare_contents(s0(),s1(),RelError,max_errors);
+    }
+    
     
     
     friend auto& operator<<(std::ostream& os, const Var& x){ os<<x.value(); return os;}
@@ -418,6 +425,13 @@ public:
     {
         return ((get<Vars>(a)()==get<Vars>(b)())&&...&&true);
     }
+    
+    
+    friend Maybe_error<bool> compare_contents(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, std::size_t max_errors=10){
+        return (compare_contents(get<Vars>(a).value(),get<Vars>(b).value(),RelError,max_errors)&&...&&Maybe_error<bool>(true));
+        
+    }
+    
     
     
     friend Vector_Space operator- (const Vector_Space& one, const Vector_Space& two)

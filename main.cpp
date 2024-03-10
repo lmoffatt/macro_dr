@@ -104,7 +104,10 @@ auto get_compiler() {
 
   cm.push_function("get_Observations", dcli::to_typed_function<std::string>(
                                            &get_Observations, "filename"));
-
+  
+  cm.push_function("idealize_Experiment", dcli::to_typed_function<std::string, std::string, std::string>(
+                                           &idealize_Experiment, "experiment_filename", "sep", "idealized_filename"));
+  
   // cm.push_function("load_experiment",
   //                  dcli::to_typed_function<std::string, double, double>(
   //                      &macrodr::load_experiment, "filename",

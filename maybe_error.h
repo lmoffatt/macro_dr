@@ -325,6 +325,16 @@ inline Maybe_error<bool> operator>>(std::string &&context_message,
     return error_message(context_message + x.error()());
 }
 
+inline Maybe_error<bool> operator==(Maybe_error<bool> const&one,
+                                    Maybe_error<bool> const &two) {
+    if ((one) && (two))
+        return one.value()==two.value();
+    else if ((!one)&&(!two))
+        return one.error()()==  two.error()();
+    else return false;
+}
+
+
 inline Maybe_error<bool> operator&&(Maybe_error<bool> &&one,
                                     Maybe_error<bool> &&two) {
   if ((one) && (two))
@@ -612,5 +622,12 @@ inline Maybe_error<bool> compare_file_contents(const std::string& one, const std
     return error_message(message);
     
 }
+
+
+
+
+
+
+
 
 #endif // MAYBE_ERROR_H

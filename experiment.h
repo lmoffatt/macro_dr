@@ -901,12 +901,22 @@ inline auto get_Experiment(
     std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
     double frequency_of_sampling = 50e3, double initial_ATP = 0) {
   using namespace macrodr;
+    Experiment e;
+  auto Maybe_exp=load_experiment(filename,",",frequency_of_sampling,initial_ATP,e);
+    if (Maybe_exp)
+  {
+      return e;
+  }
+    else
+  {
   auto [recording_conditions, recording] = macrodr::load_recording(filename);
 
   return Experiment(std::move(recording_conditions),
                     Frequency_of_Sampling(frequency_of_sampling),
                     initial_ATP_concentration(ATP_concentration(initial_ATP)));
-}
+    }
+
+    }
 
 inline void idealize_Experiment(
     std::string experiment ,

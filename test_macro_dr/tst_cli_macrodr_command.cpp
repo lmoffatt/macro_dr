@@ -4,6 +4,7 @@
 #include "../experiment.h"
 #include "../qmodel.h"
 #include <cstddef>
+#include <limits>
 
 
 TEST_CASE("calculation of fractions of a simulation with N_states", "[save_fractioned_simulation/load_fractioned_simulation]")
@@ -106,7 +107,7 @@ TEST_CASE("loading and saving experiments work together", "[save_experiment/load
     
     REQUIRE(Maybe_exp);
     
-    CHECK(fexperiment==exp_again);
+    CHECK(compare_contents(fexperiment, exp_again )==Maybe_error<bool>(true));
     
     std::string i_name ="../macro_dr/test_macro_dr/examples/idealized_experiment.txt";
     idealize_Experiment(exp_filename,sep,i_name);

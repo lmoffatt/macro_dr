@@ -2896,6 +2896,41 @@ public:
     r_y_mean =
         build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
     
+    if (std::isnan(y)) {
+        get<macror_algorithm>(t_prior)() = ToString(
+            MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
+                    ::V<variance>, ::V<variance_correction>>{});
+        
+        auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
+        auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
+        r_P_cov() = r_P_cov() + diag(r_P_mean());
+        if constexpr (U<C_Patch_State, Patch_State>)
+            return Op_t<Transf, Patch_State>(
+                Op_t<Transf, logL>(get<logL>(t_prior)()),
+                Op_t<Transf, elogL>(get<elogL>(t_prior)()),
+                Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
+                std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
+                plogL(NaN), eplogL(NaN), vplogL(NaN),
+                get<macror_algorithm>(t_prior));
+        else {
+            auto &ev = get<Patch_State_Evolution>(t_prior);
+            ev().push_back(Op_t<Transf, Patch_State>(
+                Op_t<Transf, logL>(get<logL>(t_prior)()),
+                Op_t<Transf, elogL>(get<elogL>(t_prior)()),
+                Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), r_P_mean, r_P_cov,
+                r_y_mean, r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN),
+                get<macror_algorithm>(t_prior)));
+            return Op_t<Transf, Patch_State_and_Evolution>(
+                Op_t<Transf, logL>(get<logL>(t_prior)()),
+                Op_t<Transf, elogL>(get<elogL>(t_prior)()),
+                Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
+                std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
+                plogL(NaN), eplogL(NaN), vplogL(NaN),
+                get<macror_algorithm>(t_prior), std::move(ev));
+        }
+    }
+    
+    
     constexpr bool PoissonDif = true;
     
     if constexpr (PoissonDif)
@@ -2934,40 +2969,7 @@ public:
       else
         r_y_var = build<y_var>(e);
     }
-    if (std::isnan(y)) {
-      get<macror_algorithm>(t_prior)() = ToString(
-          MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
-                  ::V<variance>, ::V<variance_correction>>{});
-
-      auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
-      auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
-      r_P_cov() = r_P_cov() + diag(r_P_mean());
-      if constexpr (U<C_Patch_State, Patch_State>)
-        return Op_t<Transf, Patch_State>(
-            Op_t<Transf, logL>(get<logL>(t_prior)()),
-            Op_t<Transf, elogL>(get<elogL>(t_prior)()),
-            Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
-            std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
-            plogL(NaN), eplogL(NaN), vplogL(NaN),
-            get<macror_algorithm>(t_prior));
-      else {
-        auto &ev = get<Patch_State_Evolution>(t_prior);
-        ev().push_back(Op_t<Transf, Patch_State>(
-            Op_t<Transf, logL>(get<logL>(t_prior)()),
-            Op_t<Transf, elogL>(get<elogL>(t_prior)()),
-            Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), r_P_mean, r_P_cov,
-            r_y_mean, r_y_var, plogL(NaN), eplogL(NaN), vplogL(NaN),
-            get<macror_algorithm>(t_prior)));
-        return Op_t<Transf, Patch_State_and_Evolution>(
-            Op_t<Transf, logL>(get<logL>(t_prior)()),
-            Op_t<Transf, elogL>(get<elogL>(t_prior)()),
-            Op_t<Transf, vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
-            std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
-            plogL(NaN), eplogL(NaN), vplogL(NaN),
-            get<macror_algorithm>(t_prior), std::move(ev));
-      }
-    }
-
+   
     auto dy = y - r_y_mean();
     auto chi = dy / r_y_var();
     Op_t<Transf, P_mean> r_P_mean;
@@ -3501,8 +3503,8 @@ public:
         ysum += getvalue(N() * t_g()) * sub_sample;
       }
       sum_samples += n_samples;
-      std::cerr << N << sum_samples << "  " << ysum << "  "
-                << ysum / sum_samples << "\n";
+    //  std::cerr << N << sum_samples << "  " << ysum << "  "
+    //            << ysum / sum_samples << "\n";
       return Simulated_Sub_Step(N_channel_state(N),
                                 number_of_samples(sum_samples), y_sum(ysum));
     }
