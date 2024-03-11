@@ -193,7 +193,8 @@ add_executable(macro_dr main.cpp
     scripts/idealize_experiment.txt
     scripts/idealize_experiment_7.txt
     scripts/run_idealize_experiment.txt
-    slurm_tupac/s_v15_4_DR.sh 
+    slurm_tupac/s_v15_4_DR.sh
+    slurm_tupac/s_v15_4_sim_DR.sh 
     
     
     
