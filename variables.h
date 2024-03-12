@@ -133,9 +133,13 @@ public:
         return Var::is_equal(one.value(),two.value());
     }
     
-    friend  Maybe_error<bool> compare_contents(const Var& s0, const Var& s1,double RelError, std::size_t max_errors)
+    friend  Maybe_error<bool> compare_contents(const Var& s0, const Var& s1,double RelError,  double AbsError,std::size_t max_errors)
     {
-        return compare_contents(s0(),s1(),RelError,max_errors);
+      auto out=compare_contents(s0(),s1(),RelError,AbsError,max_errors);
+        if(!out)
+          return error_message("\n"+std::string(typeid(Id).name())+": \n"+out.error()());
+        else
+            return out;
     }
     
     
@@ -195,6 +199,16 @@ public:
     friend auto& operator<<(std::ostream& os, const Constant& x){ os<<x.value(); return os;}
     friend auto& operator>>(std::istream& is,  Constant& x){ is>>x(); return is;}
     friend auto& put(std::ostream& os, const Constant& x){ os<<x.value()<<"\t"; return os;}
+    
+    friend  Maybe_error<bool> compare_contents(const Constant& s0, const Constant& s1,double RelError, double AbsError, std::size_t max_errors)
+    {
+        auto out=compare_contents(s0.value(),s1.value(),RelError,  AbsError,max_errors);
+         if(!out)
+            return error_message("\n"+std::string(typeid(Id).name())+": \n"+out.error()());
+        else
+            return out;
+    }
+    
 };
 
 
@@ -426,12 +440,36 @@ public:
         return ((get<Vars>(a)()==get<Vars>(b)())&&...&&true);
     }
     
+    template<class... Vars2>
+    friend auto extract_list(const Vector_Space& a)
+    {
+        return Vector_Space<Vars2...>(get<Vars2>(a)...);
+    }
     
-    friend Maybe_error<bool> compare_contents(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, std::size_t max_errors=10){
-        return (compare_contents(get<Vars>(a).value(),get<Vars>(b).value(),RelError,max_errors)&&...&&Maybe_error<bool>(true));
+    template<class... Vars2>
+    static Vector_Space extract_impl(const Vector_Space<Vars2...>& a)
+    {
+        return extract_list<Vars...>(a);
+    }
+    
+    template<class Vec>
+        requires (is_of_this_template_type_v<Vec,Vector_Space>)
+    friend auto extract(const Vector_Space& a)
+    {
+        return Vec::extract_impl(a);
+    }
+    
+    
+    friend Maybe_error<bool> compare_contents(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10){
+        return (compare_contents(get<Vars>(a),get<Vars>(b),RelError,AbsError,max_errors)&&...&&Maybe_error<bool>(true));
         
     }
     
+    
+    friend Maybe_error<bool> compare_contents_vs(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100, std::size_t max_errors=10){
+        return (compare_contents(get<Vars>(a),get<Vars>(b),RelError,AbsError,max_errors)&&...&&Maybe_error<bool>(true));
+        
+    }
     
     
     friend Vector_Space operator- (const Vector_Space& one, const Vector_Space& two)
