@@ -94,7 +94,7 @@ auto count_nan(is_Container auto const& c)
 
 template<class T>
     requires (std::integral<T>|| std::is_constructible_v<std::string,T>)
-inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, std::size_t =1)
+inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, double=0,std::size_t =1)
 {
     if (s0!=s1)
     {
@@ -108,9 +108,9 @@ inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, std::size_t =1)
 
 
 
-inline Maybe_error<bool> compare_contents(std::floating_point auto s0, std::floating_point auto s1,double RelError=std::numeric_limits<double>::epsilon()*100, std::size_t=1)
+inline Maybe_error<bool> compare_contents(std::floating_point auto s0, std::floating_point auto s1,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t=1)
 {
-    if (std::abs(s0-s1)>RelError*std::max(std::abs(s0), std::abs(s1)))
+    if (std::abs(s0-s1)>std::max(AbsError,RelError*std::max(std::abs(s0), std::abs(s1))))
     {
         std::stringstream ss;
         ss<< std::setprecision(std::numeric_limits<double>::digits10 + 1);
@@ -121,7 +121,7 @@ inline Maybe_error<bool> compare_contents(std::floating_point auto s0, std::floa
         return true;
 }
 
-inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Container auto const& s1,double RelError=std::numeric_limits<double>::epsilon()*100, std::size_t max_errors=10)
+inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Container auto const& s1,double RelError=std::numeric_limits<double>::epsilon()*100,  double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10)
 {
     if (s0==s1) return true;
     std::size_t n_errors=0;
@@ -135,7 +135,7 @@ inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Contai
     auto n=std::min(s0.size(),s1.size());
     while ((n_errors<max_errors)&&(i<n))
     {
-        auto Maybe_equal=compare_contents(s0[i], s1[i],RelError);
+        auto Maybe_equal=compare_contents(s0[i], s1[i],RelError,AbsError);
         if (!Maybe_equal)
         {
             message+="\n "+std::to_string(i)+"th element "+Maybe_equal.error()();
@@ -143,7 +143,10 @@ inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Contai
         }
         ++i;
     }
+    if (n_errors>0)
     return error_message(message);
+    else
+        return true;
 }
 
 

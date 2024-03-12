@@ -26,6 +26,7 @@ add_executable(test_macro_dr tst_test_macro_dr.cpp main.cpp
     tst_macror_validation.cpp
     tst_fractioner.cpp
     tst_poisson_noise_integration.cpp
+    tst_qdtm.cpp
 )
 add_test(NAME test_macro_dr COMMAND test_macro_dr)
 

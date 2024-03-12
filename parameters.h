@@ -8,6 +8,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <ostream>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -394,8 +395,18 @@ public:
   auto &IdName() const { return m_IdName; }
   
   auto size() const { return m_standard_values.size(); }
+  
+  
+  friend  std::ostream& operator<<(std::ostream& os, Parameters_Transformations const & p)
+  {
+      write_Parameters(os,"\t",p);
+      return os;
+  }
+  
 };
-
+template <class Id>
+void write_Parameters(std::ostream& f, std::string sep,
+                      Parameters_Transformations<Id> const &m) ;
 
 template <class Id> class Parameters_transformed {
 public:
@@ -450,6 +461,8 @@ public:
   auto to_value() const {
     return Parameters_values<Id>(parameters(), parameters().inv((*this)()));
   }
+  
+  
 };
 
 // template <class Id>
@@ -466,24 +479,30 @@ public:
 //     "mean"
 //       << sep << m[i_par] << "\n";
 // }
+template <class Id>
+void write_Parameters(std::ostream& f, std::string sep,
+                      Parameters_Transformations<Id> const &m) {
+    f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    auto n = m.size();
+    
+    f << "model_name" << sep << "i_par" << sep << "parameter_name" << sep
+      << "parameter_transformation" << sep << "parameter_value" << sep
+      << "transformed_mean"
+      << "\n";
+    
+    for (auto i_par = 0ul; i_par < n; ++i_par)
+        f << m.IdName() << sep << i_par << sep << m.names()[i_par] << sep
+          << m.transf()[i_par]->to_string() << sep << m.standard_values()[i_par]
+          << sep << m.transf()[i_par]->tr(m.standard_values()[i_par]) << "\n";
+}
+
 
 template <class Id>
 void write_Parameters(std::string filename, std::string sep,
                       Parameters_Transformations<Id> const &m) {
   std::ofstream f(filename);
-  f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-  auto n = m.size();
-
-  f << "model_name" << sep << "i_par" << sep << "parameter_name" << sep
-    << "parameter_transformation" << sep << "parameter_value" << sep
-    << "transformed_mean"
-    << "\n";
-
-  for (auto i_par = 0ul; i_par < n; ++i_par)
-    f << m.IdName() << sep << i_par << sep << m.names()[i_par] << sep
-      << m.transf()[i_par]->to_string() << sep << m.standard_values()[i_par]
-      << sep << m.transf()[i_par]->tr(m.standard_values()[i_par]) << "\n";
-}
+    write_Parameters(f,sep,m);
+  }
 
 template <class Id>
 Maybe_error<Parameters_Transformations<Id>>
