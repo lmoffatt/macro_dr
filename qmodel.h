@@ -1938,8 +1938,8 @@ public:
                              v_WgV(n1, n2) * v_WgV(n2, n3) *
                                  E3(v_ladt[n1], v_ladt[n2], v_ladt[n3],
                                     v_exp_ladt[n1], v_exp_ladt[n2],
-                                    v_exp_ladt[n3], t_min_P()); // optimizable
-          }
+                                    v_exp_ladt[n3], t_min_P()); 
+      }
 
       auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
 
