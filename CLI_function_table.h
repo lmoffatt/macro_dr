@@ -110,6 +110,15 @@ inline auto get_function_Table_maker_St(std::string filename,
                               }),
                        var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step,
                                                double>{}),
+            var::Single_Thread_Memoizer(
+                var::F(Calc_Qdtm_step{},
+                       [](auto &&...x) {
+                           auto m = Macro_DMR{};
+                           return m.calc_Qdtm_ATP_step(
+                               std::forward<decltype(x)>(x)...);
+                       }),
+                var::Memoiza_all_values<Maybe_error<Qdtm>, ATP_step,
+                                        double>{}),
                    // var::Time_it(
                    //     var::F(Calc_Qdt_step{},
                    //            [](auto &&...x) {
