@@ -5015,7 +5015,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   auto allPredictions = std::vector<std::vector<Predition_type>>(
       data.get_Cuevi_Temperatures_Number(),
       std::vector<Predition_type>(data.get_Walkers_number()));
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for //collapse(2)
   for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
        ++i_walker) {
     for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();

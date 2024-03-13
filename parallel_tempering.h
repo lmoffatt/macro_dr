@@ -452,7 +452,7 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
   auto ff = f.fork(omp_get_max_threads());
 
   for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for //collapse(2)
     for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
       for (std::size_t i = 0; i < beta.size(); ++i) {
         auto iw = iiw + half * n_walkers / 2;
@@ -781,7 +781,7 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
   std::vector<by_beta<emcee_Step_statistics>> emcee_stat(omp_get_max_threads(), by_beta<emcee_Step_statistics>(n_beta));
   
   for (bool half : {false, true})
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for //collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
       for (std::size_t ib = 0; ib < n_beta; ++ib) {
         auto i_th = omp_get_thread_num();
@@ -857,7 +857,7 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
     std::vector<by_beta<Thermo_Jump_statistics>> thermo_stat(omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta-1));
    
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for //collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
       for (std::size_t ib = 0; ib < n_beta - 1; ++ib) {
             auto i_th = omp_get_thread_num();

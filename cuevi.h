@@ -584,7 +584,7 @@ template <class ParameterType> class Cuevi_mcmc {
 
     auto ff = f.fork(omp_get_max_threads());
     std::vector<Maybe_error<bool>> succeeds(omp_get_max_threads());
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for //collapse(2)
     for (std::size_t iw = 0; iw < n(); ++iw) {
       for (std::size_t i_cu = 0; i_cu < num_temp; ++i_cu) {
         auto i_th = omp_get_thread_num();
@@ -828,7 +828,7 @@ public:
     auto ff = f.fork(omp_get_max_threads());
     std::size_t num_walk = this->get_Walkers_number();
 
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for// collapse(2)
     for (std::size_t iwa = 0; iwa < num_walk; ++iwa) {
         for (std::size_t icu = 0; icu < this->get_Cuevi_Temperatures_Number();
              ++icu) {
@@ -1400,7 +1400,7 @@ public:
 
     auto ff = f.fork(omp_get_max_threads());
     for (bool half : {false, true}) {
-#pragma omp parallel for collapse(2)
+#pragma omp parallel for //collapse(2)
       for (std::size_t i = 0; i < n_walkers / 2; ++i) {
 
         for (std::size_t i_cu = 0; i_cu < size(cuevi_temp()); ++i_cu) {
