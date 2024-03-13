@@ -38,7 +38,7 @@ public:
             s.f << iter << s.sep << dur << s.sep<<dur-s.m_prev_dur<< "\n";
             s.m_prev_dur=dur;
             }
-        if (iter % 10 == 0) s.f.flush();    
+       // if (iter % 10 == 0) s.f.flush();    
         
     }
     
