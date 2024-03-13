@@ -195,7 +195,11 @@ add_executable(macro_dr main.cpp
     scripts/run_idealize_experiment.txt
     slurm_tupac/s_v15_4_DR.sh
     slurm_tupac/s_v15_4_sim_DR.sh
-    experiments/Moffatt_Hume_2007_ATP_time_idealized.txt 
+    experiments/Moffatt_Hume_2007_ATP_time_idealized.txt
+    slurm_tupac/s_v16_DR_no_cores.sh
+    slurm_tupac/number_cores/s_1core.sh
+    slurm_tupac/number_cores/s_64core.sh slurm_tupac/number_cores/s_16core.sh slurm_tupac/number_cores/s_32core.sh slurm_tupac/number_cores/s_2core.sh slurm_tupac/number_cores/s_4core.sh slurm_tupac/number_cores/s_8core.sh
+    slurm_tupac/number_cores/run_cores.sh 
     
     
     
