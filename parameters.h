@@ -275,7 +275,7 @@ private:
     std::size_t i_fi = 0;
 
     for (std::size_t i_out = 0; i_out < out.size(); ++i_out) {
-      if ((m_fixed.size() > i_fi) && (i_in == m_fixed[i_fi])) {
+      if ((m_fixed.size() > i_fi) && (i_out == m_fixed[i_fi])) {
         out[i_out] = (*this).standard_values()[i_out];
         ++i_fi;
       } else {
