@@ -12,9 +12,9 @@
 #SBATCH --nodes=1
 
 ### Cores a utilizar por nodo = procesos por nodo * cores por proceso
-#SBATCH --ntasks-per-node=4
+#SBATCH --ntasks-per-node=16
 ### Cores por proceso (para MPI+OpenMP)
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=4
 
 ### Tiempo de ejecucion. Formato dias-horas:minutos.
 ### short:  <= 1 hora
