@@ -1,0 +1,37 @@
+model = "scheme_4_inact"
+
+modelParameter = load_Parameter(filename = "../macro_dr/models/scheme_4_inact_par.csv", separator="," )
+
+prior_model = load_Prior(filename = "../macro_dr/models/scheme_4_inact_prior.csv", separator= ",")
+
+experiment = get_Experiment(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time.txt", frequency_of_sampling = 50e3, initial_ATP = 0) 
+
+observations = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_recording.txt"
+
+segments = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_segments.txt"
+
+simulation_Id= get_random_Id(prefix="Sim") 
+
+sim_algo= simulation_algorithm (include_N_states=1,number_of_substeps=100)
+
+simfile=simulate(output=simulation_Id, recording= observations, experiment=experiment,
+init_seed=0, modelName= model, parameter_values= modelParameter, simulation_algorithm=sim_algo)
+
+
+runIdNamePre= "MH_Li_inact_9a"
+num_scouts_per_ensemble = get_number(n=32)
+likelihood_algorithm = set_Likelihood_algorithm(adaptive_aproximation= 1, recursive_approximation= 1, averaging_approximation=2, variance_correction_approximation= 1, variance_approximation =0, n_sub_dt =1000)
+
+
+runIdName= get_random_Id(prefix=runIdNamePre)
+write_script(script_name=runIdName)
+   
+               
+thermo_algorithm = set_ThermoAlgorithm (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  stops_at = 1e-15, beta_upper_value = 1e-2, beta_medium_value = 1e-5, includes_zero = 1, max_iter_equilibrium = 50000, path = "./", beta_size =24, beta_upper_size = 12, beta_medium_size=6,  filename = runIdName ,thermo_jump_factor = 2,save_every_param_size_factor=12)
+
+function_table = get_function_Table_maker(filename= runIdName, num_scouts_per_ensemble = num_scouts_per_ensemble) 
+
+
+thermo_evidence(model = model, prior= prior_model, likelihood_algorithm= likelihood_algorithm, data = simfile, experiment = experiment, thermo_algorithm= thermo_algorithm, function_table =function_table, init_seed =0)
+
+
