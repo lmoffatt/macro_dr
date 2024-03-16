@@ -15,7 +15,9 @@ template<class Container>
 concept is_Container= requires(Container const&  c)
 {{c.size()}->std::convertible_to<std::size_t>;
     {c[std::size_t{}]};};
-    
+
+template<class T>
+concept StringLike = std::is_convertible_v<T, std::string_view>;
     
     
     auto sum(is_Container auto const& c)

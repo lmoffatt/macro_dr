@@ -178,4 +178,26 @@ auto init_mcmc(FunctionTable&& f, mt_64i &mt, Prior const & pr, const Lik& lik,
     return mcmc<Parameters>{std::move(par), logP.value(), t_logLs.value()};
 }
 
+
+
+
+template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
+         class Parameters=std::decay_t<
+             decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
+//   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
+Maybe_error<bool> calc_mcmc(FunctionTable&& f, Prior const & pr, const Lik& lik,
+                 const DataType &y, const Variables &x, mcmc<Parameters>& t_mcmc) {
+    auto par = t_mcmc.parameter;
+    auto logP = logPrior(pr,par);
+    auto t_logLs = logLikelihood(std::forward<FunctionTable>(f),lik,par.to_value(), y,x);
+    
+    if (logP.valid()&& t_logLs.valid())
+    {
+        t_mcmc.logP=logP.value();
+        t_mcmc.logL=t_logLs.value();
+        return true;
+    }
+    return error_message(logP.error()()+t_logLs.error()());
+}
+
 #endif // MCMC_H

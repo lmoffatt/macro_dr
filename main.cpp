@@ -127,7 +127,13 @@ double frequency_of_sampling = 50e3, double initial_ATP = 0)
       "get_Experiment",
       dcli::to_typed_function<std::string, double, double>(
           &get_Experiment, "filename", "frequency_of_sampling", "initial_ATP"));
-
+  
+  cm.push_function(
+      "get_Experiment_file",
+      dcli::to_typed_function<std::string, double, double>(
+          &get_Experiment_file, "filename", "frequency_of_sampling", "initial_ATP"));
+  
+  
   cm.push_function("get_Observations", dcli::to_typed_function<std::string>(
                                            &get_Observations, "filename"));
 
@@ -282,39 +288,51 @@ fraction_algo, std::string model,std::size_t i_seed )
                               double ,
                               double , double ,
                               bool , std::size_t ,
-                              std::string , std::size_t ,
+                              std::size_t ,
                               std::size_t , std::size_t ,
-                              std::string , std::size_t ,
+                              std::size_t ,
                               std::size_t >(
           &set_ThermoAlgorithm, "num_scouts_per_ensemble",
           "number_trials_until_give_up", "stops_at", "beta_upper_value",
           "beta_medium_value",
           "includes_zero",
-          "max_iter_equilibrium", "path", "beta_size", "beta_upper_size",
-          "beta_medium_size", "filename", "thermo_jump_factor",
+          "max_iter_equilibrium", "beta_size", "beta_upper_size",
+          "beta_medium_size",  "thermo_jump_factor",
           "save_every_param_size_factor"));
 
   /**
-   *calc_thermo_evidence(std::string model,
-                               prior_value_type prior,
-                               likelihood_algo_type likelihood,
-                               std::string recording,
-                               experiment_type experiment,
-                               thermo_algo_type thermo_algorithm,
-                               tablefun_value_type ft,
-                               std::size_t myseed) {
-
+calc_thermo_evidence(std::string id,
+                                              std::string model,
+                                              std::string prior,
+                                 likelihood_algo_type likelihood,
+                                 std::string recording,
+                                 experiment_type experiment,
+                                 thermo_algo_type thermo_algorithm,
+                                 std::string ft_filename,
+                                 std::size_t save_every,
+                                 std::size_t myseed)
    * */
 
   cm.push_function(
       "thermo_evidence",
-      dcli::to_typed_function<
-          std::string, prior_value_type, likelihood_algo_type, std::string,
-          experiment_type, thermo_algo_type, tablefun_value_type, std::size_t>(
-          &calc_thermo_evidence, "model", "prior", "likelihood_algorithm",
-          "data", "experiment", "thermo_algorithm", "function_table",
+      dcli::to_typed_function<std::string,
+                              std::string, std::string, likelihood_algo_type, std::string,
+                              experiment_file_type, thermo_algo_type, std::size_t, std::size_t>(
+          &calc_thermo_evidence, "idname","model", "prior", "likelihood_algorithm",
+          "data", "experiment", "thermo_algorithm", "save_every",
           "init_seed"));
-
+  
+  /**
+   *  calc_thermo_evidence_continuation(std::string id, std::size_t ith)
+   * */
+  
+  cm.push_function(
+      "thermo_evidence_continuation",
+      dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+          &calc_thermo_evidence_continuation, "idname","continuation_number",
+          "init_seed"));
+  
+  
   /**
    *  auto set_simulation_algorithm(bool includeN, std::size_t n_sub_dt)
    *

@@ -199,7 +199,9 @@ add_executable(macro_dr main.cpp
     slurm_tupac/s_v16_DR_no_cores.sh
     slurm_tupac/number_cores/s_1core.sh
     slurm_tupac/number_cores/s_64core.sh slurm_tupac/number_cores/s_16core.sh slurm_tupac/number_cores/s_32core.sh slurm_tupac/number_cores/s_2core.sh slurm_tupac/number_cores/s_4core.sh slurm_tupac/number_cores/s_8core.sh
-    slurm_tupac/number_cores/run_cores.sh 
+    slurm_tupac/number_cores/run_cores.sh
+    scripts/evidence_thermo_continuation.txt
+    slurm_tupac/cross_model/simulated_cross_model_comparison.sh 
     
     
     

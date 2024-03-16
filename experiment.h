@@ -917,8 +917,16 @@ inline auto get_Experiment(
     }
 
     }
-
-inline void idealize_Experiment(
+    
+    
+    inline auto get_Experiment_file(
+        std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
+        double frequency_of_sampling = 50e3, double initial_ATP = 0) {
+        return std::tuple(filename,frequency_of_sampling,initial_ATP);
+    }
+    
+    
+    inline void idealize_Experiment(
     std::string experiment ,
     std::string sep,
     std::string output) {
@@ -944,6 +952,9 @@ using recording_type =
 
 using experiment_type =
     typename return_type<std::decay_t<decltype(&get_Experiment)>>::type;
+
+using experiment_file_type =
+    typename return_type<std::decay_t<decltype(&get_Experiment_file)>>::type;
 
 } // namespace cmd
 

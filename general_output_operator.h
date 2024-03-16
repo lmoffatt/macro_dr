@@ -1,8 +1,11 @@
 #ifndef GENERAL_OUTPUT_OPERATOR_H
 #define GENERAL_OUTPUT_OPERATOR_H
+#include "general_algorithm_on_containers.h"
 #include "maybe_error.h"
 #include <istream>
 #include <ostream>
+#include <sstream>
+#include <string>
 #include <variant>
 
 #include <map>
@@ -100,6 +103,22 @@ public:
   }
 };
 
+
+
+template <class T>
+class char_delimited {
+    
+public:
+    T& m_value;
+    char m_sep;
+    
+    char_delimited(T& value,char sep):m_value{value},m_sep{sep}{}
+    
+ };
+
+
+
+
 template <class K, class T>
 std::ostream &operator<<(std::ostream &os, std::pair<K, T> const &x) {
   os << x.first << ", " << x.second << "\n";
@@ -108,7 +127,7 @@ std::ostream &operator<<(std::ostream &os, std::pair<K, T> const &x) {
 
 template <class K, class T>
 std::istream &operator>>(std::istream &is, std::pair<K, T> &x) {
-  is >> x.first >> septr(", ") >> x.second;
+    is >> char_delimited(x.first,',') >> septr(", ") >> x.second;
   return is;
 }
 
@@ -132,7 +151,7 @@ template <class K, class T>
 std::istream &operator>>(std::istream &is, std::map<K, T> &x) {
   K k;
   T e;
-  while (is >> k >> septr("--> ") >> e >> septr("\n"))
+  while (is >> char_delimited(k,'-') >> septr("--> ") >> e >> septr("\n"))
     x.insert({k, e});
 
   if (!x.empty())
@@ -181,7 +200,7 @@ template <class T, class... Ts>
 std::istream &operator>>(std::istream &is, std::tuple<T, Ts...> &tu) {
   return std::apply(
       [&is](T &x, Ts &...xs) -> std::istream & {
-        ((is >> x), ..., (is >> septr(", ") >> xs));
+            ((is >> char_delimited(x,',')), ..., (is >> septr(", ") >> char_delimited(xs,',')));
         return is;
       },
       tu);
@@ -253,5 +272,65 @@ std::ostream &operator<<(std::ostream &os, const Maybe_error<T> &x) {
     os << x.error()();
   return os;
 }
+
+template<class T, class...Ts>
+auto& save_vars(std::ostream &f, const T& x, const Ts& ...xs)
+{
+    ((f << x), ..., (f << ", " << xs));
+    return f;
+    
+}
+
+template<class T, class...Ts>
+auto& load_vars(std::istream &f,  T& x,  Ts& ...xs)
+{
+    ((f >> char_delimited(x,',')), ..., (f >> septr(", ") >> char_delimited(xs,',')));
+    return f;
+    
+}
+
+template<class T, class...Ts>
+bool load_vars_line(std::istream &f,  T& x,  Ts& ...xs)
+{
+    std::string line;
+    std::getline(f,line);
+    if (line.empty())
+        return false;
+    std::stringstream  ss(line);
+    ((ss >> char_delimited(x,',')), ..., (ss>> septr(",") >> char_delimited(xs,',')));
+    return !ss.bad();
+    
+}
+
+
+
+template<class T>
+    requires(var::StringLike<T>&&!std::is_same_v<T,septr>)
+std::istream &operator>>(std::istream &is, char_delimited<T> &&se) {
+    std::string string_candidate;
+    char c = '\0';
+    while ((is.get(c))&&(c != se.m_sep) ) {
+        string_candidate.push_back(c);
+    }
+    if (c==se.m_sep)
+        is.putback(c);
+    std::stringstream ss(string_candidate);
+    ss>>se.m_value;
+    if (!ss )
+        is.setstate(std::ios::failbit);
+    return is;
+}
+
+template<class T>
+    requires((!var::StringLike<T>)||std::is_same_v<T,septr>)
+std::istream &operator>>(std::istream &is, char_delimited<T> &&se) {
+    is>>se.m_value;
+    return is;
+}
+
+
+
+
+
 
 #endif // GENERAL_OUTPUT_OPERATOR_H
