@@ -3,14 +3,18 @@
 // #include "bayesian_linear_regression.h"
 // #include "bayesian_linear_regression.h"
 #include "function_measure_verification_and_optimization.h"
+#include "general_output_operator.h"
+#include "maybe_error.h"
 #include "mcmc.h"
 #include "multivariate_normal_distribution.h"
+#include "random_samplers.h"
 #include "variables.h"
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
 #include <omp.h>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -464,6 +468,61 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
   f += ff;
   return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
 }
+
+template <class Prior, 
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+auto create_thermo_mcmc(std::size_t n_walkers,
+                      by_beta<double> const &beta,mt_64i& mt,Prior const &pr) {
+    
+    auto& priorsampler=pr;
+    auto par = sample(mt,priorsampler);
+    
+    ensemble<by_beta<std::size_t>> i_walker(n_walkers,
+                                            by_beta<std::size_t>(beta.size()));
+    ensemble<by_beta<mcmc<Parameters>>> walker(
+        n_walkers, by_beta<mcmc<Parameters>>(beta.size(),mcmc<Parameters>{par}));
+    by_beta<emcee_Step_statistics> emcee_stat(beta.size());
+    by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
+    return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
+}
+
+
+template <class FunctionTable, class Prior, class Likelihood, class Variables,
+         class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+    requires(
+        is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
+//    requires (is_prior<Prior,Parameters,Variables,DataType>&&
+//    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
+Maybe_error<bool> calc_thermo_mcmc_continuation(FunctionTable &&f, std::size_t n_walkers,
+                      by_beta<double> const &beta, ensemble<mt_64i> &mt,
+                      Prior const &prior, Likelihood const &lik,
+                      const DataType &y, const Variables &x, thermo_mcmc<Parameters>& t_mcmc) {
+    
+    auto ff = f.fork(omp_get_max_threads());
+    
+    std::string error;
+    bool good=true;
+  #pragma omp parallel for //collapse(2)
+        for (std::size_t iw = 0; iw < n_walkers ; ++iw) {
+            for (std::size_t i = 0; i < beta.size(); ++i) {
+                auto i_th = omp_get_thread_num();
+                auto res=calc_mcmc(ff[i_th],prior, lik, y, x,t_mcmc.walkers[iw][i]);
+                if (!res)
+                {
+                    error+=res.error()();
+                    good=false;
+                }
+            }
+        }
+    f += ff;
+        if (good)
+        return good;
+        else return error_message(error);        
+ }
+
 
 template <class Parameters>
 std::pair<std::pair<std::size_t, std::size_t>, bool>
@@ -931,7 +990,7 @@ public:
   friend void report_title(save_likelihood &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep
+    s.f << "iter" << s.sep << "iter_time" << s.sep
         << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
         << "logP" << s.sep << "logLik"<< s.sep << "elogLik" << s.sep
           << "vlogLik"<< s.sep << "plog_Evidence"<< s.sep
@@ -1030,7 +1089,7 @@ public:
   friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep
+    s.f << "iter" << s.sep << "iter_time" << s.sep
         << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
         << "i_par" << s.sep << "par_value"
         << "\n";
@@ -1051,12 +1110,55 @@ public:
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
           for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
 
-            s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
+            s.f << iter << s.sep << dur << s.sep
                 << data.beta[i_beta] << s.sep << i_walker << s.sep
                 << data.i_walkers[i_walker][i_beta] << s.sep << i_par << s.sep
                 << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
   }
+  
+  
+  
+  
+  
 };
+
+
+template <class Parameters, class Duration>
+ bool extract_iter(std::istream& f,std::size_t& iter, Duration &dur,
+                          thermo_mcmc<Parameters> &data) {
+    for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
+        for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
+            for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
+                
+                if (!load_vars_line(f, iter, dur
+                               , data.beta[i_beta]  , i_walker 
+                               , data.i_walkers[i_walker][i_beta] ,  i_par 
+                               , data.walkers[i_walker][i_beta].parameter[i_par]  ))
+                {return false;}
+    return true;
+ }
+template <class Parameters, class Duration>
+ bool extract_iter(const std::string line,std::size_t& iter, Duration &dur,
+                  thermo_mcmc<Parameters> &data) {
+    std::stringstream ss(line);
+    return extract_iter(ss,iter,dur,data);
+} 
+ 
+template <class Parameters, class Duration>
+ void extract_parameters_last(const std::string& fname,std::size_t& iter, Duration &dur,
+                  thermo_mcmc<Parameters> &data) {
+    auto candidate=data;
+    auto f=std::ifstream(fname);
+    std::string line;
+    std::getline(f,line);
+    
+    while (extract_iter(f,iter,dur,candidate))
+    {
+        std::swap(data,candidate);
+        
+    }
+}
+
 
 template <class Parameters> class save_Predictions {
 
@@ -1156,6 +1258,7 @@ public:
   }
 
   void reset() { current_iteration_ = 0; }
+  void reset(std::size_t iter) { current_iteration_ = iter; }
 
   template <class P>
   friend void

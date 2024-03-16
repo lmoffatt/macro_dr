@@ -1,4 +1,3 @@
-runIdName= get_random_Id(prefix=runIdNamePre)
 write_script(script_name=runIdName)
    
                
