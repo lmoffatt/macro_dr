@@ -210,7 +210,23 @@ add_executable(macro_dr main.cpp
     multi_task/run_MH_Li.sh
     
     slurm_tupac/run_MHLi.sh
-    slurm_tupac/MHLi_continuation.sh 
+    slurm_tupac/MHLi_continuation.sh
+    multi_task/MH_Li_IE.sh
+    multi_task/MH_Li_IE_continuation.sh
+    slurm_tupac/MHLi_IE_continuation.sh
+    slurm_tupac/MHLi_IE.sh
+    slurm_tupac/run_MHLi_IE.sh
+    models/scheme_1_inact_NP_par.csv
+    models/scheme_1_inact_NP_prior.csv
+    
+    models/scheme_1_inact_NP.txt
+    models/scheme_2_inact_NP_par.csv
+    models/scheme_2_inact_NP_prior.csv
+    models/scheme_2_inact_NP.txt
+    models/scheme_3_inact_NP_par.csv
+    models/scheme_3_inact_NP_prior.csv
+    models/scheme_3_inact_NP.txt
+    models/scheme_1_inact.txt 
     
     
     

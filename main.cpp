@@ -400,7 +400,7 @@ calc_thermo_evidence(std::string id,
 
 int main(int argc, char **argv) {
 
-  print_model_Priors(2.0);
+ // print_model_Priors(2.0);
   std::vector<std::string> arguments(argc);
   for (auto i = 0; i < argc; ++i)
     arguments[i] = argv[i];
