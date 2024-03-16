@@ -261,7 +261,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
     
     std::string oldfilename=filename;
     if (ith>1)
-        filename+'_'+std::to_string(ith-1);
+        oldfilename=filename+'_'+std::to_string(ith-1);
     
     std::string newfilename=filename+'_'+std::to_string(ith);
     using namespace macrodr;
