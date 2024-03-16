@@ -438,7 +438,7 @@ inline auto calc_evidence_old(
         Vector_Space(Save_Evidence_every(num_scouts_per_ensemble),
                      Save_Likelihood_every(num_scouts_per_ensemble),
                      Save_Parameter_every(num_scouts_per_ensemble),
-                     Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                     Save_Predictions_every(num_scouts_per_ensemble * 50)));
 
     auto cbc = new_cuevi_Model_by_iteration<MyModel>(
         path, filename, t_segments_used, average_the_ATP_evolution,

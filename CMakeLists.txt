@@ -144,13 +144,13 @@ add_executable(macro_dr main.cpp
     slurm_Serafin/s_MH_Li7_sim.sh
     slurm_Serafin/s_MH_Li7.sh
     multi_task/MH_Li_sim.sh
-    multi_task/MH_Li.sh
+    multi_task/MH_Li_old.sh
     models/scheme_2_inact.txt models/scheme_3_inact.txt models/scheme_4_inact.txt
     slurm_Serafin/s_MH_Li.sh
     slurm_Serafin/s_MH_Li_sim.sh
     slurm_Serafin/s_MH_Li_short.sh
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt experiments/Moffatt_Hume_2007_ATP_time_recording.txt
-    slurm_tupac/s_MH_Li7.sh slurm_tupac/s_MH_Li7_sim.sh slurm_tupac/s_MH_Li_sim.sh slurm_tupac/s_MH_Li.sh slurm_tupac/s_MH_Li_short.sh
+    slurm_tupac_old/s_MH_Li7.sh slurm_tupac_old/s_MH_Li7_sim.sh slurm_tupac_old/s_MH_Li_sim.sh slurm_tupac_old/s_MH_Li.sh slurm_tupac_old/s_MH_Li_short.sh
     scripts/simulation_seed.txt
     type_algebra.h
     scripts/likelihood.txt
@@ -163,45 +163,54 @@ add_executable(macro_dr main.cpp
     scripts/evidence_thermo_simulation.txt
     scripts/evidence_fraction_data.txt scripts/evidence_fraction_simulation.txt
     single_task/MH_Li_4.sh
-    slurm_tupac/s_MH_Li_4.sh
-    slurm_tupac/s_MH_Li_4_sim.sh
-    slurm_tupac/s_MH_Li_2.sh
-    slurm_tupac/s_MH_Li_2_sim.sh
+    slurm_tupac_old/s_MH_Li_4.sh
+    slurm_tupac_old/s_MH_Li_4_sim.sh
+    slurm_tupac_old/s_MH_Li_2.sh
+    slurm_tupac_old/s_MH_Li_2_sim.sh
     scripts/likelihood_NR.txt
     models/scheme_4_inact_NP_par.csv models/scheme_4_inact_NP_prior.csv models/scheme_4_NP_par.csv models/scheme_4_NP_prior.csv
     scripts/load_simulation.txt
     experiments/Sim_scheme_4_NP_N_simulation.csv
-    slurm_tupac/s_v10_MacroNR.sh
+    slurm_tupac_old/s_v10_MacroNR.sh
     models/scheme_4_NP.txt
     models/scheme_4_inact_NP.txt
-    slurm_tupac/s_v10_MacroDRPD.sh slurm_tupac/s_v10_MacroDRP.sh slurm_tupac/s_v10_MacroNRPD.sh 
-    slurm_tupac/s_v10_MacroNRP.sh  slurm_tupac/s_v10_MacroDR.sh
+    slurm_tupac_old/s_v10_MacroDRPD.sh slurm_tupac_old/s_v10_MacroDRP.sh slurm_tupac_old/s_v10_MacroNRPD.sh 
+    slurm_tupac_old/s_v10_MacroNRP.sh  slurm_tupac_old/s_v10_MacroDR.sh
     gsl_integrate.h
-    slurm_tupac/s_v12_MacroDRPD.sh
-    slurm_tupac/s_v12_MacroNRPD.sh
+    slurm_tupac_old/s_v12_MacroDRPD.sh
+    slurm_tupac_old/s_v12_MacroNRPD.sh
     scripts/load_simulation_7.txt
     experiments/Sim_6465237192204259400_scheme_4_inact_NP_N_simulation.csv
-    slurm_tupac/s_v13_4_sim_DR.sh
-    slurm_tupac/s_v13_4_DR.sh 
-    slurm_tupac/s_v13_4_NR.sh 
-    slurm_tupac/s_v13_4_sim_NR.sh
-    slurm_tupac/s_v13_4_DRPD.sh 
-    slurm_tupac/s_v13_4_sim_NRPD.sh 
-    slurm_tupac/s_v13_4_sim_DRPD.sh
-    slurm_tupac/s_v13_4_sim_NRPD.sh
-    slurm_tupac/s_v13_4_NRPD.sh
+    slurm_tupac_old/s_v13_4_sim_DR.sh
+    slurm_tupac_old/s_v13_4_DR.sh 
+    slurm_tupac_old/s_v13_4_NR.sh 
+    slurm_tupac_old/s_v13_4_sim_NR.sh
+    slurm_tupac_old/s_v13_4_DRPD.sh 
+    slurm_tupac_old/s_v13_4_sim_NRPD.sh 
+    slurm_tupac_old/s_v13_4_sim_DRPD.sh
+    slurm_tupac_old/s_v13_4_sim_NRPD.sh
+    slurm_tupac_old/s_v13_4_NRPD.sh
     scripts/idealize_experiment.txt
     scripts/idealize_experiment_7.txt
     scripts/run_idealize_experiment.txt
-    slurm_tupac/s_v15_4_DR.sh
-    slurm_tupac/s_v15_4_sim_DR.sh
+    slurm_tupac_old/s_v15_4_DR.sh
+    slurm_tupac_old/s_v15_4_sim_DR.sh
     experiments/Moffatt_Hume_2007_ATP_time_idealized.txt
-    slurm_tupac/s_v16_DR_no_cores.sh
-    slurm_tupac/number_cores/s_1core.sh
-    slurm_tupac/number_cores/s_64core.sh slurm_tupac/number_cores/s_16core.sh slurm_tupac/number_cores/s_32core.sh slurm_tupac/number_cores/s_2core.sh slurm_tupac/number_cores/s_4core.sh slurm_tupac/number_cores/s_8core.sh
-    slurm_tupac/number_cores/run_cores.sh
+    slurm_tupac_old/s_v16_DR_no_cores.sh
+    slurm_tupac_old/number_cores/s_1core.sh
+    slurm_tupac_old/number_cores/s_64core.sh slurm_tupac_old/number_cores/s_16core.sh slurm_tupac_old/number_cores/s_32core.sh slurm_tupac_old/number_cores/s_2core.sh slurm_tupac_old/number_cores/s_4core.sh slurm_tupac_old/number_cores/s_8core.sh
+    slurm_tupac_old/number_cores/run_cores.sh
     scripts/evidence_thermo_continuation.txt
-    slurm_tupac/cross_model/simulated_cross_model_comparison.sh 
+    slurm_tupac_old/cross_model/simulated_cross_model_comparison.sh
+    slurm_tupac/MHLi.sh
+    slurm/slurm.sh
+    
+    multi_task/MH_Li.sh
+    multi_task/MH_Li_continuation_1.sh
+    multi_task/run_MH_Li.sh
+    
+    slurm_tupac/run_MHLi.sh
+    slurm_tupac/MHLi_continuation.sh 
     
     
     

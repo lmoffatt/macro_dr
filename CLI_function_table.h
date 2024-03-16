@@ -579,7 +579,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 Save_Evidence_every(num_scouts_per_ensemble),
                                 Save_Likelihood_every(num_scouts_per_ensemble),
                                 Save_Parameter_every(num_scouts_per_ensemble),
-                                Save_Predictions_every(num_scouts_per_ensemble * 20)));
+                                Save_Predictions_every(num_scouts_per_ensemble * 50)));
                             
                             auto cbc = new_cuevi_Model_by_iteration<MyModel>(
                                 path, filename, t_segments_used, average_the_ATP_evolution,
@@ -705,7 +705,7 @@ inline void calc_evidence_continuation(
                             Save_Parameter_every(param1_prior.size() *
                                                  save_every_param_factor),
                             Save_Predictions_every(param1_prior.size() *
-                                                   save_every_param_factor * 20)));
+                                                   save_every_param_factor * 50)));
                         
                         auto cbc = new_cuevi_Model_by_iteration<MyModel>(
                             path, filename, t_segments_used, average_the_ATP_evolution,
