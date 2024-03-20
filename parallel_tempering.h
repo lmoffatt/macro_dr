@@ -1013,7 +1013,7 @@ public:
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker) {
             logLs t_logL = {};
         double beta = 0;
-      logLs log_Evidence = {};  
+        logLs log_Evidence = var::Vector_Space<logL,elogL,vlogL>(logL(0.0),elogL(0.0),vlogL(0.0));  
         for (std::size_t i_beta = num_betas(data); i_beta > 0; --i_beta) {
           auto logL0 = t_logL;
           double beta0 = beta;
