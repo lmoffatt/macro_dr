@@ -626,7 +626,7 @@ auto thermo_evidence_continuation(
     std::size_t iter = 0;
     const auto start = std::chrono::high_resolution_clock::now();
     
-    double duration;
+    std::chrono::duration<double,std::ratio<1>> duration;
     
     extract_parameters_last(fname, iter, duration, current);
     a.reset(iter);
