@@ -1129,12 +1129,29 @@ template <class Parameters, class Duration>
     for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
             for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
-                
-                if (!load_vars_line(f, iter, dur
-                               , data.beta[i_beta]  , i_walker 
-                               , data.i_walkers[i_walker][i_beta] ,  i_par 
-                               , data.walkers[i_walker][i_beta].parameter[i_par]  ))
+            {
+                double v_beta;
+                std::size_t v_i_walker;
+                std::size_t v_walker_id;
+                std::size_t v_i_par;
+                double v_param_value;
+                if (load_vars_line(f, iter, dur
+                               , v_beta  , v_i_walker 
+                               , v_walker_id ,  v_i_par 
+                               , v_param_value  ))
+                {
+                    if (std::abs(v_beta-data.beta[i_beta])>eps*100)
+                        return false;
+                    if (v_i_walker!=i_walker)
+                        return false;
+                    if (v_i_par!=i_par)
+                        return false;
+                    data.i_walkers[i_walker][i_beta]=v_walker_id;
+                    data.walkers[i_walker][i_beta].parameter[i_par]=v_param_value;
+                }
+                else
                 {return false;}
+            }
     return true;
  }
 template <class Parameters, class Duration>

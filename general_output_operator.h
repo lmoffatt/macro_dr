@@ -2,6 +2,7 @@
 #define GENERAL_OUTPUT_OPERATOR_H
 #include "general_algorithm_on_containers.h"
 #include "maybe_error.h"
+#include <chrono>
 #include <istream>
 #include <ostream>
 #include <sstream>
@@ -23,6 +24,9 @@ std::ostream &print(std::ostream &os, T x) {
 inline std::ostream &print(std::ostream &os, const std::string &s) {
   return os << s;
 }
+
+
+
 
 template <class T>
 std::ostream &operator<<(std::ostream &os, std::optional<T> const &x) {
@@ -68,6 +72,19 @@ public:
     return is;
   }
 };
+
+std::istream& operator>>(std::istream& is,std::chrono::duration<double>& dur)
+{
+    double val;
+    if (is>>val>>septr("s"))
+        dur=std::chrono::duration<double>(val);
+    return is;
+    
+    
+}
+
+
+
 
 class string_and_separator : public std::string {
   std::string m_sep;
