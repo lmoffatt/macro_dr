@@ -474,9 +474,9 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                             Save_Likelihood_every(save_every_param_factor *
                                                   param1_prior.size()),
                             Save_Parameter_every(save_every_param_factor *
-                                                 param1_prior.size()),
+                                                 param1_prior.size()*4),
                             Save_Predictions_every(save_every_param_factor *
-                                                   param1_prior.size() * 20)));
+                                                   param1_prior.size() * 500)));
                         
                         auto cbc = new_cuevi_Model_already_fraction_by_iteration<MyModel>(
                             path, filename, num_scouts_per_ensemble,
@@ -579,7 +579,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 Save_Evidence_every(num_scouts_per_ensemble),
                                 Save_Likelihood_every(num_scouts_per_ensemble),
                                 Save_Parameter_every(num_scouts_per_ensemble),
-                                Save_Predictions_every(num_scouts_per_ensemble * 50)));
+                                Save_Predictions_every(num_scouts_per_ensemble * 500)));
                             
                             auto cbc = new_cuevi_Model_by_iteration<MyModel>(
                                 path, filename, t_segments_used, average_the_ATP_evolution,
