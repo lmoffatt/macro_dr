@@ -1021,7 +1021,7 @@ public:
           beta = data.beta[i_beta - 1];
           auto plog_Evidence = (beta - beta0) * (logL0 + t_logL) / 2.0;
           log_Evidence =log_Evidence+ plog_Evidence;
-          s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
+          s.f  << iter << s.sep << dur << s.sep
               << beta << s.sep << i_walker << s.sep
               << data.i_walkers[i_walker][i_beta - 1] << s.sep
               << data.walkers[i_walker][i_beta - 1].logP << t_logL.sep(s.sep)
