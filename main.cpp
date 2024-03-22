@@ -5,7 +5,8 @@
 #include "lapack_headers.h"
 #include "lexer_typed.h"
 #include "maybe_error.h"
-#include "models_MoffattHume_linear.h"
+
+#include"models_MoffattHume_allosteric.h"
 
 #include "qmodel.h"
 #include <cstddef>
@@ -400,7 +401,7 @@ calc_thermo_evidence(std::string id,
 
 int main(int argc, char **argv) {
 
- // print_model_Priors(2.0);
+  print_model_Priors(2.0);
   std::vector<std::string> arguments(argc);
   for (auto i = 0; i < argc; ++i)
     arguments[i] = argv[i];

@@ -4,7 +4,7 @@
 #include "CLI_macro_dr_base.h"
 #include "cuevi.h"
 #include "maybe_error.h"
-#include "models_MoffattHume_linear.h"
+#include "models_MoffattHume_allosteric.h"
 #include "parameters.h"
 #include "qmodel.h"
 #include <cstddef>
