@@ -253,16 +253,49 @@ public:
 };
 
 
+class Parameters_Names{
+    std::map<std::string, std::size_t> m_index_map;
+    std::vector<std::string> m_ParNames;
+    static auto get_index_map(const std::vector<std::string> &names) {
+        std::map<std::string, std::size_t> out;
+        for (std::size_t i = 0; i < names.size(); ++i)
+            out[names[i]] = i;
+        return out;
+    }
+public:
+    Parameters_Names(std::vector<std::string>&& x):m_index_map{get_index_map(x)},m_ParNames{std::move(x)}{}
+    Parameters_Names(std::vector<std::string>const & x):m_index_map{get_index_map(x)},m_ParNames{x}{}
+    auto &operator()() const { return m_ParNames; }
+    Maybe_error<std::size_t> operator[](const std::string &name) const {
+        auto it = m_index_map.find(name);
+        if (it != m_index_map.end())
+            return it->second;
+        else
+            return error_message("name not found");
+    }
+    
+   
+};
+
+
 template <class Id> class Parameters_Transformations {
 public:
   using value_type = Matrix<double>;
-
+    static auto get_index_map(const std::vector<std::string> &names) {
+        std::map<std::string, std::size_t> out;
+        for (std::size_t i = 0; i < names.size(); ++i)
+            out[names[i]] = i;
+        return out;
+    }
 private:
   std::string m_IdName;
   std::vector<std::string> m_ParNames;
+  std::map<std::string, std::size_t> m_index_map;
+  
   transformations_vector m_tr;
   value_type m_standard_values;
-
+  
+  
   auto free_to_all(const Matrix<double> &x) const {
     Matrix<double> out;
     auto &m_fixed = transf().fixed_set();
@@ -335,12 +368,7 @@ public:
     std::vector<std::string> m_names;
     std::map<std::string, std::size_t> m_index_map;
 
-    static auto get_index_map(const std::vector<std::string> &names) {
-      std::map<std::string, std::size_t> out;
-      for (std::size_t i = 0; i < names.size(); ++i)
-        out[names[i]] = i;
-      return out;
-    }
+   
 
   public:
     static constexpr bool is_Parameters = true;
@@ -371,7 +399,7 @@ public:
                              std::vector<std::string> const &ParNames,
                              transformations_vector const &tr,
                              MatrixType &&std_values)
-      : m_IdName{IdName}, m_ParNames{ParNames}, m_tr{tr},
+      : m_IdName{IdName}, m_ParNames{ParNames},m_index_map{get_index_map(ParNames)}, m_tr{tr},
       m_standard_values{std::forward<MatrixType>(std_values)} {}
   
   template <class MatrixType>
@@ -380,7 +408,7 @@ public:
                              std::vector<std::string> const &ParNames,
                              transformations_vector const &tr,
                              MatrixType &&std_values)
-      : m_IdName{IdName}, m_ParNames{ParNames}, m_tr{tr},
+      : m_IdName{IdName}, m_ParNames{ParNames}, m_tr{tr},m_index_map{get_index_map(ParNames)},
       m_standard_values{Matrix<double>(std_values.size(),1,std::forward<MatrixType>(std_values))} {}
   
   
@@ -393,6 +421,13 @@ public:
 
   auto &names() const { return m_ParNames; }
   auto &IdName() const { return m_IdName; }
+  Maybe_error<std::size_t> operator[](const std::string &name) const {
+      auto it = m_index_map.find(name);
+      if (it != m_index_map.end())
+          return it->second;
+      else
+          return error_message("name not found");
+  }
   
   auto size() const { return m_standard_values.size(); }
   
