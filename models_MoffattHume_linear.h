@@ -31,9 +31,9 @@ operator||(std::variant<std::monostate, Ts *...> one,
 }
 
 template <class Id> struct Model_Patch {
-  template <class F> class Model {
+    template <class F,class Finv> class Model {
     std::string m_name;
-    std::tuple<F, Matrix<double>, std::vector<std::string>, Q0_formula,
+    std::tuple<F, Finv,Matrix<double>, std::vector<std::string>, Q0_formula,
                Qa_formula, g_formula,var::transformations_vector>
         m_f;
     var::Parameters_Transformations<Id> m_param;    
@@ -45,7 +45,7 @@ template <class Id> struct Model_Patch {
     template <class G>
     Model(std::string t_name, G &&t_g)
         : m_name{t_name}, m_f{std::forward<G>(t_g)()},
-        m_param(t_name,std::get<2>(m_f),std::get<6>(m_f), std::get<Matrix<double>>(m_f))
+        m_param(t_name,std::get<3>(m_f),std::get<7>(m_f), std::get<Matrix<double>>(m_f))
     {}
 
     auto &model_name() const { return m_name; }
@@ -63,12 +63,30 @@ template <class Id> struct Model_Patch {
     auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
     auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
     auto &get_g_formula() const { return std::get<g_formula>(m_f); }
-
+    
+    
+    template <class P>
+        requires std::is_same_v<var::untransformed_type_t<P>, Patch_Model>
+    auto operator()(const P &t_p)const ->Maybe_error<var::Parameters_values<Id>>
+    {
+        auto p= std::invoke(std::get<Finv>(m_f), t_p);
+        if (p)
+            return var::Parameters_values<Id>(parameters_transformations(),p.value());
+        else
+            return p.error();
+    }
+    
     template <class P>
       requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
     auto operator()(const P &t_p) const {
-      return std::invoke(std::get<F>(m_f), t_p);
+      auto result=std::invoke(std::get<F>(m_f), t_p);
+    assert(
+          t_p()==(*this)(result.value()).value()()
+          );
+      return std::move(result);
     }
+    
+    
 
     template <class P>
     friend void report_model(save_Parameter<P> &s, const Model &m) {
@@ -94,15 +112,16 @@ template <class Id> struct Model_Patch {
     requires(!is_of_this_template_type_v<F, Model>)
   Model(std::string, F &&f)
       ->Model_Patch<Id>::Model<
-          std::tuple_element_t<0, decltype(std::declval<F &&>()())>>;
-  template <class F>
-    requires(std::is_same_v<F, Model<F>>)
-  Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
+          std::tuple_element_t<0, decltype(std::declval<F &&>()())>,
+          std::tuple_element_t<1, decltype(std::declval<F &&>()())>>;
+  // template <class F, class Finv>
+  //   requires(std::is_same_v<F, Model<F>>)
+  // Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
 };
 
-template <class Id, class F>
+template <class Id, class F, class Finv>
 auto add_Patch_inactivation_to_model(
-    typename Model_Patch<Id>::template Model<F> const &model,
+    typename Model_Patch<Id>::template Model<F, Finv> const &model,
     double inactivation_value, std::unique_ptr<var::base_transformation> transformation) {
   return typename Model_Patch<Id>::Model(
       model.model_name() + "_inact", [model, inactivation_value, &transformation]() {
@@ -188,7 +207,7 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
   assert(tr.size()==p.size());
   auto tr_param=var::MyTranformations::from_strings(tr).value();
   
-  
+  auto npar=names_model.size();
   
   return std::tuple(
       [](const auto &p)
@@ -235,10 +254,53 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
             min_P(1e-7), Probability_error_tolerance(1e-2),
             Conductance_variance_error_tolerance(1e-2));
       },
+      [npar](const auto &patch_model)
+      -> Maybe_error<
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+          
+          auto& v_Q0=get<Q0>(patch_model);
+          auto& v_Qa=get<Qa>(patch_model);
+          auto& v_g=get<g>(patch_model);
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+              Matrix<double>(1, npar, 0.0);
+          
+          assert(get<N_St>(patch_model)()==5);
+          
+          auto kon = v_Qa()(0ul,1ul)/3.0;
+          out[0]=kon;
+          auto koff = v_Q0()(1ul,0ul);
+          out[1]=koff;
+          auto gating_on = v_Q0()(3ul,4ul);
+          out[2]=gating_on;
+          
+          auto gating_off = v_Q0()(4ul,3ul);
+          out[3]=gating_off;
+          auto v_unitary_current = v_g()[4ul] * -1.0;
+          out[4]=v_unitary_current;
+          auto Npar = 5ul;
+          
+          auto v_curr_noise= get<Current_Noise>(patch_model);
+          out[Npar]=v_curr_noise();
+          
+          auto v_pink_noise= get<Pink_Noise>(patch_model);
+          out[Npar+1]=v_pink_noise();
+          
+          auto v_prop_noise= get<Proportional_Noise>(patch_model);
+          out[Npar+2]=v_prop_noise();
+          
+          auto v_baseline= get<Current_Baseline>(patch_model);
+          out[Npar+3]=v_baseline();
+          
+          auto v_N0= get<N_Ch_mean>(patch_model);
+          out.set(std::pair(Npar + 4, Npar + 4),v_N0());
+          
+          return out;
+      },
       p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
       std::move(v_g_formula), std::move(tr_param));
 });
 
+#if 0
 
 static auto scheme_2 = Model0::Model("scheme_2", []() {
   auto names_model = std::vector<std::string>{
@@ -1400,6 +1462,8 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(scheme_4, 1e-5,
 //       },
 //       p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 // });
+
+#endif
 
 template <class... Ms> class Models_Library {
   std::tuple<Ms *...> m_models;

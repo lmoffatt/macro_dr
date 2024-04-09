@@ -7,6 +7,7 @@
 
 namespace macrodr {
 
+#if 0
 static auto scheme_6 = Allost1::Model("scheme6", []() {
   auto v_binding = Conformational_change_label{"Binding"};
   auto v_rocking = Conformational_change_label{"Rocking"};
@@ -524,16 +525,19 @@ static auto scheme_9 = Allost1::Model("scheme9", []() {
 static auto scheme_9_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_9, 1e-5, var::MyTranformations::from_string("Log10").value());
 
+#endif
+
+
 inline auto get_model(std::string modelName) {
   auto allmodels =
       // Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
       //                             &model6, &model6_no_inactivation,
       //                             &model6_Eff_no_inactivation, &model7,
       //                             &model8, &model9);
-      Models_Library(&scheme_1, &scheme_2, &scheme_3, &scheme_4, &scheme_1_d,
+      Models_Library(&scheme_1 /* ,&scheme_2, &scheme_3, &scheme_4, &scheme_1_d,
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, &scheme_6,
                        &scheme_6_d, &scheme_7, &scheme_7_d, &scheme_8,
-                       &scheme_8_d, &scheme_9, &scheme_9_d);
+                       &scheme_8_d, &scheme_9, &scheme_9_d*/);
   //                      &model00, &model00_7, &model01, &model4,
   //                      &model4_g_lin,
   //                    &model6, &model6_no_inactivation,
@@ -556,19 +560,19 @@ inline Maybe_error<std::size_t> get_num_parameters(std::string model) {
 
 inline auto get_model_scheme(std::string modelName) {
   auto allmodels = // Models_Library(&scheme_1);
-      Models_Library(&scheme_1, &scheme_2, &scheme_3, &scheme_4, &scheme_1_d,
+      Models_Library(&scheme_1 /*,*&scheme_2, &scheme_3, &scheme_4, &scheme_1_d,
                      &scheme_2_d, &scheme_3_d, &scheme_4_d, &scheme_6,
                        &scheme_6_d, &scheme_7, &scheme_7_d, &scheme_8,
-                       &scheme_8_d, &scheme_9, &scheme_9_d);
+                       &scheme_8_d, &scheme_9, &scheme_9_d*/);
   return allmodels[modelName];
 }
 
 inline void print_model_Priors(double covar) {
   auto allmodels = // Models_Library(&scheme_1);
-      Models_Library(&scheme_1, &scheme_2, &scheme_3, &scheme_4, &scheme_1_d,
+      Models_Library(&scheme_1 /*, &scheme_2, &scheme_3, &scheme_4, &scheme_1_d,
                      &scheme_2_d, &scheme_3_d, &scheme_4_d, &scheme_6,
                        &scheme_6_d, &scheme_7, &scheme_7_d, &scheme_8,
-                       &scheme_8_d, &scheme_9, &scheme_9_d);
+                       &scheme_8_d, &scheme_9, &scheme_9_d*/);
   //,
   //
   //                     &model6, &model6_no_inactivation,
