@@ -81,7 +81,7 @@ template <class Id> struct Model_Patch {
     auto operator()(const P &t_p) const {
       auto result=std::invoke(std::get<F>(m_f), t_p);
     assert(
-          t_p()==(*this)(result.value()).value()()
+          var::compare_contents(t_p(),(*this)(result.value()).value()())
           );
       return std::move(result);
     }
@@ -300,7 +300,7 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
       std::move(v_g_formula), std::move(tr_param));
 });
 
-#if 0
+
 
 static auto scheme_2 = Model0::Model("scheme_2", []() {
   auto names_model = std::vector<std::string>{
@@ -337,6 +337,7 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
   
   assert(tr.size()==p.size());
   auto tr_param=var::MyTranformations::from_strings(tr).value();
+  auto npar=names_model.size();
 
   return std::tuple(
       [N](const auto &p)
@@ -381,9 +382,56 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
                 Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
       },
+      [npar](const auto &patch_model)
+      -> Maybe_error<
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+          
+          auto& v_Q0=get<Q0>(patch_model);
+          auto& v_Qa=get<Qa>(patch_model);
+          auto& v_g=get<g>(patch_model);
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+              Matrix<double>(1, npar, 0.0);
+          
+          assert(get<N_St>(patch_model)()==6);
+          
+          auto kon = v_Qa()(0ul,1ul)/3.0;
+          out[0]=kon;
+          auto koff = v_Q0()(1ul,0ul);
+          out[1]=koff;
+          auto flipping_on = v_Q0()(3ul,4ul);
+          out[2]=flipping_on;
+          auto flipping_off = v_Q0()(4ul,3ul);
+          out[3]=flipping_off;
+          
+          auto gating_on = v_Q0()(4ul,5ul);
+          out[4]=gating_on;
+          auto gating_off = v_Q0()(5ul,4ul);
+          out[5]=gating_off;
+          auto v_unitary_current = v_g()[5ul] * -1.0;
+          out[6]=v_unitary_current;
+          auto Npar = 7ul;
+          
+          auto v_curr_noise= get<Current_Noise>(patch_model);
+          out[Npar]=v_curr_noise();
+          
+          auto v_pink_noise= get<Pink_Noise>(patch_model);
+          out[Npar+1]=v_pink_noise();
+          
+          auto v_prop_noise= get<Proportional_Noise>(patch_model);
+          out[Npar+2]=v_prop_noise();
+          
+          auto v_baseline= get<Current_Baseline>(patch_model);
+          out[Npar+3]=v_baseline();
+          
+          auto v_N0= get<N_Ch_mean>(patch_model);
+          out.set(std::pair(Npar + 4, Npar + 4),v_N0());
+          
+          return out;
+      },
       p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
       std::move(v_g_formula), std::move(tr_param));
 });
+
 
 static auto scheme_3 = Model0::Model("scheme_3", []() {
     auto names_model = std::vector<std::string>{"kon_0",
@@ -426,6 +474,7 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
     v_Qa_formula()[1][2] = "kon_1";
     v_Qa_formula()[2][3] = "kon_2";
     auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[4] = "unitary_current";
     v_g_formula()[5] = "unitary_current";
     
     names_model.insert(names_model.end(), names_other.begin(), names_other.end());
@@ -442,6 +491,8 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
     tr[tr.size()-2]= "Linear";
     assert(tr.size()==p.size());
     auto tr_param=var::MyTranformations::from_strings(tr).value();
+    
+    auto npar=names_model.size();    
     
     return std::tuple(
         [N](const auto &p)
@@ -505,6 +556,76 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                 min_P(1e-7), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
+        [npar](const auto &patch_model)
+        -> Maybe_error<
+            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+            
+            auto& v_Q0=get<Q0>(patch_model);
+            auto& v_Qa=get<Qa>(patch_model);
+            auto& v_g=get<g>(patch_model);
+            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+                Matrix<double>(1, npar, 0.0);
+            
+            assert(get<N_St>(patch_model)()==7);
+            
+            auto kon_0 = v_Qa()(0ul,1ul);
+            out[0]=kon_0;
+            auto koff_0 = v_Q0()(1ul,0ul);
+            out[1]=koff_0;
+            auto kon_1 = v_Qa()(1ul,2ul);
+            out[2]=kon_1;
+            auto koff_1 = v_Q0()(2ul,1ul);
+            out[3]=koff_1;
+            auto kon_2 = v_Qa()(2ul,3ul);
+            out[4]=kon_2;
+            auto koff_2 = v_Q0()(3ul,2ul);
+            out[5]=koff_2;
+            auto gating_on_0 = v_Q0()(3ul,4ul);
+            out[6]=gating_on_0;
+            auto gating_off_0 = v_Q0()(4ul,3ul);
+            out[7]=gating_off_0;
+            
+            auto gating_on_1 = v_Q0()(3ul,5ul);
+            out[8]=gating_on_1;
+            auto gating_off_1 = v_Q0()(5ul,3ul);
+            out[9]=gating_off_1;
+            
+            auto desensitization_on_0 = v_Q0()(4ul,6ul);
+            out[10]=desensitization_on_0;
+            auto desensitization_off_0 = v_Q0()(6ul,4ul);
+            out[11]=desensitization_off_0;
+            
+            auto desensitization_on_1 = v_Q0()(5ul,6ul);
+            out[12]=desensitization_on_1;
+            auto desensitization_off_1 = v_Q0()(6ul,5ul);
+            assert(                (desensitization_off_0 * gating_off_0 * gating_on_1 *
+                    desensitization_on_1) /
+                       (gating_off_1 * gating_on_0 * desensitization_on_0)==desensitization_off_1);
+            
+            auto v_unitary_current = v_g()[4ul] * -1.0;
+            out[13]=v_unitary_current;
+            assert(v_g()[5ul]==v_unitary_current*-1.0);
+            
+            auto Npar = 14ul;
+            
+            auto v_curr_noise= get<Current_Noise>(patch_model);
+            out[Npar]=v_curr_noise();
+            
+            auto v_pink_noise= get<Pink_Noise>(patch_model);
+            out[Npar+1]=v_pink_noise();
+            
+            auto v_prop_noise= get<Proportional_Noise>(patch_model);
+            out[Npar+2]=v_prop_noise();
+            
+            auto v_baseline= get<Current_Baseline>(patch_model);
+            out[Npar+3]=v_baseline();
+            
+            auto v_N0= get<N_Ch_mean>(patch_model);
+            out.set(std::pair(Npar + 4, Npar + 4),v_N0());
+            
+            return out;
+        },
+        
         p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
         std::move(v_g_formula), std::move(tr_param));
 });
@@ -571,7 +692,8 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
   tr[tr.size()-2]= "Linear";
   assert(tr.size()==p.size());
   auto tr_param=var::MyTranformations::from_strings(tr).value();
-
+  
+  auto npar=names_model.size();    
   
   return std::tuple(
       [N](const auto &p)
@@ -640,10 +762,85 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
             min_P(1e-7), Probability_error_tolerance(1e-2),
             Conductance_variance_error_tolerance(1e-2));
       },
+      [npar](const auto &patch_model)
+      -> Maybe_error<
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+          
+          auto& v_Q0=get<Q0>(patch_model);
+          auto& v_Qa=get<Qa>(patch_model);
+          auto& v_g=get<g>(patch_model);
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+              Matrix<double>(1, npar, 0.0);
+          
+          assert(get<N_St>(patch_model)()==8);
+          
+          auto kon_0 = v_Qa()(0ul,1ul);
+          out[0]=kon_0;
+          auto koff_0 = v_Q0()(1ul,0ul);
+          out[1]=koff_0;
+          auto kon_1 = v_Qa()(1ul,2ul);
+          out[2]=kon_1;
+          auto koff_1 = v_Q0()(2ul,1ul);
+          out[3]=koff_1;
+          auto kon_2 = v_Qa()(2ul,3ul);
+          out[4]=kon_2;
+          auto koff_2 = v_Q0()(3ul,2ul);
+          out[5]=koff_2;
+          auto flipping_on = v_Q0()(3ul,4ul);
+          out[6]=flipping_on;
+          auto flipping_off = v_Q0()(4ul,3ul);
+          out[7]=flipping_off;
+          auto gating_on_0 = v_Q0()(4ul,5ul);
+          out[8]=gating_on_0;
+          auto gating_off_0 = v_Q0()(5ul,4ul);
+          out[9]=gating_off_0;
+          
+          auto gating_on_1 = v_Q0()(4ul,6ul);
+          out[10]=gating_on_1;
+          auto gating_off_1 = v_Q0()(6ul,4ul);
+          out[11]=gating_off_1;
+          
+          auto desensitization_on_0 = v_Q0()(5ul,7ul);
+          out[12]=desensitization_on_0;
+          auto desensitization_off_0 = v_Q0()(7ul,5ul);
+          out[13]=desensitization_off_0;
+          
+          auto desensitization_on_1 = v_Q0()(6ul,7ul);
+          out[14]=desensitization_on_1;
+          auto desensitization_off_1 = v_Q0()(7ul,6ul);
+          assert(                (desensitization_off_0 * gating_off_0 * gating_on_1 *
+                  desensitization_on_1) /
+                     (gating_off_1 * gating_on_0 * desensitization_on_0)==desensitization_off_1);
+          
+          auto v_unitary_current = v_g()[5ul] * -1.0;
+          out[15]=v_unitary_current;
+          assert(v_g()[6ul]==v_unitary_current*-1.0);
+          
+          auto Npar = 16ul;
+          
+          auto v_curr_noise= get<Current_Noise>(patch_model);
+          out[Npar]=v_curr_noise();
+          
+          auto v_pink_noise= get<Pink_Noise>(patch_model);
+          out[Npar+1]=v_pink_noise();
+          
+          auto v_prop_noise= get<Proportional_Noise>(patch_model);
+          out[Npar+2]=v_prop_noise();
+          
+          auto v_baseline= get<Current_Baseline>(patch_model);
+          out[Npar+3]=v_baseline();
+          
+          auto v_N0= get<N_Ch_mean>(patch_model);
+          out.set(std::pair(Npar + 4, Npar + 4),v_N0());
+          
+          return out;
+      },
       p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
       std::move(v_g_formula), std::move(tr_param));
 });
 
+
+#if 0
 
 static auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(scheme_1, 1e-5, var::MyTranformations::from_string("Log10").value());
 static auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(scheme_2, 1e-5, var::MyTranformations::from_string("Log10").value());

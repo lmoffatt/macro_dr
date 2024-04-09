@@ -5,6 +5,7 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <iostream>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -102,6 +103,7 @@ inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, double=0,std::si
     {
         std::stringstream ss;
         ss<<"different :\n"<<s0<<"\n"<<s1;
+        std::cerr<<"different :\n"<<s0<<"\n"<<s1;
         return error_message(ss.str());
     }
     else
