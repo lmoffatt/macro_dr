@@ -342,7 +342,14 @@ public:
       return out;
     }
   }
-
+  
+  void set(std::pair<std::size_t, std::size_t> ij, Matrix<double> x) {
+        for (std::size_t i = ij.first; i <= ij.second; ++i)
+          (*this)[i] = x[i-ij.first];
+     }
+  
+  
+  
   auto &operator()(std::size_t i) {
     assert(i < size_);
     return x_[i];
