@@ -132,7 +132,7 @@ inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Contai
     std::string message;
     if (s0.size()!=s1.size())
     {
-       message+= "differ in size: "+std::to_string(s0.size())+" vs "+std::to_string(s0.size());
+       message+= "differ in size: "+std::to_string(s0.size())+" vs "+std::to_string(s1.size());
         ++n_errors;
     }
     std::size_t i=0;

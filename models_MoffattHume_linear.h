@@ -154,12 +154,32 @@ auto add_Patch_inactivation_to_model(
                     Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
               auto n = p.size();
               auto &inactivation = p[n - 1];
-              auto mo=model(p);
+              auto p_no_inactivation=var::Parameters_values<Id>(model.parameters_transformations(),
+                                                                  Matrix<double>(1,n-1));
+              p_no_inactivation()=p()[std::pair(0ul,n-2)];
+              auto mo=model(p_no_inactivation);
               using std::pow;
               if (!mo)
                   return mo.error();
               else
                   return add_Patch_inactivation(std::move(mo.value()), inactivation);
+            },
+            [model](const auto &patch_model)
+            -> Maybe_error<
+                    Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+                auto [patch_model_no_inactivation, inactivation_rate]=remove_Patch_inactivation(patch_model);
+                
+                auto p=model(patch_model_no_inactivation);
+                if (!p)
+                    return p.error();
+                else
+                {
+                    auto n=p.value().size()+1;
+                    auto out=Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>(1, n);
+                    out.set(std::pair(0ul,n-2),p.value()());
+                    out[n-1]=inactivation_rate;
+                    return out;
+                }
             },
             p_inactivation, names_model,
             std::move(v_Q0_inactivation_formula),
@@ -840,13 +860,15 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
 });
 
 
-#if 0
 
 static auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(scheme_1, 1e-5, var::MyTranformations::from_string("Log10").value());
+
+
 static auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(scheme_2, 1e-5, var::MyTranformations::from_string("Log10").value());
 static auto scheme_3_d = add_Patch_inactivation_to_model<Model0>(scheme_3, 1e-5, var::MyTranformations::from_string("Log10").value());
 static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(scheme_4, 1e-5, var::MyTranformations::from_string("Log10").value());
 
+#if 0
 
 
 
