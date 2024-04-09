@@ -597,6 +597,46 @@ C_Patch_Model add_Patch_inactivation(C_Patch_Model &&m,
   return std::move(m);
 }
 
+template <class C_Patch_Model>
+std::pair<C_Patch_Model, double> remove_Patch_inactivation(C_Patch_Model const &mi) {
+  auto m=mi;
+  
+  
+  using Transf = transformation_type_t<C_Patch_Model>;
+  auto Nst = get<N_St>(m)() - 1;
+  Op_t<Transf, Q0> v_Q0 = Q0(Matrix<double>(Nst, Nst, 0.0));
+  auto deactivation_rate=get<Q0>(m)()(0ul,Nst);
+  for (std::size_t i = 0; i  < Nst; ++i) {
+    for (std::size_t j = 0; j  < Nst; ++j)
+      set(v_Q0(), i, j, get<Q0>(m)()(i, j));
+    assert(deactivation_rate==get<Q0>(m)()(i,Nst));
+  }
+  
+  Op_t<Transf, Qa> v_Qa = Qa(Matrix<double>(Nst, Nst, 0.0));
+  for (std::size_t i = 0; i  < Nst; ++i) {
+    for (std::size_t j = 0; j < Nst; ++j)
+      set(v_Qa(), i, j, get<Qa>(m)()(i, j));
+  }
+  Op_t<Transf, g> v_g = g(Matrix<double>(Nst, 1, 0.0));
+  for (std::size_t i = 0; i  < Nst; ++i) {
+    set(v_g(), i, 0, get<g>(m)()[i]);
+  }
+  Op_t<Transf, P_initial> v_Pini = P_initial(Matrix<double>(1, Nst, 0.0));
+  for (std::size_t i = 0; i  < Nst; ++i) {
+    set(v_Pini(), 0, i, get<P_initial>(m)()[i]);
+  }
+  v_Pini()=v_Pini()/var::sum(v_Pini());
+  
+  get<N_St>(m)() = Nst;
+  get<Qa>(m) = v_Qa;
+  get<Q0>(m) = v_Q0;
+  get<g>(m) = v_g;
+  get<P_initial>(m) = v_Pini;
+  return std::pair(std::move(m),deactivation_rate);
+}
+
+
+
 class Patch_State_Evolution
     : public Var<Patch_State_Evolution, std::vector<Patch_State>> {};
 
