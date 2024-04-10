@@ -177,11 +177,11 @@ public:
     constexpr auto& operator[](Var<Id>){return *this;}
     constexpr auto& operator[](Var<Id>) const{return *this;}
     
-    template<class... Ts>
-    constexpr auto operator()(const Ts&...){return Id(*this);}
+    template<class T0, class... Ts>
+    constexpr auto operator()(const T0&,const Ts&...){return Id(*this);}
     
-    template<class... Ts>
-    constexpr auto operator()(const Ts&...)const {return Id(*this);}
+    template<class T0,class... Ts>
+    constexpr auto operator()(const T0,const Ts&...)const {return Id(*this);}
     
     constexpr Constant(){
         
@@ -195,6 +195,7 @@ public:
         
     }
     friend bool operator<(const Constant& one,const Constant& two){ return one.value()<two.value();}
+    friend bool operator==(const Constant& one,const Constant& two){ return one.value()==two.value();}
     
     friend auto& operator<<(std::ostream& os, const Constant& x){ os<<x.value(); return os;}
     friend auto& operator>>(std::istream& is,  Constant& x){ is>>x(); return is;}
@@ -422,8 +423,9 @@ public:
     
     friend std::ostream& print(std::ostream& os, const Vector_Space& tu)
     {
+        os<<"<";
         (print(os,static_cast<Vars const&>(tu)),...);
-        os<<"\n";
+        os<<">\n";
         return os;
        //  ((os<<typeid(Vars).name()<<" :=\t"<<static_cast<Vars const&>(tu).value()<<"\t"),...);
        // return os

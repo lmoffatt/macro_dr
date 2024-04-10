@@ -73,7 +73,10 @@ template <class Id> struct Model_Patch {
         if (p)
             return var::Parameters_values<Id>(parameters_transformations(),p.value());
         else
+        {
+            std::cerr<<p.error()();
             return p.error();
+        }
     }
     
     template <class P>

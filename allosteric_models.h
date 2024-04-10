@@ -9,6 +9,7 @@
 #include <initializer_list>
 #include <map>
 #include <optional>
+#include <ostream>
 #include <sstream>
 #include <string>
 namespace macrodr {
@@ -180,11 +181,12 @@ struct Conformational_interaction
   using Constant::Constant;
   friend std::ostream &print(std::ostream &os,
                              Conformational_interaction const &x) {
-    print(os, get<Conformational_interaction_label>(x())());
+    os << "conf_inter{";
+      print(os, get<Conformational_interaction_label>(x())());
     os << " => ";
     print(os, get<Conformational_interaction_players>(x()));
     print(os, get<Conformational_interaction_positions>(x()));
-    return os << "\n";
+    return os << "}\n";
   }
 };
 
@@ -196,11 +198,12 @@ struct Conductance_interaction
   using Constant::Constant;
   friend std::ostream &print(std::ostream &os,
                              Conductance_interaction const &x) {
-    print(os, get<Conductance_interaction_label>(x())());
+      os << "cond_inter{";
+      print(os, get<Conductance_interaction_label>(x())());
     os << " => ";
     print(os, get<Conductance_interaction_players>(x()));
     print(os, get<Conductance_interaction_positions>(x()));
-    return os << "\n";
+    return os << "}\n";
   }
 };
 
@@ -210,11 +213,11 @@ struct Conformational_interaction_scheme
   using Constant::Constant;
   friend std::ostream &print(std::ostream &os,
                              Conformational_interaction_scheme const &x) {
-    os << "\ninteraction scheme begin: \n";
+    os << "\ninteraction scheme begin:{ \n";
     for (auto e : x()) {
         print(os, e);
     }
-    os << "interaction end\n";
+    os << "}interaction end\n";
     return os;
   }
 };
@@ -274,7 +277,7 @@ struct Conformational_interactions_domain_state
         for (auto &e : x()) {
       os << get<Conformational_interaction_index>(e.first)() << "_"
                << get<Conformational_interaction_subposition>(e.first)() << "^"
-               << e.second;
+               << e.second << " ";
         }
     // os<<"]";
     return os;
@@ -302,13 +305,13 @@ struct Conformational_interactions_domain_state
 
 struct Conformational_domain_state
     : public Constant<Conformational_domain_state,
-                      Vector_Space<Conformational_change,
+                      Vector_Space<Conformational_change_label,
                                    Conformational_change_domain_state,
                                    Conformational_interactions_domain_state>> {
     
     friend std::ostream &print(std::ostream &os,
                                Conformational_domain_state const &x) {
-        print(os, get<Conformational_change>(x()));
+        print(os, get<Conformational_change_label>(x())());
         os << " ";
         print(os, get<Conformational_change_domain_state>(x())());
         os << " [";
@@ -359,7 +362,7 @@ struct Conformational_state_count
     
     friend std::ostream &print(std::ostream &os,
                                Conformational_state_count const &x) {
-        os << " states: ";
+        os << " Conformational_state_count: {";
         for (auto &e : x()) {
             os << "{";
             print(os, e.first);
@@ -485,8 +488,31 @@ struct Conformational_states
                       std::vector<Vector_Space<Conformational_state_count,
                                                Conformational_state_vector,
                                                Conductance_state_count>>> {
-
-  friend std::ostream &print(std::ostream &os, Conformational_states const &x) {
+    
+    friend Maybe_error<std::size_t>
+    find_state_with_conformation(const Conformational_states &x,
+                                 const Conformational_domain_state &e) {
+        auto it =
+            std::find_if(x().begin(), x().end(),
+                               [&e](Vector_Space<Conformational_state_count,
+                                                 Conformational_state_vector,
+                                                                         Conductance_state_count> const &m) {
+            auto &v_st = get<Conformational_state_count>(m)();
+            auto it = v_st.find(e);
+            return (it != v_st.end() && it->second > 0);
+        });
+        if (it == x().end()) {
+            std::stringstream ss;
+            print(ss,e);
+            ss << " not found in ";
+            print(ss, x);
+            return error_message(ss.str());
+        } else {
+            return it - x().begin();
+        }
+    }
+    
+    friend std::ostream &print(std::ostream &os, Conformational_states const &x) {
     os << "\nConformational states\n";
     for (auto i = 0ul; i < x().size(); ++i) {
       auto &e = x()[i];
@@ -508,15 +534,35 @@ struct Conformational_state_count_to_representative_index
           std::map<Conformational_state_count, Conformational_state_index>> {
     
     Maybe_error<Conformational_state_index>
-    operator[](Conformational_state_count i) {
+    operator[](Conformational_state_count i) const {
         if (auto it = (*this)().find(i); it == (*this)().end()) {
             std::stringstream ss;
             ss << "Conformational state count ";
-            print(ss, i);
+            ss << i;
             ss << " not found";
+            ss << "All states:";
+            ss << *this;
+            ss << "\npppppppppppppppp\n";
+            print(ss, i);
+            ss << " not found\n";
+            print(ss, *this);
+            // std::cerr<<i;
+            // std::cerr<<*this;
+            std::cerr << "\nerror\n" << ss.str() << "\n";
             return error_message(ss.str());
         } else
             return it->second;
+    }
+    
+    friend std::ostream &
+    print(std::ostream &os,
+          const Conformational_state_count_to_representative_index &x) {
+        os << "\nConformational_state_count_to_representative_index:\n";
+        for (auto e : x()) {
+            print(os, e.first);
+            os << "state_number: " << e.second() << "\n";
+        }
+        return os;
     }
 };
 
@@ -699,7 +745,8 @@ to_state_count(const Conformational_model_scheme &model,
 
     for (std::size_t i = 0; i < v_state().size(); ++i) {
         ++out[Conformational_domain_state(
-            Vector_Space(v_change()[i], v_state()[i], v_inter()[i]))];
+            Vector_Space(get<Conformational_change_label>(v_change()[i]()),
+                         v_state()[i], v_inter()[i]))];
     }
     return Conformational_state_count(std::move(out));
   }
@@ -1208,354 +1255,6 @@ auto get_calc_Qij(const Conformational_interaction_scheme &inter,
     return out;
 }
 
-template <class Id, class Conformational_model_, class Q0_, class Qa_, class g_>
-    requires(
-        std::is_same_v<var::untransformed_type_t<Q0_>, Q0> &&
-        std::is_same_v<var::untransformed_type_t<Qa_>, Qa> &&
-        std::is_same_v<var::untransformed_type_t<g_>, g> &&
-        (std::is_same_v<Conformational_model_, Conformational_model> ||
-                                                                                                                                                                         std::is_same_v<Conformational_model_, Conformational_model_standarized>))
-auto get_Parameters_from_Q0_Qa_g(const Conformational_model_ &model,
-                                 const var::Parameters_Names &names,
-                                 const Q0_ &t_Q0, const Qa_ &t_Qa,
-                                 const g_ &t_g)
-    -> Maybe_error<Transfer_Op_to<Q0_, Matrix<double>>> {
-    
-    Transfer_Op_to<Q0_, Matrix<double>> out =
-        Matrix<double>(1, names().size(), 0.0);
-    
-    auto N = get<N_St>(model())();
-    auto tr = get<Conformational_transition_list>(model());
-    
-    auto states = get<Conformational_states>(model());
-    auto &t_m_sch = get<Conformational_model_scheme>(model());
-    auto inter = get<Conformational_interaction_scheme>(t_m_sch());
-    auto cond_inter = get<Conductance_interaction_scheme>(t_m_sch());
-    
-    auto &t_std = get<Conformation_change_standard_map>(model());
-    auto &t_m_change = get<Conformational_change_scheme>(t_m_sch());
-    
-    auto &t_map =
-        get<Conformational_state_count_to_representative_index>(model());
-    
-    for (auto i_conf = 0ul; i_conf < t_m_change().size(); ++i_conf) {
-        auto ch_lab = t_m_change()[i_conf];
-        auto v_std = t_std[ch_lab]();
-        Conformational_state_count s0(
-            std::pair<Conformational_domain_state, std::size_t>(
-                Vector_Space(ch_lab, Conformational_change_domain_state(false),
-                             v_std),
-                1ul));
-        
-        Conformational_state_count s1(
-            std::pair<Conformational_domain_state, std::size_t>(
-                Vector_Space(ch_lab, Conformational_change_domain_state(true),
-                             v_std),
-                1ul));
-        
-        auto Maybe_i0 = t_map[s0];
-        if (!Maybe_i0)
-            return Maybe_i0.error();
-        auto i0 = Maybe_i0.value()();
-        auto Maybe_i1 = t_map[s1];
-        if (!Maybe_i1)
-            return Maybe_i1.error();
-        auto i1 = Maybe_i1.value()();
-        
-        bool transition0_found = false;
-        std::size_t jj0;
-        
-        for (std::size_t j = 0; j < tr()[i0].size(); ++j) {
-            auto trr = tr()[i0][j];
-            auto v_i = get<Conformational_transition_initiating_state_index>(trr());
-            assert(v_i()() == i0);
-            auto v_j = get<Conformational_transition_landing_state_index>(trr());
-            if (v_j == i1) {
-                transition0_found = true;
-                jj0 = j;
-                break;
-            }
-        }
-        if (!transition0_found)
-            return error_message("the transition was not found, weird");
-        auto trr0 = tr()[i0][jj0];
-        
-        bool transition1_found = false;
-        std::size_t jj1;
-        
-        for (std::size_t j = 0; j < tr()[i1].size(); ++j) {
-            auto trr = tr()[i1][j];
-            auto v_i = get<Conformational_transition_initiating_state_index>(trr());
-            assert(v_i()() == i1);
-            auto v_j = get<Conformational_transition_landing_state_index>(trr());
-            if (v_j == i0) {
-                transition1_found = true;
-                jj1 = j;
-                break;
-            }
-        }
-        if (!transition1_found)
-            return error_message("the transition was not found, weird");
-        auto trr1 = tr()[i1][jj1];
-        
-        auto ag = get<Agonist_dependency>(trr0());
-        auto d0 = get<Conformational_transition_direction>(trr0());
-        
-        assert(ch_lab == get<Conformational_change_label>(trr0()));
-        auto n0 = get<Conformational_transition_mulitplicity>(trr0());
-        auto n1 = get<Conformational_transition_mulitplicity>(trr1());
-        
-        auto Maybe_ion = names[ch_lab() + "_on"];
-        if (!Maybe_ion)
-            return Maybe_ion.error();
-        auto Maybe_ioff = names[ch_lab() + "_off"];
-        if (!Maybe_ioff)
-            return Maybe_ioff.error();
-        
-        auto i_on = Maybe_ion.value();
-        auto i_off = Maybe_ioff.value();
-        auto kon = t_Q0(i0, i1) / n0();
-        if (ag)
-            out[i_on] = t_Qa(i0, i1) / n0();
-        else
-            out[i_on] = t_Q0(i0, i1) / n0();
-        out[i_off] = t_Q0(i1, i0) / n1();
-    }
-    
-    for (auto i_inter = 0ul; i_inter < inter().size(); ++i_inter) {
-        Conformational_interaction inter_i = inter()[i_inter];
-        auto inter_lab = get<Conformational_interaction_label>(inter_i());
-        auto inter_players = get<Conformational_interaction_players>(inter_i());
-        for (auto i_conf_play = 0ul; i_conf_play < inter_players().size();
-             ++i_conf_play) {
-            auto ch_play_lab = inter_players()[i_conf_play];
-            auto ij_inter =
-                Vector_Space(Conformational_interaction_index(i_inter),
-                                         Conformational_interaction_subposition(i_conf_play));
-            auto v_play_std = t_std[ch_play_lab]();
-            bool negative_interaction = false;
-            
-            if (v_play_std[ij_inter] > 0) {
-                --v_play_std()[ij_inter];
-                negative_interaction = true;
-            } else {
-                ++v_play_std()[ij_inter];
-                negative_interaction = false;
-            }
-            
-            Conformational_state_count s0(
-                std::pair<Conformational_domain_state, std::size_t>(
-                    Vector_Space(ch_play_lab,
-                                 Conformational_change_domain_state(false),
-                                 v_play_std),
-                    1ul));
-            
-            Conformational_state_count s1(
-                std::pair<Conformational_domain_state, std::size_t>(
-                    Vector_Space(ch_play_lab,
-                                 Conformational_change_domain_state(true),
-                                 v_play_std),
-                    1ul));
-            
-            auto Maybe_i0 = t_map[s0];
-            if (!Maybe_i0)
-                return Maybe_i0.error();
-            auto i0 = Maybe_i0.value()();
-            auto Maybe_i1 = t_map[s1];
-            if (!Maybe_i1)
-                return Maybe_i1.error();
-            auto i1 = Maybe_i1.value()();
-            
-            bool transition0_found = false;
-            std::size_t jj0;
-            
-            for (std::size_t j = 0; j < tr()[i0].size(); ++j) {
-                auto trr = tr()[i0][j];
-                auto v_i = get<Conformational_transition_initiating_state_index>(trr());
-                assert(v_i()() == i0);
-                auto v_j = get<Conformational_transition_landing_state_index>(trr());
-                if (v_j == i1) {
-                    transition0_found = true;
-                    jj0 = j;
-                    break;
-                }
-            }
-            if (!transition0_found)
-                return error_message("the transition was not found, weird");
-            auto trr0 = tr()[i0][jj0];
-            
-            bool transition1_found = false;
-            std::size_t jj1;
-            
-            for (std::size_t j = 0; j < tr()[i1].size(); ++j) {
-                auto trr = tr()[i1][j];
-                auto v_i = get<Conformational_transition_initiating_state_index>(trr());
-                assert(v_i()() == i1);
-                auto v_j = get<Conformational_transition_landing_state_index>(trr());
-                if (v_j == i0) {
-                    transition1_found = true;
-                    jj1 = j;
-                    break;
-                }
-            }
-            if (!transition1_found)
-                return error_message("the transition was not found, weird");
-            auto trr1 = tr()[i1][jj1];
-            
-            auto ag = get<Agonist_dependency>(trr0());
-            auto d0 = get<Conformational_transition_direction>(trr0());
-            
-            assert(ch_play_lab == get<Conformational_change_label>(trr0()));
-            auto n0 = get<Conformational_transition_mulitplicity>(trr0());
-            auto n1 = get<Conformational_transition_mulitplicity>(trr1());
-            
-            auto Maybe_ion = names[ch_play_lab() + "_on"];
-            if (!Maybe_ion)
-                return Maybe_ion.error();
-            auto Maybe_ioff = names[ch_play_lab() + "_off"];
-            if (!Maybe_ioff)
-                return Maybe_ioff.error();
-            
-            auto Maybe_i_Factor = names[inter_lab()];
-            auto Maybe_i_Factor_pos =
-                names[inter_lab() + "_" + std::to_string(i_conf_play)];
-            if (!Maybe_i_Factor || !Maybe_i_Factor_pos)
-                return error_message(Maybe_i_Factor.error()() +
-                                     Maybe_i_Factor_pos.error()());
-            auto i_Factor = Maybe_i_Factor.value();
-            auto i_Factor_pos = Maybe_i_Factor_pos.value();
-            
-            auto i_on = Maybe_ion.value();
-            auto i_off = Maybe_ioff.value();
-            auto kon = t_Q0(i0, i1) / n0();
-            if (ag)
-                kon = t_Qa(i0, i1) / n0();
-            auto koff = t_Q0(i1, i0) / n1();
-            
-            auto kon0 = out[i_on];
-            auto koff0 = out[i_off];
-            
-            out[i_Factor_pos] = negative_interaction ? kon0 / kon : kon / kon0;
-            
-            if (i_conf_play == 0)
-                out[i_Factor] = negative_interaction ? (kon0 / koff0) / (kon / koff)
-                                                     : (kon / koff) / (kon0 / koff0);
-            
-            assert(out[i_Factor] == negative_interaction
-                       ? (kon0 / koff0) / (kon / koff)
-                       : (kon / koff) / (kon0 / koff0));
-        }
-    }
-    
-    auto &cond_int_info = get<Conductance_interaction_info>(model());
-    
-    Conductance_interaction_type mult =
-        get<Conductance_interaction_type>(cond_int_info());
-    Conductance_state_count cond_st(
-        std::map<Conductance_interaction_index, int>{});
-    
-    std::size_t ii_state = 0;
-    bool cond_state_found = false;
-    
-    for (auto i_state = 0ul; i_state < states().size(); ++i_state) {
-        if (get<Conductance_state_count>(states()[i_state]()) == cond_st) {
-            ii_state = i_state;
-            cond_state_found = true;
-            break;
-        }
-    }
-    if (!cond_state_found)
-        return error_message("resting conductance state not found, weird!!");
-    
-    auto g0 = t_g[ii_state];
-    
-    assert((mult() != Conductance_interaction_kind::additive) || (g0 == 0.0));
-    
-    
-    
-    for (auto i_cond_inter = 0ul; i_cond_inter < cond_inter().size();
-         ++i_cond_inter) {
-        Conductance_interaction cond_inter_i = cond_inter()[i_cond_inter];
-        auto cond_inter_lab = get<Conductance_interaction_label>(cond_inter_i());
-        
-        auto Maybe_i_lab_cond_inter=names[cond_inter_lab()];
-        if (!Maybe_i_lab_cond_inter)
-            return Maybe_i_lab_cond_inter.error();
-        auto i_lab_cond_inter=Maybe_i_lab_cond_inter.value();
-        
-        Conductance_state_count cond_st(
-            std::map<Conductance_interaction_index, int>{
-                                                         {Conductance_interaction_index(i_cond_inter), 1}});
-        
-        std::size_t ii_state = 0;
-        bool cond_state_found = false;
-        
-        for (auto i_state = 0ul; i_state < states().size(); ++i_state) {
-            if (get<Conductance_state_count>(states()[i_state]()) == cond_st) {
-                ii_state = i_state;
-                cond_state_found = true;
-                break;
-            }
-        }
-        if (!cond_state_found)
-            return error_message("resting conductance state not found, weird!!");
-        
-        auto g1 = t_g[ii_state];
-        
-        switch(mult()){
-        case Conductance_interaction_kind::additive:
-            out[i_lab_cond_inter]=g1;
-            break; 
-        case Conductance_interaction_kind::multiplicative:
-            out[i_lab_cond_inter]=g1/g0;
-            break;            
-        case Conductance_interaction_kind::equilibrium:
-        {
-            auto le_lab = get<Conductance_leakeage_ratio_label>(cond_int_info());
-            auto Maybe_ile = names[le_lab()];
-            if (!Maybe_ile)
-                return Maybe_ile.error();
-            auto ile = Maybe_ile.value();
-            Conductance_state_count cond_st_2(
-                std::map<Conductance_interaction_index, int>{
-                                                             {Conductance_interaction_index(i_cond_inter), 2}});
-            
-            std::size_t ii_state_2 = 0;
-            bool cond_state_found_2 = false;
-            
-            for (auto i_state = 0ul; i_state < states().size(); ++i_state) {
-                if (get<Conductance_state_count>(states()[i_state]()) == cond_st_2) {
-                    ii_state_2 = i_state;
-                    cond_state_found_2 = true;
-                    break;
-                }
-            }
-            if (!cond_state_found_2)
-                return error_message("resting conductance state not found, weird!!");
-            
-            auto g2 = t_g[ii_state_2];
-            
-            auto gd1=g1/g0;
-            auto gd2=g2/g1;
-            
-            auto a= gd2-1.0;
-            auto b= - gd1*(gd2-1.0) -gd1+1.0;
-            auto c = gd2 *(gd1-1.0);
-            using std::sqrt;
-            auto beta= (-b +sqrt(b*b-4*a*c))/(2*a);
-            auto alpha=  (beta- gd2)/((gd1-1.0)*beta*beta);
-            out[ile]=alpha;
-            out[i_lab_cond_inter]=beta;
-            
-        }
-        break;
-        };
-                
-        }
-    
-    return out;
-}
-
 template <class Id, class Conformational_model_>
     requires(
         std::is_same_v<Conformational_model_, Conformational_model> ||
@@ -1731,7 +1430,7 @@ auto make_g(const Conformational_model_ &model,
     assert(v_states().size() == N);
     auto v_g = Op_t<Trans, g>(Matrix<double>(N, 1ul, 0.0));
     
-    //auto v_g_max = Op_t<Trans, double>(0.0);
+    // auto v_g_max = Op_t<Trans, double>(0.0);
     
     for (std::size_t i = 0; i < N; ++i) {
         auto &v_cond_map = get<Conductance_state_count>(v_states()[i]);
@@ -1839,6 +1538,330 @@ get_conductance_names(const Conductance_interaction_scheme &sch,
 inline auto get_states_structure(const Conformational_states &states) {}
 
 } // namespace impl
+
+template <class Conformational_model_, class Q0_, class Qa_, class g_>
+    requires(
+        std::is_same_v<var::untransformed_type_t<Q0_>, Q0> &&
+        std::is_same_v<var::untransformed_type_t<Qa_>, Qa> &&
+        std::is_same_v<var::untransformed_type_t<g_>, g> &&
+        (std::is_same_v<Conformational_model_, Conformational_model> ||
+                                                                                                                                                                         std::is_same_v<Conformational_model_, Conformational_model_standarized>))
+auto get_Parameters_from_Q0_Qa_g(const Conformational_model_ &model,
+                                 const var::Parameters_Names &names,
+                                 const Q0_ &t_Q0, const Qa_ &t_Qa,
+                                 const g_ &t_g)
+    -> Maybe_error<Transfer_Op_to<Q0_, Matrix<double>>> {
+    
+    Transfer_Op_to<Q0_, Matrix<double>> out =
+        Matrix<double>(names().size(),1,  0.0);
+    
+    auto N = get<N_St>(model())();
+    auto tr = get<Conformational_transition_list>(model());
+    
+    auto states = get<Conformational_states>(model());
+    auto &t_m_sch = get<Conformational_model_scheme>(model());
+    auto inter = get<Conformational_interaction_scheme>(t_m_sch());
+    auto cond_inter = get<Conductance_interaction_scheme>(t_m_sch());
+    
+    auto &t_std = get<Conformation_change_standard_map>(model());
+    auto &t_m_change = get<Conformational_change_scheme>(t_m_sch());
+    
+    auto &t_map =
+        get<Conformational_state_count_to_representative_index>(model());
+    
+    std::set<Conformational_change_label> conf;
+    
+    for (auto i_conf = 0ul; i_conf < t_m_change().size(); ++i_conf) {
+        auto ch_lab = t_m_change()[i_conf];
+        auto ch_label = get<Conformational_change_label>(ch_lab());
+        if (!conf.contains(ch_label)) {
+            conf.insert(ch_label);
+            auto v_std = t_std[ch_label];
+            Conformational_domain_state s0(Vector_Space(
+                ch_label, Conformational_change_domain_state(false), v_std));
+            
+            auto Maybe_i0 = find_state_with_conformation(states, s0);
+            if (!Maybe_i0)
+                return Maybe_i0.error();
+            auto i0 = Maybe_i0.value();
+            
+            auto it1 = std::find_if(
+                tr()[i0].begin(), tr()[i0].end(),
+                [&ch_label, &v_std](Conformational_transition const &x) {
+                    return (get<Conformational_change_label>(x())() == ch_label()) &&
+                           (get<Conformational_interactions_domain_state>(x()) ==
+                                                                                       v_std);
+                });
+            
+            if (it1 == tr()[i0].end()) {
+                std::stringstream ss;
+                ss << i0 << " has not transition " << v_std << "\n";
+                return error_message(ss.str());
+            }
+            auto i1 =
+                get<Conformational_transition_landing_state_index>((*it1)())()();
+            
+            auto it0 = std::find_if(
+                tr()[i1].begin(), tr()[i1].end(),
+                [&ch_label, &v_std](Conformational_transition const &x) {
+                    return (get<Conformational_change_label>(x())() == ch_label()) &&
+                           (get<Conformational_interactions_domain_state>(x()) ==
+                                                                                       v_std);
+                });
+            
+            if (it0 == tr()[i1].end()) {
+                std::stringstream ss;
+                ss << i1 << " has not retrotransition " << v_std << "\n";
+                return error_message(ss.str());
+            }
+            
+            auto trr0 = *it1;
+            auto trr1 = *it0;
+            
+            auto ag = get<Agonist_dependency>(trr0());
+            auto d0 = get<Conformational_transition_direction>(trr0());
+            
+            assert(ch_label() == get<Conformational_change_label>(trr0())());
+            auto n0 = get<Conformational_transition_mulitplicity>(trr0());
+            auto n1 = get<Conformational_transition_mulitplicity>(trr1());
+            
+            auto Maybe_ion = names[ch_label() + "_on"];
+            if (!Maybe_ion)
+                return Maybe_ion.error();
+            auto Maybe_ioff = names[ch_label() + "_off"];
+            if (!Maybe_ioff)
+                return Maybe_ioff.error();
+            
+            auto i_on = Maybe_ion.value();
+            auto i_off = Maybe_ioff.value();
+            auto kon = t_Q0()(i0, i1) / n0();
+            if (ag())
+                out[i_on] = t_Qa()(i0, i1) / n0();
+            else
+                out[i_on] = t_Q0()(i0, i1) / n0();
+            out[i_off] = t_Q0()(i1, i0) / n1();
+    }
+    }
+    for (auto i_inter = 0ul; i_inter < inter().size(); ++i_inter) {
+        Conformational_interaction inter_i = inter()[i_inter];
+        auto inter_lab = get<Conformational_interaction_label>(inter_i());
+        auto inter_players = get<Conformational_interaction_players>(inter_i());
+        for (auto i_conf_play = 0ul; i_conf_play < inter_players().size();
+             ++i_conf_play) {
+            auto ch_play_lab = inter_players()[i_conf_play];
+            auto ij_inter =
+                Vector_Space(Conformational_interaction_index(i_inter),
+                                         Conformational_interaction_subposition(i_conf_play));
+            auto v_play_std = t_std[ch_play_lab];
+            bool negative_interaction = false;
+            
+            if (v_play_std[ij_inter] > 0) {
+                --v_play_std()[ij_inter];
+                if (v_play_std()[ij_inter]==0)
+                {
+                    v_play_std().erase(ij_inter);
+                }
+                negative_interaction = true;
+            } else {
+                ++v_play_std()[ij_inter];
+                if (v_play_std()[ij_inter]==0)
+                {
+                    v_play_std().erase(ij_inter);
+                }
+                negative_interaction = false;
+            }
+            
+            Conformational_domain_state s0(Conformational_domain_state(Vector_Space(
+                         ch_play_lab, Conformational_change_domain_state(false),
+                         v_play_std)));
+            
+            
+            auto Maybe_i0 = find_state_with_conformation(states, s0);
+            if (!Maybe_i0)
+                return Maybe_i0.error();
+            auto i0 = Maybe_i0.value();
+            
+            auto it1 = std::find_if(
+                tr()[i0].begin(), tr()[i0].end(),
+                [&ch_play_lab, &v_play_std](Conformational_transition const &x) {
+                    return (get<Conformational_change_label>(x())() == ch_play_lab()) &&
+                           (get<Conformational_interactions_domain_state>(x()) ==
+                            v_play_std);
+                });
+            
+            if (it1 == tr()[i0].end()) {
+                std::stringstream ss;
+                ss << i0 << " has not transition " << v_play_std << "\n";
+                return error_message(ss.str());
+            }
+            auto i1 =
+                get<Conformational_transition_landing_state_index>((*it1)())()();
+            
+            auto it0 = std::find_if(
+                tr()[i1].begin(), tr()[i1].end(),
+                [&ch_play_lab, &v_play_std](Conformational_transition const &x) {
+                    return (get<Conformational_change_label>(x())() == ch_play_lab()) &&
+                           (get<Conformational_interactions_domain_state>(x()) ==
+                            v_play_std);
+                });
+            
+            if (it0 == tr()[i1].end()) {
+                std::stringstream ss;
+                ss << i1 << " has not retrotransition " << v_play_std << "\n";
+                return error_message(ss.str());
+            }
+            
+            auto trr0 = *it1;
+            auto trr1 = *it0;
+            
+            auto ag = get<Agonist_dependency>(trr0());
+            auto d0 = get<Conformational_transition_direction>(trr0());
+            
+            assert(ch_play_lab() == get<Conformational_change_label>(trr0())());
+            auto n0 = get<Conformational_transition_mulitplicity>(trr0());
+            auto n1 = get<Conformational_transition_mulitplicity>(trr1());
+            
+            auto Maybe_ion = names[ch_play_lab() + "_on"];
+            if (!Maybe_ion)
+                return Maybe_ion.error();
+            auto Maybe_ioff = names[ch_play_lab() + "_off"];
+            if (!Maybe_ioff)
+                return Maybe_ioff.error();
+            
+            auto Maybe_i_Factor = names[inter_lab()];
+            auto Maybe_i_Factor_pos =
+                names[inter_lab() + "_" + std::to_string(i_conf_play)];
+            if (!Maybe_i_Factor || !Maybe_i_Factor_pos)
+                return error_message(Maybe_i_Factor.error()() +
+                                     Maybe_i_Factor_pos.error()());
+            auto i_Factor = Maybe_i_Factor.value();
+            auto i_Factor_pos = Maybe_i_Factor_pos.value();
+            
+            auto i_on = Maybe_ion.value();
+            auto i_off = Maybe_ioff.value();
+            auto kon = t_Q0()(i0, i1) / n0();
+            if (ag())
+                kon = t_Qa()(i0, i1) / n0();
+            auto koff = t_Q0()(i1, i0) / n1();
+            
+            auto kon0 = out[i_on];
+            auto koff0 = out[i_off];
+            
+            out[i_Factor_pos] = negative_interaction ? kon0 / kon : kon / kon0;
+            
+            if (i_conf_play == 0)
+                out[i_Factor] = negative_interaction ? (kon0 / koff0) / (kon / koff)
+                                                     : (kon / koff) / (kon0 / koff0);
+            
+            assert(out[i_Factor] == negative_interaction
+                       ? (kon0 / koff0) / (kon / koff)
+                       : (kon / koff) / (kon0 / koff0));
+        }
+    }
+    
+    auto &cond_int_info = get<Conductance_interaction_info>(model());
+    
+    Conductance_interaction_type mult =
+        get<Conductance_interaction_type>(cond_int_info());
+    Conductance_state_count cond_st(
+        std::map<Conductance_interaction_index, int>{});
+    
+    std::size_t ii_state = 0;
+    bool cond_state_found = false;
+    
+    for (auto i_state = 0ul; i_state < states().size(); ++i_state) {
+        if (get<Conductance_state_count>(states()[i_state])() == cond_st()) {
+            ii_state = i_state;
+            cond_state_found = true;
+            break;
+        }
+    }
+    if (!cond_state_found)
+        return error_message("resting conductance state not found, weird!!");
+    
+    auto g0 = t_g()[ii_state];
+    
+    assert((mult() != Conductance_interaction_kind::additive) || (g0 == 0.0));
+    
+    for (auto i_cond_inter = 0ul; i_cond_inter < cond_inter().size();
+         ++i_cond_inter) {
+        Conductance_interaction cond_inter_i = cond_inter()[i_cond_inter];
+        auto cond_inter_lab = get<Conductance_interaction_label>(cond_inter_i());
+        
+        auto Maybe_i_lab_cond_inter = names[cond_inter_lab()];
+        if (!Maybe_i_lab_cond_inter)
+            return Maybe_i_lab_cond_inter.error();
+        auto i_lab_cond_inter = Maybe_i_lab_cond_inter.value();
+        
+        Conductance_state_count cond_st(
+            std::map<Conductance_interaction_index, int>{
+                                                         {Conductance_interaction_index(i_cond_inter), 1}});
+        
+        std::size_t ii_state = 0;
+        bool cond_state_found = false;
+        
+        for (auto i_state = 0ul; i_state < states().size(); ++i_state) {
+            if (get<Conductance_state_count>(states()[i_state])() == cond_st()) {
+                ii_state = i_state;
+                cond_state_found = true;
+                break;
+            }
+        }
+        if (!cond_state_found)
+            return error_message("resting conductance state not found, weird!!");
+        
+        auto g1 = t_g()[ii_state];
+        
+        switch (mult()) {
+        case Conductance_interaction_kind::additive:
+            out[i_lab_cond_inter] = g1;
+            break;
+        case Conductance_interaction_kind::multiplicative:
+            out[i_lab_cond_inter] = g1 / g0;
+            break;
+        case Conductance_interaction_kind::equilibrium: {
+            auto le_lab = get<Conductance_leakeage_ratio_label>(cond_int_info());
+            auto Maybe_ile = names[le_lab()];
+            if (!Maybe_ile)
+                return Maybe_ile.error();
+            auto ile = Maybe_ile.value();
+            Conductance_state_count cond_st_2(
+                std::map<Conductance_interaction_index, int>{
+                                                             {Conductance_interaction_index(i_cond_inter), 2}});
+            
+            std::size_t ii_state_2 = 0;
+            bool cond_state_found_2 = false;
+            
+            for (auto i_state = 0ul; i_state < states().size(); ++i_state) {
+                if (get<Conductance_state_count>(states()[i_state])() == cond_st_2()) {
+                    ii_state_2 = i_state;
+                    cond_state_found_2 = true;
+                    break;
+                }
+            }
+            if (!cond_state_found_2)
+                return error_message("resting conductance state not found, weird!!");
+            
+            auto g2 = t_g()[ii_state_2];
+            
+            auto gd1 = g1 / g0;
+            auto gd2 = g2 / g1;
+            
+            auto a = gd2 - 1.0;
+            auto b = -gd1 * (gd2 - 1.0) - gd1 + 1.0;
+            auto c = gd2 * (gd1 - 1.0);
+            using std::sqrt;
+            auto beta = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
+            auto alpha = (beta - gd2) / ((gd1 - 1.0) * beta * beta);
+            out[ile] = alpha;
+            out[i_lab_cond_inter] = beta;
+            
+        } break;
+        };
+    }
+    
+    return out;
+}
 
 inline Maybe_error<Conformational_model> make_Conformational_model(
     Agonist_dependency_map &&t_agonist_map,
