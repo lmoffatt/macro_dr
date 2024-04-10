@@ -159,8 +159,10 @@ std::ostream &print(std::ostream &os, std::pair<K, T> const &x) {
 
 template <class K, class T>
 std::ostream &operator<<(std::ostream &os, std::map<K, T> const &x) {
-  for (auto it = x.begin(); it != x.end(); ++it)
+    os<<"\n{\n";
+    for (auto it = x.begin(); it != x.end(); ++it)
     os << it->first << "--> " << it->second << "\n";
+    os<<"\n}\n";
   return os;
 }
 
@@ -178,13 +180,14 @@ std::istream &operator>>(std::istream &is, std::map<K, T> &x) {
 
 template <class K, class T>
 std::ostream &print(std::ostream &os, std::map<K, T> const &x) {
-  for (auto it = x.begin(); it != x.end(); ++it) {
+    os<<"\n{";
+    for (auto it = x.begin(); it != x.end(); ++it) {
     print(os, it->first);
     os << "--> ";
     print(os, it->second);
     os << "\n";
   }
-  os << "\n";
+  os << "}\n";
   return os;
 }
 

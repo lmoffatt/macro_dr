@@ -226,7 +226,8 @@ add_executable(macro_dr main.cpp
     models/scheme_3_inact_NP_par.csv
     models/scheme_3_inact_NP_prior.csv
     models/scheme_3_inact_NP.txt
-    models/scheme_1_inact.txt 
+    models/scheme_1_inact.txt
+    models/scheme_6.txt 
     
     
     

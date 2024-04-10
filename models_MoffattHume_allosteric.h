@@ -7,8 +7,8 @@
 
 namespace macrodr {
 
-#if 0
-static auto scheme_6 = Allost1::Model("scheme6", []() {
+
+static auto scheme_6 = Allost1::Model("scheme_6", []() {
   auto v_binding = Conformational_change_label{"Binding"};
   auto v_rocking = Conformational_change_label{"Rocking"};
   auto v_gating = Conformational_change_label{"Gating"};
@@ -113,14 +113,14 @@ static auto scheme_6 = Allost1::Model("scheme6", []() {
         auto Npar = names().size();
         
         // auto v_Inac_rate = t_p()[Npar];
-        auto v_unitary_current = t_p[Npar-1] * -1.0;
+       // auto v_unitary_current = t_p[Npar-1] * -1.0;
         
         auto v_curr_noise = t_p[Npar ];
         auto v_pink_noise = t_p[Npar + 1];
         auto v_prop_noise = t_p[Npar + 2];
         auto v_baseline = t_p[Npar + 3];
         auto v_N0 = t_p[std::pair{Npar + 4, Npar + 4}];
-        a_g() = a_g() * v_unitary_current;
+        a_g() = a_g() * -1.0;
         
         auto Nst = get<N_St>(m());
         auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
@@ -140,10 +140,34 @@ static auto scheme_6 = Allost1::Model("scheme6", []() {
               Probability_error_tolerance(1e-2),
               Conductance_variance_error_tolerance(1e-2));
       },
+      [names, m](const auto &patch_model)
+      -> Maybe_error<
+          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+          
+          auto par= get_Parameters_from_Q0_Qa_g(m,names,get<Q0>(patch_model),get<Qa>(patch_model),build<g>(get<g>(patch_model)()*(-1.0)));
+          
+          if(!par)
+              return par.error();
+          auto Npar = names().size();
+          
+          auto out=Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>(Npar+5,1);
+          
+          out.set(std::pair(0ul,Npar-1),par.value());
+          
+          out[Npar]=get<Current_Noise>(patch_model)();
+          out[Npar+1]=get<Pink_Noise>(patch_model)();
+          out[Npar+2]=get<Proportional_Noise>(patch_model)();
+          out[Npar+3]=get<Current_Baseline>(patch_model)();
+          out.set(std::pair{Npar + 4, Npar + 4},get<N_Ch_mean>(patch_model)());
+          return out;
+          
+          
+      },
       p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula,
       std::move(tr_param));
 });
 
+#if 0
 static auto scheme_6_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_6, 1e-5, var::MyTranformations::from_string("Log10").value());
 
@@ -535,7 +559,7 @@ inline auto get_model(std::string modelName) {
       //                             &model6_Eff_no_inactivation, &model7,
       //                             &model8, &model9);
       Models_Library(&scheme_1  ,&scheme_2, &scheme_3, &scheme_4 , &scheme_1_d,
-                       &scheme_2_d, &scheme_3_d, &scheme_4_d/*, &scheme_6,
+                       &scheme_2_d, &scheme_3_d, &scheme_4_d, &scheme_6 /*,
                        &scheme_6_d, &scheme_7, &scheme_7_d, &scheme_8,
                        &scheme_8_d, &scheme_9, &scheme_9_d*/);
   //                      &model00, &model00_7, &model01, &model4,
@@ -561,7 +585,7 @@ inline Maybe_error<std::size_t> get_num_parameters(std::string model) {
 inline auto get_model_scheme(std::string modelName) {
   auto allmodels = // Models_Library(&scheme_1);
       Models_Library(&scheme_1 ,&scheme_2 ,&scheme_3, &scheme_4 , &scheme_1_d,
-                     &scheme_2_d, &scheme_3_d, &scheme_4_d /*, &scheme_6,
+                     &scheme_2_d, &scheme_3_d, &scheme_4_d , &scheme_6 /*,
                        &scheme_6_d, &scheme_7, &scheme_7_d, &scheme_8,
                        &scheme_8_d, &scheme_9, &scheme_9_d*/);
   return allmodels[modelName];
@@ -570,7 +594,7 @@ inline auto get_model_scheme(std::string modelName) {
 inline void print_model_Priors(double covar) {
   auto allmodels = // Models_Library(&scheme_1);
       Models_Library(&scheme_1 , &scheme_2 , &scheme_3, &scheme_4 , &scheme_1_d,
-                     &scheme_2_d, &scheme_3_d, &scheme_4_d /*, &scheme_6,
+                     &scheme_2_d, &scheme_3_d, &scheme_4_d , &scheme_6 /*,
                        &scheme_6_d, &scheme_7, &scheme_7_d, &scheme_8,
                        &scheme_8_d, &scheme_9, &scheme_9_d*/);
   //,
