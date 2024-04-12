@@ -118,7 +118,7 @@ inline Maybe_error<bool> compare_contents(std::floating_point auto s0, std::floa
     {
         std::stringstream ss;
         ss<< std::setprecision(std::numeric_limits<double>::digits10 + 1);
-        ss<<"relative difference greater than"<<RelError<<":\n"<<s0<<"\n"<<s1;
+        ss<<"relative difference greater than "<<RelError<<":\n"<<s0<<"\n"<<s1;
         return error_message(ss.str());
     }
     else
@@ -142,13 +142,16 @@ inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Contai
         auto Maybe_equal=compare_contents(s0[i], s1[i],RelError,AbsError);
         if (!Maybe_equal)
         {
-            message+="\n "+std::to_string(i)+"th element "+Maybe_equal.error()();
+            message+="\n "+std::to_string(i)+"th element \n"+Maybe_equal.error()()+"\n";
             ++n_errors; 
         }
         ++i;
     }
     if (n_errors>0)
-    return error_message(message);
+    {
+        return error_message(message);
+        
+    }
     else
         return true;
 }

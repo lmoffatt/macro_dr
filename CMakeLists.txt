@@ -122,7 +122,7 @@ add_executable(macro_dr main.cpp
     scripts/evidence_simulation.txt
     scripts/evidence_data.txt
     
-    models/model9_prior.csv models/model9_par.csv models/model8_prior.csv models/model8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
+    models/model9_prior.csv models/model9_par.csv models/model_8_prior.csv models/model_8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
     multi_task/multi_task_slurm.sh
     slurm_Serafin/s_multi_debug.sh
     multi_task/simulation_4.sh
@@ -227,7 +227,16 @@ add_executable(macro_dr main.cpp
     models/scheme_3_inact_NP_prior.csv
     models/scheme_3_inact_NP.txt
     models/scheme_1_inact.txt
-    models/scheme_6.txt 
+    models/scheme_6.txt
+    models/scheme_6_inact.txt
+    models/scheme_7.txt
+    models/scheme_8.txt
+    models/scheme_9.txt
+    models/scheme_7_inact.txt
+    models/scheme_8_inact.txt
+    models/scheme_9_inact.txt
+    models/scheme_7_inact_par.csv models/scheme_7_inact_prior.csv models/scheme_7_par.csv models/scheme_7_prior.csv models/scheme_8_inact_par.csv models/scheme_8_inact_prior.csv models/scheme_8_par.csv models/scheme_8_prior.csv models/scheme_9_inact_par.csv models/scheme_9_inact_prior.csv models/scheme_9_par.csv models/scheme_9_prior.csv
+    models/scheme_6_inact_par.csv models/scheme_6_inact_prior.csv models/scheme_6_par.csv models/scheme_6_prior.csv 
     
     
     
