@@ -83,9 +83,12 @@ template <class Id> struct Model_Patch {
       requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
     auto operator()(const P &t_p) const {
       auto result=std::invoke(std::get<F>(m_f), t_p);
-    assert(
-          var::compare_contents(t_p(),(*this)(result.value()).value()())
-          );
+        assert((
+          [&t_p, this,&result](){
+ auto res= var::compare_contents(t_p,(*this)(result.value()).value());
+if (!res)
+         std::cerr<<res.error()();
+ return res;}()));
       return std::move(result);
     }
     
@@ -93,7 +96,7 @@ template <class Id> struct Model_Patch {
 
     template <class P>
     friend void report_model(save_Parameter<P> &s, const Model &m) {
-      std::ofstream f(s.fname + "_model.csv");
+      std::ofstream f(s.fname + "_&resumodel.csv");
       f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
       f << "Model Name\t" << m.model_name() << "\n";
       f << "Parameters Names\n";

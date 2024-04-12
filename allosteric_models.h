@@ -1678,7 +1678,7 @@ auto get_Parameters_from_Q0_Qa_g(const Conformational_model_ &model,
             
             auto Maybe_i0 = find_state_with_conformation(states, s0);
             if (!Maybe_i0)
-                return Maybe_i0.error();
+                return Maybe_i0.error();    
             auto i0 = Maybe_i0.value();
             
             auto it1 = std::find_if(
@@ -1852,7 +1852,7 @@ auto get_Parameters_from_Q0_Qa_g(const Conformational_model_ &model,
             auto c = gd2 * (gd1 - 1.0);
             using std::sqrt;
             auto beta = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
-            auto alpha = (beta - gd2) / ((gd1 - 1.0) * beta * beta);
+            auto alpha = (beta - gd2) / ((gd2 - 1.0) * beta * beta);
             out[ile] = alpha;
             out[i_lab_cond_inter] = beta;
             

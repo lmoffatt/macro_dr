@@ -4,6 +4,7 @@
 #include "general_output_operator.h"
 #include "matrix.h"
 #include "maybe_error.h"
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <map>
@@ -200,7 +201,12 @@ private:
     Parameters_Transformations<Id> const *m_par;
     
 public:
+    
+    
+       
     auto &parameters() const { return *m_par; }
+    auto & names()const {return parameters().names();}
+    
     template <class VectorType>
         requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
     Parameters_values(const Parameters_Transformations<Id> &par, VectorType &&x)
@@ -251,6 +257,43 @@ public:
         }
     }
 };
+
+template<class Id>
+Maybe_error<bool>
+compare_contents(const Parameters_values<Id>& s0, const Parameters_values<Id>& s1, double RelError=std::sqrt(std::numeric_limits<double>::epsilon())*100,  double AbsError=std::sqrt(std::numeric_limits<double>::epsilon())*100,std::size_t max_errors=10)
+{
+    if (s0.names()!=s1.names())
+        return error_message("\n not the same parameters names!!\n");
+    if (s0()==s1()) return true;
+    std::size_t n_errors=0;
+    std::string message;
+    if (s0.size()!=s1.size())
+    {
+        message+= "differ in size: "+std::to_string(s0.size())+" vs "+std::to_string(s1.size());
+        ++n_errors;
+    }
+    std::size_t i=0;
+    auto n=std::min(s0.size(),s1.size());
+    while ((n_errors<max_errors)&&(i<n))
+    {
+        auto Maybe_equal=compare_contents(s0[i], s1[i],RelError,AbsError);
+        if (!Maybe_equal)
+        {
+            message+="\n "+std::to_string(i)+"th parameter "+s0.names()[i]+": "+Maybe_equal.error()()+"\n";
+            ++n_errors; 
+        }
+        ++i;
+    }
+    if (n_errors>0)
+    {
+        return error_message(message);
+        
+    }
+    else
+        return true;
+    
+}
+
 
 
 class Parameters_Names{
