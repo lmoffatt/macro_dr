@@ -115,19 +115,15 @@ add_executable(macro_dr main.cpp
    # old_code_in_main.cpp
     CLI_macrodr_commands.h
     scripts/run_evidence.txt
-    models/model6_prior.csv models/model6_parameters.csv
     
     scripts/experiment_7.txt
     scripts/simulation.txt
     scripts/evidence_simulation.txt
     scripts/evidence_data.txt
     
-    models/model9_prior.csv models/model9_par.csv models/model_8_prior.csv models/model_8_par.csv models/model7_prior.csv models/model7_par.csv models/model6_Eff_no_inactivation_prior.csv models/model6_Eff_no_inactivation_par.csv models/model6_no_inactivation_prior.csv models/model6_no_inactivation_par.csv models/model6_prior.csv models/model6_par.csv models/model4_g_lin_prior.csv models/model4_g_lin_par.csv models/model4_prior.csv models/model4_par.csv models/model01_prior.csv models/model01_par.csv models/model00_7_prior.csv models/model00_7_par.csv models/model00_prior.csv models/model00_par.csv
     multi_task/multi_task_slurm.sh
     slurm_Serafin/s_multi_debug.sh
     multi_task/simulation_4.sh
-    models/model00_7.txt
-    models/model6.txt models/model9.txt models/model8.txt models/model7.txt models/model4.txt models/model4_g_lin.txt models/model01.txt models/model00.txt models/model6_no_inactivation.txt models/model6_Eff_no_inactivation.txt models/model00_7.txt
     models_MoffattHume_linear.h
     models_MoffattHume_allosteric.h
     multi_task/MH_Li7.sh
@@ -229,14 +225,55 @@ add_executable(macro_dr main.cpp
     models/scheme_1_inact.txt
     models/scheme_6.txt
     models/scheme_6_inact.txt
+    models/scheme_6_PI.txt
+    models/scheme_6_inact_PI.txt
     models/scheme_7.txt
     models/scheme_8.txt
     models/scheme_9.txt
     models/scheme_7_inact.txt
+    models/scheme_7_inact_PI.txt
     models/scheme_8_inact.txt
     models/scheme_9_inact.txt
-    models/scheme_7_inact_par.csv models/scheme_7_inact_prior.csv models/scheme_7_par.csv models/scheme_7_prior.csv models/scheme_8_inact_par.csv models/scheme_8_inact_prior.csv models/scheme_8_par.csv models/scheme_8_prior.csv models/scheme_9_inact_par.csv models/scheme_9_inact_prior.csv models/scheme_9_par.csv models/scheme_9_prior.csv
-    models/scheme_6_inact_par.csv models/scheme_6_inact_prior.csv models/scheme_6_par.csv models/scheme_6_prior.csv 
+    models/scheme_7_inact_par.csv 
+    models/scheme_7_inact_prior.csv 
+    models/scheme_7_inact_PI_par.csv 
+    models/scheme_7_inact_PI_prior.csv 
+    models/scheme_7_par.csv 
+    models/scheme_7_prior.csv 
+    models/scheme_8_inact_par.csv 
+    models/scheme_8_inact_prior.csv 
+    models/scheme_8_par.csv 
+    models/scheme_8_prior.csv
+    models/scheme_9_inact_par.csv
+    models/scheme_9_inact_prior.csv
+    models/scheme_9_par.csv
+    models/scheme_9_prior.csv
+    models/scheme_6_inact_par.csv
+    models/scheme_6_inact_prior.csv
+    models/scheme_6_par.csv
+    models/scheme_6_prior.csv
+    models/scheme_6_inact_PI_par.csv
+    models/scheme_6_inact_PI_prior.csv
+    models/scheme_6_PI_par.csv
+    models/scheme_6_PI_prior.csv
+    models/scheme_9_inact_PI_par.csv
+    models/scheme_9_inact_PI_prior.csv
+    models/scheme_9_PI_par.csv
+    models/scheme_9_PI_prior.csv
+    models/scheme_9_inact_PI.txt
+    models/scheme_9_PI.txt
+    models/scheme_8_PI.txt
+    models/scheme_8_PI_par.csv
+    models/scheme_8_PI_prior.csv
+    models/scheme_8_inact_PI.txt
+    models/scheme_8_inact_PI_prior.csv
+    models/scheme_8_inact_PI_par.csv
+    models/scheme_7_PI.txt
+    models/scheme_7_PI_prior.csv
+    models/scheme_7_PI_par.csv
+    models/scheme_9_NP.txt
+    models/scheme_7_inact_PI.txt
+    models/scheme_6_inact_NP.txt models/scheme_6_inact_NP_par.csv models/scheme_6_inact_NP_prior.csv models/scheme_6_NP.txt models/scheme_6_NP_par.csv models/scheme_6_NP_prior.csv models/scheme_7_inact_NP.txt models/scheme_7_inact_NP_par.csv models/scheme_7_inact_NP_prior.csv models/scheme_7_NP.txt models/scheme_7_NP_par.csv models/scheme_7_NP_prior.csv models/scheme_8_inact_NP.txt models/scheme_8_inact_NP_par.csv models/scheme_8_inact_NP_prior.csv models/scheme_8_NP.txt models/scheme_8_NP_par.csv models/scheme_8_NP_prior.csv models/scheme_9_inact_NP.txt models/scheme_9_inact_NP_par.csv models/scheme_9_inact_NP_prior.csv models/scheme_9_NP.txt models/scheme_9_NP_par.csv models/scheme_9_NP_prior.csv models/scheme_1_inact_PI.txt models/scheme_1_inact_PI_par.csv models/scheme_1_inact_PI_prior.csv models/scheme_2_inact_PI.txt models/scheme_2_inact_PI_par.csv models/scheme_2_inact_PI_prior.csv models/scheme_3_inact_PI.txt models/scheme_3_inact_PI_par.csv models/scheme_3_inact_PI_prior.csv models/scheme_4_inact_PI.txt models/scheme_4_inact_PI_par.csv models/scheme_4_inact_PI_prior.csv models/scheme_4_PI.txt models/scheme_4_PI_par.csv models/scheme_4_PI_prior.csv 
     
     
     
