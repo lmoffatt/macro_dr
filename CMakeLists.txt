@@ -273,7 +273,17 @@ add_executable(macro_dr main.cpp
     models/scheme_7_PI_par.csv
     models/scheme_9_NP.txt
     models/scheme_7_inact_PI.txt
-    models/scheme_6_inact_NP.txt models/scheme_6_inact_NP_par.csv models/scheme_6_inact_NP_prior.csv models/scheme_6_NP.txt models/scheme_6_NP_par.csv models/scheme_6_NP_prior.csv models/scheme_7_inact_NP.txt models/scheme_7_inact_NP_par.csv models/scheme_7_inact_NP_prior.csv models/scheme_7_NP.txt models/scheme_7_NP_par.csv models/scheme_7_NP_prior.csv models/scheme_8_inact_NP.txt models/scheme_8_inact_NP_par.csv models/scheme_8_inact_NP_prior.csv models/scheme_8_NP.txt models/scheme_8_NP_par.csv models/scheme_8_NP_prior.csv models/scheme_9_inact_NP.txt models/scheme_9_inact_NP_par.csv models/scheme_9_inact_NP_prior.csv models/scheme_9_NP.txt models/scheme_9_NP_par.csv models/scheme_9_NP_prior.csv models/scheme_1_inact_PI.txt models/scheme_1_inact_PI_par.csv models/scheme_1_inact_PI_prior.csv models/scheme_2_inact_PI.txt models/scheme_2_inact_PI_par.csv models/scheme_2_inact_PI_prior.csv models/scheme_3_inact_PI.txt models/scheme_3_inact_PI_par.csv models/scheme_3_inact_PI_prior.csv models/scheme_4_inact_PI.txt models/scheme_4_inact_PI_par.csv models/scheme_4_inact_PI_prior.csv models/scheme_4_PI.txt models/scheme_4_PI_par.csv models/scheme_4_PI_prior.csv 
+    models/scheme_6_inact_NP.txt models/scheme_6_inact_NP_par.csv models/scheme_6_inact_NP_prior.csv models/scheme_6_NP.txt models/scheme_6_NP_par.csv models/scheme_6_NP_prior.csv models/scheme_7_inact_NP.txt models/scheme_7_inact_NP_par.csv models/scheme_7_inact_NP_prior.csv models/scheme_7_NP.txt models/scheme_7_NP_par.csv models/scheme_7_NP_prior.csv models/scheme_8_inact_NP.txt models/scheme_8_inact_NP_par.csv models/scheme_8_inact_NP_prior.csv models/scheme_8_NP.txt models/scheme_8_NP_par.csv models/scheme_8_NP_prior.csv models/scheme_9_inact_NP.txt models/scheme_9_inact_NP_par.csv models/scheme_9_inact_NP_prior.csv models/scheme_9_NP.txt models/scheme_9_NP_par.csv models/scheme_9_NP_prior.csv models/scheme_1_inact_PI.txt models/scheme_1_inact_PI_par.csv models/scheme_1_inact_PI_prior.csv models/scheme_2_inact_PI.txt models/scheme_2_inact_PI_par.csv models/scheme_2_inact_PI_prior.csv models/scheme_3_inact_PI.txt models/scheme_3_inact_PI_par.csv models/scheme_3_inact_PI_prior.csv models/scheme_4_inact_PI.txt models/scheme_4_inact_PI_par.csv models/scheme_4_inact_PI_prior.csv models/scheme_4_PI.txt models/scheme_4_PI_par.csv models/scheme_4_PI_prior.csv
+    multi_task/MH_Al.sh
+    multi_task/MH_Al_continuation_1.sh
+    multi_task/MH_Al_IE.sh
+    multi_task/MH_Al_IE_continuation.sh
+    slurm_tupac/MHAl.sh
+    slurm_tupac/MHAl_IE.sh
+    slurm_tupac/MHAl_continuation.sh
+    slurm_tupac/MHAl_IE_continuation.sh
+    slurm_tupac/run_MHAl.sh
+    slurm_tupac/run_MHAl_IE.sh 
     
     
     
