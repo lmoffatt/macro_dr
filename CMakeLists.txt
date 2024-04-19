@@ -284,7 +284,22 @@ add_executable(macro_dr main.cpp
     slurm_tupac/MHAl_IE_continuation.sh
     slurm_tupac/run_MHAl.sh
     slurm_tupac/run_MHAl_IE.sh
-    multi_task/MH_Li34.sh 
+    multi_task/MH_Li34.sh
+    models/scheme_5_inact_par.csv models/scheme_5_inact_prior.csv models/scheme_5_par.csv models/scheme_5_prior.csv
+    models/scheme_5.txt
+    models/scheme_5_inact.txt
+    models/scheme_5_PI.txt
+    models/scheme_5_inact_PI.txt
+    models/scheme_5_inact_PI_par.csv
+    models/scheme_5_inact_PI_prior.csv
+    models/scheme_5_PI_par.csv
+    models/scheme_5_PI_prior.csv
+    models/scheme_5_inact_NP_par.csv
+    models/scheme_5_inact_NP.txt
+    models/scheme_5_inact_NP_prior.csv
+    models/scheme_5_NP.txt
+    models/scheme_5_NP_prior.csv
+    models/scheme_5_NP_par.csv 
     
     
     
