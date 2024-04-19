@@ -283,7 +283,8 @@ add_executable(macro_dr main.cpp
     slurm_tupac/MHAl_continuation.sh
     slurm_tupac/MHAl_IE_continuation.sh
     slurm_tupac/run_MHAl.sh
-    slurm_tupac/run_MHAl_IE.sh 
+    slurm_tupac/run_MHAl_IE.sh
+    multi_task/MH_Li34.sh 
     
     
     
