@@ -940,6 +940,7 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
       }
     }
     
+    
     for (std::size_t ib = 0; ib < n_beta-1; ++ib)
     {
         for(auto& e:thermo_stat)

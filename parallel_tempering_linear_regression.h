@@ -211,7 +211,7 @@ class thermo {
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
       }
       if (beta_run.size() < beta.size()) {
-        if (beta_run.size() < max_num_simultaneous_temperatures) {
+        if (beta_run.size() < max_num_simultaneous_temperatures) {  
           beta_run.insert(beta_run.begin(), beta[beta_run.size()]);
           current = push_back_new_beta(f, iter, current, mts, beta_run, prior,
                                        lik, y, x);
