@@ -299,7 +299,18 @@ add_executable(macro_dr main.cpp
     models/scheme_5_inact_NP_prior.csv
     models/scheme_5_NP.txt
     models/scheme_5_NP_prior.csv
-    models/scheme_5_NP_par.csv 
+    models/scheme_5_NP_par.csv
+    models/scheme_10_inact_par.csv models/scheme_10_inact_prior.csv models/scheme_10_par.csv models/scheme_10_prior.csv
+    models/scheme_10.txt
+    models/scheme_10_inact.txt
+    models/scheme_10_inact_NP.txt models/scheme_10_inact_PI.txt models/scheme_10_inact.txt models/scheme_10_NP.txt models/scheme_10.txt models/scheme_10_PI.txt models/scheme_10_inact_NP_par.csv models/scheme_10_inact_NP_prior.csv models/scheme_10_NP_par.csv models/scheme_10_NP_prior.csv models/scheme_10_inact_PI_prior.csv models/scheme_10_inact_PI_par.csv models/scheme_10_PI_prior.csv models/scheme_10_PI_par.csv models/scheme_10_inact_par.csv models/scheme_10_inact_prior.csv models/scheme_10_par.csv models/scheme_10_prior.csv
+    multi_task/M_s2-s10.sh
+    scripts/beta_32.txt
+    scripts/beta_64.txt
+    multi_task/M_s2-s10_continuation.sh
+    slurm_tupac/M_s2-s10.sh
+    slurm_tupac/M_s2-s10_continuation.sh
+    slurm_tupac/run_M_s2-s10.sh 
     
     
     
