@@ -13,7 +13,7 @@ EXPERIMENTS=( "idealize_experiment" )
 N_BETA=( 32 )
 N_SCOUTS=( 32 )
 
-MAX_ITERS= ( 20 ) 
+MAX_ITERS=( 20 ) 
 
 
 NTASKS=16
