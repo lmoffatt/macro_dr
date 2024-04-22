@@ -9,10 +9,10 @@ RUNTIME="0-02:00"
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 
-#NTASKS=2
-#CPUSPERTASK=32
+NTASKS=32
+CPUSPERTASK=2
 
-#sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
+sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
 
 #NTASKS=16
 #CPUSPERTASK=4
@@ -26,9 +26,9 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 #sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK} --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
 
-NTASKS=4
-CPUSPERTASK=16
+#NTASKS=4
+#CPUSPERTASK=16
 
-sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
+#sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
 
 
