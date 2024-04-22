@@ -4,7 +4,7 @@ cd ~/Code/macro_dr/macro_dr
 
 
 
-RUNTIME="0-04:00"
+RUNTIME="0-01:00"
 NTASKS=16
 CPUSPERTASK=4
 
