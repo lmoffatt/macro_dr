@@ -38,5 +38,5 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export PATH_MACRO_DR=/nfs/home/lmoffatt/Code/macro_dr/v21/
 
 # Lanzar el programa
-srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/MH_Al_continuation_1.sh
+srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/M_s2-s10_continuation.sh
 

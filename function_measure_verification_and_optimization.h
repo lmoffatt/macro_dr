@@ -4,6 +4,7 @@
 #include "maybe_error.h"
 #include "type_algebra.h"
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <fstream>
@@ -16,6 +17,64 @@
 #include <utility>
 #include <vector>
 namespace var {
+
+template<std::size_t N>
+class Event_Timing{
+    using Stype=std::decay_t<decltype(std::chrono::high_resolution_clock::now())>;
+    Stype m_start;
+    double last_dur;
+    std::array<std::string,N> m_labels;
+    std::array<double,N> m_dur;
+    std::size_t m_i=0;
+public:
+    Event_Timing(const Stype& s):m_start{s}{}
+    void record(const std::string& s)
+    {
+        m_labels[m_i]=s;
+        m_dur[m_i]=std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - m_start).count();
+        ++m_i;
+    }
+    void record(const std::string& s, std::size_t ipos)
+    {
+        m_labels[m_i+ipos]=s+std::to_string(ipos);
+        m_dur[m_i+ipos]=std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - m_start).count();
+    }
+    void advance(std::size_t ipos)
+    {
+        m_i+=ipos;
+    }
+    auto& operator[](std::size_t i)const {return m_dur[i];}
+    
+    void reset() {m_i=0;}
+    
+    void report_title(std::ostream& os)
+    {
+        os<<"Iter"<<","<<"time_iter"<<","<<"iter_duration";
+        for (std::size_t i=0; i<m_i; ++i)
+        {
+            os<<","<<m_labels[i];
+        }
+        
+        last_dur=m_dur[m_i-1];
+        os<<"\n";
+    }
+    
+    void report_iter(std::ostream& os, std::size_t iter)
+    {
+        os<<iter<<","<<m_dur[0]<<","<<m_dur[m_i-1]-last_dur<<","<<m_dur[0]-last_dur;
+        for (std::size_t i=1; i<m_i; ++i)
+        {
+            os<<","<<m_dur[i]-m_dur[i-1];
+        }
+        last_dur=m_dur[m_i-1];
+        m_i=0;
+        
+        os<<"\n";
+    }
+    
+};
+
+
 
 template <class Id, class Fun>
   requires(std::is_trivial_v<Id>)

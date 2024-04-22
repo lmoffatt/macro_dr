@@ -4653,8 +4653,8 @@ void report(FunctionTable &&, std::size_t iter, const Duration &dur,
 
           s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
               << data.beta[i_beta] << s.sep << i_walker << s.sep
-              << data.i_walkers[i_walker][i_beta] << s.sep << i_par << s.sep
-              << data.walkers[i_walker][i_beta].parameter[i_par] << "\n";
+              << data.i_walkers[i_beta][i_walker] << s.sep << i_par << s.sep
+              << data.walkers[i_beta][i_walker].parameter[i_par] << "\n";
 }
 
 template <class Id, class FunctionTable, class Duration, class Prior,
