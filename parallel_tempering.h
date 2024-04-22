@@ -849,8 +849,8 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,var::Event_Ti
       for (std::size_t iib = 0; iib < n_beta_f; ++iib) {
       std::size_t ib=i_thread*n_beta_f+iib;    
       dur.record("begin_loop_walker", ib*2);
-      for (std::size_t iii=0; iii<4; ++iii)
-          {
+    //  for (std::size_t iii=0; iii<4; ++iii)
+    //      {
       for (bool half : {false, true}){
           for (std::size_t i = 0; i < n_walkers / 2; ++i) {
         auto i_th = omp_get_thread_num();
@@ -890,7 +890,7 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,var::Event_Ti
               fails(emcee_stat[i_th][ib]());
           }
         }
-      }
+      //}
           
       }
       }
