@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-SCHEME_FILES=( scheme_1_inact_PI scheme_2_inact_PI )
+SCHEME_FILES=( scheme_7_inact_PI  )
 
-PATH_MACRO_DRS=( "v23" )
+PATH_MACRO_DRS=( "v21" "v23" )
 
 EXPERIMENTS=( "idealize_experiment" )
 
