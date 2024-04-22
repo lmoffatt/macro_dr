@@ -1,7 +1,16 @@
 #!/bin/bash
 
 
-echo $SCHEME_FILES[@]
+SCHEME_FILES=( scheme_7_inact_PI  )
+
+PATH_MACRO_DRS=("/nfs/home/lmoffatt/Code/macro_dr/v21/" "/nfs/home/lmoffatt/Code/macro_dr/v22/" )
+
+EXPERIMENTS=( "idealize_experiment" )
+
+NUM_BETAS=( 32 )
+NUM_SCOUTS=( 32 )
+
+MAX_ITERS=( 20 ) 
 
 IND=$(( SLURM_LOCALID % ${#SCHEME_FILES[@]}))
 
