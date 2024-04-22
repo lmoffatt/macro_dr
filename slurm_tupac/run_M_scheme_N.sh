@@ -3,15 +3,14 @@
 cd ~/Code/macro_dr/macro_dr
 
 
-
 SCHEME_FILES=( scheme_7_inact_PI  )
 
 PATH_MACRO_DRS=("/nfs/home/lmoffatt/Code/macro_dr/v21/" "/nfs/home/lmoffatt/Code/macro_dr/v22/" )
 
 EXPERIMENTS=( "idealize_experiment" )
 
-N_BETA=( 32 )
-N_SCOUTS=( 32 )
+NUM_BETAS=( 32 )
+NUM_SCOUTS=( 32 )
 
 MAX_ITERS=( 20 ) 
 
