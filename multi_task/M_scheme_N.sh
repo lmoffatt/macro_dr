@@ -1,5 +1,6 @@
 #!/bin/bash
 
+ECHO $SCHEME_FILES
 
 IND=$(( SLURM_LOCALID % ${#SCHEME_FILES[@]}))
 
