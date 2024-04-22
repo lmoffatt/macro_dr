@@ -6,6 +6,7 @@
 #include "parallel_tempering.h"
 #include <chrono>
 #include <cstddef>
+#include <fstream>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -485,20 +486,38 @@ auto thermo_evidence_(
 
   std::size_t iter = 0;
   const auto start = std::chrono::high_resolution_clock::now();
+  
+  
+  
   auto &rep = therm.reporter();
   report_title(rep, current, lik, y, x);
   report_title(f, "Iter");
   report_model_all(rep, prior, lik, y, x, beta);
+  
+  var::Event_Timing<200> even_dur(start);
+  std::ofstream event_file(f.file()+"event.csv");
 
   while (!mcmc_run.second) {
-    step_stretch_thermo_mcmc(f, iter, current, rep, beta_run, mts, prior, lik,
+    even_dur.record("main_loop_start");  
+    step_stretch_thermo_mcmc(f, iter,even_dur, current, rep, beta_run, mts, prior, lik,
                              y, x);
+    
+    even_dur.record("befor_thermo_jump");  
     thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                      therm.thermo_jumps_every());
+    even_dur.record("after_thermo_jump");  
+    
     const auto end = std::chrono::high_resolution_clock::now();
     auto dur = std::chrono::duration<double>(end - start);
     report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
                mcmc_run.first);
+    
+    even_dur.record("after_report_all");
+    if (iter==1)
+        even_dur.report_title(event_file);
+    even_dur.report_iter(event_file,iter);
+        
+    
     // report_point(f, iter);
     
     // using geg=typename
@@ -527,21 +546,38 @@ auto thermo_evidence_loop(
     thermo_mcmc<Parameters> &current, Reporter &rep,
     const by_beta<double> beta_run, mt_64i &mt, std::vector<mt_64i> &mts,
     const timepoint &start) {
+    var::Event_Timing<200> even_dur(start);
+    std::ofstream event_file(f.file()+"_event_timing.csv");
     
     while (!mcmc_run.second) {
-        step_stretch_thermo_mcmc(f, iter, current, rep, beta_run, mts, prior, lik,
+        even_dur.record("main_loop_start");  
+        
+        step_stretch_thermo_mcmc(f, iter,even_dur, current, rep, beta_run, mts, prior, lik,
                                  y, x);
+        even_dur.record("befor_thermo_jump");  
+        
         thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                          therm.thermo_jumps_every());
+        even_dur.record("after_thermo_jump");  
+        
         const auto end = std::chrono::high_resolution_clock::now();
         auto dur = std::chrono::duration<double>(end - start);
         report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
                    mcmc_run.first);
+        even_dur.record("after_report_all");  
         // report_point(f, iter);
         
         // using geg=typename
         // decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
+        even_dur.record("after_checks_convergence");
+        if (iter==1)
+            even_dur.report_title(event_file);
+        even_dur.report_iter(event_file,iter);
+        if (iter%10==0)
+            event_file.flush();
+        
+        
     }
     
     return std::pair(std::move(mcmc_run.first), current);
