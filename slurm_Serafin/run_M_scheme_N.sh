@@ -4,41 +4,36 @@ cd ~/Code/macro_dr/macro_dr
 
 
 
-SCHEME_FILES=( scheme_7_inact_PI  )
-
-PATH_MACRO_DRS=("/home/lmoffatt/macro_dr/v22/"  )
-
-EXPERIMENTS=( "idealize_experiment" )
-
-N_BETA=( 32 )
-N_SCOUTS=( 32 )
-
-MAX_ITERS=( 20 ) 
-
-RUNTIME="0-01:00"
-
+RUNTIME="0-04:00"
 NTASKS=16
 CPUSPERTASK=4
 
-JOBID1=$(sbatch --parsable --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh )
+export PATH_MACRO=/home/lmoffatt/macro_dr/
+
+# Cargar los módulos para la tarea
+module load amdblis
+module load amdlibflame
+module load gsl
+
+sbatch --parsable --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N.sh 
 
 
 NTASKS=8
 CPUSPERTASK=8
 
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK} --time=${RUNTIME} slurm_tupac/M_scheme_N.sh ) 
+sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK} --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh 
 
 NTASKS=4
 CPUSPERTASK=16
 
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh ) 
+sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh 
 
 NTASKS=2
 CPUSPERTASK=32
 
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh ) 
+sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh 
 
 NTASKS=1
 CPUSPERTASK=64
 
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh ) 
+sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh

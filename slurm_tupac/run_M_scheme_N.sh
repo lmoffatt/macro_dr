@@ -8,6 +8,9 @@ RUNTIME="0-04:00"
 NTASKS=16
 CPUSPERTASK=4
 
+export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
+
+
 sbatch --parsable --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh 
 
 
