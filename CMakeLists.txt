@@ -311,7 +311,10 @@ add_executable(macro_dr main.cpp
     slurm_tupac/M_s2-s10.sh
     slurm_tupac/M_s2-s10_continuation.sh
     slurm_tupac/run_M_s2-s10.sh
-    slurm_tupac/run_M_s2-s10_continuation.sh 
+    slurm_tupac/run_M_s2-s10_continuation.sh
+    multi_task/M_scheme_N.sh
+    slurm_tupac/M_scheme_N.sh
+    slurm_tupac/run_M_scheme_N.sh 
     
     
     
