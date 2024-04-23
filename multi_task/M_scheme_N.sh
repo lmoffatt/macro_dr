@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCHEME_DIRS=("models"  "models_Ag" )
-SCHEME_FILES=( "scheme_7_inact_PI"  )
+SCHEME_FILES=( "scheme_9_inact_PI"   "scheme_9_inact_PI"   "scheme_10_inact_PI"  "scheme_10_inact_PI"   )
 
 PATH_MACRO_DRS=( "v23" )
 
