@@ -4,7 +4,7 @@ cd ~/Code/macro_dr/macro_dr
 
 
 
-RUNTIME="0-01:00"
+RUNTIME="2-00:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
@@ -16,13 +16,22 @@ CPUSPERTASK=32
 
 export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable --job-name=R_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+JOBID1=$(sbatch --parsable --job-name=R7_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
 
 export CONTINUATION_NUMBER=1
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C7_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
 
 export CONTINUATION_NUMBER=2
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C7_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+
+export CONTINUATION_NUMBER=3
+JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C7_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+
+export CONTINUATION_NUMBER=4
+JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C7_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+
+export CONTINUATION_NUMBER=5
+JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C7_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
 
 
 #NTASKS=8
