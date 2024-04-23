@@ -29,10 +29,10 @@ CPUSPERTASK=16
 
 sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh 
 
-#NTASKS=2
-#CPUSPERTASK=32
+NTASKS=2
+CPUSPERTASK=32
 
-#sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh 
+sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_Serafin/M_scheme_N.sh 
 
 #NTASKS=1
 #CPUSPERTASK=64
