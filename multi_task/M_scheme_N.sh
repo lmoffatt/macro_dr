@@ -37,7 +37,7 @@ MAX_ITER=${MAX_ITERS[$IND]}
 
 EXPER_ABR=$([ "$EXPERIMENT" = "idealize_experiment" ] && echo "_IE" || echo "")
 
-SCH_ABR=$([ "$SCHEME_DIRS" = "models_Ag" ] && echo "_Ag" || echo "")
+SCH_ABR=$([ "$SCHEME_DIR" = "models_Ag" ] && echo "_Ag" || echo "")
 
 
 CP=$SLURM_CPUS_PER_TASK
