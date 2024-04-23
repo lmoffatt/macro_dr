@@ -2,14 +2,14 @@
 
 
 
-SCHEME_DIRS=("models" "models" "models" "models" "models_Ag" "models_Ag" "models_Ag" "models_Ag")
-SCHEME_FILES=( "scheme_1_inact_PI"   "scheme_2_inact_PI" )
+SCHEME_DIRS=("models" "models_Ag")
+SCHEME_FILES=( "scheme_11_inact_PI"   )
 
 PATH_MACRO_DRS=( "v23" )
 
-EXPERIMENTS=( "experiment" "experiment" "idealize_experiment" "idealize_experiment" )
+EXPERIMENTS=(  "idealize_experiment" )
 
-NUM_BETAS=( 32 32 32 32 32 32 32 32 64 64 64 64 64 64 64 64  )
+NUM_BETAS=( 32  )
 NUM_SCOUTS=( 32 )
 
 MAX_ITERS=( 1000000 ) 
