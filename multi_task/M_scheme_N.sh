@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCHEME_DIRS= ("models"  "models_Ag" )
+SCHEME_DIRS=("models"  "models_Ag" )
 SCHEME_FILES=( "scheme_1_inact_PI"  )
 
 PATH_MACRO_DRS=( "v23" )
