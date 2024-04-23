@@ -1,14 +1,14 @@
 #!/bin/bash
 
 
-SCHEME_FILES=( scheme_4_inact_PI   )
+SCHEME_FILES=( scheme_5_inact_PI  scheme_6_inact_PI  )
 
 PATH_MACRO_DRS=( "v23" )
 
 EXPERIMENTS=( "idealize_experiment" )
 
-NUM_BETAS=( 32  64  32  64 )
-NUM_SCOUTS=( 32  32  64 64 )
+NUM_BETAS=( 32  )
+NUM_SCOUTS=( 32 )
 
 MAX_ITERS=( 20 ) 
 
