@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-SCHEME_FILES=( scheme_3_inact_PI  scheme_9_inact_PI  )
+SCHEME_FILES=( scheme_5_inact_PI  scheme_6_inact_PI  )
 
 PATH_MACRO_DRS=( "v23" )
 
