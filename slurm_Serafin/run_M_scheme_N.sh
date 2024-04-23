@@ -4,7 +4,7 @@ cd ~/macro_dr/macro_dr
 
 
 
-RUNTIME="0-01:00"
+RUNTIME="2-00:00"
 
 export PATH_MACRO=/home/lmoffatt/macro_dr/
 
