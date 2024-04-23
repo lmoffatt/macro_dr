@@ -10,7 +10,7 @@ EXPERIMENTS=( "idealize_experiment" )
 NUM_BETAS=( 32  )
 NUM_SCOUTS=( 32 )
 
-MAX_ITERS=( 1000 ) 
+MAX_ITERS=( 20 ) 
 
 IND=$(( SLURM_LOCALID % ${#SCHEME_FILES[@]}))
 
