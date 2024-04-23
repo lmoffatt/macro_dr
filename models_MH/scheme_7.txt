@@ -1,0 +1,7 @@
+model = "scheme_7"
+
+modelParameter = load_Parameter(filename = "../macro_dr/models/scheme_7_par.csv", separator="," )
+
+prior_model = load_Prior(filename = "../macro_dr/models/scheme_7_prior.csv", separator= ",")
+
+prior_model_name = "../macro_dr/models/scheme_7_prior.csv"
