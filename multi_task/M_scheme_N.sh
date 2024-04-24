@@ -3,9 +3,9 @@
 
 
 SCHEME_DIRS=("models" "models_Ag")
-SCHEME_FILES=( "scheme_11_inact_PI"   )
+SCHEME_FILES=( ${SCHEME_0}  )
 
-PATH_MACRO_DRS=( "v24" )
+PATH_MACRO_DRS=( "v25" )
 
 EXPERIMENTS=(  "idealize_experiment" )
 

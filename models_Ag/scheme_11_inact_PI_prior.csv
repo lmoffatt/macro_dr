@@ -18,7 +18,7 @@ scheme_11_inact,15,Leakeage_current_ratio,Log10,9.99999999999999955e-07,-6,2
 scheme_11_inact,16,Gating_Current,Log10,1,0,2
 scheme_11_inact,17,Current_Noise,Log10,0.00100000000000000002,-3,2
 scheme_11_inact,18,Pink_Noise,Log10,5.00000000000000089,0.698970004336018857,2
-scheme_11_inact,19,Proportional_Noise,Log10,0.0100000000000000002,-2,2
+scheme_11_inact,19,Proportional_Noise,Fixed,0,0,0
 scheme_11_inact,20,Current_Baseline,Linear,1,1,2
 scheme_11_inact,21,Num_ch,Log10,4799.99999999999909,3.68124123737558717,2
 scheme_11_inact,22,inactivation_rate,Log10,1.00000000000000008e-05,-5,2
