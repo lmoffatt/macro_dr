@@ -6,105 +6,105 @@ export NUM_SCOUTS=32
 export NUM_BETA=32
 
 
-export CONTINUATION_NUMBER=1
+export CONTINUATION_NUMBER=2
 
 JOBID1=$(sbatch --parsable  --job-name=M1_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=2
+export CONTINUATION_NUMBER=3
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=3
+export CONTINUATION_NUMBER=4
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=4
+export CONTINUATION_NUMBER=5
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=5
+export CONTINUATION_NUMBER=6
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=6
+export CONTINUATION_NUMBER=7
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=7
+export CONTINUATION_NUMBER=8
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_33 slurm_tupac/M_s2-s10_continuation.sh)
 
-export NUM_SCOUTS=32
-export NUM_BETA=64
+#export NUM_SCOUTS=32
+#export NUM_BETA=64
 
 
-export CONTINUATION_NUMBER=1
+#export CONTINUATION_NUMBER=1
 
-JOBID1=$(sbatch --parsable  --job-name=M1_36 slurm_tupac/M_s2-s10_continuation.sh)
+#JOBID1=$(sbatch --parsable  --job-name=M1_36 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=2
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_36 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=2
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_36 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=3
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_36 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=3
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_36 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=4
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_36 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=4
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_36 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=5
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_36 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=5
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_36 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=6
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_36 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=6
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_36 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=7
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_36 slurm_tupac/M_s2-s10_continuation.sh)
-
-
-export NUM_SCOUTS=64
-export NUM_BETA=32
+#export CONTINUATION_NUMBER=7
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_36 slurm_tupac/M_s2-s10_continuation.sh)
 
 
-export CONTINUATION_NUMBER=1
-
-JOBID1=$(sbatch --parsable  --job-name=M1_63 slurm_tupac/M_s2-s10_continuation.sh)
-
-export CONTINUATION_NUMBER=2
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_63 slurm_tupac/M_s2-s10_continuation.sh)
-
-export CONTINUATION_NUMBER=3
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_63 slurm_tupac/M_s2-s10_continuation.sh)
-
-export CONTINUATION_NUMBER=4
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_63 slurm_tupac/M_s2-s10_continuation.sh)
-
-export CONTINUATION_NUMBER=5
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_63 slurm_tupac/M_s2-s10_continuation.sh)
-
-export CONTINUATION_NUMBER=6
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_63 slurm_tupac/M_s2-s10_continuation.sh)
-
-export CONTINUATION_NUMBER=7
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_63 slurm_tupac/M_s2-s10_continuation.sh)
+#export NUM_SCOUTS=64
+#export NUM_BETA=32
 
 
-export NUM_SCOUTS=64
-export NUM_BETA=64
+#export CONTINUATION_NUMBER=1
+
+#JOBID1=$(sbatch --parsable  --job-name=M1_63 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=2
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_63 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=3
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_63 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=4
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_63 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=5
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_63 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=6
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_63 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=7
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_63 slurm_tupac/M_s2-s10_continuation.sh)
 
 
-export CONTINUATION_NUMBER=1
+#export NUM_SCOUTS=64
+#export NUM_BETA=64
 
-JOBID1=$(sbatch --parsable  --job-name=M1_66 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=2
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_66 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=1
 
-export CONTINUATION_NUMBER=3
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_66 slurm_tupac/M_s2-s10_continuation.sh)
+#JOBID1=$(sbatch --parsable  --job-name=M1_66 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=4
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_66 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=2
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M2_66 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=5
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_66 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=3
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M3_66 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=6
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_66 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=4
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M4_66 slurm_tupac/M_s2-s10_continuation.sh)
 
-export CONTINUATION_NUMBER=7
-JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_66 slurm_tupac/M_s2-s10_continuation.sh)
+#export CONTINUATION_NUMBER=5
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M5_66 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=6
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M6_66 slurm_tupac/M_s2-s10_continuation.sh)
+
+#export CONTINUATION_NUMBER=7
+#JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=M7_66 slurm_tupac/M_s2-s10_continuation.sh)
 
