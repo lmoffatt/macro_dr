@@ -26,7 +26,7 @@ export CONTINUATION_NUMBER=0
 
 export SCHEME_0=scheme_15_inact_PI
 
-SCM_N=14
+SCM_N=15
 
 JOBID1=$(sbatch --parsable --job-name<=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N.sh) 
 
