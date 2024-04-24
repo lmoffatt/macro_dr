@@ -447,22 +447,20 @@ auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
                       Prior const &prior, Likelihood const &lik,
                       const DataType &y, const Variables &x) {
 
-  ensemble<by_beta<std::size_t>> i_walker(n_walkers,
-                                          by_beta<std::size_t>(beta.size()));
-  ensemble<by_beta<mcmc<Parameters>>> walker(
-      n_walkers, by_beta<mcmc<Parameters>>(beta.size()));
+  ensemble<by_beta<std::size_t>> i_walker(beta.size(),
+                                          by_beta<std::size_t>(n_walkers));
+  ensemble<by_beta<mcmc<Parameters>>> walker(beta.size()
+      , by_beta<mcmc<Parameters>>(n_walkers));
   by_beta<emcee_Step_statistics> emcee_stat(beta.size());
   by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
   auto ff = f.fork(omp_get_max_threads());
 
-  for (std::size_t half = 0; half < 2; ++half)
 #pragma omp parallel for //collapse(2)
-    for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
       for (std::size_t i = 0; i < beta.size(); ++i) {
-        auto iw = iiw + half * n_walkers / 2;
-        i_walker[iw][i] = iw + i * n_walkers;
+    for (std::size_t iw = 0; iw < n_walkers ; ++iw) {
+        i_walker[i][iw] = iw + i * n_walkers;
         auto i_th = omp_get_thread_num();
-        walker[iw][i] = init_mcmc(ff[i_th], mt[i_th], prior, lik, y, x);
+        walker[i][iw] = init_mcmc(ff[i_th], mt[i_th], prior, lik, y, x);
       }
     }
   f += ff;
