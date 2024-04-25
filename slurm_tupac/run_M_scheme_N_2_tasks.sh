@@ -29,6 +29,13 @@ export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export EXPERIMENT_0=idealize_experiment
 export EXPERIMENT_1=$EXPERIMENT_0
 
+export N_BETA=32
+
+export N_SCOUTS=32
+
+export MAX_ITER=1000000
+
+
 
 #export CONTINUATION_NUMBER=0
 
