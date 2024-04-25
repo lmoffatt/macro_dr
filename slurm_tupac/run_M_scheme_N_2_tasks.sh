@@ -10,7 +10,7 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 
 
-NTASKS=2
+export NTASKS=2
 CPUSPERTASK=32
 
 N_SCH=7
