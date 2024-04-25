@@ -18,6 +18,7 @@ N_SCH2=4
 N_SCH3=4
 N_SCH4=5
 
+export USE_LOCAL_ID=1
 
 export SCHEME_DIR_0=models
 export SCHEME_DIR_1=$SCHEME_DIR_0
