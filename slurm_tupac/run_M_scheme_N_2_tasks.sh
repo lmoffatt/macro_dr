@@ -13,7 +13,7 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 export NTASKS=2
 CPUSPERTASK=32
 
-N_SCH=11
+N_SCH=15
 
 
 export USE_LOCAL_ID=1
@@ -46,7 +46,7 @@ export MAX_ITER=1000000
 
 #JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
 
-JOBID1=9009
+JOBID1=9015
 
 export CONTINUATION_NUMBER=1
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
