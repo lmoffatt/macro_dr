@@ -12,9 +12,10 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 export NTASKS=4
 CPUSPERTASK=16
+export USE_LOCAL_ID=0
 
-N_SCH=6
-N_SCH2=8
+N_SCH=9
+N_SCH2=10
 
 export SCHEME_DIR_0=models
 export SCHEME_DIR_1=models_Ag
@@ -32,6 +33,8 @@ export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
 
+export PATH_MACRO_DRX=v27
+
 
 export EXPERIMENT_0=idealize_experiment
 export EXPERIMENT_1=$EXPERIMENT_0
@@ -47,7 +50,7 @@ export MAX_ITER=1000000
 
 
 
-JOBID1=8710
+JOBID1=9097
 
 
 #export CONTINUATION_NUMBER=
