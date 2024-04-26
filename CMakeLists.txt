@@ -344,6 +344,7 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_M_scheme_N_2_tasks.sh
     slurm_tupac/run_M_scheme_N_4_tasks.sh
     slurm_tupac/run_M_scheme_N_8_tasks.sh
+    slurm_tupac/run_M_scheme_N_16_tasks.sh
     
     
     
