@@ -11,7 +11,7 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 
 export NTASKS=8
-CPUSPERTASK=8
+CPUSPERTASK=4
 
 N_SCH=1
 N_SCH2=2
