@@ -25,6 +25,8 @@ export CONTINUATION_NUMBER=0
 
 
 export SCHEME_0=scheme_15_inact_PI
+export PATH_MACRO_DR=v26
+export PATH_MACRO_DRX=v27
 
 SCM_N=15
     
