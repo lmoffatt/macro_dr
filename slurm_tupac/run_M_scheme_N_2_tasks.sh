@@ -13,7 +13,7 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 export NTASKS=2
 CPUSPERTASK=32
 
-N_SCH=15
+N_SCH=7
 
 export USE_LOCAL_ID=1
 
@@ -24,8 +24,10 @@ export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=$SCHEME_0
 
 
-export PATH_MACRO_DR_0=v25
+export PATH_MACRO_DR_0=v26
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
+
+export VPATH_MACRO_DR=v23
 
 
 export EXPERIMENT_0=idealize_experiment

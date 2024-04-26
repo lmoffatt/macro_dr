@@ -476,10 +476,10 @@ auto create_thermo_mcmc(std::size_t n_walkers,
     auto& priorsampler=pr;
     auto par = sample(mt,priorsampler);
     
-    ensemble<by_beta<std::size_t>> i_walker(n_walkers,
-                                            by_beta<std::size_t>(beta.size()));
-    ensemble<by_beta<mcmc<Parameters>>> walker(
-        n_walkers, by_beta<mcmc<Parameters>>(beta.size(),mcmc<Parameters>{par}));
+    by_beta<ensemble<std::size_t>> i_walker(beta.size(),
+                                            by_beta<std::size_t>(n_walkers));
+    by_beta<ensemble<mcmc<Parameters>>> walker(beta.size()
+        , by_beta<mcmc<Parameters>>(n_walkers,mcmc<Parameters>{par}));
     by_beta<emcee_Step_statistics> emcee_stat(beta.size());
     by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
     return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
@@ -1166,8 +1166,8 @@ template <class Parameters, class Duration>
                         return false;
                     if (v_i_par!=i_par)
                         return false;
-                    data.i_walkers[i_walker][i_beta]=v_walker_id;
-                    data.walkers[i_walker][i_beta].parameter[i_par]=v_param_value;
+                    data.i_walkers[i_beta][i_walker]=v_walker_id;
+                    data.walkers[i_beta][i_walker].parameter[i_par]=v_param_value;
                 }
                 else
                 {return false;}
