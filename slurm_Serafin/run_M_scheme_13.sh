@@ -22,6 +22,7 @@ CPUSPERTASK=32
 
 
 export CONTINUATION_NUMBER=0
+export USE_LOCAL_ID=1
 
 
 export SCHEME_0=scheme_13_inact_PI
