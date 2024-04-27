@@ -564,6 +564,8 @@ using Patch_State =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
                  eplogL, vplogL, macror_algorithm>;
 
+
+
 template <class C_Patch_Model, class C_double>
 C_Patch_Model add_Patch_inactivation(C_Patch_Model &&m,
                                      C_double const &deactivation_rate) {
@@ -3245,14 +3247,14 @@ public:
     // std::cerr << "\n min violation\n"
     //          << r_y_mean() << "  vs  min: " << r_y_mean_min();
 
-    if (primitive(gSg) > 0) {
-      if (primitive(ms) > 0) {
+    if (std::isfinite(primitive(gSg))&& primitive(gSg)> 0) {
+      if (isfinite(primitive(ms))&&primitive(ms) > 0) {
         r_y_var = build<y_var>(e + N * gSg + N * ms);
       } else {
         r_y_var = build<y_var>(e + N * gSg);
       }
     } else {
-      if (primitive(ms) > 0)
+      if (isfinite(primitive(ms))&&primitive(ms) > 0)
         r_y_var = build<y_var>(e + N * ms);
       else
         r_y_var = build<y_var>(e);
@@ -3672,6 +3674,7 @@ public:
                   bool test_Binomial = is_Binomial_Approximation_valid(
                       N, p_bi, q_bi, get<Binomial_magical_number>(m)());
                   if (test_Binomial) {
+                      
                     // using egsr=typename decltype(f.f(MacroR<recursive,
                     // averaging, variance>{}))::ege;
                     //  auto r=egsr();
@@ -3679,10 +3682,12 @@ public:
                     //     MacroR2<v_recursive, v_averaging, v_variance,
                     //             v_variance_correction>{},
                     //     std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
-                    return MacroR2<v_recursive, v_averaging, v_variance,
+                      return  
+                     MacroR2<v_recursive, v_averaging, v_variance,
                                    v_variance_correction>{}(
                         f_local, std::move(t_prior), t_Qdtm, m, Nch, y()[i_step],
                         fs);
+                       
                   } else {
                     return
                         //   f_local.f(

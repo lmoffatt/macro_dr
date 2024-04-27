@@ -640,7 +640,8 @@ auto thermo_evidence_continuation(
     const std::string &idName, FunctionTable &&f,
     new_thermodynamic_integration<Algorithm, Reporter> &&therm,
     Prior const &prior, Likelihood const &lik, const DataType &y,
-    const Variables &x) {
+    const Variables &x)
+    {
     auto a = therm.algorithm();
     auto mt = init_mt(therm.initseed());
     auto n_walkers = therm.num_scouts_per_ensemble();
@@ -664,12 +665,13 @@ auto thermo_evidence_continuation(
     
     std::chrono::duration<double,std::ratio<1>> duration;
     
-    extract_parameters_last(fname, iter, duration, current);
+    auto alt_current=extract_parameters_last(fname, iter, duration, current);
     a.reset(iter);
-    calc_thermo_mcmc_continuation(std::forward<FunctionTable>(f), n_walkers, beta,
+    auto res=calc_thermo_mcmc_continuation(std::forward<FunctionTable>(f), n_walkers, beta,
                                   mts, prior, lik, y, x,current);
-    auto mcmc_run = checks_convergence(std::move(a), current);
     
+    auto mcmc_run = checks_convergence(std::move(a), current);
+    //using return_type=Maybe_error<decltype(std::pair(std::move(mcmc_run.first), current))>;
     report_title(rep, current, lik, y, x);
     report_title(f, "Iter");
     report_model_all(rep, prior, lik, y, x, beta);
