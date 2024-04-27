@@ -3,6 +3,7 @@
 
 #include "matrix.h"
 #include <cassert>
+#include <limits>
 #include <random>
 #include <utility>
 #include <vector>
@@ -196,6 +197,11 @@ Maybe_error<bool> calc_mcmc(FunctionTable&& f, Prior const & pr, const Lik& lik,
         t_mcmc.logP=logP.value();
         t_mcmc.logL=t_logLs.value();
         return true;
+    }
+    else
+    {
+        t_mcmc.logP=std::numeric_limits<double>::quiet_NaN();
+        get<logL>(t_mcmc.logL)()=std::numeric_limits<double>::quiet_NaN();;
     }
     return error_message(logP.error()()+t_logLs.error()());
 }

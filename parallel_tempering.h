@@ -10,6 +10,7 @@
 #include "random_samplers.h"
 #include "variables.h"
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
@@ -504,9 +505,9 @@ Maybe_error<bool> calc_thermo_mcmc_continuation(FunctionTable &&f, std::size_t n
     std::string error;
     bool good=true;
   #pragma omp parallel for //collapse(2)
+      for (std::size_t i = 0; i < beta.size(); ++i) {
+        auto i_th = omp_get_thread_num();
         for (std::size_t iw = 0; iw < n_walkers ; ++iw) {
-            for (std::size_t i = 0; i < beta.size(); ++i) {
-                auto i_th = omp_get_thread_num();
                 auto res=calc_mcmc(ff[i_th],prior, lik, y, x,t_mcmc.walkers[i][iw]);
                 if (!res)
                 {
@@ -518,10 +519,16 @@ Maybe_error<bool> calc_thermo_mcmc_continuation(FunctionTable &&f, std::size_t n
     f += ff;
         if (good)
         return good;
-        else return error_message(error);        
+    else
+            return error_message(error);        
  }
-
-
+ 
+ 
+ 
+ 
+ 
+ 
+ 
 template <class Parameters>
 std::pair<std::pair<std::size_t, std::size_t>, bool>
 check_iterations(std::pair<std::size_t, std::size_t> current_max,
@@ -779,9 +786,9 @@ void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
             logLikelihood(f.fork(var::I_thread(i)), lik, ca_par, y, x);
 
         if ((ca_logP.valid()) && (ca_logL.valid())) {
-          auto dthLogL =
+            auto dthLogL =std::isfinite(get<logL>(current.walkers[ib][iw].logL)())?
               ca_logP.value() - current.walkers[ib][iw].logP +
-                           beta[ib] * (get<logL>(ca_logL.value())() - get<logL>(current.walkers[ib][iw].logL))();
+                           beta[ib] * (get<logL>(ca_logL.value())() - get<logL>(current.walkers[ib][iw].logL))():1.0;
           auto pJump =
               std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
           if constexpr (!std::is_same_v<Observer, no_save>)
@@ -910,7 +917,16 @@ for (std::size_t ib = 0; ib < n_beta; ++ib)
 
 inline double calc_logA(double betai, double betaj, logLs const& logLi,
                         logLs const &logLj) {
-    return -(betai - betaj) * (get<logL>(logLi)() - get<logL>(logLj)());
+    if (std::isfinite((get<logL>(logLi)() - get<logL>(logLj)())))
+         return -(betai - betaj) * (get<logL>(logLi)() - get<logL>(logLj)());
+    else{
+        if (!std::isfinite(get<logL>(logLi)())&&std::isfinite(get<logL>(logLj)()))
+            return 20.0*(betai>betaj);
+        if (std::isfinite(get<logL>(logLi)())&&!std::isfinite(get<logL>(logLj)()))
+            return -20.0*(betai>betaj);
+        else
+            return -20.0;
+    }
 }
 
 template <class Parameters, class Observer>
@@ -1182,9 +1198,10 @@ template <class Parameters, class Duration>
 } 
  
 template <class Parameters, class Duration>
- void extract_parameters_last(const std::string& fname,std::size_t& iter, Duration &dur,
+ auto extract_parameters_last(const std::string& fname,std::size_t& iter, Duration &dur,
                   thermo_mcmc<Parameters> &data) {
     auto candidate=data;
+    auto candidate_prev=data;
     auto f=std::ifstream(fname);
     std::string line;
     std::getline(f,line);
@@ -1192,8 +1209,10 @@ template <class Parameters, class Duration>
     while (extract_iter(f,iter,dur,candidate))
     {
         std::swap(data,candidate);
-        
+        std::swap(candidate_prev,candidate);
     }
+    return candidate_prev;
+    
 }
 
 
