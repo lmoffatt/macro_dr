@@ -740,7 +740,7 @@ static auto find_t_50(const Recording_conditions& x, pulse_pos p, double max)
             double dA=A1-A0;
             double nf=0.5-(A1-max/2.0)/dA;
             t_50_up=cum_samples+nf*get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
-            cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
+            //cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
         }
         else{
         cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
@@ -751,17 +751,31 @@ static auto find_t_50(const Recording_conditions& x, pulse_pos p, double max)
     while (!found && i_run<p.i_end)
     {
         A1=get<ATP_concentration>(get<ATP_evolution>(x()[i_run])()[0])();
+        if (A1==max){
+            found=true;
+          }
+        else{
+            cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
+            ++i_run;
+            }
+    }
+    found=false;
+    while (!found && i_run<p.i_end)
+    {
+        A1=get<ATP_concentration>(get<ATP_evolution>(x()[i_run])()[0])();
         if (A1<max/2.0){
             found=true;
             double dA=A1-A0;
             double nf=0.5-(A1-max/2.0)/dA;
             t_50_down=cum_samples+nf*get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
-            cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
+            //cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
         }
         else{
             cum_samples+=get<number_of_samples>(get<ATP_evolution>(x()[i_run])()[0])();
             ++i_run;
-            A0=A1;}
+            A0=A1;
+            t_50_down=cum_samples;
+        }
     }
     
     

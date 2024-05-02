@@ -1202,7 +1202,7 @@ Right_Eigenvector_Nelson_Normalization(Matrix<double> &X) {
   }
   return X;
 }
-inline void Nelson_Normalization(Matrix<double> &VR, Matrix<double> &VL) {
+inline bool Nelson_Normalization(Matrix<double> &VR, Matrix<double> &VL) {
   Right_Eigenvector_Nelson_Normalization(VR);
   for (std::size_t i = 0; i < VR.nrows(); ++i) {
     double sum = 0;
@@ -1210,6 +1210,7 @@ inline void Nelson_Normalization(Matrix<double> &VR, Matrix<double> &VL) {
       sum += VL(i, j) * VR(j, i);
     for (std::size_t j = 0; j < VR.ncols(); ++j)
       VL(i, j) = VL(i, j) / sum;
+    return sum!=0;
   }
   //   assert((are_Equal<true, Matrix<double>>().test_prod(
   //       VR * VL, Matrix_Generators::eye<double>(VR.ncols()), std::cerr)));
@@ -2090,7 +2091,8 @@ Parameters
         lapack::ddisna_(&JOB,&M,&N,&W[0],&RCOND[0] ,&INFO );
         auto VL_cpp = Z;
         auto VR_cpp = tr(Z);
-        Nelson_Normalization(VR_cpp, VL_cpp);
+        if (!Nelson_Normalization(VR_cpp, VL_cpp))
+            return error_message("singular normalization");
         
         return std::tuple(
             VR_cpp, W,
