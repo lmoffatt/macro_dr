@@ -51,7 +51,7 @@ auto max(is_Container auto const& c)
 {
     auto out=c[0];
     for (std::size_t i=1; i<c.size(); ++i)
-        if (out<c[i])
+        if (std::isnan(c[i])||out<c[i])
             out=c[i];
     return out; 
 }

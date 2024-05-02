@@ -56,9 +56,9 @@ auto stretch_move(mt_64i &, const Parameters &Xk, const Parameters &Xj,
 
 template <class Parameters>
 auto stretch_move(mt_64i &mt, std::uniform_real_distribution<double> &rdist,
-                  const Parameters &Xk, const Parameters &Xj) {
+                  const Parameters &Xk, const Parameters &Xj, double a=2) {
   assert((Xj.size() == Xk.size()) && "sum of vector fields of different sizes");
-  auto z = std::pow(rdist(mt) + 1, 2) / 2.0;
+    auto z = std::pow((a-1)*rdist(mt) + 1, 2) / a;
 
   auto out = Xj;
   for (std::size_t i = 0; i < Xj.size(); ++i)

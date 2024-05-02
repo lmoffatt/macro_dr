@@ -303,15 +303,46 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
 
   using std::max;
   using std::min;
+  for (std::size_t i=0; i<x.size(); ++i)
+    if (std::isnan(x[i]))
+        std::cerr<<"error";
+  
   auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
   auto s = var::sum(out);
+  if (isnan(s)||s==0)
+    return out/s;
   return out * (1.0 / s);
 }
+
+
+template <class C_Matrix> auto to_Covariance_Probability(C_Matrix const &x) {
+
+  using std::max;
+  using std::min;
+  auto out=x;
+  for (auto i=0ul; i<x.nrows(); ++i)
+    {
+     if (out(i,i)<=0)
+       {
+         for (auto j=0ul; j<x.ncols(); ++j)
+           {
+            set(out,i, j,0.0);
+           }
+       }
+  }
+  
+ 
+  return out;
+}
+
+
 
 inline bool all_Probability_elements(Matrix<double> const &x) {
 
   for (std::size_t i = 0; i < x.size(); ++i) {
-    if (x[i] > 1.0)
+    if (!std::isfinite(primitive(x[i])))
+      return false;
+    else if (x[i] > 1.0)
       return false;
     else if (x[i] < 0.0)
       return false;
@@ -324,10 +355,10 @@ inline bool all_Covariance_elements(C_Matrix const &x) {
   if (x.ncols() != x.nrows())
     return false;
   for (std::size_t i = 0; i < x.nrows(); ++i) {
-    if (x(i, i) < 0)
+    if (!std::isfinite(primitive(x(i,i)))||x(i, i) < 0)
       return false;
     for (std::size_t j = 0; j < i; ++j)
-      if ((x(i, i) > 0) && (x(j, j) > 0)) {
+      if (std::isfinite(primitive(x(i,j)))&&(x(i, i) > 0) && (x(j, j) > 0)) {
         if (x(i, j) * x(i, j) / x(i, i) / x(j, j) > 1.0)
           return false;
       } else {
@@ -455,6 +486,10 @@ to_Transition_Probability(C_Matrix const &x) {
   auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
   auto sumP = out * Matrix<double>(out.ncols(), 1ul, 1.0);
   auto s = inv(diag(sumP));
+  
+  for (std::size_t i=0; i<sumP.size(); ++i)
+    if (std::isnan(sumP[i]))
+      std::cerr<<"rro";
   if (s)
     // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
     return build<P>(s.value() * out);
@@ -1913,6 +1948,9 @@ public:
       //     return error_message(test_g_var.error()()+test_g_mean.error()());
       // else {
 
+      if (std::isnan(primitive(var::max(r_P()))))
+          return error_message("nan P");
+
       return build<Qdtm>(ns, min_P(t_min_P), std::move(r_P),
                          std::move(r_gmean_i), std::move(r_gtotal_ij),
                          std::move(r_gmean_ij), std::move(r_gsqr_i),
@@ -2291,6 +2329,7 @@ public:
       auto Maybe_Qdt = calc_Qdtm_eig(f, m, t_Qeig.value(),
                                      get<number_of_samples>(t_step), dt);
       if (Maybe_Qdt)
+        
         return Maybe_Qdt.value();
     }
     auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
@@ -3194,7 +3233,7 @@ public:
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
       auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
-      r_P_cov() = r_P_cov() + diag(r_P_mean());
+      r_P_cov() = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
       if constexpr (U<C_Patch_State, Patch_State>)
         return Op_t<Transf, Patch_State>(
             Op_t<Transf, logL>(get<logL>(t_prior)()),
@@ -3268,16 +3307,16 @@ public:
     if constexpr (!recursive.value) {
       r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
       r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
-      r_P_cov() = r_P_cov() + diag(r_P_mean());
+      r_P_cov() = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
 
     } else if constexpr (!variance_correction.value) {
       auto gS =
           TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
 
-      r_P_mean() = p_P_mean() * t_P() + chi * gS;
+      r_P_mean() = to_Probability(p_P_mean() * t_P() + chi * gS);
 
-      r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
-                  (N / r_y_var()) * XTX(gS);
+      r_P_cov() = to_Covariance_Probability(AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) -
+                  (N / r_y_var()) * XTX(gS));
     } else {
       auto &t_gtotal_var_ij = get<gtotal_var_ij>(t_Qdt);
       auto &t_gvar_ij = get<gvar_ij>(t_Qdt);
@@ -3593,7 +3632,7 @@ public:
                              Vector_Space<logL, elogL, vlogL>>>> {
 
     using v_adaptive = ::V<adaptive>;
-    using v_recursive = ::V<recursive>;
+    using v_recursive = ::V<recursive>; 
     using v_averaging = ::V<averaging>;
     using v_variance = ::V<variance>;
     using v_variance_correction = ::V<variance_correction>;
