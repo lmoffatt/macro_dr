@@ -38,7 +38,7 @@ public:
   
   
   template <class F, class... Ts>
-    requires(std::is_convertible_v<std::invoke_result_t<F, Ts...>, Y>||U<std::invoke_result_t<F, Ts...>, Y>)
+    requires(std::is_convertible_v<std::invoke_result_t<F, Ts...>, Y>)
   auto &get_or_calc(F &&f, Ts &&...xs) {
       auto x = match(std::forward<Ts>(xs)...);
     if (auto it = m_values.find(x); it != m_values.end())
@@ -49,6 +49,25 @@ public:
     }
   }
 };
+
+
+
+
+template <class... memoiza> class Memoiza_overload:public memoiza...
+{
+        
+public:
+    void clear() {
+        ((memoiza::clear(),...));
+    }
+    //Memoiza_overload(memoiza&&... m): memoiza{std::move(m)}...{}
+    
+    //Memoiza_overload()=default;
+    using memoiza::get_or_calc...;
+   
+};
+
+
 
 template <class X, class Y, class... Ks> class Memoiza_closed_values {
 
@@ -138,13 +157,13 @@ public:
 
 template <class, class, class> class Single_Thread_Memoizer;
 
-template <class Id, class... Fun, class Y, class... Xs,
+template <class Id, class... Fun, 
          template <class...> class F,
-         template <class, class...> class Memoizer>
+       class Memoizer>
 //  requires(std::is_convertible_v<std::invoke_result_t<F<Id, Fun...>, Xs...>, Y>)
-class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
+class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer> {
     F<Id, Fun...> m_f;
-    Memoizer<Y, Xs...> m_memoiza;
+    Memoizer m_memoiza;
     
 public:
     using myId=Id;
@@ -153,7 +172,7 @@ public:
     
     auto &get_Fun() { return m_f.get_Fun(); }
     
-    constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer<Y, Xs...>)
+    constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f, Memoizer)
         : m_f{std::move(t_f)}, m_memoiza{} {}
     constexpr Single_Thread_Memoizer(F<Id, Fun...> &&t_f)
         : m_f{std::move(t_f)}, m_memoiza{} {}
@@ -178,17 +197,16 @@ public:
     
 };
 
-template <class Id, class... Fun, class Y, class... Xs,
-         template <class...> class F,
-         template <class, class...> class Memoizer>
-Single_Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>, std::size_t)
-    -> Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
 
-template <class Id, class... Fun, class Y, class... Xs,
-         template <class...> class F,
-         template <class, class...> class Memoizer>
-Single_Thread_Memoizer(F<Id, Fun...>, Memoizer<Y, Xs...>)
-    -> Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>>;
+template <class Id, class... Fun,
+         template <class...> class F,class Memoizer>
+Single_Thread_Memoizer(F<Id, Fun...>, Memoizer, std::size_t)
+    -> Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer>;
+
+template <class Id, class... Fun,
+         template <class...> class F, class Memoizer>
+Single_Thread_Memoizer(F<Id, Fun...>, Memoizer)
+    -> Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer>;
 
 
 

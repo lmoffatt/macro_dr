@@ -178,6 +178,7 @@ struct Log10_Tr {
 struct Fixed_Tr {
   static constexpr auto name()  { return "Fixed"; }
   double tr(double x)const { return x; }
+  double inv(double x)const { return x; }
   Derivative<double,double> tr(Derivative<double,double> x) const { return x; }
   std::string tr(std::string ) const { return ""; }
   Derivative<double,double> inv(Derivative<double,double> x) const{ return x; }

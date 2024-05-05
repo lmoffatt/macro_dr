@@ -160,7 +160,7 @@ class Constant<Id>{};
 
 template<class Id, class T>
 class Constant<Id,T>{
-    T m_x={};
+    T m_x;
 public:
     static constexpr bool is_variable=true;
     static constexpr bool is_constant=true;
