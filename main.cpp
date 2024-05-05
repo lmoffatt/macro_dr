@@ -1,6 +1,7 @@
 #include "CLI_function_table.h"
 #include "CLI_macro_dr.h"
 #include "CLI_thermo_evidence.h"
+#include "CLI_thermo_levenberg_evidence.h"
 #include "experiment.h"
 #include "lapack_headers.h"
 #include "lexer_typed.h"

@@ -2,6 +2,7 @@
 #define FUNCTION_MEMOIZATION_H
 #include "distributions.h"
 #include "function_measure_verification_and_optimization.h"
+#include "derivative_operator.h"
 #include <concepts>
 #include <cstddef>
 #include <iterator>
@@ -37,7 +38,7 @@ public:
   
   
   template <class F, class... Ts>
-    requires(std::is_convertible_v<std::invoke_result_t<F, Ts...>, Y>)
+    requires(std::is_convertible_v<std::invoke_result_t<F, Ts...>, Y>||U<std::invoke_result_t<F, Ts...>, Y>)
   auto &get_or_calc(F &&f, Ts &&...xs) {
       auto x = match(std::forward<Ts>(xs)...);
     if (auto it = m_values.find(x); it != m_values.end())

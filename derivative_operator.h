@@ -96,6 +96,7 @@ struct Derivative_Op{
     using type=Derivative<F,X>;
 };
 
+
 struct Maybe_error_Op{
     template<class X>
     using type=Maybe_error<X>;
@@ -148,6 +149,27 @@ public:
     constexpr d_d_(){}
     constexpr auto& dx()const{return *ptr_dx;}
 };
+
+
+
+template<>
+class d_d_<double,Matrix<double>>
+{
+    Matrix<double> m_dydx;
+    Matrix<double> const* ptr_dx;
+public:
+    using value_type=double;
+     d_d_(Matrix<double>const& dydx, const Matrix<double>& x):m_dydx{dydx}, ptr_dx{&x}{}
+     d_d_(Matrix<double>&& dydx, const Matrix<double>& x):m_dydx{std::move(dydx)}, ptr_dx{&x}{}
+     auto& operator()(){return m_dydx;}
+     auto operator()()const{return m_dydx;}
+     d_d_(){}
+     auto& dx()const{return *ptr_dx;}
+};
+
+
+
+
 
 constexpr auto self_derivative(const double& x)
 {
@@ -235,7 +257,139 @@ public:
         m_d{0.0,dx}{}
     Derivative(){}
     auto& dx()const {return m_d.dx();}
+    
+    
+    friend auto exp(const Derivative &x) {
+        auto f = exp(x.primitive());
+        return Derivative(f, f * x.derivative()(), x.dx());
+    }
+    
+    friend auto max(const Derivative &x, double y) {
+        if (x.primitive() <= y)
+            return x;
+        else
+            return Derivative(y, 0.0 * x.derivative()(), x.dx());
+    }
+    
+    friend auto min(const Derivative &x, double y) {
+        if (x.primitive() >= y)
+            return x;
+        else
+            return Derivative(y, 0.0 * x.derivative()(), x.dx());
+    }
+    
+    friend auto log(const Derivative &x) {
+        auto f = log(x.primitive());
+        return Derivative(f, x.derivative()() * (1.0 / x.primitive()), x.dx());
+    }
+    friend auto log10(const Derivative &x) {
+        auto f = log10(x.primitive());
+        return Derivative(f, x.derivative()() *
+                                 (1.0 / (x.primitive() * std::log(10))));
+    }
+    friend auto pow(double base, const Derivative &x) {
+        using std::pow;
+        auto f = pow(base, x.primitive());
+        return Derivative(f, x.derivative()() * f * std::log(base), x.dx());
+    }
+    friend auto pow(const Derivative &base, const Derivative &x) {
+        using std::pow;
+        auto f = pow(base.primitive(), x.primitive());
+        return Derivative(f,
+                          x.derivative()() * f * std::log(base.primitive()) +
+                              base.derivative()() * x.primitive() *
+                                  pow(base.primitive(), x.primitive() - 1.0),
+                          x.dx());
+    }
+    
+    friend auto abs(const Derivative &x) {
+        auto f = std::abs(x.primitive());
+        return Derivative(
+            f, ((x.primitive() > 0.0) ? 1.0 : ((x.primitive() < 0) ? -1.0 : 0.0)) *
+                x.derivative()(),x.dx());
+    }
+    
 };
+
+
+
+
+template<> class Derivative<double,Matrix<double>>{
+    double m_x;
+    d_d_<double,Matrix<double>> m_d;
+public:
+    
+    auto& primitive()const {return m_x;}
+    auto& derivative()const {return m_d;}
+    
+     Derivative(double fx, Matrix<double>const & dfdx, const Matrix<double>& dx ):m_x{fx},
+        m_d{dfdx,dx}{}
+     Derivative(double fx, Matrix<double>&& dfdx, const Matrix<double>& dx ):m_x{fx},
+         m_d{std::move(dfdx),dx}{}
+     
+     
+     Derivative(double x, const Matrix<double>& dx):m_x{x},
+        m_d{dx-dx,dx}{}
+    Derivative(){}
+    auto& dx()const {return m_d.dx();}
+    
+    
+    friend auto exp(const Derivative &x) {
+        auto f = exp(x.primitive());
+        return Derivative(f, f * x.derivative()(), x.dx());
+    }
+    
+    friend auto max(const Derivative &x, double y) {
+        if (x.primitive() <= y)
+            return x;
+        else
+            return Derivative(y, 0.0 * x.derivative()(), x.dx());
+    }
+    
+    friend auto min(const Derivative &x, double y) {
+        if (x.primitive() >= y)
+            return x;
+        else
+            return Derivative(y, 0.0 * x.derivative()(), x.dx());
+    }
+    
+    friend auto log(const Derivative &x) {
+        auto f = log(x.primitive());
+        return Derivative(f, x.derivative()() * (1.0 / x.primitive()), x.dx());
+    }
+    friend auto log10(const Derivative &x) {
+        auto f = log10(x.primitive());
+        return Derivative(f, x.derivative()() *
+                                 (1.0 / (x.primitive() * std::log(10))));
+    }
+    friend auto pow(double base, const Derivative &x) {
+        using std::pow;
+        auto f = pow(base, x.primitive());
+        return Derivative(f, x.derivative()() * f * std::log(base), x.dx());
+    }
+    friend auto pow(const Derivative &base, const Derivative &x) {
+        using std::pow;
+        auto f = pow(base.primitive(), x.primitive());
+        return Derivative(f,
+                          x.derivative()() * f * std::log(base.primitive()) +
+                              base.derivative()() * x.primitive() *
+                                  pow(base.primitive(), x.primitive() - 1.0),
+                          x.dx());
+    }
+    
+    friend auto abs(const Derivative &x) {
+        auto f = std::abs(x.primitive());
+        return Derivative(
+            f, ((x.primitive() > 0.0) ? 1.0 : ((x.primitive() < 0) ? -1.0 : 0.0)) *
+                x.derivative()(),x.dx());
+    }
+    
+};
+
+
+
+
+
 
 struct NoDerivative{
     template<class T>

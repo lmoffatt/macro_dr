@@ -4,7 +4,7 @@
 #include "gsl/gsl_integration.h"
 #include <limits>
 #include <tuple>
-
+#include "derivative_operator.h"
 
 inline auto lik_Poisson_noise(double x, double variance, double Poisson_noise)
 {
@@ -169,10 +169,10 @@ inline auto Poisson_noise_expected_lik_logL(double noise,double Poisson_noise){
 }
 
 
-
-inline auto Poisson_noise_normalization(double noise,double Poisson_noise){
-    auto s=std::sqrt(noise);
-    auto Pn=Poisson_noise/s;
+inline double Poisson_noise_normalization(double noise,double Poisson_noise){
+    using std::sqrt;
+    auto s=sqrt(noise);
+    auto Pn=Poisson_noise/var::primitive(s);
     return Poisson_noise_normalization_pr(Pn)*s;
 }
 
