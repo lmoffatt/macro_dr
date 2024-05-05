@@ -1,6 +1,7 @@
 #ifndef PARAMETERS_H
 #define PARAMETERS_H
 
+#include "derivative_operator.h"
 #include "general_output_operator.h"
 #include "matrix.h"
 #include "maybe_error.h"
@@ -24,9 +25,18 @@ public:
   virtual std::unique_ptr<base_transformation> clone() const = 0;
 
   virtual double tr(double x) const = 0;
-
+  
+  virtual Derivative<double,double> tr(Derivative<double,double> x) const = 0;
+  
+  
+  virtual std::string tr(std::string name)const =0;
+  
   virtual double inv(double tr_x) const = 0;
-
+  
+  virtual Derivative<double,double> inv(Derivative<double,double> tr_x) const = 0;
+  
+  virtual Derivative<double,Matrix<double>> inv(Derivative<double,Matrix<double>> tr_x) const = 0;
+  
   virtual bool is_fixed() const = 0;
 };
 
@@ -49,10 +59,19 @@ public:
     return std::unique_ptr<base_transformation>(new template_transformation());
   }
   virtual double tr(double x) const override { return Transformation{}.tr(x); }
+  virtual Derivative<double,double> tr(Derivative<double,double> x) const override { return Transformation{}.tr(x); }
+  virtual std::string tr(std::string x) const override { return Transformation{}.tr(x); }
   virtual double inv(double tr_x) const override {
     return Transformation{}.inv(tr_x);
   }
-
+  virtual Derivative<double,double> inv(Derivative<double,double> tr_x) const override {
+      return Transformation{}.inv(tr_x);
+  }
+  
+  virtual Derivative<double,Matrix<double>> inv(Derivative<double,Matrix<double>> tr_x) const  override {
+      return Transformation{}.inv(tr_x);
+  }
+  
   virtual bool is_fixed() const override { return Transformation{}.isfixed(); }
 };
 
@@ -98,6 +117,18 @@ public:
 
   auto &fixed_set() const { return m_fixed; }
   
+  auto get_transformed_names(const std::vector<std::string>& names)const
+  {
+      assert(names.size()==size());
+      std::vector<std::string> out;
+      for (std::size_t i=0; i<size(); ++i)
+      {
+          auto name=(*this)[i]->tr(names[i]);
+          if (!name.empty())
+              out.push_back(name);
+      }
+      return out;
+  }
   
   auto remove_fixed(std::vector<double>const & x)const
   {
@@ -122,24 +153,36 @@ public:
 
 struct Identity_Tr {
   static constexpr auto name() { return "Linear"; }
-  double tr(double x) { return x; }
-  double inv(double x) { return x; }
+  double tr(double x)const { return x; }
+  Derivative<double,double> tr(Derivative<double,double> x) const { return x; }
+  std::string tr(std::string x)const { return x; }
+  double inv(double x)const  { return x; }
+  Derivative<double,double> inv(Derivative<double,double>  x)const  { return x; }
+  Derivative<double,Matrix<double>> inv(Derivative<double,Matrix<double>> x) const{ return x; }
 
   bool isfixed() { return false; }
 };
 
 struct Log10_Tr {
-  constexpr auto name() { return "Log10"; }
-  double tr(double x) { return std::log10(x); }
-  double inv(double x) { return std::pow(10.0, x); }
-  bool isfixed() { return false; }
+  static constexpr auto name()  { return "Log10"; }
+  double tr(double x)const  { return std::log10(x); }
+  Derivative<double,double> tr(Derivative<double,double> x)const  { return log(x); }
+  
+  std::string tr(std::string x) const { return "log10_"+x; }
+  double inv(double x) const { return std::pow(10.0, x); }
+  Derivative<double,double> inv(Derivative<double,double> x)const { return pow(10.0, x); }
+  Derivative<double,Matrix<double>> inv(Derivative<double,Matrix<double>> x) const{ return  pow(10.0, x); }
+  bool isfixed() const { return false; }
 };
 
 struct Fixed_Tr {
-  constexpr auto name() { return "Fixed"; }
-  double tr(double x) { return x; }
-  double inv(double x) { return x; }
-  bool isfixed() { return true; }
+  static constexpr auto name()  { return "Fixed"; }
+  double tr(double x)const { return x; }
+  Derivative<double,double> tr(Derivative<double,double> x) const { return x; }
+  std::string tr(std::string ) const { return ""; }
+  Derivative<double,double> inv(Derivative<double,double> x) const{ return x; }
+  Derivative<double,Matrix<double>> inv(Derivative<double,Matrix<double>> x) const{ return x; }
+  bool isfixed()const { return true; }
 };
 
 template <class... Transformations> struct Transformation_library_impl {
@@ -333,10 +376,12 @@ public:
 private:
   std::string m_IdName;
   std::vector<std::string> m_ParNames;
+  
   std::map<std::string, std::size_t> m_index_map;
   
   transformations_vector m_tr;
   value_type m_standard_values;
+  std::vector<std::string> m_TrParNames;
   
   
   auto free_to_all(const Matrix<double> &x) const {
@@ -382,13 +427,20 @@ private:
     }
     return out;
   }
+  
+  
+  
 
 public:
   auto &transf() const { return m_tr; }
   auto &standard_values() const { return m_standard_values; }
   auto standard_parameter() const { return Parameters_values<Id>(*this,m_standard_values); }
   
-  auto inv(const Matrix<double> &x) const { return free_to_all(x); }
+  template<class C_Matrix>
+      requires U<C_Matrix, Matrix<double>>
+  auto inv(const C_Matrix &x) const { return free_to_all(x); }
+  
+  
   auto tr(const Matrix<double> &x) const { return all_to_free(x); }
 
   void push_back(const std::string &name,
@@ -443,7 +495,7 @@ public:
                              transformations_vector const &tr,
                              MatrixType &&std_values)
       : m_IdName{IdName}, m_ParNames{ParNames},m_index_map{get_index_map(ParNames)}, m_tr{tr},
-      m_standard_values{std::forward<MatrixType>(std_values)} {}
+      m_standard_values{std::forward<MatrixType>(std_values)}, m_TrParNames{tr.get_transformed_names(ParNames)} {}
   
   template <class MatrixType>
       requires std::is_same_v<std::vector<double>, std::decay_t<MatrixType>>
@@ -463,6 +515,8 @@ public:
   Parameters_Transformations() {}
 
   auto &names() const { return m_ParNames; }
+  auto &transformed_names() const { return m_TrParNames; }
+  
   auto &IdName() const { return m_IdName; }
   Maybe_error<std::size_t> operator[](const std::string &name) const {
       auto it = m_index_map.find(name);

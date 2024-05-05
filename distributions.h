@@ -244,8 +244,20 @@ class vlogL : public var::Var<vlogL, double> {
     friend std::string className(vlogL) { return "vlogL"; }
 };
 
+class Grad : public var::Constant<Grad, Matrix< double>> {
+    friend std::string className(Grad) { return "Grad"; }
+};
+
+class Hess : public var::Constant<Hess, SymPosDefMatrix< double>> {
+    friend std::string className(Hess) { return "Hess"; }
+};
+
+
+
 using logLs=var::Vector_Space<logL,elogL,vlogL>;
 
+using dlogLs=var::Vector_Space<logL,elogL,vlogL, Grad,Hess>;
+using dlogPs=var::Vector_Space<logL, Grad,Hess>;
 
 
 #endif // DISTRIBUTIONS_H

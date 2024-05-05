@@ -58,14 +58,14 @@ private:
     return std::visit([](auto const &m) { return 2 * logdet(m); }, cho);
   }
 
+  
+public:
   multivariate_normal_distribution(Matrix<T> &&mean, Cova &&cov,
                                    cholesky_type &&chol, Cova &&cov_inv,
                                    double logdetCov)
       : n_{}, mean_{std::move(mean)}, cov_{std::move(cov)},
-        cho_{std::move(chol)}, cov_inv_{std::move(cov_inv)},
-        logdetCov_{logdetCov} {}
-
-public:
+      cho_{std::move(chol)}, cov_inv_{std::move(cov_inv)},
+      logdetCov_{logdetCov} {}
   multivariate_normal_distribution() = default;
   template <class Mat, class Cov, typename Te,
             //= std::decay_t<decltype(get_value(std::declval<Mat>())(0, 0))>,
@@ -125,7 +125,15 @@ public:
     else
       return error_message("likelihood not finite:" + std::to_string(out));
   }
-
+  
+  Matrix<T> score(const Matrix<T> &x) const {
+      assert(x.size() == mean().size());
+      auto xdiff =  mean()-x;
+      if (xdiff.nrows() == cov_inv().nrows())
+          return cov_inv()*xdiff;
+      else
+          return xdiff*cov_inv();
+   }
   friend std::ostream &operator<<(std::ostream &os,
                                   const multivariate_normal_distribution &m) {
 

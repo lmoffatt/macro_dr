@@ -1132,7 +1132,28 @@ public:
   SymPosDefMatrix(const SymPosDefMatrix &x) : base_type(x) {}
   SymPosDefMatrix(SymPosDefMatrix &&x)
       : base_type(std::move(static_cast<base_type &>(x))) {}
-
+  
+  template <class S>
+      requires(std::is_same_v<T, std::decay_t<decltype(T{}, S{})>>)
+  SymPosDefMatrix(const DiagPosDetMatrix<S> &b): base_type{b.nrows(), b.ncols(),S{}} {
+      for (std::size_t i = 0; i < b.nrows(); ++i)
+          set(i, i, b(i, i));
+  }
+  
+  friend auto operator/(SymPosDefMatrix &&x, double y) {
+   
+      for (std::size_t i = 0; i < x.size(); ++i)
+          for (std::size_t j = i; j < x.size(); ++j)
+              x.set(i, j, x(i, j)/y);
+      return x;
+  }
+  friend auto operator/(SymPosDefMatrix const &x, double y) {
+      
+      auto z=x;
+      return std::move(z)/y;
+  }
+  
+  
   SymPosDefMatrix &operator=(const SymPosDefMatrix &x) {
     base_type::operator=(static_cast<base_type const &>(x));
     return *this;

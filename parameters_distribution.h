@@ -95,10 +95,22 @@ std::vector<double> variances){
   Maybe_error<double> logP(const Matrix<double> &x) const {
     return base_type::logP(x);
   }
+  
+  
+  
   Maybe_error<double> logP(const Parameters_transformed<Id> &x) const {
     return base_type::logP(x());
   }
-
+  
+  auto dlogP(const Parameters_transformed<Id> &x) const {
+      return base_type::score(x());
+  }
+  
+  auto hessian(const Parameters_transformed<Id> &) const {
+      return base_type::cov_inv()*(-1.0);
+  }
+  
+  
   template <class Parameter>
   friend void report_model(save_Parameter<Parameter> &s,
                            Parameters_Normal_Distribution const &d) {
