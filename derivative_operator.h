@@ -631,10 +631,10 @@ auto build(T...x){
 
 
 
-template<template<class...> class var, class Id, class F, class... T>
-    requires (std::constructible_from<var<Id,F,T...>,Var<Id>,F,T...>&&(std::is_same_v<var<Id,T...>,Fun<Id,T...>>)&&
+template<template<class...> class varr, class Id, class F, class... T>
+    requires (std::constructible_from<varr<Id,F,T...>,var::Var<Id>,F,T...>&&(std::is_same_v<varr<Id,T...>,Fun<Id,T...>>)&&
              (!is_derivative_v<T>&&...&&true)&&(!is_Maybe_error<T>&&...&&true))
-var<Id,F,std::decay_t<T>...> build(Var<Id>,F&& t_f,T&&...t_x){return var(Var<Id>{},std::forward<F>(t_f),std::forward<T>(t_x)...);}
+varr<Id,F,std::decay_t<T>...> build(Var<Id>,F&& t_f,T&&...t_x){return varr(Var<Id>{},std::forward<F>(t_f),std::forward<T>(t_x)...);}
 
 
 template<template<class...> class var, class Id, class F,class... T>
@@ -714,7 +714,14 @@ auto operator-(const T& x, const S& y)
 
 
 
-
+auto max(is_Container auto const& c)
+{
+    auto out=c[0];
+    for (std::size_t i=1; i<c.size(); ++i)
+        if (std::isnan(primitive(c[i]))||primitive(out)<primitive(c[i]))
+            out=c[i];
+    return out; 
+}
 
 
 

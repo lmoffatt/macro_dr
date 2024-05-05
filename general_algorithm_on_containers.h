@@ -1,6 +1,7 @@
 #ifndef GENERAL_ALGORITHM_ON_CONTAINERS_H
 #define GENERAL_ALGORITHM_ON_CONTAINERS_H
 
+//#include "derivative_operator.h"
 #include "maybe_error.h"
 #include <cmath>
 #include <concepts>
@@ -47,14 +48,7 @@ auto cumsum(is_Container auto const& c)
 
 
 
-auto max(is_Container auto const& c)
-{
-    auto out=c[0];
-    for (std::size_t i=1; i<c.size(); ++i)
-        if (std::isnan(c[i])||out<c[i])
-            out=c[i];
-    return out; 
-}
+
 
 
 

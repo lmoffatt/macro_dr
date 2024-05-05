@@ -5,7 +5,7 @@
 #include "parameters.h"
 #include <cstddef>
 #include <vector>
-#include "general_algorithm_on_containers.h"
+//#include "general_algorithm_on_containers.h"
 // #include "matrix_derivative.h"
 
 namespace var {
@@ -511,11 +511,19 @@ public:
             derivative_non_const()()[ij][i] = 0;
     }
     
+    void set(std::size_t i, Derivative<double, Parameters_transformed<Id>> const& x) {
+        primitive_non_const()[i] = x.primitive();
+        for (std::size_t ij = 0; ij < derivative()().size(); ++ij)
+            derivative_non_const()()[ij][i] = x.derivative()()[ij];
+    }
+    
+    
     auto operator[](std::size_t i) const {
         return Derivative<double, Parameters_transformed<Id>>(
             primitive()[i],
             applyMap([i](auto const &m) { return m[i]; }, derivative()()), dx());
     }
+   
     
     auto operator[](std::pair<std::size_t, std::size_t> ij) const {
         return Derivative<Matrix<double>, Parameters_transformed<Id>>(
@@ -702,6 +710,7 @@ void set(Derivative<aNonSymmetricMatrix<double>, Parameters_transformed<Id>> &x,
 
 template <class Id>
 class Derivative<Parameters_values<Id>, Parameters_transformed<Id>> {
+    Parameters_Transformations<Id> const *m_par;
     
     Derivative<Matrix<double>, Parameters_transformed<Id>> m_x;
     
@@ -714,6 +723,7 @@ public:
     auto size() const { return m_x.size(); }
     
     
+    
     Derivative() {}
     
     template <class dParam>
@@ -721,6 +731,14 @@ public:
                     Derivative<Matrix<double>, Parameters_transformed<Id>>, dParam>)
     Derivative( dParam &&x)
         : m_x{std::forward<dParam>(x)} {}
+    
+    
+    template <class dParam>
+        requires(std::constructible_from<
+                    Derivative<Matrix<double>, Parameters_transformed<Id>>, dParam>)
+    Derivative(const Parameters_Transformations<Id> &par, dParam &&x)
+        : m_par{&par}, m_x{std::forward<dParam>(x)} {}
+    
     
     template <class aParam>
         requires(std::constructible_from<Parameters_transformed<Id>, aParam>)
@@ -733,7 +751,13 @@ public:
     auto &dx() const { return m_x.dx(); }
     
     auto &operator()() const { return m_x; }
+    auto &operator()()  { return m_x; }
     
+    auto operator[](std::size_t i) const { return (*this)()[i]; }
+    
+    auto operator[](std::pair<std::size_t, std::size_t> ij) const {
+       return (*this)()[ij];
+    }
     
 };
 
@@ -1044,6 +1068,9 @@ auto operator*(const Derivative<aMatrix<double>, Parameters_transformed<Id>> &a,
                          derivative(a), derivative(b)));
 }
 
+
+
+
 template <class Id, template <class> class aMatrix>
     requires aMatrix<double>::is_Matrix
 auto operator*(const Derivative<double, Parameters_transformed<Id>> &b,
@@ -1057,6 +1084,17 @@ auto operator*(const Derivative<double, Parameters_transformed<Id>> &b,
                                     auto const &db) { return db * fa + fb * da; },
                          derivative(a), derivative(b)));
 }
+
+
+template <class Id, template <class> class aMatrix>
+    requires aMatrix<double>::is_Matrix
+auto operator/(const Derivative<aMatrix<double>, Parameters_transformed<Id>> &a,
+               const Derivative<double, Parameters_transformed<Id>> &b) {
+    
+    return a *(1.0/b);
+}
+
+
 
 template <class Id>
 Derivative<SymPosDefMatrix<double>, Parameters_transformed<Id>>

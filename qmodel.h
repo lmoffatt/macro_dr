@@ -483,7 +483,7 @@ to_Transition_Probability(C_Matrix const &x) {
   auto s = inv(diag(sumP));
   
   for (std::size_t i = 0; i < sumP.size(); ++i)
-    if (std::isnan(sumP[i]))
+    if (std::isnan(primitive(sumP[i])))
       std::cerr << "rro";
   if (s)
     // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
@@ -1885,10 +1885,10 @@ public:
           WgV_Wg_E2(i, j) = v_WgV(i, j) * E2m(i, j) * v_Wg[j];
       for (std::size_t k0 = 0; k0 < N; k0++) {
         auto rladt = v_ladt[k0];
-        if (rladt * rladt > v_eps) {
+        if (primitive(rladt) * primitive(rladt) > v_eps) {
           for (std::size_t k2 = 0; k2 < N; k2++) {
             auto rla2dt = v_ladt[k2];
-            if (rla2dt * rla2dt > v_eps)
+            if (primitive(rla2dt) * primitive(rla2dt) > v_eps)
               WgV_Wg_E2(k0, k2) = v_WgV(k0, k2) * v_Wg[k2] * 0.5;
             else
               WgV_Wg_E2(k0, k2) = v_WgV(k0, k2) * v_Wg[k2] *
@@ -1897,12 +1897,12 @@ public:
           }
         } else {
           for (std::size_t k2 = 0; k2 < N; k2++) {
-            double rla2dt = v_ladt[k2];
-            if (rla2dt * rla2dt > v_eps) {
+            auto rla2dt = v_ladt[k2];
+            if (primitive(rla2dt) * primitive(rla2dt) > v_eps) {
               WgV_Wg_E2(k0, k2) = v_WgV(k0, k2) * v_Wg[k2] *
                                   (v_exp_ladt[k0] - rla2dt - 1.0) / rla2dt /
                                   rla2dt;
-            } else if ((rla2dt - rladt) * (rla2dt - rladt) >
+            } else if ((primitive(rla2dt) - primitive(rladt)) * (primitive(rla2dt) - primitive(rladt)) >
                        v_eps) // comparing squared difference
             {
               WgV_Wg_E2(k0, k2) = v_WgV(k0, k2) * v_Wg[k2] *
@@ -1923,10 +1923,10 @@ public:
       for (std::size_t i = 0; i < N; i++) {
         for (std::size_t k0 = 0; k0 < N; k0++)
           for (std::size_t k2 = 0; k2 < N; k2++)
-            rgsqr_i[i] += 2 * t_V()(i, k0) * WgV_Wg_E2(k0, k2);
+            rgsqr_i[i] =rgsqr_i[i]+ 2 * t_V()(i, k0) * WgV_Wg_E2(k0, k2);
       }
 
-      auto r_gsqr_i = build<gsqr_i>(rgsqr_i);
+      auto r_gsqr_i = build<gsqr_i>(var::outside_in(rgsqr_i));
 
       auto r_gvar_i =
           build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
