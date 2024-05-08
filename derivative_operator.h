@@ -709,7 +709,7 @@ auto operator-(const T& x, const S& y)
     using X=dx_of_dfdx_t<T,S>;
     using F=decltype(x-primitive(y));
     
-    return Derivative<F,X>(x-primitive(y),-derivative(y)(),y.dx());
+    return Derivative<F,X>(x-primitive(y),derivative(y)()* (-1.0),y.dx());
 }
 
 

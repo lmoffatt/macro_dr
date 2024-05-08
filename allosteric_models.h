@@ -1199,10 +1199,10 @@ auto make_Q0_Qa(const Conformational_model_ &model,
       else if (!ag() || !d()) {
           // set(v_Q0(), i, i, v_Q0()(i, i) - Maybe_qij.value());  later change it
           // back
-          set(v_Q0(), i, v_j()(), Maybe_qij.value());
+          set(v_Q0(), i, v_j()(), std::move(Maybe_qij.value()));
       } else {
           //  set(v_Qa(), i, i, v_Qa()(i, i) - Maybe_qij.value());  same
-        set(v_Qa(), i, v_j()(), Maybe_qij.value());
+          set(v_Qa(), i, v_j()(), std::move(Maybe_qij.value()));
       }
     }
   }

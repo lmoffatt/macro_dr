@@ -160,10 +160,7 @@ auto add_Patch_inactivation_to_model(
                     Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
               auto n = p.size();
               auto inactivation = p[n - 1];
-              auto p_no_inactivation=Transfer_Op_to<std::decay_t<decltype(p)>, var::Parameters_values<Id>>(model.parameters_transformations(),
-                                                                  Matrix<double>(1,n-1));
-              for (std::size_t i=0; i<n-1; ++i)
-                  p_no_inactivation().set(i,p[i]);
+              auto p_no_inactivation=Transfer_Op_to<std::decay_t<decltype(p)>, var::Parameters_values<Id>>(model.parameters_transformations(),p[std::pair(0ul,n-2)]);
               auto mo=model(p_no_inactivation);
               using std::pow;
               if (!mo)
