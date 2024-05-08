@@ -347,6 +347,7 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_M_scheme_N_16_tasks.sh
     parallel_levenberg_tempering.h
     CLI_thermo_levenberg_evidence.h
+    scripts/evidence_levenberg_data.txt
     
     
     

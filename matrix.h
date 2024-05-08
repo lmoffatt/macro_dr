@@ -332,7 +332,7 @@ public:
   Matrix<double> operator[](std::pair<std::size_t, std::size_t> ij) const {
     if (size() == ncols()) {
       auto out = Matrix<double>(1ul, ij.second - ij.first + 1);
-      for (std::size_t i = 0; i < size(); ++i)
+      for (std::size_t i = 0; i < out.size(); ++i)
         out[i] = (*this)[ij.first + i];
       return out;
     } else {
@@ -1142,8 +1142,8 @@ public:
   
   friend auto operator/(SymPosDefMatrix &&x, double y) {
    
-      for (std::size_t i = 0; i < x.size(); ++i)
-          for (std::size_t j = i; j < x.size(); ++j)
+      for (std::size_t i = 0; i < x.nrows(); ++i)
+          for (std::size_t j = i; j < x.ncols(); ++j)
               x.set(i, j, x(i, j)/y);
       return x;
   }

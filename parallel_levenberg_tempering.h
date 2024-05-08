@@ -242,7 +242,7 @@ void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
     std::vector<std::uniform_real_distribution<double>> rdist(num_threads,
                                                               uniform_real);
 
-#pragma omp parallel for // collapse(2)
+//#pragma omp parallel for // collapse(2)
     for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
         std::size_t n_beta_f = std::ceil(n_beta / num_threads);
         for (std::size_t iib = 0; iib < n_beta_f; ++iib) {
@@ -285,7 +285,7 @@ void thermo_levenberg_jump_mcmc(std::size_t iter, thermo_levenberg_mcmc<Paramete
         
         std::size_t num_threads = omp_get_max_threads();
 
-#pragma omp parallel for //collapse(2)
+//#pragma omp parallel for //collapse(2)
         for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
             std::size_t n_beta_f = std::ceil(n_beta / num_threads);
             for (std::size_t iib = 0; (iib < n_beta_f)&&(i_thread * n_beta_f + iib<n_beta-1); iib+=2) {
@@ -311,6 +311,35 @@ void thermo_levenberg_jump_mcmc(std::size_t iter, thermo_levenberg_mcmc<Paramete
         
     }
 }
+
+
+template <class... saving, class... Ts, class Parameters>
+void report_title(save_mcmc<Parameters, saving...> &f,
+                  thermo_levenberg_mcmc<Parameters> const &data, const Ts &...ts) {
+    (report_title(static_cast<saving &>(f), data, ts...), ...);
+}
+
+
+template <class Parameter>
+void report_title(
+            save_likelihood<Parameter> &s, thermo_levenberg_mcmc<Parameter> const &
+            ...) {
+                s.f  << "iter" << s.sep << "dur" << s.sep
+                << "beta" << s.sep 
+                << "i_walker" << s.sep
+                << "logP"<<s.sep
+                <<" logL"<<s.sep
+        <<" elogL"<<s.sep
+        <<" vlogL"<<s.sep
+        << "plog_Evidence"<<s.sep
+        << "eplog_Evidence"<<s.sep
+        << "vplog_Evidence"<<s.sep
+        << "log_Evidence"<<s.sep
+        << "elog_Evidence"<<s.sep
+        << "vlog_Evidence"<<s.sep
+                <<"\n";
+        }
+
 
 
 template <class Parameter,class FunctionTable, class Duration>
@@ -344,6 +373,23 @@ template <class Parameter,class FunctionTable, class Duration>
     std::size_t num_Parameters(thermo_levenberg_mcmc<Parameters> const &x) {
         return x.walkers[0].m_x.size();
     }
+    
+    
+    template <class Parameter>
+    void report_title(save_Parameter<Parameter> &s, thermo_levenberg_mcmc<Parameter>const & ,
+                ...) {
+                    
+                    s.f << "iter" << s.sep
+                         << "dur" << s.sep
+                        << "beta" << s.sep 
+                        << "i_walker" << s.sep << "i_par" << s.sep
+                        << "par_value"<< s.sep
+                        << "gradient"
+                        << "\n";
+    }
+    
+    
+    
     
     template <class Parameter,class FunctionTable, class Duration>
  void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
@@ -521,7 +567,7 @@ auto init_levenberg_thermo_mcmc(FunctionTable &&f,
     by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
     auto ff = f.fork(omp_get_max_threads());
 
-#pragma omp parallel for //collapse(2)
+//#pragma omp parallel for //collapse(2)
     for (std::size_t ib = 0; ib < beta.size(); ++ib) {
         auto i_th=omp_get_thread_num();
             walker[ib] = init_levenberg_mcmc(ff[i_th], mt[i_th],ib, prior, lik, y, x);
@@ -574,7 +620,7 @@ auto thermo_levenberg_evidence(FunctionTable &&f,
     std::size_t iter = 0;
     const auto start = std::chrono::high_resolution_clock::now();
     auto &rep = therm.reporter();
-    report_title(rep, current, lik, y, x);
+    report_title(rep, current, lik, y, x, beta);
     report_title(f, "Iter");
     report_model_all(rep, prior, lik, y, x, beta);
     

@@ -96,12 +96,22 @@ public:
         requires std::is_same_v<Matrix<double>, std::decay_t<aMatrix>>
     constexpr d_d_(aMatrix &&dydx, Parameters_transformed<Id> const &x)
         : m_dydx{std::forward<aMatrix>(dydx)}, ptr_dx{&x} {}
+    
+    template <class aMatrix>
+        requires std::is_same_v<Matrix<double>, std::decay_t<aMatrix>>
+    constexpr d_d_(aMatrix &&dydx, Parameters_transformed<Id> const *x)
+        : m_dydx{std::forward<aMatrix>(dydx)}, ptr_dx{x} {}
     d_d_() {}
     
     auto &operator()() { return m_dydx; }
     auto &operator()() const { return m_dydx; }
     
     auto &dx() const { return *ptr_dx; }
+    bool has_dx()const {return ptr_dx!=nullptr;}
+    void set_dx(Parameters_transformed<Id> const& x)  {
+        ptr_dx=&x;
+    }
+    
     
     friend auto operator*(d_d_ const &df, const Parameters_transformed<Id> &x) {
         double out = 0;
@@ -137,6 +147,12 @@ public:
     constexpr auto &operator()() const { return m_dydx; }
     
     auto &dx() const { return *ptr_par; }
+    bool has_dx()const {return ptr_par!=nullptr;}
+    void set_dx(Parameters_transformed<Id> const& x)  {
+        ptr_par=&x;
+    }
+    
+    
     template <class F> friend auto apply_par(F &&f, d_d_ const &a) {
         using S = std::decay_t<std::invoke_result_t<F, aMatrix<double>>>;
         Matrix<S> x(a().nrows(), a().ncols());
@@ -266,12 +282,14 @@ public:
     
     template <class P, class D>
         requires(std::constructible_from<primitive_type, P> &&
-                 std::constructible_from<derivative_type, D,
-                                                                                       Parameters_transformed<Id> const &>)
+                 std::constructible_from<derivative_type, D,Parameters_transformed<Id> const &>)
     
     Derivative(P t_x, D &&t_d, Parameters_transformed<Id> const &x)
         : m_x{t_x}, m_d{std::forward<D>(t_d), x} {}
     Derivative() {}
+    
+    Derivative(double t_x,  Parameters_transformed<Id> const &x)
+        : m_x{t_x}, m_d{Matrix<double>(x().nrows(),x().ncols(),0.0), x} {}
     
     Derivative& operator=(const Derivative<double,Matrix<double>>& x)
     {
@@ -282,9 +300,15 @@ public:
     
     Derivative(double t_x) : m_x{t_x}, m_d{} {}
     
+    Derivative(const Derivative& x)=default;
+    Derivative(Derivative&& x)=default;
+    Derivative& operator=(const Derivative& x)=default;
+    Derivative& operator=(Derivative&& x)=default;
+    
     auto &primitive() { return m_x; }
     auto &primitive() const { return m_x; }
     auto &derivative() const { return m_d; }
+    auto &derivative()  { return m_d; }
     auto &dx() const { return m_d.dx(); }
     
     Derivative<double, Matrix<double>> operator()()const
@@ -513,8 +537,15 @@ public:
     
     void set(std::size_t i, Derivative<double, Parameters_transformed<Id>> const& x) {
         primitive_non_const()[i] = x.primitive();
+        derivative_non_const().set_dx(x.dx());
         for (std::size_t ij = 0; ij < derivative()().size(); ++ij)
             derivative_non_const()()[ij][i] = x.derivative()()[ij];
+    }
+    void set(std::size_t i, std::size_t j, Derivative<double, Parameters_transformed<Id>> const& x ) {
+        primitive_non_const()(i, j) = x.primitive();
+        derivative_non_const().set_dx(x.dx());
+        for (std::size_t ij = 0; ij < derivative()().size(); ++ij)
+            derivative_non_const()()[ij](i, j) = x.derivative()()[ij];
     }
     
     
@@ -699,9 +730,9 @@ void set(Derivative<aNonSymmetricMatrix<double>, Parameters_transformed<Id>> &x,
          const Derivative<double, Parameters_transformed<Id>> &value) {
     x.primitive()(i, j) = value.primitive();
     if (x.derivative()().size() == 0)
-        x.derivative()() = Matrix<aNonSymmetricMatrix<double>>(
-            value.derivative()().nrows(), value.derivative()().ncols(),
-            aNonSymmetricMatrix<double>(x.nrows(), x.ncols()));
+        x.derivative() = d_d_<aNonSymmetricMatrix<double> , Parameters_transformed<Id>>(
+            Matrix<aNonSymmetricMatrix<double>>(value.derivative()().nrows(), value.derivative()().ncols(),
+                                                aNonSymmetricMatrix<double>(x.nrows(), x.ncols())), value.dx());
     for (std::size_t k = 0; k < x.derivative()().size(); ++k)
         if (value.derivative()().size() > 0)
             x.derivative()()[k](i, j) = value.derivative()()[k];
@@ -729,22 +760,13 @@ public:
     template <class dParam>
         requires(std::constructible_from<
                     Derivative<Matrix<double>, Parameters_transformed<Id>>, dParam>)
-    Derivative( dParam &&x)
-        : m_x{std::forward<dParam>(x)} {}
+    Derivative(Parameters_Transformations<Id> const& tr, dParam &&x)
+        : m_par{&tr},m_x{std::forward<dParam>(x)} {}
+    
+ 
     
     
-    template <class dParam>
-        requires(std::constructible_from<
-                    Derivative<Matrix<double>, Parameters_transformed<Id>>, dParam>)
-    Derivative(const Parameters_Transformations<Id> &par, dParam &&x)
-        : m_par{&par}, m_x{std::forward<dParam>(x)} {}
-    
-    
-    template <class aParam>
-        requires(std::constructible_from<Parameters_transformed<Id>, aParam>)
-    Derivative(aParam &&x)
-        :m_x{std::forward<aParam>(x)()} {}
-    
+       
     auto &primitive() const { return m_x.primitive(); }
     auto &derivative() const { return m_x.derivative(); }
     
@@ -766,8 +788,9 @@ public:
 
 template <class Id, class Id2>
 class Derivative<Parameters_transformed<Id>, Parameters_transformed<Id2>> {
-    std::string const *ptr_IdName;
-    std::vector<std::string> const *ptr_ParNames;
+private:
+    Parameters_Transformations<Id> const *m_par;
+    
     
     Derivative<Matrix<double>, Parameters_transformed<Id2>> m_x;
     
@@ -777,19 +800,22 @@ class Derivative<Parameters_transformed<Id>, Parameters_transformed<Id2>> {
         auto &m_fixed = p.transf().fixed_set();
         Matrix<Derivative<double, Parameters_transformed<Id2>>> out;
         if (x.nrows() > x.ncols())
-            out = Matrix<Derivative<double, Parameters_transformed<Id2>>>(x.nrows() + m_fixed.size(), 1);
+            out = Matrix<Derivative<double, Parameters_transformed<Id2>>>(x.nrows() + m_fixed.size(), 1,0.0);
         else
-            out = Matrix<Derivative<double, Parameters_transformed<Id2>>>(1, x.ncols() + m_fixed.size());
+            out = Matrix<Derivative<double, Parameters_transformed<Id2>>>(1, x.ncols() + m_fixed.size(),0.0);
         assert(out.size() == p.names().size());
         std::size_t i_in = 0;
         std::size_t i_fi = 0;
         
         for (std::size_t i_out = 0; i_out < out.size(); ++i_out) {
             if ((m_fixed.size() > i_fi) && (i_out == m_fixed[i_fi])) {
-                out[i_out] = p.standard_values()[i_out];
+                out[i_out] = Derivative<double, Parameters_transformed<Id2>>(p.standard_values()[i_out],x[0].dx());
                 ++i_fi;
             } else {
                 out[i_out] = p.transf()[i_out]->inv(x[i_in]());
+                // transf() works with derivatives with respect to matrices
+                // the information regarding the parameter has to be added
+                out[i_out].derivative().set_dx(x[i_in].dx());
                 ++i_in;
             }
         }
@@ -810,24 +836,13 @@ public:
     auto nrows() const { return m_x.nrows(); }
     auto size() const { return m_x.size(); }
     
-    auto &IdName() const { return *ptr_IdName; }
-    auto &names() const { return *ptr_ParNames; }
+    auto &parameters() const { return *m_par; }
+    
     
     Derivative() {}
+    Derivative(const Parameters_Transformations<Id>& par,Derivative<Matrix<double>, Parameters_transformed<Id2>>&& der )
+        : m_par{&par}, m_x{std::move(der)}    {}
     
-    template <class dParam>
-        requires(std::constructible_from<
-                    Derivative<Matrix<double>, Parameters_transformed<Id2>>, dParam>)
-    Derivative(const std::string &IdName,
-               const std::vector<std::string> &par_names, dParam &&x)
-        : ptr_IdName{&IdName}, ptr_ParNames{&par_names},
-        m_x{std::forward<dParam>(x)} {}
-    
-    template <class aParam>
-        requires(std::constructible_from<Parameters_transformed<Id>, aParam>)
-    Derivative(aParam &&x)
-        : ptr_IdName{&x.IdName()}, ptr_ParNames{&x.names()},
-        m_x{std::forward<aParam>(x)()} {}
     
     auto &primitive() const { return m_x.primitive(); }
     auto &derivative() const { return m_x.derivative(); }
@@ -844,7 +859,7 @@ public:
     {
         auto v=inside_out((*this)());
         auto out=free_to_all(v);
-        return Derivative<Parameters_values<Id>, Parameters_transformed<Id2>>(outside_in(out));
+        return Derivative<Parameters_values<Id>, Parameters_transformed<Id2>>(parameters(),outside_in(out));
     }
 };
 
@@ -858,7 +873,7 @@ selfDerivative(const Parameters_transformed<Id> &x) {
     }
     
     return Derivative<Parameters_transformed<Id>, Parameters_transformed<Id>>(
-        x.parameters().IdName(), x.parameters().transformed_names(),
+        x.parameters(),
         Derivative<Matrix<double>, Parameters_transformed<Id>>(
             x(), d_d_<Matrix<double>, Parameters_transformed<Id>>(out, x)));
 }

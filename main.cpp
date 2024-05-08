@@ -335,6 +335,67 @@ calc_thermo_evidence(std::string id,
           "init_seed"));
   
   
+/**
+ * set_ThermoLevenAlgorithm(
+    std::size_t num_scouts_per_ensemble,
+    std::size_t number_trials_until_give_up, double stops_at,
+    double beta_upper_value, double beta_medium_value, bool includes_zero,
+    std::size_t max_iter_equilibrium, std::size_t beta_size,
+    std::size_t beta_upper_size, std::size_t beta_medium_size,
+    std::size_t thermo_jumps_every, std::size_t save_every_param_size_factor)
+ * 
+ * */  
+  
+  
+  
+  
+  
+  cm.push_function(
+      "set_ThermoLevenAlgorithm",
+      dcli::to_typed_function<std::size_t ,
+                              std::size_t ,
+                              double ,
+                              double , double ,
+                              bool , std::size_t ,
+                              std::size_t ,
+                              std::size_t , std::size_t ,
+                              std::size_t ,
+                              std::size_t >(
+          &set_ThermoLevenAlgorithm, "num_scouts_per_ensemble",
+          "number_trials_until_give_up", "stops_at", "beta_upper_value",
+          "beta_medium_value",
+          "includes_zero",
+          "max_iter_equilibrium", "beta_size", "beta_upper_size",
+          "beta_medium_size",  "thermo_jump_factor",
+          "save_every_param_size_factor"));
+  
+  
+  
+  /**
+   * inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
+                                 std::string prior,
+                                 likelihood_algo_type likelihood,
+                                 std::string recording,
+                                 experiment_file_type experiment_file,
+                                 thermo_leven_algo_type thermo_algorithm,
+                                 std::size_t save_every, std::size_t myseed) 
+   * */
+  
+  cm.push_function(
+      "thermo_levenberg_evidence",
+      dcli::to_typed_function<std::string,
+                              std::string, std::string, likelihood_algo_type, std::string,
+                              experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t>(
+          &calc_thermo_levenberg_evidence, "idname","model", "prior", "likelihood_algorithm",
+          "data", "experiment", "thermo_levenberg_algorithm", "save_every",
+          "init_seed"));
+  
+  
+  
+  
+  
+  
+  
   /**
    *  auto set_simulation_algorithm(bool includeN, std::size_t n_sub_dt)
    *
@@ -352,7 +413,13 @@ calc_thermo_evidence(std::string id,
    {
 
    * */
-
+  
+  
+  
+  
+  
+  
+  
   cm.push_function(
       "simulate",
       dcli::to_typed_function<std::string, recording_type, experiment_type,
