@@ -22,7 +22,7 @@ template<class T>
 concept StringLike = std::is_convertible_v<T, std::string_view>;
     
     
-    auto sum(is_Container auto const& c)
+auto sum(is_Container auto const& c)
 {
     using T=std::decay_t<decltype(c[0])>;
     
@@ -45,10 +45,22 @@ auto cumsum(is_Container auto const& c)
     return out; 
 }
 
+inline double fullsum(double x){return x;}
 
-
-
-
+ double fullsum(std::integral auto x){return x;}
+ 
+ 
+ 
+ auto fullsum(is_Container auto const& c)
+ {
+     double out=0.0;
+     for (std::size_t i=0; i<c.size(); ++i)
+     {
+         out+=fullsum(c[i]);
+     }
+     return out; 
+ }
+ 
 
 
 

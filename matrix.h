@@ -199,6 +199,7 @@ auto operator*(double b, const Matrix &a) {
 }
 
 template <class F, template <class> class T_Matrix>
+    requires(!is_Maybe_error<std::invoke_result_t<F, T_Matrix<double>>>)
 auto apply(F &&f, Matrix<T_Matrix<double>> const &a) {
   using S = std::decay_t<std::invoke_result_t<F, T_Matrix<double>>>;
   Matrix<S> x(a.nrows(), a.ncols());
@@ -206,6 +207,23 @@ auto apply(F &&f, Matrix<T_Matrix<double>> const &a) {
     x[i] = f(a[i]);
   return x;
 }
+template <class F, template <class> class T_Matrix>
+    requires(is_Maybe_error<std::invoke_result_t<F, T_Matrix<double>>> )
+auto apply_maybe(F &&f, Matrix<T_Matrix<double>> const &a)->Maybe_error<Matrix<typename std::decay_t<std::invoke_result_t<F, T_Matrix<double>>>::value_type>>
+{
+    using S = typename std::invoke_result_t<F, T_Matrix<double>>::value_type;
+   // using test=typename S::egber;
+    Matrix<S> x(a.nrows(), a.ncols());
+    for (std::size_t i = 0; i < x.size(); ++i)
+    {
+        auto Maybe_x=std::invoke(std::forward<F>(f),a[i]);
+        if (!Maybe_x)
+            return  Maybe_x.error();
+        x[i] =std::move(Maybe_x.value());
+    }
+    return x;
+}
+
 
 template <class F, template <class> class T_Matrix>
   requires(!is_Maybe_error<std::invoke_result_t<F, double>> &&
@@ -700,10 +718,13 @@ public:
     return lapack::Lapack_Sym_Product(a, b, true);
   }
   friend auto operator*(const SymmetricMatrix &a, const Matrix<double> &b) {
+      assert(a.ncols()==b.nrows());
     return lapack::Lapack_Sym_Product(a, b, true);
   }
   friend auto operator*(const Matrix<double> &b, const SymmetricMatrix &a) {
-    return lapack::Lapack_Sym_Product(a, b, false);
+      assert(b.ncols()==a.nrows());
+      
+      return lapack::Lapack_Sym_Product(a, b, false);
   }
   
   friend SymmetricMatrix operator*(const SymmetricMatrix &a, T b) {

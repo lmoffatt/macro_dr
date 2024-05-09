@@ -41,27 +41,27 @@ template <class Id> struct levenberg_mcmc<var::Parameters_transformed<Id>> {
     Maybe_error<multivariate_normal_distribution<double, SymPosDefMatrix<double>>>
         ProposedDistribution(double beta, double lambda) const
     {
-        auto thH = get<Hess>(m_logP)() + get<Hess>(m_logL)() * beta;
+        auto thFim = (get<Hess>(m_logP)() + get<Hess>(m_logL)() * beta)* -1.0;
         
-        auto Hl= SymPosDefMatrix<double>::I_sware_it_is_possitive(thH+ diag(thH)*lambda);
+        auto FIml= SymPosDefMatrix<double>::I_sware_it_is_possitive(thFim+ diag(thFim)*lambda);
         auto G = get<Grad>(m_logP)() + get<Grad>(m_logL)() * beta;
         
         auto &x = m_x;
-        auto chol_inv = cholesky(Hl);
+        auto chol_inv = cholesky(FIml);
         if (!chol_inv)
             return chol_inv.error();
         auto chol = inv(chol_inv.value());
         if (!chol)
             return chol.error();
-        auto Hinv = XXT(tr(chol.value()));
+        auto thFiminv = XXT(tr(chol.value()));
         
-        auto opt = x() - G * Hinv;
+        auto opt = x() + thFiminv* G;
         auto logDetCov = logdet(diag(chol.value()));
         if (!logDetCov)
             return logDetCov.error();
-        return multivariate_normal_distribution(std::move(opt), std::move(Hinv),
+        return multivariate_normal_distribution(std::move(opt), std::move(thFiminv),
                                                 std::move(chol.value()),
-                                                std::move(Hl), logDetCov.value());
+                                                std::move(FIml), logDetCov.value());
     }
 };
 
@@ -250,7 +250,7 @@ void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
             // dur.record("begin_loop_walker", ib * 2);
             //   for (std::size_t iii=0; iii<4; ++iii)
             //       {
-            auto lambda = 0.0;
+            auto lambda = 10.0;
             auto Maybe_trans = step_levenberg_thermo_mcmc_i(ff[i_thread], mt[i_thread],
                                                         rdist[i_thread], current.walkers[ib],
                                                         prior, lik, y, x, beta[ib], lambda);

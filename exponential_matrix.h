@@ -4,6 +4,10 @@
 #include "matrix.h"
 #include "matrix_derivative.h"
 #include "derivative_operator.h"
+#include "maybe_error.h"
+#include "qmodel.h"
+#include <cmath>
+#include <string>
 
 using var::primitive;
 
@@ -44,19 +48,26 @@ CMatrix expm_taylor(const CMatrix & x, std::size_t order=6)
 
 template <typename CMatrix>
     requires (var::U<CMatrix,Matrix<double>>)
-   CMatrix expm_taylor_scaling_squaring(const CMatrix & x, std::size_t order=6)
+Maybe_error<CMatrix> expm_taylor_scaling_squaring(const CMatrix & x, std::size_t order=6)
 {
     double max=maxAbs(primitive(x));
     double desired=0.125;
     int k=std::ceil(std::log2(max/desired));
-    std::size_t n=std::max(0,k);
+    int n=std::max(0,k);
     double scale=std::pow(2,-n);
     auto dx=x*scale;
     auto expm_dx=expm_taylor(dx,order);
-    auto expm_run=expm_dx;
+    auto Maybe_expm_run=to_transition_Probability(expm_dx);
+    if (!Maybe_expm_run)
+        return Maybe_expm_run.error();
+    auto expm_run=std::move(Maybe_expm_run.value());
     for (std::size_t i=0; i<n; ++i)
     {
-        expm_run=expm_run*expm_run;
+        Maybe_expm_run=to_transition_Probability(expm_run*expm_run);
+        if (!Maybe_expm_run)
+            return Maybe_expm_run.error();
+         expm_run=std::move(Maybe_expm_run.value());
+        
     }
     return expm_run;
 }
@@ -93,9 +104,20 @@ Maybe_error<CMatrix> expm_pade(const CMatrix &M) {
     if (!invD)
         return error_message("cannot invert D: " + invD.error()());
     else {
+
         F = invD.value() * F;
-        
-        return F;
+        auto sumF=var::sum(F);
+        if (std::isfinite(primitive(sumF)))
+        {
+            if constexpr (var::is_derivative_v<CMatrix>)
+            {
+                auto sumdf=var::sum(var::sum(F.derivative()()));
+                if (!std::isfinite(primitive(sumF)))
+                   return error_message(std::to_string(primitive(sumdf))+" is not finite");
+            }
+           return F;
+        }
+        else return error_message(std::to_string(primitive(sumF))+" is not finite");
     }
     /*    % Pade approximation of exp(M) and diff[exp(M)]
   X=M; Y=dM;
@@ -130,6 +152,24 @@ Maybe_error<CMatrix> expm_pade(const CMatrix &M) {
   */
 }
 
+template <class C_Matrix>
+auto to_transition_Probability(C_Matrix const &x)->Maybe_error<C_Matrix> {
+    using std::max;
+    using std::min;
+    
+    auto out = apply([](auto e) { return max(e, 0.0); }, x);
+    auto sumP = out * Matrix<double>(x.ncols(), 1ul, 1.0);
+    auto s = inv(diag(sumP));
+    
+    for (std::size_t i = 0; i < sumP.size(); ++i)
+        if (std::isnan(primitive(sumP[i])))
+            std::cerr << "rro";
+    if (s)
+        // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
+        return s.value() * out;
+    else
+        return s.error();
+}
 
 
 
@@ -154,7 +194,12 @@ Maybe_error<CMatrix> full_expm(const CMatrix &x) {
         auto E = eE.value();
         // Undo scaling by repeated squaring
         for (std::size_t k = 0; k < s; k++)
-            E = E * E;
+        {
+            auto Maybe_E = to_transition_Probability(E * E);
+            if(!Maybe_E)
+                return Maybe_E.error();
+            E=std::move(Maybe_E.value());
+        }
         return E;
     }
 }
@@ -162,7 +207,7 @@ Maybe_error<CMatrix> full_expm(const CMatrix &x) {
 
 template <typename CMatrix>
     requires (var::U<CMatrix,Matrix<double>>)
-CMatrix expm_sure(const CMatrix &x)
+Maybe_error<CMatrix> expm_sure(const CMatrix &x)
 {
     auto Maybe_expm=full_expm(x);
     if (Maybe_expm) return Maybe_expm.value();

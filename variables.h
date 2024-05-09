@@ -132,6 +132,7 @@ public:
     friend bool operator==(const Var& one,const Var& two){
         return Var::is_equal(one.value(),two.value());
     }
+    friend double fullsum(const Var& x){return fullsum(x());}
     
     friend  Maybe_error<bool> compare_contents(const Var& s0, const Var& s1,double RelError,  double AbsError,std::size_t max_errors)
     {
@@ -187,6 +188,10 @@ public:
         
     }
     constexpr auto& value()const {return m_x;}
+    
+    
+    friend double fullsum(const Constant& x){return fullsum(x());}
+    
     friend auto& print(std::ostream& os, const Constant& x){
         os<<typeid(Id).name()<<": \n";
         print(os,x.value());
@@ -462,6 +467,11 @@ public:
         return Vec::extract_impl(a);
     }
     
+    friend double fullsum(const Vector_Space& x)
+    
+    {
+        return (fullsum(get<Vars>(x))+...);
+    }        
     
     friend Maybe_error<bool> compare_contents(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10){
         return (compare_contents(get<Vars>(a),get<Vars>(b),RelError,AbsError,max_errors)&&...&&Maybe_error<bool>(true));
@@ -506,7 +516,12 @@ public:
     
 };
 
-
+template<class...Vars>
+bool is_finite(const Vector_Space<Vars...> & v)
+{
+    return std::isfinite(fullsum(v));
+}    
+    
 
 template<class...Vars>
 auto sep(Maybe_error<Vector_Space<Vars...>> const& x, const std::string& s)

@@ -309,16 +309,16 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
     if (std::isnan(primitive(x[i])))
       std::cerr << "error";
   
-  if constexpr( var::is_derivative_v<C_Matrix>)
+  if constexpr (var::is_derivative_v<C_Matrix>)
       for (std::size_t i = 0; i < x.size(); ++i)
-        if (std::isnan(derivative(x)()[i][0]))
-          std::cerr << "error";
-      
+      if (std::isnan(derivative(x)()[i][0]))
+      std::cerr << "error";
+  
   auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
-  if constexpr( var::is_derivative_v<C_Matrix>)
+  if constexpr (var::is_derivative_v<C_Matrix>)
       for (std::size_t i = 0; i < out.size(); ++i)
-        if (std::isnan(derivative(out)()[i][0]))
-          std::cerr << "error";
+      if (std::isnan(derivative(out)()[i][0]))
+      std::cerr << "error";
   
   auto s = var::sum(out);
   if (isnan(primitive(s)) || s == 0)
@@ -488,13 +488,16 @@ Maybe_error<Transfer_Op_to<C_Matrix, P>>
 to_Transition_Probability(C_Matrix const &x) {
   using std::max;
   using std::min;
-  auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
-  auto sumP = out * Matrix<double>(out.ncols(), 1ul, 1.0);
+  auto out = apply([](auto e) { return max(e, 0.0); }, x);
+  auto sumP = x * Matrix<double>(out.ncols(), 1ul, 1.0);
   auto s = inv(diag(sumP));
   
   for (std::size_t i = 0; i < sumP.size(); ++i)
     if (std::isnan(primitive(sumP[i])))
-      std::cerr << "rro";
+      {
+        std::cerr << "rro";
+        return error_message("not transition prob");
+      }
   if (s)
     // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
     return build<P>(s.value() * out);
@@ -1148,9 +1151,9 @@ Maybe_error<Transfer_Op_to<CQx, P>>
 expm_taylor_scaling_squaring(const CQx &x, std::size_t order = 6) {
   {
     double max = maxAbs(primitive(x()));
-    double desired = 0.125;
+    double desired = 0.125/8.0;
     int k = std::ceil(std::log2(max / desired));
-    std::size_t n = std::max(0, k);
+    int n = std::max(0, k);
     double scale = std::pow(2, -n);
     auto dx = x() * scale;
     auto expm_dx = expm_taylor(dx, order);
@@ -1436,8 +1439,9 @@ public:
       return build<P_initial>(to_Probability(p0 * Vv * ladt * Wv));
 
     } else {
-      //  std::cerr << "uses expm_sure\n";
-      auto Maybe_P = to_Transition_Probability(expm_sure(t_Qx()));
+      auto eP= expm_sure(t_Qx());
+      if (!eP) return eP.error();
+      auto Maybe_P = to_Transition_Probability(eP.value());
       if (!Maybe_P)
         return Maybe_P.error();
       else {
@@ -1727,7 +1731,8 @@ public:
   }
 
   template <class Patch_Model>
-  auto calc_P(const Patch_Model &m, const Qx &t_Qx, double dt, double t_min_P) {
+  Maybe_error<Transfer_Op_to<Patch_Model, P>>
+   calc_P(const Patch_Model &m, const Qx &t_Qx, double dt, double t_min_P) {
     auto t_eigenQx = calc_eigen(t_Qx);
     if (t_eigenQx) {
       auto Maybe_P = calc_P(m, t_eigenQx.value(), dt, t_min_P);
@@ -1735,7 +1740,9 @@ public:
         return Maybe_P;
     }
     //      return normalize(P(expm_sure(t_Qx() * dt)), t_min_P);
-    return to_Transition_Probability(expm_sure(t_Qx() * dt));
+    auto Maybe_eP=expm_sure(t_Qx() * dt);
+    if (!Maybe_eP) return Maybe_eP.error();
+    return to_Transition_Probability(Maybe_eP.value());
   }
 
   template <class Patch_Model>
@@ -2098,9 +2105,9 @@ return error_message("nan P");
                   number_of_samples ns, double dt, std::size_t order = 5ul) {
     auto v_Qrun = t_Qx() * dt;
     double max = maxAbs(primitive(v_Qrun));
-    double desired = 0.125;
+    double desired = 0.125/8.0;
     int k = std::ceil(std::log2(max / desired));
-    std::size_t n = std::max(0, k);
+    int n = std::max(0, k);
     double scale = std::pow(2, -n);
     auto t_Qrun_sub = v_Qrun * scale;
     auto Maybe_P_sub =
@@ -2125,9 +2132,9 @@ return error_message("nan P");
                    number_of_samples ns, double dt, std::size_t order = 5ul) {
     auto v_Qrun = t_Qx() * dt;
     double max = maxAbs(primitive(v_Qrun));
-    double desired = 0.125;
+    double desired = 0.125/8.0;
     int k = std::ceil(std::log2(max / desired));
-    std::size_t n = std::max(0, k);
+    int n = std::max(0, k);
     double scale = std::pow(2, -n);
     auto t_Qrun_sub = v_Qrun * scale;
     auto Maybe_P_sub =
@@ -2278,6 +2285,9 @@ return error_message("nan P");
     auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
     auto r_P = get<P>(x)();
     auto n = get<number_of_samples>(x)();
+    if (n<=0)
+      std::cerr<<" nana here";
+      
     auto r_gtotal_sqr_ij = get<PGG_n>(x)() * (2.0 / (n * n));
     auto r_gtotal_ij = get<PG_n>(x)() * (1.0 / n);
     auto r_gmean_ij = elemDivSafe(r_gtotal_ij, get<P>(x)(), get<min_P>(x)());
@@ -2285,11 +2295,15 @@ return error_message("nan P");
     auto r_gmean_i = r_gtotal_ij * u;
     auto r_gsqr_i = r_gtotal_sqr_ij * u;
     auto r_gvar_i = r_gtotal_var_ij * u;
-
-    return build<Qdtm>(get<number_of_samples>(x), get<min_P>(x), get<P>(x),
+    
+    
+    auto out= build<Qdtm>(get<number_of_samples>(x), get<min_P>(x), get<P>(x),
                        build<gmean_i>(r_gmean_i), build<gtotal_ij>(r_gtotal_ij),
                        build<gmean_ij>(r_gmean_ij), build<gsqr_i>(r_gsqr_i),
                        build<gvar_i>(r_gvar_i));
+    //if (!is_finite(out))
+    //  std::cerr<<" nana here";
+    return out;
   }
 
   template <class FunctionTable, class C_Patch_Model>
@@ -2331,8 +2345,6 @@ return error_message("nan P");
     auto dt = get<number_of_samples>(t_step)() / fs;
     auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
     
-    
-
     if (t_Qeig) {
       auto Maybe_Qdt = calc_Qdtm_eig(f, m, t_Qeig.value(),
                                      get<number_of_samples>(t_step), dt);
@@ -2372,18 +2384,6 @@ return error_message("nan P");
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     auto dt = get<number_of_samples>(t_step)() / fs;
     auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
-    if constexpr (true) {
-      auto test_der_eigen = var::test_Derivative(
-          [this, &t_step](auto l_m) {
-            return calc_eigen(l_m, get<ATP_concentration>(t_step));
-          },
-          1, 1e-9, m);
-      if (!test_der_eigen) {
-        std::cerr << test_der_eigen.error()();
-        return test_der_eigen.error();
-      }
-    }
-
     if (t_Qeig) {
       auto Maybe_Qdt = calc_Qdt_eig(f, m, t_Qeig.value(),
                                     get<number_of_samples>(t_step), dt);
@@ -2419,7 +2419,7 @@ return error_message("nan P");
   template <class FunctionTable, class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model>)
   auto calc_Qn_bisection(FunctionTable &&f, const C_Patch_Model &m,
-                         const ATP_step &t_step, double fs, std::size_t order)
+                         const ATP_step &t_step, double fs, int order)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qn>> {
     auto dt = get<number_of_samples>(t_step)() / fs;
     auto ns = get<number_of_samples>(t_step);
@@ -3411,7 +3411,7 @@ return error_message("nan P");
         r_plogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5 * chi2;
         if constexpr (var::is_derivative_v<std::decay_t<decltype(r_plogL)>>)
             if (std::isnan(var::derivative(r_plogL())()[0]))
-                      std::cerr<<"nan der\n";
+            std::cerr << "nan der\n";
         r_eplogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5;
       } else {
         r_plogL() = -log(Poisson_noise_normalization(
@@ -3862,11 +3862,10 @@ return error_message("nan P");
           if constexpr (predictions.value)
               return get<Patch_State_Evolution>(run);
           else {
-            auto gr=derivative(get<logL>(run))();
+            auto gr = derivative(get<logL>(run))();
             return Vector_Space<logL, elogL, vlogL, Grad, Hess>(
                 primitive(get<logL>(run)), primitive(get<elogL>(run)),
-                primitive(get<vlogL>(run)), Grad(gr),
-                  get<Hess>(run));
+                primitive(get<vlogL>(run)), Grad(gr), get<Hess>(run));
           }
         } else {
           if constexpr (predictions.value)
@@ -4875,14 +4874,15 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
 }
   
   template <class Id>
-  void report_title(save_Predictions<var::Parameters_transformed<Id>> &s,
-              thermo_levenberg_mcmc<var::Parameters_transformed<Id>> const &, ...) {
+  void report_title(
+      save_Predictions<var::Parameters_transformed<Id>> &s,
+      thermo_levenberg_mcmc<var::Parameters_transformed<Id>> const &, ...) {
     
     s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
         << "walker_id" << s.sep << "i_step" << s.sep << "time" << s.sep
-        << "num_samples" << s.sep << "ATP" << s.sep << "v_ev" 
-        << s.sep << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred"
-        << s.sep << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
+        << "num_samples" << s.sep << "ATP" << s.sep << "v_ev" << s.sep
+        << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
+        << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
         << "\n";
   }
   
