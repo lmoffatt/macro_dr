@@ -24,7 +24,7 @@ test_Derivative(F f, const Parameters x, double dx, double eps, Xs const&...xs)
         
         auto out=test_equality(T0,get_value(T1),eps);
         auto dout=test_equality(get_value(T0)-primitive(get_value(dY)),get_value(T1)-primitive(get_value(dY)),eps);
-        if (!dout)
+        if (!out)
         {
             std::stringstream ss;
             ss<<"\n test_Derivative on function ";
@@ -63,9 +63,12 @@ test_Derivative(F f, const Parameters x, double dx, double eps, Xs const&...xs)
         }
         else return dout; 
     }
-}   
+}
+
+
 template<class F,  class... Xs>
     requires ((std::is_same_v<NoDerivative,decltype(get_dx_of_dfdx(std::declval<Xs>()...))>))
+
 Maybe_error<bool>
 test_Derivative(F , double , double , Xs...)
 {
@@ -90,6 +93,7 @@ test_Derivative(F f, double dx, double eps, const Xs&...xs)
     for (std::size_t i=0; i<x().size(); ++i)
     {
         auto xi=x;
+        xi()=xi()-xi();
         xi()[i]=1.0;
         auto test_i=test_Derivative(f,xi,dx,eps,xs...);
         if (!test_i)

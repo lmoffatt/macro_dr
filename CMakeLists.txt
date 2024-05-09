@@ -348,6 +348,8 @@ add_executable(macro_dr main.cpp
     parallel_levenberg_tempering.h
     CLI_thermo_levenberg_evidence.h
     scripts/evidence_levenberg_data.txt
+    experiments/Moffatt_Hume_2007_ATP_time_idealized_2.txt
+    scripts/idealize_experiment_2.txt
     
     
     

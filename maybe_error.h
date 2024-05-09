@@ -107,7 +107,7 @@ template <class T>
 class Maybe_error;
 
 template <class T>
-concept is_Maybe_error = is_of_this_template_type_v<T, Maybe_error>;
+concept is_Maybe_error = is_of_this_template_type_v<std::decay_t<T>, Maybe_error>;
 
 template <class T> struct make_Maybe_error {
   using type = std::conditional_t<is_Maybe_error<T>, T, Maybe_error<T>>;

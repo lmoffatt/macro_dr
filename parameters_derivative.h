@@ -2,6 +2,8 @@
 #define PARAMETERS_DERIVATIVE_H
 
 #include "derivative_operator.h"
+#include "matrix.h"
+#include "maybe_error.h"
 #include "parameters.h"
 #include <cstddef>
 #include <vector>
@@ -375,14 +377,14 @@ public:
     }
     
     friend auto max(const Derivative &x, double y) {
-        if (x.primitive() <= y)
+        if (x.primitive() >= y)
             return x;
         else
             return Derivative(y, 0.0 * x.derivative()(), x.dx());
     }
     
     friend auto min(const Derivative &x, double y) {
-        if (x.primitive() >= y)
+        if (x.primitive() <= y)
             return x;
         else
             return Derivative(y, 0.0 * x.derivative()(), x.dx());
@@ -1189,25 +1191,32 @@ eigs(const Derivative<Matrix<double>, Parameters_transformed<Id>> &x,
     else {
         auto [VR, lambda, VL] = std::move(res).value();
         
-        auto derlambda = apply(
-            [VR, lambda, VL](auto const &dx) {
+        auto Maybe_derlambda = apply_maybe(
+            [VR, lambda, VL](auto const &dx) ->Maybe_error<DiagonalMatrix<double>>{
                 auto out = DiagonalMatrix<double>(lambda.nrows(), lambda.ncols());
                 for (std::size_t i = 0; i < lambda.size(); ++i) {
                     auto vT = tr(VL(":", i));
                     auto u = VR(":", i);
+                    auto vT_u=getvalue(vT * u);
+                    if (vT_u==0)
+                        return error_message("nan value for derivative");
                     out[i] = getvalue(vT * dx * u) / getvalue(vT * u);
                 }
                 return out;
             },
             x.derivative()());
+        if (!Maybe_derlambda)
+            return Maybe_derlambda.error();
+        //using test=typename decltype(Maybe_derlambda)::thet;
         
         auto dLambda = Derivative<DiagonalMatrix<double>, Parameters_transformed<Id>>(
-            lambda, derlambda, x.dx());
+            lambda, std::move(Maybe_derlambda.value()), x.dx()) ;
         
         auto VRRV = XTX(VR);
         
-        auto derVR = apply(
-            [&VR, &lambda, &VL, &VRRV](auto const &dx) {
+        auto Maybe_derVR = apply_maybe(
+            [&VR, &lambda, &VL, &VRRV](auto const &dx)->Maybe_error<Matrix<double>>
+            {
                 Matrix<double> C(VR.nrows(), VR.ncols());
                 for (std::size_t k = 0; k < VR.nrows(); ++k) {
                     auto uk = VR(":", k);
@@ -1216,7 +1225,10 @@ eigs(const Derivative<Matrix<double>, Parameters_transformed<Id>> &x,
                             auto vTj = tr(VL(":", j));
                             auto uj = VR(":", j);
                             double dl = lambda[k] - lambda[j];
-                            C(k, j) = getvalue(vTj * dx * uk) / dl / getvalue(vTj * uj);
+                            auto dl_vTJvuj=dl*getvalue(vTj * uj);
+                            if (dl_vTJvuj==0)
+                                return error_message("nan value for derivative");
+                            C(k, j) = getvalue(vTj * dx * uk) / dl_vTJvuj;
                         }
                     }
                     C(k, k) = 0;
@@ -1228,7 +1240,9 @@ eigs(const Derivative<Matrix<double>, Parameters_transformed<Id>> &x,
                 return tr(C) * VR;
             },
             x.derivative()());
-        auto dVR = Derivative<Matrix<double>, Parameters_transformed<Id>>(VR, derVR, x.dx());
+        if (!Maybe_derVR)
+            return Maybe_derVR.error();
+        auto dVR = Derivative<Matrix<double>, Parameters_transformed<Id>>(VR, Maybe_derVR.value(), x.dx());
         auto dVL = inv(dVR);
         if (!dVL)
             return dVL.error();
@@ -1240,13 +1254,17 @@ eigs(const Derivative<Matrix<double>, Parameters_transformed<Id>> &x,
 template <class Id>
 auto Taylor_first(Derivative<double, Parameters_transformed<Id>> const &f,
                   const Parameters_transformed<Id> &x, double eps) {
-    return primitive(f) + f.derivative() * x * eps;
+    auto dx=x;
+    dx()=dx()*eps;
+    return primitive(f) + f.derivative() * dx;
 }
 
 template <template <class> class aMatrix, class Id>
 auto Taylor_first(Derivative<aMatrix<double>, Parameters_transformed<Id>> const &f,
                   const Parameters_transformed<Id> &x, double eps) {
-    return primitive(f) + f.derivative() * x * eps;
+    auto dx=x;
+    dx()=dx()*eps;
+    return primitive(f) + f.derivative() * dx;
 }
 
 template <class Id>

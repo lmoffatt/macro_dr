@@ -1,6 +1,7 @@
 #ifndef LAPACK_HEADERS_H
 #define LAPACK_HEADERS_H
 
+#include "derivative_operator.h"
 #include "matrix.h"
 #include "maybe_error.h"
 #include <algorithm>
@@ -332,7 +333,8 @@ inline Matrix<double> Lapack_Sym_Product(const SymmetricMatrix<double> &x,
                                   const Matrix<double> &y,
                                   bool first_symmetric_c, double alpha,
                                   double beta) {
-
+    
+    
   /*
    DSYMM  performs one of the matrix-matrix operations
 
@@ -1163,24 +1165,27 @@ dgeevx_(char *BALANC, char *JOBVL, char *JOBVR, char *SENSE, int *N,
         double * /* precision, dimension( * ) */ WORK, int *LWORK,
         int * /*dimension( * ) */ IWORK, int *INFO);
 
+
+
+template<class C_Matrix, class C_DiagonalMatrix>
 inline auto sort_by_eigenvalue(
-    std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>> const
+    std::tuple<C_Matrix, C_DiagonalMatrix, C_Matrix> const
         &e) {
   auto &[VL, L, VR] = e;
   std::vector<std::pair<double, std::size_t>> la(L.size());
   for (std::size_t i = 0; i < L.size(); ++i)
-    la[i] = std::pair(L[i], i);
+      la[i] = std::pair(var::primitive(L)[i], i);
   std::sort(la.begin(), la.end());
-  DiagonalMatrix<double> Ls(L.nrows(), L.ncols());
+  C_DiagonalMatrix Ls(L.nrows(), L.ncols());
 
-  Matrix<double> VRs(VR.nrows(), VR.ncols());
-  Matrix<double> VLs(VL.nrows(), VL.ncols());
+  C_Matrix VRs(VR.nrows(), VR.ncols());
+  C_Matrix VLs(VL.nrows(), VL.ncols());
   for (std::size_t i = 0; i < la.size(); ++i) {
     auto is = la[i].second;
-    Ls[i] = L[is];
+      Ls.set(i,L[is]);
     for (std::size_t j = 0; j < la.size(); ++j) {
-      VRs(j, i) = VR(j, is);
-      VLs(i, j) = VL(is, j);
+          VRs.set(j, i, VR(j, is));
+        VLs.set(i, j,VL(is, j));
     }
   }
   
@@ -1204,14 +1209,16 @@ Right_Eigenvector_Nelson_Normalization(Matrix<double> &X) {
 }
 inline bool Nelson_Normalization(Matrix<double> &VR, Matrix<double> &VL) {
   Right_Eigenvector_Nelson_Normalization(VR);
+    bool ok=true;
   for (std::size_t i = 0; i < VR.nrows(); ++i) {
     double sum = 0;
     for (std::size_t j = 0; j < VR.ncols(); ++j)
       sum += VL(i, j) * VR(j, i);
     for (std::size_t j = 0; j < VR.ncols(); ++j)
       VL(i, j) = VL(i, j) / sum;
-    return sum!=0;
+    if ( sum!=0) ok=false;
   }
+  return ok;
   //   assert((are_Equal<true, Matrix<double>>().test_prod(
   //       VR * VL, Matrix_Generators::eye<double>(VR.ncols()), std::cerr)));
 }
@@ -1590,7 +1597,8 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
   } else {
     auto VL_cpp = tr(VR_lapack);
     auto VR_cpp = tr(VL_lapack);
-  // Nelson_Normalization(VR_cpp, VL_cpp);
+    if (!Nelson_Normalization(VR_cpp, VL_cpp))
+        return error_message("singular normalization");
     
     
     
@@ -1644,10 +1652,10 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
     assert(
         (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) <  std::sqrt(eps)*1000) &&
            " fails in eigendecomposition");
-//    return sort_by_eigenvalue(std::make_tuple(
-    return std::make_tuple(
+   return sort_by_eigenvalue(std::make_tuple(
+   // return std::make_tuple(
         VR_cpp, WR,
-        VL_cpp); // in reality VL, L, VR because of transposition
+        VL_cpp)); // in reality VL, L, VR because of transposition
   }
 }
 
