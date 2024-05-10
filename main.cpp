@@ -359,14 +359,14 @@ calc_thermo_evidence(std::string id,
                               bool , std::size_t ,
                               std::size_t ,
                               std::size_t , std::size_t ,
-                              std::size_t ,
+                              std::size_t ,std::size_t,
                               std::size_t >(
           &set_ThermoLevenAlgorithm, "num_scouts_per_ensemble",
           "number_trials_until_give_up", "stops_at", "beta_upper_value",
           "beta_medium_value",
           "includes_zero",
           "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "thermo_jump_factor",
+          "beta_medium_size",  "n_lambdas","thermo_jump_factor",
           "save_every_param_size_factor"));
   
   
