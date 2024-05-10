@@ -4901,23 +4901,23 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     
     auto all_Predictions =
         std::vector<std::decay_t<decltype(logLikelihoodPredictions(
-                                            ff[0], lik, data.walkers[0].m_x, y, x))>>(t_beta.size());
+                                            ff[0], lik, data.walkers[0].m_data.m_x, y, x))>>(t_beta.size());
     
     auto num_samples = size(y);
     // #pragma omp parallel for
     for (std::size_t i_b = 0; i_b < t_beta.size(); ++i_b) {
         auto i_th = omp_get_thread_num();
         
-        auto par = data.walkers[i_b].m_x;
-        auto walker_id = data.walkers[i_b].i_walker;
+        auto par = data.walkers[i_b].m_data.m_x;
+        auto walker_id = data.walkers[i_b].m_data.i_walker;
         all_Predictions[i_b] =
             logLikelihoodPredictions(ff[i_th], lik, par.to_value(), y, x);
       }
     
     f += ff;
     for (std::size_t i_b = 0; i_b < t_beta.size(); ++i_b) {
-        auto par = data.walkers[i_b].m_x;
-        auto walker_id = data.walkers[i_b].i_walker;
+        auto par = data.walkers[i_b].m_data.m_x;
+        auto walker_id = data.walkers[i_b].m_data.i_walker;
         auto prediction = all_Predictions[i_b];
         if (is_valid(prediction)) {
             auto &predictions = prediction.value();
@@ -5506,22 +5506,24 @@ auto thermo_levenberg_Model_by_max_iter(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     std::size_t beta_size, std::size_t beta_upper_size,
-    std::size_t beta_medium_size, double beta_upper_value,
+    std::size_t beta_medium_size,  double beta_upper_value,
     double beta_medium_value,
-
-    double stops_at, bool includes_zero, Saving_intervals sint,
+std::size_t n_lambdas,
+    double stops_at, bool includes_zero, Saving_Levenberg_intervals sint,
     std::size_t initseed) {
   return thermodynamic_levenberg_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed<Id>, save_Iter,
                 save_likelihood<var::Parameters_transformed<Id>>,
                 save_Parameter<var::Parameters_transformed<Id>>,
+                save_Levenberg_Lambdas<var::Parameters_transformed<Id>>,
                 save_Predictions<var::Parameters_transformed<Id>>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
+          get<save_Levenberg_Lambdas_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
-      beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
+      beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas, stops_at,
       includes_zero, initseed);
 }
 

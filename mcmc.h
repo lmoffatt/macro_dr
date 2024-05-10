@@ -125,6 +125,10 @@ public:
         get<Success_count>((*this)())() += get<Success_count>(other())();
         return *this;
     }
+    Trial_statistics(Trial_count n, Success_count s): var::Constant<Trial_statistics,
+                        var::Vector_Space<Trial_count, Success_count>>(var::Vector_Space(n,s)){}
+    
+    Trial_statistics()=default;
     
     friend void succeeds(Trial_statistics &me) {
         ++get<Trial_count>(me())();
