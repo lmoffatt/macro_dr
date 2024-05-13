@@ -18,14 +18,11 @@
 
 namespace var {
 
-template <class Id>
 class Parameters_Normal_Distribution;
 
-template <class Id>
 void write_Prior(const std::string filename, const std::string separator,
-                 Parameters_Normal_Distribution<Id> const &d); 
+                 Parameters_Normal_Distribution const &d); 
 
-template <class Id>
 class Parameters_Normal_Distribution
     : public multivariate_normal_distribution<double,
                                               DiagPosDetMatrix<double>> {
@@ -34,19 +31,23 @@ public:
       multivariate_normal_distribution<double, DiagPosDetMatrix<double>>;
 
 private:
-  Parameters_Transformations<Id> m_tr;
+  Parameters_Transformations m_tr;
 
 public:
-  Parameters_Normal_Distribution(Parameters_Transformations<Id> &&t_tr,
+  Parameters_Normal_Distribution(Parameters_Transformations &&t_tr,
                                  base_type &&dist)
       : base_type{std::move(dist)}, m_tr{std::move(t_tr)} {}
 
-  Parameters_Normal_Distribution(Parameters_Transformations<Id> const &t_tr,
+  Parameters_Normal_Distribution(Parameters_Transformations const &t_tr,
                                  base_type &&dist)
       : base_type{std::move(dist)}, m_tr{t_tr} {}
-
+  
+  Parameters_Normal_Distribution(Parameters_Transformations const &t_tr,
+                                 base_type const &dist)
+      : base_type{dist}, m_tr{t_tr} {}
+  
   static Maybe_error<Parameters_Normal_Distribution>
-  create(const Parameters_Transformations<Id> &t_par,
+  create(const Parameters_Transformations &t_par,
          base_type &&dist) {
    
       return Parameters_Normal_Distribution(t_par, 
@@ -54,7 +55,7 @@ public:
   }
 
   static Maybe_error<Parameters_Normal_Distribution>
-  create(const Parameters_Transformations<Id> &t_par,
+  create(const Parameters_Transformations &t_par,
          base_type const &dist) {
       return Parameters_Normal_Distribution(t_par, 
                                             dist);
@@ -69,7 +70,7 @@ std::vector<double> variances){
           return error_message("number of paremeters is different from number of transformations");
       if (!(trs.size()==values.size()&& values.size()==variances.size()))
           return error_message("number of paremeters is different from values and variances");
-      auto param=Parameters_Transformations<Id>(ModelName,ParamNames,std::move(trs),values);
+      auto param=Parameters_Transformations(ModelName,ParamNames,std::move(trs),values);
       auto tr_values=param.tr(param.standard_values());
       auto tr_variance= param.transf().remove_fixed(variances);
       auto Maybe_dist = make_multivariate_normal_distribution(tr_values,
@@ -88,8 +89,8 @@ std::vector<double> variances){
   auto &names() const { return m_tr.names(); }
 
   auto &parameters() const { return m_tr; }
-  Parameters_transformed<Id> operator()(mt_64i &mt)const {
-    return Parameters_transformed<Id>(parameters(),base_type::operator()(mt));
+  Parameters_transformed operator()(mt_64i &mt)const {
+    return Parameters_transformed(parameters(),base_type::operator()(mt));
   }
 
   Maybe_error<double> logP(const Matrix<double> &x) const {
@@ -98,18 +99,21 @@ std::vector<double> variances){
   
   
   
-  Maybe_error<double> logP(const Parameters_transformed<Id> &x) const {
+  Maybe_error<double> logP(const Parameters_transformed &x) const {
     return base_type::logP(x());
   }
   
-  auto dlogP(const Parameters_transformed<Id> &x) const {
+  auto dlogP(const Parameters_transformed &x) const {
       return base_type::score(x());
   }
   
-  auto hessian(const Parameters_transformed<Id> &) const {
+  auto hessian(const Parameters_transformed &) const {
       return base_type::cov_inv()*(-1.0);
   }
   
+  auto FIM(const Parameters_transformed &) const {
+      return base_type::cov_inv();
+  }
   
   template <class Parameter>
   friend void report_model(save_Parameter<Parameter> &s,
@@ -122,11 +126,11 @@ std::vector<double> variances){
       }
 };
 
-template <class Id>
+
 void write_Prior(const std::string filename, const std::string separator,
-                 Parameters_Normal_Distribution<Id> const &d) {
+                 Parameters_Normal_Distribution const &d) {
   std::ofstream f(filename);
-  using base_type = typename Parameters_Normal_Distribution<Id>::base_type;
+  using base_type = typename Parameters_Normal_Distribution::base_type;
   f << std::setprecision(std::numeric_limits<double>::digits10 +3);
   auto tr_m = static_cast<base_type const &>(d).mean();
   auto cov = static_cast<base_type const &>(d).cov();
@@ -157,8 +161,8 @@ void write_Prior(const std::string filename, const std::string separator,
   }
 }
 
-template <class Id>
-Maybe_error<Parameters_Normal_Distribution<Id>>
+
+Maybe_error<Parameters_Normal_Distribution>
 load_Prior(const std::string filename, const std::string separator,
            const std::string &ModelName,
            const std::vector<std::string> &ParamNames) {
@@ -221,7 +225,7 @@ load_Prior(const std::string filename, const std::string separator,
         std::getline(f, line);
         ss = std::stringstream(line);
       }
-      auto param=Parameters_Transformations<Id>(ModelName,ParamNames,std::move(trs),v);
+      auto param=Parameters_Transformations(ModelName,ParamNames,std::move(trs),v);
       auto tr_values=param.tr(param.standard_values());
       auto Maybe_dist = make_multivariate_normal_distribution(tr_values,
                                                               DiagPosDetMatrix<double>(vars));
@@ -235,29 +239,28 @@ load_Prior(const std::string filename, const std::string separator,
   }
 }
 
-template <class Id>
-auto prior_around(const Parameters_Transformations<Id> &tr, double error) {
+
+auto prior_around(const Parameters_Transformations &tr, double error) {
   assert(error > 0);
 
   auto x = tr.tr(tr.standard_values());
   auto Maybe_dist = make_multivariate_normal_distribution(
       x, DiagPosDetMatrix<double>(x.size(), x.size(), error));
 
-  return Parameters_Normal_Distribution<Id>(tr, std::move(Maybe_dist.value()));
+  return Parameters_Normal_Distribution(tr, std::move(Maybe_dist.value()));
 }
 
-template <class Id>
-auto prior_around(const Parameters_Transformations<Id> &tr,
-                  std::vector<double> values) {
-  assert(*std::min(values.begin(), values.end()) > 0);
+// auto prior_around(const Parameters_Transformations &tr,
+//                   std::vector<double> values) {
+//   assert(*std::min(values.begin(), values.end()) > 0);
 
-  auto x = tr.tr(tr.parameter_value());
+//   auto x = tr.tr(tr.parameter_value());
 
-  auto Maybe_dist = make_multivariate_normal_distribution(
-      x, DiagPosDetMatrix<double>(values));
+//   auto Maybe_dist = make_multivariate_normal_distribution(
+//       x, DiagPosDetMatrix<double>(values));
 
-  return Parameters_Normal_Distribution<Id>(tr, std::move(Maybe_dist.value()));
-}
+//   return Parameters_Normal_Distribution(tr, std::move(Maybe_dist.value()));
+// }
 } // namespace var
 
 #endif // PARAMETERS_DISTRIBUTION_H

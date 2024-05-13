@@ -971,7 +971,7 @@ make_Conformational_model_scheme(
 
 template <class Id, class P>
     requires std::is_same_v<var::untransformed_type_t<P>,
-                            var::Parameters_values<Id>>
+                            var::Parameters_values>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
               const var::Parameters_Names &names, const P &par,
               const Conformational_transition &tr,
@@ -1017,7 +1017,7 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 
 template <class Id, class P>
   requires std::is_same_v<var::untransformed_type_t<P>,
-                            var::Parameters_values<Id>>
+                            var::Parameters_values>
 auto calc_Qij_old_with_r(const Conformational_interaction_scheme &inter,
                          const var::Parameters_Names &names, const P &par,
                          const Conformational_transition &tr,
@@ -1064,7 +1064,7 @@ auto calc_Qij_old_with_r(const Conformational_interaction_scheme &inter,
 
 template <class Id, class P>
     requires std::is_same_v<var::untransformed_type_t<P>,
-                            var::Parameters_values<Id>>
+                            var::Parameters_values>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
               const var::Parameters_Names &names, const P &par,
               const Conformational_transition &tr,
@@ -1078,7 +1078,7 @@ auto calc_Qij(const Conformational_interaction_scheme &inter,
 
 template <class Id, class P>
     requires std::is_same_v<var::untransformed_type_t<P>,
-                            var::Parameters_values<Id>>
+                            var::Parameters_values>
 auto calc_Qij(const Conformational_interaction_scheme &inter,
               const var::Parameters_Names &names, const P &par,
               const Conformational_transition &tr)
@@ -1160,7 +1160,7 @@ auto calc_Qij_formula(const Conformational_interaction_scheme &inter,
 template <class Id, class Conformational_model_, class P>
     requires(
         std::is_same_v<var::untransformed_type_t<P>,
-                       var::Parameters_values<Id>> &&
+                       var::Parameters_values> &&
         (std::is_same_v<Conformational_model_, Conformational_model> ||
             std::is_same_v<Conformational_model_, Conformational_model_standarized>))
 auto make_Q0_Qa(const Conformational_model_ &model,
@@ -1211,7 +1211,7 @@ auto make_Q0_Qa(const Conformational_model_ &model,
 
 template <class Id, class P>
     requires std::is_same_v<var::untransformed_type_t<P>,
-                            var::Parameters_values<Id>>
+                            var::Parameters_values>
 auto get_calc_Qij(const Conformational_interaction_scheme &inter,
                   const typename var::Parameters_Names &names, const P &par,
                   const Conformational_transition &tr,
@@ -1303,7 +1303,7 @@ auto make_Q0_Qa_formula(const Conformational_model_ &model,
 
 template <class Id, class P>
   requires std::is_same_v<var::untransformed_type_t<P>,
-                            var::Parameters_values<Id>>
+                            var::Parameters_values>
 auto calc_gi(const Conductance_interaction_scheme &scheme,
              const var::Parameters_Names &names, const P &par,
              const Conductance_state_count &count,
@@ -1412,7 +1412,7 @@ auto calc_gi_formula(const Conductance_interaction_scheme &scheme,
 template <class Id, class Conformational_model_, class P>
     requires(
         std::is_same_v<var::untransformed_type_t<P>,
-                       var::Parameters_values<Id>> &&
+                       var::Parameters_values> &&
         (std::is_same_v<Conformational_model_, Conformational_model> ||
             std::is_same_v<Conformational_model_, Conformational_model_standarized>))
 auto make_g(const Conformational_model_ &model,
@@ -1932,7 +1932,7 @@ inline auto get_states_structure(const Conformational_model &model) {
 template <class Id, class Conformational_model_, class P>
     requires(
         std::is_same_v<var::untransformed_type_t<P>,
-                       var::Parameters_values<Id>> &&
+                       var::Parameters_values> &&
         (std::is_same_v<Conformational_model_, Conformational_model> ||
             std::is_same_v<Conformational_model_, Conformational_model_standarized>))
 auto make_Model(const Conformational_model_ &model,

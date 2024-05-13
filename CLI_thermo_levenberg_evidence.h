@@ -71,7 +71,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                 mt_64i mt(myseed);
                 
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, beta_size,
+                      iterations_between_thermo_jumps, max_iter_equilibrium, beta_size,
                       beta_upper_size, beta_medium_size, beta_upper_value,
                       beta_medium_value, n_lambdas,stops_at, includes_zero,
                       save_every_param_size_factor] = std::move(thermo_algorithm);
@@ -84,15 +84,14 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior, sep, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << "\n-------------errror------------\n"
                               << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
+                    std::size_t thermo_jumps_every = iterations_between_thermo_jumps;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
@@ -110,7 +109,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));
                         
-                        auto tmi = thermo_levenberg_Model_by_max_iter<MyModel>(
+                        auto tmi = thermo_levenberg_Model_by_max_iter(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size, beta_upper_size,
                             beta_medium_size, beta_upper_value, beta_medium_value,
@@ -190,7 +189,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                 mt_64i mt(myseed);
                 
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, beta_size,
+                      iterations_between_thermo_jumps, max_iter_equilibrium, beta_size,
                       beta_upper_size, beta_medium_size, beta_upper_value,
                       beta_medium_value, n_lambda,stops_at, includes_zero,
                       save_every_param_size_factor] = std::move(thermo_algorithm);
@@ -203,7 +202,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior, sep, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << "\n-------------errror------------\n"
@@ -211,7 +210,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
                     std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
+                        param1_prior.size() * iterations_between_thermo_jumps;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
@@ -227,7 +226,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));
                         
-                        auto tmi = new_thermo_Model_by_max_iter<MyModel>(
+                        auto tmi = new_thermo_Model_by_max_iter(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size, beta_upper_size,
                             beta_medium_size, beta_upper_value, beta_medium_value,

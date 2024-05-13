@@ -252,12 +252,15 @@ class Hess : public var::Constant<Hess, SymPosDefMatrix< double>> {
     friend std::string className(Hess) { return "Hess"; }
 };
 
+class FIM : public var::Constant<FIM, SymPosDefMatrix< double>> {
+    friend std::string className(FIM) { return "FIM"; }
+};
 
 
 using logLs=var::Vector_Space<logL,elogL,vlogL>;
 
-using dlogLs=var::Vector_Space<logL,elogL,vlogL, Grad,Hess>;
-using dlogPs=var::Vector_Space<logL, Grad,Hess>;
+using dlogLs=var::Vector_Space<logL,elogL,vlogL, Grad,FIM>;
+using dlogPs=var::Vector_Space<logL, Grad,FIM>;
 
 
 #endif // DISTRIBUTIONS_H

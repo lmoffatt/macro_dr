@@ -7,6 +7,7 @@
 #include "maybe_error.h"
 #include "mcmc.h"
 #include "multivariate_normal_distribution.h"
+#include "parameters.h"
 #include "random_samplers.h"
 #include "variables.h"
 #include <algorithm>
@@ -1236,6 +1237,11 @@ public:
   friend void report_model(save_Predictions &, ...) {}
 };
 
+namespace macrodr{
+void report_title(
+    save_Predictions<var::Parameters_transformed> &s,
+    thermo_mcmc<var::Parameters_transformed> const &, ...);
+}
 template <class Parameters, class... saving>
 class save_mcmc : public observer, public saving... {
 
@@ -1272,6 +1278,7 @@ public:
 
   friend void report_title(save_mcmc &f, thermo_mcmc<Parameters> const &data,
                            ...) {
+      using namespace macrodr;
     (report_title(static_cast<saving &>(f), data), ..., 1);
   }
 };

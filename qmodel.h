@@ -301,35 +301,36 @@ class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
 class P_mean : public var::Var<P_mean, Matrix<double>> {};
 
-template <class C_Matrix> auto to_Probability(C_Matrix const &x) {
+template <class C_Matrix> auto to_Probability(C_Matrix const &x) ->Maybe_error<C_Matrix>{
 
   using std::max;
   using std::min;
+  if (!isfinite(var::fullsum(x)))
+    return error_message("error in Probability");
+    
   for (std::size_t i = 0; i < x.size(); ++i)
     if (std::isnan(primitive(x[i])))
-      std::cerr << "error";
-  
+    
   if constexpr (var::is_derivative_v<C_Matrix>)
       for (std::size_t i = 0; i < x.size(); ++i)
       if (std::isnan(derivative(x)()[i][0]))
-      std::cerr << "error";
+      return error_message("error in derivative");
   
-  auto out = apply([](auto e) { return min(max(e, 0.0), 1.0); }, x);
-  if constexpr (var::is_derivative_v<C_Matrix>)
-      for (std::size_t i = 0; i < out.size(); ++i)
-      if (std::isnan(derivative(out)()[i][0]))
-      std::cerr << "error";
+  auto out = apply([](auto e) { return max(e, 0.0); }, x);
   
   auto s = var::sum(out);
-  if (isnan(primitive(s)) || s == 0)
-    return out * (1.0 / s);
+  if ( s == 0)
+    return error_message(" cero probability");
   return out * (1.0 / s);
 }
 
-template <class C_Matrix> auto to_Covariance_Probability(C_Matrix const &x) {
+template <class C_Matrix> auto to_Covariance_Probability(C_Matrix const &x) ->Maybe_error<C_Matrix>
+{
 
   using std::max;
   using std::min;
+  if (!isfinite(var::fullsum(x)))
+    return error_message("nan Cov");
   auto out = x;
   for (auto i = 0ul; i < x.nrows(); ++i) {
       if (primitive(out(i, i)) <= 0.0) {
@@ -687,7 +688,7 @@ using Patch_State_and_Evolution =
 
 using Patch_State_and_Hessian =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
-                 eplogL, vplogL, macror_algorithm, Hess>;
+                 eplogL, vplogL, macror_algorithm, FIM>;
 
 class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
@@ -1436,7 +1437,10 @@ public:
       auto ladt = primitive(landa) - primitive(landa);
       ladt[i_landa] = 1.0;
 
-      return build<P_initial>(to_Probability(p0 * Vv * ladt * Wv));
+      auto Maybe_P=to_Probability(p0 * Vv * ladt * Wv); 
+      if (!Maybe_P)
+        return Maybe_P.error();
+      return build<P_initial>(std::move(Maybe_P.value()));
 
     } else {
       auto eP= expm_sure(t_Qx());
@@ -1454,8 +1458,10 @@ public:
         }
         if (!Maybe_P2)
           return Maybe_P2.error();
-        else
-          return build<P_initial>(to_Probability(p0 * Maybe_P2.value()()));
+        auto Maybe_P3= to_Probability(p0 * Maybe_P2.value()());
+        if (!Maybe_P3)
+          return Maybe_P3.error();
+        return build<P_initial>(std::move(Maybe_P3.value()));
       }
     }
   }
@@ -1888,9 +1894,9 @@ public:
       Matrix<double> u(N, 1, 1.0);
       auto r_gmean_i =
           force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u), t_g);
-      // if (crude_gmean_violation(primitive(r_gmean_i),
-      // primitive(get<g>(m))))
-      //     std::cerr<<"gmean_violation\n";
+    if (crude_gmean_violation(primitive(r_gmean_i),
+        primitive(get<g>(m))))
+        std::cerr<<"gmean_violation\n";
 
       Matrix<Op_t<Trans, double>> WgV_Wg_E2(N, N, 0.0);
 
@@ -2073,9 +2079,9 @@ return error_message("nan P");
       Matrix<double> u(N, 1, 1.0);
       auto r_gmean_i =
           force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u), t_g);
-      // if (crude_gmean_violation(primitive(r_gmean_i),
-      // primitive(get<g>(m))))
-      //     std::cerr<<"gmean_violation\n";
+       if (crude_gmean_violation(primitive(r_gmean_i),
+       primitive(get<g>(m))))
+           std::cerr<<"gmean_violation\n";
 
       auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
       auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
@@ -2115,13 +2121,14 @@ return error_message("nan P");
     if (!Maybe_P_sub) {
       return Maybe_P_sub.error();
     } else {
+      auto sub_ns=number_of_samples(ns()*scale);                                             
       auto P_sub = std::move(Maybe_P_sub.value());
-      auto r_Qn = get_Qn(P_sub, get<g>(m), ns, get<min_P>(m));
+      auto r_Qn = get_Qn(P_sub, get<g>(m), sub_ns, get<min_P>(m));
       for (std::size_t i = 0; i < n; ++i) {
         r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
       }
-      get<number_of_samples>(r_Qn) = ns;
-      return Qn_to_Qdt(r_Qn);
+      assert(get<number_of_samples>(r_Qn) == ns);
+      return Qn_to_Qdt(r_Qn,m);
     }
   }
 
@@ -2142,13 +2149,14 @@ return error_message("nan P");
     if (!Maybe_P_sub) {
       return Maybe_P_sub.error();
     } else {
+      auto sub_ns=number_of_samples(ns()*scale);                                             
       auto P_sub = std::move(Maybe_P_sub.value());
-      auto r_Qn = get_Qn(P_sub, get<g>(m), ns, get<min_P>(m));
+      auto r_Qn = get_Qn(P_sub, get<g>(m), sub_ns, get<min_P>(m));
       for (std::size_t i = 0; i < n; ++i) {
         r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
       }
-      get<number_of_samples>(r_Qn) = ns;
-      return Qn_to_Qdtm(r_Qn);
+    assert(get<number_of_samples>(r_Qn) == ns);
+      return Qn_to_Qdtm(r_Qn,m);
     }
   }
 
@@ -2235,8 +2243,11 @@ return error_message("nan P");
     auto max_g = var::max(v_g());
     auto min_g = var::min(v_g());
     if ((max_g_m <= max_g) && (min_g_m >= min_g))
+    {
+      std::cerr<<  "max_g_m="<<max_g_m<<" max_g="<<max_g<<" min_g_m="<<min_g_m<<" min_g="<<min_g<<"\n";
       return false;
-    else
+    }
+      else
       return true;
   }
 
@@ -2244,7 +2255,7 @@ return error_message("nan P");
     requires((U<C_gmean, gmean_i> || U<C_gmean, gtotal_ij> ||
               U<C_gmean, gmean_ij>) &&
              U<C_g, g>)
-  auto force_gmean_in_range(C_gmean &&g_mean, const C_g &v_g) {
+  static auto force_gmean_in_range(C_gmean &&g_mean, const C_g &v_g) {
     auto gmax = var::max(primitive(v_g()));
     auto gmin = var::min(primitive(v_g()));
     for (std::size_t i = 0; i < g_mean().size(); ++i) {
@@ -2256,50 +2267,63 @@ return error_message("nan P");
     return std::move(g_mean);
   }
 
-  template <class C_Qn>
+  template <class C_Qn, class C_Patch_Model>
     requires(U<C_Qn, Qn>)
-  static auto Qn_to_Qdt(const C_Qn &x) {
+  static auto Qn_to_Qdt(const C_Qn &x,const C_Patch_Model &m) {
     auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
     auto r_P = get<P>(x)();
     auto n = get<number_of_samples>(x)();
     auto r_gtotal_sqr_ij = get<PGG_n>(x)() * (2.0 / (n * n));
     auto r_gtotal_ij = get<PG_n>(x)() * (1.0 / n);
-    auto r_gmean_ij = elemDivSafe(r_gtotal_ij, get<P>(x)(), get<min_P>(x)());
-    auto r_gtotal_var_ij = r_gtotal_sqr_ij - elemMult(r_gtotal_ij, r_gmean_ij);
+    auto b_gtotal_ij=force_gmean_in_range(build<gtotal_ij>(r_gtotal_ij),get<g>(m));
+    
+    auto r_gmean_ij = elemDivSafe(b_gtotal_ij(), get<P>(x)(), get<min_P>(x)());
+    auto b_gmean_ij=force_gmean_in_range(build<gmean_ij>(r_gmean_ij),get<g>(m));
+    
+    auto r_gtotal_var_ij = r_gtotal_sqr_ij - elemMult(b_gtotal_ij(), b_gmean_ij());
     auto r_gmean_i = r_gtotal_ij * u;
+    auto b_gmean_i=force_gmean_in_range(build<gmean_i>(r_gmean_i),get<g>(m));
     auto r_gsqr_i = r_gtotal_sqr_ij * u;
     auto r_gvar_ij = elemDivSafe(r_gtotal_var_ij, r_P, get<min_P>(x)());
     auto r_gvar_i = r_gtotal_var_ij * u;
+    
 
     return build<Qdt>(
         get<number_of_samples>(x), get<min_P>(x), get<P>(x),
-        build<gmean_i>(r_gmean_i), build<gtotal_ij>(r_gtotal_ij),
-        build<gmean_ij>(r_gmean_ij), build<gtotal_sqr_ij>(r_gtotal_sqr_ij),
+        std::move(b_gmean_i), std::move(b_gtotal_ij),
+        std::move(b_gmean_ij), build<gtotal_sqr_ij>(r_gtotal_sqr_ij),
         build<gsqr_i>(r_gsqr_i), build<gvar_i>(r_gvar_i),
         build<gtotal_var_ij>(r_gtotal_var_ij), build<gvar_ij>(r_gvar_ij));
   }
 
-  template <class C_Qn>
+  template <class C_Qn, class C_Patch_Model>
     requires(U<C_Qn, Qn>)
-  static auto Qn_to_Qdtm(const C_Qn &x) {
+  static auto Qn_to_Qdtm(const C_Qn &x,const C_Patch_Model &m) {
     auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
     auto r_P = get<P>(x)();
     auto n = get<number_of_samples>(x)();
     if (n<=0)
       std::cerr<<" nana here";
       
+    
+    
     auto r_gtotal_sqr_ij = get<PGG_n>(x)() * (2.0 / (n * n));
     auto r_gtotal_ij = get<PG_n>(x)() * (1.0 / n);
-    auto r_gmean_ij = elemDivSafe(r_gtotal_ij, get<P>(x)(), get<min_P>(x)());
-    auto r_gtotal_var_ij = r_gtotal_sqr_ij - elemMult(r_gtotal_ij, r_gmean_ij);
+    auto b_gtotal_ij=force_gmean_in_range(build<gtotal_ij>(r_gtotal_ij),get<g>(m));
+    
+    auto r_gmean_ij = elemDivSafe(b_gtotal_ij(), get<P>(x)(), get<min_P>(x)());
+    auto b_gmean_ij=force_gmean_in_range(build<gmean_ij>(r_gmean_ij),get<g>(m));
+    auto r_gtotal_var_ij = r_gtotal_sqr_ij - elemMult(b_gtotal_ij(), b_gmean_ij());
     auto r_gmean_i = r_gtotal_ij * u;
+    auto b_gmean_i=force_gmean_in_range(build<gmean_i>(r_gmean_i),get<g>(m));
+    
+    
     auto r_gsqr_i = r_gtotal_sqr_ij * u;
     auto r_gvar_i = r_gtotal_var_ij * u;
     
-    
     auto out= build<Qdtm>(get<number_of_samples>(x), get<min_P>(x), get<P>(x),
-                       build<gmean_i>(r_gmean_i), build<gtotal_ij>(r_gtotal_ij),
-                       build<gmean_ij>(r_gmean_ij), build<gsqr_i>(r_gsqr_i),
+                      std::move(b_gmean_i), std::move(b_gtotal_ij),
+                       std::move(b_gmean_ij), build<gsqr_i>(r_gsqr_i),
                        build<gvar_i>(r_gvar_i));
     //if (!is_finite(out))
     //  std::cerr<<" nana here";
@@ -2478,7 +2502,7 @@ return error_message("nan P");
           else
             v_Qrun = sum_Qdt(std::move(v_Qrun), v_Qdti.value());
         }
-        return Qn_to_Qdt(v_Qrun);
+        return Qn_to_Qdt(v_Qrun,m);
       }
     }
   }
@@ -2504,7 +2528,7 @@ return error_message("nan P");
       else
         v_Qrun = sum_Qdt(std::move(v_Qrun), v_Qdti.value());
     }
-    return Qn_to_Qdtm(v_Qrun);
+    return Qn_to_Qdtm(v_Qrun,m);
   }
 
   template <class FunctionTable, class C_Patch_Model>
@@ -3258,8 +3282,14 @@ return error_message("nan P");
                   ::V<variance>, ::V<variance_correction>>{});
 
       auto r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
-      auto r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
-      r_P_cov() = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
+      auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P());
+      if (!Maybe_r_P_mean)return Maybe_r_P_mean.error();
+      
+      auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
+      
+      auto Maybe_P_cov = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
+      if (!Maybe_P_cov)return Maybe_P_cov.error();
+      r_P_cov() = std::move(Maybe_P_cov.value());
       if constexpr (U<C_Patch_State, Patch_State_and_Evolution>) {
         auto &ev = get<Patch_State_Evolution>(t_prior);
         ev().push_back(build<Patch_State>(build<logL>(get<logL>(t_prior)()),
@@ -3282,7 +3312,7 @@ return error_message("nan P");
               build<vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
               std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
               plogL(NaN), eplogL(NaN), vplogL(NaN),
-              get<macror_algorithm>(t_prior), get<Hess>(t_prior));
+              get<macror_algorithm>(t_prior), get<FIM>(t_prior));
         
       } else
       return Patch_State(build<logL>(get<logL>(t_prior)()),
@@ -3339,19 +3369,37 @@ return error_message("nan P");
     Op_t<Transf, P_Cov> r_P_cov;
 
     if constexpr (!recursive.value) {
+      
       r_P_cov = build<P_Cov>(AT_B_A(t_P(), SmD));
-      r_P_mean = build<P_mean>(to_Probability(p_P_mean() * t_P()));
-      r_P_cov() = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
+      
+      auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P());
+      if (!Maybe_r_P_mean.valid()) return Maybe_r_P_mean.error();
+      
+      r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
+      
+      auto Maybe_r_P_cov = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
 
+      if (!Maybe_r_P_cov.valid()) return Maybe_r_P_cov.error();
+      r_P_cov() = std::move(Maybe_r_P_cov.value());
+      
+      
     } else if constexpr (!variance_correction.value) {
       auto gS =
           TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
 
-      r_P_mean() = to_Probability(p_P_mean() * t_P() + chi * gS);
+      auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P() + chi * gS);
+      if (!Maybe_r_P_mean)
+        return Maybe_r_P_mean.error(); 
+      r_P_mean()=std::move(Maybe_r_P_mean.value());
 
-      r_P_cov() = to_Covariance_Probability(AT_B_A(t_P(), SmD) +
+      auto Maybe_r_P_cov = to_Covariance_Probability(AT_B_A(t_P(), SmD) +
                                             diag(p_P_mean() * t_P()) -
                                             (N / r_y_var()) * XTX(gS));
+      if (!Maybe_r_P_cov)
+        return Maybe_r_P_cov.error(); 
+      
+      
+      r_P_cov() = std::move(Maybe_r_P_cov.value());
     } else {
       auto &t_gtotal_var_ij = get<gtotal_var_ij>(t_Qdt);
       auto &t_gvar_ij = get<gvar_ij>(t_Qdt);
@@ -3456,7 +3504,7 @@ return error_message("nan P");
       auto r_J = derivative(r_y_mean)();
       auto r_JS = derivative(r_y_var)();
       
-      auto r_H = XXT(r_J) / primitive(r_y_var()) +
+      auto r_FIM = XXT(r_J) / primitive(r_y_var()) +
           XXT(r_JS) / (2.0 * sqr(primitive(r_y_var())));
       
       return build<Patch_State_and_Hessian>(
@@ -3465,7 +3513,7 @@ return error_message("nan P");
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
           std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
           r_eplogL, r_vlogL, get<macror_algorithm>(t_prior),
-            Hess(get<Hess>(t_prior)() + r_H));
+            FIM(get<FIM>(t_prior)() + r_FIM));
     } else {
       return build<Patch_State>(
           build<logL>(get<logL>(t_prior)() + r_plogL()),
@@ -3512,7 +3560,7 @@ return error_message("nan P");
               logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
               std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
               eplogL(NaN), vplogL(NaN), macror_algorithm(""),
-              Hess(SymPosDefMatrix<double>(n_par, n_par, 0.0)));
+              FIM(SymPosDefMatrix<double>(n_par, n_par, 0.0)));
       } else {
         return Transfer_Op_to<C_Patch_Model, Patch_State>(
             logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
@@ -3543,7 +3591,7 @@ return error_message("nan P");
     std::conditional_t<
     predictions.value,
     Transfer_Op_to<C_Parameters, Patch_State_Evolution>,
-    Vector_Space<logL, elogL, vlogL, Grad, Hess>>,
+    Vector_Space<logL, elogL, vlogL, Grad, FIM>>,
     std::conditional_t<predictions.value, Patch_State_Evolution,
                              Vector_Space<logL, elogL, vlogL>>>> {
 
@@ -3554,7 +3602,7 @@ return error_message("nan P");
     var::is_derivative_v<C_Parameters>,
     std::conditional_t<predictions.value,
     Transfer_Op_to<C_Parameters, Patch_State_Evolution>,
-    Vector_Space<logL, elogL, vlogL, Grad, Hess>>,
+    Vector_Space<logL, elogL, vlogL, Grad, FIM>>,
     std::conditional_t<predictions.value, Patch_State_Evolution,
     Vector_Space<logL, elogL, vlogL>>>;
     auto Maybe_m = model(par);
@@ -3697,7 +3745,7 @@ return error_message("nan P");
     std::conditional_t<
     predictions.value,
     Transfer_Op_to<C_Parameters, Patch_State_Evolution>,
-    Vector_Space<logL, elogL, vlogL, Grad, Hess>>,
+    Vector_Space<logL, elogL, vlogL, Grad, FIM>>,
     std::conditional_t<predictions.value, Patch_State_Evolution,
     Vector_Space<logL, elogL, vlogL>>>> {
 
@@ -3863,9 +3911,9 @@ return error_message("nan P");
               return get<Patch_State_Evolution>(run);
           else {
             auto gr = derivative(get<logL>(run))();
-            return Vector_Space<logL, elogL, vlogL, Grad, Hess>(
+            return Vector_Space<logL, elogL, vlogL, Grad, FIM>(
                 primitive(get<logL>(run)), primitive(get<elogL>(run)),
-                primitive(get<vlogL>(run)), Grad(gr), get<Hess>(run));
+                primitive(get<vlogL>(run)), Grad(gr), get<FIM>(run));
           }
         } else {
           if constexpr (predictions.value)
@@ -4000,9 +4048,9 @@ return error_message("nan P");
     return std::move(sim);
   }
 
-  template <includes_N_state_evolution keep_N_state, class Model, class Id>
+  template <includes_N_state_evolution keep_N_state, class Model>
   Maybe_error<Simulated_Recording<keep_N_state>>
-  sample_(mt_64i &mt, const Model &model, const var::Parameters_values<Id> &par,
+  sample_(mt_64i &mt, const Model &model, const var::Parameters_values &par,
           const Experiment &e, const Simulation_Parameters &sim,
           const Recording &r = Recording{}) {
 
@@ -4035,19 +4083,19 @@ return error_message("nan P");
       }
     }
   }
-  template <class Model, class Id>
+  template <class Model>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(false)>>
-  sample(mt_64i &mt, const Model &model, const var::Parameters_values<Id> &par,
+  sample(mt_64i &mt, const Model &model, const var::Parameters_values &par,
          const Experiment &e, const Simulation_Parameters &sim,
          const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(false)>(mt, model, par, e, sim,
                                                       r);
   }
 
-  template <class Model, class Id>
+  template <class Model>
   Maybe_error<Simulated_Recording<includes_N_state_evolution(true)>>
   sample_N(mt_64i &mt, const Model &model,
-           const var::Parameters_values<Id> &par, const Experiment &e,
+           const var::Parameters_values &par, const Experiment &e,
            const Simulation_Parameters &sim, const Recording &r = Recording{}) {
     return sample_<includes_N_state_evolution(true)>(mt, model, par, e, sim, r);
   }
@@ -4327,12 +4375,12 @@ template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     uses_variance_correction_aproximation variance_correction, class FuncTable,
-    class Model, class Id, class Variables, class DataType>
+    class Model, class Variables, class DataType>
 Maybe_error<dlogLs>
 dlogLikelihood(FuncTable &&f,
                const Likelihood_Model<adaptive, recursive, averaging, variance,
                variance_correction, Model> &lik,
-               var::Parameters_transformed<Id> const &p, const Variables &var,
+               var::Parameters_transformed const &p, const Variables &var,
                const DataType &y) {
   
   auto dp = var::selfDerivative(p);
@@ -4347,7 +4395,7 @@ dlogLikelihood(FuncTable &&f,
   else
     return dlogLs(get<logL>(v_logL.value()), get<elogL>(v_logL.value()),
                   get<vlogL>(v_logL.value()), get<Grad>(v_logL.value()),
-                  get<Hess>(v_logL.value()));
+                  get<FIM>(v_logL.value()));
 }
 
 template <
@@ -4763,10 +4811,10 @@ public:
   }
 };
 
-template <class Id, class... Ts>
+template < class... Ts>
 void report_title(
-    save_Predictions<var::Parameters_transformed<Id>> &s,
-    deprecated::cuevi_mcmc<var::Parameters_transformed<Id>> const &,
+    save_Predictions<var::Parameters_transformed> &s,
+    deprecated::cuevi_mcmc<var::Parameters_transformed> const &,
     const Ts &...t) {
 
   s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
@@ -4778,9 +4826,9 @@ void report_title(
       << "\n";
 }
 
-template <class Id>
-void report_title(save_Predictions<var::Parameters_transformed<Id>> &s,
-                  thermo_mcmc<var::Parameters_transformed<Id>> const &, ...) {
+
+inline void report_title(save_Predictions<var::Parameters_transformed> &s,
+                  thermo_mcmc<var::Parameters_transformed> const &, ...) {
 
   s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep << "beta"
       << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
@@ -4793,11 +4841,11 @@ void report_title(save_Predictions<var::Parameters_transformed<Id>> &s,
 inline void report_title(save_Predictions<Matrix<double>> &s,
                          thermo_mcmc<Matrix<double>> const &, ...) {}
 
-template <class Id, class FunctionTable, class Duration>
+template < class FunctionTable, class Duration>
   requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &&, std::size_t iter, const Duration &dur,
-            save_Predictions<var::Parameters_transformed<Id>> &s,
-            thermo_mcmc<var::Parameters_transformed<Id>> const &data, ...) {
+            save_Predictions<var::Parameters_transformed> &s,
+            thermo_mcmc<var::Parameters_transformed> const &data, ...) {
   if (iter % s.save_every == 0)
     for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
@@ -4809,12 +4857,12 @@ void report(FunctionTable &&, std::size_t iter, const Duration &dur,
               << data.walkers[i_beta][i_walker].parameter[i_par] << "\n";
 }
 
-template <class Id, class FunctionTable, class Duration, class Prior,
+template < class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &f, std::size_t iter, const Duration &dur,
-            save_Predictions<var::Parameters_transformed<Id>> &s,
-            thermo_mcmc<var::Parameters_transformed<Id>> const &data, Prior &&,
+            save_Predictions<var::Parameters_transformed> &s,
+            thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
             t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
 
   if (iter % s.save_every != 0)
@@ -4873,10 +4921,10 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   }
 }
   
-  template <class Id>
+  template<class Parameters>
   void report_title(
-      save_Predictions<var::Parameters_transformed<Id>> &s,
-      thermo_levenberg_mcmc<var::Parameters_transformed<Id>> const &, ...) {
+      save_Predictions<Parameters> &s,
+      thermo_levenberg_mcmc const &, ...) {
     
     s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
         << "walker_id" << s.sep << "i_step" << s.sep << "time" << s.sep
@@ -4886,12 +4934,12 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
         << "\n";
   }
   
-  template <class Id, class FunctionTable, class Duration, class Prior,
+  template < class FunctionTable, class Duration, class Prior,
             class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
   void report(FunctionTable &f, std::size_t iter, const Duration &dur,
-              save_Predictions<var::Parameters_transformed<Id>> &s,
-              thermo_levenberg_mcmc<var::Parameters_transformed<Id>> const &data,
+              save_Predictions<var::Parameters_transformed> &s,
+              thermo_levenberg_mcmc const &data,
               by_beta<double> t_beta, Prior &&, t_logLikelihood &&lik,
               const Data &y, const Variables &x, ...) {
     
@@ -5345,7 +5393,7 @@ void report_title(save_Predictions<ParameterType> &s,
       << "\n";
 }
 
-template <class Id>
+/*
 auto cuevi_Model_by_convergence(
     std::string path, std::string filename,
     const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
@@ -5354,22 +5402,22 @@ auto cuevi_Model_by_convergence(
     std::size_t thermo_jumps_every, std::size_t max_iter, double max_ratio,
     double n_points_per_decade_beta, double n_points_per_decade_fraction,
     double stops_at, bool includes_zero, std::size_t initseed) {
-  return cuevi_integration(
+  return deprecated::cuevi_integration(
       checks_derivative_var_ratio<deprecated::cuevi_mcmc,
-                                  var::Parameters_transformed<Id>>(max_iter,
+                                  var::Parameters_transformed>(max_iter,
                                                                    max_ratio),
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed<Id>,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, 100ul, 100ul, 100ul, 100ul),
       num_scouts_per_ensemble, min_fraction, thermo_jumps_every,
       n_points_per_decade_beta, n_points_per_decade_fraction, stops_at,
       includes_zero, initseed);
 }
+*/
 
-template <class Id>
 auto cuevi_Model_by_iteration(
     std::string path, std::string filename,
     const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
@@ -5383,23 +5431,23 @@ auto cuevi_Model_by_iteration(
   return deprecated::cuevi_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed<Id>,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, 10ul, 100ul, 10ul, 100ul),
       num_scouts_per_ensemble, max_number_of_simultaneous_temperatures,
       min_fraction, thermo_jumps_every, n_points_per_decade_beta,
       n_points_per_decade_fraction, stops_at, includes_zero, initseed);
 }
 
-template <class Id>
+
 cuevi::Cuevi_Algorithm<
     experiment_fractioner,
-    save_mcmc<var::Parameters_transformed<Id>,
-              save_likelihood<var::Parameters_transformed<Id>>,
-              save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-              save_Predictions<var::Parameters_transformed<Id>>>,
+    save_mcmc<var::Parameters_transformed,
+              save_likelihood<var::Parameters_transformed>,
+              save_Parameter<var::Parameters_transformed>, save_Evidence,
+              save_Predictions<var::Parameters_transformed>>,
     cuevi_less_than_max_iteration>
 new_cuevi_Model_by_iteration(
     std::string path, std::string filename,
@@ -5412,10 +5460,10 @@ new_cuevi_Model_by_iteration(
     Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm(
       experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed<Id>,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -5439,12 +5487,12 @@ new_cuevi_Model_by_iteration(
       cuevi::Random_jumps(random_jumps), std::move(sint));
 }
 
-template <class Id>
+
 cuevi::Cuevi_Algorithm_no_Fractioner<
-    save_mcmc<var::Parameters_transformed<Id>,
-              save_likelihood<var::Parameters_transformed<Id>>,
-              save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-              save_Predictions<var::Parameters_transformed<Id>>>,
+    save_mcmc<var::Parameters_transformed,
+              save_likelihood<var::Parameters_transformed>,
+              save_Parameter<var::Parameters_transformed>, save_Evidence,
+              save_Predictions<var::Parameters_transformed>>,
     cuevi_less_than_max_iteration>
 new_cuevi_Model_already_fraction_by_iteration(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
@@ -5453,10 +5501,10 @@ new_cuevi_Model_already_fraction_by_iteration(
     double n_points_per_decade_beta_low, double medium_beta, double stops_at,
     bool includes_the_zero, Saving_intervals sint, bool random_jumps) {
   return cuevi::Cuevi_Algorithm_no_Fractioner(
-      save_mcmc<var::Parameters_transformed<Id>,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -5476,7 +5524,7 @@ new_cuevi_Model_already_fraction_by_iteration(
       cuevi::Thermo_Jumps_every(thermo_jumps_every),
       cuevi::Random_jumps(random_jumps), std::move(sint));
 }
-template <class Id>
+
 auto new_thermo_Model_by_max_iter(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
@@ -5488,10 +5536,10 @@ auto new_thermo_Model_by_max_iter(
     std::size_t initseed) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
-      save_mcmc<var::Parameters_transformed<Id>, save_Iter,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed, save_Iter,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -5501,7 +5549,7 @@ auto new_thermo_Model_by_max_iter(
       includes_zero, initseed);
 }
 
-template <class Id>
+
 auto thermo_levenberg_Model_by_max_iter(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
@@ -5513,11 +5561,11 @@ std::size_t n_lambdas,
     std::size_t initseed) {
   return thermodynamic_levenberg_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
-      save_mcmc<var::Parameters_transformed<Id>, save_Iter,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>,
-                save_Levenberg_Lambdas<var::Parameters_transformed<Id>>,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed, save_Iter,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>,
+                save_Levenberg_Lambdas<var::Parameters_transformed>,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<save_Levenberg_Lambdas_every>(sint())(),
@@ -5527,7 +5575,7 @@ std::size_t n_lambdas,
       includes_zero, initseed);
 }
 
-template <class Id>
+
 auto thermo_Model_by_max_iter(std::string path, std::string filename,
                               std::size_t num_scouts_per_ensemble,
                               std::size_t max_num_simultaneous_temperatures,
@@ -5538,10 +5586,10 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
                               bool includes_zero, std::size_t initseed) {
   return thermodynamic_integration(
       less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
-      save_mcmc<var::Parameters_transformed<Id>,
-                save_likelihood<var::Parameters_transformed<Id>>,
-                save_Parameter<var::Parameters_transformed<Id>>, save_Evidence,
-                save_Predictions<var::Parameters_transformed<Id>>>(
+      save_mcmc<var::Parameters_transformed,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
           path, filename, 10ul, 10ul, 10ul, 100ul),
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
       thermo_jumps_every, n_points_per_decade, stops_at, includes_zero,
@@ -5605,22 +5653,21 @@ void save_Simulated_Recording(std::string const &filename,
   }
 }
 
-template <class Id>
-void report_model(save_Parameter<var::Parameters_transformed<Id>> &s,
-                  Parameters_Transformations<Id> const &m) {
+void report_model(save_Parameter<var::Parameters_transformed> &s,
+                  Parameters_Transformations const &m) {
   std::ofstream f(s.fname + "_parameter.csv");
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   auto n = m.size();
   f << "i_par" << s.sep << "moment" << s.sep << "value"
     << "\n";
   for (auto i_par = 0ul; i_par < n; ++i_par)
-    f << i_par << s.sep << "mean" << s.sep << m[i_par] << "\n";
+    f << i_par << s.sep << "mean" << s.sep << m.standard_values()[i_par] << "\n";
 }
-template <class Id>
-Maybe_error<Parameters_Transformations<Id>>
-load_Parameters(save_Parameter<var::Parameters_transformed<Id>> &s) {
-  return load_Parameters<Id>(s.fname + "_parameter.csv", s.sep);
-}
+
+// Maybe_error<Parameters_Transformations>
+// load_Parameters(save_Parameter<var::Parameters_transformed> &s) {
+//   return load_Parameters(s.fname + "_parameter.csv", s.sep);
+//}
 
 namespace cmd {
 inline auto set_Fraction_algorithm(double min_fraction,
@@ -5658,7 +5705,7 @@ load_segments_length_for_fractioning(const std::string &filename,
 
 inline Maybe_error<std::tuple<std::string, std::string, double, double>>
 calc_experiment_fractions(std::string save_name, std::string recording,
-                          experiment_type experiment,
+                          macrodr::cmd::experiment_type experiment,
                           fraction_algo_type fraction_algo,
                           Maybe_error<std::size_t> Maybe_num_param,
                           std::size_t i_seed) {
@@ -5677,7 +5724,7 @@ calc_experiment_fractions(std::string save_name, std::string recording,
   auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
   if (!Maybe_segments)
     return Maybe_segments.error();
-  Recording y;
+  macrodr::Recording y;
   auto Maybe_y = load_Recording_Data(recording, ",", y);
 
   macrodr::experiment_fractioner frac(Maybe_segments.value(), 0);
