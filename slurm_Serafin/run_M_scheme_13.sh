@@ -33,6 +33,7 @@ export PATH_MACRO_DR=v28
 export PATH_MACRO_DRX=v28
 
 export CONTINUATION_NUMBER=0
+export EVIDENCE_ALGORITHM=levenberg
 
 JOBID1=$(sbatch --parsable --job-name=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N.sh) 
 JOBID1=193354
