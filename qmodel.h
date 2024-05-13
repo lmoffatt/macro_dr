@@ -2108,10 +2108,10 @@ return error_message("nan P");
     requires(/*U<C_Patch_Model, Patch_Model> && */ U<C_Qx, Qx>)
   Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>
   calc_Qdt_taylor(const C_Patch_Model &m, const C_Qx &t_Qx,
-                  number_of_samples ns, double dt, std::size_t order = 5ul) {
+                  number_of_samples ns, double dt, std::size_t order = 6ul) {
     auto v_Qrun = t_Qx() * dt;
     double max = maxAbs(primitive(v_Qrun));
-    double desired = 0.125/8.0;
+    double desired = 0.125/4.0;
     int k = std::ceil(std::log2(max / desired));
     int n = std::max(0, k);
     double scale = std::pow(2, -n);
@@ -2139,7 +2139,7 @@ return error_message("nan P");
                    number_of_samples ns, double dt, std::size_t order = 5ul) {
     auto v_Qrun = t_Qx() * dt;
     double max = maxAbs(primitive(v_Qrun));
-    double desired = 0.125/8.0;
+    double desired = 0.125/4.0;
     int k = std::ceil(std::log2(max / desired));
     int n = std::max(0, k);
     double scale = std::pow(2, -n);

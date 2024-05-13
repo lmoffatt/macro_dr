@@ -67,6 +67,7 @@ export N_SCOUTS=32
 
 export MAX_ITER=1000000
 
+export EVIDENCE_ALGORITHM=levenberg
 
 
 JOBID1=8710
