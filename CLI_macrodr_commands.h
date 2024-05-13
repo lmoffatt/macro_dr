@@ -440,7 +440,7 @@ inline auto calc_evidence_old(
                      Save_Parameter_every(num_scouts_per_ensemble),
                      Save_Predictions_every(num_scouts_per_ensemble * 50)));
 
-    auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+    auto cbc = new_cuevi_Model_by_iteration(
         path, filename, t_segments_used, average_the_ATP_evolution,
         num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
         thermo_jumps_every, max_iter_equilibrium, n_points_per_decade,

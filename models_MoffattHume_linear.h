@@ -2,6 +2,7 @@
 #define MODELS_MOFFATTHUME_LINEAR_H
 //#include "allosteric_models.h"
 #include "allosteric_models.h"
+#include "general_algorithm_on_containers.h"
 #include "maybe_error.h"
 #include "parameters.h"
 #include "parameters_distribution.h"
@@ -36,7 +37,7 @@ template <class Id> struct Model_Patch {
     std::tuple<F, Finv,Matrix<double>, std::vector<std::string>, Q0_formula,
                Qa_formula, g_formula,var::transformations_vector>
         m_f;
-    var::Parameters_Transformations<Id> m_param;    
+    var::Parameters_Transformations m_param;    
    
 
   public:
@@ -67,11 +68,11 @@ template <class Id> struct Model_Patch {
     
     template <class P>
         requires std::is_same_v<var::untransformed_type_t<P>, Patch_Model>
-    auto operator()(const P &t_p)const ->Maybe_error<var::Parameters_values<Id>>
+    auto operator()(const P &t_p)const ->Maybe_error<var::Parameters_values>
     {
         auto p= std::invoke(std::get<Finv>(m_f), t_p);
         if (p)
-            return var::Parameters_values<Id>(parameters_transformations(),p.value());
+            return var::Parameters_values(parameters_transformations(),p.value());
         else
         {
             std::cerr<<p.error()();
@@ -80,16 +81,20 @@ template <class Id> struct Model_Patch {
     }
     
     template <class P>
-      requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values<Id>>
-    auto operator()(const P &t_p) const {
-      auto result=std::invoke(std::get<F>(m_f), t_p);
+      requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values>
+    auto operator()(const P &t_p) const->std::invoke_result_t<F,P> {
+        
+        if (!isfinite(var::fullsum(t_p())))
+            return error_message("nan parameter value");
+        return std::invoke(std::get<F>(m_f), t_p);
+        //     auto result=std::invoke(std::get<F>(m_f), t_p);
 //         assert((
 //           [&t_p, this,&result](){
 //  auto res= var::compare_contents(t_p,(*this)(result.value()).value());
 // if (!res)
 //          std::cerr<<res.error()();
 //  return res;}()));
-      return std::move(result);
+   //   return std::move(result);
     }
     
     
@@ -160,7 +165,7 @@ auto add_Patch_inactivation_to_model(
                     Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
               auto n = p.size();
               auto inactivation = p[n - 1];
-              auto p_no_inactivation=Transfer_Op_to<std::decay_t<decltype(p)>, var::Parameters_values<Id>>(model.parameters_transformations(),p[std::pair(0ul,n-2)]);
+              auto p_no_inactivation=Transfer_Op_to<std::decay_t<decltype(p)>, var::Parameters_values>(model.parameters_transformations(),p[std::pair(0ul,n-2)]);
               auto mo=model(p_no_inactivation);
               using std::pow;
               if (!mo)

@@ -366,7 +366,7 @@ calc_thermo_evidence(std::string id,
           "beta_medium_value",
           "includes_zero",
           "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "n_lambdas","thermo_jump_factor",
+          "beta_medium_size",  "n_lambdas","iterations_between_thermo_jumps",
           "save_every_param_size_factor"));
   
   

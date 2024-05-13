@@ -122,13 +122,9 @@ inline auto get_function_Table_maker_St(std::string filename,
                     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>,
                     var::Memoiza_all_values<
                         Maybe_error<var::Derivative<
-                            Qdt, var::Parameters_transformed<macrodr::Model0>>>,
-                        ATP_step, double>,
-                    var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<
-                            Qdt, var::Parameters_transformed<macrodr::Allost1>>>,
+                            Qdt, var::Parameters_transformed>>,
                         ATP_step, double>>{}),
-            // var::Parameters_transformed<macrodr::Model0>
+            // var::Parameters_transformed
             var::Single_Thread_Memoizer(
                 var::F(Calc_Qdtm_step{},
                        [](auto &&f, auto &m, auto &t_step, double fs) {
@@ -156,11 +152,7 @@ inline auto get_function_Table_maker_St(std::string filename,
                     var::Memoiza_all_values<Maybe_error<Qdtm>, ATP_step, double>,
                     var::Memoiza_all_values<
                         Maybe_error<var::Derivative<
-                            Qdtm, var::Parameters_transformed<macrodr::Model0>>>,
-                        ATP_step, double>,
-                    var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<
-                            Qdtm, var::Parameters_transformed<macrodr::Allost1>>>,
+                            Qdtm, var::Parameters_transformed>>,
                         ATP_step, double>>{}),
             // var::Time_it(
             //     var::F(Calc_Qdt_step{},
@@ -206,11 +198,7 @@ inline auto get_function_Table_maker_St(std::string filename,
                     var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>,
                     var::Memoiza_all_values<
                         Maybe_error<var::Derivative<
-                            Qx_eig, var::Parameters_transformed<macrodr::Model0>>>,
-                        ATP_concentration>,
-                    var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<
-                            Qx_eig, var::Parameters_transformed<macrodr::Allost1>>>,
+                            Qx_eig, var::Parameters_transformed>>,
                         ATP_concentration>>{})
             
             // var::Time_it(
@@ -279,7 +267,7 @@ inline std::string run_simulation(std::string filename_prefix,
                     myseed = calc_seed(myseed);
                     mt_64i mt(myseed);
                     using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
-                    auto Maybe_parameter_values = var::load_Parameters<MyModel>(
+                    auto Maybe_parameter_values = var::load_Parameters(
                         parameter_files.first, parameter_files.second,
                         model0.model_name(), model0.names());
                     std::string ModelName = model0.model_name();
@@ -291,7 +279,7 @@ inline std::string run_simulation(std::string filename_prefix,
                         return Maybe_parameter_values.error()();
                     else {
                         auto param1 = Maybe_parameter_values.value().standard_parameter();
-                        save_Parameter<var::Parameters_transformed<MyModel>> s(filename,
+                        save_Parameter<var::Parameters_transformed> s(filename,
                                                                                1);
                         if (!includeN) {
                             auto sim = Macro_DMR{}.sample(
@@ -357,7 +345,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                 
                 using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
                 
-                auto Maybe_param1 = var::load_Parameters<MyModel>(
+                auto Maybe_param1 = var::load_Parameters(
                     par.first, par.second, model0.model_name(), model0.names());
                 Simulated_Recording<includes_N_state_evolution(true)> y;
                 auto Maybe_y = load_simulation(recording.first, recording.second, y);
@@ -432,7 +420,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
             using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
             
             std::string ModelName = model0.model_name();
-            auto Maybe_param1 = var::load_Parameters<MyModel>(
+            auto Maybe_param1 = var::load_Parameters(
                 par.first, par.second, model0.model_name(), model0.names());
             
             std::vector<Experiment> xs;
@@ -532,7 +520,7 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior.first, prior.second, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << Maybe_param1_prior.error()();
@@ -556,7 +544,7 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                             Save_Predictions_every(save_every_param_factor *
                                                    param1_prior.size() * 500)));
                         
-                        auto cbc = new_cuevi_Model_already_fraction_by_iteration<MyModel>(
+                        auto cbc = new_cuevi_Model_already_fraction_by_iteration(
                             path, filename, num_scouts_per_ensemble,
                             number_trials_until_give_up, thermo_jumps_every,
                             max_iter_equilibrium, n_points_per_decade_beta_high,
@@ -631,7 +619,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior.first, prior.second, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << Maybe_param1_prior.error()();
@@ -659,7 +647,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 Save_Parameter_every(num_scouts_per_ensemble),
                                 Save_Predictions_every(num_scouts_per_ensemble * 500)));
                             
-                            auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+                            auto cbc = new_cuevi_Model_by_iteration(
                                 path, filename, t_segments_used, average_the_ATP_evolution,
                                 num_scouts_per_ensemble, number_trials_until_give_up,
                                 min_fraction, thermo_jumps_every, max_iter_equilibrium,
@@ -739,7 +727,7 @@ saving_itervals, random_jumps
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior.first, prior.second, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << Maybe_param1_prior.error()();
@@ -785,7 +773,7 @@ saving_itervals, random_jumps
                             Save_Predictions_every(param1_prior.size() *
                                                    save_every_param_factor * 50)));
                         
-                        auto cbc = new_cuevi_Model_by_iteration<MyModel>(
+                        auto cbc = new_cuevi_Model_by_iteration(
                             path, filename, t_segments_used, average_the_ATP_evolution,
                             num_scouts_per_ensemble, number_trials_until_give_up,
                             min_fraction, thermo_jumps_every, max_iter_equilibrium,

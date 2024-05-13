@@ -74,7 +74,7 @@ prior_value_type prior, likelihood_algo_type likelihood, std::string recording,
 
           std::string ModelName = model0.model_name();
 
-          auto Maybe_param1_prior = var::load_Prior<MyModel>(
+          auto Maybe_param1_prior = var::load_Prior(
               prior.first, prior.second, model0.model_name(), model0.names());
           if (!Maybe_param1_prior) {
               std::cerr <<"\n-------------errror------------\n"<<
@@ -97,7 +97,7 @@ std::move(Maybe_param1_prior.value()); std::size_t thermo_jumps_every =
 *20)));
 
 
-              auto tmi = new_thermo_Model_by_max_iter<MyModel>(
+              auto tmi = new_thermo_Model_by_max_iter(
                   path, filename, num_scouts_per_ensemble,
                    thermo_jumps_every,
                   max_iter_equilibrium, beta_size, beta_upper_size,
@@ -159,6 +159,7 @@ inline void calc_thermo_evidence(std::string id, std::string model,
     if (Maybe_model_v) {
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
+            
             [&filename, &ftbl3, &experiment, &recording, &prior, &likelihood,
              &thermo_algorithm, &myseed](auto model0ptr) {
                 std::string sep = ",";
@@ -179,7 +180,7 @@ inline void calc_thermo_evidence(std::string id, std::string model,
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior, sep, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << "\n-------------errror------------\n"
@@ -203,7 +204,7 @@ inline void calc_thermo_evidence(std::string id, std::string model,
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));
                         
-                        auto tmi = new_thermo_Model_by_max_iter<MyModel>(
+                        auto tmi = new_thermo_Model_by_max_iter(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size, beta_upper_size,
                             beta_medium_size, beta_upper_value, beta_medium_value,
@@ -295,7 +296,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
                 
                 std::string ModelName = model0.model_name();
                 
-                auto Maybe_param1_prior = var::load_Prior<MyModel>(
+                auto Maybe_param1_prior = var::load_Prior(
                     prior, sep, model0.model_name(), model0.names());
                 if (!Maybe_param1_prior) {
                     std::cerr << "\n-------------errror------------\n"
@@ -319,7 +320,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));
                         
-                        auto tmi = new_thermo_Model_by_max_iter<MyModel>(
+                        auto tmi = new_thermo_Model_by_max_iter(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size, beta_upper_size,
                             beta_medium_size, beta_upper_value, beta_medium_value,

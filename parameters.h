@@ -234,32 +234,32 @@ bool verify(const transformations_vector &p, const V<double> &value,
   return true;
 }
 
-template <class Id> class Parameters_Transformations;
+class Parameters_Transformations;
 
-template <class Id> class Parameters_values {
+class Parameters_values {
 public:
     using value_type = Matrix<double>;
     
 private:
     value_type m_values;
-    Parameters_Transformations<Id> const *m_par;
+    Parameters_Transformations const *m_par;
     
 public:
     
     
        
     auto &parameters() const { return *m_par; }
-    auto & names()const {return parameters().names();}
+    const std::vector<std::string> &names()const;
     
     template <class VectorType>
         requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
-    Parameters_values(const Parameters_Transformations<Id> &par, VectorType &&x)
-        : m_par{&par}, m_values{x.size(), 1, std::forward<VectorType>(x)} {}
+    Parameters_values(const Parameters_Transformations &par, VectorType &&x)
+        : m_values{x.size(), 1, std::forward<VectorType>(x)}, m_par{&par} {}
     
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
-    Parameters_values(const Parameters_Transformations<Id> &par, MatrixType &&x)
-        : m_par{&par}, m_values{std::forward<MatrixType>(x)} {}
+    Parameters_values(const Parameters_Transformations &par, MatrixType &&x)
+        : m_values{std::forward<MatrixType>(x)}, m_par{&par} {}
     
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
@@ -302,9 +302,8 @@ public:
     }
 };
 
-template<class Id>
 Maybe_error<bool>
-compare_contents(const Parameters_values<Id>& s0, const Parameters_values<Id>& s1, double RelError=std::sqrt(std::numeric_limits<double>::epsilon())*100,  double AbsError=std::sqrt(std::numeric_limits<double>::epsilon())*100,std::size_t max_errors=10)
+compare_contents(const Parameters_values& s0, const Parameters_values& s1, double RelError=std::sqrt(std::numeric_limits<double>::epsilon())*100,  double AbsError=std::sqrt(std::numeric_limits<double>::epsilon())*100,std::size_t max_errors=10)
 {
     if (s0.names()!=s1.names())
         return error_message("\n not the same parameters names!!\n");
@@ -364,8 +363,11 @@ public:
    
 };
 
+void write_Parameters(std::ostream& f, std::string sep,
+                      Parameters_Transformations const &m) ;
 
-template <class Id> class Parameters_Transformations {
+
+ class Parameters_Transformations {
 public:
   using value_type = Matrix<double>;
     static auto get_index_map(const std::vector<std::string> &names) {
@@ -374,6 +376,9 @@ public:
             out[names[i]] = i;
         return out;
     }
+    auto &transf() const { return m_tr; }
+    auto &standard_values() const { return m_standard_values; }
+    
 private:
   std::string m_IdName;
   std::vector<std::string> m_ParNames;
@@ -429,13 +434,10 @@ private:
     return out;
   }
   
-  
+  public:  
   
 
-public:
-  auto &transf() const { return m_tr; }
-  auto &standard_values() const { return m_standard_values; }
-  auto standard_parameter() const { return Parameters_values<Id>(*this,m_standard_values); }
+  auto standard_parameter() const { return Parameters_values(*this,m_standard_values); }
   
   template<class C_Matrix>
       requires U<C_Matrix, Matrix<double>>
@@ -459,7 +461,6 @@ public:
     m_standard_values = std::move(val);
   }
 
-public:
   class Names {
     std::vector<std::string> m_names;
     std::map<std::string, std::size_t> m_index_map;
@@ -515,7 +516,7 @@ public:
   //     m_values{ParNames.size(), 1} {}
   Parameters_Transformations() {}
 
-  auto &names() const { return m_ParNames; }
+  std::vector<std::string>const  &names() const { return m_ParNames; }
   auto &transformed_names() const { return m_TrParNames; }
   
   auto &IdName() const { return m_IdName; }
@@ -537,32 +538,29 @@ public:
   }
   
 };
-template <class Id>
-void write_Parameters(std::ostream& f, std::string sep,
-                      Parameters_Transformations<Id> const &m) ;
 
-template <class Id> class Parameters_transformed {
+class Parameters_transformed {
 public:
   using value_type = Matrix<double>;
 
 private:
   value_type m_values;
-  Parameters_Transformations<Id> const *m_par;
+  Parameters_Transformations const *m_par;
 
 public:
   auto &parameters() const { return *m_par; }
   template <class VectorType>
     requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
-  Parameters_transformed(const Parameters_Transformations<Id> &par,
+  Parameters_transformed(const Parameters_Transformations &par,
                          VectorType &&x)
       : m_par{&par}, m_values{x.size(), 1, std::forward<VectorType>(x)} {}
   
   
   template <class MatrixType>
       requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
-  Parameters_transformed(const Parameters_Transformations<Id> &par,
+  Parameters_transformed(const Parameters_Transformations &par,
                          MatrixType &&x)
-      : m_par{&par}, m_values{std::forward<MatrixType>(x)} {}
+      : m_values{std::forward<MatrixType>(x)}, m_par{&par} {}
   
   
   template <class MatrixType>
@@ -592,7 +590,7 @@ public:
   auto &operator[](std::size_t i) { return (*this)()[i]; }
 
   auto to_value() const {
-    return Parameters_values<Id>(parameters(), parameters().inv((*this)()));
+    return Parameters_values(parameters(), parameters().inv((*this)()));
   }
   
   
@@ -612,9 +610,8 @@ public:
 //     "mean"
 //       << sep << m[i_par] << "\n";
 // }
-template <class Id>
 void write_Parameters(std::ostream& f, std::string sep,
-                      Parameters_Transformations<Id> const &m) {
+                      Parameters_Transformations const &m) {
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     auto n = m.size();
     
@@ -630,15 +627,13 @@ void write_Parameters(std::ostream& f, std::string sep,
 }
 
 
-template <class Id>
 void write_Parameters(std::string filename, std::string sep,
-                      Parameters_Transformations<Id> const &m) {
+                      Parameters_Transformations const &m) {
   std::ofstream f(filename);
     write_Parameters(f,sep,m);
   }
 
-template <class Id>
-Maybe_error<Parameters_Transformations<Id>>
+Maybe_error<Parameters_Transformations>
 load_Parameters(const std::string filename, const std::string separator,
                 const std::string &ModelName,
                 const std::vector<std::string> &ParamNames) {
@@ -693,11 +688,13 @@ load_Parameters(const std::string filename, const std::string separator,
         ss = std::stringstream(line);
       }
 
-      return Parameters_Transformations<Id>(ModelName, ParamNames,
+      return Parameters_Transformations(ModelName, ParamNames,
                                             std::move(trs), v);
     }
   }
 }
+
+inline std::vector<std::string> const & Parameters_values::names() const {return parameters().names();}
 
 } // namespace var
 

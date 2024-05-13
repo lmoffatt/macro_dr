@@ -23,9 +23,9 @@
 #include <utility>
 #include <vector>
 
-template <class Parameter> struct levenberg_mcmc;
+ struct levenberg_mcmc;
 
-template <class Parameter> struct levenberg_Marquart_mcmc;
+ struct levenberg_Marquart_mcmc;
 
 
 class levenberg_lambda_adaptive_distribution
@@ -94,9 +94,9 @@ public:
 
 
 
-template <class Id> struct levenberg_mcmc<var::Parameters_transformed<Id>> {
+struct levenberg_mcmc {
     std::size_t i_walker;
-    var::Parameters_transformed<Id> m_x;
+    var::Parameters_transformed m_x;
     dlogPs m_logP;
     dlogLs m_logL;
     
@@ -110,7 +110,7 @@ template <class Id> struct levenberg_mcmc<var::Parameters_transformed<Id>> {
     Maybe_error<multivariate_normal_distribution<double, SymPosDefMatrix<double>>>
         ProposedDistribution(double beta, double lambda) const
     {
-        auto thFim = (get<Hess>(m_logP)() + get<Hess>(m_logL)() * beta)* -1.0;
+        auto thFim = (get<FIM>(m_logP)() + get<FIM>(m_logL)() * beta);
         
         auto FIml= SymPosDefMatrix<double>::I_sware_it_is_possitive(thFim+ diag(thFim)*lambda);
         auto G = get<Grad>(m_logP)() + get<Grad>(m_logL)() * beta;
@@ -135,9 +135,9 @@ template <class Id> struct levenberg_mcmc<var::Parameters_transformed<Id>> {
 };
 
 
-template <class Id> struct levenberg_Marquart_mcmc<var::Parameters_transformed<Id>> {
+  struct levenberg_Marquart_mcmc{
     
-    levenberg_mcmc<var::Parameters_transformed<Id>> m_data;
+    levenberg_mcmc m_data;
     levenberg_lambda_adaptive_distribution m_lambda;
     double m_beta;
     
@@ -159,10 +159,8 @@ class levenberg_Thermo_Jump_statistics
     : public var::Constant<levenberg_Thermo_Jump_statistics, Trial_statistics> {
 };
 
-template <class Parameters>
-    requires std::is_assignable_v<Parameters, Parameters const &>
 struct thermo_levenberg_mcmc {
-    by_beta<levenberg_Marquart_mcmc<Parameters>> walkers;
+    by_beta<levenberg_Marquart_mcmc> walkers;
     // by_beta<levenberg_lambda_error_statistics> lambda_stat;
     // by_beta<levenberg_likelihood_error_statistics> lik_stat;
     // by_beta<levenberg_Step_statistics> step_stat;
@@ -185,26 +183,24 @@ struct thermo_levenberg_mcmc {
  
  
  
-template <class Id>
-Maybe_error<var::Parameters_transformed<Id>>
-levenberg_step(mt_64i &mt, levenberg_mcmc<Id> &current, double beta,
+Maybe_error<var::Parameters_transformed>
+levenberg_step(mt_64i &mt, levenberg_mcmc &current, double beta,
                double lambda) {
     
     auto Maybe_Prop = current.ProposedDistribution(beta, lambda);
     if (!Maybe_Prop)
         return Maybe_Prop.error();
     auto Prop = std::move(Maybe_Prop.value());
-    return current.parameter.create(Prop(mt));
+    return current.m_x.create(Prop(mt));
 }
 
-template <class Id>
-Maybe_error<dlogPs> dlogPrior(var::Parameters_Normal_Distribution<Id> const &prior,
-               var::Parameters_transformed<Id> const &ca) {
+Maybe_error<dlogPs> dlogPrior(var::Parameters_Normal_Distribution const &prior,
+               var::Parameters_transformed const &ca) {
     auto r_logP=prior.logP(ca);
     if (!r_logP)
         return r_logP.error();
     return dlogPs{logL(r_logP.value()), Grad(prior.dlogP(ca)),
-                  Hess(SymPosDefMatrix<double>(prior.hessian(ca)))};
+                  FIM(SymPosDefMatrix<double>(prior.FIM(ca)))};
 }
 
 template <class FunctionTable, 
@@ -217,7 +213,7 @@ template <class FunctionTable,
              is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                                                                         DataType>)
 
-Maybe_error<levenberg_mcmc<Parameters>> calculate_next_levenberg_mcmc(
+Maybe_error<levenberg_mcmc> calculate_next_levenberg_mcmc(
     FunctionTable &&f, Parameters &&ca_par,std::size_t i_walker,
     Prior const &prior, Likelihood const &lik,
     const DataType &y, const Variables &x) {
@@ -228,14 +224,13 @@ Maybe_error<levenberg_mcmc<Parameters>> calculate_next_levenberg_mcmc(
     auto Maybe_ca_logL = dlogLikelihood(f, lik, ca_par, y, x);
     if (!Maybe_ca_logL)
         return Maybe_ca_logL.error();
-    return levenberg_mcmc<Parameters>{i_walker,std::move(ca_par), std::move(Maybe_ca_logP.value()),
+    return levenberg_mcmc{i_walker,std::move(ca_par), std::move(Maybe_ca_logP.value()),
                                       std::move(Maybe_ca_logL.value())};
 }
 
-template <class Id>
 double levenberg_Acceptance(
-    levenberg_mcmc<var::Parameters_transformed<Id>> const &current,
-    levenberg_mcmc<var::Parameters_transformed<Id>> const &candidate,
+    levenberg_mcmc const &current,
+    levenberg_mcmc const &candidate,
     multivariate_normal_distribution<double, SymPosDefMatrix<double>> const
         &currentProp,
     multivariate_normal_distribution<double, SymPosDefMatrix<double>> const
@@ -266,7 +261,7 @@ template <class FunctionTable,  class Prior,
 Maybe_error<bool>
 step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
                              std::uniform_real_distribution<double> &rdist,
-                             levenberg_Marquart_mcmc<Parameters> &currentm,
+                             levenberg_Marquart_mcmc &currentm,
                              Prior const &prior, Likelihood const &lik,
                              const DataType &y, const Variables &x,
                               double beta) {
@@ -320,7 +315,7 @@ template <class FunctionTable, class Prior,
              is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                                                                         DataType>)
 void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
-                                thermo_levenberg_mcmc<Parameters> &current,
+                                thermo_levenberg_mcmc &current,
                                 const by_beta<double> &beta,
                                 ensemble<mt_64i> &mt, Prior const &prior,
                                 Likelihood const &lik, const DataType &y,
@@ -348,9 +343,9 @@ void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
             auto Maybe_trans = step_levenberg_thermo_mcmc_i(ff[i_thread], mt[i_thread],
                                                         rdist[i_thread], current.walkers[ib],
                                                         prior, lik, y, x, beta[ib]);
-            if (!Maybe_trans)
-                std::cerr << "error at iter=" << iter << "beta = " << beta[ib]
-                          << ": " << Maybe_trans.error()() << "\n";
+            //if (!Maybe_trans)
+             //   std::cerr << "error at iter=" << iter << "beta = " << beta[ib]
+             //             << ": " << Maybe_trans.error()() << "\n";
         }
     }
     f += ff;
@@ -363,8 +358,7 @@ inline double calc_logA(double betai, double betaj, dlogLs const& logLi,
 }
 
 
-template <class Parameters>
-void thermo_levenberg_jump_mcmc(std::size_t iter, thermo_levenberg_mcmc<Parameters> &current,
+void thermo_levenberg_jump_mcmc(std::size_t iter, thermo_levenberg_mcmc &current,
                       const by_beta<double> &beta, mt_64i &mt,
                       ensemble<mt_64i> &mts, std::size_t thermo_jumps_every) {
     if (iter % (thermo_jumps_every) == 0) {
@@ -462,14 +456,14 @@ class Saving_Levenberg_intervals
 
 template <class... saving, class... Ts, class Parameters>
 void report_title(save_mcmc<Parameters, saving...> &f,
-                  thermo_levenberg_mcmc<Parameters> const &data, const Ts &...ts) {
+                  thermo_levenberg_mcmc const &data, const Ts &...ts) {
     (report_title(static_cast<saving &>(f), data, ts...), ...);
 }
 
 
 template <class Parameter>
 void report_title(
-            save_likelihood<Parameter> &s, thermo_levenberg_mcmc<Parameter> const &
+            save_likelihood<Parameter> &s, thermo_levenberg_mcmc const &
             ...) {
                 s.f
                << "iter" << s.sep
@@ -493,7 +487,7 @@ void report_title(
 
 template <class Parameter,class FunctionTable, class Duration>
  void report(FunctionTable &&, std::size_t iter, const Duration &dur,
-            save_likelihood<Parameter> &s, thermo_levenberg_mcmc<Parameter> const &current, by_beta<double> t_beta,
+            save_likelihood<Parameter> &s, thermo_levenberg_mcmc const &current, by_beta<double> t_beta,
                    ...) {
     if (iter % s.save_every == 0) {
             
@@ -520,19 +514,17 @@ template <class Parameter,class FunctionTable, class Duration>
     }
     
     
-    template <class Parameters>
-    std::size_t num_Parameters(thermo_levenberg_mcmc<Parameters> const &x) {
+    std::size_t num_Parameters(thermo_levenberg_mcmc const &x) {
         return x.walkers[0].m_data.m_x.size();
     }
     
-    template <class Parameters>
-    std::size_t num_lambdas(thermo_levenberg_mcmc<Parameters> const &x) {
+    std::size_t num_lambdas(thermo_levenberg_mcmc const &x) {
         return x.walkers[0].m_lambda.size();
     }
     
     
     template <class Parameter>
-    void report_title(save_Parameter<Parameter> &s, thermo_levenberg_mcmc<Parameter>const & ,
+    void report_title(save_Parameter<Parameter> &s, thermo_levenberg_mcmc const & ,
                 ...) {
                     
                     s.f << "iter" << s.sep
@@ -549,7 +541,7 @@ template <class Parameter,class FunctionTable, class Duration>
     
     template <class Parameter,class FunctionTable, class Duration>
  void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
-                save_Parameter<Parameter> &s, thermo_levenberg_mcmc<Parameter> const &current, by_beta<double> t_beta,
+                save_Parameter<Parameter> &s, thermo_levenberg_mcmc const &current, by_beta<double> t_beta,
                        ...) {
         if (iter % s.save_every == 0)
             for (std::size_t i_beta = 0; i_beta < t_beta.size(); ++i_beta)
@@ -565,7 +557,7 @@ template <class Parameter,class FunctionTable, class Duration>
     
     
     template <class Parameter>
-    void report_title(save_Levenberg_Lambdas<Parameter> &s, thermo_levenberg_mcmc<Parameter> const &,
+    void report_title(save_Levenberg_Lambdas<Parameter> &s, thermo_levenberg_mcmc const &,
                 ...) {
                     s.f << "iter" << s.sep << "dur" << s.sep
                         << "beta" << s.sep
@@ -581,7 +573,7 @@ template <class Parameter,class FunctionTable, class Duration>
     
     template <class Parameter,class FunctionTable, class Duration>
     void report(FunctionTable &&, std::size_t iter, const Duration &dur,
-                save_Levenberg_Lambdas<Parameter> &s, thermo_levenberg_mcmc<Parameter>  &current, by_beta<double> t_beta,
+                save_Levenberg_Lambdas<Parameter> &s, thermo_levenberg_mcmc  &current, by_beta<double> t_beta,
                 ...) {
         if (iter % s.save_every == 0)
             for (std::size_t i_beta = 0; i_beta < t_beta.size(); ++i_beta)
@@ -611,7 +603,7 @@ template <class FunctionTable, class Duration, class Parameters,
          class... saving, class... T>
 void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_mcmc<Parameters, saving...> &s,
-                thermo_levenberg_mcmc<Parameters> &data, T const &...ts) {
+                thermo_levenberg_mcmc &data, T const &...ts) {
     (report(f, iter, dur, static_cast<saving &>(s), data, ts...), ..., 1);
 }
 
@@ -673,7 +665,7 @@ public:
 
 template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
          class Variables, class DataType, class Reporter, class mcmc,
-         class Parameters, class timepoint>
+          class timepoint>
     requires(
         is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
 
@@ -686,7 +678,7 @@ auto thermo_levenberg_evidence_loop(
     thermodynamic_levenberg_integration<Algorithm, Reporter> &&therm,
     Prior const &prior, Likelihood const &lik, const DataType &y,
     const Variables &x, mcmc mcmc_run, std::size_t iter,
-    thermo_levenberg_mcmc<Parameters> &current, Reporter &rep,
+    thermo_levenberg_mcmc &current, Reporter &rep,
     const by_beta<double> beta_run, mt_64i &mt, std::vector<mt_64i> &mts,
     const timepoint &start) {
     var::Event_Timing<200> even_dur(start);
@@ -740,7 +732,7 @@ auto init_levenberg_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Pri
         t_logLs = dlogLikelihood(f,lik,par, y,x);
         
     }
-    return levenberg_mcmc<Parameters>{i_walker,std::move(par), logP.value(), t_logLs.value()};
+    return levenberg_mcmc{i_walker,std::move(par), logP.value(), t_logLs.value()};
 }
 
 
@@ -751,7 +743,7 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
 auto init_levenberg_marquardt_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
                                    const DataType &y, const Variables &x,double beta, std::size_t n_lambdas) {
     
-    return levenberg_Marquart_mcmc<Parameters>{init_levenberg_mcmc(f,mt,i_walker,pr,lik,y,x), levenberg_lambda_adaptive_distribution(n_lambdas),beta};
+    return levenberg_Marquart_mcmc{init_levenberg_mcmc(f,mt,i_walker,pr,lik,y,x), levenberg_lambda_adaptive_distribution(n_lambdas),beta};
 }
 
 
@@ -768,7 +760,7 @@ auto init_levenberg_thermo_mcmc(FunctionTable &&f,
                       Prior const &prior, Likelihood const &lik,
                       const DataType &y, const Variables &x) {
     
-    by_beta<levenberg_Marquart_mcmc<Parameters>> walker(beta.size());
+    by_beta<levenberg_Marquart_mcmc> walker(beta.size());
     by_beta<emcee_Step_statistics> emcee_stat(beta.size());
     by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
     auto ff = f.fork(omp_get_max_threads());
@@ -780,7 +772,7 @@ auto init_levenberg_thermo_mcmc(FunctionTable &&f,
         }
     
     f += ff;
-    return thermo_levenberg_mcmc<Parameters>{walker};
+    return thermo_levenberg_mcmc{walker};
 }
 
 
