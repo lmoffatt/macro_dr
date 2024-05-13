@@ -71,7 +71,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                 mt_64i mt(myseed);
                 
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
-                      iterations_between_thermo_jumps, max_iter_equilibrium, beta_size,
+                      thermo_jump_factor, max_iter_equilibrium, beta_size,
                       beta_upper_size, beta_medium_size, beta_upper_value,
                       beta_medium_value, n_lambdas,stops_at, includes_zero,
                       save_every_param_size_factor] = std::move(thermo_algorithm);
@@ -91,7 +91,8 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                               << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every = iterations_between_thermo_jumps;
+                    std::size_t thermo_jumps_every =
+                        param1_prior.size() *  thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
@@ -105,7 +106,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                             Save_Parameter_every(save_every_param_size_factor *
                                                  param1_prior.size()),
                             save_Levenberg_Lambdas_every(save_every_param_size_factor *
-                                                 param1_prior.size()),
+                                                 param1_prior.size()*5),
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));
                         
@@ -189,7 +190,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                 mt_64i mt(myseed);
                 
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
-                      iterations_between_thermo_jumps, max_iter_equilibrium, beta_size,
+                      thermo_jump_factor, max_iter_equilibrium, beta_size,
                       beta_upper_size, beta_medium_size, beta_upper_value,
                       beta_medium_value, n_lambda,stops_at, includes_zero,
                       save_every_param_size_factor] = std::move(thermo_algorithm);
@@ -210,7 +211,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
                     std::size_t thermo_jumps_every =
-                        param1_prior.size() * iterations_between_thermo_jumps;
+                        param1_prior.size() * thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);

@@ -13,6 +13,7 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 export NTASKS=2
 CPUSPERTASK=32
 
+export EVIDENCE_ALGORITHM=levenberg
 
 export USE_LOCAL_ID=0
 
