@@ -29,12 +29,12 @@ export SCHEME_2=scheme_${N_SCH2}_inact_PI
 export SCHEME_3=scheme_${N_SCH2}_inact_PI
 
 
-export PATH_MACRO_DR_0=v23
+export PATH_MACRO_DR_0=v28
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DRX=v27
+export PATH_MACRO_DRX=v28
 
 
 export EXPERIMENT_0=idealize_experiment_2
@@ -54,7 +54,7 @@ export MAX_ITER=1000000
 JOBID1=9097
 
 
-#export CONTINUATION_NUMBER=
+export CONTINUATION_NUMBER=0
 
 JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
 
