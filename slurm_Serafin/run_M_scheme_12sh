@@ -7,8 +7,8 @@ cd ~/macro_dr/macro_dr
 RUNTIME="2-00:00"
 
 export PATH_MACRO=/home/lmoffatt/macro_dr/
-export PATH_MACRO_DR=v26
-export PATH_MACRO_DRX=v27
+export PATH_MACRO_DR=v28
+export PATH_MACRO_DRX=v28
 
 
 # Cargar los módulos para la tarea
