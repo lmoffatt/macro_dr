@@ -271,7 +271,7 @@ Maybe_error<levenberg_mcmc> calculate_next_levenberg_mcmc(
 
 
 
-double levenberg_Acceptance(
+Maybe_error<double> levenberg_Acceptance(
     levenberg_mcmc const &current,
     levenberg_mcmc const &candidate,
     multivariate_normal_distribution<double, SymPosDefMatrix<double>> const
@@ -283,8 +283,13 @@ double levenberg_Acceptance(
     
     double logL_candidate = candidate.logThP(beta);
     
-    double logP_forward = currentProp.logP(candidate.m_x()).value();
-    double logP_backward = candidateProp.logP(current.m_x()).value();
+    auto Maybe_logP_forward = currentProp.logP(candidate.m_x());
+    auto Maybe_logP_backward = candidateProp.logP(current.m_x());
+    if (!Maybe_logP_forward) return Maybe_logP_forward.error();
+    if (!Maybe_logP_backward) return Maybe_logP_backward.error();
+    double logP_forward = Maybe_logP_forward.value();
+    double logP_backward = Maybe_logP_backward.value();
+    
     double logA =
         (logL_candidate + logP_backward) - (logL_current + logP_forward);
     double A = std::min(1.0, std::exp(logA));
@@ -334,9 +339,11 @@ step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
         return Maybe_ca_Prop.error();
     }
     auto ca_Prop = std::move(Maybe_ca_Prop.value());
-    auto A = levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop,
+    auto Maybe_A = levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop,
                                   beta);
+    if (!Maybe_A) return Maybe_A.error();
     
+    double A=Maybe_A.value();
     double r = rdist(mt);
     if (r < A) {
         succeeds(Lambda.stat(i_lambda));
@@ -394,8 +401,11 @@ step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
         return Maybe_ca_Prop.error();
     }
     auto ca_Prop = std::move(Maybe_ca_Prop.value());
-    auto A = levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop,
+    auto Maybe_A = levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop,
                                   beta);
+    if (!Maybe_A)return Maybe_A.error();
+    
+    double A=Maybe_A.value();
     
     double r = rdist(mt);
     if (r < A) {
