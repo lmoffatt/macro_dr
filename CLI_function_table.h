@@ -6,7 +6,6 @@
 #include "function_memoization.h"
 #include "maybe_error.h"
 #include "models_MoffattHume_allosteric.h"
-#include "models_MoffattHume_linear.h"
 #include "parameters.h"
 #include "parameters_derivative.h"
 #include "qmodel.h"
