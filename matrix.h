@@ -528,7 +528,7 @@ public:
       return a;
     else if (b.size() == 0)
       return b;
-    else
+    else    
       return lapack::Lapack_Full_Product(a, b, true, false);
   }
 
