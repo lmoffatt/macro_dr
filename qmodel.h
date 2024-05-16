@@ -3984,7 +3984,7 @@ struct Likelihood_Model_v_all {
 
 struct Likelihood_Model_v {
   using v_uses_adaptive_aproximation =
-      std::variant<::V<uses_adaptive_aproximation(false)>,
+      std::variant<
   ::V<uses_adaptive_aproximation(true)>>;
 
   using v_uses_recursive_aproximation =
