@@ -5499,28 +5499,7 @@ auto cuevi_Model_by_convergence(
 }
 */
 
-auto cuevi_Model_by_iteration(
-    std::string path, std::string filename,
-    const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
-
-    std::size_t num_scouts_per_ensemble,
-    std::size_t max_number_of_simultaneous_temperatures, double min_fraction,
-    std::size_t thermo_jumps_every, std::size_t max_iter_warming,
-    std::size_t max_iter_equilibrium, double max_ratio,
-    double n_points_per_decade_beta, double n_points_per_decade_fraction,
-    double stops_at, bool includes_zero, std::size_t initseed) {
-  return deprecated::cuevi_integration(
-      less_than_max_iteration(max_iter_warming, max_iter_equilibrium),
-      experiment_fractioner(t_segments, average_the_ATP_evolution),
-      save_mcmc<var::Parameters_transformed,
-                save_likelihood<var::Parameters_transformed>,
-                save_Parameter<var::Parameters_transformed>, save_Evidence,
-                save_Predictions<var::Parameters_transformed>>(
-          path, filename, 10ul, 100ul, 10ul, 100ul),
-      num_scouts_per_ensemble, max_number_of_simultaneous_temperatures,
-      min_fraction, thermo_jumps_every, n_points_per_decade_beta,
-      n_points_per_decade_fraction, stops_at, includes_zero, initseed);
-}
+  
 
 cuevi::Cuevi_Algorithm<
     experiment_fractioner,
