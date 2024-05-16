@@ -53,7 +53,7 @@ template <template <typename...> class V, typename... Ts>
 struct is_of_this_template_type<V<Ts...>, V> : std::true_type {};
 template <typename C, template <typename...> class V>
 inline constexpr bool is_of_this_template_type_v =
-    is_of_this_template_type<C, V>::value;
+    is_of_this_template_type<std::decay_t<C>, V>::value;
 
 template <typename C, template <typename, auto...> class V>
 struct is_of_this_template_value_type : std::false_type {};

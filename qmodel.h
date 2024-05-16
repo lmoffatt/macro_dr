@@ -2352,56 +2352,9 @@ return error_message("nan P");
     return out;
   }
 
-  template <class FunctionTable, class C_Patch_Model>
-    requires(!is_of_this_template_type_v<FunctionTable, FuncMap_St>)
-  // requires(U<C_Patch_Model, Patch_Model>)
-  auto calc_Qdt_ATP_step(FunctionTable &&f, const C_Patch_Model &m,
-                         const ATP_step &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
-    auto dt = get<number_of_samples>(t_step)() / fs;
-    auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
-    if constexpr (false) {
-      auto test_der_eigen = var::test_Derivative(
-          [this, &t_step](auto l_m) {
-            return calc_eigen(l_m, get<ATP_concentration>(t_step));
-          },
-          1, 1e-9, m);
-      if (!test_der_eigen) {
-        std::cerr << test_der_eigen.error()();
-        return test_der_eigen.error();
-      }
-    }
-
-    if (t_Qeig) {
-      auto Maybe_Qdt = calc_Qdt_eig(f, m, t_Qeig.value(),
-                                    get<number_of_samples>(t_step), dt);
-      if (Maybe_Qdt)
-        return Maybe_Qdt;
-    }
-    // else return t_Qeig.error();
-    auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
-    return calc_Qdt_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
-  }
-
-  template <class FunctionTable, class C_Patch_Model>
-    requires(!is_of_this_template_type_v<FunctionTable, FuncMap_St>)
-  // requires(U<C_Patch_Model, Patch_Model>)
-  auto calc_Qdtm_ATP_step(FunctionTable &&f, const C_Patch_Model &m,
-                          const ATP_step &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
-    auto dt = get<number_of_samples>(t_step)() / fs;
-    auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
     
-    if (t_Qeig) {
-      auto Maybe_Qdt= calc_Qdtm_eig(f, m, t_Qeig.value(), get<number_of_samples>(t_step),
-                           dt);
-       if (Maybe_Qdt)
-      
-        return Maybe_Qdt.value();
-    }
-    auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
-    return calc_Qdtm_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
-  }
+    
+  
     
     template <class FunctionTable, class C_Patch_Model>
     requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
@@ -5426,60 +5379,6 @@ void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
         }
 }
 
-template <class ParameterType, class FunctionTable, class Duration, class Prior,
-          class t_logLikelihood, class Data, class Variables>
-  requires(!is_of_this_template_type_v<FunctionTable, FuncMap_St>)
-void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
-            save_Predictions<ParameterType> &s,
-            cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
-            t_logLikelihood &&lik, const deprecated::by_fraction<Data> &ys,
-            const deprecated::by_fraction<Variables> &xs, ...) {
-
-  auto &t = data.get_Cuevi_Temperatures();
-  if (iter % s.save_every == 0) {
-    data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
-    for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
-         ++i_cu) {
-      auto icu = cuevi::Cuevi_Index(i_cu);
-      auto i_frac = data.get_Fraction(i_cu);
-      auto beta = data.get_Beta(icu);
-      auto nsamples = size(ys[i_frac()]);
-      for (std::size_t half = 0; half < 2; ++half)
-        // #pragma omp parallel for
-        for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
-          auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
-          auto iw = cuevi::Walker_Index(i_walker);
-          auto &wa = data.get_Walker(iw, icu);
-          auto &wav = data.get_Walker_Value(iw, icu);
-          auto par = data.get_Parameter(iw, i_cu);
-          auto prediction = logLikelihoodPredictions(
-              f.fork(var::I_thread(iiw)), lik, par, ys[i_frac()], xs[i_frac()]);
-          if (is_valid(prediction)) {
-            auto &predictions = prediction.value();
-            for (std::size_t i_step = 0; i_step < size(ys[i_frac()]);
-                 ++i_step) {
-              auto v_ev = get<ATP_evolution>(
-                  get<Recording_conditions>(xs[i_frac()])()[i_step]);
-
-              s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
-                  << s.sep << nsamples << s.sep << beta() << s.sep << i_walker
-                  << s.sep << get<cuevi::Walker_id>(wa())() << s.sep << i_step
-                  << s.sep
-                  << get<Time>(
-                         get<Recording_conditions>(xs[i_frac()])()[i_step])
-                  << s.sep << get_num_samples(v_ev) << s.sep
-                  << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
-                  << s.sep << ys[i_frac()]()[i_step]() << s.sep
-                  << get<y_mean>(predictions()[i_step]) << s.sep
-                  << get<y_var>(predictions()[i_step]) << s.sep
-                  << get<plogL>(predictions()[i_step]) << s.sep
-                  << get<eplogL>(predictions()[i_step]) << "\n";
-            }
-          }
-        }
-    }
-  }
-}
 
 template <class ParameterType, class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>
