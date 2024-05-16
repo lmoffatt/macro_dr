@@ -385,10 +385,10 @@ calc_thermo_evidence(std::string id,
       "thermo_levenberg_evidence",
       dcli::to_typed_function<std::string,
                               std::string, std::string, likelihood_algo_type, std::string,
-                              experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t>(
+                              experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t, double>(
           &calc_thermo_levenberg_evidence, "idname","model", "prior", "likelihood_algorithm",
           "data", "experiment", "thermo_levenberg_algorithm", "save_every",
-          "init_seed"));
+          "init_seed", "delta_par"));
   
   
   

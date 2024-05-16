@@ -351,6 +351,8 @@ add_executable(macro_dr main.cpp
     experiments/Moffatt_Hume_2007_ATP_time_idealized_2.txt
     scripts/idealize_experiment_2.txt
     scripts/beta_16.txt
+    models/scheme_1_inact_PI_prior_0001.csv
+    models/scheme_1_inact_PI_0001.txt
     
     
     

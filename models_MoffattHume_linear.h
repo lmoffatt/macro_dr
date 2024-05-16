@@ -269,19 +269,19 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
                                                   {{0, 1}, {1, 2}, {2, 3}},
                                                   {kon * 3.0, kon * 2.0, kon})),
             build<P_initial>(
-                var::build_<Matrix<double>>(1, N(), {{0, 0}}, {1.0})),
+                var::build_<Matrix<double>>(1, N(), {{0, 0}}, {kon*(1.0/kon)})),
             build<g>(var::build_<Matrix<double>>(N(), 1, {{4, 0}},
-                                                 {v_unitary_current})),
-            build<N_Ch_mean>(v_N0),
-            
-            build<Current_Noise>(v_curr_noise),
-            build<Pink_Noise>(v_pink_noise),
-            build<Proportional_Noise>(v_prop_noise),
-            
-            build<Current_Baseline>(v_baseline),
-            N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
-            min_P(1e-7), Probability_error_tolerance(1e-2),
-            Conductance_variance_error_tolerance(1e-2));
+                                                   {v_unitary_current})),
+              build<N_Ch_mean>(v_N0),
+              
+              build<Current_Noise>(v_curr_noise),
+              build<Pink_Noise>(v_pink_noise),
+              build<Proportional_Noise>(v_prop_noise),
+              
+              build<Current_Baseline>(v_baseline),
+              N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
+              min_P(1e-7), Probability_error_tolerance(1e-2),
+              Conductance_variance_error_tolerance(1e-2));
       },
       [npar](const auto &patch_model)
       -> Maybe_error<
@@ -398,7 +398,7 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
                 build<Qa>(var::build_<Matrix<double>>(
                     N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon * 3.0, kon * 2.0, kon})),
                 build<P_initial>(
-                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
+                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon*(1.0/kon)})),
                 build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}},
                                                      {v_unitary_current})),
                 build<N_Ch_mean>(v_N0),
@@ -573,7 +573,7 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                 build<Qa>(var::build_<Matrix<double>>(
                     N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon_0, kon_1, kon_2})),
                 build<P_initial>(
-                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
+                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon_0*(1.0/kon_0)})),
                 build<g>(var::build_<Matrix<double>>(N, 1, {{4, 0}, {5, 0}},
                                                      {v_unitary_current, v_unitary_current})),
                 build<N_Ch_mean>(v_N0),
@@ -779,7 +779,7 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
             build<Qa>(var::build_<Matrix<double>>(
                 N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon_0, kon_1, kon_2})),
             build<P_initial>(
-                var::build_<Matrix<double>>(1, N, {{0, 0}}, {1.0})),
+                var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon_0*(1.0/kon_0)})),
             build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}, {6, 0}},
                                                  {v_unitary_current, v_unitary_current})),
             build<N_Ch_mean>(v_N0),

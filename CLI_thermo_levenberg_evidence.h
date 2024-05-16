@@ -44,7 +44,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                                  std::string recording,
                                  experiment_file_type experiment_file,
                                  thermo_leven_algo_type thermo_algorithm,
-                                 std::size_t save_every, std::size_t myseed) {
+                                 std::size_t save_every, std::size_t myseed, double delta_par) {
     myseed = calc_seed(myseed);
     std::string filename =
         id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
@@ -65,7 +65,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
             [&filename, &ftbl3, &experiment, &recording, &prior, &likelihood,
-             &thermo_algorithm, &myseed](auto model0ptr) {
+             &thermo_algorithm, &myseed, &delta_par](auto model0ptr) {
                 std::string sep = ",";
                 auto &model0 = *model0ptr;
                 mt_64i mt(myseed);
@@ -92,7 +92,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
                     std::size_t thermo_jumps_every =
-                        param1_prior.size() *  thermo_jump_factor;
+                        /*param1_prior.size() */  thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
@@ -108,7 +108,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                             save_Levenberg_Lambdas_every(save_every_param_size_factor *
                                                  param1_prior.size()*5),
                             Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 50)));
+                                                   param1_prior.size() /* 50*/)));
                         
                         auto tmi = thermo_levenberg_Model_by_max_iter(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
@@ -116,7 +116,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                             beta_medium_size, beta_upper_value, beta_medium_value,
                             n_lambdas,
                             
-                            stops_at, includes_zero, saving_intervals, myseed);
+                            stops_at, includes_zero, saving_intervals, myseed, delta_par);
                         
                         auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
                             uses_adaptive_aproximation(adaptive_aproximation),
@@ -225,7 +225,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                             Save_Parameter_every(save_every_param_size_factor *
                                                  param1_prior.size()),
                             Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 50)));
+                                                   param1_prior.size() /** 50*/)));
                         
                         auto tmi = new_thermo_Model_by_max_iter(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,

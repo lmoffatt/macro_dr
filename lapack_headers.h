@@ -624,7 +624,8 @@ inline Maybe_error<
 Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
                    bool does_diagonal_scaling,
                    bool computes_eigenvalues_condition_numbers,
-                   bool computes_eigenvectors_condition_numbers);
+                   bool computes_eigenvectors_condition_numbers,
+                   bool do_Nelson_Normalization);
 
 } // namespace lapack
 template <> constexpr std::string function_name<&lapack::Lapack_Symm_inv>() {
@@ -1228,7 +1229,8 @@ inline Maybe_error<
 Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
                    bool does_diagonal_scaling,
                    bool computes_eigenvalues_condition_numbers,
-                   bool computes_eigenvectors_condition_numbers) {
+                   bool computes_eigenvectors_condition_numbers,
+bool do_Nelson_Normalization) {
 
   return_error<
       std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>,
@@ -1597,8 +1599,9 @@ Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
   } else {
     auto VL_cpp = tr(VR_lapack);
     auto VR_cpp = tr(VL_lapack);
-    if (!Nelson_Normalization(VR_cpp, VL_cpp))
-        return error_message("singular normalization");
+    if (do_Nelson_Normalization)
+       if (!Nelson_Normalization(VR_cpp, VL_cpp))
+          return error_message("singular normalization");
     
     
     
