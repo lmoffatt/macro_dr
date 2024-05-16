@@ -113,7 +113,7 @@ add_executable(macro_dr main.cpp
     continuation.h
     models.h
    # old_code_in_main.cpp
-    CLI_macrodr_commands.h
+   
     scripts/run_evidence.txt
     
     scripts/experiment_7.txt
