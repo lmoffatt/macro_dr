@@ -28,7 +28,7 @@ export CONTINUATION_NUMBER=0
 
 
 export SCHEME_0=scheme_11_inact_PI
-export EVIDENCE_ALGORITHM=levenberg
+export EVIDENCE_ALGORITHM=thermo
 
 SCM_N=11
 
