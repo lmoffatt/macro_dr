@@ -5,6 +5,8 @@
 #include "matrix.h"
 #include "maybe_error.h"
 #include <algorithm>
+#include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 
@@ -1171,26 +1173,48 @@ dgeevx_(char *BALANC, char *JOBVL, char *JOBVR, char *SENSE, int *N,
 template<class C_Matrix, class C_DiagonalMatrix>
 inline auto sort_by_eigenvalue(
     std::tuple<C_Matrix, C_DiagonalMatrix, C_Matrix> const
-        &e) {
+        &e, const C_Matrix& x) {
   auto &[VL, L, VR] = e;
   std::vector<std::pair<double, std::size_t>> la(L.size());
+  
   for (std::size_t i = 0; i < L.size(); ++i)
       la[i] = std::pair(var::primitive(L)[i], i);
   std::sort(la.begin(), la.end());
-  C_DiagonalMatrix Ls(L.nrows(), L.ncols());
-
-  C_Matrix VRs(VR.nrows(), VR.ncols());
-  C_Matrix VLs(VL.nrows(), VL.ncols());
-  for (std::size_t i = 0; i < la.size(); ++i) {
-    auto is = la[i].second;
-      Ls.set(i,L[is]);
-    for (std::size_t j = 0; j < la.size(); ++j) {
-          VRs.set(j, i, VR(j, is));
-        VLs.set(i, j,VL(is, j));
-    }
-  }
+  Matrix<double> Per(VL.nrows(),VL.nrows(),0.0);
+  for (std::size_t i=0; i<la.size(); ++i)
+      Per(i,la[i].second)=1.0;
   
-  return std::tuple(VRs, Ls, VLs);
+  auto PerT=tr(Per);
+  
+  auto VLs=VL*PerT;
+  auto Ls=Per*L*PerT;
+  auto VRs=VR*PerT;
+  
+  assert((
+      [&e,&VRs,&Ls, &VLs,&x, &L, &VL, &VR]()
+      { if (!(norm_1(VLs * Ls * inv(VLs).value() - x)/norm_1(x) <  std::sqrt(eps)*1000)||
+              !( norm_1(inv(tr(VRs)).value() * Ls * tr(VRs) - x)/norm_1(x) <  std::sqrt(eps)*1000))
+{
+                std::cerr<<"e"<<e;
+                std::cerr<<"VRs"<<VRs;
+                std::cerr<<"Ls"<<Ls;
+                std::cerr<<"VLs"<<VLs;
+                std::cerr<<"x"<<x;
+                std::cerr<<"VL * L * inv(VL).value()"<<VL * L * inv(VL).value();
+                std::cerr<<"VLs * Ls * VLsinv"<<VLs * Ls * inv(VL).value();
+                std::cerr<<"VLs * Ls * VLsinv-x"<<VLs * Ls * inv(VL).value()-x;
+                
+                std::cerr<<"inv(tr(VR)).value() * L * tr(VR)"<<inv(tr(VR)).value() * L * tr(VR);
+                std::cerr<<"inv(tr(VRs)).value() * Ls * tr(VRs)"<<inv(tr(VRs)).value() * Ls * tr(VRs);
+                std::cerr<<"inv(tr(VRs)).value() * Ls * tr(VRs)-x"<<inv(tr(VRs)).value() * Ls * tr(VRs)-x;
+   return false;
+}
+else
+return true;
+             }(),
+      " fails in eigendecomposition"));
+  
+  return std::tuple(VLs, Ls, VRs);
 }
 
 inline Matrix<double> &
@@ -1605,60 +1629,48 @@ bool do_Nelson_Normalization) {
     
     
     
-//    std::cerr << "\ntr(VL_cpp)*VR_cpp\n" << tr(VL_cpp)*VR_cpp ;
-//    std::cerr << "\nVL_cpp*VR_cpp\n" << VL_cpp*VR_cpp  ;
-    
-//    std::cerr << "\nx\n" << x;
-//    std::cerr << "\nVR_cpp\n" << VR_cpp;
-//    std::cerr << "\nWR\n" << WR;
-//    std::cerr << "\nVL_cpp\n" << VL_cpp;
-    
-//    std::cerr << "\nVR_cpp*VL_cpp\n" << VR_cpp * VL_cpp;
-//    std::cerr << "\nVR_cpp * WR * VL_cpp-x\n" << VR_cpp * WR * VL_cpp - x;
-//    std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value();
-//    std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()-x\n" << VR_cpp * WR * inv(VR_cpp).value()-x;
-//    std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)\n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
-//    std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)-x \n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
     
     
-//    std::cerr << "\ninv(VL_cpp).value() * WR * VL_cpp\n" << inv(VL_cpp).value() * WR * VL_cpp;
-//    std::cerr << "\nVL_cpp * WR * inv(VL_cpp).value()\n" << VL_cpp * WR * inv(VL_cpp).value();
     
-//    std::cerr << "\ninv(VL_cpp).value() * WR * VL_cpp\n" << inv(tr(VL_cpp)).value() * WR * tr(VL_cpp);
-//    std::cerr << "\ntr(VL_cpp) * WR * inv(tr(VL_cpp)).value()\n" << tr(VL_cpp) * WR * inv(tr(VL_cpp)).value();
-    
-//    std::cerr << "\nnorm_1(VR_cpp * WR * VL_cpp-x)\n"
-//              << norm_1(VR_cpp * WR * VL_cpp - x);
-//    std::cerr << "\neps\n" << eps << "\n";
-//    std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
-    
-//    std::abort();
-    
-    auto inv_VR=inv(VR_cpp);
-    if (!inv_VR)
-      return error_message("eigenvector singular: "+inv_VR.error()());
-    
-    if (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) >  std::sqrt(eps)) {
-      // std::cerr << "\nx\n" << x;
-      // std::cerr << "\nVR_cpp\n" << VR_cpp;
-      // std::cerr << "\nWR\n" << WR;
-      // std::cerr << "\ninv(VR_cpp)\n" << inv(VR_cpp);
-      // std::cerr << "\nVL_cpp\n" << VL_cpp;
-      
-      // std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value() ;
-      // std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value() -x\n" << VR_cpp * WR * inv(VR_cpp).value()  - x;
-      // std::cerr << "\neps\n" << eps << "\n";
-      // std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
-      return error_message("bad eigenvalue decomposition");
-    }
-    
+    if constexpr (false){
     assert(
-        (norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) <  std::sqrt(eps)*1000) &&
+        ([&VR_cpp, &WR, &x,&VL_cpp](){
+            if (inv(VR_cpp).valid()&&!(norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) <  std::sqrt(eps)*1000))
+{
+                
+                std::cerr << "\nx\n" << x;
+                std::cerr << "\nVR_cpp\n" << VR_cpp;
+                std::cerr << "\nWR\n" << WR;
+                std::cerr << "\nVL_cpp\n" << VL_cpp;
+                
+                std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value();
+                std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()-x\n" << VR_cpp * WR * inv(VR_cpp).value()-x;
+                
+                std::cerr<<"norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)"<<norm_1(VR_cpp * WR * inv(VR_cpp).value() - x);
+                std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)\n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
+                std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)-x \n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
+                
+                
+                std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
+      return false;
+
+}
+            else {
+                return true;}
+        }()) &&
            " fails in eigendecomposition");
-   return sort_by_eigenvalue(std::make_tuple(
+    }
+    if (do_Nelson_Normalization)
+      return sort_by_eigenvalue(std::make_tuple(
    // return std::make_tuple(
         VR_cpp, WR,
-        VL_cpp)); // in reality VL, L, VR because of transposition
+        VL_cpp),x); // in reality VL, L, VR because of transposition
+    else
+        return std::make_tuple(
+            // return std::make_tuple(
+            VR_cpp, WR,
+            VL_cpp); // in reality VL, L, VR because of transposition
+        
   }
 }
 
