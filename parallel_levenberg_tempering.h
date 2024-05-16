@@ -228,6 +228,49 @@ Maybe_error<levenberg_mcmc> calculate_next_levenberg_mcmc(
                                       std::move(Maybe_ca_logL.value())};
 }
 
+
+
+
+template <class FunctionTable, 
+         class Prior, class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>,
+                                        var::FuncMap_St> &&
+             is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
+                                 DataType>)
+
+Maybe_error<levenberg_mcmc> calculate_next_levenberg_mcmc(
+    FunctionTable &&f, Parameters &&ca_par,std::size_t i_walker,
+    Prior const &prior, Likelihood const &lik,
+    const DataType &y, const Variables &x, double delta_par) {
+    auto Maybe_ca_logP = dlogPrior(prior, ca_par);
+    if (!Maybe_ca_logP)
+        return Maybe_ca_logP.error();
+    
+    auto Maybe_ca_logL = diff_logLikelihood(f, lik, ca_par, y, x,delta_par);
+    if (!Maybe_ca_logL)
+        return Maybe_ca_logL.error();
+    return levenberg_mcmc{i_walker,std::move(ca_par), std::move(Maybe_ca_logP.value()),
+                          std::move(Maybe_ca_logL.value())};
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 double levenberg_Acceptance(
     levenberg_mcmc const &current,
     levenberg_mcmc const &candidate,
@@ -305,6 +348,75 @@ step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
     }
 }
 
+
+
+
+
+template <class FunctionTable,  class Prior,
+         class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>,
+                                        var::FuncMap_St> &&
+             is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
+                                 DataType>)
+Maybe_error<bool>
+step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
+                             std::uniform_real_distribution<double> &rdist,
+                             levenberg_Marquart_mcmc &currentm,
+                             Prior const &prior, Likelihood const &lik,
+                             const DataType &y, const Variables &x,
+                             double beta, double delta_par) {
+    auto& Lambda= currentm.m_lambda;
+    auto i_lambda=Lambda(mt);
+    auto lambda=Lambda.lambda(i_lambda);
+    auto& current=currentm.m_data;
+    auto Maybe_cu_Prop =
+        current.ProposedDistribution(beta, lambda);
+    if (!Maybe_cu_Prop) {
+        fails(Lambda.stat(i_lambda));
+        return Maybe_cu_Prop.error();
+    }
+    auto cu_Prop = std::move(Maybe_cu_Prop.value());
+    auto ca_par = current.m_x.create(cu_Prop(mt));
+    auto Maybe_ca_wa =
+        calculate_next_levenberg_mcmc(f, std::move(ca_par), current.i_walker,prior, lik, y, x,delta_par);
+    
+    if (!Maybe_ca_wa) {
+        fails(Lambda.stat(i_lambda));
+        return Maybe_ca_wa.error();
+    }
+    auto candidate = std::move(Maybe_ca_wa.value());
+    auto Maybe_ca_Prop = candidate.ProposedDistribution(beta, lambda);
+    if (!Maybe_ca_Prop) {
+        fails(Lambda.stat(i_lambda));
+        return Maybe_ca_Prop.error();
+    }
+    auto ca_Prop = std::move(Maybe_ca_Prop.value());
+    auto A = levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop,
+                                  beta);
+    
+    double r = rdist(mt);
+    if (r < A) {
+        succeeds(Lambda.stat(i_lambda));
+        current = std::move(candidate);
+        return true;
+    } else {
+        fails(Lambda.stat(i_lambda));
+        return false;
+    }
+}
+
+
+
+
+
+
+
+
+
+
 template <class FunctionTable, class Prior,
          class Likelihood, class Variables, class DataType,
          class Parameters = std::decay_t<decltype(sample(
@@ -351,6 +463,61 @@ void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
     f += ff;
     ++iter;
 }
+
+
+
+
+template <class FunctionTable, class Prior,
+         class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>,
+                                        var::FuncMap_St> &&
+             is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
+                                 DataType>)
+void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
+                                thermo_levenberg_mcmc &current,
+                                const by_beta<double> &beta,
+                                ensemble<mt_64i> &mt, Prior const &prior,
+                                Likelihood const &lik, const DataType &y,
+                                const Variables &x, double delta_par) {
+    assert(beta.size() == current.walkers.size());
+    auto n_beta = beta.size();
+    auto n_par = current.walkers[0].m_data.m_x.size();
+    std::size_t num_threads = omp_get_max_threads();
+    
+    auto ff = f.fork(num_threads);
+    
+    std::uniform_real_distribution<double> uniform_real(0, 1);
+    std::vector<std::uniform_real_distribution<double>> rdist(num_threads,
+                                                              uniform_real);
+    std::size_t n_beta_f = std::ceil(n_beta / num_threads);
+    
+#pragma omp parallel for // collapse(2)
+    for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
+        std::size_t ib0=i_thread * n_beta_f;
+        std::size_t ib1=std::min(n_beta,(i_thread +1) * n_beta_f);
+        for (std::size_t ib = ib0; ib <ib1; ++ib) {
+            // dur.record("begin_loop_walker", ib * 2);
+            //   for (std::size_t iii=0; iii<4; ++iii)
+            //       {
+            auto Maybe_trans = step_levenberg_thermo_mcmc_i(ff[i_thread], mt[i_thread],
+                                                            rdist[i_thread], current.walkers[ib],
+                                                            prior, lik, y, x, beta[ib],delta_par);
+            //if (!Maybe_trans)
+            //   std::cerr << "error at iter=" << iter << "beta = " << beta[ib]
+            //             << ": " << Maybe_trans.error()() << "\n";
+        }
+    }
+    f += ff;
+    ++iter;
+}
+
+
+
+
+
 
 inline double calc_logA(double betai, double betaj, dlogLs const& logLi,
                         dlogLs const &logLj) {
@@ -626,6 +793,7 @@ class thermodynamic_levenberg_integration {
     double stops_at_;
     bool includes_zero_;
     std::size_t initseed_;
+    double diff_par_;
     
 public:
     thermodynamic_levenberg_integration(
@@ -633,7 +801,7 @@ public:
         std::size_t thermo_jumps_every, std::size_t beta_size,
         std::size_t beta_upper_size, std::size_t beta_medium_size,
         double beta_upper_value, double beta_medium_value, std::size_t n_lambdas,double stops_at,
-        bool includes_zero, std::size_t initseed)
+        bool includes_zero, std::size_t initseed, double dp)
         : alg_{std::move(alg)}, rep_{std::move(rep)},
         num_scouts_per_ensemble_{num_scouts_per_ensemble},
         thermo_jumps_every_{thermo_jumps_every}, beta_size_{beta_size},
@@ -643,7 +811,7 @@ public:
         m_n_lambdas{n_lambdas},
 
         stops_at_{stops_at}, includes_zero_{includes_zero},
-        initseed_{initseed} {}
+        initseed_{initseed}, diff_par_{dp} {}
     
     auto &algorithm() const { return alg_; }
     auto &reporter() { return rep_; }
@@ -659,6 +827,7 @@ public:
     auto &stops_at() const { return stops_at_; }
     auto &includes_zero() const { return includes_zero_; }
     auto &initseed() const { return initseed_; }
+    auto &delta_par() const {return diff_par_;}
 };
 
 
@@ -684,11 +853,19 @@ auto thermo_levenberg_evidence_loop(
     var::Event_Timing<200> even_dur(start);
     std::ofstream event_file(f.file() + "_event_timing.csv");
     
+    auto delta_par=therm.delta_par();
+    
+    
     while (!mcmc_run.second) {
         even_dur.record("main_loop_start");
         
+        
+        if (delta_par>0)
         step_levenberg_thermo_mcmc(f, iter,  current,  beta_run, mts,
-                                 prior, lik, y, x);
+                                 prior, lik, y, x, delta_par);
+        else
+            step_levenberg_thermo_mcmc(f, iter,  current,  beta_run, mts,
+                                       prior, lik, y, x);
         even_dur.record("befor_thermo_jump");
         
         thermo_levenberg_jump_mcmc(iter, current, beta_run, mt, mts,
@@ -740,11 +917,44 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
 //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
+auto init_levenberg_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
+                         const DataType &y, const Variables &x, double delta_par) {
+    auto& priorsampler=pr;
+    auto par = sample(mt,priorsampler);
+    auto logP = dlogPrior(pr,par);
+    auto t_logLs = diff_logLikelihood(std::forward<FunctionTable>(f),lik,par, y,x, delta_par);
+    while(!(logP)||!(t_logLs))
+    {
+        par = sample(mt,priorsampler);
+        logP = dlogPrior(pr,par);
+        t_logLs = diff_logLikelihood(f,lik,par, y,x, delta_par);
+        
+    }
+    return levenberg_mcmc{i_walker,std::move(par), logP.value(), t_logLs.value()};
+}
+
+
+template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
+         class Parameters=std::decay_t<
+             decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
+//   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
 auto init_levenberg_marquardt_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
                                    const DataType &y, const Variables &x,double beta, std::size_t n_lambdas) {
     
     return levenberg_Marquart_mcmc{init_levenberg_mcmc(f,mt,i_walker,pr,lik,y,x), levenberg_lambda_adaptive_distribution(n_lambdas),beta};
 }
+
+
+template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
+         class Parameters=std::decay_t<
+             decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
+//   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
+auto init_levenberg_marquardt_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
+                                   const DataType &y, const Variables &x,double beta, std::size_t n_lambdas, double delta_par) {
+    
+    return levenberg_Marquart_mcmc{init_levenberg_mcmc(f,mt,i_walker,pr,lik,y,x, delta_par), levenberg_lambda_adaptive_distribution(n_lambdas),beta};
+}
+
 
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
@@ -758,7 +968,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 auto init_levenberg_thermo_mcmc(FunctionTable &&f,
                                 by_beta<double> const &beta, std::size_t n_lambdas,ensemble<mt_64i> &mt,
                       Prior const &prior, Likelihood const &lik,
-                      const DataType &y, const Variables &x) {
+                      const DataType &y, const Variables &x, double delta_par) {
     
     by_beta<levenberg_Marquart_mcmc> walker(beta.size());
     by_beta<emcee_Step_statistics> emcee_stat(beta.size());
@@ -768,6 +978,9 @@ auto init_levenberg_thermo_mcmc(FunctionTable &&f,
 #pragma omp parallel for //collapse(2)
     for (std::size_t ib = 0; ib < beta.size(); ++ib) {
         auto i_th=omp_get_thread_num();
+        if (delta_par>0)
+            walker[ib] = init_levenberg_marquardt_mcmc(ff[i_th], mt[i_th],ib, prior, lik, y, x, beta[ib],n_lambdas, delta_par);
+        else
             walker[ib] = init_levenberg_marquardt_mcmc(ff[i_th], mt[i_th],ib, prior, lik, y, x, beta[ib],n_lambdas);
         }
     
@@ -811,7 +1024,7 @@ auto thermo_levenberg_evidence(FunctionTable &&f,
     auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
     
     auto current =
-        init_levenberg_thermo_mcmc(f, beta_run, n_lambdas,mts, prior, lik, y, x);
+        init_levenberg_thermo_mcmc(f, beta_run, n_lambdas,mts, prior, lik, y, x, therm.delta_par());
     // auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);
     

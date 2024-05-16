@@ -453,7 +453,7 @@ inline auto calc_evidence_old(
                                    uses_averaging_aproximation(2),
                                    uses_variance_aproximation(false),
                                    uses_variance_correction_aproximation(false),
-                                   return_predictions(true)>(
+                                   return_predictions(2)>(
                        ftbl3.fork(var::I_thread(0)), model0, param1, experiment,
                        sim.value()());
     report(filename + "_lik.csv", lik.value(), sim.value(), experiment);

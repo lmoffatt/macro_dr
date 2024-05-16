@@ -1,4 +1,5 @@
-#pragma once
+#ifndef QMODEL_H
+#define QMODEL_H
 #include "cuevi.h"
 // #include "experiment.h"
 #include "experiment.h"
@@ -20,8 +21,6 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#ifndef QMODEL_H
-#define QMODEL_H
 #include <map>
 #include <string>
 
@@ -316,7 +315,12 @@ template <class C_Matrix> auto to_Probability(C_Matrix const &x) ->Maybe_error<C
       if (std::isnan(derivative(x)()[i][0]))
       return error_message("error in derivative");
   
-  auto out = apply([](auto e) { return max(e, 0.0); }, x);
+  auto out = apply([](auto e) {
+      return max(e, 0.0); }, x
+  );
+  
+  if (var::min(primitive(out))<0)
+    return error_message(" fuck");
   
   auto s = var::sum(out);
   if ( s == 0)
@@ -364,10 +368,12 @@ inline bool all_Covariance_elements(C_Matrix const &x) {
     if (!std::isfinite(primitive(x(i, i))) || x(i, i) < 0)
       return false;
     for (std::size_t j = 0; j < i; ++j)
-      if (std::isfinite(primitive(x(i, j))) && (x(i, i) > 0) && (x(j, j) > 0)) {
-        if (x(i, j) * x(i, j) / x(i, i) / x(j, j) > 1.0)
-          return false;
-      } else {
+      // if (std::isfinite(primitive(x(i, j))) && (x(i, i) > 0) && (x(j, j) > 0)) {
+      //     auto r=x(i, j) * x(i, j) / x(i, i) / x(j, j);
+      //     if ( r> 1.0)
+      //     return false;
+      // } else
+        {
         if (x(i, j) != 0)
           return false;
       }
@@ -428,7 +434,7 @@ class uses_recursive_aproximation
 class uses_averaging_aproximation
     : public var::struct_Var<uses_averaging_aproximation, int> {};
 
-class return_predictions : public var::struct_Var<return_predictions, bool> {};
+class return_predictions : public var::struct_Var<return_predictions, int> {};
 
 class Probability_error_tolerance
     : public var::Constant<Probability_error_tolerance, double> {};
@@ -608,6 +614,9 @@ using Patch_State =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
                  eplogL, vplogL, macror_algorithm>;
 
+
+
+
 template <class C_Patch_Model, class C_double>
 C_Patch_Model add_Patch_inactivation(C_Patch_Model &&m,
                                      C_double const &deactivation_rate) {
@@ -682,9 +691,24 @@ remove_Patch_inactivation(C_Patch_Model const &mi) {
 class Patch_State_Evolution
     : public Var<Patch_State_Evolution, std::vector<Patch_State>> {};
 
+class ymean_Evolution
+    : public Var<ymean_Evolution, std::vector<y_mean>> {};
+
+class yvar_Evolution
+    : public Var<yvar_Evolution, std::vector<y_var>> {};
+
+
+using logL_y_yvar=var::Vector_Space<logL,elogL,vlogL,ymean_Evolution,yvar_Evolution>;
+
+
 using Patch_State_and_Evolution =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
                  eplogL, vplogL, macror_algorithm, Patch_State_Evolution>;
+
+using Patch_State_and_y_Evolution =
+    Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
+                 eplogL, vplogL, macror_algorithm, ymean_Evolution,yvar_Evolution>;
+
 
 using Patch_State_and_Hessian =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL,
@@ -1896,7 +1920,7 @@ public:
           force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u), t_g);
     if (crude_gmean_violation(primitive(r_gmean_i),
         primitive(get<g>(m))))
-        std::cerr<<"gmean_violation\n";
+        return error_message("gmean_violation");
 
       Matrix<Op_t<Trans, double>> WgV_Wg_E2(N, N, 0.0);
 
@@ -2081,7 +2105,7 @@ return error_message("nan P");
           force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u), t_g);
        if (crude_gmean_violation(primitive(r_gmean_i),
        primitive(get<g>(m))))
-           std::cerr<<"gmean_violation\n";
+           return error_message("gmean_violation");
 
       auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
       auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
@@ -2125,7 +2149,10 @@ return error_message("nan P");
       auto P_sub = std::move(Maybe_P_sub.value());
       auto r_Qn = get_Qn(P_sub, get<g>(m), sub_ns, get<min_P>(m));
       for (std::size_t i = 0; i < n; ++i) {
-        r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
+        auto Maybe_r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
+        if (!Maybe_r_Qn)
+          return Maybe_r_Qn.error(); 
+        r_Qn=std::move(Maybe_r_Qn.value());
       }
       assert(get<number_of_samples>(r_Qn) == ns);
       return Qn_to_Qdt(r_Qn,m);
@@ -2153,7 +2180,10 @@ return error_message("nan P");
       auto P_sub = std::move(Maybe_P_sub.value());
       auto r_Qn = get_Qn(P_sub, get<g>(m), sub_ns, get<min_P>(m));
       for (std::size_t i = 0; i < n; ++i) {
-        r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
+        auto Maybe_r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
+        if (!Maybe_r_Qn)
+          return Maybe_r_Qn.error(); 
+        r_Qn=std::move(Maybe_r_Qn.value());
       }
     assert(get<number_of_samples>(r_Qn) == ns);
       return Qn_to_Qdtm(r_Qn,m);
@@ -2188,22 +2218,25 @@ return error_message("nan P");
 
   template <class C_Qn>
     requires(U<C_Qn, Qn>)
-  static C_Qn sum_Qn(C_Qn &&one, const C_Qn &two) {
+  static Maybe_error<C_Qn> sum_Qn(C_Qn &&one, const C_Qn &two) {
     auto n1 = get<number_of_samples>(two)();
     get<PGG_n>(one)() = (get<PGG_n>(one)() * get<P>(two)()) +
                         (get<PG_n>(one)() * get<PG_n>(two)()) +
                         (get<P>(one)() * get<PGG_n>(two)());
     get<PG_n>(one)() =
         (get<PG_n>(one)() * get<P>(two)()) + (get<P>(one)() * get<PG_n>(two)());
-    get<P>(one) =
-        to_Transition_Probability(get<P>(one)() * get<P>(two)()).value();
+    auto Maybe_P  =
+        to_Transition_Probability(get<P>(one)() * get<P>(two)());
+    if (!Maybe_P)
+      return Maybe_P.error();
+    get<P>(one)= std::move(Maybe_P.value());
     get<number_of_samples>(one)() = get<number_of_samples>(one)() + n1;
     return one;
   }
 
   template <class C_Qn, class C_Qdt>
     requires(U<C_Qn, Qn> && U<C_Qdt, Qdt>)
-  static C_Qn sum_Qdt(C_Qn &&one, const C_Qdt &two) {
+  static Maybe_error<C_Qn> sum_Qdt(C_Qn &&one, const C_Qdt &two) {
     auto n1 = get<number_of_samples>(two)();
     get<PGG_n>(one)() =
         (get<PGG_n>(one)() * get<P>(two)()) +
@@ -2211,8 +2244,12 @@ return error_message("nan P");
         (get<P>(one)() * get<gtotal_sqr_ij>(two)()) * (0.5 * n1 * n1);
     get<PG_n>(one)() = (get<PG_n>(one)() * get<P>(two)()) +
                        (get<P>(one)() * get<gtotal_ij>(two)()) * n1;
-    get<P>(one) =
-        to_Transition_Probability(get<P>(one)() * get<P>(two)()).value();
+
+    auto Maybe_P=to_Transition_Probability(get<P>(one)() * get<P>(two)());
+    if (!Maybe_P)
+      return Maybe_P.error(); 
+        get<P>(one) =std::move(Maybe_P.value());
+            
     get<number_of_samples>(one)() = get<number_of_samples>(one)() + n1;
     return one;
   }
@@ -2242,13 +2279,13 @@ return error_message("nan P");
     auto min_g_m = var::min(v_gm());
     auto max_g = var::max(v_g());
     auto min_g = var::min(v_g());
-    if ((max_g_m <= max_g) && (min_g_m >= min_g))
+    if (!((max_g_m <= max_g) && (min_g_m >= min_g)))
     {
       std::cerr<<  "max_g_m="<<max_g_m<<" max_g="<<max_g<<" min_g_m="<<min_g_m<<" min_g="<<min_g<<"\n";
-      return false;
+      return true;
     }
       else
-      return true;
+      return false;
   }
 
   template <class C_gmean, class C_g>
@@ -2353,11 +2390,12 @@ return error_message("nan P");
     if (t_Qeig) {
       auto Maybe_Qdt = calc_Qdt_eig(f, m, t_Qeig.value(),
                                     get<number_of_samples>(t_step), dt);
-      if (Maybe_Qdt)
-        return Maybe_Qdt;
+       if (Maybe_Qdt)
+       return Maybe_Qdt;
     }
-    auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
-    return calc_Qdt_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
+   // else return t_Qeig.error();
+     auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
+     return calc_Qdt_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
   }
 
   template <class FunctionTable, class C_Patch_Model>
@@ -2370,11 +2408,11 @@ return error_message("nan P");
     auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
     
     if (t_Qeig) {
-      auto Maybe_Qdt = calc_Qdtm_eig(f, m, t_Qeig.value(),
+      return calc_Qdtm_eig(f, m, t_Qeig.value(),
                                      get<number_of_samples>(t_step), dt);
-      if (Maybe_Qdt)
+      // if (Maybe_Qdt)
         
-        return Maybe_Qdt.value();
+      //   return Maybe_Qdt.value();
     }
     auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
     return calc_Qdtm_taylor(m, t_Qx, get<number_of_samples>(t_step), dt);
@@ -2500,8 +2538,12 @@ return error_message("nan P");
           if (!v_Qdti)
             return v_Qdti.error();
           else
-            v_Qrun = sum_Qdt(std::move(v_Qrun), v_Qdti.value());
-        }
+            {
+              auto Maybe_Qrun=sum_Qdt(std::move(v_Qrun), v_Qdti.value());
+              if (!Maybe_Qrun) return Maybe_Qrun.error();
+              v_Qrun = std::move(Maybe_Qrun.value());
+            }
+          }
         return Qn_to_Qdt(v_Qrun,m);
       }
     }
@@ -2526,7 +2568,13 @@ return error_message("nan P");
       if (!v_Qdti)
         return v_Qdti.error();
       else
-        v_Qrun = sum_Qdt(std::move(v_Qrun), v_Qdti.value());
+        {
+          auto Maybe_v_Qrun=sum_Qdt(std::move(v_Qrun), v_Qdti.value());
+          if (!Maybe_v_Qrun)
+            return Maybe_v_Qrun.error();
+          
+          v_Qrun = std::move(Maybe_v_Qrun.value());
+        }
     }
     return Qn_to_Qdtm(v_Qrun,m);
   }
@@ -3305,6 +3353,19 @@ return error_message("nan P");
               std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
               plogL(NaN), eplogL(NaN), vplogL(NaN),
               get<macror_algorithm>(t_prior), std::move(ev));
+      } else  if constexpr (U<C_Patch_State, Patch_State_and_y_Evolution>) {
+        auto &yev = get<ymean_Evolution>(t_prior);
+        yev().push_back(r_y_mean);
+        auto &yvev = get<yvar_Evolution>(t_prior);
+        yvev().push_back(r_y_var);
+        
+        return build<Patch_State_and_y_Evolution>(
+              build<logL>(get<logL>(t_prior)()),
+              build<elogL>(get<elogL>(t_prior)()),
+              build<vlogL>(get<vlogL>(t_prior)()), std::move(r_P_mean),
+              std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var),
+              plogL(NaN), eplogL(NaN), vplogL(NaN),
+              get<macror_algorithm>(t_prior), std::move(yev), std::move(yvev));
       } else if constexpr (var::is_derivative_v<C_Patch_State>) {
         return build<Patch_State_and_Hessian>(
               build<logL>(get<logL>(t_prior)()),
@@ -3428,8 +3489,8 @@ return error_message("nan P");
           TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
       auto sS =
           TranspMult(t_gvar_i(), SmD) * t_P() + p_P_mean() * t_gtotal_var_ij();
-      r_P_mean() =
-          p_P_mean() * t_P() + chi * gS - (chi * zeta * sSg + 0.5 / e_mu) * sS;
+      r_P_mean() =to_Probability(
+          p_P_mean() * t_P() + chi * gS - (chi * zeta * sSg + 0.5 / e_mu) * sS);
 
       r_P_cov() =
           AT_B_A(t_P(), SmD) + diag(r_P_mean() * t_P()) -
@@ -3440,10 +3501,16 @@ return error_message("nan P");
 
     if (!all_Probability_elements(primitive(r_P_mean())) ||
         !all_Covariance_elements(primitive(r_P_cov()))) {
-      r_P_mean() = p_P_mean() * t_P();
+      auto Maybe_r_P_mean=to_Probability(p_P_mean() * t_P());
+      if (!Maybe_r_P_mean)return Maybe_r_P_mean.error();
+      
+      r_P_mean() =Maybe_r_P_mean.value(); 
+      auto Maybe_r_P_cov=to_Covariance_Probability(AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()));
 
-      r_P_cov() = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P());
+      
+      if (!Maybe_r_P_cov) return Maybe_r_P_cov.error();
 
+      r_P_cov()= std::move(Maybe_r_P_cov.value()); 
       get<macror_algorithm>(t_prior)() = ToString(
           MacroR2<::V<uses_recursive_aproximation(false)>, ::V<averaging>,
                   ::V<variance>, ::V<variance_correction>>{});
@@ -3500,7 +3567,19 @@ return error_message("nan P");
           build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
           std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
           r_eplogL, r_vlogL, get<macror_algorithm>(t_prior), std::move(ev));
+    } else if constexpr (U<C_Patch_State, Patch_State_and_y_Evolution>) {
+      auto &yev = get<ymean_Evolution>(t_prior);
+      yev().push_back(r_y_mean);
+      auto &yvev = get<yvar_Evolution>(t_prior);
+      yvev().push_back(r_y_var);
+      return build<Patch_State_and_y_Evolution>(
+          build<logL>(get<logL>(t_prior)() + r_plogL()),
+          build<elogL>(get<elogL>(t_prior)() + r_eplogL()),
+          build<vlogL>(get<vlogL>(t_prior)() + r_vlogL()), std::move(r_P_mean),
+          std::move(r_P_cov), std::move(r_y_mean), std::move(r_y_var), r_plogL,
+          r_eplogL, r_vlogL, get<macror_algorithm>(t_prior), std::move(yev), std::move(yvev));
     } else if constexpr (U<C_Patch_State, Patch_State_and_Hessian>) {
+      
       auto r_J = derivative(r_y_mean)();
       auto r_JS = derivative(r_y_var)();
       
@@ -3531,11 +3610,13 @@ return error_message("nan P");
     var::is_derivative_v<C_Patch_Model>,
     Transfer_Op_to<
     C_Patch_Model,
-    std::conditional_t<predictions.value, Patch_State_and_Evolution,
-    Patch_State_and_Hessian>>,
+    std::conditional_t<predictions.value==2, Patch_State_and_Evolution,
     
-    std::conditional_t<predictions.value, Patch_State_and_Evolution,
-    Patch_State>>> {
+Patch_State_and_Hessian>>,
+    
+    std::conditional_t<predictions.value==2, Patch_State_and_Evolution,
+    std::conditional_t<predictions.value==1,Patch_State_and_y_Evolution,
+    Patch_State>>>> {
     auto v_Qx = calc_Qx(m, initial_x());
     auto r_P_mean = build<P_mean>(get<P_initial>(m)());
     auto r_P_cov = build<P_Cov>(diagpos(r_P_mean()) - XTX(r_P_mean.value()));
@@ -3552,8 +3633,8 @@ return error_message("nan P");
         //  std::cerr<<"normalized r_P_cov"<<normalize(std::move(r_P_cov),
         //  t_min_P());
       }
-    if constexpr (!predictions.value) {
-      if constexpr (var::is_derivative_v<C_Patch_Model>) {
+    if constexpr (var::is_derivative_v<C_Patch_Model>) {
+      if constexpr (predictions.value==0) {
         auto &r_Q0 = get<Q0>(m);
         auto n_par = r_Q0.dx().size();
         return Transfer_Op_to<C_Patch_Model, Patch_State_and_Hessian>(
@@ -3567,12 +3648,22 @@ return error_message("nan P");
             std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN),
             eplogL(NaN), vplogL(NaN), macror_algorithm(""));
       }
-    } else {
+    } 
+    else if constexpr (predictions.value==1)  {
+      return Transfer_Op_to<C_Patch_Model, Patch_State_and_y_Evolution>(
+            logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
+            std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
+            vplogL(NaN), macror_algorithm(""), ymean_Evolution(), yvar_Evolution());
+    } else if constexpr (predictions.value==2)  {
       return Transfer_Op_to<C_Patch_Model, Patch_State_and_Evolution>(
             logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
             std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
             vplogL(NaN), macror_algorithm(""), Patch_State_Evolution());
-    }
+    } else {  return Transfer_Op_to<C_Patch_Model, Patch_State>(
+            logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
+            std::move(r_P_cov), y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN),
+            vplogL(NaN), macror_algorithm(""));
+           }
     }
 
   template <uses_adaptive_aproximation adaptive,
@@ -3743,11 +3834,12 @@ return error_message("nan P");
     -> Maybe_error<std::conditional_t<
     var::is_derivative_v<C_Parameters>,
     std::conditional_t<
-    predictions.value,
+    predictions.value==2,
     Transfer_Op_to<C_Parameters, Patch_State_Evolution>,
     Vector_Space<logL, elogL, vlogL, Grad, FIM>>,
-    std::conditional_t<predictions.value, Patch_State_Evolution,
-    Vector_Space<logL, elogL, vlogL>>>> {
+    std::conditional_t<predictions.value==2, Patch_State_Evolution,
+    std::conditional_t<predictions.value==1, logL_y_yvar,
+    Vector_Space<logL, elogL, vlogL>>>>> {
 
     using v_adaptive = ::V<adaptive>;
     using v_recursive = ::V<recursive>;
@@ -3759,11 +3851,13 @@ return error_message("nan P");
       using C_Patch_State = std::conditional_t<
       var::is_derivative_v<C_Parameters>,
       Op_t<Transf,
-      std::conditional_t<predictions.value, Patch_State_and_Evolution,
-      Patch_State_and_Hessian>>,
+      std::conditional_t<predictions.value==2, Patch_State_and_Evolution,
+      std::conditional_t<predictions.value==1, Patch_State_and_y_Evolution,
+      Patch_State_and_Hessian>>>,
       
-      std::conditional_t<predictions.value, Patch_State_and_Evolution,
-      Patch_State>>;
+      std::conditional_t<predictions.value==2, Patch_State_and_Evolution,
+      std::conditional_t<predictions.value==1, Patch_State_and_y_Evolution,
+      Patch_State>>>;
       
       auto Maybe_m = model(par);
     if (!is_valid(Maybe_m))
@@ -3916,9 +4010,13 @@ return error_message("nan P");
                 primitive(get<vlogL>(run)), Grad(gr), get<FIM>(run));
           }
         } else {
-          if constexpr (predictions.value)
+          if constexpr (predictions.value==2)
               return get<Patch_State_Evolution>(run);
+          else if constexpr (predictions.value==1)
+              return Vector_Space<logL, elogL, vlogL, ymean_Evolution, yvar_Evolution>(
+                  get<logL>(run), get<elogL>(run), get<vlogL>(run),get<ymean_Evolution>(run),get<yvar_Evolution>(run) );
           else
+
           return build<Vector_Space<logL, elogL, vlogL>>(
                                                           get<logL>(run), get<elogL>(run), get<vlogL>(run));
         }
@@ -4262,7 +4360,7 @@ struct Likelihood_Model_v_all {
 
 struct Likelihood_Model_v {
   using v_uses_adaptive_aproximation =
-      std::variant<::V<uses_adaptive_aproximation(false)>>;
+      std::variant<::V<uses_adaptive_aproximation(false)>,::V<uses_adaptive_aproximation(true)>>;
 
   using v_uses_recursive_aproximation =
       std::variant<::V<uses_recursive_aproximation(false)>,
@@ -4318,7 +4416,7 @@ struct Likelihood_Model_v {
                uses_variance_correction_aproximation variance_correction,
                const Model &model, Simulation_n_sub_dt n_sub_dt) const {
     v_uses_adaptive_aproximation t_adaptive;
-    t_adaptive = ::V<uses_adaptive_aproximation(false)>{};
+    t_adaptive = ::V<uses_adaptive_aproximation(true)>{};
 
     v_uses_recursive_aproximation t_recursive;
     if (recursive.value)
@@ -4362,7 +4460,7 @@ logLikelihood(FuncTable &&f,
   auto v_logL =
       Macro_DMR{}
           .log_Likelihood<adaptive, recursive, averaging, variance,
-                          variance_correction, return_predictions(false)>(
+                          variance_correction, return_predictions(0)>(
               std::forward<FuncTable>(f), lik.m, p, y, var);
   if (!v_logL)
     return v_logL.error();
@@ -4388,7 +4486,7 @@ dlogLikelihood(FuncTable &&f,
   auto v_logL =
       Macro_DMR{}
           .log_Likelihood<adaptive, recursive, averaging, variance,
-                          variance_correction, return_predictions(false)>(
+                          variance_correction, return_predictions(0)>(
               std::forward<FuncTable>(f), lik.m, dpp, y, var);
   if (!v_logL)
     return v_logL.error();
@@ -4397,6 +4495,94 @@ dlogLikelihood(FuncTable &&f,
                   get<vlogL>(v_logL.value()), get<Grad>(v_logL.value()),
                   get<FIM>(v_logL.value()));
 }
+
+
+template <
+    uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
+    uses_averaging_aproximation averaging, uses_variance_aproximation variance,
+    uses_variance_correction_aproximation variance_correction, class FuncTable,
+    class Model, class Variables, class DataType>
+Maybe_error<dlogLs>
+diff_logLikelihood(FuncTable &&f,
+               const Likelihood_Model<adaptive, recursive, averaging, variance,
+               variance_correction, Model> &lik,
+               var::Parameters_transformed const &p, const Variables &var,
+               const DataType &y, double delta_par) {
+  
+  auto v_p=p.to_value();
+  auto Maybe_logL =
+      Macro_DMR{}
+          .log_Likelihood<adaptive, recursive, averaging, variance,
+                          variance_correction, return_predictions(1)>(
+              std::forward<FuncTable>(f), lik.m,v_p, y, var);
+  if (!Maybe_logL)
+    return Maybe_logL.error();
+  
+  auto v_logL=std::move(Maybe_logL.value());
+  auto npar=p.size(); 
+  auto ny= var().size(); 
+  
+  Matrix<double> J_y(ny,npar); 
+  Matrix<double> J_v(ny,npar); 
+  Matrix<double> G(npar,1ul); 
+  DiagPosDetMatrix<double> t_yvar(ny,ny); 
+  DiagPosDetMatrix<double> t_yvar_2(ny,ny); 
+  
+  for (std::size_t i=0; i<ny; ++i)
+    {
+      
+      auto yvar=get<yvar_Evolution>(v_logL)()[i]();
+      auto ymean=get<ymean_Evolution>(v_logL)()[i]();
+      if (std::isfinite(yvar)&&std::isfinite(ymean)&&(yvar>0))
+       { 
+         t_yvar[i]=1.0/yvar; 
+         t_yvar_2[i]=2.0*t_yvar[i]*t_yvar[i]; 
+        }
+      else
+        {
+          t_yvar[i]=0; 
+          t_yvar_2[i]=0; 
+        }
+      
+    }
+  
+  
+  for (std::size_t ipar=0; ipar<npar; ++ipar)
+    {
+      auto pi=p; 
+      pi[ipar]=pi[ipar]+delta_par;
+      auto v_pi=pi.to_value();
+      auto Maybe_logL_y=Macro_DMR{}
+          .log_Likelihood<adaptive, recursive, averaging, variance,
+                          variance_correction, return_predictions(1)>(
+              std::forward<FuncTable>(f), lik.m, v_pi, y, var);
+      if (!Maybe_logL_y)
+        return Maybe_logL_y.error(); 
+      auto logL_y=std::move(Maybe_logL_y.value());
+      G[ipar]=(get<logL>(logL_y)()-get<logL>(v_logL)())/delta_par;
+      for (std::size_t i=0; i<ny; ++i)
+        {
+          J_y(i,ipar)=(get<ymean_Evolution>(logL_y)()[i]()-get<ymean_Evolution>(v_logL)()[i]())/delta_par;
+          J_v(i,ipar)=(get<yvar_Evolution>(logL_y)()[i]()-get<yvar_Evolution>(v_logL)()[i]())/delta_par;
+          
+        }
+      
+
+    }
+  
+  auto r_FIM = AT_D_A_Safe(J_y, t_yvar) +
+      AT_D_A_Safe(J_v, t_yvar_2);
+  
+   return dlogLs(get<logL>(v_logL), get<elogL>(v_logL),
+                  get<vlogL>(v_logL), Grad(std::move(G)),
+                  FIM(std::move(r_FIM)));
+}
+
+
+
+
+
+
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
@@ -4411,9 +4597,28 @@ Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
     Parameters const &p, const Variables &var, const DataType &y) {
   return Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
-                      variance_correction, return_predictions(true)>(
+                      variance_correction, return_predictions(2)>(
           std::forward<FunctionTable>(f), lik.m, p, y, var);
 }
+
+
+template <
+    uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
+    uses_averaging_aproximation averaging, uses_variance_aproximation variance,
+    uses_variance_correction_aproximation variance_correction,
+    class FunctionTable, class Model, class Parameters, class Variables,
+    class DataType>
+Maybe_error<logL_y_yvar> logLikelihood_Y_Predictions(
+    FunctionTable &&f,
+    const Likelihood_Model<adaptive, recursive, averaging, variance,
+                           variance_correction, Model> &lik,
+    Parameters const &p, const Variables &var, const DataType &y) {
+  return Macro_DMR{}
+      .log_Likelihood<adaptive, recursive, averaging, variance,
+                      variance_correction, return_predictions(1)>(
+          std::forward<FunctionTable>(f), lik.m, p, y, var);
+}
+
 
 template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
@@ -4433,7 +4638,7 @@ fractioned_logLikelihoodPredictions(
     auto Maybe_e =
         Macro_DMR{}
             .log_Likelihood<adaptive, recursive, averaging, variance,
-                            variance_correction, return_predictions(true)>(
+                            variance_correction, return_predictions(2)>(
                 std::forward<FunctionTable>(f), lik.m, p, var[i],
                 get<Recording>(y[i]()));
     if (Maybe_e)
@@ -5558,7 +5763,7 @@ auto thermo_levenberg_Model_by_max_iter(
     double beta_medium_value,
 std::size_t n_lambdas,
     double stops_at, bool includes_zero, Saving_Levenberg_intervals sint,
-    std::size_t initseed) {
+    std::size_t initseed, double dp) {
   return thermodynamic_levenberg_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed, save_Iter,
@@ -5572,7 +5777,7 @@ std::size_t n_lambdas,
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
       beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas, stops_at,
-      includes_zero, initseed);
+      includes_zero, initseed, dp);
 }
 
 

@@ -142,7 +142,7 @@ Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
 Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations = true,
                    bool does_diagonal_scaling = true,
                    bool computes_eigenvalues_condition_numbers = false,
-                   bool computes_eigenvectors_condition_numbers = false);
+                   bool computes_eigenvectors_condition_numbers = false,bool do_Nelson_Normalization =false);
 
 Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
 Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind="lower");
@@ -1811,10 +1811,11 @@ template <class T> auto qr(const Matrix<T> &a) { return lapack::Lapack_QR(a); }
 inline auto eigs(const Matrix<double> &x, bool does_permutations = false,
           bool does_diagonal_scaling = false,
           bool computes_eigenvalues_condition_numbers = false,
-          bool computes_eigenvectors_condition_numbers = false) {
+          bool computes_eigenvectors_condition_numbers = false,
+bool do_Nelson_Normalization =false) {
   return lapack::Lapack_EigenSystem(x, does_permutations, does_diagonal_scaling,
                                     computes_eigenvalues_condition_numbers,
-                                    computes_eigenvectors_condition_numbers);
+                                    computes_eigenvectors_condition_numbers,do_Nelson_Normalization);
 }
 
 
@@ -1875,13 +1876,25 @@ auto X_plus_XT(const Matrix<double> &x) {
 
 template <class T>
 SymPosDefMatrix<T> AT_D_A(const Matrix<T> &A, const DiagPosDetMatrix<T> &D) {
-  SymPosDefMatrix<T> out(A.nrows(), T{});
+  SymPosDefMatrix<T> out(A.ncols(),A.ncols(), T{});
   for (std::size_t i = 0; i < out.nrows(); ++i)
     for (std::size_t j = i; j < out.ncols(); ++j)
-      for (std::size_t k = 0; k < out.ncols(); ++k)
+      for (std::size_t k = 0; k < D.ncols(); ++k)
         out.set(i, j, out(i, j) + A(k, i) * D(k, k) * A(k, j));
   return out;
 }
+
+template <class T>
+SymPosDefMatrix<T> AT_D_A_Safe(const Matrix<T> &A, const DiagPosDetMatrix<T> &D) {
+    SymPosDefMatrix<T> out(A.ncols(),A.ncols(), T{});
+    for (std::size_t i = 0; i < out.nrows(); ++i)
+        for (std::size_t j = i; j < out.ncols(); ++j)
+            for (std::size_t k = 0; k < D.ncols(); ++k)
+                if(std::isfinite(A(k, i) * D(k, k) * A(k, j)))
+                    out.set(i, j, out(i, j) + A(k, i) * D(k, k) * A(k, j));
+    return out;
+}
+
 
 template <class T>
 SymPosDefMatrix<T> AT_B_A(const Matrix<T> &A, const SymmetricMatrix<T> &B) {

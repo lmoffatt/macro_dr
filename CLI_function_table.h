@@ -374,7 +374,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(false),
                                             uses_variance_correction_aproximation(
                                                 false),
-                                            return_predictions(true)>(
+                                            return_predictions(2)>(
                                 ftbl3, model0, param1, experiment, get<Recording>(y()));
                     if (lik)
                         save_Likelihood_Predictions(outfilename, lik.value(), y,

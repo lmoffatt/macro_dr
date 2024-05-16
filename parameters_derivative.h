@@ -1188,9 +1188,10 @@ eigs(const Derivative<Matrix<double>, Parameters_transformed> &x,
      bool computes_eigenvalues_condition_numbers = false,
      bool computes_eigenvectors_condition_numbers = false) {
     
+    bool do_Nelson_Normalization=true;
     auto res = eigs(x.primitive(), does_permutations, does_diagonal_scaling,
                     computes_eigenvalues_condition_numbers,
-                    computes_eigenvectors_condition_numbers);
+                    computes_eigenvectors_condition_numbers,do_Nelson_Normalization);
     
     if (!res)
         return res.error();

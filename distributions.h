@@ -259,6 +259,7 @@ class FIM : public var::Constant<FIM, SymPosDefMatrix< double>> {
 
 using logLs=var::Vector_Space<logL,elogL,vlogL>;
 
+
 using dlogLs=var::Vector_Space<logL,elogL,vlogL, Grad,FIM>;
 using dlogPs=var::Vector_Space<logL, Grad,FIM>;
 
