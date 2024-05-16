@@ -4848,8 +4848,8 @@ public:
     // std::cerr << indexes;
     //  std::abort();
     auto n_frac = size(indexes);
-    deprecated::by_fraction<Recording> y_out(n_frac);
-    deprecated::by_fraction<Experiment> x_out(
+    cuevi::by_fraction<Recording> y_out(n_frac);
+    cuevi::by_fraction<Experiment> x_out(
         n_frac,
         Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
                    get<initial_ATP_concentration>(x)));
@@ -4868,7 +4868,7 @@ public:
                                    (n_frac > 1 ? size(indexes[0]) : 1),
                                includes_zero);
     by_beta<double> betan = {0, 1};
-    deprecated::by_fraction<by_beta<double>> beta(n_frac, betan);
+    cuevi::by_fraction<by_beta<double>> beta(n_frac, betan);
     beta[0] = std::move(beta0);
 
     return std::tuple(std::move(y_out), std::move(x_out), std::move(beta));
@@ -4894,8 +4894,8 @@ public:
     // std::cerr << indexes;
     // std::abort();
     auto n_frac = size(indexes);
-    deprecated::by_fraction<Recording> y_out(n_frac);
-    deprecated::by_fraction<Experiment> x_out(
+    cuevi::by_fraction<Recording> y_out(n_frac);
+    cuevi::by_fraction<Experiment> x_out(
         n_frac,
         Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
                    get<initial_ATP_concentration>(x)));
@@ -4932,8 +4932,8 @@ public:
     // std::cerr << indexes;
     // std::abort();
     auto n_frac = size(indexes);
-    deprecated::by_fraction<Simulated_Recording<keep_N_state>> y_out(n_frac);
-    deprecated::by_fraction<Experiment> x_out(
+    cuevi::by_fraction<Simulated_Recording<keep_N_state>> y_out(n_frac);
+    cuevi::by_fraction<Experiment> x_out(
         n_frac,
         Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
                    get<initial_ATP_concentration>(x)));
@@ -4948,20 +4948,6 @@ public:
     return std::tuple(std::move(y_out), std::move(x_out));
   }
 };
-
-template <class... Ts>
-void report_title(save_Predictions<var::Parameters_transformed> &s,
-                  deprecated::cuevi_mcmc<var::Parameters_transformed> const &,
-                  const Ts &...t) {
-
-  s.f << "n_fractions" << s.sep << "n_betas" << s.sep << "iter" << s.sep
-      << "iter_time" << s.sep << "nsamples" << s.sep << "beta" << s.sep
-      << "i_walker" << s.sep << "id_walker" << s.sep << "i_step" << s.sep
-      << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
-      << "ATPevol" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var"
-      << s.sep << "plogL" << s.sep << "pelogL"
-      << "\n";
-}
 
 inline void report_title(save_Predictions<var::Parameters_transformed> &s,
                          thermo_mcmc<var::Parameters_transformed> const &,
@@ -5336,47 +5322,6 @@ void save_fractioned_Likelihood_Predictions(
       }
     }
   }
-}
-template <class FunctionTable, class Duration, class Prior, class Likelihood,
-          class Variables, class DataType, class Parameters>
-void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
-            save_Predictions<Parameters> &s,
-            deprecated::cuevi_mcmc<Parameters> const &data, Prior const &prior,
-            Likelihood const &lik, const DataType &ys, const Variables &xs,
-            ...) {
-  if (iter % s.save_every == 0)
-    for (std::size_t i_frac = 0; i_frac < size(data.beta); ++i_frac)
-      for (std::size_t i_beta = 0; i_beta < size(data.beta[i_frac]); ++i_beta)
-        for (std::size_t i_walker = 0; i_walker < size(data.walkers);
-             ++i_walker) {
-          Maybe_error<Patch_State_Evolution> prediction =
-              logLikelihoodPredictions(
-                  f.fork(var::I_thread(i_walker)), lik,
-                  data.walkers[i_walker][i_frac][i_beta].parameter, ys[i_frac],
-                  xs[i_frac]);
-          if (is_valid(prediction)) {
-            auto &predictions = prediction.value();
-            for (std::size_t i_step = 0; i_step < size(ys[i_frac]); ++i_step) {
-              auto v_ev = get<ATP_evolution>(
-                  get<Recording_conditions>(xs[i_frac])()[i_step]);
-
-              s.f << size(data.beta) << s.sep << size(data.beta[i_frac])
-                  << s.sep << iter << s.sep << dur << s.sep
-                  << data.nsamples[i_frac] << s.sep << data.beta[i_frac][i_beta]
-                  << s.sep << i_walker << s.sep
-                  << data.i_walkers[i_walker][i_frac][i_beta] << s.sep << i_step
-                  << s.sep
-                  << get<Time>(get<Recording_conditions>(xs[i_frac])()[i_step])
-                  << s.sep << get_num_samples(v_ev) << s.sep
-                  << ToString(average_ATP_step(v_ev)) << s.sep << ToString(v_ev)
-                  << s.sep << ys[i_frac]()[i_step]() << s.sep
-                  << get<y_mean>(predictions()[i_step]) << s.sep
-                  << get<y_var>(predictions()[i_step]) << s.sep
-                  << get<plogL>(predictions()[i_step]) << s.sep
-                  << get<eplogL>(predictions()[i_step]) << "\n";
-            }
-          }
-        }
 }
 
 
