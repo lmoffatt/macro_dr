@@ -111,7 +111,7 @@ add_executable(macro_dr main.cpp
     slurm_Serafin/s_debug.sh
     slurm_Serafin/s_long.sh
     continuation.h
-    models.h
+    
    # old_code_in_main.cpp
    
     scripts/run_evidence.txt
