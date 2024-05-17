@@ -29,13 +29,13 @@ export SCHEME_2=scheme_${N_SCH2}_inact_PI
 export SCHEME_3=scheme_${N_SCH2}_inact_PI
 
 
-export PATH_MACRO_DR_0=v30
+export PATH_MACRO_DR_0=v31
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=v30
+export PATH_MACRO_DRX=v31
 
 
 export EXPERIMENT_0=idealize_experiment_2

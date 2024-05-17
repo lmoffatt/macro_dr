@@ -34,7 +34,7 @@
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-export PATH_MACRO_DR=v30
+export PATH_MACRO_DR=v31
 # Lanzar el programa
 srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/M_scheme_N.sh
 
