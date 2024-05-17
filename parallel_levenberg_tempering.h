@@ -214,7 +214,7 @@ template <class FunctionTable,
                                                                                         DataType>)
 
 Maybe_error<levenberg_mcmc> calculate_next_levenberg_mcmc(
-    FunctionTable &&f, Parameters &&ca_par,std::size_t i_walker,
+    FunctionTable &f, Parameters &&ca_par,std::size_t i_walker,
     Prior const &prior, Likelihood const &lik,
     const DataType &y, const Variables &x) {
     auto Maybe_ca_logP = dlogPrior(prior, ca_par);
@@ -242,7 +242,7 @@ template <class FunctionTable,
                                  DataType>)
 
 Maybe_error<levenberg_mcmc> calculate_next_levenberg_mcmc(
-    FunctionTable &&f, Parameters &&ca_par,std::size_t i_walker,
+    FunctionTable &f, Parameters &&ca_par,std::size_t i_walker,
     Prior const &prior, Likelihood const &lik,
     const DataType &y, const Variables &x, double delta_par) {
     auto Maybe_ca_logP = dlogPrior(prior, ca_par);
@@ -307,7 +307,7 @@ template <class FunctionTable,  class Prior,
              is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                                                                         DataType>)
 Maybe_error<bool>
-step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
+step_levenberg_thermo_mcmc_i(FunctionTable &f, mt_64i &mt,
                              std::uniform_real_distribution<double> &rdist,
                              levenberg_Marquart_mcmc &currentm,
                              Prior const &prior, Likelihood const &lik,
@@ -369,7 +369,7 @@ template <class FunctionTable,  class Prior,
              is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                  DataType>)
 Maybe_error<bool>
-step_levenberg_thermo_mcmc_i(FunctionTable &&f, mt_64i &mt,
+step_levenberg_thermo_mcmc_i(FunctionTable &f, mt_64i &mt,
                              std::uniform_real_distribution<double> &rdist,
                              levenberg_Marquart_mcmc &currentm,
                              Prior const &prior, Likelihood const &lik,
@@ -436,7 +436,7 @@ template <class FunctionTable, class Prior,
              is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                                                                         DataType>)
-void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
+void step_levenberg_thermo_mcmc(FunctionTable &f, std::size_t &iter,
                                 thermo_levenberg_mcmc &current,
                                 const by_beta<double> &beta,
                                 ensemble<mt_64i> &mt, Prior const &prior,
@@ -486,7 +486,7 @@ template <class FunctionTable, class Prior,
              is_prior<Prior, Parameters, Variables, DataType> &&
              is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                  DataType>)
-void step_levenberg_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
+void step_levenberg_thermo_mcmc(FunctionTable &f, std::size_t &iter,
                                 thermo_levenberg_mcmc &current,
                                 const by_beta<double> &beta,
                                 ensemble<mt_64i> &mt, Prior const &prior,
@@ -663,7 +663,7 @@ void report_title(
 
 
 template <class Parameter,class FunctionTable, class Duration>
- void report(FunctionTable &&, std::size_t iter, const Duration &dur,
+ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_likelihood<Parameter> &s, thermo_levenberg_mcmc const &current, by_beta<double> t_beta,
                    ...) {
     if (iter % s.save_every == 0) {
@@ -717,7 +717,7 @@ template <class Parameter,class FunctionTable, class Duration>
     
     
     template <class Parameter,class FunctionTable, class Duration>
- void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
+ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_Parameter<Parameter> &s, thermo_levenberg_mcmc const &current, by_beta<double> t_beta,
                        ...) {
         if (iter % s.save_every == 0)
@@ -749,7 +749,7 @@ template <class Parameter,class FunctionTable, class Duration>
     
     
     template <class Parameter,class FunctionTable, class Duration>
-    void report(FunctionTable &&, std::size_t iter, const Duration &dur,
+    void report(FunctionTable &, std::size_t iter, const Duration &dur,
                 save_Levenberg_Lambdas<Parameter> &s, thermo_levenberg_mcmc  &current, by_beta<double> t_beta,
                 ...) {
         if (iter % s.save_every == 0)
@@ -853,7 +853,7 @@ template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
 //             is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
 
 auto thermo_levenberg_evidence_loop(
-    FunctionTable &&f,
+    FunctionTable &f,
     thermodynamic_levenberg_integration<Algorithm, Reporter> &&therm,
     Prior const &prior, Likelihood const &lik, const DataType &y,
     const Variables &x, mcmc mcmc_run, std::size_t iter,
@@ -906,12 +906,12 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
 //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_levenberg_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
+auto init_levenberg_mcmc(FunctionTable& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
                const DataType &y, const Variables &x) {
     auto& priorsampler=pr;
     auto par = sample(mt,priorsampler);
     auto logP = dlogPrior(pr,par);
-    auto t_logLs = dlogLikelihood(std::forward<FunctionTable>(f),lik,par, y,x);
+    auto t_logLs = dlogLikelihood(f,lik,par, y,x);
     while(!(logP)||!(t_logLs))
     {
         par = sample(mt,priorsampler);
@@ -927,12 +927,12 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
 //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_levenberg_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
+auto init_levenberg_mcmc(FunctionTable& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
                          const DataType &y, const Variables &x, double delta_par) {
     auto& priorsampler=pr;
     auto par = sample(mt,priorsampler);
     auto logP = dlogPrior(pr,par);
-    auto t_logLs = diff_logLikelihood(std::forward<FunctionTable>(f),lik,par, y,x, delta_par);
+    auto t_logLs = diff_logLikelihood(f,lik,par, y,x, delta_par);
     while(!(logP)||!(t_logLs))
     {
         par = sample(mt,priorsampler);
@@ -948,7 +948,7 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
 //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_levenberg_marquardt_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
+auto init_levenberg_marquardt_mcmc(FunctionTable& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
                                    const DataType &y, const Variables &x,double beta, std::size_t n_lambdas) {
     
     return levenberg_Marquart_mcmc{init_levenberg_mcmc(f,mt,i_walker,pr,lik,y,x), levenberg_lambda_adaptive_distribution(n_lambdas),beta};
@@ -959,7 +959,7 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
 //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_levenberg_marquardt_mcmc(FunctionTable&& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
+auto init_levenberg_marquardt_mcmc(FunctionTable& f, mt_64i &mt, std::size_t i_walker,Prior const & pr, const Lik& lik,
                                    const DataType &y, const Variables &x,double beta, std::size_t n_lambdas, double delta_par) {
     
     return levenberg_Marquart_mcmc{init_levenberg_mcmc(f,mt,i_walker,pr,lik,y,x, delta_par), levenberg_lambda_adaptive_distribution(n_lambdas),beta};
@@ -975,7 +975,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
         is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&&
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-auto init_levenberg_thermo_mcmc(FunctionTable &&f,
+auto init_levenberg_thermo_mcmc(FunctionTable &f,
                                 by_beta<double> const &beta, std::size_t n_lambdas,ensemble<mt_64i> &mt,
                       Prior const &prior, Likelihood const &lik,
                       const DataType &y, const Variables &x, double delta_par) {
@@ -1017,7 +1017,7 @@ template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
 //             is_prior<Prior,Parameters,Variables,DataType>&&
 //             is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
 
-auto thermo_levenberg_evidence(FunctionTable &&f,
+auto thermo_levenberg_evidence(FunctionTable &f,
                      thermodynamic_levenberg_integration<Algorithm, Reporter> &&therm,
                      Prior const &prior, Likelihood const &lik,
                      const DataType &y, const Variables &x) {

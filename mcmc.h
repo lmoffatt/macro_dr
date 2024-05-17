@@ -84,7 +84,7 @@ concept is_prior = requires(Prior const &prior,
 
 
 template <class FunctionTable,class Likelihood, class Parameters,class Variables,class DataType>
-concept is_likelihood_model = requires(FunctionTable&& f,
+concept is_likelihood_model = requires(FunctionTable& f,
                                        Likelihood const &lik,
                                        const Parameters& p,
                                        const Variables& var,
@@ -95,7 +95,7 @@ concept is_likelihood_model = requires(FunctionTable&& f,
     }-> std::convertible_to<DataType>;
     
     {
-        logLikelihood(std::forward<FunctionTable>(f),lik,p.to_value(),y,var)
+        logLikelihood(f,lik,p.to_value(),y,var)
     }->std::convertible_to<Maybe_error<logLs>>;
 };
 
@@ -167,12 +167,12 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
  //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_mcmc(FunctionTable&& f, mt_64i &mt, Prior const & pr, const Lik& lik,
+auto init_mcmc(FunctionTable& f, mt_64i &mt, Prior const & pr, const Lik& lik,
                const DataType &y, const Variables &x) {
     auto& priorsampler=pr;
     auto par = sample(mt,priorsampler);
     auto logP = logPrior(pr,par);
-    auto t_logLs = logLikelihood(std::forward<FunctionTable>(f),lik,par.to_value(), y,x);
+    auto t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
     while(!(logP)||!(t_logLs))
     {
         par = sample(mt,priorsampler);
@@ -190,11 +190,11 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
 //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-Maybe_error<bool> calc_mcmc(FunctionTable&& f, Prior const & pr, const Lik& lik,
+Maybe_error<bool> calc_mcmc(FunctionTable& f, Prior const & pr, const Lik& lik,
                  const DataType &y, const Variables &x, mcmc<Parameters>& t_mcmc) {
     auto par = t_mcmc.parameter;
     auto logP = logPrior(pr,par);
-    auto t_logLs = logLikelihood(std::forward<FunctionTable>(f),lik,par.to_value(), y,x);
+    auto t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
     
     if (logP.valid()&& t_logLs.valid())
     {
