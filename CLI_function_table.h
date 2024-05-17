@@ -96,7 +96,7 @@ inline auto get_function_Table_maker_St(std::string filename,
             //     double>{}, num_scouts_per_ensemble / 2),
             var::Single_Thread_Memoizer(
                 var::F(Calc_Qdt_step{},
-                       [](auto &&f, auto &m, auto &t_step, double fs) {
+                       [](auto &f, auto &m, auto &t_step, double fs) {
                            if constexpr (false) {
                                auto test_der_t_Qdt = var::test_Derivative(
                                    [&t_step, &fs, &f](auto const &l_m) {
@@ -124,7 +124,7 @@ inline auto get_function_Table_maker_St(std::string filename,
             // var::Parameters_transformed
             var::Single_Thread_Memoizer(
                 var::F(Calc_Qdtm_step{},
-                       [](auto &&f, auto &m, auto &t_step, double fs) {
+                       [](auto &f, auto &m, auto &t_step, double fs) {
                            if constexpr (false) {
                                auto test_der_t_Qdtm = var::test_Derivative(
                                    [&t_step, &fs, &f](auto const &l_m) {

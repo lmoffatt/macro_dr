@@ -202,7 +202,7 @@ template <uses_averaging_aproximation averaging,
           uses_variance_aproximation variance>
 class Micror_parameters_likelihood {
   template <class FuncTable, class Qdt>
-  friend double logLikelihoodd(FuncTable &&f, Micror_parameters_likelihood,
+  friend double logLikelihoodd(FuncTable &f, Micror_parameters_likelihood,
                                Micror_state<averaging> const &p,
                                const Patch_current &y, const Qdt &x) {
     if constexpr (averaging.value == 2) {
@@ -236,10 +236,10 @@ class Micror_parameters_likelihood {
   }
   template <class FuncTable, class Qdt>
   friend Maybe_error<double>
-  logLikelihood(FuncTable &&f, Micror_parameters_likelihood,
+  logLikelihood(FuncTable &f, Micror_parameters_likelihood,
                 Micror_state<averaging> const &p, const Patch_current &y,
                 const Qdt &x) {
-    auto out = logLikelihoodd(std::forward<FuncTable>(f),
+    auto out = logLikelihoodd(f,
                               Micror_parameters_likelihood{}, p, y, x);
     if (std::isfinite(out))
       return out;
