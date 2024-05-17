@@ -42,7 +42,7 @@ export SCHEME_6=scheme_${N_SCH3}_inact_PI
 export SCHEME_7=scheme_${N_SCH4}_inact_PI
 
 
-export PATH_MACRO_DR_0=v29
+export PATH_MACRO_DR_0=v30
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -51,9 +51,9 @@ export PATH_MACRO_DR_5=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_6=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_7=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DR=v29
+export PATH_MACRO_DR=v30
 
-export PATH_MACRO_DRX=v29
+export PATH_MACRO_DRX=v30
 
 
 export EXPERIMENT_0=idealize_experiment_2

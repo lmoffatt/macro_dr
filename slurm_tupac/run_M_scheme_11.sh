@@ -17,8 +17,8 @@ export SCHEME_0=scheme_11_inact_PI
 export EVIDENCE_ALGORITHM=levenberg
 
 
-export PATH_MACRO_DR=v29
-export PATH_MACRO_DRX=v29
+export PATH_MACRO_DR=v30
+export PATH_MACRO_DRX=v30
 
 SCM_N=11
 export CONTINUATION_NUMBER=0
