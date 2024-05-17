@@ -25,11 +25,11 @@ export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=$SCHEME_0
 
 
-export PATH_MACRO_DR_0=v29
+export PATH_MACRO_DR_0=v30
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DR=v29
-export PATH_MACRO_DRX=v29
+export PATH_MACRO_DR=v30
+export PATH_MACRO_DRX=v30
 
 
 export EXPERIMENT_0=idealize_experiment_2
