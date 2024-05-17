@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstddef>
 #include <fstream>
+#include <iostream>
 #include <omp.h>
 #include <random>
 #include <type_traits>
@@ -867,6 +868,7 @@ auto thermo_levenberg_evidence_loop(
     
     
     while (!mcmc_run.second) {
+        std::cerr<<"main_loop_start"<<"\n";
         even_dur.record("main_loop_start");
         
         
@@ -877,24 +879,30 @@ auto thermo_levenberg_evidence_loop(
             step_levenberg_thermo_mcmc(f, iter,  current,  beta_run, mts,
                                        prior, lik, y, x);
         even_dur.record("befor_thermo_jump");
+        std::cerr<<"befor_thermo_jump"<<"\n";
         
         thermo_levenberg_jump_mcmc(iter, current, beta_run, mt, mts,
                          therm.thermo_jumps_every());
         even_dur.record("after_thermo_jump");
+        std::cerr<<"after_thermo_jump"<<"\n";
         
         const auto end = std::chrono::high_resolution_clock::now();
         auto dur = std::chrono::duration<double>(end - start);
         report_all(f, iter, dur, rep, current, beta_run, prior, lik, y, x, mts,
                    mcmc_run.first);
         even_dur.record("after_report_all");
+        std::cerr<<"after_report_all"<<"\n";
+        
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         even_dur.record("after_checks_convergence");
+        std::cerr<<"after_checks_convergence"<<"\n";
         if (iter == 1)
             even_dur.report_title(event_file);
         even_dur.report_iter(event_file, iter);
         if (iter % 10 == 0)
             event_file.flush();
-    }
+        std::cerr<<"end of loop"<<"\n";
+     }
     
     return std::pair(std::move(mcmc_run.first), current);
 }
