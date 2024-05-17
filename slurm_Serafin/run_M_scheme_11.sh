@@ -9,8 +9,8 @@ RUNTIME="2-00:00"
 export PATH_MACRO=/home/lmoffatt/macro_dr/
 
 # Cargar los módulos para la tarea
-export PATH_MACRO_DR=v30
-export PATH_MACRO_DRX=v30
+export PATH_MACRO_DR=v31
+export PATH_MACRO_DRX=v31
 
 module load cmake
 module load gcc
