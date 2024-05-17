@@ -28,7 +28,6 @@ export SCHEME_1=$SCHEME_0
 export PATH_MACRO_DR_0=v30
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DR=v30
 export PATH_MACRO_DRX=v30
 
 
