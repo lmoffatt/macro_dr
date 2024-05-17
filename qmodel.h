@@ -3293,7 +3293,7 @@ return error_message("nan P");
             return_predictions predictions, class FuncTable, class C_Parameters,
             class Model>
     requires(!is_of_this_template_type_v<FuncTable, FuncMap_St>)
-  auto log_Likelihood(FuncTable &&f, const Model &model,
+  auto log_Likelihood(FuncTable &f, const Model &model,
                       const C_Parameters &par, const Experiment &e,
                       const Recording &y)
       -> Maybe_error<std::conditional_t<
@@ -4078,14 +4078,14 @@ template <
     uses_variance_correction_aproximation variance_correction, class FuncTable,
     class Model, class Parameters, class Variables, class DataType>
 Maybe_error<logLs>
-logLikelihood(FuncTable &&f,
+logLikelihood(FuncTable &f,
               const Likelihood_Model<adaptive, recursive, averaging, variance,
                                      variance_correction, Model> &lik,
               Parameters const &p, const Variables &var, const DataType &y) {
   auto v_logL = Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
       variance_correction, return_predictions(0)>(
-        std::forward<FuncTable>(f), lik.m, p, y, var);
+        f, lik.m, p, y, var);
   if (!v_logL)
     return v_logL.error();
   else
@@ -4099,7 +4099,7 @@ template <
     uses_variance_correction_aproximation variance_correction, class FuncTable,
     class Model, class Variables, class DataType>
 Maybe_error<dlogLs>
-dlogLikelihood(FuncTable &&f,
+dlogLikelihood(FuncTable &f,
                const Likelihood_Model<adaptive, recursive, averaging, variance,
                variance_correction, Model> &lik,
                var::Parameters_transformed const &p, const Variables &var,
@@ -4110,7 +4110,7 @@ dlogLikelihood(FuncTable &&f,
   auto v_logL = Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
       variance_correction, return_predictions(0)>(
-        std::forward<FuncTable>(f), lik.m, dpp, y, var);
+        f, lik.m, dpp, y, var);
   if (!v_logL)
     return v_logL.error();
   else
@@ -4637,21 +4637,6 @@ inline void report_title(save_Predictions<var::Parameters_transformed> &s,
 inline void report_title(save_Predictions<Matrix<double>> &s,
                          thermo_mcmc<Matrix<double>> const &, ...) {}
 
-template <class FunctionTable, class Duration>
-  requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
-void report(FunctionTable &&, std::size_t iter, const Duration &dur,
-            save_Predictions<var::Parameters_transformed> &s,
-            thermo_mcmc<var::Parameters_transformed> const &data, ...) {
-  if (iter % s.save_every == 0)
-    for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
-      for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
-        for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
-
-          s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
-              << data.beta[i_beta] << s.sep << i_walker << s.sep
-              << data.i_walkers[i_beta][i_walker] << s.sep << i_par << s.sep
-              << data.walkers[i_beta][i_walker].parameter[i_par] << "\n";
-}
 
 template <class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>

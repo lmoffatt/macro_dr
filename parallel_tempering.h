@@ -496,7 +496,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
         is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&&
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-Maybe_error<bool> calc_thermo_mcmc_continuation(FunctionTable &&f, std::size_t n_walkers,
+Maybe_error<bool> calc_thermo_mcmc_continuation(FunctionTable &f, std::size_t n_walkers,
                       by_beta<double> const &beta, ensemble<mt_64i> &mt,
                       Prior const &prior, Likelihood const &lik,
                       const DataType &y, const Variables &x, thermo_mcmc<Parameters>& t_mcmc) {
