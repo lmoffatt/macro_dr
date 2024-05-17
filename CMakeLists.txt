@@ -353,6 +353,11 @@ add_executable(macro_dr main.cpp
     scripts/beta_16.txt
     models/scheme_1_inact_PI_prior_0001.csv
     models/scheme_1_inact_PI_0001.txt
+    slurm_tupac/run_M_schemes_1_2.sh
+    slurm_tupac/run_M_schemes_3_4_5.sh
+    slurm_tupac/run_M_schemes_6_8.sh
+    slurm_tupac/run_M_schemes_9_10.sh
+    slurm_tupac/run_M_scheme_7.sh
     
     
     
