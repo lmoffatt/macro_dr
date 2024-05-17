@@ -51,7 +51,6 @@ export PATH_MACRO_DR_5=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_6=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_7=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DR=v30
 
 export PATH_MACRO_DRX=v30
 
@@ -79,7 +78,7 @@ export MAX_ITER=1000000
 
 export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable  --job-name=R${N_SCH}_${CPUSPERTASK}  --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+JOBID1=$(sbatch --parsable  --job-name=R${N_SCH}_${CPUSPERTASK}  --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
 #export CONTINUATION_NUMBER=1
 #JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
