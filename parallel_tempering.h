@@ -401,40 +401,6 @@ auto mixing_var_ratio(by_beta<double> const &mean_var,
   return out;
 }
 
-template <class FunctionTable, class Prior, class Likelihood, class Variables,
-          class DataType,
-          class Parameters = std::decay_t<decltype(sample(
-              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
-  requires(
-      !is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
-
-//    requires (is_prior<Prior,Parameters,Variables,DataType>&&
-//    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
-                      by_beta<double> const &beta, ensemble<mt_64i> &mt,
-                      Prior const &prior, Likelihood const &lik,
-                      const DataType &y, const Variables &x) {
-
-  ensemble<by_beta<std::size_t>> i_walker(n_walkers,
-                                          by_beta<std::size_t>(beta.size()));
-  ensemble<by_beta<mcmc<Parameters>>> walker(
-      n_walkers, by_beta<mcmc<Parameters>>(beta.size()));
-  
-  by_beta<emcee_Step_statistics> emcee_stat(beta.size());
-  by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
-  
-  for (std::size_t half = 0; half < 2; ++half)
-#pragma omp parallel for
-    for (std::size_t iiw = 0; iiw < n_walkers / 2; ++iiw) {
-      auto iw = iiw + half * n_walkers / 2;
-      for (std::size_t i = 0; i < beta.size(); ++i) {
-        i_walker[iw][i] = iw + i * n_walkers;
-        walker[iw][i] =
-            init_mcmc(f.fork(var::I_thread(iiw)), mt[iiw], prior, lik, y, x);
-      }
-    }
-  return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
-}
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
@@ -444,7 +410,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
       is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&&
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-auto init_thermo_mcmc(FunctionTable &&f, std::size_t n_walkers,
+auto init_thermo_mcmc(FunctionTable &f, std::size_t n_walkers,
                       by_beta<double> const &beta, ensemble<mt_64i> &mt,
                       Prior const &prior, Likelihood const &lik,
                       const DataType &y, const Variables &x) {
@@ -732,81 +698,6 @@ void observe_thermo_jump_mcmc(Observer &obs, std::size_t jlanding,
                               double calogL, double deltabeta, double logA,
                               double pJump, double r, bool doesChange) {}
 
-template <class FunctionTable, class Observer, class Prior, class Likelihood,
-          class Variables, class DataType,
-          class Parameters = std::decay_t<decltype(sample(
-              std::declval<mt_64i &>(), std::declval<Prior &>()))>>
-  requires(!is_of_this_template_type_v<std::decay_t<FunctionTable>,
-                                       var::FuncMap_St> &&
-           is_prior<Prior, Parameters, Variables, DataType> &&
-           is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
-                               DataType>)
-void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,
-                              thermo_mcmc<Parameters> &current, Observer &obs,
-                              const by_beta<double> &beta, ensemble<mt_64i> &mt,
-                              Prior const &prior, Likelihood const &lik,
-                              const DataType &y, const Variables &x,
-                              double alpha_stretch = 2) {
-  assert(beta.size() == num_betas(current));
-  auto n_walkers = num_walkers(current);
-  auto n_beta = beta.size();
-  auto n_par = current.walkers[0][0].parameter.size();
-
-  std::uniform_int_distribution<std::size_t> uniform_walker(0,
-                                                            n_walkers / 2 - 1);
-  std::vector<std::uniform_int_distribution<std::size_t>> udist(n_walkers,
-                                                                uniform_walker);
-
-  std::uniform_real_distribution<double> uniform_stretch_zdist(
-      1.0 / alpha_stretch, alpha_stretch);
-  std::vector<std::uniform_real_distribution<double>> zdist(
-      n_walkers, uniform_stretch_zdist);
-
-  std::uniform_real_distribution<double> uniform_real(0, 1);
-  std::vector<std::uniform_real_distribution<double>> rdist(n_walkers,
-                                                            uniform_real);
-
-  for (bool half : {false, true})
-#pragma omp parallel for
-    for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-      auto iw = half ? i + n_walkers / 2 : i;
-      auto j = udist[i](mt[i]);
-      auto jw = half ? j : j + n_walkers / 2;
-      for (std::size_t ib = 0; ib < n_beta; ++ib) {
-        // we can try in the outer loop
-
-        auto r = rdist[i](mt[i]);
-
-        // candidate[ib].walkers[iw].
-        auto [ca_par, z] =
-            stretch_move(mt[i], rdist[i], current.walkers[ib][iw].parameter,
-                         current.walkers[ib][jw].parameter);
-
-        auto ca_logP = logPrior(prior, ca_par);
-        auto ca_logL =
-            logLikelihood(f.fork(var::I_thread(i)), lik, ca_par, y, x);
-
-        if ((ca_logP.valid()) && (ca_logL.valid())) {
-            auto dthLogL =std::isfinite(get<logL>(current.walkers[ib][iw].logL)())?
-              ca_logP.value() - current.walkers[ib][iw].logP +
-                           beta[ib] * (get<logL>(ca_logL.value())() - get<logL>(current.walkers[ib][iw].logL))():1.0;
-          auto pJump =
-              std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
-          if constexpr (!std::is_same_v<Observer, no_save>)
-            observe_step_stretch_thermo_mcmc(
-                obs[iw][ib], jw, z, r, current.walkers[ib][iw].parameter,
-                current.walkers[ib][jw].parameter, current.walkers[ib][iw].logP,
-                ca_logP, current.walkers[ib][iw].logL, ca_logL, pJump >= r);
-          if (pJump >= r) {
-            current.walkers[ib][iw].parameter = std::move(ca_par);
-            current.walkers[ib][iw].logP = ca_logP.value();
-            current.walkers[ib][iw].logL = ca_logL.value();
-          }
-        }
-      }
-    }
-  ++iter;
-}
 
 template <class FunctionTable, std::size_t N,class Observer, class Prior, class Likelihood,
           class Variables, class DataType,
@@ -817,7 +708,7 @@ template <class FunctionTable, std::size_t N,class Observer, class Prior, class 
            is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
-void step_stretch_thermo_mcmc(FunctionTable &&f, std::size_t &iter,var::Event_Timing<N>& dur,
+void step_stretch_thermo_mcmc(FunctionTable &f, std::size_t &iter,var::Event_Timing<N>& dur,
                               thermo_mcmc<Parameters> &current, Observer &obs,
                               const by_beta<double> &beta, ensemble<mt_64i> &mt,
                               Prior const &prior, Likelihood const &lik,
@@ -991,7 +882,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
   requires(is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
-auto push_back_new_beta(FunctionTable &&f, std::size_t &iter,
+auto push_back_new_beta(FunctionTable &f, std::size_t &iter,
                         thermo_mcmc<Parameters> &current, ensemble<mt_64i> &mts,
                         by_beta<double> const &new_beta, Prior const &prior,
                         Likelihood const &lik, const DataType &y,
@@ -1139,7 +1030,7 @@ public:
   friend void report_model(save_Parameter &, ...) {}
 
   template <class FunctionTable, class Duration>
-  friend void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
+  friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_Parameter &s, thermo_mcmc<Parameters> const &data,
                      ...) {
     if (iter % s.save_every == 0)
@@ -1262,7 +1153,7 @@ public:
         filename_prefix_{filename_prefix} {}
 
   template <class FunctionTable, class Duration, class... T>
-  friend void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
+  friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_mcmc &smcmc, thermo_mcmc<Parameters> const &data,
                      T &&...ts) {
     (report(f, iter, dur, static_cast<saving &>(smcmc), data,

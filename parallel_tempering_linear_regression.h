@@ -79,7 +79,7 @@ public:
   }
 
   template <class FunctionTable, class Duration, class Parameters>
-  friend void report(FunctionTable &&f, std::size_t iter, const Duration &dur,
+  friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_Evidence &s, thermo_mcmc<Parameters> &data, ...) {
     if (iter % s.save_every == 0) {
 
@@ -637,7 +637,7 @@ template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
 //             is_likelihood_model<Likelihood,Parameters,Variables,DataType>)
 
 auto thermo_evidence_continuation(
-    const std::string &idName, FunctionTable &&f,
+    const std::string &idName, FunctionTable &f,
     new_thermodynamic_integration<Algorithm, Reporter> &&therm,
     Prior const &prior, Likelihood const &lik, const DataType &y,
     const Variables &x)
@@ -667,7 +667,7 @@ auto thermo_evidence_continuation(
     
     auto alt_current=extract_parameters_last(fname, iter, duration, current);
     a.reset(iter);
-    auto res=calc_thermo_mcmc_continuation(std::forward<FunctionTable>(f), n_walkers, beta,
+    auto res=calc_thermo_mcmc_continuation(f, n_walkers, beta,
                                   mts, prior, lik, y, x,current);
     
     auto mcmc_run = checks_convergence(std::move(a), current);
@@ -677,7 +677,7 @@ auto thermo_evidence_continuation(
     report_model_all(rep, prior, lik, y, x, beta);
     
     return thermo_evidence_loop(
-        std::forward<FunctionTable>(f),
+        f,
         std::forward<new_thermodynamic_integration<Algorithm, Reporter>>(therm),
         prior, lik, y, x, mcmc_run, iter, current, rep, beta_run, mt, mts, start);
 }
