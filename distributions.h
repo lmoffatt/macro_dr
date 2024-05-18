@@ -3,10 +3,12 @@
 
 #include "matrix.h"
 #include "maybe_error.h"
+#include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <functional>
 #include <random>
+#include <sstream>
 #include <type_traits>
 #include <utility>
 #include "random_samplers.h"
@@ -235,25 +237,82 @@ public:
 
 
 class logL : public var::Var<logL, double> {
+public:
     friend std::string className(logL) { return "logL"; }
+    Maybe_error<bool> is_good() const{
+        if (!std::isfinite((*this)()))
+            return error_message("logL not finite: "+std::to_string((*this)()));
+        return true;
+    }
 };
 class elogL : public var::Var<elogL, double> {
+public:
     friend std::string className(elogL) { return "elogL"; }
+    Maybe_error<bool> is_good() const{
+        if (!std::isfinite((*this)()))
+            return error_message("elogL not finite: "+std::to_string((*this)()));
+        return true;
+    }    
 };
 class vlogL : public var::Var<vlogL, double> {
+public:
     friend std::string className(vlogL) { return "vlogL"; }
+    Maybe_error<bool> is_good() const{
+        if (!std::isfinite((*this)()))
+            return error_message("vlogL not finite: "+std::to_string((*this)()));
+        if ((*this)()<=0)
+            return error_message("vlogL negative or cero: "+std::to_string((*this)()));
+            
+        return true;
+    }
+    
 };
 
 class Grad : public var::Constant<Grad, Matrix< double>> {
+public:
     friend std::string className(Grad) { return "Grad"; }
+    Maybe_error<bool> is_good() const{
+        if (!std::isfinite(var::fullsum((*this)())))
+        {
+            std::stringstream ss;
+            ss<<"Grad not finite: "<<(*this)();
+            return error_message(ss.str());
+            
+        }
+        return true;
+    }        
 };
 
 class Hess : public var::Constant<Hess, SymPosDefMatrix< double>> {
+public:
     friend std::string className(Hess) { return "Hess"; }
+   
+    
 };
 
 class FIM : public var::Constant<FIM, SymPosDefMatrix< double>> {
+public:
     friend std::string className(FIM) { return "FIM"; }
+    Maybe_error<bool> is_good() const{
+        if (!std::isfinite(var::fullsum((*this)())))
+        {
+            std::stringstream ss;
+            ss<<"FIM not finite: "<<(*this)();
+            return error_message(ss.str());
+            
+        }
+        for (std::size_t i=0; i<(*this)().size(); ++i)
+            if ((*this)()(i,i)<=0)
+            {
+                std::stringstream ss;
+                ss<<"FIM diagonal negative or cero: "<<(*this)();
+                return error_message(ss.str());
+                
+            }
+        
+        return true;
+    }
+    
 };
 
 
@@ -262,6 +321,15 @@ using logLs=var::Vector_Space<logL,elogL,vlogL>;
 
 using dlogLs=var::Vector_Space<logL,elogL,vlogL, Grad,FIM>;
 using dlogPs=var::Vector_Space<logL, Grad,FIM>;
+
+template<class... Vs>
+inline Maybe_error<bool> is_good(const var::Vector_Space<Vs...>& x)
+{
+    
+    return (get<Vs>(x).is_good()&&...);
+}
+
+
 
 
 #endif // DISTRIBUTIONS_H

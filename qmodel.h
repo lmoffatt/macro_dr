@@ -501,7 +501,7 @@ to_Transition_Probability(C_Matrix const &x) {
   
   for (std::size_t i = 0; i < sumP.size(); ++i)
     if (std::isnan(primitive(sumP[i]))) {
-        std::cerr << "rro";
+      //  std::cerr << "rro";
         return error_message("not transition prob");
       }
   if (s)
@@ -4570,6 +4570,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     
     if (iter % s.save_every != 0)
       return;
+    std::cerr<<"report save_Predictions\n";
+    
     auto ff = f.fork(omp_get_max_threads());
     
     auto all_Predictions =
@@ -4577,12 +4579,13 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                                             ff[0], lik, data.walkers[0].m_data.m_x, y, x))>>(t_beta.size());
     
     auto num_samples = size(y);
-    // #pragma omp parallel for
+ #pragma omp parallel for
     for (std::size_t i_b = 0; i_b < t_beta.size(); ++i_b) {
         auto i_th = omp_get_thread_num();
         
         auto par = data.walkers[i_b].m_data.m_x;
         auto walker_id = data.walkers[i_b].m_data.i_walker;
+        
         all_Predictions[i_b] =
             logLikelihoodPredictions(ff[i_th], lik, par.to_value(), y, x);
       }
@@ -4611,6 +4614,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
               }
           }
       }
+    std::cerr<<"report save_Predictions end\n";
+    
   }
   
   inline std::string ToString(const ATP_step &ev) {
