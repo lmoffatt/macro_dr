@@ -715,7 +715,10 @@ template <class FunctionTable, class Duration, class Parameters,
 void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_mcmc<Parameters, saving...> &s,
                 thermo_levenberg_mcmc &data, T const &...ts) {
+    std::cerr<<"in report_all\n";
     (report(f, iter, dur, static_cast<saving &>(s), data, ts...), ..., 1);
+    std::cerr<<"after report_all\n";
+    
 }
 
 template <class Algorithm, class Reporter>
@@ -817,6 +820,8 @@ auto thermo_levenberg_evidence_loop(
         std::cerr << "after_thermo_jump"
                   << "\n";
         check_current=current.is_good(beta_run);
+        std::cerr << "current.is_good"
+                  << "\n";
         if (!check_current)
             std::cerr<<check_current.error()();
         
