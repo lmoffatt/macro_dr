@@ -10,7 +10,7 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 
 
-NTASKS=1
+NTASKS=2
 CPUSPERTASK=32
 
 export SCHEME_0=scheme_11_inact_PI
