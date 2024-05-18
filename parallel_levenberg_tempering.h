@@ -169,14 +169,19 @@ struct thermo_levenberg_mcmc {
   // by_beta<levenberg_Thermo_Jump_statistics> thermo_stat;
 
   Maybe_error<bool> is_good(by_beta<double> const &beta) const {
-    
+      
+//      std::cerr<<"iside_current_is_good\n";  
     if (walkers.size() != beta.size())
       return error_message("missing walkers " + std::to_string(walkers.size()) +
                              "vs " + std::to_string(beta.size()));
+  //  std::cerr<<"iside_current_is_good mid\n";  
+    
     Maybe_error<bool> out(true);
     for (std::size_t i = 0; i < walkers.size(); ++i) {
+   //     std::cerr<<"iside_current_is_good walker"<<i<<"\n";  
         out=out&&walkers[i].m_data.is_good();
      }
+    //std::cerr<<"iside_current_is_good end\n";  
     return out;
   }
   
@@ -522,11 +527,9 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
             omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta - 1));
         
         std::size_t num_threads = omp_get_max_threads();
-        std::uniform_int_distribution<std::size_t> b(0ul, 1ul);
+        std::size_t n_beta_f = std::max(2.0,std::ceil(n_beta/2/num_threads));
         
-        std::size_t odd_or_even = b(mt);
-        std::size_t n_beta_f = std::ceil(n_beta / num_threads);
-
+        for (auto odd_or_even=0; odd_or_even<2; ++odd_or_even){
 #pragma omp parallel for // collapse(2)
         for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
             std::size_t ib0 = i_thread * n_beta_f + odd_or_even;
@@ -545,6 +548,7 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
                     // fails(current.thermo_stat[ib]());
                 }
             }
+        }
         }
     }
 }
