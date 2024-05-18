@@ -163,7 +163,7 @@ auto to_transition_Probability(C_Matrix const &x)->Maybe_error<C_Matrix> {
     
     for (std::size_t i = 0; i < sumP.size(); ++i)
         if (std::isnan(primitive(sumP[i])))
-            std::cerr << "rro";
+            return error_message("nan sumP");
     if (s)
         // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
         return s.value() * out;
