@@ -548,6 +548,14 @@ private:
   Parameters_Transformations const *m_par;
 
 public:
+  Maybe_error<bool> is_good()const {
+      if(m_values.ncols()*m_values.nrows()!=m_values.size())
+          return error_message("wrong dimensions: ncols="+std::to_string(m_values.ncols())+" nrows="+std::to_string(m_values.nrows())+" size="+std::to_string(m_values.size()));
+      if (m_par==nullptr)
+          return error_message("lacks Parameters_Tranformations");
+      return true;
+  }  
+    
   auto &parameters() const { return *m_par; }
   template <class VectorType>
     requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
