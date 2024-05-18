@@ -301,7 +301,7 @@ public:
             return error_message(ss.str());
             
         }
-        for (std::size_t i=0; i<(*this)().size(); ++i)
+        for (std::size_t i=0; i<(*this)().nrows(); ++i)
             if ((*this)()(i,i)<=0)
             {
                 std::stringstream ss;
