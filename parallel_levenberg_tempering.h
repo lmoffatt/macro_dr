@@ -620,7 +620,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_likelihood<Parameter> &s, thermo_levenberg_mcmc const &current,
             by_beta<double> t_beta, ...) {
     if (iter % s.save_every == 0) {
-        std::cerr<<"report save_Likelihood\n";
+        //std::cerr<<"report save_Likelihood\n";
         logLs t_logL = {};
         double beta = 0;
         logLs log_Evidence = var::Vector_Space<logL, elogL, vlogL>(
@@ -638,7 +638,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
                 << t_logL.sep(s.sep) << plog_Evidence.sep(s.sep)
                 << log_Evidence.sep(s.sep) << "\n";
         }
-        std::cerr<<"report save_Likelihood end\n";
+        //std::cerr<<"report save_Likelihood end\n";
         
     }
 }
@@ -665,7 +665,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Parameter<Parameter> &s, thermo_levenberg_mcmc const &current,
             by_beta<double> t_beta, ...) {
     if (iter % s.save_every == 0){
-        std::cerr<<"report save_Parameter\n";
+        //std::cerr<<"report save_Parameter\n";
         
         for (std::size_t i_beta = 0; i_beta < current.walkers.size(); ++i_beta)
             for (std::size_t i_par = 0;
@@ -676,7 +676,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                     << s.sep << current.walkers[i_beta].m_data.m_x[i_par] << s.sep
                     << get<Grad>(current.walkers[i_beta].m_data.m_logL)()[i_par]
                     << "\n";
-        std::cerr<<"report save_Parameter end\n";
+        //std::cerr<<"report save_Parameter end\n";
         
     }
 }
@@ -694,7 +694,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_Levenberg_Lambdas<Parameter> &s,
             thermo_levenberg_mcmc &current, by_beta<double> t_beta, ...) {
     if (iter % s.save_every == 0){
-        std::cerr<<"report save_Levenberg_Lambdas\n";
+        //std::cerr<<"report save_Levenberg_Lambdas\n";
         for (std::size_t i_beta = 0; i_beta < t_beta.size(); ++i_beta) {
             auto it_cum = current.walkers[i_beta].m_lambda.cumulative().begin();
             double p = 0;
@@ -710,7 +710,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             }
             current.walkers[i_beta].m_lambda.update_distribution();
         }
-        std::cerr<<"report save_Levenberg_Lambdas end\n";
+        //std::cerr<<"report save_Levenberg_Lambdas end\n";
         
     }
 }
@@ -719,9 +719,9 @@ template <class FunctionTable, class Duration, class Parameters,
 void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_mcmc<Parameters, saving...> &s,
                 thermo_levenberg_mcmc &data, T const &...ts) {
-    std::cerr<<"in report_all\n";
+    //std::cerr<<"in report_all\n";
     (report(f, iter, dur, static_cast<saving &>(s), data, ts...), ..., 1);
-    std::cerr<<"after report_all\n";
+    //std::cerr<<"after report_all\n";
     
 }
 
@@ -801,8 +801,7 @@ auto thermo_levenberg_evidence_loop(
     auto delta_par = therm.delta_par();
     
     while (!mcmc_run.second) {
-        std::cerr << "main_loop_start"
-                  << "\n";
+        //std::cerr << "main_loop_start"<< "\n";
         even_dur.record("main_loop_start");
         
         if (delta_par > 0)
@@ -811,43 +810,38 @@ auto thermo_levenberg_evidence_loop(
         else
             step_levenberg_thermo_mcmc(f, iter, current, beta_run, mts, prior, lik, y,
                                        x);
-        auto check_current=current.is_good(beta_run);
-        if (!check_current)
-            std::cerr<<check_current.error()();
+        // auto check_current=current.is_good(beta_run);
+        // if (!check_current)
+            //std::cerr<<check_current.error()();
         even_dur.record("befor_thermo_jump");
-        std::cerr << "befor_thermo_jump"
-                  << "\n";
+       // std::cerr << "befor_thermo_jump"
+        //          << "\n";
         
         thermo_levenberg_jump_mcmc(iter, current, beta_run, mt, mts,
                                    therm.thermo_jumps_every());
         even_dur.record("after_thermo_jump");
-        std::cerr << "after_thermo_jump"
-                  << "\n";
-        check_current=current.is_good(beta_run);
-        std::cerr << "current.is_good"
-                  << "\n";
-        if (!check_current)
-            std::cerr<<check_current.error()();
+        //std::cerr << "after_thermo_jump" << "\n";
+      //  check_current=current.is_good(beta_run);
+        //std::cerr << "current.is_good"<< "\n";
+        // if (!check_current)
+        //     std::cerr<<check_current.error()();
         
         const auto end = std::chrono::high_resolution_clock::now();
         auto dur = std::chrono::duration<double>(end - start);
         report_all(f, iter, dur, rep, current, beta_run, prior, lik, y, x, mts,
                    mcmc_run.first);
         even_dur.record("after_report_all");
-        std::cerr << "after_report_all"
-                  << "\n";
+       // std::cerr << "after_report_all"<< "\n";
         
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         even_dur.record("after_checks_convergence");
-        std::cerr << "after_checks_convergence"
-                  << "\n";
+       // std::cerr << "after_checks_convergence"<< "\n";
         if (iter == 1)
             even_dur.report_title(event_file);
         even_dur.report_iter(event_file, iter);
         if (iter % 10 == 0)
             event_file.flush();
-        std::cerr << "end of loop"
-                  << "\n";
+  //      std::cerr << "end of loop"                  << "\n";
     }
     
     return std::pair(std::move(mcmc_run.first), current);
