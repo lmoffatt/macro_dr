@@ -38,6 +38,8 @@ export N_BETA=16
 export N_SCOUTS=32
 
 export MAX_ITER=1000000
+export SCHEME_DIR_0=models
+export SCHEME_DIR_2=models_Ag
 
 
 SCM_N=11
