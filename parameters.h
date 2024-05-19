@@ -5,6 +5,7 @@
 #include "general_output_operator.h"
 #include "matrix.h"
 #include "maybe_error.h"
+#include "variables.h"
 #include <cmath>
 #include <cstddef>
 #include <fstream>
@@ -506,7 +507,7 @@ private:
                              transformations_vector const &tr,
                              MatrixType &&std_values)
       : m_IdName{IdName}, m_ParNames{ParNames}, m_tr{tr},m_index_map{get_index_map(ParNames)},
-      m_standard_values{Matrix<double>(std_values.size(),1,std::forward<MatrixType>(std_values))} {}
+      m_standard_values{Matrix<double>(std_values.size(),1,std::forward<MatrixType>(std_values))}, m_TrParNames{tr.get_transformed_names(ParNames)} {}
   
   
   
@@ -603,6 +604,12 @@ public:
   
   
 };
+
+
+
+
+
+
 
 // template <class Id>
 // void report_model(std::string filename, std::string sep,

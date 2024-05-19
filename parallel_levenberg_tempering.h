@@ -13,8 +13,10 @@
 #include "parameters.h"
 #include "parameters_distribution.h"
 #include "random_samplers.h"
+#include "variables.h"
 #include "variables_derivative.h"
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <iostream>
@@ -60,7 +62,8 @@ public:
         m_cumulative.clear();
         double sumcum = 0;
         for (std::size_t i = 0; i < size(); ++i) {
-            sumcum += m_stat[i].rate() / (m_lambdas[i] + 1.0);
+            if (m_stat[i].rate().valid())
+                sumcum += m_stat[i].rate().value() / (m_lambdas[i] + 1.0);
             m_cumulative[sumcum] = i;
         }
     }
@@ -138,12 +141,32 @@ struct levenberg_mcmc {
                                                 std::move(FIml), logDetCov.value());
     }
 };
+class levenberg_Thermo_Jump_statistics
+    : public var::Constant<levenberg_Thermo_Jump_statistics, Trial_statistics> {
+};
+class levenberg_Step_statistics
+    : public var::Constant<levenberg_Step_statistics, Trial_statistics> {};
+
+
+
+class levenberg_log_errors
+    :public var::Constant<levenberg_log_errors,std::vector<error_log<var::Parameters_transformed>>>{
+public:  
+    void save_error(std::string error,  var::Parameters_transformed&& val)
+    {
+        (*this)().emplace_back(std::move(error),std::move(val));
+    }
+    
+};
 
 struct levenberg_Marquart_mcmc {
     
     levenberg_mcmc m_data;
     levenberg_lambda_adaptive_distribution m_lambda;
     double m_beta;
+    levenberg_Thermo_Jump_statistics m_thermo_stat;
+    levenberg_Step_statistics m_step_stat;
+    levenberg_log_errors m_error;
 };
 
 class levenberg_lambda_error_statistics
@@ -154,12 +177,7 @@ class levenberg_likelihood_error_statistics
     : public var::Constant<levenberg_likelihood_error_statistics,
                            Trial_statistics> {};
 
-class levenberg_Step_statistics
-    : public var::Constant<levenberg_Step_statistics, Trial_statistics> {};
 
-class levenberg_Thermo_Jump_statistics
-    : public var::Constant<levenberg_Thermo_Jump_statistics, Trial_statistics> {
-};
 
 struct thermo_levenberg_mcmc {
   by_beta<levenberg_Marquart_mcmc> walkers;
@@ -263,8 +281,19 @@ calculate_next_levenberg_mcmc(FunctionTable &f, Parameters &&ca_par,
         return Maybe_ca_logP.error();
     
     auto Maybe_ca_logL = diff_logLikelihood(f, lik, ca_par, y, x, delta_par);
+
     if (!Maybe_ca_logL)
         return Maybe_ca_logL.error();
+    
+    assert(([&ca_par, &f, &lik, &x, &y, &Maybe_ca_logL](){
+        auto ca_logL=logLikelihood(f, lik, ca_par.to_value(), y, x).value();
+        if (std::abs(get<logL>(ca_logL)()-get<logL>(Maybe_ca_logL.value())())>std::sqrt(eps)*std::abs(get<logL>(ca_logL)()))
+            {
+            std::cerr<<get<logL>(ca_logL)()<<" vs "<<get<logL>(Maybe_ca_logL.value())();
+            return false;
+        }
+        else return true;
+    }()));     
     return levenberg_mcmc{i_walker, std::move(ca_par),
                           std::move(Maybe_ca_logP.value()),
                           std::move(Maybe_ca_logL.value())};
@@ -291,7 +320,7 @@ Maybe_error<double> levenberg_Acceptance(
     double logP_backward = Maybe_logP_backward.value();
     
     double logA =
-        (logL_candidate + logP_backward) - (logL_current + logP_forward);
+        (logL_candidate + logP_backward ) - (logL_current + logP_forward);
     double A = std::min(1.0, std::exp(logA));
     
     return A;
@@ -317,6 +346,8 @@ Maybe_error<bool> step_levenberg_thermo_mcmc_i(
     auto Maybe_cu_Prop = current.ProposedDistribution(beta, lambda);
     if (!Maybe_cu_Prop) {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
+        
         return Maybe_cu_Prop.error();
     }
     auto cu_Prop = std::move(Maybe_cu_Prop.value());
@@ -326,28 +357,36 @@ Maybe_error<bool> step_levenberg_thermo_mcmc_i(
     
     if (!Maybe_ca_wa) {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
+        currentm.m_error.save_error(Maybe_ca_wa.error()(),std::move(ca_par));
         return Maybe_ca_wa.error();
     }
     auto candidate = std::move(Maybe_ca_wa.value());
     auto Maybe_ca_Prop = candidate.ProposedDistribution(beta, lambda);
     if (!Maybe_ca_Prop) {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return Maybe_ca_Prop.error();
     }
     auto ca_Prop = std::move(Maybe_ca_Prop.value());
     auto Maybe_A =
         levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop, beta);
     if (!Maybe_A)
+    {
+        fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return Maybe_A.error();
-    
+    }
     double A = Maybe_A.value();
     double r = rdist(mt);
     if (r < A) {
         succeeds(Lambda.stat(i_lambda));
+        succeeds(currentm.m_step_stat());
         current = std::move(candidate);
         return true;
     } else {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return false;
     }
 }
@@ -373,6 +412,7 @@ Maybe_error<bool> step_levenberg_thermo_mcmc_i(
     auto Maybe_cu_Prop = current.ProposedDistribution(beta, lambda);
     if (!Maybe_cu_Prop) {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return Maybe_cu_Prop.error();
     }
     auto cu_Prop = std::move(Maybe_cu_Prop.value());
@@ -382,29 +422,37 @@ Maybe_error<bool> step_levenberg_thermo_mcmc_i(
     
     if (!Maybe_ca_wa) {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
+        currentm.m_error.save_error(Maybe_ca_wa.error()(),std::move(ca_par));
         return Maybe_ca_wa.error();
     }
     auto candidate = std::move(Maybe_ca_wa.value());
     auto Maybe_ca_Prop = candidate.ProposedDistribution(beta, lambda);
     if (!Maybe_ca_Prop) {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return Maybe_ca_Prop.error();
     }
     auto ca_Prop = std::move(Maybe_ca_Prop.value());
     auto Maybe_A =
         levenberg_Acceptance(current, candidate, cu_Prop, ca_Prop, beta);
     if (!Maybe_A)
+    {
+        fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return Maybe_A.error();
-    
+    }
     double A = Maybe_A.value();
     
     double r = rdist(mt);
     if (r < A) {
         succeeds(Lambda.stat(i_lambda));
+        succeeds(currentm.m_step_stat());
         current = std::move(candidate);
         return true;
     } else {
         fails(Lambda.stat(i_lambda));
+        fails(currentm.m_step_stat());
         return false;
     }
 }
@@ -527,10 +575,10 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
             omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta - 1));
         
         std::size_t num_threads = omp_get_max_threads();
-        std::size_t n_beta_f = std::max(2.0,std::ceil(n_beta/2/num_threads));
+        std::size_t n_beta_f = 2ul*std::ceil(n_beta/num_threads/2);
         
-        for (auto odd_or_even=0; odd_or_even<2; ++odd_or_even){
-#pragma omp parallel for // collapse(2)
+        std::size_t odd_or_even= (iter / thermo_jumps_every)%2;
+ #pragma omp parallel for // collapse(2)
         for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
             std::size_t ib0 = i_thread * n_beta_f + odd_or_even;
             std::size_t ib1 =
@@ -543,14 +591,13 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
                 auto pJump = std::min(1.0, std::exp(logA));
                 if (pJump > r) {
                     std::swap(current.walkers[ib].m_data, current.walkers[ib + 1].m_data);
-                    //  succeeds(current.thermo_stat[ib]());
+                    succeeds(current.walkers[ib].m_thermo_stat());
                 } else {
-                    // fails(current.thermo_stat[ib]());
+                    fails(current.walkers[ib].m_thermo_stat());
                 }
             }
         }
         }
-    }
 }
 
 template <class Parameters> class save_Levenberg_Lambdas {
@@ -589,15 +636,58 @@ public:
     friend void report_model(save_Levenberg_Lambdas &, ...) {}
 };
 
+
+template <class Parameters> class save_Levenberg_Errors {
+    
+public:
+    class separator : public std::string {
+    public:
+        using std::string::string;
+        //   separator(std::string s):std::string(std::move(s)){}
+        
+        std::string operator()() const { return *this; }
+        friend std::ostream &operator<<(std::ostream &os, const separator &sep) {
+            return os << sep();
+        }
+        friend std::istream &operator>>(std::istream &is, const separator &sep) {
+            std::string ss = sep();
+            for (std::size_t i = 0; i < ss.size(); ++i) {
+                is.get(ss[i]);
+            }
+            if (ss != sep())
+                is.setstate(std::ios::failbit);
+            return is;
+        }
+    };
+    
+    separator sep = ",";
+    std::string fname;
+    std::ofstream f;
+    std::size_t save_every;
+    save_Levenberg_Errors(std::string const &path, std::size_t interval)
+        : fname{path}, f{std::ofstream(path + "__i_beta__i_errors.csv")},
+        save_every{interval} {
+        f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    }
+    
+    friend void report_model(save_Levenberg_Errors &, ...) {}
+};
+
+
 class save_Levenberg_Lambdas_every
     : public var::Var<save_Levenberg_Lambdas_every, std::size_t> {};
+
+
+class save_Levenberg_Errors_every
+    : public var::Var<save_Levenberg_Errors_every, std::size_t> {};
+
 
 class Saving_Levenberg_intervals
     : public var::Var<
           Saving_intervals,
           var::Vector_Space<Save_Evidence_every, Save_Likelihood_every,
                             Save_Parameter_every, save_Levenberg_Lambdas_every,
-                            Save_Predictions_every>> {};
+                            save_Levenberg_Errors_every,Save_Predictions_every>> {};
 
 template <class... saving, class... Ts, class Parameters>
 void report_title(save_mcmc<Parameters, saving...> &f,
@@ -612,12 +702,15 @@ void report_title(save_likelihood<Parameter> &s,
         << s.sep << "logP" << s.sep << " logL" << s.sep << " elogL" << s.sep
         << " vlogL" << s.sep << "plog_Evidence" << s.sep << "eplog_Evidence"
         << s.sep << "vplog_Evidence" << s.sep << "log_Evidence" << s.sep
-        << "elog_Evidence" << s.sep << "vlog_Evidence" << s.sep << "\n";
+        << "elog_Evidence" << s.sep << "vlog_Evidence" << s.sep
+        <<"step_count"<<s.sep<<"step_rate"<<s.sep
+        <<"thermo_count"<<s.sep<<"thermo_rate"
+        << "\n";
 }
 
 template <class Parameter, class FunctionTable, class Duration>
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
-            save_likelihood<Parameter> &s, thermo_levenberg_mcmc const &current,
+            save_likelihood<Parameter> &s, thermo_levenberg_mcmc  &current,
             by_beta<double> t_beta, ...) {
     if (iter % s.save_every == 0) {
         //std::cerr<<"report save_Likelihood\n";
@@ -625,18 +718,29 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
         double beta = 0;
         logLs log_Evidence = var::Vector_Space<logL, elogL, vlogL>(
             logL(0.0), elogL(0.0), vlogL(0.0));
-        for (std::size_t i_beta = t_beta.size(); i_beta > 0; --i_beta) {
+        for (std::size_t i_beta0 = t_beta.size(); i_beta0 > 0; --i_beta0) {
             auto logL0 = t_logL;
             double beta0 = beta;
-            t_logL = current.walkers[i_beta - 1].m_data.get_logLs();
-            beta = t_beta[i_beta - 1];
+            auto i_beta=i_beta0-1;
+            t_logL = current.walkers[i_beta].m_data.get_logLs();
+            beta = t_beta[i_beta];
             auto plog_Evidence = (beta - beta0) * (logL0 + t_logL) / 2.0;
             log_Evidence = log_Evidence + plog_Evidence;
             s.f << iter << s.sep << dur << s.sep << beta << s.sep
-                << current.walkers[i_beta - 1].m_data.i_walker << s.sep
-                << get<logL>(current.walkers[i_beta - 1].m_data.m_logP)
+                << current.walkers[i_beta].m_data.i_walker << s.sep
+                << get<logL>(current.walkers[i_beta].m_data.m_logP)
                 << t_logL.sep(s.sep) << plog_Evidence.sep(s.sep)
-                << log_Evidence.sep(s.sep) << "\n";
+                << log_Evidence.sep(s.sep)<<s.sep;
+            s.f<<current.walkers[i_beta].m_step_stat().count()<<s.sep
+                <<current.walkers[i_beta].m_step_stat().rate()<<s.sep
+                <<current.walkers[i_beta].m_thermo_stat().count()<<s.sep
+                <<current.walkers[i_beta].m_thermo_stat().rate()
+                << "\n";
+            if (iter % (s.save_every*10) == 0)
+            {
+                current.walkers[i_beta].m_step_stat().reset();
+                current.walkers[i_beta].m_thermo_stat().reset();
+            }
         }
         //std::cerr<<"report save_Likelihood end\n";
         
@@ -689,6 +793,17 @@ void report_title(save_Levenberg_Lambdas<Parameter> &s,
         << "\n";
 }
 
+template <class Parameter>
+void report_title(save_Levenberg_Errors<Parameter> &s,
+                  thermo_levenberg_mcmc const & m, ...) {
+    s.f << "iter" << s.sep << "dur" << s.sep << "beta" << s.sep << "i_error"
+        << s.sep << "error";
+    for (std::size_t ipar=0; ipar<m.walkers[0].m_data.m_x.size(); ++ipar)
+        s.f<<s.sep<<m.walkers[0].m_data.m_x.parameters().transformed_names()[ipar];
+    s.f << "\n";
+}
+
+
 template <class Parameter, class FunctionTable, class Duration>
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_Levenberg_Lambdas<Parameter> &s,
@@ -714,6 +829,32 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
         
     }
 }
+
+
+template <class Parameter, class FunctionTable, class Duration>
+void report(FunctionTable &, std::size_t iter, const Duration &dur,
+            save_Levenberg_Errors<Parameter> &s,
+            thermo_levenberg_mcmc &current, by_beta<double> t_beta, ...) {
+    if (iter % s.save_every == 0){
+        for (std::size_t i_beta = 0; i_beta < t_beta.size(); ++i_beta) {
+            for (std::size_t i_error = 0; i_error < current.walkers[i_beta].m_error().size(); ++i_error)
+            {
+                s.f << iter << s.sep << dur << s.sep << t_beta[i_beta] << s.sep
+                    <<i_error<<s.sep
+                    << current.walkers[i_beta].m_error()[i_error].error;
+                for (std::size_t ipar=0; ipar<current.walkers[i_beta].m_error()[i_error].parameter.size(); ++ipar)
+                {  s.f<<s.sep<<current.walkers[i_beta].m_error()[i_error].parameter[ipar];
+                }
+                s.f<<"\n";
+                 
+            }
+            current.walkers[i_beta].m_error().clear();
+        }
+        
+    }
+}
+
+
 template <class FunctionTable, class Duration, class Parameters,
          class... saving, class... T>
 void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,

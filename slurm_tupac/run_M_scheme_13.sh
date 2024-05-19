@@ -17,12 +17,17 @@ export SCHEME_0=scheme_13_inact_PI
 export EVIDENCE_ALGORITHM=levenberg
 export PATH_MACRO_DR=v31
 export PATH_MACRO_DRX=v31
+export N_BETA=16
+
+export N_SCOUTS=32
+
+export MAX_ITER=1000000
 
 
 SCM_N=13
 export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable --job-name=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 
+JOBID1=$(sbatch --parsable --job-name=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
 #export CONTINUATION_NUMBER=1
 #JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${SCM_N}_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N.sh) 

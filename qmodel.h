@@ -4554,7 +4554,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     
     s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
         << "walker_id" << s.sep << "i_step" << s.sep << "time" << s.sep
-        << "num_samples" << s.sep << "ATP" << s.sep << "v_ev" << s.sep
+        << "num_samples" << s.sep << "ATP" << s.sep
         << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
         << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
         << "\n";
@@ -4607,6 +4607,10 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                     << walker_id << s.sep << i_step << s.sep << time << s.sep
                     << num_samples << s.sep << ToString(average_ATP_step(v_ev, true))
                     << s.sep << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
+                    
+                    
+                    
+                    
                     << get<y_mean>(predictions()[i_step]) << s.sep
                     << get<y_var>(predictions()[i_step]) << s.sep
                     << get<plogL>(predictions()[i_step]) << s.sep
@@ -5075,10 +5079,12 @@ auto thermo_levenberg_Model_by_max_iter(
                 save_likelihood<var::Parameters_transformed>,
                 save_Parameter<var::Parameters_transformed>,
                 save_Levenberg_Lambdas<var::Parameters_transformed>,
+                  save_Levenberg_Errors<var::Parameters_transformed>,
                 save_Predictions<var::Parameters_transformed>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<save_Levenberg_Lambdas_every>(sint())(),
+            get<save_Levenberg_Errors_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
       beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas,

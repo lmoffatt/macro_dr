@@ -44,7 +44,7 @@ export EXPERIMENT_2=$EXPERIMENT_0
 export EXPERIMENT_3=$EXPERIMENT_0
 
 
-export N_BETA=32
+export N_BETA=16
 
 export N_SCOUTS=32
 
