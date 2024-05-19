@@ -358,6 +358,7 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_M_schemes_6_8.sh
     slurm_tupac/run_M_schemes_9_10.sh
     slurm_tupac/run_M_scheme_7.sh
+    slurm_Serafin/M_scheme_N_tasks.sh
     
     
     
