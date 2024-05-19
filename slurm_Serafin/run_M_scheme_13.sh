@@ -37,6 +37,8 @@ export MAX_ITER=1000000
 
 SCM_N=13
 
+export SCHEME_DIR_0=models
+export SCHEME_DIR_2=models_Ag
 
 export CONTINUATION_NUMBER=0
 export EVIDENCE_ALGORITHM=levenberg

@@ -30,6 +30,9 @@ export N_SCOUTS=32
 
 export MAX_ITER=1000000
 
+export SCHEME_DIR_0=models
+export SCHEME_DIR_2=models_Ag
+
 
 JOBID1=$(sbatch --parsable --job-name=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
