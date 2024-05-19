@@ -43,6 +43,8 @@ export EVIDENCE_ALGORITHM=levenberg
 
 export CONTINUATION_NUMBER=0
 
+export N_SCH=7
+
 
 JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
