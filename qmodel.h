@@ -4570,7 +4570,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     
     if (iter % s.save_every != 0)
       return;
-    std::cerr<<"report save_Predictions\n";
+   // std::cerr<<"report save_Predictions\n";
     
     auto ff = f.fork(omp_get_max_threads());
     
@@ -4618,7 +4618,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
               }
           }
       }
-    std::cerr<<"report save_Predictions end\n";
+ //   std::cerr<<"report save_Predictions end\n";
     
   }
   
