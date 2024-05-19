@@ -30,11 +30,11 @@ export PATH_MACRO_DR_0=v31
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 export PATH_MACRO_DRX=v31
-export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=$SCHEME_0
 
 
 SCM_N=15
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=$SCHEME_0
 export CONTINUATION_NUMBER=0
 
 JOBID1=$(sbatch --parsable --job-name=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
