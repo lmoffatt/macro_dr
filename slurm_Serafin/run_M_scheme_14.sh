@@ -17,7 +17,7 @@ module load amdlibflame
 module load gsl
 
 
-NTASKS=2
+export NTASKS=2
 CPUSPERTASK=32
 export USE_LOCAL_ID=1
 
