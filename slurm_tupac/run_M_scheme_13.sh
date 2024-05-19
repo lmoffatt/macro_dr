@@ -28,6 +28,8 @@ export PATH_MACRO_DR_0=v31
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 export PATH_MACRO_DRX=v31
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=$SCHEME_0
 
 
 SCM_N=13

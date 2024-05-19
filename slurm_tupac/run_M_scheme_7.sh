@@ -33,6 +33,10 @@ export MAX_ITER=1000000
 export SCHEME_DIR_0=models
 export SCHEME_DIR_2=models_Ag
 
+
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=$SCHEME_0
+
 export PATH_MACRO_DR_0=v31
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
