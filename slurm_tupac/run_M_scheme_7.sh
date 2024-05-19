@@ -33,6 +33,10 @@ export MAX_ITER=1000000
 export SCHEME_DIR_0=models
 export SCHEME_DIR_2=models_Ag
 
+export PATH_MACRO_DR_0=v31
+export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
+
+export PATH_MACRO_DRX=v31
 
 JOBID1=$(sbatch --parsable --job-name=R${SCM_N}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
