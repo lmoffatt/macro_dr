@@ -27,6 +27,10 @@ export N_SCOUTS=32
 export MAX_ITER=1000000
 export SCHEME_DIR_0=models
 export SCHEME_DIR_2=models_Ag
+export PATH_MACRO_DR_0=v31
+export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
+
+export PATH_MACRO_DRX=v31
 
 
 export CONTINUATION_NUMBER=0
