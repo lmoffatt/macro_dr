@@ -10,19 +10,23 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
 
 
-export NTASKS=2
-CPUSPERTASK=32
+export USE_LOCAL_ID=1
+
+export SCHEME_DIR_0=models
+export SCHEME_DIR_1=models_Ag
+
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=$SCHEME_0
 
 
-export SCHEME_0=scheme_11_inact_PI
-export EVIDENCE_ALGORITHM=levenberg
+export PATH_MACRO_DR_0=v31
+export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
-
-export PATH_MACRO_DR=v31
 export PATH_MACRO_DRX=v31
 
-N_SCH=7
-export CONTINUATION_NUMBER=0
+
+export EXPERIMENT_0=idealize_experiment_2
+export EXPERIMENT_1=$EXPERIMENT_0
 
 export N_BETA=16
 
@@ -30,17 +34,10 @@ export N_SCOUTS=32
 
 export MAX_ITER=1000000
 
-export SCHEME_DIR_0=models
-export SCHEME_DIR_2=models_Ag
+export EVIDENCE_ALGORITHM=levenberg
 
+export CONTINUATION_NUMBER=0
 
-export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=$SCHEME_0
-
-export PATH_MACRO_DR_0=v31
-export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
-
-export PATH_MACRO_DRX=v31
 
 JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
