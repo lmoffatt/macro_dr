@@ -48,7 +48,7 @@ export EVIDENCE_ALGORITHM=levenberg
 
 export CONTINUATION_NUMBER=0
 
-export N_SCH=11
+export N_SCH=15
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=$SCHEME_0
 
