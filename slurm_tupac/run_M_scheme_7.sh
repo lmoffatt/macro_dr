@@ -20,8 +20,6 @@ export USE_LOCAL_ID=1
 export SCHEME_DIR_0=models
 export SCHEME_DIR_1=models_Ag
 
-export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=$SCHEME_0
 
 
 export PATH_MACRO_DR_0=v31
@@ -44,6 +42,8 @@ export EVIDENCE_ALGORITHM=levenberg
 export CONTINUATION_NUMBER=0
 
 export N_SCH=7
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=$SCHEME_0
 
 
 JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
