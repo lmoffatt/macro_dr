@@ -61,7 +61,7 @@ export EXPERIMENT_6=$EXPERIMENT_2
 export EXPERIMENT_7=$EXPERIMENT_2
 
 
-export N_BETA=32
+export N_BETA=16
 
 export N_SCOUTS=32
 

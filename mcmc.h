@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include "distributions.h"
+#include "maybe_error.h"
 #include "variables.h"
 //using Parameters = Matrix<double>;
 using Data = Matrix<double>;
@@ -114,6 +115,8 @@ class Trial_count : public var::Constant<Trial_count, std::size_t> {};
 
 
 
+
+
 class Success_count : public var::Constant<Success_count, std::size_t> {};
 
 class Trial_statistics
@@ -141,11 +144,16 @@ public:
         get<Success_count>((*this)())() = 0;
     }
     auto count() const { return get<Trial_count>((*this)())(); }
-    double rate() const {
-        return 1.0 * get<Success_count>((*this)())() /
-               get<Trial_count>((*this)())();
+    Maybe_error<double> rate() const {
+        if (count()>0)
+            return 1.0 * get<Success_count>((*this)())() /count();
+        else
+            return error_message("");
     }
 };
+
+
+
 
 class emcee_Step_statistics
     : public var::Constant<emcee_Step_statistics, Trial_statistics> {};
@@ -162,7 +170,20 @@ struct mcmc {
     double logP;
     logLs logL;
   };
+  
+  
+  template<class Parameters>
+  struct error_log
+  {
+      std::string error;
+      Parameters parameter;
+  };
+  
+  
 
+  
+  
+  
 template <class FunctionTable, class Prior,class Lik, class Variables,class DataType,
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
