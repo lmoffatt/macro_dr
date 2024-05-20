@@ -313,7 +313,7 @@ inline std::string run_simulation(std::string filename_prefix,
 inline void calc_likelihood(std::string outfilename, std::string model,
                             parameters_value_type par,
                             likelihood_algo_type likelihood,
-                            recording_value_type recording,
+                            std::string recording,
                             experiment_type experiment,
                             cuevi_algo_type algorithm, tablefun_value_type ft) {
     using namespace macrodr;
@@ -344,8 +344,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                 
                 auto Maybe_param1 = var::load_Parameters(
                     par.first, par.second, model0.model_name(), model0.names());
-                Simulated_Recording<includes_N_state_evolution(true)> y;
-                auto Maybe_y = load_simulation(recording.first, recording.second, y);
+                Simulated_Recording<includes_N_state_evolution(false)> y;
+                auto Maybe_y = load_simulation(recording, ",", y);
                 if (!Maybe_param1.valid() || !Maybe_y.valid()) {
                     std::cerr << "---------ERROR_______________\n";
                     std::cerr << Maybe_param1.error()() << Maybe_y.error()();
