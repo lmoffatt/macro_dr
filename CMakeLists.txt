@@ -359,6 +359,13 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_M_schemes_9_10.sh
     slurm_tupac/run_M_scheme_7.sh
     slurm_Serafin/M_scheme_N_tasks.sh
+    scripts/calculate_likelihood.txt
+    slurm_tupac/run_M_schemes_11_12.sh
+    slurm_tupac/run_M_schemes_13_14.sh
+    slurm_tupac/run_M_schemes_7_15.sh
+    slurm_Serafin/run_M_scheme_11_12.sh
+    slurm_Serafin/run_M_scheme_13_14.sh
+    slurm_Serafin/run_M_scheme_7_15.sh
     
     
     

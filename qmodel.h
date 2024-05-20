@@ -366,17 +366,17 @@ inline bool all_Covariance_elements(C_Matrix const &x) {
   for (std::size_t i = 0; i < x.nrows(); ++i) {
     if (!std::isfinite(primitive(x(i, i))) || x(i, i) < 0)
       return false;
-    for (std::size_t j = 0; j < i; ++j)
+    //for (std::size_t j = 0; j < i; ++j)
       // if (std::isfinite(primitive(x(i, j))) && (x(i, i) > 0) && (x(j, j) > 0))
       // {
       //     auto r=x(i, j) * x(i, j) / x(i, i) / x(j, j);
       //     if ( r> 1.0)
       //     return false;
       // } else
-      {
-        if (x(i, j) != 0)
-          return false;
-      }
+      //{
+      //  if (x(i, j) != 0)
+      //    return false;
+      //}
   }
   return true;
 }

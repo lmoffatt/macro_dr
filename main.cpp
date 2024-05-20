@@ -441,7 +441,7 @@ calc_thermo_evidence(std::string id,
   cm.push_function(
       "likelihood",
       dcli::to_typed_function<std::string, std::string, parameters_value_type,
-                              likelihood_algo_type, recording_value_type,
+                              likelihood_algo_type, std::string,
                               experiment_type, cuevi_algo_type,
                               tablefun_value_type>(
           &calc_likelihood, "output", "model", "parameter_values",
