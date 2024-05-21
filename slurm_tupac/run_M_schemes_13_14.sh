@@ -15,7 +15,7 @@ export NTASKS=4
 CPUSPERTASK=16
 export USE_LOCAL_ID=0
 
-N_SCH=13
+export N_SCH=13
 N_SCH2=14
 
 export SCHEME_DIR_0=models

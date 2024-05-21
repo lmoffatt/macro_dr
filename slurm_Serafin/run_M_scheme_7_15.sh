@@ -21,7 +21,7 @@ export NTASKS=4
 CPUSPERTASK=16
 export USE_LOCAL_ID=0
 
-N_SCH=7
+export N_SCH=7
 N_SCH2=15
 
 export USE_LOCAL_ID=1
@@ -61,9 +61,6 @@ export EVIDENCE_ALGORITHM=levenberg
 
 export CONTINUATION_NUMBER=0
 
-export N_SCH=11
-export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=$SCHEME_0
 
 
 
