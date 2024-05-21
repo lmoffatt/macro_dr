@@ -38,7 +38,7 @@ export PATH_MACRO_DRX=v31
 export EXPERIMENT_0=idealize_experiment_2
 export EXPERIMENT_1=$EXPERIMENT_0
 
-export N_BETA=16
+export N_BETA=64
 
 export N_SCOUTS=32
 
