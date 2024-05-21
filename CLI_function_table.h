@@ -365,7 +365,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                             model0, Simulation_n_sub_dt(n_sub_dt));
                     auto lik =
                         Macro_DMR{}
-                            .log_Likelihood<uses_adaptive_aproximation(false),
+                            .log_Likelihood<uses_adaptive_aproximation(true),
                                             uses_recursive_aproximation(true),
                                             uses_averaging_aproximation(2),
                                             uses_variance_aproximation(false),

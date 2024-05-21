@@ -575,9 +575,10 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
             omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta - 1));
         
         std::size_t num_threads = omp_get_max_threads();
-        std::size_t n_beta_f = 2ul*std::ceil(n_beta/num_threads/2);
+        std::size_t n_beta_f = 2ul*std::ceil((1.0*n_beta)/num_threads/2.0   );
         
-        std::size_t odd_or_even= (iter / thermo_jumps_every)%2;
+        for (std::size_t odd_or_even= 0; odd_or_even<2; ++odd_or_even)
+        {
  #pragma omp parallel for // collapse(2)
         for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
             std::size_t ib0 = i_thread * n_beta_f + odd_or_even;
@@ -598,6 +599,7 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
             }
         }
         }
+    }
 }
 
 template <class Parameters> class save_Levenberg_Lambdas {
