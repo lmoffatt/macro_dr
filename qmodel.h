@@ -4551,6 +4551,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                         << i_walker << s.sep << walker_id << s.sep << i_step
                         << s.sep << i_state << s.sep << 0 << s.sep << "mean"
                         << s.sep << v_P()[i_state] << "\n";
+                    if (iter % (s.save_every * 32) == 0)
                     for (std::size_t j_state = 0; j_state <= i_state; ++j_state) {
                     s.g << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
                         << i_walker << s.sep << walker_id << s.sep << i_step
