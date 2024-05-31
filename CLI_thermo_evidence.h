@@ -318,11 +318,11 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
                             Save_Likelihood_every(save_every_param_size_factor *
                                                   param1_prior.size()),
                             Save_Parameter_every(save_every_param_size_factor *
-                                                 param1_prior.size()),
+                                                 param1_prior.size()*4),
                             Save_RateParameter_every(save_every_param_size_factor *
-                                                 param1_prior.size()),
+                                                 param1_prior.size()* 32),
                             Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 40)));
+                                                   param1_prior.size() * 4)));
                         
                         auto tmi = new_thermo_Model_by_max_iter(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,
