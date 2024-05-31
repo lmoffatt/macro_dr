@@ -111,7 +111,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
                             save_Levenberg_Errors_every(save_every_param_size_factor *
                                                          param1_prior.size()*5),
                             Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 50)));
+                                                   param1_prior.size() * 10)));
                         
                         auto tmi = thermo_levenberg_Model_by_max_iter(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,

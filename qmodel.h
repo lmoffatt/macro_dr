@@ -4542,7 +4542,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                           << get<plogL>(predictions()[i_step]) << s.sep
                           << get<eplogL>(predictions()[i_step]) << "\n";
                       
-                      if (beta[i_b] == 1) {
+                      if ((iter % (s.save_every * 4) == 0)&&(beta[i_b] == 1)) {
                 auto &v_P = get<P_mean>(predictions()[i_step]);
                 auto &v_Pc = get<P_Cov>(predictions()[i_step]);
                 auto n = v_P().size();
