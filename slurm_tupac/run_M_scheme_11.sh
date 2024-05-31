@@ -22,7 +22,7 @@ export SCHEME_DIR_1=models_Ag
 
 
 
-export PATH_MACRO_DR_0=v31
+export PATH_MACRO_DR_0=v25
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 export PATH_MACRO_DRX=v32

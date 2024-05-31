@@ -366,17 +366,17 @@ inline bool all_Covariance_elements(C_Matrix const &x) {
   for (std::size_t i = 0; i < x.nrows(); ++i) {
     if (!std::isfinite(primitive(x(i, i))) || x(i, i) < 0)
       return false;
-    //for (std::size_t j = 0; j < i; ++j)
-      // if (std::isfinite(primitive(x(i, j))) && (x(i, i) > 0) && (x(j, j) > 0))
-      // {
-      //     auto r=x(i, j) * x(i, j) / x(i, i) / x(j, j);
-      //     if ( r> 1.0)
-      //     return false;
-      // } else
-      //{
-      //  if (x(i, j) != 0)
-      //    return false;
-      //}
+    // for (std::size_t j = 0; j < i; ++j)
+    //  if (std::isfinite(primitive(x(i, j))) && (x(i, i) > 0) && (x(j, j) > 0))
+    //  {
+    //      auto r=x(i, j) * x(i, j) / x(i, i) / x(j, j);
+    //      if ( r> 1.0)
+    //      return false;
+    //  } else
+    //{
+    //   if (x(i, j) != 0)
+    //     return false;
+    // }
   }
   return true;
 }
@@ -1495,7 +1495,8 @@ public:
     if (!Maybe_W)
       return Maybe_W.error();
     auto v_W = std::move(Maybe_W.value());
-    if (!(norm_1(primitive(v_V * v_l * v_W - v_Qx())) / norm_1(primitive(v_Qx())) <
+    if (!(norm_1(primitive(v_V * v_l * v_W - v_Qx())) /
+          norm_1(primitive(v_Qx())) <
           std::sqrt(eps) * 1000))
       return error_message("invalid eigendecomposition");
     return build<Qx_eig>(
@@ -2351,10 +2352,6 @@ return error_message("nan P");
     //   std::cerr<<" nana here";
     return out;
   }
-
-    
-    
-  
     
     template <class FunctionTable, class C_Patch_Model>
     requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
@@ -2448,8 +2445,7 @@ return error_message("nan P");
   auto calc_Qdt_bisection(FunctionTable &f, const C_Patch_Model &m,
                           const ATP_step &t_step, double fs, std::size_t order)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
-    auto maybe_Qn =
-        calc_Qn_bisection(f, m, t_step, fs, order);
+    auto maybe_Qn = calc_Qn_bisection(f, m, t_step, fs, order);
     if (!maybe_Qn)
       return maybe_Qn.error();
     else {
@@ -2471,8 +2467,7 @@ return error_message("nan P");
       else {
         auto v_Qrun = get_Qn(v_Qdt0.value());
         for (std::size_t i = 1; i < t_step.size(); ++i) {
-          auto v_Qdti =
-              calc_Qdt(f, m, t_step[i], fs);
+          auto v_Qdti = calc_Qdt(f, m, t_step[i], fs);
           if (!v_Qdti)
             return v_Qdti.error();
           else {
@@ -2525,15 +2520,13 @@ return error_message("nan P");
     if (t_step.empty())
       return error_message("Emtpy ATP step");
     else {
-      auto v_Qn0 = calc_Qn_bisection(f, m,
-                                     t_step[0], fs, order);
+      auto v_Qn0 = calc_Qn_bisection(f, m, t_step[0], fs, order);
       if (!v_Qn0)
         return v_Qn0.error();
       else {
         auto v_Qrun = v_Qn0.value();
         for (std::size_t i = 1; i < t_step.size(); ++i) {
-          auto v_Qni = calc_Qn_bisection(f, m,
-                                         t_step[i], fs, order);
+          auto v_Qni = calc_Qn_bisection(f, m, t_step[i], fs, order);
           if (!v_Qni)
             return v_Qni.error();
           else
@@ -2566,8 +2559,7 @@ return error_message("nan P");
                           const ATP_evolution &t_step, double fs,
                           std::size_t order)
       -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
-    return calc_Qdt_bisection(f, m, t_step(), fs,
-                              order);
+    return calc_Qdt_bisection(f, m, t_step(), fs, order);
   }
 
   Maybe_error<bool> test_conductance_mean(const Matrix<double> gmean,
@@ -2874,9 +2866,8 @@ return error_message("nan P");
   //                           v_P_mean, v_P_cov, v_y_mean, v_y_var, v_plogL,
   //                           v_eplogL, v_vplogL);
   //    }
-
-
-  template <uses_recursive_aproximation recursive,
+    
+    template <uses_recursive_aproximation recursive,
             uses_averaging_aproximation averaging,
             uses_variance_aproximation variance,
             uses_variance_correction_aproximation variance_correction,
@@ -3284,9 +3275,8 @@ return error_message("nan P");
             vplogL(NaN), macror_algorithm(""));
     }
     }
-
-  
-  template <uses_adaptive_aproximation adaptive,
+    
+    template <uses_adaptive_aproximation adaptive,
             uses_recursive_aproximation recursive,
             uses_averaging_aproximation averaging,
             uses_variance_aproximation variance,
@@ -3830,8 +3820,7 @@ struct Likelihood_Model_v_all {
 
 struct Likelihood_Model_v {
   using v_uses_adaptive_aproximation =
-      std::variant<
-  ::V<uses_adaptive_aproximation(true)>>;
+      std::variant<::V<uses_adaptive_aproximation(true)>>;
 
   using v_uses_recursive_aproximation =
       std::variant<::V<uses_recursive_aproximation(false)>,
@@ -4051,8 +4040,8 @@ Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
     Parameters const &p, const Variables &var, const DataType &y) {
   return Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
-                      variance_correction, return_predictions(2)>(
-          f, lik.m, p, y, var);
+                      variance_correction, return_predictions(2)>(f, lik.m, p,
+  y, var);
 }
 
 template <
@@ -4068,8 +4057,8 @@ Maybe_error<logL_y_yvar> logLikelihood_Y_Predictions(
     Parameters const &p, const Variables &var, const DataType &y) {
   return Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
-                      variance_correction, return_predictions(1)>(
-          f, lik.m, p, y, var);
+                      variance_correction, return_predictions(1)>(f, lik.m, p,
+  y, var);
 }
 
 template <
@@ -4091,8 +4080,7 @@ fractioned_logLikelihoodPredictions(
         Macro_DMR{}
             .log_Likelihood<adaptive, recursive, averaging, variance,
                             variance_correction, return_predictions(2)>(
-                f, lik.m, p, var[i],
-                get<Recording>(y[i]()));
+                f, lik.m, p, var[i], get<Recording>(y[i]()));
     if (Maybe_e)
       out.push_back(Maybe_e.value());
     else
@@ -4472,23 +4460,22 @@ inline void report_title(save_Predictions<var::Parameters_transformed> &s,
                          thermo_mcmc<var::Parameters_transformed> const &,
                          ...) {
 
-  s.f <<"iter" << s.sep << "iter_time" << s.sep << "beta"
-      << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
-      << s.sep << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
+  s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
+      << "i_walker" << s.sep << "id_walker" << s.sep << "i_step" << s.sep
+      << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
       << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
       << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
       << "\n";
 
-  s.g << "iter" << s.sep << "iter_time" << s.sep << "beta"
-      << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
-      << s.sep << "i_state" << s.sep << "j_state" << s.sep << "moment" << s.sep
+  s.g << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
+      << "i_walker" << s.sep << "id_walker" << s.sep << "i_step" << s.sep
+      << "i_state" << s.sep << "j_state" << s.sep << "moment" << s.sep
       << "value"
       << "\n";
 }
 
 inline void report_title(save_Predictions<Matrix<double>> &s,
                          thermo_mcmc<Matrix<double>> const &, ...) {}
-
 
 template <class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>
@@ -4501,7 +4488,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   if (iter % s.save_every != 0)
     return;
   auto ff = f.fork(omp_get_max_threads());
-
+  
   auto all_Predictions =
       std::vector<std::vector<std::decay_t<decltype(logLikelihoodPredictions(
           ff[0], lik, data.get_Parameter(0, 0), y, x))>>>(
@@ -4513,81 +4500,82 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
        ++i_walker) {
     for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-      auto i_th = omp_get_thread_num();
-
-      auto par = data.get_Parameter(i_walker, i_b);
-      auto walker_id = data.get_Walker(i_walker, i_b);
-      all_Predictions[i_walker].push_back(
-          logLikelihoodPredictions(ff[i_th], lik, par.to_value(), y, x));
-    }
+        
+        if ((beta[i_b] == 1) || (iter % (s.save_every * 4) == 0)) {
+            auto i_th = omp_get_thread_num();
+            
+            auto par = data.get_Parameter(i_walker, i_b);
+            auto walker_id = data.get_Walker(i_walker, i_b);
+            all_Predictions[i_walker].push_back(
+                  logLikelihoodPredictions(ff[i_th], lik, par.to_value(), y, x));
+          }
+      }
   }
   f += ff;
   for (std::size_t half = 0; half < 2; ++half) {
     for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
       auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
       for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-        auto par = data.get_Parameter(i_walker, i_b);
-        auto walker_id = data.get_Walker(i_walker, i_b);
-        auto prediction = all_Predictions[i_walker][i_b];
-        if (is_valid(prediction)) {
-          auto &predictions = prediction.value();
-          for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
-            auto v_ev =
-                get<ATP_evolution>(get<Recording_conditions>(x)()[i_step]);
-
-            auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
-            auto num_smples = get_num_samples(v_ev);
-
-            s.f << iter << s.sep << dur << s.sep
-                << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
-                << i_step << s.sep << time << s.sep << num_samples << s.sep
-                << ToString(average_ATP_step(v_ev, true)) << s.sep
-                << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
-                << get<y_mean>(predictions()[i_step]) << s.sep
-                << get<y_var>(predictions()[i_step]) << s.sep
-                << get<plogL>(predictions()[i_step]) << s.sep
-                << get<eplogL>(predictions()[i_step]) << "\n";
-            
-            if (beta[i_b]==1){
-            auto& v_P=get<P_mean>(predictions()[i_step]); 
-            auto& v_Pc=get<P_Cov>(predictions()[i_step]);
-            auto n=v_P().size(); 
-            for (std::size_t i_state=0; i_state<n; ++i_state)
-              {
-                s.g << iter << s.sep << dur << s.sep
-                    << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
-                    << i_step << s.sep 
-                    << i_state << s.sep<<0<<s.sep<<"mean"<<s.sep
-                    << v_P()[i_state] << "\n";
-                for (std::size_t j_state=0; j_state<=i_state; ++j_state)
-                  {
-                    s.g << iter << s.sep << dur << s.sep
-                        << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
-                        << i_step << s.sep 
-                        << i_state << s.sep<<j_state<<s.sep<<"Cov"<<s.sep
-                        << v_Pc()(i_state,j_state) << "\n";
-                 }                
-              }
-              }
+          if ((beta[i_b] == 1) || (iter % (s.save_every * 4) == 0)) {
+              
+              auto par = data.get_Parameter(i_walker, i_b);
+              auto walker_id = data.get_Walker(i_walker, i_b);
+              auto prediction = iter % (s.save_every * 4) == 0
+                  ? all_Predictions[i_walker][i_b]
+                    : all_Predictions[i_walker][0];
+              if (is_valid(prediction)) {
+                  auto &predictions = prediction.value();
+                  for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
+                      auto v_ev =
+                          get<ATP_evolution>(get<Recording_conditions>(x)()[i_step]);
+                      
+                      auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
+                      auto num_smples = get_num_samples(v_ev);
+                      
+                      s.f << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
+                          << i_walker << s.sep << walker_id << s.sep << i_step << s.sep
+                          << time << s.sep << num_samples << s.sep
+                          << ToString(average_ATP_step(v_ev, true)) << s.sep
+                          << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
+                          << get<y_mean>(predictions()[i_step]) << s.sep
+                          << get<y_var>(predictions()[i_step]) << s.sep
+                          << get<plogL>(predictions()[i_step]) << s.sep
+                          << get<eplogL>(predictions()[i_step]) << "\n";
+                      
+                      if (beta[i_b] == 1) {
+                auto &v_P = get<P_mean>(predictions()[i_step]);
+                auto &v_Pc = get<P_Cov>(predictions()[i_step]);
+                auto n = v_P().size();
+                for (std::size_t i_state = 0; i_state < n; ++i_state) {
+                    s.g << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
+                        << i_walker << s.sep << walker_id << s.sep << i_step
+                        << s.sep << i_state << s.sep << 0 << s.sep << "mean"
+                        << s.sep << v_P()[i_state] << "\n";
+                    for (std::size_t j_state = 0; j_state <= i_state; ++j_state) {
+                    s.g << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
+                        << i_walker << s.sep << walker_id << s.sep << i_step
+                        << s.sep << i_state << s.sep << j_state << s.sep
+                        << "Cov" << s.sep << v_Pc()(i_state, j_state) << "\n";
+                  }
+                  }
+                        }
+                    }
           }
         }
       }
     }
   }
 }
-
-
-
-
+  
   template <class Parameters>
   void report_title(save_Predictions<Parameters> &s,
                     thermo_levenberg_mcmc const &, ...) {
     
     s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
         << "walker_id" << s.sep << "i_step" << s.sep << "time" << s.sep
-        << "num_samples" << s.sep << "ATP" << s.sep
-        << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
-        << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
+        << "num_samples" << s.sep << "ATP" << s.sep << "ATP_evolution" << s.sep
+        << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep << "plogL"
+        << s.sep << "pelogL"
         << "\n";
   }
   
@@ -4601,7 +4589,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     
     if (iter % s.save_every != 0)
       return;
-   // std::cerr<<"report save_Predictions\n";
+    // std::cerr<<"report save_Predictions\n";
     
     auto ff = f.fork(omp_get_max_threads());
     
@@ -4610,7 +4598,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                                             ff[0], lik, data.walkers[0].m_data.m_x, y, x))>>(t_beta.size());
     
     auto num_samples = size(y);
- #pragma omp parallel for
+#pragma omp parallel for
     for (std::size_t i_b = 0; i_b < t_beta.size(); ++i_b) {
         auto i_th = omp_get_thread_num();
         
@@ -4638,10 +4626,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                     << walker_id << s.sep << i_step << s.sep << time << s.sep
                     << num_samples << s.sep << ToString(average_ATP_step(v_ev, true))
                     << s.sep << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
-                    
-                    
-                    
-                    
+                       
                     << get<y_mean>(predictions()[i_step]) << s.sep
                     << get<y_var>(predictions()[i_step]) << s.sep
                     << get<plogL>(predictions()[i_step]) << s.sep
@@ -4649,8 +4634,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
               }
           }
       }
- //   std::cerr<<"report save_Predictions end\n";
-    
+    //   std::cerr<<"report save_Predictions end\n";
   }
   
   inline std::string ToString(const ATP_step &ev) {
@@ -4732,62 +4716,47 @@ void report(std::string filename, const Patch_State_Evolution &predictions,
   }
 }
 
-
 template <class FunctionTable, class Duration, class Prior,
-         class t_logLikelihood>
-    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
+          class t_logLikelihood>
+requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_RateParameter<var::Parameters_transformed> &s,
             thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
             t_logLikelihood &&lik, ...) {
-    
-    if (iter % s.save_every != 0)
-        return;
-    auto& model=lik.m;
-    auto beta = data.get_Beta();
-    
-    for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number(); ++i_walker) {
-           for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-                auto par = data.get_Parameter(i_walker, i_b);
-                auto walker_id = data.get_Walker(i_walker, i_b);
-                auto Maybe_mo = model(par.to_value());
-                if (is_valid(Maybe_mo)) {
-                    auto &mo = Maybe_mo.value();
-                    auto v_Q0=get<Q0>(mo);
-                    auto v_Qa=get<Qa>(mo);
-                    
-                    for (std::size_t i_from=0; i_from<v_Q0().nrows(); ++i_from)
-                        for (std::size_t i_to=0; i_to<v_Q0().ncols(); ++i_to)
-                        {
-                            if (v_Qa()(i_from,i_to)>0)
-                                s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
-                                    << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
-                                    <<"agonist"<<s.sep
-                                    << i_from << s.sep << i_to << s.sep << v_Qa()(i_from,i_to)
-                                    << "\n";
-                            if (v_Q0()(i_from,i_to)>0)
-                                s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
-                                    << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
-                                    <<"no_agonist"<<s.sep
-                                    << i_from << s.sep << i_to << s.sep << v_Q0()(i_from,i_to)
-                                    << "\n";
-                            
-                        }
-                        
-                        }
-                }
+  
+  if (iter % s.save_every != 0)
+    return;
+  auto &model = lik.m;
+  auto beta = data.get_Beta();
+  
+  for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
+       ++i_walker) {
+      for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+          auto par = data.get_Parameter(i_walker, i_b);
+          auto walker_id = data.get_Walker(i_walker, i_b);
+          auto Maybe_mo = model(par.to_value());
+          if (is_valid(Maybe_mo)) {
+              auto &mo = Maybe_mo.value();
+              auto v_Q0 = get<Q0>(mo);
+              auto v_Qa = get<Qa>(mo);
+              
+              for (std::size_t i_from = 0; i_from < v_Q0().nrows(); ++i_from)
+                for (std::size_t i_to = 0; i_to < v_Q0().ncols(); ++i_to) {
+                    if (v_Qa()(i_from, i_to) > 0)
+                      s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
+                          << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                          << s.sep << "agonist" << s.sep << i_from << s.sep << i_to
+                          << s.sep << v_Qa()(i_from, i_to) << "\n";
+                    if (v_Q0()(i_from, i_to) > 0)
+                      s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
+                          << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                          << s.sep << "no_agonist" << s.sep << i_from << s.sep << i_to
+                          << s.sep << v_Q0()(i_from, i_to) << "\n";
+                  }
             }
-        
+        }
     }
-
-
-
-
-
-
-
-
-
+}
 
 template <includes_N_state_evolution keep_N_state>
 void save_Likelihood_Predictions(std::string filename,
@@ -4925,7 +4894,6 @@ void save_fractioned_Likelihood_Predictions(
   }
 }
 
-
 template <class ParameterType, class FunctionTable, class Duration, class Prior,
           class t_logLikelihood, class Data, class Variables>
   requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
@@ -5045,8 +5013,6 @@ auto cuevi_Model_by_convergence(
 }
 */
 
-  
-
 cuevi::Cuevi_Algorithm<
     experiment_fractioner,
     save_mcmc<var::Parameters_transformed,
@@ -5142,9 +5108,8 @@ auto new_thermo_Model_by_max_iter(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed, save_Iter,
                 save_likelihood<var::Parameters_transformed>,
-                save_Parameter<var::Parameters_transformed>, 
-                save_RateParameter<var::Parameters_transformed>, 
-                save_Evidence,
+                save_Parameter<var::Parameters_transformed>,
+        save_RateParameter<var::Parameters_transformed>, save_Evidence,
                 save_Predictions<var::Parameters_transformed>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
@@ -5161,25 +5126,25 @@ auto thermo_levenberg_Model_by_max_iter(
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     std::size_t beta_size, std::size_t beta_upper_size,
     std::size_t beta_medium_size, double beta_upper_value,
-    double beta_medium_value, std::size_t n_lambdas, std::string lambda_adaptive_algorithm,double stops_at,
-    bool includes_zero, Saving_Levenberg_intervals sint, std::size_t initseed,
-    double dp) {
+    double beta_medium_value, std::size_t n_lambdas,
+    std::string lambda_adaptive_algorithm, double stops_at, bool includes_zero,
+    Saving_Levenberg_intervals sint, std::size_t initseed, double dp) {
   return thermodynamic_levenberg_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed, save_Iter,
                 save_likelihood<var::Parameters_transformed>,
                 save_Parameter<var::Parameters_transformed>,
                 save_Levenberg_Lambdas<var::Parameters_transformed>,
-                  save_Levenberg_Errors<var::Parameters_transformed>,
+        save_Levenberg_Errors<var::Parameters_transformed>,
                 save_Predictions<var::Parameters_transformed>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<save_Levenberg_Lambdas_every>(sint())(),
-            get<save_Levenberg_Errors_every>(sint())(),
+          get<save_Levenberg_Errors_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
-      beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas,lambda_adaptive_algorithm,
-        stops_at, includes_zero, initseed, dp);
+      beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas,
+        lambda_adaptive_algorithm, stops_at, includes_zero, initseed, dp);
 }
 
 auto thermo_Model_by_max_iter(std::string path, std::string filename,
