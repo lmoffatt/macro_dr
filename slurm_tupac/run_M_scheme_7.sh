@@ -45,6 +45,8 @@ export N_SCH=7
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=$SCHEME_0
 
+JOBID1=8710
+
 
 #JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
