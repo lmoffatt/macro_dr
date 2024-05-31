@@ -210,6 +210,17 @@ auto sample(mt_64i& mt, D&&d, std::size_t nrows, std::size_t ncols)
 }
 
 
+template<class C_double>
+auto logit(const C_double &x) {
+    using std::log;
+    return  log(x/(1.0-x));
+}
+
+template<class C_double>
+auto logit_inv(const C_double &x) {
+    using std::exp;
+    return  exp(x)/(1.0+exp(x));
+}
 
 
 

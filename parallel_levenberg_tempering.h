@@ -31,6 +31,8 @@ struct levenberg_mcmc;
 
 struct levenberg_Marquart_mcmc;
 
+
+
 class levenberg_lambda_adaptive_distribution {
 private:
     std::vector<double> m_lambdas;
@@ -38,6 +40,11 @@ private:
     
     std::map<double, std::size_t> m_cumulative;
     std::uniform_real_distribution<double> m_d;
+    
+    std::string m_algorithm;
+    
+    normal_distribution m_optimal_dist=normal_distribution(logit(0.23), 0.2 );
+    
     
     static auto build_lambdas(std::size_t n) {
         std::vector<double> out(n);
@@ -47,12 +54,34 @@ private:
         return out;
     }
     
+    double weight (Trial_statistics const&  p,double lambda)const 
+    {
+        if (m_algorithm=="velocity")
+            return p.rate().value() / (lambda + 1.0);
+        else
+        {
+            return m_optimal_dist.P(logit(p.rate().value())).value(); 
+            
+        }   // beta distribution
+        if constexpr(false){
+            double alfa=p.rate().value()*p.count();
+            double beta=p.count()-alfa;
+            double logBeta=std::lgamma(alfa)+std::lgamma(beta)-std::lgamma(alfa+beta);
+            double logP=((alfa-1)*std::log(0.23)+(beta-1)*std::log(1-0.23))-logBeta;
+            return  std::exp(logP);
+            
+            
+        }
+    }    
+    
+    
+    
 public:
     levenberg_lambda_adaptive_distribution() = default;
-    levenberg_lambda_adaptive_distribution(std::size_t n)
+    levenberg_lambda_adaptive_distribution(std::size_t n, const std::string& algorithm)
         : m_lambdas{build_lambdas(n)},
         m_stat{n, Trial_statistics(Trial_count(2), Success_count(1))},
-        m_cumulative{} {
+        m_cumulative{}, m_algorithm{algorithm} ,m_optimal_dist{normal_distribution(logit(0.23), 0.2 )}{
         update_distribution();
     }
     
@@ -60,11 +89,15 @@ public:
     
     void update_distribution() {
         m_cumulative.clear();
-        double sumcum = 0;
+        std::vector<double> sumcum_i(size());
+        double sumcum=0;
         for (std::size_t i = 0; i < size(); ++i) {
             if (m_stat[i].rate().valid())
-                sumcum += m_stat[i].rate().value() / (m_lambdas[i] + 1.0);
-            m_cumulative[sumcum] = i;
+                sumcum += weight(m_stat[i], m_lambdas[i] );
+            sumcum_i[i]=sumcum;            
+        }
+        for (std::size_t i = 0; i < size(); ++i) {
+            m_cumulative[sumcum_i[i]/sumcum] = i;
         }
     }
     
@@ -131,6 +164,14 @@ struct levenberg_mcmc {
         if (!chol)
             return chol.error();
         auto thFiminv = XXT(tr(chol.value()));
+        
+        assert(([&FIml,&thFiminv ](){
+            auto Maybe=test_equality(inv(FIml).value(), thFiminv, std::sqrt(eps));
+            if (!Maybe) {std::cerr<<Maybe;
+                return false;}
+                return true;
+}()));
+        
         
         auto opt = x() + thFiminv * G;
         auto logDetCov = logdet(diag(chol.value()));
@@ -694,7 +735,7 @@ class Saving_Levenberg_intervals
 template <class... saving, class... Ts, class Parameters>
 void report_title(save_mcmc<Parameters, saving...> &f,
                   thermo_levenberg_mcmc const &data, const Ts &...ts) {
-    (report_title(static_cast<saving &>(f), data, ts...), ...);
+    (report_title(get<saving >(f.m_m), data, ts...), ...);
 }
 
 template <class Parameter>
@@ -817,12 +858,14 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             double p = 0;
             for (std::size_t i_lambda = 0; i_lambda < num_lambdas(current);
                  ++i_lambda) {
+                auto p1=std::max(it_cum->first,p);
+                
                 s.f << iter << s.sep << dur << s.sep << t_beta[i_beta] << s.sep
                     << current.walkers[i_beta].m_lambda.lambda(i_lambda) << s.sep
                     << current.walkers[i_beta].m_lambda.stat(i_lambda).count() << s.sep
                     << current.walkers[i_beta].m_lambda.stat(i_lambda).rate() << s.sep
-                    << it_cum->first - p << s.sep << it_cum->first << "\n";
-                p = it_cum->first;
+                    << p1 - p << s.sep << it_cum->first << "\n";
+                p = p1;
                 ++it_cum;
             }
             current.walkers[i_beta].m_lambda.update_distribution();
@@ -863,7 +906,7 @@ void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_mcmc<Parameters, saving...> &s,
                 thermo_levenberg_mcmc &data, T const &...ts) {
     //std::cerr<<"in report_all\n";
-    (report(f, iter, dur, static_cast<saving &>(s), data, ts...), ..., 1);
+    (report(f, iter, dur, get<saving>(s.m_m), data, ts...), ..., 1);
     //std::cerr<<"after report_all\n";
     
 }
@@ -879,6 +922,7 @@ class thermodynamic_levenberg_integration {
     std::size_t beta_upper_size_;
     std::size_t beta_medium_size_;
     std::size_t m_n_lambdas;
+    std::string m_lambda_adaptive_algorithm;
     double beta_upper_value_;
     double beta_medium_value_;
     double stops_at_;
@@ -892,6 +936,7 @@ public:
         std::size_t thermo_jumps_every, std::size_t beta_size,
         std::size_t beta_upper_size, std::size_t beta_medium_size,
         double beta_upper_value, double beta_medium_value, std::size_t n_lambdas,
+        std::string lambda_adaptive_algorithm,
         double stops_at, bool includes_zero, std::size_t initseed, double dp)
         : alg_{std::move(alg)}, rep_{std::move(rep)},
         num_scouts_per_ensemble_{num_scouts_per_ensemble},
@@ -899,7 +944,7 @@ public:
         beta_upper_size_{beta_upper_size}, beta_medium_size_{beta_medium_size},
         beta_upper_value_{beta_upper_value},
         beta_medium_value_{beta_medium_value}, m_n_lambdas{n_lambdas},
-
+        m_lambda_adaptive_algorithm{lambda_adaptive_algorithm},  
         stops_at_{stops_at}, includes_zero_{includes_zero}, initseed_{initseed},
         diff_par_{dp} {}
     
@@ -914,6 +959,7 @@ public:
     auto &beta_upper_value() const { return beta_upper_value_; }
     auto &beta_medium_value() const { return beta_medium_value_; }
     auto &n_lambdas() const { return m_n_lambdas; }
+    auto &lambda_adaptive_algorithm() const { return m_lambda_adaptive_algorithm; }
     auto &stops_at() const { return stops_at_; }
     auto &includes_zero() const { return includes_zero_; }
     auto &initseed() const { return initseed_; }
@@ -1044,11 +1090,11 @@ auto init_levenberg_marquardt_mcmc(FunctionTable &f, mt_64i &mt,
                                    std::size_t i_walker, Prior const &pr,
                                    const Lik &lik, const DataType &y,
                                    const Variables &x, double beta,
-                                   std::size_t n_lambdas) {
+                                   std::size_t n_lambdas, std::string lambda_adaptive_algorithm) {
     
     return levenberg_Marquart_mcmc{
                                    init_levenberg_mcmc(f, mt, i_walker, pr, lik, y, x),
-        levenberg_lambda_adaptive_distribution(n_lambdas), beta};
+        levenberg_lambda_adaptive_distribution(n_lambdas,lambda_adaptive_algorithm), beta};
 }
 
 template <class FunctionTable, class Prior, class Lik, class Variables,
@@ -1061,11 +1107,11 @@ auto init_levenberg_marquardt_mcmc(FunctionTable &f, mt_64i &mt,
                                    std::size_t i_walker, Prior const &pr,
                                    const Lik &lik, const DataType &y,
                                    const Variables &x, double beta,
-                                   std::size_t n_lambdas, double delta_par) {
+                                   std::size_t n_lambdas, std::string lambda_adaptive_algorithm, double delta_par) {
     
     return levenberg_Marquart_mcmc{
                                    init_levenberg_mcmc(f, mt, i_walker, pr, lik, y, x, delta_par),
-        levenberg_lambda_adaptive_distribution(n_lambdas), beta};
+        levenberg_lambda_adaptive_distribution(n_lambdas,lambda_adaptive_algorithm), beta};
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
@@ -1077,7 +1123,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&&
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 auto init_levenberg_thermo_mcmc(FunctionTable &f, by_beta<double> const &beta,
-                                std::size_t n_lambdas, ensemble<mt_64i> &mt,
+                                std::size_t n_lambdas,const std::string& lambda_adaptive_algorithm, ensemble<mt_64i> &mt,
                                 Prior const &prior, Likelihood const &lik,
                                 const DataType &y, const Variables &x,
                                 double delta_par) {
@@ -1093,10 +1139,10 @@ auto init_levenberg_thermo_mcmc(FunctionTable &f, by_beta<double> const &beta,
         if (delta_par > 0)
             walker[ib] =
                 init_levenberg_marquardt_mcmc(ff[i_th], mt[i_th], ib, prior, lik, y,
-                                                       x, beta[ib], n_lambdas, delta_par);
+                                                       x, beta[ib], n_lambdas,lambda_adaptive_algorithm, delta_par);
         else
             walker[ib] = init_levenberg_marquardt_mcmc(
-                ff[i_th], mt[i_th], ib, prior, lik, y, x, beta[ib], n_lambdas);
+                ff[i_th], mt[i_th], ib, prior, lik, y, x, beta[ib], n_lambdas,lambda_adaptive_algorithm);
     }
     
     f += ff;
@@ -1125,11 +1171,12 @@ auto thermo_levenberg_evidence(
         therm.beta_upper_value(), therm.beta_medium_value(), therm.stops_at(),
         therm.includes_zero());
     auto n_lambdas = therm.n_lambdas();
+    auto lambda_adaptive_algorithm = therm.lambda_adaptive_algorithm();
     auto it_beta_run_begin = beta.rend() - beta.size();
     auto it_beta_run_end = beta.rend();
     auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
     
-    auto current = init_levenberg_thermo_mcmc(f, beta_run, n_lambdas, mts, prior,
+    auto current = init_levenberg_thermo_mcmc(f, beta_run, n_lambdas, lambda_adaptive_algorithm,mts, prior,
                                               lik, y, x, therm.delta_par());
     // auto n_par = current.walkers[0][0].parameter.size();
     auto mcmc_run = checks_convergence(std::move(a), current);

@@ -201,6 +201,8 @@ inline void calc_thermo_evidence(std::string id, std::string model,
                                                   param1_prior.size()),
                             Save_Parameter_every(save_every_param_size_factor *
                                                  param1_prior.size()),
+                            Save_RateParameter_every(save_every_param_size_factor *
+                                                 param1_prior.size()),
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));
                         
@@ -316,6 +318,8 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
                             Save_Likelihood_every(save_every_param_size_factor *
                                                   param1_prior.size()),
                             Save_Parameter_every(save_every_param_size_factor *
+                                                 param1_prior.size()),
+                            Save_RateParameter_every(save_every_param_size_factor *
                                                  param1_prior.size()),
                             Save_Predictions_every(save_every_param_size_factor *
                                                    param1_prior.size() * 50)));

@@ -39,6 +39,12 @@ public:
     else
       return error_message("likelihood not finite:" + std::to_string(out));
   }
+  Maybe_error<double> P(double x) const {
+      auto Maybe_p=logP(x);
+      if (!Maybe_p)return Maybe_p.error();
+      return std::exp(Maybe_p.value());
+  }
+  
 };
 
 template <class Parameters> class save_Parameter;

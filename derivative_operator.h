@@ -287,6 +287,8 @@ public:
         return Derivative(f, x.derivative()() *
                                  (1.0 / (x.primitive() * std::log(10))));
     }
+    
+    
     friend auto pow(double base, const Derivative &x) {
         using std::pow;
         auto f = pow(base, x.primitive());

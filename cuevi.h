@@ -980,7 +980,10 @@ public:
           << "cuevi_sta_count" << s.sep << "cuevi_sta_rate"
           << "\n";
   }
-
+  
+  
+  
+  
   template <class FunctionTable, class Duration, class Prior,
             class t_logLikelihood, class Data, class Variables, class Finalizer>
   friend void report(FunctionTable &, std::size_t iter, const Duration &dur,
@@ -1152,7 +1155,14 @@ public:
     report_finalizer_title(s, mcmc);
     s.f << "\n";
   }
-
+  
+  template <class mcmcm_type>
+  friend void report_title(save_RateParameter<ParameterType> &, Cuevi_mcmc const &,
+                           const mcmcm_type &, ...) {
+      
+  }
+  
+  
   template <class FunctionTable, class Duration, class Prior,
             class t_logLikelihood, class Data, class Variables>
   friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
@@ -1293,7 +1303,7 @@ auto extract_parameters_last(std::string const &filename, std::size_t iter) {
 template <class... saving, class... Ts, class Parameters>
 void report_title(save_mcmc<Parameters, saving...> &f,
                   Cuevi_mcmc<Parameters> const &data, const Ts &...ts) {
-  (report_title(static_cast<saving &>(f), data, ts...), ..., 1);
+    (report_title(get<saving>(f.m_m), data, ts...), ..., 1);
 }
 
 class step_stretch_cuevi_mcmc_per_walker {
@@ -1617,7 +1627,7 @@ template <class FunctionTable, class Duration, class Parameters,
 void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_mcmc<Parameters, saving...> &s,
                 Cuevi_mcmc<Parameters> &data, T const &...ts) {
-  (report(f, iter, dur, static_cast<saving &>(s), data, ts...), ..., 1);
+  (report(f, iter, dur, get<saving >(s.m_m), data, ts...), ..., 1);
 }
 
 
