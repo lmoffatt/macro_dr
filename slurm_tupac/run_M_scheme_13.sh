@@ -25,13 +25,13 @@ export SCHEME_DIR_1=models_Ag
 export PATH_MACRO_DR_0=v31
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DRX=v31
+export PATH_MACRO_DRX=v32
 
 
 export EXPERIMENT_0=idealize_experiment_2
 export EXPERIMENT_1=$EXPERIMENT_0
 
-export N_BETA=64
+export N_BETA=32
 
 export N_SCOUTS=32
 
