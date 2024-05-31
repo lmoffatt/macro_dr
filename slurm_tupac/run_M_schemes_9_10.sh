@@ -35,7 +35,7 @@ export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=v31
+export PATH_MACRO_DRX=v32
 
 
 export EXPERIMENT_0=idealize_experiment_2
@@ -44,7 +44,7 @@ export EXPERIMENT_2=$EXPERIMENT_0
 export EXPERIMENT_3=$EXPERIMENT_0
 
 
-export N_BETA=64
+export N_BETA=32
 
 export N_SCOUTS=32
 
