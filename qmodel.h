@@ -4501,7 +4501,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
        ++i_walker) {
     for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
         
-        if ((beta[i_b] == 1) || (iter % (s.save_every * 4) == 0)) {
+        if ((beta[i_b] == 1) || (iter % (s.save_every * 32) == 0)) {
             auto i_th = omp_get_thread_num();
             
             auto par = data.get_Parameter(i_walker, i_b);
@@ -4516,11 +4516,11 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
       auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
       for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-          if ((beta[i_b] == 1) || (iter % (s.save_every * 4) == 0)) {
+          if ((beta[i_b] == 1) || (iter % (s.save_every * 32) == 0)) {
               
               auto par = data.get_Parameter(i_walker, i_b);
               auto walker_id = data.get_Walker(i_walker, i_b);
-              auto prediction = iter % (s.save_every * 4) == 0
+              auto prediction = iter % (s.save_every * 32) == 0
                   ? all_Predictions[i_walker][i_b]
                     : all_Predictions[i_walker][0];
               if (is_valid(prediction)) {
@@ -4542,7 +4542,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                           << get<plogL>(predictions()[i_step]) << s.sep
                           << get<eplogL>(predictions()[i_step]) << "\n";
                       
-                      if ((iter % (s.save_every * 4) == 0)&&(beta[i_b] == 1)) {
+                      if ((iter % (s.save_every * 32) == 0)&&(beta[i_b] == 1)) {
                 auto &v_P = get<P_mean>(predictions()[i_step]);
                 auto &v_Pc = get<P_Cov>(predictions()[i_step]);
                 auto n = v_P().size();
