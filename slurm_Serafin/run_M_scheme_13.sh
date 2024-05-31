@@ -44,7 +44,7 @@ export N_SCOUTS=32
 
 export MAX_ITER=1000000
 
-export EVIDENCE_ALGORITHM=levenberg
+export EVIDENCE_ALGORITHM=thermo
 
 export CONTINUATION_NUMBER=0
 

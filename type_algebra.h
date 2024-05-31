@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
-
 namespace in_progress{
 template<class...T> struct P{
     template<class... T2>

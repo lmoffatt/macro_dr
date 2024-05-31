@@ -6,6 +6,7 @@
 #include "function_memoization.h"
 #include "maybe_error.h"
 #include "models_MoffattHume_allosteric.h"
+#include "parallel_tempering.h"
 #include "parameters.h"
 #include "parameters_derivative.h"
 #include "qmodel.h"
@@ -538,6 +539,8 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                                                   param1_prior.size()),
                             Save_Parameter_every(save_every_param_factor *
                                                  param1_prior.size() * 4),
+                            Save_RateParameter_every(save_every_param_factor *
+                                                 param1_prior.size() * 4),
                             Save_Predictions_every(save_every_param_factor *
                                                    param1_prior.size() * 500)));
                         
@@ -642,6 +645,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 Save_Evidence_every(num_scouts_per_ensemble),
                                 Save_Likelihood_every(num_scouts_per_ensemble),
                                 Save_Parameter_every(num_scouts_per_ensemble),
+                                Save_RateParameter_every(num_scouts_per_ensemble),
                                 Save_Predictions_every(num_scouts_per_ensemble * 500)));
                             
                             auto cbc = new_cuevi_Model_by_iteration(
@@ -766,6 +770,8 @@ saving_itervals, random_jumps
                             Save_Likelihood_every(param1_prior.size() *
                                                   save_every_param_factor),
                             Save_Parameter_every(param1_prior.size() *
+                                                 save_every_param_factor),
+                            Save_RateParameter_every(param1_prior.size() *
                                                  save_every_param_factor),
                             Save_Predictions_every(param1_prior.size() *
                                                    save_every_param_factor * 50)));

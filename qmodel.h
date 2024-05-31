@@ -4472,11 +4472,17 @@ inline void report_title(save_Predictions<var::Parameters_transformed> &s,
                          thermo_mcmc<var::Parameters_transformed> const &,
                          ...) {
 
-  s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep << "beta"
+  s.f <<"iter" << s.sep << "iter_time" << s.sep << "beta"
       << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
       << s.sep << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
       << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
       << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
+      << "\n";
+
+  s.g << "iter" << s.sep << "iter_time" << s.sep << "beta"
+      << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
+      << s.sep << "i_state" << s.sep << "j_state" << s.sep << "moment" << s.sep
+      << "value"
       << "\n";
 }
 
@@ -4532,7 +4538,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
             auto num_smples = get_num_samples(v_ev);
 
-            s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
+            s.f << iter << s.sep << dur << s.sep
                 << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
                 << i_step << s.sep << time << s.sep << num_samples << s.sep
                 << ToString(average_ATP_step(v_ev, true)) << s.sep
@@ -4541,13 +4547,38 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                 << get<y_var>(predictions()[i_step]) << s.sep
                 << get<plogL>(predictions()[i_step]) << s.sep
                 << get<eplogL>(predictions()[i_step]) << "\n";
+            
+            if (beta[i_b]==1){
+            auto& v_P=get<P_mean>(predictions()[i_step]); 
+            auto& v_Pc=get<P_Cov>(predictions()[i_step]);
+            auto n=v_P().size(); 
+            for (std::size_t i_state=0; i_state<n; ++i_state)
+              {
+                s.g << iter << s.sep << dur << s.sep
+                    << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                    << i_step << s.sep 
+                    << i_state << s.sep<<0<<s.sep<<"mean"<<s.sep
+                    << v_P()[i_state] << "\n";
+                for (std::size_t j_state=0; j_state<=i_state; ++j_state)
+                  {
+                    s.g << iter << s.sep << dur << s.sep
+                        << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                        << i_step << s.sep 
+                        << i_state << s.sep<<j_state<<s.sep<<"Cov"<<s.sep
+                        << v_Pc()(i_state,j_state) << "\n";
+                 }                
+              }
+              }
           }
         }
       }
     }
   }
 }
-  
+
+
+
+
   template <class Parameters>
   void report_title(save_Predictions<Parameters> &s,
                     thermo_levenberg_mcmc const &, ...) {
@@ -4700,6 +4731,63 @@ void report(std::string filename, const Patch_State_Evolution &predictions,
     }
   }
 }
+
+
+template <class FunctionTable, class Duration, class Prior,
+         class t_logLikelihood>
+    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
+void report(FunctionTable &, std::size_t iter, const Duration &dur,
+            save_RateParameter<var::Parameters_transformed> &s,
+            thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
+            t_logLikelihood &&lik, ...) {
+    
+    if (iter % s.save_every != 0)
+        return;
+    auto& model=lik.m;
+    auto beta = data.get_Beta();
+    
+    for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number(); ++i_walker) {
+           for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+                auto par = data.get_Parameter(i_walker, i_b);
+                auto walker_id = data.get_Walker(i_walker, i_b);
+                auto Maybe_mo = model(par.to_value());
+                if (is_valid(Maybe_mo)) {
+                    auto &mo = Maybe_mo.value();
+                    auto v_Q0=get<Q0>(mo);
+                    auto v_Qa=get<Qa>(mo);
+                    
+                    for (std::size_t i_from=0; i_from<v_Q0().nrows(); ++i_from)
+                        for (std::size_t i_to=0; i_to<v_Q0().ncols(); ++i_to)
+                        {
+                            if (v_Qa()(i_from,i_to)>0)
+                                s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
+                                    << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                                    <<"agonist"<<s.sep
+                                    << i_from << s.sep << i_to << s.sep << v_Qa()(i_from,i_to)
+                                    << "\n";
+                            if (v_Q0()(i_from,i_to)>0)
+                                s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
+                                    << beta[i_b] << s.sep << i_walker << s.sep << walker_id << s.sep
+                                    <<"no_agonist"<<s.sep
+                                    << i_from << s.sep << i_to << s.sep << v_Q0()(i_from,i_to)
+                                    << "\n";
+                            
+                        }
+                        
+                        }
+                }
+            }
+        
+    }
+
+
+
+
+
+
+
+
+
 
 template <includes_N_state_evolution keep_N_state>
 void save_Likelihood_Predictions(std::string filename,
@@ -5054,10 +5142,13 @@ auto new_thermo_Model_by_max_iter(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed, save_Iter,
                 save_likelihood<var::Parameters_transformed>,
-                save_Parameter<var::Parameters_transformed>, save_Evidence,
+                save_Parameter<var::Parameters_transformed>, 
+                save_RateParameter<var::Parameters_transformed>, 
+                save_Evidence,
                 save_Predictions<var::Parameters_transformed>>(
           path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
+          get<Save_RateParameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
@@ -5070,7 +5161,7 @@ auto thermo_levenberg_Model_by_max_iter(
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     std::size_t beta_size, std::size_t beta_upper_size,
     std::size_t beta_medium_size, double beta_upper_value,
-    double beta_medium_value, std::size_t n_lambdas, double stops_at,
+    double beta_medium_value, std::size_t n_lambdas, std::string lambda_adaptive_algorithm,double stops_at,
     bool includes_zero, Saving_Levenberg_intervals sint, std::size_t initseed,
     double dp) {
   return thermodynamic_levenberg_integration(
@@ -5087,7 +5178,7 @@ auto thermo_levenberg_Model_by_max_iter(
             get<save_Levenberg_Errors_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
-      beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas,
+      beta_medium_size, beta_upper_value, beta_medium_value, n_lambdas,lambda_adaptive_algorithm,
         stops_at, includes_zero, initseed, dp);
 }
 

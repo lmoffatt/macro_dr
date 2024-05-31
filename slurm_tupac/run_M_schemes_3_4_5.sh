@@ -8,7 +8,7 @@ RUNTIME="2-00:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr/
 
-export EVIDENCE_ALGORITHM=levenberg
+export EVIDENCE_ALGORITHM=thermo
 
 
 export NTASKS=8

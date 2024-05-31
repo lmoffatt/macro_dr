@@ -23,7 +23,9 @@ SCH_ABR=$([ "$SCHEME_DIR" = "models_Ag" ] && echo "_Ag" || echo "")
 
 LOCAL_ID=$([ "$USE_LOCAL_ID" = 1 ] && echo _${SLURM_LOCALID} || echo "")
 
-CP=$SLURM_CPUS_PER_TASK
+ifndef ${CP}                                           
+  CP=$SLURM_CPUS_PER_TASK
+endif  
 
 
 if [ "$CONTINUATION_NUMBER" = 0 ]; then

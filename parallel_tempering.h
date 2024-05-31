@@ -32,6 +32,8 @@ template <class T> using by_iteration = std::vector<T>;
 
 class Save_Parameter_every
     : public var::Var<Save_Parameter_every, std::size_t> {};
+class Save_RateParameter_every
+    : public var::Var<Save_RateParameter_every, std::size_t> {};
 class Save_Predictions_every
     : public var::Var<Save_Predictions_every, std::size_t> {};
 class Save_Likelihood_every
@@ -43,7 +45,7 @@ class Saving_intervals
     : public var::Var<
           Saving_intervals,
           var::Vector_Space<Save_Evidence_every, Save_Likelihood_every,
-                            Save_Parameter_every, Save_Predictions_every>> {};
+                            Save_Parameter_every, Save_RateParameter_every, Save_Predictions_every>> {};
 
 template <class Parameters>
 auto stretch_move(mt_64i &, const Parameters &Xk, const Parameters &Xj,
@@ -1051,6 +1053,65 @@ public:
 };
 
 
+template <class Parameters> class save_RateParameter {
+    
+public:
+    class separator : public std::string {
+    public:
+        using std::string::string;
+        //   separator(std::string s):std::string(std::move(s)){}
+        
+        std::string operator()() const { return *this; }
+        friend std::ostream &operator<<(std::ostream &os, const separator &sep) {
+            return os << sep();
+        }
+        friend std::istream &operator>>(std::istream &is, const separator &sep) {
+            std::string ss = sep();
+            for (std::size_t i = 0; i < ss.size(); ++i) {
+                is.get(ss[i]);
+            }
+            if (ss != sep())
+                is.setstate(std::ios::failbit);
+            return is;
+        }
+    };
+    
+    separator sep = ",";
+    std::string fname;
+    std::ofstream f;
+    std::size_t save_every;
+    save_RateParameter(std::string const &path, std::size_t interval)
+        : fname{path}, f{std::ofstream(path + "__i_beta__i_walker__i_par_i_state.csv")},
+        save_every{interval} {
+        f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+    }
+    
+    friend void report_title(save_RateParameter &s, thermo_mcmc<Parameters> const &,...) {
+        
+        s.f << "iter" << s.sep << "iter_time" << s.sep
+            << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
+            << "agonist" << s.sep
+            << "i_state_from" << s.sep << "i_state_to" << s.sep << "rate_value"
+            << "\n";
+    }
+    
+    template <class Prior, class Likelihood, class Variables, class DataType>
+    friend void report_model(save_RateParameter &, const Prior &, const Likelihood &,
+                             const DataType &, const Variables &,
+                             by_beta<double> const &) {}
+    
+    friend void report_model(save_RateParameter &, ...) {}
+    
+   
+    
+    
+    
+    
+    
+};
+
+
+
 template <class Parameters, class Duration>
  bool extract_iter(std::istream& f,std::size_t& iter, Duration &dur,
                           thermo_mcmc<Parameters> &data) {
@@ -1113,10 +1174,12 @@ template <class Parameters> class save_Predictions {
 public:
   std::string sep = ",";
   std::ofstream f;
+  std::ofstream g;
   std::size_t save_every;
   save_Predictions(std::string const &path, std::size_t interval)
       : f{std::ofstream(path + "__i_beta__i_walker__i_x.csv")},
-        save_every{interval} {
+      g{std::ofstream(path + "__i_beta__i_walker__i_x_i_state.csv")},
+      save_every{interval} {
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   }
 
@@ -1134,29 +1197,33 @@ void report_title(
     thermo_mcmc<var::Parameters_transformed> const &, ...);
 }
 template <class Parameters, class... saving>
-class save_mcmc : public observer, public saving... {
-
+class save_mcmc : public observer {
+    
+    
   std::string directory_;
   std::string filename_prefix_;
 
 public:
-  template <typename... Size>
+  std::tuple<saving...> m_m;  
+    
+    
+    template <typename... Size>
     requires((std::integral<Size> && ...) &&
              (sizeof...(saving) == sizeof...(Size)))
   save_mcmc(std::string dir, std::string filename_prefix,
             Size... sampling_intervals)
-      : saving{dir + filename_prefix, sampling_intervals}..., directory_{dir},
+        : m_m{saving{dir + filename_prefix, sampling_intervals}...}, directory_{dir},
         filename_prefix_{filename_prefix} {}
 
   save_mcmc(std::string dir, std::string filename_prefix)
-      : saving{dir + filename_prefix, 1ul}..., directory_{dir},
+      : m_m{saving{dir + filename_prefix, 1ul}...}, directory_{dir},
         filename_prefix_{filename_prefix} {}
 
   template <class FunctionTable, class Duration, class... T>
   friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_mcmc &smcmc, thermo_mcmc<Parameters> const &data,
                      T &&...ts) {
-    (report(f, iter, dur, static_cast<saving &>(smcmc), data,
+    (report(f, iter, dur, get<saving>(smcmc.m_m), data,
             std::forward<T>(ts)...),
      ..., 1);
   }
@@ -1164,13 +1231,13 @@ public:
   friend void report_model(save_mcmc &s, Prior const &prior,
                            Likelihood const &lik, const DataType &y,
                            const Variables &x, by_beta<double> const &beta0) {
-    (report_model(static_cast<saving &>(s), prior, lik, y, x, beta0), ..., 1);
+    (report_model(get<saving>(s.m_m), prior, lik, y, x, beta0), ..., 1);
   }
 
   friend void report_title(save_mcmc &f, thermo_mcmc<Parameters> const &data,
                            ...) {
       using namespace macrodr;
-    (report_title(static_cast<saving &>(f), data), ..., 1);
+    (report_title(get<saving >(f.m_m), data), ..., 1);
   }
 };
 
@@ -1180,7 +1247,7 @@ void report_model_all(save_mcmc<Parameter, saving...> &) {}
 template <class Parameter, class... saving, class T, class... Ts>
 void report_model_all(save_mcmc<Parameter, saving...> &s, T const &t,
                       Ts const &...ts) {
-  (report_model(static_cast<saving &>(s), t), ..., report_model_all(s, ts...));
+  (report_model(get<saving>(s.m_m), t), ..., report_model_all(s, ts...));
 }
 
 class thermo_less_than_max_iteration {

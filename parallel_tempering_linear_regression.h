@@ -380,7 +380,7 @@ template <class FunctionTable, class Duration, class Parameters,
 void report_all(FunctionTable &f, std::size_t iter, const Duration &dur,
                 save_mcmc<Parameters, saving...> &s,
                 thermo_mcmc<Parameters> &data, T const &...ts) {
-  (report(f, iter, dur, static_cast<saving &>(s), data, ts...), ..., 1);
+  (report(f, iter, dur, get<saving>(s.m_m), data, ts...), ..., 1);
 }
 
 template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
