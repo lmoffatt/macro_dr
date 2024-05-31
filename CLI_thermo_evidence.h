@@ -204,7 +204,7 @@ inline void calc_thermo_evidence(std::string id, std::string model,
                             Save_RateParameter_every(save_every_param_size_factor *
                                                  param1_prior.size()),
                             Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 50)));
+                                                   param1_prior.size() * 10)));
                         
                         auto tmi = new_thermo_Model_by_max_iter(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
@@ -322,7 +322,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
                             Save_RateParameter_every(save_every_param_size_factor *
                                                  param1_prior.size()),
                             Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 50)));
+                                                   param1_prior.size() * 40)));
                         
                         auto tmi = new_thermo_Model_by_max_iter(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,
