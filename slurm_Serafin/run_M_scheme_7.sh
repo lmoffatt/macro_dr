@@ -2,6 +2,7 @@
 
 export PATH_MACRO=/home/lmoffatt/macro_dr/
 
+
 # Cargar los módulos para la tarea
 module load cmake
 module load gcc
@@ -9,6 +10,8 @@ module load gcc
 module load amdblis
 module load amdlibflame
 module load gsl
+
+RUNTIME="2-00:00"
 
 export NTASKS=2
 CPUSPERTASK=32
