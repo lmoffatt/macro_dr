@@ -1181,6 +1181,7 @@ public:
       g{std::ofstream(path + "__i_beta__i_walker__i_x_i_state.csv")},
       save_every{interval} {
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+      g << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   }
 
   template <class Prior, class Likelihood, class Variables, class DataType>
