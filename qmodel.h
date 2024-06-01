@@ -4733,6 +4733,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
   for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
        ++i_walker) {
       for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
+          if (beta[i_b]==1){
           auto par = data.get_Parameter(i_walker, i_b);
           auto walker_id = data.get_Walker(i_walker, i_b);
           auto Maybe_mo = model(par.to_value());
@@ -4756,6 +4757,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
                   }
             }
         }
+    }
     }
 }
 
