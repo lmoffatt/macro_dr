@@ -43,6 +43,8 @@ static auto scheme_5 = Allost1::Model("scheme_5", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_5_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -204,6 +206,9 @@ static auto scheme_6 = Allost1::Model("scheme_6", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_6_model_description.txt");
+    print (f,m);
+    
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -370,6 +375,8 @@ static auto scheme_7 = Allost1::Model("scheme_7", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_7_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -521,6 +528,8 @@ static auto scheme_8 = Allost1::Model("scheme_8", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_8_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -670,6 +679,8 @@ static auto scheme_9 = Allost1::Model("scheme_9", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_9_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -828,6 +839,9 @@ static auto scheme_10 = Allost1::Model("scheme_10", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_10_model_description.txt");
+    print (f,m);
+    
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -999,6 +1013,8 @@ static auto scheme_11 = Allost1::Model("scheme_11", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_11_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -1177,6 +1193,8 @@ static auto scheme_12 = Allost1::Model("scheme_12", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_12_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -1333,6 +1351,8 @@ static auto scheme_13 = Allost1::Model("scheme_13", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_13_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -1496,6 +1516,8 @@ static auto scheme_14 = Allost1::Model("scheme_14", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_14_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -1670,6 +1692,8 @@ static auto scheme_15 = Allost1::Model("scheme_15", []() {
     
     assert(mo);
     auto m = std::move(mo.value());
+    std::ofstream f("scheme_15_model_description.txt");
+    print (f,m);
     
     auto names = make_ModelNames<Allost1>(m);
     
@@ -1842,6 +1866,7 @@ inline void print_model_Priors(double covar) {
                     auto prior = var::prior_around(tr_par, covar);
                     var::write_Parameters(tr_par.IdName() + "_par.csv", ",", tr_par);
                     write_Prior(tr_par.IdName() + "_prior.csv", ",", prior);
+                   
                 }(ptr_models),
                 ...);
         },

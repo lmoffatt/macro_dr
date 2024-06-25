@@ -31,6 +31,19 @@ struct Agonist_dependency
       os << "(" << (*x())() << ")";
     return os;
   }
+  friend std::ostream &report(std::ostream &os, Agonist_dependency const &x) {
+      if (x())
+          os << (*x())();
+      else
+          os<<"";
+      return os;
+  }
+  friend std::ostream &report_title(std::ostream &os, Agonist_dependency const &, std::string s) {
+      os<<"Agonist_dependency"<<s;
+      return os;
+  }
+  
+  
   using Constant::Constant;
 };
 
@@ -50,6 +63,17 @@ struct Conformational_change
     print(os, get<Agonist_dependency>(x()));
     return os;
   }
+  friend std::ostream &report(std::ostream &os, Conformational_change const &x) {
+      os << get<Conformational_change_label>(x())()<<",";
+      report(os, get<Agonist_dependency>(x()));
+      return os;
+  }
+  friend std::ostream &report_title(std::ostream &os, Conformational_change const &, std::string s) {
+      os <<"Conformational_change_label"<<s<<",";
+      report_title(os, Agonist_dependency{},s);
+      return os;
+  }
+  
   using Constant::Constant;
 };
 
@@ -68,6 +92,22 @@ struct Conformational_change_state_vector
       os << e();
     os << " ";
     return os;
+  }
+  friend std::ostream &report(std::ostream &os,
+                             Conformational_change_state_vector const &x) {
+      for (std::size_t i=0; i+1<x().size(); ++i)
+          os<< x()[i]()<<",";
+      if (!x().empty())
+          os<< x().back();
+      return os;
+  }
+  friend std::ostream &report_title(std::ostream &os,
+                                    Conformational_change_state_vector const &x, std::string s) {
+      for (std::size_t i=0; i+1<x().size(); ++i)
+          os<<"conformational_state_"<<i<<s<<",";
+      if (!x().empty())
+          os<<"conformational_state_"<<x().size()-1<<s;
+      return os;
   }
 };
 
@@ -89,6 +129,24 @@ struct Conformational_change_scheme
     }
     os << "}\n";
     return os;
+  }
+  friend std::ostream &report(std::ostream &os,
+                             Conformational_change_scheme const &x) {
+      
+      for (std::size_t i=0; i+1<x().size(); ++i)
+          os<< x()[i]()<<",";
+      if (!x().empty())
+          os<< x().back()();
+      return os;
+  }
+  friend std::ostream &report_title(std::ostream &os,
+                                    Conformational_change_scheme const &x, std::string) {
+      
+      for (std::size_t i=0; i+1<x().size(); ++i)
+          report_title(os, x()[i](),"_change_"+std::to_string(i))<<",";
+      if (!x().empty())
+          report_title(os, x().back()(),"_change_"+std::to_string(x().size()-1));
+      return os;
   }
 };
 
@@ -276,8 +334,11 @@ struct Conformational_interactions_domain_state
     // os<<"Interactions:[";
         for (auto &e : x()) {
       os << get<Conformational_interaction_index>(e.first)() << "_"
-               << get<Conformational_interaction_subposition>(e.first)() << "^"
-               << e.second << " ";
+               << get<Conformational_interaction_subposition>(e.first)();
+      if (e.second!=1)
+          os << "^"
+             << e.second;
+      os<< " ";
         }
     // os<<"]";
     return os;
@@ -348,6 +409,15 @@ struct Conformational_state_vector
     os << " interactions: ";
     print(os, get<Conformational_interactions_state_vector>(x()));
     return os;
+  }
+  
+  friend std::ostream &report(std::ostream &os,
+                             Conformational_state_vector const &x) {
+      os << " state: ";
+      print(os, get<Conformational_change_state_vector>(x()));
+      os << " interactions: ";
+      print(os, get<Conformational_interactions_state_vector>(x()));
+      return os;
   }
 };
 
@@ -526,6 +596,19 @@ struct Conformational_states
     os << "\n end of Conformational states\n";
     return os;
   }
+    
+    friend std::ostream &report(std::ostream &os, Conformational_states const &x) {
+        for (auto i = 0ul; i < x().size(); ++i) {
+            auto &e = x()[i];
+            os << i << ",";
+            report(os, get<Conformational_state_vector>(e))<<",";
+            report(os, get<Conformational_state_count>(e));
+            os << "\t";
+            print(os, get<Conductance_state_count>(e));
+        }
+        os << "\n end of Conformational states\n";
+        return os;
+    }
 };
 
 struct Conformational_state_count_to_representative_index
