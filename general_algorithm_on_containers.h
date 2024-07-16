@@ -6,11 +6,13 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <utility>
 namespace var{
 
 template<class Container>
@@ -20,7 +22,22 @@ concept is_Container= requires(Container const&  c)
 
 template<class T>
 concept StringLike = std::is_convertible_v<T, std::string_view>;
-    
+
+
+
+
+template<class F, class T>
+auto apply_to(F&& f, std::vector<T> const& c)
+{
+    using R= std::invoke_result_t<F, T>;
+    std::vector<R> out;
+    out.reserve(c.size());
+    for (auto& e: c)
+        out.push_back(std::invoke(std::forward<F>(f), e));
+    return out;
+}    
+
+
     
 auto sum(is_Container auto const& c)
 {

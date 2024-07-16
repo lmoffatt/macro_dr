@@ -65,7 +65,6 @@ using var::F;
 using var::FuncMap_St;
 using var::Time_it_st;
 
-template <class T> T sqr(T x) { return x * x; }
 
 /*
 class State_Model;
@@ -5123,6 +5122,37 @@ auto new_thermo_Model_by_max_iter(
       beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
       includes_zero, initseed);
 }
+
+auto new_thermo_Model_by_max_iter_dts(
+    std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
+    std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
+    std::size_t beta_size, std::size_t beta_upper_size,
+    std::size_t beta_medium_size, double beta_upper_value,
+    double beta_medium_value,
+
+    double stops_at, bool includes_zero, Saving_intervals sint,
+    std::size_t initseed,std::size_t t_adapt_beta_every,
+    double t_adapt_beta_nu,double t_adapt_beta_t0) {
+  return new_thermodynamic_integration(
+      thermo_less_than_max_iteration(max_iter_equilibrium),
+      save_mcmc<var::Parameters_transformed, save_Iter,
+                save_likelihood<var::Parameters_transformed>,
+                save_Parameter<var::Parameters_transformed>,
+        save_RateParameter<var::Parameters_transformed>, save_Evidence,
+                save_Predictions<var::Parameters_transformed>>(
+          path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
+          get<Save_Parameter_every>(sint())(),
+          get<Save_RateParameter_every>(sint())(),
+          get<Save_Evidence_every>(sint())(),
+          get<Save_Predictions_every>(sint())()),
+      num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
+      beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
+      includes_zero, initseed,t_adapt_beta_every,
+         t_adapt_beta_nu, t_adapt_beta_t0);
+}
+
+
+
 
 auto thermo_levenberg_Model_by_max_iter(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,

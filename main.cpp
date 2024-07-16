@@ -1,6 +1,8 @@
 #include "CLI_function_table.h"
 #include "CLI_macro_dr.h"
 #include "CLI_thermo_evidence.h"
+#include "CLI_thermo_evidence_dts.h"
+
 #include "CLI_thermo_levenberg_evidence.h"
 #include "experiment.h"
 #include "lapack_headers.h"
@@ -301,7 +303,30 @@ fraction_algo, std::string model,std::size_t i_seed )
           "max_iter_equilibrium", "beta_size", "beta_upper_size",
           "beta_medium_size",  "thermo_jump_factor",
           "save_every_param_size_factor"));
-
+  
+  
+  cm.push_function(
+      "set_ThermoAlgorithm_dts",
+      dcli::to_typed_function<std::size_t ,
+                              std::size_t ,
+                              double ,
+                              double , double ,
+                              bool , std::size_t ,
+                              std::size_t ,
+                              std::size_t , std::size_t ,
+                              std::size_t ,
+                              std::size_t ,std::size_t ,
+                              double ,double >(
+          &set_ThermoAlgorithm_dts, "num_scouts_per_ensemble",
+          "number_trials_until_give_up", "stops_at", "beta_upper_value",
+          "beta_medium_value",
+          "includes_zero",
+          "max_iter_equilibrium", "beta_size", "beta_upper_size",
+          "beta_medium_size",  "thermo_jump_factor",
+          "save_every_param_size_factor","adapt_beta_every","adapt_beta_nu","adapt_beta_t0"));
+  
+  
+  
   /**
 calc_thermo_evidence(std::string id,
                                               std::string model,
@@ -324,6 +349,21 @@ calc_thermo_evidence(std::string id,
           "data", "experiment", "thermo_algorithm", "save_every",
           "init_seed"));
   
+  
+  
+  cm.push_function(
+      "thermo_evidence_dts",
+      dcli::to_typed_function<std::string,
+                              std::string, std::string, likelihood_algo_type, std::string,
+                              experiment_file_type, thermo_algo_dts_type, std::size_t, std::size_t>(
+          &calc_thermo_evidence_dts, "idname","model", "prior", "likelihood_algorithm",
+          "data", "experiment", "thermo_algorithm", "save_every",
+          "init_seed"));
+  
+  
+  
+  
+  
   /**
    *  calc_thermo_evidence_continuation(std::string id, std::size_t ith)
    * */
@@ -333,6 +373,18 @@ calc_thermo_evidence(std::string id,
       dcli::to_typed_function<std::string, std::size_t, std::size_t>(
           &calc_thermo_evidence_continuation, "idname","continuation_number",
           "init_seed"));
+  
+  
+  cm.push_function(
+      "thermo_evidence_dts_continuation",
+      dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+          &calc_thermo_evidence_dts_continuation, "idname","continuation_number",
+          "init_seed"));
+  
+  
+  
+  
+  
   
   
 /**

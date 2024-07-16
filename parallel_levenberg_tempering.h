@@ -637,6 +637,7 @@ void thermo_levenberg_jump_mcmc(std::size_t iter,
                 } else {
                     fails(current.walkers[ib].m_thermo_stat());
                 }
+                
             }
         }
         }

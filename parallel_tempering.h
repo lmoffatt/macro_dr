@@ -45,7 +45,8 @@ class Saving_intervals
     : public var::Var<
           Saving_intervals,
           var::Vector_Space<Save_Evidence_every, Save_Likelihood_every,
-                            Save_Parameter_every, Save_RateParameter_every, Save_Predictions_every>> {};
+                            Save_Parameter_every, Save_RateParameter_every,
+                            Save_Predictions_every>> {};
 
 template <class Parameters>
 auto stretch_move(mt_64i &, const Parameters &Xk, const Parameters &Xj,
@@ -59,9 +60,9 @@ auto stretch_move(mt_64i &, const Parameters &Xk, const Parameters &Xj,
 
 template <class Parameters>
 auto stretch_move(mt_64i &mt, std::uniform_real_distribution<double> &rdist,
-                  const Parameters &Xk, const Parameters &Xj, double a=2) {
+                  const Parameters &Xk, const Parameters &Xj, double a = 2) {
   assert((Xj.size() == Xk.size()) && "sum of vector fields of different sizes");
-    auto z = std::pow((a-1)*rdist(mt) + 1, 2) / a;
+    auto z = std::pow((a - 1) * rdist(mt) + 1, 2) / a;
 
   auto out = Xj;
   for (std::size_t i = 0; i < Xj.size(); ++i)
@@ -138,23 +139,29 @@ inline auto new_get_beta_list(std::size_t beta_size,
   return out;
 }
 
+
+
+
+
 template <class Parameters>
   requires std::is_assignable_v<Parameters, Parameters const &>
 struct thermo_mcmc {
   by_beta<double> beta;
   by_beta<ensemble<mcmc<Parameters>>> walkers;
+  by_beta<ensemble<logL_statistics>> walkers_sta;
+  
   by_beta<ensemble<std::size_t>> i_walkers;
   by_beta<emcee_Step_statistics> emcee_stat;
   by_beta<Thermo_Jump_statistics> thermo_stat;
   
-  
-  void reset_statistics()
-  {
-      for (auto& e: emcee_stat)
+  void reset_statistics() {
+      for (auto &e : walkers_sta)
+          for (auto &ee : e)
+              ee().reset();
+      for (auto &e : emcee_stat)
           e().reset();
-      for (auto& e: thermo_stat)
+      for (auto &e : thermo_stat)
           e().reset();
-      
   }
   
   auto get_Walkers_number() const { return walkers[0].size(); }
@@ -167,6 +174,84 @@ struct thermo_mcmc {
     return i_walkers[i_b][iw];
   }
 };
+
+template <class Parameters>
+void update(by_beta<ensemble<logL_statistics>> &walkers_sta,
+            by_beta<ensemble<mcmc<Parameters>>> walkers) {
+    for (auto i = 0ul; i < walkers_sta.size(); ++i)
+        for (std::size_t j = 0; j < walkers_sta[i].size(); ++j) {
+            walkers_sta[i][j]() &= get<logL>(walkers[i][j].logL);
+        }
+}
+
+inline logL_statistics calculate_across_sta(ensemble<logL_statistics> const &sta) {
+    logL_statistics across(get<mean<logL>>(sta[0]()())());
+    for (std::size_t i = 1; i < sta.size(); ++i)
+        across() &= get<mean<logL>>(sta[i]()())();
+    return across;
+}
+inline auto
+calculate_across_sta(by_beta<ensemble<logL_statistics>> const &sta) {
+    by_beta<logL_statistics> across(sta.size());
+    for (std::size_t i = 1; i < sta.size(); ++i)
+        across[i] = calculate_across_sta(sta[i]);
+    return across;
+}
+
+inline variance<logL> calculate_within_sta(ensemble<logL_statistics> const &sta) {
+    variance<logL> within = variance<logL>(logL(0.0));
+    count df = count(0);
+    for (std::size_t i = 0; i < sta.size(); ++i) {
+        auto r_df = get<count>(sta[i]()())() - 1;
+        within()() += r_df * get<variance<logL>>(sta[i]()())()();
+        df() += r_df;
+    }
+    within() ()/= df();
+    return within;
+}
+
+inline auto calculate_within_sta(by_beta<ensemble<logL_statistics>> const &sta) 
+    {
+        by_beta<variance<logL>> within(sta.size());
+        for (std::size_t i=0; i<sta.size(); ++i)
+            within[i]=calculate_within_sta(sta[i]);
+        return within;
+    }
+
+
+inline double
+calculate_effective_sample_size(logL_statistics const& across,variance<logL>const within) {
+    double effective_sample_size = within()() / get<variance<logL>>(across()())()();
+    return effective_sample_size;
+}
+
+
+inline auto
+calculate_effective_sample_size(by_beta<logL_statistics> const& across,
+                                by_beta<variance<logL>> const &within) {
+    
+    std::vector<double> effective_sample_sizes(across.size());
+    for (std::size_t i=0; i<across.size(); ++i)
+    {
+        effective_sample_sizes[i] = calculate_effective_sample_size(across[i],within[i]);
+    }
+    return effective_sample_sizes;
+}
+
+
+template <class Parameters>
+by_beta<ensemble<logL_statistics>>
+make_logL_statistics(by_beta<ensemble<mcmc<Parameters>>> walkers) {
+    by_beta<ensemble<logL_statistics>> out;
+    out.reserve(walkers.size());
+    for (auto i = 0ul; i < walkers.size(); ++i) {
+        out[i] = ensemble<logL_statistics>(walkers[i].size());
+        for (std::size_t j = 0; j < walkers[i].size(); ++j) {
+            out[i][j] = logL_statistics(get<logL>(walkers[i][j].logL));
+        }
+    }
+    return out;
+}
 
 template <template <class> class Thermo_mcmc, class Parameters>
 std::size_t num_betas(Thermo_mcmc<Parameters> const &x) {
@@ -194,7 +279,7 @@ auto mean_logL(thermo_mcmc<Parameters> const &mcmc) {
   auto n_walkers = num_walkers(mcmc);
   for (std::size_t iwalker = 0; iwalker < num_walkers(mcmc); ++iwalker)
     for (std::size_t ibeta = 0; ibeta < num_betas(mcmc); ++ibeta)
-      out[ibeta] = out[ibeta]+ mcmc.walkers[ibeta][iwalker].logL / n_walkers;
+      out[ibeta] = out[ibeta] + mcmc.walkers[ibeta][iwalker].logL / n_walkers;
   return out;
 }
 template <class Parameters>
@@ -208,15 +293,14 @@ auto mean_logP(thermo_mcmc<Parameters> const &mcmc) {
 }
 
 template <class Parameters>
-auto var_logL(thermo_mcmc<Parameters> const &mcmc,
-              by_beta<logLs> const &mean) {
+auto var_logL(thermo_mcmc<Parameters> const &mcmc, by_beta<logLs> const &mean) {
   auto out = by_beta<logLs>(num_betas(mcmc));
   auto n_walkers = num_walkers(mcmc);
   for (std::size_t iwalker = 0; iwalker < num_walkers(mcmc); ++iwalker)
     for (std::size_t ibeta = 0; ibeta < num_betas(mcmc); ++ibeta)
-      out[ibeta] =out[ibeta] +
-          pow(mcmc.walkers[ibeta][iwalker].logL - mean[ibeta], 2) /
-          n_walkers;
+      out[ibeta] =
+            out[ibeta] +
+          pow(mcmc.walkers[ibeta][iwalker].logL - mean[ibeta], 2) / n_walkers;
   return out;
 }
 
@@ -226,7 +310,7 @@ auto mean_logL(by_iteration<thermo_mcmc<Parameters>> const &series) {
   auto n_walkers = num_walkers(series[0]);
   auto n_iters = num_samples(series);
   for (std::size_t i = 0; i < num_samples(series); ++i)
-     for (std::size_t ibeta = 0; ibeta < num_betas(series[0]); ++ibeta)
+      for (std::size_t ibeta = 0; ibeta < num_betas(series[0]); ++ibeta)
       for (std::size_t iwalker = 0; iwalker < num_walkers(series[0]); ++iwalker)
         out[ibeta] +=
             series[i].walkers[ibeta][iwalker].logL / n_iters / n_walkers;
@@ -403,7 +487,6 @@ auto mixing_var_ratio(by_beta<double> const &mean_var,
   return out;
 }
 
-
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
           class DataType,
           class Parameters = std::decay_t<decltype(sample(
@@ -419,42 +502,86 @@ auto init_thermo_mcmc(FunctionTable &f, std::size_t n_walkers,
 
   ensemble<by_beta<std::size_t>> i_walker(beta.size(),
                                           by_beta<std::size_t>(n_walkers));
-  ensemble<by_beta<mcmc<Parameters>>> walker(beta.size()
-      , by_beta<mcmc<Parameters>>(n_walkers));
+  ensemble<by_beta<mcmc<Parameters>>> walker(
+      beta.size(), by_beta<mcmc<Parameters>>(n_walkers));
   by_beta<emcee_Step_statistics> emcee_stat(beta.size());
-  by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
+  by_beta<Thermo_Jump_statistics> thermo_stat(beta.size() - 1);
   auto ff = f.fork(omp_get_max_threads());
 
-#pragma omp parallel for //collapse(2)
-      for (std::size_t i = 0; i < beta.size(); ++i) {
-    for (std::size_t iw = 0; iw < n_walkers ; ++iw) {
-        i_walker[i][iw] = iw + i * n_walkers;
+#pragma omp parallel for // collapse(2)
+  for (std::size_t i = 0; i < beta.size(); ++i) {
+    for (std::size_t iw = 0; iw < n_walkers; ++iw) {
+          i_walker[i][iw] = iw + i * n_walkers;
         auto i_th = omp_get_thread_num();
-        walker[i][iw] = init_mcmc(ff[i_th], mt[i_th], prior, lik, y, x);
-      }
+          walker[i][iw] = init_mcmc(ff[i_th], mt[i_th], prior, lik, y, x);
     }
+  }
   f += ff;
-  return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
+  
+  auto walker_sta = make_logL_statistics(walker);
+  return thermo_mcmc<Parameters>{beta,     walker,     walker_sta,
+                                 i_walker, emcee_stat, thermo_stat};
 }
 
-template <class Prior, 
-         class Parameters = std::decay_t<decltype(sample(
-             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
-auto create_thermo_mcmc(std::size_t n_walkers,
-                      by_beta<double> const &beta,mt_64i& mt,Prior const &pr) {
+
+template<class Parameters>
+auto calculate_initial_logL0(thermo_mcmc<Parameters>const & initial_data)
+{
+    auto logL_0=initial_data.walkers_sta[0][0];
+    for (std::size_t i=0; i<initial_data.walkers_sta.size(); ++i)
+    {
+        for (std::size_t j=1; i<initial_data.walkers_sta[i].size(); ++i)
+        {
+            logL_0()&=initial_data.walkers_sta[i][j]();
+        }
+    }
     
-    auto& priorsampler=pr;
-    auto par = sample(mt,priorsampler);
+    return logL_0;
+}
+
+template<class Parameters>
+auto initial_beta_dts(thermo_mcmc<Parameters>& initial_data)
+{
+    auto initial_logL0=calculate_initial_logL0(initial_data);
+    double log_beta_min= std::log(1.0/std::sqrt(get<variance<logL>>(initial_logL0()())()()));
+    auto n=initial_data.beta.size();
+    double dlog_beta= log_beta_min/(n-2);
+    std::vector<double> beta(n,0.0);
+    if (initial_data.beta[0]==1.0){
+    for (std::size_t i=0; i<n-1; ++i)
+            beta[i]=std::pow(10.0,i*dlog_beta);
+    }
+else
+    {
+        for (std::size_t i=0; i<n-1; ++i)
+            beta[n-1-i]=std::pow(10.0,i*dlog_beta);
+    }
+    initial_data.beta=beta;
+    return beta;
+}
+
+
+template <class Prior, class Parameters = std::decay_t<decltype(sample(
+                          std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+auto create_thermo_mcmc(std::size_t n_walkers, by_beta<double> const &beta,
+                        mt_64i &mt, Prior const &pr) {
+    
+    auto &priorsampler = pr;
+    auto par = sample(mt, priorsampler);
     
     by_beta<ensemble<std::size_t>> i_walker(beta.size(),
                                             by_beta<std::size_t>(n_walkers));
-    by_beta<ensemble<mcmc<Parameters>>> walker(beta.size()
-        , by_beta<mcmc<Parameters>>(n_walkers,mcmc<Parameters>{par}));
+    by_beta<ensemble<mcmc<Parameters>>> walker(
+        beta.size(), by_beta<mcmc<Parameters>>(n_walkers, mcmc<Parameters>{par}));
+    by_beta<ensemble<logL_statistics>> walker_sta(
+        beta.size(), by_beta<logL_statistics>(n_walkers));
+    
     by_beta<emcee_Step_statistics> emcee_stat(beta.size());
-    by_beta<Thermo_Jump_statistics> thermo_stat(beta.size()-1);
-    return thermo_mcmc<Parameters>{beta, walker, i_walker,emcee_stat,thermo_stat};
+    by_beta<Thermo_Jump_statistics> thermo_stat(beta.size() - 1);
+    
+    return thermo_mcmc<Parameters>{beta,     walker,     walker_sta,
+                                   i_walker, emcee_stat, thermo_stat};
 }
-
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
          class DataType,
@@ -464,40 +591,33 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
         is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&&
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
-Maybe_error<bool> calc_thermo_mcmc_continuation(FunctionTable &f, std::size_t n_walkers,
-                      by_beta<double> const &beta, ensemble<mt_64i> &mt,
-                      Prior const &prior, Likelihood const &lik,
-                      const DataType &y, const Variables &x, thermo_mcmc<Parameters>& t_mcmc) {
+Maybe_error<bool> calc_thermo_mcmc_continuation(
+    FunctionTable &f, std::size_t n_walkers, by_beta<double> const &beta,
+    ensemble<mt_64i> &mt, Prior const &prior, Likelihood const &lik,
+    const DataType &y, const Variables &x, thermo_mcmc<Parameters> &t_mcmc) {
     
     auto ff = f.fork(omp_get_max_threads());
     
     std::string error;
-    bool good=true;
-  #pragma omp parallel for //collapse(2)
-      for (std::size_t i = 0; i < beta.size(); ++i) {
+    bool good = true;
+#pragma omp parallel for // collapse(2)
+    for (std::size_t i = 0; i < beta.size(); ++i) {
         auto i_th = omp_get_thread_num();
-        for (std::size_t iw = 0; iw < n_walkers ; ++iw) {
-                auto res=calc_mcmc(ff[i_th],prior, lik, y, x,t_mcmc.walkers[i][iw]);
-                if (!res)
-                {
-                    error+=res.error()();
-                    good=false;
-                }
+        for (std::size_t iw = 0; iw < n_walkers; ++iw) {
+            auto res = calc_mcmc(ff[i_th], prior, lik, y, x, t_mcmc.walkers[i][iw]);
+            if (!res) {
+                error += res.error()();
+                good = false;
             }
         }
+    }
     f += ff;
-        if (good)
+    if (good)
         return good;
     else
-            return error_message(error);        
- }
- 
- 
- 
- 
- 
- 
- 
+        return error_message(error);
+}
+
 template <class Parameters>
 std::pair<std::pair<std::size_t, std::size_t>, bool>
 check_iterations(std::pair<std::size_t, std::size_t> current_max,
@@ -700,9 +820,8 @@ void observe_thermo_jump_mcmc(Observer &obs, std::size_t jlanding,
                               double calogL, double deltabeta, double logA,
                               double pJump, double r, bool doesChange) {}
 
-
-template <class FunctionTable, std::size_t N,class Observer, class Prior, class Likelihood,
-          class Variables, class DataType,
+template <class FunctionTable, std::size_t N, class Observer, class Prior,
+         class Likelihood, class Variables, class DataType,
           class Parameters = std::decay_t<decltype(sample(
               std::declval<mt_64i &>(), std::declval<Prior &>()))>>
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>,
@@ -710,22 +829,23 @@ template <class FunctionTable, std::size_t N,class Observer, class Prior, class 
            is_prior<Prior, Parameters, Variables, DataType> &&
            is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
                                DataType>)
-void step_stretch_thermo_mcmc(FunctionTable &f, std::size_t &iter,var::Event_Timing<N>& dur,
+void step_stretch_thermo_mcmc(FunctionTable &f, std::size_t &iter,
+                              var::Event_Timing<N> &dur,
                               thermo_mcmc<Parameters> &current, Observer &obs,
                               const by_beta<double> &beta, ensemble<mt_64i> &mt,
                               Prior const &prior, Likelihood const &lik,
                               const DataType &y, const Variables &x,
                               double alpha_stretch = 2) {
-  dur.record("stretch_start");  
-  assert(beta.size() == num_betas(current));
+  dur.record("stretch_start");
+    assert(beta.size() == num_betas(current));
   auto n_walkers = num_walkers(current);
   auto n_beta = beta.size();
   auto n_par = current.walkers[0][0].parameter.size();
 
   std::uniform_int_distribution<std::size_t> uniform_walker(0,
                                                             n_walkers / 2 - 1);
-  std::vector<std::uniform_int_distribution<std::size_t>> udist(omp_get_max_threads(),
-                                                                uniform_walker);
+  std::vector<std::uniform_int_distribution<std::size_t>> udist(
+      omp_get_max_threads(), uniform_walker);
 
   std::uniform_real_distribution<double> uniform_stretch_zdist(
       1.0 / alpha_stretch, alpha_stretch);
@@ -733,91 +853,88 @@ void step_stretch_thermo_mcmc(FunctionTable &f, std::size_t &iter,var::Event_Tim
       omp_get_max_threads(), uniform_stretch_zdist);
 
   std::uniform_real_distribution<double> uniform_real(0, 1);
-  std::vector<std::uniform_real_distribution<double>> rdist(omp_get_max_threads(),
-                                                            uniform_real);
+  std::vector<std::uniform_real_distribution<double>> rdist(
+      omp_get_max_threads(), uniform_real);
 
   auto ff = f.fork(omp_get_max_threads());
-  std::vector<by_beta<emcee_Step_statistics>> emcee_stat(omp_get_max_threads(), by_beta<emcee_Step_statistics>(n_beta));
+  std::vector<by_beta<emcee_Step_statistics>> emcee_stat(
+      omp_get_max_threads(), by_beta<emcee_Step_statistics>(n_beta));
   
   dur.record("stretch_before_loop");
-  auto num_threads=omp_get_max_threads();
-  #pragma omp parallel for //collapse(2)
-  for (std::size_t i_thread=0; i_thread<num_threads; ++i_thread)
-  {
-      std::size_t n_beta_f=std::ceil(n_beta/num_threads);
+  auto num_threads = omp_get_max_threads();
+#pragma omp parallel for // collapse(2)
+  for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
+      std::size_t n_beta_f = std::ceil(n_beta / num_threads);
       for (std::size_t iib = 0; iib < n_beta_f; ++iib) {
-      std::size_t ib=i_thread*n_beta_f+iib;    
-      dur.record("begin_loop_walker", ib*2);
-    //  for (std::size_t iii=0; iii<4; ++iii)
-    //      {
-      for (bool half : {false, true}){
-          for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-        auto i_th = omp_get_thread_num();
-
-        auto iw = half ? i + n_walkers / 2 : i;
-        auto j = udist[i_th](mt[i_th]);
-        auto jw = half ? j : j + n_walkers / 2;
-        // we can try in the outer loop
-
-        auto r = rdist[i_th](mt[i_th]);
-
-        // candidate[ib].walkers[iw].
-        auto [ca_par, z] = stretch_move(mt[i_th], rdist[i_th],
-                                        current.walkers[ib][iw].parameter,
-                                        current.walkers[ib][jw].parameter);
-
-        auto ca_logP = logPrior(prior, ca_par);
-        auto ca_logL = logLikelihood(ff[i_th], lik, ca_par.to_value(), y, x);
-        
-        if (!((ca_logP.valid()) && (ca_logL.valid()))) {
+      std::size_t ib = i_thread * n_beta_f + iib;
+          dur.record("begin_loop_walker", ib * 2);
+      //  for (std::size_t iii=0; iii<4; ++iii)
+          //      {
+      for (bool half : {false, true}) {
+              for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+              auto i_th = omp_get_thread_num();
+                  
+                  auto iw = half ? i + n_walkers / 2 : i;
+              auto j = udist[i_th](mt[i_th]);
+                  auto jw = half ? j : j + n_walkers / 2;
+              // we can try in the outer loop
+                  
+                  auto r = rdist[i_th](mt[i_th]);
+                  
+                  // candidate[ib].walkers[iw].
+                  auto [ca_par, z] = stretch_move(mt[i_th], rdist[i_th],
+                                                  current.walkers[ib][iw].parameter,
+                                                  current.walkers[ib][jw].parameter);
+                  
+                  auto ca_logP = logPrior(prior, ca_par);
+                  auto ca_logL = logLikelihood(ff[i_th], lik, ca_par.to_value(), y, x);
+                  
+                  if (!((ca_logP.valid()) && (ca_logL.valid()))) {
             fails(emcee_stat[i_th][ib]());
-        }
-        else{
-          auto dthLogL =
-              ca_logP.value() - current.walkers[ib][iw].logP +
-                           beta[ib] * (get<logL>(ca_logL.value())() - get<logL>(current.walkers[ib][iw].logL)());
-          auto pJump =
-              std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
-          if (pJump >= r) {
-            current.walkers[ib][iw].parameter = std::move(ca_par);
-            current.walkers[ib][iw].logP = ca_logP.value();
-            current.walkers[ib][iw].logL = ca_logL.value();
-            succeeds(emcee_stat[i_th][ib]());
-          }
-          else
-          {
+                  } else {
+                      auto dthLogL =
+                          ca_logP.value() - current.walkers[ib][iw].logP +
+                                     beta[ib] * (get<logL>(ca_logL.value())() -
+                                                                                                  get<logL>(current.walkers[ib][iw].logL)());
+                      auto pJump =
+                          std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
+                      if (pJump >= r) {
+                          current.walkers[ib][iw].parameter = std::move(ca_par);
+                          current.walkers[ib][iw].logP = ca_logP.value();
+                          current.walkers[ib][iw].logL = ca_logL.value();
+                          succeeds(emcee_stat[i_th][ib]());
+                      } else {
               fails(emcee_stat[i_th][ib]());
-          }
-        }
-      //}
-          
+                      }
+                  }
+                  //}
+              }
       }
-      }
-      dur.record("end_loop_walker", ib*2+1);
+      dur.record("end_loop_walker", ib * 2 + 1);
       }
   }
-      dur.advance(n_beta*2);
-    dur.record("stretch_after_loop");  
-for (std::size_t ib = 0; ib < n_beta; ++ib)
-  {
-      for(auto& e:emcee_stat)
-        current.emcee_stat[ib]()+=e[ib]();
+  dur.advance(n_beta * 2);
+  dur.record("stretch_after_loop");
+  for (std::size_t ib = 0; ib < n_beta; ++ib) {
+      for (auto &e : emcee_stat)
+          current.emcee_stat[ib]() += e[ib]();
   }
   f += ff;
   ++iter;
-  dur.record("stretch_function_end");  
+  update(current.walkers_sta, current.walkers);
   
+  dur.record("stretch_function_end");
 }
 
-inline double calc_logA(double betai, double betaj, logLs const& logLi,
+inline double calc_logA(double betai, double betaj, logLs const &logLi,
                         logLs const &logLj) {
     if (std::isfinite((get<logL>(logLi)() - get<logL>(logLj)())))
-         return -(betai - betaj) * (get<logL>(logLi)() - get<logL>(logLj)());
-    else{
-        if (!std::isfinite(get<logL>(logLi)())&&std::isfinite(get<logL>(logLj)()))
-            return 20.0*(betai>betaj);
-        if (std::isfinite(get<logL>(logLi)())&&!std::isfinite(get<logL>(logLj)()))
-            return -20.0*(betai>betaj);
+        return -(betai - betaj) * (get<logL>(logLi)() - get<logL>(logLj)());
+    else {
+        if (!std::isfinite(get<logL>(logLi)()) && std::isfinite(get<logL>(logLj)()))
+            return 20.0 * (betai > betaj);
+        if (std::isfinite(get<logL>(logLi)()) && !std::isfinite(get<logL>(logLj)()))
+            return -20.0 * (betai > betaj);
         else
             return -20.0;
     }
@@ -836,17 +953,17 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
     WalkerIndexes shuffeld_walkers(n_walkers);
     std::iota(shuffeld_walkers.begin(), shuffeld_walkers.end(), 0);
     std::shuffle(shuffeld_walkers.begin(), shuffeld_walkers.end(), mt);
-    std::vector<std::uniform_real_distribution<double>> rdist(omp_get_max_threads(),
-                                                              uniform_real);
+    std::vector<std::uniform_real_distribution<double>> rdist(
+        omp_get_max_threads(), uniform_real);
     
-    std::vector<by_beta<Thermo_Jump_statistics>> thermo_stat(omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta-1));
-   
+    std::vector<by_beta<Thermo_Jump_statistics>> thermo_stat(
+        omp_get_max_threads(), by_beta<Thermo_Jump_statistics>(n_beta - 1));
 
-#pragma omp parallel for //collapse(2)
+#pragma omp parallel for // collapse(2)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
       for (std::size_t ib = 0; ib < n_beta - 1; ++ib) {
             auto i_th = omp_get_thread_num();
-            auto iw = shuffeld_walkers[i];
+          auto iw = shuffeld_walkers[i];
             auto jw = shuffeld_walkers[i + n_walkers / 2];
 
         auto r = rdist[i_th](mts[i_th]);
@@ -858,23 +975,109 @@ void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
           std::swap(current.walkers[ib][iw], current.walkers[ib + 1][jw]);
           std::swap(current.i_walkers[ib][iw], current.i_walkers[ib + 1][jw]);
           succeeds(thermo_stat[i_th][ib]());
-        }
-        else
-        {
+        } else {
             fails(thermo_stat[i_th][ib]());
         }
       }
     }
     
-    
-    for (std::size_t ib = 0; ib < n_beta-1; ++ib)
-    {
-        for(auto& e:thermo_stat)
-            current.thermo_stat[ib]()+=e[ib]();
+    for (std::size_t ib = 0; ib < n_beta - 1; ++ib) {
+        for (auto &e : thermo_stat)
+            current.thermo_stat[ib]() += e[ib]();
     }
-    
-    
   }
+}
+
+template <class Parameters>
+auto calculate_delta_Evidence_variance(thermo_mcmc<Parameters> &current,
+                                       by_beta<double> &beta) {
+    auto across = calculate_across_sta(current.walkers_sta);
+    std::vector<double> deltaEvidence_variance(beta.size() - 1);
+    auto n = beta.size() - 1;
+    if (beta[0] == 1.0) {
+        for (std::size_t i = 0; i + 1 < n; ++i) {
+            auto var0 = get<variance<logL>>(across[i]()())()();
+            auto var1 = get<variance<logL>>(across[i + 1]()())()();
+            
+            deltaEvidence_variance[i] = sqr((beta[i] - beta[i + 1])/2.0) * (var0 + var1);
+        }
+    } else {
+        for (std::size_t i = 0; i + 1 < n; ++i) {
+            auto var0 = get<variance<logL>>(across[i]()())()();
+            auto var1 = get<variance<logL>>(across[i + 1]()())()();
+            
+            deltaEvidence_variance[i] = sqr((beta[i + 1] - beta[i])/2.0) * (var0 + var1);
+        }
+    }
+    return deltaEvidence_variance;
+}
+
+
+template <class Parameters>
+auto calculate_Acceptance_variance(std::vector<double> deltaEvidence_variance,
+                                   thermo_mcmc<Parameters> &current) {
+    
+   std::vector<double> acceptance_variance(deltaEvidence_variance.size());
+    for (std::size_t i=0; i<deltaEvidence_variance.size(); ++i)
+            acceptance_variance[i]=current.thermo_stat[i ]().rate().value() /
+                                 deltaEvidence_variance[i];
+    return acceptance_variance; 
+}
+
+
+
+template <class Parameters>
+void adapt_beta(std::size_t iter, thermo_mcmc<Parameters> &current,
+                by_beta<double> &beta, std::size_t adapt_beta_every, double nu,
+                double t0) {
+    if (iter % adapt_beta_every == 0) {
+        
+        double kappa = 1.0 / nu * t0 / (t0 + iter);
+        std::vector<double> T(beta.size() - 1);
+        
+        std::vector<double> dA(beta.size() - 2);
+        auto deltaEvidence_variance =
+            calculate_delta_Evidence_variance(current, beta);
+        auto Acceptance_variance=calculate_Acceptance_variance(deltaEvidence_variance,current);
+        if (beta[0] == 1.0) {
+            for (std::size_t i = 0; i < beta.size() - 1; ++i)
+                T[i] = 1.0 / beta[i];
+            
+            for (std::size_t i = 1; i < beta.size() - 1; ++i)
+            {
+                auto A0= Acceptance_variance[i - 1];
+                auto A1=Acceptance_variance[i];
+                dA[i - 1] =A0-A1;
+                            
+            }
+        } else {
+            for (std::size_t i = 0; i < beta.size() - 1; ++i)
+                T[i] = 1.0 / beta[beta.size() - i];
+            for (std::size_t i = 1; i < beta.size() - 1; ++i) {
+                auto A0 = Acceptance_variance[beta.size() - 1 - i];
+                auto A1 = Acceptance_variance[beta.size() - 2 - i];
+                dA[i - 1] = A0 - A1;
+            }
+        }
+        
+        std::vector<double> S(T.size() - 1);
+        for (std::size_t i = 1; i < T.size(); ++i)
+            S[i - 1] = std::log(T[i] - T[i - 1]);
+        for (std::size_t i = 0; i < S.size(); ++i)
+            S[i] += kappa * dA[i];
+        for (std::size_t i = 1; i < T.size(); ++i)
+            T[i] = T[i - 1] + std::exp(S[i - 1]);
+        
+        if (beta[0] == 1.0) {
+            for (std::size_t i = 0; i < beta.size() - 1; ++i)
+                beta[i] = 1.0 / T[i];
+        } else {
+            for (std::size_t i = 0; i < beta.size() - 1; ++i)
+                beta[i] = 1.0 / T[beta.size() - i];
+        }
+        
+        current.beta=beta;
+    }
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables,
@@ -920,14 +1123,22 @@ public:
   friend void report_title(save_likelihood &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "iter" << s.sep << "iter_time" << s.sep
-        << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
-        << "logP" << s.sep << "logLik"<< s.sep << "elogLik" << s.sep
-          << "vlogLik"<< s.sep << "plog_Evidence"<< s.sep
-          << "pelog_Evidence"<< s.sep << "pvlog_Evidence"
-          << s.sep << "log_Evidence"<< s.sep << "elog_Evidence"<< s.sep << "vlog_Evidence"
-        << "\n";
-  }
+    s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
+          << "i_walker" << s.sep << "id_walker" << s.sep << "logP" << s.sep
+          << "logLik" << s.sep << "elogLik" << s.sep << "vlogLik" << s.sep
+          << "plog_Evidence" << s.sep << "pelog_Evidence" << s.sep
+          << "pvlog_Evidence" << s.sep << "log_Evidence" << s.sep
+          << "elog_Evidence" << s.sep << "vlog_Evidence"
+          << s.sep << "mean_logL" << s.sep
+          << "var_logL" << s.sep << "count_logL"
+          << s.sep << "mean_logL" << s.sep
+          << "var_logL" << s.sep << "count_logL"
+          << s.sep << "mean_plog_Evidence" << s.sep
+          << "var_plog_Evidence" << s.sep << "count_plog_Evidence"
+          << s.sep << "mean_log_Evidence" << s.sep
+          << "var_log_Evidence" << s.sep << "count_log_Evidence"
+          << "\n";
+      }
   template <class Prior, class Likelihood, class Variables, class DataType>
   friend void report_model(save_likelihood &, const Prior &, const Likelihood &,
                            const DataType &, const Variables &,
@@ -941,22 +1152,30 @@ public:
                      ...) {
     if (iter % s.save_every == 0) {
       for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker) {
-            logLs t_logL = {};
+        logLs t_logL = {};
         double beta = 0;
-        logLs log_Evidence = var::Vector_Space<logL,elogL,vlogL>(logL(0.0),elogL(0.0),vlogL(0.0));  
+        logLs log_Evidence = var::Vector_Space<logL, elogL, vlogL>(
+            logL(0.0), elogL(0.0), vlogL(0.0));
+        logL_statistics m_logL={};
+        logL_statistics m_log_Evidence={};
         for (std::size_t i_beta = num_betas(data); i_beta > 0; --i_beta) {
           auto logL0 = t_logL;
+          auto m_logL0=m_logL;  
           double beta0 = beta;
           t_logL = data.walkers[i_beta - 1][i_walker].logL;
+          m_logL= data.walkers_sta[i_beta - 1][i_walker];
           beta = data.beta[i_beta - 1];
           auto plog_Evidence = (beta - beta0) * (logL0 + t_logL) / 2.0;
-          log_Evidence =log_Evidence+ plog_Evidence;
-          s.f  << iter << s.sep << dur << s.sep
-              << beta << s.sep << i_walker << s.sep
-              << data.i_walkers[i_beta - 1][i_walker] << s.sep
+          auto m_plog_Evidence = (beta - beta0)/2.0 * (m_logL0 + m_logL);
+          
+          log_Evidence = log_Evidence + plog_Evidence;
+          m_log_Evidence = m_log_Evidence +m_plog_Evidence;
+          s.f << iter << s.sep << dur << s.sep << beta << s.sep << i_walker
+              << s.sep << data.i_walkers[i_beta - 1][i_walker] << s.sep
               << data.walkers[i_beta - 1][i_walker].logP << t_logL.sep(s.sep)
               << plog_Evidence.sep(s.sep) << log_Evidence.sep(s.sep)
-              <<"\n";
+              << m_logL()().sep(s.sep)
+              << m_plog_Evidence()().sep(s.sep) << m_log_Evidence()().sep(s.sep) << "\n";
         }
       }
     }
@@ -1019,9 +1238,9 @@ public:
   friend void report_title(save_Parameter &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "iter" << s.sep << "iter_time" << s.sep
-        << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
-        << "i_par" << s.sep << "par_value"
+    s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
+          << "i_walker" << s.sep << "id_walker" << s.sep << "i_par" << s.sep
+          << "par_value"
         << "\n";
   }
   template <class Prior, class Likelihood, class Variables, class DataType>
@@ -1040,18 +1259,12 @@ public:
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
           for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
 
-            s.f << iter << s.sep << dur << s.sep
-                << data.beta[i_beta] << s.sep << i_walker << s.sep
-                << data.i_walkers[i_beta][i_walker] << s.sep << i_par << s.sep
+            s.f << iter << s.sep << dur << s.sep << data.beta[i_beta] << s.sep
+                  << i_walker << s.sep << data.i_walkers[i_beta][i_walker]
+                  << s.sep << i_par << s.sep
                 << data.walkers[i_beta][i_walker].parameter[i_par] << "\n";
   }
-  
-  
-  
-  
-  
 };
-
 
 template <class Parameters> class save_RateParameter {
     
@@ -1081,93 +1294,78 @@ public:
     std::ofstream f;
     std::size_t save_every;
     save_RateParameter(std::string const &path, std::size_t interval)
-        : fname{path}, f{std::ofstream(path + "__i_beta__i_walker__i_par_i_state.csv")},
+        : fname{path},
+        f{std::ofstream(path + "__i_beta__i_walker__i_par_i_state.csv")},
         save_every{interval} {
         f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     }
     
-    friend void report_title(save_RateParameter &s, thermo_mcmc<Parameters> const &,...) {
+    friend void report_title(save_RateParameter &s,
+                             thermo_mcmc<Parameters> const &, ...) {
         
-        s.f << "iter" << s.sep << "iter_time" << s.sep
-            << "beta" << s.sep << "i_walker" << s.sep << "id_walker" << s.sep
-            << "agonist" << s.sep
+        s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
+            << "i_walker" << s.sep << "id_walker" << s.sep << "agonist" << s.sep
             << "i_state_from" << s.sep << "i_state_to" << s.sep << "rate_value"
             << "\n";
     }
     
     template <class Prior, class Likelihood, class Variables, class DataType>
-    friend void report_model(save_RateParameter &, const Prior &, const Likelihood &,
-                             const DataType &, const Variables &,
-                             by_beta<double> const &) {}
+    friend void report_model(save_RateParameter &, const Prior &,
+                             const Likelihood &, const DataType &,
+                             const Variables &, by_beta<double> const &) {}
     
     friend void report_model(save_RateParameter &, ...) {}
-    
-   
-    
-    
-    
-    
-    
 };
 
-
-
 template <class Parameters, class Duration>
- bool extract_iter(std::istream& f,std::size_t& iter, Duration &dur,
-                          thermo_mcmc<Parameters> &data) {
+bool extract_iter(std::istream &f, std::size_t &iter, Duration &dur,
+                  thermo_mcmc<Parameters> &data) {
     for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
-            for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
-            {
+            for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par) {
                 double v_beta;
                 std::size_t v_i_walker;
                 std::size_t v_walker_id;
                 std::size_t v_i_par;
                 double v_param_value;
-                if (load_vars_line(f, iter, dur
-                               , v_beta  , v_i_walker 
-                               , v_walker_id ,  v_i_par 
-                               , v_param_value  ))
-                {
-                    if (std::abs(v_beta-data.beta[i_beta])>eps*100)
+                if (load_vars_line(f, iter, dur, v_beta, v_i_walker, v_walker_id,
+                                   v_i_par, v_param_value)) {
+                    if (std::abs(v_beta - data.beta[i_beta]) > eps * 100)
                         return false;
-                    if (v_i_walker!=i_walker)
+                    if (v_i_walker != i_walker)
                         return false;
-                    if (v_i_par!=i_par)
+                    if (v_i_par != i_par)
                         return false;
-                    data.i_walkers[i_beta][i_walker]=v_walker_id;
-                    data.walkers[i_beta][i_walker].parameter[i_par]=v_param_value;
+                    data.i_walkers[i_beta][i_walker] = v_walker_id;
+                    data.walkers[i_beta][i_walker].parameter[i_par] = v_param_value;
+                } else {
+                    return false;
                 }
-                else
-                {return false;}
             }
     return true;
- }
+}
 template <class Parameters, class Duration>
- bool extract_iter(const std::string line,std::size_t& iter, Duration &dur,
+bool extract_iter(const std::string line, std::size_t &iter, Duration &dur,
                   thermo_mcmc<Parameters> &data) {
     std::stringstream ss(line);
-    return extract_iter(ss,iter,dur,data);
-} 
- 
-template <class Parameters, class Duration>
- auto extract_parameters_last(const std::string& fname,std::size_t& iter, Duration &dur,
-                  thermo_mcmc<Parameters> &data) {
-    auto candidate=data;
-    auto candidate_prev=data;
-    auto f=std::ifstream(fname);
-    std::string line;
-    std::getline(f,line);
-    
-    while (extract_iter(f,iter,dur,candidate))
-    {
-        std::swap(data,candidate);
-        std::swap(candidate_prev,candidate);
-    }
-    return candidate_prev;
-    
+    return extract_iter(ss, iter, dur, data);
 }
 
+template <class Parameters, class Duration>
+auto extract_parameters_last(const std::string &fname, std::size_t &iter,
+                             Duration &dur, thermo_mcmc<Parameters> &data) {
+    auto candidate = data;
+    auto candidate_prev = data;
+    auto f = std::ifstream(fname);
+    std::string line;
+    std::getline(f, line);
+    
+    while (extract_iter(f, iter, dur, candidate)) {
+        std::swap(data, candidate);
+        std::swap(candidate_prev, candidate);
+    }
+    return candidate_prev;
+}
 
 template <class Parameters> class save_Predictions {
 
@@ -1192,29 +1390,25 @@ public:
   friend void report_model(save_Predictions &, ...) {}
 };
 
-namespace macrodr{
-void report_title(
-    save_Predictions<var::Parameters_transformed> &s,
-    thermo_mcmc<var::Parameters_transformed> const &, ...);
+namespace macrodr {
+void report_title(save_Predictions<var::Parameters_transformed> &s,
+                  thermo_mcmc<var::Parameters_transformed> const &, ...);
 }
-template <class Parameters, class... saving>
-class save_mcmc : public observer {
+template <class Parameters, class... saving> class save_mcmc : public observer {
     
-    
-  std::string directory_;
+    std::string directory_;
   std::string filename_prefix_;
 
 public:
-  std::tuple<saving...> m_m;  
-    
+  std::tuple<saving...> m_m;
     
     template <typename... Size>
     requires((std::integral<Size> && ...) &&
              (sizeof...(saving) == sizeof...(Size)))
   save_mcmc(std::string dir, std::string filename_prefix,
             Size... sampling_intervals)
-        : m_m{saving{dir + filename_prefix, sampling_intervals}...}, directory_{dir},
-        filename_prefix_{filename_prefix} {}
+      : m_m{saving{dir + filename_prefix, sampling_intervals}...},
+      directory_{dir}, filename_prefix_{filename_prefix} {}
 
   save_mcmc(std::string dir, std::string filename_prefix)
       : m_m{saving{dir + filename_prefix, 1ul}...}, directory_{dir},
@@ -1224,8 +1418,7 @@ public:
   friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_mcmc &smcmc, thermo_mcmc<Parameters> const &data,
                      T &&...ts) {
-    (report(f, iter, dur, get<saving>(smcmc.m_m), data,
-            std::forward<T>(ts)...),
+    (report(f, iter, dur, get<saving>(smcmc.m_m), data, std::forward<T>(ts)...),
      ..., 1);
   }
   template <class Prior, class Likelihood, class Variables, class DataType>
@@ -1238,7 +1431,7 @@ public:
   friend void report_title(save_mcmc &f, thermo_mcmc<Parameters> const &data,
                            ...) {
       using namespace macrodr;
-    (report_title(get<saving >(f.m_m), data), ..., 1);
+    (report_title(get<saving>(f.m_m), data), ..., 1);
   }
 };
 
