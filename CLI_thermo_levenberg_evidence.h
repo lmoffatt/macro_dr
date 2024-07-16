@@ -254,7 +254,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                             [&oldfilename,&ftbl3, &tmi, &param1_prior, &y,
                              &experiment](auto &modelLikelihood) {
                                 auto opt =
-                                    thermo_evidence_continuation(oldfilename,ftbl3, std::move(tmi), param1_prior,
+                                    thermo_evidence_continuation<false>(oldfilename,ftbl3, std::move(tmi), param1_prior,
                                                                  modelLikelihood, y, experiment);
                             },
                             modelLikelihood_v);

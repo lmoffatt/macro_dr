@@ -2,6 +2,7 @@
 #define PARALLEL_TEMPERING_LINEAR_REGRESSION_H
 #include "bayesian_linear_regression.h"
 #include "function_measure_verification_and_optimization.h"
+#include "mcmc.h"
 #include "multivariate_normal_distribution.h"
 #include "parallel_tempering.h"
 #include <chrono>
@@ -65,47 +66,89 @@ public:
   friend void report_title(save_Evidence &s, thermo_mcmc<Parameters> const &,
                            ...) {
 
-    s.f << "n_betas" << s.sep << "iter" << s.sep << "iter_time" << s.sep
-        << "beta" << s.sep << "meanPrior" << s.sep << "logL" << s.sep << "elogL"
-          << s.sep << "vlogL" << s.sep << "var_logL" << s.sep << "var_elogL"
-          << s.sep << "var_vlogL" << s.sep << "plog_Evidence" << s.sep
-          << "eplog_Evidence" << s.sep << "vplog_Evidence" << s.sep
-          << "log_Evidence" << s.sep << "elog_Evidence" << s.sep
-          << "vlog_Evidence" << s.sep << "emcee_stat_count" << s.sep
-          << "emcee_stat_rate" << s.sep << "thermo_jump_stat_count" << s.sep
-          << "thermo_jump_rate"
+    s.f << "iter"
+          << s.sep << "iter_time"
+          << s.sep<< "beta"
+          << s.sep<< "eff_size"
+          << s.sep << "meanPrior"
+          << s.sep << "logL"<< s.sep << "elogL"<< s.sep << "vlogL"
+          << s.sep << "var_logL" << s.sep << "var_elogL" << s.sep << "var_vlogL"
           
+          << s.sep << "mean_logL_across" << s.sep << "var_logL_across" << s.sep << "count_logL_across"
+          << s.sep << "var_logL_within"
+          << s.sep << "plog_Evidence" << s.sep<< "eplog_Evidence" << s.sep << "vplog_Evidence"
+          << s.sep<< "log_Evidence" << s.sep << "elog_Evidence"   << s.sep << "vlog_Evidence"
+          
+          << s.sep << "mean_plog_Evidence" << s.sep<< "var_plog_Evidence" << s.sep << "count_plog_Evidence"
+          << s.sep<< "mean_log_Evidence" << s.sep << "var_log_Evidence"   << s.sep << "var_log_Evidence"
+          
+          << s.sep << "deltaEvidence_variance"
+          << s.sep << "Acceptance_variance"
+          << s.sep << "emcee_stat_count"
+          << s.sep << "emcee_stat_rate"
+          << s.sep << "thermo_jump_stat_count"
+          << s.sep << "thermo_jump_rate"
           << "\n";
+      
+      
+       
   }
 
   template <class FunctionTable, class Duration, class Parameters>
   friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_Evidence &s, thermo_mcmc<Parameters> &data, ...) {
     if (iter % s.save_every == 0) {
-
-      auto meanLik = mean_logL(data);
+        
+    auto across =calculate_across_sta(data.walkers_sta);
+    auto within = calculate_within_sta(data.walkers_sta);
+    auto eff_size= calculate_effective_sample_size(across,within);
+    
+    auto deltaEvidence_variance =
+        calculate_delta_Evidence_variance(data, data.beta);
+    auto Acceptance_variance=calculate_Acceptance_variance(deltaEvidence_variance,data);
+    
+    
+    auto meanLik = mean_logL(data);
       auto meanPrior = mean_logP(data);
 
       auto varLik = var_logL(data, meanLik);
       if (data.beta[0] == 1) {
           logLs r_logL = {};
-        double beta = 0;
+         double beta = 0;
+          logL_statistics m_logL={};      
           logLs log_Evidence = {};
+          logL_statistics m_log_Evidence={};
         for (std::size_t i_beta = num_betas(data); i_beta > 0; --i_beta) {
           auto logL0 = r_logL;
+          auto m_logL0= m_logL;  
           double beta0 = beta;
           beta = data.beta[i_beta - 1];
           r_logL = meanLik[i_beta - 1];
+          m_logL= across[i_beta-1];
           auto plog_Evidence = (beta - beta0) * (logL0 + r_logL) / 2;
+          auto m_plog_Evidence =(beta - beta0)/2.0 * (m_logL0 + m_logL);
           log_Evidence = log_Evidence + plog_Evidence;
-          s.f << num_betas(data) << s.sep << iter << s.sep << dur << s.sep
-              << beta << s.sep << meanPrior[i_beta - 1] << r_logL.sep(s.sep)
-              << varLik[i_beta - 1].sep(s.sep) << plog_Evidence.sep(s.sep)
+          m_log_Evidence =m_log_Evidence +m_plog_Evidence;
+          s.f << iter 
+              << s.sep<< dur 
+              << s.sep<< beta 
+              << s.sep<< eff_size[i_beta - 1]
+              
+              << s.sep<< meanPrior[i_beta - 1]
+              << r_logL.sep(s.sep)
+              << varLik[i_beta - 1].sep(s.sep)
+              << across[i_beta-1]()().sep(s.sep)
+              <<s.sep<< within[i_beta - 1]()()
+              << plog_Evidence.sep(s.sep)
               << log_Evidence.sep(s.sep)
-              << data.emcee_stat[std::max(2ul, i_beta) - 2]().count() << s.sep
-              << data.emcee_stat[std::max(2ul, i_beta) - 2]().rate() << s.sep
-              << data.thermo_stat[std::max(2ul, i_beta) - 2]().count() << s.sep
-              << data.thermo_stat[std::max(2ul, i_beta) - 2]().rate() << "\n";
+              << m_plog_Evidence()().sep(s.sep)
+              << m_log_Evidence()().sep(s.sep)
+              << s.sep<<deltaEvidence_variance[std::max(2ul, i_beta) - 2]
+              << s.sep<<Acceptance_variance[std::max(2ul, i_beta) - 2]
+              << s.sep<< data.emcee_stat[std::max(2ul, i_beta) - 2]().count() 
+              << s.sep<< data.emcee_stat[std::max(2ul, i_beta) - 2]().rate() 
+              << s.sep<< data.thermo_stat[std::max(2ul, i_beta) - 2]().count()
+              << s.sep<< data.thermo_stat[std::max(2ul, i_beta) - 2]().rate() << "\n";
         }
       }
       data.reset_statistics();
@@ -342,6 +385,9 @@ class new_thermodynamic_integration {
   double stops_at_;
   bool includes_zero_;
   std::size_t initseed_;
+  std::size_t adapt_beta_every_;
+  double adapt_beta_nu_;
+  double adapt_beta_t0_;
 
 public:
   new_thermodynamic_integration(
@@ -359,7 +405,30 @@ public:
 
         stops_at_{stops_at}, includes_zero_{includes_zero},
         initseed_{initseed} {}
+  
+  
+  new_thermodynamic_integration(
+      Algorithm &&alg, Reporter &&rep, std::size_t num_scouts_per_ensemble,
+      std::size_t thermo_jumps_every, std::size_t beta_size,
+      std::size_t beta_upper_size, std::size_t beta_medium_size,
+      double beta_upper_value, double beta_medium_value, double stops_at,
+      bool includes_zero, std::size_t initseed,   std::size_t t_adapt_beta_every,
+      double t_adapt_beta_nu,double t_adapt_beta_t0)
+      : alg_{std::move(alg)}, rep_{std::move(rep)},
+      num_scouts_per_ensemble_{num_scouts_per_ensemble},
+      thermo_jumps_every_{thermo_jumps_every}, beta_size_{beta_size},
+      beta_upper_size_{beta_upper_size}, beta_medium_size_{beta_medium_size},
+      beta_upper_value_{beta_upper_value},
+      beta_medium_value_{beta_medium_value},
 
+      stops_at_{stops_at}, includes_zero_{includes_zero},
+      initseed_{initseed}, adapt_beta_every_{t_adapt_beta_every},
+      adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0} {}
+  
+  
+  
+  
+  
   auto &algorithm() const { return alg_; }
   auto &reporter() { return rep_; }
   auto &num_scouts_per_ensemble() const { return num_scouts_per_ensemble_; }
@@ -373,6 +442,9 @@ public:
   auto &stops_at() const { return stops_at_; }
   auto &includes_zero() const { return includes_zero_; }
   auto &initseed() const { return initseed_; }
+  auto &adapt_beta_every() const { return adapt_beta_every_; }
+  auto &adapt_beta_nu() const { return adapt_beta_nu_; }
+  auto &adapt_beta_t0() const { return adapt_beta_t0_; }
 };
 
 template <class FunctionTable, class Duration, class Parameters,
@@ -528,7 +600,7 @@ auto thermo_evidence_(
   return std::pair(std::move(mcmc_run.first), current);
 }
 
-template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
+template <bool Adapt_beta,class FunctionTable, class Algorithm, class Prior, class Likelihood,
          class Variables, class DataType, class Reporter, class mcmc,
          class Parameters, class timepoint>
     requires(
@@ -544,14 +616,17 @@ auto thermo_evidence_loop(
     Prior const &prior, Likelihood const &lik, const DataType &y,
     const Variables &x, mcmc mcmc_run, std::size_t iter,
     thermo_mcmc<Parameters> &current, Reporter &rep,
-    const by_beta<double> beta_run, mt_64i &mt, std::vector<mt_64i> &mts,
+    by_beta<double>& beta_run, mt_64i &mt, std::vector<mt_64i> &mts,
     const timepoint &start) {
+    
+    
     var::Event_Timing<200> even_dur(start);
     std::ofstream event_file(f.file()+"_event_timing.csv");
     
     while (!mcmc_run.second) {
-        even_dur.record("main_loop_start");  
-        
+        even_dur.record("main_loop_start");
+        if constexpr (Adapt_beta)
+        adapt_beta(iter, current,beta_run, therm.adapt_beta_every(),therm.adapt_beta_nu(),therm.adapt_beta_t0()); 
         step_stretch_thermo_mcmc(f, iter,even_dur, current, rep, beta_run, mts, prior, lik,
                                  y, x);
         even_dur.record("befor_thermo_jump");  
@@ -583,7 +658,15 @@ auto thermo_evidence_loop(
     return std::pair(std::move(mcmc_run.first), current);
 }
 
-template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
+
+
+
+
+
+
+
+
+template <bool Adapt_beta,class FunctionTable, class Algorithm, class Prior, class Likelihood,
          class Variables, class DataType, class Reporter>
     requires(
         is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
@@ -600,6 +683,13 @@ auto thermo_evidence(FunctionTable &&f,
     auto mt = init_mt(therm.initseed());
     auto n_walkers = therm.num_scouts_per_ensemble();
     auto mts = init_mts(mt, omp_get_max_threads());
+    by_beta<double> beta_run;
+    
+    if constexpr (Adapt_beta)
+    {
+        beta_run=by_beta<double>(therm.beta_size(),0);
+    }
+    else{
     auto beta = new_get_beta_list(
         therm.beta_size(), therm.beta_upper_size(), therm.beta_medium_size(),
         therm.beta_upper_value(), therm.beta_medium_value(), therm.stops_at(),
@@ -607,11 +697,16 @@ auto thermo_evidence(FunctionTable &&f,
     
     auto it_beta_run_begin = beta.rend() - beta.size();
     auto it_beta_run_end = beta.rend();
-    auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
-    
+       beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
+    }
     auto current =
         init_thermo_mcmc(f, n_walkers, beta_run, mts, prior, lik, y, x);
     // auto n_par = current.walkers[0][0].parameter.size();
+    
+    if constexpr (Adapt_beta)
+    {
+        beta_run=initial_beta_dts(current);
+    }     
     auto mcmc_run = checks_convergence(std::move(a), current);
     
     std::size_t iter = 0;
@@ -619,15 +714,15 @@ auto thermo_evidence(FunctionTable &&f,
     auto &rep = therm.reporter();
     report_title(rep, current, lik, y, x);
     report_title(f, "Iter");
-    report_model_all(rep, prior, lik, y, x, beta);
+    report_model_all(rep, prior, lik, y, x, beta_run);
     
-    return thermo_evidence_loop(
+    return thermo_evidence_loop<Adapt_beta>(
         f,
         std::forward<new_thermodynamic_integration<Algorithm, Reporter>>(therm),
         prior, lik, y, x, mcmc_run, iter, current, rep, beta_run, mt, mts, start);
 }
 
-template <class FunctionTable, class Algorithm, class Prior, class Likelihood,
+template <bool Adapt_beta,class FunctionTable, class Algorithm, class Prior, class Likelihood,
          class Variables, class DataType, class Reporter>
     requires(
         is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
@@ -676,7 +771,7 @@ auto thermo_evidence_continuation(
     report_title(f, "Iter");
     report_model_all(rep, prior, lik, y, x, beta);
     
-    return thermo_evidence_loop(
+    return thermo_evidence_loop<Adapt_beta>(
         f,
         std::forward<new_thermodynamic_integration<Algorithm, Reporter>>(therm),
         prior, lik, y, x, mcmc_run, iter, current, rep, beta_run, mt, mts, start);

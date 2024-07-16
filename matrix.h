@@ -50,6 +50,14 @@ template <class T, bool> constexpr auto empty_matrix_container() {
     return nullptr;
 }
 
+
+template <class T>
+T sqr(T x) { return x * x; }
+
+
+
+
+
 template <class T, bool>
 auto initialize_matrix_container(std::size_t t_size, bool initialize = false) {
   if constexpr (Matrix_uses_vector) {
@@ -1854,6 +1862,19 @@ inline auto XTX(const Matrix<std::size_t> &a) {
         return out;
     } 
 }
+
+
+inline auto sqr_X(const Matrix<double> &a) {
+    if (a.ncols()<a.nrows())
+        return XXT(a);
+    else
+        return XTX(a);
+}
+
+inline auto sqr_X(double a) {
+    return a*a;    
+}
+
 
 
 template <template <class> class Matrix>

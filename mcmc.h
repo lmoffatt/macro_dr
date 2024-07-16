@@ -3,6 +3,7 @@
 
 #include "matrix.h"
 #include <cassert>
+#include <cstddef>
 #include <limits>
 #include <random>
 #include <utility>
@@ -153,6 +154,115 @@ public:
 };
 
 
+struct count: public var::Constant<count, std::size_t>{};
+
+template <class Va>
+struct mean: public var::Var<mean<Va>,Va>{};
+
+template <class Va>
+struct variance: public var::Var<variance<Va>,Va>{};
+
+
+
+
+
+
+
+
+
+template <class Va>
+    class Moment_statistics : public var::Var<Moment_statistics<Va>,
+                                          var::Vector_Space<mean<Va>,variance<Va>,count>>
+{
+public:
+    using base_type=var::Var<Moment_statistics<Va>,
+        var::Vector_Space<mean<Va>,variance<Va>,count>>;
+    
+
+public:
+    Moment_statistics():base_type{var::Vector_Space{mean<Va>(Va{}),variance<Va>(Va{}), count{0}}}{}
+    Moment_statistics(Va x):base_type{var::Vector_Space{mean<Va>(x),variance<Va>(x-x), count{1}}}{}
+    Moment_statistics(mean<Va> x,variance<Va> v,count n):base_type{var::Vector_Space{x,v,n}}{}
+    
+   friend  Moment_statistics operator&(const Moment_statistics& one, const Moment_statistics& other) {
+        double n0=get<count>((one)())();
+        double n1 =get<count>((other)())();
+        
+        auto m0=get<mean<Va>>((one)())()();
+        auto m1 =get<mean<Va>>((other)())()();
+        
+        auto v0=get<variance<Va>>((one)())()();
+        auto v1 =get<variance<Va>>((other)())()();
+        double n=n0+n1;
+        
+        auto m= m0+ n1/n *(m1-m0);
+        auto v = v0 + (n1-1)/(n-1)* (v1-v0) + n0/(n-1) * sqr_X(m0-m) + n1/(n-1) * sqr_X(m1-m);
+        
+        Moment_statistics out;
+        get<mean<Va>>((out)())()()=m;
+        get<variance<Va>>((out)())()()=v;
+        get<count>((out)())()=n;
+        
+        
+        return out;
+    }
+    
+     Moment_statistics operator&=( const Moment_statistics& other)
+    {
+         return  *this & other;
+    }
+    
+    Moment_statistics& operator&=( const Va& x)
+    {
+        auto n0=get<count>((*this)())();
+        
+        auto m0=get<mean<Va>>((*this)())()();
+        
+        auto v0=get<variance<Va>>((*this)())()();
+        auto n=n0+1;
+        
+        auto m= m0+ (x()-m0)/n;
+        get<count>((*this)())()=n;
+        get<variance<Va>>((*this)())()()=v0 + (sqr_X(x()-m)-v0)/n0 + sqr_X(m0-m);
+        get<mean<Va>>((*this)())()()=std::move(m);
+        return *this;
+          
+    }
+    void reset()
+    {
+        get<count>((*this)())()=0;
+        get<mean<Va>>((*this)())()=Va{};
+        get<variance<Va>>((*this)())()=Va{};
+    }
+    
+    
+  friend  Moment_statistics operator+(const Moment_statistics& one, const Moment_statistics& other) {
+      
+      auto n0=get<count>((one)())();
+      auto m0=get<mean<Va>>((one)())()();
+      auto v0=get<variance<Va>>((one)())()();
+      auto n1=get<count>((other)())();
+      auto m1=get<mean<Va>>((other)())()();
+      auto v1=get<variance<Va>>((other)())()();
+      return Moment_statistics(
+              mean<Va>(Va(m0+m1)),
+            variance<Va>(Va(v0+v1)),
+            count(std::min(n0,n1) ));
+  }
+      
+      friend Moment_statistics operator*(double a, Moment_statistics const& one )
+      {
+          auto n0=get<count>((one)())();
+          auto m0=get<mean<Va>>((one)())()();
+          auto v0=get<variance<Va>>((one)())()();
+          return Moment_statistics(
+              mean<Va>(Va(m0*a)),
+              variance<Va>(Va(v0*a*a)),
+              count(n0 ));
+      }
+};
+
+
 
 
 class emcee_Step_statistics
@@ -162,6 +272,23 @@ class Thermo_Jump_statistics
     : public var::Constant<Thermo_Jump_statistics, Trial_statistics> {};
 
 
+
+class logL_statistics : public var::Constant<logL_statistics, Moment_statistics<logL>>{
+ public:
+    using var::Constant<logL_statistics, Moment_statistics<logL>>::Constant;
+    logL_statistics(logL t_logL): var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>(t_logL)}{}
+    logL_statistics():logL_statistics(logL(0.0)){}
+    
+    friend logL_statistics operator+(const logL_statistics& one, const logL_statistics& two)
+    {
+        return logL_statistics(one()+two());
+    }
+    friend logL_statistics operator*(double a, const logL_statistics& one)
+    {
+        return logL_statistics(a * one());
+    }
+    
+};
 
 
 template<class Parameters>
