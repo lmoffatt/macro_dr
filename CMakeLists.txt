@@ -369,6 +369,7 @@ add_executable(macro_dr main.cpp
     experiments/Moffatt_Hume_2007_ATP_time_idealized_old.txt
     slurm_Serafin/run_M_scheme_7.sh
     CLI_thermo_evidence_dts.h
+    scripts/evidence_thermo_dts_data.txt
     
     
     

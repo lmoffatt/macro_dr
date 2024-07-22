@@ -107,7 +107,7 @@ public:
     constexpr auto const& operator()()const{return m_x;}
     constexpr auto& operator[](Var<Id>){return *this;}
     constexpr auto& operator[](Var<Id>) const{return *this;}
-    constexpr Var(){}
+    constexpr Var()=default;
     constexpr auto& value()const {return m_x;}
     
     
@@ -184,9 +184,7 @@ public:
     template<class T0,class... Ts>
     constexpr auto operator()(const T0,const Ts&...)const {return Id(*this);}
     
-    constexpr Constant(){
-        
-    }
+    constexpr Constant()=default;
     constexpr auto& value()const {return m_x;}
     
     

@@ -60,6 +60,7 @@ template <class Id> struct Model_Patch {
 
     auto &names() const { return std::get<std::vector<std::string>>(m_f); }
     auto &parameters_transformations() const { return m_param; }
+    auto number_of_states()const {return get_Q0_formula()().size();}
     
     auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
     auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }

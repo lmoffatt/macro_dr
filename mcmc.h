@@ -124,6 +124,8 @@ class Trial_statistics
     : public var::Constant<Trial_statistics,
                            var::Vector_Space<Trial_count, Success_count>> {
 public:
+    using base_type=var::Constant<Trial_statistics,
+                                    var::Vector_Space<Trial_count, Success_count>>;
     Trial_statistics &operator+=(const Trial_statistics other) {
         get<Trial_count>((*this)())() += get<Trial_count>(other())();
         get<Success_count>((*this)())() += get<Success_count>(other())();
@@ -132,7 +134,7 @@ public:
     Trial_statistics(Trial_count n, Success_count s): var::Constant<Trial_statistics,
                         var::Vector_Space<Trial_count, Success_count>>(var::Vector_Space(n,s)){}
     
-    Trial_statistics()=default;
+    Trial_statistics(): base_type{var::Vector_Space(Trial_count(0), Success_count(0))}{}
     
     friend void succeeds(Trial_statistics &me) {
         ++get<Trial_count>(me())();
@@ -196,8 +198,11 @@ public:
         double n=n0+n1;
         
         auto m= m0+ n1/n *(m1-m0);
-        auto v = v0 + (n1-1)/(n-1)* (v1-v0) + n0/(n-1) * sqr_X(m0-m) + n1/(n-1) * sqr_X(m1-m);
         
+        auto malt= (m0*n0 + m1*n1)/n;
+        
+      //  auto v = n>1?v0 + (n1-1)/(n-1)* (v1-v0) + n0/(n-1) * sqr_X(m0-m) + n1/(n-1) * sqr_X(m1-m):0;
+        auto v = n>1? ((n0-1)* v0 + n0* sqr_X(m0) + (n1-1)* v1 + n1* sqr_X(m1) - n * sqr_X(m))/(n-1):0;          
         Moment_statistics out;
         get<mean<Va>>((out)())()()=m;
         get<variance<Va>>((out)())()()=v;
@@ -207,9 +212,10 @@ public:
         return out;
     }
     
-     Moment_statistics operator&=( const Moment_statistics& other)
+     Moment_statistics& operator&=( const Moment_statistics& other)
     {
-         return  *this & other;
+         *this=  *this & other;
+        return *this;
     }
     
     Moment_statistics& operator&=( const Va& x)
@@ -222,8 +228,11 @@ public:
         auto n=n0+1;
         
         auto m= m0+ (x()-m0)/n;
+        auto v = n>1?v0 + (sqr_X(x()-m)-v0)/n0 + sqr_X(m0-m):0;
+       // auto v = n>1? ((n0-1)* v0 + n0* sqr_X(m0) +   sqr_X(x()) - n * sqr_X(m))/(n-1):0;          
+        
         get<count>((*this)())()=n;
-        get<variance<Va>>((*this)())()()=v0 + (sqr_X(x()-m)-v0)/n0 + sqr_X(m0-m);
+        get<variance<Va>>((*this)())()()=std::move(v);
         get<mean<Va>>((*this)())()()=std::move(m);
         return *this;
           
@@ -266,7 +275,9 @@ public:
 
 
 class emcee_Step_statistics
-    : public var::Constant<emcee_Step_statistics, Trial_statistics> {};
+    : public var::Constant<emcee_Step_statistics, Trial_statistics> {
+    
+};
 
 class Thermo_Jump_statistics
     : public var::Constant<Thermo_Jump_statistics, Trial_statistics> {};
@@ -277,7 +288,7 @@ class logL_statistics : public var::Constant<logL_statistics, Moment_statistics<
  public:
     using var::Constant<logL_statistics, Moment_statistics<logL>>::Constant;
     logL_statistics(logL t_logL): var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>(t_logL)}{}
-    logL_statistics():logL_statistics(logL(0.0)){}
+    logL_statistics():var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>{}}{}
     
     friend logL_statistics operator+(const logL_statistics& one, const logL_statistics& two)
     {

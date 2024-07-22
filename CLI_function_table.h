@@ -22,22 +22,24 @@ inline auto set_CueviAlgorithm(
     std::size_t max_iter_equilibrium, std::string path,
     double n_points_per_decade_beta_high, double n_points_per_decade_beta_low,
     bool average_the_ATP_evolution, std::string filename,
-    std::size_t thermo_jumps_every, std::size_t save_every_param_factor) {
+    std::size_t thermo_jumps_every, std::size_t sampling_interval,std::size_t max_number_of_values_per_iteration) {
     using namespace macrodr;
     
     return std::tuple(
         path, filename, average_the_ATP_evolution, num_scouts_per_ensemble,
         number_trials_until_give_up, thermo_jumps_every, max_iter_equilibrium,
         n_points_per_decade_beta_high, n_points_per_decade_beta_low, medium_beta,
-        stops_at, includes_zero, random_jumps, save_every_param_factor);
+        stops_at, includes_zero, random_jumps, sampling_interval,max_number_of_values_per_iteration);
 }
 
 inline auto get_function_Table_maker_St(std::string filename,
-                                        std::size_t save_every) {
+                                        std::size_t sampling_interval,
+                                        std::size_t max_number_of_values_per_iteration
+                                        ) {
     using namespace macrodr;
-    return [filename, save_every]() {
+    return [filename, sampling_interval,max_number_of_values_per_iteration]() {
         return var::FuncMap_St(
-            filename, save_every,
+            filename, sampling_interval,max_number_of_values_per_iteration,
             Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{},
                          cuevi::step_stretch_cuevi_mcmc{})),
             Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{},
@@ -278,7 +280,7 @@ inline std::string run_simulation(std::string filename_prefix,
                     else {
                         auto param1 = Maybe_parameter_values.value().standard_parameter();
                         save_Parameter<var::Parameters_transformed> s(filename,
-                                                                               1);
+                                                                               1ul,200ul);
                         if (!includeN) {
                             auto sim = Macro_DMR{}.sample(
                                 mt, model0, param1, experiment,
@@ -320,7 +322,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
     using namespace macrodr;
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     auto save_every = num_scouts_per_ensemble;
-    auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
+    auto ftbl3 = get_function_Table_maker_St(filename, save_every,save_every)();
     
     auto Maybe_model_v = get_model(model);
     if (Maybe_model_v) {
@@ -335,7 +337,7 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                       thermo_jump_factor, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low,
                       medium_beta, stops_at, includes_zero, random_jumps,
-                      save_every_param_factor] = std::move(algorithm);
+                      sampling_interval,max_number_of_values_per_iteration] = std::move(algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction_approximation,
@@ -396,7 +398,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     auto save_every = num_scouts_per_ensemble;
     
-    auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
+    auto ftbl3 = get_function_Table_maker_St(filename, save_every,save_every)();
     
     auto Maybe_model_v = get_model(model);
     if (!Maybe_model_v)
@@ -482,7 +484,7 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     
     auto save_every = num_scouts_per_ensemble;
-    auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
+    auto ftbl3 = get_function_Table_maker_St(filename, save_every,save_every)();
     
     auto Maybe_model_v = get_model(model);
     
@@ -505,10 +507,10 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                 
                 auto [path, file_name, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium,
+                      thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low,
                       medium_beta, stops_at, includes_zero, random_jumps,
-                      save_every_param_factor] = std::move(cuevi_algorithm);
+                      sampling_interval,max_number_of_values_per_iteration] = std::move(cuevi_algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction,
@@ -524,8 +526,6 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                     std::cerr << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
                     
                     if (Maybe_ys.valid() && Maybe_e.valid()) {
                         
@@ -533,16 +533,11 @@ calc_fraction_evidence(std::string model, prior_value_type prior,
                                                time_now() + "_" + std::to_string(myseed);
                         
                         auto saving_itervals = Saving_intervals(Vector_Space(
-                            Save_Evidence_every(save_every_param_factor *
-                                                param1_prior.size()),
-                            Save_Likelihood_every(save_every_param_factor *
-                                                  param1_prior.size()),
-                            Save_Parameter_every(save_every_param_factor *
-                                                 param1_prior.size() * 4),
-                            Save_RateParameter_every(save_every_param_factor *
-                                                 param1_prior.size() * 4),
-                            Save_Predictions_every(save_every_param_factor *
-                                                   param1_prior.size() * 500)));
+                            Save_Evidence_every(std::pair( sampling_interval,max_number_of_values_per_iteration) ),
+                            Save_Likelihood_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Parameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration) ),
+                            Save_RateParameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration) ),
+                            Save_Predictions_every(std::pair( sampling_interval,max_number_of_values_per_iteration) )));
                         
                         auto cbc = new_cuevi_Model_already_fraction_by_iteration(
                             path, filename, num_scouts_per_ensemble,
@@ -589,7 +584,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     
     auto save_every = num_scouts_per_ensemble;
-    auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
+    auto ftbl3 = get_function_Table_maker_St(filename, save_every,save_every)();
     
     auto Maybe_model_v = get_model(model);
     
@@ -606,10 +601,10 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                     std::move(fraction_algo);
                 auto [path, file_name, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium,
+                      thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low,
-                      medium_beta, stops_at, includes_zero, saving_itervals,
-                      random_jumps] = std::move(cuevi_algorithm);
+                      medium_beta, stops_at, includes_zero, 
+                      random_jumps, sampling_interval,max_number_of_values_per_iteration] = std::move(cuevi_algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction,
@@ -625,8 +620,6 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                     std::cerr << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
@@ -642,11 +635,11 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                             auto t_segments_used = std::move(Maybe_t_segments_used.value());
                             
                             auto saving_itervals = Saving_intervals(Vector_Space(
-                                Save_Evidence_every(num_scouts_per_ensemble),
-                                Save_Likelihood_every(num_scouts_per_ensemble),
-                                Save_Parameter_every(num_scouts_per_ensemble),
-                                Save_RateParameter_every(num_scouts_per_ensemble),
-                                Save_Predictions_every(num_scouts_per_ensemble * 500)));
+                                Save_Evidence_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                                Save_Likelihood_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                                Save_Parameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                                Save_RateParameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                                Save_Predictions_every(std::pair( sampling_interval,max_number_of_values_per_iteration))));
                             
                             auto cbc = new_cuevi_Model_by_iteration(
                                 path, filename, t_segments_used, average_the_ATP_evolution,
@@ -692,7 +685,7 @@ inline void calc_evidence_continuation(
     using namespace macrodr;
     auto [filename, num_scouts_per_ensemble] = std::move(ft);
     auto save_every = num_scouts_per_ensemble;
-    auto ftbl3 = get_function_Table_maker_St(filename, save_every)();
+    auto ftbl3 = get_function_Table_maker_St(filename, save_every,save_every)();
     
     auto Maybe_model_v = get_model(model);
     if (Maybe_model_v) {
@@ -715,10 +708,10 @@ saving_itervals, random_jumps
                 
                 auto [path, file_name, average_the_ATP_evolution,
                       num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium,
+                      thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low,
                       medium_beta, stops_at, includes_zero, random_jumps,
-                      save_every_param_factor] = std::move(algorithm);
+                      sampling_interval,max_number_of_values_per_iteration] = std::move(algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction_approximation,
@@ -734,8 +727,6 @@ saving_itervals, random_jumps
                     std::cerr << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
@@ -765,16 +756,11 @@ saving_itervals, random_jumps
                         auto &t_segments_used = t_segments_7;
                         
                         auto saving_itervals = Saving_intervals(Vector_Space(
-                            Save_Evidence_every(param1_prior.size() *
-                                                save_every_param_factor),
-                            Save_Likelihood_every(param1_prior.size() *
-                                                  save_every_param_factor),
-                            Save_Parameter_every(param1_prior.size() *
-                                                 save_every_param_factor),
-                            Save_RateParameter_every(param1_prior.size() *
-                                                 save_every_param_factor),
-                            Save_Predictions_every(param1_prior.size() *
-                                                   save_every_param_factor * 50)));
+                            Save_Evidence_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Likelihood_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Parameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_RateParameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Predictions_every(std::pair( sampling_interval,max_number_of_values_per_iteration))));
                         
                         auto cbc = new_cuevi_Model_by_iteration(
                             path, filename, t_segments_used, average_the_ATP_evolution,

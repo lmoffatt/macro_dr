@@ -861,7 +861,15 @@ public:
                      const by_fraction<Variables> &x, ...) {
 
     auto &t = data.get_Cuevi_Temperatures();
-    if (iter % s.save_every == 0) {
+      auto num_states = lik.m.number_of_states();
+    auto num_fr=data.get_Cuevi_Temperatures_Number();
+      std::size_t num_values = 32;
+      std::size_t point_size =
+          num_values * data.get_Walkers_number() * num_fr ;
+      std::size_t sampling_interval = std::max(
+          s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+      
+    if (iter % sampling_interval == 0) {
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
       for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
            ++i_walker) {
@@ -935,7 +943,7 @@ public:
             log_Evidence = log_Evidence + plog_Evidence;
             log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
           }
-          s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_fra()
+          s.f << iter << s.sep << dur.count() << s.sep << i_cu << s.sep << i_fra()
               << s.sep << nsamples << s.sep << beta1 << s.sep << beta0 << s.sep
               << i_walker << s.sep << get<Walker_id>(wa())() << s.sep
               << logPrior << sep(logL1, s.sep) << s.sep << getv<logL>(logL0)
@@ -994,7 +1002,17 @@ public:
                      ...) {
 
     auto &t = data.get_Cuevi_Temperatures();
-    if (iter % s.save_every == 0) {
+      
+      auto num_fr=data.get_Cuevi_Temperatures_Number();
+      std::size_t num_values = 4;
+      std::size_t point_size =
+          num_values * data.get_Walkers_number() * num_fr *data.get_Parameters_number() ;
+      std::size_t sampling_interval = std::max(
+          s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+      
+      if (iter % sampling_interval == 0) {
+    
+    
       for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
            ++i_cu) {
         auto icu = Cuevi_Index(i_cu);
@@ -1009,7 +1027,7 @@ public:
 
           for (std::size_t i_par = 0; i_par < data.get_Parameters_number();
                ++i_par) {
-            s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_fra()
+            s.f << iter << s.sep << dur.count() << s.sep << i_cu << s.sep << i_fra()
                 << s.sep << size(y[i_fra()]) << s.sep
                 << get<Th_Beta>(t()[i_cu])() << s.sep << i_walker << s.sep
                 << get<Walker_id>(wa())() << s.sep << i_mts << s.sep
@@ -1171,7 +1189,9 @@ public:
                      const by_fraction<Variables> &x, ...) {
 
     auto &t = data.get_Cuevi_Temperatures();
-    if (iter % s.save_every == 0) {
+      std::size_t num_values=32;
+      std::size_t point_size=num_values*data.get_Cuevi_Temperatures_Number();
+      if (iter % std::max(s.sampling_interval,point_size/s.max_number_of_values_per_iteration) == 0){ 
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
       auto logL1 = data.calc_Mean_logLik(Cuevi_Index(0ul));
       auto logL1_0 = data.calc_Mean_logLik_0(Cuevi_Index(0ul));
@@ -1234,7 +1254,7 @@ public:
           log_Evidence = log_Evidence + plog_Evidence;
           log_Evidence_no_0 = log_Evidence_no_0 + plog_Evidence;
         }
-        s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
+        s.f << iter << s.sep << dur.count() << s.sep << i_cu << s.sep << i_frac()
             << s.sep << nsamples << s.sep << beta1 << s.sep << beta0 << s.sep
             << logPrior << sep(logL1, s.sep) << sep(logL0, s.sep)
             << sep(plog_Evidence, s.sep) << sep(log_Evidence, s.sep)<<s.sep
