@@ -670,10 +670,13 @@ public:
     separator sep = ",";
     std::string fname;
     std::ofstream f;
-    std::size_t save_every;
-    save_Levenberg_Lambdas(std::string const &path, std::size_t interval)
+    std::size_t sampling_interval;
+    std::size_t max_number_of_values_per_iteration;
+    
+    save_Levenberg_Lambdas(std::string const &path, std::size_t t_sampling_interval,
+                std::size_t t_max_number_of_values_per_iteration)
         : fname{path}, f{std::ofstream(path + "__i_beta__i_lambda.csv")},
-        save_every{interval} {
+        sampling_interval{t_sampling_interval},max_number_of_values_per_iteration{t_max_number_of_values_per_iteration} {
         f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     }
     
@@ -707,10 +710,13 @@ public:
     separator sep = ",";
     std::string fname;
     std::ofstream f;
-    std::size_t save_every;
-    save_Levenberg_Errors(std::string const &path, std::size_t interval)
+    std::size_t sampling_interval;
+    std::size_t max_number_of_values_per_iteration;
+    
+    save_Levenberg_Errors(std::string const &path, std::size_t t_sampling_interval,
+                std::size_t t_max_number_of_values_per_iteration)
         : fname{path}, f{std::ofstream(path + "__i_beta__i_errors.csv")},
-        save_every{interval} {
+        sampling_interval{t_sampling_interval},max_number_of_values_per_iteration{t_max_number_of_values_per_iteration} {
         f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     }
     
@@ -719,11 +725,11 @@ public:
 
 
 class save_Levenberg_Lambdas_every
-    : public var::Var<save_Levenberg_Lambdas_every, std::size_t> {};
+    : public var::Var<save_Levenberg_Lambdas_every, std::pair<std::size_t,std::size_t>> {};
 
 
 class save_Levenberg_Errors_every
-    : public var::Var<save_Levenberg_Errors_every, std::size_t> {};
+    : public var::Var<save_Levenberg_Errors_every, std::pair<std::size_t,std::size_t>> {};
 
 
 class Saving_Levenberg_intervals
@@ -756,8 +762,16 @@ template <class Parameter, class FunctionTable, class Duration>
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_likelihood<Parameter> &s, thermo_levenberg_mcmc  &current,
             by_beta<double> t_beta, ...) {
-    if (iter % s.save_every == 0) {
-        //std::cerr<<"report save_Likelihood\n";
+    
+    std::size_t num_values=16;
+    auto num_beta=t_beta.size();
+    std::size_t point_size =
+        num_values * num_beta ;
+    std::size_t sampling_interval = std::max(
+        s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+    
+    if (iter % sampling_interval == 0) {
+      //std::cerr<<"report save_Likelihood\n";
         logLs t_logL = {};
         double beta = 0;
         logLs log_Evidence = var::Vector_Space<logL, elogL, vlogL>(
@@ -770,7 +784,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             beta = t_beta[i_beta];
             auto plog_Evidence = (beta - beta0) * (logL0 + t_logL) / 2.0;
             log_Evidence = log_Evidence + plog_Evidence;
-            s.f << iter << s.sep << dur << s.sep << beta << s.sep
+            s.f << iter << s.sep << dur.count() << s.sep << beta << s.sep
                 << current.walkers[i_beta].m_data.i_walker << s.sep
                 << get<logL>(current.walkers[i_beta].m_data.m_logP)
                 << t_logL.sep(s.sep) << plog_Evidence.sep(s.sep)
@@ -780,7 +794,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
                 <<current.walkers[i_beta].m_thermo_stat().count()<<s.sep
                 <<current.walkers[i_beta].m_thermo_stat().rate()
                 << "\n";
-            if (iter % (s.save_every*10) == 0)
+            if (iter % (sampling_interval*10) == 0)
             {
                 current.walkers[i_beta].m_step_stat().reset();
                 current.walkers[i_beta].m_thermo_stat().reset();
@@ -812,14 +826,22 @@ template <class Parameter, class FunctionTable, class Duration>
 void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Parameter<Parameter> &s, thermo_levenberg_mcmc const &current,
             by_beta<double> t_beta, ...) {
-    if (iter % s.save_every == 0){
+    std::size_t num_values=4;
+    auto num_beta=current.walkers.size();
+    std::size_t point_size =
+        num_values * num_beta *num_Parameters(current) ;
+    std::size_t sampling_interval = std::max(
+        s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+    
+    if (iter % sampling_interval == 0) {
+        
         //std::cerr<<"report save_Parameter\n";
         
         for (std::size_t i_beta = 0; i_beta < current.walkers.size(); ++i_beta)
             for (std::size_t i_par = 0;
                  i_par < current.walkers[i_beta].m_data.m_x.size(); ++i_par)
                 
-                s.f << iter << s.sep << dur << s.sep << t_beta[i_beta] << s.sep
+                s.f << iter << s.sep << dur.count() << s.sep << t_beta[i_beta] << s.sep
                     << current.walkers[i_beta].m_data.i_walker << s.sep << i_par
                     << s.sep << current.walkers[i_beta].m_data.m_x[i_par] << s.sep
                     << get<Grad>(current.walkers[i_beta].m_data.m_logL)()[i_par]
@@ -852,7 +874,15 @@ template <class Parameter, class FunctionTable, class Duration>
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_Levenberg_Lambdas<Parameter> &s,
             thermo_levenberg_mcmc &current, by_beta<double> t_beta, ...) {
-    if (iter % s.save_every == 0){
+    std::size_t num_values=8;
+    auto num_beta=size(t_beta);
+    auto v_num_landa=num_lambdas(current);
+    std::size_t point_size =
+        num_values * num_beta *v_num_landa ;
+    std::size_t sampling_interval = std::max(
+        s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+    
+    if (iter % sampling_interval == 0) {
         //std::cerr<<"report save_Levenberg_Lambdas\n";
         for (std::size_t i_beta = 0; i_beta < t_beta.size(); ++i_beta) {
             auto it_cum = current.walkers[i_beta].m_lambda.cumulative().begin();
@@ -861,7 +891,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
                  ++i_lambda) {
                 auto p1=std::max(it_cum->first,p);
                 
-                s.f << iter << s.sep << dur << s.sep << t_beta[i_beta] << s.sep
+                s.f << iter << s.sep << dur.count() << s.sep << t_beta[i_beta] << s.sep
                     << current.walkers[i_beta].m_lambda.lambda(i_lambda) << s.sep
                     << current.walkers[i_beta].m_lambda.stat(i_lambda).count() << s.sep
                     << current.walkers[i_beta].m_lambda.stat(i_lambda).rate() << s.sep
@@ -881,11 +911,19 @@ template <class Parameter, class FunctionTable, class Duration>
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_Levenberg_Errors<Parameter> &s,
             thermo_levenberg_mcmc &current, by_beta<double> t_beta, ...) {
-    if (iter % s.save_every == 0){
+    std::size_t num_values=8;
+    auto num_beta=size(t_beta);
+    auto v_num_error=current.walkers[0].m_error().size();
+    std::size_t point_size =
+        num_values * num_beta *v_num_error ;
+    std::size_t sampling_interval = std::max(
+        s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+    
+    if (iter % sampling_interval == 0) {
         for (std::size_t i_beta = 0; i_beta < t_beta.size(); ++i_beta) {
             for (std::size_t i_error = 0; i_error < current.walkers[i_beta].m_error().size(); ++i_error)
             {
-                s.f << iter << s.sep << dur << s.sep << t_beta[i_beta] << s.sep
+                s.f << iter << s.sep << dur.count() << s.sep << t_beta[i_beta] << s.sep
                     <<i_error<<s.sep
                     << current.walkers[i_beta].m_error()[i_error].error;
                 for (std::size_t ipar=0; ipar<current.walkers[i_beta].m_error()[i_error].parameter.size(); ++ipar)

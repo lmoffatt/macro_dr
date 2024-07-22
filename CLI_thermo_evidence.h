@@ -139,7 +139,8 @@ inline void calc_thermo_evidence(std::string id, std::string model,
                                  std::string recording,
                                  experiment_file_type experiment_file,
                                  thermo_algo_type thermo_algorithm,
-                                 std::size_t save_every, std::size_t myseed) {
+                                 std::size_t sampling_interval,
+                                 std::size_t max_number_of_values_per_iteration, std::size_t myseed) {
     myseed = calc_seed(myseed);
     std::string filename =
         id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
@@ -147,12 +148,12 @@ inline void calc_thermo_evidence(std::string id, std::string model,
     if (true) {
         std::ofstream f("thermo_evidence_" + id + ".txt");
         save_vars(f, filename, model, prior, likelihood, recording, experiment_file,
-                  thermo_algorithm, save_every, myseed);
+                  thermo_algorithm, sampling_interval,max_number_of_values_per_iteration, myseed);
     }
     using namespace macrodr;
     auto experiment= get_Experiment(std::get<0>(experiment_file),std::get<1>(experiment_file),std::get<2>(experiment_file));
     
-    auto ftbl3 = cmd::get_function_Table_maker_St(filename, save_every)();
+    auto ftbl3 = cmd::get_function_Table_maker_St(filename, sampling_interval,max_number_of_values_per_iteration)();
     
     auto Maybe_model_v = get_model(model);
     
@@ -161,13 +162,13 @@ inline void calc_thermo_evidence(std::string id, std::string model,
         return std::visit(
             
             [&filename, &ftbl3, &experiment, &recording, &prior, &likelihood,
-             &thermo_algorithm, &myseed](auto model0ptr) {
+             &thermo_algorithm, &myseed,sampling_interval,max_number_of_values_per_iteration ](auto model0ptr) {
                 std::string sep = ",";
                 auto &model0 = *model0ptr;
                 mt_64i mt(myseed);
                 
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, beta_size,
+                      thermo_jumps_every, max_iter_equilibrium, beta_size,
                       beta_upper_size, beta_medium_size, beta_upper_value,
                       beta_medium_value, stops_at, includes_zero,
                       save_every_param_size_factor] = std::move(thermo_algorithm);
@@ -187,24 +188,17 @@ inline void calc_thermo_evidence(std::string id, std::string model,
                               << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
                     if (Maybe_y) {
                         
                         auto saving_intervals = Saving_intervals(Vector_Space(
-                            Save_Evidence_every(save_every_param_size_factor *
-                                                param1_prior.size()),
-                            Save_Likelihood_every(save_every_param_size_factor *
-                                                  param1_prior.size()),
-                            Save_Parameter_every(save_every_param_size_factor *
-                                                 param1_prior.size()*4),
-                            Save_RateParameter_every(save_every_param_size_factor *
-                                                 param1_prior.size()* 32),
-                            Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 4)));
+                            Save_Evidence_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Likelihood_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Parameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_RateParameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Predictions_every(std::pair( sampling_interval,max_number_of_values_per_iteration))));
                         
                         auto tmi = new_thermo_Model_by_max_iter(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
@@ -247,7 +241,9 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
     std::string recording;
     experiment_file_type experiment_file;
     thermo_algo_type thermo_algorithm;
-    std::size_t save_every;
+    std::size_t sampling_interval;
+    std::size_t max_number_of_values_per_iteration;
+    
     std::size_t myseed;
     std::string filename;
     if (true) {
@@ -258,7 +254,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
             return;
         }
         load_vars(f, filename, model, prior, likelihood, recording, experiment_file,
-                  thermo_algorithm, save_every, myseed);
+                  thermo_algorithm, sampling_interval,max_number_of_values_per_iteration, myseed);
     }
     auto experiment= get_Experiment(std::get<0>(experiment_file),std::get<1>(experiment_file),std::get<2>(experiment_file));
     
@@ -270,7 +266,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
     using namespace macrodr;
     
     
-    auto ftbl3 = get_function_Table_maker_St(newfilename, save_every)();
+    auto ftbl3 = get_function_Table_maker_St(newfilename, sampling_interval,max_number_of_values_per_iteration)();
     
     auto Maybe_model_v = get_model(model);
     
@@ -278,14 +274,15 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
             [&oldfilename, &ftbl3, &experiment, &recording, &prior, &likelihood,
-             &thermo_algorithm, &myinit_seed, &newfilename](auto model0ptr) {
+             &thermo_algorithm, &myinit_seed, &newfilename,
+             sampling_interval,max_number_of_values_per_iteration](auto model0ptr) {
                 std::string sep = ",";
                 auto &model0 = *model0ptr;
                 auto myseed = calc_seed(myinit_seed);
                 mt_64i mt(myseed);
                 
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
-                      thermo_jump_factor, max_iter_equilibrium, beta_size,
+                      thermo_jumps_every, max_iter_equilibrium, beta_size,
                       beta_upper_size, beta_medium_size, beta_upper_value,
                       beta_medium_value, stops_at, includes_zero,
                       save_every_param_size_factor] = std::move(thermo_algorithm);
@@ -305,24 +302,17 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith, s
                               << Maybe_param1_prior.error()();
                 } else {
                     auto param1_prior = std::move(Maybe_param1_prior.value());
-                    std::size_t thermo_jumps_every =
-                        param1_prior.size() * thermo_jump_factor;
                     
                     Recording y;
                     auto Maybe_y = load_Recording_Data(recording, ",", y);
                     if (Maybe_y) {
                         
                         auto saving_intervals = Saving_intervals(Vector_Space(
-                            Save_Evidence_every(save_every_param_size_factor *
-                                                param1_prior.size()),
-                            Save_Likelihood_every(save_every_param_size_factor *
-                                                  param1_prior.size()),
-                            Save_Parameter_every(save_every_param_size_factor *
-                                                 param1_prior.size()*4),
-                            Save_RateParameter_every(save_every_param_size_factor *
-                                                 param1_prior.size()* 32),
-                            Save_Predictions_every(save_every_param_size_factor *
-                                                   param1_prior.size() * 4)));
+                            Save_Evidence_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Likelihood_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Parameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_RateParameter_every(std::pair( sampling_interval,max_number_of_values_per_iteration)),
+                            Save_Predictions_every(std::pair( sampling_interval,max_number_of_values_per_iteration))));
                         
                         auto tmi = new_thermo_Model_by_max_iter(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,

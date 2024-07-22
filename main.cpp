@@ -267,12 +267,12 @@ fraction_algo, std::string model,std::size_t i_seed )
       "set_CueviAlgorithm",
       dcli::to_typed_function<std::size_t, std::size_t, double, double, bool,
                               bool, std::size_t, std::string, double, double,
-                              std::size_t, std::string, std::size_t, std::size_t>(
+                              std::size_t, std::string, std::size_t, std::size_t, std::size_t>(
           &set_CueviAlgorithm, "num_scouts_per_ensemble",
           "number_trials_until_give_up", "stops_at", "medium_beta",
           "includes_zero", "random_jumps", "max_iter_equilibrium", "path",
           "n_points_per_decade_beta_high", "n_points_per_decade_beta_low",
-          "average_the_ATP_evolution", "filename", "thermo_jump_factor", "save_every_param_size_factor"));
+          "average_the_ATP_evolution", "filename", "thermo_jumps_every", "sampling_interval","max_number_of_values_per_iteration"));
 
   /**
    * set_ThermoAlgorithm(std::size_t num_scouts_per_ensemble,
@@ -301,28 +301,20 @@ fraction_algo, std::string model,std::size_t i_seed )
           "beta_medium_value",
           "includes_zero",
           "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "thermo_jump_factor",
+          "beta_medium_size",  "thermo_jumps_every",
           "save_every_param_size_factor"));
   
   
   cm.push_function(
       "set_ThermoAlgorithm_dts",
-      dcli::to_typed_function<std::size_t ,
-                              std::size_t ,
-                              double ,
-                              double , double ,
-                              bool , std::size_t ,
+      dcli::to_typed_function<    std::size_t ,
                               std::size_t ,
                               std::size_t , std::size_t ,
-                              std::size_t ,
-                              std::size_t ,std::size_t ,
+                              std::size_t , std::size_t ,std::size_t ,
                               double ,double >(
           &set_ThermoAlgorithm_dts, "num_scouts_per_ensemble",
-          "number_trials_until_give_up", "stops_at", "beta_upper_value",
-          "beta_medium_value",
-          "includes_zero",
-          "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "thermo_jump_factor",
+          "number_trials_until_give_up", 
+          "max_iter_equilibrium", "beta_size",  "thermo_jumps_every",
           "save_every_param_size_factor","adapt_beta_every","adapt_beta_nu","adapt_beta_t0"));
   
   
@@ -336,7 +328,7 @@ calc_thermo_evidence(std::string id,
                                  experiment_type experiment,
                                  thermo_algo_type thermo_algorithm,
                                  std::string ft_filename,
-                                 std::size_t save_every,
+                                 std::size_t sampling_interval,max_number_of_values_per_iteration,
                                  std::size_t myseed)
    * */
 
@@ -344,9 +336,9 @@ calc_thermo_evidence(std::string id,
       "thermo_evidence",
       dcli::to_typed_function<std::string,
                               std::string, std::string, likelihood_algo_type, std::string,
-                              experiment_file_type, thermo_algo_type, std::size_t, std::size_t>(
+                              experiment_file_type, thermo_algo_type, std::size_t, std::size_t, std::size_t>(
           &calc_thermo_evidence, "idname","model", "prior", "likelihood_algorithm",
-          "data", "experiment", "thermo_algorithm", "save_every",
+          "data", "experiment", "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
           "init_seed"));
   
   
@@ -355,9 +347,9 @@ calc_thermo_evidence(std::string id,
       "thermo_evidence_dts",
       dcli::to_typed_function<std::string,
                               std::string, std::string, likelihood_algo_type, std::string,
-                              experiment_file_type, thermo_algo_dts_type, std::size_t, std::size_t>(
+                              experiment_file_type, thermo_algo_dts_type, std::size_t,std::size_t, std::size_t>(
           &calc_thermo_evidence_dts, "idname","model", "prior", "likelihood_algorithm",
-          "data", "experiment", "thermo_algorithm", "save_every",
+          "data", "experiment", "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
           "init_seed"));
   
   
@@ -420,7 +412,7 @@ calc_thermo_evidence(std::string id,
           "beta_medium_value",
           "includes_zero",
           "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "n_lambdas","lambda_adaptive_algorithm","thermo_jump_factor",
+          "beta_medium_size",  "n_lambdas","lambda_adaptive_algorithm","thermo_jumps_every",
           "save_every_param_size_factor"));
   
   
@@ -432,16 +424,16 @@ calc_thermo_evidence(std::string id,
                                  std::string recording,
                                  experiment_file_type experiment_file,
                                  thermo_leven_algo_type thermo_algorithm,
-                                 std::size_t save_every, std::size_t myseed) 
+                                 std::size_t sampling_interval,max_number_of_values_per_iteration, std::size_t myseed) 
    * */
   
   cm.push_function(
       "thermo_levenberg_evidence",
       dcli::to_typed_function<std::string,
                               std::string, std::string, likelihood_algo_type, std::string,
-                              experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t, double>(
+                              experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t,std::size_t, double>(
           &calc_thermo_levenberg_evidence, "idname","model", "prior", "likelihood_algorithm",
-          "data", "experiment", "thermo_levenberg_algorithm", "save_every",
+          "data", "experiment", "thermo_levenberg_algorithm", "sampling_interval","max_number_of_values_per_iteration",
           "init_seed", "delta_par"));
   
   

@@ -18,11 +18,13 @@ public:
     std::string sep = ",";
     std::string fname;
     std::ofstream f;
-    std::size_t save_every = 1;
+    std::size_t sampling_interval;
+ std::size_t max_number_of_values_per_iteration;
     std::chrono::duration<double> m_prev_dur;
-    save_Iter(std::string const &path, std::size_t interval)
+    save_Iter(std::string const &path, std::size_t t_sampling_interval,
+                std::size_t t_max_number_of_values_per_iteration)
         : fname{path}, f{std::ofstream(path + "_iter_time.csv")},
-        save_every{interval} {
+        sampling_interval{t_sampling_interval},max_number_of_values_per_iteration{t_max_number_of_values_per_iteration} {
         f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     }
     
@@ -37,9 +39,13 @@ public:
     friend void report(FunctionTable &&, std::size_t iter,
                        const std::chrono::duration<double> dur, save_Iter &s,
                        ...) {
-        if (iter % s.save_every == 0) {
+        std::size_t point_size=2;
+        std::size_t sampling_interval = std::max(
+            s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+        
+        if (iter % sampling_interval == 0){
             
-            s.f << iter << s.sep << dur << s.sep << dur - s.m_prev_dur << "\n";
+            s.f << iter << s.sep << dur.count() << s.sep << (dur- s.m_prev_dur).count() << "\n";
             s.m_prev_dur = dur;
         }
         if (iter % 10 == 0)
@@ -55,32 +61,51 @@ public:
   std::string sep = ",";
   std::string fname;
   std::ofstream f;
-  std::size_t save_every = 1;
-  save_Evidence(std::string const &path, std::size_t interval)
+  std::size_t sampling_interval;
+ std::size_t max_number_of_values_per_iteration;
+  save_Evidence(std::string const &path, std::size_t t_sampling_interval,
+                std::size_t t_max_number_of_values_per_iteration)
       : fname{path}, f{std::ofstream(path + "__i_iter.csv")},
-        save_every{interval} {
+        sampling_interval{t_sampling_interval},max_number_of_values_per_iteration{t_max_number_of_values_per_iteration} {
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
   }
 
   template <class Parameters>
   friend void report_title(save_Evidence &s, thermo_mcmc<Parameters> const &,
                            ...) {
-
-    s.f << "iter"
+      
+          
+          s.f << "iter"
           << s.sep << "iter_time"
+          << s.sep<< "i_beta"
           << s.sep<< "beta"
-          << s.sep<< "eff_size"
+          << s.sep<< "sample_size"
+          
+          << s.sep<< "effective_sample_size"
+          
+          
           << s.sep << "meanPrior"
           << s.sep << "logL"<< s.sep << "elogL"<< s.sep << "vlogL"
+          
+          
+          
           << s.sep << "var_logL" << s.sep << "var_elogL" << s.sep << "var_vlogL"
           
           << s.sep << "mean_logL_across" << s.sep << "var_logL_across" << s.sep << "count_logL_across"
+          
           << s.sep << "var_logL_within"
+          
           << s.sep << "plog_Evidence" << s.sep<< "eplog_Evidence" << s.sep << "vplog_Evidence"
+          
           << s.sep<< "log_Evidence" << s.sep << "elog_Evidence"   << s.sep << "vlog_Evidence"
           
+          
+          << s.sep << "mean_logL" << s.sep<< "var_logL" << s.sep << "count_logL"
+          
           << s.sep << "mean_plog_Evidence" << s.sep<< "var_plog_Evidence" << s.sep << "count_plog_Evidence"
-          << s.sep<< "mean_log_Evidence" << s.sep << "var_log_Evidence"   << s.sep << "var_log_Evidence"
+          << s.sep<< "mean_log_Evidence" << s.sep << "var_log_Evidence"   << s.sep << "count_log_Evidence"
+          
+          
           
           << s.sep << "deltaEvidence_variance"
           << s.sep << "Acceptance_variance"
@@ -89,18 +114,26 @@ public:
           << s.sep << "thermo_jump_stat_count"
           << s.sep << "thermo_jump_rate"
           << "\n";
-      
-      
+          
+          
+              
+          
        
   }
 
   template <class FunctionTable, class Duration, class Parameters>
   friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                      save_Evidence &s, thermo_mcmc<Parameters> &data, ...) {
-    if (iter % s.save_every == 0) {
-        
+      
+      std::size_t num_values=32;
+      std::size_t point_size=num_values*num_betas(data);
+      std::size_t sampling_interval = std::max(
+          s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+      if (iter % sampling_interval == 0){ 
+       
     auto across =calculate_across_sta(data.walkers_sta);
     auto within = calculate_within_sta(data.walkers_sta);
+    auto sample_size =calculate_sample_size(data.walkers_sta);
     auto eff_size= calculate_effective_sample_size(across,within);
     
     auto deltaEvidence_variance =
@@ -112,55 +145,62 @@ public:
       auto meanPrior = mean_logP(data);
 
       auto varLik = var_logL(data, meanLik);
-      if (data.beta[0] == 1) {
           logLs r_logL = {};
          double beta = 0;
           logL_statistics m_logL={};      
           logLs log_Evidence = {};
           logL_statistics m_log_Evidence={};
-        for (std::size_t i_beta = num_betas(data); i_beta > 0; --i_beta) {
+          for (std::size_t i_beta = 0; i_beta <data.get_Beta().size() ; ++i_beta) {
           auto logL0 = r_logL;
           auto m_logL0= m_logL;  
           double beta0 = beta;
-          beta = data.beta[i_beta - 1];
-          r_logL = meanLik[i_beta - 1];
-          m_logL= across[i_beta-1];
+          beta = data.beta[i_beta];
+          r_logL = meanLik[i_beta];
+          m_logL= across[i_beta];
           auto plog_Evidence = (beta - beta0) * (logL0 + r_logL) / 2;
           auto m_plog_Evidence =(beta - beta0)/2.0 * (m_logL0 + m_logL);
           log_Evidence = log_Evidence + plog_Evidence;
           m_log_Evidence =m_log_Evidence +m_plog_Evidence;
-          s.f << iter 
-              << s.sep<< dur 
-              << s.sep<< beta 
-              << s.sep<< eff_size[i_beta - 1]
+          auto emcee_count=data.emcee_stat[i_beta]().count();
+          auto emcee_rate=data.emcee_stat[i_beta]().rate();
+          auto thermo_count=data.thermo_stat[std::max(1ul,i_beta)-1ul]().count();
+          auto thermo_rate=data.thermo_stat[std::max(1ul,i_beta)-1ul]().rate();
+          
+          s.f << iter
+              << s.sep<< dur.count()
+              << s.sep<< i_beta 
+              << s.sep<< beta
+              <<s.sep<<sample_size
+              << s.sep<< eff_size[i_beta]
               
-              << s.sep<< meanPrior[i_beta - 1]
+              << s.sep<< meanPrior[i_beta ]
               << r_logL.sep(s.sep)
-              << varLik[i_beta - 1].sep(s.sep)
-              << across[i_beta-1]()().sep(s.sep)
-              <<s.sep<< within[i_beta - 1]()()
+              << varLik[i_beta ].sep(s.sep)
+              << across[i_beta]()().sep(s.sep)
+              <<s.sep<< within[i_beta]()()
               << plog_Evidence.sep(s.sep)
               << log_Evidence.sep(s.sep)
+              << m_logL()().sep(s.sep)
               << m_plog_Evidence()().sep(s.sep)
               << m_log_Evidence()().sep(s.sep)
-              << s.sep<<deltaEvidence_variance[std::max(2ul, i_beta) - 2]
-              << s.sep<<Acceptance_variance[std::max(2ul, i_beta) - 2]
-              << s.sep<< data.emcee_stat[std::max(2ul, i_beta) - 2]().count() 
-              << s.sep<< data.emcee_stat[std::max(2ul, i_beta) - 2]().rate() 
-              << s.sep<< data.thermo_stat[std::max(2ul, i_beta) - 2]().count()
-              << s.sep<< data.thermo_stat[std::max(2ul, i_beta) - 2]().rate() << "\n";
-        }
+              << s.sep<<deltaEvidence_variance[std::max(1ul, i_beta) - 1]
+              << s.sep<<Acceptance_variance[std::max(1ul, i_beta) - 1]
+              << s.sep<< emcee_count 
+              << s.sep<< emcee_rate 
+              << s.sep<< thermo_count
+              << s.sep<< thermo_rate
+              << "\n";
       }
-      data.reset_statistics();
     }
   }
 
   template <class FunctionTable, class Parameters>
   friend void report_old(FunctionTable &&f, std::size_t iter, save_Evidence &s,
                          thermo_mcmc<Parameters> const &data, ...) {
-    if (iter % s.save_every == 0) {
-
-      auto meanLik = mean_logL(data);
+      std::size_t num_values=10;
+      std::size_t point_size=num_values*num_betas(data);
+      if (iter % std::max(s.sampling_interval,point_size/s.max_number_of_values_per_iteration) == 0){ 
+         auto meanLik = mean_logL(data);
       auto meanPrior = mean_logP(data);
 
       auto varLik = var_logL(data, meanLik);
@@ -410,18 +450,16 @@ public:
   new_thermodynamic_integration(
       Algorithm &&alg, Reporter &&rep, std::size_t num_scouts_per_ensemble,
       std::size_t thermo_jumps_every, std::size_t beta_size,
-      std::size_t beta_upper_size, std::size_t beta_medium_size,
-      double beta_upper_value, double beta_medium_value, double stops_at,
-      bool includes_zero, std::size_t initseed,   std::size_t t_adapt_beta_every,
+      std::size_t initseed,   std::size_t t_adapt_beta_every,
       double t_adapt_beta_nu,double t_adapt_beta_t0)
       : alg_{std::move(alg)}, rep_{std::move(rep)},
       num_scouts_per_ensemble_{num_scouts_per_ensemble},
       thermo_jumps_every_{thermo_jumps_every}, beta_size_{beta_size},
-      beta_upper_size_{beta_upper_size}, beta_medium_size_{beta_medium_size},
-      beta_upper_value_{beta_upper_value},
-      beta_medium_value_{beta_medium_value},
+      beta_upper_size_{}, beta_medium_size_{},
+      beta_upper_value_{},
+      beta_medium_value_{},
 
-      stops_at_{stops_at}, includes_zero_{includes_zero},
+      stops_at_{}, includes_zero_{},
       initseed_{initseed}, adapt_beta_every_{t_adapt_beta_every},
       adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0} {}
   
@@ -709,7 +747,7 @@ auto thermo_evidence(FunctionTable &&f,
     }     
     auto mcmc_run = checks_convergence(std::move(a), current);
     
-    std::size_t iter = 0;
+    std::size_t iter = 1;
     const auto start = std::chrono::high_resolution_clock::now();
     auto &rep = therm.reporter();
     report_title(rep, current, lik, y, x);

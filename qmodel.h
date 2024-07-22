@@ -64,111 +64,110 @@ using std::max;
 using var::F;
 using var::FuncMap_St;
 using var::Time_it_st;
-
-
-/*
+  
+  /*
 class State_Model;
 
 
 Maybe_error<State_Model>
 to_State_Model(std::size_t t_number_of_states,
+             std::map<std::pair<std::size_t, std::size_t>, std::string>
+                 &t_transition_rates,
+             std::map<std::pair<std::size_t, std::size_t>, std::string>
+                 &t_agonist_transition_rates,
+             std::map<std::size_t, std::string> t_conductances);
+
+class State_Model {
+std::size_t m_number_of_states;
+
+std::map<std::pair<std::size_t, std::size_t>, std::string> m_transition_rates;
+std::map<std::pair<std::size_t, std::size_t>, std::string>
+    m_agonist_transition_rates;
+std::map<std::size_t, std::string> m_conductances;
+
+State_Model(std::size_t t_number_of_states,
+            std::map<std::pair<std::size_t, std::size_t>, std::string>
+                &t_transition_rates,
+            std::map<std::pair<std::size_t, std::size_t>, std::string>
+                &t_agonist_transition_rates,
+            std::map<std::size_t, std::string> t_conductances)
+    : m_number_of_states{t_number_of_states},
+      m_transition_rates{t_transition_rates},
+      m_agonist_transition_rates{t_agonist_transition_rates},
+      m_conductances{t_conductances} {}
+
+public:
+friend Maybe_error<State_Model>
+to_State_Model(std::size_t t_number_of_states,
                std::map<std::pair<std::size_t, std::size_t>, std::string>
                    &t_transition_rates,
                std::map<std::pair<std::size_t, std::size_t>, std::string>
                    &t_agonist_transition_rates,
-               std::map<std::size_t, std::string> t_conductances);
-
-class State_Model {
-  std::size_t m_number_of_states;
-
-  std::map<std::pair<std::size_t, std::size_t>, std::string> m_transition_rates;
-  std::map<std::pair<std::size_t, std::size_t>, std::string>
-      m_agonist_transition_rates;
-  std::map<std::size_t, std::string> m_conductances;
-
-  State_Model(std::size_t t_number_of_states,
-              std::map<std::pair<std::size_t, std::size_t>, std::string>
-                  &t_transition_rates,
-              std::map<std::pair<std::size_t, std::size_t>, std::string>
-                  &t_agonist_transition_rates,
-              std::map<std::size_t, std::string> t_conductances)
-      : m_number_of_states{t_number_of_states},
-        m_transition_rates{t_transition_rates},
-        m_agonist_transition_rates{t_agonist_transition_rates},
-        m_conductances{t_conductances} {}
-
-public:
-  friend Maybe_error<State_Model>
-  to_State_Model(std::size_t t_number_of_states,
-                 std::map<std::pair<std::size_t, std::size_t>, std::string>
-                     &t_transition_rates,
-                 std::map<std::pair<std::size_t, std::size_t>, std::string>
-                     &t_agonist_transition_rates,
-                 std::map<std::size_t, std::string> t_conductances) {
-    for (auto &elem : t_transition_rates) {
-      if (elem.first.first >= t_number_of_states)
-        return error_message(
-            "transition start state greater than number of "
-            "states; number_of_states = " +
-            std::to_string(t_number_of_states) +
-            " start state= " + std::to_string(elem.first.first));
-      else if (elem.first.second >= t_number_of_states)
-        return error_message(
-            "transition end state greater than number of "
-            "states; number_of_states = " +
-            std::to_string(t_number_of_states) +
-            " end state= " + std::to_string(elem.first.second));
-      else if (elem.first.second == t_number_of_states)
-        return error_message(
-            "transition start state same as end state;  start state: " +
-            std::to_string(elem.first.first) +
-            " end state= " + std::to_string(elem.first.second));
-    }
-    //
-    for (auto &elem : t_agonist_transition_rates) {
-      if (elem.first.first >= t_number_of_states)
-        return error_message(
-            "agonist transition start state greater than number of "
-            "states; number_of_states = " +
-            std::to_string(t_number_of_states) +
-            " start state= " + std::to_string(elem.first.first));
-      else if (elem.first.second >= t_number_of_states)
-        return error_message(
-            "agonist transition end state greater than number of "
-            "states; number_of_states = " +
-            std::to_string(t_number_of_states) +
-            " end state= " + std::to_string(elem.first.second));
-      else if (elem.first.second == t_number_of_states)
-        return error_message(
-            "agonist transition start state same as end state;  start state: " +
-            std::to_string(elem.first.first) +
-            " end state= " + std::to_string(elem.first.second));
-    }
-
-    std::size_t i_cond = 0;
-    for (auto &elem : t_conductances) {
-      if (elem.first >= t_number_of_states)
-        return error_message(
-            "state conductance number greater than number of states:"
-            " proposed= " +
-            std::to_string(elem.first) +
-            " number_of_states = " + std::to_string(t_number_of_states));
-
-      if (elem.first != i_cond)
-        return error_message("state conductance skipped: current is" +
-                             std::to_string(i_cond) +
-                             " proposed= " + std::to_string(elem.first));
-      ++i_cond;
-    }
-    if (i_cond != t_number_of_states)
+               std::map<std::size_t, std::string> t_conductances) {
+  for (auto &elem : t_transition_rates) {
+    if (elem.first.first >= t_number_of_states)
       return error_message(
-          "state conductance missing: number of proposed states=" +
-          std::to_string(i_cond) +
+          "transition start state greater than number of "
+          "states; number_of_states = " +
+          std::to_string(t_number_of_states) +
+          " start state= " + std::to_string(elem.first.first));
+    else if (elem.first.second >= t_number_of_states)
+      return error_message(
+          "transition end state greater than number of "
+          "states; number_of_states = " +
+          std::to_string(t_number_of_states) +
+          " end state= " + std::to_string(elem.first.second));
+    else if (elem.first.second == t_number_of_states)
+      return error_message(
+          "transition start state same as end state;  start state: " +
+          std::to_string(elem.first.first) +
+          " end state= " + std::to_string(elem.first.second));
+  }
+  //
+  for (auto &elem : t_agonist_transition_rates) {
+    if (elem.first.first >= t_number_of_states)
+      return error_message(
+          "agonist transition start state greater than number of "
+          "states; number_of_states = " +
+          std::to_string(t_number_of_states) +
+          " start state= " + std::to_string(elem.first.first));
+    else if (elem.first.second >= t_number_of_states)
+      return error_message(
+          "agonist transition end state greater than number of "
+          "states; number_of_states = " +
+          std::to_string(t_number_of_states) +
+          " end state= " + std::to_string(elem.first.second));
+    else if (elem.first.second == t_number_of_states)
+      return error_message(
+          "agonist transition start state same as end state;  start state: " +
+          std::to_string(elem.first.first) +
+          " end state= " + std::to_string(elem.first.second));
+  }
+
+  std::size_t i_cond = 0;
+  for (auto &elem : t_conductances) {
+    if (elem.first >= t_number_of_states)
+      return error_message(
+          "state conductance number greater than number of states:"
+          " proposed= " +
+          std::to_string(elem.first) +
           " number_of_states = " + std::to_string(t_number_of_states));
 
-    return State_Model(t_number_of_states, t_transition_rates,
-                       t_agonist_transition_rates, t_conductances);
+    if (elem.first != i_cond)
+      return error_message("state conductance skipped: current is" +
+                           std::to_string(i_cond) +
+                           " proposed= " + std::to_string(elem.first));
+    ++i_cond;
   }
+  if (i_cond != t_number_of_states)
+    return error_message(
+        "state conductance missing: number of proposed states=" +
+        std::to_string(i_cond) +
+        " number_of_states = " + std::to_string(t_number_of_states));
+
+  return State_Model(t_number_of_states, t_transition_rates,
+                     t_agonist_transition_rates, t_conductances);
+}
 };
 */
 
@@ -1415,8 +1414,8 @@ public:
 
   template <class C_Patch_Model>
     requires U<C_Patch_Model, Patch_Model>
-  auto calc_Qx(const C_Patch_Model &m, ATP_concentration x)
-      -> Transfer_Op_to<C_Patch_Model, Qx> {
+  auto calc_Qx(const C_Patch_Model &m,
+               ATP_concentration x) -> Transfer_Op_to<C_Patch_Model, Qx> {
     auto v_Qx = build<Qx>(get<Q0>(m)() + get<Qa>(m)() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
@@ -1426,8 +1425,8 @@ public:
   }
   template <class C_Q0, class C_Qa>
     requires U<C_Q0, Q0>
-  auto calc_Qx(const C_Q0 &t_Q0, const C_Qa &t_Qa, ATP_concentration x)
-      -> Transfer_Op_to<C_Q0, Qx> {
+  auto calc_Qx(const C_Q0 &t_Q0, const C_Qa &t_Qa,
+               ATP_concentration x) -> Transfer_Op_to<C_Q0, Qx> {
     auto v_Qx = build<Qx>(t_Q0() + t_Qa() * x.value());
     Matrix<double> u(v_Qx().ncols(), 1, 1.0);
     v_Qx() = v_Qx() - diag(v_Qx() * u);
@@ -1484,8 +1483,8 @@ public:
   }
 
   template <class C_Qx>
-  auto calc_eigen(const C_Qx &v_Qx)
-      -> Maybe_error<Transfer_Op_to<C_Qx, Qx_eig>> {
+  auto
+  calc_eigen(const C_Qx &v_Qx) -> Maybe_error<Transfer_Op_to<C_Qx, Qx_eig>> {
     auto maybe_eig = eigs(v_Qx());
     if (!maybe_eig)
       return maybe_eig.error();
@@ -1661,8 +1660,8 @@ public:
 
   template <class C_Qx>
     requires(/*U<C_Patch_Model, Patch_Model> &&*/ U<C_Qx, Qx>)
-  auto calc_Peq(C_Qx const &t_Qx, N_St nstates)
-      -> Transfer_Op_to<C_Qx, P_mean> {
+  auto calc_Peq(C_Qx const &t_Qx,
+                N_St nstates) -> Transfer_Op_to<C_Qx, P_mean> {
     auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
     auto v_eig_Qx = calc_eigen(t_Qx);
     if (v_eig_Qx) {
@@ -2393,8 +2392,8 @@ return error_message("nan P");
   template <class FunctionTable, class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model>)
   auto calc_Qdt(FunctionTable &f, const C_Patch_Model &m,
-                const ATP_step &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+                const ATP_step &t_step,
+                double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdt_step{}])>)
       return calc_Qdt_ATP_step(f, m, t_step, fs);
     else
@@ -2403,9 +2402,9 @@ return error_message("nan P");
 
   template <class FunctionTable, class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model>)
-  auto calc_Qdtm(FunctionTable &f, const C_Patch_Model &m,
-                 const ATP_step &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
+  auto
+  calc_Qdtm(FunctionTable &f, const C_Patch_Model &m, const ATP_step &t_step,
+            double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
     if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtm_step{}])>)
       return calc_Qdtm_ATP_step(f, m, t_step, fs);
     else
@@ -2455,8 +2454,8 @@ return error_message("nan P");
   template <class FunctionTable, class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model> )
   auto calc_Qdt(FunctionTable &f, const C_Patch_Model &m,
-                const std::vector<ATP_step> &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+                const std::vector<ATP_step> &t_step,
+                double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     if (t_step.empty())
       return error_message("Emtpy ATP step");
     else {
@@ -2483,9 +2482,10 @@ return error_message("nan P");
 
   template <class FunctionTable, class C_Patch_Model>
   // requires(U<C_Patch_Model, Patch_Model> )
-  auto calc_Qdtm(FunctionTable &f, const C_Patch_Model &m,
-                 const std::vector<ATP_step> &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
+  auto
+  calc_Qdtm(FunctionTable &f, const C_Patch_Model &m,
+            const std::vector<ATP_step> &t_step,
+            double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
     if (t_step.empty())
       return error_message("Emtpy ATP step");
     if (t_step.size() == 1)
@@ -2539,16 +2539,17 @@ return error_message("nan P");
   template <class FunctionTable, class C_Patch_Model>
   //   requires(U<C_Patch_Model, Patch_Model>)
   auto calc_Qdt(FunctionTable &f, const C_Patch_Model &m,
-                const ATP_evolution &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+                const ATP_evolution &t_step,
+                double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
     return calc_Qdt(f, m, t_step(), fs);
   }
 
   template <class FunctionTable, class C_Patch_Model>
   //   requires(U<C_Patch_Model, Patch_Model>)
-  auto calc_Qdtm(FunctionTable &f, const C_Patch_Model &m,
-                 const ATP_evolution &t_step, double fs)
-      -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
+  auto
+  calc_Qdtm(FunctionTable &f, const C_Patch_Model &m,
+            const ATP_evolution &t_step,
+            double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
     return calc_Qdtm(f, m, t_step(), fs);
   }
   
@@ -4459,16 +4460,16 @@ inline void report_title(save_Predictions<var::Parameters_transformed> &s,
                          thermo_mcmc<var::Parameters_transformed> const &,
                          ...) {
 
-  s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
-      << "i_walker" << s.sep << "id_walker" << s.sep << "i_step" << s.sep
-      << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
-      << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep
+  s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "beta"
+      << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
+      << s.sep << "time" << s.sep << "num_samples" << s.sep << "Y_obs" 
+      << s.sep << "Y_pred" << s.sep
       << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
       << "\n";
 
-  s.g << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep
-      << "i_walker" << s.sep << "id_walker" << s.sep << "i_step" << s.sep
-      << "i_state" << s.sep << "j_state" << s.sep << "moment" << s.sep
+  s.g << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "beta"
+      << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
+      << s.sep << "i_state" << s.sep << "j_state" << s.sep << "moment" << s.sep
       << "value"
       << "\n";
 }
@@ -4483,8 +4484,27 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Predictions<var::Parameters_transformed> &s,
             thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
             t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
-
-  if (iter % s.save_every != 0)
+    auto num_samples = size(y);
+    auto num_states = lik.m.number_of_states();
+    auto num_states_a =std::pow(2,std::round(std::log2(num_states)));
+    std::size_t num_values = 16;
+    std::size_t num_beta_portions = 2;
+    
+    std::size_t num_samples_a = std::pow(2,std::round(std::log2(size(y))));
+    std::size_t point_size = num_values * num_beta_portions * data.get_Walkers_number() * num_samples_a;
+    std::size_t sampling_interval = std::max(
+          s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+    
+    std::size_t state_num_values = 4;
+    std::size_t num_moments = 2;
+    std::size_t state_point_size = state_num_values * num_beta_portions *
+        data.get_Walkers_number() * num_samples_a *
+        num_states_a * num_moments;
+    std::size_t state_sampling_interval =
+        std::max(s.sampling_interval,
+                 state_point_size / s.max_number_of_values_per_iteration);
+    
+    if (iter % sampling_interval != 0)
     return;
   auto ff = f.fork(omp_get_max_threads());
   
@@ -4494,13 +4514,14 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
           data.get_Walkers_number());
 
   auto beta = data.get_Beta();
-  auto num_samples = size(y);
+  auto num_beta = beta.size();
+  
 #pragma omp parallel for
   for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
        ++i_walker) {
     for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
         
-        if ((beta[i_b] == 1) || (iter % (s.save_every * 32) == 0)) {
+        if ((beta[i_b] == 1) || (iter % (beta.size() * sampling_interval) == 0)) {
             auto i_th = omp_get_thread_num();
             
             auto par = data.get_Parameter(i_walker, i_b);
@@ -4515,11 +4536,12 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     for (std::size_t iiw = 0; iiw < data.get_Walkers_number() / 2; ++iiw) {
       auto i_walker = half ? iiw + data.get_Walkers_number() / 2 : iiw;
       for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-          if ((beta[i_b] == 1) || (iter % (s.save_every * 32) == 0)) {
+          if ((beta[i_b] == 1) ||
+              (iter % (beta.size() * sampling_interval) == 0)) {
               
               auto par = data.get_Parameter(i_walker, i_b);
               auto walker_id = data.get_Walker(i_walker, i_b);
-              auto prediction = iter % (s.save_every * 32) == 0
+              auto prediction = (iter % (beta.size() * sampling_interval) == 0)
                   ? all_Predictions[i_walker][i_b]
                     : all_Predictions[i_walker][0];
               if (is_valid(prediction)) {
@@ -4531,32 +4553,38 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                       auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
                       auto num_smples = get_num_samples(v_ev);
                       
-                      s.f << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
-                          << i_walker << s.sep << walker_id << s.sep << i_step << s.sep
-                          << time << s.sep << num_samples << s.sep
-                          << ToString(average_ATP_step(v_ev, true)) << s.sep
-                          << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
+                      s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep
+                          << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                          << s.sep << i_step << s.sep << time << s.sep << num_samples
+                          << s.sep << y()[i_step]() << s.sep
                           << get<y_mean>(predictions()[i_step]) << s.sep
                           << get<y_var>(predictions()[i_step]) << s.sep
                           << get<plogL>(predictions()[i_step]) << s.sep
                           << get<eplogL>(predictions()[i_step]) << "\n";
                       
-                      if ((iter % (s.save_every * 32) == 0)&&(beta[i_b] == 1)) {
+                      if (((iter % state_sampling_interval == 0) && (beta[i_b] == 1)) ||
+                          (iter % (state_sampling_interval * num_beta) == 0)) {
                 auto &v_P = get<P_mean>(predictions()[i_step]);
                 auto &v_Pc = get<P_Cov>(predictions()[i_step]);
                 auto n = v_P().size();
                 for (std::size_t i_state = 0; i_state < n; ++i_state) {
-                    s.g << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
-                        << i_walker << s.sep << walker_id << s.sep << i_step
-                        << s.sep << i_state << s.sep << 0 << s.sep << "mean"
-                        << s.sep << v_P()[i_state] << "\n";
-                    if (iter % (s.save_every * 32) == 0)
-                    for (std::size_t j_state = 0; j_state <= i_state; ++j_state) {
-                    s.g << iter << s.sep << dur << s.sep << beta[i_b] << s.sep
-                        << i_walker << s.sep << walker_id << s.sep << i_step
-                        << s.sep << i_state << s.sep << j_state << s.sep
-                        << "Cov" << s.sep << v_Pc()(i_state, j_state) << "\n";
-                  }
+                    s.g << iter << s.sep << dur.count() << s.sep << i_b << s.sep
+                        << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                        << s.sep << i_step << s.sep << i_state << s.sep << 0
+                        << s.sep << "mean" << s.sep << v_P()[i_state] << "\n";
+                    if ((iter % (state_sampling_interval * num_states) == 0) &&
+                        ((beta[i_b] == 1)) ||
+                        (iter %
+                         (state_sampling_interval * num_states * num_beta) ==
+                         0))
+                      for (std::size_t j_state = 0; j_state <= i_state;
+                           ++j_state) {
+                          s.g << iter << s.sep << dur.count() << s.sep << i_b
+                              << s.sep << beta[i_b] << s.sep << i_walker << s.sep
+                              << walker_id << s.sep << i_step << s.sep << i_state
+                              << s.sep << j_state << s.sep << "Cov" << s.sep
+                              << v_Pc()(i_state, j_state) << "\n";
+                        }
                   }
                         }
                     }
@@ -4587,7 +4615,11 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
               thermo_levenberg_mcmc const &data, by_beta<double> t_beta, Prior &&,
               t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
     
-    if (iter % s.save_every != 0)
+    std::size_t num_values = 8;
+    std::size_t point_size = num_values * size(y) * t_beta.size();
+    if (iter % std::max(s.sampling_interval,
+                        point_size / s.max_number_of_values_per_iteration) !=
+        0)
       return;
     // std::cerr<<"report save_Predictions\n";
     
@@ -4622,7 +4654,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                 auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
                 auto num_smples = get_num_samples(v_ev);
                 
-                s.f << iter << s.sep << dur << s.sep << t_beta[i_b] << s.sep
+                s.f << iter << s.sep << dur.count() << s.sep << t_beta[i_b] << s.sep
                     << walker_id << s.sep << i_step << s.sep << time << s.sep
                     << num_samples << s.sep << ToString(average_ATP_step(v_ev, true))
                     << s.sep << ToString(v_ev) << s.sep << y()[i_step]() << s.sep
@@ -4724,7 +4756,15 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
             t_logLikelihood &&lik, ...) {
   
-  if (iter % s.save_every != 0)
+  auto num_states = lik.m.number_of_states();
+  std::size_t num_values = 4;
+  std::size_t num_beta_portions = 2;
+  std::size_t point_size = num_values * num_beta_portions *
+      data.get_Walkers_number() * num_states * num_states;
+  std::size_t sampling_interval = std::max(
+        s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+  
+  if (iter % sampling_interval != 0)
     return;
   auto &model = lik.m;
   auto beta = data.get_Beta();
@@ -4732,30 +4772,30 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
   for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
        ++i_walker) {
       for (std::size_t i_b = 0; i_b < beta.size(); ++i_b) {
-          if (beta[i_b]==1){
-          auto par = data.get_Parameter(i_walker, i_b);
-          auto walker_id = data.get_Walker(i_walker, i_b);
-          auto Maybe_mo = model(par.to_value());
-          if (is_valid(Maybe_mo)) {
-              auto &mo = Maybe_mo.value();
-              auto v_Q0 = get<Q0>(mo);
-              auto v_Qa = get<Qa>(mo);
-              
-              for (std::size_t i_from = 0; i_from < v_Q0().nrows(); ++i_from)
-                for (std::size_t i_to = 0; i_to < v_Q0().ncols(); ++i_to) {
-                    if (v_Qa()(i_from, i_to) > 0)
-                      s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
-                          << beta[i_b] << s.sep << i_walker << s.sep << walker_id
-                          << s.sep << "agonist" << s.sep << i_from << s.sep << i_to
-                          << s.sep << v_Qa()(i_from, i_to) << "\n";
-                    if (v_Q0()(i_from, i_to) > 0)
-                      s.f << beta.size() << s.sep << iter << s.sep << dur << s.sep
-                          << beta[i_b] << s.sep << i_walker << s.sep << walker_id
-                          << s.sep << "no_agonist" << s.sep << i_from << s.sep << i_to
-                          << s.sep << v_Q0()(i_from, i_to) << "\n";
-                  }
+          if (beta[i_b] == 1) {
+              auto par = data.get_Parameter(i_walker, i_b);
+              auto walker_id = data.get_Walker(i_walker, i_b);
+              auto Maybe_mo = model(par.to_value());
+              if (is_valid(Maybe_mo)) {
+                  auto &mo = Maybe_mo.value();
+                  auto v_Q0 = get<Q0>(mo);
+                  auto v_Qa = get<Qa>(mo);
+                  
+                  for (std::size_t i_from = 0; i_from < v_Q0().nrows(); ++i_from)
+                    for (std::size_t i_to = 0; i_to < v_Q0().ncols(); ++i_to) {
+                        if (v_Qa()(i_from, i_to) > 0)
+                          s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep
+                              << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                              << s.sep << "agonist" << s.sep << i_from << s.sep << i_to
+                              << s.sep << v_Qa()(i_from, i_to) << "\n";
+                        if (v_Q0()(i_from, i_to) > 0)
+                          s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep
+                              << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                              << s.sep << "no_agonist" << s.sep << i_from << s.sep << i_to
+                              << s.sep << v_Q0()(i_from, i_to) << "\n";
+                      }
+                }
             }
-        }
     }
     }
 }
@@ -4906,7 +4946,14 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             const cuevi::by_fraction<Variables> &xs, ...) {
 
   auto &t = data.get_Cuevi_Temperatures();
-  if (iter % s.save_every != 0) {
+  auto num_fr = data.get_Cuevi_Temperatures_Number();
+  std::size_t num_values = 8;
+  std::size_t point_size = num_values * data.get_Walkers_number() * num_fr *
+      data.get_Parameters_number();
+  std::size_t sampling_interval = std::max(
+      s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
+  
+  if (iter % sampling_interval != 0) {
     return;
   }
   data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
@@ -4960,10 +5007,10 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             auto v_ev = get<ATP_evolution>(
                 get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
-            s.f << iter << s.sep << dur << s.sep << i_cu << s.sep << i_frac()
-                << s.sep << nsamples << s.sep << beta() << s.sep << i_walker
-                << s.sep << get<cuevi::Walker_id>(wa())() << s.sep << i_step
-                << s.sep
+            s.f << iter << s.sep << dur.count() << s.sep << i_cu << s.sep
+                << i_frac() << s.sep << nsamples << s.sep << beta() << s.sep
+                << i_walker << s.sep << get<cuevi::Walker_id>(wa())() << s.sep
+                << i_step << s.sep
                 << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_step])
                 << s.sep << get_num_samples(v_ev) << s.sep
                 << ToString(average_ATP_step(v_ev, true)) << s.sep
@@ -5113,7 +5160,8 @@ auto new_thermo_Model_by_max_iter(
                 save_Parameter<var::Parameters_transformed>,
         save_RateParameter<var::Parameters_transformed>, save_Evidence,
                 save_Predictions<var::Parameters_transformed>>(
-          path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
+          path, filename, std::pair(1ul, 1ul),
+          get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_RateParameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
@@ -5126,13 +5174,9 @@ auto new_thermo_Model_by_max_iter(
 auto new_thermo_Model_by_max_iter_dts(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
-    std::size_t beta_size, std::size_t beta_upper_size,
-    std::size_t beta_medium_size, double beta_upper_value,
-    double beta_medium_value,
-
-    double stops_at, bool includes_zero, Saving_intervals sint,
-    std::size_t initseed,std::size_t t_adapt_beta_every,
-    double t_adapt_beta_nu,double t_adapt_beta_t0) {
+    std::size_t beta_size, Saving_intervals sint, std::size_t initseed,
+    std::size_t t_adapt_beta_every, double t_adapt_beta_nu,
+    double t_adapt_beta_t0) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed, save_Iter,
@@ -5140,19 +5184,15 @@ auto new_thermo_Model_by_max_iter_dts(
                 save_Parameter<var::Parameters_transformed>,
         save_RateParameter<var::Parameters_transformed>, save_Evidence,
                 save_Predictions<var::Parameters_transformed>>(
-          path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
+          path, filename, std::pair(1ul, 1ul),
+          get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<Save_RateParameter_every>(sint())(),
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
-      num_scouts_per_ensemble, thermo_jumps_every, beta_size, beta_upper_size,
-      beta_medium_size, beta_upper_value, beta_medium_value, stops_at,
-      includes_zero, initseed,t_adapt_beta_every,
-         t_adapt_beta_nu, t_adapt_beta_t0);
+      num_scouts_per_ensemble, thermo_jumps_every, beta_size, initseed,
+        t_adapt_beta_every, t_adapt_beta_nu, t_adapt_beta_t0);
 }
-
-
-
 
 auto thermo_levenberg_Model_by_max_iter(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
@@ -5170,7 +5210,8 @@ auto thermo_levenberg_Model_by_max_iter(
                 save_Levenberg_Lambdas<var::Parameters_transformed>,
         save_Levenberg_Errors<var::Parameters_transformed>,
                 save_Predictions<var::Parameters_transformed>>(
-          path, filename, 1ul, get<Save_Likelihood_every>(sint())(),
+          path, filename, std::pair(1ul, 1ul),
+          get<Save_Likelihood_every>(sint())(),
           get<Save_Parameter_every>(sint())(),
           get<save_Levenberg_Lambdas_every>(sint())(),
           get<save_Levenberg_Errors_every>(sint())(),
@@ -5194,7 +5235,8 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
                 save_likelihood<var::Parameters_transformed>,
                 save_Parameter<var::Parameters_transformed>, save_Evidence,
                 save_Predictions<var::Parameters_transformed>>(
-          path, filename, 10ul, 10ul, 10ul, 100ul),
+          path, filename, std::pair(10ul, 200ul), std::pair(10ul, 200ul),
+          std::pair(10ul, 200ul), std::pair(10ul, 200ul)),
       num_scouts_per_ensemble, max_num_simultaneous_temperatures,
       thermo_jumps_every, n_points_per_decade, stops_at, includes_zero,
       initseed);

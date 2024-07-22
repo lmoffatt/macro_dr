@@ -298,7 +298,9 @@ inline std::ostream &report_point(std::ostream &os, const std::string &, ...) {
 template <class... Fs> class FuncMap_St : public Fs... {
     std::string m_filename;
     std::string sep = ",";
-    std::size_t m_save_every;
+    std::size_t m_sampling_interval;
+    std::size_t m_max_number_of_values_per_iteration;
+    
     std::ofstream m_file;
     
 public:
@@ -310,14 +312,14 @@ public:
     
     auto &file() const { return m_filename; }
     
-    FuncMap_St(const std::string path, std::size_t save_every, Fs &&...fs)
-        : Fs{std::move(fs)}..., m_filename{path}, m_save_every{save_every} {}
+    FuncMap_St(const std::string path, std::size_t sampling_interval, std::size_t max_number_of_values_per_iteration, Fs &&...fs)
+        : Fs{std::move(fs)}..., m_filename{path}, m_sampling_interval{sampling_interval},m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
     
-    FuncMap_St(const std::string path, std::size_t save_every, Fs const &...fs)
-        : Fs{fs}..., m_filename{path}, m_save_every{save_every} {}
+    FuncMap_St(const std::string path, std::size_t sampling_interval, std::size_t max_number_of_values_per_iteration, Fs const &...fs)
+        : Fs{fs}..., m_filename{path}, m_sampling_interval{sampling_interval},m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
     
     FuncMap_St create(const std::string &suffix) const {
-        return FuncMap_St(file() + suffix, m_save_every,
+        return FuncMap_St(file() + suffix, m_sampling_interval,m_max_number_of_values_per_iteration,
                           static_cast<Fs const &>(*this).create()...);
     }
     
@@ -339,7 +341,7 @@ public:
     template <class... Context_data>
     friend auto &report_point(FuncMap_St<Fs...> &f, std::size_t iter,
                               const Context_data &...s) {
-        if (iter % std::max(1ul,f.m_save_every ) == 0) {
+        if (iter % std::max(f.m_sampling_interval,sizeof...(Fs)/f.m_max_number_of_values_per_iteration)  == 0) {
             if (!f.m_file.is_open()) {
                 f.m_file.open(f.m_filename + "_funcmap.csv", std::ios::app);
                 f.m_file << std::setprecision(std::numeric_limits<double>::digits10 +
@@ -379,7 +381,7 @@ public:
     template<class... Fs2>
     auto append(Fs2 const& ... fs2)const
     {
-        return FuncMap_St<Fs...,Fs2...>(m_filename,m_save_every,static_cast<Fs const&>(*this)...,fs2...);
+        return FuncMap_St<Fs...,Fs2...>(m_filename,m_sampling_interval, m_max_number_of_values_per_iteration,static_cast<Fs const&>(*this)...,fs2...);
     }
        
     auto &operator+=(const FuncMap_St &other) {
