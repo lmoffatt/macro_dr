@@ -5175,7 +5175,7 @@ auto new_thermo_Model_by_max_iter_dts(
     std::string path, std::string filename, std::size_t num_scouts_per_ensemble,
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     std::size_t beta_size, Saving_intervals sint, std::size_t initseed,
-    std::size_t t_adapt_beta_every, double t_adapt_beta_nu,
+    std::size_t t_adapt_beta_every, std::string t_adapt_beta_equalizer, std::string t_adapt_beta_constroler, std::string t_adapt_beta_variance, double t_adapt_beta_nu,
     double t_adapt_beta_t0) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
@@ -5191,7 +5191,7 @@ auto new_thermo_Model_by_max_iter_dts(
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, initseed,
-        t_adapt_beta_every, t_adapt_beta_nu, t_adapt_beta_t0);
+        t_adapt_beta_every, t_adapt_beta_equalizer,t_adapt_beta_constroler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0);
 }
 
 auto thermo_levenberg_Model_by_max_iter(

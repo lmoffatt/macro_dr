@@ -133,7 +133,6 @@ public:
        
     auto across =calculate_across_sta(data.walkers_sta);
     auto within = calculate_within_sta(data.walkers_sta);
-    auto sample_size =calculate_sample_size(data.walkers_sta);
     auto eff_size= calculate_effective_sample_size(across,within);
     
     auto deltaEvidence_variance =
@@ -170,7 +169,7 @@ public:
               << s.sep<< dur.count()
               << s.sep<< i_beta 
               << s.sep<< beta
-              <<s.sep<<sample_size
+              <<s.sep<<calculate_sample_size(data.walkers_sta,i_beta)
               << s.sep<< eff_size[i_beta]
               
               << s.sep<< meanPrior[i_beta ]
@@ -426,6 +425,9 @@ class new_thermodynamic_integration {
   bool includes_zero_;
   std::size_t initseed_;
   std::size_t adapt_beta_every_;
+  std::string adapt_beta_equalizer_;
+  std::string adapt_beta_controler_;
+  std::string adapt_beta_variance_;
   double adapt_beta_nu_;
   double adapt_beta_t0_;
 
@@ -451,6 +453,9 @@ public:
       Algorithm &&alg, Reporter &&rep, std::size_t num_scouts_per_ensemble,
       std::size_t thermo_jumps_every, std::size_t beta_size,
       std::size_t initseed,   std::size_t t_adapt_beta_every,
+      std::string t_adapt_beta_equalizer,
+      std::string t_adapt_beta_constroler,
+      std::string t_adapt_beta_variance,
       double t_adapt_beta_nu,double t_adapt_beta_t0)
       : alg_{std::move(alg)}, rep_{std::move(rep)},
       num_scouts_per_ensemble_{num_scouts_per_ensemble},
@@ -461,6 +466,9 @@ public:
 
       stops_at_{}, includes_zero_{},
       initseed_{initseed}, adapt_beta_every_{t_adapt_beta_every},
+      adapt_beta_equalizer_{t_adapt_beta_equalizer},
+      adapt_beta_controler_{t_adapt_beta_constroler},
+      adapt_beta_variance_{t_adapt_beta_variance},
       adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0} {}
   
   
@@ -481,6 +489,9 @@ public:
   auto &includes_zero() const { return includes_zero_; }
   auto &initseed() const { return initseed_; }
   auto &adapt_beta_every() const { return adapt_beta_every_; }
+  auto &adapt_beta_equalizer() const { return adapt_beta_equalizer_; }
+  auto &adapt_beta_controler() const { return adapt_beta_controler_; }
+  auto &adapt_beta_variance() const { return adapt_beta_variance_; }
   auto &adapt_beta_nu() const { return adapt_beta_nu_; }
   auto &adapt_beta_t0() const { return adapt_beta_t0_; }
 };
@@ -664,7 +675,7 @@ auto thermo_evidence_loop(
     while (!mcmc_run.second) {
         even_dur.record("main_loop_start");
         if constexpr (Adapt_beta)
-        adapt_beta(iter, current,beta_run, therm.adapt_beta_every(),therm.adapt_beta_nu(),therm.adapt_beta_t0()); 
+        adapt_beta(iter, current,beta_run, therm.adapt_beta_every(),therm.adapt_beta_equalizer(),therm.adapt_beta_controler(),therm.adapt_beta_variance(),therm.adapt_beta_nu(),therm.adapt_beta_t0()); 
         step_stretch_thermo_mcmc(f, iter,even_dur, current, rep, beta_run, mts, prior, lik,
                                  y, x);
         even_dur.record("befor_thermo_jump");  
