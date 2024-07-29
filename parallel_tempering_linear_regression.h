@@ -158,7 +158,8 @@ public:
           m_logL= across[i_beta];
           auto plog_Evidence = (beta - beta0) * (logL0 + r_logL) / 2;
           auto m_plog_Evidence =(beta - beta0)/2.0 * (m_logL0 + m_logL);
-          log_Evidence = log_Evidence + plog_Evidence;
+          if (beta0>0)
+              log_Evidence = log_Evidence + plog_Evidence;
           m_log_Evidence =m_log_Evidence +m_plog_Evidence;
           auto emcee_count=data.emcee_stat[i_beta]().count();
           auto emcee_rate=data.emcee_stat[i_beta]().rate();
