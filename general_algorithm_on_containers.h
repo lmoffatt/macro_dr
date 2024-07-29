@@ -35,7 +35,14 @@ auto apply_to(F&& f, std::vector<T> const& c)
     for (auto& e: c)
         out.push_back(std::invoke(std::forward<F>(f), e));
     return out;
-}    
+}
+
+
+template< class T,class C>
+auto is_in(T const& x, C const& c)
+{
+    return std::find(c.begin(), c.end(),x)!=c.end();
+}
 
 
     
