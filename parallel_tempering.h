@@ -600,7 +600,7 @@ void insert_high_temperture_beta(FunctionTable &f,std::size_t tested_index,
 
 #pragma omp parallel for // collapse(2)
         for (std::size_t iw = 0; iw < n_walkers; ++iw) {
-            i_walker[iw] = iw + last_walker;
+            i_walker[iw] = iw + last_walker+1;
             auto i_th = omp_get_thread_num();
             walker[iw] = init_mcmc(ff[i_th], mt[i_th], prior, lik, y, x);
         }
@@ -1496,6 +1496,7 @@ auto push_back_new_beta(FunctionTable &f, std::size_t &iter,
   auto n_beta_old = current.walkers.size();
   current.walkers.push_back(ensemble<mcmc<Parameters>>{});
   current.i_walkers.push_back(ensemble<std::size_t>{});
+  
   
   for (std::size_t half = 0; half < 2; ++half)
     for (std::size_t i = 0; i < n_walkers / 2; ++i) {
