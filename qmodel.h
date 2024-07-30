@@ -4460,14 +4460,14 @@ inline void report_title(save_Predictions<var::Parameters_transformed> &s,
                          thermo_mcmc<var::Parameters_transformed> const &,
                          ...) {
 
-  s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "beta"
+  s.f << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta"<< s.sep << "beta"
       << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
       << s.sep << "time" << s.sep << "num_samples" << s.sep << "Y_obs" 
       << s.sep << "Y_pred" << s.sep
       << "Y_var" << s.sep << "plogL" << s.sep << "pelogL"
       << "\n";
 
-  s.g << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "beta"
+  s.g << "iter" << s.sep << "iter_time" << s.sep << "i_beta" << s.sep << "num_beta"<< s.sep <<"beta"
       << s.sep << "i_walker" << s.sep << "id_walker" << s.sep << "i_step"
       << s.sep << "i_state" << s.sep << "j_state" << s.sep << "moment" << s.sep
       << "value"
@@ -4554,7 +4554,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
                       auto num_smples = get_num_samples(v_ev);
                       
                       s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep
-                          << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                          << beta.size() << s.sep << beta[i_b] 
+                             << s.sep << i_walker << s.sep << walker_id
                           << s.sep << i_step << s.sep << time << s.sep << num_samples
                           << s.sep << y()[i_step]() << s.sep
                           << get<y_mean>(predictions()[i_step]) << s.sep
@@ -4785,12 +4786,14 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
                     for (std::size_t i_to = 0; i_to < v_Q0().ncols(); ++i_to) {
                         if (v_Qa()(i_from, i_to) > 0)
                           s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep
-                              << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                              << beta.size() << s.sep << beta[i_b] 
+                              << s.sep << i_walker << s.sep << walker_id
                               << s.sep << "agonist" << s.sep << i_from << s.sep << i_to
                               << s.sep << v_Qa()(i_from, i_to) << "\n";
                         if (v_Q0()(i_from, i_to) > 0)
                           s.f << iter << s.sep << dur.count() << s.sep << i_b << s.sep
-                              << beta[i_b] << s.sep << i_walker << s.sep << walker_id
+                              << beta.size() << s.sep << beta[i_b] << s.sep 
+                              << i_walker << s.sep << walker_id
                               << s.sep << "no_agonist" << s.sep << i_from << s.sep << i_to
                               << s.sep << v_Q0()(i_from, i_to) << "\n";
                       }
@@ -5176,7 +5179,10 @@ auto new_thermo_Model_by_max_iter_dts(
     std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
     std::size_t beta_size, Saving_intervals sint, std::size_t initseed,
     std::size_t t_adapt_beta_every, std::string t_adapt_beta_equalizer, std::string t_adapt_beta_constroler, std::string t_adapt_beta_variance, double t_adapt_beta_nu,
-    double t_adapt_beta_t0) {
+    double t_adapt_beta_t0,  bool   t_adjust_beta,
+    double t_acceptance_upper_limit,
+    double t_acceptance_lower_limit,
+    double t_desired_acceptance) {
   return new_thermodynamic_integration(
       thermo_less_than_max_iteration(max_iter_equilibrium),
       save_mcmc<var::Parameters_transformed, save_Iter,
@@ -5191,7 +5197,10 @@ auto new_thermo_Model_by_max_iter_dts(
           get<Save_Evidence_every>(sint())(),
           get<Save_Predictions_every>(sint())()),
       num_scouts_per_ensemble, thermo_jumps_every, beta_size, initseed,
-        t_adapt_beta_every, t_adapt_beta_equalizer,t_adapt_beta_constroler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0);
+        t_adapt_beta_every, t_adapt_beta_equalizer,t_adapt_beta_constroler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0,     t_adjust_beta,
+         t_acceptance_upper_limit,
+         t_acceptance_lower_limit,
+         t_desired_acceptance);
 }
 
 auto thermo_levenberg_Model_by_max_iter(

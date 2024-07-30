@@ -399,7 +399,7 @@ public:
     
     static constexpr bool is_vector_space=true;
     
-    Vector_Space(){}
+    Vector_Space():Vars{}...{}
     Vector_Space(Vars&&...t_vars): Vars{std::move(t_vars)}...{}
     Vector_Space(Vars const&...t_vars): Vars{t_vars}...{}
     

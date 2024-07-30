@@ -290,6 +290,7 @@ class logL_statistics : public var::Constant<logL_statistics, Moment_statistics<
     logL_statistics(logL t_logL): var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>(t_logL)}{}
     logL_statistics():var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>{}}{}
     
+    
     friend logL_statistics operator+(const logL_statistics& one, const logL_statistics& two)
     {
         return logL_statistics(one()+two());

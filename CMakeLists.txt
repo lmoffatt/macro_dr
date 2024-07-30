@@ -370,6 +370,7 @@ add_executable(macro_dr main.cpp
     slurm_Serafin/run_M_scheme_7.sh
     CLI_thermo_evidence_dts.h
     scripts/evidence_thermo_dts_data.txt
+    scripts/beta_4.txt
     
     
     
