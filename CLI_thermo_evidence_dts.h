@@ -25,13 +25,19 @@ inline auto set_ThermoAlgorithm_dts(
     std::string t_adapt_beta_equalizer,
     std::string t_adapt_beta_controler,
     std::string t_adapt_beta_variance,
-    double t_adapt_beta_nu,double t_adapt_beta_t0) {
+    double t_adapt_beta_nu,double t_adapt_beta_t0,  bool   t_adjust_beta,
+    double t_acceptance_upper_limit,
+    double t_acceptance_lower_limit,
+    double t_desired_acceptance) {
     using namespace macrodr;
     
     return std::tuple(num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jumps_every, max_iter_equilibrium, beta_size,
                       save_every_param_size_factor,t_adapt_beta_every,
-                       t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0);
+                       t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0,     t_adjust_beta,
+                       t_acceptance_upper_limit,
+                       t_acceptance_lower_limit,
+                       t_desired_acceptance);
 }
 
 using thermo_algo_dts_type =
@@ -74,7 +80,10 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model,
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jumps_every, max_iter_equilibrium, beta_size,
                       save_every_param_size_factor,t_adapt_beta_every,
-                      t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0] = std::move(thermo_algorithm);
+                      t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0,     t_adjust_beta,
+                       t_acceptance_upper_limit,
+                       t_acceptance_lower_limit,
+                       t_desired_acceptance] = std::move(thermo_algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction,
@@ -106,7 +115,10 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model,
                         auto tmi = new_thermo_Model_by_max_iter_dts(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size,  saving_intervals, myseed,t_adapt_beta_every,t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,
-                             t_adapt_beta_nu, t_adapt_beta_t0);
+                             t_adapt_beta_nu, t_adapt_beta_t0,     t_adjust_beta,
+                             t_acceptance_upper_limit,
+                             t_acceptance_lower_limit,
+                             t_desired_acceptance);
                         
                         auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
                             uses_adaptive_aproximation(adaptive_aproximation),
@@ -184,7 +196,10 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                 auto [num_scouts_per_ensemble, number_trials_until_give_up,
                       thermo_jumps_every, max_iter_equilibrium, beta_size,
                       save_every_param_size_factor,t_adapt_beta_every,
-                      t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0] = std::move(thermo_algorithm);
+                      t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,t_adapt_beta_nu, t_adapt_beta_t0,     t_adjust_beta,
+                       t_acceptance_upper_limit,
+                       t_acceptance_lower_limit,
+                       t_desired_acceptance] = std::move(thermo_algorithm);
                 
                 auto [adaptive_aproximation, recursive_approximation,
                       averaging_approximation, variance_correction,
@@ -216,7 +231,10 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                         auto tmi = new_thermo_Model_by_max_iter_dts(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size, saving_intervals, myseed,t_adapt_beta_every,t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,
-                             t_adapt_beta_nu, t_adapt_beta_t0);
+                             t_adapt_beta_nu, t_adapt_beta_t0,t_adjust_beta,
+                            t_acceptance_upper_limit,
+                            t_acceptance_lower_limit,
+                            t_desired_acceptance);
                         
                         auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
                             uses_adaptive_aproximation(adaptive_aproximation),

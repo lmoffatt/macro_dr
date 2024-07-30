@@ -78,7 +78,8 @@ public:
           s.f << "iter"
           << s.sep << "iter_time"
           << s.sep<< "i_beta"
-          << s.sep<< "beta"
+          << s.sep<<"num_beta"
+          << s.sep << "beta"
           << s.sep<< "sample_size"
           
           << s.sep<< "effective_sample_size"
@@ -156,11 +157,14 @@ public:
           beta = data.beta[i_beta];
           r_logL = meanLik[i_beta];
           m_logL= across[i_beta];
-          auto plog_Evidence = (beta - beta0) * (logL0 + r_logL) / 2;
+          auto plog_Evidence = (beta - beta0)/ 2.0 * (logL0 + r_logL) ;
           auto m_plog_Evidence =(beta - beta0)/2.0 * (m_logL0 + m_logL);
           if (beta0>0)
+          {
               log_Evidence = log_Evidence + plog_Evidence;
-          m_log_Evidence =m_log_Evidence +m_plog_Evidence;
+              
+              m_log_Evidence =m_log_Evidence +m_plog_Evidence;
+          }
           auto emcee_count=data.emcee_stat[i_beta]().count();
           auto emcee_rate=data.emcee_stat[i_beta]().rate();
           auto thermo_count=data.thermo_stat[std::max(1ul,i_beta)-1ul]().count();
@@ -168,7 +172,8 @@ public:
           
           s.f << iter
               << s.sep<< dur.count()
-              << s.sep<< i_beta 
+              << s.sep<< i_beta
+              << s.sep<< data.beta.size()
               << s.sep<< beta
               <<s.sep<<calculate_sample_size(data.walkers_sta,i_beta)
               << s.sep<< eff_size[i_beta]
@@ -431,7 +436,11 @@ class new_thermodynamic_integration {
   std::string adapt_beta_variance_;
   double adapt_beta_nu_;
   double adapt_beta_t0_;
-
+  bool   adjust_beta_;
+  double acceptance_upper_limit_;
+  double acceptance_lower_limit_;
+  double desired_acceptance_;
+  
 public:
   new_thermodynamic_integration(
       Algorithm &&alg, Reporter &&rep, std::size_t num_scouts_per_ensemble,
@@ -457,7 +466,11 @@ public:
       std::string t_adapt_beta_equalizer,
       std::string t_adapt_beta_constroler,
       std::string t_adapt_beta_variance,
-      double t_adapt_beta_nu,double t_adapt_beta_t0)
+      double t_adapt_beta_nu,double t_adapt_beta_t0,  bool   t_adjust_beta,
+      double t_acceptance_upper_limit,
+      double t_acceptance_lower_limit,
+      double t_desired_acceptance
+)
       : alg_{std::move(alg)}, rep_{std::move(rep)},
       num_scouts_per_ensemble_{num_scouts_per_ensemble},
       thermo_jumps_every_{thermo_jumps_every}, beta_size_{beta_size},
@@ -470,7 +483,11 @@ public:
       adapt_beta_equalizer_{t_adapt_beta_equalizer},
       adapt_beta_controler_{t_adapt_beta_constroler},
       adapt_beta_variance_{t_adapt_beta_variance},
-      adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0} {}
+      adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0},adjust_beta_{t_adjust_beta},
+      acceptance_upper_limit_{t_acceptance_upper_limit},
+      acceptance_lower_limit_{t_acceptance_lower_limit},
+      desired_acceptance_{t_desired_acceptance}
+  {}
   
   
   
@@ -495,6 +512,11 @@ public:
   auto &adapt_beta_variance() const { return adapt_beta_variance_; }
   auto &adapt_beta_nu() const { return adapt_beta_nu_; }
   auto &adapt_beta_t0() const { return adapt_beta_t0_; }
+  bool adjust_beta() const { return adjust_beta_; }
+  auto &desired_acceptance() const { return desired_acceptance_; }
+  auto &acceptance_lower_limit() const { return acceptance_lower_limit_; }
+  auto &acceptance_upper_limit() const { return acceptance_upper_limit_; }
+  
 };
 
 template <class FunctionTable, class Duration, class Parameters,
@@ -675,8 +697,19 @@ auto thermo_evidence_loop(
     
     while (!mcmc_run.second) {
         even_dur.record("main_loop_start");
+        const auto end = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration<double>(end - start);
+        report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
+                   mcmc_run.first);
         if constexpr (Adapt_beta)
-        adapt_beta(iter, current,beta_run, therm.adapt_beta_every(),therm.adapt_beta_equalizer(),therm.adapt_beta_controler(),therm.adapt_beta_variance(),therm.adapt_beta_nu(),therm.adapt_beta_t0()); 
+        {
+            adapt_beta(iter, current,beta_run, therm.adapt_beta_every(),therm.adapt_beta_equalizer(),therm.adapt_beta_controler(),therm.adapt_beta_variance(),therm.desired_acceptance(),therm.adapt_beta_nu(),therm.adapt_beta_t0());
+            if(therm.adjust_beta())
+                adjust_beta(f,iter,therm.adapt_beta_every(),therm.acceptance_upper_limit(),therm.acceptance_lower_limit(),current,beta_run,mts,prior,lik,y,x);
+            if (iter%therm.adapt_beta_every()==0)   
+                current.reset_statistics();
+            
+        }
         step_stretch_thermo_mcmc(f, iter,even_dur, current, rep, beta_run, mts, prior, lik,
                                  y, x);
         even_dur.record("befor_thermo_jump");  
@@ -685,10 +718,6 @@ auto thermo_evidence_loop(
                          therm.thermo_jumps_every());
         even_dur.record("after_thermo_jump");  
         
-        const auto end = std::chrono::high_resolution_clock::now();
-        auto dur = std::chrono::duration<double>(end - start);
-        report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
-                   mcmc_run.first);
         even_dur.record("after_report_all");  
         // report_point(f, iter);
         
