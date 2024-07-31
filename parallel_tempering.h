@@ -966,24 +966,23 @@ void step_stretch_thermo_mcmc(FunctionTable &f, std::size_t &iter,
   dur.record("stretch_before_loop");
   std::size_t num_threads = omp_get_max_threads();
   
-  auto total_walkers=n_beta*n_walkers;
-  auto walkers_per_thread= total_walkers/num_threads;
+  auto total_walkers_per_half=n_beta*n_walkers/2;
+  std::size_t walkers_per_thread= std::ceil(1.0*total_walkers_per_half/num_threads);
   
-  std::size_t n_beta_f = std::ceil(1.0*n_beta / num_threads);
-
-#pragma omp parallel for // collapse(2)
-  for (std::size_t i_thread = 0; i_thread < std::min(n_beta,num_threads); ++i_thread) {
-      for (std::size_t ib = i_thread * n_beta_f;
-ib < std::min(i_thread * (n_beta_f+1),n_beta); ++ib) {
-          dur.record("begin_loop_walker", ib * 2);
-      //  for (std::size_t iii=0; iii<4; ++iii)
-          //      {
-      for (bool half : {false, true}) {
-              for (std::size_t i = 0; i < n_walkers / 2; ++i) {
-              auto i_th = omp_get_thread_num();
+  //std::size_t n_beta_f = std::ceil(1.0*n_beta / num_threads);
+  
+  for (bool half : {false, true}) {
+ #pragma omp parallel for // collapse(2)
+  for (std::size_t i_thread = 0; i_thread < num_threads; ++i_thread) {
+      for (std::size_t iwb = i_thread * walkers_per_thread;
+iwb < std::min(walkers_per_thread * (i_thread+1),total_walkers_per_half); ++iwb) {
+          //  dur.record("begin_loop_walker", iwb * 2);
+          std::size_t ib= iwb/(n_walkers/2);
+            std::size_t i= iwb-ib* n_walkers/2;
+           auto i_th = omp_get_thread_num();
                   
-                  auto iw = half ? i + n_walkers / 2 : i;
-              auto j = udist[i_th](mt[i_th]);
+            auto iw = half ? i + n_walkers / 2 : i;
+             auto j = udist[i_th](mt[i_th]);
                   auto jw = half ? j : j + n_walkers / 2;
               // we can try in the outer loop
                   
@@ -1016,11 +1015,15 @@ ib < std::min(i_thread * (n_beta_f+1),n_beta); ++ib) {
                       }
                   }
                   //}
-              }
+              
+        //      dur.record("end_loop_walker", ib * 2 + 1);
       }
-      dur.record("end_loop_walker", ib * 2 + 1);
       }
-  }
+      
+      
+  }    
+      
+   
   dur.advance(n_beta * 2);
   dur.record("stretch_after_loop");
   for (std::size_t ib = 0; ib < n_beta; ++ib) {
@@ -1033,6 +1036,131 @@ ib < std::min(i_thread * (n_beta_f+1),n_beta); ++ib) {
   
   dur.record("stretch_function_end");
 }
+
+
+
+template <class FunctionTable, std::size_t N, class Observer, class Prior,
+         class Likelihood, class Variables, class DataType,
+         class Parameters = std::decay_t<decltype(sample(
+             std::declval<mt_64i &>(), std::declval<Prior &>()))>>
+    requires(is_of_this_template_type_v<std::decay_t<FunctionTable>,
+                                        var::FuncMap_St> &&
+             is_prior<Prior, Parameters, Variables, DataType> &&
+             is_likelihood_model<FunctionTable, Likelihood, Parameters, Variables,
+                                 DataType>)
+void step_stretch_thermo_mcmc_old(FunctionTable &f, std::size_t &iter,
+                              var::Event_Timing<N> &dur,
+                              thermo_mcmc<Parameters> &current, Observer &obs,
+                              const by_beta<double> &beta, ensemble<mt_64i> &mt,
+                              Prior const &prior, Likelihood const &lik,
+                              const DataType &y, const Variables &x,
+                              double alpha_stretch = 2) {
+    dur.record("stretch_start");
+    assert(beta.size() == num_betas(current));
+    auto n_walkers = num_walkers(current);
+    auto n_beta = beta.size();
+    auto n_par = current.walkers[0][0].parameter.size();
+    
+    std::uniform_int_distribution<std::size_t> uniform_walker(0,
+                                                              n_walkers / 2 - 1);
+    std::vector<std::uniform_int_distribution<std::size_t>> udist(
+        omp_get_max_threads(), uniform_walker);
+    
+    std::uniform_real_distribution<double> uniform_stretch_zdist(
+        1.0 / alpha_stretch, alpha_stretch);
+    std::vector<std::uniform_real_distribution<double>> zdist(
+        omp_get_max_threads(), uniform_stretch_zdist);
+    
+    std::uniform_real_distribution<double> uniform_real(0, 1);
+    std::vector<std::uniform_real_distribution<double>> rdist(
+        omp_get_max_threads(), uniform_real);
+    
+    auto ff = f.fork(omp_get_max_threads());
+    std::vector<by_beta<emcee_Step_statistics>> emcee_stat(
+        omp_get_max_threads(), by_beta<emcee_Step_statistics>(n_beta));
+    
+    dur.record("stretch_before_loop");
+    std::size_t num_threads = omp_get_max_threads();
+    
+    auto total_walkers_per_half=n_beta*n_walkers/2;
+    auto walkers_per_thread= std::ceil(1.0*total_walkers_per_half/num_threads);
+    
+    std::size_t n_beta_f = std::ceil(1.0*n_beta / num_threads);
+
+#pragma omp parallel for // collapse(2)
+    for (std::size_t i_thread = 0; i_thread < std::min(n_beta,num_threads); ++i_thread) {
+        for (std::size_t ib = i_thread * n_beta_f;
+             ib < std::min(i_thread * (n_beta_f+1),n_beta); ++ib) {
+            dur.record("begin_loop_walker", ib * 2);
+            //  for (std::size_t iii=0; iii<4; ++iii)
+            //      {
+            for (bool half : {false, true}) {
+                for (std::size_t i = 0; i < n_walkers / 2; ++i) {
+                    auto i_th = omp_get_thread_num();
+                    
+                    auto iw = half ? i + n_walkers / 2 : i;
+                    auto j = udist[i_th](mt[i_th]);
+                    auto jw = half ? j : j + n_walkers / 2;
+                    // we can try in the outer loop
+                    
+                    auto r = rdist[i_th](mt[i_th]);
+                    
+                    // candidate[ib].walkers[iw].
+                    auto [ca_par, z] = stretch_move(mt[i_th], rdist[i_th],
+                                                    current.walkers[ib][iw].parameter,
+                                                    current.walkers[ib][jw].parameter);
+                    
+                    auto ca_logP = logPrior(prior, ca_par);
+                    auto ca_logL = logLikelihood(ff[i_th], lik, ca_par.to_value(), y, x);
+                    
+                    if (!((ca_logP.valid()) && (ca_logL.valid()))) {
+                        fails(emcee_stat[i_th][ib]());
+                    } else {
+                        auto dthLogL =
+                            ca_logP.value() - current.walkers[ib][iw].logP +
+                            beta[ib] * (get<logL>(ca_logL.value())() -
+                                        get<logL>(current.walkers[ib][iw].logL)());
+                        auto pJump =
+                            std::min(1.0, std::pow(z, n_par - 1) * std::exp(dthLogL));
+                        if (pJump >= r) {
+                            current.walkers[ib][iw].parameter = std::move(ca_par);
+                            current.walkers[ib][iw].logP = ca_logP.value();
+                            current.walkers[ib][iw].logL = ca_logL.value();
+                            succeeds(emcee_stat[i_th][ib]());
+                        } else {
+                            fails(emcee_stat[i_th][ib]());
+                        }
+                    }
+                    //}
+                }
+            }
+            dur.record("end_loop_walker", ib * 2 + 1);
+        }
+    }
+    dur.advance(n_beta * 2);
+    dur.record("stretch_after_loop");
+    for (std::size_t ib = 0; ib < n_beta; ++ib) {
+        for (auto &e : emcee_stat)
+            current.emcee_stat[ib]() += e[ib]();
+    }
+    f += ff;
+    ++iter;
+    update(current.walkers_sta, current.walkers);
+    
+    dur.record("stretch_function_end");
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 inline double calc_logA(double betai, double betaj, logLs const &logLi,
                         logLs const &logLj) {
