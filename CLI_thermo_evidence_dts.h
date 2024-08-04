@@ -56,7 +56,7 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model,
         id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
     
     if (true) {
-        std::ofstream f("thermo_evidence_" + id + ".txt");
+        std::ofstream f("thermo_evidence_dts_" + id + ".txt");
         save_vars(f, filename, model, prior, likelihood, recording, experiment_file,
                   thermo_algorithm, sampling_interval,max_number_of_values_per_iteration, myseed);
     }
@@ -160,10 +160,10 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
     std::size_t myseed;
     std::string filename;
     if (true) {
-        std::ifstream f("thermo_evidence_" + id + ".txt");
+        std::ifstream f("thermo_evidence_dts_" + id + ".txt");
         if (!f)
         {
-            std::cerr<<"Error!!\n thermo_evidence_" + id + ".txt"+ " not found";
+            std::cerr<<"Error!!\n thermo_evidence_dts_" + id + ".txt"+ " not found";
             return;
         }
         load_vars(f, filename, model, prior, likelihood, recording, experiment_file,

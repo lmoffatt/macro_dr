@@ -4504,7 +4504,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
         std::max(s.sampling_interval,
                  state_point_size / s.max_number_of_values_per_iteration);
     
-    if (iter % sampling_interval != 0)
+    if ((iter==0 )||(iter % sampling_interval != 0))
     return;
   auto ff = f.fork(omp_get_max_threads());
   
@@ -4618,9 +4618,10 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     
     std::size_t num_values = 8;
     std::size_t point_size = num_values * size(y) * t_beta.size();
-    if (iter % std::max(s.sampling_interval,
+    
+    if ((iter==0 )||(iter % std::max(s.sampling_interval,
                         point_size / s.max_number_of_values_per_iteration) !=
-        0)
+        0))
       return;
     // std::cerr<<"report save_Predictions\n";
     
@@ -4765,7 +4766,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
   std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
   
-  if (iter % sampling_interval != 0)
+  if ((iter==0 )||(iter % sampling_interval != 0))
     return;
   auto &model = lik.m;
   auto beta = data.get_Beta();
@@ -4956,7 +4957,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   std::size_t sampling_interval = std::max(
       s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
   
-  if (iter % sampling_interval != 0) {
+  if ((iter==0 )||(iter % sampling_interval != 0)) {
     return;
   }
   data.calculate_Likelihoods_for_Evidence_calulation(f, lik, ys, xs);
