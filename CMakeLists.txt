@@ -372,6 +372,7 @@ add_executable(macro_dr main.cpp
     scripts/evidence_thermo_dts_data.txt
     scripts/beta_4.txt
     scripts/evidence_thermo_dts_continuation.txt
+    slurm_tupac/run_CPU_1_schemes_1_to_11.sh
     
     
     
