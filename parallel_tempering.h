@@ -180,6 +180,16 @@ struct thermo_mcmc {
     return i_walkers[i_b][iw];
   }
   
+  auto num_samples()const
+  {
+      std::size_t min_samples=get<count>(walkers_sta[0][0]()())();
+      for (std::size_t i=0; i<walkers_sta.size(); ++i)
+          for (std::size_t j=0; j<walkers_sta[i].size(); ++j)
+              if (get<count>(walkers_sta[i][j]()())()<min_samples)
+                  min_samples=get<count>(walkers_sta[i][j]()())();
+      return min_samples;
+  }
+  
   auto last_walker()const
   {
       std::size_t last=0;
@@ -1180,7 +1190,7 @@ template <class Parameters, class Observer>
 void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
                       Observer &obs, const by_beta<double> &beta, mt_64i &mt,
                       ensemble<mt_64i> &mts, std::size_t thermo_jumps_every) {
-  if (iter % (thermo_jumps_every) == 0) {
+  if ((iter>0 )&&(current.num_samples()>0)&&(iter % (thermo_jumps_every) == 0)) {
     std::uniform_real_distribution<double> uniform_real(0, 1);
     auto n_walkers = current.get_Walkers_number();
     auto n_beta = beta.size();
@@ -1264,8 +1274,8 @@ auto calculate_Acceptance_variance(const std::vector<double>& deltaEvidence_vari
     
     std::vector<double> acceptance_variance(deltaEvidence_variance.size());
     for (std::size_t i = 0; i < deltaEvidence_variance.size(); ++i)
-        acceptance_variance[i] =
-            current.thermo_stat[i]().rate().value() / deltaEvidence_variance[i];
+        acceptance_variance[i] = current.thermo_stat[i]().rate().valid()?
+            current.thermo_stat[i]().rate().value() / deltaEvidence_variance[i]:0.0;
     return acceptance_variance;
 }
 
@@ -1525,7 +1535,7 @@ void adjust_beta(FunctionTable &f,std::size_t iter, std::size_t adapt_beta_every
                                  Prior const &prior, Likelihood const &lik,
                                  const DataType &y, const Variables &x)
 {
-    if (iter % adapt_beta_every == 0) {
+    if ((iter>0 )&&(current.num_samples()>0)&&(iter % adapt_beta_every == 0)) {
         assert(beta[beta.size() - 1] = 1);
         std::size_t tested_index=1;
         auto A=calculate_Acceptance(current);
@@ -1561,7 +1571,7 @@ void adapt_beta(std::size_t iter, thermo_mcmc<Parameters> &current,
                 std::string variance_approximation,
                 double desired_acceptance,
                 double nu, double t0) {
-    if (iter % adapt_beta_every == 0) {
+    if ((iter>0 )&&(current.num_samples()>0)&&(iter % adapt_beta_every == 0)) {
         assert(beta[beta.size() - 1] = 1);
         double kappa = 1.0 / nu * t0 / (t0 + iter);
         
@@ -1689,7 +1699,7 @@ public:
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
       
-      if (iter % sampling_interval == 0) {
+      if ((iter>0 )&&(data.num_samples()>0)&&(iter % sampling_interval == 0)) {
           
           for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker) {
         logLs t_logL = {};
@@ -1810,7 +1820,7 @@ public:
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
       
-      if (iter % sampling_interval == 0) {
+      if ((iter>0 )&&(data.num_samples()>0)&&(iter % sampling_interval == 0)) {
       for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
           for (std::size_t i_par = 0; i_par < num_Parameters(data); ++i_par)
@@ -1819,8 +1829,10 @@ public:
                   << data.beta.size() << s.sep << data.beta[i_beta] << s.sep << i_walker << s.sep
                   << data.i_walkers[i_beta][i_walker] << s.sep << i_par << s.sep
                 << data.walkers[i_beta][i_walker].parameter[i_par] << "\n";
+      s.f.flush();
       }
   }
+  
 };
 
 template <class Parameters> class save_RateParameter {
@@ -1880,8 +1892,103 @@ public:
     friend void report_model(save_RateParameter &, ...) {}
 };
 
+
+/**
+ * @brief extract_iter
+ * @param f
+ * @param iter
+ * @param dur
+ * @param data
+ * @return 
+ * @pre data should contain at least one beta with the right parameter and walkers numbers
+ */
+
 template <class Parameters, class Duration>
 bool extract_iter(std::istream &f, std::size_t &iter, Duration &dur,
+                  thermo_mcmc<Parameters> &data) {
+    std::size_t i_beta=0;
+    std::size_t i_walker=0;
+    std::size_t i_par=0;
+    
+    std::size_t v_i_beta;
+    std::size_t v_num_beta;
+    double v_beta;
+    std::size_t v_i_walker;
+    std::size_t v_walker_id;
+    
+    std::size_t v_i_par;
+    double v_param_value;
+    
+    bool not_all = true;
+    bool from_begining =false;
+    
+    double v_dur;
+    
+    while (not_all && load_vars_line(f, iter, v_dur, v_i_beta,v_num_beta,v_beta, v_i_walker,
+                                     v_walker_id, v_i_par, v_param_value)) {
+        
+        if (!from_begining)
+        {
+            from_begining= (v_i_beta==0)&&(v_i_walker==0)&&(v_i_par==0);
+        }
+        if (from_begining)
+        {
+        if((v_i_beta<data.beta.size()))
+        {
+            data.beta[v_i_beta]=v_beta;
+            data.i_walkers[v_i_beta][v_i_walker]=v_walker_id;
+            data.walkers[v_i_beta][v_i_walker].parameter[v_i_par]=v_param_value;
+        }
+        else if (v_i_beta==data.beta.size()) {
+            data.beta.push_back(v_beta);
+            data.i_walkers.push_back(data.i_walkers[v_i_beta-1]);
+            data.i_walkers[v_i_beta][v_i_walker]=v_walker_id;
+            data.walkers.push_back(data.walkers[v_i_beta-1]);
+            data.walkers[v_i_beta][v_i_walker].parameter[v_i_par]=v_param_value;
+            
+            data.walkers_sta.push_back(data.walkers_sta[v_i_beta-1]);
+            data.emcee_stat.push_back(data.emcee_stat[v_i_beta-1]);
+            data.thermo_stat.push_back(data.thermo_stat[v_i_beta-2]);
+            
+            i_beta=v_i_beta;
+        }
+        if (v_i_par != i_par)
+            return false;
+        if (v_i_walker != i_walker)
+            return false;
+        if (v_i_beta!=i_beta)
+            return false;
+        
+        if (i_par+1<num_Parameters(data))
+        {
+            ++i_par;
+        }
+        else{
+            i_par=0; 
+           if (i_walker+1<data.i_walkers[i_beta].size())
+            {
+                ++i_walker;
+            }
+           else {
+               i_walker=0;
+                if(i_beta+1<data.walkers.size())
+               {
+                   ++i_beta;
+               }
+                else {
+                    i_beta=0;
+                   not_all=! (v_num_beta==data.walkers.size()); 
+               }                
+            }
+                
+        }
+        }
+    }
+    return v_num_beta==data.walkers.size();
+}
+
+template <class Parameters, class Duration>
+bool extract_iter_old(std::istream &f, std::size_t &iter, Duration &dur,
                   thermo_mcmc<Parameters> &data) {
     for (std::size_t i_beta = 0; i_beta < num_betas(data); ++i_beta)
         for (std::size_t i_walker = 0; i_walker < num_walkers(data); ++i_walker)
@@ -1918,16 +2025,15 @@ template <class Parameters, class Duration>
 auto extract_parameters_last(const std::string &fname, std::size_t &iter,
                              Duration &dur, thermo_mcmc<Parameters> &data) {
     auto candidate = data;
-    auto candidate_prev = data;
     auto f = std::ifstream(fname);
     std::string line;
     std::getline(f, line);
-    
-    while (extract_iter(f, iter, dur, candidate)) {
+    auto iter_prev=iter;
+    while (extract_iter(f, iter_prev, dur, candidate)) {
+        iter=iter_prev;
         std::swap(data, candidate);
-        std::swap(candidate_prev, candidate);
     }
-    return candidate_prev;
+    return data;
 }
 
 template <class Parameters> class save_Predictions {

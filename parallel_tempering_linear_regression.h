@@ -130,7 +130,7 @@ public:
       std::size_t point_size=num_values*num_betas(data);
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
-      if (iter % sampling_interval == 0){ 
+      if ((iter>0 )&&(data.num_samples()>0)&&(iter % sampling_interval == 0)){ 
        
     auto across =calculate_across_sta(data.walkers_sta);
     auto within = calculate_within_sta(data.walkers_sta);
@@ -204,7 +204,7 @@ public:
                          thermo_mcmc<Parameters> const &data, ...) {
       std::size_t num_values=10;
       std::size_t point_size=num_values*num_betas(data);
-      if (iter % std::max(s.sampling_interval,point_size/s.max_number_of_values_per_iteration) == 0){ 
+      if ((iter>0 )&&(data.num_samples()>0)&&(iter % std::max(s.sampling_interval,point_size/s.max_number_of_values_per_iteration) == 0)){ 
          auto meanLik = mean_logL(data);
       auto meanPrior = mean_logP(data);
 
@@ -820,16 +820,28 @@ auto thermo_evidence_continuation(
     auto mt = init_mt(therm.initseed());
     auto n_walkers = therm.num_scouts_per_ensemble();
     auto mts = init_mts(mt, omp_get_max_threads());
-    auto beta = new_get_beta_list(
-        therm.beta_size(), therm.beta_upper_size(), therm.beta_medium_size(),
-        therm.beta_upper_value(), therm.beta_medium_value(), therm.stops_at(),
-        therm.includes_zero());
     
-    auto it_beta_run_begin = beta.rend() - beta.size();
-    auto it_beta_run_end = beta.rend();
-    auto beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
+    by_beta<double> beta;
     
-    auto current = create_thermo_mcmc(n_walkers, beta_run, mt, prior);
+    if constexpr (Adapt_beta)
+    {
+        beta=by_beta<double>(therm.beta_size(),0);
+    }
+    else{
+        auto beta_ = new_get_beta_list(
+            therm.beta_size(), therm.beta_upper_size(), therm.beta_medium_size(),
+            therm.beta_upper_value(), therm.beta_medium_value(), therm.stops_at(),
+            therm.includes_zero());
+        
+        auto it_beta_run_begin = beta_.rend() - beta_.size();
+        auto it_beta_run_end = beta_.rend();
+        beta = by_beta<double>(it_beta_run_begin, it_beta_run_end);
+    }
+    
+    
+    
+    
+    auto current = create_thermo_mcmc(n_walkers, beta, mt, prior);
     auto &rep = therm.reporter();
     
     
@@ -839,8 +851,10 @@ auto thermo_evidence_continuation(
     
     std::chrono::duration<double,std::ratio<1>> duration;
     
-    auto alt_current=extract_parameters_last(fname, iter, duration, current);
+    
+    current=extract_parameters_last(fname, iter, duration, current);
     a.reset(iter);
+    beta=current.beta;
     auto res=calc_thermo_mcmc_continuation(f, n_walkers, beta,
                                   mts, prior, lik, y, x,current);
     
@@ -853,7 +867,7 @@ auto thermo_evidence_continuation(
     return thermo_evidence_loop<Adapt_beta>(
         f,
         std::forward<new_thermodynamic_integration<Algorithm, Reporter>>(therm),
-        prior, lik, y, x, mcmc_run, iter, current, rep, beta_run, mt, mts, start);
+        prior, lik, y, x, mcmc_run, iter, current, rep, beta, mt, mts, start);
 }
 
 class thermo_max {

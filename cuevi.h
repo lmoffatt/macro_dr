@@ -869,7 +869,7 @@ public:
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
       
-    if (iter % sampling_interval == 0) {
+    if ((iter>0 )&&(iter % sampling_interval == 0)) {
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
       for (std::size_t i_walker = 0; i_walker < data.get_Walkers_number();
            ++i_walker) {
@@ -1010,7 +1010,7 @@ public:
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
       
-      if (iter % sampling_interval == 0) {
+      if ((iter>0 )&&(iter % sampling_interval == 0)) {
     
     
       for (std::size_t i_cu = 0; i_cu < data.get_Cuevi_Temperatures_Number();
@@ -1191,7 +1191,7 @@ public:
     auto &t = data.get_Cuevi_Temperatures();
       std::size_t num_values=32;
       std::size_t point_size=num_values*data.get_Cuevi_Temperatures_Number();
-      if (iter % std::max(s.sampling_interval,point_size/s.max_number_of_values_per_iteration) == 0){ 
+      if ((iter>0 )&&(iter % std::max(s.sampling_interval,point_size/s.max_number_of_values_per_iteration) == 0)){ 
       data.calculate_Likelihoods_for_Evidence_calulation(f, lik, y, x);
       auto logL1 = data.calc_Mean_logLik(Cuevi_Index(0ul));
       auto logL1_0 = data.calc_Mean_logLik_0(Cuevi_Index(0ul));
@@ -1528,7 +1528,7 @@ public:
                   const by_fraction<Variables> &x,
                   Thermo_Jumps_every thermo_jumps_every,
                   Random_jumps randomize) const {
-    if (iter % (thermo_jumps_every()) == 0) {
+    if ((iter>0 )&&(iter % (thermo_jumps_every()) == 0)) {
       auto t = current.get_Cuevi_Temperatures();
       auto n_walkers = current.get_Walkers_number();
 
