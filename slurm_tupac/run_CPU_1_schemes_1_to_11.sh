@@ -5,7 +5,7 @@ cd ~/Code/macro_dr/macro_dr
 
 export WORKING_DIRECTORY=data_w1
 
-RUNTIME="0-02:00"
+RUNTIME="0-06:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
