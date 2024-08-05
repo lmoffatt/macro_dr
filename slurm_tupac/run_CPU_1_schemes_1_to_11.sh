@@ -3,7 +3,7 @@
 cd ~/Code/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data/w1
+export WORKING_DIRECTORY=data_w1
 
 RUNTIME="2-00:00"
 
