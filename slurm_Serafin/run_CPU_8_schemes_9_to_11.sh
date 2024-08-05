@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ~/Code/macro_dr/macro_dr
+cd ~/macro_dr/macro_dr
 
 
 export WORKING_DIRECTORY=data_w1
