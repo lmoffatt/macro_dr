@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ~/Code/macro_dr/macro_dr
+cd ~/macro_dr/macro_dr
 
 
 export WORKING_DIRECTORY=data_w1
@@ -117,7 +117,13 @@ JOBID1=9097
 
 export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable --job-name=C${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N_tasks.sh) 
+ 
+
+
+export CONTINUATION_NUMBER=0
+JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N_tasks.sh) 
+
 
 
 #export CONTINUATION_NUMBER=1
