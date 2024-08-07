@@ -113,12 +113,12 @@ export MAX_ITER=1000000
 
 
 
-JOBID1=9097
+JOBID1=223948
 
 
-export CONTINUATION_NUMBER=0
+#export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N_tasks.sh) 
+#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N_tasks.sh) 
  
 
 
