@@ -114,6 +114,7 @@ public:
           << s.sep << "emcee_stat_rate"
           << s.sep << "thermo_jump_stat_count"
           << s.sep << "thermo_jump_rate"
+          << s.sep << "deltaBeta_deltalogL"
           << "\n";
           
           
@@ -140,6 +141,7 @@ public:
         calculate_delta_Evidence_variance(data, data.beta);
     auto Acceptance_variance=calculate_Acceptance_variance(deltaEvidence_variance,data);
     
+    auto dBdL=calculate_deltaBeta_deltaL(data);
     
     auto meanLik = mean_logL(data);
       auto meanPrior = mean_logP(data);
@@ -194,6 +196,7 @@ public:
               << s.sep<< emcee_rate 
               << s.sep<< thermo_count
               << s.sep<< thermo_rate
+              << s.sep<<dBdL[std::max(1ul, i_beta) - 1]
               << "\n";
       }
     }

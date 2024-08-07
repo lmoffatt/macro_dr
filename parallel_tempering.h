@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
+#include <numeric>
 #include <omp.h>
 #include <sstream>
 #include <string>
@@ -1264,6 +1265,8 @@ auto calculate_delta_Evidence_variance_derivative(
         
         deltaEvidence_variance_der[i] =
             -(beta[i] - beta[i + 1]) / 2.0 * (var0 + var1);
+        if ( std::isnan(deltaEvidence_variance_der[i]))
+            std::cerr<<"nan deltaEvidence_variance\n";
     }
     return deltaEvidence_variance_der;
 }
@@ -1275,7 +1278,7 @@ auto calculate_Acceptance_variance(const std::vector<double>& deltaEvidence_vari
     std::vector<double> acceptance_variance(deltaEvidence_variance.size());
     for (std::size_t i = 0; i < deltaEvidence_variance.size(); ++i)
         acceptance_variance[i] = current.thermo_stat[i]().rate().valid()?
-            current.thermo_stat[i]().rate().value() / deltaEvidence_variance[i]:0.0;
+            (current.thermo_stat[i]().rate().value() / deltaEvidence_variance[i]):0.0;
     return acceptance_variance;
 }
 
@@ -1287,6 +1290,20 @@ auto calculate_Acceptance(const thermo_mcmc<Parameters> &current) {
         acceptance[i] = current.thermo_stat[i]().rate().value();
     return acceptance;
 }
+
+template <class Parameters>
+auto calculate_deltaBeta_deltaL(const thermo_mcmc<Parameters> &current) {
+    
+    std::vector<double> dBdL(current.walkers.size()-1);
+    auto L=calculate_logL_mean(current.walkers_sta);
+    
+    for (std::size_t i = 0; i < dBdL.size(); ++i)
+        dBdL[i] = (L[i+1]-L[i])*(current.beta[i+1]-current.beta[i]);
+    
+    return dBdL;
+}
+
+
 
 template <class Parameters>
 auto calculate_logL_variance(const std::string& variance_approximation,const thermo_mcmc<Parameters> &current,
@@ -1468,7 +1485,15 @@ auto calculate_controler_step(const thermo_mcmc<Parameters> &current,const by_be
             }
         return d;
         }
- else      if (equalizing_paramter == "Acceptance_fixed_vfm") {
+ else      if (equalizing_paramter == "deltaBeta_deltaL_vfm") {
+        auto dBdL=calculate_deltaBeta_deltaL(current);
+        auto d=std::vector<double>(dBdL.size()-1);    
+        for (std::size_t i = 0; i < d.size(); ++i) {
+            d[i] = std::max(std::min(1.0, std::exp(std::min(0.0,-dBdL[i + 1])) -std::exp(std::min(0.0,-dBdL[i]))),-1.0);
+        }
+        return d;
+    }
+    else      if (equalizing_paramter == "Acceptance_fixed_vfm") {
         auto A=calculate_Acceptance(current);
         auto d=std::vector<double>(A.size()-1);    
         for (std::size_t i = 0; i < d.size(); ++i) {
@@ -1538,14 +1563,22 @@ void adjust_beta(FunctionTable &f,std::size_t iter, std::size_t adapt_beta_every
     if ((iter>0 )&&(current.num_samples()>0)&&(iter % adapt_beta_every == 0)) {
         assert(beta[beta.size() - 1] = 1);
         std::size_t tested_index=1;
-        auto A=calculate_Acceptance(current);
-        if (A[tested_index]>acceptance_upper_limit)
+        //auto A=calculate_Acceptance(current);
+        auto A=calculate_deltaBeta_deltaL(current);
+        if (std::exp(std::min(0.0,-A[tested_index]))>acceptance_upper_limit)
             remove_high_temperture_beta(current,beta,tested_index);
-        else if (A[tested_index]<acceptance_lower_limit)
+        else
+//             if (std::reduce(A.begin()+tested_index, A.end(),0.0,
+// [acceptance_lower_limit](double a,double b){
+//          if ((a==1)||(b<acceptance_lower_limit))
+//               return 1.0;
+//          else
+// return 0.0;})==1.0)
+            if (std::exp(std::min(0.0,-A[tested_index+1]))<acceptance_lower_limit)           
         {
             double new_beta;
             if (beta[tested_index]==0)
-                new_beta=beta[tested_index+1]*beta[tested_index+2]/beta[tested_index+1];
+                new_beta=beta[tested_index+1]*beta[tested_index+1]/beta[tested_index+2];
             else
                 new_beta=std::sqrt(beta[tested_index+1]*beta[tested_index]);
                 
@@ -1573,6 +1606,7 @@ void adapt_beta(std::size_t iter, thermo_mcmc<Parameters> &current,
                 double nu, double t0) {
     if ((iter>0 )&&(current.num_samples()>0)&&(iter % adapt_beta_every == 0)) {
         assert(beta[beta.size() - 1] = 1);
+        std::size_t tested_index=1;
         double kappa = 1.0 / nu * t0 / (t0 + iter);
         
          auto d=calculate_controler_step(current,
@@ -1602,7 +1636,7 @@ void adapt_beta(std::size_t iter, thermo_mcmc<Parameters> &current,
                 }   
             }
             
-            for (std::size_t i = 0; i < S.size()-1; ++i)
+            for (std::size_t i = 0; i < S.size()-tested_index; ++i)
                 T[T.size() - 2 - i] =
                     T[T.size() - 1 - i] + std::exp(S[S.size() - 1 - i]);
             
