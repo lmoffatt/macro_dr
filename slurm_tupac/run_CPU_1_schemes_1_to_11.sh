@@ -12,9 +12,11 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 export EVIDENCE_ALGORITHM=thermo_dts
 
 
+
 export NTASKS=16
 CPUSPERTASK=1
 export USE_LOCAL_ID=1
+export CP=CPUSPERTASK
 
 export N_SCH=13
 N_SCH2=14

@@ -19,6 +19,7 @@ module load gsl
 
 export NTASKS=2
 CPUSPERTASK=32
+export CP=CPUSPERTASK
 
 
 

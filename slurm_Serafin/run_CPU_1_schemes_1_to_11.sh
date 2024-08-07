@@ -24,6 +24,7 @@ export EVIDENCE_ALGORITHM=thermo_dts
 
 export NTASKS=16
 CPUSPERTASK=1
+export CP=CPUSPERTASK
 export USE_LOCAL_ID=1
 
 export N_SCH=13
@@ -121,8 +122,8 @@ JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node
  
 
 
-export CONTINUATION_NUMBER=0
-JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N_tasks.sh) 
+#export CONTINUATION_NUMBER=0
+#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} --partition=multi  slurm_Serafin/M_scheme_N_tasks.sh) 
 
 
 
