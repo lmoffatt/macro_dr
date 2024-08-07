@@ -19,6 +19,7 @@ module load gsl
 
 NTASKS=2
 CPUSPERTASK=32
+export CP=CPUSPERTASK
 
 
 export CONTINUATION_NUMBER=0

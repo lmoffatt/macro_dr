@@ -28,6 +28,7 @@ ifndef ${CP}
   CP=$SLURM_CPUS_PER_TASK
 endif  
 
+cd ${PATH_MACRO}/${WORKING_DIRECTORY}
 
 
 if [ "$CONTINUATION_NUMBER" = 0 ]; then

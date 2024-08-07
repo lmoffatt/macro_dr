@@ -3,9 +3,9 @@
 cd ~/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data_w1
+export WORKING_DIRECTORY=data_w2
 
-RUNTIME="0-06:00"
+RUNTIME="2-00:00"
 
 export PATH_MACRO=/home/lmoffatt/macro_dr/
 
@@ -24,6 +24,7 @@ export EVIDENCE_ALGORITHM=thermo_dts
 
 export NTASKS=8
 CPUSPERTASK=8
+export CP=CPUSPERTASK
 export USE_LOCAL_ID=1
 
 export N_SCH=13

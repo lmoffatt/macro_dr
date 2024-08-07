@@ -21,7 +21,7 @@
 ### multi:  <= 2 días
 #SBATCH --time 0-1:00
 
-#---------------------------------------------------
+#-------------------------------------------------M_scheme_N_tasks--
 
 # Script que se ejecuta al arrancar el trabajo
 

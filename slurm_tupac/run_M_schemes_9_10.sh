@@ -13,6 +13,7 @@ export EVIDENCE_ALGORITHM=thermo
 
 export NTASKS=4
 CPUSPERTASK=16
+export CP=CPUSPERTASK
 export USE_LOCAL_ID=0
 
 export N_SCH=9
