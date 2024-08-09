@@ -5,7 +5,7 @@ cd ~/Code/macro_dr/macro_dr
 
 export WORKING_DIRECTORY=data_w2
 
-RUNTIME="2-00:00"
+RUNTIME="0-06:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
@@ -48,7 +48,7 @@ export SCHEME_6=scheme_8_inact_PI
 export SCHEME_7=scheme_7_inact_PI
 
 
-export PATH_MACRO_DR_0=w1
+export PATH_MACRO_DR_0=w1_6h
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
