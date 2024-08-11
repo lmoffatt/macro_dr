@@ -692,7 +692,7 @@ auto thermo_evidence_loop(
     const Variables &x, mcmc mcmc_run, std::size_t iter,
     thermo_mcmc<Parameters> &current, Reporter &rep,
     by_beta<double>& beta_run, mt_64i &mt, std::vector<mt_64i> &mts,
-    const timepoint &start) {
+    const timepoint &start, const std::chrono::duration<double>& previous_duration) {
     
     
     var::Event_Timing<200> even_dur(start);
@@ -701,7 +701,7 @@ auto thermo_evidence_loop(
     while (!mcmc_run.second) {
         even_dur.record("main_loop_start");
         const auto end = std::chrono::high_resolution_clock::now();
-        auto dur = std::chrono::duration<double>(end - start);
+        auto dur = std::chrono::duration<double>(end - start)+previous_duration;
         report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
                    mcmc_run.first);
         if constexpr (Adapt_beta)
@@ -797,11 +797,11 @@ auto thermo_evidence(FunctionTable &&f,
     report_title(rep, current, lik, y, x);
     report_title(f, "Iter");
     report_model_all(rep, prior, lik, y, x, beta_run);
-    
+    std::chrono::duration<double> previous_duration(0.0);
     return thermo_evidence_loop<Adapt_beta>(
         f,
         std::forward<new_thermodynamic_integration<Algorithm, Reporter>>(therm),
-        prior, lik, y, x, mcmc_run, iter, current, rep, beta_run, mt, mts, start);
+        prior, lik, y, x, mcmc_run, iter, current, rep, beta_run, mt, mts, start,previous_duration);
 }
 
 template <bool Adapt_beta,class FunctionTable, class Algorithm, class Prior, class Likelihood,
@@ -850,7 +850,7 @@ auto thermo_evidence_continuation(
     
     auto fname = idName + "__i_beta__i_walker__i_par.csv";
     std::size_t iter = 0;
-    const auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
     
     std::chrono::duration<double,std::ratio<1>> duration;
     
@@ -870,7 +870,7 @@ auto thermo_evidence_continuation(
     return thermo_evidence_loop<Adapt_beta>(
         f,
         std::forward<new_thermodynamic_integration<Algorithm, Reporter>>(therm),
-        prior, lik, y, x, mcmc_run, iter, current, rep, beta, mt, mts, start);
+        prior, lik, y, x, mcmc_run, iter, current, rep, beta, mt, mts, start,duration);
 }
 
 class thermo_max {
