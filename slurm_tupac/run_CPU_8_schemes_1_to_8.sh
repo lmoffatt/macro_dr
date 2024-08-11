@@ -104,12 +104,12 @@ export MAX_ITER=1000000
 
 
 
-JOBID1=9097
+JOBID1=12707 
 
 
-export CONTINUATION_NUMBER=0
+#export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable --job-name=C${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+#JOBID1=$(sbatch --parsable --job-name=C${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
 
 export CONTINUATION_NUMBER=1
