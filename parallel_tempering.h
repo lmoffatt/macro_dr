@@ -1961,6 +1961,7 @@ bool extract_iter(std::istream &f, std::size_t &iter, Duration &dur,
     while (not_all && load_vars_line(f, iter, v_dur, v_i_beta,v_num_beta,v_beta, v_i_walker,
                                      v_walker_id, v_i_par, v_param_value)) {
         
+        dur=std::chrono::duration<double>(v_dur);
         if (!from_begining)
         {
             from_begining= (v_i_beta==0)&&(v_i_walker==0)&&(v_i_par==0);
@@ -2018,6 +2019,7 @@ bool extract_iter(std::istream &f, std::size_t &iter, Duration &dur,
         }
         }
     }
+    
     return v_num_beta==data.walkers.size();
 }
 
@@ -2063,8 +2065,10 @@ auto extract_parameters_last(const std::string &fname, std::size_t &iter,
     std::string line;
     std::getline(f, line);
     auto iter_prev=iter;
-    while (extract_iter(f, iter_prev, dur, candidate)) {
+    auto dur_prev=dur;
+    while (extract_iter(f, iter_prev, dur_prev, candidate)) {
         iter=iter_prev;
+        dur=dur_prev;
         std::swap(data, candidate);
     }
     return data;
