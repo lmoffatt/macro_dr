@@ -84,7 +84,7 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=w1
+export PATH_MACRO_DRX=w3
 
 
 export EXPERIMENT_0=idealize_experiment_2
