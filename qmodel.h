@@ -4487,7 +4487,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     auto num_samples = size(y);
     auto num_states = lik.m.number_of_states();
     auto num_states_a =std::pow(2,std::round(std::log2(num_states)));
-    std::size_t num_values = 16;
+    std::size_t num_values = 4;
     std::size_t num_beta_portions = 2;
     
     std::size_t num_samples_a = std::pow(2,std::round(std::log2(size(y))));
@@ -4495,7 +4495,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
     
-    std::size_t state_num_values = 4;
+    std::size_t state_num_values = 1;
     std::size_t num_moments = 2;
     std::size_t state_point_size = state_num_values * num_beta_portions *
         data.get_Walkers_number() * num_samples_a *
@@ -4759,7 +4759,7 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
             t_logLikelihood &&lik, ...) {
   
   auto num_states = lik.m.number_of_states();
-  std::size_t num_values = 4;
+  std::size_t num_values = 1;
   std::size_t num_beta_portions = 2;
   std::size_t point_size = num_values * num_beta_portions *
       data.get_Walkers_number() * num_states * num_states;
