@@ -12,6 +12,9 @@ PATH_MACRO_DRS=( ${PATH_MACRO_DR_0} ${PATH_MACRO_DR_1}  ${PATH_MACRO_DR_2} ${PAT
 
 EXPERIMENTS=(  ${EXPERIMENT_0} ${EXPERIMENT_1}  ${EXPERIMENT_2} ${EXPERIMENT_3}  ${EXPERIMENT_4} ${EXPERIMENT_5}  ${EXPERIMENT_6} ${EXPERIMENT_7} ${EXPERIMENT_8} ${EXPERIMENT_9}  ${EXPERIMENT_10} ${EXPERIMENT_11}  ${EXPERIMENT_12} ${EXPERIMENT_13}  ${EXPERIMENT_14} ${EXPERIMENT_15}  )
 
+LIKS= ( ${LIK_0} ${LIK_1}  ${LIK_2} ${LIK_3}  ${LIK_4} ${LIK_5}  ${LIK_6} ${LIK_7} ${LIK_8} ${LIK_9}  ${LIK_10} ${LIK_11}  ${LIK_12} ${LIK_13}  ${LIK_14} ${LIK_15}  )
+
+
 
 SCHEME_DIR=${SCHEME_DIRS[$SLURM_LOCALID]}
 
@@ -20,6 +23,9 @@ SCHEME=${SCHEME_FILES[$SLURM_LOCALID]}
 PATH_MACRO_DR=${PATH_MACRO_DRS[$SLURM_LOCALID]}
 
 EXPERIMENT=${EXPERIMENTS[$SLURM_LOCALID]}
+
+LIK=${LIKS[$SLURM_LOCALID]}
+
 
 EXPER_ABR=$([ "$EXPERIMENT" = "idealize_experiment_2" ] && echo "_IE" || echo "")
 
@@ -35,9 +41,9 @@ cd ${PATH_MACRO}/${WORKING_DIRECTORY}
 
 
 if [ "$CONTINUATION_NUMBER" = 0 ]; then
-    ${PATH_MACRO}/${PATH_MACRO_DRX}/macro_dr ${PATH_MACRO}/macro_dr/${SCHEME_DIR}/${SCHEME}.txt ${PATH_MACRO}/macro_dr/scripts/${EXPERIMENT}.txt  ${PATH_MACRO}/macro_dr/scripts/simulation.txt "--runIdName= \"${PATH_MACRO_DR}${EXPER_ABR}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0\""  "--num_scouts_per_ensemble = get_number(n=${N_SCOUTS})" "--max_iter_equilibrium = get_number(n=${MAX_ITER})" ${PATH_MACRO}/macro_dr/scripts/likelihood.txt ${PATH_MACRO}/macro_dr/scripts/beta_${N_BETA}.txt  ${PATH_MACRO}/macro_dr/scripts/evidence_${EVIDENCE_ALGORITHM}_data.txt 
+    ${PATH_MACRO}/${PATH_MACRO_DRX}/macro_dr ${PATH_MACRO}/macro_dr/${SCHEME_DIR}/${SCHEME}.txt ${PATH_MACRO}/macro_dr/scripts/${EXPERIMENT}.txt  ${PATH_MACRO}/macro_dr/scripts/simulation.txt "--runIdName= \"${PATH_MACRO_DR}${EXPER_ABR}_${LIK}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0\""  "--num_scouts_per_ensemble = get_number(n=${N_SCOUTS})" "--max_iter_equilibrium = get_number(n=${MAX_ITER})" ${PATH_MACRO}/macro_dr/scripts/likelihood_${LIK}.txt ${PATH_MACRO}/macro_dr/scripts/beta_${N_BETA}.txt  ${PATH_MACRO}/macro_dr/scripts/evidence_${EVIDENCE_ALGORITHM}_data.txt 
 else
-${PATH_MACRO}/${PATH_MACRO_DRX}/macro_dr ${PATH_MACRO}/macro_dr/${SCHEME_DIR}/${SCHEME}.txt ${PATH_MACRO}/macro_dr/scripts/${EXPERIMENT}.txt  ${PATH_MACRO}/macro_dr/scripts/simulation.txt "--runIdName= \"${PATH_MACRO_DR}${EXPER_ABR}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0\""  "--num_scouts_per_ensemble = get_number(n=${N_SCOUTS})" "--max_iter_equilibrium = get_number(n=${MAX_ITER})" ${PATH_MACRO}/macro_dr/scripts/likelihood.txt ${PATH_MACRO}/macro_dr/scripts/beta_${N_BETA}.txt "--continuation_number=get_number(n=${CONTINUATION_NUMBER})" ${PATH_MACRO}/macro_dr/scripts/evidence_${EVIDENCE_ALGORITHM}_continuation.txt 
+${PATH_MACRO}/${PATH_MACRO_DRX}/macro_dr ${PATH_MACRO}/macro_dr/${SCHEME_DIR}/${SCHEME}.txt ${PATH_MACRO}/macro_dr/scripts/${EXPERIMENT}.txt  ${PATH_MACRO}/macro_dr/scripts/simulation.txt "--runIdName= \"${PATH_MACRO_DR}${EXPER_ABR}_${LIK}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0\""  "--num_scouts_per_ensemble = get_number(n=${N_SCOUTS})" "--max_iter_equilibrium = get_number(n=${MAX_ITER})" ${PATH_MACRO}/macro_dr/scripts/likelihood_${LIK}.txt ${PATH_MACRO}/macro_dr/scripts/beta_${N_BETA}.txt "--continuation_number=get_number(n=${CONTINUATION_NUMBER})" ${PATH_MACRO}/macro_dr/scripts/evidence_${EVIDENCE_ALGORITHM}_continuation.txt 
 fi
 
 

@@ -69,6 +69,24 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DRX=w1
 
 
+export LiK_0=ADR
+export LiK_1=$LIK_0
+export LIK_2=$LIK_0
+export LIK_3=$LIK_0
+export LIK_4=$LIK_0
+export LIK_5=$LIK_0
+export LIK_6=$LIK_0
+export LIK_7=$LIK_0
+export LIK_8=$LIK_0
+export LIK_9=$LIK_0
+export LIK_10=$LIK_0
+export LIK_11=$LIK_0
+export LIK_12=$LIK_0
+export LIK_13=$LIK_0
+export LIK_14=$LIK_0
+export LIK_15=$LIK_0
+
+
 export EXPERIMENT_0=idealize_experiment_2
 export EXPERIMENT_1=$EXPERIMENT_0
 export EXPERIMENT_2=$EXPERIMENT_0

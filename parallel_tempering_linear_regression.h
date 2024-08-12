@@ -125,7 +125,7 @@ public:
 
   template <class FunctionTable, class Duration, class Parameters>
   friend void report(FunctionTable &f, std::size_t iter, const Duration &dur,
-                     save_Evidence &s, thermo_mcmc<Parameters> &data, ...) {
+                     save_Evidence  &s, thermo_mcmc<Parameters> const &data, ...) {
       
       std::size_t num_values=32;
       std::size_t point_size=num_values*num_betas(data);
