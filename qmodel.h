@@ -4482,8 +4482,8 @@ template <class FunctionTable, class Duration, class Prior,
   requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Predictions<var::Parameters_transformed> &s,
-            thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
-            t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
+            thermo_mcmc<var::Parameters_transformed> const &data, Prior const &,
+            t_logLikelihood const &lik, const Data &y, const Variables &x, ...) {
     auto num_samples = size(y);
     auto num_states = lik.m.number_of_states();
     auto num_states_a =std::pow(2,std::round(std::log2(num_states)));
@@ -4755,8 +4755,8 @@ template <class FunctionTable, class Duration, class Prior,
 requires(is_of_this_template_type_v<std::decay_t<FunctionTable>, FuncMap_St>)
 void report(FunctionTable &, std::size_t iter, const Duration &dur,
             save_RateParameter<var::Parameters_transformed> &s,
-            thermo_mcmc<var::Parameters_transformed> const &data, Prior &&,
-            t_logLikelihood &&lik, ...) {
+            thermo_mcmc<var::Parameters_transformed> const &data, Prior const &,
+            t_logLikelihood const &lik, ...) {
   
   auto num_states = lik.m.number_of_states();
   std::size_t num_values = 1;
@@ -4945,8 +4945,8 @@ template <class ParameterType, class FunctionTable, class Duration, class Prior,
   requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
 void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             save_Predictions<ParameterType> &s,
-            cuevi::Cuevi_mcmc<ParameterType> &data, Prior &&,
-            t_logLikelihood &&lik, const cuevi::by_fraction<Data> &ys,
+            cuevi::Cuevi_mcmc<ParameterType> &data, Prior const &,
+            t_logLikelihood const &lik, const cuevi::by_fraction<Data> &ys,
             const cuevi::by_fraction<Variables> &xs, ...) {
 
   auto &t = data.get_Cuevi_Temperatures();

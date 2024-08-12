@@ -3,7 +3,7 @@
 cd ~/Code/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data_w2
+export WORKING_DIRECTORY=data_w3
 
 RUNTIME="2-00:00"
 
@@ -12,14 +12,16 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 export EVIDENCE_ALGORITHM=thermo_dts
 
 
-export NTASKS=8
-CPUSPERTASK=8
+export NTASKS=16
+CPUSPERTASK=4
 export CP=CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
 export N_SCH=1
-N_SCH2=14
+N_SCH2=2
+N_SCH3=3
+N_SCH4=5
 
 export SCHEME_DIR_0=models_Ag
 export SCHEME_DIR_1=models_Ag
@@ -39,25 +41,25 @@ export SCHEME_DIR_14=models_Ag
 export SCHEME_DIR_15=models_Ag
 
 
-export SCHEME_0=scheme_1_inact_PI
-export SCHEME_1=scheme_2_inact_PI
-export SCHEME_2=scheme_3_inact_PI
-export SCHEME_3=scheme_4_inact_PI
-export SCHEME_4=scheme_5_inact_PI
-export SCHEME_5=scheme_6_inact_PI
-export SCHEME_6=scheme_7_inact_PI
-export SCHEME_7=scheme_8_inact_PI
-export SCHEME_8=scheme_9_inact_PI
-export SCHEME_9=scheme_10_inact_PI
-export SCHEME_10=scheme_11_inact_PI
-export SCHEME_11=scheme_11_inact_PI
-export SCHEME_12=scheme_10_inact_PI
-export SCHEME_13=scheme_9_inact_PI
-export SCHEME_14=scheme_8_inact_PI
-export SCHEME_15=scheme_7_inact_PI
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=scheme_${N_SCH2}_inact_PI
+export SCHEME_2=scheme_${N_SCH3}_inact_PI
+export SCHEME_3=scheme_${N_SCH4}_inact_PI
+export SCHEME_4=$SCHEME_0
+export SCHEME_5=$SCHEME_1
+export SCHEME_6=$SCHEME_2
+export SCHEME_7=$SCHEME_3
+export SCHEME_8=$SCHEME_0
+export SCHEME_9=$SCHEME_1
+export SCHEME_10=$SCHEME_2
+export SCHEME_11=$SCHEME_3
+export SCHEME_12=$SCHEME_0
+export SCHEME_13=$SCHEME_1
+export SCHEME_14=$SCHEME_2
+export SCHEME_15=$SCHEME_3
 
 
-export PATH_MACRO_DR_0=w1_6h_
+export PATH_MACRO_DR_0=w3_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -75,25 +77,25 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=w1
+export PATH_MACRO_DRX=w3
 
 
 export LiK_0=ADR
 export LiK_1=$LIK_0
 export LIK_2=$LIK_0
 export LIK_3=$LIK_0
-export LIK_4=$LIK_0
-export LIK_5=$LIK_0
-export LIK_6=$LIK_0
-export LIK_7=$LIK_0
-export LIK_8=$LIK_0
-export LIK_9=$LIK_0
-export LIK_10=$LIK_0
-export LIK_11=$LIK_0
-export LIK_12=$LIK_0
-export LIK_13=$LIK_0
-export LIK_14=$LIK_0
-export LIK_15=$LIK_0
+export LIK_4=DR
+export LIK_5=$LIK_4
+export LIK_6=$LIK_4
+export LIK_7=$LIK_4
+export LIK_8=R
+export LIK_9=$LIK_8
+export LIK_10=$LIK_8
+export LIK_11=$LIK_8
+export LIK_12=NR
+export LIK_13=$LIK_12
+export LIK_14=$LIK_12
+export LIK_15=$LIK_12
 
 
 
