@@ -11,7 +11,7 @@
 ### Cantidad de nodos a usar		
 #SBATCH --nodes=1
 
-### Cores a utilizar por nodo = procesos por nodo * cores por proceso
+### Cores a utilizar por nodo=procesos por nodo * cores por proceso
 #SBATCH --ntasks-per-node=16
 ### Cores por proceso (para MPI+OpenMP)
 #SBATCH --cpus-per-task=4
