@@ -9,11 +9,11 @@ PATH_MACRO_DRS=( ${PATH_MACRO_DR_0} ${PATH_MACRO_DR_1}  ${PATH_MACRO_DR_2} ${PAT
 EXPERIMENTS=(  ${EXPERIMENT_0} ${EXPERIMENT_1}  ${EXPERIMENT_2} ${EXPERIMENT_3}  ${EXPERIMENT_4} ${EXPERIMENT_5}  ${EXPERIMENT_6} ${EXPERIMENT_7} ${EXPERIMENT_8} ${EXPERIMENT_9}  ${EXPERIMENT_10} ${EXPERIMENT_11}  ${EXPERIMENT_12} ${EXPERIMENT_13}  ${EXPERIMENT_14} ${EXPERIMENT_15}  )
 
 
-if [ -n "${LIK_0}" ]                                            
+if [ -n "${LIK_0}" ];   then                                         
     LIKS=( ${LIK_0} ${LIK_1}  ${LIK_2} ${LIK_3}  ${LIK_4} ${LIK_5}  ${LIK_6} ${LIK_7} ${LIK_8} ${LIK_9}  ${LIK_10} ${LIK_11}  ${LIK_12} ${LIK_13}  ${LIK_14} ${LIK_15}  )
 fi
 
-if [ -n "${IDNAME_0}" ]                                            
+if [ -n "${IDNAME_0}" ]; then                                           
     IDNAMES= ( ${IDNAME_0} ${IDNAME_1}  ${IDNAME_2} ${IDNAME_3}  ${IDNAME_4} ${IDNAME_5}  ${IDNAME_6} ${IDNAME_7} ${IDNAME_8} ${IDNAME_9}  ${IDNAME_10} ${IDNAME_11}  ${IDNAME_12} ${IDNAME_13}  ${IDNAME_14} ${IDNAME_15}  )
 fi
 
@@ -29,15 +29,15 @@ PATH_MACRO_DR=${PATH_MACRO_DRS[$SLURM_LOCALID]}
 EXPERIMENT=${EXPERIMENTS[$SLURM_LOCALID]}
 
 
-if [ -n "${LIKS}" ]                                            
+if [ -n "${LIKS}" ]; then                                           
    LIK=${LIKS[$SLURM_LOCALID]}
 fi  
 
-if [ -z "${CP}" ]                                            
+if [ -z "${CP}" ]; then                                           
   CP=$SLURM_CPUS_PER_TASK
 fi  
 
-if [ -n "${IDNAMES}" ]                                            
+if [ -n "${IDNAMES}" ];  then                                          
    IDNAME=${IDNAMES[$SLURM_LOCALID]}
 else
    IDNAME=${PATH_MACRO_DR}${EXPER_ABR}${LIK_AB}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0   
