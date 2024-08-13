@@ -1,10 +1,6 @@
 #!/bin/bash
 
 
-
-
-
-
 SCHEME_DIRS=(${SCHEME_DIR_0}  ${SCHEME_DIR_1}  ${SCHEME_DIR_2}  ${SCHEME_DIR_3} ${SCHEME_DIR_4}  ${SCHEME_DIR_5}  ${SCHEME_DIR_6}  ${SCHEME_DIR_7} ${SCHEME_DIR_8}  ${SCHEME_DIR_9}  ${SCHEME_DIR_10}  ${SCHEME_DIR_11} ${SCHEME_DIR_12}  ${SCHEME_DIR_13}  ${SCHEME_DIR_14}  ${SCHEME_DIR_15} )
 SCHEME_FILES=( ${SCHEME_0}  ${SCHEME_1} ${SCHEME_2}  ${SCHEME_3} ${SCHEME_4}  ${SCHEME_5} ${SCHEME_6}  ${SCHEME_7} ${SCHEME_}  ${SCHEME_9} ${SCHEME_10}  ${SCHEME_11} ${SCHEME_12}  ${SCHEME_13} ${SCHEME_14}  ${SCH8EME_15}  )
 
@@ -13,13 +9,13 @@ PATH_MACRO_DRS=( ${PATH_MACRO_DR_0} ${PATH_MACRO_DR_1}  ${PATH_MACRO_DR_2} ${PAT
 EXPERIMENTS=(  ${EXPERIMENT_0} ${EXPERIMENT_1}  ${EXPERIMENT_2} ${EXPERIMENT_3}  ${EXPERIMENT_4} ${EXPERIMENT_5}  ${EXPERIMENT_6} ${EXPERIMENT_7} ${EXPERIMENT_8} ${EXPERIMENT_9}  ${EXPERIMENT_10} ${EXPERIMENT_11}  ${EXPERIMENT_12} ${EXPERIMENT_13}  ${EXPERIMENT_14} ${EXPERIMENT_15}  )
 
 
-ifdef ${LIK_0}                                           
+if [ -n "${LIK_0}" ]                                            
     LIKS=( ${LIK_0} ${LIK_1}  ${LIK_2} ${LIK_3}  ${LIK_4} ${LIK_5}  ${LIK_6} ${LIK_7} ${LIK_8} ${LIK_9}  ${LIK_10} ${LIK_11}  ${LIK_12} ${LIK_13}  ${LIK_14} ${LIK_15}  )
-endif
+fi
 
-ifdef ${IDNAME_0}                                           
+if [ -n "${IDNAME_0}" ]                                            
     IDNAMES= ( ${IDNAME_0} ${IDNAME_1}  ${IDNAME_2} ${IDNAME_3}  ${IDNAME_4} ${IDNAME_5}  ${IDNAME_6} ${IDNAME_7} ${IDNAME_8} ${IDNAME_9}  ${IDNAME_10} ${IDNAME_11}  ${IDNAME_12} ${IDNAME_13}  ${IDNAME_14} ${IDNAME_15}  )
-endif
+fi
 
 
 
@@ -33,19 +29,19 @@ PATH_MACRO_DR=${PATH_MACRO_DRS[$SLURM_LOCALID]}
 EXPERIMENT=${EXPERIMENTS[$SLURM_LOCALID]}
 
 
-ifdef ${LIKS}                                           
+if [ -n "${LIKS}" ]                                            
    LIK=${LIKS[$SLURM_LOCALID]}
-endif   
+fi  
 
-ifndef ${CP}                                           
+if [ -z "${CP}" ]                                            
   CP=$SLURM_CPUS_PER_TASK
-endif  
+fi  
 
-ifdef ${IDNAMES}                                           
+if [ -n "${IDNAMES}" ]                                            
    IDNAME=${IDNAMES[$SLURM_LOCALID]}
 else
    IDNAME=${PATH_MACRO_DR}${EXPER_ABR}${LIK_AB}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0   
-endif   
+fi   
 
 
 LIKELIHOOD=$([ -z "${LIK}" ] && echo "likelihood" || echo "likelihood_"${LIK} )
