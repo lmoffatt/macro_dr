@@ -11,6 +11,8 @@ export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
 export EVIDENCE_ALGORITHM=thermo_dts
 
+export PARTITION=free-rider
+
 
 export NTASKS=16
 CPUSPERTASK=4
@@ -80,8 +82,8 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DRX=w3
 
 
-export LiK_0=ADR
-export LiK_1=$LIK_0
+export LIK_0=ADR
+export LIK_1=$LIK_0
 export LIK_2=$LIK_0
 export LIK_3=$LIK_0
 export LIK_4=DR

@@ -6,7 +6,7 @@
 #SBATCH --job-name=MHAl
 
 ### Cola a usar (gpu, mono, multi)
-#SBATCH --partition=free-rider
+#SBATCH --partition=eth_low
 
 ### Cantidad de nodos a usar		
 #SBATCH --nodes=1
@@ -36,5 +36,5 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 
 # Lanzar el programa
-srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/M_scheme_N_tasks.sh
+srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/M_scheme_N_${NTASKS}_tasks.sh
 

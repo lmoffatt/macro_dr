@@ -3,7 +3,7 @@
 cd ~/Code/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data_w3
+export WORKING_DIRECTORY=data_w2
 
 RUNTIME="2-00:00"
 
@@ -15,13 +15,10 @@ export EVIDENCE_ALGORITHM=thermo_dts
 export NTASKS=8
 CPUSPERTASK=8
 export CP=CPUSPERTASK
-
 export USE_LOCAL_ID=1
 
-export N_SCH=10
-N_SCH2=11
-N_SCH3=3
-N_SCH4=4
+export N_SCH=9
+N_SCH2=14
 
 export SCHEME_DIR_0=models_Ag
 export SCHEME_DIR_1=models_Ag
@@ -41,17 +38,17 @@ export SCHEME_DIR_14=models_Ag
 export SCHEME_DIR_15=models_Ag
 
 
-export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=scheme_${N_SCH2}_inact_PI
-export SCHEME_2=$SCHEME_0
-export SCHEME_3=$SCHEME_1
-export SCHEME_4=$SCHEME_0
-export SCHEME_5=$SCHEME_1
-export SCHEME_6=$SCHEME_0
-export SCHEME_7=$SCHEME_1
+export SCHEME_0=scheme_9_inact_PI
+export SCHEME_1=scheme_10_inact_PI
+export SCHEME_2=scheme_11_inact_PI
+export SCHEME_3=scheme_11_inact_PI
+export SCHEME_4=scheme_10_inact_PI
+export SCHEME_5=scheme_9_inact_PI
+export SCHEME_6=scheme_8_inact_PI
+export SCHEME_7=scheme_7_inact_PI
 
 
-export PATH_MACRO_DR_0=w3_
+export PATH_MACRO_DR_0=w1_6h
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -69,19 +66,25 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=w3
+export PATH_MACRO_DRX=w1
 
 
-export LIK_0=ADR
+export LIK_0=NONE
 export LIK_1=$LIK_0
-export LIK_2=DR
-export LIK_3=$LIK_2
-export LIK_4=R
-export LIK_5=$LIK_4
-export LIK_6=NR
-export LIK_7=$LIK_6
-
-
+export LIK_2=$LIK_0
+export LIK_3=$LIK_0
+export LIK_4=$LIK_0
+export LIK_5=$LIK_0
+export LIK_6=$LIK_0
+export LIK_7=$LIK_0
+export LIK_8=$LIK_0
+export LIK_9=$LIK_0
+export LIK_10=$LIK_0
+export LIK_11=$LIK_0
+export LIK_12=$LIK_0
+export LIK_13=$LIK_0
+export LIK_14=$LIK_0
+export LIK_15=$LIK_0
 
 
 export EXPERIMENT_0=idealize_experiment_2
@@ -110,7 +113,7 @@ export MAX_ITER=1000000
 
 
 
-JOBID1=12707 
+JOBID1=12713 
 
 
 export CONTINUATION_NUMBER=0
@@ -148,3 +151,19 @@ JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${
 export CONTINUATION_NUMBER=10
 JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
+
+#NTASKS=8
+#CPUSPERTASK=8
+
+#sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK} --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
+
+#NTASKS=4
+#CPUSPERTASK=16
+
+#sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
+
+
+#NTASKS=2
+#CPUSPERTASK=32
+
+#sbatch --parsable  --job-name=T_${CPUSPERTASK} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME} slurm_tupac/M_scheme_N.sh 
