@@ -41,6 +41,6 @@ module load amdlibflame
 module load gsl
 
 # Lanzar el programa
-srun /home/lmoffatt/macro_dr/macro_dr/multi_task/M_scheme_N_${NTASKS}_tasks.sh
+srun /home/lmoffatt/macro_dr/macro_dr/multi_task/M_scheme_N_tasks.sh
 
 

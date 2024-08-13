@@ -10,7 +10,7 @@ EXPERIMENTS=(  ${EXPERIMENT_0} ${EXPERIMENT_1}  ${EXPERIMENT_2} ${EXPERIMENT_3} 
 
 
 ifdef ${LIK_0}                                           
-    LIKS= ( ${LIK_0} ${LIK_1}  ${LIK_2} ${LIK_3}  ${LIK_4} ${LIK_5}  ${LIK_6} ${LIK_7} ${LIK_8} ${LIK_9}  ${LIK_10} ${LIK_11}  ${LIK_12} ${LIK_13}  ${LIK_14} ${LIK_15}  )
+    LIKS=( ${LIK_0} ${LIK_1}  ${LIK_2} ${LIK_3}  ${LIK_4} ${LIK_5}  ${LIK_6} ${LIK_7} ${LIK_8} ${LIK_9}  ${LIK_10} ${LIK_11}  ${LIK_12} ${LIK_13}  ${LIK_14} ${LIK_15}  )
 endif
 
 ifdef ${IDNAME_0}                                           
