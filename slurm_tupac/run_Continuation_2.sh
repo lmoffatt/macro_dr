@@ -50,7 +50,7 @@ export IDNAME_3=w1_6h_IE_8c_32s_4b_scheme_11_inact_PI_Ag_3_0
 export IDNAME_4=w1_6h_IE_8c_32s_4b_scheme_10_inact_PI_Ag_4_0
 export IDNAME_5=w1_6h_IE_8c_32s_4b_scheme_9_inact_PI_Ag_5_0
 export IDNAME_6=w1_6h_IE_8c_32s_4b_scheme_8_inact_PI_Ag_6_0
-export IDNAME_7=w1_6h__IE_8c_32s_4b_scheme_8_inact_PI_Ag_7_0
+export IDNAME_7=w1_6h_IE_8c_32s_4b_scheme_7_inact_PI_Ag_7_0
 
 
 
