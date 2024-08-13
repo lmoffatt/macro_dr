@@ -20,12 +20,7 @@ export CP=CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
-export N_SCH=1
-N_SCH2=2
-N_SCH3=3
-N_SCH4=4
-N_SCH5=5
-N_SCH6=6
+export N_SCH=9
 N_SCH7=7
 N_SCH8=8
 
