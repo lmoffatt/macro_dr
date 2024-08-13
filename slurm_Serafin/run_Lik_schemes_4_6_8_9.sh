@@ -107,8 +107,8 @@ export EXPERIMENT_14=$EXPERIMENT_0
 export EXPERIMENT_15=$EXPERIMENT_0
 
 
-export LiK_0=ADR
-export LiK_1=$LIK_0
+export LIK_0=ADR
+export LIK_1=$LIK_0
 export LIK_2=$LIK_0
 export LIK_3=$LIK_0
 export LIK_4=DR

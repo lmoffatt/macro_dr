@@ -18,7 +18,7 @@ export CP=CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
-export N_SCH=10
+export N_SCH=7
 N_SCH2=11
 N_SCH3=3
 N_SCH4=4
@@ -68,7 +68,7 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DRX=w3
 
 
-export LiK_0=ADR
+export LIK_0=ADR
 export LIK_1=DR
 export LIK_2=R
 export LIK_3=NR

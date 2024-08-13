@@ -91,7 +91,7 @@ export EXPERIMENT_14=$EXPERIMENT_0
 export EXPERIMENT_15=$EXPERIMENT_0
 
 
-export LiK_0=ADR
+export LIK_0=ADR
 export LIK_1=DR
 export LIK_2=R
 export LIK_3=NR

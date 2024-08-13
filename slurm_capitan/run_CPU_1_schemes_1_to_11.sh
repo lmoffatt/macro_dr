@@ -3,20 +3,29 @@
 cd ~/Code/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data_CPU4
+export WORKING_DIRECTORY=data_w3
 
-RUNTIME="0-01:00"
+RUNTIME="0-06:00"
 
-export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
+export PATH_MACRO=/home/lmoffatt.inqui/Code/macro_dr
 
+#!/bin/bash
 
-export PARTITION=free-rider
+cd ~/Code/macro_dr/macro_dr
+
+export PARTITION=eth_low
+
+export WORKING_DIRECTORY=data_w3
+
+RUNTIME="0-02:00"
+
+export PATH_MACRO=/home/lmoffatt.inqui/Code/macro_dr
 
 export EVIDENCE_ALGORITHM=thermo_dts
 
+
 export NTASKS=16
 CPUSPERTASK=4
-
 export CP=CPUSPERTASK
 
 export USE_LOCAL_ID=1
@@ -88,7 +97,7 @@ export SCHEME_DIR_13=models_Ag
 export SCHEME_DIR_14=models_Ag
 export SCHEME_DIR_15=models_Ag
 
-export PATH_MACRO_DR_0=w4_
+export PATH_MACRO_DR_0=w3_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -106,22 +115,22 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=w4
+export PATH_MACRO_DRX=w3
 
 
-export LIK_0=DR
+export LIK_0=ADR
 export LIK_1=$LIK_0
 export LIK_2=$LIK_0
 export LIK_3=$LIK_0
-export LIK_4=DR
+export LIK_4=ADR
 export LIK_5=$LIK_4
 export LIK_6=$LIK_4
 export LIK_7=$LIK_4
-export LIK_8=DR
+export LIK_8=ADR
 export LIK_9=$LIK_8
 export LIK_10=$LIK_8
 export LIK_11=$LIK_8
-export LIK_12=DR
+export LIK_12=ADR
 export LIK_13=$LIK_12
 export LIK_14=$LIK_12
 export LIK_15=$LIK_12
@@ -163,8 +172,8 @@ export CONTINUATION_NUMBER=0
 
 #JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
-export CONTINUATION_NUMBER=1
-JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+export CONTINUATION_NUMBER=$i
+JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_capitan/M_scheme_N_tasks.sh) 
 
 
 

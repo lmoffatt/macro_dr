@@ -399,6 +399,10 @@ add_executable(macro_dr main.cpp
     slurm_Serafin/run_Lik_schemes_4_6_8_9.sh
     slurm_Serafin/run_Lik_schemes_10_11.sh
     slurm_Serafin/run_Lik_schemes_7.sh
+    slurm_capitan/run_CPU_2_schemes_1_to_11.sh
+    slurm_capitan/run_CPU_1_schemes_1_to_11.sh slurm_capitan/run_CPU_2_schemes_1_to_11.sh slurm_capitan/run_CPU_4_schemes_1_to_11.sh slurm_capitan/run_CPU_8_schemes_1_to_8.sh slurm_capitan/run_CPU_8_schemes_9_to_11.sh slurm_capitan/run_CPU_16_schemes_1_to_4.sh slurm_capitan/run_CPU_16_schemes_5_to_8.sh slurm_capitan/run_CPU_16_schemes_9_to_11.sh slurm_capitan/run_CPU_32_schemes_3_4.sh slurm_capitan/run_CPU_32_schemes_5_6.sh slurm_capitan/run_CPU_32_schemes_7_11.sh slurm_capitan/run_CPU_32_schemes_8_9.sh slurm_capitan/run_CPU_32_schemes_10_11.sh
+    slurm_capitan/M_scheme_N_tasks.sh
+    multi_task/M_scheme_N_tasks.sh
     
     
     
