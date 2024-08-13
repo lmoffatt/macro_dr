@@ -7,10 +7,18 @@ export WORKING_DIRECTORY=data_CPU32
 
 RUNTIME="0-01:00"
 
-export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
+export PATH_MACRO=/home/lmoffatt/macro_dr/
+
+# Cargar los módulos para la tarea
+module load cmake
+module load gcc
+
+module load amdblis
+module load amdlibflame
+module load gsl
 
 
-export PARTITION=free-rider
+export PARTITION=short
 
 export EVIDENCE_ALGORITHM=thermo_dts
 
@@ -21,7 +29,7 @@ export CP=CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
-export N_SCH=5
+export N_SCH=7
 N_SCH2=2
 N_SCH3=3
 N_SCH4=4
@@ -33,18 +41,14 @@ N_SCH9=9
 N_SCH10=10
 N_SCH11=11
 
-export SCHEME_0=scheme_${N_SCH5}_inact_PI
-export SCHEME_1=scheme_${N_SCH6}_inact_PI
-export SCHEME_2=scheme_${N_SCH7}_inact_PI
-export SCHEME_3=scheme_${N_SCH8}_inact_PI
+export SCHEME_0=scheme_${N_SCH7}_inact_PI
+export SCHEME_1=scheme_${N_SCH8}_inact_PI
 
 
 
 
-export IDNAME_0=w1_IE_8c_32s_4b_scheme_5_inact_PI_Ag_4_0
-export IDNAME_1=w1_IE_8c_32s_4b_scheme_6_inact_PI_Ag_5_0
-export IDNAME_2=w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_6_0
-export IDNAME_3=w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_7_0
+export IDNAME_0=w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_6_0
+export IDNAME_1=w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_7_0
 
 
 
@@ -138,17 +142,17 @@ JOBID1=12707
 
 export CONTINUATION_NUMBER=0
 
-#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N_tasks.sh) 
 
 export CONTINUATION_NUMBER=1
-JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N_tasks.sh) 
 
 
 
 for i in $(seq 1 0);
 do
     export CONTINUATION_NUMBER=$i
-    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N_tasks.sh) 
 done
 
 

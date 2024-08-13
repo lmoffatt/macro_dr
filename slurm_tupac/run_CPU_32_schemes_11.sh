@@ -19,9 +19,9 @@ CPUSPERTASK=32
 
 export CP=CPUSPERTASK
 
-export USE_LOCAL_ID=1
+export USE_LOCAL_ID=11
 
-export N_SCH=5
+export N_SCH=11
 N_SCH2=2
 N_SCH3=3
 N_SCH4=4
@@ -33,19 +33,22 @@ N_SCH9=9
 N_SCH10=10
 N_SCH11=11
 
-export SCHEME_0=scheme_${N_SCH5}_inact_PI
-export SCHEME_1=scheme_${N_SCH6}_inact_PI
-export SCHEME_2=scheme_${N_SCH7}_inact_PI
-export SCHEME_3=scheme_${N_SCH8}_inact_PI
+export SCHEME_0=scheme_${N_SCH11}_inact_PI
+export SCHEME_1=scheme_${N_SCH11}_inact_PI
+export SCHEME_4=scheme_${N_SCH10}_inact_PI
+export SCHEME_5=scheme_${N_SCH9}_inact_PI
+export SCHEME_6=scheme_${N_SCH8}_inact_PI
+export SCHEME_7=scheme_${N_SCH7}_inact_PI
 
 
 
+export IDNAME_0=w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_2_0
+export IDNAME_1=w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_3_0
+export IDNAME_4=w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_4_0
 
-export IDNAME_0=w1_IE_8c_32s_4b_scheme_5_inact_PI_Ag_4_0
-export IDNAME_1=w1_IE_8c_32s_4b_scheme_6_inact_PI_Ag_5_0
-export IDNAME_2=w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_6_0
-export IDNAME_3=w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_7_0
-
+export IDNAME_5=w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_5_0
+export IDNAME_6=w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_6_0
+export IDNAME_7=w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_7_0
 
 
 export SCHEME_DIR_0=models_Ag
