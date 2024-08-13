@@ -29,7 +29,7 @@ export USE_LOCAL_ID=1
 
 #!/bin/bash
 
-cd ~/Code/macro_dr/macro_dr
+cd ~/macro_dr/macro_dr
 
 
 export WORKING_DIRECTORY=data_CPU32
