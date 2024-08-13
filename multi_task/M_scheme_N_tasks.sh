@@ -14,7 +14,7 @@ if [ -n "${LIK_0}" ];   then
 fi
 
 if [ -n "${IDNAME_0}" ]; then                                           
-    IDNAMES= ( ${IDNAME_0} ${IDNAME_1}  ${IDNAME_2} ${IDNAME_3}  ${IDNAME_4} ${IDNAME_5}  ${IDNAME_6} ${IDNAME_7} ${IDNAME_8} ${IDNAME_9}  ${IDNAME_10} ${IDNAME_11}  ${IDNAME_12} ${IDNAME_13}  ${IDNAME_14} ${IDNAME_15}  )
+    IDNAMES=( ${IDNAME_0} ${IDNAME_1}  ${IDNAME_2} ${IDNAME_3}  ${IDNAME_4} ${IDNAME_5}  ${IDNAME_6} ${IDNAME_7} ${IDNAME_8} ${IDNAME_9}  ${IDNAME_10} ${IDNAME_11}  ${IDNAME_12} ${IDNAME_13}  ${IDNAME_14} ${IDNAME_15}  )
 fi
 
 
