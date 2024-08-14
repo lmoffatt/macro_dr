@@ -867,7 +867,7 @@ auto thermo_evidence_continuation(
     std::cerr<<idName<<" to load last parameter\n";
     
     current=extract_parameters_last(fname, iter, duration, current);
-    std::cerr<<"\nload last parameter\n"<<"iter:"<<iter<<"\tduration: "<<duration<<"\n";
+    std::cerr<<"\nidName load last parameter\n"<<"iter:"<<iter<<"\tduration: "<<duration<<"\n";
     
     
     
