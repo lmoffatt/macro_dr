@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-export NTASKS=4
-CPUSPERTASK=16
+export NTASKS=2
+CPUSPERTASK=32
 
 export CP=CPUSPERTASK
 
