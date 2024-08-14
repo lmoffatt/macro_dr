@@ -24,9 +24,9 @@ set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcep
 
 #find_package(Catch2 REQUIRED)
 #target_link_libraries(tests Catch2::Catch2)
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-find_package(Threads REQUIRED)
+#set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+#set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+#find_package(Threads REQUIRED)
 
 find_package(BLAS )
 find_package(LAPACK )
