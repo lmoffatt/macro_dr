@@ -7,7 +7,7 @@ export WORKING_DIRECTORY=data_CPU1
 
 RUNTIME="0-01:00"
 
-export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
+export PATH_MACRO=${HOME}/Code/macro_dr
 
 
 export PARTITION=free-rider
