@@ -309,7 +309,6 @@ class thermo {
                                        lik, y, x);
         }
 
-        std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
         reset(mcmc_run.first);
         if (current.beta.back() == 1.0)
           mcmc_run.first.we_reach_final_temperature();
@@ -370,7 +369,6 @@ auto thermo_impl(FunctionTable &&f, const Algorithm &alg, Prior const &prior,
       beta_run.insert(beta_run.begin(), beta[beta_run.size()]);
       current =
           push_back_new_beta(f, iter, current, mts, beta_run, prior, lik, y, x);
-      std::cerr << "\n  beta_run=" << beta_run[0] << "\n";
       mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
     }
   }
@@ -702,7 +700,6 @@ auto thermo_evidence_loop(
         even_dur.record("main_loop_start");
         const auto end = std::chrono::high_resolution_clock::now();
         auto dur = std::chrono::duration<double>(end - start)+previous_duration;
-        std::cerr<<"\nthermo_evidence_loop inside\n";
         
         report_all(f, iter, dur, rep, current, prior, lik, y, x, mts,
                    mcmc_run.first);
@@ -713,21 +710,17 @@ auto thermo_evidence_loop(
                 adjust_beta(f,iter,therm.adapt_beta_every(),therm.acceptance_upper_limit(),therm.acceptance_lower_limit(),current,beta_run,mts,prior,lik,y,x);
             if (iter%therm.adapt_beta_every()==0)   
                 current.reset_statistics();
-            std::cerr<<"\nafter adjust beta\n";
-            std::cerr<<"new beta\n"<<beta_run<<"\n";
             
             
             
         }
         step_stretch_thermo_mcmc(f, iter,even_dur, current, rep, beta_run, mts, prior, lik,
                                  y, x);
-        std::cerr<<"\nafter step_stretch_thermo_mcmc\n";
         
         even_dur.record("befor_thermo_jump");  
         
         thermo_jump_mcmc(iter, current, rep, beta_run, mt, mts,
                          therm.thermo_jumps_every());
-        std::cerr<<"\nafter thermo_jump_mcmc\n";
         
         even_dur.record("after_thermo_jump");  
         
@@ -746,7 +739,6 @@ auto thermo_evidence_loop(
         
         
     }
-    std::cerr<<"\nfinalize\n";
     return std::pair(std::move(mcmc_run.first), current);
 }
 
@@ -864,10 +856,8 @@ auto thermo_evidence_continuation(
     
     std::chrono::duration<double,std::ratio<1>> duration;
     
-    std::cerr<<idName<<" to load last parameter\n";
     
     current=extract_parameters_last(fname, iter, duration, current);
-    std::cerr<<"\nidName load last parameter\n"<<"iter:"<<iter<<"\tduration: "<<duration<<"\n";
     
     
     
@@ -876,7 +866,6 @@ auto thermo_evidence_continuation(
     auto res=calc_thermo_mcmc_continuation(f, n_walkers, beta,
                                   mts, prior, lik, y, x,current);
     
-    std::cerr<<"\ncalc_thermo_mcmc_continuation\n"<<"res:"<<res<<"\n";
     
     auto mcmc_run = checks_convergence(std::move(a), current);
     //using return_type=Maybe_error<decltype(std::pair(std::move(mcmc_run.first), current))>;
