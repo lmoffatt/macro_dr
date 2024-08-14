@@ -866,14 +866,14 @@ auto thermo_evidence_continuation(
     
     
     current=extract_parameters_last(fname, iter, duration, current);
-    std::cerr<<"\nload last parameter\n"<<"iter:"<<iter<<"\tduration: "<<duration<<"\ncurrent:\n"<<current<<"\n";
+    std::cerr<<"\nload last parameter\n"<<"iter:"<<iter<<"\tduration: "<<duration<<"\n";
     
     a.reset(iter);
     beta=current.beta;
     auto res=calc_thermo_mcmc_continuation(f, n_walkers, beta,
                                   mts, prior, lik, y, x,current);
     
-    std::cerr<<"\ncalc_thermo_mcmc_continuation\n"<<"res:"<<res<<"\ncurrent:\n"<<current<<"\n";
+    std::cerr<<"\ncalc_thermo_mcmc_continuation\n"<<"res:"<<res<<"\n";
     
     auto mcmc_run = checks_convergence(std::move(a), current);
     //using return_type=Maybe_error<decltype(std::pair(std::move(mcmc_run.first), current))>;
