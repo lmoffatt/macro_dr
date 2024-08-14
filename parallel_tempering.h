@@ -1969,7 +1969,7 @@ bool extract_iter(std::istream &f, std::size_t &iter, Duration &dur,
     std::size_t i_par = 0;
     
     std::size_t v_i_beta;
-    std::size_t v_num_beta;
+    std::size_t v_num_beta=0;
     double v_beta;
     std::size_t v_i_walker;
     std::size_t v_walker_id;
