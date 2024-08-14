@@ -1,64 +1,13 @@
 #!/bin/bash
 
-cd ~/macro_dr/macro_dr
+export NTASKS=4
+CPUSPERTASK=16
 
-
-export WORKING_DIRECTORY=data_w1
-
-RUNTIME="0-06:00"
-
-export PATH_MACRO=/home/lmoffatt/macro_dr/
-
-# Cargar los módulos para la tarea
-module load cmake
-module load gcc
-
-module load amdblis
-module load amdlibflame
-module load gsl
-
-
-
-export EVIDENCE_ALGORITHM=thermo_dts
-
-
-export NTASKS=2
-CPUSPERTASK=32
 export CP=CPUSPERTASK
+
 export USE_LOCAL_ID=1
 
-#!/bin/bash
-
-cd ~/macro_dr/macro_dr
-
-
-export WORKING_DIRECTORY=data_CPU32
-
-RUNTIME="0-01:00"
-
-export PATH_MACRO=/home/lmoffatt/macro_dr/
-
-# Cargar los módulos para la tarea
-module load cmake
-module load gcc
-
-module load amdblis
-module load amdlibflame
-module load gsl
-
-
-export PARTITION=short
-
-export EVIDENCE_ALGORITHM=thermo_dts
-
-export NTASKS=2
-CPUSPERTASK=32
-
-export CP=CPUSPERTASK
-
-export USE_LOCAL_ID=11
-
-export N_SCH=11
+export N_SCH=9
 N_SCH2=2
 N_SCH3=3
 N_SCH4=4
@@ -70,17 +19,21 @@ N_SCH9=9
 N_SCH10=10
 N_SCH11=11
 
-export SCHEME_0=scheme_${N_SCH11}_inact_PI
-export SCHEME_1=scheme_${N_SCH11}_inact_PI
+export SCHEME_0=scheme_${N_SCH9}_inact_PI
+export SCHEME_1=scheme_${N_SCH10}_inact_PI
+export SCHEME_2=scheme_${N_SCH11}_inact_PI
+export SCHEME_3=scheme_${N_SCH11}_inact_PI
 export SCHEME_4=scheme_${N_SCH10}_inact_PI
 export SCHEME_5=scheme_${N_SCH9}_inact_PI
 export SCHEME_6=scheme_${N_SCH8}_inact_PI
 export SCHEME_7=scheme_${N_SCH7}_inact_PI
 
 
+export IDNAME_0=w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_0_0
+export IDNAME_1=w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_1_0
 
-export IDNAME_0=w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_2_0
-export IDNAME_1=w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_3_0
+export IDNAME_2=w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_2_0
+export IDNAME_3=w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_3_0
 export IDNAME_4=w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_4_0
 
 export IDNAME_5=w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_5_0
@@ -123,7 +76,7 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=w4
+
 
 
 export LIK_0=DR
@@ -178,17 +131,17 @@ JOBID1=12707
 
 export CONTINUATION_NUMBER=0
 
-#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N_tasks.sh) 
+#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 export CONTINUATION_NUMBER=1
-JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N_tasks.sh) 
+JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
 
 for i in $(seq 1 0);
 do
     export CONTINUATION_NUMBER=$i
-    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_Serafin/M_scheme_N_tasks.sh) 
+    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 done
 
 

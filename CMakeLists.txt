@@ -109,12 +109,12 @@ add_executable(macro_dr main.cpp
     function_memoization.h
     micror_stochastic.h
     lgamma.h
-    slurm_Serafin/s_first
+    slurm/s_first
     experiments/Moffatt_Hume_2007_ATP_time.txt
     experiments/Moffatt_Hume_2007_ATP_time_7.txt
     experiments/Moffatt_Hume_2007_ATP_time_7_constant_dt.txt
-    slurm_Serafin/s_debug.sh
-    slurm_Serafin/s_long.sh
+    slurm/s_debug.sh
+    slurm/s_long.sh
     continuation.h
     
    # old_code_in_main.cpp
@@ -127,7 +127,7 @@ add_executable(macro_dr main.cpp
     scripts/evidence_data.txt
     
     multi_task/multi_task_slurm.sh
-    slurm_Serafin/s_multi_debug.sh
+    slurm/s_multi_debug.sh
     multi_task/simulation_4.sh
     models_MoffattHume_linear.h
     models_MoffattHume_allosteric.h
@@ -142,14 +142,14 @@ add_executable(macro_dr main.cpp
     experiments/Moffatt_Hume_2007_ATP_time_7_segments.txt
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt
     multi_task/MH_Li7_sim.sh
-    slurm_Serafin/s_MH_Li7_sim.sh
-    slurm_Serafin/s_MH_Li7.sh
+    slurm/s_MH_Li7_sim.sh
+    slurm/s_MH_Li7.sh
     multi_task/MH_Li_sim.sh
     multi_task/MH_Li_old.sh
     models/scheme_2_inact.txt models/scheme_3_inact.txt models/scheme_4_inact.txt
-    slurm_Serafin/s_MH_Li.sh
-    slurm_Serafin/s_MH_Li_sim.sh
-    slurm_Serafin/s_MH_Li_short.sh
+    slurm/s_MH_Li.sh
+    slurm/s_MH_Li_sim.sh
+    slurm/s_MH_Li_short.sh
     experiments/Moffatt_Hume_2007_ATP_time_segments.txt experiments/Moffatt_Hume_2007_ATP_time_recording.txt
     slurm_tupac_old/s_MH_Li7.sh slurm_tupac_old/s_MH_Li7_sim.sh slurm_tupac_old/s_MH_Li_sim.sh slurm_tupac_old/s_MH_Li.sh slurm_tupac_old/s_MH_Li_short.sh
     scripts/simulation_seed.txt
@@ -204,7 +204,6 @@ add_executable(macro_dr main.cpp
     scripts/evidence_thermo_continuation.txt
     slurm_tupac_old/cross_model/simulated_cross_model_comparison.sh
     slurm_tupac/MHLi.sh
-    slurm/slurm.sh
     
     multi_task/MH_Li.sh
     multi_task/MH_Li_continuation_1.sh
@@ -320,8 +319,8 @@ add_executable(macro_dr main.cpp
     multi_task/M_scheme_N.sh
     slurm_tupac/M_scheme_N.sh
     slurm_tupac/run_M_scheme_N.sh
-    slurm_Serafin/run_M_scheme_N.sh
-    slurm_Serafin/M_scheme_N.sh
+    slurm/run_M_scheme_N.sh
+    slurm/M_scheme_N.sh
     models_Ag/scheme_5_NP.txt models_Ag/scheme_5_NP_par.csv models_Ag/scheme_5_PI_prior.csv models_Ag/scheme_5_NP_prior.csv models_Ag/scheme_5_inact_NP_prior.csv models_Ag/scheme_5_inact_NP_par.csv models_Ag/scheme_5_inact_NP.txt models_Ag/scheme_5_PI_par.csv models_Ag/scheme_5_inact_PI_prior.csv models_Ag/scheme_5_inact_PI_par.csv models_Ag/scheme_5_inact_PI.txt models_Ag/scheme_5_PI.txt models_Ag/scheme_5_inact.txt models_Ag/scheme_5.txt models_Ag/scheme_5_inact_par.csv models_Ag/scheme_5_inact_prior.csv models_Ag/scheme_5_par.csv models_Ag/scheme_5_prior.csv models_Ag/scheme_6_inact_NP_par.csv models_Ag/scheme_7_NP_par.csv models_Ag/scheme_6_NP_par.csv models_Ag/scheme_7_inact_NP_par.csv models_Ag/scheme_6_NP.txt models_Ag/scheme_7_inact_NP.txt models_Ag/scheme_6_inact_NP.txt models_Ag/scheme_7_NP.txt models_Ag/scheme_4_PI.txt models_Ag/scheme_2_inact_PI.txt models_Ag/scheme_1_inact_PI.txt models_Ag/scheme_4_inact_PI.txt models_Ag/scheme_3_inact_PI.txt models_Ag/scheme_6_NP_prior.csv models_Ag/scheme_6_inact_NP_prior.csv models_Ag/scheme_7_inact_NP_prior.csv models_Ag/scheme_7_NP_prior.csv models_Ag/scheme_2_inact_PI_par.csv models_Ag/scheme_3_inact_PI_prior.csv models_Ag/scheme_1_inact_PI_prior.csv models_Ag/scheme_2_inact_PI_prior.csv models_Ag/scheme_4_PI_prior.csv models_Ag/scheme_4_inact_PI_prior.csv models_Ag/scheme_3_inact_PI_par.csv models_Ag/scheme_4_inact_PI_par.csv models_Ag/scheme_4_PI_par.csv models_Ag/scheme_1_inact_PI_par.csv models_Ag/scheme_7_inact_PI.txt models_Ag/scheme_6_PI.txt models_Ag/scheme_6_inact_PI.txt models_Ag/scheme_6_inact_PI_par.csv models_Ag/scheme_6_inact_PI_prior.csv models_Ag/scheme_6_PI_par.csv models_Ag/scheme_6_PI_prior.csv models_Ag/scheme_7_inact_PI_par.csv models_Ag/scheme_7_inact_PI_prior.csv models_Ag/scheme_7_PI_par.csv models_Ag/scheme_7_PI_prior.csv models_Ag/scheme_7_PI.txt models_Ag/scheme_7_inact_par.csv models_Ag/scheme_7_inact_prior.csv models_Ag/scheme_7_par.csv models_Ag/scheme_7_prior.csv models_Ag/scheme_7_inact.txt models_Ag/scheme_7.txt models_Ag/scheme_6_inact_par.csv models_Ag/scheme_6_inact_prior.csv models_Ag/scheme_6_inact.txt models_Ag/scheme_6_par.csv models_Ag/scheme_6_prior.csv models_Ag/scheme_6.txt models_Ag/scheme_3.txt models_Ag/scheme_2_inact_NP.txt models_Ag/scheme_3_inact_NP.txt models_Ag/scheme_1_inact.txt models_Ag/scheme_1_inact_prior.csv models_Ag/scheme_3_inact_par.csv models_Ag/scheme_1_par.csv models_Ag/scheme_2_inact_par.csv models_Ag/scheme_2_inact_prior.csv models_Ag/scheme_1_prior.csv models_Ag/scheme_3_inact_prior.csv models_Ag/scheme_1_inact_par.csv models_Ag/scheme_4_inact_NP_prior.csv models_Ag/scheme_4_inact_NP_par.csv models_Ag/scheme_4_NP_prior.csv models_Ag/scheme_4_NP_par.csv models_Ag/scheme_4_inact_prior.csv models_Ag/scheme_4_inact_par.csv models_Ag/scheme_1_inact_NP.txt models_Ag/scheme_3_inact_NP_prior.csv models_Ag/scheme_3_inact_NP_par.csv models_Ag/scheme_2_inact_NP_prior.csv models_Ag/scheme_2_inact_NP_par.csv models_Ag/scheme_1_par_copy.csv models_Ag/scheme_1_inact_NP_prior.csv models_Ag/scheme_1_inact_NP_par.csv models_Ag/scheme_1.txt models_Ag/scheme_4_inact_NP.txt models_Ag/scheme_4_inact.txt models_Ag/scheme_4_NP.txt models_Ag/scheme_3_inact.txt models_Ag/scheme_2_inact.txt models_Ag/scheme_2.txt models_Ag/scheme_4.txt models_Ag/scheme_4_prior.csv models_Ag/scheme_4_par.csv models_Ag/scheme_2_prior.csv models_Ag/scheme_2_par.csv models_Ag/scheme_3_prior.csv models_Ag/scheme_3_par.csv
     models_Ag/scheme_8.txt models_Ag/scheme_8_inact.txt models_Ag/scheme_8_inact_NP.txt models_Ag/scheme_8_inact_NP_par.csv models_Ag/scheme_8_inact_NP_prior.csv models_Ag/scheme_8_inact_par.csv models_Ag/scheme_8_inact_PI.txt models_Ag/scheme_8_inact_PI_par.csv models_Ag/scheme_8_inact_PI_prior.csv models_Ag/scheme_8_inact_prior.csv models_Ag/scheme_8_NP.txt models_Ag/scheme_8_NP_par.csv models_Ag/scheme_8_NP_prior.csv models_Ag/scheme_8_par.csv models_Ag/scheme_8_PI.txt models_Ag/scheme_8_PI_par.csv models_Ag/scheme_8_PI_prior.csv models_Ag/scheme_8_prior.csv models_Ag/scheme_9.txt models_Ag/scheme_9_inact.txt models_Ag/scheme_9_inact_NP.txt models_Ag/scheme_9_inact_NP_par.csv models_Ag/scheme_9_inact_NP_prior.csv models_Ag/scheme_9_inact_par.csv models_Ag/scheme_9_inact_PI.txt models_Ag/scheme_9_inact_PI_par.csv models_Ag/scheme_9_inact_PI_prior.csv models_Ag/scheme_9_inact_prior.csv models_Ag/scheme_9_NP.txt models_Ag/scheme_9_NP_par.csv models_Ag/scheme_9_NP_prior.csv models_Ag/scheme_9_par.csv models_Ag/scheme_9_PI.txt models_Ag/scheme_9_PI_par.csv models_Ag/scheme_9_PI_prior.csv models_Ag/scheme_9_prior.csv models_Ag/scheme_10.txt models_Ag/scheme_10_inact.txt models_Ag/scheme_10_inact_NP.txt models_Ag/scheme_10_inact_NP_par.csv models_Ag/scheme_10_inact_NP_prior.csv models_Ag/scheme_10_inact_par.csv models_Ag/scheme_10_inact_PI.txt models_Ag/scheme_10_inact_PI_par.csv models_Ag/scheme_10_inact_PI_prior.csv models_Ag/scheme_10_inact_prior.csv models_Ag/scheme_10_NP.txt models_Ag/scheme_10_NP_par.csv models_Ag/scheme_10_NP_prior.csv models_Ag/scheme_10_par.csv models_Ag/scheme_10_PI.txt models_Ag/scheme_10_PI_par.csv models_Ag/scheme_10_PI_prior.csv models_Ag/scheme_10_prior.csv
     models/scheme_11_inact.txt models/scheme_11_inact_NP.txt models/scheme_11_inact_NP_par.csv models/scheme_11_inact_NP_prior.csv models/scheme_11_inact_par.csv models/scheme_11_inact_PI.txt models/scheme_11_inact_PI_par.csv models/scheme_11_inact_PI_prior.csv models/scheme_11_inact_prior.csv models/scheme_11_NP.txt models/scheme_11_NP_par.csv models/scheme_11_NP_prior.csv models/scheme_11_par.csv models/scheme_11_PI.txt models/scheme_11_PI_par.csv models/scheme_11_PI_prior.csv models/scheme_11_prior.csv
@@ -330,14 +329,14 @@ add_executable(macro_dr main.cpp
     models/scheme_15.txt models/scheme_15_inact.txt models/scheme_15_inact_NP.txt models/scheme_15_inact_NP_par.csv models/scheme_15_inact_NP_prior.csv models/scheme_15_inact_par.csv models/scheme_15_inact_PI.txt models/scheme_15_inact_PI_par.csv models/scheme_15_inact_PI_prior.csv models/scheme_15_inact_prior.csv models/scheme_15_NP.txt models/scheme_15_NP_par.csv models/scheme_15_NP_prior.csv models/scheme_15_par.csv models/scheme_15_PI.txt models/scheme_15_PI_par.csv models/scheme_15_PI_prior.csv models/scheme_15_prior.csv
     models_Ag/scheme_15.txt models_Ag/scheme_15_inact.txt models_Ag/scheme_15_inact_NP.txt models_Ag/scheme_15_inact_NP_par.csv models_Ag/scheme_15_inact_NP_prior.csv models_Ag/scheme_15_inact_par.csv models_Ag/scheme_15_inact_PI.txt models_Ag/scheme_15_inact_PI_par.csv models_Ag/scheme_15_inact_PI_prior.csv models_Ag/scheme_15_inact_prior.csv models_Ag/scheme_15_NP.txt models_Ag/scheme_15_NP_par.csv models_Ag/scheme_15_NP_prior.csv models_Ag/scheme_15_par.csv models_Ag/scheme_15_PI.txt models_Ag/scheme_15_PI_par.csv models_Ag/scheme_15_PI_prior.csv models_Ag/scheme_15_prior.csv
     slurm_tupac/run_M_scheme_11.sh
-    slurm_Serafin/run_M_scheme_11.sh
-    slurm_Serafin/run_M_scheme_15.sh
+    slurm/run_M_scheme_11.sh
+    slurm/run_M_scheme_15.sh
     slurm_tupac/run_M_scheme_15.sh
     models/scheme_12.txt models/scheme_12_inact.txt models/scheme_12_inact_NP.txt models/scheme_12_inact_NP_par.csv models/scheme_12_inact_NP_prior.csv models/scheme_12_inact_par.csv models/scheme_12_inact_PI.txt models/scheme_12_inact_PI_par.csv models/scheme_12_inact_PI_prior.csv models/scheme_12_inact_prior.csv models/scheme_12_NP.txt models/scheme_12_NP_par.csv models/scheme_12_NP_prior.csv models/scheme_12_par.csv models/scheme_12_PI.txt models/scheme_12_PI_par.csv models/scheme_12_PI_prior.csv models/scheme_12_prior.csv models/scheme_13.txt models/scheme_13_inact.txt models/scheme_13_inact_NP.txt models/scheme_13_inact_NP_par.csv models/scheme_13_inact_NP_prior.csv models/scheme_13_inact_par.csv models/scheme_13_inact_PI.txt models/scheme_13_inact_PI_par.csv models/scheme_13_inact_PI_prior.csv models/scheme_13_inact_prior.csv models/scheme_13_NP.txt models/scheme_13_NP_par.csv models/scheme_13_NP_prior.csv models/scheme_13_par.csv models/scheme_13_PI.txt models/scheme_13_PI_par.csv models/scheme_13_PI_prior.csv models/scheme_13_prior.csv models/scheme_14.txt models/scheme_14_inact.txt models/scheme_14_inact_NP.txt models/scheme_14_inact_NP_par.csv models/scheme_14_inact_NP_prior.csv models/scheme_14_inact_par.csv models/scheme_14_inact_PI.txt models/scheme_14_inact_PI_par.csv models/scheme_14_inact_PI_prior.csv models/scheme_14_inact_prior.csv models/scheme_14_NP.txt models/scheme_14_NP_par.csv models/scheme_14_NP_prior.csv models/scheme_14_par.csv models/scheme_14_PI.txt models/scheme_14_PI_par.csv models/scheme_14_PI_prior.csv models/scheme_14_prior.csv
     models_Ag/scheme_12.txt models_Ag/scheme_12_inact.txt models_Ag/scheme_12_inact_NP.txt models_Ag/scheme_12_inact_NP_par.csv models_Ag/scheme_12_inact_NP_prior.csv models_Ag/scheme_12_inact_par.csv models_Ag/scheme_12_inact_PI.txt models_Ag/scheme_12_inact_PI_par.csv models_Ag/scheme_12_inact_PI_prior.csv models_Ag/scheme_12_inact_prior.csv models_Ag/scheme_12_NP.txt models_Ag/scheme_12_NP_par.csv models_Ag/scheme_12_NP_prior.csv models_Ag/scheme_12_par.csv models_Ag/scheme_12_PI.txt models_Ag/scheme_12_PI_par.csv models_Ag/scheme_12_PI_prior.csv models_Ag/scheme_12_prior.csv models_Ag/scheme_13.txt models_Ag/scheme_13_inact.txt models_Ag/scheme_13_inact_NP.txt models_Ag/scheme_13_inact_NP_par.csv models_Ag/scheme_13_inact_NP_prior.csv models_Ag/scheme_13_inact_par.csv models_Ag/scheme_13_inact_PI.txt models_Ag/scheme_13_inact_PI_par.csv models_Ag/scheme_13_inact_PI_prior.csv models_Ag/scheme_13_inact_prior.csv models_Ag/scheme_13_NP.txt models_Ag/scheme_13_NP_par.csv models_Ag/scheme_13_NP_prior.csv models_Ag/scheme_13_par.csv models_Ag/scheme_13_PI.txt models_Ag/scheme_13_PI_par.csv models_Ag/scheme_13_PI_prior.csv models_Ag/scheme_13_prior.csv models_Ag/scheme_14.txt models_Ag/scheme_14_inact.txt models_Ag/scheme_14_inact_NP.txt models_Ag/scheme_14_inact_NP_par.csv models_Ag/scheme_14_inact_NP_prior.csv models_Ag/scheme_14_inact_par.csv models_Ag/scheme_14_inact_PI.txt models_Ag/scheme_14_inact_PI_par.csv models_Ag/scheme_14_inact_PI_prior.csv models_Ag/scheme_14_inact_prior.csv models_Ag/scheme_14_NP.txt models_Ag/scheme_14_NP_par.csv models_Ag/scheme_14_NP_prior.csv models_Ag/scheme_14_par.csv models_Ag/scheme_14_PI.txt models_Ag/scheme_14_PI_par.csv models_Ag/scheme_14_PI_prior.csv models_Ag/scheme_14_prior.csv
-    slurm_Serafin/run_M_scheme_12sh
-    slurm_Serafin/run_M_scheme_13.sh
-    slurm_Serafin/run_M_scheme_14.sh
+    slurm/run_M_scheme_12sh
+    slurm/run_M_scheme_13.sh
+    slurm/run_M_scheme_14.sh
     slurm_tupac/run_M_scheme_12.sh
     slurm_tupac/run_M_scheme_13.sh
     slurm_tupac/run_M_scheme_14.sh
@@ -363,16 +362,16 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_M_schemes_6_8.sh
     slurm_tupac/run_M_schemes_9_10.sh
     slurm_tupac/run_M_scheme_7.sh
-    slurm_Serafin/M_scheme_N_tasks.sh
+    slurm/M_scheme_N_tasks.sh
     scripts/calculate_likelihood.txt
     slurm_tupac/run_M_schemes_11_12.sh
     slurm_tupac/run_M_schemes_13_14.sh
     slurm_tupac/run_M_schemes_7_15.sh
-    slurm_Serafin/run_M_scheme_11_12.sh
-    slurm_Serafin/run_M_scheme_13_14.sh
-    slurm_Serafin/run_M_scheme_7_15.sh
+    slurm/run_M_scheme_11_12.sh
+    slurm/run_M_scheme_13_14.sh
+    slurm/run_M_scheme_7_15.sh
     experiments/Moffatt_Hume_2007_ATP_time_idealized_old.txt
-    slurm_Serafin/run_M_scheme_7.sh
+    slurm/run_M_scheme_7.sh
     CLI_thermo_evidence_dts.h
     scripts/evidence_thermo_dts_data.txt
     scripts/beta_4.txt
@@ -390,7 +389,7 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_CPU_32_schemes_7_8.sh
     slurm_tupac/run_CPU_32_schemes_9_10.sh
     slurm_tupac/run_CPU_32_schemes_11.sh
-    slurm_Serafin/run_CPU_32_schemes_11.sh slurm_Serafin/run_CPU_32_schemes_9_10.sh slurm_Serafin/run_CPU_32_schemes_7_8.sh slurm_Serafin/run_CPU_32_schemes_5_6.sh slurm_Serafin/run_CPU_32_schemes_3_4.sh slurm_Serafin/run_CPU_16_schemes_9_to_11.sh slurm_Serafin/run_CPU_16_schemes_5_to_8.sh slurm_Serafin/run_CPU_16_schemes_1_to_4.sh slurm_Serafin/run_CPU_8_schemes_9_to_11.sh slurm_Serafin/run_CPU_8_schemes_1_to_8.sh slurm_Serafin/run_CPU_4_schemes_1_to_11.sh slurm_Serafin/run_CPU_2_schemes_1_to_11.sh slurm_Serafin/run_CPU_1_schemes_1_to_11.sh
+    slurm/run_CPU_32_schemes_11.sh slurm/run_CPU_32_schemes_9_10.sh slurm/run_CPU_32_schemes_7_8.sh slurm/run_CPU_32_schemes_5_6.sh slurm/run_CPU_32_schemes_3_4.sh slurm/run_CPU_16_schemes_9_to_11.sh slurm/run_CPU_16_schemes_5_to_8.sh slurm/run_CPU_16_schemes_1_to_4.sh slurm/run_CPU_8_schemes_9_to_11.sh slurm/run_CPU_8_schemes_1_to_8.sh slurm/run_CPU_4_schemes_1_to_11.sh slurm/run_CPU_2_schemes_1_to_11.sh slurm/run_CPU_1_schemes_1_to_11.sh
     scripts/likelihood_R.txt
     scripts/likelihood_DR.txt
     scripts/likelihood_DNR.txt
@@ -400,16 +399,21 @@ add_executable(macro_dr main.cpp
     slurm_tupac/run_Lik_schemes_4_6_8_9.sh
     slurm_tupac/run_Lik_schemes_10_11.sh
     slurm_tupac/run_Lik_schemes_7.sh
-    slurm_Serafin/run_Lik_schemes_1_2_3_5.sh
-    slurm_Serafin/run_Lik_schemes_4_6_8_9.sh
-    slurm_Serafin/run_Lik_schemes_10_11.sh
-    slurm_Serafin/run_Lik_schemes_7.sh
+    slurm/run_Lik_schemes_1_2_3_5.sh
+    slurm/run_Lik_schemes_4_6_8_9.sh
+    slurm/run_Lik_schemes_10_11.sh
+    slurm/run_Lik_schemes_7.sh
     slurm_capitan/run_CPU_2_schemes_1_to_11.sh
     slurm_capitan/run_CPU_1_schemes_1_to_11.sh slurm_capitan/run_CPU_2_schemes_1_to_11.sh slurm_capitan/run_CPU_4_schemes_1_to_11.sh slurm_capitan/run_CPU_8_schemes_1_to_8.sh slurm_capitan/run_CPU_8_schemes_9_to_11.sh slurm_capitan/run_CPU_16_schemes_1_to_4.sh slurm_capitan/run_CPU_16_schemes_5_to_8.sh slurm_capitan/run_CPU_16_schemes_9_to_11.sh slurm_capitan/run_CPU_32_schemes_3_4.sh slurm_capitan/run_CPU_32_schemes_5_6.sh slurm_capitan/run_CPU_32_schemes_7_8.sh slurm_capitan/run_CPU_32_schemes_9_10.sh slurm_capitan/run_CPU_32_schemes_11.sh
     slurm_capitan/M_scheme_N_tasks.sh
     multi_task/M_scheme_N_tasks.sh
     slurm_tupac/run_Continuation_1.sh
     slurm_tupac/run_Continuation_2.sh
+    slurm/serafin.sh
+    slurm/set_default_variables.sh
+    slurm/tupac.sh
+    slurm/dirac.sh
+    slurm/capitan.sh
     
     
     

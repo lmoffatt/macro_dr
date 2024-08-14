@@ -36,5 +36,5 @@ export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 
 # Lanzar el programa
-srun /nfs/home/lmoffatt/Code/macro_dr/macro_dr/multi_task/M_scheme_N_tasks.sh
+srun ~/lmoffatt/Code/macro_dr/macro_dr/multi_task/M_scheme_N_tasks.sh
 
