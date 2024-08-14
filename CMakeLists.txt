@@ -14,14 +14,14 @@ add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
 
 
 
-set_property(TARGET macro_dr PROPERTY CXX_STANDARD 20)
-#set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 20)
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_BUILD_TYPE "Release")
 
 #set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcepts-diagnostics-depth=4 -fmax-errors=5 -ftime-report" )
 
 set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type  -fmax-errors=5 -ftime-report" )
+#set_property(TARGET macro_dr PROPERTY CXX_STANDARD 20)
 
 
 #find_package(Catch2 REQUIRED)
