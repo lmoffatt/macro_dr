@@ -864,9 +864,12 @@ auto thermo_evidence_continuation(
     
     std::chrono::duration<double,std::ratio<1>> duration;
     
+    std::cerr<<idName<<" to load last parameter\n";
     
     current=extract_parameters_last(fname, iter, duration, current);
     std::cerr<<"\nload last parameter\n"<<"iter:"<<iter<<"\tduration: "<<duration<<"\n";
+    
+    
     
     a.reset(iter);
     beta=current.beta;
