@@ -6,29 +6,9 @@ export NTASKS=2
 CPUSPERTASK=32
 export CP=CPUSPERTASK
 export USE_LOCAL_ID=1
-
-
-cd ~/macro_dr/macro_dr
-
-
 export WORKING_DIRECTORY=data_CPU32
 
-RUNTIME="0-01:00"
 
-export PATH_MACRO=/home/lmoffatt/macro_dr/
-
-# Cargar los módulos para la tarea
-module load cmake
-module load gcc
-
-module load amdblis
-module load amdlibflame
-module load gsl
-
-
-export PARTITION=short
-
-export EVIDENCE_ALGORITHM=thermo_dts
 
 export NTASKS=2
 CPUSPERTASK=32

@@ -6,6 +6,7 @@ export NTASKS=16
 CPUSPERTASK=4
 
 export CP=CPUSPERTASK
+export WORKING_DIRECTORY=data_CPU4
 
 export USE_LOCAL_ID=1
 export N_SCH=1
