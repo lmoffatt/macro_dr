@@ -1139,7 +1139,7 @@ auto bayesian_linear_regression_calculate_mean_logLik(
     auto yfit = X * tr(beta_n);
     auto ydiff = y - yfit;
     auto SS = beta[i] * xtx(ydiff.value());
-    std::cerr << "SS\n" << SS << "\n";
+    std::   cerr << "SS\n" << SS << "\n";
 
     auto a_n = a_0 + beta[i] * n / 2.0;
     auto b_n = b_0 + 0.5 * SS + 0.5 * xAxt(beta_0 - beta_n, L_0);
