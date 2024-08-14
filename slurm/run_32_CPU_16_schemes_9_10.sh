@@ -1,13 +1,13 @@
 #!/bin/bash
 
 
-export NTASKS=8
-CPUSPERTASK=8
+export NTASKS=2
+CPUSPERTASK=16
 
 export CP=CPUSPERTASK
-export WORKING_DIRECTORY=data_CPU8
 
 export USE_LOCAL_ID=1
+export WORKING_DIRECTORY=data_CPU16
 
 export N_SCH=9
 N_SCH2=2
