@@ -97,19 +97,19 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
 
-export LIK_0=DR
+export LIK_0=${LIKELIHOOD_ALGORITHM}
 export LIK_1=$LIK_0
 export LIK_2=$LIK_0
 export LIK_3=$LIK_0
-export LIK_4=DR
+export LIK_4=$LIK_0
 export LIK_5=$LIK_4
 export LIK_6=$LIK_4
 export LIK_7=$LIK_4
-export LIK_8=DR
+export LIK_8=$LIK_0
 export LIK_9=$LIK_8
 export LIK_10=$LIK_8
 export LIK_11=$LIK_8
-export LIK_12=DR
+export LIK_12=$LIK_0
 export LIK_13=$LIK_12
 export LIK_14=$LIK_12
 export LIK_15=$LIK_12
