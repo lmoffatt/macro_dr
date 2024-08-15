@@ -15,7 +15,7 @@ export PARTITION=free-rider
 
 export NTASKS=16
 CPUSPERTASK=4
-export CP=CPUSPERTASK
+export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
