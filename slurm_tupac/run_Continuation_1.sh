@@ -4,10 +4,12 @@ cd ~/Code/macro_dr/macro_dr
 
 export WORKING_DIRECTORY=data_w2
 
-RUNTIME="2-00:00"
+RUNTIME="3-00:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
+
+export PATH_MACRO_DRX=w5
 
 export PARTITION=free-rider
 

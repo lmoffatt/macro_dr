@@ -8,6 +8,7 @@ RUNTIME="2-00:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
+export PATH_MACRO_DRX=w5
 
 export PARTITION=free-rider
 
