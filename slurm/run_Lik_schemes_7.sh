@@ -5,7 +5,7 @@ cd ~/macro_dr/macro_dr
 
 export WORKING_DIRECTORY=data_w3
 
-RUNTIME="0-06:00"
+RUNTIME="2-00:00"
 
 export PATH_MACRO=/home/lmoffatt/macro_dr/
 
@@ -22,8 +22,8 @@ module load gsl
 export EVIDENCE_ALGORITHM=thermo_dts
 
 
-export NTASKS=4
-CPUSPERTASK=16
+export NTASKS=2
+CPUSPERTASK=32
 export CP=CPUSPERTASK
 export USE_LOCAL_ID=1
 
@@ -52,7 +52,7 @@ export SCHEME_1=SCHEME_0
 export SCHEME_2=SCHEME_0
 export SCHEME_3=SCHEME_0
 
-export PATH_MACRO_DR_0=w3_6h_
+export PATH_MACRO_DR_0=w5_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -70,7 +70,7 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
-export PATH_MACRO_DRX=w3
+export PATH_MACRO_DRX=w5
 
 
 export EXPERIMENT_0=idealize_experiment_2
@@ -91,8 +91,8 @@ export EXPERIMENT_14=$EXPERIMENT_0
 export EXPERIMENT_15=$EXPERIMENT_0
 
 
-export LIK_0=ADR
-export LIK_1=DR
+export LIK_0=DR
+export LIK_1=NR
 export LIK_2=R
 export LIK_3=NR
 
