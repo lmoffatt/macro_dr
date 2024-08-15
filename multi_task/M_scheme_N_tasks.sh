@@ -56,7 +56,7 @@ LOCAL_ID=$([ "$USE_LOCAL_ID" = 1 ] && echo ${SLURM_LOCALID} || echo "")
 if [ -n "${IDNAMES}" ];  then                                          
    IDNAME=${IDNAMES[$SLURM_LOCALID]}
 else
-   IDNAME=${PATH_MACRO_DR}${EXPER_ABR}${LIK_AB}_${CP}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0   
+   IDNAME=${PATH_MACRO_DR}${EXPER_ABR}${LIK_AB}_${SLURM_CPUS_PER_TASK}c_${N_SCOUTS}s_${N_BETA}b_${SCHEME}${SCH_ABR}_${LOCAL_ID}_0   
 fi   
 
 
