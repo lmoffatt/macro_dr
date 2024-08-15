@@ -422,6 +422,7 @@ add_executable(macro_dr main.cpp
     slurm/run_32_schemes_8_10.sh
     slurm/run_32_schemes_11.sh
     slurm/run_32_schemes_4.sh
+    slurm/run_64_scheme_7.sh
     
     
     
