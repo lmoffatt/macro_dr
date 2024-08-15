@@ -17,7 +17,7 @@ export EVIDENCE_ALGORITHM=thermo_dts
 export NTASKS=2
 CPUSPERTASK=32
 
-export CP=CPUSPERTASK
+export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 

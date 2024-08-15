@@ -18,7 +18,7 @@ export PATH_MACRO_DRX=w5
 export NTASKS=16
 CPUSPERTASK=1
 
-export CP=CPUSPERTASK
+export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
