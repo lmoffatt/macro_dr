@@ -4,7 +4,7 @@ cd ~/Code/macro_dr/macro_dr
 
 export WORKING_DIRECTORY=data_w2
 
-RUNTIME="2-00:00"
+RUNTIME="3-00:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
@@ -143,8 +143,8 @@ export CONTINUATION_NUMBER=0
 
 #JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
-#export CONTINUATION_NUMBER=1
-#JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
+export CONTINUATION_NUMBER=1
+JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
 
 
 
