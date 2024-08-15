@@ -6,8 +6,8 @@ cd ~/Code/macro_dr/macro_dr
 export WORKING_DIRECTORY=data_w5
 
 export NTASKS=16
-CPUSPERTASK=4
-export CP=CPUSPERTASK
+export CPUSPERTASK=4
+export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 

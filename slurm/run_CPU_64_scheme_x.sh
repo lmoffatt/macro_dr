@@ -4,11 +4,11 @@
 
 export NTASKS=1
 CPUSPERTASK=64
-export CP=CPUSPERTASK
+export CP=$CPUSPERTASK
 export USE_LOCAL_ID=1
 export WORKING_DIRECTORY=data_CPU64
 
-export CP=CPUSPERTASK
+export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
@@ -20,7 +20,6 @@ export SCHEME_0=scheme_${N_SCH}_inact_PI
 IDNAMES=( w1_IE_8c_32s_4b_scheme_1_inact_PI_Ag_0_0 w1_IE_8c_32s_4b_scheme_2_inact_PI_Ag_1_0 w1_IE_8c_32s_4b_scheme_3_inact_PI_Ag_2_0 w1_IE_8c_32s_4b_scheme_4_inact_PI_Ag_3_0 w1_IE_8c_32s_4b_scheme_5_inact_PI_Ag_4_0 w1_IE_8c_32s_4b_scheme_6_inact_PI_Ag_5_0 w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_6_0 w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_7_0 w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_0_0 w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_1_0 w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_2_0 w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_3_0 w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_4_0 w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_5_0 w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_6_0 w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_7_0 )
 
 export IDNAME_0=${IDNAMES[$N_SCH]}
-
 
 
 

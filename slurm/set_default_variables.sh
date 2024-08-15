@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export WORKING_DIRECTORY=data_CPU5
+export WORKING_DIRECTORY=data_w5
 
 export RUNTIME=3-00:00
 export EVIDENCE_ALGORITHM=thermo_dts
