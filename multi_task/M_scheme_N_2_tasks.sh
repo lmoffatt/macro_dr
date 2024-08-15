@@ -31,9 +31,7 @@ LIKELIHOOD=$([ "$LIK" = "NONE" ] && echo "likelihood" || echo "likelihood_"${LIK
 
 LIK_AB=$([ "$LIK" = "NONE" ] && echo "" || echo "_"${LIK} )
 
-ifndef ${CP}                                           
   CP=$SLURM_CPUS_PER_TASK
-endif  
 
 cd ${PATH_MACRO}/${WORKING_DIRECTORY}
 
