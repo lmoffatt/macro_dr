@@ -4,10 +4,8 @@ cd ~/Code/macro_dr/macro_dr
 
 module use /opt/ohpc/pub/apps/modules/all/
 module load cmake
-export CC=$HOME/local/gcc-14.2.0/bin/gcc
-export CXX=$HOME/local/gcc-14.2.0/bin/g++
-module load GSL
-module load OpenBLAS
+module load intel/2022.0.2
+module load GSL/2.7-GCC-12.2.0module load GSL
 
 export PATH_MACRO=${HOME}/Code/macro_dr/
 
