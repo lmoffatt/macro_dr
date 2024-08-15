@@ -416,6 +416,7 @@ add_executable(macro_dr main.cpp
     slurm/capitan.sh
     slurm/run_32_CPU_4_schemes_1_to_8.sh
     slurm/run_32_CPU_4_schemes_1_to_8.sh slurm/run_32_CPU_4_schemes_9_to_11.sh slurm/run_32_CPU_8_schemes_1_to_4.sh slurm/run_32_CPU_8_schemes_5_to_8.sh slurm/run_32_CPU_8_schemes_9_to_11.sh slurm/run_32_CPU_16_schemes_3_4.sh slurm/run_32_CPU_16_schemes_5_6.sh slurm/run_32_CPU_16_schemes_7_8.sh slurm/run_32_CPU_16_schemes_9_10.sh slurm/run_32_CPU_16_schemes_11.sh
+    slurm/run_32_CPU_32_scheme_x.sh
     
     
     
