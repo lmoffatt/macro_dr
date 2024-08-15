@@ -1,20 +1,28 @@
 #!/bin/bash
 
-cd ~/Code/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data_w5
+export NTASKS=1
+CPUSPERTASK=64
+export CP=CPUSPERTASK
+export USE_LOCAL_ID=1
+export WORKING_DIRECTORY=data_CPU64
 
-export NTASKS=16
-CPUSPERTASK=4
 export CP=CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
-export N_SCH=1
-N_SCH2=2
-N_SCH3=3
-N_SCH4=5
+export N_SCH=$1
+
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+
+
+IDNAMES=( w1_IE_8c_32s_4b_scheme_1_inact_PI_Ag_0_0 w1_IE_8c_32s_4b_scheme_2_inact_PI_Ag_1_0 w1_IE_8c_32s_4b_scheme_3_inact_PI_Ag_2_0 w1_IE_8c_32s_4b_scheme_4_inact_PI_Ag_3_0 w1_IE_8c_32s_4b_scheme_5_inact_PI_Ag_4_0 w1_IE_8c_32s_4b_scheme_6_inact_PI_Ag_5_0 w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_6_0 w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_7_0 w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_0_0 w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_1_0 w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_2_0 w1_IE_8c_32s_4b_scheme_11_inact_PI_Ag_3_0 w1_IE_8c_32s_4b_scheme_10_inact_PI_Ag_4_0 w1_IE_8c_32s_4b_scheme_9_inact_PI_Ag_5_0 w1_IE_8c_32s_4b_scheme_8_inact_PI_Ag_6_0 w1_IE_8c_32s_4b_scheme_7_inact_PI_Ag_7_0 )
+
+export IDNAME_0=${IDNAMES[$N_SCH]}
+
+
+
 
 export SCHEME_DIR_0=models_Ag
 export SCHEME_DIR_1=models_Ag
@@ -33,26 +41,7 @@ export SCHEME_DIR_13=models_Ag
 export SCHEME_DIR_14=models_Ag
 export SCHEME_DIR_15=models_Ag
 
-
-export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=scheme_${N_SCH2}_inact_PI
-export SCHEME_2=scheme_${N_SCH3}_inact_PI
-export SCHEME_3=scheme_${N_SCH4}_inact_PI
-export SCHEME_4=$SCHEME_0
-export SCHEME_5=$SCHEME_1
-export SCHEME_6=$SCHEME_2
-export SCHEME_7=$SCHEME_3
-export SCHEME_8=$SCHEME_0
-export SCHEME_9=$SCHEME_1
-export SCHEME_10=$SCHEME_2
-export SCHEME_11=$SCHEME_3
-export SCHEME_12=$SCHEME_0
-export SCHEME_13=$SCHEME_1
-export SCHEME_14=$SCHEME_2
-export SCHEME_15=$SCHEME_3
-
-
-export PATH_MACRO_DR_0=w5_
+export PATH_MACRO_DR_0=w4_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -73,7 +62,7 @@ export PATH_MACRO_DR_14=$PATH_MACRO_DR_0
 
 
 
-export LIK_0=ADR
+export LIK_0=DR
 export LIK_1=$LIK_0
 export LIK_2=$LIK_0
 export LIK_3=$LIK_0
@@ -81,11 +70,11 @@ export LIK_4=DR
 export LIK_5=$LIK_4
 export LIK_6=$LIK_4
 export LIK_7=$LIK_4
-export LIK_8=R
+export LIK_8=DR
 export LIK_9=$LIK_8
 export LIK_10=$LIK_8
 export LIK_11=$LIK_8
-export LIK_12=NR
+export LIK_12=DR
 export LIK_13=$LIK_12
 export LIK_14=$LIK_12
 export LIK_15=$LIK_12
@@ -116,6 +105,7 @@ export N_BETA=4
 
 export N_SCOUTS=32
 
+export MAX_ITER=1000000
 
 
 
@@ -124,17 +114,18 @@ JOBID1=12707
 
 export CONTINUATION_NUMBER=0
 
-JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/M_scheme_N_tasks.sh) 
+#JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
+
+export CONTINUATION_NUMBER=1
+JOBID1=$(sbatch --parsable --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
 
-
-for i in $(seq 1 6);
+for i in $(seq 1 0);
 do
     export CONTINUATION_NUMBER=$i
-    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/M_scheme_N_tasks.sh) 
+    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 done
-
 
 
 

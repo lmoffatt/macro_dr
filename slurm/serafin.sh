@@ -8,4 +8,4 @@ module load amdblis
 module load amdlibflame
 module load gsl
 export PATH_MACRO=${HOME}/macro_dr/
-export PARTITION=short
+export PARTITION=multi

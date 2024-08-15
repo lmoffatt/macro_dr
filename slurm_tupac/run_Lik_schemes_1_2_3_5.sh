@@ -3,9 +3,9 @@
 cd ~/Code/macro_dr/macro_dr
 
 
-export WORKING_DIRECTORY=data_w3
+export WORKING_DIRECTORY=data_w5
 
-RUNTIME="2-00:00"
+RUNTIME="3-00:00"
 
 export PATH_MACRO=/nfs/home/lmoffatt/Code/macro_dr
 
@@ -60,7 +60,7 @@ export SCHEME_14=$SCHEME_2
 export SCHEME_15=$SCHEME_3
 
 
-export PATH_MACRO_DR_0=w3_
+export PATH_MACRO_DR_0=w4_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_2=$PATH_MACRO_DR_0
 export PATH_MACRO_DR_3=$PATH_MACRO_DR_0
@@ -138,7 +138,7 @@ JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PA
 
 
 
-for i in $(seq 1 0);
+for i in $(seq 1 4);
 do
     export CONTINUATION_NUMBER=$i
     JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  slurm_tupac/M_scheme_N_tasks.sh) 
