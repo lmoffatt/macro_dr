@@ -392,6 +392,7 @@ add_executable(macro_dr main.cpp
     slurm/run_64_scheme_7.sh
     slurm/run_Continuation_1.sh slurm/run_Continuation_2.sh
     clusters/capitan.sh clusters/dirac.sh clusters/serafin.sh clusters/tupac.sh
+    slurm/run_32_scheme_7.sh
     
     
     
