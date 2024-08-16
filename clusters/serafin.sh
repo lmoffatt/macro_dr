@@ -7,7 +7,7 @@ module load gcc
 module load amdblis
 module load amdlibflame
 module load gsl
-export PATH_MACRO=${HOME}/macro_dr/
+export PATH_MACRO=${HOME}/macro_dr
 export CLUSTER=serafin
 
 if [ -z "${PARTITION}" ]; then                                           
