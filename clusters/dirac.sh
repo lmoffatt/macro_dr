@@ -8,6 +8,6 @@ module load openblas/0.3.26
 module load gsl
 export PATH_MACRO=${HOME}/Code/macro_dr/
 export CLUSTER=dirac
-if [ -n "${PARTITION}" ]; then                                           
+if [ -z "${PARTITION}" ]; then                                           
    export PARTITION=batch
 fi  
