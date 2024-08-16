@@ -10,6 +10,6 @@ module load gsl
 export PATH_MACRO=${HOME}/macro_dr/
 export CLUSTER=serafin
 
-if [ -n "${PARTITION}" ]; then                                           
+if [ -z "${PARTITION}" ]; then                                           
    export PARTITION=multi
 fi  
