@@ -8,3 +8,4 @@ module load openblas/0.3.26
 module load gsl
 export PATH_MACRO=${HOME}/Code/macro_dr/
 export PARTITION=batch
+export CLUSTER=dirac
