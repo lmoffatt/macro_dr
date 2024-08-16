@@ -7,6 +7,7 @@ module load cmake
 module load git
 module load intel/2022.0.2
 module load GSL/2.7-GCC-12.2.0module load GSL
+module load OpenBLAS
 
 export PATH_MACRO=${HOME}/Code/macro_dr
 export CLUSTER=capitan
