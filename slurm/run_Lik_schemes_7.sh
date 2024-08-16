@@ -7,7 +7,7 @@ export WORKING_DIRECTORY=data_w3
 
 RUNTIME="2-00:00"
 
-export PATH_MACRO=/home/lmoffatt/macro_dr/
+export PATH_MACRO=/home/lmoffatt/macro_dr
 
 # Cargar los módulos para la tarea
 module load cmake
