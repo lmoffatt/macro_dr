@@ -8,8 +8,8 @@ module load intel/2022.0.2
 module load GSL/2.7-GCC-12.2.0module load GSL
 
 export PATH_MACRO=${HOME}/Code/macro_dr/
+export CLUSTER=capitan
 
-
-export PARTITION=eth_hi
-
-
+if [ -n "${PARTITION}" ]; then                                           
+   export PARTITION=eth_hi
+fi  

@@ -8,4 +8,8 @@ module load amdblis
 module load amdlibflame
 module load gsl
 export PATH_MACRO=${HOME}/macro_dr/
-export PARTITION=multi
+export CLUSTER=serafin
+
+if [ -n "${PARTITION}" ]; then                                           
+   export PARTITION=multi
+fi  
