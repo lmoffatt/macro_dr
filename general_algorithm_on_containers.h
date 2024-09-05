@@ -132,8 +132,8 @@ inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, double=0,std::si
     if (s0!=s1)
     {
         std::stringstream ss;
-        ss<<"different :\n"<<s0<<"\n"<<s1;
-        std::cerr<<"different :\n"<<s0<<"\n"<<s1;
+        ss<<"\ndifferent :\n"<<s0<<"\n"<<s1;
+      //  std::cerr<<"\ndifferent :\n"<<s0<<"\n"<<s1;
         return error_message(ss.str());
     }
     else
@@ -186,7 +186,16 @@ inline Maybe_error<bool> compare_contents(is_Container auto const& s0, is_Contai
         return true;
 }
 
-
+template<class V>
+    requires requires (V x, double a, double e, std::size_t i) {{compare_contents(x(),x(),a,e,i)};}
+inline Maybe_error<bool> compare_contents(V const& s0, V const& s1,double RelError=std::numeric_limits<double>::epsilon()*100,  double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10)
+{
+    auto out=compare_contents(s0(),s1(),RelError,AbsError,max_errors);
+    if(!out)
+        return error_message("\n"+className(s0)+": \n"+out.error()());
+    else
+        return out;
+}
 
 }
 
