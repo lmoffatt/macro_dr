@@ -265,7 +265,7 @@ public:
         return true;
     }    
 };
-class vlogL : public var::Var<vlogL, double> {
+class vlogL : public var::Constant<vlogL, double> {
 public:
     friend std::string className(vlogL) { return "vlogL"; }
     Maybe_error<bool> is_good() const{

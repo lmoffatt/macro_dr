@@ -151,6 +151,18 @@ public:
     friend auto& put(std::ostream& os, const Var& x){ os<<x.value()<<"\t"; return os;}
 };
 
+template<class Id, class T>  Maybe_error<bool> compare_contents(const Var<Id,T>& s0, const Var<Id,T>& s1,double RelError,  double AbsError,std::size_t max_errors)
+{
+    auto out=compare_contents(s0(),s1(),RelError,AbsError,max_errors);
+    if(!out)
+        return error_message("\n"+std::string(typeid(Id).name())+": \n"+out.error()());
+    else
+        return out;
+}
+
+
+
+
 template<class...>
 class Constant;
 
@@ -215,6 +227,15 @@ public:
     
 };
 
+template<class Id, class T>
+  Maybe_error<bool> compare_contents(const Constant<Id,T>& s0, const Constant<Id,T>& s1,double RelError, double AbsError, std::size_t max_errors)
+{
+    auto out=compare_contents(s0.value(),s1.value(),RelError,  AbsError,max_errors);
+    if(!out)
+        return error_message("\n"+std::string(typeid(Id).name())+": \n"+out.error()());
+    else
+        return out;
+}
 
 
 
@@ -471,10 +492,7 @@ public:
         return (fullsum(get<Vars>(x))+...);
     }        
     
-    friend Maybe_error<bool> compare_contents(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10){
-        return (compare_contents(get<Vars>(a),get<Vars>(b),RelError,AbsError,max_errors)&&...&&Maybe_error<bool>(true));
-        
-    }
+    
     
     
     friend Maybe_error<bool> compare_contents_vs(Vector_Space const& a, Vector_Space const& b,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100, std::size_t max_errors=10){
@@ -513,6 +531,12 @@ public:
     }
     
 };
+
+template<class...Vars>
+Maybe_error<bool> compare_contents(Vector_Space<Vars...> const& a, Vector_Space<Vars...> const& b,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10){
+    return (compare_contents(get<Vars>(a),get<Vars>(b),RelError,AbsError,max_errors)&&...&&Maybe_error<bool>(true));
+    
+}
 
 template<class...Vars>
 bool is_finite(const Vector_Space<Vars...> & v)
