@@ -394,6 +394,7 @@ add_executable(macro_dr main.cpp
     clusters/capitan.sh clusters/dirac.sh clusters/serafin.sh clusters/tupac.sh
     slurm/run_32_scheme_7.sh
     multi_task/M_scheme_N_tasks.sh
+    slurm/run_32_scheme_10.sh
     
     
     
