@@ -32,7 +32,7 @@ export LIK_1=$LIK_0
 
 
 
-export EXPERIMENT_0=simulated_experiment_bessel
+export EXPERIMENT_0=simulated_experiment_bassel
 export EXPERIMENT_1=$EXPERIMENT_0
 
 
