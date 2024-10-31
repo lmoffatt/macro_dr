@@ -395,6 +395,10 @@ add_executable(macro_dr main.cpp
     slurm/run_32_scheme_7.sh
     multi_task/M_scheme_N_tasks.sh
     slurm/run_32_scheme_10.sh
+    models_posterior/scheme_10_inact_PI_posterior_par.csv models_posterior/scheme_10_inact_PI_prior.csv models_posterior/scheme_10_inact_PI.txt
+    experiments/Sim_scheme_10_simulation.txt
+    scripts/simulated_experiment.txt
+    slurm/run_32_scheme_10_sim.sh
     
     
     
