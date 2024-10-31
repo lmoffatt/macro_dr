@@ -399,6 +399,11 @@ add_executable(macro_dr main.cpp
     experiments/Sim_scheme_10_simulation.txt
     scripts/simulated_experiment.txt
     slurm/run_32_scheme_10_sim.sh
+    scripts/full_experiment.txt
+    experiments/Moffatt_Hume_2007_ATP_full_experiment.txt experiments/Moffatt_Hume_2007_ATP_full_recording.txt
+    scripts/simulated_experiment_bassel.txt
+    experiments/Sim_scheme_10_bessel.txt
+    slurm/run_32_scheme_10_bassel.sh
     
     
     
