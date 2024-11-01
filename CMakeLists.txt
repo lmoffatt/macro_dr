@@ -404,6 +404,9 @@ add_executable(macro_dr main.cpp
     scripts/simulated_experiment_bassel.txt
     experiments/Sim_scheme_10_bessel.txt
     slurm/run_32_scheme_10_bassel.sh
+    experiments/Moffatt_Hume_2007_ATP_Nyquist_experiment.txt experiments/Moffatt_Hume_2007_ATP_Nyquist_recording.txt
+    scripts/nyquist_experiment.txt
+    slurm/run_32_scheme_10_nyquist.sh
     
     
     
