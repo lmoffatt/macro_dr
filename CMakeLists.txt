@@ -407,6 +407,7 @@ add_executable(macro_dr main.cpp
     experiments/Moffatt_Hume_2007_ATP_Nyquist_experiment.txt experiments/Moffatt_Hume_2007_ATP_Nyquist_recording.txt
     scripts/nyquist_experiment.txt
     slurm/run_32_scheme_10_nyquist.sh
+    slurm/run_32_scheme_10_NR.sh
     
     
     
