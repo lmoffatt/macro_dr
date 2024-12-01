@@ -408,6 +408,7 @@ add_executable(macro_dr main.cpp
     scripts/nyquist_experiment.txt
     slurm/run_32_scheme_10_nyquist.sh
     slurm/run_32_scheme_10_NR.sh
+    slurm/run_32_scheme_10_DNR.sh
     
     
     
