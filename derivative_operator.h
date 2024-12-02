@@ -454,6 +454,13 @@ decltype(auto) derivative (const Derivative<X,Y>& d)
     return d.derivative();
 }
 
+template<class N,class D>
+Maybe_error<bool> compare_contents(Derivative<N,D> const & s0, Derivative<N,D> const & s1,double =0, double=0,std::size_t =1)
+{
+    
+        return compare_contents(primitive(s0),primitive(s1));
+ }
+
 
 
 template<class...>
