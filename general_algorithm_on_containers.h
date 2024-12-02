@@ -132,7 +132,7 @@ inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, double=0,std::si
     if (s0!=s1)
     {
         std::stringstream ss;
-        ss<<"\ndifferent :\n"<<s0<<"\n"<<s1;
+        ss<<"\ndifferent :\n"<<s0<<"\n"<<s1<<"\n";
       //  std::cerr<<"\ndifferent :\n"<<s0<<"\n"<<s1;
         return error_message(ss.str());
     }
@@ -140,7 +140,18 @@ inline Maybe_error<bool> compare_contents(T s0, T s1,double =0, double=0,std::si
         return true;
 }
 
-
+template<class T>
+ Maybe_error<bool> compare_contents(Maybe_error<T>const & s0, Maybe_error<T>const & s1,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t max_errors=10)
+{
+    if (!(s0.valid()&&s0.valid()))
+{
+        return compare_contents(s0.error()(),s1.error()());
+ }
+else
+    {
+        return compare_contents(s0.value(),s1.value(),RelError,AbsError,max_errors);
+     }
+}
 
 inline Maybe_error<bool> compare_contents(std::floating_point auto s0, std::floating_point auto s1,double RelError=std::numeric_limits<double>::epsilon()*100, double AbsError=std::numeric_limits<double>::epsilon()*100,std::size_t=1)
 {

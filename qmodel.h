@@ -3180,7 +3180,7 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
         auto r_y_var = build<y_var>(e + N * gSg);
         if constexpr (variance.value) {
           auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
-          if (std::isfinite(primitive(ms)) && primitive(ms) > 0) {
+          if (std::isfinite(primitive(ms)) && primitive(ms) >= 0) {
               r_y_var() = r_y_var() + ms;
             } else {
               return safely_calculate_Pmean_Pcov<
@@ -4076,7 +4076,7 @@ Vector_Space<logL, elogL, vlogL>>>>> {
                             
                             MacroR2<::V<uses_recursive_aproximation(false)>,
                             v_averaging,
-                            ::V<uses_variance_aproximation(false)>,
+                            v_variance,
                             ::V<uses_variance_correction_aproximation(
                               false)>>{}(f_local, std::move(t_prior),
                                          t_Qdtm, m, Nch, y()[i_step], fs);
@@ -4112,7 +4112,7 @@ Vector_Space<logL, elogL, vlogL>>>>> {
                       } else {
                         return MacroR2<
                             ::V<uses_recursive_aproximation(false)>, v_averaging,
-                            ::V<uses_variance_aproximation(false)>,
+                            v_variance,
                             ::V<uses_variance_correction_aproximation(false)>>{}(
                                                                                 f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
                                                                                 fs);
@@ -4356,11 +4356,14 @@ struct MacroR2 {
     auto l1= m.Macror<recursive{}.value, averaging{}.value, variance{}.value,
   variance_correction{}.value>(std::forward<T>(x),
                                std::forward<Ts>(xs)...);
+    
+    if constexpr(false){ 
    auto l2= m.Macror_old<recursive{}.value, averaging{}.value,
    variance{}.value,
                    variance_correction{}.value>(std::forward<T>(x),
                                                std::forward<Ts>(xs)...);
-   std::cerr<<var::compare_contents(primitive(l1.value()),primitive(l2.value()));
+   std::cerr<<var::compare_contents(l1,l2,1e-6, 1e-10);
+    }
    return std::move(l1);
 }
 };
