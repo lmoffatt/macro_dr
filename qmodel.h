@@ -4357,7 +4357,7 @@ struct MacroR2 {
   variance_correction{}.value>(std::forward<T>(x),
                                std::forward<Ts>(xs)...);
     
-    if constexpr(true){ 
+    if constexpr(false){ 
    auto l2= m.Macror_old<recursive{}.value, averaging{}.value,
    variance{}.value,
                    variance_correction{}.value>(std::forward<T>(x),
@@ -4507,7 +4507,9 @@ struct Likelihood_Model_v {
   ::V<uses_recursive_aproximation(true)>>;
   
   using v_uses_averaging_aproximation =
-  std::variant<::V<uses_averaging_aproximation(2)>>;
+  std::variant<::V<uses_averaging_aproximation(0)>,
+  ::V<uses_averaging_aproximation(1)>,
+  ::V<uses_averaging_aproximation(2)>>;
   
   using v_uses_variance_aproximation =
   std::variant<::V<uses_variance_aproximation(true)>>;
@@ -4565,7 +4567,12 @@ struct Likelihood_Model_v {
       t_recursive = ::V<uses_recursive_aproximation(false)>{};
     
     v_uses_averaging_aproximation t_averaging;
-    t_averaging = ::V<uses_averaging_aproximation(2)>{};
+    if (averaging.value==0)
+      t_averaging = ::V<uses_averaging_aproximation(0)>{};
+    else     if (averaging.value==0)
+      t_averaging = ::V<uses_averaging_aproximation(1)>{};
+    else   
+       t_averaging = ::V<uses_averaging_aproximation(2)>{};
     
     v_uses_variance_aproximation t_variance;
     t_variance = ::V<uses_variance_aproximation(true)>{};
