@@ -3181,7 +3181,7 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
         if constexpr (variance.value) {
           auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
           if (std::isfinite(primitive(ms)) && primitive(ms) >= 0) {
-              r_y_var() = r_y_var() + ms;
+              r_y_var() = r_y_var() + N*ms;
             } else {
               return safely_calculate_Pmean_Pcov<
                   recursive, averaging, uses_variance_aproximation(false),
@@ -3200,8 +3200,8 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
       auto gSg = getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i());
       if (!std::isfinite(primitive(gSg)) || primitive(gSg) <= 0)
         return safely_calculate_y_mean_yvar_Pmean_PCov<recursive,
-          uses_averaging_aproximation(0), variance,
-          variance_correction>(t_prior, t_Qdt, m,
+          uses_averaging_aproximation(0), uses_variance_aproximation(false),
+          uses_variance_correction_aproximation(false)>(t_prior, t_Qdt, m,
                                                                   N, p_y, fs);
       auto r_y_mean = build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) +
                                     y_baseline());
@@ -3213,11 +3213,11 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
       if constexpr (variance.value) {
         auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
         if (std::isfinite(primitive(ms)) && primitive(ms) > 0) {
-            r_y_var() = r_y_var() + ms;
+            r_y_var() = r_y_var() + N * ms;
           } else {
             return safely_calculate_Pmean_Pcov<
                 recursive, averaging, uses_variance_aproximation(false),
-                variance_correction>(false, std::move(r_y_mean),
+                uses_variance_correction_aproximation(false)>(false, std::move(r_y_mean),
                                      std::move(r_y_var), t_prior, t_Qdt, m, N,
                                      p_y, fs, SmD);
           }
@@ -4357,12 +4357,17 @@ struct MacroR2 {
   variance_correction{}.value>(std::forward<T>(x),
                                std::forward<Ts>(xs)...);
     
-    if constexpr(false){ 
+    if constexpr(true){ 
    auto l2= m.Macror_old<recursive{}.value, averaging{}.value,
    variance{}.value,
                    variance_correction{}.value>(std::forward<T>(x),
                                                std::forward<Ts>(xs)...);
-   std::cerr<<var::compare_contents(l1,l2,1e-6, 1e-10);
+   auto Maybe_bad=var::compare_contents(l1,l2,1e-2, 1e-6);
+   if (!Maybe_bad){
+         std::cerr<<"Macro is different from Macro\n";
+          // (std::cerr <<...<<xs);
+            std::cerr << Maybe_bad<<"\n--------\n";
+     }
     }
    return std::move(l1);
 }
