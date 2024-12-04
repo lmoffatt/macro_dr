@@ -3057,6 +3057,7 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
   auto &p_P_mean = get<P_mean>(t_prior);
   auto SmD = get<P_Cov>(t_prior)() - diag(p_P_mean());
   auto &y = p_y.value();
+  bool is_y_nan=std::isnan(y);
   auto y_baseline = get<Current_Baseline>(m);
   auto e = get<Current_Noise>(m).value() * fs /
       get<number_of_samples>(t_Qdt).value() +
@@ -3075,7 +3076,7 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
     
     return safely_calculate_Pmean_Pcov<recursive, averaging, variance,
         variance_correction>(
-          false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
+          is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
           p_y, fs, SmD);
   } else if constexpr (averaging.value == 2) {
     auto &t_gmean_i = get<gmean_i>(t_Qdt);
@@ -3151,7 +3152,7 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
           return safely_calculate_Pmean_Pcov<
               recursive, averaging, variance,
               uses_variance_correction_aproximation(false)>(
-                false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
+                is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                 p_y, fs, SmD);
         else {
             auto r_macro_algo = macror_algorithm(
@@ -3186,13 +3187,13 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
               return safely_calculate_Pmean_Pcov<
                   recursive, averaging, uses_variance_aproximation(false),
                   variance_correction>(
-                    false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
+                    is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                     p_y, fs, SmD);
             }
         }
         return safely_calculate_Pmean_Pcov<recursive, averaging, variance,
             variance_correction>(
-              false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
+              is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
               p_y, fs, SmD);
     }
   } else /* if constexpr (averaging.value == 1) */{
@@ -3217,14 +3218,14 @@ macror_algorithm>> safely_calculate_y_mean_yvar_Pmean_PCov(
           } else {
             return safely_calculate_Pmean_Pcov<
                 recursive, averaging, uses_variance_aproximation(false),
-                uses_variance_correction_aproximation(false)>(false, std::move(r_y_mean),
+                uses_variance_correction_aproximation(false)>(is_y_nan, std::move(r_y_mean),
                                      std::move(r_y_var), t_prior, t_Qdt, m, N,
                                      p_y, fs, SmD);
           }
       }
       return safely_calculate_Pmean_Pcov<recursive, averaging, variance,
           variance_correction>(
-            false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m,
+            is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m,
             N, p_y, fs, SmD);
     }
  }
@@ -5569,6 +5570,47 @@ inline void save_Likelihood_Predictions(
     },
   sim_y);
 }
+
+template <includes_N_state_evolution keep_N_state>
+void save_Likelihood_Predictions(std::string filename,
+                                 const logL_y_yvar &predictions,
+                                 const Simulated_Recording<keep_N_state> &y,
+                                 const Experiment &xs) {
+  auto &ys = get<Recording>(y());
+  std::ofstream f(filename);
+  f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_step"
+    << ","
+    << "time"
+    << ","
+    << "num_samples"
+    << ","
+    << "ATP_step"
+    << ","
+    << "v_ev"
+    << ","
+    << "y"
+    << ","
+    << "y_mean"
+    << ","
+    << "y_var"
+    ;
+  if constexpr (keep_N_state.value)
+      f << ","
+        << "N"
+        << "\n";
+  else
+  f << "\n";
+  for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
+      auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
+                   f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step])
+                << "," << get_num_samples(v_ev) << ","
+                << ToString(average_ATP_step(v_ev, true)) << "," << ToString(v_ev)
+                << "," << ys()[i_step]() << "," << get<ymean_Evolution>(predictions)()[i_step]
+                << "," << get<yvar_Evolution>(predictions)()[i_step] 
+                << "\n";
+    }
+}
+
 
 template <includes_N_state_evolution keep_N_state>
 void save_fractioned_Likelihood_Predictions(

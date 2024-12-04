@@ -415,6 +415,10 @@ add_executable(macro_dr main.cpp
     scripts/likelihood_ASR.txt
     slurm/run_32_scheme_10_AR.sh
     slurm/run_32_scheme_10_ASR.sh
+    command_lines/run_Evidence.txt
+    command_lines/test_likelihood.txt
+    CLI_likelihood.h
+    
     
     
     
