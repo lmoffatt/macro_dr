@@ -5500,7 +5500,7 @@ void save_Likelihood_Predictions(std::string filename,
                                  const Simulated_Recording<keep_N_state> &y,
                                  const Experiment &xs) {
   auto &ys = get<Recording>(y());
-  std::ofstream f(filename);
+  std::ofstream f(filename+"_patch_state_evolution.csv");
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_step"
     << ","
     << "time"
@@ -5577,7 +5577,14 @@ void save_Likelihood_Predictions(std::string filename,
                                  const Simulated_Recording<keep_N_state> &y,
                                  const Experiment &xs) {
   auto &ys = get<Recording>(y());
-  std::ofstream f(filename);
+  std::ofstream flogL(filename+"_logL.csv");
+  flogL << std::setprecision(std::numeric_limits<double>::digits10 + 1) 
+        << "logL"<< ","<<"elogL"<<","<< "vlogL"<<"\n";
+    flogL << get<logL>(predictions)() << "," 
+          << get<elogL>(predictions)() << "," 
+          << get<vlogL>(predictions)()
+                    << "\n";
+  std::ofstream f(filename+"_logL_evolution.csv");
   f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_step"
     << ","
     << "time"
@@ -5610,7 +5617,6 @@ void save_Likelihood_Predictions(std::string filename,
                 << "\n";
     }
 }
-
 
 template <includes_N_state_evolution keep_N_state>
 void save_fractioned_Likelihood_Predictions(
