@@ -1,4 +1,5 @@
 #include "CLI_function_table.h"
+#include "CLI_likelihood.h"
 #include "CLI_macro_dr.h"
 #include "CLI_thermo_evidence.h"
 #include "CLI_thermo_evidence_dts.h"
@@ -494,19 +495,17 @@ calc_thermo_evidence(std::string id,
       "likelihood",
       dcli::to_typed_function<std::string, std::string, parameters_value_type,
                               likelihood_algo_type, std::string,
-                              experiment_type, cuevi_algo_type,
-                              tablefun_value_type>(
+                              experiment_type>(
           &calc_likelihood, "output", "model", "parameter_values",
-          "likelihood_algorithm", "recording", "experiment", "cuevi_algorithm",
-          "function_table"));
+          "likelihood_algorithm", "recording", "experiment"));
 
   /**
-   * std::string model,
-                        prior_value_type prior,
-                        likelihood_algo_type likelihood,
-                        std::string recording, experiment_type experiment,
-                        fraction_algo_type fraction_algo, cuevi_algo_type
-   cuevi_algorithm, tablefun_value_type ft, std::size_t myseed     * */
+   * std::string outfilename,
+                                std::string model,
+                                parameters_value_type par,
+                                likelihood_algo_type likelihood,
+                                std::string recording,
+                                experiment_type experiment   * */
 
   cm.push_function("evidence",
                    dcli::to_typed_function<

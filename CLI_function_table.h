@@ -313,7 +313,7 @@ inline std::string run_simulation(std::string filename_prefix,
     }
 }
 
-inline void calc_likelihood(std::string outfilename, std::string model,
+inline void calc_likelihood_old(std::string outfilename, std::string model,
                             parameters_value_type par,
                             likelihood_algo_type likelihood,
                             std::string recording,
@@ -389,6 +389,10 @@ inline void calc_likelihood(std::string outfilename, std::string model,
             model_v);
     }
 }
+
+
+
+
 
 inline Maybe_error<std::string> calc_fraction_likelihood(
     std::string file_name, std::string model, parameters_value_type par,
