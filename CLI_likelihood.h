@@ -96,9 +96,9 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                                                    experiment,
                                                                    get<Recording>(y()));
                         if (lik2) {
-                            save_Likelihood_Predictions(outfilename + ".csv", lik1.value(),
+                            save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
-                            save_Likelihood_Predictions(outfilename + "_cov.csv",
+                            save_Likelihood_Predictions(outfilename,
                                                         lik2.value(), y, experiment);
                         } else {
                             std::cerr << "---------ERROR_______________\n";
@@ -144,9 +144,9 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                                                    experiment,
                                                                    get<Recording>(y()));
                         if (lik2) {
-                            save_Likelihood_Predictions(outfilename + ".csv", lik1.value(),
+                            save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
-                            save_Likelihood_Predictions(outfilename + "_cov.csv",
+                            save_Likelihood_Predictions(outfilename,
                                                         lik2.value(), y, experiment);
                         } else {
                             std::cerr << "---------ERROR_______________\n";
@@ -192,9 +192,9 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                                                    experiment,
                                                                    get<Recording>(y()));
                         if (lik2) {
-                            save_Likelihood_Predictions(outfilename + ".csv", lik1.value(),
+                            save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
-                            save_Likelihood_Predictions(outfilename + "_cov.csv",
+                            save_Likelihood_Predictions(outfilename,
                                                         lik2.value(), y, experiment);
                         } else {
                             std::cerr << "---------ERROR_______________\n";
@@ -240,9 +240,9 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                                                    experiment,
                                                                    get<Recording>(y()));
                         if (lik2) {
-                            save_Likelihood_Predictions(outfilename + ".csv", lik1.value(),
+                            save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
-                            save_Likelihood_Predictions(outfilename + "_cov.csv",
+                            save_Likelihood_Predictions(outfilename,
                                                         lik2.value(), y, experiment);
                         } else {
                             std::cerr << "---------ERROR_______________\n";
