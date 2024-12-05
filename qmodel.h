@@ -4621,7 +4621,8 @@ struct Likelihood_Model_v_all {
 
 struct Likelihood_Model_v {
   using v_uses_adaptive_aproximation =
-  std::variant<::V<uses_adaptive_aproximation(true)>>;
+  std::variant<::V<uses_adaptive_aproximation(false)>,
+  ::V<uses_adaptive_aproximation(true)>>;
   
   using v_uses_recursive_aproximation =
   std::variant<::V<uses_recursive_aproximation(false)>,
@@ -4679,8 +4680,11 @@ struct Likelihood_Model_v {
                uses_variance_correction_aproximation variance_correction,
                const Model &model, Simulation_n_sub_dt n_sub_dt) const {
     v_uses_adaptive_aproximation t_adaptive;
-    t_adaptive = ::V<uses_adaptive_aproximation(true)>{};
-    
+    if (adaptive.value)
+         t_adaptive = ::V<uses_adaptive_aproximation(true)>{};
+    else
+      t_adaptive = ::V<uses_adaptive_aproximation(false)>{};
+      
     v_uses_recursive_aproximation t_recursive;
     if (recursive.value)
       t_recursive = ::V<uses_recursive_aproximation(true)>{};
