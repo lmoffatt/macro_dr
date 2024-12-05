@@ -18,7 +18,7 @@ export SCHEME_1=scheme_${N_SCH}_inact_PI
 export SCHEME_DIR_0=models_Ag
 export SCHEME_DIR_1=models_Ag
 
-export PATH_MACRO_DR_0=w6_DNR_
+export PATH_MACRO_DR_0=w7
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 
@@ -30,7 +30,7 @@ export LIK_1=$LIK_0
 
 
 
-export PATH_MACRO_DRX=w6
+export PATH_MACRO_DRX=w7
 
 
 export EXPERIMENT_0=idealize_experiment_2
