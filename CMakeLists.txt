@@ -418,6 +418,10 @@ add_executable(macro_dr main.cpp
     command_lines/run_Evidence.txt
     command_lines/test_likelihood.txt
     CLI_likelihood.h
+    slurm/run_32_scheme_10_no_inact_ADR
+    models_different_inact/scheme_10_inact_PI_prior.csv
+    models_different_inact/scheme_10_inact_PI_par.csv models_different_inact/scheme_10_inact_PI.txt
+    slurm/run_32_scheme_10_ADR_inact_prior.sh
     
     
     
