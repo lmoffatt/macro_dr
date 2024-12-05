@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash				    |
 
 export NTASKS=1
 CPUSPERTASK=32

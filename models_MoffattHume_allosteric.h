@@ -1810,7 +1810,7 @@ inline auto get_model(std::string modelName) {
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
                        &scheme_5_d, &scheme_6_d,
                        &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, &scheme_10_d, 
+                       &scheme_9_d, &scheme_10, &scheme_10_d, 
                        &scheme_11_d,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d);
     return allmodels[modelName];
 }
@@ -1835,7 +1835,7 @@ inline auto get_model_scheme(std::string modelName) {
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
                        &scheme_5_d, &scheme_6_d,
                        &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, &scheme_10_d, 
+                       &scheme_9_d, &scheme_10, &scheme_10_d, 
                        &scheme_11_d,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d);
     return allmodels[modelName];
 }
@@ -1848,7 +1848,7 @@ inline void print_model_Priors(double covar) {
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
                        &scheme_5_d, &scheme_6_d,
                        &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, &scheme_10_d, 
+                       &scheme_9_d, &scheme_10, &scheme_10_d, 
                        &scheme_11_d,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d);
     //,
     //

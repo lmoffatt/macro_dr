@@ -17,4 +17,4 @@ scheme_10_inact,14,Pink_Noise,Log10,5,0.6989700043360189
 scheme_10_inact,15,Proportional_Noise,Fixed,0,0
 scheme_10_inact,16,Current_Baseline,Linear,1,1
 scheme_10_inact,17,Num_ch,Log10,4800,3.681241237375587
-scheme_10_inact,18,inactivation_rate,Log10,1e-05,-5
+scheme_10_inact,18,inactivation_rate,Log10,0.000335417508648181,-3.47441427115502

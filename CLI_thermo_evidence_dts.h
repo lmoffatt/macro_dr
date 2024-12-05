@@ -67,7 +67,10 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model,
     
     auto Maybe_model_v = get_model(model);
     
-    if (Maybe_model_v) {
+    if (!Maybe_model_v) {
+        std::cerr<<Maybe_model_v.error()();
+    }
+    else{
         auto model_v = std::move(Maybe_model_v.value());
         return std::visit(
             
