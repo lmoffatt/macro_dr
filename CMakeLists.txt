@@ -409,7 +409,7 @@ add_executable(macro_dr main.cpp
     slurm/run_32_scheme_10_nyquist.sh
     slurm/run_32_scheme_10_NR.sh
     slurm/run_32_scheme_10_SNR.sh
-    slurm/run_32_scheme_10_new.sh
+    slurm/run_32_scheme_10_DR.sh
     slurm/run_32_scheme_10_ADR
     scripts/likelihood_SR.txt
     scripts/likelihood_ASR.txt
