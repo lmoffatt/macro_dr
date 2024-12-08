@@ -8,5 +8,3 @@ scheme_1_inact,5,Current_Noise,Log10,0.001,-3
 scheme_1_inact,6,Pink_Noise,Log10,5,0.6989700043360189
 scheme_1_inact,7,Proportional_Noise,Fixed,0,0
 scheme_1_inact,8,Current_Baseline,Log10,1,0
-scheme_1_inact,9,Num_ch_mean,Log10,5000,3.698970004336019
-scheme_1_inact,10,inactivation_rate,Log10,1e-05,-5

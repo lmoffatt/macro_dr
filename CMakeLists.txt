@@ -436,6 +436,8 @@ add_executable(macro_dr main.cpp
     slurm/run_64_CPU_32_schemes_11_DR.sh
     slurm/run_64_CPU_16_schemes_4.sh
     slurm/run_64_CPU_32_schemes_11_SNR.sh
+    slurm/run_64_CPU_64_schemes_7_DR_no_inact.sh
+    slurm/run_64_CPU_64_schemes_7_DR_inact.sh
     
     
     

@@ -5,7 +5,7 @@ CPUSPERTASK=32
 
 export CP=$CPUSPERTASK
 
-export USE_LOCAL_ID=1
+export USE_LOCAL_ID=0
 
 export N_SCH=11
 N_SCH2=11
