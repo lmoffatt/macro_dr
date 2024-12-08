@@ -23,14 +23,15 @@ export SCHEME_0=scheme_${N_SCH}_${MODEL_TYPE0}
 export SCHEME_1=scheme_${N_SCH}_${MODEL_TYPE1}
 export SCHEME_2=scheme_${N_SCH}_${MODEL_TYPE0}
 export SCHEME_3=scheme_${N_SCH}_${MODEL_TYPE1}
-export SCHEME_0=scheme_${N_SCH2}_${MODEL_TYPE0}
-export SCHEME_1=scheme_${N_SCH2}_${MODEL_TYPE1}
-export SCHEME_2=scheme_${N_SCH2}_${MODEL_TYPE0}
-export SCHEME_3=scheme_${N_SCH2}_${MODEL_TYPE1}
+export SCHEME_4=scheme_${N_SCH2}_${MODEL_TYPE0}
+export SCHEME_5=scheme_${N_SCH2}_${MODEL_TYPE1}
+export SCHEME_6=scheme_${N_SCH2}_${MODEL_TYPE0}
+export SCHEME_7=scheme_${N_SCH2}_${MODEL_TYPE1}
 
 
 
 export SCHEME_DIR_0=models_Ag_log_baseline
+export SCHEME_DIR_1=${SCHEME_DIR_0}
 export SCHEME_DIR_2=${SCHEME_DIR_0}
 export SCHEME_DIR_3=${SCHEME_DIR_0}
 export SCHEME_DIR_4=${SCHEME_DIR_0}
@@ -53,12 +54,12 @@ export PATH_MACRO_DRX=w9
 
 
 export LIK_0=${ALG_TYPE0}
-export LIK_1=${ALG_TYPE1}
-export LIK_2=${ALG_TYPE0}
+export LIK_1=${ALG_TYPE0}
+export LIK_2=${ALG_TYPE1}
 export LIK_3=${ALG_TYPE1}
 export LIK_4=${ALG_TYPE0}
-export LIK_5=${ALG_TYPE1}
-export LIK_6=${ALG_TYPE0}
+export LIK_5=${ALG_TYPE0}
+export LIK_6=${ALG_TYPE1}
 export LIK_7=${ALG_TYPE1}
 
 
