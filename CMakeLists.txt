@@ -428,6 +428,14 @@ add_executable(macro_dr main.cpp
     
     slurm/run_64_CPU_8_schemes_1_2.sh
     models_Ag_log_baseline/scheme_2_PI_prior.csv models_Ag_log_baseline/scheme_3_PI_prior.csv models_Ag_log_baseline/scheme_1_PI_par.csv models_Ag_log_baseline/scheme_3_PI.txt models_Ag_log_baseline/scheme_2_PI_par.csv models_Ag_log_baseline/scheme_3_PI_par.csv models_Ag_log_baseline/scheme_1_PI_prior.csv models_Ag_log_baseline/scheme_1_PI.txt models_Ag_log_baseline/scheme_2_PI.txt
+    slurm/run_64_CPU_8_schemes_3_5.sh
+    slurm/run_64_CPU_16_schemes_6.sh
+    slurm/run_64_CPU_8_schemes_8_9.sh
+    
+    slurm/run_64_CPU_16_schemes_10.sh
+    slurm/run_64_CPU_32_schemes_11_DR.sh
+    slurm/run_64_CPU_16_schemes_4.sh
+    slurm/run_64_CPU_32_schemes_11_SNR.sh
     
     
     
