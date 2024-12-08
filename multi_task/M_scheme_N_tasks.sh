@@ -48,7 +48,7 @@ LIK_AB=$([ -z "${LIK}" ] && echo "" || echo "_"${LIK} )
 
 EXPER_ABR=$([ "$EXPERIMENT" = "idealize_experiment_2" ] && echo "_IE" || echo "")
 
-SCH_ABR=$([ "$SCHEME_DIR" = "models_Ag" ] && echo "_Ag" || echo "")
+SCH_ABR=$([ "$SCHEME_DIR" = "models_Ag" ] && echo "_Ag" ||[ "$SCHEME_DIR" = "models_Ag_log_baseline" ] && echo "_logbaseline" || echo "")
 
 LOCAL_ID=$([ "$USE_LOCAL_ID" = 1 ] && echo ${SLURM_LOCALID} || echo "")
 
