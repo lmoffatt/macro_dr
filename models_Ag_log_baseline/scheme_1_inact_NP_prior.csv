@@ -7,6 +7,6 @@ scheme_1_inact,4,unitary_current,Log10,1,0,2
 scheme_1_inact,5,Current_Noise,Log10,0.00100000000000000002,-3,2
 scheme_1_inact,6,Pink_Noise,Fixed,0,0,0
 scheme_1_inact,7,Proportional_Noise,Fixed,0,0,0
-scheme_1_inact,8,Current_Baseline,Linear,1,1,2
+scheme_1_inact,8,Current_Baseline,Log10,1,0,2
 scheme_1_inact,9,Num_ch_mean,Log10,4999.99999999999909,3.69897000433601875,2
 scheme_1_inact,10,inactivation_rate,Log10,1.00000000000000008e-05,-5,2

@@ -1804,14 +1804,14 @@ inline auto get_model(std::string modelName) {
         //                             &model6, &model6_no_inactivation,
         //                             &model6_Eff_no_inactivation, &model7,
         //                             &model8, &model9);
-        Models_Library(/*&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
+        Models_Library(&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
                         &scheme_8, &scheme_9, &scheme_10, &scheme_11,
-                        &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ &scheme_1_d,
+                       /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ &scheme_1_d,
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
                        &scheme_5_d, &scheme_6_d,
                        &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, &scheme_10, &scheme_10_d, 
-                       &scheme_11_d,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d);
+                       &scheme_9_d,  &scheme_10_d, 
+                       &scheme_11_d/*,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d*/);
     return allmodels[modelName];
 }
 
@@ -1829,27 +1829,27 @@ inline Maybe_error<std::size_t> get_num_parameters(std::string model) {
 
 inline auto get_model_scheme(std::string modelName) {
     auto allmodels = // Models_Library(&scheme_1);
-        Models_Library(/*&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
+        Models_Library(&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
                         &scheme_8, &scheme_9, &scheme_10, &scheme_11,
-                        &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ &scheme_1_d,
+                       /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ &scheme_1_d,
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
                        &scheme_5_d, &scheme_6_d,
                        &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, &scheme_10, &scheme_10_d, 
-                       &scheme_11_d,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d);
+                       &scheme_9_d,  &scheme_10_d, 
+                       &scheme_11_d/*,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d*/);
     return allmodels[modelName];
 }
 
 inline void print_model_Priors(double covar) {
     auto allmodels = // Models_Library(&scheme_1);
-        Models_Library(/*&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
+        Models_Library(&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
                         &scheme_8, &scheme_9, &scheme_10, &scheme_11,
-                        &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ &scheme_1_d,
+                       /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ &scheme_1_d,
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
                        &scheme_5_d, &scheme_6_d,
                        &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, &scheme_10, &scheme_10_d, 
-                       &scheme_11_d,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d);
+                       &scheme_9_d, &scheme_10_d, 
+                       &scheme_11_d/*,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d*/);
     //,
     //
     //                     &model6, &model6_no_inactivation,
