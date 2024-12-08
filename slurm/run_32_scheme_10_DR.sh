@@ -15,8 +15,8 @@ export SCHEME_1=scheme_${N_SCH}_inact_PI
 
 
 
-export SCHEME_DIR_0=models_Ag
-export SCHEME_DIR_1=models_Ag
+export SCHEME_DIR_0=models_Ag_log_baseline
+export SCHEME_DIR_1=models_Ag_log_baseline
 
 export PATH_MACRO_DR_0=w9
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
