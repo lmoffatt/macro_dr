@@ -69,6 +69,37 @@ auto cumsum(is_Container auto const& c)
     return out; 
 }
 
+auto cumsum_reverse(is_Container auto const& c)
+{
+    using T=std::decay_t<decltype(c[0])>;
+    auto out=c;    
+    auto sum=T{};
+    for (std::size_t i=c.size()>0?c.size()-1:0; i>0; --i)
+    {
+        sum=sum+c[i];
+        out[i]=sum;
+    }
+    return out; 
+}
+
+
+
+auto diff(is_Container auto const& c)
+{
+    using T=std::decay_t<decltype(c[0])>;
+    using C=std::decay_t<decltype(c)>;
+    
+    auto out=C(c.size()-1);    
+    for (std::size_t i=0; i+1<c.size(); ++i)
+    {
+        out[i]=c[i+1]-c[i];
+    }
+    return out; 
+}
+
+
+
+
 inline double fullsum(double x){return x;}
 
  double fullsum(std::integral auto x){return x;}

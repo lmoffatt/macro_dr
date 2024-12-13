@@ -156,13 +156,22 @@ public:
 };
 
 
-struct count: public var::Constant<count, std::size_t>{};
+struct count: public var::Constant<count, std::size_t>{
+    count():var::Constant<count, std::size_t>{0}{}
+    count(std::size_t n):var::Constant<count, std::size_t>{n}{}
+    
+};
 
 template <class Va>
 struct mean: public var::Var<mean<Va>,Va>{};
 
 template <class Va>
-struct variance: public var::Var<variance<Va>,Va>{};
+struct variance: public var::Var<variance<Va>,Va>{
+    variance():var::Var<variance<Va>,Va>{Va(0.0)}{}
+    variance(Va&& x):var::Var<variance<Va>,Va>{std::move(x)}{}
+    variance(Va const& x):var::Var<variance<Va>,Va>{x}{}
+    
+};
 
 
 
@@ -327,21 +336,21 @@ template <class FunctionTable, class Prior,class Lik, class Variables,class Data
          class Parameters=std::decay_t<
              decltype(sample(std::declval<mt_64i &>(), std::declval<Prior&>()))>>
  //   requires (is_prior<Prior,Parameters,Variables,DataType>&& is_likelihood_model<FunctionTable,Lik,Parameters,Variables,DataType>)
-auto init_mcmc(FunctionTable& f, mt_64i &mt, Prior const & pr, const Lik& lik,
-               const DataType &y, const Variables &x) {
-    auto& priorsampler=pr;
-    auto par = sample(mt,priorsampler);
-    auto logP = logPrior(pr,par);
-    auto t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
-    while(!(logP)||!(t_logLs))
-    {
-        par = sample(mt,priorsampler);
-        logP = logPrior(pr,par);
-        t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
-        
-    }
-    return mcmc<Parameters>{std::move(par), logP.value(), t_logLs.value()};
-}
+  auto init_mcmc(FunctionTable& f, mt_64i &mt, Prior const & pr, const Lik& lik,
+                 const DataType &y, const Variables &x) {
+      auto& priorsampler=pr;
+      auto par = sample(mt,priorsampler);
+      auto logP = logPrior(pr,par);
+      auto t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
+      while(!(logP)||!(t_logLs))
+      {
+          par = sample(mt,priorsampler);
+          logP = logPrior(pr,par);
+          t_logLs = logLikelihood(f,lik,par.to_value(), y,x);
+          
+      }
+      return mcmc<Parameters>{std::move(par), logP.value(), t_logLs.value()};
+  }
 
 
 

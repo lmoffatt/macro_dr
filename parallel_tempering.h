@@ -241,7 +241,7 @@ calculate_across_sta(by_beta<ensemble<logL_statistics>> const &sta) {
 inline variance<logL>
 calculate_within_sta(ensemble<logL_statistics> const &sta) {
     variance<logL> within = variance<logL>(logL(0.0));
-    count df = count(0);
+    count df = count(0ul);
     for (std::size_t i = 0; i < sta.size(); ++i) {
         auto r_df = get<count>(sta[i]()())() - 1;
         within()() += r_df * get<variance<logL>>(sta[i]()())()();
@@ -1326,7 +1326,7 @@ auto calculate_Acceptance_variance(
     return acceptance_variance;
 }
 
-template <class Parameters>
+template <template<class> class thermo_mcmc,class Parameters>
 auto calculate_Acceptance(const thermo_mcmc<Parameters> &current) {
     
     std::vector<double> acceptance(current.thermo_stat.size());

@@ -67,8 +67,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(0)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
                         
@@ -80,8 +80,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(1)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         //  std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
                         
@@ -93,8 +93,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(2)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
@@ -115,8 +115,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(0)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
                         
@@ -128,8 +128,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(1)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
                         
@@ -141,8 +141,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(2)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
@@ -163,8 +163,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(0)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
                         
@@ -176,8 +176,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(1)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
                         
@@ -189,8 +189,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(2)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
@@ -211,8 +211,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(0)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
                         
@@ -224,8 +224,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(1)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
                         
@@ -237,8 +237,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(2)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename , lik1.value(),
                                                         y, experiment);
@@ -260,8 +260,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(0)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
                         
@@ -273,8 +273,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(1)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
                         
@@ -286,8 +286,8 @@ inline void calc_likelihood(std::string outfilename, std::string model,
                                             uses_variance_aproximation(true),
                                             uses_variance_correction_aproximation(false),
                                             return_predictions(2)>(ftbl3, model0, param1,
-                                                                   experiment,
-                                                                   get<Recording>(y()));
+                                                                   get<Recording>(y()),
+                                                                   experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y,
                                                         experiment);

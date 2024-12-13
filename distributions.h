@@ -7,6 +7,7 @@
 #include <concepts>
 #include <cstddef>
 #include <functional>
+#include <limits>
 #include <random>
 #include <sstream>
 #include <type_traits>
@@ -329,6 +330,7 @@ public:
 
 using logLs=var::Vector_Space<logL,elogL,vlogL>;
 
+logLs nan_logL(){return logLs(logL(std::numeric_limits<double>::quiet_NaN()), elogL(std::numeric_limits<double>::quiet_NaN()), vlogL(std::numeric_limits<double>::quiet_NaN()));}
 
 using dlogLs=var::Vector_Space<logL,elogL,vlogL, Grad,FIM>;
 using dlogPs=var::Vector_Space<logL, Grad,FIM>;

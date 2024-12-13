@@ -20,7 +20,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 #set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type -fconcepts-diagnostics-depth=4 -fmax-errors=5 -ftime-report" )
 
-set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type  -fmax-errors=5 -ftime-report" )
+set (CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=20 -Werror=return-type   -fconcepts-diagnostics-depth=4 -fmax-errors=5 -ftime-report" )
 #set_property(TARGET macro_dr PROPERTY CXX_STANDARD 20)
 
 
@@ -438,6 +438,15 @@ add_executable(macro_dr main.cpp
     slurm/run_64_CPU_32_schemes_11_SNR.sh
     slurm/run_64_CPU_64_schemes_7_DR_no_inact.sh
     slurm/run_64_CPU_64_schemes_7_DR_inact.sh
+    command_lines/run_cuevi.txt
+    experiments/Moffatt_Hume_2007_ATP_time_idealized_segments.txt
+    CLI_thermo_evidence_fraction_dts.h
+    parallel_tempering_fraction.h
+    report_thermo_fraction_evidence.h
+    scripts/evidence_fraction_thermo_dts_data.txt
+    scripts/evidence_fraction_thermo_dts_continuation.txt
+    command_lines/run_fraction_dts.txt
+    slurm/run_64_CPU_8_schemes_8_9_fraction.sh
     
     
     
