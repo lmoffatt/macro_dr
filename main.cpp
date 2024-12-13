@@ -4,6 +4,7 @@
 #include "CLI_thermo_evidence.h"
 #include "CLI_thermo_evidence_dts.h"
 
+#include "CLI_thermo_evidence_fraction_dts.h"
 #include "CLI_thermo_levenberg_evidence.h"
 #include "experiment.h"
 #include "lapack_headers.h"
@@ -360,6 +361,14 @@ calc_thermo_evidence(std::string id,
           "init_seed"));
   
   
+  
+  cm.push_function(
+      "thermo_fraction_evidence_dts",
+      dcli::to_typed_function<std::string,
+                              std::string, std::string, likelihood_algo_type, fractioned_experiment_type, thermo_algo_fraction_dts_type, std::size_t,std::size_t, std::size_t>(
+          &calc_thermo_evidence_fraction_dts, "idname","model", "prior", "likelihood_algorithm",
+          "fractional_experiment",  "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
+          "init_seed"));
   
   
   

@@ -7,6 +7,7 @@
 #include "function_memoization.h"
 #include "matrix.h"
 #include "parallel_levenberg_tempering.h"
+#include "parallel_tempering_fraction.h"
 #include "parameters_derivative.h"
 // #include "models_MoffattHume_linear.h"
 #include <cmath>
@@ -4073,8 +4074,8 @@ template <uses_adaptive_aproximation adaptive,
           return_predictions predictions, class FuncTable, class C_Parameters,
           class Model>
 requires(is_of_this_template_type_v<FuncTable, FuncMap_St>)
-auto log_Likelihood(FuncTable &f, const Model &model, const C_Parameters &par,
-                    const Experiment &e, const Recording &y)
+auto log_Likelihood(FuncTable &f, const Model &model, const C_Parameters &par,const Recording &y,
+                    const Experiment &e)
 -> Maybe_error<std::conditional_t<
 var::is_derivative_v<C_Parameters>,
 std::conditional_t<
@@ -4723,16 +4724,17 @@ template <
     uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     uses_variance_correction_aproximation variance_correction, class FuncTable,
-    class Model, class Parameters, class Variables, class DataType>
+    class Model, class Parameters, class Recoding, class Experiment>
 Maybe_error<logLs>
 logLikelihood(FuncTable &f,
               const Likelihood_Model<adaptive, recursive, averaging, variance,
               variance_correction, Model> &lik,
-              Parameters const &p, const Variables &var, const DataType &y) {
+              Parameters const &p, const Recoding &y, const Experiment &e) {
+  
   auto v_logL = Macro_DMR{}
       .log_Likelihood<adaptive, recursive, averaging, variance,
       variance_correction, return_predictions(0)>(
-        f, lik.m, p, y, var);
+        f, lik.m, p, y,e);
   if (!v_logL)
     return v_logL.error();
   else
@@ -4749,8 +4751,8 @@ Maybe_error<dlogLs>
 dlogLikelihood(FuncTable &f,
                const Likelihood_Model<adaptive, recursive, averaging, variance,
                variance_correction, Model> &lik,
-               var::Parameters_transformed const &p, const Variables &var,
-               const DataType &y) {
+               var::Parameters_transformed const &p,
+               const DataType &y, const Variables &var) {
   
   auto dp = var::selfDerivative(p);
   auto dpp = dp.to_value();
@@ -4775,8 +4777,8 @@ Maybe_error<dlogLs> diff_logLikelihood(
     FuncTable &f,
     const Likelihood_Model<adaptive, recursive, averaging, variance,
     variance_correction, Model> &lik,
-    var::Parameters_transformed const &p, const Variables &var,
-    const DataType &y, double delta_par) {
+    var::Parameters_transformed const &p,
+    const DataType &y, const Variables &var, double delta_par) {
   
   auto v_p = p.to_value();
   auto Maybe_logL =
@@ -4789,7 +4791,7 @@ Maybe_error<dlogLs> diff_logLikelihood(
   
   auto v_logL = std::move(Maybe_logL.value());
   auto npar = p.size();
-  auto ny = var().size();
+  auto ny = y().size();
   
   Matrix<double> J_y(ny, npar);
   Matrix<double> J_v(ny, npar);
@@ -4849,7 +4851,7 @@ Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
     FunctionTable &f,
     const Likelihood_Model<adaptive, recursive, averaging, variance,
     variance_correction, Model> &lik,
-    Parameters const &p, const Variables &var, const DataType &y) {
+    Parameters const &p, const DataType &y, const Variables &var) {
   return Macro_DMR{}
   .log_Likelihood<adaptive, recursive, averaging, variance,
   variance_correction, return_predictions(2)>(f, lik.m, p,
@@ -4866,7 +4868,7 @@ Maybe_error<logL_y_yvar> logLikelihood_Y_Predictions(
     FunctionTable &f,
     const Likelihood_Model<adaptive, recursive, averaging, variance,
     variance_correction, Model> &lik,
-    Parameters const &p, const Variables &var, const DataType &y) {
+    Parameters const &p, const DataType &y, const Variables &var) {
   return Macro_DMR{}
   .log_Likelihood<adaptive, recursive, averaging, variance,
   variance_correction, return_predictions(1)>(f, lik.m, p,
@@ -4892,7 +4894,7 @@ fractioned_logLikelihoodPredictions(
           Macro_DMR{}
           .log_Likelihood<adaptive, recursive, averaging, variance,
           variance_correction, return_predictions(2)>(
-            f, lik.m, p, var[i], get<Recording>(y[i]()));
+            f, lik.m, p, get<Recording>(y[i]()), var[i]);
       if (Maybe_e)
         out.push_back(Maybe_e.value());
       else
@@ -4965,12 +4967,33 @@ template <
     uses_averaging_aproximation averaging, uses_variance_aproximation variance,
     uses_variance_correction_aproximation variance_correction, class Model,
     class Parameters, class Variables>
+requires (!is_of_this_template_type_v<Variables, std::vector>)
 auto simulate(mt_64i &mt,
               const Likelihood_Model<adaptive, recursive, averaging, variance,
               variance_correction, Model> &lik,
               Parameters const &p, const Variables &var) {
   return Macro_DMR{}.sample(mt, lik.m, p, var, lik.n_sub_dt).value()();
 }
+
+template <
+    uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
+    uses_averaging_aproximation averaging, uses_variance_aproximation variance,
+    uses_variance_correction_aproximation variance_correction, class Model,
+    class Parameters, class Variables>
+auto simulate(mt_64i &mt,
+              const Likelihood_Model<adaptive, recursive, averaging, variance,
+              variance_correction, Model> &lik,
+              Parameters const &p, const std::vector<Variables> &var) {
+  
+  std::vector<Recording> out(var.size());
+  for (std::size_t i=0; i<var.size(); ++i)
+    out[i]= get<Recording>(simulate(mt,lik,p,var[i]));
+  return out;
+}
+
+
+
+
 
 static Experiment_step average_Experimental_step(Experiment_step const &x,
                                                  bool average_the_evolution) {
@@ -5408,6 +5431,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
         }
     }
 }
+
+
 
 template <class Parameters>
 void report_title(save_Predictions<Parameters> &s,
