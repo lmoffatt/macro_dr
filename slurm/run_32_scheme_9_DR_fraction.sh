@@ -9,6 +9,7 @@ export USE_LOCAL_ID=0
 
 export N_SCH=9
 N_SCH2=9
+export EVIDENCE_ALGORITHM=fraction_thermo_dts
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
@@ -18,10 +19,10 @@ export SCHEME_1=scheme_${N_SCH}_inact_PI
 export SCHEME_DIR_0=models_Ag_log_baseline
 export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=w9
+export PATH_MACRO_DR_0=f2
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DRX=w9
+export PATH_MACRO_DRX=f2
 
 
 
