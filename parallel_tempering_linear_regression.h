@@ -437,6 +437,7 @@ class new_thermodynamic_integration {
   std::string adapt_beta_variance_;
   double adapt_beta_nu_;
   double adapt_beta_t0_;
+  double adapt_beta_threshold_;
   bool   adjust_beta_;
   double acceptance_upper_limit_;
   double acceptance_lower_limit_;
@@ -467,7 +468,7 @@ public:
       std::string t_adapt_beta_equalizer,
       std::string t_adapt_beta_constroler,
       std::string t_adapt_beta_variance,
-      double t_adapt_beta_nu,double t_adapt_beta_t0,  bool   t_adjust_beta,
+      double t_adapt_beta_nu,double t_adapt_beta_t0,double t_adapt_beta_threshold,  bool   t_adjust_beta,
       double t_acceptance_upper_limit,
       double t_acceptance_lower_limit,
       double t_desired_acceptance
@@ -484,7 +485,8 @@ public:
       adapt_beta_equalizer_{t_adapt_beta_equalizer},
       adapt_beta_controler_{t_adapt_beta_constroler},
       adapt_beta_variance_{t_adapt_beta_variance},
-      adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0},adjust_beta_{t_adjust_beta},
+      adapt_beta_nu_{t_adapt_beta_nu}, adapt_beta_t0_{t_adapt_beta_t0},adapt_beta_threshold_{t_adapt_beta_threshold},
+      adjust_beta_{t_adjust_beta},
       acceptance_upper_limit_{t_acceptance_upper_limit},
       acceptance_lower_limit_{t_acceptance_lower_limit},
       desired_acceptance_{t_desired_acceptance}
@@ -513,6 +515,7 @@ public:
   auto &adapt_beta_variance() const { return adapt_beta_variance_; }
   auto &adapt_beta_nu() const { return adapt_beta_nu_; }
   auto &adapt_beta_t0() const { return adapt_beta_t0_; }
+  auto &adapt_beta_threshold() const { return adapt_beta_threshold_; }
   bool adjust_beta() const { return adjust_beta_; }
   auto &desired_acceptance() const { return desired_acceptance_; }
   auto &acceptance_lower_limit() const { return acceptance_lower_limit_; }

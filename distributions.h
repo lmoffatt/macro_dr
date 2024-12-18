@@ -246,6 +246,15 @@ public:
     explicit distributions(ds const &... d): ds{d}...{}
 };
 
+class logEv : public var::Var<logEv, double> {
+public:
+    friend std::string className(logEv) { return "logEvidence"; }
+    Maybe_error<bool> is_good() const{
+        if (!std::isfinite((*this)()))
+            return error_message("logEvidence not finite: "+std::to_string((*this)()));
+        return true;
+    }
+};
 
 
 class logL : public var::Var<logL, double> {
@@ -329,6 +338,9 @@ public:
 
 
 using logLs=var::Vector_Space<logL,elogL,vlogL>;
+
+logLs logLs_0(){return logLs(logL(0.0), elogL(0.0), vlogL(0.0));}
+
 
 logLs nan_logL(){return logLs(logL(std::numeric_limits<double>::quiet_NaN()), elogL(std::numeric_limits<double>::quiet_NaN()), vlogL(std::numeric_limits<double>::quiet_NaN()));}
 

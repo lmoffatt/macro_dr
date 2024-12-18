@@ -5,6 +5,7 @@
 #include "derivative_operator.h"
 #include "distributions.h"
 #include "maybe_error.h"
+#include "mcmc.h"
 #include "parallel_tempering.h"
 #include "parallel_tempering_linear_regression.h"
 #include "general_algorithm_on_containers.h"
@@ -21,15 +22,12 @@ struct fraction_mcmc {
     Parameters parameter;
     double logP;
     std::map<std::size_t,logLs> logL_map;
-    logLs unknown_logL=nan_logL();
     
     auto& logL(std::size_t i_frac)const
     {
         auto it=logL_map.find(i_frac);
-        if (it==logL_map.end())
-            return unknown_logL;
-        else
-            return it->second;            
+        assert(it!=logL_map.end());
+        return it->second;
     }
     
 };
@@ -38,12 +36,14 @@ auto i_fract_beta_to_global_beta(std::vector<std::size_t>const& i_fracs, std::ve
 {
     
     std::vector<double> global_beta(i_fracs.size());
+    global_beta[0]=0;
     
     for (std::size_t i=1; i<global_beta.size(); ++i)
     {
         auto n0= i_fracs[i]>0?num_samples[i_fracs[i]-1]:0;
         global_beta[i]=(n0+(num_samples[i_fracs[i]]-n0)*beta[i])/max_samples;
     }
+    assert(global_beta.back()==1);
     return global_beta;
 }
 
@@ -81,7 +81,7 @@ struct thermo_fraction_mcmc //:public thermo_mcmc<Parameters>
     by_beta<std::size_t> i_fraction;
     by_beta<std::vector<std::size_t>> i_fractions;
     by_beta<double> beta;
-    by_beta<double> S;
+    by_beta<double> global_beta;
     by_beta<ensemble<fraction_mcmc<Parameters>>> walkers;
     by_beta<ensemble<std::map<std::size_t,logL_statistics>>> walkers_sta;
     
@@ -105,27 +105,9 @@ struct thermo_fraction_mcmc //:public thermo_mcmc<Parameters>
             e().reset();
     }
     
-    auto global_beta(std::size_t i_global_beta)const 
-    {
-        auto i_frac=i_fraction[i_global_beta];
-        auto i_frac0=i_frac>0?i_frac-1: 0;
-        
-        return (samples_size[i_frac0]+(samples_size[i_frac]-samples_size[i_frac0])*beta[i_global_beta])/max_samples;
-    }
     
-    auto global_beta_to_i_frac_beta(double global_beta)const
-    {
-        auto ns=global_beta*max_samples;
-        auto i_frac=0;
-        while(i_frac<i_fraction.size()&&samples_size[i_frac]*(1+std::numeric_limits<double>::epsilon())<ns)
-        {
-            ++i_frac;
-        }
-        auto sample_size0=i_frac>0?samples_size[i_frac-1]:0;
-        auto beta=(ns-sample_size0)/(samples_size[i_frac]-sample_size0);
-        
-        return std::tuple(i_frac,beta);
-    }
+    
+    
     
     auto get_Walkers_number() const { return walkers[0].size(); }
     auto &get_Beta() const { return beta; }
@@ -177,46 +159,95 @@ auto calculate_initial_logL0(thermo_fraction_mcmc<Parameters> const &initial_dat
             }
         }
     }
-    
-    
-    
-    
-    
+  
     
     return logL_0;
 }
-
-inline std::map<std::size_t,double> calculate_logL_mean(ensemble<std::map<std::size_t,logL_statistics>> const &sta) {
-    std::map<std::size_t,double> sum;
-    for (std::size_t i = 1; i < sta.size(); ++i)
-        for (auto &e: sta[i])
+inline double calculate_logL_mean(ensemble<std::map<std::size_t,logL_statistics>> const &sta, std::size_t i_fr) {
+    double sum = 0.0;
+    for (std::size_t i = 0; i < sta.size(); ++i)
         {
-          sum[e.first] += get<mean<logL>>(e.second()())()();
+            auto it= sta[i].find(i_fr);
+            if(it!=sta[i].end())            
+                sum += get<mean<logL>>(it->second()())()();
+            else {
+                std::cerr<<"error in "<<i<<" i_fr"<<i_fr<<"\n";
+                abort();
+            }
         }
-    for(auto &e: sum)
-         e.second= e.second/ sta.size();
+    return sum/ sta.size();;
+}
+
+
+
+inline std::map<std::size_t,double> calculate_logL_mean(ensemble<std::map<std::size_t,logL_statistics>> const &sta, const std::vector<std::size_t> & i_fracs) {
+    std::map<std::size_t,double> sum;
+    for (std::size_t i = 0; i < sta.size(); ++i)
+        for (auto i_fr: i_fracs)
+        {
+            auto it= sta[i].find(i_fr);
+            if(it!=sta[i].end())            
+               sum[i_fr] += get<mean<logL>>(it->second()())()();
+            else {
+                std::cerr<<"error in "<<i<<" i_fr"<<i_fr<<"\n";
+                abort();
+            }
+        }
+    for (auto i_fr: i_fracs)
+         sum[i_fr]= sum[i_fr]/ sta.size();
     
     return sum;
 }
 inline by_beta<std::map<std::size_t,double>>
-calculate_logL_mean(by_beta<ensemble<std::map<std::size_t,logL_statistics>>> const &sta) {
+calculate_logL_mean(by_beta<ensemble<std::map<std::size_t,logL_statistics>>> const &sta,
+                    by_beta<std::vector<std::size_t>> const& i_fracs) {
     by_beta<std::map<std::size_t,double>> out(sta.size());
     for (std::size_t i = 0; i < sta.size(); ++i)
-        out[i] = calculate_logL_mean(sta[i]);
+        out[i] = calculate_logL_mean(sta[i], i_fracs[i]);
+    return out;
+}
+
+template<class Parameters>
+inline std::map<std::size_t,double> calculate_logL_mean(ensemble<fraction_mcmc<Parameters>> const &wa, const std::vector<std::size_t> & i_fracs) {
+    std::map<std::size_t,double> sum;
+    for (std::size_t i = 0; i < wa.size(); ++i)
+        for (auto i_fr: i_fracs)
+        {
+            sum[i_fr] += get<logL>(wa[i].logL(i_fr))();
+            
+        }
+    for (auto i_fr: i_fracs)
+        sum[i_fr]= sum[i_fr]/ wa.size();
+    
+    return sum;
+}
+
+template<class Parameters>
+inline by_beta<std::map<std::size_t,double>>
+calculate_logL_mean(by_beta<ensemble<fraction_mcmc<Parameters>>> const &wa,
+                    by_beta<std::vector<std::size_t>> const& i_fracs) {
+    by_beta<std::map<std::size_t,double>> out(wa.size());
+    for (std::size_t i = 0; i < wa.size(); ++i)
+        out[i] = calculate_logL_mean(wa[i], i_fracs[i]);
     return out;
 }
 
 
-inline logL_statistics
-calculate_across_sta(ensemble<std::map<std::size_t,logL_statistics>>  &sta, std::size_t i_frac) {
-    logL_statistics across= get<mean<logL>>(sta[0][i_frac]()())();
-    for (std::size_t i = 1; i < sta.size(); ++i)
-           across() &= get<mean<logL>>(sta[i][i_frac]()())();
+
+inline std::map<std::size_t,logL_statistics>
+calculate_across_sta(ensemble<std::map<std::size_t,logL_statistics>>  &sta, std::vector<std::size_t> i_frac) {
+    std::map<std::size_t,logL_statistics> across;
+    for (std::size_t iw = 0; iw < sta.size(); ++iw)
+        for(auto i_fr: i_frac){
+            auto it=sta[iw].find(i_fr);
+            assert(it!=sta[iw].end());
+           across[i_fr]() &= get<mean<logL>>(it->second()())();
+        }
     return across;
 }
 inline auto
-calculate_across_sta(by_beta<ensemble<std::map<std::size_t,logL_statistics>>>  &sta, by_beta<std::size_t> i_frac) {
-    by_beta<logL_statistics> across(sta.size());
+calculate_across_sta(by_beta<ensemble<std::map<std::size_t,logL_statistics>>>  &sta, by_beta<std::vector<std::size_t>> i_frac) {
+    by_beta<std::map<std::size_t,logL_statistics> > across(sta.size());
     for (std::size_t i = 0; i < sta.size(); ++i)
         across[i] = calculate_across_sta(sta[i], i_frac[i]);
     return across;
@@ -224,7 +255,10 @@ calculate_across_sta(by_beta<ensemble<std::map<std::size_t,logL_statistics>>>  &
 
 inline auto calculate_sample_size(by_beta<ensemble<std::map<std::size_t,logL_statistics>>>  &sta,
                                   std::size_t i_beta, std::size_t i_frac) {
-    return get<count>(sta[i_beta][0][i_frac]()());
+    
+    auto it=sta[i_beta][0].find(i_frac);
+    assert(it!=sta[i_beta][0].end());
+    return get<count>(it->second()());
 }
 
 
@@ -233,8 +267,10 @@ calculate_within_sta(ensemble<std::map<std::size_t,logL_statistics>>  &sta, std:
     variance<logL> within(logL(0.0));
     count  df(count(0));
     for (std::size_t i = 0; i < sta.size(); ++i) {
-        auto r_df = get<count>(sta[i][i_frac]()())() - 1;
-        within()() += r_df * get<variance<logL>>(sta[i][i_frac]()())()();
+        auto it=sta[i].find(i_frac);
+        assert(it!=sta[i].end());
+        auto r_df = get<count>(it->second()())() - 1;
+        within()() += r_df * get<variance<logL>>(it->second()())()();
         df() += r_df;
     }
    within()() /= df();
@@ -256,69 +292,73 @@ template <class Parameters>
 auto calculate_deltaBeta_deltaL(const thermo_fraction_mcmc<Parameters> &current) {
     
     std::vector<double> dBdL(current.walkers.size() - 1);
-    auto L = calculate_logL_mean(current.walkers_sta);
+    
+    auto L = calculate_logL_mean(current.walkers_sta, current.i_fractions);
     
     for (std::size_t i = 0; i < dBdL.size(); ++i){
         auto i_frac1=current.i_fraction[i+1];
         auto i_frac=current.i_fraction[i];
-        if (i_frac1==i_frac){
-           dBdL[i] = (L[i + 1][i_frac1] - L[i][i_frac1]) * (current.beta[i + 1] - current.beta[i]);
-        }else{
-            dBdL[i] = (L[i + 1][i_frac1] - L[i][i_frac1]) * (current.beta[i + 1]);
-            
-        }
+        auto deltabeta= i_frac1==i_frac?current.beta[i + 1] - current.beta[i]:current.beta[i + 1];
+        auto deltaL= i_frac1>0?L[i + 1][i_frac1] - L[i][i_frac1] -
+                                        L[i + 1][i_frac1-1] + L[i][i_frac1-1] :
+                          L[i + 1][i_frac1] - L[i][i_frac1];  
+        
+        dBdL[i] = deltaL *deltabeta;
     }
     return dBdL;
 }
 
 
 template <class Parameters>
-auto calculate_delta_Evidence_variance( thermo_fraction_mcmc<Parameters> &current,
-                                       const by_beta<double> &beta) {
+auto calculate_partial_Evidence_sta(const thermo_fraction_mcmc<Parameters> &current) {
+    
+    std::vector<logEv_statistics> out(current.beta.size() - 1);
     
     
-    std::vector<double> deltaEvidence_variance(beta.size() - 1);
-    auto n = beta.size() - 1;
-    auto across = calculate_across_sta(current.walkers_sta[0], current.i_fraction[0]);
-    
-    auto var1 = get<variance<logL>>(across()())()();
-    auto beta1=0;
-    
-    for (std::size_t i = 1; i <beta.size(); ++i) {
-        auto var0=var1;
-        auto beta0=beta1;
-        across = calculate_across_sta(current.walkers_sta[i], current.i_fraction[i]);
-        
-        auto var1 = get<variance<logL>>(across()())()();
-        auto beta1=beta[i];
-        
-        deltaEvidence_variance[i-1] =
-            sqr((beta1 - beta0) / 2.0) * (var0 + var1);
-        if ((beta1==1)&&i+1<beta.size())
+    for (std::size_t i = 0; i < out.size(); ++i){
+        auto i_frac1=current.i_fraction[i+1];
+        auto i_frac=current.i_fraction[i];
+        auto deltabeta= i_frac1==i_frac?current.beta[i + 1] - current.beta[i]:current.beta[i + 1];
+        if(i_frac1>0)
         {
-            across = calculate_across_sta(current.walkers_sta[i], current.i_fraction[i+1]);
-             var1 = get<variance<logL>>(across()())()();
-             beta1=0;
+            auto L1=current.walkers[i+1][0].logL(i_frac1)-current.walkers[i+1][0].logL(i_frac1-1);
+            auto L0=current.walkers[i][0].logL(i_frac1)-current.walkers[i][0].logL(i_frac1-1);
+            
+            out[i]=logEv_statistics(logEv(deltabeta*get<logL>(L1-L0)()));
         }
-    }
-    return deltaEvidence_variance;
+        else{
+            auto L1=current.walkers[i+1][0].logL(i_frac1);
+            auto L0=current.walkers[i][0].logL(i_frac1);
+            
+            out[i]=logEv_statistics(logEv(deltabeta*get<logL>(L1-L0)()));
+            
+        }
+        for (auto i_w=1ul; i_w<num_walkers(current); ++i_w)
+        {
+            if(i_frac1>0)
+            {
+                auto L1=current.walkers[i+1][i_w].logL(i_frac1)-
+                          current.walkers[i+1][i_w].logL(i_frac1-1);
+                auto L0=current.walkers[i][i_w].logL(i_frac1)-
+                          current.walkers[i][i_w].logL(i_frac1-1);
+                
+                out[i]()&=logEv_statistics(logEv(deltabeta*get<logL>(L1-L0)()))();
+            }
+            else{
+                auto L1=current.walkers[i+1][i_w].logL(i_frac1);
+                auto L0=current.walkers[i][i_w].logL(i_frac1);
+                
+                out[i]()&=logEv_statistics(logEv(deltabeta*get<logL>(L1-L0)()))();
+                
+            }
+        }
+        }
+    return out;
 }
 
 
 
-template <class Parameters>
-auto calculate_Acceptance_variance(
-    const std::vector<double> &deltaEvidence_variance,
-    const thermo_fraction_mcmc<Parameters> &current) {
-    
-    std::vector<double> acceptance_variance(deltaEvidence_variance.size());
-    for (std::size_t i = 0; i < deltaEvidence_variance.size(); ++i)
-        acceptance_variance[i] = current.thermo_stat[i]().rate().valid()
-                                     ? (current.thermo_stat[i]().rate().value() /
-                                        deltaEvidence_variance[i])
-                                     : 0.0;
-    return acceptance_variance;
-}
+
 
 template <class Parameters>
 auto mean_logL(by_iteration<thermo_fraction_mcmc<Parameters>>  &series) {
@@ -336,13 +376,14 @@ auto mean_logL(by_iteration<thermo_fraction_mcmc<Parameters>>  &series) {
 
 
 template <class Parameters>
-auto mean_logL(thermo_fraction_mcmc<Parameters> const &mcmc) {
+auto mean_logL_per_fraction(thermo_fraction_mcmc<Parameters> const &mcmc) {
     auto out = by_beta<std::map<std::size_t,logLs>>(num_betas(mcmc));
     auto n_walkers = num_walkers(mcmc);
     for (std::size_t iwalker = 0; iwalker < num_walkers(mcmc); ++iwalker)
         for (std::size_t ibeta = 0; ibeta < num_betas(mcmc); ++ibeta)
-            for (auto const& e: mcmc.walkers[ibeta][iwalker].logL_map)
-            out[ibeta][e.first] = out[ibeta][e.first] + e.second / n_walkers;
+            for (auto i_fr: mcmc.i_fractions[ibeta])
+                out[ibeta][i_fr] = out[ibeta][i_fr] + mcmc.walkers[ibeta][iwalker].logL(i_fr)
+                                                          / n_walkers;
     return out;
 }
 
@@ -358,25 +399,15 @@ auto mean_logP(thermo_fraction_mcmc<Parameters> const &mcmc) {
 
 
 template <class Parameters>
-auto var_logL(thermo_fraction_mcmc<Parameters>  &mcmc, by_beta<std::map<std::size_t,logLs>>  &mean) {
+auto var_logL(thermo_fraction_mcmc<Parameters>const  &mcmc, by_beta<std::map<std::size_t,logLs>>  &mean) {
     auto out = by_beta<std::map<std::size_t,logLs>>(num_betas(mcmc));
     auto n_walkers = num_walkers(mcmc);
     for (std::size_t iwalker = 0; iwalker < num_walkers(mcmc); ++iwalker)
         for (std::size_t ibeta = 0; ibeta < num_betas(mcmc); ++ibeta)
-            for (auto const& e: mcmc.walkers[ibeta][iwalker].logL_map)
-            out[ibeta][e.first] =
-                out[ibeta][e.first] +
-                pow(e.second - mean[ibeta][e.first], 2) / n_walkers;
-    return out;
-}
-
-auto beta_to_delta_s(std::vector<double>const& beta)
-{
-    auto iZ=beta[0]==0?1:0;
-    auto n=beta.size()-1-iZ;
-    auto out=std::vector<double>(n);
-    for (std::size_t i=0; i<out.max_size(); ++i)
-        out[n-i-1]= std::log(1.0/beta[n+iZ]-1.0/beta[n-1+iZ]);
+            for (auto i_fr: mcmc.i_fractions[ibeta])
+            out[ibeta][i_fr] =
+                out[ibeta][i_fr] +
+                pow(mcmc.walkers[ibeta][iwalker].logL(i_fr) - mean[ibeta][i_fr], 2) / n_walkers;
     return out;
 }
 
@@ -384,7 +415,7 @@ auto beta_to_delta_s(std::vector<double>const& beta)
 
 auto S_to_i_fract_beta(std::vector<double>const& S, std::vector<std::size_t> num_samples, std::size_t max_samples)
 {
-    auto T_samples=var::apply_to([max_samples](auto x){return 1.0*x/max_samples;},num_samples);
+    auto frac_samples=var::apply_to([max_samples](auto x){return 1.0*x/max_samples;},num_samples);
     std::vector<std::size_t> frac_i(S.size());
     std::vector<double> beta(S.size());
     auto n=S.size()-1;
@@ -394,37 +425,38 @@ auto S_to_i_fract_beta(std::vector<double>const& S, std::vector<std::size_t> num
     // qué onda? da para que sea la ultima fraccion?
     // el threshold debería ser a mitad de camino entre 0 y la proxima fraccion.
     
-    auto threshold_s=-std::log(T_samples[i_frac]/2.0+T_samples[i_frac0]/2.0);
+    auto threshold_s=-std::log(frac_samples[i_frac]/2.0+frac_samples[i_frac0]/2.0);
     
     while ((i_frac>0)&&(S[n]>threshold_s))
     {
         --i_frac;
-        threshold_s=-std::log(T_samples[i_frac]/2.0+T_samples[i_frac-1]/2.0);
+        threshold_s=-std::log(frac_samples[i_frac]/2.0+frac_samples[i_frac-1]/2.0);
     }
     // tenemos el primer i_frac! y el beta (debe ser 1)
     beta[n-0]=1.0;
     frac_i[n-0]=i_frac;
-    double current_T=1/T_samples[i_frac];
+    double current_T=1.0/frac_samples[i_frac];
     // el proximo threshold esta dado por
     for (std::size_t i=1; i<S.size(); ++i)
     {
-        if ((i_frac>0)&&(current_T+std::exp(S[n-i])>T_samples[i_frac-1])){
+        if ((i_frac>0)&&(current_T+std::exp(S[n-i]-S[n-i+1])>1.0/frac_samples[i_frac-1])){
             --i_frac;
             beta[n-i]=1.0;
             frac_i[n-i]=i_frac;
-            current_T=T_samples[i_frac];
+            current_T=1.0/frac_samples[i_frac];
             
         }else{
             if (std::isfinite(S[n-i]))
             {
-                current_T=current_T+std::exp(S[n-i]);
+                current_T=current_T+std::exp(S[n-i]-S[n-i+1]);
                 auto gbeta=1/current_T;
-                auto fraction_below=i_frac>0?T_samples[i_frac-1]:0.0;
+                auto fraction_below=i_frac>0?frac_samples[i_frac-1]:0.0;
                 
-                auto r_beta=(gbeta-fraction_below)/(1.0/T_samples[i_frac]-fraction_below);
+                auto r_beta=(gbeta-fraction_below)/(1.0/frac_samples[i_frac]-fraction_below);
                 beta[n-i]=r_beta;
-            }else
+            }else{
                 beta[n-i]=0;
+            }
             frac_i[n-i]=i_frac;
             
         }
@@ -432,57 +464,78 @@ auto S_to_i_fract_beta(std::vector<double>const& S, std::vector<std::size_t> num
     return std::tuple(std::move(frac_i), std::move(beta));
 }
 
-std::vector<std::size_t> i_frac_to_i_fracs(std::size_t i_fr, double beta, std::size_t num_fractions)
+
+auto global_beta_to_i_fract_beta(std::vector<double>const& global_beta,std::vector<std::size_t> p_i_frac, std::vector<std::size_t> num_samples, std::size_t max_samples, double threshold)
 {
-    if (i_fr==0)
-        return {i_fr};
-    else if ((i_fr+1<num_fractions)&&(beta==1))
+    auto samples_global_beta=var::apply_to([max_samples](auto x){return 1.0*x/max_samples;},num_samples);
+    std::vector<std::size_t> frac_i(global_beta.size());
+    std::vector<double> beta(global_beta.size());
+    frac_i[0]=0; beta[0]=0;
+    frac_i.back()=num_samples.size()-1;
+    beta.back()=1;
+    // first re-assign i_fracs 
+    for (std::size_t i=1; i+1<global_beta.size();  ++i)
     {
-        return {i_fr-1,i_fr,i_fr+1};
-    }else{
-        return {i_fr-1, i_fr};
+        auto dgb=threshold*(global_beta[i]-global_beta[i-1]);
+        if (frac_i[i-1]==p_i_frac[i]&&
+            p_i_frac[i]+1<num_samples.size()&&
+            samples_global_beta[p_i_frac[i]]+dgb<global_beta[i])
+        {
+            frac_i[i]=p_i_frac[i]+1;
+        }else if  (p_i_frac[i+1]==p_i_frac[i]&&
+            p_i_frac[i]>0 &&(samples_global_beta[p_i_frac[i]-1]>dgb+global_beta[i]))
+        {
+            frac_i[i]=p_i_frac[i]-1;
+        }else{
+            frac_i[i]=p_i_frac[i];
+        }            
     }
+    // find the global_betas junctures
+    std::vector<double>global_beta_junctures(num_samples.size()+1);
+    std::vector<double>global_beta_segments(num_samples.size());
+    global_beta_junctures[0]=0;
+    global_beta_junctures.back()=1;
+    for (std::size_t i=1; i+1<global_beta.size();  ++i)
+    {
+        if (frac_i[i+1]>frac_i[i])
+            global_beta_junctures[frac_i[i+1]]=global_beta[i];
+    }
+    for (std::size_t i=0; i<global_beta_segments.size();  ++i)
+    {
+        global_beta_segments[i]=global_beta_junctures[i+1]-global_beta_junctures[i];
+    }
+    // now calculate the betas
+    for (std::size_t i=1; i+1<global_beta.size();  ++i)
+    {
+        beta[i]=(global_beta[i]-global_beta_junctures[frac_i[i]])/
+                  global_beta_segments[frac_i[i]];   
+    }   
+    return std::tuple(std::move(frac_i), std::move(beta));
 }
 
-auto i_frac_to_i_fracs(const std::vector<std::size_t>& i_frac, const std::vector<double>& beta)
+
+
+
+auto i_frac_to_i_fracs(const std::vector<std::size_t>& i_frac)
 {
     std::vector<std::vector<std::size_t>> i_fracs(i_frac.size());
     for (std::size_t i=0; i<i_frac.size(); ++i)
     {
-        i_fracs[i]=i_frac_to_i_fracs(i_frac[i],beta[i], i_frac.back());
+        if (i_frac[i]==0){
+            if ((i+1)<i_frac.size()&&i_frac[i+1]>i_frac[i])
+                i_fracs[i]={i_frac[i], i_frac[i]+1};
+            else
+                  i_fracs[i]={i_frac[i]};
+        }
+        else if (i+1<i_frac.size()&&i_frac[i+1]>i_frac[i])
+            i_fracs[i]={i_frac[i]-1, i_frac[i], i_frac[i]+1};
+        else
+            i_fracs[i]={i_frac[i]-1, i_frac[i]};
     }
     return i_fracs; 
 }
 
 
-
-template <class Parameters>
-void initial_beta_dts(thermo_fraction_mcmc<Parameters> &initial_data) {
-    auto initial_logL0 = calculate_initial_logL0(initial_data);
-    double S_max =
-        std::log(-get<mean<logL>>(initial_logL0.begin()->second()())()()*initial_data.max_samples/initial_data.samples_size[0]);
-    
-    double S_min= std::log(initial_data.max_samples/initial_data.samples_size[0]);
-    
-    auto n = initial_data.beta.size();
-    double dS = (S_max-S_min) / (n - 2);
-    std::vector<double> S(n);
-    S[0]=std::numeric_limits<double>::infinity();
-    S[1]=S_max;
-    S[n-1]=S_min;
-    
-    for (std::size_t i=2; i+2<S.size(); ++i)
-    {
-            S[i]=S_min+(i-1)*dS;
-    }
-    
-    auto[i_frac,beta]=S_to_i_fract_beta(S,initial_data.samples_size,initial_data.max_samples);
-    
-    initial_data.i_fractions=i_frac_to_i_fracs(i_frac,beta);
-    initial_data.S=std::move(S);
-    initial_data.beta=std::move(beta);
-    initial_data.i_fraction=std::move(i_frac);
-}
 
 template <class Parameters>
 ensemble<std::map<std::size_t,logL_statistics>>
@@ -535,7 +588,7 @@ template <class LikelihoodModel,
 Maybe_error<bool>
 update_logLikelihoods(FuncTable &f,
                const LikelihoodModel &lik,
-               Parameters const &p,  const std::vector<DataType> &y,const std::vector<Variables> &var, std::vector<std::size_t> i_fracs, std::map<std::size_t,logLs>& rlogL , std::map<std::size_t,logL_statistics>& logL_sta) {
+               Parameters const &p,  const std::vector<DataType> &y,const std::vector<Variables> &var, std::vector<std::size_t> i_fracs, std::map<std::size_t,logLs>& rlogL ,std::map<std::size_t,logL_statistics>& rlog_sta ) {
     Maybe_error<bool> out(true);
     for (auto i_frac: i_fracs){
         if (rlogL.find(i_frac)==rlogL.end()){
@@ -546,8 +599,8 @@ update_logLikelihoods(FuncTable &f,
             out=error_message(out.error()()+ Maybe_lik.error()());
         }
         else{
+            rlog_sta[i_frac]=logL_statistics(get<logL>(Maybe_lik.value()));
             rlogL[i_frac]=std::move(Maybe_lik.value());
-            logL_sta[i_frac]() &= get<logL>(rlogL[i_frac]);
            }
         }
     }
@@ -580,35 +633,27 @@ auto init_fraction_mcmc(FunctionTable& f, mt_64i &mt, Prior const & pr, const Li
 
 template <class Parameters>
 auto calculate_controler_step(const thermo_fraction_mcmc<Parameters> &current,
-                              const by_beta<double> &beta,
                               std::string equalizing_paramter,
                               double desired_acceptance,
                               std::string variance_approximation) {
-    bool reached_global_beta_1=
-        (current.i_fraction.back()+1==current.samples_size.size())&&(current.beta.back()==1);
     if (equalizing_paramter == "Acceptance_vfm") {
         auto A = calculate_Acceptance(current);
-        auto d = std::vector<double>(A.size() - (reached_global_beta_1?1:0));
+        auto d = std::vector<double>(A.size() - 1);
         for (std::size_t i = 0; i < d.size(); ++i) {
             d[i] = std::max(std::min(1.0, A[i + 1] - A[i]), -1.0);
         }
-        if(!reached_global_beta_1)
-            d.back()=std::max(std::min(1.0, -std::exp(std::min(0.0, -A[A.size()-1]))),
-                                -1.0);
         
         return d;
     } else if (equalizing_paramter == "deltaBeta_deltaL_vfm") {
         auto dBdL = calculate_deltaBeta_deltaL(current);
-        auto d = std::vector<double>(dBdL.size() - (reached_global_beta_1?1:0));
+        auto d = std::vector<double>(dBdL.size());
         
         for (std::size_t i = 0; i+1 < dBdL.size(); ++i) {
             d[i] = std::max(std::min(1.0, std::exp(std::min(0.0, -dBdL[i + 1])) -
                                               std::exp(std::min(0.0, -dBdL[i]))),
                             -1.0);
         }
-        if(!reached_global_beta_1)
-            d.back()=std::max(std::min(1.0, -std::exp(std::min(0.0, -dBdL[dBdL.size()-1]))),
-                                -1.0);
+        d.back()=-std::exp(std::min(0.0, -dBdL.back()));
         return d;
     } else
         return std::vector<double>{};
@@ -628,7 +673,7 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 void insert_high_temperture_beta(FunctionTable &f, std::size_t tested_index,
                                  thermo_fraction_mcmc<Parameters> &current,
-                                 double new_S,
+                                 double new_beta,
                                  ensemble<mt_64i> &mt, Prior const &prior,
                                  Likelihood const &lik, const DataType &y,
                                  const Variables &x) {
@@ -653,12 +698,12 @@ void insert_high_temperture_beta(FunctionTable &f, std::size_t tested_index,
     f += ff;
     // update S, i_frac etc
     auto walker_sta = make_logL_statistics(walker);
-    current.S.insert(current.S.begin() + tested_index + 1, new_S);
-    auto [new_i_fracs, new_beta]=S_to_i_fract_beta(current.S,current.samples_size,current.max_samples);
+    double new_global_beta=std::sqrt(current.global_beta[tested_index + 1] *current.global_beta[tested_index]);;
+    current.global_beta.insert(current.global_beta.begin() + tested_index + 1, new_global_beta);
     
-    current.beta= std::move(new_beta);
-    current.i_fraction=std::move(new_i_fracs);
-    current.i_fractions= i_frac_to_i_fracs(current.i_fraction, current.beta);
+    current.beta.insert(current.beta.begin()+tested_index+1, new_beta);
+    current.i_fractions.insert(current.i_fractions.begin()+tested_index+1, {0});
+    current.i_fraction.insert(current.i_fraction.begin()+tested_index+1, 0);
     current.i_walkers.insert(current.i_walkers.begin(), i_walker);
     current.walkers.insert(current.walkers.begin(), walker);
     current.walkers_sta.insert(current.walkers_sta.begin(), walker_sta);
@@ -700,8 +745,9 @@ void adjust_fraction_beta(FunctionTable &f, std::size_t iter,
         assert(current.beta[current.beta.size() - 1] = 1);
         std::size_t tested_index = 1;
         // auto A=calculate_Acceptance(current);
+        update_likelihoods_all(f,current,lik,ys,xs);
         auto A = calculate_deltaBeta_deltaL(current);
-        if (std::exp(std::min(0.0, -A[tested_index])) > acceptance_upper_limit)
+        if (false&&std::exp(std::min(0.0, -A[tested_index])) > acceptance_upper_limit)
             remove_high_temperture_beta(current, tested_index);
         else
             //             if (std::reduce(A.begin()+tested_index, A.end(),0.0,
@@ -712,82 +758,192 @@ void adjust_fraction_beta(FunctionTable &f, std::size_t iter,
             // return 0.0;})==1.0)
             if (std::exp(std::min(0.0, -A[tested_index + 1])) <
                 acceptance_lower_limit) {
-                double new_S;
+                double new_beta;
                 if (current.beta[tested_index] == 0)
                 {
-                    new_S = current.S[tested_index + 1]+
-                            0.5* (current.S[tested_index + 1]-current.S[tested_index + 2]);
+                    new_beta = current.beta[tested_index + 1]*
+                            std::sqrt(current.beta[tested_index + 1]/current.beta[tested_index + 2]);
                 }
                 else{
-                    new_S = 0.5*(current.S[tested_index + 1] +current.S[tested_index]);
+                    new_beta = std::sqrt(current.beta[tested_index + 1] *current.beta[tested_index]);
                 }
-                insert_high_temperture_beta(f, tested_index, current,  new_S,
+                insert_high_temperture_beta(f, tested_index, current,  new_beta,
                                             mt, prior, lik, ys, xs);
+                update_likelihoods_all(f,current,lik,ys,xs);
+                
             }
     }
 }
-       
+
+
+
+
+
+
+
+
+
+template <class FunctionTable,  class Likelihood, class Variables,
+         class DataType,
+         class Parameters>
+    requires(
+        is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
     
-
-
-
-
-
-
-
-template <class Parameters>
-void adapt_fraction_beta(std::size_t iter,
+void adapt_fraction_beta(FunctionTable &f,std::size_t iter,
                 thermo_fraction_mcmc<Parameters> &current,
                 std::size_t adapt_beta_every,
                 std::string equalizing_paramter,
                 std::string variance_approximation,
                          double desired_acceptance,
-                double nu, double t0) {
+                double nu, double t0, double beta_adapt_threshold,Likelihood const &lik, const DataType &ys, const Variables &xs) {
     if ((iter > 0) && (current.num_samples() > 0) &&
         (iter % adapt_beta_every == 0)) {
        // assert(beta[beta.size() - 1] = 1);
-        std::size_t tested_index = 1;
         double kappa = 1.0 / nu * t0 / (t0 + iter);
         
-        std::vector<double> global_beta= current.beta;
         
+        update_likelihoods_all(f,current,lik,ys,xs);
         
         auto d =
-            calculate_controler_step(current, global_beta, equalizing_paramter,
+            calculate_controler_step(current,  equalizing_paramter,
                                      desired_acceptance, variance_approximation);
-            std::vector<double> T(global_beta.size() - (global_beta[0] == 0 ? 1 : 0));
+        
+        auto beta=current.beta;
+            std::vector<double> T(beta.size() - (beta[0] == 0 ? 1 : 0));
             for (std::size_t i = 0; i < T.size(); ++i)
-                T[i] = 1.0 / global_beta[i + (global_beta[0] == 0 ? 1 : 0)];
-            auto S= current.S;
+            {
+                T[i] = 1.0 / beta[i + (beta[0] == 0 ? 1 : 0)];
+                
+            }
+            std::vector<double> S(T.size() - 1);
             
+            for (std::size_t i = 0; i < S.size(); ++i){
+                S[S.size() - 1 - i] =
+                    std::log(T[T.size() - 2 - i] - T[T.size() - 1 - i]);
+            }
             if (equalizing_paramter.ends_with("vfm")) {
-                for (std::size_t i = 0; i < d.size(); ++i) {
-                    S[i+1] += kappa * d[i];
+                for (std::size_t i = 0; i+1 < d.size(); ++i) {
+                    S[i] += kappa * d[i];
                 }
             } else {
-                auto dbds = calculate_d_beta_d_s(global_beta);
+                auto dbds = calculate_d_beta_d_s(beta);
                 for (std::size_t i = 0; i < S.size(); ++i) {
-                    S[i+1] += kappa * d[i] / dbds[i];
+                    S[i] += kappa * d[i] / dbds[i];
                 }
             }
-            std::sort(S.begin(), S.end(), std::greater<double>());
+            std::size_t tested_index=1;
+            for (std::size_t i = 0; i < S.size() - tested_index; ++i)
+            {
+                if (std::isfinite(S[S.size() - 1 - i])){
+                    T[T.size() - 2 - i] =
+                        T[T.size() - 1 - i] + std::exp(S[S.size() - 1 - i]);
+                }
+            }
+            for (std::size_t i = 0; i < T.size(); ++i)
+                beta[i + (beta[0] == 0 ? 1 : 0)] = 1.0 / T[i];
             
-            auto[frac_i, beta_i]=S_to_i_fract_beta(S,current.samples_size,current.max_samples);
-            
-            current.S=std::move(S);
-            current.beta=std::move(beta_i);
-            current.i_fraction=std::move(frac_i);
-            current.i_fractions=i_frac_to_i_fracs(current.i_fraction,current.beta);            
-       }
+            current.beta=beta;
+    }
 }
+
+
+
+template <class FunctionTable,  class Likelihood, class Variables,
+         class DataType,
+         class Parameters>
+    requires(
+        is_of_this_template_type_v<std::decay_t<FunctionTable>, var::FuncMap_St>)
+
+void adapt_fraction_i_fraction(FunctionTable &f,std::size_t iter,
+                         thermo_fraction_mcmc<Parameters> &current,
+                         std::size_t adapt_beta_every,
+                         std::string equalizing_paramter,
+                         std::string variance_approximation,
+                         double desired_acceptance,
+                         double nu, double t0, double beta_adapt_threshold,double beta_upper_limit, Likelihood const &lik, const DataType &ys, const Variables &xs) {
+    if ((iter > 0) && (current.num_samples() > 0) &&
+        (iter % adapt_beta_every == 0)) {
+        // assert(beta[beta.size() - 1] = 1);
+        double kappa = 1.0 / nu * t0 / (t0 + iter);
+        
+        
+        update_likelihoods_all(f,current,lik,ys,xs);
+        
+        auto d =
+            calculate_controler_step(current,  equalizing_paramter,
+                                     desired_acceptance, variance_approximation);
+        
+        auto i_fraction=current.i_fraction;
+        auto new_i_fraction=i_fraction;
+        
+        auto beta=current.beta;
+        auto new_beta= beta;
+        std::size_t tested_index=1;
+        
+        bool something_changed=false;
+        for (std::size_t i=tested_index; i+1<beta.size(); ++i)
+        {
+            if (i_fraction[i]<i_fraction[i+1]){
+                if (false&&(beta[i+1]<1.0) && (d[i-tested_index]>beta_adapt_threshold)){
+                    something_changed=true;
+                    new_i_fraction[i+1]=i_fraction[i];
+                    
+                    new_beta[i+1]= 1;
+                    if (beta[i-1]<1)
+                        new_beta[i]=std::sqrt(beta[i-1]);
+                    else
+                        beta[i]=-1.0/(calculate_logL_mean(current.walkers_sta[i],i_fraction[i])-
+                            calculate_logL_mean(current.walkers_sta[i],i_fraction[i-1]));
+                    
+                }else if ((beta[i-1]<1.0)&&(-d[i-tested_index]>beta_adapt_threshold)){
+                    something_changed=true;
+                    new_i_fraction[i]=i_fraction[i+1];
+                    new_beta[i-1]=1;
+                    if (beta[i+1]<1)
+                        new_beta[i]=beta[i+1]*beta[i+1];
+                    else
+                        new_beta[i]=-1.0/(calculate_logL_mean(current.walkers_sta[i],i_fraction[i+1])-
+                                             calculate_logL_mean(current.walkers_sta[i],i_fraction[i]));
+                    ;                    
+                        
+                }
+                
+            }
+            
+        }
+        auto n=beta.size()-1;
+        if (i_fraction.back()+1<current.samples_size.size()&&(beta[beta.size()-2]<1.0)&&(-d[n-tested_index]>beta_upper_limit)){
+            something_changed=true;
+            new_i_fraction[n]=i_fraction[n]+1;
+            new_beta[n-1]=1;
+            new_beta[n]=1;
+        }
+        
+        
+        
+        
+        if (something_changed){
+        current.i_fraction=std::move(new_i_fraction);
+        current.beta=std::move(new_beta);
+        current.i_fractions=i_frac_to_i_fracs(current.i_fraction);
+        update_likelihoods_all(f,current,lik,ys,xs);
+        }
+    }
+}
+
+
+
+
 
 template <class Parameters>
 void update(by_beta<ensemble<std::map<std::size_t,logL_statistics>>>  &walkers_sta,
-            by_beta<ensemble<fraction_mcmc<Parameters>>> const &walkers) {
+            by_beta<ensemble<fraction_mcmc<Parameters>>> const &walkers, std::vector<std::vector<std::size_t>>const & i_fractions) {
     for (auto i = 0ul; i < walkers_sta.size(); ++i)
         for (std::size_t j = 0; j < walkers_sta[i].size(); ++j) {
-            for (auto const& e: walkers[i][j].logL_map)
-            walkers_sta[i][j][e.first]() &= get<logL>(e.second);
+            for (auto i_fr: i_fractions[i])
+            {
+                walkers_sta[i][j][i_fr]() &= get<logL>(walkers[i][j].logL(i_fr));
+            }
         }
 }
 
@@ -797,13 +953,17 @@ template<class Walker,class logP, class logLik>
 double calc_emcee_jump_delta( Walker const& current, logP const& ca_logP, logLik const& ca_logL, double beta, std::size_t i_frac)
 {
     auto delta_P=ca_logP-current.logP;
-    auto& calogL=ca_logL.find(i_frac)->second;
+    auto it=ca_logL.find(i_frac);
+    assert(it!=ca_logL.end());
+    auto& calogL=it->second;
     auto delta_lik= beta*(get<logL>(calogL)()-get<logL>(current.logL(i_frac))());
     if (i_frac>0)
     {
-        auto& calogL0=ca_logL.find(i_frac-1)->second;
+        auto it=ca_logL.find(i_frac-1);
+        assert(it!=ca_logL.end());
+        auto& calogL0=it->second;
         
-        delta_P= delta_P+get<logL>(calogL0)()-get<logL>(current.logL(i_frac-1))();
+        delta_P= delta_P+(1-beta)*(get<logL>(calogL0)()-get<logL>(current.logL(i_frac-1))());
     }
     auto out= delta_P+delta_lik;
     // it is possible that current is not finite
@@ -839,47 +999,69 @@ template <class FunctionTable, class Prior, class Likelihood, class Variables,
 //    requires (is_prior<Prior,Parameters,Variables,DataType>&&
 //    is_likelihood_model<FunctionTable,Likelihood,Parameters,Variables,DataType>)
 auto init_thermo_fraction_mcmc(FunctionTable &f, std::size_t n_walkers,
-                      by_beta<double> const &beta,
-                     by_beta<std::size_t> const &i_fraction,
-                     ensemble<mt_64i> &mt,
+                      std::size_t beta_size,
+                      ensemble<mt_64i> &mt,
                       Prior const &prior, Likelihood const &lik,
                       const DataType &y, const Variables &x) {
-    assert(beta.size()==i_fraction.size());
     
-    auto i_fractions=i_frac_to_i_fracs(i_fraction,beta);
-    
-    
-    by_beta<ensemble<std::size_t>> i_walker(beta.size(),
+        
+    by_beta<ensemble<std::size_t>> i_walker(beta_size,
                                             by_beta<std::size_t>(n_walkers));
     by_beta<ensemble<fraction_mcmc<Parameters>>> walker(
-        beta.size(), by_beta<fraction_mcmc<Parameters>>(n_walkers));
-    by_beta<emcee_Step_statistics> emcee_stat(beta.size(),
+        beta_size, by_beta<fraction_mcmc<Parameters>>(n_walkers));
+    by_beta<emcee_Step_statistics> emcee_stat(beta_size,
                                               emcee_Step_statistics{});
-    by_beta<Thermo_Jump_statistics> thermo_stat(beta.size() - 1,
+    by_beta<Thermo_Jump_statistics> thermo_stat(beta_size - 1,
                                                 Thermo_Jump_statistics{});
     auto ff = f.fork(omp_get_max_threads());
-
+    
+    by_beta<std::size_t> i_fraction(beta_size,0ul);
+    
+    auto i_fractions=i_frac_to_i_fracs(i_fraction);
+    
+    
+    double sum_prior_logLikelihood=0;
+    std::size_t count_l=0; 
 #pragma omp parallel for // collapse(2)
     for (std::size_t iw = 0; iw < n_walkers; ++iw) {
-       for (std::size_t i = 0; i < beta.size(); ++i) {
+       for (std::size_t i = 0; i < beta_size; ++i) {
             i_walker[i][iw] = iw + i * n_walkers;
             auto i_th = omp_get_thread_num();
             walker[i][iw] = init_fraction_mcmc(ff[i_th], mt[i_th], prior, lik, y, x, i_fractions[i]);
         }
     }
     f += ff;
+    for (std::size_t iw = 0; iw < n_walkers; ++iw) {
+        for (std::size_t i = 0; i < beta_size; ++i) {
+            if (i_fractions[i][0]==0){
+                sum_prior_logLikelihood+=get<logL>(walker[i][iw].logL(0))();
+                ++count_l;
+        }
+    }
+    }
     std::vector<std::size_t> samples_size(y.size());
     for (std::size_t i=0; i<y.size();++i)
     {
         samples_size[i]=y[i]().size();
     }
     std::size_t max_samples=var::max(samples_size);
+    double min_beta=-1.0/sum_prior_logLikelihood*count_l;
+    double log_dgb=-std::log(min_beta)/(beta_size-2);
+    std::vector<double> beta(beta_size);
+    beta[0]=0;
+    for (std::size_t i=1; i+1<beta_size; ++i)
+        beta[i]=min_beta*std::exp(log_dgb*(i-1));
+    beta[beta_size-1]=1;
     
-   
-    auto global_beta=i_fract_beta_to_global_beta(i_fraction,beta,samples_size,max_samples);
-    auto S=global_beta_to_S(global_beta);
+    std::vector<double> globalbeta(beta_size);
+    for (std::size_t i=0; i<beta_size; ++i)
+    {
+        auto i_fr=i_fraction[i];
+        auto sample_size0=i_fr>0?samples_size[i_fr-1]:0;
+        globalbeta[i]=(beta[i]*(samples_size[i_fr]-sample_size0)+sample_size0)/max_samples;
+    }
     auto walker_sta = make_logL_statistics(walker);
-    return thermo_fraction_mcmc<Parameters>{samples_size,max_samples,i_fraction,i_fractions,beta, S,  walker,    walker_sta,
+    return thermo_fraction_mcmc<Parameters>{samples_size,max_samples,i_fraction,i_fractions,beta, globalbeta,  walker,    walker_sta,
                                    i_walker, emcee_stat, thermo_stat};
 }
 
@@ -925,6 +1107,7 @@ void update_likelihoods_all(FunctionTable &f,
                                                      current.i_fractions[ib],
                                                      current.walkers[ib][iw].logL_map,
 current.walkers_sta[ib][iw]);
+                assert(Maybe_i.valid());
             }
         }
     f += ff;
@@ -1053,7 +1236,7 @@ current.walkers_sta[ib][iw]);
     }
     f += ff;
     ++iter;
-    update(current.walkers_sta, current.walkers);
+    update(current.walkers_sta, current.walkers, current.i_fractions);
     
     dur.record("stretch_function_end");
 }
@@ -1115,19 +1298,18 @@ void thermo_fraction_jump_mcmc(FuncTable &f,
                 auto r = rdist[i_th](mts[i_th]);
                 auto beta0=current.beta[ib]==1?0:current.beta[ib];
                 auto i_frac=current.i_fraction[ib+1];
-                
-                
+                auto Lik_i_0= i_frac>0? get<logL>(current.walkers[ib][iw].logL(i_frac-1))():0;
+                auto Liki=get<logL>(current.walkers[ib][iw].logL(i_frac))()-Lik_i_0;
+                auto Lik_j_0= i_frac>0? get<logL>(current.walkers[ib+1][jw].logL(i_frac-1))():0;
+                auto Likj=get<logL>(current.walkers[ib+1][jw].logL(i_frac))()-Lik_j_0;
                 
                 double logA =
-                    calc_logA(beta0, current.beta[ib + 1], current.walkers[ib][iw].logL(i_frac),
-                              current.walkers[ib + 1][jw].logL(i_frac));
+                    calc_logA(beta0,current.beta[ib + 1],Liki,Likj);
                 auto pJump = std::min(1.0, std::exp(logA));
                 if (pJump > r) {
-                    auto Maybe_i=update_logLikelihoods(ff[i_th],lik,current.walkers[ib][iw].parameter.to_value(),x,y,current.i_fractions[ib+1],current.walkers[ib][iw].logL_map,
-current.walkers_sta[ib][iw]);
+                    auto Maybe_i=update_logLikelihoods(ff[i_th],lik,current.walkers[ib][iw].parameter.to_value(),x,y,current.i_fractions[ib+1],current.walkers[ib][iw].logL_map,current.walkers_sta[ib][iw]);
                     
-                    auto Maybe_j=update_logLikelihoods(ff[i_th],lik,current.walkers[ib+1][jw].parameter.to_value(),x,y,current.i_fractions[ib],current.walkers[ib+1][jw].logL_map,
-current.walkers_sta[ib+1][jw]);
+                    auto Maybe_j=update_logLikelihoods(ff[i_th],lik,current.walkers[ib+1][jw].parameter.to_value(),x,y,current.i_fractions[ib],current.walkers[ib+1][jw].logL_map,current.walkers_sta[ib+1][jw]);
                     if(Maybe_i.valid()&& Maybe_j.valid()){
                     
                     std::swap(current.walkers[ib][iw], current.walkers[ib + 1][jw]);
@@ -1212,19 +1394,15 @@ auto thermo_fraction_evidence_loop(
                    mcmc_run.first);
         if constexpr (Adapt_beta)
         {
-            adapt_fraction_beta(iter, current, therm.adapt_beta_every(),therm.adapt_beta_equalizer(),therm.adapt_beta_variance(),therm.desired_acceptance(),therm.adapt_beta_nu(),therm.adapt_beta_t0());
-            update_likelihoods_all(f,current,lik,ys,xs);
+            adapt_fraction_beta(f,iter, current, therm.adapt_beta_every(),therm.adapt_beta_equalizer(),therm.adapt_beta_variance(),therm.desired_acceptance(),therm.adapt_beta_nu(),therm.adapt_beta_t0(), therm.adapt_beta_threshold(),lik,ys,xs);
             
             if(therm.adjust_beta()){
                 adjust_fraction_beta(f,iter,therm.adapt_beta_every(),therm.acceptance_upper_limit(),therm.acceptance_lower_limit(),current,mts,prior,lik,ys,xs);
-            update_likelihoods_all(f,current,lik,ys,xs);
+                adapt_fraction_i_fraction(f,iter,current,therm.adapt_beta_every(),therm.adapt_beta_equalizer(),therm.adapt_beta_variance(),therm.desired_acceptance(),therm.adapt_beta_nu(),therm.adapt_beta_t0(), therm.adapt_beta_threshold(),therm.acceptance_upper_limit(),lik,ys,xs);
                 
             }
             if (iter%therm.adapt_beta_every()==0)   
                 current.reset_statistics();
-            
-            
-            
         }
         
         step_stretch_thermo_fraction_mcmc(f, iter,even_dur, current, rep, mts, prior, lik,
@@ -1280,32 +1458,13 @@ auto thermo_fraction_evidence(FunctionTable &&f,
     auto mt = init_mt(therm.initseed());
     auto n_walkers = therm.num_scouts_per_ensemble();
     auto mts = init_mts(mt, omp_get_max_threads());
-    by_beta<double> beta_run;
-    if constexpr (Adapt_beta)
-    {
-        beta_run=by_beta<double>(therm.beta_size(),0);
-    }
-    else{
-        auto beta = new_get_beta_list(
-            therm.beta_size(), therm.beta_upper_size(), therm.beta_medium_size(),
-            therm.beta_upper_value(), therm.beta_medium_value(), therm.stops_at(),
-            therm.includes_zero());
-        
-        auto it_beta_run_begin = beta.rend() - beta.size();
-        auto it_beta_run_end = beta.rend();
-        beta_run = by_beta<double>(it_beta_run_begin, it_beta_run_end);
-    }
-    by_beta<std::size_t> i_fractions(beta_run.size(),0);
+    
     
     auto current =
-        init_thermo_fraction_mcmc(f, n_walkers, beta_run, i_fractions, mts, prior, lik, ys, xs);
+        init_thermo_fraction_mcmc(f, n_walkers, therm.beta_size(),  mts, prior, lik, ys, xs);
     // auto n_par = current.walkers[0][0].parameter.size();
     
-    if constexpr (Adapt_beta)
-    {
-        initial_beta_dts(current);
-        
-    }
+    
     
     
     auto mcmc_run = checks_convergence(std::move(a), current);
@@ -1315,7 +1474,7 @@ auto thermo_fraction_evidence(FunctionTable &&f,
     auto &rep = therm.reporter();
     report_title(rep, current, lik, ys, xs);
     report_title(f, "Iter");
-    report_model_all(rep, prior, lik, ys, xs, beta_run);
+    report_model_all(rep, prior, lik, ys, xs, current.beta);
     std::chrono::duration<double> previous_duration(0.0);
     return thermo_fraction_evidence_loop<Adapt_beta>(
         f,
@@ -1326,7 +1485,7 @@ auto thermo_fraction_evidence(FunctionTable &&f,
 
 template <class Prior, class Parameters = std::decay_t<decltype(sample(
                           std::declval<mt_64i &>(), std::declval<Prior &>()))>>
-auto create_thermo_fraction_mcmc(std::size_t n_walkers,
+                                                                                                                                                                                                                               auto create_thermo_fraction_mcmc(std::size_t n_walkers,
                                  by_beta<double> const &beta,
                         mt_64i &mt, Prior const &pr,std::vector<std::size_t> samples_size,std::size_t max_samples) {
     

@@ -1,6 +1,6 @@
 write_script(script_name=runIdName)
                   
-thermo_algorithm_dts = set_ThermoAlgorithm_dts (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  max_iter_equilibrium = max_iter_equilibrium, beta_size =beta_size,  thermo_jumps_every = 1, save_every_param_size_factor=1, adapt_beta_every = 8 ,adapt_beta_equalizer="deltaBeta_deltaL_vfm",adapt_beta_controler="s",adapt_beta_variance="variance",adapt_beta_nu=0.5,adapt_beta_t0=3000, adjust_beta=1, acceptance_upper_limit= 1.95, acceptance_lower_limit =0.25 , desired_acceptance= 0.25 ) 
+thermo_algorithm_dts = set_ThermoAlgorithm_fraction_dts (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  max_iter_equilibrium = max_iter_equilibrium, beta_size =beta_size,  thermo_jumps_every = 1, save_every_param_size_factor=1, adapt_beta_every = 8 ,adapt_beta_equalizer="deltaBeta_deltaL_vfm",adapt_beta_controler="s",adapt_beta_variance="variance",adapt_beta_nu=0.5,adapt_beta_t0=3000,adapt_beta_threshold=0.05, adjust_beta=1, acceptance_upper_limit= 0.1, acceptance_lower_limit =0.25 , desired_acceptance= 0.25 ) 
 
 fraction_algorithm= set_fraction_algorithm(min_fraction = 1, n_points_per_decade_fraction = 3.321928, segments = segments)
 

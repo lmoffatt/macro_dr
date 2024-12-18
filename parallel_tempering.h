@@ -1164,7 +1164,19 @@ inline double calc_logA(double betai, double betaj, logLs const &logLi,
             return -20.0;
     }
 }
-
+inline double calc_logA(double betai, double betaj, double logLi,
+                        double logLj) {
+    if (std::isfinite(logLi - logLj))
+        return -(betai - betaj) * (logLi - logLj);
+    else {
+        if (!std::isfinite(logLi) && std::isfinite(logLj))
+            return 20.0 * (betai > betaj);
+        if (std::isfinite(logLi) && !std::isfinite(logLj))
+            return -20.0 * (betai > betaj);
+        else
+            return -20.0;
+    }
+}
 template <class Parameters, class Observer>
 void thermo_jump_mcmc(std::size_t iter, thermo_mcmc<Parameters> &current,
                       Observer &obs, const by_beta<double> &beta, mt_64i &mt,

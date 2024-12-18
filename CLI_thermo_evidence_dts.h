@@ -118,7 +118,7 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model,
                         auto tmi = new_thermo_Model_by_max_iter_dts(
                             "", filename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size,  saving_intervals, myseed,t_adapt_beta_every,t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,
-                             t_adapt_beta_nu, t_adapt_beta_t0,     t_adjust_beta,
+                             t_adapt_beta_nu, t_adapt_beta_t0,0.0,     t_adjust_beta,
                              t_acceptance_upper_limit,
                              t_acceptance_lower_limit,
                              t_desired_acceptance);
@@ -234,7 +234,7 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                         auto tmi = new_thermo_Model_by_max_iter_dts(
                             "", newfilename, num_scouts_per_ensemble, thermo_jumps_every,
                             max_iter_equilibrium, beta_size, saving_intervals, myseed,t_adapt_beta_every,t_adapt_beta_equalizer,t_adapt_beta_controler,t_adapt_beta_variance,
-                             t_adapt_beta_nu, t_adapt_beta_t0,t_adjust_beta,
+                             t_adapt_beta_nu, t_adapt_beta_t0,0.0,t_adjust_beta,
                             t_acceptance_upper_limit,
                             t_acceptance_lower_limit,
                             t_desired_acceptance);
