@@ -294,7 +294,7 @@ class Thermo_Jump_statistics
 
 
 class logL_statistics : public var::Constant<logL_statistics, Moment_statistics<logL>>{
- public:
+public:
     using var::Constant<logL_statistics, Moment_statistics<logL>>::Constant;
     logL_statistics(logL t_logL): var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>(t_logL)}{}
     logL_statistics():var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>{}}{}
@@ -310,6 +310,28 @@ class logL_statistics : public var::Constant<logL_statistics, Moment_statistics<
     }
     
 };
+
+
+class logEv_statistics : public var::Constant<logEv_statistics, Moment_statistics<logEv>>{
+public:
+    using var::Constant<logEv_statistics, Moment_statistics<logEv>>::Constant;
+    logEv_statistics(logEv t_logE): var::Constant<logEv_statistics, Moment_statistics<logEv>>{Moment_statistics<logEv>(t_logE)}{}
+    logEv_statistics():var::Constant<logEv_statistics, Moment_statistics<logEv>>{Moment_statistics<logEv>{}}{}
+    
+    
+    friend logEv_statistics operator+(const logEv_statistics& one, const logEv_statistics& two)
+    {
+        return logEv_statistics(one()+two());
+    }
+    friend logEv_statistics operator*(double a, const logEv_statistics& one)
+    {
+        return logEv_statistics(a * one());
+    }
+    
+};
+
+
+
 
 
 template<class Parameters>

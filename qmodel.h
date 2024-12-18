@@ -6063,7 +6063,7 @@ auto new_thermo_Model_by_max_iter_dts(
     std::size_t beta_size, Saving_intervals sint, std::size_t initseed,
     std::size_t t_adapt_beta_every, std::string t_adapt_beta_equalizer,
     std::string t_adapt_beta_constroler, std::string t_adapt_beta_variance,
-    double t_adapt_beta_nu, double t_adapt_beta_t0, bool t_adjust_beta,
+    double t_adapt_beta_nu, double t_adapt_beta_t0,double t_adapt_beta_threshold, bool t_adjust_beta,
     double t_acceptance_upper_limit, double t_acceptance_lower_limit,
     double t_desired_acceptance) {
   return new_thermodynamic_integration(
@@ -6081,7 +6081,7 @@ auto new_thermo_Model_by_max_iter_dts(
           get<Save_Predictions_every>(sint())()),
         num_scouts_per_ensemble, thermo_jumps_every, beta_size, initseed,
         t_adapt_beta_every, t_adapt_beta_equalizer, t_adapt_beta_constroler,
-        t_adapt_beta_variance, t_adapt_beta_nu, t_adapt_beta_t0, t_adjust_beta,
+        t_adapt_beta_variance, t_adapt_beta_nu, t_adapt_beta_t0,t_adapt_beta_threshold, t_adjust_beta,
         t_acceptance_upper_limit, t_acceptance_lower_limit, t_desired_acceptance);
 }
 

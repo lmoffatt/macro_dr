@@ -316,7 +316,7 @@ fraction_algo, std::string model,std::size_t i_seed )
                               std::string,
                               std::string,
                               std::string,
-                              double ,double,  bool   ,
+                              double ,double, bool   ,
                               double ,
                               double ,
                               double  >(
@@ -324,6 +324,24 @@ fraction_algo, std::string model,std::size_t i_seed )
           "number_trials_until_give_up", 
           "max_iter_equilibrium", "beta_size",  "thermo_jumps_every",
           "save_every_param_size_factor","adapt_beta_every","adapt_beta_equalizer","adapt_beta_controler","adapt_beta_variance","adapt_beta_nu","adapt_beta_t0","adjust_beta","acceptance_upper_limit","acceptance_lower_limit","desired_acceptance"));
+  
+  cm.push_function(
+      "set_ThermoAlgorithm_fraction_dts",
+      dcli::to_typed_function<    std::size_t ,
+                              std::size_t ,
+                              std::size_t , std::size_t ,
+                              std::size_t , std::size_t ,std::size_t ,
+                              std::string,
+                              std::string,
+                              std::string,
+                              double ,double, double,bool   ,
+                              double ,
+                              double ,
+                              double  >(
+          &set_ThermoAlgorithm_fraction_dts, "num_scouts_per_ensemble",
+          "number_trials_until_give_up", 
+          "max_iter_equilibrium", "beta_size",  "thermo_jumps_every",
+          "save_every_param_size_factor","adapt_beta_every","adapt_beta_equalizer","adapt_beta_controler","adapt_beta_variance","adapt_beta_nu","adapt_beta_t0","adapt_beta_threshold","adjust_beta","acceptance_upper_limit","acceptance_lower_limit","desired_acceptance"));
   
   
   
