@@ -451,6 +451,17 @@ add_executable(macro_dr main.cpp
     scripts/evidence_thermo_dts_data_2.txt
     scripts/evidence_thermo_dts_continuation_2.txt
     scripts/idealize_experiment_3.txt
+    slurm/run_32_scheme_10_11_DR_continuation.sh
+    slurm/run_32_scheme_10_11_SNR.sh
+    slurm/run_32_scheme_4_9_SNR.sh
+    slurm/run_32_scheme_6_DR_SNR.sh
+    slurm/run_32_scheme_7_DR_SNR.sh
+    slurm/run_32_scheme_4_9_DR_continuation.sh
+    slurm/run_64_CPU_16_schemes_1_2_DR_SNR.sh
+    slurm/run_64_CPU_16_schemes_3_5_DR_SNR.sh
+    slurm/run_64_CPU_32_schemes_4_DR_SNR_continuation.sh
+    slurm/run_64_CPU_32_schemes_9_DR_SNR_continuation.sh
+    slurm/run_64_CPU_32_schemes_8_DR_SNR_continuation.sh
     
     
     

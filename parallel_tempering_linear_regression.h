@@ -734,7 +734,7 @@ auto thermo_evidence_loop(
         // decltype(checks_convergence(std::move(mcmc_run.first), current))::eger;
         mcmc_run = checks_convergence(std::move(mcmc_run.first), current);
         even_dur.record("after_checks_convergence");
-        if (iter==1)
+        if (iter==2)
             even_dur.report_title(event_file);
         even_dur.report_iter(event_file,iter);
         if (iter%10==0)
