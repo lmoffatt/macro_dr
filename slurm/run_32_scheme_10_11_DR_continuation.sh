@@ -43,8 +43,11 @@ export MAX_ITER=1000000
 
 
 export CONTINUATION_NUMBER=5
+JOBID_10=87632
+JOBID_11=87641
 
-JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
+
+JOBID1=$(sbatch --parsable  --dependency=afterany:${JOBID_10}:${JOBID_11} --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
 for i in $(seq 6 8);
