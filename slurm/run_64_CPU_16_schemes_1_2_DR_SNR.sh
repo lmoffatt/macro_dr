@@ -19,10 +19,10 @@ ALG_TYPE1=SNR
 
 
 
-export SCHEME_0=scheme_${N_SCH}_${MODEL_TYPE0}
-export SCHEME_1=scheme_${N_SCH}_${MODEL_TYPE1}
-export SCHEME_2=scheme_${N_SCH2}_${MODEL_TYPE0}
-export SCHEME_3=scheme_${N_SCH2}_${MODEL_TYPE1}
+export SCHEME_0=scheme_${N_SCH}_inact_PI
+export SCHEME_1=scheme_${N_SCH}_inact_PI
+export SCHEME_2=scheme_${N_SCH2}_inact_PI
+export SCHEME_3=scheme_${N_SCH2}_inact_PI
 
 export LIK_0=${ALG_TYPE0}
 export LIK_1=${ALG_TYPE1}
