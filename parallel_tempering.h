@@ -218,6 +218,7 @@ inline double calculate_logL_mean(ensemble<logL_statistics> const &sta) {
 inline by_beta<double>
 calculate_logL_mean(by_beta<ensemble<logL_statistics>> const &sta) {
     by_beta<double> out(sta.size());
+#pragma omp parallel for
     for (std::size_t i = 0; i < sta.size(); ++i)
         out[i] = calculate_logL_mean(sta[i]);
     return out;
@@ -1352,6 +1353,7 @@ auto calculate_deltaBeta_deltaL(const thermo_mcmc<Parameters> &current) {
     
     std::vector<double> dBdL(current.walkers.size() - 1);
     auto L = calculate_logL_mean(current.walkers_sta);
+    
     
     for (std::size_t i = 0; i < dBdL.size(); ++i)
         dBdL[i] = (L[i + 1] - L[i]) * (current.beta[i + 1] - current.beta[i]);
