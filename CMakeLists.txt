@@ -448,6 +448,9 @@ add_executable(macro_dr main.cpp
     command_lines/run_fraction_dts.txt
     slurm/run_64_CPU_8_schemes_8_9_fraction.sh
     slurm/run_32_scheme_9_DR_fraction.sh
+    scripts/evidence_thermo_dts_data_2.txt
+    scripts/evidence_thermo_dts_continuation_2.txt
+    scripts/idealize_experiment_3.txt
     
     
     

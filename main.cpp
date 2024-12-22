@@ -1,11 +1,11 @@
 #include "CLI_function_table.h"
 #include "CLI_likelihood.h"
 #include "CLI_macro_dr.h"
-#include "CLI_thermo_evidence.h"
+//#include "CLI_thermo_evidence.h"
 #include "CLI_thermo_evidence_dts.h"
 
-#include "CLI_thermo_evidence_fraction_dts.h"
-#include "CLI_thermo_levenberg_evidence.h"
+//#include "CLI_thermo_evidence_fraction_dts.h"
+//#include "CLI_thermo_levenberg_evidence.h"
 #include "experiment.h"
 #include "lapack_headers.h"
 #include "lexer_typed.h"
@@ -204,16 +204,18 @@ experiment_type experiment,                                  fraction_algo_type
 fraction_algo, std::string model,std::size_t i_seed )
 
    * */
-
-  cm.push_function(
-      "fraction_simulation",
-      dcli::to_typed_function<std::string, std::string, cmd::experiment_type,
-                              fraction_algo_type, Maybe_error<std::size_t>,
-                              std::size_t>(
-          &cmd::calc_simulation_fractions, "save_name", "simulation",
-          "experiment", "fraction_algorithm", "number_of_parameters",
-          "init_seed"));
-
+  
+  // if constexpr(false){
+  // cm.push_function(
+  //     "fraction_simulation",
+  //     dcli::to_typed_function<std::string, std::string, cmd::experiment_type,
+  //                             fraction_algo_type, Maybe_error<std::size_t>,
+  //                             std::size_t>(
+  //         &cmd::calc_simulation_fractions, "save_name", "simulation",
+  //         "experiment", "fraction_algorithm", "number_of_parameters",
+  //         "init_seed"));
+  // }
+  
   /**
    * calc_fraction_likelihood(const std::string file_name,
                                           std::string model,
@@ -222,15 +224,17 @@ fraction_algo, std::string model,std::size_t i_seed )
    Maybe_frac_simulation, likelihood_algo_type likelihood_algo,
                                    tablefun_value_type ft)
    * */
-
-  cm.push_function(
-      "fraction_likelihood",
-      dcli::to_typed_function<std::string, std::string, parameters_value_type,
-                              fractioned_simulation_type, likelihood_algo_type,
-                              tablefun_value_type>(
-          &calc_fraction_likelihood, "file_name", "model", "parameter",
-          "fractioned_simulation", "likelihood_algorithm", "function_table"));
-
+  
+  // if constexpr(false){
+  // cm.push_function(
+  //     "fraction_likelihood",
+  //     dcli::to_typed_function<std::string, std::string, parameters_value_type,
+  //                             fractioned_simulation_type, likelihood_algo_type,
+  //                             tablefun_value_type>(
+  //         &calc_fraction_likelihood, "file_name", "model", "parameter",
+  //         "fractioned_simulation", "likelihood_algorithm", "function_table"));
+  // }
+  
   /**
    * inline void calc_fraction_evidence(std::string model,
                         prior_value_type prior,
@@ -240,17 +244,20 @@ fraction_algo, std::string model,std::size_t i_seed )
                         cuevi_algo_type cuevi_algorithm,
                         tablefun_value_type ft, std::size_t myseed)
    * */
-
-  cm.push_function(
-      "evidence_fraction",
-      dcli::to_typed_function<std::string, prior_value_type,
-                              likelihood_algo_type, fractioned_simulation_type,
-                              cuevi_algo_type, tablefun_value_type,
-                              std::size_t>(
-          &calc_fraction_evidence, "model", "prior", "likelihood_algorithm",
-          "fractioned_experiment", "cuevi_algorithm", "function_table",
-          "init_seed"));
-
+  
+  
+  // if constexpr(false){
+  // cm.push_function(
+  //     "evidence_fraction",
+  //     dcli::to_typed_function<std::string, prior_value_type,
+  //                             likelihood_algo_type, fractioned_simulation_type,
+  //                             cuevi_algo_type, tablefun_value_type,
+  //                             std::size_t>(
+  //         &calc_fraction_evidence, "model", "prior", "likelihood_algorithm",
+  //         "fractioned_experiment", "cuevi_algorithm", "function_table",
+  //         "init_seed"));
+  // }
+  
   /**    inline auto set_CueviAlgorithm(
   std::size_t num_scouts_per_ensemble = 16,
   std::size_t number_trials_until_give_up = 1e5,
@@ -286,26 +293,27 @@ fraction_algo, std::string model,std::size_t i_seed )
                     std::string filename, std::size_t thermo_jumps_every,
                     std::size_t max_num_simultaneous_temperatures) {
  */
-
-  cm.push_function(
-      "set_ThermoAlgorithm",
-      dcli::to_typed_function<std::size_t ,
-                              std::size_t ,
-                              double ,
-                              double , double ,
-                              bool , std::size_t ,
-                              std::size_t ,
-                              std::size_t , std::size_t ,
-                              std::size_t ,
-                              std::size_t >(
-          &set_ThermoAlgorithm, "num_scouts_per_ensemble",
-          "number_trials_until_give_up", "stops_at", "beta_upper_value",
-          "beta_medium_value",
-          "includes_zero",
-          "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "thermo_jumps_every",
-          "save_every_param_size_factor"));
   
+//   if constexpr(false){
+//   cm.push_function(
+//       "set_ThermoAlgorithm",
+//       dcli::to_typed_function<std::size_t ,
+//                               std::size_t ,
+//                               double ,
+//                               double , double ,
+//                               bool , std::size_t ,
+//                               std::size_t ,
+//                               std::size_t , std::size_t ,
+//                               std::size_t ,
+//                               std::size_t >(
+//           &set_ThermoAlgorithm, "num_scouts_per_ensemble",
+//           "number_trials_until_give_up", "stops_at", "beta_upper_value",
+//           "beta_medium_value",
+//           "includes_zero",
+//           "max_iter_equilibrium", "beta_size", "beta_upper_size",
+//           "beta_medium_size",  "thermo_jumps_every",
+//           "save_every_param_size_factor"));
+// }
   
   cm.push_function(
       "set_ThermoAlgorithm_dts",
@@ -325,25 +333,26 @@ fraction_algo, std::string model,std::size_t i_seed )
           "max_iter_equilibrium", "beta_size",  "thermo_jumps_every",
           "save_every_param_size_factor","adapt_beta_every","adapt_beta_equalizer","adapt_beta_controler","adapt_beta_variance","adapt_beta_nu","adapt_beta_t0","adjust_beta","acceptance_upper_limit","acceptance_lower_limit","desired_acceptance"));
   
-  cm.push_function(
-      "set_ThermoAlgorithm_fraction_dts",
-      dcli::to_typed_function<    std::size_t ,
-                              std::size_t ,
-                              std::size_t , std::size_t ,
-                              std::size_t , std::size_t ,std::size_t ,
-                              std::string,
-                              std::string,
-                              std::string,
-                              double ,double, double,bool   ,
-                              double ,
-                              double ,
-                              double  >(
-          &set_ThermoAlgorithm_fraction_dts, "num_scouts_per_ensemble",
-          "number_trials_until_give_up", 
-          "max_iter_equilibrium", "beta_size",  "thermo_jumps_every",
-          "save_every_param_size_factor","adapt_beta_every","adapt_beta_equalizer","adapt_beta_controler","adapt_beta_variance","adapt_beta_nu","adapt_beta_t0","adapt_beta_threshold","adjust_beta","acceptance_upper_limit","acceptance_lower_limit","desired_acceptance"));
-  
-  
+  // if constexpr (false){
+  // cm.push_function(
+  //     "set_ThermoAlgorithm_fraction_dts",
+  //     dcli::to_typed_function<    std::size_t ,
+  //                             std::size_t ,
+  //                             std::size_t , std::size_t ,
+  //                             std::size_t , std::size_t ,std::size_t ,
+  //                             std::string,
+  //                             std::string,
+  //                             std::string,
+  //                             double ,double, double,bool   ,
+  //                             double ,
+  //                             double ,
+  //                             double  >(
+  //         &set_ThermoAlgorithm_fraction_dts, "num_scouts_per_ensemble",
+  //         "number_trials_until_give_up", 
+  //         "max_iter_equilibrium", "beta_size",  "thermo_jumps_every",
+  //         "save_every_param_size_factor","adapt_beta_every","adapt_beta_equalizer","adapt_beta_controler","adapt_beta_variance","adapt_beta_nu","adapt_beta_t0","adapt_beta_threshold","adjust_beta","acceptance_upper_limit","acceptance_lower_limit","desired_acceptance"));
+      
+  // }
   
   /**
 calc_thermo_evidence(std::string id,
@@ -357,16 +366,18 @@ calc_thermo_evidence(std::string id,
                                  std::size_t sampling_interval,max_number_of_values_per_iteration,
                                  std::size_t myseed)
    * */
-
-  cm.push_function(
-      "thermo_evidence",
-      dcli::to_typed_function<std::string,
-                              std::string, std::string, likelihood_algo_type, std::string,
-                              experiment_file_type, thermo_algo_type, std::size_t, std::size_t, std::size_t>(
-          &calc_thermo_evidence, "idname","model", "prior", "likelihood_algorithm",
-          "data", "experiment", "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
-          "init_seed"));
   
+  
+//   if constexpr(false){
+//   cm.push_function(
+//       "thermo_evidence",
+//       dcli::to_typed_function<std::string,
+//                               std::string, std::string, likelihood_algo_type, std::string,
+//                               experiment_file_type, thermo_algo_type, std::size_t, std::size_t, std::size_t>(
+//           &calc_thermo_evidence, "idname","model", "prior", "likelihood_algorithm",
+//           "data", "experiment", "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
+//           "init_seed"));
+// }
   
   
   cm.push_function(
@@ -379,27 +390,40 @@ calc_thermo_evidence(std::string id,
           "init_seed"));
   
   
-  
   cm.push_function(
-      "thermo_fraction_evidence_dts",
+      "thermo_evidence_dts_2",
       dcli::to_typed_function<std::string,
-                              std::string, std::string, likelihood_algo_type, fractioned_experiment_type, thermo_algo_fraction_dts_type, std::size_t,std::size_t, std::size_t>(
-          &calc_thermo_evidence_fraction_dts, "idname","model", "prior", "likelihood_algorithm",
-          "fractional_experiment",  "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
+                              std::string, std::string, likelihood_algo_type, std::string,
+                              experiment_file_type, thermo_algo_dts_type, std::size_t,std::size_t, std::size_t>(
+          &calc_thermo_evidence_dts_2, "idname","model", "prior", "likelihood_algorithm",
+          "data", "experiment", "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
           "init_seed"));
   
   
+  // if constexpr(false){
+  
+  // cm.push_function(
+  //     "thermo_fraction_evidence_dts",
+  //     dcli::to_typed_function<std::string,
+  //                             std::string, std::string, likelihood_algo_type, fractioned_experiment_type, thermo_algo_fraction_dts_type, std::size_t,std::size_t, std::size_t>(
+  //         &calc_thermo_evidence_fraction_dts, "idname","model", "prior", "likelihood_algorithm",
+  //         "fractional_experiment",  "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
+  //         "init_seed"));
+      
+  // }  
   
   /**
    *  calc_thermo_evidence_continuation(std::string id, std::size_t ith)
    * */
   
-  cm.push_function(
-      "thermo_evidence_continuation",
-      dcli::to_typed_function<std::string, std::size_t, std::size_t>(
-          &calc_thermo_evidence_continuation, "idname","continuation_number",
-          "init_seed"));
-  
+  // if constexpr(false){
+  // cm.push_function(
+  //     "thermo_evidence_continuation",
+  //     dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+  //         &calc_thermo_evidence_continuation, "idname","continuation_number",
+  //         "init_seed"));
+      
+  // }
   
   cm.push_function(
       "thermo_evidence_dts_continuation",
@@ -407,6 +431,11 @@ calc_thermo_evidence(std::string id,
           &calc_thermo_evidence_dts_continuation, "idname","continuation_number",
           "init_seed"));
   
+  cm.push_function(
+      "thermo_evidence_dts_continuation_2",
+      dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+          &calc_thermo_evidence_dts_continuation_2, "idname","continuation_number",
+          "init_seed"));
   
   
   
@@ -422,34 +451,34 @@ calc_thermo_evidence(std::string id,
     std::size_t beta_upper_size, std::size_t beta_medium_size,
     std::size_t thermo_jumps_every, std::size_t save_every_param_size_factor)
  * 
- * */  
+ * */
   
   
   
+  // if constexpr(false){
   
-  
-  cm.push_function(
-      "set_ThermoLevenAlgorithm",
-      dcli::to_typed_function<std::size_t ,
-                              std::size_t ,
-                              double ,
-                              double , double ,
-                              bool , std::size_t ,
-                              std::size_t ,
-                              std::size_t , std::size_t ,
-                              std::size_t ,
-                              std::string,
-                              std::size_t,
-                              std::size_t >(
-          &set_ThermoLevenAlgorithm, "num_scouts_per_ensemble",
-          "number_trials_until_give_up", "stops_at", "beta_upper_value",
-          "beta_medium_value",
-          "includes_zero",
-          "max_iter_equilibrium", "beta_size", "beta_upper_size",
-          "beta_medium_size",  "n_lambdas","lambda_adaptive_algorithm","thermo_jumps_every",
-          "save_every_param_size_factor"));
-  
-  
+  // cm.push_function(
+  //     "set_ThermoLevenAlgorithm",
+  //     dcli::to_typed_function<std::size_t ,
+  //                             std::size_t ,
+  //                             double ,
+  //                             double , double ,
+  //                             bool , std::size_t ,
+  //                             std::size_t ,
+  //                             std::size_t , std::size_t ,
+  //                             std::size_t ,
+  //                             std::string,
+  //                             std::size_t,
+  //                             std::size_t >(
+  //         &set_ThermoLevenAlgorithm, "num_scouts_per_ensemble",
+  //         "number_trials_until_give_up", "stops_at", "beta_upper_value",
+  //         "beta_medium_value",
+  //         "includes_zero",
+  //         "max_iter_equilibrium", "beta_size", "beta_upper_size",
+  //         "beta_medium_size",  "n_lambdas","lambda_adaptive_algorithm","thermo_jumps_every",
+  //         "save_every_param_size_factor"));
+      
+  // }
   
   /**
    * inline void calc_thermo_levenberg_evidence(std::string id, std::string model,
@@ -461,16 +490,17 @@ calc_thermo_evidence(std::string id,
                                  std::size_t sampling_interval,max_number_of_values_per_iteration, std::size_t myseed) 
    * */
   
-  cm.push_function(
-      "thermo_levenberg_evidence",
-      dcli::to_typed_function<std::string,
-                              std::string, std::string, likelihood_algo_type, std::string,
-                              experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t,std::size_t, double>(
-          &calc_thermo_levenberg_evidence, "idname","model", "prior", "likelihood_algorithm",
-          "data", "experiment", "thermo_levenberg_algorithm", "sampling_interval","max_number_of_values_per_iteration",
-          "init_seed", "delta_par"));
-  
-  
+  // if constexpr (false){
+  // cm.push_function(
+  //     "thermo_levenberg_evidence",
+  //     dcli::to_typed_function<std::string,
+  //                             std::string, std::string, likelihood_algo_type, std::string,
+  //                             experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t,std::size_t, double>(
+  //         &calc_thermo_levenberg_evidence, "idname","model", "prior", "likelihood_algorithm",
+  //         "data", "experiment", "thermo_levenberg_algorithm", "sampling_interval","max_number_of_values_per_iteration",
+  //         "init_seed", "delta_par"));
+      
+  // }
   
   
   
@@ -533,18 +563,20 @@ calc_thermo_evidence(std::string id,
                                 likelihood_algo_type likelihood,
                                 std::string recording,
                                 experiment_type experiment   * */
-
-  cm.push_function("evidence",
-                   dcli::to_typed_function<
-                       std::string, prior_value_type, likelihood_algo_type,
-                       std::string, experiment_type, fraction_algo_type,
-                       cuevi_algo_type, tablefun_value_type, std::size_t>(
-                       &calc_evidence, "model", "prior", "likelihood_algorithm",
-                       "data", "experiment", "fraction_algorithm",
-                       "cuevi_algorithm", "function_table", "init_seed"));
+  // if constexpr(false){
+  // cm.push_function("evidence",
+  //                  dcli::to_typed_function<
+  //                      std::string, prior_value_type, likelihood_algo_type,
+  //                      std::string, experiment_type, fraction_algo_type,
+  //                      cuevi_algo_type, tablefun_value_type, std::size_t>(
+  //                      &calc_evidence, "model", "prior", "likelihood_algorithm",
+  //                      "data", "experiment", "fraction_algorithm",
+  //                      "cuevi_algorithm", "function_table", "init_seed"));
+  // }
+  
   return cm;
-}
 
+}
 int main(int argc, char **argv) {
 
   print_model_Priors(2.0);

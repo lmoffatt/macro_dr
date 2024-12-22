@@ -234,6 +234,180 @@ inline auto get_function_Table_maker_St(std::string filename,
     };
 }
 
+
+inline auto get_function_Table_maker_St_no_Qdt_memoization(std::string filename,
+                                        std::size_t sampling_interval,
+                                        std::size_t max_number_of_values_per_iteration
+                                        ) {
+    using namespace macrodr;
+    return [filename, sampling_interval,max_number_of_values_per_iteration]() {
+        return var::FuncMap_St(
+            filename, sampling_interval,max_number_of_values_per_iteration,
+            Time_it_st(F(cuevi::step_stretch_cuevi_mcmc{},
+                         cuevi::step_stretch_cuevi_mcmc{})),
+            Time_it_st(F(cuevi::thermo_cuevi_jump_mcmc{},
+                         cuevi::thermo_cuevi_jump_mcmc{})),
+            var::Time_it_st(F(cuevi::step_stretch_cuevi_mcmc_per_walker{},
+                              cuevi::step_stretch_cuevi_mcmc_per_walker{})),
+            var::Time_it_st(F(logLikelihood_f{},
+                              [](auto &&...x) {
+                                  return logLikelihood(
+                                      std::forward<decltype(x)>(x)...);
+                              })),
+            var::Time_it_st(
+                F(MacroR<uses_recursive_aproximation(true),
+                         uses_averaging_aproximation(2),
+                         uses_variance_aproximation(true)>{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.Macror<uses_recursive_aproximation(true),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(true),
+                                      uses_variance_correction_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+                  })),
+            var::Time_it_st(
+                F(MacroR<uses_recursive_aproximation(true),
+                         uses_averaging_aproximation(2),
+                         uses_variance_aproximation(false)>{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.Macror<uses_recursive_aproximation(true),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(false),
+                                      uses_variance_correction_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+                  })),
+            var::Time_it_st(
+                F(MacroR<uses_recursive_aproximation(false),
+                         uses_averaging_aproximation(2),
+                         uses_variance_aproximation(false)>{},
+                  [](auto &&...x) {
+                      auto m = Macro_DMR{};
+                      return m.Macror<uses_recursive_aproximation(false),
+                                      uses_averaging_aproximation(2),
+                                      uses_variance_aproximation(false),
+                                      uses_variance_correction_aproximation(false)>(
+                          std::forward<decltype(x)>(x)...);
+                  })),
+            var::F(Calc_Qdt_step{},
+                       [](auto &f, auto &m, auto &t_step, double fs) {
+                           if constexpr (false) {
+                               auto test_der_t_Qdt = var::test_Derivative(
+                                   [&t_step, &fs, &f](auto const &l_m) {
+                                       auto ma = Macro_DMR{};
+                                       return ma.calc_Qdt_ATP_step(f, l_m, t_step, fs);
+                                   },
+                                   1e-6, 1e-2, m);
+                               if (true && !test_der_t_Qdt) {
+                                   std::cerr << test_der_t_Qdt.error()();
+                                   std::cerr << "\nt_step\n" << t_step;
+                                   abort();
+                               }
+                           }
+                           auto ma = Macro_DMR{};
+                           
+                           return ma.calc_Qdt_ATP_step(std::forward<decltype(f)>(f),
+                                                       m, t_step, fs);
+                       }),
+                  var::F(Calc_Qdtm_step{},
+                       [](auto &f, auto &m, auto &t_step, double fs) {
+                           if constexpr (false) {
+                               auto test_der_t_Qdtm = var::test_Derivative(
+                                   [&t_step, &fs, &f](auto const &l_m) {
+                                       auto ma = Macro_DMR{};
+                                       return ma.calc_Qdtm_ATP_step(f, l_m, t_step, fs);
+                                   },
+                                   1e-6, 1e-2, m);
+                               if (true && !test_der_t_Qdtm) {
+                                   std::cerr << test_der_t_Qdtm.error()();
+                                   std::cerr << "\nt_step\n" << t_step;
+                                   std::cerr<<"\nmodel\n"<<m;
+                                   
+                                   abort();
+                               }
+                           }
+                           auto ma = Macro_DMR{};
+                           
+                           return ma.calc_Qdtm_ATP_step(std::forward<decltype(f)>(f),
+                                                        m, t_step, fs);
+                       }),
+             
+            var::F(Calc_Qdt{},
+                   [](auto &&...x) {
+                       auto m = Macro_DMR{};
+                       return m.calc_Qdt(std::forward<decltype(x)>(x)...);
+                   }),
+            F(Calc_Qx{},
+              [](auto &&...x) {
+                  auto m = Macro_DMR{};
+                  return m.calc_Qx(std::forward<decltype(x)>(x)...);
+              }),
+            var::Single_Thread_Memoizer(
+                F(Calc_eigen{},
+                  [](auto &mo, auto &ATP, auto &&...x) {
+                      auto m = Macro_DMR{};
+                      
+                      auto out =
+                          m.calc_eigen(mo, ATP, std::forward<decltype(x)>(x)...);
+                      if constexpr (false) {
+                          if (out) {
+                              auto test_der_eigen = var::test_Derivative(
+                                  [&m, &ATP](auto l_m) { return m.calc_eigen(l_m, ATP); },
+                                  1e-6, 1e-2, mo);
+                              
+                              if (!test_der_eigen) {
+                                  std::cerr << test_der_eigen.error()();
+                                  //                     return test_der_eigen.error();
+                                  std::abort();
+                              }
+                          }
+                      }
+                      return out;
+                  }),
+                var::Memoiza_overload<
+                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>,
+                    var::Memoiza_all_values<
+                        Maybe_error<var::Derivative<
+                            Qx_eig, var::Parameters_transformed>>,
+                        ATP_concentration>>{})
+            
+            // var::Time_it(
+            //     F(Calc_eigen{},
+            //       [](auto &&...x) {
+            //           auto m = Macro_DMR{};
+            //           return
+            //           m.calc_eigen(std::forward<decltype(x)>(x)...);
+            //       }))
+            
+            )
+            // .append_Fs<MacroR2>(
+            //     in_progress::P<
+            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
+            //                        ::V<uses_recursive_aproximation(true)>>,
+            //         in_progress::S<::V<uses_averaging_aproximation(2)>>,
+            //         in_progress::S<::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<
+            //             ::V<uses_variance_correction_aproximation(false)>>>{});
+            // .append_Fs<MacroR2>(
+            //     in_progress::P<
+            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
+            //                        ::V<uses_recursive_aproximation(true)>>,
+            //         in_progress::S<::V<uses_averaging_aproximation(0)>,
+            //                        ::V<uses_averaging_aproximation(1)>,
+            //                        ::V<uses_averaging_aproximation(2)>>,
+            //         in_progress::S<::V<uses_variance_aproximation(false)>,
+            //                        ::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<
+            //             ::V<uses_variance_correction_aproximation(false)>,
+            //             ::V<uses_variance_correction_aproximation(true)>>>{})
+            ;
+    };
+}
+
+
+
+
 using tablefun_value_type = typename return_type<
     std::decay_t<decltype(&get_function_Table_maker_value)>>::type;
 
@@ -680,6 +854,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
             model_v);
     }
 }
+
 
 inline void calc_evidence_continuation(
     std::string model, prior_value_type prior, likelihood_algo_type likelihood,
