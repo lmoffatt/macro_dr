@@ -27,8 +27,12 @@ export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 export PATH_MACRO_DRX=w9
 
 
+
+
 export LIK_0=DR
-export LIK_1=$LIK_0
+export LIK_1=DR
+
+
 
 export EXPERIMENT_0=idealize_experiment_2
 export EXPERIMENT_1=$EXPERIMENT_0
@@ -42,15 +46,13 @@ export MAX_ITER=1000000
 
 
 
+
 export CONTINUATION_NUMBER=5
-JOBID_10=87632
-JOBID_11=87641
+
+JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
-JOBID1=$(sbatch --parsable  --dependency=afterany:${JOBID_10}:${JOBID_11} --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
-
-
-for i in $(seq 6 15);
+for i in $(seq 7 15);
 do
     export CONTINUATION_NUMBER=$i
     JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
