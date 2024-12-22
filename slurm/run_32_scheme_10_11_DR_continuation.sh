@@ -10,6 +10,12 @@ export USE_LOCAL_ID=1
 export IDNAME_0=w9_IE_DR_32c_32s_4b_scheme_10_inact_PI_logbaseline_0_0
 export IDNAME_1=w9_IE_DR_32c_32s_4b_scheme_11_inact_PI_logbaseline_0_0
 
+export WORKING_DIRECTORY=data_w12
+
+export RUNTIME=3-00:00
+export EVIDENCE_ALGORITHM=thermo_dts
+
+
 export N_SCH=10
 N_SCH2=11
 
