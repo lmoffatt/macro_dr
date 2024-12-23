@@ -20,7 +20,7 @@ export N_SCH=10
 N_SCH2=11
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
-export SCHEME_1=scheme_${N_SCH}_inact_PI
+export SCHEME_1=scheme_${N_SCH2}_inact_PI
 
 
 
