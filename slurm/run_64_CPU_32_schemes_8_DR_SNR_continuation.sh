@@ -34,7 +34,7 @@ export SCHEME_DIR_1=${SCHEME_DIR_0}
 export PATH_MACRO_DR_0=w9
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
-export PATH_MACRO_DRX=w11
+export PATH_MACRO_DRX=w9
 
 
 
