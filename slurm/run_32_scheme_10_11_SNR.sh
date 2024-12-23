@@ -26,7 +26,7 @@ export PATH_MACRO_DRX=w9
 
 
 
-export LIK_0=DR
+export LIK_0=SNR
 export LIK_1=$LIK_0
 
 
