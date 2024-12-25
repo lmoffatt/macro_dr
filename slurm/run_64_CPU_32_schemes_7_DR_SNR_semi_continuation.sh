@@ -6,7 +6,7 @@ CPUSPERTASK=32
 export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=0
-
+		
 export IDNAME_0=w9_IE_DR_64c_32s_4b_scheme_7_inact_PI_logbaseline__0
 export IDNAME_1=w9_IE_SNR_64c_32s_4b_scheme_7_inact_PI_logbaseline__0
 
@@ -60,14 +60,13 @@ export MAX_ITER=1000000
 
 
 
-
 JOBID1=$(sbatch --parsable --job-name=R${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
 for i in $(seq 1 20);
 do
-    export CONTINUATION_NUMBER_0=${i+CONTINUATION_NUMBER_0}
-    export CONTINUATION_NUMBER_1=${i+CONTINUATION_NUMBER_1}
+    export CONTINUATION_NUMBER_0=$((CONTINUATION_NUMBER_0 + 1))
+    export CONTINUATION_NUMBER_1=$((CONTINUATION_NUMBER_1 + 1))
     
     JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 done
