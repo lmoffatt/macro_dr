@@ -463,6 +463,7 @@ add_executable(macro_dr main.cpp
     slurm/run_64_CPU_32_schemes_9_DR_SNR_continuation.sh
     slurm/run_64_CPU_32_schemes_8_DR_SNR_continuation.sh
     slurm/run_64_CPU_32_schemes_7_DR_SNR_semi_continuation.sh
+    slurm/run_64_CPU_32_schemes_10_DR.sh
     
     
     
