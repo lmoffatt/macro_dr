@@ -10,8 +10,8 @@ export USE_LOCAL_ID=0
 export IDNAME_0=w9_IE_DR_64c_32s_4b_scheme_7_inact_PI_logbaseline__0
 export IDNAME_1=w9_IE_SNR_64c_32s_4b_scheme_7_inact_PI_logbaseline__0
 
-export CONTINUATION_NUMBER_0=2
-export CONTINUATION_NUMBER_1=0
+export CONTINUATION_NUMBER_0=9
+export CONTINUATION_NUMBER_1=7
 
 
 export N_SCH=7
