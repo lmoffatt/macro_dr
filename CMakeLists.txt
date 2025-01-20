@@ -464,6 +464,11 @@ add_executable(macro_dr main.cpp
     slurm/run_64_CPU_32_schemes_8_DR_SNR_continuation.sh
     slurm/run_64_CPU_32_schemes_7_DR_SNR_semi_continuation.sh
     slurm/run_64_CPU_32_schemes_10_DR.sh
+    command_lines/run_Simulation.txt
+    command_lines/run_Simulation_full
+    models_posterior/scheme_10_inact_PI_posterior_full_par.csv
+    models_posterior/scheme_10_inact_PI_full.txt
+    slurm/run_64_CPU_32_schemes_10_DR_sim_bessel.sh
     
     
     
