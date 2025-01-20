@@ -469,6 +469,7 @@ add_executable(macro_dr main.cpp
     models_posterior/scheme_10_inact_PI_posterior_full_par.csv
     models_posterior/scheme_10_inact_PI_full.txt
     slurm/run_64_CPU_32_schemes_10_DR_sim_bessel.sh
+    slurm/run_64_CPU_32_schemes_10_DR_rep_nyquist.sh
     
     
     
