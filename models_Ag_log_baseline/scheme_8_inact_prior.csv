@@ -15,4 +15,4 @@ scheme_8_inact,12,Pink_Noise,Log10,5.00000000000000089,0.698970004336018857,2
 scheme_8_inact,13,Proportional_Noise,Log10,0.0100000000000000002,-2,2
 scheme_8_inact,14,Current_Baseline,Log10,1,0,2
 scheme_8_inact,15,Num_ch,Log10,4799.99999999999909,3.68124123737558717,2
-scheme_8_inact,16,inactivation_rate,Log10,1.00000000000000008e-05,-5,2
+scheme_8_inact,16,inactivation_rate,Log10,3.0e-4,-3.52287874528033740,2
