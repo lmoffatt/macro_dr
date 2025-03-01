@@ -477,6 +477,7 @@ add_executable(macro_dr main.cpp
     slurm/run_32_scheme_9_DR_nyquist.sh
     slurm/run_32_scheme_11_DR_nyquist.sh
     slurm/run_32_scheme_4_DR_nyquist.sh
+    command_lines/run_Continuation.txt
     
     
     
