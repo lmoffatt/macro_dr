@@ -7,18 +7,18 @@ export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
-export N_SCH=10
-N_SCH2=10
+export N_SCH=6
+N_SCH2=6
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
 
 
 
-export SCHEME_DIR_0=models_Ag
-export SCHEME_DIR_1=models_Ag
+export SCHEME_DIR_0=models_Ag_log_baseline
+export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=w5_nyquist_
+export PATH_MACRO_DR_0=w9_nyquist_2_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 
@@ -42,7 +42,10 @@ export N_SCOUTS=32
 
 export MAX_ITER=1000000
 
+export RUNTIME=3-00:00
+export EVIDENCE_ALGORITHM=thermo_dts
 
+export PATH_MACRO_DRX=w9
 
 
 export CONTINUATION_NUMBER=0
