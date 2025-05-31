@@ -1,18 +1,12 @@
----
+# MacroDR Command Registry — Quick Start Guide
 
-# **\[Wiki Draft: Version Introductoria]**
-
----
-
-## **MacroDR Command Registry — Quick Start Guide**
-
-### **What is this?**
+## What is this?
 
 MacroDR’s Command Registry is a system for exposing C++ functions as *commands* in a custom Domain-Specific Language (DSL). It allows users and collaborators to script and automate complex model operations, data analysis, and simulation — all in a way that is both flexible and type-safe.
 
 ---
 
-### **How does it work?**
+## How does it work?
 
 1. **C++ functions (“handlers”) are registered as commands** with the registry, using clear string names and argument names.
 2. **User scripts (in the MacroDR DSL)** call these commands by name, passing arguments as needed.
@@ -20,13 +14,12 @@ MacroDR’s Command Registry is a system for exposing C++ functions as *commands
 
 ---
 
-### **A. Example: Registering a Command**
+## A. Example: Registering a Command
 
 Suppose you have the following function in C++:
-
 ```cpp
 std::string get_Experiment_file(std::string filename, double frequency_of_sampling, double initial_ATP);
-```
+````
 
 You can register it as a DSL command like this:
 
@@ -48,7 +41,7 @@ get_Experiment_file("experiment1.csv", 10.0, 2.5)
 
 ---
 
-### **B. What does a script look like?**
+## B. What does a script look like?
 
 A typical MacroDR DSL script might look like:
 
@@ -63,7 +56,7 @@ evi = compute_thermo_evidence("my_model", sim, 1.0)
 
 ---
 
-### **C. How do I add a new command?**
+## C. How do I add a new command?
 
 1. **Define the C++ function** (use only supported types as arguments!).
 2. **Register it with `push_function`**, specifying argument names as strings, matching their order.
@@ -71,7 +64,7 @@ evi = compute_thermo_evidence("my_model", sim, 1.0)
 
 ---
 
-### **D. Tips and Caveats**
+## D. Tips and Caveats
 
 * **Command and argument names should be clear** — the DSL is user-facing!
 * If two commands have very similar signatures, use descriptive names to avoid confusion.
@@ -81,7 +74,7 @@ evi = compute_thermo_evidence("my_model", sim, 1.0)
 
 ---
 
-### **E. Where is everything?**
+## E. Where is everything?
 
 * Core registration logic: `lexer_typed.h`, `grammar_typed.h`, `CLI_function_table.h`
 * Function handlers: `CLI_macro_dr.h`, `CLI_likelihood.h`, `CLI_thermo_evidence_dts.h`, etc.
@@ -89,7 +82,7 @@ evi = compute_thermo_evidence("my_model", sim, 1.0)
 
 ---
 
-### **F. If you get stuck…**
+## F. If you get stuck…
 
 * Check the error message (they usually tell you the argument name/type problem).
 * See example registrations in `CLI_function_table.h` or other `CLI_*.h` files.
@@ -99,7 +92,6 @@ evi = compute_thermo_evidence("my_model", sim, 1.0)
 
 *For more detail, see the [Advanced Developer Guide](#).*
 
----
 
----
+
 
