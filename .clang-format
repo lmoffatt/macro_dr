@@ -1,0 +1,20 @@
+# .clang-format
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+AllowShortIfStatementsOnASingleLine: false
+DerivePointerAlignment: false
+PointerAlignment: Left
+SortIncludes: true
+IncludeBlocks: Regroup
+Language:        Cpp
+Standard:        c++20
+AllowShortFunctionsOnASingleLine: None
+
+# ─── Template-specific settings ──────────────────────────────────────────────
+#TemplateIndentWidth: 4                     # indent template parameters
+AlignAfterOpenBracket: Align              # align parameters under the '<'
+AllowAllParametersOfDeclarationOnNextLine: true
+#BreakBeforeParameters: true               # break before function parameters
+IndentWrappedFunctionNames: true
+ReflowComments: false                     # preserve comment formatting

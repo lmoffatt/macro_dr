@@ -3,17 +3,11 @@
 
 #include "CLI_base.h"
 
-
-
 namespace dcli {
-class expression_base{
-public:
-
+class expression_base {
+   public:
 };
 
+}  // namespace dcli
 
-} // namespace dcli
-
-
-#endif // CLI_GRAMMAR_H
-
+#endif  // CLI_GRAMMAR_H
