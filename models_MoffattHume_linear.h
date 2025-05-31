@@ -1,13 +1,6 @@
 #ifndef MODELS_MOFFATTHUME_LINEAR_H
 #define MODELS_MOFFATTHUME_LINEAR_H
 //#include "allosteric_models.h"
-#include "allosteric_models.h"
-#include "general_algorithm_on_containers.h"
-#include "maybe_error.h"
-#include "parameters.h"
-#include "parameters_distribution.h"
-#include "qmodel.h"
-#include "variables.h"
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -15,188 +8,197 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include "allosteric_models.h"
+#include "general_algorithm_on_containers.h"
+#include "maybe_error.h"
+#include "parameters.h"
+#include "parameters_distribution.h"
+#include "qmodel.h"
+#include "variables.h"
 namespace macrodr {
 
 template <class... Ts, class S>
-std::variant<std::monostate, Ts *..., S *>
-operator||(std::variant<std::monostate, Ts *...> one,
-           std::variant<std::monostate, S *> next) {
-  if (!std::holds_alternative<std::monostate>(one))
-    return std::visit(
-        [](auto x) { return std::variant<std::monostate, Ts *..., S *>(x); },
-        one);
-  else
-    return std::visit(
-        [](auto x) { return std::variant<std::monostate, Ts *..., S *>(x); },
-        next);
+std::variant<std::monostate, Ts*..., S*> operator||(std::variant<std::monostate, Ts*...> one,
+                                                    std::variant<std::monostate, S*> next) {
+    if (!std::holds_alternative<std::monostate>(one))
+        return std::visit([](auto x) { return std::variant<std::monostate, Ts*..., S*>(x); }, one);
+    else
+        return std::visit([](auto x) { return std::variant<std::monostate, Ts*..., S*>(x); }, next);
 }
 
-template <class Id> struct Model_Patch {
-    template <class F,class Finv> class Model {
-    std::string m_name;
-    std::tuple<F, Finv,Matrix<double>, std::vector<std::string>, Q0_formula,
-               Qa_formula, g_formula,var::transformations_vector>
-        m_f;
-    var::Parameters_Transformations m_param;    
-   
+template <class Id>
+struct Model_Patch {
+    template <class F, class Finv>
+    class Model {
+        std::string m_name;
+        std::tuple<F, Finv, Matrix<double>, std::vector<std::string>, Q0_formula, Qa_formula,
+                   g_formula, var::transformations_vector>
+            m_f;
+        var::Parameters_Transformations m_param;
 
-  public:
-    using my_Id = Id;
-    static constexpr bool is_Model_Patch = true;
-    template <class G>
-    Model(std::string t_name, G &&t_g)
-        : m_name{t_name}, m_f{std::forward<G>(t_g)()},
-        m_param(t_name,std::get<3>(m_f),std::get<7>(m_f), std::get<Matrix<double>>(m_f))
-    {}
-
-    auto &model_name() const { return m_name; }
-
-    std::variant<std::monostate, Model *> operator[](const std::string &name) {
-      if (name == m_name)
-        return this;
-      else
-        return std::monostate();
-    }
-
-    auto &names() const { return std::get<std::vector<std::string>>(m_f); }
-    auto &parameters_transformations() const { return m_param; }
-    auto number_of_states()const {return get_Q0_formula()().size();}
-    
-    auto &get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
-    auto &get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
-    auto &get_g_formula() const { return std::get<g_formula>(m_f); }
-    
-    
-    template <class P>
-        requires std::is_same_v<var::untransformed_type_t<P>, Patch_Model>
-    auto operator()(const P &t_p)const ->Maybe_error<var::Parameters_values>
-    {
-        auto p= std::invoke(std::get<Finv>(m_f), t_p);
-        if (p)
-            return var::Parameters_values(parameters_transformations(),p.value());
-        else
-        {
-            std::cerr<<p.error()();
-            return p.error();
+       public:
+        using my_Id = Id;
+        static constexpr bool is_Model_Patch = true;
+        template <class G>
+        Model(std::string t_name, G&& t_g)
+            : m_name{t_name},
+              m_f{std::forward<G>(t_g)()},
+              m_param(t_name, std::get<3>(m_f), std::get<7>(m_f), std::get<Matrix<double>>(m_f)) {
         }
-    }
-    
-    template <class P>
-      requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values>
-    auto operator()(const P &t_p) const->std::invoke_result_t<F,P> {
-        
-        if (!isfinite(var::fullsum(t_p())))
-            return error_message("nan parameter value");
-        return std::invoke(std::get<F>(m_f), t_p);
-        //     auto result=std::invoke(std::get<F>(m_f), t_p);
-//         assert((
-//           [&t_p, this,&result](){
-//  auto res= var::compare_contents(t_p,(*this)(result.value()).value());
-// if (!res)
-//          std::cerr<<res.error()();
-//  return res;}()));
-   //   return std::move(result);
-    }
-    
-    
 
-    template <class P>
-    friend void report_model(save_Parameter<P> &s, const Model &m) {
-      std::ofstream f(s.fname + "_&resumodel.csv");
-      f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
-      f << "Model Name\t" << m.model_name() << "\n";
-      f << "Parameters Names\n";
-      f << m.names();
-      f << "<<\n---------------------\n";
-      f << "Q0_formula\n";
-      f << m.get_Q0_formula();
-      f << "<<\n---------------------\n";
-      f << "Qa_formula\n";
-      f << m.get_Qa_formula();
-      f << "<<\n---------------------\n";
-      f << "g_formula\n";
-      f << m.get_g_formula();
-      f << "<<\n---------------------\n";
-    }
-  };
+        auto& model_name() const {
+            return m_name;
+        }
 
-  template <class F>
-    requires(!is_of_this_template_type_v<F, Model>)
-  Model(std::string, F &&f)
-      ->Model_Patch<Id>::Model<
-          std::tuple_element_t<0, decltype(std::declval<F &&>()())>,
-          std::tuple_element_t<1, decltype(std::declval<F &&>()())>>;
-  // template <class F, class Finv>
-  //   requires(std::is_same_v<F, Model<F>>)
-  // Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
+        std::variant<std::monostate, Model*> operator[](const std::string& name) {
+            if (name == m_name)
+                return this;
+            else
+                return std::monostate();
+        }
+
+        auto& names() const {
+            return std::get<std::vector<std::string>>(m_f);
+        }
+        auto& parameters_transformations() const {
+            return m_param;
+        }
+        auto number_of_states() const {
+            return get_Q0_formula()().size();
+        }
+
+        auto& get_Q0_formula() const {
+            return std::get<Q0_formula>(m_f);
+        }
+        auto& get_Qa_formula() const {
+            return std::get<Qa_formula>(m_f);
+        }
+        auto& get_g_formula() const {
+            return std::get<g_formula>(m_f);
+        }
+
+        template <class P>
+            requires std::is_same_v<var::untransformed_type_t<P>, Patch_Model>
+        auto operator()(const P& t_p) const -> Maybe_error<var::Parameters_values> {
+            auto p = std::invoke(std::get<Finv>(m_f), t_p);
+            if (p)
+                return var::Parameters_values(parameters_transformations(), p.value());
+            else {
+                std::cerr << p.error()();
+                return p.error();
+            }
+        }
+
+        template <class P>
+            requires std::is_same_v<var::untransformed_type_t<P>, var::Parameters_values>
+        auto operator()(const P& t_p) const -> std::invoke_result_t<F, P> {
+            if (!isfinite(var::fullsum(t_p())))
+                return error_message("nan parameter value");
+            return std::invoke(std::get<F>(m_f), t_p);
+            //     auto result=std::invoke(std::get<F>(m_f), t_p);
+            //         assert((
+            //           [&t_p, this,&result](){
+            //  auto res= var::compare_contents(t_p,(*this)(result.value()).value());
+            // if (!res)
+            //          std::cerr<<res.error()();
+            //  return res;}()));
+            //   return std::move(result);
+        }
+
+        template <class P>
+        friend void report_model(save_Parameter<P>& s, const Model& m) {
+            std::ofstream f(s.fname + "_&resumodel.csv");
+            f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
+            f << "Model Name\t" << m.model_name() << "\n";
+            f << "Parameters Names\n";
+            f << m.names();
+            f << "<<\n---------------------\n";
+            f << "Q0_formula\n";
+            f << m.get_Q0_formula();
+            f << "<<\n---------------------\n";
+            f << "Qa_formula\n";
+            f << m.get_Qa_formula();
+            f << "<<\n---------------------\n";
+            f << "g_formula\n";
+            f << m.get_g_formula();
+            f << "<<\n---------------------\n";
+        }
+    };
+
+    template <class F>
+        requires(!is_of_this_template_type_v<F, Model>)
+    Model(std::string, F&& f)
+        ->Model_Patch<Id>::Model<std::tuple_element_t<0, decltype(std::declval<F&&>()())>,
+                                 std::tuple_element_t<1, decltype(std::declval<F&&>()())>>;
+    // template <class F, class Finv>
+    //   requires(std::is_same_v<F, Model<F>>)
+    // Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
 };
 
 template <class Id, class F, class Finv>
-auto add_Patch_inactivation_to_model(
-    typename Model_Patch<Id>::template Model<F, Finv> const &model,
-    double inactivation_value, std::unique_ptr<var::base_transformation> transformation) {
-  return typename Model_Patch<Id>::Model(
-      model.model_name() + "_inact", [model, inactivation_value, &transformation]() {
-        auto names_model = model.names();
-        auto names_other = std::vector<std::string>{"inactivation_rate"};
-        names_model.insert(names_model.end(), names_other.begin(),
-                           names_other.end());
+auto add_Patch_inactivation_to_model(typename Model_Patch<Id>::template Model<F, Finv> const& model,
+                                     double inactivation_value,
+                                     std::unique_ptr<var::base_transformation> transformation) {
+    return typename Model_Patch<Id>::Model(
+        model.model_name() + "_inact", [model, inactivation_value, &transformation]() {
+            auto names_model = model.names();
+            auto names_other = std::vector<std::string>{"inactivation_rate"};
+            names_model.insert(names_model.end(), names_other.begin(), names_other.end());
 
-        auto v_Q0_formula = model.get_Q0_formula();
-        std::size_t N = v_Q0_formula().size();
-        auto v_Q0_inactivation_formula =
-            insert_new_formula(v_Q0_formula, 0ul, N, "inactivation_rate");
-        auto v_Qa_formula = model.get_Qa_formula();
-        auto v_Qa_inactivation_formula =
-            change_states_number(v_Qa_formula, N + 1);
+            auto v_Q0_formula = model.get_Q0_formula();
+            std::size_t N = v_Q0_formula().size();
+            auto v_Q0_inactivation_formula =
+                insert_new_formula(v_Q0_formula, 0ul, N, "inactivation_rate");
+            auto v_Qa_formula = model.get_Qa_formula();
+            auto v_Qa_inactivation_formula = change_states_number(v_Qa_formula, N + 1);
 
-        auto v_g_formula = model.get_g_formula();
-        auto v_g_inactiavation_formula =
-            change_states_number(v_g_formula, N + 1);
-        
-        
-        auto tr_par=model.parameters_transformations();
-        tr_par.push_back("inactivation_rate", transformation->clone(), inactivation_value);
-        auto p_inactivation=tr_par.standard_values();
-        auto tr_param=tr_par.transf();
-        
-        return std::tuple(
-            [model](const auto &p)
-                -> Maybe_error<
-                    Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
-              auto n = p.size();
-              auto inactivation = p[n - 1];
-              auto p_no_inactivation=Transfer_Op_to<std::decay_t<decltype(p)>, var::Parameters_values>(model.parameters_transformations(),p[std::pair(0ul,n-2)]);
-              auto mo=model(p_no_inactivation);
-              using std::pow;
-              if (!mo)
-                  return mo.error();
-              else
-                  return add_Patch_inactivation(std::move(mo.value()), inactivation);
-            },
-            [model](const auto &patch_model)
-            -> Maybe_error<
-                    Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
-                auto [patch_model_no_inactivation, inactivation_rate]=remove_Patch_inactivation(patch_model);
-                
-                auto p=model(patch_model_no_inactivation);
-                if (!p)
-                    return p.error();
-                else
-                {
-                    auto n=p.value().size()+1;
-                    auto out=Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>(1, n);
-                    out.set(std::pair(0ul,n-2),p.value()());
-                    out[n-1]=inactivation_rate;
-                    return out;
-                }
-            },
-            p_inactivation, names_model,
-            std::move(v_Q0_inactivation_formula),
-            std::move(v_Qa_inactivation_formula),
-            std::move(v_g_inactiavation_formula),
-            std::move(tr_param));
-      });
+            auto v_g_formula = model.get_g_formula();
+            auto v_g_inactiavation_formula = change_states_number(v_g_formula, N + 1);
+
+            auto tr_par = model.parameters_transformations();
+            tr_par.push_back("inactivation_rate", transformation->clone(), inactivation_value);
+            auto p_inactivation = tr_par.standard_values();
+            auto tr_param = tr_par.transf();
+
+            return std::tuple(
+                [model](const auto& p)
+                    -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
+                    auto n = p.size();
+                    auto inactivation = p[n - 1];
+                    auto p_no_inactivation =
+                        Transfer_Op_to<std::decay_t<decltype(p)>, var::Parameters_values>(
+                            model.parameters_transformations(), p[std::pair(0ul, n - 2)]);
+                    auto mo = model(p_no_inactivation);
+                    using std::pow;
+                    if (!mo)
+                        return mo.error();
+                    else
+                        return add_Patch_inactivation(std::move(mo.value()), inactivation);
+                },
+                [model](const auto& patch_model)
+                    -> Maybe_error<
+                        Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+                    auto [patch_model_no_inactivation, inactivation_rate] =
+                        remove_Patch_inactivation(patch_model);
+
+                    auto p = model(patch_model_no_inactivation);
+                    if (!p)
+                        return p.error();
+                    else {
+                        auto n = p.value().size() + 1;
+                        auto out =
+                            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>(1,
+                                                                                                n);
+                        out.set(std::pair(0ul, n - 2), p.value()());
+                        out[n - 1] = inactivation_rate;
+                        return out;
+                    }
+                },
+                p_inactivation, names_model, std::move(v_Q0_inactivation_formula),
+                std::move(v_Qa_inactivation_formula), std::move(v_g_inactiavation_formula),
+                std::move(tr_param));
+        });
 }
 
 struct Model0 : public Model_Patch<Model0> {};
@@ -207,261 +209,237 @@ struct Allost1 : public Model_Patch<Allost1> {};
 class Model00_7;
 
 static auto scheme_1 = Model0::Model("scheme_1", []() {
-  auto names_model = std::vector<std::string>{"kon", "koff", "gating_on",
-                                              "gating_off", "unitary_current"};
-  auto names_other = std::vector<std::string>{
-      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
+    auto names_model =
+        std::vector<std::string>{"kon", "koff", "gating_on", "gating_off", "unitary_current"};
+    auto names_other = std::vector<std::string>{"Current_Noise", "Pink_Noise", "Proportional_Noise",
+                                                "Current_Baseline", "Num_ch_mean"};
 
-  std::size_t N = 5ul;
+    std::size_t N = 5ul;
 
-  auto v_Q0_formula = Q0_formula(N);
-  v_Q0_formula()[1][0] = "koff";
-  v_Q0_formula()[2][1] = "2*koff";
-  v_Q0_formula()[3][2] = "3*koff";
-  v_Q0_formula()[3][4] = "gating_on";
-  v_Q0_formula()[4][3] = "gating_off";
+    auto v_Q0_formula = Q0_formula(N);
+    v_Q0_formula()[1][0] = "koff";
+    v_Q0_formula()[2][1] = "2*koff";
+    v_Q0_formula()[3][2] = "3*koff";
+    v_Q0_formula()[3][4] = "gating_on";
+    v_Q0_formula()[4][3] = "gating_off";
 
-  auto v_Qa_formula = Qa_formula(N);
-  v_Qa_formula()[0][1] = "3*kon";
-  v_Qa_formula()[1][2] = "2*kon";
-  v_Qa_formula()[2][3] = "kon";
-  auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
-  v_g_formula()[4] = "unitary_current";
+    auto v_Qa_formula = Qa_formula(N);
+    v_Qa_formula()[0][1] = "3*kon";
+    v_Qa_formula()[1][2] = "2*kon";
+    v_Qa_formula()[2][3] = "kon";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[4] = "unitary_current";
 
-  names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-  auto p = Matrix<double>(
-      10, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 5, 1e-2, 1, 5000});
-  
-  auto tr=std::vector<std::string>(p.size(),"Log10");
-  tr[p.size()-2]= "Linear";
-  assert(tr.size()==p.size());
-  auto tr_param=var::MyTranformations::from_strings(tr).value();
-  
-  auto npar=names_model.size();
-  
-  return std::tuple(
-      [](const auto &p)
-          -> Maybe_error<
-              Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
-        auto kon = p[0];
-        auto koff = p[1];
-        auto gating_on = p[2];
-        auto gating_off = p[3];
-        auto v_unitary_current = p[4] * -1.0;
-        auto Npar = 5ul;
-        auto v_curr_noise = p[Npar];
-        auto v_pink_noise = p[Npar+1];
-        auto v_prop_noise = p[Npar+2];
-        auto v_baseline = p[Npar + 3];
-        //  auto v_Num_ch_mean=p[Npar+2];
-        //  auto v_std_log_Num_ch=p[Npar+3];
+    names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+    auto p =
+        Matrix<double>(10, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 5, 1e-2, 1, 5000});
 
-        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
-        
-        
+    auto tr = std::vector<std::string>(p.size(), "Log10");
+    tr[p.size() - 2] = "Linear";
+    assert(tr.size() == p.size());
+    auto tr_param = var::MyTranformations::from_strings(tr).value();
 
-        auto N = N_St(5);
-        return build<Patch_Model>(
-            N_St(N()),
-            build<Q0>(var::build_<Matrix<double>>(
-                N(), N(), {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
-                {koff, koff * 2.0, koff * 3.0, gating_on, gating_off})),
-            build<Qa>(var::build_<Matrix<double>>(N(), N(),
-                                                  {{0, 1}, {1, 2}, {2, 3}},
-                                                  {kon * 3.0, kon * 2.0, kon})),
-            build<P_initial>(
-                var::build_<Matrix<double>>(1, N(), {{0, 0}}, {kon*(1.0/kon)})),
-            build<g>(var::build_<Matrix<double>>(N(), 1, {{4, 0}},
-                                                   {v_unitary_current})),
-              build<N_Ch_mean>(v_N0),
-              
-              build<Current_Noise>(v_curr_noise),
-              build<Pink_Noise>(v_pink_noise),
-              build<Proportional_Noise>(v_prop_noise),
-              
-              build<Current_Baseline>(v_baseline),
-              N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
-              min_P(1e-7), Probability_error_tolerance(1e-2),
-              Conductance_variance_error_tolerance(1e-2));
-      },
-      [npar](const auto &patch_model)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
-          
-          auto& v_Q0=get<Q0>(patch_model);
-          auto& v_Qa=get<Qa>(patch_model);
-          auto& v_g=get<g>(patch_model);
-          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
-              Matrix<double>(1, npar, 0.0);
-          
-          assert(get<N_St>(patch_model)()==5);
-          
-          auto kon = v_Qa()(0ul,1ul)/3.0;
-          out[0]=kon;
-          auto koff = v_Q0()(1ul,0ul);
-          out[1]=koff;
-          auto gating_on = v_Q0()(3ul,4ul);
-          out[2]=gating_on;
-          
-          auto gating_off = v_Q0()(4ul,3ul);
-          out[3]=gating_off;
-          auto v_unitary_current = v_g()[4ul] * -1.0;
-          out[4]=v_unitary_current;
-          auto Npar = 5ul;
-          
-          auto v_curr_noise= get<Current_Noise>(patch_model);
-          out[Npar]=v_curr_noise();
-          
-          auto v_pink_noise= get<Pink_Noise>(patch_model);
-          out[Npar+1]=v_pink_noise();
-          
-          auto v_prop_noise= get<Proportional_Noise>(patch_model);
-          out[Npar+2]=v_prop_noise();
-          
-          auto v_baseline= get<Current_Baseline>(patch_model);
-          out[Npar+3]=v_baseline();
-          
-          auto v_N0= get<N_Ch_mean>(patch_model);
-          out.set(std::pair(Npar + 4, Npar + 4),v_N0());
-          
-          return out;
-      },
-      p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
-      std::move(v_g_formula), std::move(tr_param));
-});
+    auto npar = names_model.size();
 
-
-
-static auto scheme_2 = Model0::Model("scheme_2", []() {
-  auto names_model = std::vector<std::string>{
-      "kon",       "koff",       "flipping_on",    "flipping_off",
-      "gating_on", "gating_off", "unitary_current"};
-  auto names_other = std::vector<std::string>{
-      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
-
-  std::size_t N = 6ul;
-
-  auto v_Q0_formula = Q0_formula(N);
-  v_Q0_formula()[1][0] = "koff";
-  v_Q0_formula()[2][1] = "2*koff";
-  v_Q0_formula()[3][2] = "3*koff";
-  v_Q0_formula()[3][4] = "flipping_on";
-  v_Q0_formula()[4][3] = "flipping_off";
-  v_Q0_formula()[4][5] = "gating_on";
-  v_Q0_formula()[5][4] = "gating_off";
-
-  auto v_Qa_formula = Qa_formula(N);
-  v_Qa_formula()[0][1] = "3*kon";
-  v_Qa_formula()[1][2] = "2*kon";
-  v_Qa_formula()[2][3] = "kon";
-  auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
-  v_g_formula()[5] = "unitary_current";
-
-  names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-  auto p = Matrix<double>(
-      12, 1,
-      std::vector<double>{7.90, 121, 632, 42.1, 382, 1100, 1, 1e-3, 5, 1e-2, 1, 5000});
-
-  auto tr=std::vector<std::string>(12,"Log10");
-  tr[tr.size()-2]= "Linear";
-  
-  assert(tr.size()==p.size());
-  auto tr_param=var::MyTranformations::from_strings(tr).value();
-  auto npar=names_model.size();
-
-  return std::tuple(
-      [N](const auto &p)
-          -> Maybe_error<
-              Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
-        using std::pow;
-        auto kon = p[0];
-        auto koff = p[1];
-        auto flipping_on = p[2];
-        auto flipping_off = p[3];
-        auto gating_on = p[4];
-        auto gating_off = p[5];
-        auto v_unitary_current = p[6] * -1.0;
-        auto Npar = 7ul;
+    return std::tuple(
+        [](const auto& p) -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
+            auto kon = p[0];
+            auto koff = p[1];
+            auto gating_on = p[2];
+            auto gating_off = p[3];
+            auto v_unitary_current = p[4] * -1.0;
+            auto Npar = 5ul;
             auto v_curr_noise = p[Npar];
-        auto v_pink_noise = p[Npar+1];
-        auto v_prop_noise = p[Npar+2];
+            auto v_pink_noise = p[Npar + 1];
+            auto v_prop_noise = p[Npar + 2];
             auto v_baseline = p[Npar + 3];
             //  auto v_Num_ch_mean=p[Npar+2];
             //  auto v_std_log_Num_ch=p[Npar+3];
-            
+
             auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
-            
+
+            auto N = N_St(5);
+            return build<Patch_Model>(
+                N_St(N()),
+                build<Q0>(var::build_<Matrix<double>>(
+                    N(), N(), {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}},
+                    {koff, koff * 2.0, koff * 3.0, gating_on, gating_off})),
+                build<Qa>(var::build_<Matrix<double>>(N(), N(), {{0, 1}, {1, 2}, {2, 3}},
+                                                      {kon * 3.0, kon * 2.0, kon})),
+                build<P_initial>(
+                    var::build_<Matrix<double>>(1, N(), {{0, 0}}, {kon * (1.0 / kon)})),
+                build<g>(var::build_<Matrix<double>>(N(), 1, {{4, 0}}, {v_unitary_current})),
+                build<N_Ch_mean>(v_N0),
+
+                build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
+                build<Proportional_Noise>(v_prop_noise),
+
+                build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
+                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
+                Conductance_variance_error_tolerance(1e-2));
+        },
+        [npar](const auto& patch_model)
+            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+            auto& v_Q0 = get<Q0>(patch_model);
+            auto& v_Qa = get<Qa>(patch_model);
+            auto& v_g = get<g>(patch_model);
+            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+                Matrix<double>(1, npar, 0.0);
+
+            assert(get<N_St>(patch_model)() == 5);
+
+            auto kon = v_Qa()(0ul, 1ul) / 3.0;
+            out[0] = kon;
+            auto koff = v_Q0()(1ul, 0ul);
+            out[1] = koff;
+            auto gating_on = v_Q0()(3ul, 4ul);
+            out[2] = gating_on;
+
+            auto gating_off = v_Q0()(4ul, 3ul);
+            out[3] = gating_off;
+            auto v_unitary_current = v_g()[4ul] * -1.0;
+            out[4] = v_unitary_current;
+            auto Npar = 5ul;
+
+            auto v_curr_noise = get<Current_Noise>(patch_model);
+            out[Npar] = v_curr_noise();
+
+            auto v_pink_noise = get<Pink_Noise>(patch_model);
+            out[Npar + 1] = v_pink_noise();
+
+            auto v_prop_noise = get<Proportional_Noise>(patch_model);
+            out[Npar + 2] = v_prop_noise();
+
+            auto v_baseline = get<Current_Baseline>(patch_model);
+            out[Npar + 3] = v_baseline();
+
+            auto v_N0 = get<N_Ch_mean>(patch_model);
+            out.set(std::pair(Npar + 4, Npar + 4), v_N0());
+
+            return out;
+        },
+        p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula),
+        std::move(tr_param));
+});
+
+static auto scheme_2 = Model0::Model("scheme_2", []() {
+    auto names_model = std::vector<std::string>{
+        "kon", "koff", "flipping_on", "flipping_off", "gating_on", "gating_off", "unitary_current"};
+    auto names_other = std::vector<std::string>{"Current_Noise", "Pink_Noise", "Proportional_Noise",
+                                                "Current_Baseline", "Num_ch_mean"};
+
+    std::size_t N = 6ul;
+
+    auto v_Q0_formula = Q0_formula(N);
+    v_Q0_formula()[1][0] = "koff";
+    v_Q0_formula()[2][1] = "2*koff";
+    v_Q0_formula()[3][2] = "3*koff";
+    v_Q0_formula()[3][4] = "flipping_on";
+    v_Q0_formula()[4][3] = "flipping_off";
+    v_Q0_formula()[4][5] = "gating_on";
+    v_Q0_formula()[5][4] = "gating_off";
+
+    auto v_Qa_formula = Qa_formula(N);
+    v_Qa_formula()[0][1] = "3*kon";
+    v_Qa_formula()[1][2] = "2*kon";
+    v_Qa_formula()[2][3] = "kon";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[5] = "unitary_current";
+
+    names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+    auto p = Matrix<double>(
+        12, 1, std::vector<double>{7.90, 121, 632, 42.1, 382, 1100, 1, 1e-3, 5, 1e-2, 1, 5000});
+
+    auto tr = std::vector<std::string>(12, "Log10");
+    tr[tr.size() - 2] = "Linear";
+
+    assert(tr.size() == p.size());
+    auto tr_param = var::MyTranformations::from_strings(tr).value();
+    auto npar = names_model.size();
+
+    return std::tuple(
+        [N](const auto& p) -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
+            using std::pow;
+            auto kon = p[0];
+            auto koff = p[1];
+            auto flipping_on = p[2];
+            auto flipping_off = p[3];
+            auto gating_on = p[4];
+            auto gating_off = p[5];
+            auto v_unitary_current = p[6] * -1.0;
+            auto Npar = 7ul;
+            auto v_curr_noise = p[Npar];
+            auto v_pink_noise = p[Npar + 1];
+            auto v_prop_noise = p[Npar + 2];
+            auto v_baseline = p[Npar + 3];
+            //  auto v_Num_ch_mean=p[Npar+2];
+            //  auto v_std_log_Num_ch=p[Npar+3];
+
+            auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+
             return build<Patch_Model>(
                 N_St(N),
                 build<Q0>(var::build_<Matrix<double>>(
-                    N, N, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3},{4,5},{5,4}},
-                    {koff, koff * 2.0, koff * 3.0, flipping_on,flipping_off,gating_on, gating_off})),
-                build<Qa>(var::build_<Matrix<double>>(
-                    N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon * 3.0, kon * 2.0, kon})),
-                build<P_initial>(
-                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon*(1.0/kon)})),
-                build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}},
-                                                     {v_unitary_current})),
-                build<N_Ch_mean>(v_N0),
-                build<Current_Noise>(v_curr_noise),
-                build<Pink_Noise>(v_pink_noise),
-                build<Proportional_Noise>(v_prop_noise),
-                build<Current_Baseline>(v_baseline),
-                N_Ch_mean_time_segment_duration(121),
-                Binomial_magical_number(5.0), min_P(1e-7),
-                Probability_error_tolerance(1e-2),
+                    N, N, {{1, 0}, {2, 1}, {3, 2}, {3, 4}, {4, 3}, {4, 5}, {5, 4}},
+                    {koff, koff * 2.0, koff * 3.0, flipping_on, flipping_off, gating_on,
+                     gating_off})),
+                build<Qa>(var::build_<Matrix<double>>(N, N, {{0, 1}, {1, 2}, {2, 3}},
+                                                      {kon * 3.0, kon * 2.0, kon})),
+                build<P_initial>(var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon * (1.0 / kon)})),
+                build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}}, {v_unitary_current})),
+                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<Pink_Noise>(v_pink_noise), build<Proportional_Noise>(v_prop_noise),
+                build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
+                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
-      },
-      [npar](const auto &patch_model)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
-          
-          auto& v_Q0=get<Q0>(patch_model);
-          auto& v_Qa=get<Qa>(patch_model);
-          auto& v_g=get<g>(patch_model);
-          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
-              Matrix<double>(1, npar, 0.0);
-          
-          assert(get<N_St>(patch_model)()==6);
-          
-          auto kon = v_Qa()(0ul,1ul)/3.0;
-          out[0]=kon;
-          auto koff = v_Q0()(1ul,0ul);
-          out[1]=koff;
-          auto flipping_on = v_Q0()(3ul,4ul);
-          out[2]=flipping_on;
-          auto flipping_off = v_Q0()(4ul,3ul);
-          out[3]=flipping_off;
-          
-          auto gating_on = v_Q0()(4ul,5ul);
-          out[4]=gating_on;
-          auto gating_off = v_Q0()(5ul,4ul);
-          out[5]=gating_off;
-          auto v_unitary_current = v_g()[5ul] * -1.0;
-          out[6]=v_unitary_current;
-          auto Npar = 7ul;
-          
-          auto v_curr_noise= get<Current_Noise>(patch_model);
-          out[Npar]=v_curr_noise();
-          
-          auto v_pink_noise= get<Pink_Noise>(patch_model);
-          out[Npar+1]=v_pink_noise();
-          
-          auto v_prop_noise= get<Proportional_Noise>(patch_model);
-          out[Npar+2]=v_prop_noise();
-          
-          auto v_baseline= get<Current_Baseline>(patch_model);
-          out[Npar+3]=v_baseline();
-          
-          auto v_N0= get<N_Ch_mean>(patch_model);
-          out.set(std::pair(Npar + 4, Npar + 4),v_N0());
-          
-          return out;
-      },
-      p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
-      std::move(v_g_formula), std::move(tr_param));
-});
+        },
+        [npar](const auto& patch_model)
+            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+            auto& v_Q0 = get<Q0>(patch_model);
+            auto& v_Qa = get<Qa>(patch_model);
+            auto& v_g = get<g>(patch_model);
+            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+                Matrix<double>(1, npar, 0.0);
 
+            assert(get<N_St>(patch_model)() == 6);
+
+            auto kon = v_Qa()(0ul, 1ul) / 3.0;
+            out[0] = kon;
+            auto koff = v_Q0()(1ul, 0ul);
+            out[1] = koff;
+            auto flipping_on = v_Q0()(3ul, 4ul);
+            out[2] = flipping_on;
+            auto flipping_off = v_Q0()(4ul, 3ul);
+            out[3] = flipping_off;
+
+            auto gating_on = v_Q0()(4ul, 5ul);
+            out[4] = gating_on;
+            auto gating_off = v_Q0()(5ul, 4ul);
+            out[5] = gating_off;
+            auto v_unitary_current = v_g()[5ul] * -1.0;
+            out[6] = v_unitary_current;
+            auto Npar = 7ul;
+
+            auto v_curr_noise = get<Current_Noise>(patch_model);
+            out[Npar] = v_curr_noise();
+
+            auto v_pink_noise = get<Pink_Noise>(patch_model);
+            out[Npar + 1] = v_pink_noise();
+
+            auto v_prop_noise = get<Proportional_Noise>(patch_model);
+            out[Npar + 2] = v_prop_noise();
+
+            auto v_baseline = get<Current_Baseline>(patch_model);
+            out[Npar + 3] = v_baseline();
+
+            auto v_N0 = get<N_Ch_mean>(patch_model);
+            out.set(std::pair(Npar + 4, Npar + 4), v_N0());
+
+            return out;
+        },
+        p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula),
+        std::move(tr_param));
+});
 
 static auto scheme_3 = Model0::Model("scheme_3", []() {
     auto names_model = std::vector<std::string>{"kon_0",
@@ -478,11 +456,11 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                                                 "desensitization_off_0",
                                                 "desensitization_on_1",
                                                 "unitary_current"};
-    auto names_other = std::vector<std::string>{
-                                                "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
-    
+    auto names_other = std::vector<std::string>{"Current_Noise", "Pink_Noise", "Proportional_Noise",
+                                                "Current_Baseline", "Num_ch_mean"};
+
     std::size_t N = 7ul;
-    
+
     auto v_Q0_formula = Q0_formula(N);
     v_Q0_formula()[1][0] = "koff_0";
     v_Q0_formula()[2][1] = "koff_1";
@@ -491,14 +469,15 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
     v_Q0_formula()[4][3] = "gating_off_0";
     v_Q0_formula()[3][5] = "gating_on_1";
     v_Q0_formula()[5][3] = "gating_off_1";
-    
+
     v_Q0_formula()[4][6] = "desensitization_on_0";
     v_Q0_formula()[6][4] = "desensitization_off_0";
     v_Q0_formula()[5][6] = "desensitization_on_1";
-    v_Q0_formula()[6][5] = "(desensitization_off_0 * gating_off_0 * gating_on_1 "
-                           "* desensitization_on_1)/ (gating_off_1 * gating_on_0 "
-                           "* desensitization_on_0)";
-    
+    v_Q0_formula()[6][5] =
+        "(desensitization_off_0 * gating_off_0 * gating_on_1 "
+        "* desensitization_on_1)/ (gating_off_1 * gating_on_0 "
+        "* desensitization_on_0)";
+
     auto v_Qa_formula = Qa_formula(N);
     v_Qa_formula()[0][1] = "kon_0";
     v_Qa_formula()[1][2] = "kon_1";
@@ -506,28 +485,25 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
     auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
     v_g_formula()[4] = "unitary_current";
     v_g_formula()[5] = "unitary_current";
-    
+
     names_model.insert(names_model.end(), names_other.begin(), names_other.end());
-    
-    auto p_k_MH2007 =
-        std::vector<double>{18, 0.017, 16.8,  175,   8.42,  4541, 
-                            24.08,   29,  3198, 1189, 0.298, 1936, 5.9e7};
+
+    auto p_k_MH2007 = std::vector<double>{18, 0.017, 16.8, 175,   8.42, 4541, 24.08,
+                                          29, 3198,  1189, 0.298, 1936, 5.9e7};
     auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
-    
+
     p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
     auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
-    
-    auto tr=std::vector<std::string>(p.size(),"Log10");
-    tr[tr.size()-2]= "Linear";
-    assert(tr.size()==p.size());
-    auto tr_param=var::MyTranformations::from_strings(tr).value();
-    
-    auto npar=names_model.size();    
-    
+
+    auto tr = std::vector<std::string>(p.size(), "Log10");
+    tr[tr.size() - 2] = "Linear";
+    assert(tr.size() == p.size());
+    auto tr_param = var::MyTranformations::from_strings(tr).value();
+
+    auto npar = names_model.size();
+
     return std::tuple(
-        [N](const auto &p)
-        -> Maybe_error<
-            Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
+        [N](const auto& p) -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
             auto kon_0 = p[0];
             auto koff_0 = p[1];
             auto kon_1 = p[2];
@@ -542,24 +518,24 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
             auto desensitization_off_0 = p[11];
             auto desensitization_on_1 = p[12];
             auto desensitization_off_1 =
-                (desensitization_off_0 * gating_off_0 * gating_on_1 *
-                 desensitization_on_1) /
+                (desensitization_off_0 * gating_off_0 * gating_on_1 * desensitization_on_1) /
                 (gating_off_1 * gating_on_0 * desensitization_on_0);
             auto v_unitary_current = p[13] * -1.0;
             auto Npar = 14ul;
             auto v_curr_noise = p[Npar];
-            auto v_pink_noise = p[Npar+1];
-            auto v_prop_noise = p[Npar+2];
+            auto v_pink_noise = p[Npar + 1];
+            auto v_prop_noise = p[Npar + 2];
             auto v_baseline = p[Npar + 3];
             //  auto v_Num_ch_mean=p[Npar+2];
             //  auto v_std_log_Num_ch=p[Npar+3];
-            
+
             auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
-            
+
             return build<Patch_Model>(
                 N_St(N),
                 build<Q0>(var::build_<Matrix<double>>(
-                    N, N, {{1, 0},
+                    N, N,
+                    {{1, 0},
                      {2, 1},
                      {3, 2},
                      {3, 4},
@@ -570,313 +546,304 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                      {6, 4},
                      {5, 6},
                      {6, 5}},
-                    {koff_0, koff_1, koff_2,  gating_on_0, gating_off_0,gating_on_1, gating_off_1,desensitization_on_0,desensitization_off_0,desensitization_on_1,desensitization_off_1})),
-                build<Qa>(var::build_<Matrix<double>>(
-                    N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon_0, kon_1, kon_2})),
+                    {koff_0, koff_1, koff_2, gating_on_0, gating_off_0, gating_on_1, gating_off_1,
+                     desensitization_on_0, desensitization_off_0, desensitization_on_1,
+                     desensitization_off_1})),
+                build<Qa>(var::build_<Matrix<double>>(N, N, {{0, 1}, {1, 2}, {2, 3}},
+                                                      {kon_0, kon_1, kon_2})),
                 build<P_initial>(
-                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon_0*(1.0/kon_0)})),
+                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon_0 * (1.0 / kon_0)})),
                 build<g>(var::build_<Matrix<double>>(N, 1, {{4, 0}, {5, 0}},
                                                      {v_unitary_current, v_unitary_current})),
-                build<N_Ch_mean>(v_N0),
-                build<Current_Noise>(v_curr_noise),
-                build<Pink_Noise>(v_pink_noise),
-                build<Proportional_Noise>(v_prop_noise),
-                build<Current_Baseline>(v_baseline),
-                N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
-                min_P(1e-7), Probability_error_tolerance(1e-2),
+                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<Pink_Noise>(v_pink_noise), build<Proportional_Noise>(v_prop_noise),
+                build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
+                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
-        [npar](const auto &patch_model)
-        -> Maybe_error<
-            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
-            
-            auto& v_Q0=get<Q0>(patch_model);
-            auto& v_Qa=get<Qa>(patch_model);
-            auto& v_g=get<g>(patch_model);
+        [npar](const auto& patch_model)
+            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+            auto& v_Q0 = get<Q0>(patch_model);
+            auto& v_Qa = get<Qa>(patch_model);
+            auto& v_g = get<g>(patch_model);
             Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
                 Matrix<double>(1, npar, 0.0);
-            
-            assert(get<N_St>(patch_model)()==7);
-            
-            auto kon_0 = v_Qa()(0ul,1ul);
-            out[0]=kon_0;
-            auto koff_0 = v_Q0()(1ul,0ul);
-            out[1]=koff_0;
-            auto kon_1 = v_Qa()(1ul,2ul);
-            out[2]=kon_1;
-            auto koff_1 = v_Q0()(2ul,1ul);
-            out[3]=koff_1;
-            auto kon_2 = v_Qa()(2ul,3ul);
-            out[4]=kon_2;
-            auto koff_2 = v_Q0()(3ul,2ul);
-            out[5]=koff_2;
-            auto gating_on_0 = v_Q0()(3ul,4ul);
-            out[6]=gating_on_0;
-            auto gating_off_0 = v_Q0()(4ul,3ul);
-            out[7]=gating_off_0;
-            
-            auto gating_on_1 = v_Q0()(3ul,5ul);
-            out[8]=gating_on_1;
-            auto gating_off_1 = v_Q0()(5ul,3ul);
-            out[9]=gating_off_1;
-            
-            auto desensitization_on_0 = v_Q0()(4ul,6ul);
-            out[10]=desensitization_on_0;
-            auto desensitization_off_0 = v_Q0()(6ul,4ul);
-            out[11]=desensitization_off_0;
-            
-            auto desensitization_on_1 = v_Q0()(5ul,6ul);
-            out[12]=desensitization_on_1;
-            auto desensitization_off_1 = v_Q0()(6ul,5ul);
-            assert(                (desensitization_off_0 * gating_off_0 * gating_on_1 *
-                    desensitization_on_1) /
-                       (gating_off_1 * gating_on_0 * desensitization_on_0)==desensitization_off_1);
-            
+
+            assert(get<N_St>(patch_model)() == 7);
+
+            auto kon_0 = v_Qa()(0ul, 1ul);
+            out[0] = kon_0;
+            auto koff_0 = v_Q0()(1ul, 0ul);
+            out[1] = koff_0;
+            auto kon_1 = v_Qa()(1ul, 2ul);
+            out[2] = kon_1;
+            auto koff_1 = v_Q0()(2ul, 1ul);
+            out[3] = koff_1;
+            auto kon_2 = v_Qa()(2ul, 3ul);
+            out[4] = kon_2;
+            auto koff_2 = v_Q0()(3ul, 2ul);
+            out[5] = koff_2;
+            auto gating_on_0 = v_Q0()(3ul, 4ul);
+            out[6] = gating_on_0;
+            auto gating_off_0 = v_Q0()(4ul, 3ul);
+            out[7] = gating_off_0;
+
+            auto gating_on_1 = v_Q0()(3ul, 5ul);
+            out[8] = gating_on_1;
+            auto gating_off_1 = v_Q0()(5ul, 3ul);
+            out[9] = gating_off_1;
+
+            auto desensitization_on_0 = v_Q0()(4ul, 6ul);
+            out[10] = desensitization_on_0;
+            auto desensitization_off_0 = v_Q0()(6ul, 4ul);
+            out[11] = desensitization_off_0;
+
+            auto desensitization_on_1 = v_Q0()(5ul, 6ul);
+            out[12] = desensitization_on_1;
+            auto desensitization_off_1 = v_Q0()(6ul, 5ul);
+            assert((desensitization_off_0 * gating_off_0 * gating_on_1 * desensitization_on_1) /
+                       (gating_off_1 * gating_on_0 * desensitization_on_0) ==
+                   desensitization_off_1);
+
             auto v_unitary_current = v_g()[4ul] * -1.0;
-            out[13]=v_unitary_current;
-            assert(v_g()[5ul]==v_unitary_current*-1.0);
-            
+            out[13] = v_unitary_current;
+            assert(v_g()[5ul] == v_unitary_current * -1.0);
+
             auto Npar = 14ul;
-            
-            auto v_curr_noise= get<Current_Noise>(patch_model);
-            out[Npar]=v_curr_noise();
-            
-            auto v_pink_noise= get<Pink_Noise>(patch_model);
-            out[Npar+1]=v_pink_noise();
-            
-            auto v_prop_noise= get<Proportional_Noise>(patch_model);
-            out[Npar+2]=v_prop_noise();
-            
-            auto v_baseline= get<Current_Baseline>(patch_model);
-            out[Npar+3]=v_baseline();
-            
-            auto v_N0= get<N_Ch_mean>(patch_model);
-            out.set(std::pair(Npar + 4, Npar + 4),v_N0());
-            
+
+            auto v_curr_noise = get<Current_Noise>(patch_model);
+            out[Npar] = v_curr_noise();
+
+            auto v_pink_noise = get<Pink_Noise>(patch_model);
+            out[Npar + 1] = v_pink_noise();
+
+            auto v_prop_noise = get<Proportional_Noise>(patch_model);
+            out[Npar + 2] = v_prop_noise();
+
+            auto v_baseline = get<Current_Baseline>(patch_model);
+            out[Npar + 3] = v_baseline();
+
+            auto v_N0 = get<N_Ch_mean>(patch_model);
+            out.set(std::pair(Npar + 4, Npar + 4), v_N0());
+
             return out;
         },
-        
-        p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
-        std::move(v_g_formula), std::move(tr_param));
+
+        p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula),
+        std::move(tr_param));
 });
 
-
 static auto scheme_4 = Model0::Model("scheme_4", []() {
-  auto names_model = std::vector<std::string>{"kon_0",
+    auto names_model = std::vector<std::string>{"kon_0",
                                                 "koff_0",
                                                 "kon_1",
                                                 "koff_1",
                                                 "kon_2",
                                                 "koff_2",
                                                 "flipping_on",
-                                              "flipping_off",
-                                              "gating_on_0",
-                                              "gating_off_0",
-                                              "gating_on_1",
-                                              "gating_off_1",
-                                              "desensitization_on_0",
-                                              "desensitization_off_0",
-                                              "desensitization_on_1",
-                                              "unitary_current"};
-  auto names_other = std::vector<std::string>{
-      "Current_Noise","Pink_Noise","Proportional_Noise", "Current_Baseline", "Num_ch_mean"};
+                                                "flipping_off",
+                                                "gating_on_0",
+                                                "gating_off_0",
+                                                "gating_on_1",
+                                                "gating_off_1",
+                                                "desensitization_on_0",
+                                                "desensitization_off_0",
+                                                "desensitization_on_1",
+                                                "unitary_current"};
+    auto names_other = std::vector<std::string>{"Current_Noise", "Pink_Noise", "Proportional_Noise",
+                                                "Current_Baseline", "Num_ch_mean"};
 
-  std::size_t N = 8ul;
+    std::size_t N = 8ul;
 
-  auto v_Q0_formula = Q0_formula(N);
-  v_Q0_formula()[1][0] = "koff_0";
-  v_Q0_formula()[2][1] = "koff_1";
-  v_Q0_formula()[3][2] = "koff_2";
-  v_Q0_formula()[3][4] = "flipping_on";
-  v_Q0_formula()[4][3] = "flipping_off";
-  v_Q0_formula()[4][5] = "gating_on_0";
-  v_Q0_formula()[5][4] = "gating_off_0";
-  v_Q0_formula()[4][6] = "gating_on_1";
-  v_Q0_formula()[6][4] = "gating_off_1";
+    auto v_Q0_formula = Q0_formula(N);
+    v_Q0_formula()[1][0] = "koff_0";
+    v_Q0_formula()[2][1] = "koff_1";
+    v_Q0_formula()[3][2] = "koff_2";
+    v_Q0_formula()[3][4] = "flipping_on";
+    v_Q0_formula()[4][3] = "flipping_off";
+    v_Q0_formula()[4][5] = "gating_on_0";
+    v_Q0_formula()[5][4] = "gating_off_0";
+    v_Q0_formula()[4][6] = "gating_on_1";
+    v_Q0_formula()[6][4] = "gating_off_1";
 
-  v_Q0_formula()[5][7] = "desensitization_on_0";
-  v_Q0_formula()[7][5] = "desensitization_off_0";
-  v_Q0_formula()[6][7] = "desensitization_on_1";
-  v_Q0_formula()[7][6] = "(desensitization_off_0 * gating_off_0 * gating_on_1 "
-                         "* desensitization_on_1)/ (gating_off_1 * gating_on_0 "
-                         "* desensitization_on_0)";
+    v_Q0_formula()[5][7] = "desensitization_on_0";
+    v_Q0_formula()[7][5] = "desensitization_off_0";
+    v_Q0_formula()[6][7] = "desensitization_on_1";
+    v_Q0_formula()[7][6] =
+        "(desensitization_off_0 * gating_off_0 * gating_on_1 "
+        "* desensitization_on_1)/ (gating_off_1 * gating_on_0 "
+        "* desensitization_on_0)";
 
-  auto v_Qa_formula = Qa_formula(N);
-  v_Qa_formula()[0][1] = "kon_0";
-  v_Qa_formula()[1][2] = "kon_1";
-  v_Qa_formula()[2][3] = "kon_2";
-  auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
-  v_g_formula()[5] = "unitary_current";
+    auto v_Qa_formula = Qa_formula(N);
+    v_Qa_formula()[0][1] = "kon_0";
+    v_Qa_formula()[1][2] = "kon_1";
+    v_Qa_formula()[2][3] = "kon_2";
+    auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
+    v_g_formula()[5] = "unitary_current";
 
-  names_model.insert(names_model.end(), names_other.begin(), names_other.end());
+    names_model.insert(names_model.end(), names_other.begin(), names_other.end());
 
-  auto p_k_MH2007 =
-      std::vector<double>{15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
-                          540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53};
-  auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
+    auto p_k_MH2007 = std::vector<double>{15.98, 0.019, 16.3,  380,   11.6,  6822, 3718, 43.54,
+                                          540,   1088,  0.033, 0.246, 31.16, 79.0, 4.53};
+    auto p_other = std::vector<double>{1, 1e-3, 5, 1e-2, 1, 5000};
 
-  p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
-  auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
+    p_k_MH2007.insert(p_k_MH2007.end(), p_other.begin(), p_other.end());
+    auto p = Matrix<double>(p_k_MH2007.size(), 1, p_k_MH2007);
 
-   auto tr=std::vector<std::string>(p.size(),"Log10");
-  tr[tr.size()-2]= "Linear";
-  assert(tr.size()==p.size());
-  auto tr_param=var::MyTranformations::from_strings(tr).value();
-  
-  auto npar=names_model.size();    
-  
-  return std::tuple(
-      [N](const auto &p)
-          -> Maybe_error<
-              Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
-        using std::pow;
-        auto kon_0 = p[0];
-        auto koff_0 = p[1];
-        auto kon_1 = p[2];
-        auto koff_1 = p[3];
-        auto kon_2 = p[4];
-        auto koff_2 = p[5];
-        auto flipping_on = p[6];
-        auto flipping_off = p[7];
-        auto gating_on_0 = p[8];
-        auto gating_off_0 = p[9];
-        auto gating_on_1 = p[10];
-        auto gating_off_1 = p[11];
-        auto desensitization_on_0 = p[12];
-        auto desensitization_off_0 = p[13];
-        auto desensitization_on_1 = p[14];
-        auto desensitization_off_1 =
-            (desensitization_off_0 * gating_off_0 * gating_on_1 *
-             desensitization_on_1) /
-            (gating_off_1 * gating_on_0 * desensitization_on_0);
-        auto v_unitary_current = p[15] * -1.0;
-        auto Npar = 16ul;
-        auto v_curr_noise = p[Npar];
-        //  auto v_Num_ch_mean=p[Npar+2];
-        //  auto v_std_log_Num_ch=p[Npar+3];
-        auto v_pink_noise = p[Npar+1];
-        auto v_prop_noise = p[Npar+2];
-        auto v_baseline = p[Npar + 3];
-        auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+    auto tr = std::vector<std::string>(p.size(), "Log10");
+    tr[tr.size() - 2] = "Linear";
+    assert(tr.size() == p.size());
+    auto tr_param = var::MyTranformations::from_strings(tr).value();
 
-        return build<Patch_Model>(
-            N_St(N),
-            build<Q0>(var::build_<Matrix<double>>(
-                N, N, {{1, 0},
-                       {2, 1},
-                       {3, 2},
-                       {3, 4},
-                       {4, 3},
-                       {4, 5},
-                       {5, 4},
-                       {4, 6},
-                       {6, 4},
-                       {5, 7},
-                       {7, 5},
-                       {6, 7},
-                       {7, 6}},
-                {koff_0, koff_1, koff_2, flipping_on, flipping_off,
-                 gating_on_0, gating_off_0,gating_on_1, gating_off_1,desensitization_on_0,desensitization_off_0,desensitization_on_1,desensitization_off_1})),
-            build<Qa>(var::build_<Matrix<double>>(
-                N, N, {{0, 1}, {1, 2}, {2, 3}}, {kon_0, kon_1, kon_2})),
-            build<P_initial>(
-                var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon_0*(1.0/kon_0)})),
-            build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}, {6, 0}},
-                                                 {v_unitary_current, v_unitary_current})),
-            build<N_Ch_mean>(v_N0),
-            build<Current_Noise>(v_curr_noise),
-            build<Pink_Noise>(v_pink_noise),
-            build<Proportional_Noise>(v_prop_noise),
-            build<Current_Baseline>(v_baseline),
-            N_Ch_mean_time_segment_duration(121), Binomial_magical_number(5.0),
-            min_P(1e-7), Probability_error_tolerance(1e-2),
-            Conductance_variance_error_tolerance(1e-2));
-      },
-      [npar](const auto &patch_model)
-      -> Maybe_error<
-          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
-          
-          auto& v_Q0=get<Q0>(patch_model);
-          auto& v_Qa=get<Qa>(patch_model);
-          auto& v_g=get<g>(patch_model);
-          Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
-              Matrix<double>(1, npar, 0.0);
-          
-          assert(get<N_St>(patch_model)()==8);
-          
-          auto kon_0 = v_Qa()(0ul,1ul);
-          out[0]=kon_0;
-          auto koff_0 = v_Q0()(1ul,0ul);
-          out[1]=koff_0;
-          auto kon_1 = v_Qa()(1ul,2ul);
-          out[2]=kon_1;
-          auto koff_1 = v_Q0()(2ul,1ul);
-          out[3]=koff_1;
-          auto kon_2 = v_Qa()(2ul,3ul);
-          out[4]=kon_2;
-          auto koff_2 = v_Q0()(3ul,2ul);
-          out[5]=koff_2;
-          auto flipping_on = v_Q0()(3ul,4ul);
-          out[6]=flipping_on;
-          auto flipping_off = v_Q0()(4ul,3ul);
-          out[7]=flipping_off;
-          auto gating_on_0 = v_Q0()(4ul,5ul);
-          out[8]=gating_on_0;
-          auto gating_off_0 = v_Q0()(5ul,4ul);
-          out[9]=gating_off_0;
-          
-          auto gating_on_1 = v_Q0()(4ul,6ul);
-          out[10]=gating_on_1;
-          auto gating_off_1 = v_Q0()(6ul,4ul);
-          out[11]=gating_off_1;
-          
-          auto desensitization_on_0 = v_Q0()(5ul,7ul);
-          out[12]=desensitization_on_0;
-          auto desensitization_off_0 = v_Q0()(7ul,5ul);
-          out[13]=desensitization_off_0;
-          
-          auto desensitization_on_1 = v_Q0()(6ul,7ul);
-          out[14]=desensitization_on_1;
-          auto desensitization_off_1 = v_Q0()(7ul,6ul);
-          assert(                (desensitization_off_0 * gating_off_0 * gating_on_1 *
-                  desensitization_on_1) /
-                     (gating_off_1 * gating_on_0 * desensitization_on_0)==desensitization_off_1);
-          
-          auto v_unitary_current = v_g()[5ul] * -1.0;
-          out[15]=v_unitary_current;
-          assert(v_g()[6ul]==v_unitary_current*-1.0);
-          
-          auto Npar = 16ul;
-          
-          auto v_curr_noise= get<Current_Noise>(patch_model);
-          out[Npar]=v_curr_noise();
-          
-          auto v_pink_noise= get<Pink_Noise>(patch_model);
-          out[Npar+1]=v_pink_noise();
-          
-          auto v_prop_noise= get<Proportional_Noise>(patch_model);
-          out[Npar+2]=v_prop_noise();
-          
-          auto v_baseline= get<Current_Baseline>(patch_model);
-          out[Npar+3]=v_baseline();
-          
-          auto v_N0= get<N_Ch_mean>(patch_model);
-          out.set(std::pair(Npar + 4, Npar + 4),v_N0());
-          
-          return out;
-      },
-      p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula),
-      std::move(v_g_formula), std::move(tr_param));
+    auto npar = names_model.size();
+
+    return std::tuple(
+        [N](const auto& p) -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
+            using std::pow;
+            auto kon_0 = p[0];
+            auto koff_0 = p[1];
+            auto kon_1 = p[2];
+            auto koff_1 = p[3];
+            auto kon_2 = p[4];
+            auto koff_2 = p[5];
+            auto flipping_on = p[6];
+            auto flipping_off = p[7];
+            auto gating_on_0 = p[8];
+            auto gating_off_0 = p[9];
+            auto gating_on_1 = p[10];
+            auto gating_off_1 = p[11];
+            auto desensitization_on_0 = p[12];
+            auto desensitization_off_0 = p[13];
+            auto desensitization_on_1 = p[14];
+            auto desensitization_off_1 =
+                (desensitization_off_0 * gating_off_0 * gating_on_1 * desensitization_on_1) /
+                (gating_off_1 * gating_on_0 * desensitization_on_0);
+            auto v_unitary_current = p[15] * -1.0;
+            auto Npar = 16ul;
+            auto v_curr_noise = p[Npar];
+            //  auto v_Num_ch_mean=p[Npar+2];
+            //  auto v_std_log_Num_ch=p[Npar+3];
+            auto v_pink_noise = p[Npar + 1];
+            auto v_prop_noise = p[Npar + 2];
+            auto v_baseline = p[Npar + 3];
+            auto v_N0 = p[std::pair(Npar + 4, Npar + 4)];
+
+            return build<Patch_Model>(
+                N_St(N),
+                build<Q0>(var::build_<Matrix<double>>(
+                    N, N,
+                    {{1, 0},
+                     {2, 1},
+                     {3, 2},
+                     {3, 4},
+                     {4, 3},
+                     {4, 5},
+                     {5, 4},
+                     {4, 6},
+                     {6, 4},
+                     {5, 7},
+                     {7, 5},
+                     {6, 7},
+                     {7, 6}},
+                    {koff_0, koff_1, koff_2, flipping_on, flipping_off, gating_on_0, gating_off_0,
+                     gating_on_1, gating_off_1, desensitization_on_0, desensitization_off_0,
+                     desensitization_on_1, desensitization_off_1})),
+                build<Qa>(var::build_<Matrix<double>>(N, N, {{0, 1}, {1, 2}, {2, 3}},
+                                                      {kon_0, kon_1, kon_2})),
+                build<P_initial>(
+                    var::build_<Matrix<double>>(1, N, {{0, 0}}, {kon_0 * (1.0 / kon_0)})),
+                build<g>(var::build_<Matrix<double>>(N, 1, {{5, 0}, {6, 0}},
+                                                     {v_unitary_current, v_unitary_current})),
+                build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
+                build<Pink_Noise>(v_pink_noise), build<Proportional_Noise>(v_prop_noise),
+                build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
+                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
+                Conductance_variance_error_tolerance(1e-2));
+        },
+        [npar](const auto& patch_model)
+            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
+            auto& v_Q0 = get<Q0>(patch_model);
+            auto& v_Qa = get<Qa>(patch_model);
+            auto& v_g = get<g>(patch_model);
+            Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>> out =
+                Matrix<double>(1, npar, 0.0);
+
+            assert(get<N_St>(patch_model)() == 8);
+
+            auto kon_0 = v_Qa()(0ul, 1ul);
+            out[0] = kon_0;
+            auto koff_0 = v_Q0()(1ul, 0ul);
+            out[1] = koff_0;
+            auto kon_1 = v_Qa()(1ul, 2ul);
+            out[2] = kon_1;
+            auto koff_1 = v_Q0()(2ul, 1ul);
+            out[3] = koff_1;
+            auto kon_2 = v_Qa()(2ul, 3ul);
+            out[4] = kon_2;
+            auto koff_2 = v_Q0()(3ul, 2ul);
+            out[5] = koff_2;
+            auto flipping_on = v_Q0()(3ul, 4ul);
+            out[6] = flipping_on;
+            auto flipping_off = v_Q0()(4ul, 3ul);
+            out[7] = flipping_off;
+            auto gating_on_0 = v_Q0()(4ul, 5ul);
+            out[8] = gating_on_0;
+            auto gating_off_0 = v_Q0()(5ul, 4ul);
+            out[9] = gating_off_0;
+
+            auto gating_on_1 = v_Q0()(4ul, 6ul);
+            out[10] = gating_on_1;
+            auto gating_off_1 = v_Q0()(6ul, 4ul);
+            out[11] = gating_off_1;
+
+            auto desensitization_on_0 = v_Q0()(5ul, 7ul);
+            out[12] = desensitization_on_0;
+            auto desensitization_off_0 = v_Q0()(7ul, 5ul);
+            out[13] = desensitization_off_0;
+
+            auto desensitization_on_1 = v_Q0()(6ul, 7ul);
+            out[14] = desensitization_on_1;
+            auto desensitization_off_1 = v_Q0()(7ul, 6ul);
+            assert((desensitization_off_0 * gating_off_0 * gating_on_1 * desensitization_on_1) /
+                       (gating_off_1 * gating_on_0 * desensitization_on_0) ==
+                   desensitization_off_1);
+
+            auto v_unitary_current = v_g()[5ul] * -1.0;
+            out[15] = v_unitary_current;
+            assert(v_g()[6ul] == v_unitary_current * -1.0);
+
+            auto Npar = 16ul;
+
+            auto v_curr_noise = get<Current_Noise>(patch_model);
+            out[Npar] = v_curr_noise();
+
+            auto v_pink_noise = get<Pink_Noise>(patch_model);
+            out[Npar + 1] = v_pink_noise();
+
+            auto v_prop_noise = get<Proportional_Noise>(patch_model);
+            out[Npar + 2] = v_prop_noise();
+
+            auto v_baseline = get<Current_Baseline>(patch_model);
+            out[Npar + 3] = v_baseline();
+
+            auto v_N0 = get<N_Ch_mean>(patch_model);
+            out.set(std::pair(Npar + 4, Npar + 4), v_N0());
+
+            return out;
+        },
+        p, names_model, std::move(v_Q0_formula), std::move(v_Qa_formula), std::move(v_g_formula),
+        std::move(tr_param));
 });
 
+static auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(
+    scheme_1, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-
-static auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(scheme_1, 1e-5, var::MyTranformations::from_string("Log10").value());
-
-
-static auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(scheme_2, 1e-5, var::MyTranformations::from_string("Log10").value());
-static auto scheme_3_d = add_Patch_inactivation_to_model<Model0>(scheme_3, 1e-5, var::MyTranformations::from_string("Log10").value());
-static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(scheme_4, 1e-5, var::MyTranformations::from_string("Log10").value());
+static auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(
+    scheme_2, 1e-5, var::MyTranformations::from_string("Log10").value());
+static auto scheme_3_d = add_Patch_inactivation_to_model<Model0>(
+    scheme_3, 1e-5, var::MyTranformations::from_string("Log10").value());
+static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
+    scheme_4, 1e-5, var::MyTranformations::from_string("Log10").value());
 
 #if 0
 
@@ -1694,30 +1661,35 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(scheme_4, 1e-5,
 
 #endif
 
-template <class... Ms> class Models_Library {
-  std::tuple<Ms *...> m_models;
+template <class... Ms>
+class Models_Library {
+    std::tuple<Ms*...> m_models;
 
-public:
-  using Model_type = std::variant<Ms *...>;
-  Models_Library(Ms *...m) : m_models{m...} {}
+   public:
+    using Model_type = std::variant<Ms*...>;
+    Models_Library(Ms*... m) : m_models{m...} {
+    }
 
-  auto operator()() const { return m_models; }
-  Maybe_error<Model_type> operator[](const std::string &name) {
-    auto out = std::apply(
-        [&name](auto... models) { return (... || (*models)[name]); }, m_models);
-    return std::visit(
-        [&name](auto x) -> Maybe_error<Model_type> {
-          if constexpr (std::is_same_v<std::monostate, decltype(x)>)
-            return error_message(name + " is not a model");
-          else
+    auto operator()() const {
+        return m_models;
+    }
+    Maybe_error<Model_type> operator[](const std::string& name) {
+        auto out =
+            std::apply([&name](auto... models) { return (... || (*models)[name]); }, m_models);
+        return std::visit(
+            [&name](auto x) -> Maybe_error<Model_type> {
+                if constexpr (std::is_same_v<std::monostate, decltype(x)>)
+                    return error_message(name + " is not a model");
+                else
 
-            return Maybe_error<Model_type>(x);
-        },
-        out);
-  }
+                    return Maybe_error<Model_type>(x);
+            },
+            out);
+    }
 };
 
-template <class... Ms> Models_Library(Ms *...m) -> Models_Library<Ms...>;
+template <class... Ms>
+Models_Library(Ms*... m) -> Models_Library<Ms...>;
 
 /*nline auto get_model(std::string modelName) {
   auto allmodels =
@@ -1735,18 +1707,16 @@ template <class... Ms> Models_Library(Ms *...m) -> Models_Library<Ms...>;
         //return allmodels[modelName];
 //}
 
-
 // inline Maybe_error<std::size_t> get_num_parameters(std::string model)
 // {
 //     auto maybe_model = get_model(model);
 //     if (!maybe_model)
 //         return maybe_model.error();
-    
+
 //     return    std::visit([&](auto model0ptr) { return model0ptr->parameters_transformations().names().size(); },
 //                    maybe_model.value());
-    
-// }
 
+// }
 
 // inline auto get_model_scheme(std::string modelName) {
 //     auto allmodels =//Models_Library(&scheme_1);
@@ -1754,13 +1724,11 @@ template <class... Ms> Models_Library(Ms *...m) -> Models_Library<Ms...>;
 //     return allmodels[modelName];
 // }
 
-
-
 // inline void print_model_Priors(double covar) {
 //   auto allmodels =//Models_Library(&scheme_1);
 //       Models_Library(&scheme_1,&scheme_2,&scheme_3,&scheme_4,&scheme_1_d,&scheme_2_d,&scheme_3_d,&scheme_4_d);
 //,
-//                                    
+//
 //                     &model6, &model6_no_inactivation,
 //                     &model6_Eff_no_inactivation, &model7, &model8, &model9);
 
@@ -1779,8 +1747,6 @@ template <class... Ms> Models_Library(Ms *...m) -> Models_Library<Ms...>;
 //       allmodels());
 // }
 
-
-
 // inline auto get_model_old(std::string modelName) -> std::variant<
 //     /*decltype(&model4),*/ decltype(&model6_Eff_no_inactivation)> {
 //   using return_type = std::variant<
@@ -1794,6 +1760,6 @@ template <class... Ms> Models_Library(Ms *...m) -> Models_Library<Ms...>;
 
 //using Model_v = decltype(get_model(std::string{}));
 
-} // namespace macrodr
+}  // namespace macrodr
 
-#endif // MODELS_MOFFATTHUME_LINEAR_H
+#endif  // MODELS_MOFFATTHUME_LINEAR_H

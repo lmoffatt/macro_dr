@@ -4,21 +4,21 @@
 
 #include "grammar_Identifier.h"
 
-
 namespace dcli {
 
-template <typename T> struct T_s;
+template <typename T>
+struct T_s;
 
-
-template <> struct T_s<int> {
-    Identifier name() const { return *to_Identifier("integer"); }
+template <>
+struct T_s<int> {
+    Identifier name() const {
+        return *to_Identifier("integer");
+    }
 };
 
-template <class... Ts> struct Cs {};
+template <class... Ts>
+struct Cs {};
 
+}  // namespace dcli
 
-} // namespace dcli
-
-
-#endif // CLI_REGULAR_TYPES_H
-
+#endif  // CLI_REGULAR_TYPES_H

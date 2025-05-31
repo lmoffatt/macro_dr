@@ -64,6 +64,19 @@ endif()
 #  set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 #endif()
 
+find_program(CLANG_FORMAT_EXE NAMES clang-format)
+if(CLANG_FORMAT_EXE)
+  file(GLOB_RECURSE ALL_SRC "${CMAKE_SOURCE_DIR}/*.cpp" "${CMAKE_SOURCE_DIR}/*.h")
+  add_custom_target(
+    format
+    COMMAND ${CLANG_FORMAT_EXE}
+            -i
+            --style=file
+            ${ALL_SRC}
+    COMMENT "Running clang-format on source files..."
+  )
+endif()
+
 
 add_executable(macro_dr main.cpp
    # CLI_base.h
@@ -479,6 +492,8 @@ add_executable(macro_dr main.cpp
     slurm/run_32_scheme_4_DR_nyquist.sh
     command_lines/run_Continuation.txt
     slurm/run_32_scheme_6_DR_nyquist.sh
+    .clang-format
+    .clang-format-llvm
     
     
     

@@ -1,62 +1,60 @@
 #ifndef LAPACK_HEADERS_H
 #define LAPACK_HEADERS_H
 
-#include "derivative_operator.h"
-#include "matrix.h"
-#include "maybe_error.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
 
+#include "derivative_operator.h"
+#include "matrix.h"
+#include "maybe_error.h"
+
 namespace lapack {
 
-extern "C" void dgemm_(char *TRANSA, char *TRANSB, int *M, int *N, int *K,
-                       double *ALPHA, double *A, int *LDA, double *B, int *LDB,
-                       double *BETA, double *C, int *LDC);
+extern "C" void dgemm_(char* TRANSA, char* TRANSB, int* M, int* N, int* K, double* ALPHA, double* A,
+                       int* LDA, double* B, int* LDB, double* BETA, double* C, int* LDC);
 
-extern "C" void dgeqrf_(int *M, int *N, double *A, int *LDA, double *TAU,
-                        double *WORK, int *LWORK, int *INFO);
+extern "C" void dgeqrf_(int* M, int* N, double* A, int* LDA, double* TAU, double* WORK, int* LWORK,
+                        int* INFO);
 
-extern "C" void dorgqr_(int *M, int *N, int *K, double *A, int *LDA,
-                        double *TAU, double *WORK, int *LWORK, int *INFO);
+extern "C" void dorgqr_(int* M, int* N, int* K, double* A, int* LDA, double* TAU, double* WORK,
+                        int* LWORK, int* INFO);
 
-inline auto Lapack_UT(const Matrix<double> &x) {
-  Matrix<double> out(x.nrows(), x.ncols(), false);
-  for (std::size_t i = 0; i < out.ncols(); ++i)
-    for (std::size_t j = 0; j < out.nrows(); ++j)
-      out(j, i) = j >= i ? x(j, i) : 0;
-  return out;
+inline auto Lapack_UT(const Matrix<double>& x) {
+    Matrix<double> out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < out.ncols(); ++i)
+        for (std::size_t j = 0; j < out.nrows(); ++j) out(j, i) = j >= i ? x(j, i) : 0;
+    return out;
 }
 
-inline auto Lapack_LT(const Matrix<double> &x) {
-  Matrix<double> out(x.nrows(), x.ncols(), false);
-  for (std::size_t i = 0; i < x.ncols(); ++i)
-    for (std::size_t j = 0; j < x.nrows(); ++j)
-      out(j, i) = i >= j ? x(j, i) : 0;
-  return out;
+inline auto Lapack_LT(const Matrix<double>& x) {
+    Matrix<double> out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.ncols(); ++i)
+        for (std::size_t j = 0; j < x.nrows(); ++j) out(j, i) = i >= j ? x(j, i) : 0;
+    return out;
 }
 
-inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> &x) {
-  int M = x.nrows();
-  /*    [in]	M
+inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double>& x) {
+    int M = x.nrows();
+    /*    [in]	M
 
                 M is INTEGER
                     The number of rows of the matrix A.  M >= 0.
 */
 
-  int N = x.ncols();
-  /*    [in]	N
+    int N = x.ncols();
+    /*    [in]	N
 
               N is INTEGER
               The number of columns of the matrix A.  N >= 0.
 
 */
-  auto a = tr(x);
-  double &A = a[0];
+    auto a = tr(x);
+    double& A = a[0];
 
-  /*
+    /*
 [in,out]	A
 
           A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -69,8 +67,8 @@ inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> 
           Details).
 */
 
-  int LDA = M;
-  /*
+    int LDA = M;
+    /*
 
 [in]	LDA
 
@@ -78,10 +76,10 @@ inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> 
           The leading dimension of the array A.  LDA >= max(1,M).
 
 */
-  Matrix<double> tau(std::min(M, N), 1, false);
-  double &TAU = tau[0];
+    Matrix<double> tau(std::min(M, N), 1, false);
+    double& TAU = tau[0];
 
-  /*
+    /*
 [out]	TAU
 
           TAU is DOUBLE PRECISION array, dimension (min(M,N))
@@ -90,17 +88,17 @@ inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> 
 
 */
 
-  Matrix<double> work(N * M, 1, false);
-  double &WORK = work[0];
-  int LWORK = N * M;
-  /*
+    Matrix<double> work(N * M, 1, false);
+    double& WORK = work[0];
+    int LWORK = N * M;
+    /*
 [out]	WORK
 
           WORK is DOUBLE PRECISION array, dimension (MAX(1,LWORK))
           On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 
 */
-  /*
+    /*
 [in]	LWORK
 
           LWORK is INTEGER
@@ -115,8 +113,8 @@ inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> 
           message related to LWORK is issued by XERBLA.
 */
 
-  int INFO;
-  /*
+    int INFO;
+    /*
 
 [out]	INFO
 
@@ -126,9 +124,9 @@ inline std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double> 
 
 */
 
-  dgeqrf_(&M, &N, &A, &LDA, &TAU, &WORK, &LWORK, &INFO);
+    dgeqrf_(&M, &N, &A, &LDA, &TAU, &WORK, &LWORK, &INFO);
 
-  /*
+    /*
 
 Purpose:
 
@@ -145,47 +143,45 @@ Purpose:
 
 */
 
-  auto r = tr(Lapack_UT(a));
+    auto r = tr(Lapack_UT(a));
 
-  int K = std::min(N, M);
+    int K = std::min(N, M);
 
-  dorgqr_(&M, &N, &K, &A, &LDA, &TAU, &WORK, &LWORK, &INFO);
+    dorgqr_(&M, &N, &K, &A, &LDA, &TAU, &WORK, &LWORK, &INFO);
 
-  auto q = tr(a);
-  return std::pair(std::move(q), std::move(r));
+    auto q = tr(a);
+    return std::pair(std::move(q), std::move(r));
 }
 
-inline Matrix<double> &Lapack_Full_Product(const Matrix<double> &x,
-                                    const Matrix<double> &y, Matrix<double> &z,
-                                    bool transpose_x, bool transpose_y,
-                                    double alpha = 1.0, double beta = 0.0) {
+inline Matrix<double>& Lapack_Full_Product(const Matrix<double>& x, const Matrix<double>& y,
+                                           Matrix<double>& z, bool transpose_x, bool transpose_y,
+                                           double alpha = 1.0, double beta = 0.0) {
+    std::size_t cols_i, rows_e, cols_e;
+    if (transpose_x) {
+        rows_e = x.ncols();
+        cols_i = x.nrows();
+    } else {
+        rows_e = x.nrows();
+        cols_i = x.ncols();
+    }
 
-  std::size_t cols_i, rows_e, cols_e;
-  if (transpose_x) {
-    rows_e = x.ncols();
-    cols_i = x.nrows();
-  } else {
-    rows_e = x.nrows();
-    cols_i = x.ncols();
-  }
+    if (transpose_y) {
+        //  rows_i=y.ncols();
+        cols_e = y.nrows();
+    } else {
+        //  rows_i=y.nrows();
+        cols_e = y.ncols();
+    }
 
-  if (transpose_y) {
-    //  rows_i=y.ncols();
-    cols_e = y.nrows();
-  } else {
-    //  rows_i=y.nrows();
-    cols_e = y.ncols();
-  }
+    // assert(rows_i==cols_i);
+    assert(((transpose_y ? y.ncols() : y.nrows()) == cols_i));
+    // First it has to find out if the last dimension of x matches the
+    // first of y
+    // now we build the M_Matrix result
+    if (z.nrows() != rows_e || z.ncols() != cols_e)
+        z = Matrix<double>(rows_e, cols_e);
 
-  // assert(rows_i==cols_i);
-  assert(((transpose_y ? y.ncols() : y.nrows()) == cols_i));
-  // First it has to find out if the last dimension of x matches the
-  // first of y
-  // now we build the M_Matrix result
-  if (z.nrows() != rows_e || z.ncols() != cols_e)
-    z = Matrix<double>(rows_e, cols_e);
-
-  /***  as fortran uses the reverse order for matrices and we want to
+    /***  as fortran uses the reverse order for matrices and we want to
     avoid a copying operation, we calculate
         Transpose(Z)=Transpose(y)*Transpose(x)
 
@@ -193,85 +189,83 @@ inline Matrix<double> &Lapack_Full_Product(const Matrix<double> &x,
 
 
     */
-  char TRANSA;
-  char TRANSB;
+    char TRANSA;
+    char TRANSB;
 
-  if (transpose_y)
-    TRANSA = 'T';
-  else
-    TRANSA = 'N';
+    if (transpose_y)
+        TRANSA = 'T';
+    else
+        TRANSA = 'N';
 
-  if (transpose_x)
-    TRANSB = 'T';
-  else
-    TRANSB = 'N';
+    if (transpose_x)
+        TRANSB = 'T';
+    else
+        TRANSB = 'N';
 
-  int M = cols_e;
-  int N = rows_e;
-  int K = cols_i;
+    int M = cols_e;
+    int N = rows_e;
+    int K = cols_i;
 
-  double ALPHA = alpha;
-  double *A = const_cast<double *>(&y[0]);
-  int LDA;
-  if (transpose_y)
-    LDA = K;
-  else
-    LDA = M;
+    double ALPHA = alpha;
+    double* A = const_cast<double*>(&y[0]);
+    int LDA;
+    if (transpose_y)
+        LDA = K;
+    else
+        LDA = M;
 
-  double *B = const_cast<double *>(&x[0]);
+    double* B = const_cast<double*>(&x[0]);
 
-  int LDB;
-  if (transpose_x)
-    LDB = N;
-  else
-    LDB = K;
+    int LDB;
+    if (transpose_x)
+        LDB = N;
+    else
+        LDB = K;
 
-  double BETA = beta;
+    double BETA = beta;
 
-  double *C = &z[0];
+    double* C = &z[0];
 
-  int LDC = M;
+    int LDC = M;
 
-  try {
-    dgemm_(&TRANSA, &TRANSB, &M, &N, &K, &ALPHA, A, &LDA, B, &LDB, &BETA, C,
-           &LDC);
-  } catch (...) {
-    assert(false);
-  }
-  return z;
+    try {
+        dgemm_(&TRANSA, &TRANSB, &M, &N, &K, &ALPHA, A, &LDA, B, &LDB, &BETA, C, &LDC);
+    } catch (...) {
+        assert(false);
+    }
+    return z;
 }
 
-inline Matrix<double> Lapack_Full_Product(const Matrix<double> &x,
-                                   const Matrix<double> &y, bool transpose_x,
-                                   bool transpose_y, double alpha,
-                                   double beta) {
-  using lapack::dgemm_;
+inline Matrix<double> Lapack_Full_Product(const Matrix<double>& x, const Matrix<double>& y,
+                                          bool transpose_x, bool transpose_y, double alpha,
+                                          double beta) {
+    using lapack::dgemm_;
 
-  std::size_t cols_i, rows_e, cols_e;
-  if (transpose_x) {
-    rows_e = x.ncols();
-    cols_i = x.nrows();
-  } else {
-    rows_e = x.nrows();
-    cols_i = x.ncols();
-  }
+    std::size_t cols_i, rows_e, cols_e;
+    if (transpose_x) {
+        rows_e = x.ncols();
+        cols_i = x.nrows();
+    } else {
+        rows_e = x.nrows();
+        cols_i = x.ncols();
+    }
 
-  if (transpose_y) {
-    //  rows_i=y.ncols();
-    cols_e = y.nrows();
-  } else {
-    //  rows_i=y.nrows();
-    cols_e = y.ncols();
-  }
+    if (transpose_y) {
+        //  rows_i=y.ncols();
+        cols_e = y.nrows();
+    } else {
+        //  rows_i=y.nrows();
+        cols_e = y.ncols();
+    }
 
-  // assert(rows_i==cols_i);
-  assert(((transpose_y ? y.ncols() : y.nrows()) == cols_i));
-  // First it has to find out if the last dimension of x matches the
-  // first of y
-  // now we build the M_Matrix result
-  Matrix<double> z(rows_e, cols_e);
+    // assert(rows_i==cols_i);
+    assert(((transpose_y ? y.ncols() : y.nrows()) == cols_i));
+    // First it has to find out if the last dimension of x matches the
+    // first of y
+    // now we build the M_Matrix result
+    Matrix<double> z(rows_e, cols_e);
 
-  /***  as fortran uses the reverse order for matrices and we want to
+    /***  as fortran uses the reverse order for matrices and we want to
     avoid a copying operation, we calculate
         Transpose(Z)=Transpose(y)*Transpose(x)
 
@@ -279,65 +273,59 @@ inline Matrix<double> Lapack_Full_Product(const Matrix<double> &x,
 
 
     */
-  char TRANSA;
-  char TRANSB;
+    char TRANSA;
+    char TRANSB;
 
-  if (transpose_y)
-    TRANSA = 'T';
-  else
-    TRANSA = 'N';
+    if (transpose_y)
+        TRANSA = 'T';
+    else
+        TRANSA = 'N';
 
-  if (transpose_x)
-    TRANSB = 'T';
-  else
-    TRANSB = 'N';
+    if (transpose_x)
+        TRANSB = 'T';
+    else
+        TRANSB = 'N';
 
-  int M = cols_e;
-  int N = rows_e;
-  int K = cols_i;
+    int M = cols_e;
+    int N = rows_e;
+    int K = cols_i;
 
-  double ALPHA = alpha;
-  double *A = const_cast<double *>(&y[0]);
-  int LDA;
-  if (transpose_y)
-    LDA = K;
-  else
-    LDA = M;
+    double ALPHA = alpha;
+    double* A = const_cast<double*>(&y[0]);
+    int LDA;
+    if (transpose_y)
+        LDA = K;
+    else
+        LDA = M;
 
-  double *B = const_cast<double *>(&x[0]);
+    double* B = const_cast<double*>(&x[0]);
 
-  int LDB;
-  if (transpose_x)
-    LDB = N;
-  else
-    LDB = K;
+    int LDB;
+    if (transpose_x)
+        LDB = N;
+    else
+        LDB = K;
 
-  double BETA = beta;
+    double BETA = beta;
 
-  double *C = &z[0];
+    double* C = &z[0];
 
-  int LDC = M;
+    int LDC = M;
 
-  try {
-    dgemm_(&TRANSA, &TRANSB, &M, &N, &K, &ALPHA, A, &LDA, B, &LDB, &BETA, C,
-           &LDC);
-  } catch (...) {
-    assert(false);
-  }
-  return z;
+    try {
+        dgemm_(&TRANSA, &TRANSB, &M, &N, &K, &ALPHA, A, &LDA, B, &LDB, &BETA, C, &LDC);
+    } catch (...) {
+        assert(false);
+    }
+    return z;
 }
 
-extern "C" void dsymm_(char *SIDE, char *UPLO, int *M, int *N, double *ALPHA,
-                       double *A, int *LDA, double *B, int *LDB, double *BETA,
-                       double *C, int *LDC);
+extern "C" void dsymm_(char* SIDE, char* UPLO, int* M, int* N, double* ALPHA, double* A, int* LDA,
+                       double* B, int* LDB, double* BETA, double* C, int* LDC);
 
-inline Matrix<double> Lapack_Sym_Product(const SymmetricMatrix<double> &x,
-                                  const Matrix<double> &y,
-                                  bool first_symmetric_c, double alpha,
-                                  double beta) {
-    
-    
-  /*
+inline Matrix<double> Lapack_Sym_Product(const SymmetricMatrix<double>& x, const Matrix<double>& y,
+                                         bool first_symmetric_c, double alpha, double beta) {
+    /*
    DSYMM  performs one of the matrix-matrix operations
 
       C := alpha*A*B + beta*C,
@@ -352,12 +340,12 @@ inline Matrix<double> Lapack_Sym_Product(const SymmetricMatrix<double> &x,
 Parameters
 */
 
-  auto out = first_symmetric_c ? Matrix<double>(x.nrows(), y.ncols())
-                               : Matrix<double>(y.nrows(), x.ncols());
+    auto out = first_symmetric_c ? Matrix<double>(x.nrows(), y.ncols())
+                                 : Matrix<double>(y.nrows(), x.ncols());
 
-  char SIDE = first_symmetric_c ? 'R' : 'L';
+    char SIDE = first_symmetric_c ? 'R' : 'L';
 
-  /*  [in]	SIDE
+    /*  [in]	SIDE
 
             SIDE is CHARACTER*1
              On entry,  SIDE  specifies whether  the  symmetric matrix  A
@@ -368,8 +356,8 @@ Parameters
                 SIDE = 'R' or 'r'   C := alpha*B*A + beta*C,
 */
 
-  char UPLO = 'L';
-  /*
+    char UPLO = 'L';
+    /*
   [in]	UPLO
 
             UPLO is CHARACTER*1
@@ -385,8 +373,8 @@ Parameters
 
 
 */
-  int M = first_symmetric_c ? y.ncols() : x.ncols();
-  /*
+    int M = first_symmetric_c ? y.ncols() : x.ncols();
+    /*
 
   [in]	M
 
@@ -396,9 +384,9 @@ Parameters
 
 */
 
-  int N = first_symmetric_c ? x.nrows() : y.nrows();
+    int N = first_symmetric_c ? x.nrows() : y.nrows();
 
-  /*
+    /*
 
   [in]	N
 
@@ -407,8 +395,8 @@ Parameters
              N  must be at least zero.
 
 */
-  double ALPHA = alpha;
-  /*
+    double ALPHA = alpha;
+    /*
 
   [in]	ALPHA
 
@@ -416,11 +404,10 @@ Parameters
              On entry, ALPHA specifies the scalar alpha.
 
 */
-  
-  
-  double &A = const_cast<double &>(x[0]);
 
-  /*
+    double& A = const_cast<double&>(x[0]);
+
+    /*
 
   [in]	A
 
@@ -448,9 +435,9 @@ Parameters
              referenced.
 */
 
-  int LDA = x.nrows();
+    int LDA = x.nrows();
 
-  /*
+    /*
   [in]	LDA
 
             LDA is INTEGER
@@ -460,8 +447,8 @@ Parameters
              least  max( 1, n ).
 
 */
-  double &B = const_cast<double &>(y[0]);
-  /*
+    double& B = const_cast<double&>(y[0]);
+    /*
   [in]	B
 
             B is DOUBLE PRECISION array, dimension ( LDB, N )
@@ -469,9 +456,9 @@ Parameters
              contain the matrix B.
 */
 
-  int LDB = M;
+    int LDB = M;
 
-  /*
+    /*
 
   [in]	LDB
 
@@ -480,9 +467,9 @@ Parameters
              in  the  calling  (sub)  program.   LDB  must  be  at  least
              max( 1, m ).
 */
-  double BETA = beta;
+    double BETA = beta;
 
-  /*
+    /*
   [in]	BETA
 
             BETA is DOUBLE PRECISION.
@@ -491,9 +478,9 @@ Parameters
 
 */
 
-  double &C = out[0];
+    double& C = out[0];
 
-  /*
+    /*
 
   [in,out]	C
 
@@ -506,8 +493,8 @@ Parameters
 
 */
 
-  int LDC = M;
-  /*
+    int LDC = M;
+    /*
 
 
   [in]	LDC
@@ -519,166 +506,157 @@ Parameters
 
 */
 
-  dsymm_(&SIDE, &UPLO, &M, &N, &ALPHA, &A, &LDA, &B, &LDB, &BETA, &C, &LDC);
-  return out;
+    dsymm_(&SIDE, &UPLO, &M, &N, &ALPHA, &A, &LDA, &B, &LDB, &BETA, &C, &LDC);
+    return out;
 }
 
-extern "C" void dgecon_(char *NORM, int *N, double *A, int *LDA, double *ANORM,
-                        double *RCOND, double *WORK, int *IWORK, int *INFO);
-extern "C" void dgetrf_(int *M, int *N, double *A, int *LDA, int *IPIV,
-                        int *INFO);
-extern "C" void dgetri_(int *n, double *B, int *dla, int *ipiv, double *work1,
-                        int *lwork, int *info);
-extern "C" double dlange_(char *NORM, int *M, int *N, double *A, int *LDA,
-                          double *WORK);
+extern "C" void dgecon_(char* NORM, int* N, double* A, int* LDA, double* ANORM, double* RCOND,
+                        double* WORK, int* IWORK, int* INFO);
+extern "C" void dgetrf_(int* M, int* N, double* A, int* LDA, int* IPIV, int* INFO);
+extern "C" void dgetri_(int* n, double* B, int* dla, int* ipiv, double* work1, int* lwork,
+                        int* info);
+extern "C" double dlange_(char* NORM, int* M, int* N, double* A, int* LDA, double* WORK);
 
-inline Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a);
-} // namespace lapack
-template <> constexpr std::string function_name<&lapack::Lapack_Full_inv>() {
-  return "Lapack_Full_inv";
+inline Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double>& a);
+}  // namespace lapack
+template <>
+constexpr std::string function_name<&lapack::Lapack_Full_inv>() {
+    return "Lapack_Full_inv";
 }
 
 namespace lapack {
 
-inline Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double> &a)
+inline Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double>& a)
 
 {
-  return_error<Matrix<double>, Lapack_Full_inv> Error;
-  const double min_inv_condition_number = 1e-12;
-  // using Matrix_Unary_Transformations::Transpose;
-  using lapack::dgecon_;
-  using lapack::dgetrf_;
-  using lapack::dgetri_;
-  using lapack::dlange_;
-  if (a.size() == 0)
-    return Error("EMPTY MATRIX");
-  else {
-    assert(a.ncols() == a.nrows());
+    return_error<Matrix<double>, Lapack_Full_inv> Error;
+    const double min_inv_condition_number = 1e-12;
+    // using Matrix_Unary_Transformations::Transpose;
+    using lapack::dgecon_;
+    using lapack::dgetrf_;
+    using lapack::dgetri_;
+    using lapack::dlange_;
+    if (a.size() == 0)
+        return Error("EMPTY MATRIX");
+    else {
+        assert(a.ncols() == a.nrows());
 
-    char NORM = '1';
-    int N = a.ncols();
-    int M = N;
+        char NORM = '1';
+        int N = a.ncols();
+        int M = N;
 
-    int INFO = 0;
-    //  char msg[101];
-    auto IPIV = std::make_unique<int[]>(N);
-    int LWORK;
-    //        M_Matrix<double> B=Transpose(a);
-    Matrix<double> B = a;
-    int LDA = N;
-    // A=new double[n*n];
-    double *A = &B[0]; // more efficient code
-    auto WORK_lange = std::make_unique<double[]>(N);
+        int INFO = 0;
+        //  char msg[101];
+        auto IPIV = std::make_unique<int[]>(N);
+        int LWORK;
+        //        M_Matrix<double> B=Transpose(a);
+        Matrix<double> B = a;
+        int LDA = N;
+        // A=new double[n*n];
+        double* A = &B[0];  // more efficient code
+        auto WORK_lange = std::make_unique<double[]>(N);
 
-    double ANORM = dlange_(&NORM, &M, &N, A, &LDA, WORK_lange.get());
+        double ANORM = dlange_(&NORM, &M, &N, A, &LDA, WORK_lange.get());
 
-    dgetrf_(&N, &M, A, &LDA, IPIV.get(), &INFO);
+        dgetrf_(&N, &M, A, &LDA, IPIV.get(), &INFO);
 
-    double RCOND;
-    auto WORK_cond = std::make_unique<double[]>(N * 4);
-    auto IWORK = std::make_unique<int[]>(N);
-    int INFO_con;
+        double RCOND;
+        auto WORK_cond = std::make_unique<double[]>(N * 4);
+        auto IWORK = std::make_unique<int[]>(N);
+        int INFO_con;
 
-    dgecon_(&NORM, &N, A, &LDA, &ANORM, &RCOND, WORK_cond.get(), IWORK.get(),
-            &INFO_con);
+        dgecon_(&NORM, &N, A, &LDA, &ANORM, &RCOND, WORK_cond.get(), IWORK.get(), &INFO_con);
 
-    LWORK = N * N;
-    Matrix<double> W(N, N);
-    double *WORK = &W[0];
+        LWORK = N * N;
+        Matrix<double> W(N, N);
+        double* WORK = &W[0];
 
-    dgetri_(&N, A, &LDA, IPIV.get(), WORK, &LWORK, &INFO);
+        dgetri_(&N, A, &LDA, IPIV.get(), WORK, &LWORK, &INFO);
 
-    if (RCOND < min_inv_condition_number)
-      return Error("bad condition number RCOND=" + std::to_string(RCOND));
-    if (INFO == 0)
-      return B;
-    //  return Op({B,RCOND});
-    else
-      return Error("Singular Matrix on i=" + std::to_string(INFO));
-    ;
-  }
+        if (RCOND < min_inv_condition_number)
+            return Error("bad condition number RCOND=" + std::to_string(RCOND));
+        if (INFO == 0)
+            return B;
+        //  return Op({B,RCOND});
+        else
+            return Error("Singular Matrix on i=" + std::to_string(INFO));
+        ;
+    }
 }
 
-extern "C" void dsycon_(char *UPLO, int *N,
-                        double * /* precision, dimension( lda, * ) */ A,
-                        int *LDA, int * /*, dimension( * ) */ IPIV,
-                        double *ANORM, double *RCOND,
-                        double * /* dimension( * )  */ WORK,
-                        int * /* dimension( * ) */ IWORK, int *INFO);
+extern "C" void dsycon_(char* UPLO, int* N, double* /* precision, dimension( lda, * ) */ A,
+                        int* LDA, int* /*, dimension( * ) */ IPIV, double* ANORM, double* RCOND,
+                        double* /* dimension( * )  */ WORK, int* /* dimension( * ) */ IWORK,
+                        int* INFO);
 
-extern "C" void dsytrf_(char *UPLO, int *N, double *A, int *LDA, int *IPIV,
-                        double *WORK, int *LWORK, int *INFO);
+extern "C" void dsytrf_(char* UPLO, int* N, double* A, int* LDA, int* IPIV, double* WORK,
+                        int* LWORK, int* INFO);
 
-extern "C" void dsytri_(char *UPLO, int *N, double * /*dimension( lda, * )*/ A,
-                        int *LDA, int * /* dimension( * ) */ IPIV,
-                        double * /*dimension( * )*/ WORK, int *INFO);
+extern "C" void dsytri_(char* UPLO, int* N, double* /*dimension( lda, * )*/ A, int* LDA,
+                        int* /* dimension( * ) */ IPIV, double* /*dimension( * )*/ WORK, int* INFO);
 
-Maybe_error<SymmetricMatrix<double>>
-Lapack_Symm_inv(const SymmetricMatrix<double> &a);
-Maybe_error<SymPosDefMatrix<double>>
-Lapack_SymmPosDef_inv(const SymPosDefMatrix<double> &a);
+Maybe_error<SymmetricMatrix<double>> Lapack_Symm_inv(const SymmetricMatrix<double>& a);
+Maybe_error<SymPosDefMatrix<double>> Lapack_SymmPosDef_inv(const SymPosDefMatrix<double>& a);
 
-Maybe_error<DownTrianMatrix<double>>
-Lapack_chol(const SymPosDefMatrix<double> &x);
+Maybe_error<DownTrianMatrix<double>> Lapack_chol(const SymPosDefMatrix<double>& x);
 
-inline Maybe_error<
-    std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
-Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
-                   bool does_diagonal_scaling,
-                   bool computes_eigenvalues_condition_numbers,
-                   bool computes_eigenvectors_condition_numbers,
-                   bool do_Nelson_Normalization);
+inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+    Lapack_EigenSystem(const Matrix<double>& x, bool does_permutations, bool does_diagonal_scaling,
+                       bool computes_eigenvalues_condition_numbers,
+                       bool computes_eigenvectors_condition_numbers, bool do_Nelson_Normalization);
 
-} // namespace lapack
-template <> constexpr std::string function_name<&lapack::Lapack_Symm_inv>() {
-  return "Lapack_Symm_inv";
+}  // namespace lapack
+template <>
+constexpr std::string function_name<&lapack::Lapack_Symm_inv>() {
+    return "Lapack_Symm_inv";
 }
 
-template <> constexpr std::string function_name<&lapack::Lapack_chol>() {
-  return "Lapack_chol";
+template <>
+constexpr std::string function_name<&lapack::Lapack_chol>() {
+    return "Lapack_chol";
 }
 
 template <>
 constexpr std::string function_name<&lapack::Lapack_SymmPosDef_inv>() {
-  return "Lapack_SymmPosDef_inv";
+    return "Lapack_SymmPosDef_inv";
 }
 
 template <>
-constexpr std::string
-function_name<static_cast<Maybe_error<SymPosDefMatrix<double>> (*)(
-    const DownTrianMatrix<double> &)>(lapack::Lapack_LT_Cholesky_inv)>() {
-  return "Lapack_LT_Cholesky_inv";
+constexpr std::string function_name<static_cast<Maybe_error<SymPosDefMatrix<double>> (*)(
+    const DownTrianMatrix<double>&)>(lapack::Lapack_LT_Cholesky_inv)>() {
+    return "Lapack_LT_Cholesky_inv";
 }
 
 template <>
-constexpr std::string
-function_name<static_cast<Maybe_error<SymPosDefMatrix<double>> (*)(
-    const UpTrianMatrix<double> &)>(lapack::Lapack_UT_Cholesky_inv)>() {
-  return "Lapack_UT_Cholesky_inv";
+constexpr std::string function_name<static_cast<Maybe_error<SymPosDefMatrix<double>> (*)(
+    const UpTrianMatrix<double>&)>(lapack::Lapack_UT_Cholesky_inv)>() {
+    return "Lapack_UT_Cholesky_inv";
 }
-template <> constexpr std::string function_name<&lapack::Lapack_LT_inv>() {
-  return "Lapack_LT_inv";
+template <>
+constexpr std::string function_name<&lapack::Lapack_LT_inv>() {
+    return "Lapack_LT_inv";
 }
 
-template <> constexpr std::string function_name<&lapack::Lapack_UT_inv>() {
-  return "Lapack_UT_inv";
+template <>
+constexpr std::string function_name<&lapack::Lapack_UT_inv>() {
+    return "Lapack_UT_inv";
 }
-template <> constexpr std::string function_name<&lapack::Lapack_EigenSystem>() {
-  return "Lapack_EigenSystem";
+template <>
+constexpr std::string function_name<&lapack::Lapack_EigenSystem>() {
+    return "Lapack_EigenSystem";
 }
 
 namespace lapack {
 
-inline Maybe_error<SymmetricMatrix<double>>
-Lapack_Symm_inv(const SymmetricMatrix<double> &a) {
-  return_error<SymmetricMatrix<double>, Lapack_Full_inv> Error;
+inline Maybe_error<SymmetricMatrix<double>> Lapack_Symm_inv(const SymmetricMatrix<double>& a) {
+    return_error<SymmetricMatrix<double>, Lapack_Full_inv> Error;
 
-  if (a.size() == 0)
-    return Error("EMPTY MATRIX");
-  else {
-    assert(a.nrows() == a.ncols());
+    if (a.size() == 0)
+        return Error("EMPTY MATRIX");
+    else {
+        assert(a.nrows() == a.ncols());
 
-    /**
+        /**
 Purpose:
 
 DSYTRF computes the factorization of a real symmetric matrix A using
@@ -764,25 +742,25 @@ Parameters
 
 */
 
-    char UPLO = 'L';
+        char UPLO = 'L';
 
-    int INFO = 0;
-    int N = a.ncols();
-    auto IPIV = std::make_unique<int[]>(N);
-    int LWORK = N * N; //
-    SymmetricMatrix<double> B(a);
+        int INFO = 0;
+        int N = a.ncols();
+        auto IPIV = std::make_unique<int[]>(N);
+        int LWORK = N * N;  //
+        SymmetricMatrix<double> B(a);
 
-    int LDA = N;
-    double *A = &B[0]; // more efficient code
-    Matrix<double> W(N, N);
-    double *WORK = &W[0];
-    dsytrf_(&UPLO, &N, A, &LDA, IPIV.get(), WORK, &LWORK, &INFO);
-    double RCOND;
-    auto WORK_cond = std::make_unique<double[]>(N * 4);
-    auto IWORK = std::make_unique<int[]>(N);
-    int INFO_con;
+        int LDA = N;
+        double* A = &B[0];  // more efficient code
+        Matrix<double> W(N, N);
+        double* WORK = &W[0];
+        dsytrf_(&UPLO, &N, A, &LDA, IPIV.get(), WORK, &LWORK, &INFO);
+        double RCOND;
+        auto WORK_cond = std::make_unique<double[]>(N * 4);
+        auto IWORK = std::make_unique<int[]>(N);
+        int INFO_con;
 
-    /**
+        /**
 DSYCON
 
 Download DSYCON + dependencies [TGZ] [ZIP] [TXT]
@@ -853,33 +831,32 @@ Parameters
   = 0:  successful exit
   < 0:  if INFO = -i, the i-th argument had an illegal value*/
 
-    char NORM = '1';
-    int M = N;
+        char NORM = '1';
+        int M = N;
 
-    auto WORK_lange = std::make_unique<double[]>(N);
+        auto WORK_lange = std::make_unique<double[]>(N);
 
-    double ANORM = dlange_(&NORM, &M, &N, A, &LDA, WORK_lange.get());
+        double ANORM = dlange_(&NORM, &M, &N, A, &LDA, WORK_lange.get());
 
-    //        dsycon_( 	char*  	UPLO, int *  	N,double */* precision,
-    //        dimension( lda, * ) */  	A,
-    //                                    int *  	LDA,double * ANORM,
-    //                                    double *   	RCOND, double */*
-    //                                    dimension( * )  */	WORK, int */*
-    //                                    dimension( * ) */ 	IWORK, int *
-    //                                    INFO);
+        //        dsycon_( 	char*  	UPLO, int *  	N,double */* precision,
+        //        dimension( lda, * ) */  	A,
+        //                                    int *  	LDA,double * ANORM,
+        //                                    double *   	RCOND, double */*
+        //                                    dimension( * )  */	WORK, int */*
+        //                                    dimension( * ) */ 	IWORK, int *
+        //                                    INFO);
 
-    dsycon_(&UPLO, &N, A, &LDA, IPIV.get(), &ANORM, &RCOND, WORK_cond.get(),
-            IWORK.get(), &INFO_con);
+        dsycon_(&UPLO, &N, A, &LDA, IPIV.get(), &ANORM, &RCOND, WORK_cond.get(), IWORK.get(),
+                &INFO_con);
 
-    if (INFO < 0) {
-      std::string argNames[] = {"UPLO",  "N",     "A",         "LDA",   "IPIV",
-                                "ANORM", "RCOND", "WORK_cond", "IWORK", "INFO"};
-      return Error("INVALID ARGUMENT " + std::to_string(INFO) +
-                   argNames[-INFO]);
-    } else if (INFO > 0) {
-      return Error("SINGULAR MATRIX ON " + std::to_string(INFO));
-    } else {
-      /**
+        if (INFO < 0) {
+            std::string argNames[] = {"UPLO",  "N",     "A",         "LDA",   "IPIV",
+                                      "ANORM", "RCOND", "WORK_cond", "IWORK", "INFO"};
+            return Error("INVALID ARGUMENT " + std::to_string(INFO) + argNames[-INFO]);
+        } else if (INFO > 0) {
+            return Error("SINGULAR MATRIX ON " + std::to_string(INFO));
+        } else {
+            /**
  * dsytri()
 subroutine dsytri 	( 	character  	UPLO,
       integer  	N,
@@ -950,17 +927,16 @@ Parameters
     > 0: if INFO = i, D(i,i) = 0; the matrix is singular and its
          inverse could not be computed.
  */
-      dsytri_(&UPLO, &N, A, &LDA, IPIV.get(), WORK, &INFO);
+            dsytri_(&UPLO, &N, A, &LDA, IPIV.get(), WORK, &INFO);
 
-      if (INFO != 0) {
-        return Error("cannot invert a singular matrix " + std::to_string(INFO));
-      } else {
-        SymmetricMatrix<double> out(B.nrows());
-        for (std::size_t i = 0; i < B.nrows(); ++i)
-          for (std::size_t j = i; j < B.ncols(); ++j)
-                out.set(i, j, B(j, i));
+            if (INFO != 0) {
+                return Error("cannot invert a singular matrix " + std::to_string(INFO));
+            } else {
+                SymmetricMatrix<double> out(B.nrows());
+                for (std::size_t i = 0; i < B.nrows(); ++i)
+                    for (std::size_t j = i; j < B.ncols(); ++j) out.set(i, j, B(j, i));
 
-        /*    auto aa=a;
+                /*    auto aa=a;
 M_Matrix<double> test(a.nrows(),a.ncols(),Matrix_TYPE::FULL,a);
 
 auto invtest=inv(test).first;
@@ -969,27 +945,25 @@ auto test_it=test*out;
 auto test_a=aa*out;
 auto invv=invtest*test;
 */
-        copy_UT_to_LT(out);
-        return out;
-      }
+                copy_UT_to_LT(out);
+                return out;
+            }
+        }
     }
-  }
 }
 
-extern "C" void dpocon_(char *UPLO, int *N,
-                        double * /* precision, dimension( lda, * ) */ A,
-                        int *LDA, double *ANORM, double *RCOND,
-                        double * /* dimension( * )  */ WORK,
-                        int * /* dimension( * ) */ IWORK, int *INFO);
+extern "C" void dpocon_(char* UPLO, int* N, double* /* precision, dimension( lda, * ) */ A,
+                        int* LDA, double* ANORM, double* RCOND, double* /* dimension( * )  */ WORK,
+                        int* /* dimension( * ) */ IWORK, int* INFO);
 
-extern "C" void dpotrf_(char *UPLO, int *N, double *A, int *LDA, int *INFO);
-extern "C" void dpotri_(char *UPLO, int *N, double *A, int *LDA, int *INFO);
+extern "C" void dpotrf_(char* UPLO, int* N, double* A, int* LDA, int* INFO);
+extern "C" void dpotri_(char* UPLO, int* N, double* A, int* LDA, int* INFO);
 
-inline Maybe_error<SymPosDefMatrix<double>>
-Lapack_SymmPosDef_inv(const SymPosDefMatrix<double> &x) {
-  return_error<SymPosDefMatrix<double>, Lapack_SymmPosDef_inv> Error;
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_SymmPosDef_inv(
+    const SymPosDefMatrix<double>& x) {
+    return_error<SymPosDefMatrix<double>, Lapack_SymmPosDef_inv> Error;
 
-  /**
+    /**
  *
 dpotrf()
 subroutine dpotrf 	( 	character  	UPLO,
@@ -1020,9 +994,9 @@ Purpose:
 
 Parameters
 */
-  char UPLO = 'L';
+    char UPLO = 'L';
 
-  /*
+    /*
  * [in]	UPLO
 
             UPLO is CHARACTER*1
@@ -1030,17 +1004,17 @@ Parameters
             = 'L':  Lower triangle of A is stored.
 */
 
-  int N = x.nrows();
+    int N = x.nrows();
 
-  /*
+    /*
   [in]	N
 
             N is INTEGER
             The order of the matrix A.  N >= 0.
 */
-  auto a = x;
-  double &A = a[0];
-  /*
+    auto a = x;
+    double& A = a[0];
+    /*
   [in,out]	A
 
             A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -1055,16 +1029,16 @@ Parameters
             On exit, if INFO = 0, the factor U or L from the Cholesky
             factorization A = U**T*U or A = L*L**T.
 */
-  int LDA = N;
-  /*
+    int LDA = N;
+    /*
  *
    [in]	LDA
 
              LDA is INTEGER
              The leading dimension of the array A.  LDA >= max(1,N).
 */
-  int INFO;
-  /*
+    int INFO;
+    /*
   [out]	INFO
 
             INFO is INTEGER
@@ -1075,21 +1049,21 @@ Parameters
                   completed.
 
 */
-  try {
-    dpotrf_(&UPLO, &N, &A, &LDA, &INFO);
-  } catch (...) {
-    assert(false);
-  }
-  if (INFO < 0) {
-    return Error(std::to_string(INFO) + "th argument for cholesky failed");
-  } else if (INFO > 0) {
-    return Error("the leading minor of order" + std::to_string(INFO) +
-                 " is not positive definite, and the factorization "
-                 "could not be completed.");
+    try {
+        dpotrf_(&UPLO, &N, &A, &LDA, &INFO);
+    } catch (...) {
+        assert(false);
+    }
+    if (INFO < 0) {
+        return Error(std::to_string(INFO) + "th argument for cholesky failed");
+    } else if (INFO > 0) {
+        return Error("the leading minor of order" + std::to_string(INFO) +
+                     " is not positive definite, and the factorization "
+                     "could not be completed.");
 
-  } else {
-    dpotri_(&UPLO, &N, &A, &LDA, &INFO);
-    /*
+    } else {
+        dpotri_(&UPLO, &N, &A, &LDA, &INFO);
+        /*
 DPOTRI
 
 Download DPOTRI + dependencies [TGZ] [ZIP] [TXT]
@@ -1102,21 +1076,21 @@ Purpose:
 
 Parameters
 */
-    /*
+        /*
  * [in]	UPLO
 
             UPLO is CHARACTER*1
             = 'U':  Upper triangle of A is stored;
             = 'L':  Lower triangle of A is stored.
 */
-    /*
+        /*
  *
   [in]	N
 
             N is INTEGER
             The order of the matrix A.  N >= 0.
 */
-    /*
+        /*
   [in,out]	A
 
             A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -1140,130 +1114,116 @@ Parameters
                   zero, and the inverse could not be computed.*
 */
 
-    if (INFO < 0) {
-      return Error("the " + std::to_string(INFO) +
-                   "th argument for inversehad an illegal value");
-    } else if (INFO > 0) {
-      return Error(" the (" + std::to_string(INFO) + "," +
-                   std::to_string(INFO) +
-                   ") element of the factor U or L is "
-                   "zero, and the inverse could not be computed");
-    } else {
-      copy_UT_to_LT(a);
-      return a;
+        if (INFO < 0) {
+            return Error("the " + std::to_string(INFO) +
+                         "th argument for inversehad an illegal value");
+        } else if (INFO > 0) {
+            return Error(" the (" + std::to_string(INFO) + "," + std::to_string(INFO) +
+                         ") element of the factor U or L is "
+                         "zero, and the inverse could not be computed");
+        } else {
+            copy_UT_to_LT(a);
+            return a;
+        }
     }
-  }
 }
 
-extern "C" void
-dgeevx_(char *BALANC, char *JOBVL, char *JOBVR, char *SENSE, int *N,
-        double * /* precision, dimension( lda, * ) */ A, int *LDA,
-        double * /* precision, dimension( * ) */ WR,
-        double * /* precision, dimension( * ) */ WI,
-        double * /* precision, dimension( ldvl, * ) */ VL, int *LDVL,
-        double * /* precision, dimension( ldvr, * ) */ VR, int *LDVR, int *ILO,
-        int *IHI, double * /* precision, dimension( * ) */ SCALE, double *ABNRM,
-        double * /* precision, dimension( * ) */ RCONDE,
-        double * /* precision, dimension( * ) */ RCONDV,
-        double * /* precision, dimension( * ) */ WORK, int *LWORK,
-        int * /*dimension( * ) */ IWORK, int *INFO);
+extern "C" void dgeevx_(char* BALANC, char* JOBVL, char* JOBVR, char* SENSE, int* N,
+                        double* /* precision, dimension( lda, * ) */ A, int* LDA,
+                        double* /* precision, dimension( * ) */ WR,
+                        double* /* precision, dimension( * ) */ WI,
+                        double* /* precision, dimension( ldvl, * ) */ VL, int* LDVL,
+                        double* /* precision, dimension( ldvr, * ) */ VR, int* LDVR, int* ILO,
+                        int* IHI, double* /* precision, dimension( * ) */ SCALE, double* ABNRM,
+                        double* /* precision, dimension( * ) */ RCONDE,
+                        double* /* precision, dimension( * ) */ RCONDV,
+                        double* /* precision, dimension( * ) */ WORK, int* LWORK,
+                        int* /*dimension( * ) */ IWORK, int* INFO);
 
+template <class C_Matrix, class C_DiagonalMatrix>
+inline auto sort_by_eigenvalue(std::tuple<C_Matrix, C_DiagonalMatrix, C_Matrix> const& e,
+                               const C_Matrix& x) {
+    auto& [VL, L, VR] = e;
+    std::vector<std::pair<double, std::size_t>> la(L.size());
 
+    for (std::size_t i = 0; i < L.size(); ++i) la[i] = std::pair(var::primitive(L)[i], i);
+    std::sort(la.begin(), la.end());
+    Matrix<double> Per(VL.nrows(), VL.nrows(), 0.0);
+    for (std::size_t i = 0; i < la.size(); ++i) Per(i, la[i].second) = 1.0;
 
-template<class C_Matrix, class C_DiagonalMatrix>
-inline auto sort_by_eigenvalue(
-    std::tuple<C_Matrix, C_DiagonalMatrix, C_Matrix> const
-        &e, const C_Matrix& x) {
-  auto &[VL, L, VR] = e;
-  std::vector<std::pair<double, std::size_t>> la(L.size());
-  
-  for (std::size_t i = 0; i < L.size(); ++i)
-      la[i] = std::pair(var::primitive(L)[i], i);
-  std::sort(la.begin(), la.end());
-  Matrix<double> Per(VL.nrows(),VL.nrows(),0.0);
-  for (std::size_t i=0; i<la.size(); ++i)
-      Per(i,la[i].second)=1.0;
-  
-  auto PerT=tr(Per);
-  
-  auto VLs=VL*PerT;
-  auto Ls=Per*L*PerT;
-  auto VRs=VR*PerT;
-  
-  assert((
-      [&e,&VRs,&Ls, &VLs,&x, &L, &VL, &VR]()
-      { if (!(norm_1(VLs * Ls * inv(VLs).value() - x)/norm_1(x) <  std::sqrt(eps)*1000)||
-              !( norm_1(inv(tr(VRs)).value() * Ls * tr(VRs) - x)/norm_1(x) <  std::sqrt(eps)*1000))
-{
-                std::cerr<<"e"<<e;
-                std::cerr<<"VRs"<<VRs;
-                std::cerr<<"Ls"<<Ls;
-                std::cerr<<"VLs"<<VLs;
-                std::cerr<<"x"<<x;
-                std::cerr<<"VL * L * inv(VL).value()"<<VL * L * inv(VL).value();
-                std::cerr<<"VLs * Ls * VLsinv"<<VLs * Ls * inv(VL).value();
-                std::cerr<<"VLs * Ls * VLsinv-x"<<VLs * Ls * inv(VL).value()-x;
-                
-                std::cerr<<"inv(tr(VR)).value() * L * tr(VR)"<<inv(tr(VR)).value() * L * tr(VR);
-                std::cerr<<"inv(tr(VRs)).value() * Ls * tr(VRs)"<<inv(tr(VRs)).value() * Ls * tr(VRs);
-                std::cerr<<"inv(tr(VRs)).value() * Ls * tr(VRs)-x"<<inv(tr(VRs)).value() * Ls * tr(VRs)-x;
-   return false;
-}
-else
-return true;
-             }(),
-      " fails in eigendecomposition"));
-  
-  return std::tuple(VLs, Ls, VRs);
+    auto PerT = tr(Per);
+
+    auto VLs = VL * PerT;
+    auto Ls = Per * L * PerT;
+    auto VRs = VR * PerT;
+
+    assert((
+        [&e, &VRs, &Ls, &VLs, &x, &L, &VL, &VR]() {
+            if (!(norm_1(VLs * Ls * inv(VLs).value() - x) / norm_1(x) < std::sqrt(eps) * 1000) ||
+                !(norm_1(inv(tr(VRs)).value() * Ls * tr(VRs) - x) / norm_1(x) <
+                  std::sqrt(eps) * 1000)) {
+                std::cerr << "e" << e;
+                std::cerr << "VRs" << VRs;
+                std::cerr << "Ls" << Ls;
+                std::cerr << "VLs" << VLs;
+                std::cerr << "x" << x;
+                std::cerr << "VL * L * inv(VL).value()" << VL * L * inv(VL).value();
+                std::cerr << "VLs * Ls * VLsinv" << VLs * Ls * inv(VL).value();
+                std::cerr << "VLs * Ls * VLsinv-x" << VLs * Ls * inv(VL).value() - x;
+
+                std::cerr << "inv(tr(VR)).value() * L * tr(VR)" << inv(tr(VR)).value() * L * tr(VR);
+                std::cerr << "inv(tr(VRs)).value() * Ls * tr(VRs)"
+                          << inv(tr(VRs)).value() * Ls * tr(VRs);
+                std::cerr << "inv(tr(VRs)).value() * Ls * tr(VRs)-x"
+                          << inv(tr(VRs)).value() * Ls * tr(VRs) - x;
+                return false;
+            } else
+                return true;
+        }(),
+        " fails in eigendecomposition"));
+
+    return std::tuple(VLs, Ls, VRs);
 }
 
-inline Matrix<double> &
-Right_Eigenvector_Nelson_Normalization(Matrix<double> &X) {
-  assert(X.nrows() == X.ncols());
-  auto n = X.nrows();
-  for (std::size_t k = 0; k < n; ++k) {
-    double max = 0;
-    for (std::size_t i = 0; i < n; ++i)
-      if (std::abs(X(i, k)) >= std::abs(max)) {
-        max = X(i, k);
-      }
-    for (std::size_t i = 0; i < n; ++i)
-      X(i, k) = X(i, k) / max;
-  }
-  return X;
+inline Matrix<double>& Right_Eigenvector_Nelson_Normalization(Matrix<double>& X) {
+    assert(X.nrows() == X.ncols());
+    auto n = X.nrows();
+    for (std::size_t k = 0; k < n; ++k) {
+        double max = 0;
+        for (std::size_t i = 0; i < n; ++i)
+            if (std::abs(X(i, k)) >= std::abs(max)) {
+                max = X(i, k);
+            }
+        for (std::size_t i = 0; i < n; ++i) X(i, k) = X(i, k) / max;
+    }
+    return X;
 }
-inline bool Nelson_Normalization(Matrix<double> &VR, Matrix<double> &VL) {
-  Right_Eigenvector_Nelson_Normalization(VR);
-    bool ok=true;
-  for (std::size_t i = 0; i < VR.nrows(); ++i) {
-    double sum = 0;
-    for (std::size_t j = 0; j < VR.ncols(); ++j)
-      sum += VL(i, j) * VR(j, i);
-    for (std::size_t j = 0; j < VR.ncols(); ++j)
-      VL(i, j) = VL(i, j) / sum;
-    if ( sum!=0) ok=false;
-  }
-  return ok;
-  //   assert((are_Equal<true, Matrix<double>>().test_prod(
-  //       VR * VL, Matrix_Generators::eye<double>(VR.ncols()), std::cerr)));
+inline bool Nelson_Normalization(Matrix<double>& VR, Matrix<double>& VL) {
+    Right_Eigenvector_Nelson_Normalization(VR);
+    bool ok = true;
+    for (std::size_t i = 0; i < VR.nrows(); ++i) {
+        double sum = 0;
+        for (std::size_t j = 0; j < VR.ncols(); ++j) sum += VL(i, j) * VR(j, i);
+        for (std::size_t j = 0; j < VR.ncols(); ++j) VL(i, j) = VL(i, j) / sum;
+        if (sum != 0)
+            ok = false;
+    }
+    return ok;
+    //   assert((are_Equal<true, Matrix<double>>().test_prod(
+    //       VR * VL, Matrix_Generators::eye<double>(VR.ncols()), std::cerr)));
 }
 
-inline Maybe_error<
-    std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
-Lapack_EigenSystem(const Matrix<double> &x, bool does_permutations,
-                   bool does_diagonal_scaling,
-                   bool computes_eigenvalues_condition_numbers,
-                   bool computes_eigenvectors_condition_numbers,
-bool do_Nelson_Normalization) {
+inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+    Lapack_EigenSystem(const Matrix<double>& x, bool does_permutations, bool does_diagonal_scaling,
+                       bool computes_eigenvalues_condition_numbers,
+                       bool computes_eigenvectors_condition_numbers, bool do_Nelson_Normalization) {
+    return_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>,
+                 Lapack_EigenSystem>
+        Error;
 
-  return_error<
-      std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>,
-      Lapack_EigenSystem>
-      Error;
+    using lapack::dgeevx_;
 
-  using lapack::dgeevx_;
-
-  /**
+    /**
   DGEEVX computes the eigenvalues and, optionally, the left and/or right
  eigenvectors for GE matrices
 
@@ -1302,9 +1262,9 @@ bool do_Nelson_Normalization) {
       Users' Guide.
  **/
 
-  char BALANC = does_diagonal_scaling ? (does_permutations ? 'B' : 'S')
-                                      : (does_permutations ? 'P' : 'N');
-  /**
+    char BALANC =
+        does_diagonal_scaling ? (does_permutations ? 'B' : 'S') : (does_permutations ? 'P' : 'N');
+    /**
   Parameters
       [in]	BALANC
 
@@ -1326,9 +1286,9 @@ bool do_Nelson_Normalization) {
                 condition numbers (in exact arithmetic), but balancing does.
   **/
 
-  bool calculates_right_eigen = true;
-  char JOBVL = calculates_right_eigen ? 'V' : 'N';
-  /**
+    bool calculates_right_eigen = true;
+    char JOBVL = calculates_right_eigen ? 'V' : 'N';
+    /**
       [in]	JOBVL
 
                 JOBVL is CHARACTER*1
@@ -1336,10 +1296,10 @@ bool do_Nelson_Normalization) {
                 = 'V': left eigenvectors of A are computed.
                 If SENSE = 'E' or 'B', JOBVL must = 'V'.
   **/
-  bool calculates_left_eigen = true;
-  char JOBVR = calculates_left_eigen ? 'V' : 'N';
+    bool calculates_left_eigen = true;
+    char JOBVR = calculates_left_eigen ? 'V' : 'N';
 
-  /**
+    /**
 
   [in]	JOBVR
 
@@ -1350,11 +1310,11 @@ bool do_Nelson_Normalization) {
 
 **/
 
-  char SENSE = computes_eigenvalues_condition_numbers
-                   ? (computes_eigenvectors_condition_numbers ? 'B' : 'E')
-                   : (computes_eigenvectors_condition_numbers ? 'V' : 'N');
+    char SENSE = computes_eigenvalues_condition_numbers
+                     ? (computes_eigenvectors_condition_numbers ? 'B' : 'E')
+                     : (computes_eigenvectors_condition_numbers ? 'V' : 'N');
 
-  /**
+    /**
   [in]	SENSE
 
             SENSE is CHARACTER*1
@@ -1368,34 +1328,34 @@ bool do_Nelson_Normalization) {
             must also be computed (JOBVL = 'V' and JOBVR = 'V').
 **/
 
-  int N = x.nrows();
-  /**
+    int N = x.nrows();
+    /**
   [in]	N
 
             N is INTEGER
             The order of the matrix A. N >= 0.
 **/
 
-  Matrix<double> A(x);
+    Matrix<double> A(x);
 
-  /**
+    /**
 [in]	LDA
 
           LDA is INTEGER
           The leading dimension of the array A.  LDA >= max(1,N).
 
 */
-  int LDA = N;
+    int LDA = N;
 
-  /**
+    /**
 [out]	WR
 
           WR is DOUBLE PRECISION array, dimension (N)
 
 */
-  DiagonalMatrix<double> WR(x.nrows(), x.nrows(), false);
+    DiagonalMatrix<double> WR(x.nrows(), x.nrows(), false);
 
-  /**
+    /**
 [out]	WI
 
           WI is DOUBLE PRECISION array, dimension (N)
@@ -1406,9 +1366,9 @@ bool do_Nelson_Normalization) {
           first.
 
 */
-  DiagonalMatrix<double> WI(x.nrows(), x.nrows(), false);
+    DiagonalMatrix<double> WI(x.nrows(), x.nrows(), false);
 
-  /**
+    /**
 [out]	VL
 
           VL is DOUBLE PRECISION array, dimension (LDVL,N)
@@ -1423,10 +1383,9 @@ bool do_Nelson_Normalization) {
           u(j+1) = VL(:,j) - i*VL(:,j+1).
 
 */
-  Matrix<double> /* precision; dimension( ldvl; * ) */ VL_lapack(x.nrows(),
-                                                                 x.nrows());
+    Matrix<double> /* precision; dimension( ldvl; * ) */ VL_lapack(x.nrows(), x.nrows());
 
-  /**
+    /**
 [in]	LDVL
 
           LDVL is INTEGER
@@ -1434,9 +1393,9 @@ bool do_Nelson_Normalization) {
           JOBVL = 'V', LDVL >= N.
 
 */
-  int LDVL = N;
+    int LDVL = N;
 
-  /**
+    /**
 [out]	VR
 
           VR is DOUBLE PRECISION array, dimension (LDVR,N)
@@ -1451,28 +1410,27 @@ bool do_Nelson_Normalization) {
           v(j+1) = VR(:,j) - i*VR(:,j+1).
 
 */
-  Matrix<double> /* precision; dimension( ldvl; * ) */ VR_lapack(x.nrows(),
-                                                                 x.nrows());
+    Matrix<double> /* precision; dimension( ldvl; * ) */ VR_lapack(x.nrows(), x.nrows());
 
-  /**
+    /**
 [in]	LDVR
 
           LDVR is INTEGER
           The leading dimension of the array VR.  LDVR >= 1, and if
           JOBVR = 'V', LDVR >= N.
 */
-  int LDVR = N;
+    int LDVR = N;
 
-  /**
+    /**
 
 [out]	ILO
 
           ILO is INTEGER
 
 */
-  int ILO;
+    int ILO;
 
-  /**
+    /**
 [out]	IHI
 
           IHI is INTEGER
@@ -1481,9 +1439,9 @@ bool do_Nelson_Normalization) {
           J = 1,...,ILO-1 or I = IHI+1,...,N.
 
 */
-  int IHI;
+    int IHI;
 
-  /**
+    /**
 [out]	SCALE
 
           SCALE is DOUBLE PRECISION array, dimension (N)
@@ -1497,10 +1455,9 @@ bool do_Nelson_Normalization) {
           The order in which the interchanges are made is N to IHI+1,
           then 1 to ILO-1.
 */
-  DiagonalMatrix<double> /* precision; dimension( * ) */ SCALE(x.nrows(),
-                                                               x.nrows());
+    DiagonalMatrix<double> /* precision; dimension( * ) */ SCALE(x.nrows(), x.nrows());
 
-  /**
+    /**
 
 [out]	ABNRM
 
@@ -1509,9 +1466,9 @@ bool do_Nelson_Normalization) {
           of the sum of absolute values of elements of any column).
 
 */
-  double ABNRM;
+    double ABNRM;
 
-  /**
+    /**
 [out]	RCONDE
 
           RCONDE is DOUBLE PRECISION array, dimension (N)
@@ -1519,20 +1476,18 @@ bool do_Nelson_Normalization) {
           eigenvalue.
 
 */
-  DiagonalMatrix<double> /* precision; dimension( * ) */ RCONDE(x.nrows(),
-                                                                x.nrows());
+    DiagonalMatrix<double> /* precision; dimension( * ) */ RCONDE(x.nrows(), x.nrows());
 
-  /**
+    /**
 [out]	RCONDV
 
           RCONDV is DOUBLE PRECISION array, dimension (N)
           RCONDV(j) is the reciprocal condition number of the j-th
           right eigenvector.
 */
-  DiagonalMatrix<double> /* precision; dimension( * ) */ RCONDV(x.nrows(),
-                                                                x.nrows());
+    DiagonalMatrix<double> /* precision; dimension( * ) */ RCONDV(x.nrows(), x.nrows());
 
-  /**
+    /**
 
 [out]	WORK
 
@@ -1540,9 +1495,9 @@ bool do_Nelson_Normalization) {
           On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 
 */
-  Matrix<double> /* precision; dimension( * ) */ WORK(1ul, 1ul, 0.0);
+    Matrix<double> /* precision; dimension( * ) */ WORK(1ul, 1ul, 0.0);
 
-  /**
+    /**
 [in]	LWORK
 
           LWORK is INTEGER
@@ -1557,18 +1512,18 @@ bool do_Nelson_Normalization) {
           message related to LWORK is issued by XERBLA.
 
 */
-  int LWORK = -1;
+    int LWORK = -1;
 
-  /**
+    /**
 [out]	IWORK
 
           IWORK is INTEGER array, dimension (2*N-2)
           If SENSE = 'N' or 'E', not referenced.
 
 */
-  Matrix<int> /*dimension( * ) */ IWORK(2, x.nrows() - 2);
+    Matrix<int> /*dimension( * ) */ IWORK(2, x.nrows() - 2);
 
-  /**
+    /**
 [out]	INFO
 
           INFO is INTEGER
@@ -1581,123 +1536,110 @@ bool do_Nelson_Normalization) {
 
      */
 
-  int INFO;
-  dgeevx_(&BALANC, &JOBVL, &JOBVR, &SENSE, &N, &A(0, 0), &LDA, &WR[0], &WI[0],
-          &VL_lapack[0], &LDVL, &VR_lapack[0], &LDVR, &ILO, &IHI, &SCALE[0],
-          &ABNRM, &RCONDE[0], &RCONDV[0], &WORK[0], &LWORK, &IWORK[0], &INFO);
+    int INFO;
+    dgeevx_(&BALANC, &JOBVL, &JOBVR, &SENSE, &N, &A(0, 0), &LDA, &WR[0], &WI[0], &VL_lapack[0],
+            &LDVL, &VR_lapack[0], &LDVR, &ILO, &IHI, &SCALE[0], &ABNRM, &RCONDE[0], &RCONDV[0],
+            &WORK[0], &LWORK, &IWORK[0], &INFO);
 
-  Matrix<double> WORK_OPT(1, WORK[0]);
-  LWORK = WORK[0];
-  dgeevx_(&BALANC, &JOBVL, &JOBVR, &SENSE, &N, &A(0, 0), &LDA, &WR[0], &WI[0],
-          &VL_lapack[0], &LDVL, &VR_lapack[0], &LDVR, &ILO, &IHI, &SCALE[0],
-          &ABNRM, &RCONDE[0], &RCONDV[0], &WORK_OPT[0], &LWORK, &IWORK[0],
-          &INFO);
+    Matrix<double> WORK_OPT(1, WORK[0]);
+    LWORK = WORK[0];
+    dgeevx_(&BALANC, &JOBVL, &JOBVR, &SENSE, &N, &A(0, 0), &LDA, &WR[0], &WI[0], &VL_lapack[0],
+            &LDVL, &VR_lapack[0], &LDVR, &ILO, &IHI, &SCALE[0], &ABNRM, &RCONDE[0], &RCONDV[0],
+            &WORK_OPT[0], &LWORK, &IWORK[0], &INFO);
 
-  if (INFO != 0) {
-    if (INFO > 0)
-      return Error(
-          std::string("the QR algorithm failed to compute all the  "
-                      "eigenvalues, and no eigenvectors or condition numbers "
-                      "have been computed; elements 1:ILO-1 and i+1:N of WR "
-                      "and WI contain eigenvalues which have converged ILO=") +
-          std::to_string(ILO) + " i=" + std::to_string(INFO));
-    else {
-      auto args =
-          std::make_tuple(&BALANC, &JOBVL, &JOBVR, &SENSE, &N, &A(0, 0), &LDA,
-                          &WR[0], &WI[0], &VL_lapack[0], &LDVL, &VR_lapack[0],
-                          &LDVR, &ILO, &IHI, &SCALE[0], &ABNRM, &RCONDE[0],
-                          &RCONDV[0], &WORK_OPT[0], &LWORK, &IWORK[0], &INFO);
-      std::string argumentsNames[] = {
-          "BALANC", "JOBVL", "JOBVR", "SENSE", "N",     "A",
-          "LDA",    "WR",    "WI",    "VL",    "LDVL",  "VR",
-          "LDVR",   "ILO",   "IHI",   "SCALE", "ABNRM", "RCONDE",
-          "RCONDV", "WORK",  "LWORK", "IWORK", "INFO"};
+    if (INFO != 0) {
+        if (INFO > 0)
+            return Error(std::string("the QR algorithm failed to compute all the  "
+                                     "eigenvalues, and no eigenvectors or condition numbers "
+                                     "have been computed; elements 1:ILO-1 and i+1:N of WR "
+                                     "and WI contain eigenvalues which have converged ILO=") +
+                         std::to_string(ILO) + " i=" + std::to_string(INFO));
+        else {
+            auto args = std::make_tuple(&BALANC, &JOBVL, &JOBVR, &SENSE, &N, &A(0, 0), &LDA, &WR[0],
+                                        &WI[0], &VL_lapack[0], &LDVL, &VR_lapack[0], &LDVR, &ILO,
+                                        &IHI, &SCALE[0], &ABNRM, &RCONDE[0], &RCONDV[0],
+                                        &WORK_OPT[0], &LWORK, &IWORK[0], &INFO);
+            std::string argumentsNames[] = {"BALANC", "JOBVL", "JOBVR", "SENSE", "N",     "A",
+                                            "LDA",    "WR",    "WI",    "VL",    "LDVL",  "VR",
+                                            "LDVR",   "ILO",   "IHI",   "SCALE", "ABNRM", "RCONDE",
+                                            "RCONDV", "WORK",  "LWORK", "IWORK", "INFO"};
 
-      std::stringstream ss;
-      std::size_t i = -INFO;
-      write_tuple_i(ss, args, i);
-      return Error("the" + std::to_string(i) + "-th argument " +
-                   argumentsNames[i] + " had the illegal value =" + ss.str());
+            std::stringstream ss;
+            std::size_t i = -INFO;
+            write_tuple_i(ss, args, i);
+            return Error("the" + std::to_string(i) + "-th argument " + argumentsNames[i] +
+                         " had the illegal value =" + ss.str());
+        }
+
+    } else {
+        auto VL_cpp = tr(VR_lapack);
+        auto VR_cpp = tr(VL_lapack);
+        if (do_Nelson_Normalization)
+            if (!Nelson_Normalization(VR_cpp, VL_cpp))
+                return error_message("singular normalization");
+
+        if constexpr (false) {
+            assert(([&VR_cpp, &WR, &x, &VL_cpp]() {
+                       if (inv(VR_cpp).valid() &&
+                           !(norm_1(VR_cpp * WR * inv(VR_cpp).value() - x) / norm_1(x) <
+                             std::sqrt(eps) * 1000)) {
+                           std::cerr << "\nx\n" << x;
+                           std::cerr << "\nVR_cpp\n" << VR_cpp;
+                           std::cerr << "\nWR\n" << WR;
+                           std::cerr << "\nVL_cpp\n" << VL_cpp;
+
+                           std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n"
+                                     << VR_cpp * WR * inv(VR_cpp).value();
+                           std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()-x\n"
+                                     << VR_cpp * WR * inv(VR_cpp).value() - x;
+
+                           std::cerr << "norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)"
+                                     << norm_1(VR_cpp * WR * inv(VR_cpp).value() - x);
+                           std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)\n"
+                                     << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
+                           std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)-x \n"
+                                     << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
+
+                           std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
+                           return false;
+
+                       } else {
+                           return true;
+                       }
+                   }()) &&
+                   " fails in eigendecomposition");
+        }
+        if (do_Nelson_Normalization)
+            return sort_by_eigenvalue(std::make_tuple(
+                                          // return std::make_tuple(
+                                          VR_cpp, WR, VL_cpp),
+                                      x);  // in reality VL, L, VR because of transposition
+        else
+            return std::make_tuple(
+                // return std::make_tuple(
+                VR_cpp, WR,
+                VL_cpp);  // in reality VL, L, VR because of transposition
     }
-
-  } else {
-    auto VL_cpp = tr(VR_lapack);
-    auto VR_cpp = tr(VL_lapack);
-    if (do_Nelson_Normalization)
-       if (!Nelson_Normalization(VR_cpp, VL_cpp))
-          return error_message("singular normalization");
-    
-    
-    
-    
-    
-    
-    if constexpr (false){
-    assert(
-        ([&VR_cpp, &WR, &x,&VL_cpp](){
-            if (inv(VR_cpp).valid()&&!(norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)/norm_1(x) <  std::sqrt(eps)*1000))
-{
-                
-                std::cerr << "\nx\n" << x;
-                std::cerr << "\nVR_cpp\n" << VR_cpp;
-                std::cerr << "\nWR\n" << WR;
-                std::cerr << "\nVL_cpp\n" << VL_cpp;
-                
-                std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n" << VR_cpp * WR * inv(VR_cpp).value();
-                std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()-x\n" << VR_cpp * WR * inv(VR_cpp).value()-x;
-                
-                std::cerr<<"norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)"<<norm_1(VR_cpp * WR * inv(VR_cpp).value() - x);
-                std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)\n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
-                std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)-x \n" << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
-                
-                
-                std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
-      return false;
-
-}
-            else {
-                return true;}
-        }()) &&
-           " fails in eigendecomposition");
-    }
-    if (do_Nelson_Normalization)
-      return sort_by_eigenvalue(std::make_tuple(
-   // return std::make_tuple(
-        VR_cpp, WR,
-        VL_cpp),x); // in reality VL, L, VR because of transposition
-    else
-        return std::make_tuple(
-            // return std::make_tuple(
-            VR_cpp, WR,
-            VL_cpp); // in reality VL, L, VR because of transposition
-        
-  }
 }
 
-
-extern "C" void dsyevx_(char *JOBZ, char *RANGE, char *UPLO, int *N,
-                        double * /*precision, dimension(lda, *) */ A, int *LDA,
-                        double *VL, double *VU, int *IL, int *IU,
-                        double *ABSTOL, int *M,
-                        double * /*precision, dimension(*) */ W,
-                        double * /*
+extern "C" void dsyevx_(char* JOBZ, char* RANGE, char* UPLO, int* N,
+                        double* /*precision, dimension(lda, *) */ A, int* LDA, double* VL,
+                        double* VU, int* IL, int* IU, double* ABSTOL, int* M,
+                        double* /*precision, dimension(*) */ W,
+                        double* /*
                          dimension(ldz, *) */
                             Z,
-                        int *LDZ, double * /*precision, dimension(*) */ WORK,
-                        
-                        
-                        int *LWORK, int * /*, dimension(*) */ IWORK,
-                        int * /*, dimension(*) */ IFAIL, int *INFO);
+                        int* LDZ, double* /*precision, dimension(*) */ WORK,
 
+                        int* LWORK, int* /*, dimension(*) */ IWORK, int* /*, dimension(*) */ IFAIL,
+                        int* INFO);
 
+extern "C" void ddisna_(char* JOB, int* M, int* N, double* D, double* SEP, int* INFO);
 
-extern "C" void ddisna_(char *JOB, int * M, int *N,double * D, double *SEP,int * INFO );
-
-
-inline  Maybe_error<std::tuple<Matrix<double>,DiagonalMatrix<double>,Matrix<double>>> Lapack_Symm_EigenSystem(const SymmetricMatrix<double> &x, std::string kind) {
-    
+inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+    Lapack_Symm_EigenSystem(const SymmetricMatrix<double>& x, std::string kind) {
     using lapack::dsyevx_;
-    
+
     /** DSYEVX computes the eigenvalues and, optionally, the left and/or right eigenvectors for SY matrices
 
 Download DSYEVX + dependencies [TGZ] [ZIP] [TXT]
@@ -1717,9 +1659,9 @@ Parameters
               = 'N':  Compute eigenvalues only;
               = 'V':  Compute eigenvalues and eigenvectors.
 */
-    
+
     char JOBZ = 'V';
-    
+
     /**
     [in]	RANGE
 
@@ -1731,9 +1673,9 @@ Parameters
 
 
 */
-    
+
     char RANGE = 'A';
-    
+
     /**
     [in]	UPLO
 
@@ -1748,7 +1690,7 @@ Parameters
         UPLO = 'U';
     else
         UPLO = 'L';
-    
+
     /*
     [in]	N
 
@@ -1756,9 +1698,9 @@ Parameters
               The order of the matrix A.  N >= 0.
 
 */
-    
+
     int N = x.nrows();
-    
+
     /**
 
 
@@ -1776,8 +1718,8 @@ Parameters
               destroyed.
 
 */
-    double &A = const_cast<double &>(x[0]);
-    
+    double& A = const_cast<double&>(x[0]);
+
     /*   M_Matrix<double> A(x.nrows(), x.ncols());
   if (kind != "lower") {
     for (std::size_t i = 0; i < x.nrows(); ++i)
@@ -1789,8 +1731,7 @@ Parameters
         A(i, j) = x(i, j);
   }
 */
-    
-    
+
     /**
 
     [in]	LDA
@@ -1799,10 +1740,9 @@ Parameters
               The leading dimension of the array A.  LDA >= max(1,N).
 
 */
-    
+
     int LDA = N;
-    
-    
+
     /**
 
 
@@ -1813,10 +1753,9 @@ Parameters
               be searched for eigenvalues. VL < VU.
               Not referenced if RANGE = 'A' or 'I'.
 */
-    
+
     double VL;
-    
-    
+
     /**
 
 
@@ -1827,9 +1766,9 @@ Parameters
               be searched for eigenvalues. VL < VU.
               Not referenced if RANGE = 'A' or 'I'.
 */
-    
+
     double VU;
-    
+
     /**
 
 
@@ -1845,10 +1784,9 @@ Parameters
 
 
 */
-    
+
     int IL;
-    
-    
+
     /**
     [in]	IU
 
@@ -1859,8 +1797,7 @@ Parameters
               Not referenced if RANGE = 'A' or 'V'.
 */
     int IU;
-    
-    
+
     /**
 
     [in]	ABSTOL
@@ -1888,9 +1825,9 @@ Parameters
               with Guaranteed High Relative Accuracy," by Demmel and
               Kahan, LAPACK Working Note #3.
 */
-    
-    double ABSTOL = std ::numeric_limits<double>::epsilon()*100;
-    
+
+    double ABSTOL = std ::numeric_limits<double>::epsilon() * 100;
+
     /**
     [out]	M
 
@@ -1898,9 +1835,9 @@ Parameters
               The total number of eigenvalues found.  0 <= M <= N.
               If RANGE = 'A', M = N, and if RANGE = 'I', M = IU-IL+1.
 */
-    
+
     int M;
-    
+
     /**
     [out]	W
 
@@ -1908,10 +1845,9 @@ Parameters
               On normal exit, the first M elements contain the selected
               eigenvalues in ascending order.
 */
-    
+
     DiagonalMatrix<double> W(x.nrows(), x.ncols());
-    
-    
+
     /**
     [out]	Z
 
@@ -1939,7 +1875,7 @@ Parameters
 
 
 */
-    
+
     int LDZ = N;
     Matrix<double> Z(x.nrows(), x.nrows());
     /*
@@ -1950,9 +1886,9 @@ Parameters
               On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
 
 */
-    
+
     std ::vector<double> WORK(1);
-    
+
     /**
     [in]	LWORK
 
@@ -1968,19 +1904,18 @@ Parameters
               this value as the first entry of the WORK array, and no error
               message related to LWORK is issued by XERBLA.
 */
-    
+
     int LWORK = -1;
-    
+
     /**
     [out]	IWORK
 
               IWORK is INTEGER array, dimension (5*N)
 
 */
-    
+
     std ::vector<int> IWORK(5 * x.nrows());
-    
-    
+
     /**
     [out]	IFAIL
 
@@ -1991,7 +1926,7 @@ Parameters
               If JOBZ = 'N', then IFAIL is not referenced.
 */
     std::vector<int> IFAIL(x.nrows());
-    
+
     /**
     [out]	INFO
 
@@ -2001,40 +1936,39 @@ Parameters
               > 0:  if INFO = i, then i eigenvectors failed to converge.
                     Their indices are stored in array IFAIL.
 */
-    
+
     int INFO;
-    
-    
-    dsyevx_(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W[0], &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0],&INFO );
-    
+
+    dsyevx_(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W[0], &Z[0], &LDZ,
+            &WORK[0], &LWORK, &IWORK[0], &IFAIL[0], &INFO);
+
     LWORK = WORK[0];
     WORK.resize(LWORK);
-    dsyevx_(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W[0], &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0], &INFO);
-    
-    
-    
-    
+    dsyevx_(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W[0], &Z[0], &LDZ,
+            &WORK[0], &LWORK, &IWORK[0], &IFAIL[0], &INFO);
+
     if (INFO != 0) {
-        if (INFO > 0)
-        {
+        if (INFO > 0) {
             std::stringstream ss;
-            ss<<INFO<<" eigenvectors failed to converge. Their indices are: ";
-            std::for_each(IFAIL.begin(),IFAIL.end(),[&ss](auto const& x){ss<<x;});
+            ss << INFO << " eigenvectors failed to converge. Their indices are: ";
+            std::for_each(IFAIL.begin(), IFAIL.end(), [&ss](auto const& x) { ss << x; });
             return error_message(ss.str());
-        }
-        else {
-            auto args = std::make_tuple(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M, &W, &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0],&INFO);
-            std::string argumentsNames[] = {
-                                            "JOBZ", "RANGE", "UPLO", "N", "A[0]", "LDA", "VL", "VU", "IL", "IU", "ABSTOL", "M", "W", "Z[0]", "LDZ", "WORK[0]", "LWORK",  "IWORK[0]","IFAIL[0]", "INFO"    };
-            
+        } else {
+            auto args =
+                std::make_tuple(&JOBZ, &RANGE, &UPLO, &N, &A, &LDA, &VL, &VU, &IL, &IU, &ABSTOL, &M,
+                                &W, &Z[0], &LDZ, &WORK[0], &LWORK, &IWORK[0], &IFAIL[0], &INFO);
+            std::string argumentsNames[] = {"JOBZ",    "RANGE", "UPLO",     "N",        "A[0]",
+                                            "LDA",     "VL",    "VU",       "IL",       "IU",
+                                            "ABSTOL",  "M",     "W",        "Z[0]",     "LDZ",
+                                            "WORK[0]", "LWORK", "IWORK[0]", "IFAIL[0]", "INFO"};
+
             std::stringstream ss;
             std::size_t i = -INFO;
             write_tuple_i(ss, args, i);
-            return error_message("the" + std::to_string(i) + "-th argument " +
-                                 argumentsNames[i] +
+            return error_message("the" + std::to_string(i) + "-th argument " + argumentsNames[i] +
                                  " had the illegal value =" + ss.str());
         }
-        
+
     } else {
         /**
  * extern "C" void ddisna_(char *JOB, int * M, int *N,double * D, double *SEP,int * INFO );
@@ -2072,7 +2006,7 @@ Parameters
 *  DDISNA may also be used to compute error bounds for eigenvectors of
 *  the generalized symmetric definite eigenproblem.
 */
-        
+
         /**
 *  JOB     (input) CHARACTER*1
 *          Specifies for which problem the reciprocal condition numbers
@@ -2081,18 +2015,18 @@ Parameters
 *          = 'L':  the left singular vectors of a general matrix;
 *          = 'R':  the right singular vectors of a general matrix.
 */
-        char JOB='E';
+        char JOB = 'E';
         /**  M       (input) INTEGER
 *          The number of rows of the matrix. M >= 0.
 *
 */
-        
+
         /**
 *  N       (input) INTEGER
 *          If JOB = 'L' or 'R', the number of columns of the matrix,
 *          in which case N >= 0. Ignored if JOB = 'E'.
 */
-        
+
         /**  D       (input) DOUBLE PRECISION array, dimension (M) if JOB = 'E'
 *                              dimension (min(M,N)) if JOB = 'L' or 'R'
 *          The eigenvalues (if JOB = 'E') or singular values (if JOB =
@@ -2100,39 +2034,32 @@ Parameters
 *          order. If singular values, they must be non-negative.
 *
 */
-        
+
         /**  SEP     (output) DOUBLE PRECISION array, dimension (M) if JOB = 'E'
 *                               dimension (min(M,N)) if JOB = 'L' or 'R'
 *          The reciprocal condition numbers of the vectors.
 */
         DiagonalMatrix<double> RCOND(x.nrows(), x.ncols());
-        
+
         /**  INFO    (output) INTEGER
 *          = 0:  successful exit.
 *          < 0:  if INFO = -i, the i-th argument had an illegal value.
 */
-        lapack::ddisna_(&JOB,&M,&N,&W[0],&RCOND[0] ,&INFO );
+        lapack::ddisna_(&JOB, &M, &N, &W[0], &RCOND[0], &INFO);
         auto VL_cpp = Z;
         auto VR_cpp = tr(Z);
         if (!Nelson_Normalization(VR_cpp, VL_cpp))
             return error_message("singular normalization");
-        
-        return std::tuple(
-            VR_cpp, W,
-            VL_cpp);
+
+        return std::tuple(VR_cpp, W, VL_cpp);
     }
 }
 
-
-
-
-
 template <class T>
-Maybe_error<SymPosDefMatrix<T>>
-Lapack_UT_Cholesky_inv(const UpTrianMatrix<T> &x) {
-  return_error<SymPosDefMatrix<double>, Lapack_SymmPosDef_inv> Error;
+Maybe_error<SymPosDefMatrix<T>> Lapack_UT_Cholesky_inv(const UpTrianMatrix<T>& x) {
+    return_error<SymPosDefMatrix<double>, Lapack_SymmPosDef_inv> Error;
 
-  /*
+    /*
 DPOTRI
 
 Download DPOTRI + dependencies [TGZ] [ZIP] [TXT]
@@ -2145,8 +2072,8 @@ Purpose:
 
 Parameters
 */
-  char UPLO = 'L';
-  /*
+    char UPLO = 'L';
+    /*
  * [in]	UPLO
 
             UPLO is CHARACTER*1
@@ -2154,20 +2081,19 @@ Parameters
             = 'L':  Lower triangle of A is stored.
 */
 
-  int N = x.nrows();
+    int N = x.nrows();
 
-  /*
+    /*
  *
   [in]	N
 
             N is INTEGER
             The order of the matrix A.  N >= 0.
 */
-  auto a = x;
-  double &A = const_cast<double &>(a[0]);
+    auto a = x;
+    double& A = const_cast<double&>(a[0]);
 
-
-  /*
+    /*
   [in,out]	A
 
             A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -2177,17 +2103,17 @@ Parameters
             On exit, the upper or lower triangle of the (symmetric)
             inverse of A, overwriting the input factor U or L.
 */
-  int LDA = N;
+    int LDA = N;
 
-  /*
+    /*
     [in]	LDA
 
               LDA is INTEGER
               The leading dimension of the array A.  LDA >= max(1,N).
 */
-  int INFO;
+    int INFO;
 
-  /*
+    /*
     [out]	INFO
 
               INFO is INTEGER
@@ -2196,27 +2122,25 @@ Parameters
               > 0:  if INFO = i, the (i,i) element of the factor U or L is
                     zero, and the inverse could not be computed.*
 */
-  dpotri_(&UPLO, &N, &A, &LDA, &INFO);
+    dpotri_(&UPLO, &N, &A, &LDA, &INFO);
 
-  if (INFO < 0) {
-    return Error("the " + std::to_string(INFO) +
-                 "th argument for inversehad an illegal value");
-  } else if (INFO > 0) {
-    return Error(" the (" + std::to_string(INFO) + "," + std::to_string(INFO) +
-                 ") element of the factor U or L is "
-                 "zero, and the inverse could not be computed");
-  } else {
-    copy_UT_to_LT(a);
-    return SymPosDefMatrix<double>(std::move(a));
-  }
+    if (INFO < 0) {
+        return Error("the " + std::to_string(INFO) + "th argument for inversehad an illegal value");
+    } else if (INFO > 0) {
+        return Error(" the (" + std::to_string(INFO) + "," + std::to_string(INFO) +
+                     ") element of the factor U or L is "
+                     "zero, and the inverse could not be computed");
+    } else {
+        copy_UT_to_LT(a);
+        return SymPosDefMatrix<double>(std::move(a));
+    }
 }
 
 template <class T>
-Maybe_error<SymPosDefMatrix<T>>
-Lapack_LT_Cholesky_inv(const DownTrianMatrix<T> &x) {
-  return_error<SymPosDefMatrix<double>> Error{"Lapack_LT_Cholesky_inv :"};
+Maybe_error<SymPosDefMatrix<T>> Lapack_LT_Cholesky_inv(const DownTrianMatrix<T>& x) {
+    return_error<SymPosDefMatrix<double>> Error{"Lapack_LT_Cholesky_inv :"};
 
-  /*
+    /*
 DPOTRI
 
 Download DPOTRI + dependencies [TGZ] [ZIP] [TXT]
@@ -2229,8 +2153,8 @@ Purpose:
 
 Parameters
 */
-  char UPLO = 'L';
-  /*
+    char UPLO = 'L';
+    /*
  * [in]	UPLO
 
             UPLO is CHARACTER*1
@@ -2238,20 +2162,19 @@ Parameters
             = 'L':  Lower triangle of A is stored.
 */
 
-  int N = x.nrows();
+    int N = x.nrows();
 
-  /*
+    /*
  *
   [in]	N
 
             N is INTEGER
             The order of the matrix A.  N >= 0.
 */
-  auto a = x;
-  double &A = const_cast<double &>(a[0]);
+    auto a = x;
+    double& A = const_cast<double&>(a[0]);
 
-
-  /*
+    /*
   [in,out]	A
 
             A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -2261,17 +2184,17 @@ Parameters
             On exit, the upper or lower triangle of the (symmetric)
             inverse of A, overwriting the input factor U or L.
 */
-  int LDA = N;
+    int LDA = N;
 
-  /*
+    /*
     [in]	LDA
 
               LDA is INTEGER
               The leading dimension of the array A.  LDA >= max(1,N).
 */
-  int INFO;
+    int INFO;
 
-  /*
+    /*
     [out]	INFO
 
               INFO is INTEGER
@@ -2280,32 +2203,28 @@ Parameters
               > 0:  if INFO = i, the (i,i) element of the factor U or L is
                     zero, and the inverse could not be computed.*
 */
-  dpotri_(&UPLO, &N, &A, &LDA, &INFO);
+    dpotri_(&UPLO, &N, &A, &LDA, &INFO);
 
-  if (INFO < 0) {
-    return Error("the " + std::to_string(INFO) +
-                 "th argument for inversehad an illegal value");
-  } else if (INFO > 0) {
-    return Error(" the (" + std::to_string(INFO) + "," + std::to_string(INFO) +
-                 ") element of the factor U or L is "
-                 "zero, and the inverse could not be computed");
-  } else {
-    copy_UT_to_LT(a);
-    return SymPosDefMatrix<double>(std::move(a));
-  }
+    if (INFO < 0) {
+        return Error("the " + std::to_string(INFO) + "th argument for inversehad an illegal value");
+    } else if (INFO > 0) {
+        return Error(" the (" + std::to_string(INFO) + "," + std::to_string(INFO) +
+                     ") element of the factor U or L is "
+                     "zero, and the inverse could not be computed");
+    } else {
+        copy_UT_to_LT(a);
+        return SymPosDefMatrix<double>(std::move(a));
+    }
 }
 
-extern "C" void dsyrk_(char *UPLO, char *TRANS, int *N, int *K, double *ALPHA,
-                       double *A, int *LDA, double *BETA, double *C, int *LDC);
+extern "C" void dsyrk_(char* UPLO, char* TRANS, int* N, int* K, double* ALPHA, double* A, int* LDA,
+                       double* BETA, double* C, int* LDC);
 
-inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
-                                        SymPosDefMatrix<double> &c,
-                                        bool first_transposed_in_c,
-                                        char UPLO_in_c = 'U', double alpha = 1,
-                                        double beta = 0) {
-
-  char UPLO = (UPLO_in_c == 'U') ? 'L' : 'U';
-  /*
+inline auto& Lapack_Product_Self_Transpose_mod(const Matrix<double>& a, SymPosDefMatrix<double>& c,
+                                               bool first_transposed_in_c, char UPLO_in_c = 'U',
+                                               double alpha = 1, double beta = 0) {
+    char UPLO = (UPLO_in_c == 'U') ? 'L' : 'U';
+    /*
     [in]	UPLO
 
               UPLO is CHARACTER*1
@@ -2319,8 +2238,8 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
                   UPLO = 'L' or 'l'   Only the  lower triangular part of  C
                                       is to be referenced.
 */
-  char TRANS = first_transposed_in_c ? 'N' : 'T';
-  /*
+    char TRANS = first_transposed_in_c ? 'N' : 'T';
+    /*
   [in]	TRANS
 
             TRANS is CHARACTER*1
@@ -2335,16 +2254,16 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
 
 */
 
-  int N = c.nrows();
-  /*      [in]	N
+    int N = c.nrows();
+    /*      [in]	N
 
               N is INTEGER
                   On entry,  N specifies the order of the matrix C.  N must be
           at least zero.
   */
-  int K = first_transposed_in_c ? a.nrows() : a.ncols();
+    int K = first_transposed_in_c ? a.nrows() : a.ncols();
 
-  /*
+    /*
                 [in]	K
 
                         K is INTEGER
@@ -2354,18 +2273,18 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
         of rows of the matrix  A.  K must be at least zero.
 
 */
-  double ALPHA = alpha;
+    double ALPHA = alpha;
 
-  /*
+    /*
 *     [in]	ALPHA
 
             ALPHA is DOUBLE PRECISION.
              On entry, ALPHA specifies the scalar alpha.
 
 */
-  double &A = const_cast<double &>(a[0]);
+    double& A = const_cast<double&>(a[0]);
 
-  /*
+    /*
 
   [in]	A
 
@@ -2378,9 +2297,9 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
 
 * */
 
-  int LDA = first_transposed_in_c ? N : K;
+    int LDA = first_transposed_in_c ? N : K;
 
-  /*
+    /*
  *     [in]	LDA
 
             LDA is INTEGER
@@ -2391,8 +2310,8 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
 
  * */
 
-  double BETA = beta;
-  /*
+    double BETA = beta;
+    /*
  *     [in]	BETA
 
             BETA is DOUBLE PRECISION.
@@ -2400,9 +2319,9 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
 
 */
 
-  double &C = c[0];
+    double& C = c[0];
 
-  /*
+    /*
   [in,out]	C
 
             C is DOUBLE PRECISION array, dimension ( LDC, N )
@@ -2420,9 +2339,9 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
              lower triangular part of the updated matrix.
 */
 
-  int LDC = N;
+    int LDC = N;
 
-  /*
+    /*
   [in]	LDC
 
             LDC is INTEGER
@@ -2433,10 +2352,10 @@ inline auto &Lapack_Product_Self_Transpose_mod(const Matrix<double> &a,
 
  * */
 
-  dsyrk_(&UPLO, &TRANS, &N, &K, &ALPHA, &A, &LDA, &BETA, &C, &LDC);
+    dsyrk_(&UPLO, &TRANS, &N, &K, &ALPHA, &A, &LDA, &BETA, &C, &LDC);
 
-  copy_UT_to_LT(c);
-  return c;
+    copy_UT_to_LT(c);
+    return c;
 }
 
 /*
@@ -2475,23 +2394,21 @@ Parameters
 
  * */
 
-inline SymPosDefMatrix<double>
-Lapack_Product_Self_Transpose(const Matrix<double> &a,
-                              bool first_transposed_in_c, char UPLO_in_c,
-                              double alpha, double beta) {
-  std::size_t n = first_transposed_in_c ? a.ncols() : a.nrows();
-  SymPosDefMatrix<double> c(n, n,false);
-  c = Lapack_Product_Self_Transpose_mod(a, c, first_transposed_in_c, UPLO_in_c,
-                                        alpha, beta);
-  return c;
+inline SymPosDefMatrix<double> Lapack_Product_Self_Transpose(const Matrix<double>& a,
+                                                             bool first_transposed_in_c,
+                                                             char UPLO_in_c, double alpha,
+                                                             double beta) {
+    std::size_t n = first_transposed_in_c ? a.ncols() : a.nrows();
+    SymPosDefMatrix<double> c(n, n, false);
+    c = Lapack_Product_Self_Transpose_mod(a, c, first_transposed_in_c, UPLO_in_c, alpha, beta);
+    return c;
 };
 
-inline Maybe_error<DownTrianMatrix<double>>
-Lapack_chol(const SymPosDefMatrix<double> &x) {
-  return_error<DownTrianMatrix<double>, Lapack_chol> Error;
-  assert(x.nrows() == x.ncols());
-  auto a = x;
-  /*
+inline Maybe_error<DownTrianMatrix<double>> Lapack_chol(const SymPosDefMatrix<double>& x) {
+    return_error<DownTrianMatrix<double>, Lapack_chol> Error;
+    assert(x.nrows() == x.ncols());
+    auto a = x;
+    /*
  *      DPOTRF computes the Cholesky factorization of a real symmetric
    positive definite matrix A.
 
@@ -2506,8 +2423,8 @@ Lapack_chol(const SymPosDefMatrix<double> &x) {
 
 Parameters
 */
-  char UPLO = 'U';
-  /*
+    char UPLO = 'U';
+    /*
  *
  * [in]	UPLO
 
@@ -2515,18 +2432,18 @@ Parameters
             = 'U':  Upper triangle of A is stored;
             = 'L':  Lower triangle of A is stored.
 */
-  int N = x.nrows();
+    int N = x.nrows();
 
-  /*
+    /*
   [in]	N
 
             N is INTEGER
             The order of the matrix A.  N >= 0.
 */
 
-  double &A = a[0];
+    double& A = a[0];
 
-  /*
+    /*
 
 
 
@@ -2544,16 +2461,16 @@ Parameters
             On exit, if INFO = 0, the factor U or L from the Cholesky
             factorization A = U**T*U or A = L*L**T.
 */
-  int LDA = N;
+    int LDA = N;
 
-  /*
+    /*
   [in]	LDA
 
             LDA is INTEGER
             The leading dimension of the array A.  LDA >= max(1,N).
 */
-  int INFO;
-  /*
+    int INFO;
+    /*
   [out]	INFO
 
             INFO is INTEGER
@@ -2565,35 +2482,33 @@ Parameters
 
 */
 
-  if (x.size() == 0)
-    return Error(" ZERO MATRIX");
-  try {
-    lapack::dpotrf_(&UPLO, &N, &A, &LDA, &INFO);
-  } catch (...) {
-    assert(false);
-  }
+    if (x.size() == 0)
+        return Error(" ZERO MATRIX");
+    try {
+        lapack::dpotrf_(&UPLO, &N, &A, &LDA, &INFO);
+    } catch (...) {
+        assert(false);
+    }
 
-  if (INFO != 0) {
-    if (INFO < 0)
-      return Error("Cholesky fails, the" + std::to_string(-INFO) +
-                   "-th argument had an illegal value");
-    else
-      return Error("Cholesky fails, zero diagonal at" + std::to_string(INFO));
-  } else {
-
-    return fill_UT_zeros(std::move(a));
-  }
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("Cholesky fails, the" + std::to_string(-INFO) +
+                         "-th argument had an illegal value");
+        else
+            return Error("Cholesky fails, zero diagonal at" + std::to_string(INFO));
+    } else {
+        return fill_UT_zeros(std::move(a));
+    }
 }
 
-extern "C" void dtrmm_(char *SIDE, char *UPLO, char *TRANSA, char *DIAG, int *M,
-                       int *N, double *ALPHA, double *A, int *LDA, double *B,
-                       int *LDB);
+extern "C" void dtrmm_(char* SIDE, char* UPLO, char* TRANSA, char* DIAG, int* M, int* N,
+                       double* ALPHA, double* A, int* LDA, double* B, int* LDB);
 
-inline Matrix<double>
-Lapack_Triang_Product(const Matrix<double> &a, const Matrix<double> &b,
-                      bool up_triangular_in_c, bool triangular_first_in_c,
-                      bool transpose_A_in_c, bool ones_in_diag, double alpha) {
-  /*
+inline Matrix<double> Lapack_Triang_Product(const Matrix<double>& a, const Matrix<double>& b,
+                                            bool up_triangular_in_c, bool triangular_first_in_c,
+                                            bool transpose_A_in_c, bool ones_in_diag,
+                                            double alpha) {
+    /*
 dtrmm()
 subroutine dtrmm 	( 	character  	SIDE,
               character  	UPLO,
@@ -2623,9 +2538,9 @@ Purpose:
 
 Parameters
 */
-  char SIDE = triangular_first_in_c ? 'R' : 'L';
+    char SIDE = triangular_first_in_c ? 'R' : 'L';
 
-  /*
+    /*
   [in]	SIDE
 
             SIDE is CHARACTER*1
@@ -2636,8 +2551,8 @@ Parameters
 
                 SIDE = 'R' or 'r'   B := alpha*B*op( A ).
 */
-  char UPLO = up_triangular_in_c ? 'L' : 'U';
-  /*
+    char UPLO = up_triangular_in_c ? 'L' : 'U';
+    /*
   [in]	UPLO
 
             UPLO is CHARACTER*1
@@ -2648,8 +2563,8 @@ Parameters
 
                 UPLO = 'L' or 'l'   A is a lower triangular matrix.
 */
-  char TRANSA = transpose_A_in_c ? 'T' : 'N';
-  /*
+    char TRANSA = transpose_A_in_c ? 'T' : 'N';
+    /*
 
 
 
@@ -2665,8 +2580,8 @@ Parameters
 
                 TRANSA = 'C' or 'c'   op( A ) = A**T.
 */
-  char DIAG = ones_in_diag ? 'U' : 'N';
-  /*
+    char DIAG = ones_in_diag ? 'U' : 'N';
+    /*
   [in]	DIAG
 
             DIAG is CHARACTER*1
@@ -2679,24 +2594,24 @@ Parameters
                                     triangular.
 
 */
-  int M = b.ncols();
-  /*
+    int M = b.ncols();
+    /*
   [in]	M
 
             M is INTEGER
              On entry, M specifies the number of rows of B. M must be at
              least zero.
 */
-  int N = b.nrows();
-  /*
+    int N = b.nrows();
+    /*
   [in]	N
 
             N is INTEGER
              On entry, N specifies the number of columns of B.  N must be
              at least zero.
 */
-  double ALPHA = alpha;
-  /*
+    double ALPHA = alpha;
+    /*
   [in]	ALPHA
 
             ALPHA is DOUBLE PRECISION.
@@ -2704,10 +2619,9 @@ Parameters
              zero then  A is not referenced and  B need not be set before
              entry.
 */
-  double &A = const_cast<double &>(a[0]);
+    double& A = const_cast<double&>(a[0]);
 
-
-  /*
+    /*
   [in]	A
 
              A is DOUBLE PRECISION array, dimension ( LDA, k ), where k is m
@@ -2724,9 +2638,9 @@ Parameters
              A  are not referenced either,  but are assumed to be  unity.
 */
 
-  int LDA = SIDE == 'L' ? M : N;
+    int LDA = SIDE == 'L' ? M : N;
 
-  /*
+    /*
   [in]	LDA
 
             LDA is INTEGER
@@ -2736,11 +2650,11 @@ Parameters
              then LDA must be at least max( 1, n ).
 */
 
-  auto out = b;
+    auto out = b;
 
-  double &B = out(0, 0);
+    double& B = out(0, 0);
 
-  /*
+    /*
   [in,out]	B
 
             B is DOUBLE PRECISION array, dimension ( LDB, N )
@@ -2748,8 +2662,8 @@ Parameters
              contain the matrix  B,  and  on exit  is overwritten  by the
              transformed matrix.
 */
-  int LDB = M;
-  /*
+    int LDB = M;
+    /*
   [in]	LDB
 
             LDB is INTEGER
@@ -2758,24 +2672,22 @@ Parameters
              max( 1, m ). *
  * */
 
-  try {
-    dtrmm_(&SIDE, &UPLO, &TRANSA, &DIAG, &M, &N, &ALPHA, &A, &LDA, &B, &LDB);
+    try {
+        dtrmm_(&SIDE, &UPLO, &TRANSA, &DIAG, &M, &N, &ALPHA, &A, &LDA, &B, &LDB);
 
-  } catch (...) {
-    assert(false);
-  }
-  return out;
+    } catch (...) {
+        assert(false);
+    }
+    return out;
 }
 
-extern "C" void dtrtri_(char *UPLO, char *DIAG, int *N, double *A, int *LDA,
-                        int *INFO);
+extern "C" void dtrtri_(char* UPLO, char* DIAG, int* N, double* A, int* LDA, int* INFO);
 
-inline Maybe_error<DownTrianMatrix<double>>
-Lapack_LT_inv(const DownTrianMatrix<double> &x, bool ones_in_diag) {
+inline Maybe_error<DownTrianMatrix<double>> Lapack_LT_inv(const DownTrianMatrix<double>& x,
+                                                          bool ones_in_diag) {
+    return_error<DownTrianMatrix<double>, Lapack_LT_inv> Error;
 
-  return_error<DownTrianMatrix<double>, Lapack_LT_inv> Error;
-
-  /*
+    /*
 subroutine dtrtri 	( 	character  	UPLO,
                 character  	DIAG,
                 integer  	N,
@@ -2798,8 +2710,8 @@ Purpose:
 Parameters
 
 */
-  char UPLO = 'U';
-  /*
+    char UPLO = 'U';
+    /*
     [in]	UPLO
 
               UPLO is CHARACTER*1
@@ -2807,26 +2719,25 @@ Parameters
               = 'L':  A is lower triangular.
 */
 
-  char DIAG = ones_in_diag ? 'U' : 'N';
-  /*
+    char DIAG = ones_in_diag ? 'U' : 'N';
+    /*
     [in]	DIAG
 
               DIAG is CHARACTER*1
               = 'N':  A is non-unit triangular;
               = 'U':  A is unit triangular.
 */
-  int N = x.nrows();
-  /*
+    int N = x.nrows();
+    /*
     [in]	N
 
               N is INTEGER
               The order of the matrix A.  N >= 0.
 */
-  auto a = x;
-  double &A = const_cast<double &>(a[0]);
+    auto a = x;
+    double& A = const_cast<double&>(a[0]);
 
-
-  /*
+    /*
     [in,out]	A
 
               A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -2842,15 +2753,15 @@ Parameters
               On exit, the (triangular) inverse of the original matrix, in
               the same storage format.
 */
-  int LDA = N;
-  /*
+    int LDA = N;
+    /*
     [in]	LDA
 
               LDA is INTEGER
               The leading dimension of the array A.  LDA >= max(1,N).
 */
-  int INFO;
-  /*
+    int INFO;
+    /*
 
     [out]	INFO
 
@@ -2864,24 +2775,23 @@ Parameters
 
 */
 
-  dtrtri_(&UPLO, &DIAG, &N, &A, &LDA, &INFO);
+    dtrtri_(&UPLO, &DIAG, &N, &A, &LDA, &INFO);
 
-  if (INFO < 0)
-    return Error(std::to_string(INFO) + " argument had an illegal value");
-  else if (INFO > 0)
-    return Error("A(" + std::to_string(INFO) + "," + std::to_string(INFO) +
-                 ") is exactly zero.  The triangular matrix is singular and "
-                 "its inverse can not be computed");
-  else
-    return a;
+    if (INFO < 0)
+        return Error(std::to_string(INFO) + " argument had an illegal value");
+    else if (INFO > 0)
+        return Error("A(" + std::to_string(INFO) + "," + std::to_string(INFO) +
+                     ") is exactly zero.  The triangular matrix is singular and "
+                     "its inverse can not be computed");
+    else
+        return a;
 }
 
-inline Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double> &x,
-                                                 bool ones_in_diag) {
+inline Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double>& x,
+                                                        bool ones_in_diag) {
+    return_error<UpTrianMatrix<double>, Lapack_UT_inv> Error;
 
-  return_error<UpTrianMatrix<double>, Lapack_UT_inv> Error;
-
-  /*
+    /*
 subroutine dtrtri 	( 	character  	UPLO,
                 character  	DIAG,
                 integer  	N,
@@ -2904,8 +2814,8 @@ Purpose:
 Parameters
 
 */
-  char UPLO = 'L';
-  /*
+    char UPLO = 'L';
+    /*
     [in]	UPLO
 
               UPLO is CHARACTER*1
@@ -2913,26 +2823,25 @@ Parameters
               = 'L':  A is lower triangular.
 */
 
-  char DIAG = ones_in_diag ? 'U' : 'N';
-  /*
+    char DIAG = ones_in_diag ? 'U' : 'N';
+    /*
     [in]	DIAG
 
               DIAG is CHARACTER*1
               = 'N':  A is non-unit triangular;
               = 'U':  A is unit triangular.
 */
-  int N = x.nrows();
-  /*
+    int N = x.nrows();
+    /*
     [in]	N
 
               N is INTEGER
               The order of the matrix A.  N >= 0.
 */
-  auto a = x;
-  double &A = const_cast<double &>(a[0]);
+    auto a = x;
+    double& A = const_cast<double&>(a[0]);
 
-
-  /*
+    /*
     [in,out]	A
 
               A is DOUBLE PRECISION array, dimension (LDA,N)
@@ -2948,15 +2857,15 @@ Parameters
               On exit, the (triangular) inverse of the original matrix, in
               the same storage format.
 */
-  int LDA = N;
-  /*
+    int LDA = N;
+    /*
     [in]	LDA
 
               LDA is INTEGER
               The leading dimension of the array A.  LDA >= max(1,N).
 */
-  int INFO;
-  /*
+    int INFO;
+    /*
 
     [out]	INFO
 
@@ -2970,21 +2879,18 @@ Parameters
 
 */
 
-  dtrtri_(&UPLO, &DIAG, &N, &A, &LDA, &INFO);
+    dtrtri_(&UPLO, &DIAG, &N, &A, &LDA, &INFO);
 
-  if (INFO < 0)
-    return Error(std::to_string(INFO) + " argument had an illegal value");
-  else if (INFO > 0)
-    return Error("A(" + std::to_string(INFO) + "," + std::to_string(INFO) +
-                 ") is exactly zero.  The triangular matrix is singular and "
-                 "its inverse can not be computed");
-  else
-    return a;
+    if (INFO < 0)
+        return Error(std::to_string(INFO) + " argument had an illegal value");
+    else if (INFO > 0)
+        return Error("A(" + std::to_string(INFO) + "," + std::to_string(INFO) +
+                     ") is exactly zero.  The triangular matrix is singular and "
+                     "its inverse can not be computed");
+    else
+        return a;
 }
 
+}  // namespace lapack
 
-
-
-} // namespace lapack
-
-#endif // LAPACK_HEADERS_H
+#endif  // LAPACK_HEADERS_H
