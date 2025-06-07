@@ -309,6 +309,29 @@ class Compiler {
         m_func.emplace(may_id.value(), fun);
         return true;
     }
+    void merge(const Compiler& other) {
+        // Merge functions
+        for (const auto& [name, func] : other.m_func) {
+            m_func[name] = std::unique_ptr<base_function_compiler<Lexer, Compiler>>(func->clone());
+        }
+        // Merge identifiers
+        for (const auto& [id, id_comp] : other.m_id) {
+            m_id[id] = std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(id_comp->clone());
+        }
+    }
+    void merge(Compiler&& other) {
+        // Move functions
+        for (auto& [name, func] : other.m_func) {
+            m_func[name] = std::move(func);  // Mueve el unique_ptr
+        }
+        other.m_func.clear();  // Opcional: limpia el mapa fuente
+
+        // Move identifiers, si aplica
+        for (auto& [id, id_comp] : other.m_id) {
+            m_id[id] = std::move(id_comp);
+        }
+        other.m_id.clear();  // Opcional
+    }
 };
 
 }  // namespace dcli

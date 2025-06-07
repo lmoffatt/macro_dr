@@ -119,14 +119,28 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
                             t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
                             t_desired_acceptance);
 
-                        auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                            uses_adaptive_aproximation(adaptive_aproximation),
-                            uses_recursive_aproximation(recursive_approximation),
-                            uses_averaging_aproximation(averaging_approximation),
-                            uses_variance_aproximation(variance_correction),
-                            uses_variance_correction_aproximation(
-                                variance_correction_approximation),
-                            model0, Simulation_n_sub_dt(n_sub_dt));
+                        auto maybe_modelLikelihood =
+                            Likelihood_Model_regular<
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                                var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                                var::constexpr_Var_domain<
+                                    bool, uses_variance_correction_aproximation, true>,
+                                decltype(model0)>(
+                                model0, Simulation_n_sub_dt(n_sub_dt),
+                                uses_adaptive_aproximation_value(adaptive_aproximation),
+                                uses_recursive_aproximation_value(recursive_approximation),
+                                uses_averaging_aproximation_value(averaging_approximation),
+                                uses_variance_aproximation_value(variance_correction),
+                                uses_variance_correction_aproximation_value(
+                                    variance_correction_approximation))
+                                .get_variant();
+                        if (!maybe_modelLikelihood) {
+                            std::cerr << maybe_modelLikelihood.error()();
+                            return;
+                        }
+                        auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
                         // using m2=typename
                         // decltype(modelLikelihood_v)::paseModelLikelihoodv;
 
@@ -226,14 +240,28 @@ inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::s
                             t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
                             t_desired_acceptance);
 
-                        auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                            uses_adaptive_aproximation(adaptive_aproximation),
-                            uses_recursive_aproximation(recursive_approximation),
-                            uses_averaging_aproximation(averaging_approximation),
-                            uses_variance_aproximation(variance_correction),
-                            uses_variance_correction_aproximation(
-                                variance_correction_approximation),
-                            model0, Simulation_n_sub_dt(n_sub_dt));
+                        auto maybe_modelLikelihood =
+                            Likelihood_Model_regular<
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                                var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                                var::constexpr_Var_domain<
+                                    bool, uses_variance_correction_aproximation, true>,
+                                decltype(model0)>(
+                                model0, Simulation_n_sub_dt(n_sub_dt),
+                                uses_adaptive_aproximation_value(adaptive_aproximation),
+                                uses_recursive_aproximation_value(recursive_approximation),
+                                uses_averaging_aproximation_value(averaging_approximation),
+                                uses_variance_aproximation_value(variance_correction),
+                                uses_variance_correction_aproximation_value(
+                                    variance_correction_approximation))
+                                .get_variant();
+                        if (!maybe_modelLikelihood) {
+                            std::cerr << maybe_modelLikelihood.error()();
+                            return;
+                        }
+                        auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
                         // using m2=typename
                         // decltype(modelLikelihood_v)::paseModelLikelihoodv;
 
@@ -345,14 +373,28 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                             t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
                             t_desired_acceptance);
 
-                        auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                            uses_adaptive_aproximation(adaptive_aproximation),
-                            uses_recursive_aproximation(recursive_approximation),
-                            uses_averaging_aproximation(averaging_approximation),
-                            uses_variance_aproximation(variance_correction),
-                            uses_variance_correction_aproximation(
-                                variance_correction_approximation),
-                            model0, Simulation_n_sub_dt(n_sub_dt));
+                        auto maybe_modelLikelihood =
+                            Likelihood_Model_regular<
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                                var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                                var::constexpr_Var_domain<
+                                    bool, uses_variance_correction_aproximation, true>,
+                                decltype(model0)>(
+                                model0, Simulation_n_sub_dt(n_sub_dt),
+                                uses_adaptive_aproximation_value(adaptive_aproximation),
+                                uses_recursive_aproximation_value(recursive_approximation),
+                                uses_averaging_aproximation_value(averaging_approximation),
+                                uses_variance_aproximation_value(variance_correction),
+                                uses_variance_correction_aproximation_value(
+                                    variance_correction_approximation))
+                                .get_variant();
+                        if (!maybe_modelLikelihood) {
+                            std::cerr << maybe_modelLikelihood.error()();
+                            return;
+                        }
+                        auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
                         // using m2=typename
                         // decltype(modelLikelihood_v)::paseModelLikelihoodv;
 
@@ -465,14 +507,28 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
                             t_adjust_beta, t_acceptance_upper_limit, t_acceptance_lower_limit,
                             t_desired_acceptance);
 
-                        auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                            uses_adaptive_aproximation(adaptive_aproximation),
-                            uses_recursive_aproximation(recursive_approximation),
-                            uses_averaging_aproximation(averaging_approximation),
-                            uses_variance_aproximation(variance_correction),
-                            uses_variance_correction_aproximation(
-                                variance_correction_approximation),
-                            model0, Simulation_n_sub_dt(n_sub_dt));
+                        auto maybe_modelLikelihood =
+                            Likelihood_Model_regular<
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                                var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                                var::constexpr_Var_domain<
+                                    bool, uses_variance_correction_aproximation, true>,
+                                decltype(model0)>(
+                                model0, Simulation_n_sub_dt(n_sub_dt),
+                                uses_adaptive_aproximation_value(adaptive_aproximation),
+                                uses_recursive_aproximation_value(recursive_approximation),
+                                uses_averaging_aproximation_value(averaging_approximation),
+                                uses_variance_aproximation_value(variance_correction),
+                                uses_variance_correction_aproximation_value(
+                                    variance_correction_approximation))
+                                .get_variant();
+                        if (!maybe_modelLikelihood) {
+                            std::cerr << maybe_modelLikelihood.error()();
+                            return;
+                        }
+                        auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
                         // using m2=typename
                         // decltype(modelLikelihood_v)::paseModelLikelihoodv;
 
@@ -489,6 +545,46 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
             },
             model_v);
     }
+}
+inline dcli::Compiler make_dts_compiler() {
+    dcli::Compiler cm;
+    cm.push_function(
+        "set_ThermoAlgorithm_dts",
+        dcli::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
+                                std::size_t, std::size_t, std::string, std::string, std::string,
+                                double, double, bool, double, double, double>(
+            &set_ThermoAlgorithm_dts, "num_scouts_per_ensemble", "number_trials_until_give_up",
+            "max_iter_equilibrium", "beta_size", "thermo_jumps_every",
+            "save_every_param_size_factor", "adapt_beta_every", "adapt_beta_equalizer",
+            "adapt_beta_controler", "adapt_beta_variance", "adapt_beta_nu", "adapt_beta_t0",
+            "adjust_beta", "acceptance_upper_limit", "acceptance_lower_limit",
+            "desired_acceptance"));
+
+    cm.push_function(
+        "thermo_evidence_dts",
+        dcli::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                                std::string, experiment_file_type, thermo_algo_dts_type,
+                                std::size_t, std::size_t, std::size_t>(
+            &calc_thermo_evidence_dts, "idname", "model", "prior", "likelihood_algorithm", "data",
+            "experiment", "thermo_algorithm", "sampling_interval",
+            "max_number_of_values_per_iteration", "init_seed"));
+    cm.push_function(
+        "thermo_evidence_dts_2",
+        dcli::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                                std::string, experiment_file_type, thermo_algo_dts_type,
+                                std::size_t, std::size_t, std::size_t>(
+            &calc_thermo_evidence_dts_2, "idname", "model", "prior", "likelihood_algorithm", "data",
+            "experiment", "thermo_algorithm", "sampling_interval",
+            "max_number_of_values_per_iteration", "init_seed"));
+    cm.push_function(
+        "thermo_evidence_dts_continuation",
+        dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+            &calc_thermo_evidence_dts_continuation, "idname", "continuation_number", "init_seed"));
+    cm.push_function("thermo_evidence_dts_continuation_2",
+                     dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+                         &calc_thermo_evidence_dts_continuation_2, "idname", "continuation_number",
+                         "init_seed"));
+    return cm;
 }
 
 }  // namespace cmd

@@ -45,36 +45,36 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                 F(logLikelihood_f{},
                   [](auto&&... x) { return logLikelihood(std::forward<decltype(x)>(x)...); })),
             var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                         uses_variance_aproximation(true)>{},
+                F(MacroR<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                         uses_variance_aproximation<true>>{},
                   [](auto&&... x) {
                       auto m = Macro_DMR{};
                       return m
-                          .Macror<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(true),
-                                  uses_variance_correction_aproximation(false)>(
+                          .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                                  uses_variance_aproximation<true>,
+                                  uses_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                         uses_variance_aproximation(false)>{},
+                F(MacroR<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                         uses_variance_aproximation<false>>{},
                   [](auto&&... x) {
                       auto m = Macro_DMR{};
                       return m
-                          .Macror<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
+                          .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                                  uses_variance_aproximation<false>,
+                                  uses_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(false), uses_averaging_aproximation(2),
-                         uses_variance_aproximation(false)>{},
+                F(MacroR<uses_recursive_aproximation<false>, uses_averaging_aproximation<2>,
+                         uses_variance_aproximation<false>>{},
                   [](auto&&... x) {
                       auto m = Macro_DMR{};
                       return m
-                          .Macror<uses_recursive_aproximation(false),
-                                  uses_averaging_aproximation(2), uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
+                          .Macror<uses_recursive_aproximation<false>,
+                                  uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
+                                  uses_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             // var::Thread_Memoizer(
@@ -197,24 +197,24 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
             )
             // .append_Fs<MacroR2>(
             //     in_progress::P<
-            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
-            //                        ::V<uses_recursive_aproximation(true)>>,
-            //         in_progress::S<::V<uses_averaging_aproximation(2)>>,
-            //         in_progress::S<::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<::V<uses_recursive_aproximation<false>>,
+            //                        ::V<uses_recursive_aproximation<true>>>,
+            //         in_progress::S<::V<uses_averaging_aproximation<2>>>,
+            //         in_progress::S<::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation(false)>>>{});
+            //             ::V<uses_variance_correction_aproximation<false>>>>{});
             // .append_Fs<MacroR2>(
             //     in_progress::P<
-            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
-            //                        ::V<uses_recursive_aproximation(true)>>,
-            //         in_progress::S<::V<uses_averaging_aproximation(0)>,
-            //                        ::V<uses_averaging_aproximation(1)>,
-            //                        ::V<uses_averaging_aproximation(2)>>,
-            //         in_progress::S<::V<uses_variance_aproximation(false)>,
-            //                        ::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<::V<uses_recursive_aproximation<false>>,
+            //                        ::V<uses_recursive_aproximation<true>>>,
+            //         in_progress::S<::V<uses_averaging_aproximation<0>>,
+            //                        ::V<uses_averaging_aproximation<1>>,
+            //                        ::V<uses_averaging_aproximation<2>>>,
+            //         in_progress::S<::V<uses_variance_aproximation<false>>,
+            //                        ::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation(false)>,
-            //             ::V<uses_variance_correction_aproximation(true)>>>{})
+            //             ::V<uses_variance_correction_aproximation<false>>,
+            //             ::V<uses_variance_correction_aproximation<true>>>>{})
             ;
     };
 }
@@ -234,36 +234,36 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                 F(logLikelihood_f{},
                   [](auto&&... x) { return logLikelihood(std::forward<decltype(x)>(x)...); })),
             var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                         uses_variance_aproximation(true)>{},
+                F(MacroR<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                         uses_variance_aproximation<true>>{},
                   [](auto&&... x) {
                       auto m = Macro_DMR{};
                       return m
-                          .Macror<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(true),
-                                  uses_variance_correction_aproximation(false)>(
+                          .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                                  uses_variance_aproximation<true>,
+                                  uses_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                         uses_variance_aproximation(false)>{},
+                F(MacroR<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                         uses_variance_aproximation<false>>{},
                   [](auto&&... x) {
                       auto m = Macro_DMR{};
                       return m
-                          .Macror<uses_recursive_aproximation(true), uses_averaging_aproximation(2),
-                                  uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
+                          .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
+                                  uses_variance_aproximation<false>,
+                                  uses_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
-                F(MacroR<uses_recursive_aproximation(false), uses_averaging_aproximation(2),
-                         uses_variance_aproximation(false)>{},
+                F(MacroR<uses_recursive_aproximation<false>, uses_averaging_aproximation<2>,
+                         uses_variance_aproximation<false>>{},
                   [](auto&&... x) {
                       auto m = Macro_DMR{};
                       return m
-                          .Macror<uses_recursive_aproximation(false),
-                                  uses_averaging_aproximation(2), uses_variance_aproximation(false),
-                                  uses_variance_correction_aproximation(false)>(
+                          .Macror<uses_recursive_aproximation<false>,
+                                  uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
+                                  uses_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::F(Calc_Qdt_step{},
@@ -355,24 +355,24 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
             )
             // .append_Fs<MacroR2>(
             //     in_progress::P<
-            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
-            //                        ::V<uses_recursive_aproximation(true)>>,
-            //         in_progress::S<::V<uses_averaging_aproximation(2)>>,
-            //         in_progress::S<::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<::V<uses_recursive_aproximation<false>>,
+            //                        ::V<uses_recursive_aproximation<true>>>,
+            //         in_progress::S<::V<uses_averaging_aproximation<2>>>,
+            //         in_progress::S<::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation(false)>>>{});
+            //             ::V<uses_variance_correction_aproximation<false>>>>{});
             // .append_Fs<MacroR2>(
             //     in_progress::P<
-            //         in_progress::S<::V<uses_recursive_aproximation(false)>,
-            //                        ::V<uses_recursive_aproximation(true)>>,
-            //         in_progress::S<::V<uses_averaging_aproximation(0)>,
-            //                        ::V<uses_averaging_aproximation(1)>,
-            //                        ::V<uses_averaging_aproximation(2)>>,
-            //         in_progress::S<::V<uses_variance_aproximation(false)>,
-            //                        ::V<uses_variance_aproximation(true)>>,
+            //         in_progress::S<::V<uses_recursive_aproximation<false>>,
+            //                        ::V<uses_recursive_aproximation<true>>>,
+            //         in_progress::S<::V<uses_averaging_aproximation<0>>,
+            //                        ::V<uses_averaging_aproximation<1>>,
+            //                        ::V<uses_averaging_aproximation<2>>>,
+            //         in_progress::S<::V<uses_variance_aproximation<false>>,
+            //                        ::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation(false)>,
-            //             ::V<uses_variance_correction_aproximation(true)>>>{})
+            //             ::V<uses_variance_correction_aproximation<false>>,
+            //             ::V<uses_variance_correction_aproximation<true>>>>{})
             ;
     };
 }
@@ -481,7 +481,7 @@ inline void calc_likelihood_old(std::string outfilename, std::string model,
 
                 auto Maybe_param1 = var::load_Parameters(par.first, par.second, model0.model_name(),
                                                          model0.names());
-                Simulated_Recording<includes_N_state_evolution(false)> y;
+                Simulated_Recording<includes_N_state_evolution<false>> y;
                 auto Maybe_y = load_simulation(recording, ",", y);
                 if (!Maybe_param1.valid() || !Maybe_y.valid()) {
                     std::cerr << "---------ERROR_______________\n";
@@ -492,17 +492,17 @@ inline void calc_likelihood_old(std::string outfilename, std::string model,
                     auto param1 = Maybe_param1.value().standard_parameter();
 
                     auto modelLikelihood = make_Likelihood_Model<
-                        uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
-                        uses_averaging_aproximation(2), uses_variance_aproximation(false),
-                        uses_variance_correction_aproximation(false)>(
+                        uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
+                        uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
+                        uses_variance_correction_aproximation<false>>(
                         model0, Simulation_n_sub_dt(n_sub_dt));
                     auto lik =
                         Macro_DMR{}
                             .log_Likelihood<
-                                uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
-                                uses_averaging_aproximation(2), uses_variance_aproximation(false),
-                                uses_variance_correction_aproximation(false),
-                                return_predictions(2)>(ftbl3, model0, param1, get<Recording>(y()),
+                                uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
+                                uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
+                                uses_variance_correction_aproximation<false>,
+                                return_predictions<2>>(ftbl3, model0, param1, get<Recording>(y()),
                                                        experiment);
                     if (lik)
                         save_Likelihood_Predictions(outfilename, lik.value(), y, experiment);
@@ -551,7 +551,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
                 var::load_Parameters(par.first, par.second, model0.model_name(), model0.names());
 
             std::vector<Experiment> xs;
-            std::vector<Simulated_Recording<includes_N_state_evolution(true)>> ys;
+            std::vector<Simulated_Recording<includes_N_state_evolution<true>>> ys;
             auto Maybe_e = load_fractioned_experiment(experiment, ",", fs, iniATP, xs);
 
             auto Maybe_y = load_fractioned_simulation(simulation, ",", ys);
@@ -569,13 +569,25 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
 
             std::string filename = file_name + "_" + ModelName + "_" + time_now();
 
-            auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                uses_adaptive_aproximation(adaptive_aproximation),
-                uses_recursive_aproximation(recursive_approximation),
-                uses_averaging_aproximation(averaging_approximation),
-                uses_variance_aproximation(variance_correction),
-                uses_variance_correction_aproximation(variance_correction_approximation), model0,
-                Simulation_n_sub_dt(n_sub_dt));
+            auto maybe_modelLikelihood =
+                Likelihood_Model_regular<
+                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                    var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                    var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                    var::constexpr_Var_domain<bool, uses_variance_correction_aproximation, true>,
+                    decltype(model0)>(
+                    model0, Simulation_n_sub_dt(n_sub_dt),
+                    uses_adaptive_aproximation_value(adaptive_aproximation),
+                    uses_recursive_aproximation_value(recursive_approximation),
+                    uses_averaging_aproximation_value(averaging_approximation),
+                    uses_variance_aproximation_value(variance_correction),
+                    uses_variance_correction_aproximation_value(variance_correction_approximation))
+                    .get_variant();
+            if (!maybe_modelLikelihood) {
+                return maybe_modelLikelihood.error()();
+            }
+            auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
             return std::visit(
                 [&ftbl3, &param1, &ys, &xs,
@@ -670,26 +682,39 @@ inline void calc_fraction_evidence(std::string model, prior_value_type prior,
                             n_points_per_decade_beta_low, medium_beta, stops_at, includes_zero,
                             saving_itervals, random_jumps);
 
-                        auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                            uses_adaptive_aproximation(adaptive_aproximation),
-                            uses_recursive_aproximation(recursive_approximation),
-                            uses_averaging_aproximation(averaging_approximation),
-                            uses_variance_aproximation(variance_correction),
-                            uses_variance_correction_aproximation(
-                                variance_correction_approximation),
-                            model0, Simulation_n_sub_dt(n_sub_dt));
-                        // using m2=typename
-                        // decltype(modelLikelihood_v)::paseModelLikelihoodv;
+                        auto maybe_modelLikelihood =
+                            Likelihood_Model_regular<
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                                var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                                var::constexpr_Var_domain<
+                                    bool, uses_variance_correction_aproximation, true>,
+                                decltype(model0)>(
+                                model0, Simulation_n_sub_dt(n_sub_dt),
+                                uses_adaptive_aproximation_value(adaptive_aproximation),
+                                uses_recursive_aproximation_value(recursive_approximation),
+                                uses_averaging_aproximation_value(averaging_approximation),
+                                uses_variance_aproximation_value(variance_correction),
+                                uses_variance_correction_aproximation_value(
+                                    variance_correction_approximation))
+                                .get_variant();
+                        if (!maybe_modelLikelihood)
+                            std::cerr << maybe_modelLikelihood.error()();
+                        else {
+                            auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
+                            // using m2=typename
+                            // decltype(modelLikelihood_v)::paseModelLikelihoodv;
 
-                        std::visit(
-                            [&ftbl3, &cbc, &param1_prior, &ys, &xs,
-                             &myseed](auto& modelLikelihood) {
-                                auto opt3 = cuevi::evidence_fraction(
-                                    ftbl3, std::move(cbc), param1_prior, modelLikelihood, ys, xs,
-                                    cuevi::Init_seed(myseed));
-                            },
-                            modelLikelihood_v);
-
+                            std::visit(
+                                [&ftbl3, &cbc, &param1_prior, &ys, &xs,
+                                 &myseed](auto& modelLikelihood) {
+                                    auto opt3 = cuevi::evidence_fraction(
+                                        ftbl3, std::move(cbc), param1_prior, modelLikelihood, ys,
+                                        xs, cuevi::Init_seed(myseed));
+                                },
+                                modelLikelihood_v);
+                        }
                     } else
                         std::cerr << Maybe_ys.error()();
                 }
@@ -775,14 +800,31 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                 medium_beta, stops_at, includes_zero, saving_itervals,
                                 random_jumps);
 
-                            auto modelLikelihood_v = Likelihood_Model_v{}.bool_op(
-                                uses_adaptive_aproximation(adaptive_aproximation),
-                                uses_recursive_aproximation(recursive_approximation),
-                                uses_averaging_aproximation(averaging_approximation),
-                                uses_variance_aproximation(variance_correction),
-                                uses_variance_correction_aproximation(
-                                    variance_correction_approximation),
-                                model0, Simulation_n_sub_dt(n_sub_dt));
+                            auto maybe_modelLikelihood =
+                                Likelihood_Model_regular<
+                                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation,
+                                                              true>,
+                                    var::constexpr_Var_domain<bool, uses_recursive_aproximation,
+                                                              true>,
+                                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
+                                    var::constexpr_Var_domain<bool, uses_variance_aproximation,
+                                                              true>,
+                                    var::constexpr_Var_domain<
+                                        bool, uses_variance_correction_aproximation, true>,
+                                    decltype(model0)>(
+                                    model0, Simulation_n_sub_dt(n_sub_dt),
+                                    uses_adaptive_aproximation_value(adaptive_aproximation),
+                                    uses_recursive_aproximation_value(recursive_approximation),
+                                    uses_averaging_aproximation_value(averaging_approximation),
+                                    uses_variance_aproximation_value(variance_correction),
+                                    uses_variance_correction_aproximation_value(
+                                        variance_correction_approximation))
+                                    .get_variant();
+                            if (!maybe_modelLikelihood) {
+                                std::cerr << maybe_modelLikelihood.error()();
+                                return;
+                            }
+                            auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
                             // using m2=typename
                             // decltype(modelLikelihood_v)::paseModelLikelihoodv;
 
@@ -899,9 +941,9 @@ saving_itervals, random_jumps
                             saving_itervals, random_jumps);
 
                         auto modelLikelihood = make_Likelihood_Model<
-                            uses_adaptive_aproximation(true), uses_recursive_aproximation(true),
-                            uses_averaging_aproximation(2), uses_variance_aproximation(false),
-                            uses_variance_correction_aproximation(false)>(
+                            uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
+                            uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
+                            uses_variance_correction_aproximation<false>>(
                             model0, Simulation_n_sub_dt(n_sub_dt));
                         auto opt3 =
                             cuevi::evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood, y,
@@ -911,6 +953,34 @@ saving_itervals, random_jumps
             },
             model_v);
     }
+}
+inline dcli::Compiler make_simulation_compiler() {
+    dcli::Compiler cm;
+    cm.push_function("get_num_parameters",
+                     dcli::to_typed_function<std::string>(&get_num_parameters, "model"));
+
+    cm.push_function(
+        "simulate",
+        dcli::to_typed_function<std::string, recording_type, experiment_type, std::size_t,
+                                std::string, parameters_value_type, simulation_algo_type>(
+            &run_simulation, "output", "recording", "experiment", "init_seed", "modelName",
+            "parameter_values", "simulation_algorithm"));
+    return cm;
+}
+inline dcli::Compiler make_cuevi_compiler() {
+    dcli::Compiler cm;
+    cm.push_function(
+        "set_CueviAlgorithm",
+        dcli::to_typed_function<std::size_t, std::size_t, double, double, bool, bool, std::size_t,
+                                std::string, double, double, std::size_t, std::string, std::size_t,
+                                std::size_t, std::size_t>(
+            &set_CueviAlgorithm, "num_scouts_per_ensemble", "number_trials_until_give_up",
+            "stops_at", "medium_beta", "includes_zero", "random_jumps", "max_iter_equilibrium",
+            "path", "n_points_per_decade_beta_high", "n_points_per_decade_beta_low",
+            "average_the_ATP_evolution", "filename", "thermo_jumps_every", "sampling_interval",
+            "max_number_of_values_per_iteration"));
+    // Si hay comandos tipo evidence_fraction con cuevi, van aquí.
+    return cm;
 }
 
 }  // namespace cmd

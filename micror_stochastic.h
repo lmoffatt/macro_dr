@@ -198,26 +198,26 @@ class Micror_parameters_likelihood {
     friend double logLikelihoodd(FuncTable& f, Micror_parameters_likelihood,
                                  Micror_state<averaging> const& p, const Patch_current& y,
                                  const Qdt& x) {
-        if constexpr (averaging.value == 2) {
+        if constexpr (averaging::value == 2) {
             auto v_Nij = p();
             auto y_mean = var::sum(elemMult(get<gmean_ij>(x)(), v_Nij()));
             auto r_var = get<Current_Noise>(x)();
-            if constexpr (variance.value)
+            if constexpr (variance::value)
                 r_var = r_var + var::sum(elemMult(get<gvar_ij>(x)(), v_Nij()));
             auto chi2 = sqr(y() - y_mean) / r_var;
 
             return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
-        } else if constexpr (averaging.value == 1) {
+        } else if constexpr (averaging::value == 1) {
             auto v_Nj = p();
             auto y_mean = var::sum(elemMult(get<gmean_i>(x)(), v_Nj()));
 
             auto r_var = get<Current_Noise>(x)();
-            if constexpr (variance.value)
+            if constexpr (variance::value)
                 r_var = r_var + var::sum(elemMult(get<gvar_i>(x)(), v_Nj()));
             auto chi2 = sqr(y() - y_mean) / r_var;
 
             return -0.5 * log(2 * std::numbers::pi * r_var) - 0.5 * chi2;
-        } else /*if constexpr (averaging.value==0) */ {
+        } else /*if constexpr (averaging::value==0) */ {
             auto v_Nj = get<N_channel_transition_count>(p());
             auto y_mean = var::sum(elemMult(get<g>(x)(), v_Nj()));
 
@@ -243,21 +243,21 @@ class Micror_parameters_likelihood {
                                   Micror_state<averaging> const& p, const Qdt& x) {
         double y_mean;
         double r_var;
-        if constexpr (averaging.value == 2) {
+        if constexpr (averaging::value == 2) {
             auto v_Nij = get<N_channel_transition_count>(p());
             y_mean = var::sum(elemMult(get<gmean_ij>(x)(), v_Nij()));
             r_var = get<Current_Noise>(x)();
-            if constexpr (variance.value)
+            if constexpr (variance::value)
                 r_var = r_var + var::sum(elemMult(get<gvar_ij>(x)(), v_Nij()));
 
-        } else if constexpr (averaging.value == 1) {
+        } else if constexpr (averaging::value == 1) {
             auto v_Nj = get<N_channel_transition_count>(p());
             y_mean = var::sum(elemMult(get<gmean_i>(x)(), v_Nj()));
 
             r_var = get<Current_Noise>(x)();
-            if constexpr (variance.value)
+            if constexpr (variance::value)
                 r_var = r_var + var::sum(elemMult(get<gvar_i>(x)(), v_Nj()));
-        } else /*if constexpr (averaging.value==0) */ {
+        } else /*if constexpr (averaging::value==0) */ {
             auto v_Nj = get<N_channel_transition_count>(p());
             y_mean = var::sum(elemMult(get<g>(x)(), v_Nj()));
 
@@ -340,7 +340,7 @@ template <uses_averaging_aproximation averaging>
 N_channel_state_count calc_Ntotal_j_sum_iter(const thermo_mcmc<Micror_state<averaging>>& data,
                                              std::size_t k, std::size_t i_beta_1) {
     Matrix<std::size_t> u;
-    if constexpr (averaging.value > 1)
+    if constexpr (averaging::value > 1)
         u = Matrix<std::size_t>(1, k, 1ul);
     else
         u = Matrix<std::size_t>(1, 1, 1ul);
@@ -373,7 +373,7 @@ template <uses_averaging_aproximation averaging>
 N_channel_state_XTX_count calc_Ntotal_j_XTX_iter(const thermo_mcmc<Micror_state<averaging>>& data,
                                                  std::size_t k, std::size_t i_beta_1) {
     Matrix<std::size_t> u;
-    if constexpr (averaging.value > 1)
+    if constexpr (averaging::value > 1)
         u = Matrix<std::size_t>(1, k, 1ul);
     else
         u = Matrix<std::size_t>(1, 1, 1ul);
@@ -494,7 +494,7 @@ auto Micror_stochastic(FunctionTable& ftbl, C_Patch_State t_prior, C_Qdt const& 
         includes_zero, myseed);
 
     // Micror_parameters_distribution<averaging> r_prior;
-    // if constexpr (averaging.value==2)
+    // if constexpr (averaging::value==2)
     // {
 
     auto Maybe_Pmean_dist = make_multivariate_normal_distribution_of_probabilities(
@@ -531,11 +531,11 @@ template <uses_averaging_aproximation averaging, uses_variance_aproximation vari
 struct MicroR {
     friend std::string ToString(MicroR) {
         std::string out = "MicroR";
-        if (averaging.value == 2)
+        if (averaging::value == 2)
             out += "_2";
         else
             out += "__";
-        if (variance.value)
+        if (variance::value)
             out += "_V";
         else
             out += "_M";

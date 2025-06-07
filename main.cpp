@@ -103,34 +103,9 @@ auto get_compiler() {
     cm.push_function("get_Observations",
                      dcli::to_typed_function<std::string>(&get_Observations, "filename"));
 
-    cm.push_function("idealize_Experiment",
-                     dcli::to_typed_function<std::string, std::string, std::string>(
-                         &idealize_Experiment, "experiment_filename", "sep", "idealized_filename"));
-
-    // cm.push_function("load_experiment",
-    //                  dcli::to_typed_function<std::string, double, double>(
-    //                      &macrodr::load_experiment, "filename",
-    //                      "frequency_of_sampling", "initial_ATP"));
-
-    cm.push_function("get_function_Table_maker",
-                     dcli::to_typed_function<std::string, std::size_t>(
-                         &get_function_Table_maker_value, "filename", "num_scouts_per_ensemble"));
-
-    /*
-auto get_Experiment(
-std::string filename = "../macro_dr/Moffatt_Hume_2007_ATP_time_7.txt",
-double frequency_of_sampling = 50e3, double initial_ATP = 0)
-*/
-    cm.push_function("get_Experiment",
-                     dcli::to_typed_function<std::string, double, double>(
-                         &get_Experiment, "filename", "frequency_of_sampling", "initial_ATP"));
-
     cm.push_function("get_Experiment_file",
                      dcli::to_typed_function<std::string, double, double>(
                          &get_Experiment_file, "filename", "frequency_of_sampling", "initial_ATP"));
-
-    cm.push_function("get_Observations",
-                     dcli::to_typed_function<std::string>(&get_Observations, "filename"));
 
     cm.push_function("get_num_parameters",
                      dcli::to_typed_function<std::string>(&get_num_parameters, "model"));
@@ -528,6 +503,20 @@ calc_thermo_evidence(std::string id,
 
     return cm;
 }
+inline dcli::Compiler make_compiler() {
+    dcli::Compiler cm;
+    cm.merge(macrodr::cmd::make_utilities_compiler());
+    cm.merge(macrodr::cmd::make_io_compiler());
+    cm.merge(macrodr::cmd::make_experiment_compiler());
+    cm.merge(macrodr::cmd::make_model_compiler());
+    cm.merge(macrodr::cmd::make_simulation_compiler());
+    cm.merge(macrodr::cmd::make_frac_compiler());
+    cm.merge(macrodr::cmd::make_dts_compiler());
+    cm.merge(macrodr::cmd::make_cuevi_compiler());
+    //  cm.merge(macrodr::cmd::make_levenberg_compiler());
+    return cm;
+}
+
 int main(int argc, char** argv) {
     print_model_Priors(2.0);
     std::vector<std::string> arguments(argc);
@@ -537,7 +526,7 @@ int main(int argc, char** argv) {
     if (!Maybe_script)
         std::cerr << "Error: \n" << Maybe_script.error()();
     else {
-        auto cm = get_compiler();
+        auto cm = make_compiler();
 
         auto s = std::move(Maybe_script.value());
         std::cout << "\n read files " << arguments << "\n" << s << "\n";

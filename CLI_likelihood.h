@@ -45,7 +45,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
 
                 auto Maybe_param1 = var::load_Parameters(par.first, par.second, model0.model_name(),
                                                          model0.names());
-                Simulated_Recording<includes_N_state_evolution(false)> y;
+                Simulated_Recording<includes_N_state_evolution<false>> y;
                 auto Maybe_y = load_simulation(recording, ",", y);
                 if (!Maybe_param1.valid() || !Maybe_y.valid()) {
                     std::cerr << "---------ERROR_______________\n";
@@ -58,36 +58,36 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                     if (recursive_approximation && averaging_approximation == 2) {
                         auto lik0 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(2),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(0)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<2>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
 
                         auto lik1 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(2),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(1)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<2>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         //  std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
 
                         auto lik2 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(2),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(2)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<2>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -100,36 +100,36 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                     } else if (recursive_approximation && averaging_approximation == 1) {
                         auto lik0 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(1),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(0)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<1>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
 
                         auto lik1 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(1),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(1)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<1>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
 
                         auto lik2 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(1),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(2)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<1>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -142,36 +142,36 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                     } else if (recursive_approximation && averaging_approximation == 0) {
                         auto lik0 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(0),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(0)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<0>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
 
                         auto lik1 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(0),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(1)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<0>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
 
                         auto lik2 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(true),
-                                                uses_averaging_aproximation(0),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(2)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<true>,
+                                                uses_averaging_aproximation<0>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -184,36 +184,36 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                     } else if (!recursive_approximation && averaging_approximation == 1) {
                         auto lik0 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(false),
-                                                uses_averaging_aproximation(1),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(0)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<false>,
+                                                uses_averaging_aproximation<1>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
 
                         auto lik1 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(false),
-                                                uses_averaging_aproximation(1),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(1)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<false>,
+                                                uses_averaging_aproximation<1>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
 
                         auto lik2 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(false),
-                                                uses_averaging_aproximation(1),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(2)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<false>,
+                                                uses_averaging_aproximation<1>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -226,36 +226,36 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                     } else if (!recursive_approximation && averaging_approximation == 0) {
                         auto lik0 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(false),
-                                                uses_averaging_aproximation(0),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(0)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<false>,
+                                                uses_averaging_aproximation<0>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
 
                         auto lik1 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(false),
-                                                uses_averaging_aproximation(0),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(1)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<false>,
+                                                uses_averaging_aproximation<0>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
 
                         auto lik2 =
                             Macro_DMR{}
-                                .log_Likelihood<uses_adaptive_aproximation(true),
-                                                uses_recursive_aproximation(false),
-                                                uses_averaging_aproximation(0),
-                                                uses_variance_aproximation(true),
-                                                uses_variance_correction_aproximation(false),
-                                                return_predictions(2)>(
+                                .log_Likelihood<uses_adaptive_aproximation<true>,
+                                                uses_recursive_aproximation<false>,
+                                                uses_averaging_aproximation<0>,
+                                                uses_variance_aproximation<true>,
+                                                uses_variance_correction_aproximation<false>,
+                                                return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -270,6 +270,15 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
             },
             model_v);
     }
+}
+inline dcli::Compiler make_likelihood_compiler() {
+    dcli::Compiler cm;
+    cm.push_function("likelihood",
+                     dcli::to_typed_function<std::string, std::string, parameters_value_type,
+                                             likelihood_algo_type, std::string, experiment_type>(
+                         &calc_likelihood, "output", "model", "parameter_values",
+                         "likelihood_algorithm", "recording", "experiment"));
+    return cm;
 }
 
 }  // namespace cmd
