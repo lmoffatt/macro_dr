@@ -95,6 +95,183 @@ template <auto x>
 struct V {
     constexpr static decltype(x) value = x;
 };
+template <class T0, class T1, class... Ts>
+class constexpr_P {};
+template <class T0, class T1, class... Ts>
+class constexpr_S {};
+template <template <class T0, class T1, class... Ts> class constexpr_P,
+          template <class T0, class T1, class... Ts> class constexpr_S>
+struct algebra {
+    template <class X, class Y, class Z, class... Us>
+    constexpr auto P_constexpr(X, Y, Z, Us...) {
+        return P_constexpr(P_constexpr(X{}, Y{}), Z{}, Us{}...);
+    }
+
+    template <class X, class Y, class Z, class... Us>
+    constexpr auto S_constexpr(X, Y, Z, Us...) {
+        return S_constexpr(S_constexpr(X{}, Y{}), Z{}, Us{}...);
+    }
+
+    template <class X, class Y>
+    constexpr auto P_constexpr(X, Y) {
+        return constexpr_P<X, Y>{};
+    }
+
+    template <class X, class Y0, class Y1, class... Ys>
+    constexpr auto P_constexpr(X, constexpr_P<Y0, Y1, Ys...>) {
+        return constexpr_P<X, Y0, Y1, Ys...>{};
+    }
+    template <class X0, class X1, class... Xs, class Y>
+    constexpr auto P_constexpr(constexpr_P<X0, X1, Xs...>, Y) {
+        return constexpr_P<X0, X1, Xs..., Y>{};
+    }
+
+    template <class X0, class X1, class... Xs, class Y0, class Y1, class... Ys>
+    constexpr auto P_constexpr(constexpr_P<X0, X1, Xs...>, constexpr_P<Y0, Y1, Ys...>) {
+        return constexpr_P<X0, X1, Xs..., Y0, Y1, Ys...>{};
+    }
+
+    template <class X, class Y>
+    constexpr auto S_constexpr(X, Y) {
+        return constexpr_S<X, Y>{};
+    }
+
+    template <class X, class Y0, class Y1, class... Ys>
+    constexpr auto S_constexpr(X, constexpr_S<Y0, Y1, Ys...>) {
+        return constexpr_S<X, Y0, Y1, Ys...>{};
+    }
+    template <class X0, class X1, class... Xs, class Y>
+    constexpr auto S_constexpr(constexpr_S<X0, X1, Xs...>, Y) {
+        return constexpr_S<X0, X1, Xs..., Y>{};
+    }
+
+    template <class X0, class X1, class... Xs, class Y0, class Y1, class... Ys>
+    constexpr auto S_constexpr(constexpr_S<X0, X1, Xs...>, constexpr_S<Y0, Y1, Ys...>) {
+        return constexpr_S<X0, X1, Xs..., Y0, Y1, Ys...>{};
+    }
+
+    template <class X0, class X1, class... Xs, class Y>
+    constexpr auto P_constexpr(constexpr_S<X0, X1, Xs...>, Y) {
+        return S_constexpr(P_constexpr(X0{}, Y{}), P_constexpr(X1{}, Y{}),
+                           P_constexpr(Xs{}, Y{})...);
+    }
+
+    template <class X, class Y0, class Y1, class... Ys>
+    constexpr auto P_constexpr(X, constexpr_S<Y0, Y1, Ys...>) {
+        return S_constexpr(P_constexpr(X{}, Y0{}), P_constexpr(X{}, Y1{}),
+                           P_constexpr(X{}, Ys{})...);
+    }
+};
+
+template <template <class T0, class... Ts> class constexpr_P,
+          template <class T0, class... Ts> class constexpr_S>
+struct algebra_2 {
+    template <class T>
+    static constexpr bool is_regular =
+        !is_of_this_template_type_v<T, constexpr_P> && !is_of_this_template_type_v<T, constexpr_S>;
+
+    template <class T>
+    static constexpr bool is_sum = is_of_this_template_type_v<T, constexpr_S>;
+
+    template <class X, class Y, class... Us>
+    struct P_constexpr_impl;
+
+    template <class X, class Y, class... Us>
+    using P_constexpr = typename P_constexpr_impl<X, Y, Us...>::type;
+
+    template <class X, class... Us>
+    struct S_constexpr_impl;
+    template <class X, class... Us>
+    using S_constexpr = typename S_constexpr_impl<X, Us...>::type;
+
+    template <class X, class Y, class Z, class... Us>
+    struct P_constexpr_impl<X, Y, Z, Us...> {
+        using type = P_constexpr<P_constexpr<X, Y>, Z, Us...>;
+    };
+
+    template <class X, class Y, class Z, class... Us>
+    struct S_constexpr_impl<X, Y, Z, Us...> {
+        using type = S_constexpr<S_constexpr<X, Y>, Z, Us...>;
+    };
+
+    template <class X, class Y>
+        requires is_regular<X> && is_regular<Y>
+    struct P_constexpr_impl<X, Y> {
+        using type = constexpr_P<X, Y>;
+    };
+
+    template <class X, class Y0, class Y1, class... Ys>
+        requires is_regular<X>
+    struct P_constexpr_impl<X, constexpr_P<Y0, Y1, Ys...>> {
+        using type = constexpr_P<X, Y0, Y1, Ys...>;
+    };
+
+    template <class X0, class X1, class... Xs, class Y>
+        requires is_regular<Y>
+    struct P_constexpr_impl<constexpr_P<X0, X1, Xs...>, Y> {
+        using type = constexpr_P<X0, X1, Xs..., Y>;
+    };
+
+    template <class X0, class X1, class... Xs, class Y0, class Y1, class... Ys>
+    struct P_constexpr_impl<constexpr_P<X0, X1, Xs...>, constexpr_P<Y0, Y1, Ys...>> {
+        using type = constexpr_P<X0, X1, Xs..., Y0, Y1, Ys...>;
+    };
+
+    template <class X, class Y>
+        requires(!is_sum<X>) && (!is_sum<Y>)
+    struct S_constexpr_impl<X, Y> {
+        using type = constexpr_S<X, Y>;
+    };
+
+    template <class X, class Y0, class Y1, class... Ys>
+        requires(!is_sum<X>)
+    struct S_constexpr_impl<X, constexpr_S<Y0, Y1, Ys...>> {
+        using type = constexpr_S<X, Y0, Y1, Ys...>;
+    };
+    template <class X0, class X1, class... Xs, class Y>
+        requires(!is_sum<Y>)
+    struct S_constexpr_impl<constexpr_S<X0, X1, Xs...>, Y> {
+        using type = constexpr_S<X0, X1, Xs..., Y>;
+    };
+
+    template <class X0, class X1, class... Xs, class Y0, class Y1, class... Ys>
+    struct S_constexpr_impl<constexpr_S<X0, X1, Xs...>, constexpr_S<Y0, Y1, Ys...>> {
+        using type = constexpr_S<X0, X1, Xs..., Y0, Y1, Ys...>;
+    };
+
+    template <class X0, class... Xs>
+    struct S_constexpr_impl<constexpr_S<X0, Xs...>> {
+        using type = constexpr_S<X0, Xs...>;
+    };
+    template <class X>
+        requires(!is_sum<X>)
+    struct S_constexpr_impl<X> {
+        using type = constexpr_S<X>;
+    };
+
+    template <class X, class Y0, class... Ys>
+        requires(!is_sum<X>)
+    struct P_constexpr_impl<X, constexpr_S<Y0, Ys...>> {
+        using type = S_constexpr<P_constexpr<X, Y0>, P_constexpr<X, Ys>...>;
+    };
+    template <class X0, class... Xs, class Y>
+    struct P_constexpr_impl<constexpr_S<X0, Xs...>, Y> {
+        using type = S_constexpr<P_constexpr<X0, Y>, P_constexpr<Xs, Y>...>;
+    };
+};
+
+using res = algebra_2<constexpr_P, constexpr_S>::P_constexpr<constexpr_S<int, double>,
+                                                             constexpr_S<int, double>>;
+
+template <class T, T x>
+struct constexpr_value {
+    constexpr static decltype(x) value = x;
+};
+
+template <typename T, T... allowed>
+struct constexpr_domain {
+    static constexpr std::array<T, sizeof...(allowed)> values = {allowed...};
+};
 
 template <template <class...> class>
 struct Co {};

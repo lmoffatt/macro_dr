@@ -418,6 +418,19 @@ Maybe_error<std::tuple<std::unique_ptr<Ts>...>> promote_Maybe_error(
         std::move(x));
 }
 
+template <class... Ts>
+    requires(((!is_of_this_template_type_v<Ts, std::unique_ptr>)) && ...)
+Maybe_error<std::tuple<Ts...>> promote_Maybe_error(std::tuple<Maybe_error<Ts>...>&& x) {
+    return std::apply(
+        [](auto&&... e) -> Maybe_error<std::tuple<Ts...>> {
+            if ((e.valid() && ... && true))
+                return std::tuple(std::move(e.value())...);
+            else
+                return error_message((e.error()() + ... + ""));
+        },
+        std::move(x));
+}
+
 template <class T, class S>
     requires(is_Maybe_error<T> || is_Maybe_error<S>)
 auto operator+(const T& x, const S& y) {

@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <ostream>
+#include <string>
 #include <type_traits>
 
 #include "general_algorithm_on_containers.h"
@@ -340,34 +341,91 @@ var build(T... x) {
 //     requires ((std::constructible_from<var<T...>,T...>)&&(!std::is_same_v<var<T...>,Fun<T...>>))
 // var<T...> build(T...x){return var(std::forward<T>(x)...);}
 
-template <class...>
-class struct_Var;
-
-template <class Id>
-class struct_Var<Id> {};
-
-template <class Id, class T>
-class struct_Var<Id, T> {
+template <class T, template <T> class Id, T v>
+class constexpr_Var {
    public:
-    T value;
-    static constexpr bool is_variable = true;
-    constexpr struct_Var(T t_x) : value{t_x} {
-    }
-    constexpr auto& operator[](struct_Var<Id>) const {
-        return *this;
-    }
-    constexpr struct_Var() {
-    }
+    using value_type = T;
 
-    friend auto& operator<<(std::ostream& os, struct_Var x) {
+    static constexpr T value = v;
+    static constexpr bool is_variable = true;
+
+    friend auto& operator<<(std::ostream& os, constexpr_Var x) {
         os << x.value;
         return os;
     }
-    friend auto& put(std::ostream& os, const struct_Var& x) {
+    friend auto& put(std::ostream& os, const constexpr_Var& x) {
         os << x.value << "\t";
         return os;
     }
 };
+
+template <class T, template <T> class Id>
+class constexpr_Var_value {
+   public:
+    using value_type = T;
+
+    T value;
+    static constexpr bool is_variable = true;
+
+    constexpr constexpr_Var_value(T value) : value{value} {
+    }
+    constexpr constexpr_Var_value() {
+    }
+
+    friend auto& operator<<(std::ostream& os, constexpr_Var_value x) {
+        os << x.value;
+        return os;
+    }
+    friend auto& put(std::ostream& os, const constexpr_Var_value& x) {
+        os << x.value << "\t";
+        return os;
+    }
+};
+
+template <typename C, class T, template <T> class Id>
+struct is_this_constexpr_Var : std::false_type {};
+
+template <class T, template <T> class Id, T v>
+struct is_this_constexpr_Var<Id<v>, T, Id> : std::true_type {};
+template <typename C, class T, template <T> class Id>
+inline constexpr bool is_this_constexpr_Var_v =
+    is_this_constexpr_Var<std::decay_t<C>, T, Id>::value;
+
+template <typename C, typename T, template <T> class Id>
+concept is_this_constexpr_Var_c = is_this_constexpr_Var<std::decay_t<C>, T, Id>::value;
+
+template <class T, template <T> class Id, T... allowed>
+struct constexpr_Var_domain {
+    using value_type = T;
+    static constexpr std::array<value_type, sizeof...(allowed)> values = {allowed...};
+    using variant_type = std::variant<Id<allowed>...>;
+
+    inline static std::map<T, variant_type> to_variant_map = {
+        std::pair<T, variant_type>(allowed, Id<allowed>{})...};
+
+    static Maybe_error<variant_type> to_variant(T x) {
+        auto it = to_variant_map.find(x);
+        if (it == to_variant_map.end()) {
+            std::string joined;
+            ((joined += std::to_string(allowed) + ", "), ...);
+            return error_message(std::to_string(x) + " is not in {" + joined + "}");
+
+        } else
+            return it->second;
+    }
+};
+template <typename C, class T, template <T> class Id>
+struct is_this_constexpr_Var_domain : std::false_type {};
+
+template <class T, template <T> class Id, T... v>
+struct is_this_constexpr_Var_domain<constexpr_Var_domain<T, Id, v...>, T, Id> : std::true_type {};
+
+template <typename C, typename T, template <T> class Id>
+concept is_this_constexpr_Var_domain_c =
+    is_this_constexpr_Var_domain<std::decay_t<C>, T, Id>::value;
+
+template <auto... ts>
+struct constexpr_par {};
 
 /*
 
