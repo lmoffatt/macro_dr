@@ -69,7 +69,7 @@ MacroDR exposes a custom, type-safe, and extensible DSL for scientific modeling.
    ```cpp
    cm.push_function(
        "get_Experiment_file",
-       dcli::to_typed_function<std::string, double, double>(
+       dsl::to_typed_function<std::string, double, double>(
            &get_Experiment_file,
            "filename", "frequency_of_sampling", "initial_ATP"
        )

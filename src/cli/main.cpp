@@ -6,6 +6,9 @@
 
 //#include "CLI_thermo_evidence_fraction_dts.h"
 //#include "CLI_thermo_levenberg_evidence.h"
+#include <macrodr/cmd/init_commands.h>
+#include <macrodr/dsl/lexer_typed.h>
+
 #include <cstddef>
 #include <fstream>
 #include <iostream>
@@ -14,7 +17,6 @@
 
 #include "experiment.h"
 #include "lapack_headers.h"
-#include "lexer_typed.h"
 #include "maybe_error.h"
 #include "models_MoffattHume_allosteric.h"
 #include "qmodel.h"
@@ -81,34 +83,34 @@ Maybe_error<std::string> read_from_input_files_or_commands(std::vector<std::stri
 }
 
 auto get_compiler() {
-    auto cm = dcli::Compiler{};
+    auto cm = dsl::Compiler{};
     using namespace cmd;
     cm.push_function("get_random_Id",
-                     dcli::to_typed_function<std::string>(&get_random_id, "prefix"));
+                     dsl::to_typed_function<std::string>(&get_random_id, "prefix"));
 
-    cm.push_function("get_number", dcli::to_typed_function<std::size_t>(&get_number, "n"));
+    cm.push_function("get_number", dsl::to_typed_function<std::size_t>(&get_number, "n"));
 
-    cm.push_function("write_text", dcli::to_typed_function<std::string, std::string>(
+    cm.push_function("write_text", dsl::to_typed_function<std::string, std::string>(
                                        &write_text, "filename", "text"));
 
     cm.push_function("write_script",
-                     dcli::to_typed_function<std::string>(&write_script, "script_name"));
+                     dsl::to_typed_function<std::string>(&write_script, "script_name"));
 
-    cm.push_function("load_Parameter", dcli::to_typed_function<std::string, std::string>(
+    cm.push_function("load_Parameter", dsl::to_typed_function<std::string, std::string>(
                                            &load_Parameter_value, "filename", "separator"));
 
-    cm.push_function("load_Prior", dcli::to_typed_function<std::string, std::string>(
+    cm.push_function("load_Prior", dsl::to_typed_function<std::string, std::string>(
                                        &load_Prior_value, "filename", "separator"));
 
     cm.push_function("get_Observations",
-                     dcli::to_typed_function<std::string>(&get_Observations, "filename"));
+                     dsl::to_typed_function<std::string>(&get_Observations, "filename"));
 
     cm.push_function("get_Experiment_file",
-                     dcli::to_typed_function<std::string, double, double>(
+                     dsl::to_typed_function<std::string, double, double>(
                          &get_Experiment_file, "filename", "frequency_of_sampling", "initial_ATP"));
 
     cm.push_function("get_num_parameters",
-                     dcli::to_typed_function<std::string>(&get_num_parameters, "model"));
+                     dsl::to_typed_function<std::string>(&get_num_parameters, "model"));
 
     /**
 *
@@ -116,7 +118,7 @@ auto get_compiler() {
 double prior_error ,
 const std::string& modelname*/
 
-    cm.push_function("get_Prior", dcli::to_typed_function<double, std::string>(
+    cm.push_function("get_Prior", dsl::to_typed_function<double, std::string>(
                                       &get_Prior, "prior_error", "model"));
 
     /**
@@ -129,7 +131,7 @@ variance_correction_approximation,  std::size_t n_sub_dt)
 
     cm.push_function(
         "set_Likelihood_algorithm",
-        dcli::to_typed_function<bool, bool, int, bool, bool, std::size_t>(
+        dsl::to_typed_function<bool, bool, int, bool, bool, std::size_t>(
             &set_Likelihood_algorithm, "adaptive_aproximation", "recursive_approximation",
             "averaging_approximation", "variance_correction_approximation",
             "variance_approximation", "n_sub_dt"));
@@ -141,7 +143,7 @@ inline auto set_Fraction_algorithm(
   std::string segments)
 * */
 
-    // cm.push_function("set_fraction_algorithm", dcli::to_typed_function<double, double, std::string>(
+    // cm.push_function("set_fraction_algorithm", dsl::to_typed_function<double, double, std::string>(
     //                                                &set_Fraction_algorithm, "min_fraction",
     //                                                "n_points_per_decade_fraction", "segments"));
 
@@ -153,7 +155,7 @@ inline auto set_Fraction_algorithm(
 
     // cm.push_function(
     //     "fraction_experiment",
-    //     dcli::to_typed_function<std::string, std::string, experiment_type, fraction_algo_type,
+    //     dsl::to_typed_function<std::string, std::string, experiment_type, fraction_algo_type,
     //                             Maybe_error<std::size_t>, std::size_t>(
     //         &calc_experiment_fractions, "save_name", "recording", "experiment",
     //         "fraction_algorithm", "number_of_parameters", "init_seed"));
@@ -169,7 +171,7 @@ fraction_algo, std::string model,std::size_t i_seed )
     // if constexpr(false){
     // cm.push_function(
     //     "fraction_simulation",
-    //     dcli::to_typed_function<std::string, std::string, cmd::experiment_type,
+    //     dsl::to_typed_function<std::string, std::string, cmd::experiment_type,
     //                             fraction_algo_type, Maybe_error<std::size_t>,
     //                             std::size_t>(
     //         &cmd::calc_simulation_fractions, "save_name", "simulation",
@@ -189,7 +191,7 @@ fraction_algo, std::string model,std::size_t i_seed )
     // if constexpr(false){
     // cm.push_function(
     //     "fraction_likelihood",
-    //     dcli::to_typed_function<std::string, std::string, parameters_value_type,
+    //     dsl::to_typed_function<std::string, std::string, parameters_value_type,
     //                             fractioned_simulation_type, likelihood_algo_type,
     //                             tablefun_value_type>(
     //         &calc_fraction_likelihood, "file_name", "model", "parameter",
@@ -209,7 +211,7 @@ fraction_algo, std::string model,std::size_t i_seed )
     // if constexpr(false){
     // cm.push_function(
     //     "evidence_fraction",
-    //     dcli::to_typed_function<std::string, prior_value_type,
+    //     dsl::to_typed_function<std::string, prior_value_type,
     //                             likelihood_algo_type, fractioned_simulation_type,
     //                             cuevi_algo_type, tablefun_value_type,
     //                             std::size_t>(
@@ -234,7 +236,7 @@ fraction_algo, std::string model,std::size_t i_seed )
     /*
     cm.push_function(
         "set_CueviAlgorithm",
-        dcli::to_typed_function<std::size_t, std::size_t, double, double, bool, bool, std::size_t,
+        dsl::to_typed_function<std::size_t, std::size_t, double, double, bool, bool, std::size_t,
                                 std::string, double, double, std::size_t, std::string, std::size_t,
                                 std::size_t, std::size_t>(
             &set_CueviAlgorithm, "num_scouts_per_ensemble", "number_trials_until_give_up",
@@ -257,7 +259,7 @@ fraction_algo, std::string model,std::size_t i_seed )
     //   if constexpr(false){
     //   cm.push_function(
     //       "set_ThermoAlgorithm",
-    //       dcli::to_typed_function<std::size_t ,
+    //       dsl::to_typed_function<std::size_t ,
     //                               std::size_t ,
     //                               double ,
     //                               double , double ,
@@ -277,9 +279,9 @@ fraction_algo, std::string model,std::size_t i_seed )
 
     cm.push_function(
         "set_ThermoAlgorithm_dts",
-        dcli::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
-                                std::size_t, std::size_t, std::string, std::string, std::string,
-                                double, double, bool, double, double, double>(
+        dsl::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,
+                               std::size_t, std::size_t, std::string, std::string, std::string,
+                               double, double, bool, double, double, double>(
             &set_ThermoAlgorithm_dts, "num_scouts_per_ensemble", "number_trials_until_give_up",
             "max_iter_equilibrium", "beta_size", "thermo_jumps_every",
             "save_every_param_size_factor", "adapt_beta_every", "adapt_beta_equalizer",
@@ -290,7 +292,7 @@ fraction_algo, std::string model,std::size_t i_seed )
     // if constexpr (false){
     // cm.push_function(
     //     "set_ThermoAlgorithm_fraction_dts",
-    //     dcli::to_typed_function<    std::size_t ,
+    //     dsl::to_typed_function<    std::size_t ,
     //                             std::size_t ,
     //                             std::size_t , std::size_t ,
     //                             std::size_t , std::size_t ,std::size_t ,
@@ -324,7 +326,7 @@ calc_thermo_evidence(std::string id,
     //   if constexpr(false){
     //   cm.push_function(
     //       "thermo_evidence",
-    //       dcli::to_typed_function<std::string,
+    //       dsl::to_typed_function<std::string,
     //                               std::string, std::string, likelihood_algo_type, std::string,
     //                               experiment_file_type, thermo_algo_type, std::size_t, std::size_t, std::size_t>(
     //           &calc_thermo_evidence, "idname","model", "prior", "likelihood_algorithm",
@@ -334,18 +336,18 @@ calc_thermo_evidence(std::string id,
 
     cm.push_function(
         "thermo_evidence_dts",
-        dcli::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
-                                std::string, experiment_file_type, thermo_algo_dts_type,
-                                std::size_t, std::size_t, std::size_t>(
+        dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                               std::string, experiment_file_type, thermo_algo_dts_type, std::size_t,
+                               std::size_t, std::size_t>(
             &calc_thermo_evidence_dts, "idname", "model", "prior", "likelihood_algorithm", "data",
             "experiment", "thermo_algorithm", "sampling_interval",
             "max_number_of_values_per_iteration", "init_seed"));
 
     cm.push_function(
         "thermo_evidence_dts_2",
-        dcli::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
-                                std::string, experiment_file_type, thermo_algo_dts_type,
-                                std::size_t, std::size_t, std::size_t>(
+        dsl::to_typed_function<std::string, std::string, std::string, likelihood_algo_type,
+                               std::string, experiment_file_type, thermo_algo_dts_type, std::size_t,
+                               std::size_t, std::size_t>(
             &calc_thermo_evidence_dts_2, "idname", "model", "prior", "likelihood_algorithm", "data",
             "experiment", "thermo_algorithm", "sampling_interval",
             "max_number_of_values_per_iteration", "init_seed"));
@@ -354,7 +356,7 @@ calc_thermo_evidence(std::string id,
 
     // cm.push_function(
     //     "thermo_fraction_evidence_dts",
-    //     dcli::to_typed_function<std::string,
+    //     dsl::to_typed_function<std::string,
     //                             std::string, std::string, likelihood_algo_type, fractioned_experiment_type, thermo_algo_fraction_dts_type, std::size_t,std::size_t, std::size_t>(
     //         &calc_thermo_evidence_fraction_dts, "idname","model", "prior", "likelihood_algorithm",
     //         "fractional_experiment",  "thermo_algorithm", "sampling_interval","max_number_of_values_per_iteration",
@@ -369,7 +371,7 @@ calc_thermo_evidence(std::string id,
     // if constexpr(false){
     // cm.push_function(
     //     "thermo_evidence_continuation",
-    //     dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+    //     dsl::to_typed_function<std::string, std::size_t, std::size_t>(
     //         &calc_thermo_evidence_continuation, "idname","continuation_number",
     //         "init_seed"));
 
@@ -377,11 +379,11 @@ calc_thermo_evidence(std::string id,
 
     cm.push_function(
         "thermo_evidence_dts_continuation",
-        dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+        dsl::to_typed_function<std::string, std::size_t, std::size_t>(
             &calc_thermo_evidence_dts_continuation, "idname", "continuation_number", "init_seed"));
 
     cm.push_function("thermo_evidence_dts_continuation_2",
-                     dcli::to_typed_function<std::string, std::size_t, std::size_t>(
+                     dsl::to_typed_function<std::string, std::size_t, std::size_t>(
                          &calc_thermo_evidence_dts_continuation_2, "idname", "continuation_number",
                          "init_seed"));
 
@@ -400,7 +402,7 @@ calc_thermo_evidence(std::string id,
 
     // cm.push_function(
     //     "set_ThermoLevenAlgorithm",
-    //     dcli::to_typed_function<std::size_t ,
+    //     dsl::to_typed_function<std::size_t ,
     //                             std::size_t ,
     //                             double ,
     //                             double , double ,
@@ -434,7 +436,7 @@ calc_thermo_evidence(std::string id,
     // if constexpr (false){
     // cm.push_function(
     //     "thermo_levenberg_evidence",
-    //     dcli::to_typed_function<std::string,
+    //     dsl::to_typed_function<std::string,
     //                             std::string, std::string, likelihood_algo_type, std::string,
     //                             experiment_file_type, thermo_leven_algo_type, std::size_t, std::size_t,std::size_t, double>(
     //         &calc_thermo_levenberg_evidence, "idname","model", "prior", "likelihood_algorithm",
@@ -449,7 +451,7 @@ calc_thermo_evidence(std::string id,
    * */
 
     cm.push_function("simulation_algorithm",
-                     dcli::to_typed_function<bool, std::size_t>(
+                     dsl::to_typed_function<bool, std::size_t>(
                          &set_simulation_algorithm, "include_N_states", "number_of_substeps"));
 
     /**
@@ -462,8 +464,8 @@ calc_thermo_evidence(std::string id,
 
     cm.push_function(
         "simulate",
-        dcli::to_typed_function<std::string, recording_type, experiment_type, std::size_t,
-                                std::string, parameters_value_type, simulation_algo_type>(
+        dsl::to_typed_function<std::string, recording_type, experiment_type, std::size_t,
+                               std::string, parameters_value_type, simulation_algo_type>(
             &run_simulation, "output", "recording", "experiment", "init_seed", "modelName",
             "parameter_values", "simulation_algorithm"));
 
@@ -478,8 +480,8 @@ calc_thermo_evidence(std::string id,
    */
 
     cm.push_function("likelihood",
-                     dcli::to_typed_function<std::string, std::string, parameters_value_type,
-                                             likelihood_algo_type, std::string, experiment_type>(
+                     dsl::to_typed_function<std::string, std::string, parameters_value_type,
+                                            likelihood_algo_type, std::string, experiment_type>(
                          &calc_likelihood, "output", "model", "parameter_values",
                          "likelihood_algorithm", "recording", "experiment"));
 
@@ -492,7 +494,7 @@ calc_thermo_evidence(std::string id,
                                 experiment_type experiment   * */
     // if constexpr(false){
     // cm.push_function("evidence",
-    //                  dcli::to_typed_function<
+    //                  dsl::to_typed_function<
     //                      std::string, prior_value_type, likelihood_algo_type,
     //                      std::string, experiment_type, fraction_algo_type,
     //                      cuevi_algo_type, tablefun_value_type, std::size_t>(
@@ -503,8 +505,8 @@ calc_thermo_evidence(std::string id,
 
     return cm;
 }
-inline dcli::Compiler make_compiler() {
-    dcli::Compiler cm;
+inline dsl::Compiler make_compiler() {
+    dsl::Compiler cm;
     cm.merge(macrodr::cmd::make_utilities_compiler());
     cm.merge(macrodr::cmd::make_io_compiler());
     cm.merge(macrodr::cmd::make_experiment_compiler());
@@ -533,12 +535,12 @@ int main(int argc, char** argv) {
         /// Horrible hack to force the script to write itself at the start
         cmd::write_text(cmd::temp_script_file, s);
 
-        auto p = dcli::extract_program(s);
+        auto p = dsl::extract_program(s);
 
         std::cerr << p;
 
         if (p) {
-            auto c = dcli::compile_program(cm, p.value());
+            auto c = dsl::compile_program(cm, p.value());
             if (!c) {
                 std::cerr << "\n --------------Error--------\n"
                           << c.error()() << "\n --------------Error--------\n";

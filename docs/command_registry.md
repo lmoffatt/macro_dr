@@ -26,7 +26,7 @@ You can register it as a DSL command like this:
 ```cpp
 cm.push_function(
     "get_Experiment_file",
-    dcli::to_typed_function<std::string, double, double>(
+    dsl::to_typed_function<std::string, double, double>(
         &get_Experiment_file,
         "filename", "frequency_of_sampling", "initial_ATP"
     )

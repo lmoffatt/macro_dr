@@ -1,35 +1,26 @@
-# -------------------------------------------------------
-# CMakeLists.txt for macro_dr (with folder hierarchy in Qt Creator)
-# -------------------------------------------------------
-
-cmake_minimum_required(VERSION 3.10)
+# ──────────────────────────────────────────────────────────────────────
+#  Macro DR – unified top-level CMakeLists.txt
+# ──────────────────────────────────────────────────────────────────────
+cmake_minimum_required(VERSION 3.18)
 project(macro_dr LANGUAGES CXX)
 
 # -------------------------------------------------------
-# 1) Set C++ standard and common compile options
+# 1) Global compile rules              (kept from legacy)
 # -------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 add_compile_options(
-    -ftemplate-backtrace-limit=20
+    -ftemplate-backtrace-limit=20     # 
     -fmax-errors=5
     -fconcepts-diagnostics-depth=4
     -Werror=return-type
     -ftime-report
 )
-
-# Configuration-specific flags
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 # -------------------------------------------------------
-# 2) Print CMAKE_SOURCE_DIR for verification (optional)
-# -------------------------------------------------------
-message(STATUS "CMAKE_SOURCE_DIR = ${CMAKE_SOURCE_DIR}")
-
-# -------------------------------------------------------
-# 3) Obtain GIT commit hash if .git exists
+# 2) Obtain Git commit hash (unchanged)
 # -------------------------------------------------------
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
     execute_process(
@@ -37,225 +28,184 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         OUTPUT_VARIABLE GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
     )
 else()
     set(GIT_COMMIT_HASH "unknown")
 endif()
 
 # -------------------------------------------------------
-# 4) Find dependencies: OpenMP, BLAS/LAPACK, GSL
-#    If find_package fails, fall back to hardcoded Nix paths with warnings.
+# 3) Third-party single-header interface target ### NEW
 # -------------------------------------------------------
+# 3) Third-party single-header interface target  ───────────────
+add_library(macrodr_thirdparty INTERFACE)
 
-# 4.1) OpenMP
-find_package(OpenMP REQUIRED)
-if(NOT OpenMP_CXX_FOUND)
-    message(FATAL_ERROR "OpenMP not found. Load a compiler/module with -fopenmp support.")
-endif()
+# > BUILD_INTERFACE  – during build  → point at source tree
+# > INSTALL_INTERFACE – after install → point inside include dir
+target_include_directories(macrodr_thirdparty SYSTEM INTERFACE
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third_party>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/macrodr/third_party>)
 
-# 4.2) BLAS and LAPACK
+install(TARGETS macrodr_thirdparty EXPORT macrodrTargets)
+
+# Copy the header(s) so the install-side path is valid
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/macrodr/third_party
+        FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+
+
+# -------------------------------------------------------
+# 4) Find heavy dependencies (OpenMP, BLAS/LAPACK, GSL)
+# -------------------------------------------------------
+find_package(OpenMP REQUIRED)                                    # 
 find_package(BLAS)
 find_package(LAPACK)
 if(LAPACK_FOUND AND BLAS_FOUND)
     set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 else()
-    message(WARNING
-        "find_package(BLAS/LAPACK) failed. "
-        "Falling back to hardcoded Nix paths for BLAS and LAPACK."
-    )
+    message(WARNING "BLAS/LAPACK not found – falling back to Nix store paths")
     set(lapackblas_libraries
         /nfs/home/lmoffatt/.nix-profile/lib/libcblas.so
-        /nfs/home/lmoffatt/.nix-profile/lib/liblapack.so
-    )
+        /nfs/home/lmoffatt/.nix-profile/lib/liblapack.so )      # 
 endif()
 
-# 4.3) GSL
 find_package(GSL)
 if(GSL_FOUND)
     set(gsl_library ${GSL_LIBRARY})
     set(gsl_dir     ${GSL_INCLUDE_DIR})
 else()
-    message(WARNING
-        "find_package(GSL) failed. "
-        "Falling back to hardcoded Nix path for GSL."
-    )
+    message(WARNING "GSL not found – falling back to Nix store path")
     set(gsl_library /nfs/home/lmoffatt/.nix-profile/lib/libgsl.so)
-    set(gsl_dir     /nix/store/snnl5y7hbk7b49cvfi8mhvgzrknjwz1p-gsl-2.7.1-dev/include/)
+    set(gsl_dir     /nix/store/snnl5y7hbk7b49cvfi8mhvgzrknjwz1p-gsl-2.7.1-dev/include/)   # 
 endif()
 
 # -------------------------------------------------------
-# 5) Collect only the C++ source/header files (*.cpp, *.h)
-#    from the entire project tree.
+# 5) Public include directory ### NEW
 # -------------------------------------------------------
-file(GLOB_RECURSE PROJECT_SOURCES
-    "${CMAKE_SOURCE_DIR}/*.cpp"
-    "${CMAKE_SOURCE_DIR}/*.h"
+set(MACRODR_PUBLIC_INC ${PROJECT_SOURCE_DIR}/include)
+
+# -------------------------------------------------------
+## ---------- 6) CORE library ----------------------------------------
+file(GLOB_RECURSE MACRODR_CORE_HEADERS CONFIGURE_DEPENDS
+     ${PROJECT_SOURCE_DIR}/include/macrodr/core/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/core/*.hpp
+     ${PROJECT_SOURCE_DIR}/include/macrodr/cmd/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/cmd/*.hpp
+     ${PROJECT_SOURCE_DIR}/include/macrodr/io/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/io/*.hpp
+     ${PROJECT_SOURCE_DIR}/include/macrodr/io/json/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/io/json/*.hpp
+     ${PROJECT_SOURCE_DIR}/legacy/*.h
+     ${PROJECT_SOURCE_DIR}/legacy/*.hpp
+ )
+
+file(GLOB_RECURSE MACRODR_CORE_SRC CONFIGURE_DEPENDS  src/core/*.cpp)
+
+add_library(macrodr_core STATIC
+    ${MACRODR_PUBLIC_HEADERS}
+    ${MACRODR_CORE_HEADERS}
+    ${MACRODR_CORE_SRC}
+    ${MACRODR_LEGACY_HEADERS})
+
+target_include_directories(macrodr_core PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/legacy>
+    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:legacy>)
+
+target_compile_definitions(macrodr_core
+    PUBLIC GIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
+
+# -------------------------------------------------------
+# 7) Legacy object library (kept compiling) ### NEW
+# -------------------------------------------------------
+# immediately after the block that defines macrodr_core
+target_link_libraries(macrodr_core
+    PUBLIC
+        OpenMP::OpenMP_CXX          # from find_package(OpenMP)
+        ${lapackblas_libraries}     # BLAS/LAPACK combo you built above
+        ${gsl_library}              # GSL (imported target or path)
 )
 
-# Exclude any file that lives under test_macro_dr/ (so they won't be compiled)
-list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/test_macro_dr/.*")
-list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/tst_.*\\.cpp$")
-list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/tst_.*\\.h$")
+ 
+ 
+# -------------------------------------------------------
+# ---------- 8) CLI executable --------------------------------------
+file(GLOB_RECURSE MACRODR_CLI_SRC      CONFIGURE_DEPENDS  src/cli/*.cpp)
+file(GLOB_RECURSE MACRODR_CLI_HEADERS  CONFIGURE_DEPENDS
+     ${PROJECT_SOURCE_DIR}/include/macrodr/cli/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/dsl/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/interface/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/cmd/*.h)
 
+ add_executable(macrodr_cli
+     ${MACRODR_CLI_SRC}
+     ${MACRODR_CLI_HEADERS})
 
-# (Optional) Print how many sources remain after filtering
-message(STATUS "After filtering, PROJECT_SOURCES contains:")
-foreach(src IN LISTS PROJECT_SOURCES)
-    message(STATUS "  ${src}")
-endforeach()
+target_include_directories(macrodr_cli PRIVATE
+    ${PROJECT_SOURCE_DIR}/include/macrodr/cli
+    ${PROJECT_SOURCE_DIR}/include/macrodr/dsl
+    ${PROJECT_SOURCE_DIR}/include/macrodr/interface
+    ${PROJECT_SOURCE_DIR}/include/macrodr/cmd)
 
-# Create a source group so IDEs show the folder hierarchy under "Sources"
-source_group(
-    "Sources"
-    TREE ${CMAKE_SOURCE_DIR}
-    FILES ${PROJECT_SOURCES}
-)
+target_link_libraries(macrodr_cli PRIVATE macrodr_core)
 
 # -------------------------------------------------------
-# Define the executable using only PROJECT_SOURCES (excluding test_macro_dr)
+# 9) Data-file groups for Qt Creator (unchanged)
 # -------------------------------------------------------
-add_executable(macro_dr
-    ${PROJECT_SOURCES}
-)
-
-
-
-
-# -------------------------------------------------------
-# 6) Collect “data” files (scripts, .txt, .csv, .sh) only from specific subdirectories
-#    so that they appear in the IDE but are NOT compiled.
-# -------------------------------------------------------
-set(DATA_DIRS
-    scripts
-    experiments
-    models
-    slurm
-    clusters
-    docs
-)
-
+set(DATA_DIRS scripts experiments models slurm clusters docs multi_task spec)
 set(PROJECT_DATA_FILES)
-
 foreach(dir IN LISTS DATA_DIRS)
-    file(GLOB_RECURSE _txt_files
-        "${CMAKE_SOURCE_DIR}/${dir}/*.txt"
-    )
-    file(GLOB_RECURSE _sh_files
-        "${CMAKE_SOURCE_DIR}/${dir}/*.sh"
-    )
-    file(GLOB_RECURSE _csv_files
-        "${CMAKE_SOURCE_DIR}/${dir}/*.csv"
-    )
-    file(GLOB_RECURSE _md_files
+    file(GLOB_RECURSE _tmp CONFIGURE_DEPENDS
         "${CMAKE_SOURCE_DIR}/${dir}/*.md"
-    )
-    list(APPEND PROJECT_DATA_FILES
-        ${_txt_files}
-        ${_sh_files}
-        ${_csv_files}
-        ${_md_files}
-    )
+         "${CMAKE_SOURCE_DIR}/${dir}/*.txt"
+         "${CMAKE_SOURCE_DIR}/${dir}/*.sh"
+         "${CMAKE_SOURCE_DIR}/${dir}/*.csv")
+    list(APPEND PROJECT_DATA_FILES ${_tmp})
 endforeach()
-
-# Also include any .txt/.sh/.csv directly in the project root (optional)
-##file(GLOB_RECURSE _root_txt_files
-#    "${CMAKE_SOURCE_DIR}/*.txt"
-#)
-#file(GLOB_RECURSE _root_sh_files
-#    "${CMAKE_SOURCE_DIR}/*.sh"
-#)
-#file(GLOB_RECURSE _root_csv_files
-#    "${CMAKE_SOURCE_DIR}/*.csv"
-#)
-list(APPEND PROJECT_DATA_FILES
-    ${_root_txt_files}
-    ${_root_sh_files}
-    ${_root_csv_files}
-)
+source_group("Headers" TREE ${CMAKE_SOURCE_DIR} FILES
+    ${MACRODR_CORE_HEADERS} ${MACRODR_CLI_HEADERS})
+source_group("Sources"     TREE ${CMAKE_SOURCE_DIR} FILES ${MACRODR_CORE_SRC} ${MACRODR_LEGACY_SRC})
+source_group("Data Files"  TREE ${CMAKE_SOURCE_DIR} FILES ${PROJECT_DATA_FILES})
+add_custom_target(data_files_group SOURCES ${PROJECT_DATA_FILES})
 
 # -------------------------------------------------------
-# 7) Create source groups with TREE so Qt Creator shows a folder hierarchy
-#    ----------------------------------------------------------------
-#  - “Sources” group will mirror folders containing your .cpp/.h files.
-#  - “Data Files” group will mirror folders containing .txt/.sh/.csv.
-# -------------------------------------------------------
-# For all source files:
-source_group(
-    "Sources"
-    TREE ${CMAKE_SOURCE_DIR}
-    FILES ${PROJECT_SOURCES}
-)
-
-# For all data files:
-source_group(
-    "Data Files"
-    TREE ${CMAKE_SOURCE_DIR}
-    PREFIX "Data Files"
-    FILES ${PROJECT_DATA_FILES}
-)
-
-# -------------------------------------------------------
-# 8) Add a custom target so Qt Creator (and other IDEs) register the data files
-#    This target has no build commands; it only exists so the IDE lists those files.
-# -------------------------------------------------------
-add_custom_target(data_files_group
-    SOURCES ${PROJECT_DATA_FILES}
-)
-
-
-# Attach the GIT_COMMIT_HASH define to the target
-target_compile_definitions(macro_dr
-    PUBLIC GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
-)
-
-# -------------------------------------------------------
-# 10) Include directories and link libraries for macro_dr
-# -------------------------------------------------------
-target_include_directories(macro_dr
-    PRIVATE ${gsl_dir}
-)
-
-target_link_libraries(macro_dr
-    PUBLIC ${lapackblas_libraries}
-           ${gsl_library}
-           OpenMP::OpenMP_CXX
-)
-
-# -------------------------------------------------------
-# 11) Installation rules (optional)
+# 10) Install rules (binary + headers)
 # -------------------------------------------------------
 include(GNUInstallDirs)
+install(TARGETS macrodr_core ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS macrodr_cli  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(DIRECTORY ${MACRODR_PUBLIC_INC}/macrodr
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+message(STATUS "PROJECT_SOURCE_DIR is: ${PROJECT_SOURCE_DIR}")
+# -------------------------------------------------------
+# 11) Export config so downstream projects can find_package(macrodr)
+# -------------------------------------------------------
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfigVersion.cmake
+    VERSION 1.0.0
+    COMPATIBILITY SameMajorVersion)
 
-# Install the executable
-install(TARGETS macro_dr
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDDIR}
-)
+configure_package_config_file(
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/macrodrConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/macrodr)
 
-# If you want `make install` to also copy scripts/experiments/models/slurm/clusters,
-# uncomment these blocks:
+install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/macrodr)
 
-#install(DIRECTORY scripts/
-#    DESTINATION ${CMAKE_INSTALL_BINDDIR}/scripts
-#    FILES_MATCHING PATTERN "*.txt" PATTERN "*.sh"
-#)
+#  ───  install the core library  ───────────────────────────
+install(TARGETS macrodr_core
+            EXPORT  macrodrTargets          # <- make sure this is present
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    
+# (optional) also export the CLI if you want users to link it:
+# install(TARGETS macrodr_cli
+#         EXPORT  macrodrTargets
+#         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-#install(DIRECTORY experiments/
-#    DESTINATION ${CMAKE_INSTALL_BINDDIR}/experiments
-#    FILES_MATCHING PATTERN "*.txt" PATTERN "*.csv"
-#)
-
-#install(DIRECTORY models/
-#    DESTINATION ${CMAKE_INSTALL_BINDDIR}/models
-#    FILES_MATCHING PATTERN "*.txt" PATTERN "*.csv"
-#)
-
-#install(DIRECTORY slurm/
-#    DESTINATION ${CMAKE_INSTALL_BINDDIR}/slurm
-#    FILES_MATCHING PATTERN "*.sh"
-#)
-
-#install(DIRECTORY clusters/
-#    DESTINATION ${CMAKE_INSTALL_BINDDIR}/clusters
-#    FILES_MATCHING PATTERN "*.sh"
-#)
+install(EXPORT macrodrTargets
+        NAMESPACE macrodr::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/macrodr)
