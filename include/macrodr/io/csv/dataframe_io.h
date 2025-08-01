@@ -67,6 +67,7 @@ struct RawCSV {
     std::vector<std::vector<std::string>> lines;
 };
 
+
 template <class R>
 std::optional<std::vector<R>> col_to_type_strict(const std::vector<std::string>& col,
                                                  const ParseOptions& opt);

@@ -469,7 +469,7 @@ inline Maybe_error<typed_program<Lexer, Compiler>> compile_program(
         if (!Maybe_compiled_statement)
             return Maybe_compiled_statement.error();
         else {
-            out.push_back(Maybe_compiled_statement.value());
+            out.push_back(Maybe_compiled_statement.value().release());
         }
     }
     return out;
@@ -487,19 +487,7 @@ inline Maybe_error<typed_program<Lexer, Compiler>> compile_and_run_program_line_
     }
     return out;
 }
-inline Maybe_error<typed_program<Lexer, Compiler>> compile_program(
-    Compiler& cm, const untyped_program<Lexer, Compiler>& s) {
-    typed_program<Lexer, Compiler> out;
-    for (auto& e : s.statements()) {
-        auto Maybe_compiled_statement = e->compile_statement(cm);
-        if (!Maybe_compiled_statement)
-            return Maybe_compiled_statement.error();
-        else {
-            out.push_back(Maybe_compiled_statement.value().release());
-        }
-    }
-    return out;
-}
+
 
 }  // namespace macrodr::dsl
 

@@ -420,8 +420,7 @@ template <class Lexer, class Compiler>
 class typed_program {
     std::vector<std::unique_ptr<base_typed_statement<Lexer, Compiler>>> m_statements;
 
-    std::map<Identifier<Lexer>, base_typed_expression<Lexer, Compiler>*> m_identifier_table;
-
+   
    public:
     typed_program() {
     }
@@ -436,20 +435,7 @@ class typed_program {
         return *this;
     }
 
-    auto& insert(Identifier<Lexer> id, base_typed_expression<Lexer, Compiler>* t_expr) {
-        m_identifier_table.insert_or_assign(id, t_expr);
-        return *this;
-    }
-
-    Maybe_error<base_typed_expression<Lexer, Compiler>*> compile_identifier(
-        Identifier<Lexer> const& id) const {
-        auto it = m_identifier_table.find(id);
-        if (it == m_identifier_table.end())
-            return error_message("identifier " + id() + " is not defined");
-        else
-            return (*it)->compile_identifier(id);
-    }
-
+  
     Maybe_error<Environment<Lexer, Compiler>> run() {
         Environment<Lexer, Compiler> env;
         for (auto& e : m_statements) {
