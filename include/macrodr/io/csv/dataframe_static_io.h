@@ -1,4 +1,5 @@
-#ifndef DATAFRAME_STATIC_IO_H
-#define DATAFRAME_STATIC_IO_H
+#pragma once
+namespace macrodr::io::csv {
 
-#endif  // DATAFRAME_STATIC_IO_H
+
+}
