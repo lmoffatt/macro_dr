@@ -252,7 +252,20 @@ class Matrix {
     static constexpr bool is_Matrix = true;
     static constexpr bool is_Symmetric = false;
     static constexpr bool is_Diagonal = false;
-
+    
+    auto ncols() const {
+        return ncols_;
+    }
+    auto nrows() const {
+        return nrows_;
+    }
+    auto size() const {
+        return size_;
+    }
+    ~Matrix() {
+        if constexpr (!Matrix_uses_vector)  //  std::cerr<<"release "<<size()<<"\n";
+            delete[] x_;
+    }
     static int cell_width() {
         return 12;
     }
@@ -407,20 +420,7 @@ class Matrix {
         assert((i < nrows()) && (j < ncols()));
         return x_[i * ncols_ + j];
     }
-    auto ncols() const {
-        return ncols_;
-    }
-    auto nrows() const {
-        return nrows_;
-    }
-    auto size() const {
-        return size_;
-    }
-    ~Matrix() {
-        if constexpr (!Matrix_uses_vector)  //  std::cerr<<"release "<<size()<<"\n";
-            delete[] x_;
-    }
-
+  
     template <class S>
         requires(std::is_same_v<S, T> && std::is_same_v<S, double>)
     friend auto operator*(const Matrix& a, const Matrix<S>& b) {
