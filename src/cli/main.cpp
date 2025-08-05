@@ -529,7 +529,6 @@ int main(int argc, char** argv) {
         std::cerr << "Error: \n" << Maybe_script.error()();
     else {
         auto cm = make_compiler();
-
         auto s = std::move(Maybe_script.value());
         std::cout << "\n read files " << arguments << "\n" << s << "\n";
         /// Horrible hack to force the script to write itself at the start
@@ -538,14 +537,15 @@ int main(int argc, char** argv) {
         auto p = dsl::extract_program(s);
 
         std::cerr << p;
-
+        
+        dsl::Environment<dsl::Lexer,dsl::Compiler> env(cm);
         if (p) {
-            auto c = dsl::compile_program(cm, p.value());
+            auto c = dsl::compile_program(env, p.value());
             if (!c) {
                 std::cerr << "\n --------------Error--------\n"
                           << c.error()() << "\n --------------Error--------\n";
             } else {
-                auto exec = c.value().run();
+                auto exec = c.value().run(env);
             }
         }
 

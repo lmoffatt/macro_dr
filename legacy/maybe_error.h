@@ -293,6 +293,37 @@ class Maybe_error : private std::variant<T, error_message> {
     // }
 };
 
+
+template<>
+class Maybe_error<void> : private std::variant<std::monostate, error_message> {
+    using variant_type = std::variant<std::monostate, error_message>;
+   public:
+    // success
+    Maybe_error() : variant_type{std::in_place_index<0>} {}
+    // failure
+    Maybe_error(error_message err) : variant_type{std::in_place_index<1>, std::move(err)} {}
+    
+    constexpr explicit operator bool() const noexcept {
+        return this->index() == 0;
+    }
+    constexpr bool valid() const noexcept {
+        return this->index() == 0;
+    }
+    
+    constexpr void value() const& noexcept {
+    }
+    
+    error_message error() const {
+        if (*this)
+            return error_message("");
+        else
+            return std::get<1>(*this);
+    }
+    
+
+};
+
+
 template <class T>
 Maybe_error(T&&) -> Maybe_error<T>;
 

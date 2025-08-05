@@ -8,9 +8,12 @@
 
 #include "grammar_Identifier.h"
 //#include "grammar_typed.h"
+//#include "grammar_typed.h"
 #include "maybe_error.h"
 namespace macrodr::dsl {
 
+template <class Lexer, class Compiler>
+class Environment;
 template <class Lexer, class Compiler>
 class base_typed_expression;
 template <class Lexer, class Compiler>
@@ -70,6 +73,10 @@ class untyped_literal;
 template <class Lexer, class Compiler>
 class untyped_function_evaluation;
 
+template <class Lexer, class Compiler, class P, class T>
+    requires(std::is_same_v<Maybe_error<T>,std::invoke_result_t<P, T>>)
+class typed_predicate_evaluation;
+
 template <class Lexer, class Compiler>
 class base_Identifier_compiler {
    public:
@@ -108,8 +115,24 @@ class base_function_compiler {
     virtual base_function_compiler* clone() const = 0;
 
     virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_function_evaluation(
-        Compiler const& cm, const untyped_argument_list<Lexer, Compiler>& args) const = 0;
+        Environment<Lexer,Compiler> const& cm, const untyped_argument_list<Lexer, Compiler>& args) const = 0;
 };
+
+template <class Lexer, class Compiler>
+class base_predicate_compiler {
+   public:
+    virtual ~base_predicate_compiler() {
+    }
+    
+    virtual base_predicate_compiler* clone() const = 0;
+    
+        
+    virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_predicate_evaluation(
+            Environment<Lexer,Compiler> const& cm, const untyped_expression<Lexer, Compiler>& expr) const =0;
+    
+
+};
+
 
 template <class T, class... Sources>
 struct Convertible_To;
@@ -155,7 +178,7 @@ class field_compiler {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm, untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        Environment<Lexer,Compiler> const& cm, untyped_identifier<Lexer, Compiler> const& t_arg) const {
         auto Maybe_id = cm.get_Identifier(t_arg());
         if (!Maybe_id)
             return Maybe_id.error();
@@ -181,9 +204,9 @@ class field_compiler {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm, untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
-        auto cmc = cm;
-        auto Maybe_expr = t_arg.compile_expression(cmc);
+        Environment<Lexer,Compiler> const& cm, untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
+        auto environment_local_copy = cm;
+        auto Maybe_expr = t_arg.compile_expression(environment_local_copy);
 
         if (!Maybe_expr)
             return Maybe_expr.error();
@@ -198,7 +221,7 @@ class field_compiler {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm, untyped_expression<Lexer, Compiler> const& t_arg) const {
+        Environment<Lexer,Compiler> const& cm, untyped_expression<Lexer, Compiler> const& t_arg) const {
         auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg);
         if (ptr != nullptr)
             return compile_this_argument(cm, *ptr);
@@ -218,7 +241,7 @@ class field_compiler {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm,
+        Environment<Lexer,Compiler> const& cm,
         std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
         auto ptr = dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get());
         if (ptr != nullptr) {
@@ -259,7 +282,7 @@ class field_compiler_precondition {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm, untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        Environment<Lexer,Compiler> const& cm, untyped_identifier<Lexer, Compiler> const& t_arg) const {
         auto Maybe_id = cm.get_Identifier(t_arg());
         if (!Maybe_id)
             return Maybe_id.error();
@@ -285,7 +308,7 @@ class field_compiler_precondition {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm, untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
+        Environment<Lexer,Compiler> const& cm, untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
         auto cmc = cm;
         auto Maybe_expr = t_arg.compile_expression(cmc);
 
@@ -302,7 +325,7 @@ class field_compiler_precondition {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm, untyped_expression<Lexer, Compiler> const& t_arg) const {
+        Environment<Lexer,Compiler> const& cm, untyped_expression<Lexer, Compiler> const& t_arg) const {
         auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg);
         if (ptr != nullptr)
             return compile_this_argument(cm, *ptr);
@@ -322,7 +345,7 @@ class field_compiler_precondition {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& cm,
+        Environment<Lexer,Compiler> const& cm,
         std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
         auto ptr = dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get());
         if (ptr != nullptr) {
@@ -345,6 +368,14 @@ class field_compiler_precondition {
     }
 };
 
+
+
+
+
+
+
+
+
 template <class Lexer, class Compiler, class F, class... Args>
     requires(std::is_void_v<std::invoke_result_t<F, Args...>> ||
              std::is_object_v<std::invoke_result_t<F, Args...>>)
@@ -354,7 +385,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
 
     template <std::size_t... Is>
     Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_function_evaluation_impl(
-        std::index_sequence<Is...>, Compiler const& cm,
+        std::index_sequence<Is...>, Environment<Lexer,Compiler> const& cm,
         const untyped_argument_list<Lexer, Compiler>& args) const {
         auto Maybe_tuple = promote_Maybe_error(
             std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
@@ -372,7 +403,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     }
 
     virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_function_evaluation(
-        Compiler const& cm, const untyped_argument_list<Lexer, Compiler>& args) const override {
+        Environment<Lexer,Compiler> const& cm, const untyped_argument_list<Lexer, Compiler>& args) const override {
         return compile_function_evaluation_impl(std::index_sequence_for<Args...>(), cm, args.arg());
     }
 
@@ -383,19 +414,48 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     }
 };
 
+
+template <class Lexer, class Compiler, class F, class T>
+    requires(std::is_same_v<Maybe_error<T>,std::invoke_result_t<F, T>> )
+class predicate_compiler : public base_function_compiler<Lexer, Compiler> {
+    field_compiler<Lexer, Compiler, T> m_arg;
+    F m_f;
+    
+   public:
+    predicate_compiler(F t_f, field_compiler<Lexer, Compiler, T>&& t_arg)
+        : m_f{t_f}, m_arg{std::move(t_arg)} {
+    }
+    
+    virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_predicate_evaluation(
+        Environment<Lexer,Compiler> const& cm, const untyped_expression<Lexer, Compiler>& expr) const override {
+        auto x=m_arg.compile_this_argument(cm,expr);
+        if (!x)
+            return x.error();
+        else
+            return new typed_predicate_evaluation<Lexer,Compiler,F,T>(m_f, x.value().release());
+    }
+    
+    // base_function_compiler interface
+   public:
+    virtual base_function_compiler<Lexer, Compiler>* clone() const override {
+        return new function_compiler(*this);
+    }
+};
+
+
+
 class Compiler {
     std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>> m_func;
-    std::map<Identifier<Lexer>, std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>> m_id;
-
+  
    public:
     Compiler() {
     }
     Compiler(std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>>&&
                  func)
-        : m_func{std::move(func)}, m_id{} {
+        : m_func{std::move(func)}{
     }
 
-    Compiler(const Compiler& cm) : m_func{clone_map(cm.m_func)}, m_id{clone_map(cm.m_id)} {
+    Compiler(const Compiler& cm) : m_func{clone_map(cm.m_func)} {
     }
 
     Maybe_error<base_function_compiler<Lexer, Compiler> const*> get_function(
@@ -412,33 +472,7 @@ class Compiler {
         }
     }
 
-    Maybe_unique<base_typed_expression<Lexer, Compiler>> get_Identifier(
-        const Identifier<Lexer>& id) const {
-        auto it = m_id.find(id);
-        if (it == m_id.end())
-            return error_message(id() + " function is not defined");
-        else {
-            auto ptr = (*it).second.get();
-            if (ptr == nullptr)
-                return error_message(id() + " function is null");
-            else
-                return ptr->compile_Identifier(id);
-        }
-    }
-
-    Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_Identifier(
-        const Identifier<Lexer>& id) const {
-        auto Maybe_id = get_Identifier(id);
-        if (!Maybe_id)
-            return Maybe_id.error();
-        else
-            return std::move(Maybe_id.value());
-    }
-
-    void push_back(Identifier<Lexer> id, base_Identifier_compiler<Lexer, Compiler>* expr) {
-        m_id.emplace(id, expr);
-    }
-
+    
     Maybe_error<bool> push_function(std::string id_candidate,
                                     base_function_compiler<Lexer, Compiler>* fun) {
         auto may_id = to_Identifier<Lexer>(id_candidate);
@@ -452,10 +486,6 @@ class Compiler {
         for (const auto& [name, func] : other.m_func) {
             m_func[name] = std::unique_ptr<base_function_compiler<Lexer, Compiler>>(func->clone());
         }
-        // Merge identifiers
-        for (const auto& [id, id_comp] : other.m_id) {
-            m_id[id] = std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(id_comp->clone());
-        }
     }
     void merge(Compiler&& other) {
         // Move functions
@@ -464,11 +494,6 @@ class Compiler {
         }
         other.m_func.clear();  // Opcional: limpia el mapa fuente
 
-        // Move identifiers, si aplica
-        for (auto& [id, id_comp] : other.m_id) {
-            m_id[id] = std::move(id_comp);
-        }
-        other.m_id.clear();  // Opcional
     }
 };
 
