@@ -45,18 +45,18 @@ export MAX_ITER=1000000
 export RUNTIME=3-00:00
 export EVIDENCE_ALGORITHM=thermo_dts
 
-export PATH_MACRO_DRX=w9
+export PATH_MACRO_DRX=rr1
 
 
 export CONTINUATION_NUMBER=4
 
-JOBID1=$(sbatch --parsable --job-name=RC${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
+JOBID1=$(sbatch --parsable --job-name=RC${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --constraint=${PROCESSOR} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
 for i in $(seq 5 15);
 do
     export CONTINUATION_NUMBER=$i
-    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
+    JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --constraint=${PROCESSOR} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 done
 
 

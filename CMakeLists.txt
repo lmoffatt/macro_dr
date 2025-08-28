@@ -483,6 +483,8 @@ add_executable(macro_dr main.cpp
     models_Ag_log_baseline/scheme_16_inact_PI_par.csv
     models_Ag_log_baseline/scheme_16_inact_PI_prior.csv
     models_Ag_log_baseline/scheme_16_inact_PI.txt
+    slurm/run_EP_16_scheme_10_DR_nyquist.sh
+    slurm/run_EP_16_scheme_16_DR_nyquist.sh
     
     
     

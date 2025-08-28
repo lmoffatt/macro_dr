@@ -1,28 +1,26 @@
 #!/bin/bash
 
 export NTASKS=1
-CPUSPERTASK=32
+CPUSPERTASK=16
 
 export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
 
-export N_SCH=10
-N_SCH2=10
+export N_SCH=16
+N_SCH2=16
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
 
-#export PROCESSOR=Epyc7401
-export PROCESSOR=XeonE52650v2
-
-
+export PROCESSOR=Epyc7401
+#export PROCESSOR=XeonE52650v2
 
 
 export SCHEME_DIR_0=models_Ag_log_baseline
 export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=rr_nyquist_${PROCESSOR}
+export PATH_MACRO_DR_0=rr1_nyquist_${PROCESSOR}
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 
@@ -52,14 +50,12 @@ export EVIDENCE_ALGORITHM=thermo_dts
 export PATH_MACRO_DRX=rr1
 
 
-export CONTINUATION_NUMBER=0
+export CONTINUATION_NUMBER=4
 
 JOBID1=$(sbatch --parsable --job-name=RC${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --constraint=${PROCESSOR} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
-
-
-for i in $(seq 1 15);
+for i in $(seq 5 15);
 do
     export CONTINUATION_NUMBER=$i
     JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --constraint=${PROCESSOR} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 

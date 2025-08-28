@@ -13,3 +13,5 @@ export CLUSTER=dirac
 if [ -z "${PARTITION}" ]; then                                           
    export PARTITION=batch
 fi  
+
+

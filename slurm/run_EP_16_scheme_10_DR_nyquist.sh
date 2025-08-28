@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export NTASKS=1
-CPUSPERTASK=32
+CPUSPERTASK=16
 
 export CP=$CPUSPERTASK
 
@@ -13,8 +13,8 @@ N_SCH2=10
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
 
-#export PROCESSOR=Epyc7401
-export PROCESSOR=XeonE52650v2
+export PROCESSOR=Epyc7401
+#export PROCESSOR=XeonE52650v2
 
 
 
@@ -22,7 +22,7 @@ export PROCESSOR=XeonE52650v2
 export SCHEME_DIR_0=models_Ag_log_baseline
 export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=rr_nyquist_${PROCESSOR}
+export PATH_MACRO_DR_0=rr1_nyquist_2_
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 
