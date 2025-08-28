@@ -12,6 +12,7 @@ N_SCH2=16
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
+export WORKING_DIRECTORY=data_rr1
 
 export PROCESSOR=Epyc7401
 #export PROCESSOR=XeonE52650v2

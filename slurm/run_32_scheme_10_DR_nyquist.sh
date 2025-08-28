@@ -4,6 +4,7 @@ export NTASKS=1
 CPUSPERTASK=32
 
 export CP=$CPUSPERTASK
+export WORKING_DIRECTORY=data_rr1
 
 export USE_LOCAL_ID=1
 

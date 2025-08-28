@@ -6,6 +6,7 @@ CPUSPERTASK=16
 export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
+export WORKING_DIRECTORY=data_rr1
 
 export N_SCH=10
 N_SCH2=10
