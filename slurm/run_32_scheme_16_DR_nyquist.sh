@@ -51,12 +51,12 @@ export EVIDENCE_ALGORITHM=thermo_dts
 export PATH_MACRO_DRX=rr1
 
 
-export CONTINUATION_NUMBER=4
+export CONTINUATION_NUMBER=0
 
 JOBID1=$(sbatch --parsable --job-name=RC${N_SCH}_${CPUSPERTASK}  --partition=${PARTITION} --constraint=${PROCESSOR} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
 
 
-for i in $(seq 5 15);
+for i in $(seq 1 15);
 do
     export CONTINUATION_NUMBER=$i
     JOBID1=$(sbatch --parsable --dependency=afterany:$JOBID1 --job-name=C${N_SCH}_${CPUSPERTASK}_${CONTINUATION_NUMBER}   --partition=${PARTITION} --constraint=${PROCESSOR} --ntasks-per-node=${NTASKS} --cpus-per-task=${CPUSPERTASK}  --time=${RUNTIME}  ${PATH_MACRO}/macro_dr/slurm/M_scheme_N_tasks.sh) 
