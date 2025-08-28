@@ -479,6 +479,10 @@ add_executable(macro_dr main.cpp
     slurm/run_32_scheme_4_DR_nyquist.sh
     command_lines/run_Continuation.txt
     slurm/run_32_scheme_6_DR_nyquist.sh
+    slurm/run_32_scheme_16_DR_nyquist.sh
+    models_Ag_log_baseline/scheme_16_inact_PI_par.csv
+    models_Ag_log_baseline/scheme_16_inact_PI_prior.csv
+    models_Ag_log_baseline/scheme_16_inact_PI.txt
     
     
     
