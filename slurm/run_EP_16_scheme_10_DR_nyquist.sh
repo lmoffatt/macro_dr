@@ -23,7 +23,7 @@ export PROCESSOR=Epyc7401
 export SCHEME_DIR_0=models_Ag_log_baseline
 export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=rr1_nyquist_2_
+export PATH_MACRO_DR_0=rr1_nyquist_${PROCESSOR}
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 
