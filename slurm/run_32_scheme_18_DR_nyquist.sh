@@ -8,8 +8,8 @@ export CP=$CPUSPERTASK
 export USE_LOCAL_ID=1
 export WORKING_DIRECTORY=data_rr2
 
-export N_SCH=16
-N_SCH2=16
+export N_SCH=18
+N_SCH2=18
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
