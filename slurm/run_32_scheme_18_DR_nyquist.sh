@@ -8,8 +8,8 @@ export CP=$CPUSPERTASK
 export USE_LOCAL_ID=1
 export WORKING_DIRECTORY=data_rr1
 
-export N_SCH=8
-N_SCH2=8
+export N_SCH=16
+N_SCH2=16
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
@@ -48,7 +48,7 @@ export MAX_ITER=1000000
 export RUNTIME=3-00:00
 export EVIDENCE_ALGORITHM=thermo_dts
 
-export PATH_MACRO_DRX=rr2
+export PATH_MACRO_DRX=rr1
 
 
 export CONTINUATION_NUMBER=0

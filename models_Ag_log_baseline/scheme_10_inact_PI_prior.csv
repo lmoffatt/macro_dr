@@ -10,7 +10,7 @@ scheme_10_inact,7,BR,Log10,10,1,2
 scheme_10_inact,8,BR_0,Log10,1,0,2
 scheme_10_inact,9,BR_1,Log10,1,0,2
 scheme_10_inact,10,Rocking_Current_factor,Log10,100,2,2
-scheme_10_inact,11,Leakeage_current_ratio,Log10,9.99999999999999955e-07,-6,2
+scheme_10_inact,11,Leakeage_current_ratio,Log10,1-06,-6,2
 scheme_10_inact,12,Gating_Current,Log10,1,0,2
 scheme_10_inact,13,Current_Noise,Log10,0.00100000000000000002,-3,2
 scheme_10_inact,14,Pink_Noise,Log10,5.00000000000000089,0.698970004336018857,2
