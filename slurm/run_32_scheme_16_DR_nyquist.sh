@@ -6,7 +6,7 @@ CPUSPERTASK=32
 export CP=$CPUSPERTASK
 
 export USE_LOCAL_ID=1
-export WORKING_DIRECTORY=data_rr1
+export WORKING_DIRECTORY=data_rr2
 
 export N_SCH=8
 N_SCH2=8
@@ -21,7 +21,7 @@ export PROCESSOR=XeonE52650v2
 export SCHEME_DIR_0=models_Ag_log_baseline
 export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=rr1_nyquist_${PROCESSOR}
+export PATH_MACRO_DR_0=rr2_nyquist_${PROCESSOR}
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 

@@ -45,7 +45,7 @@ export MAX_ITER=1000000
 export RUNTIME=3-00:00
 export EVIDENCE_ALGORITHM=thermo_dts
 
-export PATH_MACRO_DRX=rr1
+export PATH_MACRO_DRX=rr2
 
 
 export CONTINUATION_NUMBER=0
