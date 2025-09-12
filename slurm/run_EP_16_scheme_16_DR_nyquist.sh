@@ -12,7 +12,7 @@ N_SCH2=16
 
 export SCHEME_0=scheme_${N_SCH}_inact_PI
 export SCHEME_1=scheme_${N_SCH}_inact_PI
-export WORKING_DIRECTORY=data_rr2
+export WORKING_DIRECTORY=data_rr3
 
 export PROCESSOR=Epyc7401
 #export PROCESSOR=XeonE52650v2
@@ -21,7 +21,7 @@ export PROCESSOR=Epyc7401
 export SCHEME_DIR_0=models_Ag_log_baseline
 export SCHEME_DIR_1=models_Ag_log_baseline
 
-export PATH_MACRO_DR_0=rr2_nyquist_${PROCESSOR}
+export PATH_MACRO_DR_0=rr3_nyquist_${PROCESSOR}
 export PATH_MACRO_DR_1=$PATH_MACRO_DR_0
 
 
@@ -48,7 +48,7 @@ export MAX_ITER=1000000
 export RUNTIME=3-00:00
 export EVIDENCE_ALGORITHM=thermo_dts
 
-export PATH_MACRO_DRX=rr2
+export PATH_MACRO_DRX=rr3
 
 
 export CONTINUATION_NUMBER=0

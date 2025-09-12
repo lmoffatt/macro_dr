@@ -32,7 +32,7 @@ export SCHEME_DIR_1=${SCHEME_DIR_0}
 export PATH_MACRO_DR_0=w9_2
 export PATH_MACRO_DR_1=w9_nyquist
 
-export PATH_MACRO_DRX=rr2
+export PATH_MACRO_DRX=rr3
 
 
 
