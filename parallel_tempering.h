@@ -1766,7 +1766,7 @@ public:
       
       std::size_t num_values = 14;
       auto num_beta = size(data.beta);
-      std::size_t point_size = num_values * num_beta * data.get_Walkers_number();
+      std::size_t point_size = std::bit_floor(num_values * num_beta * data.get_Walkers_number());
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
       
@@ -1886,8 +1886,8 @@ public:
                      ...) {
       std::size_t num_values = 4;
       auto num_beta = size(data.beta);
-      std::size_t point_size = num_values * num_beta * data.get_Walkers_number() *
-                               num_Parameters(data);
+      std::size_t point_size = std::bit_floor(num_values * num_beta * data.get_Walkers_number() *
+                               num_Parameters(data));
       std::size_t sampling_interval = std::max(
           s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
       

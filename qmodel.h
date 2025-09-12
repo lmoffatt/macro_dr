@@ -5327,8 +5327,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   std::size_t num_beta_portions = 2;
   
   std::size_t num_samples_a = std::pow(2, std::round(std::log2(size(y))));
-  std::size_t point_size = num_values * num_beta_portions *
-      data.get_Walkers_number() * num_samples_a;
+  std::size_t point_size = std::bit_floor(num_values * num_beta_portions *
+      data.get_Walkers_number() * num_samples_a);
   std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
   
@@ -5455,7 +5455,7 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             t_logLikelihood &&lik, const Data &y, const Variables &x, ...) {
   
   std::size_t num_values = 8;
-  std::size_t point_size = num_values * size(y) * t_beta.size();
+  std::size_t point_size =std::bit_floor( num_values * size(y) * t_beta.size());
   
   if ((iter == 0) ||
       (iter % std::max(s.sampling_interval,
@@ -5600,8 +5600,8 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
   auto num_states = lik.m.number_of_states();
   std::size_t num_values = 1;
   std::size_t num_beta_portions = 2;
-  std::size_t point_size = num_values * num_beta_portions *
-      data.get_Walkers_number() * num_states * num_states;
+  std::size_t point_size = std::bit_floor(num_values * num_beta_portions *
+      data.get_Walkers_number() * num_states * num_states);
   std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
   
@@ -5834,8 +5834,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
   auto &t = data.get_Cuevi_Temperatures();
   auto num_fr = data.get_Cuevi_Temperatures_Number();
   std::size_t num_values = 8;
-  std::size_t point_size = num_values * data.get_Walkers_number() * num_fr *
-      data.get_Parameters_number();
+  std::size_t point_size = std::bit_floor(num_values * data.get_Walkers_number() * num_fr *
+      data.get_Parameters_number());
   std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
   
