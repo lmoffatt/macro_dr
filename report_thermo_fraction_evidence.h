@@ -5,6 +5,7 @@
 #include "mcmc.h"
 #include "parallel_tempering_fraction.h"
 #include "qmodel.h"
+#include <bit>
 //#include "CLI_thermo_evidence_fraction_dts.h"
 
 template <class Parameters, class... saving>
@@ -177,7 +178,7 @@ void report(FunctionTable &&, std::size_t iter, const Duration &dur,
     
     std::size_t num_values = 14;
     auto num_beta = size(data.beta);
-    std::size_t point_size = num_values * num_beta * data.get_Walkers_number();
+    std::size_t point_size = std::bit_floor(num_values * num_beta * data.get_Walkers_number());
     std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
     
@@ -327,8 +328,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
     std::size_t num_beta_portions = 2;
     
     std::size_t num_samples_a = std::pow(2, std::round(std::log2(size(y))));
-    std::size_t point_size = num_values * num_beta_portions *
-                             data.get_Walkers_number() * num_samples_a;
+    std::size_t point_size = std::bit_floor(num_values * num_beta_portions *
+                             data.get_Walkers_number() * num_samples_a);
     std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
     
@@ -474,8 +475,8 @@ void report(FunctionTable &f, std::size_t iter, const Duration &dur,
             ...) {
     std::size_t num_values = 4;
     auto num_beta = size(data.beta);
-    std::size_t point_size = num_values * num_beta * data.get_Walkers_number() *
-                             num_Parameters(data);
+    std::size_t point_size = std::bit_floor(num_values * num_beta * data.get_Walkers_number() *
+                             num_Parameters(data));
     std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
     
@@ -514,8 +515,8 @@ void report(FunctionTable &, std::size_t iter, const Duration &dur,
     auto num_states = lik.m.number_of_states();
     std::size_t num_values = 1;
     std::size_t num_beta_portions = 2;
-    std::size_t point_size = num_values * num_beta_portions *
-                             data.get_Walkers_number() * num_states * num_states;
+    std::size_t point_size = std::bit_floor(num_values * num_beta_portions *
+                             data.get_Walkers_number() * num_states * num_states);
     std::size_t sampling_interval = std::max(
         s.sampling_interval, point_size / s.max_number_of_values_per_iteration);
     
