@@ -10,7 +10,7 @@
 /CMakeCache.txt
 /Makefile
 /cmake_install.cmake
-/*.cmake
+# keep ability to commit helper .cmake files at repo root if needed
 /CTestTestfile.cmake
 /DartConfiguration.tcl
 
@@ -18,6 +18,9 @@
 /build.ninja
 /.ninja_deps
 /.ninja_log
+
+# Presets and compile database symlink
+/CMakeUserPresets.json
 
 # Output binaries
 *.out
@@ -28,16 +31,21 @@
 *.dll
 *.exe
 
+
+
 # DSL-related generated files
 *.rec
 *.log
 *.macroir.csv
 *.macroir.json
 *.macroir.out
-/tests/output/
+# legacy outputs (prefer projects/*/runs/ and ops/runs/)
 /tests/*/*/examples/
-scripts/output/
-experiments/output/
+
+# Ops and project run outputs
+ops/runs/
+projects/*/runs/
+projects/*/ops/runs/
 
 # Test logs
 tests/_logs/
@@ -66,9 +74,16 @@ CMakeLists.txt.user*
 tags
 .DS_Store
 Thumbs.db
-core
+# core dumps (avoid ignoring real source dir 'core/')
 *.core
 !core/   # allow core/ source dir if it exists
+
+# Coverage/profiling artifacts
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
 
 # Visual Studio and Windows clutter
 *.ib_pdb_index
@@ -91,6 +106,24 @@ core
 
 # Python cache (in case helpers/scripts are Python)
 *.pyc
+__pycache__/
+
+# Notebooks and R project artifacts
+**/.ipynb_checkpoints/
+.Rproj.user/
+*.Rhistory
+*.RData
+
+# CTest in-source artifacts
+/Testing/
+
+# CLion default build dirs
+/cmake-build-*/
+
+#clangd 
+.cache/
+
+compile_commands.json
 
 # ----------------------------------------------------------------------------
 # End of .gitignore

@@ -1,0 +1,19 @@
+Checks: >
+  modernize-*,
+  performance-*,
+  readability-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  bugprone-*,
+  misc-*,
+  -modernize-use-trailing-return-type
+  -readability-identifier-length,
+  -clang-diagnostic-c++98-compat, 
+  -clang-diagnostic-pre-c++17-compat
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: file
+CheckOptions:
+  - key:             modernize-use-trailing-return-type.MinTypeNameLength
+    value:           '4'

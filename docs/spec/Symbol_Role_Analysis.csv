@@ -1,0 +1,1263 @@
+,defined_in,used_by,role
+AT_D_A,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+AT_D_A_Safe,qmodel.h,['qmodel.h'],Internal
+Allosteric_Model,allosteric_models.h,['allosteric_models.h'],Internal
+Anything,parallel_tempering.h,['parallel_tempering.h'],Internal
+Apply_variant,qmodel.h,['qmodel.h'],Internal
+B,lapack_headers.h,['lapack_headers.h'],Internal
+Beta,parallel_tempering.h,['parallel_tempering.h'],Internal
+BinaryReductionOp,fold.h,['fold.h'],Internal
+C_DiagonalMatrix,lapack_headers.h,['lapack_headers.h'],Internal
+C_P,qmodel.h,['qmodel.h'],Internal
+C_P_Cov,qmodel.h,['qmodel.h'],Internal
+C_P_mean,qmodel.h,['qmodel.h'],Internal
+C_Parameters,qmodel.h,['qmodel.h'],Internal
+C_Patch_Model,qmodel.h,['qmodel.h'],Internal
+C_Patch_State,qmodel.h,['qmodel.h'],Internal
+C_Q0,qmodel.h,['qmodel.h'],Internal
+C_Qa,qmodel.h,['qmodel.h'],Internal
+C_Qdt,qmodel.h,['qmodel.h'],Internal
+C_Qn,qmodel.h,['qmodel.h'],Internal
+C_Qx,qmodel.h,['qmodel.h'],Internal
+C_Qx_eig,qmodel.h,['qmodel.h'],Internal
+C_Vector_Space,qmodel.h,['qmodel.h'],Internal
+C_g,qmodel.h,['qmodel.h'],Internal
+C_gmean,qmodel.h,['qmodel.h'],Internal
+C_y_var,qmodel.h,['qmodel.h'],Internal
+Calc_Qdtg_step,qmodel.h,['qmodel.h'],Internal
+Conductance_interaction_index,allosteric_models.h,['allosteric_models.h'],Internal
+Conductance_interaction_scheme,allosteric_models.h,['allosteric_models.h'],Internal
+Conductance_interaction_type,allosteric_models.h,['allosteric_models.h'],Internal
+Conductance_leakeage_ratio_label,allosteric_models.h,['allosteric_models.h'],Internal
+Conductance_state_count,allosteric_models.h,['allosteric_models.h'],Internal
+Conformation_change_standard_map,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_change,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_change_domain_state,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_change_scheme,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_change_state_vector,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_domain_state,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_interaction_scheme,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_interactions_state_vector,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_interactions_transition_state,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_model,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_model_,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_model_scheme,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_model_standarized,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_position,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_state_count,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_state_count_to_representative_index,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_state_index,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_state_vector,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_states,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_transition,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_transition_direction,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_transition_initiating_state_index,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_transition_landing_state_index,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_transition_list,allosteric_models.h,['allosteric_models.h'],Internal
+Conformational_transition_mulitplicity,allosteric_models.h,['allosteric_models.h'],Internal
+Covae,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+Cs,CLI_regular_types.h,['CLI_regular_types.h'],Internal
+Cuevi_Index,qmodel.h,['qmodel.h'],Internal
+Current_noise,qmodel.h,['qmodel.h'],Internal
+Custom_Distribution,distributions.h,['distributions.h'],Internal
+Data,qmodel.h,['qmodel.h'],Internal
+Derivative_Op,derivative_operator.h,['derivative_operator.h'],Internal
+Derivative_impl,derivative_operator.h,['derivative_operator.h'],Internal
+Dist,distributions.h,['distributions.h'],Internal
+Distribution,distributions.h,['distributions.h'],Internal
+E1,qmodel.h,['qmodel.h'],Internal
+E111,qmodel.h,['qmodel.h'],Internal
+E12,qmodel.h,['qmodel.h'],Internal
+E2,qmodel.h,['qmodel.h'],Internal
+E2_sqr,qmodel.h,['qmodel.h'],Internal
+E2m,qmodel.h,['qmodel.h'],Internal
+E2mb,qmodel.h,['qmodel.h'],Internal
+E3,qmodel.h,['qmodel.h'],Internal
+EX_111,qmodel.h,['qmodel.h'],Internal
+Environment,grammar_typed.h,['grammar_typed.h'],Internal
+Finv,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+Fixed_Tr,parameters.h,['parameters.h'],Internal
+FuncTable,qmodel.h,['qmodel.h'],Internal
+Hess,distributions.h,['distributions.h'],Internal
+Id2,variables.h,['variables.h'],Internal
+IdT,variables_derivative.h,['variables_derivative.h'],Internal
+Idealize_ATP_pulse,experiment.h,['experiment.h'],Internal
+Idealize_Pulses,experiment.h,['experiment.h'],Internal
+Identity_Op,derivative_operator.h,['derivative_operator.h'],Internal
+Identity_Tr,parameters.h,['parameters.h'],Internal
+Init,fold.h,['fold.h'],Internal
+J_v,qmodel.h,['qmodel.h'],Internal
+J_y,qmodel.h,['qmodel.h'],Internal
+Lapack_EigenSystem,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Full_Product,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Full_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_LT,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_LT_Cholesky_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_LT_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Product_Self_Transpose,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Product_Self_Transpose_mod,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_QR,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Sym_Product,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_SymmPosDef_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Symm_EigenSystem,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Symm_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_Triang_Product,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_UT,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_UT_Cholesky_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_UT_inv,lapack_headers.h,['lapack_headers.h'],Internal
+Lapack_chol,lapack_headers.h,['lapack_headers.h'],Internal
+Likelihood_Model_constexpr,qmodel.h,['qmodel.h'],Internal
+Likelihood_Model_v_all,qmodel.h,['qmodel.h'],Internal
+Likelihood_Model_variant_impl,qmodel.h,['qmodel.h'],Internal
+Log10_Tr,parameters.h,['parameters.h'],Internal
+M_der,parameters_derivative.h,['parameters_derivative.h'],Internal
+MapAdj,fold.h,['fold.h'],Internal
+Mat,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+MatrixType,parameters.h,['parameters.h'],Internal
+Maybe_error_Derivative_Op,derivative_operator.h,['derivative_operator.h'],Internal
+Maybe_error_Op,derivative_operator.h,['derivative_operator.h'],Internal
+Memoiza_closed_values,function_memoization.h,['function_memoization.h'],Internal
+Memoizer,function_memoization.h,['function_memoization.h'],Internal
+Model0,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+Model00_7,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+Model1,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+Model_Patch,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+N_Ch_State_Evolution,qmodel.h,['qmodel.h'],Internal
+N_Ch_eq,qmodel.h,['qmodel.h'],Internal
+N_Ch_init,qmodel.h,['qmodel.h'],Internal
+N_Ch_mean_value,qmodel.h,['qmodel.h'],Internal
+N_Ch_std,qmodel.h,['qmodel.h'],Internal
+N_Ch_tau,qmodel.h,['qmodel.h'],Internal
+N_channel_state,qmodel.h,['qmodel.h'],Internal
+Nelson_Normalization,lapack_headers.h,['lapack_headers.h'],Internal
+Number_of_Channels_mean,qmodel.h,['qmodel.h'],Internal
+Number_of_Channels_stddev,qmodel.h,['qmodel.h'],Internal
+Number_of_States,qmodel.h,['qmodel.h'],Internal
+Observer,parallel_tempering.h,['parallel_tempering.h'],Internal
+Op_on_F,derivative_operator.h,['derivative_operator.h'],Internal
+PGG_n,qmodel.h,['qmodel.h'],Internal
+PG_n,qmodel.h,['qmodel.h'],Internal
+PGn,qmodel.h,['qmodel.h'],Internal
+PPn,qmodel.h,['qmodel.h'],Internal
+P_Cov,qmodel.h,['qmodel.h'],Internal
+P_mean,qmodel.h,['qmodel.h'],Internal
+ParameterType,qmodel.h,['qmodel.h'],Internal
+Parameters_Normal_Distribution,parameters_distribution.h,['parameters_distribution.h'],Internal
+Patch_State_Evolution,qmodel.h,['qmodel.h'],Internal
+Poisson_noise_expected_lik_logL,gsl_integrate.h,['gsl_integrate.h'],Internal
+Poisson_noise_expected_lik_logL_p,gsl_integrate.h,['gsl_integrate.h'],Internal
+Poisson_noise_expected_lik_logL_pr,gsl_integrate.h,['gsl_integrate.h'],Internal
+Poisson_noise_expected_logL_2,gsl_integrate.h,['gsl_integrate.h'],Internal
+Poisson_noise_normalization_p,gsl_integrate.h,['gsl_integrate.h'],Internal
+Poisson_noise_normalization_pr,gsl_integrate.h,['gsl_integrate.h'],Internal
+Postconditions,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+Preconditions,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+ProbabilityFunction,distributions.h,['distributions.h'],Internal
+Ptotal_ij,qmodel.h,['qmodel.h'],Internal
+Q0_,allosteric_models.h,['allosteric_models.h'],Internal
+Q_formula,qmodel.h,['qmodel.h'],Internal
+Qa_,allosteric_models.h,['allosteric_models.h'],Internal
+Qdt_u,qmodel.h,['qmodel.h'],Internal
+Qn_to_Qdt,qmodel.h,['qmodel.h'],Internal
+Qn_to_Qdtm,qmodel.h,['qmodel.h'],Internal
+Qx,qmodel.h,['qmodel.h'],Internal
+Recoding,qmodel.h,['qmodel.h'],Internal
+Reporter,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+Right_Eigenvector_Nelson_Normalization,lapack_headers.h,['lapack_headers.h'],Internal
+Sampler,distributions.h,['distributions.h'],Internal
+Simulated_Step,qmodel.h,['qmodel.h'],Internal
+State_Model,qmodel.h,['qmodel.h'],Internal
+State_Probability,qmodel.h,['qmodel.h'],Internal
+State_Probability_Cov,qmodel.h,['qmodel.h'],Internal
+State_unitary_current,qmodel.h,['qmodel.h'],Internal
+T_Matrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+T_s,CLI_regular_types.h,['CLI_regular_types.h'],Internal
+Test_it,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+Thermo_mcmc,parallel_tempering.h,['parallel_tempering.h'],Internal
+Time_it,CLI_function_table.h,['CLI_function_table.h'],Internal
+Tr,derivative_operator.h,['derivative_operator.h'],Internal
+Transformation,parameters.h,['parameters.h'],Internal
+Transformation_library_impl,parameters.h,['parameters.h'],Internal
+Transition_rate,qmodel.h,['qmodel.h'],Internal
+Transition_rate_V,qmodel.h,['qmodel.h'],Internal
+Transition_rate_W,qmodel.h,['qmodel.h'],Internal
+Transition_rate_agonist,qmodel.h,['qmodel.h'],Internal
+Transition_rate_landa,qmodel.h,['qmodel.h'],Internal
+Transition_rate_resting,qmodel.h,['qmodel.h'],Internal
+Transpose,lapack_headers.h,['lapack_headers.h'],Internal
+Unit,variables.h,['variables.h'],Internal
+V0,variables.h,['variables.h'],Internal
+V2,variables.h,['variables.h'],Internal
+VS,variables.h,['variables.h'],Internal
+Value,variables.h,['variables.h'],Internal
+Var_ratio,parallel_tempering.h,['parallel_tempering.h'],Internal
+Vec,variables.h,['variables.h'],Internal
+VectorType,parameters.h,['parameters.h'],Internal
+Vector_Map_Space,variables.h,['variables.h'],Internal
+WORK,lapack_headers.h,['lapack_headers.h'],Internal
+WORK_OPT,lapack_headers.h,['lapack_headers.h'],Internal
+Walker_Index,qmodel.h,['qmodel.h'],Internal
+WgV_E2,qmodel.h,['qmodel.h'],Internal
+WgV_E3,qmodel.h,['qmodel.h'],Internal
+WgV_Wg_E2,qmodel.h,['qmodel.h'],Internal
+aMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+aNonSymmetricMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+aSymmetricMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+aT,derivative_operator.h,['derivative_operator.h'],Internal
+aaMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+adaptive,qmodel.h,['qmodel.h'],Internal
+adaptive_range,qmodel.h,['qmodel.h'],Internal
+add,parallel_tempering.h,['parallel_tempering.h'],Internal
+add_ATP_step,qmodel.h,['qmodel.h'],Internal
+add_ATP_step_i,qmodel.h,['qmodel.h'],Internal
+all_Covariance_elements,qmodel.h,['qmodel.h'],Internal
+all_Probability_elements,qmodel.h,['qmodel.h'],Internal
+all_to_free,parameters.h,['parameters.h'],Internal
+anotherCompatibleMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+append_to,distributions.h,['distributions.h'],Internal
+applyMap_i,parameters_derivative.h,['parameters_derivative.h'],Internal
+apply_par,parameters_derivative.h,['parameters_derivative.h'],Internal
+apply_time,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+apply_to,general_algorithm_on_containers.h,['general_algorithm_on_containers.h'],Internal
+average_ATP_step,qmodel.h,['qmodel.h'],Internal
+average_Experimental_step,qmodel.h,['qmodel.h'],Internal
+average_Recording,qmodel.h,['qmodel.h'],Internal
+averaging,qmodel.h,['qmodel.h'],Internal
+averaging_range,qmodel.h,['qmodel.h'],Internal
+bMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+base_function_compiler,lexer_typed.h,['lexer_typed.h'],Internal
+base_typed_argument_list,grammar_typed.h,['grammar_typed.h'],Internal
+base_typed_assigment,grammar_typed.h,['grammar_typed.h'],Internal
+base_typed_comment,grammar_typed.h,['grammar_typed.h'],Internal
+bayesian_linear_model,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+bayesian_linear_regression_calculate_Evidence,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+bayesian_linear_regression_calculate_mean_logLik_posterior,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+bayesian_linear_regression_calculate_posterior,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+bayesian_linear_regression_calculate_var_logLik_diff,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+build_index,function_memoization.h,['function_memoization.h'],Internal
+calcEvidence,parallel_tempering.h,['parallel_tempering.h'],Internal
+calcEvidence_,parallel_tempering.h,['parallel_tempering.h'],Internal
+calc_P,qmodel.h,['qmodel.h'],Internal
+calc_Qdt_eig,qmodel.h,['qmodel.h'],Internal
+calc_Qdt_old,qmodel.h,['qmodel.h'],Internal
+calc_Qdt_taylor,qmodel.h,['qmodel.h'],Internal
+calc_Qdtg,qmodel.h,['qmodel.h'],Internal
+calc_Qdtg_ATP_step,qmodel.h,['qmodel.h'],Internal
+calc_Qdtg_eig,qmodel.h,['qmodel.h'],Internal
+calc_Qdtg_taylor,qmodel.h,['qmodel.h'],Internal
+calc_Qdtm,qmodel.h,['qmodel.h'],Internal
+calc_Qdtm_eig,qmodel.h,['qmodel.h'],Internal
+calc_Qdtm_taylor,qmodel.h,['qmodel.h'],Internal
+calc_Qn_bisection,qmodel.h,['qmodel.h'],Internal
+calc_all,function_memoization.h,['function_memoization.h'],Internal
+calc_count,function_memoization.h,['function_memoization.h'],Internal
+calc_cov_inv,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+calc_evidence,CLI_function_table.h,['CLI_function_table.h'],Internal
+calc_evidence_continuation,CLI_function_table.h,['CLI_function_table.h'],Internal
+calc_fraction_evidence,CLI_function_table.h,['CLI_function_table.h'],Internal
+calc_fraction_likelihood,CLI_function_table.h,['CLI_function_table.h'],Internal
+calc_likelihood_old,CLI_function_table.h,['CLI_function_table.h'],Internal
+calc_logA,parallel_tempering.h,['parallel_tempering.h'],Internal
+calc_logdet,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+calc_mcmc,parallel_tempering.h,['parallel_tempering.h'],Internal
+calc_min_count,function_memoization.h,['function_memoization.h'],Internal
+calc_reverse_count,function_memoization.h,['function_memoization.h'],Internal
+calc_simulation_fractions,qmodel.h,['qmodel.h'],Internal
+calc_std,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+calc_thermo_evidence,CLI_thermo_evidence.h,['CLI_thermo_evidence.h'],Internal
+calc_thermo_evidence_continuation,CLI_thermo_evidence.h,['CLI_thermo_evidence.h'],Internal
+calc_thermo_evidence_dts,CLI_thermo_evidence_dts.h,['CLI_thermo_evidence_dts.h'],Internal
+calc_thermo_evidence_dts_2,CLI_thermo_evidence_dts.h,['CLI_thermo_evidence_dts.h'],Internal
+calc_thermo_evidence_dts_continuation,CLI_thermo_evidence_dts.h,['CLI_thermo_evidence_dts.h'],Internal
+calc_thermo_evidence_dts_continuation_2,CLI_thermo_evidence_dts.h,['CLI_thermo_evidence_dts.h'],Internal
+calc_thermo_evidence_fraction_dts,CLI_thermo_evidence_fraction_dts.h,['CLI_thermo_evidence_fraction_dts.h'],Internal
+calc_thermo_evidence_fraction_dts_continuation,CLI_thermo_evidence_fraction_dts.h,['CLI_thermo_evidence_fraction_dts.h'],Internal
+calc_thermo_evidence_old,CLI_thermo_evidence.h,['CLI_thermo_evidence.h'],Internal
+calculate_Acceptance,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_Likelihoods_for_Evidence_calulation,qmodel.h,['qmodel.h'],Internal
+calculate_controler_step,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_d_beta_d_s,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_delta_Evidence_variance_derivative,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_diff_Acceptance_derivative,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_diff_Acceptance_over_variance_derivative,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_fixed_Acceptance_derivative,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_initial_logL0,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_logL_mean,parallel_tempering.h,['parallel_tempering.h'],Internal
+calculate_logL_variance,parallel_tempering.h,['parallel_tempering.h'],Internal
+chains,parallel_tempering.h,['parallel_tempering.h'],Internal
+change_conformation,allosteric_models.h,['allosteric_models.h'],Internal
+char_delimited,general_output_operator.h,['general_output_operator.h'],Internal
+check_Conformational_interaction,allosteric_models.h,['allosteric_models.h'],Internal
+check_iterations,parallel_tempering.h,['parallel_tempering.h'],Internal
+clearit,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+compare_file_contents,maybe_error.h,['maybe_error.h'],Internal
+compare_to_max_ratio,parallel_tempering.h,['parallel_tempering.h'],Internal
+compile_Identifier,lexer_typed.h,['lexer_typed.h'],Internal
+compile_and_run_program_line_by_line,grammar_untyped.h,['grammar_untyped.h'],Internal
+compile_program,grammar_untyped.h,['grammar_untyped.h'],Internal
+compile_statement,grammar_untyped.h,['grammar_untyped.h'],Internal
+compile_this_argument,lexer_typed.h,['lexer_typed.h'],Internal
+concatenate,variables.h,['variables.h'],Internal
+concatenate_to_columns,distributions.h,['distributions.h'],Internal
+cond_st,allosteric_models.h,['allosteric_models.h'],Internal
+consolidate,maybe_error.h,['maybe_error.h'],Internal
+constexpr_par,variables.h,['variables.h'],Internal
+copy_NaNs,qmodel.h,['qmodel.h'],Internal
+copy_UT_to_LT,lapack_headers.h,['lapack_headers.h'],Internal
+count_nan,general_algorithm_on_containers.h,['general_algorithm_on_containers.h'],Internal
+covariance_model,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+crude_Qx_violations,qmodel.h,['qmodel.h'],Internal
+crude_gmean_violation,qmodel.h,['qmodel.h'],Internal
+crude_lambda_violations,qmodel.h,['qmodel.h'],Internal
+cuevi_Model_by_convergence,qmodel.h,['qmodel.h'],Internal
+cumsum_reverse,general_algorithm_on_containers.h,['general_algorithm_on_containers.h'],Internal
+current_iteration,parallel_tempering.h,['parallel_tempering.h'],Internal
+dParam,parameters_derivative.h,['parameters_derivative.h'],Internal
+ddisna_,lapack_headers.h,['lapack_headers.h'],Internal
+ddx,parameters_derivative.h,['parameters_derivative.h'],Internal
+derivative_non_const,parameters_derivative.h,['parameters_derivative.h'],Internal
+derivative_var_ratio,parallel_tempering.h,['parallel_tempering.h'],Internal
+derivative_var_ratio_beta,parallel_tempering.h,['parallel_tempering.h'],Internal
+detect_Pulses,experiment.h,['experiment.h'],Internal
+determine_excluded_row,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+dgecon_,lapack_headers.h,['lapack_headers.h'],Internal
+dgemm_,lapack_headers.h,['lapack_headers.h'],Internal
+dgeqrf_,lapack_headers.h,['lapack_headers.h'],Internal
+dgetrf_,lapack_headers.h,['lapack_headers.h'],Internal
+dgetri_,lapack_headers.h,['lapack_headers.h'],Internal
+diff_logLikelihood,qmodel.h,['qmodel.h'],Internal
+dirchlet_distribution,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+dirchlet_transition_distribution,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+dlange_,lapack_headers.h,['lapack_headers.h'],Internal
+dlogLikelihood,qmodel.h,['qmodel.h'],Internal
+dorgqr_,lapack_headers.h,['lapack_headers.h'],Internal
+dpotrf_,lapack_headers.h,['lapack_headers.h'],Internal
+dpotri_,lapack_headers.h,['lapack_headers.h'],Internal
+dsyevx_,lapack_headers.h,['lapack_headers.h'],Internal
+dsymm_,lapack_headers.h,['lapack_headers.h'],Internal
+dsyrk_,lapack_headers.h,['lapack_headers.h'],Internal
+dsytrf_,lapack_headers.h,['lapack_headers.h'],Internal
+dt,qmodel.h,['qmodel.h'],Internal
+dtrmm_,lapack_headers.h,['lapack_headers.h'],Internal
+dtrtri_,lapack_headers.h,['lapack_headers.h'],Internal
+dv,parameters_derivative.h,['parameters_derivative.h'],Internal
+dx_of_dfdx,derivative_operator.h,['derivative_operator.h'],Internal
+egsr,qmodel.h,['qmodel.h'],Internal
+elemDiv,parameters_derivative.h,['parameters_derivative.h'],Internal
+ends_pulse,experiment.h,['experiment.h'],Internal
+eplogL,qmodel.h,['qmodel.h'],Internal
+equal_range,allosteric_models.h,['allosteric_models.h'],Internal
+even_dur,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+expand,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+experiment_fractioner,qmodel.h,['qmodel.h'],Internal
+expm_pade,qmodel.h,['qmodel.h'],Internal
+expm_sure,qmodel.h,['qmodel.h'],Internal
+expm_taylor,qmodel.h,['qmodel.h'],Internal
+expm_taylor_scaling_squaring,qmodel.h,['qmodel.h'],Internal
+extract,variables.h,['variables.h'],Internal
+extract_argument_list,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_assignment,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_comment,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_expression,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_function_evaluation,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_identifier,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_impl,variables.h,['variables.h'],Internal
+extract_iter,parallel_tempering.h,['parallel_tempering.h'],Internal
+extract_iter_old,parallel_tempering.h,['parallel_tempering.h'],Internal
+extract_list,variables.h,['variables.h'],Internal
+extract_numeric,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_program,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_statement,lexer_untyped.h,['lexer_untyped.h'],Internal
+extract_string,lexer_untyped.h,['lexer_untyped.h'],Internal
+f0,maybe_error.h,['maybe_error.h'],Internal
+f_Q0,qmodel.h,['qmodel.h'],Internal
+f_Qa,qmodel.h,['qmodel.h'],Internal
+f_g,qmodel.h,['qmodel.h'],Internal
+f_lik_Poisson_noise,gsl_integrate.h,['gsl_integrate.h'],Internal
+f_lik_Poisson_noise_f,gsl_integrate.h,['gsl_integrate.h'],Internal
+f_lik_logL_Poisson_noise,gsl_integrate.h,['gsl_integrate.h'],Internal
+f_lik_logL_Poisson_noise_f,gsl_integrate.h,['gsl_integrate.h'],Internal
+file_contents,maybe_error.h,['maybe_error.h'],Internal
+fill_conformational_interactions,allosteric_models.h,['allosteric_models.h'],Internal
+find_first_of,lexer_untyped.h,['lexer_untyped.h'],Internal
+find_state_with_conformation,allosteric_models.h,['allosteric_models.h'],Internal
+find_t_50,experiment.h,['experiment.h'],Internal
+flogL,qmodel.h,['qmodel.h'],Internal
+foldMap,fold.h,['fold.h'],Internal
+force_gmean_in_range,qmodel.h,['qmodel.h'],Internal
+frac,qmodel.h,['qmodel.h'],Internal
+full_expm,qmodel.h,['qmodel.h'],Internal
+g_name_of_conformer,allosteric_models.h,['allosteric_models.h'],Internal
+generate_random_Indexes,qmodel.h,['qmodel.h'],Internal
+getConformers,allosteric_models.h,['allosteric_models.h'],Internal
+getParameterNamesFrom,allosteric_models.h,['allosteric_models.h'],Internal
+getTransitions,allosteric_models.h,['allosteric_models.h'],Internal
+get_Cuevi_Temperatures,qmodel.h,['qmodel.h'],Internal
+get_Cuevi_Temperatures_Number,qmodel.h,['qmodel.h'],Internal
+get_Fraction,qmodel.h,['qmodel.h'],Internal
+get_Parameters_number,qmodel.h,['qmodel.h'],Internal
+get_Prior,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+get_Q0_formula,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+get_Qa_formula,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+get_Qn,qmodel.h,['qmodel.h'],Internal
+get_Walker_Value,qmodel.h,['qmodel.h'],Internal
+get_at,distributions.h,['distributions.h'],Internal
+get_conductance_names,allosteric_models.h,['allosteric_models.h'],Internal
+get_conformational_change_names,allosteric_models.h,['allosteric_models.h'],Internal
+get_conformational_interaction_names,allosteric_models.h,['allosteric_models.h'],Internal
+get_constructor_fields,allosteric_models.h,['allosteric_models.h'],Internal
+get_constructor_fields_old,allosteric_models.h,['allosteric_models.h'],Internal
+get_derivative_var_ratio,parallel_tempering.h,['parallel_tempering.h'],Internal
+get_eigen,qmodel.h,['qmodel.h'],Internal
+get_fixed,parameters.h,['parameters.h'],Internal
+get_function_Table_maker_value_St,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+get_g_formula,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+get_g_names,allosteric_models.h,['allosteric_models.h'],Internal
+get_index_map,parameters.h,['parameters.h'],Internal
+get_max_state,qmodel.h,['qmodel.h'],Internal
+get_num_samples,qmodel.h,['qmodel.h'],Internal
+get_number,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+get_or_calc,function_memoization.h,['function_memoization.h'],Internal
+get_parameters,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+get_random_id,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+get_states_structure,allosteric_models.h,['allosteric_models.h'],Internal
+get_this,function_memoization.h,['function_memoization.h'],Internal
+git_Commit_Hash,maybe_error.h,['maybe_error.h'],Internal
+gmean_i,qmodel.h,['qmodel.h'],Internal
+gmean_ij,qmodel.h,['qmodel.h'],Internal
+gsl_integration_qagi,gsl_integrate.h,['gsl_integrate.h'],Internal
+gsl_integration_workspace_alloc,gsl_integrate.h,['gsl_integrate.h'],Internal
+gsl_integration_workspace_free,gsl_integrate.h,['gsl_integrate.h'],Internal
+gsqr_i,qmodel.h,['qmodel.h'],Internal
+gtotal_ij,qmodel.h,['qmodel.h'],Internal
+gtotal_sqr_ij,qmodel.h,['qmodel.h'],Internal
+gtotal_var_ij,qmodel.h,['qmodel.h'],Internal
+gvar_i,qmodel.h,['qmodel.h'],Internal
+gvar_ij,qmodel.h,['qmodel.h'],Internal
+has_clear_method,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+i_min,general_algorithm_on_containers.h,['general_algorithm_on_containers.h'],Internal
+id2,grammar_Identifier.h,['grammar_Identifier.h'],Internal
+idealize_Experiment_Pulse,experiment.h,['experiment.h'],Internal
+idealize_Pulse,experiment.h,['experiment.h'],Internal
+includesN,qmodel.h,['qmodel.h'],Internal
+independent_variable_model,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+index_to_conformational_change,allosteric_models.h,['allosteric_models.h'],Internal
+infinity,qmodel.h,['qmodel.h'],Internal
+init_mcmc,parallel_tempering.h,['parallel_tempering.h'],Internal
+init_mt,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+init_sim,qmodel.h,['qmodel.h'],Internal
+insert_assigment,grammar_typed.h,['grammar_typed.h'],Internal
+insert_high_temperture_beta,parallel_tempering.h,['parallel_tempering.h'],Internal
+insert_or_assign,grammar_typed.h,['grammar_typed.h'],Internal
+inverse_gamma_distribution,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+is_Binomial_Approximation_valid,qmodel.h,['qmodel.h'],Internal
+is_Exponent,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_argument_separator,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_derivative,derivative_operator.h,['derivative_operator.h'],Internal
+is_end_of_argument,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_end_of_argument_list,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_end_of_statement,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_equal,variables.h,['variables.h'],Internal
+is_equal_at_pos,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_in,general_algorithm_on_containers.h,['general_algorithm_on_containers.h'],Internal
+is_numeral,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_of_this_template_type,maybe_error.h,['maybe_error.h'],Internal
+is_of_this_template_value_type,maybe_error.h,['maybe_error.h'],Internal
+is_start_of_argument_list,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_start_of_comment,lexer_untyped.h,['lexer_untyped.h'],Internal
+is_this_constexpr_Var,variables.h,['variables.h'],Internal
+is_this_constexpr_Var_domain,variables.h,['variables.h'],Internal
+isfixed,parameters.h,['parameters.h'],Internal
+islessthan,variables.h,['variables.h'],Internal
+kHz,variables.h,['variables.h'],Internal
+key,grammar_Identifier.h,['grammar_Identifier.h'],Internal
+last_walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+leadingZero,maybe_error.h,['maybe_error.h'],Internal
+lik_Poisson_noise,gsl_integrate.h,['gsl_integrate.h'],Internal
+lik_Poisson_noise_f,gsl_integrate.h,['gsl_integrate.h'],Internal
+lik_logL_Poisson_noise_f,gsl_integrate.h,['gsl_integrate.h'],Internal
+load_Parameter_value,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+load_Prior_value,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+load_Recording_value,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+load_experiment,experiment.h,['experiment.h'],Internal
+load_fractioned_Experiment,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+load_fractioned_Recording_value,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+load_recording,experiment.h,['experiment.h'],Internal
+localtime,maybe_error.h,['maybe_error.h'],Internal
+logDet,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+logDetCov,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+logEv,distributions.h,['distributions.h'],Internal
+logLikelihoodPredictions,qmodel.h,['qmodel.h'],Internal
+logLikelihood_Y_Predictions,qmodel.h,['qmodel.h'],Internal
+logLs_0,distributions.h,['distributions.h'],Internal
+logP_impl,distributions.h,['distributions.h'],Internal
+logPrior,parallel_tempering.h,['parallel_tempering.h'],Internal
+logit,distributions.h,['distributions.h'],Internal
+logit_inv,distributions.h,['distributions.h'],Internal
+m_P,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+macror_algorithm,qmodel.h,['qmodel.h'],Internal
+make_Conformational_change_scheme,allosteric_models.h,['allosteric_models.h'],Internal
+make_Conformational_change_state_vector,allosteric_models.h,['allosteric_models.h'],Internal
+make_Conformational_interaction_state_vector,allosteric_models.h,['allosteric_models.h'],Internal
+make_Conformational_model_scheme,allosteric_models.h,['allosteric_models.h'],Internal
+make_Conformational_state_vector,allosteric_models.h,['allosteric_models.h'],Internal
+make_Conformational_states_and_index,allosteric_models.h,['allosteric_models.h'],Internal
+make_Conformational_transition_list,allosteric_models.h,['allosteric_models.h'],Internal
+make_F,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+make_F_P,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+make_Maybe_error,maybe_error.h,['maybe_error.h'],Internal
+make_Maybe_variant,maybe_error.h,['maybe_error.h'],Internal
+make_Ptotal_ij,qmodel.h,['qmodel.h'],Internal
+make_Range,fold.h,['fold.h'],Internal
+make_bayesian_linear_model,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+make_cuevi_compiler,CLI_function_table.h,['CLI_function_table.h'],Internal
+make_dts_compiler,CLI_thermo_evidence_dts.h,['CLI_thermo_evidence_dts.h'],Internal
+make_experiment_compiler,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+make_frac_compiler,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+make_io_compiler,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+make_logL_statistics,parallel_tempering.h,['parallel_tempering.h'],Internal
+make_model_compiler,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+make_multivariate_normal_distribution_by_eig,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+make_multivariate_normal_distribution_of_probabilities,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+make_simulation_compiler,CLI_function_table.h,['CLI_function_table.h'],Internal
+make_utilities_compiler,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+match,function_memoization.h,['function_memoization.h'],Internal
+max_iteration_final,parallel_tempering.h,['parallel_tempering.h'],Internal
+max_iteration_warming,parallel_tempering.h,['parallel_tempering.h'],Internal
+max_possible_value_of_ymean,qmodel.h,['qmodel.h'],Internal
+mean_duration,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+mean_logL_walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+mean_var_logL_walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+measure_area_pulse,experiment.h,['experiment.h'],Internal
+measure_max_pulse,experiment.h,['experiment.h'],Internal
+merge,lexer_typed.h,['lexer_typed.h'],Internal
+min_possible_value_of_ymean,qmodel.h,['qmodel.h'],Internal
+mixing_var_ratio,parallel_tempering.h,['parallel_tempering.h'],Internal
+model_definition,allosteric_models.h,['allosteric_models.h'],Internal
+monostate,models_MoffattHume_linear.h,['models_MoffattHume_linear.h'],Internal
+multinomial_distribution,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+multinomial_transition_distribution,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+multivariate_normal_distribution_by_eig,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+multivariate_normal_distribution_of_probabilities,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+my_static_string,allosteric_models.h,['allosteric_models.h'],Internal
+n0,allosteric_models.h,['allosteric_models.h'],Internal
+n_,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+nan_logL,distributions.h,['distributions.h'],Internal
+new_model_definition,allosteric_models.h,['allosteric_models.h'],Internal
+new_to_old,allosteric_models.h,['allosteric_models.h'],Internal
+normalize,qmodel.h,['qmodel.h'],Internal
+notSymmetricMatrix,parameters_derivative.h,['parameters_derivative.h'],Internal
+num_Parameters,parallel_tempering.h,['parallel_tempering.h'],Internal
+num_walkers,parallel_tempering.h,['parallel_tempering.h'],Internal
+observe_step_stretch_thermo_mcmc,parallel_tempering.h,['parallel_tempering.h'],Internal
+observe_thermo_jump_mcmc,parallel_tempering.h,['parallel_tempering.h'],Internal
+observer,parallel_tempering.h,['parallel_tempering.h'],Internal
+out_N,qmodel.h,['qmodel.h'],Internal
+out_x,qmodel.h,['qmodel.h'],Internal
+out_y,qmodel.h,['qmodel.h'],Internal
+outp,allosteric_models.h,['allosteric_models.h'],Internal
+overloaded,maybe_error.h,['maybe_error.h'],Internal
+par_off,allosteric_models.h,['allosteric_models.h'],Internal
+par_on,allosteric_models.h,['allosteric_models.h'],Internal
+periodicity,allosteric_models.h,['allosteric_models.h'],Internal
+pile_argument_list,grammar_untyped.h,['grammar_untyped.h'],Internal
+plogL,qmodel.h,['qmodel.h'],Internal
+posterior,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+predictions,qmodel.h,['qmodel.h'],Internal
+previous_duration,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+primitive_non_const,parameters_derivative.h,['parameters_derivative.h'],Internal
+pulse_pos,experiment.h,['experiment.h'],Internal
+push_back_expression,grammar_typed.h,['grammar_typed.h'],Internal
+putback,general_output_operator.h,['general_output_operator.h'],Internal
+qr,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+r_vlogL,qmodel.h,['qmodel.h'],Internal
+r_y_mean,qmodel.h,['qmodel.h'],Internal
+r_y_mean_max,qmodel.h,['qmodel.h'],Internal
+r_y_mean_min,qmodel.h,['qmodel.h'],Internal
+r_y_var,qmodel.h,['qmodel.h'],Internal
+recursive,qmodel.h,['qmodel.h'],Internal
+recursive_range,qmodel.h,['qmodel.h'],Internal
+reduce_cov,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+remove_high_temperture_beta,parallel_tempering.h,['parallel_tempering.h'],Internal
+rend,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+report_all,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+report_finalizer_data,parallel_tempering.h,['parallel_tempering.h'],Internal
+report_finalizer_title,parallel_tempering.h,['parallel_tempering.h'],Internal
+report_old,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+reporter,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+return_predictions_value,qmodel.h,['qmodel.h'],Internal
+rgsqr_i,qmodel.h,['qmodel.h'],Internal
+rotate,allosteric_models.h,['allosteric_models.h'],Internal
+run_expression,grammar_typed.h,['grammar_typed.h'],Internal
+run_simulation,CLI_function_table.h,['CLI_function_table.h'],Internal
+run_statement,grammar_typed.h,['grammar_typed.h'],Internal
+sample_,qmodel.h,['qmodel.h'],Internal
+sample_Multinomial,qmodel.h,['qmodel.h'],Internal
+sampler,distributions.h,['distributions.h'],Internal
+save,qmodel.h,['qmodel.h'],Internal
+save_experiment,experiment.h,['experiment.h'],Internal
+save_fractioned_simulation,qmodel.h,['qmodel.h'],Internal
+save_simulation,qmodel.h,['qmodel.h'],Internal
+se,general_output_operator.h,['general_output_operator.h'],Internal
+self_derivative,derivative_operator.h,['derivative_operator.h'],Internal
+set_CueviAlgorithm,CLI_function_table.h,['CLI_function_table.h'],Internal
+set_Likelihood_algorithm,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+set_ThermoAlgorithm,CLI_thermo_evidence.h,['CLI_thermo_evidence.h'],Internal
+set_ThermoAlgorithm_dts,CLI_thermo_evidence_dts.h,['CLI_thermo_evidence_dts.h'],Internal
+set_ThermoAlgorithm_fraction_dts,CLI_thermo_evidence_fraction_dts.h,['CLI_thermo_evidence_fraction_dts.h'],Internal
+set_dx,parameters_derivative.h,['parameters_derivative.h'],Internal
+set_simulation_algorithm,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+shuffeld_walkers,parallel_tempering.h,['parallel_tempering.h'],Internal
+skip_comment,lexer_untyped.h,['lexer_untyped.h'],Internal
+skip_plus_or_minus,lexer_untyped.h,['lexer_untyped.h'],Internal
+skip_whiteline,lexer_untyped.h,['lexer_untyped.h'],Internal
+skip_whitespace,lexer_untyped.h,['lexer_untyped.h'],Internal
+skip_whitespaceline,lexer_untyped.h,['lexer_untyped.h'],Internal
+sort_by_eigenvalue,lapack_headers.h,['lapack_headers.h'],Internal
+ss0,maybe_error.h,['maybe_error.h'],Internal
+ss1,maybe_error.h,['maybe_error.h'],Internal
+starts_pulse,experiment.h,['experiment.h'],Internal
+stddev,multivariate_normal_distribution.h,['multivariate_normal_distribution.h'],Internal
+step_stretch_thermo_mcmc_old,parallel_tempering.h,['parallel_tempering.h'],Internal
+stretch_move,parallel_tempering.h,['parallel_tempering.h'],Internal
+sub_sample,qmodel.h,['qmodel.h'],Internal
+sub_sub_sample,qmodel.h,['qmodel.h'],Internal
+sum_Qdt,qmodel.h,['qmodel.h'],Internal
+sum_Qn,qmodel.h,['qmodel.h'],Internal
+swap,parallel_tempering.h,['parallel_tempering.h'],Internal
+t_V,qmodel.h,['qmodel.h'],Internal
+t_gtotal_ij,qmodel.h,['qmodel.h'],Internal
+t_gtotal_var_ij,qmodel.h,['qmodel.h'],Internal
+t_logLikelihood,qmodel.h,['qmodel.h'],Internal
+t_sum,qmodel.h,['qmodel.h'],Internal
+t_yvar,qmodel.h,['qmodel.h'],Internal
+t_yvar_2,qmodel.h,['qmodel.h'],Internal
+template_op,qmodel.h,['qmodel.h'],Internal
+template_transformation,parameters.h,['parameters.h'],Internal
+test_Probability_value,qmodel.h,['qmodel.h'],Internal
+test_conductance_mean,qmodel.h,['qmodel.h'],Internal
+test_conductance_variance,qmodel.h,['qmodel.h'],Internal
+test_conductance_variances,qmodel.h,['qmodel.h'],Internal
+tgamma,bayesian_linear_regression.h,['bayesian_linear_regression.h'],Internal
+thermo,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_Model_by_max_iter,qmodel.h,['qmodel.h'],Internal
+thermo_by_convergence,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_by_max_iter,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_convergence,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_evidence_loop,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_impl,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_jump_mcmc_old,parallel_tempering.h,['parallel_tempering.h'],Internal
+thermo_levenberg_Model_by_max_iter,qmodel.h,['qmodel.h'],Internal
+thermo_max,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_max_iter,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_store_every,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+thermo_store_every_and_report,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+timepoint,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
+to_Probability,qmodel.h,['qmodel.h'],Internal
+to_State_Model,qmodel.h,['qmodel.h'],Internal
+to_Transition_Probability,qmodel.h,['qmodel.h'],Internal
+to_Transition_Probability_Eigenvalues,qmodel.h,['qmodel.h'],Internal
+to_end_of_line,lexer_untyped.h,['lexer_untyped.h'],Internal
+to_state_conductance_count,allosteric_models.h,['allosteric_models.h'],Internal
+to_state_count,allosteric_models.h,['allosteric_models.h'],Internal
+to_state_index,allosteric_models.h,['allosteric_models.h'],Internal
+to_time_t,maybe_error.h,['maybe_error.h'],Internal
+total_count,function_measure_verification_and_optimization.h,['function_measure_verification_and_optimization.h'],Internal
+transformation_type,derivative_operator.h,['derivative_operator.h'],Internal
+transitions,allosteric_models.h,['allosteric_models.h'],Internal
+truncate_negative_variance,qmodel.h,['qmodel.h'],Internal
+typed_assigment,grammar_typed.h,['grammar_typed.h'],Internal
+typed_assignment,grammar_typed.h,['grammar_typed.h'],Internal
+typed_comment,grammar_typed.h,['grammar_typed.h'],Internal
+typed_numeric_value,grammar_typed.h,['grammar_typed.h'],Internal
+typed_string_value,grammar_typed.h,['grammar_typed.h'],Internal
+uniform_real,parallel_tempering.h,['parallel_tempering.h'],Internal
+uniform_stretch_zdist,parallel_tempering.h,['parallel_tempering.h'],Internal
+uniform_walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+untransformed_type,derivative_operator.h,['derivative_operator.h'],Internal
+update,parallel_tempering.h,['parallel_tempering.h'],Internal
+v_vplogL,qmodel.h,['qmodel.h'],Internal
+v_y_mean,qmodel.h,['qmodel.h'],Internal
+v_y_var,qmodel.h,['qmodel.h'],Internal
+var_logL_walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+var_mean_logL_walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+variance_correction_range,qmodel.h,['qmodel.h'],Internal
+variance_range,qmodel.h,['qmodel.h'],Internal
+variant_op,qmodel.h,['qmodel.h'],Internal
+varr,derivative_operator.h,['derivative_operator.h'],Internal
+verify,parameters.h,['parameters.h'],Internal
+vplogL,qmodel.h,['qmodel.h'],Internal
+walker,parallel_tempering.h,['parallel_tempering.h'],Internal
+work,lapack_headers.h,['lapack_headers.h'],Internal
+write_script,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+write_text,CLI_macro_dr_base.h,['CLI_macro_dr_base.h'],Internal
+write_tuple_i,lapack_headers.h,['lapack_headers.h'],Internal
+xi,derivative_test.h,['derivative_test.h'],Internal
+y_baseline,qmodel.h,['qmodel.h'],Internal
+y_mean,qmodel.h,['qmodel.h'],Internal
+y_out,qmodel.h,['qmodel.h'],Internal
+y_sum,qmodel.h,['qmodel.h'],Internal
+y_var,qmodel.h,['qmodel.h'],Internal
+ymean_Evolution,qmodel.h,['qmodel.h'],Internal
+yvar_Evolution,qmodel.h,['qmodel.h'],Internal
+zip_par,parameters_derivative.h,['parameters_derivative.h'],Internal
+A,lapack_headers.h,"['maybe_error.h', 'qmodel.h', 'lapack_headers.h', 'experiment.h', 'parallel_tempering.h']",Provider
+ATP_concentration,experiment.h,"['CLI_function_table.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'experiment.h', 'models_MoffattHume_linear.h']",Provider
+ATP_evolution,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+AT_B_A,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+Abstract,grammar_untyped.h,"['grammar_untyped.h', 'grammar_Identifier.h']",Provider
+Agonist_dependency,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Agonist_dependency_map,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Agonist_label,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Algorithm,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+Allost1,models_MoffattHume_linear.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+Binomial_magical_number,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+C,parameters_derivative.h,"['parameters_derivative.h', 'maybe_error.h', 'lapack_headers.h', 'variables.h', 'general_algorithm_on_containers.h', 'fold.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+C_Matrix,qmodel.h,"['qmodel.h', 'parameters.h', 'lapack_headers.h']",Provider
+C_double,qmodel.h,"['distributions.h', 'qmodel.h']",Provider
+Calc_Qdt,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Calc_Qdt_step,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Calc_Qdtm_step,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Calc_Qx,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Calc_eigen,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Compiler,lexer_untyped.h,"['grammar_typed.h', 'CLI_function_table.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'grammar_untyped.h', 'CLI_macro_dr_base.h', 'CLI_macro_dr.h']",Provider
+Conductance_interaction,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conductance_interaction_info,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+Conductance_interaction_kind,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+Conductance_interaction_label,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conductance_interaction_players,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conductance_interaction_positions,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conductance_variance_error_tolerance,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Conformation_change_standard_state,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+Conformational_change_label,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conformational_interaction,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conformational_interaction_index,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+Conformational_interaction_label,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conformational_interaction_players,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conformational_interaction_positions,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Conformational_interaction_subposition,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+Conformational_interactions_domain_state,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+Constant,variables.h,"['distributions.h', 'qmodel.h', 'experiment.h', 'variables.h', 'allosteric_models.h', 'variables_derivative.h']",Provider
+Container,general_algorithm_on_containers.h,"['parameters_derivative.h', 'general_algorithm_on_containers.h', 'fold.h']",Provider
+Cov,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'multivariate_normal_distribution.h', 'qmodel.h']",Provider
+Cova,parallel_tempering.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h', 'parallel_tempering.h']",Provider
+Current_Baseline,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Current_Noise,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+D,parameters_derivative.h,"['distributions.h', 'derivative_operator.h', 'parameters_derivative.h', 'lapack_headers.h']",Provider
+DataType,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+Der,parameters_derivative.h,"['parameters_derivative.h', 'derivative_operator.h']",Provider
+Derivative,parameters_derivative.h,"['parameters_derivative.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'variables_derivative.h']",Provider
+DiagPosDetMatrix,bayesian_linear_regression.h,"['parameters_derivative.h', 'parameters_distribution.h', 'qmodel.h', 'bayesian_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+Duration,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+Error,lapack_headers.h,"['CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lapack_headers.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+Event_Timing,function_measure_verification_and_optimization.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+Experiment,qmodel.h,"['CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+F,parameters_derivative.h,"['grammar_typed.h', 'distributions.h', 'parameters_derivative.h', 'gsl_integrate.h', 'derivative_test.h', 'CLI_function_table.h', 'maybe_error.h', 'lexer_typed.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'fold.h', 'derivative_operator.h', 'function_memoization.h', 'models_MoffattHume_linear.h', 'CLI_macro_dr.h', 'variables_derivative.h']",Provider
+FIM,distributions.h,"['distributions.h', 'parameters_distribution.h', 'qmodel.h']",Provider
+Frequency_of_Sampling,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+Fun,variables.h,"['qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'function_memoization.h', 'variables_derivative.h']",Provider
+FuncMap_St,function_measure_verification_and_optimization.h,"['CLI_function_table.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h']",Provider
+FunctionTable,parallel_tempering.h,"['bayesian_linear_regression.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+G,qmodel.h,"['models_MoffattHume_linear.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'qmodel.h']",Provider
+Gamma,parallel_tempering_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+Grad,distributions.h,"['distributions.h', 'qmodel.h']",Provider
+I,function_measure_verification_and_optimization.h,"['function_measure_verification_and_optimization.h', 'derivative_operator.h', 'lapack_headers.h']",Provider
+I_thread,function_measure_verification_and_optimization.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h', 'function_memoization.h']",Provider
+Id,parameters.h,"['parameters_derivative.h', 'parameters.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'allosteric_models.h', 'derivative_operator.h', 'function_memoization.h', 'models_MoffattHume_linear.h', 'variables_derivative.h']",Provider
+IdName,parameters_distribution.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters.h', 'parameters_distribution.h']",Provider
+Identifier,grammar_Identifier.h,"['grammar_typed.h', 'grammar_Identifier.h', 'lexer_typed.h', 'grammar_untyped.h', 'CLI_regular_types.h']",Provider
+Identifier_compiler,lexer_typed.h,"['grammar_typed.h', 'lexer_typed.h']",Provider
+K,variables.h,"['variables.h', 'general_output_operator.h', 'lapack_headers.h']",Provider
+Lexer,lexer_untyped.h,"['grammar_typed.h', 'grammar_Identifier.h', 'lexer_untyped.h', 'lexer_typed.h', 'grammar_untyped.h', 'CLI_macro_dr.h']",Provider
+Likelihood,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+Likelihood_Model_regular,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+Likelihood_Model_v,qmodel.h,"['CLI_thermo_evidence.h', 'qmodel.h']",Provider
+M,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h', 'lapack_headers.h']",Provider
+MacroR,qmodel.h,"['function_measure_verification_and_optimization.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+MacroR2,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Macro_DMR,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+Map,grammar_untyped.h,"['grammar_untyped.h', 'fold.h']",Provider
+Matrix,parameters_derivative.h,"['distributions.h', 'parameters_derivative.h', 'parameters_distribution.h', 'parameters.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'qmodel.h', 'derivative_operator.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+Maybe_error,maybe_error.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'qmodel.h', 'general_algorithm_on_containers.h', 'CLI_macro_dr_base.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'general_output_operator.h', 'lexer_untyped.h', 'lexer_typed.h', 'experiment.h', 'parallel_tempering.h']",Provider
+Memoiza_all_values,function_memoization.h,"['CLI_function_table.h', 'function_memoization.h']",Provider
+Memoiza_overload,function_memoization.h,"['CLI_function_table.h', 'function_memoization.h']",Provider
+Model,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Models_Library,models_MoffattHume_allosteric.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+MyTranformations,parameters.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters.h', 'parameters_distribution.h']",Provider
+N,qmodel.h,"['lapack_headers.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+N_Ch_mean,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+N_Ch_mean_time_segment_duration,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+N_St,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+Names,parameters.h,"['models_MoffattHume_linear.h', 'parameters.h']",Provider
+NoDerivative,derivative_operator.h,"['derivative_operator.h', 'derivative_test.h']",Provider
+Nothing,maybe_error.h,"['function_measure_verification_and_optimization.h', 'maybe_error.h', 'qmodel.h']",Provider
+Op,lapack_headers.h,"['qmodel.h', 'derivative_operator.h', 'lapack_headers.h']",Provider
+P,parallel_tempering.h,"['parameters_derivative.h', 'CLI_function_table.h', 'lapack_headers.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+P_initial,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Parameter,parallel_tempering.h,"['experiment.h', 'parallel_tempering.h', 'parameters_distribution.h', 'qmodel.h']",Provider
+Parameters,parallel_tempering.h,"['variables_derivative.h', 'derivative_test.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+Parameters_Names,parameters.h,"['parameters.h', 'allosteric_models.h']",Provider
+Parameters_Transformations,parameters.h,"['parameters_derivative.h', 'parameters_distribution.h', 'parameters.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+Parameters_transformed,parameters.h,"['parameters_derivative.h', 'CLI_function_table.h', 'parameters_distribution.h', 'parameters.h', 'qmodel.h', 'parallel_tempering.h']",Provider
+Parameters_values,parameters.h,"['parameters_derivative.h', 'parameters.h', 'qmodel.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Patch_Model,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Patch_current,qmodel.h,"['experiment.h', 'qmodel.h']",Provider
+Pink_Noise,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Poisson_noise_expected_logL,gsl_integrate.h,"['gsl_integrate.h', 'qmodel.h']",Provider
+Poisson_noise_normalization,gsl_integrate.h,"['gsl_integrate.h', 'qmodel.h']",Provider
+Power,variables.h,"['variables.h', 'qmodel.h']",Provider
+Primitive,derivative_operator.h,"['parameters_derivative.h', 'derivative_operator.h']",Provider
+Prior,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+Probability_error_tolerance,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Product,variables.h,"['variables.h', 'qmodel.h']",Provider
+Proportional_Noise,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+Q0,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+Q0_formula,qmodel.h,"['models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+Qa,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+Qa_formula,qmodel.h,"['models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+R,maybe_error.h,"['bayesian_linear_regression.h', 'general_algorithm_on_containers.h', 'maybe_error.h', 'lapack_headers.h']",Provider
+Recording,experiment.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'experiment.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+Recording_conditions,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+S,models_MoffattHume_linear.h,"['parameters_derivative.h', 'CLI_function_table.h', 'maybe_error.h', 'lapack_headers.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'fold.h', 'derivative_operator.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'variables_derivative.h']",Provider
+Save_Evidence_every,parallel_tempering.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+Save_Likelihood_every,parallel_tempering.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+Save_Parameter_every,parallel_tempering.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+Save_Predictions_every,parallel_tempering.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+Save_RateParameter_every,parallel_tempering.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+Saving_intervals,parallel_tempering.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+Simulated_Recording,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+Simulation_n_sub_dt,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+Single_Thread_Memoizer,CLI_function_table.h,"['CLI_function_table.h', 'function_memoization.h']",Provider
+T,parallel_tempering.h,"['parameters_derivative.h', 'maybe_error.h', 'fold.h', 'grammar_typed.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'CLI_regular_types.h', 'multivariate_normal_distribution.h', 'distributions.h', 'general_output_operator.h', 'lexer_untyped.h', 'lexer_typed.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+T0,variables.h,"['variables.h', 'derivative_test.h', 'parallel_tempering.h']",Provider
+Taylor_first,parameters_derivative.h,"['parameters_derivative.h', 'variables_derivative.h', 'derivative_test.h']",Provider
+Thread_Memoizer,CLI_function_table.h,"['CLI_function_table.h', 'function_memoization.h']",Provider
+Time,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+Time_it_st,CLI_function_table.h,"['function_measure_verification_and_optimization.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+ToString,qmodel.h,"['variables.h', 'function_measure_verification_and_optimization.h', 'maybe_error.h', 'qmodel.h']",Provider
+Trace,maybe_error.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'maybe_error.h']",Provider
+TranspMult,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+Ts,general_output_operator.h,"['grammar_typed.h', 'general_output_operator.h', 'maybe_error.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'function_memoization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'CLI_regular_types.h', 'variables_derivative.h']",Provider
+V,qmodel.h,"['CLI_function_table.h', 'maybe_error.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'general_algorithm_on_containers.h']",Provider
+VR,parameters_derivative.h,"['parameters_derivative.h', 'lapack_headers.h']",Provider
+Var,variables.h,"['distributions.h', 'qmodel.h', 'variables.h', 'experiment.h', 'derivative_operator.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+Variables,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+Vector_Map,variables.h,"['variables.h', 'qmodel.h']",Provider
+Vector_Space,variables.h,"['distributions.h', 'variables_derivative.h', 'CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'CLI_thermo_evidence_fraction_dts.h', 'variables.h', 'experiment.h', 'derivative_operator.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+Vs,qmodel.h,"['distributions.h', 'variables.h', 'qmodel.h']",Provider
+W,qmodel.h,"['qmodel.h', 'lapack_headers.h']",Provider
+X,distributions.h,"['distributions.h', 'parameters_derivative.h', 'lapack_headers.h', 'derivative_operator.h', 'function_memoization.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'variables_derivative.h']",Provider
+XTX,parallel_tempering_linear_regression.h,"['parameters_derivative.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+XXT,maybe_error.h,"['multivariate_normal_distribution.h', 'maybe_error.h', 'qmodel.h']",Provider
+X_plus_XT,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+Y,function_memoization.h,"['parameters_derivative.h', 'derivative_operator.h', 'derivative_test.h', 'function_memoization.h']",Provider
+abort,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+abs,parameters_derivative.h,"['parameters_derivative.h', 'gsl_integrate.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'general_algorithm_on_containers.h', 'derivative_operator.h', 'parallel_tempering.h', 'multivariate_normal_distribution.h']",Provider
+adapt_beta,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+add_Patch_inactivation,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
+add_Patch_inactivation_to_model,models_MoffattHume_linear.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+adjust_beta,parallel_tempering.h,"['CLI_thermo_evidence_dts.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+advance,parallel_tempering.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'function_memoization.h', 'lapack_headers.h']",Provider
+algorithm,parallel_tempering_linear_regression.h,"['CLI_function_table.h', 'lapack_headers.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h']",Provider
+alpha,parallel_tempering_linear_regression.h,"['lapack_headers.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+apply,parameters_derivative.h,"['grammar_typed.h', 'parameters_derivative.h', 'general_output_operator.h', 'maybe_error.h', 'qmodel.h', 'grammar_untyped.h', 'variables.h', 'models_MoffattHume_allosteric.h', 'derivative_operator.h', 'function_memoization.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'variables_derivative.h']",Provider
+applyMap,parameters_derivative.h,"['parameters_derivative.h', 'multivariate_normal_distribution.h']",Provider
+apply_F,function_memoization.h,"['function_measure_verification_and_optimization.h', 'function_memoization.h']",Provider
+assert,parallel_tempering.h,"['distributions.h', 'parameters_derivative.h', 'parameters_distribution.h', 'parameters.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'experiment.h', 'qmodel.h', 'function_memoization.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+at,allosteric_models.h,"['grammar_Identifier.h', 'derivative_test.h', 'maybe_error.h', 'lapack_headers.h', 'qmodel.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+back,allosteric_models.h,"['parameters_distribution.h', 'qmodel.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+bad,general_output_operator.h,"['general_output_operator.h', 'lapack_headers.h']",Provider
+base_Identifier_compiler,lexer_typed.h,"['grammar_typed.h', 'lexer_typed.h']",Provider
+base_transformation,parameters.h,"['models_MoffattHume_linear.h', 'parameters.h']",Provider
+base_typed_expression,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_typed.h']",Provider
+base_typed_statement,grammar_untyped.h,"['grammar_typed.h', 'grammar_untyped.h']",Provider
+bayesian_linear_regression,bayesian_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+bayesian_linear_regression_calculate_mean_logLik,parallel_tempering.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+begin,parameters_derivative.h,"['parameters_derivative.h', 'CLI_function_table.h', 'general_output_operator.h', 'parameters_distribution.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'general_algorithm_on_containers.h', 'function_memoization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+beta,parallel_tempering.h,"['qmodel.h', 'lapack_headers.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+build,variables.h,"['lapack_headers.h', 'models_MoffattHume_allosteric.h', 'variables.h', 'qmodel.h', 'derivative_operator.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+build_,parameters_derivative.h,"['parameters_derivative.h', 'models_MoffattHume_linear.h']",Provider
+c,lapack_headers.h,"['general_output_operator.h', 'lapack_headers.h', 'general_algorithm_on_containers.h', 'fold.h', 'derivative_operator.h', 'parallel_tempering.h', 'allosteric_models.h']",Provider
+calc_Pinitial,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+calc_Qdt,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+calc_Qdt_ATP_step,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+calc_Qdtm_ATP_step,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+calc_Qx,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+calc_eigen,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+calc_experiment_fractions,qmodel.h,"['qmodel.h', 'CLI_macro_dr_base.h']",Provider
+calc_seed,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_macro_dr_base.h']",Provider
+calc_thermo_mcmc_continuation,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_Acceptance_variance,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_Evidence,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_across_sta,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_deltaBeta_deltaL,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_delta_Evidence_variance,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_effective_sample_size,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_sample_size,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+calculate_within_sta,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+catch,lapack_headers.h,"['experiment.h', 'lapack_headers.h']",Provider
+ceil,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+change_states_number,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
+checks_convergence,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+checks_derivative_var_ratio,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+cholesky,multivariate_normal_distribution.h,"['multivariate_normal_distribution.h', 'maybe_error.h', 'lapack_headers.h']",Provider
+className,qmodel.h,"['distributions.h', 'general_algorithm_on_containers.h', 'allosteric_models.h', 'qmodel.h']",Provider
+clear,qmodel.h,"['lexer_typed.h', 'qmodel.h', 'experiment.h', 'function_measure_verification_and_optimization.h', 'function_memoization.h']",Provider
+clone,parameters.h,"['grammar_typed.h', 'grammar_Identifier.h', 'parameters.h', 'lexer_untyped.h', 'lexer_typed.h', 'grammar_untyped.h', 'models_MoffattHume_linear.h']",Provider
+clone_map,grammar_Identifier.h,"['grammar_typed.h', 'grammar_Identifier.h', 'lexer_typed.h']",Provider
+clone_tuple,grammar_untyped.h,"['grammar_typed.h', 'grammar_untyped.h']",Provider
+clone_vector,grammar_Identifier.h,"['grammar_typed.h', 'grammar_untyped.h', 'grammar_Identifier.h']",Provider
+compare_contents,qmodel.h,"['parameters.h', 'qmodel.h', 'variables.h', 'general_algorithm_on_containers.h', 'derivative_operator.h', 'models_MoffattHume_linear.h']",Provider
+compile_argument_list,grammar_untyped.h,"['grammar_typed.h', 'grammar_untyped.h']",Provider
+compile_assigment,grammar_typed.h,"['grammar_typed.h', 'grammar_untyped.h']",Provider
+compile_expression,lexer_typed.h,"['grammar_untyped.h', 'lexer_typed.h']",Provider
+compile_identifier,grammar_untyped.h,"['grammar_typed.h', 'grammar_untyped.h']",Provider
+conjugate,bayesian_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'lapack_headers.h']",Provider
+constexpr,parallel_tempering_linear_regression.h,"['parameters_derivative.h', 'maybe_error.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'CLI_macro_dr_base.h', 'distributions.h', 'general_output_operator.h', 'lexer_untyped.h', 'function_memoization.h', 'variables_derivative.h']",Provider
+constexpr_Var,variables.h,"['variables.h', 'qmodel.h']",Provider
+constexpr_Var_domain,variables.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'variables.h']",Provider
+constexpr_Var_value,variables.h,"['variables.h', 'qmodel.h']",Provider
+count,parallel_tempering.h,"['maybe_error.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+cov,parameters_distribution.h,"['bayesian_linear_regression.h', 'parameters_distribution.h', 'multivariate_normal_distribution.h']",Provider
+cov_inv,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'parameters_distribution.h', 'multivariate_normal_distribution.h']",Provider
+create,qmodel.h,"['parameters_distribution.h', 'parameters.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'function_memoization.h']",Provider
+create_thermo_mcmc,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+cuevi_less_than_max_iteration,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+cumsum,qmodel.h,"['general_algorithm_on_containers.h', 'qmodel.h']",Provider
+d,distributions.h,"['distributions.h', 'parameters_derivative.h', 'parameters_distribution.h', 'qmodel.h', 'variables.h', 'derivative_operator.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+d_d_,parameters_derivative.h,"['parameters_derivative.h', 'derivative_operator.h']",Provider
+decltype,variables_derivative.h,"['parameters_derivative.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'CLI_macro_dr_base.h', 'multivariate_normal_distribution.h', 'distributions.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+derivative,parameters_derivative.h,"['parameters_derivative.h', 'derivative_operator.h', 'variables_derivative.h', 'qmodel.h']",Provider
+df,parallel_tempering.h,"['parameters_derivative.h', 'parallel_tempering.h']",Provider
+diag,parameters_derivative.h,"['parameters_derivative.h', 'multivariate_normal_distribution.h', 'maybe_error.h', 'qmodel.h']",Provider
+diagpos,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+diff,general_algorithm_on_containers.h,"['general_algorithm_on_containers.h', 'parallel_tempering_linear_regression.h']",Provider
+digamma,bayesian_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+dimensionless,variables.h,"['variables.h', 'qmodel.h']",Provider
+distributions,distributions.h,"['distributions.h', 'bayesian_linear_regression.h', 'function_memoization.h']",Provider
+dx,parameters_derivative.h,"['parameters_derivative.h', 'derivative_test.h', 'qmodel.h', 'derivative_operator.h', 'variables_derivative.h']",Provider
+e,allosteric_models.h,"['grammar_typed.h', 'parameters_derivative.h', 'general_output_operator.h', 'maybe_error.h', 'parameters.h', 'lexer_untyped.h', 'lapack_headers.h', 'grammar_untyped.h', 'experiment.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'fold.h', 'function_memoization.h', 'qmodel.h', 'parallel_tempering.h', 'allosteric_models.h']",Provider
+eigs,parameters_derivative.h,"['parameters_derivative.h', 'multivariate_normal_distribution.h', 'qmodel.h']",Provider
+elemDivSafe,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+elemMult,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+elogL,distributions.h,"['distributions.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+emcee_stat,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+emplace,lexer_typed.h,"['grammar_Identifier.h', 'lexer_typed.h', 'qmodel.h', 'variables.h', 'function_memoization.h', 'allosteric_models.h']",Provider
+emplace_back,grammar_untyped.h,"['grammar_typed.h', 'qmodel.h', 'grammar_untyped.h', 'experiment.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h']",Provider
+end,general_output_operator.h,"['grammar_typed.h', 'general_output_operator.h', 'parameters_distribution.h', 'parameters.h', 'lexer_untyped.h', 'lexer_typed.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'experiment.h', 'function_memoization.h', 'qmodel.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+epsilon,qmodel.h,"['gsl_integrate.h', 'maybe_error.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'general_algorithm_on_containers.h', 'multivariate_normal_distribution.h']",Provider
+erase,allosteric_models.h,"['allosteric_models.h', 'parallel_tempering.h']",Provider
+error,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'qmodel.h', 'general_algorithm_on_containers.h', 'multivariate_normal_distribution.h', 'distributions.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+error_message,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'qmodel.h', 'general_algorithm_on_containers.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'lexer_untyped.h', 'lexer_typed.h', 'experiment.h', 'parallel_tempering.h']",Provider
+evidence,parallel_tempering_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'CLI_function_table.h', 'parallel_tempering.h']",Provider
+exp,parallel_tempering.h,"['grammar_typed.h', 'distributions.h', 'parameters_derivative.h', 'gsl_integrate.h', 'qmodel.h', 'derivative_operator.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+extract_double,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+extract_parameters_last,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+f,qmodel.h,"['parameters_derivative.h', 'parameters_distribution.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'gsl_integrate.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'CLI_macro_dr_base.h', 'distributions.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+field_compiler,lexer_typed.h,"['CLI_macro_dr.h', 'lexer_typed.h']",Provider
+find,parameters.h,"['grammar_typed.h', 'grammar_Identifier.h', 'parameters.h', 'lexer_untyped.h', 'lexer_typed.h', 'lapack_headers.h', 'variables.h', 'general_algorithm_on_containers.h', 'function_memoization.h', 'allosteric_models.h']",Provider
+find_first_not_of,lexer_untyped.h,"['grammar_Identifier.h', 'lexer_untyped.h']",Provider
+first,allosteric_models.h,"['parameters_derivative.h', 'grammar_Identifier.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_function_table.h', 'parameters.h', 'lexer_untyped.h', 'lapack_headers.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'function_memoization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+fixed_set,parameters_derivative.h,"['parameters_derivative.h', 'parameters.h']",Provider
+floor,multivariate_normal_distribution.h,"['multivariate_normal_distribution.h', 'qmodel.h']",Provider
+flush,parallel_tempering.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+fold,fold.h,"['grammar_untyped.h', 'fold.h', 'qmodel.h']",Provider
+for,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'fold.h', 'bayesian_linear_regression.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'general_output_operator.h', 'lexer_untyped.h', 'lexer_typed.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h']",Provider
+fork,function_measure_verification_and_optimization.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+format,variables.h,"['variables.h', 'lapack_headers.h']",Provider
+fractioned_logLikelihoodPredictions,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+free_to_all,parameters_derivative.h,"['parameters_derivative.h', 'parameters.h']",Provider
+from_string,parameters.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters.h', 'parameters_distribution.h']",Provider
+from_strings,parameters.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters.h']",Provider
+fstop,function_measure_verification_and_optimization.h,"['function_measure_verification_and_optimization.h', 'qmodel.h']",Provider
+fullsum,parameters_derivative.h,"['distributions.h', 'parameters_derivative.h', 'qmodel.h', 'variables.h', 'general_algorithm_on_containers.h', 'models_MoffattHume_linear.h']",Provider
+fun,variables.h,"['variables.h', 'function_measure_verification_and_optimization.h', 'lexer_typed.h']",Provider
+function_compiler,lexer_typed.h,"['CLI_macro_dr.h', 'lexer_typed.h']",Provider
+function_name,maybe_error.h,"['maybe_error.h', 'lapack_headers.h']",Provider
+g,qmodel.h,"['qmodel.h', 'models_MoffattHume_allosteric.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+g_,multivariate_normal_distribution.h,"['allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+g_formula,qmodel.h,"['models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+get,parallel_tempering.h,"['maybe_error.h', 'models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'distributions.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'experiment.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+get_Beta,qmodel.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+get_Experiment,experiment.h,"['CLI_thermo_evidence_dts.h', 'experiment.h', 'CLI_thermo_evidence.h', 'CLI_macro_dr_base.h']",Provider
+get_Experiment_file,experiment.h,"['experiment.h', 'CLI_macro_dr_base.h']",Provider
+get_Fun,function_memoization.h,"['function_measure_verification_and_optimization.h', 'function_memoization.h']",Provider
+get_Identifier,lexer_typed.h,"['grammar_untyped.h', 'lexer_typed.h']",Provider
+get_Observations,experiment.h,"['experiment.h', 'CLI_macro_dr_base.h']",Provider
+get_Parameter,qmodel.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+get_Walker,qmodel.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+get_Walkers_number,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+get_beta_list,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+get_dx_of_dfdx,parameters_derivative.h,"['parameters_derivative.h', 'variables_derivative.h', 'derivative_operator.h', 'derivative_test.h']",Provider
+get_error,qmodel.h,"['derivative_test.h', 'maybe_error.h', 'qmodel.h', 'derivative_operator.h', 'multivariate_normal_distribution.h']",Provider
+get_function_Table_maker_St,CLI_function_table.h,"['CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_function_table.h', 'CLI_thermo_evidence.h']",Provider
+get_function_Table_maker_St_no_Qdt_memoization,CLI_function_table.h,"['CLI_thermo_evidence_dts.h', 'CLI_function_table.h']",Provider
+get_function_Table_maker_value,CLI_macro_dr_base.h,"['CLI_function_table.h', 'CLI_macro_dr_base.h']",Provider
+get_model,models_MoffattHume_allosteric.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'models_MoffattHume_allosteric.h', 'CLI_thermo_evidence_fraction_dts.h', 'models_MoffattHume_linear.h']",Provider
+get_model_scheme,models_MoffattHume_allosteric.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+get_num_parameters,models_MoffattHume_allosteric.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h']",Provider
+get_value,maybe_error.h,"['multivariate_normal_distribution.h', 'derivative_test.h', 'maybe_error.h', 'qmodel.h']",Provider
+get_variant,CLI_function_table.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+getline,parallel_tempering.h,"['general_output_operator.h', 'maybe_error.h', 'parameters_distribution.h', 'parameters.h', 'qmodel.h', 'experiment.h', 'parallel_tempering.h']",Provider
+getvalue,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+i_max,general_algorithm_on_containers.h,"['general_algorithm_on_containers.h', 'qmodel.h']",Provider
+i_walker,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+idealize_Experiment,experiment.h,"['experiment.h', 'CLI_macro_dr_base.h']",Provider
+if,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h']",Provider
+ifstream,parallel_tempering.h,"['parameters_distribution.h', 'maybe_error.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'parameters.h', 'qmodel.h', 'experiment.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h']",Provider
+includes_N_state_evolution,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+init,allosteric_models.h,"['fold.h', 'allosteric_models.h', 'qmodel.h']",Provider
+init_mts,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+init_thermo_mcmc,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+initial_ATP_concentration,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+initial_beta_dts,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+insert,general_output_operator.h,"['grammar_typed.h', 'general_output_operator.h', 'models_MoffattHume_allosteric.h', 'function_measure_verification_and_optimization.h', 'function_memoization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+insert_new_formula,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
+inside_out,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+inv,parameters_derivative.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+invoke,distributions.h,"['grammar_typed.h', 'distributions.h', 'derivative_test.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'fold.h', 'function_memoization.h', 'models_MoffattHume_linear.h', 'variables_derivative.h']",Provider
+is_finite,variables.h,"['variables.h', 'qmodel.h']",Provider
+is_good,distributions.h,"['distributions.h', 'parameters.h']",Provider
+is_valid,maybe_error.h,"['derivative_test.h', 'maybe_error.h', 'qmodel.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+isnan,qmodel.h,"['qmodel.h', 'variables.h', 'general_algorithm_on_containers.h', 'derivative_operator.h', 'parallel_tempering.h']",Provider
+label,allosteric_models.h,"['lexer_untyped.h', 'allosteric_models.h']",Provider
+lambda,qmodel.h,"['parameters_derivative.h', 'qmodel.h', 'lapack_headers.h']",Provider
+less_than_max_iteration,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+lgamma,parallel_tempering_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+linear_model,bayesian_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+load_Parameters,qmodel.h,"['parameters.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+load_Prior,parameters_distribution.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'parameters_distribution.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_macro_dr_base.h']",Provider
+load_Recording,experiment.h,"['experiment.h', 'CLI_function_table.h']",Provider
+load_Recording_Data,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'experiment.h']",Provider
+load_fractioned_Recording,CLI_function_table.h,"['CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'CLI_function_table.h']",Provider
+load_fractioned_experiment,CLI_function_table.h,"['CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'CLI_function_table.h']",Provider
+load_fractioned_simulation,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+load_segments_length_for_fractioning,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+load_simulation,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+load_vars,general_output_operator.h,"['CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'general_output_operator.h', 'CLI_thermo_evidence.h']",Provider
+load_vars_line,general_output_operator.h,"['general_output_operator.h', 'parallel_tempering.h']",Provider
+log,parameters_derivative.h,"['distributions.h', 'parameters_derivative.h', 'gsl_integrate.h', 'maybe_error.h', 'parameters.h', 'qmodel.h', 'derivative_operator.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+log10,parameters_derivative.h,"['parameters_derivative.h', 'parameters.h', 'qmodel.h', 'derivative_operator.h', 'parallel_tempering.h']",Provider
+logEvidence,parallel_tempering_linear_regression.h,"['distributions.h', 'parallel_tempering_linear_regression.h']",Provider
+logL,distributions.h,"['distributions.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+logLikelihood,qmodel.h,"['bayesian_linear_regression.h', 'parallel_tempering.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+logP,distributions.h,"['distributions.h', 'parameters_distribution.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+log_inverse_gamma_distribution,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+logdet,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h', 'maybe_error.h']",Provider
+m,parameters_derivative.h,"['distributions.h', 'parameters_derivative.h', 'CLI_function_table.h', 'maybe_error.h', 'parameters_distribution.h', 'parameters.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'qmodel.h', 'allosteric_models.h', 'function_memoization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'variables_derivative.h', 'multivariate_normal_distribution.h']",Provider
+m_id,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'grammar_Identifier.h', 'lexer_typed.h']",Provider
+m_value,grammar_typed.h,"['grammar_typed.h', 'general_output_operator.h', 'maybe_error.h']",Provider
+m_x,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h', 'variables.h', 'derivative_operator.h', 'variables_derivative.h']",Provider
+make_Conformational_model,models_MoffattHume_linear.h,"['models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+make_Conformational_model_standarized,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'allosteric_models.h']",Provider
+make_Likelihood_Model,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+make_ModelNames,allosteric_models.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+make_multivariate_normal_distribution,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'parameters_distribution.h', 'multivariate_normal_distribution.h']",Provider
+make_multivariate_normal_distribution_from_precision,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+make_tuple,lapack_headers.h,"['qmodel.h', 'allosteric_models.h', 'function_memoization.h', 'lapack_headers.h']",Provider
+max,parallel_tempering.h,"['parameters_derivative.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'experiment.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'fold.h', 'derivative_operator.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+mcmc,parallel_tempering.h,"['grammar_typed.h', 'CLI_macro_dr_base.h', 'qmodel.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h']",Provider
+mean,parallel_tempering_linear_regression.h,"['parameters_distribution.h', 'parameters.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+mean_logL,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+mean_logLik,parallel_tempering_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+mean_logP,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+microMolar,variables.h,"['variables.h', 'qmodel.h']",Provider
+min,parameters_derivative.h,"['parameters_derivative.h', 'parameters_distribution.h', 'parameters.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'qmodel.h', 'general_algorithm_on_containers.h', 'fold.h', 'derivative_operator.h', 'parallel_tempering.h']",Provider
+min_P,qmodel.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'qmodel.h']",Provider
+model,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_macro_dr_base.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+model_name,CLI_function_table.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'parameters_distribution.h', 'CLI_thermo_evidence_dts.h', 'parameters.h', 'CLI_thermo_evidence_fraction_dts.h', 'models_MoffattHume_linear.h']",Provider
+move,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'qmodel.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+ms,variables.h,"['variables.h', 'qmodel.h']",Provider
+mt,qmodel.h,"['distributions.h', 'CLI_function_table.h', 'CLI_thermo_evidence.h', 'parameters_distribution.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+multivariate_gamma_normal_distribution,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h', 'parallel_tempering.h']",Provider
+multivariate_normal_distribution,multivariate_normal_distribution.h,"['parameters_distribution.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+n,experiment.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'CLI_macro_dr_base.h', 'multivariate_normal_distribution.h', 'distributions.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+n1,allosteric_models.h,"['allosteric_models.h', 'qmodel.h']",Provider
+name,parameters.h,"['variables_derivative.h', 'derivative_test.h', 'parameters.h', 'lexer_typed.h', 'qmodel.h', 'variables.h', 'derivative_operator.h', 'models_MoffattHume_linear.h', 'CLI_regular_types.h', 'allosteric_models.h']",Provider
+names,parameters.h,"['parameters_derivative.h', 'CLI_function_table.h', 'CLI_thermo_evidence.h', 'parameters_distribution.h', 'CLI_thermo_evidence_dts.h', 'parameters.h', 'models_MoffattHume_allosteric.h', 'CLI_thermo_evidence_fraction_dts.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+ncols,parameters_derivative.h,"['distributions.h', 'parameters_derivative.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'bayesian_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+new_cuevi_Model_already_fraction_by_iteration,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+new_cuevi_Model_by_iteration,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+new_get_beta_list,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+new_thermo_Model_by_max_iter,qmodel.h,"['CLI_thermo_evidence.h', 'qmodel.h']",Provider
+new_thermo_Model_by_max_iter_dts,qmodel.h,"['CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'qmodel.h']",Provider
+new_thermodynamic_integration,parallel_tempering_linear_regression.h,"['parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+no_save,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+normal_distribution,multivariate_normal_distribution.h,"['bayesian_linear_regression.h', 'parallel_tempering.h', 'multivariate_normal_distribution.h', 'qmodel.h']",Provider
+now,parallel_tempering_linear_regression.h,"['maybe_error.h', 'lexer_untyped.h', 'lapack_headers.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h']",Provider
+nrows,parallel_tempering_linear_regression.h,"['distributions.h', 'parameters_derivative.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+num_betas,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+num_samples,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+num_scouts_per_ensemble,parallel_tempering_linear_regression.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_macro_dr_base.h', 'parallel_tempering_linear_regression.h']",Provider
+number,variables.h,"['CLI_function_table.h', 'parameters_distribution.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'CLI_macro_dr_base.h', 'bayesian_linear_regression.h']",Provider
+number_of_samples,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+number_of_states,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
+omp_get_max_threads,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+omp_get_thread_num,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+open,function_measure_verification_and_optimization.h,"['experiment.h', 'function_measure_verification_and_optimization.h', 'qmodel.h', 'lapack_headers.h']",Provider
+operator,bayesian_linear_regression.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'qmodel.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'general_output_operator.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+out,qmodel.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'lexer_untyped.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h']",Provider
+outside_in,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+p,qmodel.h,"['parameters_derivative.h', 'parameters.h', 'qmodel.h', 'grammar_untyped.h', 'experiment.h', 'models_MoffattHume_allosteric.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+pA,variables.h,"['variables.h', 'qmodel.h']",Provider
+pair,parallel_tempering_linear_regression.h,"['parameters_derivative.h', 'models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'parameters.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'CLI_macro_dr_base.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h']",Provider
+parameters,parameters_derivative.h,"['parameters_derivative.h', 'derivative_test.h', 'CLI_function_table.h', 'parameters_distribution.h', 'parameters.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'allosteric_models.h']",Provider
+parameters_transformations,models_MoffattHume_allosteric.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+pow,parallel_tempering.h,"['parameters_derivative.h', 'gsl_integrate.h', 'parameters.h', 'qmodel.h', 'variables.h', 'derivative_operator.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+primitive,parameters_derivative.h,"['parameters_derivative.h', 'gsl_integrate.h', 'derivative_test.h', 'lapack_headers.h', 'qmodel.h', 'derivative_operator.h', 'variables_derivative.h']",Provider
+print,parameters.h,"['derivative_test.h', 'general_output_operator.h', 'parameters.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'variables.h', 'allosteric_models.h', 'derivative_operator.h', 'variables_derivative.h']",Provider
+print_model_Priors,models_MoffattHume_allosteric.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+prior_around,parameters_distribution.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters_distribution.h']",Provider
+prob,variables.h,"['variables.h', 'qmodel.h']",Provider
+promote_Maybe_error,maybe_error.h,"['maybe_error.h', 'lexer_typed.h', 'qmodel.h']",Provider
+push_back,parallel_tempering.h,"['grammar_typed.h', 'parameters_derivative.h', 'grammar_Identifier.h', 'general_output_operator.h', 'parameters_distribution.h', 'parameters.h', 'lexer_untyped.h', 'lexer_typed.h', 'qmodel.h', 'grammar_untyped.h', 'experiment.h', 'general_algorithm_on_containers.h', 'fold.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+push_back_new_beta,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+push_function,lexer_typed.h,"['CLI_thermo_evidence_dts.h', 'CLI_function_table.h', 'lexer_typed.h', 'CLI_macro_dr_base.h']",Provider
+put,maybe_error.h,"['maybe_error.h', 'lexer_untyped.h', 'variables.h', 'experiment.h', 'variables_derivative.h']",Provider
+quiet_NaN,maybe_error.h,"['distributions.h', 'experiment.h', 'maybe_error.h', 'qmodel.h']",Provider
+rate,parallel_tempering_linear_regression.h,"['parallel_tempering_linear_regression.h', 'allosteric_models.h', 'parallel_tempering.h']",Provider
+rdbuf,maybe_error.h,"['experiment.h', 'maybe_error.h']",Provider
+record,parallel_tempering.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+reduce,multivariate_normal_distribution.h,"['fold.h', 'parallel_tempering.h', 'multivariate_normal_distribution.h', 'qmodel.h']",Provider
+release,grammar_untyped.h,"['grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+remove_Patch_inactivation,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
+remove_fixed,parameters_distribution.h,"['parameters.h', 'parameters_distribution.h']",Provider
+report,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'qmodel.h']",Provider
+report_iter,parallel_tempering_linear_regression.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h']",Provider
+report_model,parallel_tempering.h,"['parameters_distribution.h', 'parameters.h', 'qmodel.h', 'experiment.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h']",Provider
+report_model_all,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+report_point,parallel_tempering_linear_regression.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h']",Provider
+report_title,parallel_tempering.h,"['qmodel.h', 'function_measure_verification_and_optimization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+requires,parallel_tempering.h,"['parameters_derivative.h', 'maybe_error.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'multivariate_normal_distribution.h', 'distributions.h', 'derivative_test.h', 'general_output_operator.h', 'lexer_untyped.h', 'lexer_typed.h', 'function_memoization.h', 'parallel_tempering.h', 'CLI_macro_dr.h', 'variables_derivative.h']",Provider
+reserve,parallel_tempering.h,"['CLI_function_table.h', 'parameters.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'fold.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h']",Provider
+reset,parallel_tempering.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+reset_statistics,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+resize,lapack_headers.h,"['allosteric_models.h', 'function_memoization.h', 'lapack_headers.h']",Provider
+return_error,maybe_error.h,"['multivariate_normal_distribution.h', 'maybe_error.h', 'lapack_headers.h']",Provider
+return_predictions,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+return_type,models_MoffattHume_allosteric.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'maybe_error.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'experiment.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_macro_dr_base.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h']",Provider
+run,grammar_typed.h,"['grammar_typed.h', 'fold.h', 'qmodel.h']",Provider
+s,CLI_function_table.h,"['parameters_distribution.h', 'maybe_error.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'parameters.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'qmodel.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'CLI_macro_dr_base.h', 'multivariate_normal_distribution.h', 'distributions.h', 'general_output_operator.h', 'lexer_untyped.h', 'experiment.h', 'parallel_tempering.h']",Provider
+sample,parallel_tempering.h,"['distributions.h', 'CLI_function_table.h', 'qmodel.h', 'experiment.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+sample_N,qmodel.h,"['CLI_function_table.h', 'multivariate_normal_distribution.h', 'qmodel.h']",Provider
+save_Evidence,parallel_tempering_linear_regression.h,"['parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+save_Iter,parallel_tempering_linear_regression.h,"['parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+save_Likelihood_Predictions,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+save_Parameter,parallel_tempering.h,"['CLI_function_table.h', 'parameters_distribution.h', 'qmodel.h', 'experiment.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h']",Provider
+save_Predictions,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+save_RateParameter,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+save_Recording,experiment.h,"['experiment.h', 'CLI_function_table.h']",Provider
+save_Simulated_Recording,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+save_fractioned_Likelihood_Predictions,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provider
+save_fractioned_Recording,qmodel.h,"['experiment.h', 'qmodel.h']",Provider
+save_fractioned_experiment,qmodel.h,"['experiment.h', 'qmodel.h']",Provider
+save_likelihood,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+save_mcmc,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+save_vars,general_output_operator.h,"['CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'general_output_operator.h', 'CLI_thermo_evidence.h']",Provider
+scalar,variables.h,"['variables.h', 'lapack_headers.h']",Provider
+second,allosteric_models.h,"['grammar_typed.h', 'parameters_derivative.h', 'grammar_Identifier.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_function_table.h', 'parameters.h', 'lexer_untyped.h', 'lexer_typed.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'derivative_operator.h', 'function_memoization.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
+selfDerivative,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
+sep,parallel_tempering.h,"['general_output_operator.h', 'CLI_thermo_evidence.h', 'parameters_distribution.h', 'CLI_thermo_evidence_dts.h', 'parallel_tempering.h', 'parameters.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'function_measure_verification_and_optimization.h', 'variables.h', 'experiment.h', 'CLI_macro_dr_base.h', 'parallel_tempering_linear_regression.h']",Provider
+separator,parallel_tempering.h,"['general_output_operator.h', 'parameters_distribution.h', 'parallel_tempering.h', 'parameters.h', 'lexer_untyped.h', 'qmodel.h', 'experiment.h', 'CLI_macro_dr_base.h']",Provider
+septr,qmodel.h,"['general_output_operator.h', 'parameters_distribution.h', 'parameters.h', 'qmodel.h', 'variables.h', 'experiment.h']",Provider
+set,parameters_derivative.h,"['parameters_derivative.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'qmodel.h', 'derivative_operator.h', 'models_MoffattHume_linear.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+set_Fraction_algorithm,qmodel.h,"['qmodel.h', 'CLI_macro_dr_base.h']",Provider
+setprecision,parallel_tempering.h,"['parameters_distribution.h', 'maybe_error.h', 'parameters.h', 'qmodel.h', 'experiment.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h']",Provider
+setstate,parallel_tempering.h,"['experiment.h', 'general_output_operator.h', 'parallel_tempering.h']",Provider
+simulate,qmodel.h,"['bayesian_linear_regression.h', 'CLI_function_table.h', 'qmodel.h']",Provider
+size,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'multivariate_normal_distribution.h', 'distributions.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'lexer_untyped.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h']",Provider
+sqrt,parallel_tempering.h,"['gsl_integrate.h', 'maybe_error.h', 'parameters.h', 'lapack_headers.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+ss,parallel_tempering.h,"['distributions.h', 'derivative_test.h', 'general_output_operator.h', 'maybe_error.h', 'parameters_distribution.h', 'parameters.h', 'lexer_untyped.h', 'lapack_headers.h', 'qmodel.h', 'experiment.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'parallel_tempering.h', 'allosteric_models.h']",Provider
+standard_parameter,CLI_function_table.h,"['parameters.h', 'CLI_function_table.h']",Provider
+standard_values,models_MoffattHume_linear.h,"['parameters_derivative.h', 'parameters_distribution.h', 'parameters.h', 'qmodel.h', 'models_MoffattHume_linear.h']",Provider
+statement_type,grammar_untyped.h,"['grammar_typed.h', 'grammar_untyped.h']",Provider
+static_assert,parallel_tempering.h,"['function_measure_verification_and_optimization.h', 'parallel_tempering.h']",Provider
+std,maybe_error.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'CLI_macro_dr_base.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'CLI_macro_dr.h', 'variables_derivative.h']",Provider
+step_stretch_thermo_mcmc,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+stod,experiment.h,"['grammar_untyped.h', 'experiment.h']",Provider
+store_every_n_iter,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+str,maybe_error.h,"['grammar_typed.h', 'distributions.h', 'derivative_test.h', 'maybe_error.h', 'lexer_untyped.h', 'lapack_headers.h', 'grammar_untyped.h', 'experiment.h', 'qmodel.h', 'general_algorithm_on_containers.h', 'allosteric_models.h']",Provider
+string,lexer_untyped.h,"['parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'CLI_macro_dr_base.h', 'distributions.h', 'grammar_Identifier.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'parallel_tempering.h', 'CLI_macro_dr.h']",Provider
+string_and_separator,general_output_operator.h,"['parameters.h', 'general_output_operator.h', 'parameters_distribution.h']",Provider
+stringstream,qmodel.h,"['distributions.h', 'derivative_test.h', 'general_output_operator.h', 'maybe_error.h', 'parameters_distribution.h', 'parameters.h', 'lexer_untyped.h', 'lapack_headers.h', 'qmodel.h', 'experiment.h', 'general_algorithm_on_containers.h', 'parallel_tempering.h', 'allosteric_models.h']",Provider
+substr,lexer_untyped.h,"['experiment.h', 'lexer_untyped.h']",Provider
+sum,qmodel.h,"['lapack_headers.h', 'qmodel.h', 'experiment.h', 'general_algorithm_on_containers.h', 'parallel_tempering.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+t_P,qmodel.h,"['multivariate_normal_distribution.h', 'qmodel.h']",Provider
+t_g,qmodel.h,"['models_MoffattHume_linear.h', 'allosteric_models.h', 'qmodel.h']",Provider
+test,qmodel.h,"['parameters_derivative.h', 'qmodel.h', 'lapack_headers.h', 'variables.h', 'function_measure_verification_and_optimization.h']",Provider
+test_Derivative,CLI_function_table.h,"['CLI_function_table.h', 'derivative_test.h']",Provider
+test_equality,variables.h,"['variables.h', 'derivative_test.h']",Provider
+thermo_evidence,parallel_tempering_linear_regression.h,"['CLI_thermo_evidence_dts.h', 'parallel_tempering_linear_regression.h', 'CLI_thermo_evidence.h']",Provider
+thermo_evidence_,parallel_tempering_linear_regression.h,"['parallel_tempering_linear_regression.h', 'CLI_thermo_evidence.h']",Provider
+thermo_evidence_continuation,parallel_tempering_linear_regression.h,"['CLI_thermo_evidence_dts.h', 'parallel_tempering_linear_regression.h', 'CLI_thermo_evidence.h']",Provider
+thermo_jump_mcmc,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+thermo_less_than_max_iteration,parallel_tempering.h,"['parallel_tempering.h', 'qmodel.h']",Provider
+thermo_mcmc,parallel_tempering.h,"['parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+thermo_stat,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+thermodynamic_integration,parallel_tempering_linear_regression.h,"['parallel_tempering_linear_regression.h', 'qmodel.h']",Provider
+time,maybe_error.h,"['experiment.h', 'maybe_error.h', 'qmodel.h']",Provider
+time_now,maybe_error.h,"['CLI_function_table.h', 'maybe_error.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+to_Identifier,grammar_Identifier.h,"['grammar_Identifier.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_macro_dr.h', 'CLI_regular_types.h']",Provider
+to_string,qmodel.h,"['parameters_distribution.h', 'maybe_error.h', 'bayesian_linear_regression.h', 'CLI_function_table.h', 'parameters.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'CLI_macro_dr_base.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'parallel_tempering.h']",Provider
+to_typed_function,CLI_macro_dr.h,"['CLI_thermo_evidence_dts.h', 'CLI_macro_dr.h', 'CLI_function_table.h', 'CLI_macro_dr_base.h']",Provider
+to_value,parameters_derivative.h,"['parameters_derivative.h', 'parallel_tempering.h', 'parameters.h', 'qmodel.h']",Provider
+to_variant,variables.h,"['variables.h', 'qmodel.h']",Provider
+tr,parallel_tempering_linear_regression.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'parameters.h', 'lapack_headers.h', 'models_MoffattHume_allosteric.h', 'qmodel.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+transf,models_MoffattHume_linear.h,"['parameters_derivative.h', 'models_MoffattHume_linear.h', 'parameters.h', 'parameters_distribution.h']",Provider
+transformation_and_sep,parameters.h,"['parameters.h', 'parameters_distribution.h']",Provider
+transformations_vector,parameters.h,"['models_MoffattHume_linear.h', 'parameters.h', 'parameters_distribution.h']",Provider
+tuple,parallel_tempering.h,"['parameters_derivative.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'qmodel.h', 'CLI_macro_dr_base.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+two,allosteric_models.h,"['maybe_error.h', 'qmodel.h', 'variables.h', 'experiment.h', 'derivative_operator.h', 'allosteric_models.h']",Provider
+typed_argument_list,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_typed.h']",Provider
+typed_argument_typed_list,lexer_typed.h,"['grammar_typed.h', 'lexer_typed.h']",Provider
+typed_expression,lexer_typed.h,"['grammar_typed.h', 'lexer_typed.h']",Provider
+typed_function_evaluation,lexer_typed.h,"['grammar_typed.h', 'lexer_typed.h']",Provider
+typed_identifier,lexer_typed.h,"['grammar_typed.h', 'lexer_typed.h']",Provider
+typed_literal,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_typed.h']",Provider
+typed_program,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_typed.h']",Provider
+u,qmodel.h,"['parameters_derivative.h', 'qmodel.h', 'maybe_error.h', 'lapack_headers.h']",Provider
+untyped_argument_list,lexer_typed.h,"['grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_assignment,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_expression,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_function_evaluation,lexer_typed.h,"['grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_identifier,lexer_typed.h,"['grammar_typed.h', 'grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_literal,lexer_typed.h,"['grammar_untyped.h', 'lexer_typed.h']",Provider
+untyped_literal_comment,grammar_untyped.h,"['grammar_untyped.h', 'lexer_untyped.h']",Provider
+untyped_numeric_literal,lexer_typed.h,"['grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_program,lexer_typed.h,"['grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_statement,lexer_typed.h,"['grammar_untyped.h', 'lexer_untyped.h', 'lexer_typed.h']",Provider
+untyped_string_literal,grammar_untyped.h,"['grammar_untyped.h', 'lexer_untyped.h']",Provider
+uses_adaptive_aproximation,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_adaptive_aproximation_value,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_averaging_aproximation,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_averaging_aproximation_value,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_recursive_aproximation,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_recursive_aproximation_value,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_variance_aproximation,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_variance_aproximation_value,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_variance_correction_aproximation,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+uses_variance_correction_aproximation_value,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h']",Provider
+v_baseline,models_MoffattHume_linear.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+v_curr_noise,models_MoffattHume_linear.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+v_pink_noise,models_MoffattHume_linear.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+v_prop_noise,models_MoffattHume_linear.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h']",Provider
+valid,maybe_error.h,"['CLI_function_table.h', 'maybe_error.h', 'lapack_headers.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'general_algorithm_on_containers.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h']",Provider
+value,parallel_tempering.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'models_MoffattHume_allosteric.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'multivariate_normal_distribution.h', 'distributions.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_untyped.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'parallel_tempering.h', 'CLI_macro_dr.h', 'variables_derivative.h']",Provider
+var,variables.h,"['parameters_derivative.h', 'parameters_distribution.h', 'models_MoffattHume_allosteric.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'qmodel.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'multivariate_normal_distribution.h', 'distributions.h', 'derivative_test.h', 'CLI_thermo_evidence.h', 'general_output_operator.h', 'CLI_thermo_evidence_dts.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+var_logL,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+variance,qmodel.h,"['parallel_tempering.h', 'gsl_integrate.h', 'multivariate_normal_distribution.h', 'qmodel.h']",Provider
+variance_correction,qmodel.h,"['CLI_function_table.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'CLI_thermo_evidence_fraction_dts.h', 'CLI_macro_dr_base.h']",Provider
+visit,qmodel.h,"['CLI_function_table.h', 'general_output_operator.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'CLI_thermo_evidence_fraction_dts.h', 'models_MoffattHume_linear.h', 'multivariate_normal_distribution.h']",Provider
+vlogL,distributions.h,"['distributions.h', 'qmodel.h', 'parallel_tempering.h', 'bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+void,function_measure_verification_and_optimization.h,"['parameters_derivative.h', 'parameters_distribution.h', 'models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'qmodel.h', 'function_measure_verification_and_optimization.h', 'CLI_macro_dr_base.h', 'CLI_thermo_evidence.h', 'CLI_thermo_evidence_dts.h', 'lexer_typed.h', 'CLI_thermo_evidence_fraction_dts.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h']",Provider
+we_reach_final_temperature,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
+while,parallel_tempering_linear_regression.h,"['general_output_operator.h', 'maybe_error.h', 'parameters_distribution.h', 'parameters.h', 'lexer_untyped.h', 'qmodel.h', 'experiment.h', 'general_algorithm_on_containers.h', 'parallel_tempering.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'multivariate_normal_distribution.h']",Provider
+write_Parameters,parameters.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters.h']",Provider
+write_Prior,parameters_distribution.h,"['models_MoffattHume_allosteric.h', 'models_MoffattHume_linear.h', 'parameters_distribution.h']",Provider
+x,parameters_derivative.h,"['parameters_derivative.h', 'parameters_distribution.h', 'maybe_error.h', 'fold.h', 'bayesian_linear_regression.h', 'models_MoffattHume_linear.h', 'grammar_typed.h', 'CLI_function_table.h', 'parameters.h', 'derivative_operator.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h', 'gsl_integrate.h', 'lapack_headers.h', 'grammar_untyped.h', 'variables.h', 'function_measure_verification_and_optimization.h', 'general_algorithm_on_containers.h', 'qmodel.h', 'multivariate_normal_distribution.h', 'distributions.h', 'grammar_Identifier.h', 'derivative_test.h', 'general_output_operator.h', 'lexer_untyped.h', 'lexer_typed.h', 'experiment.h', 'function_memoization.h', 'parallel_tempering.h', 'variables_derivative.h']",Provider
+xAxt,parallel_tempering_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h', 'multivariate_normal_distribution.h', 'maybe_error.h']",Provider
+xtAx,maybe_error.h,"['multivariate_normal_distribution.h', 'maybe_error.h', 'qmodel.h']",Provider
+xtx,bayesian_linear_regression.h,"['bayesian_linear_regression.h', 'parallel_tempering_linear_regression.h']",Provider
+z,lapack_headers.h,"['gsl_integrate.h', 'qmodel.h', 'lapack_headers.h', 'parallel_tempering.h', 'multivariate_normal_distribution.h']",Provider
+zero,function_measure_verification_and_optimization.h,"['function_measure_verification_and_optimization.h', 'lapack_headers.h']",Provider
+zip,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
