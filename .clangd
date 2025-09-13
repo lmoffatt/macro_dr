@@ -1,0 +1,16 @@
+CompileFlags:
+  Add: [
+    -ftemplate-backtrace-limit=0
+  ]
+  Remove: [-ftime-report]
+
+Index:
+  Background: Build
+
+Diagnostics:
+  UnusedIncludes: Strict
+
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
