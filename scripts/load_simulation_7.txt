@@ -1,2 +1,0 @@
-simfile="../macro_dr/experiments/Sim_scheme_4_NP_N_simulation.csv"
-

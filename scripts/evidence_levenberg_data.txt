@@ -1,7 +1,0 @@
-write_script(script_name=runIdName)
-                  
-thermo_levenberg_algorithm = set_ThermoLevenAlgorithm (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  stops_at = 1e-18, beta_upper_value = 1e-2, beta_medium_value = 1e-6, includes_zero = 1, max_iter_equilibrium = max_iter_equilibrium, beta_size =beta_size, beta_upper_size = beta_upper_size, beta_medium_size=beta_medium_size, n_lambdas = 32, lambda_adaptive_algorithm= "probability", thermo_jumps_every = 1, save_every_param_size_factor=1) 
-
-
-thermo_levenberg_evidence(idname= runIdName, model = model, prior= prior_model_name, likelihood_algorithm= likelihood_algorithm, data = observations, experiment = experiment_file, thermo_levenberg_algorithm= thermo_levenberg_algorithm, sampling_interval =1, max_number_of_values_per_iteration= 256, init_seed =0, delta_par= 1e-5)
-

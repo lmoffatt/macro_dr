@@ -5,6 +5,8 @@
 #include "maybe_error.h"
 #include "parallel_tempering.h"
 // #include "qmodel.h"
+#include <math.h>
+
 #include <cstddef>
 #include <fstream>
 #include <limits>
@@ -352,7 +354,7 @@ inline Maybe_error<bool> load_Recording_Data(std::string const& fname, std::stri
     }
 }
 
-inline std::tuple<Recording_conditions, Recording> load_recording(const std::string filename) {
+inline std::tuple<Recording_conditions, Recording> load_recording(const std::string& filename) {
     std::ifstream f(filename);
     std::vector<Experiment_step> out0;
     std::vector<Patch_current> out1;
@@ -362,16 +364,18 @@ inline std::tuple<Recording_conditions, Recording> load_recording(const std::str
     while (std::getline(f, line)) {
         if (!line.empty()) {
             std::stringstream ss(line);
-            double v_time, v_ns, v_ATP, v_current;
+            double v_time = NAN;
+            double v_ns=NAN;
+            double v_ATP = NAN;
+            double v_current = NAN;
             extract_double(ss >> v_time >> v_ns >> v_ATP, v_current);
             ATP_evolution step;
-            step().push_back(
-                ATP_step(number_of_samples(std::size_t(v_ns)), ATP_concentration(v_ATP)));
+            step().emplace_back(number_of_samples(std::size_t(v_ns)), ATP_concentration(v_ATP));
             out0.emplace_back(Time(v_time / 1000), std::move(step));
             out1.emplace_back(Patch_current(v_current));
         }
     }
-    return std::tuple(Recording_conditions(out0), Recording(out1));
+    return {Recording_conditions(out0), Recording(out1)};
 }
 
 inline std::tuple<Experiment, Recording> load_experiment(const std::string filename,

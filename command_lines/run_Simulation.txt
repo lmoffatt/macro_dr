@@ -1,1 +1,0 @@
-../macro_dr/models_posterior/scheme_10_inact_PI.txt  ../macro_dr/scripts/idealize_experiment_2.txt  ../macro_dr/scripts/simulation.txt  

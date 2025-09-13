@@ -8,6 +8,7 @@
 #include "grammar_typed.h"
 #include "grammar_untyped.h"
 #include "maybe_error.h"
+#include "general_output_operator.h"
 
 namespace macrodr::dsl {
 

@@ -12,8 +12,8 @@
 //#include "parameters_derivative.h"
 #include "qmodel.h"
 
-namespace macrodr {
-namespace cmd {
+
+namespace macrodr::cmd {
 
 inline std::string run_simulation(std::string filename_prefix, recording_type recording_file,
                                   experiment_type experiment, std::size_t myseed,
@@ -81,5 +81,5 @@ inline std::string run_simulation(std::string filename_prefix, recording_type re
     }
 }
 
-}  // namespace cmd
-}  // namespace macrodr
+} // namespace macrodr::cmd
+

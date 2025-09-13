@@ -1,7 +1,0 @@
-write_script(script_name=runIdName)
-                  
-thermo_algorithm_dts = set_ThermoAlgorithm_dts (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  max_iter_equilibrium = max_iter_equilibrium, beta_size =beta_size,  thermo_jumps_every = 1, save_every_param_size_factor=1, adapt_beta_every = 8 ,adapt_beta_equalizer="deltaBeta_deltaL_vfm",adapt_beta_controler="s",adapt_beta_variance="variance",adapt_beta_nu= 0.5,adapt_beta_t0=3000, adjust_beta=1, acceptance_upper_limit= 1.95, acceptance_lower_limit =0.25 , desired_acceptance= 0.25 ) 
-
-
-thermo_evidence_dts_2(idname= runIdName, model = model, prior= prior_model_name, likelihood_algorithm= likelihood_algorithm, data = observations, experiment = experiment_file, thermo_algorithm= thermo_algorithm_dts, sampling_interval =1, max_number_of_values_per_iteration= 128,  init_seed =0)
-

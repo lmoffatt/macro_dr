@@ -1,4 +1,6 @@
+#include "CLI_macro_dr.h"
 #include "CLI_function_table.h"
+
 #include "CLI_likelihood.h"
 #include "CLI_macro_dr.h"
 //#include "CLI_thermo_evidence.h"
@@ -15,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "command_manager.h"
 #include "experiment.h"
 #include "lapack_headers.h"
 #include "maybe_error.h"
@@ -55,28 +58,24 @@ Maybe_error<std::string> append_files_content(std::string&& s, std::string const
 }
 
 Maybe_error<std::string> append_command(std::string&& s, std::string const& line) {
-    if (line[line.size() - 1] != '"')
-        return error_message(
-            "does not have a "
-            " in" +
-            line);
+    if (line.empty() || line.back() != '"')
+        return error_message(std::string{"malformed inline command: "} + line);
     s += line.substr(1, line.size() - 2) + "\n";
     return std::move(s);
 }
 
-Maybe_error<std::string> read_from_input_files_or_commands(std::vector<std::string> const args) {
+Maybe_error<std::string> read_from_input_files_or_commands(std::vector<std::string> const& args) {
     std::string s;
     for (std::size_t i = 1; i < args.size(); ++i) {
         auto filename_or_command = args[i];
-        Maybe_error<std::string> Maybe_s;
         if (filename_or_command.starts_with("--")) {
             s += filename_or_command.substr(2) + "\n";
         } else {
-            auto Maybe_s = append_files_content(std::move(s), filename_or_command);
-            if (!Maybe_s)
-                return Maybe_s.error();
+            auto maybe_s = append_files_content(std::move(s), filename_or_command);
+            if (!maybe_s)
+                return maybe_s.error();
             else
-                s = std::move(Maybe_s.value());
+                s = std::move(maybe_s.value());
         }
     }
     return s;
@@ -505,8 +504,9 @@ calc_thermo_evidence(std::string id,
 
     return cm;
 }
-inline dsl::Compiler make_compiler() {
+inline static dsl::Compiler make_compiler() {
     dsl::Compiler cm;
+    cm.merge(macrodr::cli::make_compiler_new());
     cm.merge(macrodr::cmd::make_utilities_compiler());
     cm.merge(macrodr::cmd::make_io_compiler());
     cm.merge(macrodr::cmd::make_experiment_compiler());
@@ -552,7 +552,8 @@ int main(int argc, char** argv) {
         if (p) {
             auto ss = p.value().str();
             std::cerr << ss;
-        } else
+        } else {
             std::cerr << p.error()();
+}
     }
 }

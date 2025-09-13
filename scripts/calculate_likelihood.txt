@@ -1,5 +1,0 @@
-write_script(script_name=runIdName)
-                  
-
-likelihood(output= runIdName, model = model, parameter_values= modelParameter, likelihood_algorithm= likelihood_algorithm, recording = observations, experiment = experiment)
-

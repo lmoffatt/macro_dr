@@ -8,9 +8,10 @@
 #include <string>
 
 #include "CLI_macro_dr.h"
+#include "experiment.h"
 #include "mcmc.h"
-namespace macrodr {
-namespace cmd {
+
+namespace macrodr::cmd {
 
 inline auto get_random_id(std::string prefix) {
     return prefix + "_" + std::to_string(calc_seed(0ul));
@@ -167,7 +168,7 @@ inline dsl::Compiler make_frac_compiler() {
 }  // namespace zombie
 #endif
 
-}  // namespace cmd
-}  // namespace macrodr
+} // namespace macrodr::cmd
+
 
 #endif  // CLI_MACRO_DR_BASE_H

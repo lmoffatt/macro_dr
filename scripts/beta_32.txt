@@ -1,5 +1,0 @@
-beta_size = get_number(n= 32)
-
-beta_upper_size = get_number(n=18) 
-
-beta_medium_size=get_number(n=7)
