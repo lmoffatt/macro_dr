@@ -194,7 +194,7 @@ class field_compiler {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const&, untyped_literal<Lexer, Compiler> const& t_arg) const {
+        Environment<Lexer,Compiler>  const&, untyped_literal<Lexer, Compiler> const& t_arg) const {
         auto Maybe_T = Lexer::template get<T>(t_arg());
         if (!Maybe_T)
             return Maybe_T.error();
@@ -448,8 +448,7 @@ class Compiler {
     std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>> m_func;
   
    public:
-    Compiler() {
-    }
+    Compiler() = default;
     Compiler(std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>>&&
                  func)
         : m_func{std::move(func)}{
@@ -476,9 +475,19 @@ class Compiler {
     Maybe_error<bool> push_function(std::string id_candidate,
                                     base_function_compiler<Lexer, Compiler>* fun) {
         auto may_id = to_Identifier<Lexer>(id_candidate);
-        if (!may_id)
+        if (!may_id) {
             return may_id.error();
+}
         m_func.emplace(may_id.value(), fun);
+        return true;
+    }
+    Maybe_error<bool> push_function(std::string id_candidate,
+                                    std::unique_ptr<base_function_compiler<Lexer, Compiler>>&& fun) {
+        auto may_id = to_Identifier<Lexer>(id_candidate);
+        if (!may_id) {
+            return may_id.error();
+}
+        m_func.emplace(may_id.value(), std::move(fun));
         return true;
     }
     void merge(const Compiler& other) {
@@ -489,10 +498,10 @@ class Compiler {
     }
     void merge(Compiler&& other) {
         // Move functions
-        for (auto& [name, func] : other.m_func) {
+        for (auto& [name, func] : std::move(other).m_func) {
             m_func[name] = std::move(func);  // Mueve el unique_ptr
         }
-        other.m_func.clear();  // Opcional: limpia el mapa fuente
+        //other.m_func.clear();  // Opcional: limpia el mapa fuente
 
     }
 };

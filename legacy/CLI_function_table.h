@@ -13,8 +13,8 @@
 #include "parameters.h"
 //#include "parameters_derivative.h"
 #include "qmodel.h"
-namespace macrodr {
-namespace cmd {
+
+namespace macrodr::cmd {
 
 inline auto get_function_Table_maker_St(std::string filename, std::size_t sampling_interval,
                                         std::size_t max_number_of_values_per_iteration) {
@@ -991,7 +991,7 @@ inline dsl::Compiler make_cuevi_compiler() {
 }  // namespace zombie
 
 #endif
-}  // namespace cmd
-}  // namespace macrodr
+} // namespace macrodr::cmd
+
 
 #endif  // CLI_FUNCTION_TABLE_H

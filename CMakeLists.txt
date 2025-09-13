@@ -7,17 +7,48 @@ project(macro_dr LANGUAGES CXX)
 # -------------------------------------------------------
 # 1) Global compile rules              (kept from legacy)
 # -------------------------------------------------------
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Optional: integrate clang-tidy if available
+option(MACRODR_ENABLE_CLANG_TIDY "Run clang-tidy during build" OFF)
+if (MACRODR_ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+    if (CLANG_TIDY_EXE)
+        set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_EXE})
+        message(STATUS "clang-tidy enabled: ${CLANG_TIDY_EXE}")
+    else()
+        message(WARNING "clang-tidy requested but not found")
+    endif()
+endif()
+
+# Common warnings
 add_compile_options(
-    -ftemplate-backtrace-limit=20     # 
-    -fmax-errors=5
-    -fconcepts-diagnostics-depth=4
+    -Wall
+    -Wextra
+    -Wpedantic
     -Werror=return-type
-    -ftime-report
 )
+
+# Per-compiler flags (Clang vs GCC)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(
+        -ferror-limit=5
+        # -ftime-trace  # enable locally if needed; produces JSON per object file
+    )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(
+        -fmax-errors=5
+        -ftime-report
+        -Wno-ctad-maybe-unsupported
+    )
+endif()
+
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+
 
 # -------------------------------------------------------
 # 2) Obtain Git commit hash (unchanged)
@@ -44,8 +75,6 @@ add_library(macrodr_thirdparty INTERFACE)
 target_include_directories(macrodr_thirdparty SYSTEM INTERFACE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third_party>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/macrodr/third_party>)
-
-install(TARGETS macrodr_thirdparty EXPORT macrodrTargets)
 
 # Copy the header(s) so the install-side path is valid
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/third_party/
@@ -94,6 +123,8 @@ file(GLOB_RECURSE MACRODR_CORE_HEADERS CONFIGURE_DEPENDS
      ${PROJECT_SOURCE_DIR}/include/macrodr/io/*.hpp
      ${PROJECT_SOURCE_DIR}/include/macrodr/io/json/*.h
      ${PROJECT_SOURCE_DIR}/include/macrodr/io/json/*.hpp
+     ${PROJECT_SOURCE_DIR}/include/macrodr/io/csv/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/io/csv/*.hpp
      ${PROJECT_SOURCE_DIR}/legacy/*.h
      ${PROJECT_SOURCE_DIR}/legacy/*.hpp
  )
@@ -145,17 +176,20 @@ target_include_directories(macrodr_cli PRIVATE
     ${PROJECT_SOURCE_DIR}/include/macrodr/cli
     ${PROJECT_SOURCE_DIR}/include/macrodr/dsl
     ${PROJECT_SOURCE_DIR}/include/macrodr/interface
-    ${PROJECT_SOURCE_DIR}/include/macrodr/cmd)
+    ${PROJECT_SOURCE_DIR}/include/macrodr/cmd
+    ${PROJECT_SOURCE_DIR}/legacy        # ✅ ADD THIS LINE
+)
 
 target_link_libraries(macrodr_cli PRIVATE macrodr_core)
 
 # -------------------------------------------------------
 # 9) Data-file groups for Qt Creator (unchanged)
 # -------------------------------------------------------
-set(DATA_DIRS scripts experiments models slurm clusters docs multi_task spec)
+set(DATA_DIRS scripts experiments models slurm clusters docs multi_task spec MacroIR)
 set(PROJECT_DATA_FILES)
 foreach(dir IN LISTS DATA_DIRS)
     file(GLOB_RECURSE _tmp CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/${dir}/*.macroir"
         "${CMAKE_SOURCE_DIR}/${dir}/*.md"
          "${CMAKE_SOURCE_DIR}/${dir}/*.txt"
          "${CMAKE_SOURCE_DIR}/${dir}/*.sh"
@@ -177,35 +211,11 @@ install(TARGETS macrodr_cli  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY ${MACRODR_PUBLIC_INC}/macrodr
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 message(STATUS "PROJECT_SOURCE_DIR is: ${PROJECT_SOURCE_DIR}")
+## Packaging/export of CMake config removed for now (was untested).
+
 # -------------------------------------------------------
-# 11) Export config so downstream projects can find_package(macrodr)
+# 12) Tests (optional, guarded)
 # -------------------------------------------------------
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfigVersion.cmake
-    VERSION 1.0.0
-    COMPATIBILITY SameMajorVersion)
-
-configure_package_config_file(
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/macrodrConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/macrodr)
-
-install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/macrodrConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/macrodr)
-
-#  ───  install the core library  ───────────────────────────
-install(TARGETS macrodr_core
-            EXPORT  macrodrTargets          # <- make sure this is present
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    
-# (optional) also export the CLI if you want users to link it:
-# install(TARGETS macrodr_cli
-#         EXPORT  macrodrTargets
-#         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-install(EXPORT macrodrTargets
-        NAMESPACE macrodr::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/macrodr)
+if(EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
+    add_subdirectory(tests)
+endif()

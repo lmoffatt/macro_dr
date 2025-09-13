@@ -1,2 +1,0 @@
-likelihood_algorithm = set_Likelihood_algorithm(adaptive_aproximation= 1, recursive_approximation= 1, averaging_approximation=2, variance_correction_approximation= 1, variance_approximation =0, n_sub_dt =1000)
-

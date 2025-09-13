@@ -1,1 +1,0 @@
-thermo_evidence_continuation(idname=runIdName, continuation_number=continuation_number,init_seed=0)

@@ -9,8 +9,7 @@ SortIncludes: true
 IncludeBlocks: Regroup
 Language:        Cpp
 Standard:        c++20
-AllowShortFunctionsOnASingleLine: None
-
+AllowShortFunctionsOnASingleLine: Inline
 # ─── Template-specific settings ──────────────────────────────────────────────
 #TemplateIndentWidth: 4                     # indent template parameters
 AlignAfterOpenBracket: Align              # align parameters under the '<'

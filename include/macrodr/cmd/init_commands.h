@@ -5,7 +5,7 @@
 
 namespace macrodr {
 
-inline dsl::Compiler make_compiler_new();
+ dsl::Compiler make_compiler_new();
 }
 
 #endif  // INIT_COMMANDS_H

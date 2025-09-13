@@ -1,9 +1,0 @@
-
-write_script(script_name=runIdName)
-   
-               
-thermo_algorithm = set_ThermoAlgorithm (num_scouts_per_ensemble = num_scouts_per_ensemble, number_trials_until_give_up = 100000,  stops_at = 1e-15, beta_upper_value = 1e-2, beta_medium_value = 1e-5, includes_zero = 1, max_iter_equilibrium = 500000,  beta_size =32, beta_upper_size = 18, beta_medium_size=8,  thermo_jumps_every = 4, save_every_param_size_factor=1) 
-
-
-thermo_evidence(idname= runIdName,model = model, prior= prior_model_name, likelihood_algorithm= likelihood_algorithm, data = simfile, experiment = experiment_file, thermo_algorithm= thermo_algorithm, sampling_interval =1, max_number_of_values_per_iteration= 256,  init_seed =0)
-

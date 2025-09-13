@@ -6,15 +6,12 @@
 
 #include "grammar_typed.h"
 
-namespace macrodr {
-
-namespace interface {
+namespace macrodr::interface {
 
 struct IObject {
-    virtual std::string kind() const = 0;
+    [[nodiscard]] virtual std::string kind() const = 0;
     virtual std::string describe() const = 0;
 
     virtual ~IObject() = default;
 };
-}  // namespace interface
-}  // namespace macrodr
+}  // namespace macrodr::interface

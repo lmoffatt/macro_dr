@@ -1,7 +1,0 @@
-model = "scheme_11"
-
-modelParameter = load_Parameter(filename = "../macro_dr/models/scheme_10_PI_par.csv", separator="," )
-
-prior_model = load_Prior(filename = "../macro_dr/models/scheme_10_PI_prior.csv", separator= ",")
-
-prior_model_name = "../macro_dr/models/scheme_10_PI_prior.csv"

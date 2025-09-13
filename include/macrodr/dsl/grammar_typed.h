@@ -3,20 +3,15 @@
 #include "grammar_Identifier.h"
 //#include "grammar_untyped.h"
 #include <concepts>
-#include <functional>
 #include <map>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <typeinfo>
 #include <vector>
 
 #include "lexer_typed.h"
 #include "maybe_error.h"
-#include "mcmc.h"
-#include "qmodel.h"
 
 namespace macrodr::dsl {
 template <class Lexer, class Compiler, class T>
@@ -106,7 +101,7 @@ class base_typed_statement {
 template <class Lexer, class Compiler>
 class base_typed_assigment : public base_typed_statement<Lexer, Compiler> {
    public:
-    virtual ~base_typed_assigment() {};
+    virtual ~base_typed_assigment()=default;
     virtual base_typed_assigment* clone() const = 0;
     virtual Identifier<Lexer> const& id() const = 0;
     virtual base_typed_expression<Lexer, Compiler>* expr() const = 0;

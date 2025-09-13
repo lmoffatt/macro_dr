@@ -1,51 +1,75 @@
-# This file is used to ignore files which are generated
+# ----------------------------------------------------------------------------
+# Project-specific: macro_dr (C++/DSL/CMake project)
 # ----------------------------------------------------------------------------
 
-*~
-*.autosave
+# Build directory
+/build/
+
+# CMake artifacts
+/CMakeFiles/
+/CMakeCache.txt
+/Makefile
+/cmake_install.cmake
+/*.cmake
+/CTestTestfile.cmake
+/DartConfiguration.tcl
+
+# Ninja builds
+/build.ninja
+/.ninja_deps
+/.ninja_log
+
+# Output binaries
+*.out
 *.a
-*.core
-*.moc
-*.o
-*.obj
-*.orig
-*.rej
 *.so
 *.so.*
-*_pch.h.cpp
-*_resource.rc
-*.qm
-.#*
-*.*#
-core
-!core/
-tags
-.DS_Store
-.directory
-*.debug
-Makefile*
-*.prl
-*.app
-moc_*.cpp
-ui_*.h
-qrc_*.cpp
-Thumbs.db
-*.res
-*.rc
-/.qmake.cache
-/.qmake.stash
+*.dylib
+*.dll
+*.exe
 
-# qtcreator generated files
+# DSL-related generated files
+*.rec
+*.log
+*.macroir.csv
+*.macroir.json
+*.macroir.out
+/tests/output/
+scripts/output/
+experiments/output/
+
+# Test logs
+tests/_logs/
+
+# IDE/Editor files
+/.idea/
+/.vscode/
+/.directory
 *.pro.user*
 CMakeLists.txt.user*
 
-# xemacs temporary files
+
+# Backup/temporary files
+*~
+*.autosave
+.#*
+*.*#
+*.orig
+*.rej
+*.bak
+*.tmp
+*.debug
 *.flc
-
-# Vim temporary files
+*.swp
 .*.swp
+tags
+.DS_Store
+Thumbs.db
+core
+*.core
+!core/   # allow core/ source dir if it exists
 
-# Visual Studio generated files
+# Visual Studio and Windows clutter
 *.ib_pdb_index
 *.idb
 *.ilk
@@ -54,21 +78,19 @@ CMakeLists.txt.user*
 *.suo
 *.vcproj
 *vcproj.*.*.user
+*.vcxproj
+*vcxproj.*
 *.ncb
 *.sdf
 *.opensdf
-*.vcxproj
-*vcxproj.*
 
-# MinGW generated files
+# MinGW build dirs
 *.Debug
 *.Release
 
-# Python byte code
+# Python cache (in case helpers/scripts are Python)
 *.pyc
 
-# Binaries
-# --------
-*.dll
-*.exe
-
+# ----------------------------------------------------------------------------
+# End of .gitignore
+# ----------------------------------------------------------------------------
