@@ -35,6 +35,7 @@
 *.macroir.json
 *.macroir.out
 /tests/output/
+/tests/*/*/examples/
 scripts/output/
 experiments/output/
 

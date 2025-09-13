@@ -1,0 +1,17 @@
+model_name,i_par,parameter_name,parameter_transformation,parameter_value,transformed_mean
+scheme_9_inact,0,Binding_on,Log10,6.05201233250224,0.781899804336644
+scheme_9_inact,1,Binding_off,Log10,610.761742970989,2.78587182580262
+scheme_9_inact,2,Rocking_on,Log10,1662.37406104471,3.22072875372547
+scheme_9_inact,3,Rocking_off,Log10,64.8499766881837,1.81190982430298
+scheme_9_inact,4,RB,Log10,22.5990895487833,1.35409094304545
+scheme_9_inact,5,RB_0,Log10,75.5956979693536,1.87849708119787
+scheme_9_inact,6,RB_1,Log10,6.81162778549979,0.833250908356907
+scheme_9_inact,7,Rocking_Current_factor,Log10,362.663819748496,2.55950423143559
+scheme_9_inact,8,Leakeage_current_ratio,Log10,3.13376705081533e-06,-5.50393329003257
+scheme_9_inact,9,Gating_Current,Log10,3.33668775482051,0.523315567546841
+scheme_9_inact,10,Current_Noise,Log10,0.000292167563610874,-3.53436800101892
+scheme_9_inact,11,Pink_Noise,Log10,0.373205903533143,-0.428051495012383
+scheme_9_inact,12,Proportional_Noise,Fixed,0,0
+scheme_9_inact,13,Current_Baseline,Log10,3.95126540231303,0.596736201761655
+scheme_9_inact,14,Num_ch,Log10,552.802564902473,2.74257004941753
+scheme_9_inact,15,inactivation_rate,Log10,2.34223950473273e-05,-4.63036869839022
