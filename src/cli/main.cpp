@@ -1,13 +1,3 @@
-#include "CLI_macro_dr.h"
-#include "CLI_function_table.h"
-
-#include "CLI_likelihood.h"
-#include "CLI_macro_dr.h"
-//#include "CLI_thermo_evidence.h"
-#include "CLI_thermo_evidence_dts.h"
-
-//#include "CLI_thermo_evidence_fraction_dts.h"
-//#include "CLI_thermo_levenberg_evidence.h"
 #include <macrodr/cmd/init_commands.h>
 #include <macrodr/dsl/lexer_typed.h>
 
@@ -15,72 +5,75 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "command_manager.h"
-#include "experiment.h"
+#include "CLI_macro_dr_base.h"  // for cmd::write_text
+#include "grammar_untyped.h"
 #include "lapack_headers.h"
+#include "lexer_untyped.h"
 #include "maybe_error.h"
 #include "models_MoffattHume_allosteric.h"
-#include "qmodel.h"
 using namespace macrodr;
 
-Maybe_error<std::string> read_from_input_files(std::vector<std::string> const args) {
+Maybe_error<std::string> read_from_input_files(std::vector<std::string> const& args) {
     std::string s;
     for (std::size_t i = 1; i < args.size(); ++i) {
-        auto filename = args[i];
+        const auto& filename = args[i];
         std::ifstream f(filename);
-        if (!f)
+        if (!f) {
             return error_message(filename + " does not exist or cannot be opened");
-        else {
-            while (f) {
-                std::string line;
-                std::getline(f, line);
-                s += line + "\n";
-            }
         }
-    }
-    return s;
-}
-
-Maybe_error<std::string> append_files_content(std::string&& s, std::string const& filename) {
-    std::ifstream f(filename);
-    if (!f)
-        return error_message(filename + " does not exist or cannot be opened");
-    else {
         while (f) {
             std::string line;
             std::getline(f, line);
             s += line + "\n";
         }
     }
+    return s;
+}
+
+static Maybe_error<std::string> append_files_content(std::string&& s, std::string const& filename) {
+    std::ifstream f(filename);
+    if (!f) {
+        return error_message(filename + " does not exist or cannot be opened");
+    }
+    while (f) {
+        std::string line;
+        std::getline(f, line);
+        s += line + "\n";
+    }
+
     return std::move(s);
 }
 
-Maybe_error<std::string> append_command(std::string&& s, std::string const& line) {
-    if (line.empty() || line.back() != '"')
+static Maybe_error<std::string> append_command(std::string&& s, std::string const& line) {
+    if (line.empty() || line.back() != '"') {
         return error_message(std::string{"malformed inline command: "} + line);
+    }
     s += line.substr(1, line.size() - 2) + "\n";
     return std::move(s);
 }
 
-Maybe_error<std::string> read_from_input_files_or_commands(std::vector<std::string> const& args) {
+static Maybe_error<std::string> read_from_input_files_or_commands(
+    std::vector<std::string> const& args) {
     std::string s;
     for (std::size_t i = 1; i < args.size(); ++i) {
-        auto filename_or_command = args[i];
+        const auto& filename_or_command = args[i];
         if (filename_or_command.starts_with("--")) {
             s += filename_or_command.substr(2) + "\n";
         } else {
             auto maybe_s = append_files_content(std::move(s), filename_or_command);
-            if (!maybe_s)
+            if (!maybe_s) {
                 return maybe_s.error();
-            else
-                s = std::move(maybe_s.value());
+            }
+            s = std::move(maybe_s.value());
         }
     }
     return s;
 }
 
+#if 0  // legacy get_compiler disabled; use macrodr::make_compiler_new()
 auto get_compiler() {
     auto cm = dsl::Compiler{};
     using namespace cmd;
@@ -504,30 +497,22 @@ calc_thermo_evidence(std::string id,
 
     return cm;
 }
+#endif
 inline static dsl::Compiler make_compiler() {
-    dsl::Compiler cm;
-    cm.merge(macrodr::cli::make_compiler_new());
-    cm.merge(macrodr::cmd::make_utilities_compiler());
-    cm.merge(macrodr::cmd::make_io_compiler());
-    cm.merge(macrodr::cmd::make_experiment_compiler());
-    cm.merge(macrodr::cmd::make_model_compiler());
-    cm.merge(macrodr::cmd::make_simulation_compiler());
-    // cm.merge(macrodr::cmd::make_frac_compiler());
-    cm.merge(macrodr::cmd::make_dts_compiler());
-    // cm.merge(macrodr::cmd::zombie::make_cuevi_compiler());
-    //  cm.merge(macrodr::cmd::make_levenberg_compiler());
-    return cm;
+    return macrodr::make_compiler_new();
 }
 
 int main(int argc, char** argv) {
     print_model_Priors(2.0);
     std::vector<std::string> arguments(argc);
-    for (auto i = 0; i < argc; ++i) arguments[i] = argv[i];
+    for (auto i = 0; i < argc; ++i) {
+        arguments[i] = argv[i];
+    }
 
     auto Maybe_script = read_from_input_files_or_commands(arguments);
-    if (!Maybe_script)
+    if (!Maybe_script) {
         std::cerr << "Error: \n" << Maybe_script.error()();
-    else {
+    } else {
         auto cm = make_compiler();
         auto s = std::move(Maybe_script.value());
         std::cout << "\n read files " << arguments << "\n" << s << "\n";
@@ -537,8 +522,8 @@ int main(int argc, char** argv) {
         auto p = dsl::extract_program(s);
 
         std::cerr << p;
-        
-        dsl::Environment<dsl::Lexer,dsl::Compiler> env(cm);
+
+        dsl::Environment<dsl::Lexer, dsl::Compiler> env(cm);
         if (p) {
             auto c = dsl::compile_program(env, p.value());
             if (!c) {
@@ -554,6 +539,6 @@ int main(int argc, char** argv) {
             std::cerr << ss;
         } else {
             std::cerr << p.error()();
-}
+        }
     }
 }
