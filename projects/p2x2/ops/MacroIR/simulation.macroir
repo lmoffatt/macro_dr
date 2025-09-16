@@ -1,17 +1,26 @@
-experiment = load_experiment(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time.txt", frequency_of_sampling = 50e3, initial_ATP = 0.0) 
 
-observations = load_recording(filename="../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_recording.txt")
+experiment = load_experiment(
+    filename = "data/experiments/Moffatt_Hume_2007_ATP_time.txt",
+    frequency_of_sampling = 50e3,
+    initial_ATP = 0.0)
 
-simulation_Id= get_random_Id(prefix="Sim") 
+observations = get_Observations(
+    filename = "data/experiments/Moffatt_Hume_2007_ATP_time.txt")
 
-sim_algo= simulation_algorithm (include_N_states=0,number_of_substeps=1000)
+simulation_Id = get_random_Id(prefix="Sim")
 
-model = load_model()
-parameter_values =load_parameter_values()
+sim_algo = simulation_algorithm(include_N_states=0, number_of_substeps=1000)
 
-simfile=simulate(output=simulation_Id, recording= observations, experiment=experiment,
-init_seed=0, modelName= model, parameter_values= modelParameter, simulation_algorithm=sim_algo)
+model = "scheme_10_d"
+modelParameter = load_Parameter(
+    filename = "data/models_Ag_log_baseline/scheme_10_inact_PI_par.csv",
+    separator = ",")
 
-
-
-
+simfile = simulate(
+    output = simulation_Id,
+    recording = observations,
+    experiment = experiment,
+    init_seed = 0,
+    modelName = model,
+    parameter_values = modelParameter,
+    simulation_algorithm = sim_algo)

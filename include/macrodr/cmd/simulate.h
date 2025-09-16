@@ -13,14 +13,14 @@
 #include "parameters.h"
 //#include "parameters_derivative.h"
 #include "qmodel.h"
-namespace macrodr {
-namespace cmd {
+
+namespace macrodr::cmd {
 
 std::string run_simulation(std::string filename_prefix, recording_type recording_file,
-                           experiment_type experiment, std::size_t myseed, std::string modelName,
+                           experiment_type experiment, std::size_t myseed, const std::string& modelName,
                            parameters_value_type parameter_files,
                            simulation_algo_type sim_algo_type);
 }
-}  // namespace macrodr
+
 
 #endif  // SIMULATE_H

@@ -34,9 +34,9 @@ class Identifier {
 
 template <class Lexer>
 Maybe_error<Identifier<Lexer>> to_Identifier(std::string t_id_candidate) {
-    if (t_id_candidate.empty())
+    if (t_id_candidate.empty()) {
         return error_message("empty identifier");
-    else if (Lexer::alfa.find(t_id_candidate[0]) == std::string::npos)
+    } if (Lexer::alfa.find(t_id_candidate[0]) == std::string::npos)
         return error_message(t_id_candidate + " identifier starts with " + t_id_candidate[0]);
     else {
         auto pos = t_id_candidate.find_first_not_of(Lexer::alfanum);
@@ -51,14 +51,17 @@ Maybe_error<Identifier<Lexer>> to_Identifier(std::string t_id_candidate) {
 template <class Abstract>
 auto clone_vector(const std::vector<std::unique_ptr<Abstract>>& x) {
     std::vector<std::unique_ptr<Abstract>> out;
-    for (auto& ele : x) out.push_back(std::unique_ptr<Abstract>(ele->clone()));
+    out.reserve(x.size());
+for (auto& ele : x) { out.push_back(std::unique_ptr<Abstract>(ele->clone()));
+}
     return out;
 }
 
 template <class key, class Abstract>
 auto clone_map(const std::map<key, std::unique_ptr<Abstract>>& x) {
     std::map<key, std::unique_ptr<Abstract>> out;
-    for (auto& ele : x) out.emplace(ele.first, ele.second->clone());
+    for (auto& ele : x) { out.emplace(ele.first, ele.second->clone());
+}
     return out;
 }
 

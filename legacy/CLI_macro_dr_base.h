@@ -137,12 +137,12 @@ inline dsl::Compiler make_model_compiler() {
     cm.push_function("get_Prior", dsl::to_typed_function<double, std::string>(
                                       &get_Prior, "prior_error", "model"));
 
-    // cm.push_function(
-    //     "set_Likelihood_algorithm",
-    //     dsl::to_typed_function<bool, bool, int, bool, bool, std::size_t>(
-    //         &set_Likelihood_algorithm, "adaptive_aproximation", "recursive_approximation",
-    //         "averaging_approximation", "variance_correction_approximation",
-    //         "variance_approximation", "n_sub_dt"));
+    cm.push_function(
+        "set_Likelihood_algorithm",
+        dsl::to_typed_function<bool, bool, int, bool, bool, std::size_t>(
+            &set_Likelihood_algorithm, "adaptive_aproximation", "recursive_approximation",
+            "averaging_approximation", "variance_correction_approximation",
+            "variance_approximation", "n_sub_dt"));
     // cm.push_function("set_fraction_algorithm", dsl::to_typed_function<double, double, std::string>(
     //                                                &set_Fraction_algorithm, "min_fraction",
     //                                                "n_points_per_decade_fraction", "segments"));

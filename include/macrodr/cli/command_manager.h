@@ -16,15 +16,7 @@ namespace macrodr::cli {
 
 inline dsl::Compiler make_compiler_new() {
     dsl::Compiler cm;
-    cm.push_function("load_experiment",  ::macrodr::dsl::to_typed_function<std::string, double, double>(
-                                            &cmd::load_experiment, "filename",
-                                            "frequency_of_sampling", "initial_ATP"));
-    cm.push_function("load_recording",  ::macrodr::dsl::to_typed_function<std::string>(
-                                            &cmd::load_recording, "filename"));
-                                            
-
-
-
+    // Intentionally empty: command registrations live under macrodr::cmd builders
     return cm;
 }
 

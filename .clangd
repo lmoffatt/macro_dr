@@ -8,6 +8,8 @@ Index:
   Background: Build
 
 Diagnostics:
+  ClangTidy:
+    Remove: [modernize-use-trailing-return-type]  
   UnusedIncludes: Strict
 
 InlayHints:
