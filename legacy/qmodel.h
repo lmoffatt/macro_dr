@@ -193,8 +193,7 @@ class Q0_formula : public var::Var<Q0_formula, std::vector<std::vector<std::stri
 
     Q0_formula(std::size_t N)
         : var::Var<Q0_formula, std::vector<std::vector<std::string>>>{
-              std::vector<std::vector<std::string>>{N, std::vector<std::string>{N, ""}}} {
-    }
+              std::vector<std::vector<std::string>>{N, std::vector<std::string>{N, ""}}} {}
 
     friend std::ostream& operator<<(std::ostream& os, Q0_formula const& x) {
         os << "Q0 formula"
@@ -217,8 +216,7 @@ class Qa_formula : public var::Var<Qa_formula, std::vector<std::vector<std::stri
     using base_type::Var;
     Qa_formula(std::size_t N)
         : var::Var<Qa_formula, std::vector<std::vector<std::string>>>{
-              std::vector<std::vector<std::string>>{N, std::vector<std::string>{N, ""}}} {
-    }
+              std::vector<std::vector<std::string>>{N, std::vector<std::string>{N, ""}}} {}
     friend std::ostream& operator<<(std::ostream& os, Qa_formula const& x) {
         os << "Q0 formula"
            << "\n";
@@ -293,9 +291,7 @@ class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
 class P_mean : public var::Var<P_mean, Matrix<double>> {
    public:
-    friend std::string className(P_mean) {
-        return "P_mean";
-    }
+    friend std::string className(P_mean) { return "P_mean"; }
 };
 
 template <class C_Matrix>
@@ -408,9 +404,7 @@ class y_sum : public var::Var<y_sum, double> {};
 class t_sum : public var::Var<t_sum, double> {};
 
 class P_Cov : public var::Var<P_Cov, SymmetricMatrix<double>> {
-    friend std::string className(P_Cov) {
-        return "P_Cov";
-    }
+    friend std::string className(P_Cov) { return "P_Cov"; }
 };
 
 class lambda : public var::Var<lambda, DiagonalMatrix<double>> {};
@@ -526,9 +520,7 @@ class Transition_rate_W
 */
 
 class P : public Var<P, Matrix<double>> {
-    friend std::string className(P) {
-        return "P_ij";
-    }
+    friend std::string className(P) { return "P_ij"; }
 };
 
 template <class C_Matrix>
@@ -552,9 +544,7 @@ Maybe_error<Transfer_Op_to<C_Matrix, P>> to_Transition_Probability(C_Matrix cons
 }
 
 class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
-    friend std::string className(Ptotal_ij) {
-        return "Ptotal_ij";
-    }
+    friend std::string className(Ptotal_ij) { return "Ptotal_ij"; }
 
    public:
 };
@@ -570,77 +560,49 @@ inline Maybe_error<Ptotal_ij> make_Ptotal_ij(Matrix<double>&& x, double max_dt) 
 }
 
 class gmean_i : public Var<gmean_i, Matrix<double>> {
-    friend std::string className(gmean_i) {
-        return "gmean_i";
-    }
+    friend std::string className(gmean_i) { return "gmean_i"; }
 };
 class gtotal_ij : public Var<gtotal_ij, Matrix<double>> {
-    friend std::string className(gtotal_ij) {
-        return "gtotal_ij";
-    }
+    friend std::string className(gtotal_ij) { return "gtotal_ij"; }
 };
 class gmean_ij : public Var<gmean_ij, Matrix<double>> {
-    friend std::string className(gmean_ij) {
-        return "gmean_ij";
-    }
+    friend std::string className(gmean_ij) { return "gmean_ij"; }
 };
 class gtotal_sqr_ij : public Var<gtotal_sqr_ij, Matrix<double>> {
-    friend std::string className(gtotal_sqr_ij) {
-        return "gtotal_sqr_ij";
-    }
+    friend std::string className(gtotal_sqr_ij) { return "gtotal_sqr_ij"; }
 };
 class gsqr_i : public Var<gsqr_i, Matrix<double>> {
-    friend std::string className(gsqr_i) {
-        return "gsqr_i";
-    }
+    friend std::string className(gsqr_i) { return "gsqr_i"; }
 };
 class gvar_i : public Var<gvar_i, Matrix<double>> {
-    friend std::string className(gvar_i) {
-        return "gvar_i";
-    }
+    friend std::string className(gvar_i) { return "gvar_i"; }
 };
 class gtotal_var_ij : public Var<gtotal_var_ij, Matrix<double>> {
-    friend std::string className(gtotal_var_ij) {
-        return "gtotal_var_ij";
-    }
+    friend std::string className(gtotal_var_ij) { return "gtotal_var_ij"; }
 };
 class gvar_ij : public Var<gvar_ij, Matrix<double>> {
-    friend std::string className(gvar_ij) {
-        return "gvar_ij";
-    }
+    friend std::string className(gvar_ij) { return "gvar_ij"; }
 };
 
 class y_mean : public var::Var<y_mean, double> {
-    friend std::string className(y_mean) {
-        return "y_mean";
-    }
+    friend std::string className(y_mean) { return "y_mean"; }
 };
 class y_var : public var::Var<y_var, double> {
-    friend std::string className(y_var) {
-        return "y_var";
-    }
+    friend std::string className(y_var) { return "y_var"; }
 };
 class plogL : public var::Var<plogL, double> {
-    friend std::string className(plogL) {
-        return "plogL";
-    }
+    friend std::string className(plogL) { return "plogL"; }
 };
 class eplogL : public var::Var<eplogL, double> {
-    friend std::string className(eplogL) {
-        return "eplogL";
-    }
+    friend std::string className(eplogL) { return "eplogL"; }
 };
 class vplogL : public var::Constant<vplogL, double> {
-    friend std::string className(vplogL) {
-        return "vplogL";
-    }
+    friend std::string className(vplogL) { return "vplogL"; }
 };
 
 class macror_algorithm : public var::Constant<macror_algorithm, std::string> {
     using var::Constant<macror_algorithm, std::string>::Constant;
-    friend std::string className(macror_algorithm) {
-        return "macror_algorithm";
-    }
+    friend std::string className(macror_algorithm) { return "macror_algorithm"; }
 };
 
 class PGn : public var::Var<PGn, Matrix<double>> {};
@@ -753,23 +715,17 @@ std::pair<C_Patch_Model, double> remove_Patch_inactivation(C_Patch_Model const& 
 
 class Patch_State_Evolution : public Var<Patch_State_Evolution, std::vector<Patch_State>> {
    public:
-    friend std::string className(Patch_State_Evolution) {
-        return "Patch_State_Evolution";
-    }
+    friend std::string className(Patch_State_Evolution) { return "Patch_State_Evolution"; }
 };
 
 class ymean_Evolution : public Var<ymean_Evolution, std::vector<y_mean>> {
    public:
-    friend std::string className(ymean_Evolution) {
-        return "ymean_Evolution";
-    }
+    friend std::string className(ymean_Evolution) { return "ymean_Evolution"; }
 };
 
 class yvar_Evolution : public Var<yvar_Evolution, std::vector<y_var>> {
    public:
-    friend std::string className(yvar_Evolution) {
-        return "yvar_Evolution";
-    }
+    friend std::string className(yvar_Evolution) { return "yvar_Evolution"; }
 };
 
 using logL_y_yvar = var::Vector_Space<logL, elogL, vlogL, ymean_Evolution, yvar_Evolution>;
@@ -1164,39 +1120,27 @@ struct MacroR {
 };
 
 struct Calc_Qdt {
-    friend std::string ToString(Calc_Qdt) {
-        return "Calc_Qdt";
-    }
+    friend std::string ToString(Calc_Qdt) { return "Calc_Qdt"; }
 };
 
 struct Calc_Qdt_step {
-    friend std::string ToString(Calc_Qdt_step) {
-        return "Calc_Qdt_step";
-    }
+    friend std::string ToString(Calc_Qdt_step) { return "Calc_Qdt_step"; }
 };
 
 struct Calc_Qdtm_step {
-    friend std::string ToString(Calc_Qdtm_step) {
-        return "Calc_Qdtm_step";
-    }
+    friend std::string ToString(Calc_Qdtm_step) { return "Calc_Qdtm_step"; }
 };
 
 struct Calc_Qdtg_step {
-    friend std::string ToString(Calc_Qdtg_step) {
-        return "Calc_Qdtg_step";
-    }
+    friend std::string ToString(Calc_Qdtg_step) { return "Calc_Qdtg_step"; }
 };
 
 struct Calc_Qx {
-    friend std::string ToString(Calc_Qx) {
-        return "Calc_Qx";
-    }
+    friend std::string ToString(Calc_Qx) { return "Calc_Qx"; }
 };
 
 struct Calc_eigen {
-    friend std::string ToString(Calc_eigen) {
-        return "Calc_eigen";
-    }
+    friend std::string ToString(Calc_eigen) { return "Calc_eigen"; }
 };
 
 template <typename CQx>
@@ -3478,9 +3422,9 @@ class Macro_DMR {
         auto r_y_mean_min = min_possible_value_of_ymean(
             N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)), primitive(y_baseline));
 
-        if ((primitive(r_y_mean()) - r_y_mean_max()) >
-            std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_max())) * 1e-3)
-            std::cerr << "\n max violation" << r_y_mean() << "  vs  max: " << r_y_mean_max();
+        // if ((primitive(r_y_mean()) - r_y_mean_max()) >
+        //     std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_max())) * 1e-3)
+        //     std::cerr << "\n max violation" << r_y_mean() << "  vs  max: " << r_y_mean_max();
 
         auto& y = p_y.value();
 
@@ -3647,9 +3591,9 @@ class Macro_DMR {
         auto r_y_mean_min = min_possible_value_of_ymean(
             N_Ch_mean_value(primitive(Nch)), primitive(get<g>(m)), primitive(y_baseline));
 
-        if ((primitive(r_y_mean()) - r_y_mean_max()) >
-            std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_max())) * 1e-3)
-            std::cerr << "\n max violation" << r_y_mean() << "  vs  max: " << r_y_mean_max();
+        // if ((primitive(r_y_mean()) - r_y_mean_max()) >
+        //     std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_max())) * 1e-3)
+        //     std::cerr << "\n max violation" << r_y_mean() << "  vs  max: " << r_y_mean_max();
         // if ((r_y_mean_min() - primitive(r_y_mean())) >
         //     std::max(std::abs(primitive(r_y_mean())), std::abs(r_y_mean_min())) *
         //         1e-1)
@@ -4318,12 +4262,10 @@ struct Likelihood_Model_constexpr {
     Model m;
     Simulation_n_sub_dt n_sub_dt;
     Likelihood_Model_constexpr(const Model& model, Simulation_n_sub_dt n_sub_dt)
-        : m{model}, n_sub_dt{n_sub_dt} {
-    }
+        : m{model}, n_sub_dt{n_sub_dt} {}
     Likelihood_Model_constexpr(adaptive, recursive, averaging, variance, variance_correction,
                                const Model& model, Simulation_n_sub_dt n_sub_dt)
-        : m{model}, n_sub_dt{n_sub_dt} {
-    }
+        : m{model}, n_sub_dt{n_sub_dt} {}
 
     template <class Parameter>
     friend void report_model(save_Parameter<Parameter>& s, Likelihood_Model_constexpr const& d) {
@@ -4375,8 +4317,7 @@ struct Likelihood_Model_regular {
           recursive{recursive},
           averaging{averaging},
           variance{variance},
-          variance_correction{variance_correction} {
-    }
+          variance_correction{variance_correction} {}
 
     using cartesian = algebra_2<std::tuple, std::variant>::P_constexpr<
         typename adaptive_range::variant_type, typename recursive_range::variant_type,
@@ -4928,8 +4869,7 @@ class experiment_fractioner {
    public:
     experiment_fractioner(const std::vector<std::size_t>& t_segments,
                           bool average_the_ATP_evolution)
-        : segments{t_segments}, average_ATP_evolution{average_the_ATP_evolution} {
-    }
+        : segments{t_segments}, average_ATP_evolution{average_the_ATP_evolution} {}
 
     static auto average_Recording(const Recording_conditions& e, const Recording& y,
                                   const std::vector<std::size_t>& indexes0,
@@ -5173,8 +5113,7 @@ inline void report_title(save_Predictions<var::Parameters_transformed>& s,
 }
 
 inline void report_title(save_Predictions<Matrix<double>>& s, thermo_mcmc<Matrix<double>> const&,
-                         ...) {
-}
+                         ...) {}
 
 template <class FunctionTable, class Duration, class Prior, class t_logLikelihood, class Data,
           class Variables>

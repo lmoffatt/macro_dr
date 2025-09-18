@@ -12,6 +12,7 @@
 
 #include "general_algorithm_on_containers.h"
 #include "general_output_operator.h"
+#include "macrodr/dsl/type_name.h"
 #include "maybe_error.h"
 namespace var {
 
@@ -52,12 +53,9 @@ class Value {
     T m_x;
 
    public:
-    Value(T t_x) : m_x{t_x} {
-    }
+    Value(T t_x) : m_x{t_x} {}
 
-    auto& value() const {
-        return m_x;
-    }
+    auto& value() const { return m_x; }
 };
 
 template <class...>
@@ -93,30 +91,17 @@ class Var<Id, T> {
 
     template <class S>
         requires std::is_convertible_v<S, T>
-    constexpr Var(S&& t_x) : m_x{std::forward<S>(t_x)} {
-    }
+    constexpr Var(S&& t_x) : m_x{std::forward<S>(t_x)} {}
 
-    constexpr Var(T const& t_x) : m_x{t_x} {
-    }
+    constexpr Var(T const& t_x) : m_x{t_x} {}
 
-    constexpr Var(T&& t_x) : m_x{std::move(t_x)} {
-    }
-    constexpr auto& operator()() {
-        return m_x;
-    }
-    constexpr auto const& operator()() const {
-        return m_x;
-    }
-    constexpr auto& operator[](Var<Id>) {
-        return *this;
-    }
-    constexpr auto& operator[](Var<Id>) const {
-        return *this;
-    }
+    constexpr Var(T&& t_x) : m_x{std::move(t_x)} {}
+    constexpr auto& operator()() { return m_x; }
+    constexpr auto const& operator()() const { return m_x; }
+    constexpr auto& operator[](Var<Id>) { return *this; }
+    constexpr auto& operator[](Var<Id>) const { return *this; }
     constexpr Var() = default;
-    constexpr auto& value() const {
-        return m_x;
-    }
+    constexpr auto& value() const { return m_x; }
 
     template <class... Ts>
     constexpr auto operator()(const Ts&...) {
@@ -135,19 +120,13 @@ class Var<Id, T> {
         return os;
     }
 
-    friend Id operator-(const Var& one, const Var& two) {
-        return Id(one() - two());
-    }
+    friend Id operator-(const Var& one, const Var& two) { return Id(one() - two()); }
 
-    friend bool operator<(const Var& one, const Var& two) {
-        return one.value() < two.value();
-    }
+    friend bool operator<(const Var& one, const Var& two) { return one.value() < two.value(); }
     friend bool operator==(const Var& one, const Var& two) {
         return Var::is_equal(one.value(), two.value());
     }
-    friend double fullsum(const Var& x) {
-        return fullsum(x());
-    }
+    friend double fullsum(const Var& x) { return fullsum(x()); }
 
     friend Maybe_error<bool> compare_contents(const Var& s0, const Var& s1, double RelError,
                                               double AbsError, std::size_t max_errors) {
@@ -199,28 +178,14 @@ class Constant<Id, T> {
 
     //operator Id()const {return Id(*this);}
 
-    constexpr Constant(T&& t_x) : m_x{std::move(t_x)} {
-    }
-    constexpr Constant(T const& t_x) : m_x{t_x} {
-    }
-    constexpr auto& operator()() {
-        return m_x;
-    }
-    constexpr auto& operator()() const {
-        return m_x;
-    }
-    constexpr auto& operator[](Constant<Id>) {
-        return *this;
-    }
-    constexpr auto& operator[](Constant<Id>) const {
-        return *this;
-    }
-    constexpr auto& operator[](Var<Id>) {
-        return *this;
-    }
-    constexpr auto& operator[](Var<Id>) const {
-        return *this;
-    }
+    constexpr Constant(T&& t_x) : m_x{std::move(t_x)} {}
+    constexpr Constant(T const& t_x) : m_x{t_x} {}
+    constexpr auto& operator()() { return m_x; }
+    constexpr auto& operator()() const { return m_x; }
+    constexpr auto& operator[](Constant<Id>) { return *this; }
+    constexpr auto& operator[](Constant<Id>) const { return *this; }
+    constexpr auto& operator[](Var<Id>) { return *this; }
+    constexpr auto& operator[](Var<Id>) const { return *this; }
 
     template <class T0, class... Ts>
     constexpr auto operator()(const T0&, const Ts&...) {
@@ -233,13 +198,9 @@ class Constant<Id, T> {
     }
 
     constexpr Constant() = default;
-    constexpr auto& value() const {
-        return m_x;
-    }
+    constexpr auto& value() const { return m_x; }
 
-    friend double fullsum(const Constant& x) {
-        return fullsum(x());
-    }
+    friend double fullsum(const Constant& x) { return fullsum(x()); }
 
     friend auto& print(std::ostream& os, const Constant& x) {
         os << typeid(Id).name() << ": \n";
@@ -299,11 +260,9 @@ class Fun {
 
     using variable_type = Fun<Id, F, T...>;
 
-    constexpr Fun(Var<Id>, F const& t_f, T const&... t_x) : m_x{t_x...}, m_f{t_f} {
-    }
+    constexpr Fun(Var<Id>, F const& t_f, T const&... t_x) : m_x{t_x...}, m_f{t_f} {}
 
-    constexpr Fun(Var<Id>, F&& t_f, T&&... t_x) : m_x{std::move(t_x)...}, m_f{std::move(t_f)} {
-    }
+    constexpr Fun(Var<Id>, F&& t_f, T&&... t_x) : m_x{std::move(t_x)...}, m_f{std::move(t_f)} {}
 
     template <class... Ts>
     constexpr auto operator()(const Ts&... ts) {
@@ -317,15 +276,10 @@ class Fun {
                              m_x));
     }
 
-    constexpr Fun() {
-    }
+    constexpr Fun() {}
 
-    constexpr auto& operator[](Var<Id>) {
-        return *this;
-    }
-    constexpr auto& operator[](Var<Id>) const {
-        return *this;
-    }
+    constexpr auto& operator[](Var<Id>) { return *this; }
+    constexpr auto& operator[](Var<Id>) const { return *this; }
 };
 
 template <class Id, class T, class F>
@@ -367,10 +321,8 @@ class constexpr_Var_value {
     T value;
     static constexpr bool is_variable = true;
 
-    constexpr constexpr_Var_value(T value) : value{value} {
-    }
-    constexpr constexpr_Var_value() {
-    }
+    constexpr constexpr_Var_value(T value) : value{value} {}
+    constexpr constexpr_Var_value() {}
 
     friend auto& operator<<(std::ostream& os, constexpr_Var_value x) {
         os << x.value;
@@ -406,12 +358,12 @@ struct constexpr_Var_domain {
     static Maybe_error<variant_type> to_variant(T x) {
         auto it = to_variant_map.find(x);
         if (it == to_variant_map.end()) {
-            std::string joined;
-            ((joined += std::to_string(allowed) + ", "), ...);
-            return error_message(std::to_string(x) + " is not in {" + joined + "}");
-
-        } else
-            return it->second;
+            // std::string joined;
+            // ((joined += std::to_string(allowed) + ", "), ...);
+            return error_message(std::to_string(x) + " is not in " +
+                                 macrodr::dsl::type_name<Id<allowed...>>() + "\n");
+        }
+        return it->second;
     }
 };
 template <typename C, class T, template <T> class Id>
@@ -451,9 +403,7 @@ public:
 template <class... Vars>
     requires(Vars::is_variable && ...)
 class Vector_Space : public Vars... {
-    static bool islessthan(const Vector_Space&, const Vector_Space&) {
-        return false;
-    }
+    static bool islessthan(const Vector_Space&, const Vector_Space&) { return false; }
     template <class V0, class V2, class... Vs>
     static bool islessthan(const Vector_Space& a, const Vector_Space& b) {
         if (static_cast<V0 const&>(a).value() < static_cast<V0 const&>(b).value()) {
@@ -479,10 +429,8 @@ class Vector_Space : public Vars... {
         std::string sep;
 
        public:
-        format(Vector_Space const& x, const std::string s) : v{&x}, sep{s} {
-        }
-        format(const std::string s) : sep{s} {
-        }
+        format(Vector_Space const& x, const std::string s) : v{&x}, sep{s} {}
+        format(const std::string s) : sep{s} {}
 
         friend std::ostream& operator<<(std::ostream& os, const format& x) {
             if (x.v != NULL)
@@ -531,16 +479,11 @@ class Vector_Space : public Vars... {
 
     static constexpr bool is_vector_space = true;
 
-    Vector_Space() : Vars{}... {
-    }
-    Vector_Space(Vars&&... t_vars) : Vars{std::move(t_vars)}... {
-    }
-    Vector_Space(Vars const&... t_vars) : Vars{t_vars}... {
-    }
+    Vector_Space() : Vars{}... {}
+    Vector_Space(Vars&&... t_vars) : Vars{std::move(t_vars)}... {}
+    Vector_Space(Vars const&... t_vars) : Vars{t_vars}... {}
 
-    auto sep(const std::string& s) const {
-        return format(*this, s);
-    }
+    auto sep(const std::string& s) const { return format(*this, s); }
 
     template <class... Vars2>
     friend auto concatenate(Vector_Space&& one, Vector_Space<Vars2...>&& two) {
@@ -683,9 +626,7 @@ class Vector_Map<Id, VS> {
    public:
     static constexpr bool is_vector_map = true;
     Vector_Map() = default;
-    auto& operator[](Vector_Map<Id>) const {
-        return *this;
-    }
+    auto& operator[](Vector_Map<Id>) const { return *this; }
 
     Maybe_error<Id const&> operator[](const VS& v) const {
         auto it = m_x.find(v);
@@ -694,9 +635,7 @@ class Vector_Map<Id, VS> {
         else
             return error_message("");
     }
-    auto& emplace(VS&& v, Id&& x) {
-        m_x.emplace(std::move(v), std::move(x));
-    }
+    auto& emplace(VS&& v, Id&& x) { m_x.emplace(std::move(v), std::move(x)); }
 };
 
 template <class... VarMaps>
@@ -705,8 +644,7 @@ class Vector_Map_Space : public VarMaps... {
    public:
     static constexpr bool is_vector_map_space = true;
 
-    Vector_Map_Space() {
-    }
+    Vector_Map_Space() {}
 };
 
 inline Maybe_error<bool> test_equality(double x, double y, double eps) {

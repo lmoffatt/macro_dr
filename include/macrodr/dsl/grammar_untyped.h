@@ -386,7 +386,7 @@ inline Maybe_error<typed_program<Lexer, Compiler>> compile_program(
         auto Maybe_compiled_statement = e->compile_statement(cm);
         if (!Maybe_compiled_statement) {
             return error_message(std::string("in ") + e->str() +
-                                 "error:" + Maybe_compiled_statement.error()());
+                                 "\n error:" + Maybe_compiled_statement.error()());
         }
 
         out.push_back(Maybe_compiled_statement.value().release());
