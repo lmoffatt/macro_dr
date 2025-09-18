@@ -69,7 +69,7 @@ inline auto set_Likelihood_algorithm(bool adaptive_aproximation, bool recursive_
                                      bool variance_correction_approximation,
                                      bool variance_correction, std::size_t n_sub_dt) {
     return std::tuple(adaptive_aproximation, recursive_approximation, averaging_approximation,
-                      variance_correction_approximation, variance_correction, n_sub_dt);
+                      variance_correction, variance_correction_approximation, n_sub_dt);
 }
 
 using likelihood_algo_type =
@@ -168,7 +168,6 @@ inline dsl::Compiler make_frac_compiler() {
 }  // namespace zombie
 #endif
 
-} // namespace macrodr::cmd
-
+}  // namespace macrodr::cmd
 
 #endif  // CLI_MACRO_DR_BASE_H

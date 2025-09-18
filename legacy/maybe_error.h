@@ -153,12 +153,9 @@ class error_message {
 
    public:
     error_message() = default;
-    error_message(std::string error) : m_{error} {
-    }
+    error_message(std::string error) : m_{error} {}
 
-    auto operator()() const {
-        return m_;
-    }
+    auto operator()() const { return m_; }
 };
 template <class T>
     requires(!is_Maybe_error<T>)
@@ -172,36 +169,19 @@ template <class T>
 class Maybe_error : public std::variant<T, error_message> {
    public:
     using std::variant<T, error_message>::variant;
-    constexpr explicit operator bool() const noexcept {
-        return this->index() == 0;
-    }
+    constexpr explicit operator bool() const noexcept { return this->index() == 0; }
 
-    constexpr const T* operator->() const noexcept {
-        return std::get_if<0>(*this);
-    }
+    constexpr const T* operator->() const noexcept { return std::get_if<0>(*this); }
 
-    constexpr T* operator->() noexcept {
-        return std::get_if<0>(*this);
-    }
+    constexpr T* operator->() noexcept { return std::get_if<0>(*this); }
 
-    constexpr const T& operator*() const& noexcept {
-        return std::get<0>(*this);
-    }
-    constexpr T& operator*() & noexcept {
-        return std::get<0>(*this);
-    }
-    constexpr const T&& operator*() const&& noexcept {
-        return std::get<0>(std::move(*this));
-    }
-    constexpr T&& operator*() && noexcept {
-        return std::get<0>(std::move(*this));
-    }
-    Maybe_error(const T& t) : std::variant<T, error_message>(t) {
-    }
-    Maybe_error(T&& t) : std::variant<T, error_message>(std::move(t)) {
-    }
-    Maybe_error(error_message m) : std::variant<T, error_message>(m) {
-    }
+    constexpr const T& operator*() const& noexcept { return std::get<0>(*this); }
+    constexpr T& operator*() & noexcept { return std::get<0>(*this); }
+    constexpr const T&& operator*() const&& noexcept { return std::get<0>(std::move(*this)); }
+    constexpr T&& operator*() && noexcept { return std::get<0>(std::move(*this)); }
+    Maybe_error(const T& t) : std::variant<T, error_message>(t) {}
+    Maybe_error(T&& t) : std::variant<T, error_message>(std::move(t)) {}
+    Maybe_error(error_message m) : std::variant<T, error_message>(m) {}
     error_message error() const {
         if (*this)
             return error_message("");
@@ -238,38 +218,22 @@ class Maybe_error : private std::variant<T, error_message> {
     using value_type = T;
     template <typename U>
         requires std::constructible_from<T, U>
-    Maybe_error(U&& u) : base_type(T(std::forward<U>(u))) {
-    }
+    Maybe_error(U&& u) : base_type(T(std::forward<U>(u))) {}
 
     template <typename U>
         requires std::is_same_v<T, std::reference_wrapper<std::remove_reference_t<U>>>
-    Maybe_error(U& u) : base_type(std::ref(u)) {
-    }
+    Maybe_error(U& u) : base_type(std::ref(u)) {}
 
     Maybe_error() = default;
-    Maybe_error(error_message&& x) : base_type{(std::move(x))} {
-    }
-    Maybe_error(const error_message& x) : base_type{x} {
-    }
-    constexpr explicit operator bool() const noexcept {
-        return this->index() == 0;
-    }
-    constexpr bool valid() const noexcept {
-        return this->index() == 0;
-    }
+    Maybe_error(error_message&& x) : base_type{(std::move(x))} {}
+    Maybe_error(const error_message& x) : base_type{x} {}
+    constexpr explicit operator bool() const noexcept { return this->index() == 0; }
+    constexpr bool valid() const noexcept { return this->index() == 0; }
 
-    constexpr const T& value() const& noexcept {
-        return std::get<0>(*this);
-    }
-    constexpr T& value() & noexcept {
-        return std::get<0>(*this);
-    }
-    constexpr const T&& value() const&& noexcept {
-        return std::get<0>(std::move(*this));
-    }
-    constexpr T&& value() && noexcept {
-        return std::get<0>(std::move(*this));
-    }
+    constexpr const T& value() const& noexcept { return std::get<0>(*this); }
+    constexpr T& value() & noexcept { return std::get<0>(*this); }
+    constexpr const T&& value() const&& noexcept { return std::get<0>(std::move(*this)); }
+    constexpr T&& value() && noexcept { return std::get<0>(std::move(*this)); }
     error_message error() const {
         if (*this)
             return error_message("");
@@ -293,36 +257,28 @@ class Maybe_error : private std::variant<T, error_message> {
     // }
 };
 
-
-template<>
+template <>
 class Maybe_error<void> : private std::variant<std::monostate, error_message> {
     using variant_type = std::variant<std::monostate, error_message>;
+
    public:
     // success
     Maybe_error() : variant_type{std::in_place_index<0>} {}
     // failure
     Maybe_error(error_message err) : variant_type{std::in_place_index<1>, std::move(err)} {}
-    
-    constexpr explicit operator bool() const noexcept {
-        return this->index() == 0;
-    }
-    constexpr bool valid() const noexcept {
-        return this->index() == 0;
-    }
-    
-    constexpr void value() const& noexcept {
-    }
-    
+
+    constexpr explicit operator bool() const noexcept { return this->index() == 0; }
+    constexpr bool valid() const noexcept { return this->index() == 0; }
+
+    constexpr void value() const& noexcept {}
+
     error_message error() const {
         if (*this)
             return error_message("");
         else
             return std::get<1>(*this);
     }
-    
-
 };
-
 
 template <class T>
 Maybe_error(T&&) -> Maybe_error<T>;
@@ -342,19 +298,12 @@ class Maybe_error<T*> : public Maybe_error<typename T::base_type*> {
     using base_type::valid;
 
     Maybe_error() = default;
-    Maybe_error(error_message&& x) : base_type{(std::move(x))} {
-    }
-    Maybe_error(const error_message& x) : base_type{x} {
-    }
-    Maybe_error(T* t) : base_type{t}, m_value{t} {
-    }
+    Maybe_error(error_message&& x) : base_type{(std::move(x))} {}
+    Maybe_error(const error_message& x) : base_type{x} {}
+    Maybe_error(T* t) : base_type{t}, m_value{t} {}
 
-    constexpr const T* value() const noexcept {
-        return m_value;
-    }
-    constexpr T* value() {
-        return m_value;
-    }
+    constexpr const T* value() const noexcept { return m_value; }
+    constexpr T* value() { return m_value; }
 
     friend std::ostream& operator<<(std::ostream& os, const Maybe_error& x) {
         if (x)
@@ -460,10 +409,10 @@ template <class... Ts>
 Maybe_error<std::tuple<Ts...>> promote_Maybe_error(std::tuple<Maybe_error<Ts>...>&& x) {
     return std::apply(
         [](auto&&... e) -> Maybe_error<std::tuple<Ts...>> {
-            if ((e.valid() && ... && true))
+            if ((e.valid() && ... && true)) {
                 return std::tuple(std::move(e.value())...);
-            else
-                return error_message((e.error()() + ... + ""));
+            }
+            return error_message((e.error()() + ... + ""));
         },
         std::move(x));
 }

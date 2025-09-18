@@ -121,10 +121,10 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
 
                         auto maybe_modelLikelihood =
                             Likelihood_Model_regular<
-                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                                 var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-                                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_variance_aproximation, false>,
                                 var::constexpr_Var_domain<
                                     bool, uses_variance_correction_aproximation, true>,
                                 decltype(model0)>(

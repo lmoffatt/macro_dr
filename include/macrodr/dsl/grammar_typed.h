@@ -12,6 +12,7 @@
 
 #include "lexer_typed.h"
 #include "maybe_error.h"
+#include "type_name.h"
 
 namespace macrodr::dsl {
 template <class Lexer, class Compiler, class T>
@@ -45,13 +46,13 @@ class Environment {
         const Identifier<Lexer>& id) const {
         auto it = m_id.find(id);
         if (it == m_id.end()) {
-            return error_message(id() + " function is not defined");
+            return error_message(std::string("\n") + id() + " function is not defined");
         }
         auto ptr = (*it).second.get();
-        if (ptr == nullptr)
-            return error_message(id() + " function is null");
-        else
-            return ptr->compile_Identifier(id);
+        if (ptr == nullptr) {
+            return error_message(std::string("\n") + id() + " function is null");
+        }
+        return ptr->compile_Identifier(id);
     }
     void push_back(Identifier<Lexer> id, base_Identifier_compiler<Lexer, Compiler>* expr) {
         m_id.emplace(id, expr);
@@ -91,6 +92,8 @@ class base_typed_statement {
     virtual Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
         typed_argument_list<Lexer, Compiler>* t_growing_list) const = 0;
     virtual Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const = 0;
+
+    [[nodiscard]] virtual std::string type_name() const = 0;
 
     [[nodiscard]] virtual base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const = 0;
 };
@@ -142,6 +145,7 @@ class typed_argument_list : public base_typed_expression<Lexer, Compiler> {
     std::map<Identifier<Lexer>, std::unique_ptr<base_typed_expression<Lexer, Compiler>>> m_map;
 
    public:
+    [[nodiscard]] std::string type_name() const override { return "argument_list"; }
     ~typed_argument_list() override = default;
     [[nodiscard]] typed_argument_list* clone() const override {
         return new typed_argument_list(*this);
@@ -190,6 +194,7 @@ class typed_argument_typed_list : public base_typed_expression<Lexer, Compiler> 
     std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, T>>...> m_args;
 
    public:
+    std::string type_name() const override { return "typed_argument_list"; }
     virtual ~typed_argument_typed_list() = default;
     virtual typed_argument_typed_list* clone() const {
         return new typed_argument_typed_list(clone_tuple(m_args));
@@ -246,6 +251,8 @@ class typed_identifier : public typed_expression<Lexer, Compiler, T> {
 template <class Lexer, class Compiler, class T>
 class typed_expression : public base_typed_expression<Lexer, Compiler> {
    public:
+    [[nodiscard]] std::string type_name() const override { return macrodr::dsl::type_name<T>(); }
+
     ~typed_expression() override = default;
     [[nodiscard]] typed_expression* clone() const override = 0;
 
@@ -288,6 +295,8 @@ class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
     std::unique_ptr<typed_expression<Lexer, Compiler, T>> m_expr;
 
    public:
+    [[nodiscard]] std::string type_name() const override { return macrodr::dsl::type_name<T>(); }
+
     ~typed_assigment() override = default;
     [[nodiscard]] typed_assigment* clone() const override { return new typed_assigment(*this); };
 
@@ -305,7 +314,7 @@ class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
     Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const override {
         auto Maybe_exp = expr()->run_expression(env);
         if (!Maybe_exp) {
-            return error_message(std::string("in assignment to ") + id()() + " : " +
+            return error_message(std::string("\n in assignment to ") + id()() + " : " +
                                  Maybe_exp.error()());
         }
         env.insert(id(), Maybe_exp.value());
@@ -357,6 +366,7 @@ class typed_function_evaluation
             [this](auto&&... Maybe_args) -> Maybe_error<T> {
                 if ((Maybe_args.valid() && ...)) {
                     if constexpr (std::is_void_v<T>) {
+                        this->m_f(std::move(Maybe_args.value())...);
                         return Maybe_error<void>();
                     } else {
                         return Maybe_error<T>(this->m_f(std::move(Maybe_args.value())...));
