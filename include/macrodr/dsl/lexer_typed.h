@@ -377,13 +377,18 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
         compile_function_evaluation_impl(std::index_sequence<Is...> /*unused*/,
                                          Environment<Lexer, Compiler> const& cm,
                                          const untyped_argument_list<Lexer, Compiler>& args) const {
-        auto Maybe_tuple = promote_Maybe_error(
-            std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
-        if (!Maybe_tuple) {
-            return Maybe_tuple.error();
+        if constexpr (sizeof...(Is) == 0) {
+            // Zero-argument function: no argument compilation; pass empty tuple
+            return new typed_function_evaluation<Lexer, Compiler, F, Args...>(m_f, std::tuple<>{});
+        } else {
+            auto Maybe_tuple = promote_Maybe_error(
+                std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
+            if (!Maybe_tuple) {
+                return Maybe_tuple.error();
+            }
+            return new typed_function_evaluation<Lexer, Compiler, F, Args...>(
+                m_f, std::move(Maybe_tuple.value()));
         }
-        return new typed_function_evaluation<Lexer, Compiler, F, Args...>(
-            m_f, std::move(Maybe_tuple.value()));
     }
 
    public:

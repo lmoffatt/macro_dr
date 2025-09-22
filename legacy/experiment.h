@@ -34,9 +34,7 @@ using ATP_step = var::Vector_Space<number_of_samples, ATP_concentration>;
 
 class ATP_evolution : public Var<ATP_evolution, std::vector<ATP_step>> {
    public:
-    auto size() const {
-        return (*this)().size();
-    }
+    auto size() const { return (*this)().size(); }
 
     bool is_zero() const {
         for (std::size_t i = 0; i < size(); ++i)
@@ -45,13 +43,9 @@ class ATP_evolution : public Var<ATP_evolution, std::vector<ATP_step>> {
         return true;
     }
 
-    ATP_step& operator[](std::size_t i) {
-        return (*this)()[i];
-    }
+    ATP_step& operator[](std::size_t i) { return (*this)()[i]; }
 
-    ATP_step const& operator[](std::size_t i) const {
-        return (*this)()[i];
-    }
+    ATP_step const& operator[](std::size_t i) const { return (*this)()[i]; }
 
     using Var<ATP_evolution, std::vector<ATP_step>>::Var;
 };
@@ -334,7 +328,7 @@ inline Maybe_error<bool> load_Recording_Data(std::string const& fname, std::stri
             std::size_t i_step;
             std::size_t i_step_prev = std::numeric_limits<std::size_t>::max();
 
-            double val;
+            double val = NaN;
             while (extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
                 if (i_step_prev != i_step) {
                     if (i_step != e().size())
@@ -365,7 +359,7 @@ inline std::tuple<Recording_conditions, Recording> load_recording(const std::str
         if (!line.empty()) {
             std::stringstream ss(line);
             double v_time = NAN;
-            double v_ns=NAN;
+            double v_ns = NAN;
             double v_ATP = NAN;
             double v_current = NAN;
             extract_double(ss >> v_time >> v_ns >> v_ATP, v_current);
@@ -739,9 +733,7 @@ maxATP from there until t_stop
         return get<ATP_concentration>(x()[0])() > 0;
     }
 
-    static bool ends_pulse(const ATP_evolution& x) {
-        return get<ATP_concentration>(x()[0])() == 0;
-    }
+    static bool ends_pulse(const ATP_evolution& x) { return get<ATP_concentration>(x()[0])() == 0; }
 
     static auto detect_Pulses(const Recording_conditions& x) {
         assert([](auto x) {

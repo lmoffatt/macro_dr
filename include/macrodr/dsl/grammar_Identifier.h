@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "maybe_error.h"
 
@@ -34,12 +35,16 @@ class Identifier {
 
 template <class Lexer>
 Maybe_error<Identifier<Lexer>> to_Identifier(std::string t_id_candidate) {
+    constexpr std::string_view kAlpha =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+    constexpr std::string_view kAlphanum =
+        "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
     if (t_id_candidate.empty()) {
         return error_message("empty identifier");
-    } if (Lexer::alfa.find(t_id_candidate[0]) == std::string::npos)
+    } if (kAlpha.find(t_id_candidate[0]) == std::string::npos)
         return error_message(t_id_candidate + " identifier starts with " + t_id_candidate[0]);
     else {
-        auto pos = t_id_candidate.find_first_not_of(Lexer::alfanum);
+        auto pos = t_id_candidate.find_first_not_of(kAlphanum);
         if (pos == std::string::npos)
             return Identifier<Lexer>(std::move(t_id_candidate));
         else

@@ -1,16 +1,16 @@
 #pragma once
 
+#include <macrodr/dsl/grammar_typed.h>
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "grammar_typed.h"
-
 namespace macrodr::interface {
 
 struct IObject {
-    [[nodiscard]] virtual std::string kind() const = 0;
-    virtual std::string describe() const = 0;
+    // [[nodiscard]] virtual std::string kind() const = 0;
+    // virtual std::string describe() const = 0;
 
     virtual ~IObject() = default;
 };
