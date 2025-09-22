@@ -139,8 +139,9 @@ add_library(macrodr_core STATIC
 
 target_include_directories(macrodr_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+target_include_directories(macrodr_core SYSTEM PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/legacy>
-    $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:legacy>)
 
 target_compile_definitions(macrodr_core
@@ -176,9 +177,9 @@ target_include_directories(macrodr_cli PRIVATE
     ${PROJECT_SOURCE_DIR}/include/macrodr/cli
     ${PROJECT_SOURCE_DIR}/include/macrodr/dsl
     ${PROJECT_SOURCE_DIR}/include/macrodr/interface
-    ${PROJECT_SOURCE_DIR}/include/macrodr/cmd
-    ${PROJECT_SOURCE_DIR}/legacy        # ✅ ADD THIS LINE
-)
+    ${PROJECT_SOURCE_DIR}/include/macrodr/cmd)
+target_include_directories(macrodr_cli SYSTEM PRIVATE
+    ${PROJECT_SOURCE_DIR}/legacy)
 
 target_link_libraries(macrodr_cli PRIVATE macrodr_core)
 

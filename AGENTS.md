@@ -20,7 +20,8 @@ Scope: applies to the whole repository.
   - `slurm/` — sbatch wrappers; submit jobs and continuations.
   - `multi_task/M_scheme_N_tasks.sh` — constructs macro_dr invocations per local task using env arrays.
   - `MacroIR/simulation.macroir` — example DSL script(s) used by ops.
-- `docs/` — Architecture, ADRs, design notes. New: `docs/architecture/modules.md`, `docs/adr/ADR-001*`, `docs/adr/ADR-002*`.
+- `docs/` — Architecture, ADRs, design notes. New: `docs/architecture/modules.md`, `docs/adr/ADR-001*`, `docs/adr/ADR-002*`. CLI overview lives in `docs/cli.md`.
+- `docs/cli.md` — CLI usage and migration notes.
 - `tests/` — Unit/CLI tests (if present); keep new tests focused and fast.
 - `CMakeLists.txt`, `CMakePresets.json` — Build config (targets: `macrodr_core`, `macrodr_cli`).
 
@@ -99,4 +100,3 @@ Notes:
 
 - Search tips: prefer ripgrep (`rg -n "symbol"`) if available; fallback `grep -RIn` across the repo.
 - Start from the command surface you need under `include/macrodr/cmd/`, then jump to its implementation in `src/core/` and referenced legacy.
-

@@ -1,4 +1,4 @@
-#include <macrodr/cmd/init_commands.h>
+#include <macrodr/cli/command_manager.h>
 #include <macrodr/dsl/lexer_typed.h>
 
 #include <cstddef>
@@ -73,7 +73,7 @@ static Maybe_error<std::string> read_from_input_files_or_commands(
     return s;
 }
 
-#if 0  // legacy get_compiler disabled; use macrodr::make_compiler_new()
+#if 0  // legacy get_compiler disabled; use macrodr::cli::make_compiler_new()
 auto get_compiler() {
     auto cm = dsl::Compiler{};
     using namespace cmd;
@@ -499,15 +499,14 @@ calc_thermo_evidence(std::string id,
 }
 #endif
 inline static dsl::Compiler make_compiler() {
-    return macrodr::make_compiler_new();
+    return macrodr::cli::make_compiler_new();
 }
 
 int main(int argc, char** argv) {
     print_model_Priors(2.0);
-    std::vector<std::string> arguments(argc);
-    for (auto i = 0; i < argc; ++i) {
-        arguments[i] = argv[i];
-    }
+
+    std::vector<std::string> arguments(
+        argv, argv + argc);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     auto Maybe_script = read_from_input_files_or_commands(arguments);
     if (!Maybe_script) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "IObject.h"
 #include "parameters.h"
 #include "qmodel.h"
@@ -112,4 +114,9 @@ class ConcreteModel : public IModel<ParamValues...>,
         return std::make_unique<ConcreteModel>(*this);
     }
 };
+
+template <typename Scheme, typename... ParamValues>
+auto make_model_interface(Scheme scheme) {
+    return std::make_unique<ConcreteModel<Scheme, ParamValues...>>(std::move(scheme));
+}
 }  // namespace macrodr::interface

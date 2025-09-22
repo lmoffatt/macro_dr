@@ -359,25 +359,31 @@ class typed_function_evaluation
     }
 
     [[nodiscard]] Maybe_error<T> run(const Environment<Lexer, Compiler>& env) const override {
-        // return T{};
-        auto Maybe_arg_tuple = std::apply(
-            [this, &env](auto&... args) { return std::tuple(args->run(env)...); }, m_args);
-        return std::apply(
-            [this](auto&&... Maybe_args) -> Maybe_error<T> {
-                if ((Maybe_args.valid() && ...)) {
-                    if constexpr (std::is_void_v<T>) {
-                        this->m_f(std::move(Maybe_args.value())...);
-                        return Maybe_error<void>();
+        if constexpr (sizeof...(Args) == 0) {
+            if constexpr (std::is_void_v<T>) {
+                this->m_f();
+                return Maybe_error<void>();
+            } else {
+                return Maybe_error<T>(this->m_f());
+            }
+        } else {
+            auto Maybe_arg_tuple = std::apply(
+                [this, &env](auto&... args) { return std::tuple(args->run(env)...); }, m_args);
+            return std::apply(
+                [this](auto&&... Maybe_args) -> Maybe_error<T> {
+                    if ((Maybe_args.valid() && ...)) {
+                        if constexpr (std::is_void_v<T>) {
+                            this->m_f(std::move(Maybe_args.value())...);
+                            return Maybe_error<void>();
+                        } else {
+                            return Maybe_error<T>(this->m_f(std::move(Maybe_args.value())...));
+                        }
                     } else {
-                        return Maybe_error<T>(this->m_f(std::move(Maybe_args.value())...));
+                        return error_message(((std::string{}) + ... + Maybe_args.error()()));
                     }
-                } else {
-                    return error_message((Maybe_args.error()() + ...));
-                }
-            },
-            Maybe_arg_tuple);
-
-        //   return std::apply([this, &env](auto& ...args){return std::invoke(this->m_f,args->run(env)...);},m_args);
+                },
+                Maybe_arg_tuple);
+        }
     }
 };
 
@@ -441,7 +447,7 @@ class typed_conversion : public typed_expression<Lexer, Compiler, T> {
 };
 
 template <class Lexer, class Compiler, class T>
-    requires(!std::is_void_v<T>)
+    requires(!std::is_void_v<T> && std::is_copy_constructible_v<T>)
 class typed_literal<Lexer, Compiler, T> : public typed_expression<Lexer, Compiler, T> {
     T m_value;
 
@@ -457,6 +463,86 @@ class typed_literal<Lexer, Compiler, T> : public typed_expression<Lexer, Compile
     }
 
     // typed_expression interface
+
+    [[nodiscard]] typed_literal* clone() const override { return new typed_literal(*this); }
+};
+
+template <class Lexer, class Compiler, class T>
+    requires(!std::is_void_v<T> && !std::is_copy_constructible_v<T> &&
+             std::is_move_constructible_v<T> &&
+             requires(const T& value) {
+                 { value.clone() } -> std::same_as<std::unique_ptr<T>>;
+             })
+class typed_literal<Lexer, Compiler, std::unique_ptr<T>>
+    : public typed_expression<Lexer, Compiler, std::unique_ptr<T>> {
+    std::unique_ptr<T> m_value;
+
+    static std::unique_ptr<T> clone_ptr(const std::unique_ptr<T>& ptr) {
+        return ptr ? ptr->clone() : std::unique_ptr<T>{};
+    }
+
+   public:
+    explicit typed_literal(std::unique_ptr<T>&& x) : m_value(std::move(x)) {}
+    explicit typed_literal(const std::unique_ptr<T>& x) : m_value(clone_ptr(x)) {}
+
+    typed_literal(const typed_literal& other) : m_value(clone_ptr(other.m_value)) {}
+    typed_literal& operator=(const typed_literal& other) {
+        if (this != &other) {
+            m_value = clone_ptr(other.m_value);
+        }
+        return *this;
+    }
+    typed_literal(typed_literal&&) noexcept = default;
+    typed_literal& operator=(typed_literal&&) noexcept = default;
+
+    [[nodiscard]] Maybe_error<std::unique_ptr<T>> run(
+        Environment<Lexer, Compiler> const&) const override {
+        return clone_ptr(m_value);
+    }
+
+    [[nodiscard]] typed_literal* clone() const override { return new typed_literal(*this); }
+};
+
+template <class Lexer, class Compiler, class T>
+    requires(!std::is_void_v<T> && !std::is_copy_constructible_v<T> &&
+             std::is_move_constructible_v<T> &&
+             requires(const T& value) {
+                 { value.clone() } -> std::same_as<std::unique_ptr<T>>;
+             })
+class typed_literal<Lexer, Compiler, Maybe_error<std::unique_ptr<T>>>
+    : public typed_expression<Lexer, Compiler, Maybe_error<std::unique_ptr<T>>> {
+    using value_type = Maybe_error<std::unique_ptr<T>>;
+
+    value_type m_value;
+
+    static value_type clone_value(const value_type& source) {
+        if (!source) {
+            return source.error();
+        }
+        const auto& ptr = source.value();
+        if (!ptr) {
+            return std::unique_ptr<T>{};
+        }
+        return ptr->clone();
+    }
+
+   public:
+    explicit typed_literal(value_type&& x) : m_value(std::move(x)) {}
+    explicit typed_literal(const value_type& x) : m_value(clone_value(x)) {}
+
+    typed_literal(const typed_literal& other) : m_value(clone_value(other.m_value)) {}
+    typed_literal& operator=(const typed_literal& other) {
+        if (this != &other) {
+            m_value = clone_value(other.m_value);
+        }
+        return *this;
+    }
+    typed_literal(typed_literal&&) noexcept = default;
+    typed_literal& operator=(typed_literal&&) noexcept = default;
+
+    [[nodiscard]] Maybe_error<value_type> run(Environment<Lexer, Compiler> const&) const override {
+        return clone_value(m_value);
+    }
 
     [[nodiscard]] typed_literal* clone() const override { return new typed_literal(*this); }
 };
@@ -640,11 +726,6 @@ t_expr)const{ return error_message("");
 
 
 
-
-
-
-
-/**
 
 
 template <class Lexer, class Compiler, class T>

@@ -390,6 +390,9 @@ promote_Maybe_error(std::tuple<Maybe_error<Ts>...> &&x) {
         std::move(x));
 }
 */
+inline Maybe_error<std::tuple<>> promote_Maybe_error(std::tuple<>) {
+    return {};
+}
 
 template <class... Ts>
 Maybe_error<std::tuple<std::unique_ptr<Ts>...>> promote_Maybe_error(
