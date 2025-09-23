@@ -11,18 +11,83 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [ gcc-release ]
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libblas-dev liblapack-dev libgsl-dev
       - name: Configure
-        run: cmake --preset gcc-release
-      - name: Build with timing
-        run: tools/measure_build.sh --clean --preset gcc-release
-      - name: Upload build stats
+        run: cmake --preset ${{ matrix.preset }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }} --clean-first
+      - name: Run tests
+        run: ctest --test-dir build/${{ matrix.preset }} -V
+      - name: Collect stats inputs
+        run: |
+          set -euo pipefail
+          preset_dir="build/${{ matrix.preset }}"
+          stats_dir="stats/${{ matrix.preset }}"
+          mkdir -p "$stats_dir"
+          cp "$preset_dir/.ninja_log" "$stats_dir/ninja_log"
+          if [ -f "$preset_dir/compile_commands.json" ]; then
+            cp "$preset_dir/compile_commands.json" "$stats_dir/compile_commands.json"
+          fi
+          lscpu > "$stats_dir/cpu.txt"
+      - name: Upload stats inputs
         uses: actions/upload-artifact@v4
         with:
-          name: build-stats
-          path: build/gcc-release/build_stats.csv
-      - name: Run tests
-        run: ctest --test-dir build/gcc-release -V
+          name: compile-stats-${{ matrix.preset }}
+          path: stats/${{ matrix.preset }}
+
+  aggregate-stats:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download stats inputs
+        uses: actions/download-artifact@v4
+        with:
+          path: stats
+      - name: Append compile stats
+        run: |
+          set -euo pipefail
+          if [ ! -d stats ]; then
+            echo "No stats artifacts found; skipping"
+            exit 0
+          fi
+          for dir in stats/*; do
+            [ -d "$dir" ] || continue
+            preset="$(basename "$dir")"
+            ninja_log="$dir/ninja_log"
+            cpu_file="$dir/cpu.txt"
+            if [ ! -f "$ninja_log" ]; then
+              echo "Skipping $preset (missing ninja_log)"
+              continue
+            fi
+            python tools/stats/aggregate_ninja_log.py \
+              --ninja-log "$ninja_log" \
+              --preset "$preset" \
+              --files-csv docs/perf/compile/files.csv \
+              --summary-csv docs/perf/compile/summary.csv \
+              --cpu-info "$cpu_file"
+          done
+      - name: Commit stats
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet docs/perf/compile; then
+            echo "No stats changes to commit"
+            exit 0
+          fi
+          git add docs/perf/compile/files.csv docs/perf/compile/summary.csv
+          git commit -m "[stats] append compile metrics [skip ci]"
+          git push
