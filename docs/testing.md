@@ -5,6 +5,7 @@
 - CMake 3.18+
 - Ninja or Make
 - GCC/Clang with C++20 support
+- BLAS/LAPACK and GSL development packages (`libblas-dev liblapack-dev libgsl-dev`)
 
 ## Unit Tests (Catch2)
 
@@ -24,6 +25,13 @@ This runs both the Catch2 unit suite (`macrodr_tests`) and CLI smoke tests
 (`macrodr_cli_help`, `macrodr_cli_version`, `macrodr_cli_check_syntax`).
 
 ## DSL Regression Tests
+
+### Dependency notes
+
+If BLAS/LAPACK or GSL are installed in a non-standard prefix you can set
+`MACRODR_BLAS_DIR` and `MACRODR_GSL_DIR` to point at the root containing `lib/`
+and `include/`. Otherwise install the packages listed above.
+
 
 The CLI smoke tests exercise the binary with `--help`, `--version`, and a
 `--check-syntax` run using an inline DSL command. Additional regression scripts
