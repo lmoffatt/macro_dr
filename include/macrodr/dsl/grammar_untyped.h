@@ -390,7 +390,7 @@ inline Maybe_error<typed_program<Lexer, Compiler>> compile_program(
                                  "\n error:" + Maybe_compiled_statement.error()());
         }
 
-        out.push_back(Maybe_compiled_statement.value().release());
+        out.push_back(std::move(Maybe_compiled_statement.value()));
     }
     return out;
 }
@@ -403,7 +403,7 @@ inline Maybe_error<typed_program<Lexer, Compiler>> compile_and_run_program_line_
         if (!Maybe_compiled_statement) {
             return Maybe_compiled_statement.error();
         }
-        out.push_back(Maybe_compiled_statement.value().release());
+        out.push_back(std::move(Maybe_compiled_statement.value()));
     }
     return out;
 }

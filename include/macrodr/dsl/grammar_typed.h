@@ -678,9 +678,13 @@ class typed_program {
     typed_program& operator=(typed_program&&) noexcept = default;
     ~typed_program() = default;
 
-    auto& push_back(base_typed_statement<Lexer, Compiler>* t_expr) {
-        m_statements.emplace_back(t_expr);
+    auto& push_back(std::unique_ptr<base_typed_statement<Lexer, Compiler>> stmt) {
+        m_statements.emplace_back(std::move(stmt));
         return *this;
+    }
+
+    auto& push_back(base_typed_statement<Lexer, Compiler>* t_expr) {
+        return push_back(std::unique_ptr<base_typed_statement<Lexer, Compiler>>(t_expr));
     }
 
     Maybe_error<Environment<Lexer, Compiler>> run(Environment<Lexer, Compiler>& env) {
