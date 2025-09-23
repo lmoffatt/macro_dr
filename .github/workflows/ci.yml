@@ -17,7 +17,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libblas-dev liblapack-dev libgsl-dev
       - name: Configure
         run: cmake --preset gcc-release
-      - name: Build
-        run: cmake --build --preset gcc-release
+      - name: Build with timing
+        run: tools/measure_build.sh --clean --preset gcc-release
+      - name: Upload build stats
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-stats
+          path: build/gcc-release/build_stats.csv
       - name: Run tests
         run: ctest --test-dir build/gcc-release -V

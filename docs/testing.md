@@ -28,6 +28,15 @@ This runs both the Catch2 unit suite (`macrodr_tests`) and CLI smoke tests
 
 ### Dependency notes
 
+### Measuring build time
+
+Run `tools/measure_build.sh` (optionally with a preset and `--clean`) to build and append timing information to `build/<preset>/build_stats.csv`. The script wraps `cmake --build`, captures `/usr/bin/time`, and scrapes GCC `-ftime-report` data so you can track per-translation-unit cost.
+
+- Default behaviour measures an incremental build.
+- Pass `--clean` to measure a clean rebuild (CI uses this option).
+
+CI runs `tools/measure_build.sh --clean --preset gcc-release` and uploads `build/gcc-release/build_stats.csv` as an artifact for trend analysis.
+
 If BLAS/LAPACK or GSL are installed in a non-standard prefix you can set
 `MACRODR_BLAS_DIR` and `MACRODR_GSL_DIR` to point at the root containing `lib/`
 and `include/`. Otherwise install the packages listed above.
