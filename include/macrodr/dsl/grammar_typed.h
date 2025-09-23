@@ -54,8 +54,13 @@ class Environment {
         }
         return ptr->compile_Identifier(id);
     }
+    void push_back(Identifier<Lexer> id,
+                   std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>> expr) {
+        m_id.emplace(std::move(id), std::move(expr));
+    }
     void push_back(Identifier<Lexer> id, base_Identifier_compiler<Lexer, Compiler>* expr) {
-        m_id.emplace(id, expr);
+        push_back(std::move(id),
+                  std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(expr));
     }
     [[nodiscard]] Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_Identifier(
         const Identifier<Lexer>& id) const {
@@ -65,8 +70,12 @@ class Environment {
         }
         return std::move(Maybe_id.value());
     }
-    void insert(Identifier<Lexer> const& id, base_typed_expression<Lexer, Compiler>* expr) {
-        m_var.insert_or_assign(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(expr));
+    void insert(const Identifier<Lexer>& id,
+                std::unique_ptr<base_typed_expression<Lexer, Compiler>> expr) {
+        m_var.insert_or_assign(id, std::move(expr));
+    }
+    void insert(const Identifier<Lexer>& id, base_typed_expression<Lexer, Compiler>* expr) {
+        insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(expr));
     }
 
     [[nodiscard]] Maybe_error<base_typed_expression<Lexer, Compiler> const*> get(
@@ -89,6 +98,9 @@ class base_typed_statement {
    public:
     virtual ~base_typed_statement() = default;
     [[nodiscard]] virtual base_typed_statement* clone() const = 0;
+    [[nodiscard]] virtual std::unique_ptr<base_typed_statement> clone_unique() const {
+        return std::unique_ptr<base_typed_statement>(this->clone());
+    }
     virtual Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
         typed_argument_list<Lexer, Compiler>* t_growing_list) const = 0;
     virtual Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const = 0;
@@ -115,17 +127,39 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
    public:
     ~base_typed_expression() override = default;
     [[nodiscard]] base_typed_expression* clone() const override = 0;
+    [[nodiscard]] std::unique_ptr<base_typed_expression> clone_unique() const override {
+        return std::unique_ptr<base_typed_expression>(this->clone());
+    }
 
     [[nodiscard]] virtual base_typed_expression<Lexer, Compiler>* compile_identifier(
         Identifier<Lexer> id) const = 0;
 
+    [[nodiscard]] virtual std::unique_ptr<base_typed_expression<Lexer, Compiler>>
+    compile_identifier_unique(Identifier<Lexer> id) const {
+        return std::unique_ptr<base_typed_expression<Lexer, Compiler>>(this->compile_identifier(id));
+    }
+
     virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(Identifier<Lexer> id) = 0;
+
+    virtual std::unique_ptr<base_typed_assigment<Lexer, Compiler>> compile_assigment_unique(
+        Identifier<Lexer> id) {
+        return std::unique_ptr<base_typed_assigment<Lexer, Compiler>>(this->compile_assigment(id));
+    }
 
     Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
         typed_argument_list<Lexer, Compiler>* t_growing_list) const override;
 
     virtual Maybe_error<base_typed_expression<Lexer, Compiler>*> run_expression(
         Environment<Lexer, Compiler>& env) const = 0;
+
+    [[nodiscard]] virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> run_expression_unique(
+        Environment<Lexer, Compiler>& env) const {
+        auto maybe_expr = run_expression(env);
+        if (!maybe_expr) {
+            return maybe_expr.error();
+        }
+        return std::unique_ptr<base_typed_expression<Lexer, Compiler>>(maybe_expr.value());
+    }
 
     Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const override {
         auto Maybe_exp = run_expression(env);
