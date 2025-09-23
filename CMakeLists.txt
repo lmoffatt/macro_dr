@@ -202,23 +202,25 @@ target_link_libraries(macrodr_core
 file(GLOB_RECURSE MACRODR_CLI_SRC      CONFIGURE_DEPENDS  src/cli/*.cpp)
 file(GLOB_RECURSE MACRODR_CLI_HEADERS  CONFIGURE_DEPENDS
      ${PROJECT_SOURCE_DIR}/include/macrodr/cli/*.h
+     ${PROJECT_SOURCE_DIR}/include/macrodr/cli/app/*.h
      ${PROJECT_SOURCE_DIR}/include/macrodr/dsl/*.h
      ${PROJECT_SOURCE_DIR}/include/macrodr/interface/*.h
      ${PROJECT_SOURCE_DIR}/include/macrodr/cmd/*.h)
 
-list(REMOVE_ITEM MACRODR_CLI_SRC ${PROJECT_SOURCE_DIR}/src/cli/main_helpers.cpp)
+file(GLOB_RECURSE MACRODR_CLI_APP_SRC CONFIGURE_DEPENDS src/cli/app/*.cpp)
+list(REMOVE_ITEM MACRODR_CLI_SRC ${MACRODR_CLI_APP_SRC})
 
 add_library(macrodr_cli_helpers STATIC
-    src/cli/main_helpers.cpp)
+    ${MACRODR_CLI_APP_SRC})
 
 target_link_libraries(macrodr_cli_helpers PUBLIC macrodr_core)
 target_include_directories(macrodr_cli_helpers PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
 
- add_executable(macrodr_cli
-     ${MACRODR_CLI_SRC}
-     ${MACRODR_CLI_HEADERS})
+add_executable(macrodr_cli
+    ${MACRODR_CLI_SRC}
+    ${MACRODR_CLI_HEADERS})
 
 target_include_directories(macrodr_cli PRIVATE
     ${PROJECT_SOURCE_DIR}/include/macrodr/cli

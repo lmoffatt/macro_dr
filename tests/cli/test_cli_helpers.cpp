@@ -1,7 +1,10 @@
 #include <catch_amalgamated.hpp>
 
+#include <macrodr/cli/app/arguments.h>
+#include <macrodr/cli/app/immediate_flags.h>
+#include <macrodr/cli/app/workspace_persistence.h>
+#include <macrodr/cli/app/working_directory.h>
 #include <macrodr/cli/cli_parser.h>
-#include <macrodr/cli/main_helpers.h>
 #include <macrodr/cli/command_manager.h>
 #include <macrodr/dsl/lexer_typed.h>
 
@@ -56,7 +59,9 @@ TEST_CASE("apply_working_directory succeeds and fails gracefully") {
     CHECK(app::apply_working_directory(opts));
 
     opts.chdir = "/path/that/does/not/exist";
-    CHECK_FALSE(app::apply_working_directory(opts));
+    auto result = app::apply_working_directory(opts);
+    CHECK_FALSE(result);
+    CHECK(result.error()() == "Error: cannot chdir to '/path/that/does/not/exist'");
 }
 
 TEST_CASE("persist_run_workspace writes artefacts") {
@@ -80,3 +85,4 @@ TEST_CASE("persist_run_workspace writes artefacts") {
 
     std::filesystem::remove_all(temp_root);
 }
+
