@@ -5,3 +5,4 @@ timestamp_utc,commit,version,preset,total_files,compile_seconds_total,link_secon
 2025-09-23T18:59:40Z,01e2d9f2f8894b77a47fa96f86b022599e1db3ea,01e2d9f,compile-stats-gcc-release,20,332.299000,1.457000,AMD EPYC 7763 64-Core Processor
 2025-09-23T19:16:18Z,7acec73b792834a8b836a6583d8d348f9783c36b,7acec73,compile-stats-gcc-release,20,335.646000,5.696000,AMD EPYC 7763 64-Core Processor
 2025-09-23T19:23:11Z,c9a2eb4564666d0b6b7dac8a7521a9a6b8da00c1,c9a2eb4,compile-stats-gcc-release,20,337.963000,1.460000,AMD EPYC 7763 64-Core Processor
+2025-09-23T19:28:35Z,6e77e28b9d98c57b95d4f416619f8b254dce6fb9,6e77e28,compile-stats-gcc-release,20,337.752000,12.357000,AMD EPYC 7763 64-Core Processor
