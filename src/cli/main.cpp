@@ -1,12 +1,13 @@
+#include <macrodr/cli/main_helpers.h>
+#include <macrodr/cli/cli_parser.h>
 #include <macrodr/cli/command_manager.h>
+#include <macrodr/cli/script_loader.h>
+#include <macrodr/cmd/cli_meta.h>
 #include <macrodr/dsl/lexer_typed.h>
+#include <macrodr/io/path_resolver.h>
 
 #include <cstddef>
-#include <fstream>
 #include <iostream>
-#include <string>
-#include <utility>
-#include <vector>
 
 #include "CLI_macro_dr_base.h"  // for cmd::write_text
 #include "grammar_untyped.h"
@@ -15,63 +16,6 @@
 #include "maybe_error.h"
 #include "models_MoffattHume_allosteric.h"
 using namespace macrodr;
-
-Maybe_error<std::string> read_from_input_files(std::vector<std::string> const& args) {
-    std::string s;
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        const auto& filename = args[i];
-        std::ifstream f(filename);
-        if (!f) {
-            return error_message(filename + " does not exist or cannot be opened");
-        }
-        while (f) {
-            std::string line;
-            std::getline(f, line);
-            s += line + "\n";
-        }
-    }
-    return s;
-}
-
-static Maybe_error<std::string> append_files_content(std::string&& s, std::string const& filename) {
-    std::ifstream f(filename);
-    if (!f) {
-        return error_message(filename + " does not exist or cannot be opened");
-    }
-    while (f) {
-        std::string line;
-        std::getline(f, line);
-        s += line + "\n";
-    }
-
-    return std::move(s);
-}
-
-static Maybe_error<std::string> append_command(std::string&& s, std::string const& line) {
-    if (line.empty() || line.back() != '"') {
-        return error_message(std::string{"malformed inline command: "} + line);
-    }
-    s += line.substr(1, line.size() - 2) + "\n";
-    return std::move(s);
-}
-
-static Maybe_error<std::string> read_from_input_files_or_commands(
-    std::vector<std::string> const& args) {
-    std::string s;
-    for (std::size_t i = 1; i < args.size(); ++i) {
-        const auto& filename_or_command = args[i];
-        if (filename_or_command.starts_with("--")) {
-            s += filename_or_command.substr(2) + "\n";
-        } else {
-            auto maybe_s = append_files_content(std::move(s), filename_or_command);
-            if (!maybe_s) {
-                return maybe_s.error();
-            }
-            s = std::move(maybe_s.value());
-        }
-    }
-    return s;
-}
 
 #if 0  // legacy get_compiler disabled; use macrodr::cli::make_compiler_new()
 auto get_compiler() {
@@ -502,42 +446,41 @@ inline static dsl::Compiler make_compiler() {
     return macrodr::cli::make_compiler_new();
 }
 
+
+
 int main(int argc, char** argv) {
     print_model_Priors(2.0);
 
-    std::vector<std::string> arguments(
-        argv, argv + argc);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-    auto Maybe_script = read_from_input_files_or_commands(arguments);
-    if (!Maybe_script) {
-        std::cerr << "Error: \n" << Maybe_script.error()();
-    } else {
-        auto cm = make_compiler();
-        auto s = std::move(Maybe_script.value());
-        std::cout << "\n read files " << arguments << "\n" << s << "\n";
-        /// Horrible hack to force the script to write itself at the start
-        cmd::write_text(cmd::temp_script_file, s);
-
-        auto p = dsl::extract_program(s);
-
-        std::cerr << p;
-
-        dsl::Environment<dsl::Lexer, dsl::Compiler> env(cm);
-        if (p) {
-            auto c = dsl::compile_program(env, p.value());
-            if (!c) {
-                std::cerr << "\n --------------Error--------\n"
-                          << c.error()() << "\n --------------Error--------\n";
-            } else {
-                auto exec = c.value().run(env);
-            }
-        }
-
-        if (p) {
-            auto ss = p.value().str();
-            std::cerr << ss;
-        } else {
-            std::cerr << p.error()();
-        }
+    auto arguments = macrodr::cli::app::collect_arguments(argc, argv);
+    auto opts = macrodr::cli::parse_cli(arguments);
+    macrodr::cli::app::emit_cli_diagnostics(opts);
+    if (!opts.ok) {
+        std::cerr << "[cli] failed to parse command line\n";
+        return 1;
     }
+
+    if (auto exit_code = macrodr::cli::app::handle_immediate_flags(opts); exit_code) {
+        return *exit_code;
+    }
+
+    if (!macrodr::cli::app::apply_working_directory(opts)) {
+        return 2;
+    }
+
+    macrodr::io::PathResolver resolver(opts.search_paths);
+    auto maybe_script = macrodr::cli::assemble_script(opts.sequence, resolver);
+    if (!maybe_script) {
+        std::cerr << "Error: \n" << maybe_script.error()();
+        return 1;
+    }
+    auto script = std::move(maybe_script.value());
+
+    if (opts.verbosity > 0) {
+        std::cout << "[macro_dr] assembled script:\n" << script << '\n';
+    }
+
+    macrodr::cli::app::persist_run_workspace(script, opts, arguments);
+
+    auto compiler = make_compiler();
+    return macrodr::cli::app::execute_program(script, opts, compiler);
 }

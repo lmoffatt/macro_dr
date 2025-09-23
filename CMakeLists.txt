@@ -112,6 +112,12 @@ endif()
 # -------------------------------------------------------
 set(MACRODR_PUBLIC_INC ${PROJECT_SOURCE_DIR}/include)
 
+include(CTest)
+
+if (BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
+
 # -------------------------------------------------------
 ## ---------- 6) CORE library ----------------------------------------
 file(GLOB_RECURSE MACRODR_CORE_HEADERS CONFIGURE_DEPENDS
@@ -169,6 +175,16 @@ file(GLOB_RECURSE MACRODR_CLI_HEADERS  CONFIGURE_DEPENDS
      ${PROJECT_SOURCE_DIR}/include/macrodr/interface/*.h
      ${PROJECT_SOURCE_DIR}/include/macrodr/cmd/*.h)
 
+list(REMOVE_ITEM MACRODR_CLI_SRC ${PROJECT_SOURCE_DIR}/src/cli/main_helpers.cpp)
+
+add_library(macrodr_cli_helpers STATIC
+    src/cli/main_helpers.cpp)
+
+target_link_libraries(macrodr_cli_helpers PUBLIC macrodr_core)
+target_include_directories(macrodr_cli_helpers PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+
  add_executable(macrodr_cli
      ${MACRODR_CLI_SRC}
      ${MACRODR_CLI_HEADERS})
@@ -181,7 +197,7 @@ target_include_directories(macrodr_cli PRIVATE
 target_include_directories(macrodr_cli SYSTEM PRIVATE
     ${PROJECT_SOURCE_DIR}/legacy)
 
-target_link_libraries(macrodr_cli PRIVATE macrodr_core)
+target_link_libraries(macrodr_cli PRIVATE macrodr_core macrodr_cli_helpers)
 
 # -------------------------------------------------------
 # 9) Data-file groups for Qt Creator (unchanged)
@@ -214,9 +230,3 @@ install(DIRECTORY ${MACRODR_PUBLIC_INC}/macrodr
 message(STATUS "PROJECT_SOURCE_DIR is: ${PROJECT_SOURCE_DIR}")
 ## Packaging/export of CMake config removed for now (was untested).
 
-# -------------------------------------------------------
-# 12) Tests (optional, guarded)
-# -------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt")
-    add_subdirectory(tests)
-endif()
