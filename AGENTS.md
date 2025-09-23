@@ -22,6 +22,7 @@ Scope: applies to the whole repository.
   - `MacroIR/simulation.macroir` — example DSL script(s) used by ops.
 - `docs/` — Architecture, ADRs, design notes. New: `docs/architecture/modules.md`, `docs/adr/ADR-001*`, `docs/adr/ADR-002*`. CLI overview lives in `docs/cli.md`.
 - `docs/cli.md` — CLI usage and migration notes.
+- `docs/testing.md` — How to build and run unit/integration tests.
 - `tests/` — Unit/CLI tests (if present); keep new tests focused and fast.
 - `CMakeLists.txt`, `CMakePresets.json` — Build config (targets: `macrodr_core`, `macrodr_cli`).
 

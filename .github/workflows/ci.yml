@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset gcc-release
+      - name: Build
+        run: cmake --build --preset gcc-release
+      - name: Run tests
+        run: ctest --test-dir build/gcc-release -V
