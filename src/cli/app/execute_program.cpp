@@ -1,17 +1,15 @@
 #include <macrodr/cli/app/execute_program.h>
-
-#include <iostream>
-
 #include <macrodr/dsl/grammar_typed.h>
 #include <macrodr/dsl/grammar_untyped.h>
 #include <macrodr/dsl/lexer_untyped.h>
+
+#include <iostream>
 
 #include "CLI_macro_dr_base.h"  // for cmd::write_text
 
 namespace macrodr::cli::app {
 
-int execute_program(const std::string& script,
-                    const macrodr::cli::CliOptions& opts,
+int execute_program(const std::string& script, const macrodr::cli::CliOptions& opts,
                     macrodr::dsl::Compiler& compiler) {
     cmd::write_text(cmd::temp_script_file, script);
 
@@ -38,7 +36,10 @@ int execute_program(const std::string& script,
     }
 
     auto exec = compiled.value().run(env);
-    (void)exec;
+    if (!exec) {
+        std::cerr << exec.error()();
+        return 1;
+    }
 
     auto ss = parsed.value().str();
     std::cerr << ss;
@@ -46,4 +47,3 @@ int execute_program(const std::string& script,
 }
 
 }  // namespace macrodr::cli::app
-

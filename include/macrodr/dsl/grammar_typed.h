@@ -151,7 +151,7 @@ class typed_argument_list : public base_typed_expression<Lexer, Compiler> {
         return new typed_argument_list(*this);
     }
     typed_argument_list(const typed_argument_list& other)
-        : m_vec(clone_vector(other.m_vec)), m_map{clone_map(m_map)} {}
+        : m_vec(clone_vector(other.m_vec)), m_map{clone_map(other.m_map)} {}
     [[nodiscard]] auto& arg_vector() const { return m_vec; }
     [[nodiscard]] auto& arg_map() const { return m_map; }
     void insert_assigment(base_typed_assigment<Lexer, Compiler> const& ass) {
@@ -196,7 +196,7 @@ class typed_argument_typed_list : public base_typed_expression<Lexer, Compiler> 
    public:
     std::string type_name() const override { return "typed_argument_list"; }
     virtual ~typed_argument_typed_list() = default;
-    virtual typed_argument_typed_list* clone() const {
+    virtual typed_argument_typed_list* clone() const override {
         return new typed_argument_typed_list(clone_tuple(m_args));
     }
     typed_argument_typed_list(
@@ -204,16 +204,16 @@ class typed_argument_typed_list : public base_typed_expression<Lexer, Compiler> 
         : m_args{std::move(t)} {}
     auto& args() const { return m_args; }
 
-    virtual base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const {
+    virtual base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const override {
         return nullptr;
     };
 
     virtual base_typed_expression<Lexer, Compiler>* compile_identifier(
-        Identifier<Lexer> /*id*/) const {
+        Identifier<Lexer> /*id*/) const override {
         return nullptr;
     };
 
-    virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(Identifier<Lexer> /*id*/) {
+    virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(Identifier<Lexer> /*id*/) override {
         return nullptr;
     };
 
@@ -243,7 +243,14 @@ class typed_identifier : public typed_expression<Lexer, Compiler, T> {
 
     [[nodiscard]] Maybe_error<T> run(Environment<Lexer, Compiler> const& env) const override {
         auto May_x = env.get(m_id);
+        if (!May_x) {
+            return May_x.error();
+        }
         auto exp = dynamic_cast<typed_expression<Lexer, Compiler, T> const*>(May_x.value());
+        if (!exp) {
+            // TODO: we can make this message tell both types in the mismatch
+            return error_message("type mismatch for identifier ", m_id());
+        }
         return exp->run(env);
     }
 };
@@ -283,9 +290,6 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
             }
             return new typed_literal<Lexer, Compiler, T>(std::move(Maybe_x.value()));
         }
-    }
-    base_typed_expression<Lexer, Compiler>* compile_identifier(Identifier<Lexer> id) {
-        return new typed_identifier<Lexer, Compiler, T>(id);
     }
 };
 
@@ -403,7 +407,7 @@ class typed_predicate_evaluation : public typed_expression<Lexer, Compiler, T> {
     // typed_expression interface
 
     typed_predicate_evaluation(const typed_predicate_evaluation& other)
-        : m_arg{other.m_arg->clone()}, m_P{other.m_f} {}
+        : m_arg{other.m_arg->clone()}, m_P{other.m_P} {}
 
     virtual typed_predicate_evaluation* clone() const {
         return new typed_predicate_evaluation(*this);
@@ -415,7 +419,7 @@ class typed_predicate_evaluation : public typed_expression<Lexer, Compiler, T> {
         if (!out) {
             return out.error();
         }
-        return this->m_f(std::move(out.value()));
+        return m_P(std::move(out.value()));
     }
 };
 
@@ -439,7 +443,13 @@ class typed_conversion : public typed_expression<Lexer, Compiler, T> {
 
     virtual ~typed_conversion() = default;
 
-    T run(Environment<Lexer, Compiler> const& env) const override { return m_expr.run(env); }
+    Maybe_error<T> run(Environment<Lexer, Compiler> const& env) const override {
+        auto r = m_expr->run(env);
+        if (!r) {
+            return r.error();
+        }
+        return static_cast<T>(std::move(r.value()));
+    }
 
     // typed_expression interface
 
@@ -568,6 +578,10 @@ class typed_program {
 
    public:
     typed_program() = default;
+
+    typed_program& operator=(const typed_program&) = default;
+    typed_program& operator=(typed_program&&) = default;
+    ~typed_program() = default;
     typed_program(const typed_program& other) : m_statements{clone(other.m_statements)} {}
 
     typed_program(typed_program&& other) noexcept : m_statements{std::move(other.m_statements)} {}
