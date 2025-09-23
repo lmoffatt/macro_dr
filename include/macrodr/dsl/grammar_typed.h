@@ -108,6 +108,10 @@ class base_typed_statement {
     [[nodiscard]] virtual std::string type_name() const = 0;
 
     [[nodiscard]] virtual base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const = 0;
+    [[nodiscard]] virtual std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>
+    compile_identifier_unique() const {
+        return std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(this->compile_identifier());
+    }
 };
 
 template <class Lexer, class Compiler>
@@ -127,6 +131,8 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
    public:
     ~base_typed_expression() override = default;
     [[nodiscard]] base_typed_expression* clone() const override = 0;
+
+    using base_typed_statement<Lexer, Compiler>::compile_identifier_unique;
 
     [[nodiscard]] virtual base_typed_expression<Lexer, Compiler>* compile_identifier(
         Identifier<Lexer> id) const = 0;
@@ -373,12 +379,12 @@ class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
     }
 
     Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const override {
-        auto Maybe_exp = expr()->run_expression(env);
-        if (!Maybe_exp) {
+        auto maybe_expr = expr()->run_expression_unique(env);
+        if (!maybe_expr) {
             return error_message(std::string("\n in assignment to ") + id()() + " : " +
-                                 Maybe_exp.error()());
+                                 maybe_expr.error()());
         }
-        env.insert(id(), Maybe_exp.value());
+        env.insert(id(), std::move(maybe_expr.value()));
         return true;
     }
 

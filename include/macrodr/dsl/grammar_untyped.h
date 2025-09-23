@@ -258,10 +258,9 @@ class untyped_assignment : public untyped_statement<Lexer, Compiler> {
         if (!Maybe_typed_expr) {
             return Maybe_typed_expr.error();
         }
-        auto cid = Maybe_typed_expr.value()->compile_identifier();
-        cm.push_back(id()(), cid);
-        return std::unique_ptr<base_typed_statement<Lexer, Compiler>>(
-            Maybe_typed_expr.value()->compile_assigment(id()()));
+        auto& typed_expr = Maybe_typed_expr.value();
+        cm.push_back(id()(), typed_expr->compile_identifier_unique());
+        return typed_expr->compile_assigment_unique(id()());
     }
 };
 
@@ -314,22 +313,24 @@ class untyped_argument_list : public untyped_expression<Lexer, Compiler> {
         if (!out) {
             return out.error();
         }
-        return out.value();
+        auto list = std::move(out.value());
+        return std::unique_ptr<base_typed_expression<Lexer, Compiler>>(std::move(list));
     }
 
-    virtual Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
+    virtual Maybe_unique<typed_argument_list<Lexer, Compiler>> compile_argument_list(
         Environment<Lexer, Compiler>& cm) const {
-        auto out = new typed_argument_list<Lexer, Compiler>{};
+        auto out = std::make_unique<typed_argument_list<Lexer, Compiler>>();
+        auto* current = out.get();
         for (auto& e : arg()) {
             auto v_c = e->compile_statement(cm);
             if (!v_c) {
                 return v_c.error();
             }
-            auto May_out = v_c.value()->compile_argument_list(out);
-            if (!May_out)
+            auto May_out = v_c.value()->compile_argument_list(current);
+            if (!May_out) {
                 return May_out.error();
-            else
-                out = May_out.value();
+            }
+            current = May_out.value();
         }
         return out;
     }
