@@ -25,7 +25,6 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
-import json
 import os
 import re
 import subprocess
@@ -70,23 +69,43 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+CPU_MODEL_PATTERNS = (
+    "model name",
+    "nombre del modelo",
+)
+
+
+def _parse_cpu_info_text(content: str) -> Optional[str]:
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        lower = line.lower()
+        for pattern in CPU_MODEL_PATTERNS:
+            if pattern in lower:
+                return line.split(":", 1)[-1].strip()
+    return None
+
+
 def read_cpu_model(cpu_info: Optional[Path]) -> str:
     if cpu_info and cpu_info.exists():
         content = cpu_info.read_text(errors="ignore")
-        for line in content.splitlines():
-            if "Model name" in line:
-                return line.split(":", 1)[-1].strip()
-        # fallback to first non-empty line if model name absent
-        for line in content.splitlines():
-            line = line.strip()
-            if line:
-                return line
-    # try lscpu locally
+        parsed = _parse_cpu_info_text(content)
+        if parsed:
+            return parsed
+    # Fall back to /proc/cpuinfo (locale independent)
+    try:
+        proc_info = Path("/proc/cpuinfo")
+        if proc_info.exists():
+            parsed = _parse_cpu_info_text(proc_info.read_text(errors="ignore"))
+            if parsed:
+                return parsed
+    except OSError:
+        pass
+    # Final fallback: lscpu in current locale
     try:
         out = subprocess.check_output(["lscpu"], text=True)
-        for line in out.splitlines():
-            if "Model name" in line:
-                return line.split(":", 1)[-1].strip()
+        parsed = _parse_cpu_info_text(out)
+        if parsed:
+            return parsed
     except (FileNotFoundError, subprocess.CalledProcessError):
         pass
     return "unknown"
@@ -220,6 +239,8 @@ def main() -> None:
     total_files = 0
     total_link = 0.0
 
+    ignored_patterns = ("/_deps/", "/third_party/")
+
     for output, entry in entries.items():
         duration = entry.duration_seconds
         if output.endswith(".o"):
@@ -235,10 +256,12 @@ def main() -> None:
                 f"{duration:.6f}",
                 cpu_model,
             ])
-            total_compile += duration
-            total_files += 1
+            if not any(p in output or p in source for p in ignored_patterns):
+                total_compile += duration
+                total_files += 1
         else:
-            total_link += duration
+            if not any(p in output for p in ignored_patterns):
+                total_link += duration
 
     summary_rows = [[
         timestamp,
