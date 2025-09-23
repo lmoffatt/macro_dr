@@ -127,9 +127,6 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
    public:
     ~base_typed_expression() override = default;
     [[nodiscard]] base_typed_expression* clone() const override = 0;
-    [[nodiscard]] std::unique_ptr<base_typed_expression> clone_unique() const override {
-        return std::unique_ptr<base_typed_expression>(this->clone());
-    }
 
     [[nodiscard]] virtual base_typed_expression<Lexer, Compiler>* compile_identifier(
         Identifier<Lexer> id) const = 0;
