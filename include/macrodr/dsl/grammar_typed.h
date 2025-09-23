@@ -152,6 +152,15 @@ class typed_argument_list : public base_typed_expression<Lexer, Compiler> {
     }
     typed_argument_list(const typed_argument_list& other)
         : m_vec(clone_vector(other.m_vec)), m_map{clone_map(other.m_map)} {}
+    typed_argument_list(typed_argument_list&&) noexcept = default;
+    typed_argument_list& operator=(typed_argument_list&&) noexcept = default;
+    typed_argument_list& operator=(const typed_argument_list& other) {
+        if (this != &other) {
+            m_vec = clone_vector(other.m_vec);
+            m_map = clone_map(other.m_map);
+        }
+        return *this;
+    }
     [[nodiscard]] auto& arg_vector() const { return m_vec; }
     [[nodiscard]] auto& arg_map() const { return m_map; }
     void insert_assigment(base_typed_assigment<Lexer, Compiler> const& ass) {
@@ -213,7 +222,8 @@ class typed_argument_typed_list : public base_typed_expression<Lexer, Compiler> 
         return nullptr;
     };
 
-    virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(Identifier<Lexer> /*id*/) override {
+    virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(
+        Identifier<Lexer> /*id*/) override {
         return nullptr;
     };
 
@@ -249,7 +259,7 @@ class typed_identifier : public typed_expression<Lexer, Compiler, T> {
         auto exp = dynamic_cast<typed_expression<Lexer, Compiler, T> const*>(May_x.value());
         if (!exp) {
             // TODO: we can make this message tell both types in the mismatch
-            return error_message("type mismatch for identifier ", m_id());
+            return error_message(std::string("type mismatch for identifier ") + m_id());
         }
         return exp->run(env);
     }
@@ -261,6 +271,12 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
     [[nodiscard]] std::string type_name() const override { return macrodr::dsl::type_name<T>(); }
 
     ~typed_expression() override = default;
+    // Complete special members to satisfy rule-of-five guidance for abstract base
+    typed_expression() = default;
+    typed_expression(const typed_expression&) = default;
+    typed_expression& operator=(const typed_expression&) = default;
+    typed_expression(typed_expression&&) noexcept = default;
+    typed_expression& operator=(typed_expression&&) noexcept = default;
     [[nodiscard]] typed_expression* clone() const override = 0;
 
     [[nodiscard]] virtual Maybe_error<T> run(Environment<Lexer, Compiler> const&) const = 0;
@@ -306,6 +322,16 @@ class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
 
     typed_assigment(const typed_assigment& other)
         : m_id{other.m_id}, m_expr{other.m_expr->clone()} {}
+
+    typed_assigment(typed_assigment&&) noexcept = default;
+    typed_assigment& operator=(typed_assigment&&) noexcept = default;
+    typed_assigment& operator=(const typed_assigment& other) {
+        if (this != &other) {
+            m_id = other.m_id;
+            m_expr.reset(other.m_expr ? other.m_expr->clone() : nullptr);
+        }
+        return *this;
+    }
 
     typed_assigment(Identifier<Lexer> const& t_id, typed_expression<Lexer, Compiler, T>* t_expr)
         : m_id{t_id}, m_expr{t_expr} {}
@@ -358,6 +384,22 @@ class typed_function_evaluation
               other.m_args)},
           m_f{other.m_f} {}
 
+    typed_function_evaluation(typed_function_evaluation&&) noexcept = default;
+    typed_function_evaluation& operator=(typed_function_evaluation&&) noexcept = default;
+    typed_function_evaluation& operator=(const typed_function_evaluation& other) {
+        if (this != &other) {
+            auto cloned = std::apply(
+                [](auto const&... args) {
+                    return std::tuple(
+                        std::unique_ptr<typed_expression<Lexer, Compiler, Args>>(args->clone())...);
+                },
+                other.m_args);
+            m_args = std::move(cloned);
+            m_f = other.m_f;
+        }
+        return *this;
+    }
+
     [[nodiscard]] typed_function_evaluation* clone() const override {
         return new typed_function_evaluation(*this);
     }
@@ -409,7 +451,17 @@ class typed_predicate_evaluation : public typed_expression<Lexer, Compiler, T> {
     typed_predicate_evaluation(const typed_predicate_evaluation& other)
         : m_arg{other.m_arg->clone()}, m_P{other.m_P} {}
 
-    virtual typed_predicate_evaluation* clone() const {
+    typed_predicate_evaluation(typed_predicate_evaluation&&) noexcept = default;
+    typed_predicate_evaluation& operator=(typed_predicate_evaluation&&) noexcept = default;
+    typed_predicate_evaluation& operator=(const typed_predicate_evaluation& other) {
+        if (this != &other) {
+            m_arg.reset(other.m_arg ? other.m_arg->clone() : nullptr);
+            m_P = other.m_P;
+        }
+        return *this;
+    }
+
+    virtual typed_predicate_evaluation* clone() const override {
         return new typed_predicate_evaluation(*this);
     }
 
@@ -578,13 +630,16 @@ class typed_program {
 
    public:
     typed_program() = default;
-
-    typed_program& operator=(const typed_program&) = default;
-    typed_program& operator=(typed_program&&) = default;
-    ~typed_program() = default;
     typed_program(const typed_program& other) : m_statements{clone(other.m_statements)} {}
-
     typed_program(typed_program&& other) noexcept : m_statements{std::move(other.m_statements)} {}
+    typed_program& operator=(const typed_program& other) {
+        if (this != &other) {
+            m_statements = clone(other.m_statements);
+        }
+        return *this;
+    }
+    typed_program& operator=(typed_program&&) noexcept = default;
+    ~typed_program() = default;
 
     auto& push_back(base_typed_statement<Lexer, Compiler>* t_expr) {
         m_statements.emplace_back(t_expr);
