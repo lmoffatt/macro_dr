@@ -53,11 +53,10 @@ int main_flow(int argc, char** argv) {
 
     log_assembled_program(script_value, opts);
 
-    persist_run_workspace(script_value, opts, arguments);
+    auto run_dir = persist_run_workspace(script_value, opts, arguments);
 
     auto compiler = macrodr::cli::make_compiler_new();
-    return execute_program(script_value, opts, compiler);
+    return execute_program(script_value, opts, compiler, run_dir);
 }
 
 }  // namespace macrodr::cli::app
-

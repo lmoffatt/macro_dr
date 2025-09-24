@@ -86,6 +86,24 @@ class Environment {
         }
         return (*it).second.get();
     }
+
+    // Introspection helpers for environment persistence
+    [[nodiscard]] std::vector<Identifier<Lexer>> list_variables() const {
+        std::vector<Identifier<Lexer>> out;
+        out.reserve(m_var.size());
+        for (const auto& kv : m_var) out.push_back(kv.first);
+        return out;
+    }
+
+    [[nodiscard]] std::vector<Identifier<Lexer>> list_identifiers() const {
+        std::vector<Identifier<Lexer>> out;
+        out.reserve(m_id.size());
+        for (const auto& kv : m_id) out.push_back(kv.first);
+        return out;
+    }
+
+    void clear_variables() { m_var.clear(); }
+    void clear_identifiers() { m_id.clear(); }
 };
 
 template <class Lexer, class Compiler>

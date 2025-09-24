@@ -86,6 +86,41 @@ CliOptions parse_cli(int argc, const char* const argv[]) {
                 CliEvent{.kind = CliEventKind::Eval, .payload = std::move(line)});
             continue;
         }
+        if (!end_of_options && tok == "--env-save") {
+            auto v = need_value("--env-save");
+            if (v == "off") out.env_save = CliOptions::EnvSaveMode::Off;
+            else if (v == "end") out.env_save = CliOptions::EnvSaveMode::End;
+            else if (v == "step") out.env_save = CliOptions::EnvSaveMode::Step;
+            else {
+                out.diagnostics.emplace_back(std::string("unknown --env-save value: ") + v);
+            }
+            continue;
+        }
+        if (!end_of_options && tok == "--env-save-path") {
+            auto v = need_value("--env-save-path");
+            if (!v.empty()) {
+                out.has_env_save_path = true;
+                out.env_save_path = std::move(v);
+            }
+            continue;
+        }
+        if (!end_of_options && tok == "--env-load") {
+            auto v = need_value("--env-load");
+            if (!v.empty()) {
+                out.has_env_load = true;
+                out.env_load = std::move(v);
+            }
+            continue;
+        }
+        if (!end_of_options && tok == "--env-load-mode") {
+            auto v = need_value("--env-load-mode");
+            if (v == "append") out.env_load_mode = CliOptions::EnvLoadMode::Append;
+            else if (v == "replace") out.env_load_mode = CliOptions::EnvLoadMode::Replace;
+            else {
+                out.diagnostics.emplace_back(std::string("unknown --env-load-mode value: ") + v);
+            }
+            continue;
+        }
         if (!end_of_options && (tok == "-f" || tok == "--file")) {
             auto path = need_value("--file");
             if (path.empty() && !out.ok) {

@@ -491,6 +491,14 @@ class Compiler {
         }
         //other.m_func.clear();  // Opcional: limpia el mapa fuente
     }
+
+    // Introspection helper for environment persistence
+    [[nodiscard]] std::vector<Identifier<Lexer>> list_functions() const {
+        std::vector<Identifier<Lexer>> out;
+        out.reserve(m_func.size());
+        for (const auto& kv : m_func) out.push_back(kv.first);
+        return out;
+    }
 };
 
 }  // namespace macrodr::dsl

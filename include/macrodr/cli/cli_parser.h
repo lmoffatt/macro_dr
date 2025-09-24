@@ -34,6 +34,16 @@ struct CliOptions {
     // Diagnostics collected while parsing (warnings/errors)
     std::vector<std::string> diagnostics;
     bool ok = true;  // set false on hard parse errors
+
+    // Environment persistence (JSON)
+    enum class EnvSaveMode { Off, End, Step };
+    EnvSaveMode env_save = EnvSaveMode::Off;  // --env-save off|end|step
+    bool has_env_save_path = false;
+    std::string env_save_path;               // --env-save-path <dir>
+    bool has_env_load = false;
+    std::string env_load;                    // --env-load <file>
+    enum class EnvLoadMode { Append, Replace };
+    EnvLoadMode env_load_mode = EnvLoadMode::Append;  // --env-load-mode append|replace
 };
 
 // Parse argv→CliOptions. Order-preserving for files and -e/--eval.
@@ -43,4 +53,3 @@ CliOptions parse_cli(int argc, const char* const argv[]);
 CliOptions parse_cli(const std::vector<std::string>& args);
 
 }  // namespace macrodr::cli
-
