@@ -28,6 +28,7 @@ class typed_identifier;
 
 template <class Lexer, class Compiler, class T>
 class typed_literal;
+
 template <class Lexer, class Compiler>
 class untyped_argument_list;
 class Lexer;

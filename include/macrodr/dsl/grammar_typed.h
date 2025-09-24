@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "deprecation.h"
 #include "lexer_typed.h"
 #include "maybe_error.h"
 #include "type_name.h"
@@ -59,8 +60,7 @@ class Environment {
         m_id.emplace(std::move(id), std::move(expr));
     }
     void push_back(Identifier<Lexer> id, base_Identifier_compiler<Lexer, Compiler>* expr) {
-        push_back(std::move(id),
-                  std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(expr));
+        push_back(std::move(id), std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(expr));
     }
     [[nodiscard]] Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_Identifier(
         const Identifier<Lexer>& id) const {
@@ -97,7 +97,8 @@ template <class Lexer, class Compiler>
 class base_typed_statement {
    public:
     virtual ~base_typed_statement() = default;
-    [[nodiscard]] virtual base_typed_statement* clone() const = 0;
+    [[nodiscard]] MACRODR_DEPRECATED(
+        "Use clone_unique()") virtual base_typed_statement* clone() const = 0;
     [[nodiscard]] virtual std::unique_ptr<base_typed_statement> clone_unique() const {
         return std::unique_ptr<base_typed_statement>(this->clone());
     }
@@ -107,10 +108,14 @@ class base_typed_statement {
 
     [[nodiscard]] virtual std::string type_name() const = 0;
 
-    [[nodiscard]] virtual base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const = 0;
+    [[nodiscard]] MACRODR_DEPRECATED(
+        "Use compile_identifier_unique()") virtual base_Identifier_compiler<Lexer,
+                                                                            Compiler>* compile_identifier()
+        const = 0;
     [[nodiscard]] virtual std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>
-    compile_identifier_unique() const {
-        return std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(this->compile_identifier());
+        compile_identifier_unique() const {
+        return std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>(
+            this->compile_identifier());
     }
 };
 
@@ -118,7 +123,8 @@ template <class Lexer, class Compiler>
 class base_typed_assigment : public base_typed_statement<Lexer, Compiler> {
    public:
     ~base_typed_assigment() override = default;
-    [[nodiscard]] base_typed_assigment* clone() const override = 0;
+    [[nodiscard]] MACRODR_DEPRECATED("Use clone_unique()")
+        base_typed_assigment* clone() const override = 0;
     [[nodiscard]] virtual Identifier<Lexer> const& id() const = 0;
     [[nodiscard]] virtual base_typed_expression<Lexer, Compiler>* expr() const = 0;
 
@@ -130,18 +136,24 @@ template <class Lexer, class Compiler>
 class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
    public:
     ~base_typed_expression() override = default;
-    [[nodiscard]] base_typed_expression* clone() const override = 0;
+    [[nodiscard]] MACRODR_DEPRECATED("Use clone_unique()")
+        base_typed_expression* clone() const override = 0;
 
     using base_typed_statement<Lexer, Compiler>::compile_identifier_unique;
 
-    [[nodiscard]] virtual base_typed_expression<Lexer, Compiler>* compile_identifier(
-        Identifier<Lexer> id) const = 0;
+    [[nodiscard]] MACRODR_DEPRECATED(
+        "Use compile_identifier_unique()") virtual base_typed_expression<Lexer,
+                                                                         Compiler>* compile_identifier(Identifier<Lexer>
+                                                                                                           id)
+        const = 0;
 
     [[nodiscard]] virtual std::unique_ptr<base_typed_expression<Lexer, Compiler>>
-    compile_identifier_unique(Identifier<Lexer> id) const {
-        return std::unique_ptr<base_typed_expression<Lexer, Compiler>>(this->compile_identifier(id));
+        compile_identifier_unique(Identifier<Lexer> id) const {
+        return std::unique_ptr<base_typed_expression<Lexer, Compiler>>(
+            this->compile_identifier(id));
     }
 
+    MACRODR_DEPRECATED("Use compile_assigment_unique()")
     virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(Identifier<Lexer> id) = 0;
 
     virtual std::unique_ptr<base_typed_assigment<Lexer, Compiler>> compile_assigment_unique(
@@ -149,14 +161,16 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
         return std::unique_ptr<base_typed_assigment<Lexer, Compiler>>(this->compile_assigment(id));
     }
 
+    MACRODR_DEPRECATED("Use compile_argument_list_unique() where applicable")
     Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
         typed_argument_list<Lexer, Compiler>* t_growing_list) const override;
 
+    MACRODR_DEPRECATED("Use run_expression_unique()")
     virtual Maybe_error<base_typed_expression<Lexer, Compiler>*> run_expression(
         Environment<Lexer, Compiler>& env) const = 0;
 
-    [[nodiscard]] virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> run_expression_unique(
-        Environment<Lexer, Compiler>& env) const {
+    [[nodiscard]] virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
+        run_expression_unique(Environment<Lexer, Compiler>& env) const {
         auto maybe_expr = run_expression(env);
         if (!maybe_expr) {
             return maybe_expr.error();
@@ -397,12 +411,13 @@ template <class Lexer, class Compiler, class F, class... Args>
     requires(std::is_object_v<std::invoke_result_t<F, Args...>> ||
              std::is_void_v<std::invoke_result_t<F, Args...>>)
 class typed_function_evaluation
-    : public typed_expression<Lexer, Compiler, std::invoke_result_t<F, Args...>> {
+    : public typed_expression<Lexer, Compiler,
+                              underlying_value_type_t<std::invoke_result_t<F, Args...>>> {
     std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, Args>>...> m_args;
     F m_f;
 
    public:
-    using T = std::invoke_result_t<F, Args...>;
+    using T = underlying_value_type_t<std::invoke_result_t<F, Args...>>;
     typed_function_evaluation(F t_f, typed_expression<Lexer, Compiler, Args>*... t_args)
         : m_f{t_f}, m_args{t_args...} {}
 
@@ -567,11 +582,9 @@ class typed_literal<Lexer, Compiler, T> : public typed_expression<Lexer, Compile
 };
 
 template <class Lexer, class Compiler, class T>
-    requires(!std::is_void_v<T> && !std::is_copy_constructible_v<T> &&
-             std::is_move_constructible_v<T> &&
-             requires(const T& value) {
-                 { value.clone() } -> std::same_as<std::unique_ptr<T>>;
-             })
+    requires requires(const T& value) {
+        { value.clone() } -> std::convertible_to<std::unique_ptr<T>>;
+    }
 class typed_literal<Lexer, Compiler, std::unique_ptr<T>>
     : public typed_expression<Lexer, Compiler, std::unique_ptr<T>> {
     std::unique_ptr<T> m_value;
@@ -586,9 +599,8 @@ class typed_literal<Lexer, Compiler, std::unique_ptr<T>>
 
     typed_literal(const typed_literal& other) : m_value(clone_ptr(other.m_value)) {}
     typed_literal& operator=(const typed_literal& other) {
-        if (this != &other) {
+        if (this != &other)
             m_value = clone_ptr(other.m_value);
-        }
         return *this;
     }
     typed_literal(typed_literal&&) noexcept = default;

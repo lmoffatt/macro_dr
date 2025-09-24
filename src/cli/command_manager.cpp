@@ -23,8 +23,8 @@ dsl::Compiler make_compiler_new() {
     cm.merge(macrodr::cmd::make_simulation_compiler());
     cm.merge(macrodr::cmd::make_likelihood_compiler());
     cm.merge(macrodr::cmd::make_dts_compiler());
-    // cm.push_function("load_model",
-    //                  dsl::to_typed_function<std::string>(&cmd::load_model, "model_name"));
+    cm.push_function("load_model",
+                     dsl::to_typed_function<std::string>(&cmd::load_model, "model_name"));
     cm.push_function("load_experiment", dsl::to_typed_function<std::string, double, double>(
                                             &macrodr::cmd::load_experiment, "filename",
                                             "frequency_of_sampling", "initial_ATP"));
