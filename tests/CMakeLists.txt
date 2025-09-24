@@ -1,5 +1,6 @@
 set(TEST_SOURCES
     cli/test_cli_helpers.cpp
+    cli/test_env_persistence.cpp
     ${PROJECT_SOURCE_DIR}/third_party/catch2/catch_amalgamated.cpp
 )
 
@@ -21,3 +22,10 @@ add_test(NAME macrodr_cli_version COMMAND $<TARGET_FILE:macrodr_cli> --version)
 set_tests_properties(macrodr_cli_version PROPERTIES PASS_REGULAR_EXPRESSION "macro_dr")
 
 add_test(NAME macrodr_cli_check_syntax COMMAND $<TARGET_FILE:macrodr_cli> --check-syntax -e "version()")
+
+add_test(NAME macrodr_cli_env_flags
+         COMMAND $<TARGET_FILE:macrodr_cli>
+                 --env-save end
+                 --env-save-path ${CMAKE_CURRENT_BINARY_DIR}/env_flags
+                 --check-syntax
+                 -e "alpha = 1.0")
