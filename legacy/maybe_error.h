@@ -228,7 +228,7 @@ class Maybe_error : private std::variant<T, error_message> {
     Maybe_error(error_message&& x) : base_type{(std::move(x))} {}
     Maybe_error(const error_message& x) : base_type{x} {}
     constexpr explicit operator bool() const noexcept { return this->index() == 0; }
-    constexpr bool valid() const noexcept { return this->index() == 0; }
+    [[nodiscard]] constexpr bool valid() const noexcept { return this->index() == 0; }
 
     constexpr const T& value() const& noexcept { return std::get<0>(*this); }
     constexpr T& value() & noexcept { return std::get<0>(*this); }
@@ -268,15 +268,15 @@ class Maybe_error<void> : private std::variant<std::monostate, error_message> {
     Maybe_error(error_message err) : variant_type{std::in_place_index<1>, std::move(err)} {}
 
     constexpr explicit operator bool() const noexcept { return this->index() == 0; }
-    constexpr bool valid() const noexcept { return this->index() == 0; }
+    [[nodiscard]] constexpr bool valid() const noexcept { return this->index() == 0; }
 
     constexpr void value() const& noexcept {}
 
-    error_message error() const {
-        if (*this)
-            return error_message("");
-        else
-            return std::get<1>(*this);
+    [[nodiscard]] error_message error() const {
+        if (*this) {
+            return {""};
+        }
+        return std::get<1>(*this);
     }
 };
 
@@ -320,6 +320,34 @@ class Maybe_error<T*> : public Maybe_error<typename T::base_type*> {
         return os;
     }
 };
+
+// Your wrapper:
+// template<class T> struct Maybe_error { using value_type = T; /* ... */ };
+
+namespace detail {
+
+// Base case: not a Maybe_error → underlying type is T itself
+template <class T>
+struct underlying_value_type_impl {
+    using type = T;
+};
+
+// Specialization: unwrap Maybe_error<U> → underlying type is U
+template <class U>
+struct underlying_value_type_impl<Maybe_error<U>> {
+    using type = U;
+};
+
+// (Optional) make it robust to cv/ref
+template <class T>
+using decay_maybe_t = std::remove_cvref_t<T>;
+
+}  // namespace detail
+
+// Public alias: T or U if T == Maybe_error<U>
+template <class T>
+using underlying_value_type_t =
+    typename detail::underlying_value_type_impl<detail::decay_maybe_t<T>>::type;
 
 template <class T, class S>
     requires(is_Maybe_error<T> || is_Maybe_error<S>)

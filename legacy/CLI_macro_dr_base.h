@@ -2,13 +2,12 @@
 #define CLI_MACRO_DR_BASE_H
 
 #include <macrodr/cmd/load_model.h>
-#include <macrodr/dsl/lexer_typed.h>
+#include <macrodr/dsl/function_builder.h>
 
 #include <cstddef>
 #include <fstream>
 #include <string>
 
-#include "CLI_macro_dr.h"
 #include "experiment.h"
 #include "mcmc.h"
 
@@ -135,8 +134,7 @@ inline dsl::Compiler make_experiment_compiler() {
 
 inline dsl::Compiler make_model_compiler() {
     dsl::Compiler cm;
-    //   cm.push_function("load_model",
-    //                     dsl::to_typed_function<std::string>(&load_model, "model_name"));
+    // cm.push_function("load_model", dsl::to_typed_function<std::string>(&load_model, "model_name"));
 
     cm.push_function("get_Prior", dsl::to_typed_function<double, std::string>(
                                       &get_Prior, "prior_error", "model"));

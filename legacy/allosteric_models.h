@@ -351,8 +351,7 @@ struct Conformational_interactions_transition_state
         const Conformational_interactions_domain_state& v_int)
         : base_type{std::map<Conformational_interactions_domain_state,
                              Conformational_transition_mulitplicity>{
-              std::pair{v_int, Conformational_transition_mulitplicity(1)}}} {
-    }
+              std::pair{v_int, Conformational_transition_mulitplicity(1)}}} {}
 
     friend std::ostream& print(std::ostream& os,
                                Conformational_interactions_transition_state const& x) {
@@ -722,8 +721,7 @@ struct Conductance_interaction_info
     Conductance_interaction_info(Conductance_interaction_kind k,
                                  const std::string& leakeage_ratio_label)
         : base_type{Vector_Space{Conductance_interaction_type{k},
-                                 Conductance_leakeage_ratio_label{leakeage_ratio_label}}} {
-    }
+                                 Conductance_leakeage_ratio_label{leakeage_ratio_label}}} {}
 };
 
 struct Conformational_model_standarized
@@ -1512,8 +1510,7 @@ inline auto get_conductance_names(const Conductance_interaction_scheme& sch,
     return out;
 }
 
-inline auto get_states_structure(const Conformational_states&) {
-}
+inline auto get_states_structure(const Conformational_states&) {}
 
 }  // namespace impl
 

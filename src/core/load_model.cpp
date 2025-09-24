@@ -1,31 +1,38 @@
+// src/core/load_model.cpp
+
 #include <macrodr/cmd/load_model.h>
+#include <macrodr/interface/IModel.h>
+
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 #include "allosteric_models.h"
 #include "models_MoffattHume_allosteric.h"
+#include "models_MoffattHume_linear.h"
 #include "parameters.h"
 
 namespace macrodr::cmd {
-#if 0    
-template <typename Scheme>
-auto make_model(Scheme scheme) {
-    return std::make_unique < macrodr::interface::ConcreteModel < Scheme,
-           var::Parameters_values >>> (std::move(scheme));
-}  // namespace macrodr::interface
 
 model_handle load_model(const std::string& model_name) {
     auto Maybe_model = macrodr::get_model(model_name);
     if (!Maybe_model) {
         return Maybe_model.error();
     }
-    auto model = Maybe_model.value();
 
+    // Move out the variant of owning pointers to concrete model types
+    auto model = std::move(Maybe_model.value());
+
+    // Wrap the concrete model into a polymorphic interface erased to IModel<var::Parameters_values>
     return std::visit(
-        [](auto model0ptr) {
+        [](auto&& model0ptr) -> model_handle {
             using ModelType = std::decay_t<decltype(*model0ptr)>;
-            return macrodr::interface::make_model_interface<ModelType, var::Parameters_values>(
-                *model0ptr);
+            auto iface =
+                macrodr::interface::make_model_interface<ModelType, var::Parameters_values>(
+                    *model0ptr);
+            return iface;
         },
         model);
 }
-#endif
+
 }  // namespace macrodr::cmd
