@@ -17,12 +17,19 @@ constexpr const char* kUsage =
     "  -v, --verbose         Increase logging verbosity (repeatable)\n"
     "  -C, --chdir <dir>     Change working directory before running\n"
     "      --path <dir>      Add a search path for relative assets (repeatable)\n"
+    "      --env-save <mode> Save environment: off|end|step (default: off)\n"
+    "      --env-save-path <dir>\n"
+    "                         Override directory for environment snapshots\n"
+    "      --env-load <file>  Load environment JSON before execution\n"
+    "      --env-load-mode <mode>\n"
+    "                         append (default) or replace when loading\n"
     "      --version         Print version and exit\n"
     "  -h, --help            Print this help and exit\n"
     "  --                    End of options; remaining args are script files\n"
     "\nNotes:\n"
     "  - Scripts and --eval lines are processed in order.\n"
-    "  - This help/version are also available as DSL commands: help(), version().\n";
+    "  - This help/version are also available as DSL commands: help(), version().\n"
+    "  - Step mode writes snapshots to runs/<run-id>/snapshots by default.\n";
 
 #ifndef MACRODR_VERSION
 #define MACRODR_VERSION "0.0.0-dev"

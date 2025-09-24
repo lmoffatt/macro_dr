@@ -45,6 +45,24 @@ runs/run-YYYYMMDD-HHMMSS/
 When `-v` is supplied the CLI prints the chosen run directory and the
 assembled script to aid debugging.
 
+## Environment Snapshots (JSON)
+
+The CLI can persist the DSL environment to JSON for reproducibility:
+
+- `--env-save off|end|step` – disable (default), save once after execution,
+  or emit a snapshot after every statement. Step mode writes
+  `runs/<run-id>/snapshots/step_<n>.json` in addition to the final export.
+- `--env-save-path <dir>` – override the output directory (defaults to the
+  run folder created above).
+- `--env-load <file.json>` – preload variables from a saved environment.
+- `--env-load-mode append|replace` – merge with the current environment or
+  clear it before loading.
+
+Only primitive variables (double, int64, bool, string) are serialised today.
+Unsupported types are listed with `null` values so it is obvious what still
+needs a custom encoder. Function registrations are rebuilt at startup; the
+JSON export records their names solely for introspection.
+
 ## Path Resolution
 
 Relative paths mentioned in scripts and DSL helpers are resolved using:
