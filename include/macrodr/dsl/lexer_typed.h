@@ -4,10 +4,12 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include <utility>
 
 #include "grammar_Identifier.h"
+#include "literal_decode.h"
 #include "type_name.h"
 //#include "grammar_typed.h"
 //#include "grammar_typed.h"
@@ -191,12 +193,21 @@ class field_compiler {
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& /*unused*/,
-        untyped_literal<Lexer, Compiler> const& t_arg) const {
-        auto Maybe_T = Lexer::template get<T>(t_arg());
-        if (!Maybe_T) {
-            return Maybe_T.error();
+        untyped_literal<Lexer, Compiler> const& t_arg) const
+        requires literal_decodable<T>::value {
+        auto maybe_value = from_literal<T>(t_arg());
+        if (!maybe_value) {
+            return maybe_value.error();
         }
-        return new typed_literal<Lexer, Compiler, T>(std::move(Maybe_T.value()));
+        return new typed_literal<Lexer, Compiler, T>(std::move(maybe_value.value()));
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
+        requires(!literal_decodable<T>::value) {
+        return error_message(std::string{"literal arguments are not supported for type "} +
+                             type_name<T>() + "; use a variable or JSON helper function");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
@@ -294,12 +305,20 @@ class field_compiler_precondition {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
-        Compiler const& /*unused*/, untyped_literal<Lexer, Compiler> const& t_arg) const {
-        auto Maybe_T = Lexer::template get<T>(t_arg());
-        if (!Maybe_T) {
-            return Maybe_T.error();
+        Compiler const& /*unused*/, untyped_literal<Lexer, Compiler> const& t_arg) const
+        requires literal_decodable<T>::value {
+        auto maybe_value = from_literal<T>(t_arg());
+        if (!maybe_value) {
+            return maybe_value.error();
         }
-        return new typed_literal<Lexer, Compiler, T>(std::move(Maybe_T.value()));
+        return new typed_literal<Lexer, Compiler, T>(std::move(maybe_value.value()));
+    }
+
+    Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Compiler const& /*unused*/, untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
+        requires(!literal_decodable<T>::value) {
+        return error_message(std::string{"literal arguments are not supported for type "} +
+                             type_name<T>() + "; use a variable or JSON helper function");
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
