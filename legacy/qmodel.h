@@ -9,6 +9,8 @@
 #include "parallel_levenberg_tempering.h"
 #include "parallel_tempering_fraction.h"
 #include "parameters_derivative.h"
+// Ensure LAPACK-backed helpers are available to Macro_DMR and friends
+#include "lapack_headers.h"
 // #include "models_MoffattHume_linear.h"
 #include <cmath>
 #include <cstddef>
