@@ -14,6 +14,7 @@
 #include "lexer_typed.h"
 #include "maybe_error.h"
 #include "type_name.h"
+#include <macrodr/io/json/convert.h>
 
 namespace macrodr::dsl {
 template <class Lexer, class Compiler, class T>
@@ -22,6 +23,10 @@ template <class Lexer, class Compiler>
 class base_typed_statement;
 template <class Lexer, class Compiler>
 class base_typed_expression;
+struct SerializedExpression {
+    std::string type;
+    macrodr::io::json::Json value;
+};
 template <class Lexer, class Compiler>
 class base_Identifier_compiler;
 template <class Lexer, class Compiler, class T>
@@ -38,6 +43,8 @@ class Environment {
 
     Environment(const Environment& cm)
         : m_id{clone_map(cm.m_id)}, m_var{clone_map(cm.m_var)}, cm_{cm.cm_} {}
+
+    [[nodiscard]] Compiler const& compiler() const { return *cm_; }
 
     [[nodiscard]] Maybe_error<base_function_compiler<Lexer, Compiler> const*> get_function(
         const Identifier<Lexer>& id) const {
@@ -206,6 +213,13 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
 
     [[nodiscard]] base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const override =
         0;
+
+    virtual Maybe_error<SerializedExpression> serialize_json(
+        const Environment<Lexer, Compiler>& env,
+        macrodr::io::json::conv::TagPolicy policy) const {
+        return error_message(std::string{"serialization unavailable for type "} +
+                             this->type_name());
+    }
 };
 
 template <class Lexer, class Compiler>
@@ -374,6 +388,28 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
                 return Maybe_x.error();
             }
             return new typed_literal<Lexer, Compiler, T>(std::move(Maybe_x.value()));
+        }
+    }
+
+    Maybe_error<SerializedExpression> serialize_json(
+        const Environment<Lexer, Compiler>& env,
+        macrodr::io::json::conv::TagPolicy policy) const override {
+        using ValueType = std::remove_cvref_t<T>;
+        if constexpr (std::is_void_v<ValueType>) {
+            return error_message(std::string{"cannot serialize void expression of type "} +
+                                 this->type_name());
+        } else if constexpr (!macrodr::io::json::conv::has_json_codec_v<ValueType>) {
+            return error_message(std::string{"no JSON codec registered for type "} +
+                                 this->type_name());
+        } else {
+            auto maybe_value = this->run(env);
+            if (!maybe_value) {
+                return maybe_value.error();
+            }
+            SerializedExpression out;
+            out.type = this->type_name();
+            out.value = macrodr::io::json::conv::to_json(maybe_value.value(), policy);
+            return out;
         }
     }
 };
@@ -690,6 +726,23 @@ class typed_literal<Lexer, Compiler, void> : public typed_expression<Lexer, Comp
 
     [[nodiscard]] typed_literal* clone() const override { return new typed_literal(*this); }
 };
+
+template <class Lexer, class Compiler, class T>
+Maybe_error<void> load_literal_from_json_helper(
+    const macrodr::io::json::Json& value, const std::string& path,
+    macrodr::io::json::conv::TagPolicy policy, const Identifier<Lexer>& id,
+    Environment<Lexer, Compiler>& env) {
+    using Value = std::remove_cvref_t<T>;
+    Value decoded{};
+    auto status = macrodr::io::json::conv::from_json(value, decoded, path, policy);
+    if (!status) {
+        return status;
+    }
+    auto literal = std::make_unique<typed_literal<Lexer, Compiler, Value>>(std::move(decoded));
+    env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(literal->clone()));
+    env.push_back(id, new Identifier_compiler<Lexer, Compiler, Value>(literal.release()));
+    return {};
+}
 
 template <class Lexer, class Compiler>
 class typed_program {
