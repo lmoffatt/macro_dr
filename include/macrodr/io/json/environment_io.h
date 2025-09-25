@@ -2,6 +2,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -14,77 +15,10 @@
 #include <macrodr/dsl/type_name.h>
 
 #include "minijson.h"
+#include "convert.h"
+#include "qmodel.h"
 
 namespace macrodr::io::json::envio {
-
-// Helper: try to run a typed expression to a concrete value and write into JSON entry
-template <class Lexer, class Compiler>
-inline bool encode_supported_expr(const macrodr::dsl::Environment<Lexer, Compiler>& env,
-                                  const macrodr::dsl::base_typed_expression<Lexer, Compiler>* expr,
-                                  Json& out_val, std::string& out_type) {
-    using namespace macrodr::dsl;
-    {
-        auto ptr = dynamic_cast<const typed_expression<Lexer, Compiler, double>*>(expr);
-        if (ptr) {
-            auto m = ptr->run(env);
-            if (!m) return false;
-            out_type = "double";
-            out_val = Json::number(m.value());
-            return true;
-        }
-    }
-    {
-        auto ptr_int = dynamic_cast<const typed_expression<Lexer, Compiler, int64_t>*>(expr);
-        if (ptr_int) {
-            auto m = ptr_int->run(env);
-            if (!m) return false;
-            out_type = "int";
-            out_val = Json::number(static_cast<double>(m.value()));
-            return true;
-        }
-    }
-    {
-        auto ptr_uint = dynamic_cast<const typed_expression<Lexer, Compiler, unsigned long>*>(expr);
-        if (ptr_uint) {
-            auto m = ptr_uint->run(env);
-            if (!m) return false;
-            out_type = "unsigned long";
-            out_val = Json::number(static_cast<double>(m.value()));
-            return true;
-        }
-    }
-    {
-        auto ptr = dynamic_cast<const typed_expression<Lexer, Compiler, int64_t>*>(expr);
-        if (ptr) {
-            auto m = ptr->run(env);
-            if (!m) return false;
-            out_type = "int64";
-            out_val = Json::number(static_cast<double>(m.value()));
-            return true;
-        }
-    }
-    {
-        auto ptr = dynamic_cast<const typed_expression<Lexer, Compiler, bool>*>(expr);
-        if (ptr) {
-            auto m = ptr->run(env);
-            if (!m) return false;
-            out_type = "bool";
-            out_val = Json::boolean(m.value());
-            return true;
-        }
-    }
-    {
-        auto ptr = dynamic_cast<const typed_expression<Lexer, Compiler, std::string>*>(expr);
-        if (ptr) {
-            auto m = ptr->run(env);
-            if (!m) return false;
-            out_type = "string";
-            out_val = Json::string(m.value());
-            return true;
-        }
-    }
-    return false;
-}
 
 template <class Lexer, class Compiler>
 inline Maybe_error<std::string> save_environment_json(
@@ -104,19 +38,18 @@ inline Maybe_error<std::string> save_environment_json(
         auto maybe_ptr = env.get(id);
         if (!maybe_ptr) continue;  // skip missing
         const auto* expr = maybe_ptr.value();
-        Json val;
-        std::string ty;
-        if (encode_supported_expr(env, expr, val, ty)) {
-            Json entry = Json::object();
-            entry["type"] = Json::string(ty);
-            entry["value"] = std::move(val);
-            vars[id()] = std::move(entry);
+        Json entry = Json::object();
+        auto serialized = expr->serialize_json(env, macrodr::io::json::conv::TagPolicy::Minimal);
+        if (serialized) {
+            const auto& data = serialized.value();
+            entry["type"] = Json::string(data.type);
+            entry["value"] = data.value;
         } else {
-            Json entry = Json::object();
             entry["type"] = Json::string(expr->type_name());
-            entry["value"] = Json::null();  // unsupported for now
-            vars[id()] = std::move(entry);
+            entry["value"] = Json::null();
+            entry["error"] = Json::string(serialized.error()());
         }
+        vars[id()] = std::move(entry);
     }
     root["variables"] = std::move(vars);
 
@@ -166,6 +99,7 @@ inline Maybe_error<std::string> load_environment_json(
     macrodr::dsl::Environment<Lexer, Compiler>& env,
     std::string load_mode = "append") {
     using namespace macrodr::dsl;
+    const auto& compiler = env.compiler();
     std::ifstream in(path);
     if (!in.is_open()) return error_message("could not open file for read: " + path.string());
     std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
@@ -194,27 +128,26 @@ inline Maybe_error<std::string> load_environment_json(
         auto may_id = to_Identifier<Lexer>(k);
         if (!may_id) continue;  // skip invalid identifiers
         auto id = may_id.value();
-
-        if (ty == "double" && valj->type == Json::Type::Number) {
-            auto lit = std::make_unique<typed_literal<Lexer, Compiler, double>>(valj->num);
-            env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(lit->clone()));
-            env.push_back(id, new Identifier_compiler<Lexer, Compiler, double>(lit.release()));
-        } else if ((ty == "int" || ty == "int64") && valj->type == Json::Type::Number) {
-            auto lit = std::make_unique<typed_literal<Lexer, Compiler, int64_t>>(static_cast<int64_t>(valj->num));
-            env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(lit->clone()));
-            env.push_back(id, new Identifier_compiler<Lexer, Compiler, int64_t>(lit.release()));
-        } else if (ty == "bool" && (valj->type == Json::Type::Bool || valj->type == Json::Type::Number)) {
-            bool b = (valj->type == Json::Type::Bool) ? valj->b : (valj->num != 0.0);
-            auto lit = std::make_unique<typed_literal<Lexer, Compiler, bool>>(b);
-            env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(lit->clone()));
-            env.push_back(id, new Identifier_compiler<Lexer, Compiler, bool>(lit.release()));
-        } else if (ty == "string" && valj->type == Json::Type::String) {
-            auto lit = std::make_unique<typed_literal<Lexer, Compiler, std::string>>(valj->str);
-            env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(lit->clone()));
-            env.push_back(id, new Identifier_compiler<Lexer, Compiler, std::string>(lit.release()));
-        } else {
-            skipped += 1;
-            continue;
+        const std::string value_path = std::string("$.variables.") + k + ".value";
+        auto load_status = compiler.load_variable_from_json(
+            ty, *valj, value_path, macrodr::io::json::conv::TagPolicy::Minimal, id, env);
+        if (!load_status) {
+            bool recovered = false;
+            if (ty == "int" || ty == "int64") {
+                load_status = compiler.load_variable_from_json(
+                    macrodr::dsl::type_name<int64_t>(), *valj, value_path,
+                    macrodr::io::json::conv::TagPolicy::Minimal, id, env);
+                recovered = static_cast<bool>(load_status);
+            } else if (ty == "string") {
+                load_status = compiler.load_variable_from_json(
+                    macrodr::dsl::type_name<std::string>(), *valj, value_path,
+                    macrodr::io::json::conv::TagPolicy::Minimal, id, env);
+                recovered = static_cast<bool>(load_status);
+            }
+            if (!recovered) {
+                skipped += 1;
+                continue;
+            }
         }
     }
 

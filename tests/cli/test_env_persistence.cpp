@@ -10,6 +10,8 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <variables.h>
+#include <matrix.h>
 
 namespace cli = macrodr::cli;
 
@@ -53,6 +55,28 @@ auto make_identifier(std::string name) {
 template <class T>
 auto* as_typed(const macrodr::dsl::base_typed_expression<macrodr::dsl::Lexer, macrodr::dsl::Compiler>* expr) {
     return dynamic_cast<const macrodr::dsl::typed_expression<macrodr::dsl::Lexer, macrodr::dsl::Compiler, T>*>(expr);
+}
+
+struct FooVar : public var::Var<FooVar, double> {
+    using var::Var<FooVar, double>::Var;
+    friend std::string className(FooVar) { return "FooVar"; }
+};
+
+struct BarVar : public var::Var<BarVar, Matrix<double>> {
+    using var::Var<BarVar, Matrix<double>>::Var;
+    friend std::string className(BarVar) { return "BarVar"; }
+};
+
+using SpaceVar = var::Vector_Space<FooVar, BarVar>;
+
+static Matrix<double> make_matrix(std::size_t rows, std::size_t cols) {
+    Matrix<double> m(rows, cols, false);
+    for (std::size_t i = 0; i < rows; ++i) {
+        for (std::size_t j = 0; j < cols; ++j) {
+            m(i, j) = static_cast<double>(i * cols + j + 1);
+        }
+    }
+    return m;
 }
 
 }  // namespace
@@ -135,6 +159,82 @@ TEST_CASE("load reports skipped unsupported types") {
     CHECK(loaded.value().find("skipped 1 unsupported variable") != std::string::npos);
     auto maybe = env.get(make_identifier("u"));
     CHECK_FALSE(maybe);
+}
+
+TEST_CASE("environment IO preserves matrix and vector space literals") {
+    TempDirGuard guard;
+
+    macrodr::dsl::Compiler compiler;
+    compiler.ensure_type_registered<Matrix<double>>();
+    compiler.ensure_type_registered<FooVar>();
+    compiler.ensure_type_registered<BarVar>();
+    compiler.ensure_type_registered<SpaceVar>();
+
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> env(compiler);
+
+    Matrix<double> mat = make_matrix(2, 2);
+    env.insert(make_identifier("matrix"),
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, Matrix<double>>(mat));
+
+    SpaceVar space;
+    static_cast<FooVar&>(space)() = 3.5;
+    static_cast<BarVar&>(space)() = mat;
+    env.insert(make_identifier("space"),
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, SpaceVar>(space));
+
+    const auto json_path = std::filesystem::current_path() / "complex_env.json";
+    auto saved = macrodr::io::json::envio::save_environment_json(json_path, env, compiler);
+    REQUIRE(saved);
+
+    std::ifstream json_stream(json_path);
+    REQUIRE(json_stream.is_open());
+    std::string json_contents((std::istreambuf_iterator<char>(json_stream)), std::istreambuf_iterator<char>());
+    auto parsed = macrodr::io::json::parse(json_contents);
+    REQUIRE(parsed);
+    const auto& root = parsed.value();
+    const auto* vars = root.find("variables");
+    REQUIRE(vars != nullptr);
+    REQUIRE(vars->type == macrodr::io::json::Json::Type::Object);
+    auto matrix_it = vars->obj.find("matrix");
+    REQUIRE(matrix_it != vars->obj.end());
+    CHECK(matrix_it->second.obj.find("value") != matrix_it->second.obj.end());
+    CHECK(matrix_it->second.obj.at("value").type == macrodr::io::json::Json::Type::Array);
+    auto space_it = vars->obj.find("space");
+    REQUIRE(space_it != vars->obj.end());
+    CHECK(space_it->second.obj.find("value") != space_it->second.obj.end());
+    CHECK(space_it->second.obj.at("value").type == macrodr::io::json::Json::Type::Object);
+
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> loaded_env(compiler);
+    auto loaded = macrodr::io::json::envio::load_environment_json(json_path, loaded_env);
+    REQUIRE(loaded);
+
+    auto loaded_matrix_expr = loaded_env.get(make_identifier("matrix"));
+    REQUIRE(loaded_matrix_expr);
+    auto matrix_typed = as_typed<Matrix<double>>(loaded_matrix_expr.value());
+    REQUIRE(matrix_typed != nullptr);
+    auto matrix_value = matrix_typed->run(loaded_env);
+    REQUIRE(matrix_value);
+    const auto& matrix_decoded = matrix_value.value();
+    CHECK(matrix_decoded.nrows() == mat.nrows());
+    CHECK(matrix_decoded.ncols() == mat.ncols());
+    for (std::size_t i = 0; i < mat.nrows(); ++i)
+        for (std::size_t j = 0; j < mat.ncols(); ++j)
+            CHECK(matrix_decoded(i, j) == Catch::Approx(mat(i, j)));
+
+    auto loaded_space_expr = loaded_env.get(make_identifier("space"));
+    REQUIRE(loaded_space_expr);
+    auto space_typed = as_typed<SpaceVar>(loaded_space_expr.value());
+    REQUIRE(space_typed != nullptr);
+    auto space_value = space_typed->run(loaded_env);
+    REQUIRE(space_value);
+    const auto& decoded_space = space_value.value();
+    CHECK(static_cast<const FooVar&>(decoded_space)() == Catch::Approx(static_cast<FooVar&>(space)()));
+    const auto& loaded_bar_mat = static_cast<const BarVar&>(decoded_space)();
+    REQUIRE(loaded_bar_mat.nrows() == mat.nrows());
+    REQUIRE(loaded_bar_mat.ncols() == mat.ncols());
+    for (std::size_t i = 0; i < mat.nrows(); ++i)
+        for (std::size_t j = 0; j < mat.ncols(); ++j)
+            CHECK(loaded_bar_mat(i, j) == Catch::Approx(mat(i, j)));
 }
 
 TEST_CASE("CLI env-save end writes environment.json") {

@@ -14,6 +14,7 @@
 //#include "grammar_typed.h"
 //#include "grammar_typed.h"
 #include "maybe_error.h"
+#include <macrodr/io/json/convert.h>
 namespace macrodr::dsl {
 
 template <class Lexer, class Compiler>
@@ -30,6 +31,12 @@ class typed_identifier;
 
 template <class Lexer, class Compiler, class T>
 class typed_literal;
+
+template <class Lexer, class Compiler, class T>
+Maybe_error<void> load_literal_from_json_helper(
+    const macrodr::io::json::Json& value, const std::string& path,
+    macrodr::io::json::conv::TagPolicy policy, const Identifier<Lexer>& id,
+    Environment<Lexer, Compiler>& env);
 
 template <class Lexer, class Compiler>
 class untyped_argument_list;
@@ -120,6 +127,8 @@ class base_function_compiler {
     [[nodiscard]] virtual Maybe_unique<base_typed_expression<Lexer, Compiler>>
         compile_function_evaluation(Environment<Lexer, Compiler> const& cm,
                                     const untyped_argument_list<Lexer, Compiler>& args) const = 0;
+
+    virtual void register_types(Compiler& registry) const = 0;
 };
 
 template <class Lexer, class Compiler>
@@ -426,6 +435,14 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     [[nodiscard]] base_function_compiler<Lexer, Compiler>* clone() const override {
         return new function_compiler(*this);
     }
+
+    void register_types(Compiler& registry) const override {
+        using Return = underlying_value_type_t<std::invoke_result_t<F, Args...>>;
+        (registry.template ensure_type_registered<Args>(), ...);
+        if constexpr (!std::is_void_v<Return>) {
+            registry.template ensure_type_registered<Return>();
+        }
+    }
 };
 
 template <class Lexer, class Compiler, class F, class T>
@@ -453,18 +470,36 @@ class predicate_compiler : public base_function_compiler<Lexer, Compiler> {
     base_function_compiler<Lexer, Compiler>* clone() const override {
         return new function_compiler(*this);
     }
+
+    void register_types(Compiler& registry) const override {
+        registry.template ensure_type_registered<T>();
+    }
 };
 
 class Compiler {
+    using Json = macrodr::io::json::Json;
+    using TagPolicy = macrodr::io::json::conv::TagPolicy;
+
+    struct TypeEntry {
+        using LoadFn = Maybe_error<void> (*)(const Json&, const std::string&, TagPolicy,
+                                             const Identifier<Lexer>&,
+                                             Environment<Lexer, Compiler>&);
+        LoadFn load = nullptr;
+    };
+
     std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>> m_func;
+    std::map<std::string, TypeEntry> m_type_registry;
 
    public:
-    Compiler() = default;
+    Compiler() { register_builtin_types(); }
     Compiler(std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>>&&
                  func)
-        : m_func{std::move(func)} {}
+        : m_func{std::move(func)} {
+        register_builtin_types();
+    }
 
-    Compiler(const Compiler& cm) : m_func{clone_map(cm.m_func)} {}
+    Compiler(const Compiler& cm)
+        : m_func{clone_map(cm.m_func)}, m_type_registry{cm.m_type_registry} {}
 
     [[nodiscard]] Maybe_error<base_function_compiler<Lexer, Compiler> const*> get_function(
         const Identifier<Lexer>& id) const {
@@ -479,12 +514,17 @@ class Compiler {
             return ptr;
     }
 
+    bool has_registered_type(const std::string& type_name) const {
+        return m_type_registry.find(type_name) != m_type_registry.end();
+    }
+
     Maybe_error<bool> push_function(std::string id_candidate,
                                     base_function_compiler<Lexer, Compiler>* fun) {
         auto may_id = to_Identifier<Lexer>(std::move(id_candidate));
         if (!may_id) {
             return may_id.error();
         }
+        fun->register_types(*this);
         m_func.emplace(may_id.value(), fun);
         return true;
     }
@@ -494,6 +534,7 @@ class Compiler {
         if (!may_id) {
             return may_id.error();
         }
+        fun->register_types(*this);
         m_func.emplace(may_id.value(), std::move(fun));
         return true;
     }
@@ -501,14 +542,30 @@ class Compiler {
         // Merge functions
         for (const auto& [name, func] : other.m_func) {
             m_func[name] = std::unique_ptr<base_function_compiler<Lexer, Compiler>>(func->clone());
+            if (auto it = m_func.find(name); it != m_func.end()) {
+                it->second->register_types(*this);
+            }
+        }
+        for (const auto& [key, entry] : other.m_type_registry) {
+            if (m_type_registry.find(key) == m_type_registry.end()) {
+                m_type_registry.emplace(key, entry);
+            }
         }
     }
     void merge(Compiler&& other) {
         // Move functions
         for (auto& [name, func] : std::move(other).m_func) {
             m_func[name] = std::move(func);  // Mueve el unique_ptr
+            if (auto it = m_func.find(name); it != m_func.end() && it->second) {
+                it->second->register_types(*this);
+            }
         }
         //other.m_func.clear();  // Opcional: limpia el mapa fuente
+        for (auto& [key, entry] : other.m_type_registry) {
+            if (m_type_registry.find(key) == m_type_registry.end()) {
+                m_type_registry.emplace(key, entry);
+            }
+        }
     }
 
     // Introspection helper for environment persistence
@@ -517,6 +574,69 @@ class Compiler {
         out.reserve(m_func.size());
         for (const auto& kv : m_func) out.push_back(kv.first);
         return out;
+    }
+
+  private:
+    template <class Value>
+    static TypeEntry make_entry() {
+        return TypeEntry{
+            &load_literal_from_json_helper<Lexer, Compiler, std::remove_cvref_t<Value>>};
+    }
+
+    void register_type_alias(const std::string& alias, const TypeEntry& entry) {
+        if (!alias.empty() && m_type_registry.find(alias) == m_type_registry.end()) {
+            m_type_registry.emplace(alias, entry);
+        }
+    }
+
+    void register_builtin_types() {
+        ensure_type_registered<double>();
+        ensure_type_registered<int64_t>();
+        ensure_type_registered<unsigned long>();
+        ensure_type_registered<bool>();
+        ensure_type_registered<std::string>();
+        ensure_type_registered<Matrix<double>>();
+        ensure_type_registered<DiagonalMatrix<double>>();
+
+        const auto string_key = type_name<std::string>();
+        auto string_it = m_type_registry.find(string_key);
+        if (string_it != m_type_registry.end()) {
+            register_type_alias("string", string_it->second);
+        }
+
+        const auto int_key = type_name<int64_t>();
+        auto int_it = m_type_registry.find(int_key);
+        if (int_it != m_type_registry.end()) {
+            register_type_alias("int", int_it->second);
+            register_type_alias("int64", int_it->second);
+        }
+    }
+
+  public:
+    template <class T>
+    void ensure_type_registered() {
+        using Value = std::remove_cvref_t<T>;
+        if constexpr (std::is_void_v<Value>) {
+            return;
+        } else if constexpr (!macrodr::io::json::conv::has_json_codec_v<Value>) {
+            return;
+        } else {
+            const std::string key = type_name<Value>();
+            if (m_type_registry.find(key) == m_type_registry.end()) {
+                m_type_registry.emplace(key, make_entry<Value>());
+            }
+        }
+    }
+
+    Maybe_error<void> load_variable_from_json(const std::string& type_name, const Json& value,
+                                              const std::string& path, TagPolicy policy,
+                                              const Identifier<Lexer>& id,
+                                              Environment<Lexer, Compiler>& env) const {
+        auto it = m_type_registry.find(type_name);
+        if (it == m_type_registry.end() || it->second.load == nullptr) {
+            return error_message(path + ": unknown type '" + type_name + "'");
+        }
+        return it->second.load(value, path, policy, id, env);
     }
 };
 

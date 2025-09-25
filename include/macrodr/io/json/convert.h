@@ -23,6 +23,19 @@ namespace macrodr::io::json::conv {
 
 enum class TagPolicy { None, Minimal, Full };
 
+template <class T, class = void>
+struct has_json_codec : std::false_type {};
+
+template <class T>
+struct has_json_codec<
+    T, std::void_t<decltype(to_json(std::declval<const T&>(), TagPolicy::None)),
+                   decltype(from_json(std::declval<const Json&>(), std::declval<T&>(),
+                                      std::declval<const std::string&>(), TagPolicy::None))>>
+    : std::true_type {};
+
+template <class T>
+inline constexpr bool has_json_codec_v = has_json_codec<T>::value;
+
 namespace detail {
 
 inline std::string json_type_name(Json::Type t) {
