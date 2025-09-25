@@ -242,11 +242,22 @@ Json to_json(Int value, TagPolicy)
 
 inline Maybe_error<void> from_json(const Json& j, bool& out, const std::string& path,
                                    TagPolicy) {
-    if (j.type != Json::Type::Bool) {
-        return detail::type_error(path, "bool", j.type);
+    if (j.type == Json::Type::Bool) {
+        out = j.b;
+        return {};
     }
-    out = j.b;
-    return {};
+    if (j.type == Json::Type::Number) {
+        double rounded = std::round(j.num);
+        if (std::abs(rounded - j.num) > std::numeric_limits<double>::epsilon()) {
+            return error_message(path + ": expected boolean (0/1), got " + std::to_string(j.num));
+        }
+        if (rounded != 0.0 && rounded != 1.0) {
+            return error_message(path + ": expected boolean (0/1), got " + std::to_string(j.num));
+        }
+        out = (rounded != 0.0);
+        return {};
+    }
+    return detail::type_error(path, "bool", j.type);
 }
 
 inline Maybe_error<void> from_json(const Json& j, double& out, const std::string& path,
