@@ -176,6 +176,8 @@ class Constant<Id, T> {
     static constexpr bool is_variable = true;
     static constexpr bool is_constant = true;
 
+    using variable_type = Constant<Id, T>;
+
     //operator Id()const {return Id(*this);}
 
     constexpr Constant(T&& t_x) : m_x{std::move(t_x)} {}

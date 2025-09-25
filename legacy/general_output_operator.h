@@ -7,12 +7,29 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
 #include "general_algorithm_on_containers.h"
 #include "maybe_error.h"
 // #include <concepts>
+
+namespace detail {
+
+template <class T, class = void>
+struct is_stream_insertable : std::false_type {};
+
+template <class T>
+struct is_stream_insertable<
+    T, std::void_t<decltype(std::declval<std::ostream&>() << std::declval<const T&>())>>
+    : std::true_type {};
+
+template <class T>
+inline constexpr bool is_stream_insertable_v = is_stream_insertable<T>::value;
+
+}  // namespace detail
 
 template <class T>
     requires(std::is_arithmetic_v<T>)
@@ -274,10 +291,17 @@ std::istream& operator>>(std::istream& is, std::variant<Ts...>& x) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Maybe_error<T>& x) {
-    if (x)
-        os << x.value();
-    else
+    if (x) {
+        if constexpr (std::is_void_v<T>) {
+            os << "<void>";
+        } else if constexpr (detail::is_stream_insertable_v<T>) {
+            os << x.value();
+        } else {
+            os << "<value>";
+        }
+    } else {
         os << x.error()();
+    }
     return os;
 }
 
