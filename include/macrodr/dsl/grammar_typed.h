@@ -15,6 +15,8 @@
 #include "maybe_error.h"
 #include "type_name.h"
 #include <macrodr/io/json/convert.h>
+// Schemas
+#include "parameters.h"
 
 namespace macrodr::dsl {
 template <class Lexer, class Compiler, class T>
@@ -37,14 +39,38 @@ class Environment {
     std::map<Identifier<Lexer>, std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>> m_id;
     std::map<Identifier<Lexer>, std::unique_ptr<base_typed_expression<Lexer, Compiler>>> m_var;
     Compiler const* cm_;
+    // Identity map for parameter schemas (by id)
+    std::map<std::string, std::shared_ptr<var::Parameters_Transformations>> m_param_schemas;
 
    public:
     Environment(Compiler const& cm) : cm_{&cm} {}
 
     Environment(const Environment& cm)
-        : m_id{clone_map(cm.m_id)}, m_var{clone_map(cm.m_var)}, cm_{cm.cm_} {}
+        : m_id{clone_map(cm.m_id)}, m_var{clone_map(cm.m_var)}, cm_{cm.cm_},
+          m_param_schemas{cm.m_param_schemas} {}
 
     [[nodiscard]] Compiler const& compiler() const { return *cm_; }
+
+    // Schema registry API
+    void register_parameter_schema(const std::string& id,
+                                   std::shared_ptr<var::Parameters_Transformations> schema) {
+        if (!id.empty() && schema) m_param_schemas[id] = std::move(schema);
+    }
+    bool has_parameter_schema(const std::string& id) const {
+        return m_param_schemas.find(id) != m_param_schemas.end();
+    }
+    std::shared_ptr<const var::Parameters_Transformations> get_parameter_schema(
+        const std::string& id) const {
+        auto it = m_param_schemas.find(id);
+        if (it == m_param_schemas.end()) return {};
+        return it->second;
+    }
+    std::vector<std::string> list_parameter_schema_ids() const {
+        std::vector<std::string> ids;
+        ids.reserve(m_param_schemas.size());
+        for (auto& kv : m_param_schemas) ids.push_back(kv.first);
+        return ids;
+    }
 
     [[nodiscard]] Maybe_error<base_function_compiler<Lexer, Compiler> const*> get_function(
         const Identifier<Lexer>& id) const {
@@ -741,6 +767,36 @@ Maybe_error<void> load_literal_from_json_helper(
     auto literal = std::make_unique<typed_literal<Lexer, Compiler, Value>>(std::move(decoded));
     env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(literal->clone()));
     env.push_back(id, new Identifier_compiler<Lexer, Compiler, Value>(literal.release()));
+    return {};
+}
+
+// Overload for Parameters_values: resolve schema_id in Environment
+template <class Lexer, class Compiler, class T,
+          std::enable_if_t<std::is_same_v<std::remove_cvref_t<T>, var::Parameters_values>, int> = 0>
+inline Maybe_error<void> load_literal_from_json_helper(
+    const macrodr::io::json::Json& value, const std::string& path,
+    macrodr::io::json::conv::TagPolicy /*policy*/, const Identifier<Lexer>& id,
+    Environment<Lexer, Compiler>& env) {
+    using Json = macrodr::io::json::Json;
+    if (value.type != Json::Type::Object) {
+        return error_message(path + ": expected object for Parameters_values");
+    }
+    const Json* sid = value.find("schema_id");
+    const Json* vals = value.find("values");
+    if (!sid || sid->type != Json::Type::String || !vals) {
+        return error_message(path + ": missing 'schema_id' or 'values'");
+    }
+    std::string schema_id = sid->str;
+    auto schema = env.get_parameter_schema(schema_id);
+    if (!schema) return error_message(path + ": unknown schema id '" + schema_id + "'");
+    Matrix<double> mv;
+    auto st = macrodr::io::json::conv::from_json(*vals, mv, path + ".values",
+                                                 macrodr::io::json::conv::TagPolicy::None);
+    if (!st) return st;
+    var::Parameters_values pv(*schema, mv);
+    auto literal = std::make_unique<typed_literal<Lexer, Compiler, var::Parameters_values>>(pv);
+    env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(literal->clone()));
+    env.push_back(id, new Identifier_compiler<Lexer, Compiler, var::Parameters_values>(literal.release()));
     return {};
 }
 

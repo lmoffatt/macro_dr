@@ -18,10 +18,27 @@ using PatchModel = macrodr::Transfer_Op_to<var::Parameters_values, macrodr::Patc
 using QxEig = macrodr::Transfer_Op_to<PatchModel, macrodr::Qx_eig>;
 using PMean = macrodr::Transfer_Op_to<PatchModel, macrodr::P_mean>;
 
+
 // Build a Patch_Model by applying parameter values to a loaded model.
 // `parameters_file_and_sep` is the pair returned by load_Parameter(filename, sep)
+Maybe_error<PatchModel> patch_model(
+    const ModelPtr& model,
+    const std::pair<std::string, std::string>& parameters_file_and_sep);
+
+// Overload: build a Patch_Model directly from in-memory parameter values
+Maybe_error<PatchModel> patch_model(const ModelPtr& model, const var::Parameters_values& values);
+
+// Overload: build directly from transformations (safe across steps)
 Maybe_error<PatchModel> patch_model(const ModelPtr& model,
-                                   const std::pair<std::string, std::string>& parameters_file_and_sep);
+                                    const var::Parameters_Transformations& tr);
+
+// Build a Patch_State from a Patch_Model and an initial ATP concentration
+Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initial_atp);
+
+// Convenience: directly from model + parameter values
+Maybe_error<macrodr::Patch_State> path_state(const ModelPtr& model,
+                                             const var::Parameters_values& values,
+                                             double initial_atp);
 
 // Expose a couple of low-level qmodel helpers
 Maybe_error<QxEig> calc_eigen(const PatchModel& pm, double atp_concentration);
@@ -29,4 +46,3 @@ Maybe_error<QxEig> calc_eigen(const PatchModel& pm, double atp_concentration);
 PMean calc_peq(const QxEig& qx_eig, const PatchModel& pm);
 
 }  // namespace macrodr::cmd
-
