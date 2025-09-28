@@ -18,6 +18,10 @@
 #include "matrix.h"
 #include "macrodr/dsl/type_name.h"
 #include "variables.h"
+// IModel interface for model pointer serialization
+#include <macrodr/interface/IModel.h>
+// Bring legacy parameter types for optional JSON views
+#include "parameters.h"
 
 namespace macrodr::io::json::conv {
 
@@ -222,6 +226,35 @@ template <class... Ts>
 Maybe_error<void> from_json(const Json& j, std::tuple<Ts...>& out, const std::string& path,
                             TagPolicy policy = TagPolicy::None);
 
+// Unique pointer – serialize pointee if possible, else type-tag/null (no from_json)
+template <class T>
+Json to_json(const std::unique_ptr<T>& p, TagPolicy policy = TagPolicy::None);
+
+// Parameters_values – reversible shape references schema by id
+Json to_json(const var::Parameters_values& pv, TagPolicy policy = TagPolicy::None);
+Maybe_error<void> from_json(const Json& j, var::Parameters_values& out, const std::string& path,
+                            TagPolicy policy = TagPolicy::None);
+
+// Transformations and schema (reversible)
+Json to_json(const var::transformations_vector& tr, TagPolicy policy = TagPolicy::None);
+Maybe_error<void> from_json(const Json& j, var::transformations_vector& out, const std::string& path,
+                            TagPolicy policy = TagPolicy::None);
+
+Json to_json(const var::Parameters_Transformations& pt, TagPolicy policy = TagPolicy::None);
+Maybe_error<void> from_json(const Json& j, var::Parameters_Transformations& out,
+                            const std::string& path, TagPolicy policy = TagPolicy::None);
+
+// Legacy matrix specializations frequently found inside Vars
+Json to_json(const SymPosDefMatrix<double>& m, TagPolicy policy = TagPolicy::None);
+Json to_json(const SymmetricMatrix<double>& m, TagPolicy policy = TagPolicy::None);
+Json to_json(const DiagPosDetMatrix<double>& m, TagPolicy policy = TagPolicy::None);
+Maybe_error<void> from_json(const Json& j, SymPosDefMatrix<double>& out, const std::string& path,
+                            TagPolicy policy = TagPolicy::None);
+Maybe_error<void> from_json(const Json& j, SymmetricMatrix<double>& out, const std::string& path,
+                            TagPolicy policy = TagPolicy::None);
+Maybe_error<void> from_json(const Json& j, DiagPosDetMatrix<double>& out, const std::string& path,
+                            TagPolicy policy = TagPolicy::None);
+
 // var::Var and Vector_Space
 template <class VarType>
 Json to_json(const VarType& value, TagPolicy policy = TagPolicy::None)
@@ -342,7 +375,6 @@ Maybe_error<void> from_json(const Json& j, UInt& out, const std::string& path, T
 template <class T>
 Json to_json(const std::vector<T>& values, TagPolicy policy) {
     Json arr = Json::array();
-    arr.arr.reserve(values.size());
     for (const auto& v : values) {
         arr.arr.push_back(to_json(v, policy));
     }
@@ -356,7 +388,6 @@ Maybe_error<void> from_json(const Json& j, std::vector<T>& out, const std::strin
         return detail::type_error(path, "array", j.type);
     }
     out.clear();
-    out.reserve(j.arr.size());
     for (std::size_t i = 0; i < j.arr.size(); ++i) {
         T element{};
         auto status = from_json(j.arr[i], element, path + "[" + std::to_string(i) + "]", policy);
@@ -471,10 +502,8 @@ Maybe_error<void> from_json(const Json& j, std::map<K, V>& out, const std::strin
 
 inline Json to_json(const Matrix<double>& m, TagPolicy) {
     Json rows = Json::array();
-    rows.arr.reserve(m.nrows());
     for (std::size_t i = 0; i < m.nrows(); ++i) {
         Json row = Json::array();
-        row.arr.reserve(m.ncols());
         for (std::size_t jcol = 0; jcol < m.ncols(); ++jcol) {
             row.arr.push_back(Json::number(m(i, jcol)));
         }
@@ -525,7 +554,6 @@ inline Json to_json(const DiagonalMatrix<double>& m, TagPolicy) {
     obj.obj.emplace("rows", Json::number(static_cast<double>(m.nrows())));
     obj.obj.emplace("cols", Json::number(static_cast<double>(m.ncols())));
     Json diag = Json::array();
-    diag.arr.reserve(m.size());
     for (std::size_t i = 0; i < m.size(); ++i) {
         diag.arr.push_back(Json::number(m[i]));
     }
@@ -596,6 +624,63 @@ inline Maybe_error<void> from_json(const Json& j, DiagonalMatrix<double>& out, c
     return {};
 }
 
+// -----------------------------------------------------------------------------
+// Legacy matrix flavors → serialize densely like Matrix<double>, or diag-only
+// -----------------------------------------------------------------------------
+inline Json to_json(const SymPosDefMatrix<double>& m, TagPolicy policy) {
+    (void)policy;
+    Json rows = Json::array();
+    // Avoid reserve on potentially bad sizes; push back progressively
+    for (std::size_t i = 0; i < m.nrows(); ++i) {
+        Json row = Json::array();
+        for (std::size_t j = 0; j < m.ncols(); ++j) {
+            row.arr.push_back(Json::number(m(i, j)));
+        }
+        rows.arr.push_back(std::move(row));
+    }
+    return rows;
+}
+
+inline Json to_json(const SymmetricMatrix<double>& m, TagPolicy policy) {
+    (void)policy;
+    Json rows = Json::array();
+    for (std::size_t i = 0; i < m.nrows(); ++i) {
+        Json row = Json::array();
+        for (std::size_t j = 0; j < m.ncols(); ++j) {
+            row.arr.push_back(Json::number(m(i, j)));
+        }
+        rows.arr.push_back(std::move(row));
+    }
+    return rows;
+}
+
+inline Json to_json(const DiagPosDetMatrix<double>& m, TagPolicy policy) {
+    (void)policy;
+    Json obj = Json::object();
+    obj.obj.emplace("rows", Json::number(static_cast<double>(m.nrows())));
+    obj.obj.emplace("cols", Json::number(static_cast<double>(m.ncols())));
+    Json diag = Json::array();
+    for (std::size_t i = 0; i < m.size(); ++i) diag.arr.push_back(Json::number(m[i]));
+    obj.obj.emplace("diag", std::move(diag));
+    return obj;
+}
+
+inline Maybe_error<void> from_json(const Json& j, SymPosDefMatrix<double>& out, const std::string& path,
+                                   TagPolicy policy) {
+    (void)j; (void)out; (void)policy;
+    return error_message(path + ": deserialization for SymPosDefMatrix<double> not supported");
+}
+inline Maybe_error<void> from_json(const Json& j, SymmetricMatrix<double>& out, const std::string& path,
+                                   TagPolicy policy) {
+    (void)j; (void)out; (void)policy;
+    return error_message(path + ": deserialization for SymmetricMatrix<double> not supported");
+}
+inline Maybe_error<void> from_json(const Json& j, DiagPosDetMatrix<double>& out, const std::string& path,
+                                   TagPolicy policy) {
+    (void)j; (void)out; (void)policy;
+    return error_message(path + ": deserialization for DiagPosDetMatrix<double> not supported");
+}
+
 template <class A, class B>
 Json to_json(const std::pair<A, B>& value, TagPolicy policy) {
     Json arr = Json::array();
@@ -640,6 +725,147 @@ Maybe_error<void> from_json(const Json& j, std::tuple<Ts...>& out, const std::st
                              std::to_string(sizeof...(Ts)));
     }
     return detail::tuple_from_json(j, out, path, policy, std::index_sequence_for<Ts...>{});
+}
+
+// -----------------------------------------------------------------------------
+// Unique ptr codec (pointee-first if available)
+// -----------------------------------------------------------------------------
+template <class T>
+Json to_json(const std::unique_ptr<T>& p, TagPolicy policy) {
+    if (!p) {
+        return Json::null();
+    }
+    if constexpr (has_json_codec_v<T>) {
+        return to_json(*p, policy);
+    } else {
+        Json obj = Json::object();
+        obj.obj.emplace("type", Json::string(macrodr::dsl::type_name<T>()));
+        obj.obj.emplace("value", Json::null());
+        return obj;
+    }
+}
+
+// Specialized model pointer serializer: save by id and binary
+inline Json to_json(
+    const std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>& m, TagPolicy) {
+    Json obj = Json::object();
+    obj.obj.emplace("model_id", Json::string(m ? m->model_name() : std::string{}));
+    obj.obj.emplace("binary", Json::string(GIT_COMMIT_HASH));
+    return obj;
+}
+
+inline Maybe_error<void> from_json(
+    const Json& j,
+    std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>& out,
+    const std::string& path,
+    TagPolicy) {
+    (void)j;
+    (void)out;
+    return error_message(path + ": deserialization for model pointer requires compiler registry");
+}
+
+// no generic from_json for unique_ptr<T>: loader is unsupported; saver uses to_json only
+
+// -----------------------------------------------------------------------------
+// Parameters_values codec (serialize names + values)
+// -----------------------------------------------------------------------------
+inline Json to_json(const var::Parameters_values& pv, TagPolicy policy) {
+    (void)policy;
+    Json obj = Json::object();
+    // Refer to schema by id; values by matrix
+    // We compute id in terms of the underlying schema; must match schema codec
+    obj.obj.emplace("schema_id", Json::string("")); // placeholder; writers of schemas should fill top-level
+    // Since we cannot thread Environment here, store only values; environment_io will gather schemas
+    obj.obj.emplace("values", to_json(pv(), TagPolicy::None));
+    return obj;
+}
+
+inline Maybe_error<void> from_json(const Json& j, var::Parameters_values& out,
+                                   const std::string& path, TagPolicy policy) {
+    (void)j;
+    (void)out;
+    (void)policy;
+    return error_message(path + ": deserialization for var::Parameters_values requires model context");
+}
+
+// Transformations vector: array of tags
+inline Json to_json(const var::transformations_vector& tr, TagPolicy) {
+    Json arr = Json::array();
+    for (std::size_t i = 0; i < tr.size(); ++i) arr.arr.push_back(Json::string(tr[i]->to_string()));
+    return arr;
+}
+
+inline Maybe_error<void> from_json(const Json& j, var::transformations_vector& out,
+                                   const std::string& path, TagPolicy) {
+    if (j.type != Json::Type::Array) return detail::type_error(path, "array", j.type);
+    std::vector<std::unique_ptr<var::base_transformation>> vec;
+    vec.reserve(j.arr.size());
+    for (std::size_t i = 0; i < j.arr.size(); ++i) {
+        const auto& e = j.arr[i];
+        if (e.type != Json::Type::String)
+            return detail::type_error(path + "[" + std::to_string(i) + "]", "string", e.type);
+        auto mt = var::MyTranformations::from_string(e.str);
+        if (!mt) return error_message(path + "[" + std::to_string(i) + "]: " + mt.error()());
+        vec.emplace_back(std::move(mt.value()));
+    }
+    out = var::transformations_vector(std::move(vec));
+    return {};
+}
+
+// Schema id helper
+inline std::string schema_id_of(const var::Parameters_Transformations& pt) {
+    uint64_t h = 1469598103934665603ull; // FNV offset basis
+    auto mix = [&](const void* p, std::size_t n) {
+        const unsigned char* d = static_cast<const unsigned char*>(p);
+        const uint64_t prime = 1099511628211ull;
+        for (std::size_t i = 0; i < n; ++i) {
+            h ^= static_cast<uint64_t>(d[i]);
+            h *= prime;
+        }
+    };
+    auto mix_str = [&](const std::string& s) { mix(s.data(), s.size()); };
+    mix_str(pt.IdName());
+    for (auto& n : pt.names()) mix_str(n);
+    for (std::size_t i = 0; i < pt.transf().size(); ++i) mix_str(pt.transf()[i]->to_string());
+    const auto& m = pt.standard_values();
+    for (std::size_t i = 0; i < m.size(); ++i) mix(&m[i], sizeof(double));
+    char buf[17];
+    std::snprintf(buf, sizeof(buf), "%016llx", static_cast<unsigned long long>(h));
+    return std::string(buf);
+}
+
+inline Json to_json(const var::Parameters_Transformations& pt, TagPolicy) {
+    Json obj = Json::object();
+    obj.obj.emplace("id", Json::string(schema_id_of(pt)));
+    obj.obj.emplace("model_name", Json::string(pt.IdName()));
+    obj.obj.emplace("names", to_json(pt.names(), TagPolicy::None));
+    obj.obj.emplace("transformations", to_json(pt.transf(), TagPolicy::None));
+    obj.obj.emplace("standard_values", to_json(pt.standard_values(), TagPolicy::None));
+    return obj;
+}
+
+inline Maybe_error<void> from_json(const Json& j, var::Parameters_Transformations& out,
+                                   const std::string& path, TagPolicy) {
+    if (j.type != Json::Type::Object) return detail::type_error(path, "object", j.type);
+    const Json* model = j.find("model_name");
+    const Json* names = j.find("names");
+    const Json* trs = j.find("transformations");
+    const Json* vals = j.find("standard_values");
+    if (!model || !names || !trs || !vals) return error_message(path + ": missing fields");
+    std::string model_name;
+    auto s1 = from_json(*model, model_name, path + ".model_name", TagPolicy::None);
+    if (!s1) return s1;
+    std::vector<std::string> nn;
+    auto s2 = from_json(*names, nn, path + ".names", TagPolicy::None);
+    if (!s2) return s2;
+    var::transformations_vector tv;
+    auto s3 = from_json(*trs, tv, path + ".transformations", TagPolicy::None);
+    if (!s3) return s3;
+    Matrix<double> mv;
+    auto s4 = from_json(*vals, mv, path + ".standard_values", TagPolicy::None);
+    if (!s4) return s4;
+    out = var::Parameters_Transformations(model_name, nn, std::move(tv), mv);
+    return {};
 }
 
 template <class VarType>

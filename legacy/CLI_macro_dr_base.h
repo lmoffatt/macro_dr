@@ -35,6 +35,11 @@ inline auto load_Parameter_value(const std::string filename, std::string separat
     return std::pair(filename, separator);
 }
 
+// Alias for readability in MacroIR scripts
+inline auto get_parameter_values(const std::string filename, std::string separator) {
+    return load_Parameter_value(filename, std::move(separator));
+}
+
 inline auto load_Prior_value(std::string filename, std::string separator = ",") {
     return std::pair(filename, separator);
 }
@@ -106,6 +111,8 @@ inline auto make_io_compiler() {
 
     cm.push_function("load_Parameter", dsl::to_typed_function<std::string, std::string>(
                                            &load_Parameter_value, "filename", "separator"));
+    cm.push_function("get_parameter_values", dsl::to_typed_function<std::string, std::string>(
+                                               &get_parameter_values, "filename", "separator"));
 
     cm.push_function("load_Prior", dsl::to_typed_function<std::string, std::string>(
                                        &load_Prior_value, "filename", "separator"));

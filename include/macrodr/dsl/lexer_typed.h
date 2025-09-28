@@ -408,14 +408,15 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
                                          const untyped_argument_list<Lexer, Compiler>& args) const {
         if constexpr (sizeof...(Is) == 0) {
             // Zero-argument function: no argument compilation; pass empty tuple
-            return new typed_function_evaluation<Lexer, Compiler, F, Args...>(m_f, std::tuple<>{});
+            return std::make_unique<typed_function_evaluation<Lexer, Compiler, F, Args...>>(m_f,
+                                                                                             std::tuple<>{});
         } else {
             auto Maybe_tuple = promote_Maybe_error(
                 std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
             if (!Maybe_tuple) {
                 return Maybe_tuple.error();
             }
-            return new typed_function_evaluation<Lexer, Compiler, F, Args...>(
+            return std::make_unique<typed_function_evaluation<Lexer, Compiler, F, Args...>>(
                 m_f, std::move(Maybe_tuple.value()));
         }
     }
@@ -462,7 +463,8 @@ class predicate_compiler : public base_function_compiler<Lexer, Compiler> {
         if (!x) {
             return x.error();
         }
-        return new typed_predicate_evaluation<Lexer, Compiler, F, T>(m_f, x.value().release());
+        return std::make_unique<typed_predicate_evaluation<Lexer, Compiler, F, T>>(m_f,
+                                                                                   std::move(x.value()));
     }
 
     // base_function_compiler interface
@@ -487,19 +489,36 @@ class Compiler {
         LoadFn load = nullptr;
     };
 
-    std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>> m_func;
+    // Support overloaded functions: multiple compilers per identifier
+    std::map<Identifier<Lexer>, std::vector<std::unique_ptr<base_function_compiler<Lexer, Compiler>>>> m_func;
     std::map<std::string, TypeEntry> m_type_registry;
 
    public:
     Compiler() { register_builtin_types(); }
+    // Compatibility ctor: accept a single-implementation map and wrap entries as one-overload vectors
     Compiler(std::map<Identifier<Lexer>, std::unique_ptr<base_function_compiler<Lexer, Compiler>>>&&
-                 func)
-        : m_func{std::move(func)} {
+                 func) {
+        for (auto& [name, fn] : func) {
+            auto& vec = m_func[name];
+            std::unique_ptr<base_function_compiler<Lexer, Compiler>> moved = std::move(fn);
+            if (moved) {
+                moved->register_types(*this);
+            }
+            vec.emplace_back(std::move(moved));
+        }
         register_builtin_types();
     }
 
-    Compiler(const Compiler& cm)
-        : m_func{clone_map(cm.m_func)}, m_type_registry{cm.m_type_registry} {}
+    Compiler(const Compiler& cm) : m_type_registry{cm.m_type_registry} {
+        // Deep-clone the overload vectors per identifier
+        for (const auto& [name, vec] : cm.m_func) {
+            auto& dst_vec = m_func[name];
+            dst_vec.reserve(vec.size());
+            for (const auto& fn : vec) {
+                dst_vec.emplace_back(fn ? fn->clone() : nullptr);
+            }
+        }
+    }
 
     [[nodiscard]] Maybe_error<base_function_compiler<Lexer, Compiler> const*> get_function(
         const Identifier<Lexer>& id) const {
@@ -507,11 +526,24 @@ class Compiler {
         if (it == m_func.end()) {
             return error_message(id() + " function is not defined");
         }
-        auto ptr = (*it).second.get();
-        if (ptr == nullptr)
+        if (it->second.empty() || it->second.front().get() == nullptr) {
             return error_message(id() + " function is null");
-        else
-            return ptr;
+        }
+        return it->second.front().get();
+    }
+
+    [[nodiscard]] Maybe_error<std::vector<base_function_compiler<Lexer, Compiler> const*>>
+    get_functions(const Identifier<Lexer>& id) const {
+        auto it = m_func.find(id);
+        if (it == m_func.end()) {
+            return error_message(id() + " function is not defined");
+        }
+        std::vector<base_function_compiler<Lexer, Compiler> const*> out;
+        out.reserve(it->second.size());
+        for (const auto& fn : it->second) {
+            out.push_back(fn.get());
+        }
+        return out;
     }
 
     bool has_registered_type(const std::string& type_name) const {
@@ -525,7 +557,7 @@ class Compiler {
             return may_id.error();
         }
         fun->register_types(*this);
-        m_func.emplace(may_id.value(), fun);
+        m_func[may_id.value()].emplace_back(fun);
         return true;
     }
     Maybe_error<bool> push_function(
@@ -535,15 +567,19 @@ class Compiler {
             return may_id.error();
         }
         fun->register_types(*this);
-        m_func.emplace(may_id.value(), std::move(fun));
+        m_func[may_id.value()].emplace_back(std::move(fun));
         return true;
     }
     void merge(const Compiler& other) {
-        // Merge functions
-        for (const auto& [name, func] : other.m_func) {
-            m_func[name] = std::unique_ptr<base_function_compiler<Lexer, Compiler>>(func->clone());
-            if (auto it = m_func.find(name); it != m_func.end()) {
-                it->second->register_types(*this);
+        // Merge functions: clone and append overloads
+        for (const auto& [name, vec] : other.m_func) {
+            auto& dst_vec = m_func[name];
+            for (const auto& fn : vec) {
+                if (fn) {
+                    auto cloned = std::unique_ptr<base_function_compiler<Lexer, Compiler>>(fn->clone());
+                    cloned->register_types(*this);
+                    dst_vec.emplace_back(std::move(cloned));
+                }
             }
         }
         for (const auto& [key, entry] : other.m_type_registry) {
@@ -553,14 +589,16 @@ class Compiler {
         }
     }
     void merge(Compiler&& other) {
-        // Move functions
-        for (auto& [name, func] : std::move(other).m_func) {
-            m_func[name] = std::move(func);  // Mueve el unique_ptr
-            if (auto it = m_func.find(name); it != m_func.end() && it->second) {
-                it->second->register_types(*this);
+        // Move functions: append overload vectors
+        for (auto& [name, vec] : other.m_func) {
+            auto& dst_vec = m_func[name];
+            for (auto& fn : vec) {
+                if (fn) {
+                    fn->register_types(*this);
+                }
+                dst_vec.emplace_back(std::move(fn));
             }
         }
-        //other.m_func.clear();  // Opcional: limpia el mapa fuente
         for (auto& [key, entry] : other.m_type_registry) {
             if (m_type_registry.find(key) == m_type_registry.end()) {
                 m_type_registry.emplace(key, entry);

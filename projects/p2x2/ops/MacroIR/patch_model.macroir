@@ -1,0 +1,10 @@
+model = load_model("scheme_10_inact")
+
+values = load_parameter_values(
+    model = model,
+    parameter_values = load_Parameter("data/models_Ag/scheme_10_inact_par.csv", ",")
+)
+
+pm = patch_model(model = model, parameter_values = values)
+
+ps0 = path_state(patch_model = pm, initial_atp = 0.0)

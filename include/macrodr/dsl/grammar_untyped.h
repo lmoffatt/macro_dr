@@ -367,16 +367,27 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
 
     Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
         Environment<Lexer, Compiler>& cm) const override {
-        auto Maybe_fn = cm.get_function(fid()());
-        if (!Maybe_fn) {
-            return Maybe_fn.error();
-        }  //   auto maybe_args = args().com<pile_argument_list(cmc);
-        // if (!maybe_args)
-        //   return maybe_args.error();
-        // else
-        // {
-        return Maybe_fn.value()->compile_function_evaluation(cm, args());
-        // }
+        // Try all overloads for this function identifier in registration order
+        auto Maybe_fns = cm.compiler().get_functions(fid()());
+        if (!Maybe_fns) {
+            return Maybe_fns.error();
+        }
+        const auto& overloads = Maybe_fns.value();
+        std::string errors;
+        for (auto* fn : overloads) {
+            if (fn == nullptr) {
+                continue;
+            }
+            auto attempt = fn->compile_function_evaluation(cm, args());
+            if (attempt) {
+                return attempt;  // success on this overload
+            }
+            // Accumulate diagnostics (best-effort, do not explode)
+            errors += attempt.error()();
+            errors += "\n";
+        }
+        return error_message(std::string{"no matching overload for function '"} + fid().str() +
+                             "' with provided arguments:\n" + errors);
     }
 };
 template <class Lexer, class Compiler>
