@@ -15,17 +15,27 @@
 #include "parallel_tempering.h"
 #include "parameters.h"
 //#include "parameters_derivative.h"
+#include <macrodr/interface/IModel.h>
+
 #include "lapack_headers.h"
 #include "qmodel.h"
 #include "random_samplers.h"
 
 namespace macrodr::cmd {
 
-inline std::string run_simulation(std::string filename_prefix, recording_type recording_file,
-                                  experiment_type experiment, std::size_t myseed,
-                                  const std::string& modelName,
-                                  parameters_value_type parameter_files,
-                                  simulation_algo_type sim_algo_type) {
+Maybe_error<Simulated_Recording<includes_N_state_evolution<false>>> run_simulations(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const Experiment& e, const Simulation_Parameters& sim, const Recording& r, std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    mt_64i mt(myseed);
+    return Macro_DMR{}.sample(mt, model, par, e, sim, r);
+}
+
+Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,
+                                       experiment_type experiment, std::size_t myseed,
+                                       const std::string& modelName,
+                                       parameters_value_type parameter_files,
+                                       simulation_algo_type sim_algo_type) {
     auto [includeN, n_sub_dt] = sim_algo_type;
     auto Maybe_recording = load_Recording(std::move(recording_file), std::string(","));
     if (!Maybe_recording) {
@@ -44,7 +54,6 @@ inline std::string run_simulation(std::string filename_prefix, recording_type re
                 auto& model0 = *model0ptr;
                 myseed = calc_seed(myseed);
                 mt_64i mt(myseed);
-                using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
                 auto Maybe_parameter_values =
                     var::load_Parameters(parameter_files.first, parameter_files.second,
                                          model0.model_name(), model0.names());

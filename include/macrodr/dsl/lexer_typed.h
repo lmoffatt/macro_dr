@@ -1,6 +1,7 @@
 #ifndef LEXER_TYPED_H
 #define LEXER_TYPED_H
 //#include "grammar_typed.h"
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -14,8 +15,32 @@
 //#include "grammar_typed.h"
 //#include "grammar_typed.h"
 #include "maybe_error.h"
+#include <macrodr/interface/IModel.h>
 #include <macrodr/io/json/convert.h>
 namespace macrodr::dsl {
+namespace detail {
+
+template <class T>
+struct is_unique_ptr : std::false_type {};
+
+template <class T, class Deleter>
+struct is_unique_ptr<std::unique_ptr<T, Deleter>> : std::true_type {};
+
+template <class Arg, class Enable = void>
+struct function_argument_storage {
+    using type = std::remove_cvref_t<Arg>;
+};
+
+template <class... ParamValues>
+struct function_argument_storage<const macrodr::interface::IModel<ParamValues...>&> {
+    using type = std::unique_ptr<macrodr::interface::IModel<ParamValues...>>;
+};
+
+template <class Arg>
+using function_argument_storage_t = typename function_argument_storage<Arg>::type;
+
+}  // namespace detail
+
 
 template <class Lexer, class Compiler>
 class Environment;
@@ -397,8 +422,56 @@ template <class Lexer, class Compiler, class F, class... Args>
     requires(std::is_void_v<std::invoke_result_t<F, Args...>> ||
              std::is_object_v<std::invoke_result_t<F, Args...>>)
 class function_compiler : public base_function_compiler<Lexer, Compiler> {
-    std::tuple<field_compiler<Lexer, Compiler, Args>...> m_args;
+    template <class T>
+    using storage_t = detail::function_argument_storage_t<T>;
+
+    using argument_compilers_t =
+        std::tuple<field_compiler<Lexer, Compiler, storage_t<Args>>...>;
+
+    argument_compilers_t m_args;
     F m_f;
+
+    template <class Param, class Storage>
+    static decltype(auto) adapt_argument(Storage& storage) {
+        using Base = std::remove_reference_t<Param>;
+        using StorageType = std::remove_reference_t<Storage>;
+        if constexpr (std::is_lvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Param>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Param>(*storage);
+            } else {
+                if constexpr (std::is_const_v<Base>) {
+                    return static_cast<const Base&>(storage);
+                } else {
+                    return static_cast<Base&>(storage);
+                }
+            }
+        } else if constexpr (std::is_rvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Base&&>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Base&&>(*storage);
+            } else {
+                return static_cast<Base&&>(storage);
+            }
+        } else {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return std::move(storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return storage;
+            } else {
+                return static_cast<Param>(std::move(storage));
+            }
+        }
+    }
+
+    [[nodiscard]] auto make_invoker() const {
+        return [fn = m_f](storage_t<Args>... values)
+                   -> std::invoke_result_t<F, Args...> {
+            return std::invoke(fn, adapt_argument<Args>(values)...);
+        };
+    }
 
     template <std::size_t... Is>
     [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] Maybe_unique<
@@ -406,23 +479,27 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
         compile_function_evaluation_impl(std::index_sequence<Is...> /*unused*/,
                                          Environment<Lexer, Compiler> const& cm,
                                          const untyped_argument_list<Lexer, Compiler>& args) const {
+        auto invoker = make_invoker();
+        using WrappedF = decltype(invoker);
         if constexpr (sizeof...(Is) == 0) {
             // Zero-argument function: no argument compilation; pass empty tuple
-            return std::make_unique<typed_function_evaluation<Lexer, Compiler, F, Args...>>(m_f,
-                                                                                             std::tuple<>{});
+            return std::make_unique<typed_function_evaluation<Lexer, Compiler, WrappedF>>(
+                std::move(invoker), std::tuple<>{});
         } else {
             auto Maybe_tuple = promote_Maybe_error(
                 std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
             if (!Maybe_tuple) {
                 return Maybe_tuple.error();
             }
-            return std::make_unique<typed_function_evaluation<Lexer, Compiler, F, Args...>>(
-                m_f, std::move(Maybe_tuple.value()));
+            return std::make_unique<
+                typed_function_evaluation<Lexer, Compiler, WrappedF, storage_t<Args>...>>(
+                std::move(invoker), std::move(Maybe_tuple.value()));
         }
     }
 
    public:
-    function_compiler(F t_f, field_compiler<Lexer, Compiler, Args>&&... t_args)
+    function_compiler(F t_f,
+                      field_compiler<Lexer, Compiler, storage_t<Args>>&&... t_args)
         : m_args{std::move(t_args)...}, m_f{t_f} {}
 
     [[nodiscard]] Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_function_evaluation(
@@ -439,7 +516,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
 
     void register_types(Compiler& registry) const override {
         using Return = underlying_value_type_t<std::invoke_result_t<F, Args...>>;
-        (registry.template ensure_type_registered<Args>(), ...);
+        (registry.template ensure_type_registered<storage_t<Args>>(), ...);
         if constexpr (!std::is_void_v<Return>) {
             registry.template ensure_type_registered<Return>();
         }
