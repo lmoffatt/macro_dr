@@ -17,7 +17,7 @@ template <class... Args, class F, class... String>
               std::is_object_v<std::invoke_result_t<F, Args...>>))
 auto to_typed_function(F t_f, String&&... args) {
     return std::make_unique<function_compiler<Lexer, Compiler, F, Args...>>(
-        t_f, field_compiler<Lexer, Compiler, Args>(
+        t_f, field_compiler<Lexer, Compiler, detail::function_argument_storage_t<Args>>(
                  to_Identifier<Lexer>(std::forward<String>(args)).value())...);
 }
 

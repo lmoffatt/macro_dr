@@ -12,15 +12,22 @@
 #include "parallel_tempering.h"
 #include "parameters.h"
 //#include "parameters_derivative.h"
+#include <macrodr/interface/IModel.h>
+
 #include "qmodel.h"
 
 namespace macrodr::cmd {
 
-std::string run_simulation(std::string filename_prefix, recording_type recording_file,
-                           experiment_type experiment, std::size_t myseed, const std::string& modelName,
-                           parameters_value_type parameter_files,
-                           simulation_algo_type sim_algo_type);
-}
+Maybe_error<Simulated_Recording<includes_N_state_evolution<false>>> run_simulations(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const Experiment& e, const Simulation_Parameters& sim, const Recording& r, std::size_t myseed);
 
+Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,
+                                       experiment_type experiment, std::size_t myseed,
+                                       const std::string& modelName,
+                                       parameters_value_type parameter_files,
+                                       simulation_algo_type sim_algo_type);
+
+}  // namespace macrodr::cmd
 
 #endif  // SIMULATE_H

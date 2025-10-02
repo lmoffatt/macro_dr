@@ -433,20 +433,6 @@ inline std::string run_simulation(std::string filename_prefix, recording_type re
     }
 }
 
-inline macrodr::dsl::Compiler make_simulation_compiler() {
-    dsl::Compiler cm;
-    cm.push_function("get_num_parameters",
-                     dsl::to_typed_function<std::string>(&get_num_parameters, "model"));
-
-    cm.push_function(
-        "simulate",
-        dsl::to_typed_function<std::string, recording_type, experiment_type, std::size_t,
-                               std::string, parameters_value_type, simulation_algo_type>(
-            &run_simulation, "output", "recording", "experiment", "init_seed", "modelName",
-            "parameter_values", "simulation_algorithm"));
-    return cm;
-}
-
 #ifdef ZOMBIE
 namespace zombie {
 
@@ -991,7 +977,6 @@ inline dsl::Compiler make_cuevi_compiler() {
 }  // namespace zombie
 
 #endif
-} // namespace macrodr::cmd
-
+}  // namespace macrodr::cmd
 
 #endif  // CLI_FUNCTION_TABLE_H

@@ -44,12 +44,9 @@ struct Model_Patch {
         Model(std::string t_name, G&& t_g)
             : m_name{t_name},
               m_f{std::forward<G>(t_g)()},
-              m_param(t_name, std::get<3>(m_f), std::get<7>(m_f), std::get<Matrix<double>>(m_f)) {
-        }
+              m_param(t_name, std::get<3>(m_f), std::get<7>(m_f), std::get<Matrix<double>>(m_f)) {}
 
-        auto& model_name() const {
-            return m_name;
-        }
+        auto& model_name() const { return m_name; }
 
         std::variant<std::monostate, Model*> operator[](const std::string& name) {
             if (name == m_name)
@@ -58,25 +55,13 @@ struct Model_Patch {
                 return std::monostate();
         }
 
-        auto& names() const {
-            return std::get<std::vector<std::string>>(m_f);
-        }
-        auto& parameters_transformations() const {
-            return m_param;
-        }
-        auto number_of_states() const {
-            return get_Q0_formula()().size();
-        }
+        auto& names() const { return std::get<std::vector<std::string>>(m_f); }
+        auto& parameters_transformations() const { return m_param; }
+        auto number_of_states() const { return get_Q0_formula()().size(); }
 
-        auto& get_Q0_formula() const {
-            return std::get<Q0_formula>(m_f);
-        }
-        auto& get_Qa_formula() const {
-            return std::get<Qa_formula>(m_f);
-        }
-        auto& get_g_formula() const {
-            return std::get<g_formula>(m_f);
-        }
+        auto& get_Q0_formula() const { return std::get<Q0_formula>(m_f); }
+        auto& get_Qa_formula() const { return std::get<Qa_formula>(m_f); }
+        auto& get_g_formula() const { return std::get<g_formula>(m_f); }
 
         template <class P>
             requires std::is_same_v<var::untransformed_type_t<P>, Patch_Model>
@@ -128,12 +113,8 @@ struct Model_Patch {
 
     template <class F>
         requires(!is_of_this_template_type_v<F, Model>)
-    Model(std::string, F&& f)
-        ->Model_Patch<Id>::Model<std::tuple_element_t<0, decltype(std::declval<F&&>()())>,
-                                 std::tuple_element_t<1, decltype(std::declval<F&&>()())>>;
-    // template <class F, class Finv>
-    //   requires(std::is_same_v<F, Model<F>>)
-    // Model(Model<F> &&f)->Model_Patch<Id>::Model<F>;
+    Model(std::string, F&& f) -> Model<std::tuple_element_t<0, decltype(std::declval<F&&>()())>,
+                                       std::tuple_element_t<1, decltype(std::declval<F&&>()())>>;
 };
 
 template <class Id, class F, class Finv>
@@ -1667,12 +1648,9 @@ class Models_Library {
 
    public:
     using Model_type = std::variant<Ms*...>;
-    Models_Library(Ms*... m) : m_models{m...} {
-    }
+    Models_Library(Ms*... m) : m_models{m...} {}
 
-    auto operator()() const {
-        return m_models;
-    }
+    auto operator()() const { return m_models; }
     Maybe_error<Model_type> operator[](const std::string& name) {
         auto out =
             std::apply([&name](auto... models) { return (... || (*models)[name]); }, m_models);
