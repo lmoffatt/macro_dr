@@ -153,7 +153,14 @@ class error_message {
 
    public:
     error_message() = default;
-    error_message(std::string error) : m_{error} {}
+    error_message(std::string&& error) : m_{std::move(error)} {}
+
+    template <class... T>
+    error_message(T&&... args) {
+        std::ostringstream os;
+        (os << ... << std::forward<T>(args));
+        m_ = os.str();
+    }
 
     auto operator()() const { return m_; }
 };

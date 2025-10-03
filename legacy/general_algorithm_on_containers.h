@@ -63,8 +63,7 @@ auto cumsum_reverse(is_Container auto const& c) {
     auto out = c;
     auto sum = T{};
     for (std::size_t i = c.size() > 0 ? c.size() - 1 : 0; i > 0; --i) {
-        sum = sum + c[i];
-        out[i] = sum;
+        out[i - 1] += out[i];
     }
     return out;
 }

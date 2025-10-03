@@ -20,7 +20,7 @@ namespace macrodr::cmd {
 
 Maybe_error<Simulated_Recording<includes_N_state_evolution<false>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
-    const Experiment& e, const Simulation_Parameters& sim, const Recording& r, std::size_t myseed);
+    const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,
                                        experiment_type experiment, std::size_t myseed,

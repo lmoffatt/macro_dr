@@ -1569,35 +1569,46 @@ class Macro_DMR {
         auto k = t_P_mean().size();
         N_channel_state out(Matrix<double>(1, k));
         std::size_t N_remaining = N;
-        double p_remaining = 1;
-        for (std::size_t i = 0; i + 1 < k; ++i) {
-            auto n = std::binomial_distribution<std::size_t>(N_remaining,
-                                                             t_P_mean()[i] / p_remaining)(mt);
+        auto cumP = var::cumsum_reverse(t_P_mean());
+        std::size_t i = 0;
+        while (N_remaining > 0 && i + 1 < k)  // in case of numerical errors
+        {
+            auto n = std::binomial_distribution<std::size_t>(
+                N_remaining, cumP[i] > 0 ? t_P_mean()[i] / cumP[i] : 0)(mt);
             N_remaining -= n;
-            p_remaining -= t_P_mean()[i];
-            out()[i] = n;
+            out()[i] = static_cast<double>(n);
+            i = i + 1;
         }
-        out()[k - 1] = N_remaining;
+        out()[k - 1] = static_cast<double>(N_remaining);
+        return out;
+    }
+
+    static Matrix<double> cumSum_reverse(Matrix<double> const& p) {
+        Matrix<double> out = p;
+        for (std::size_t i = 0; i < p.nrows(); ++i) {
+            for (std::size_t j = p.ncols() > 0 ? p.ncols() - 1 : 0; j > 0; --j) {
+                out(i, j - 1) += out(i, j);
+            }
+        }
         return out;
     }
 
     static auto sample_Multinomial(mt_64i& mt, P const t_P, N_channel_state N) {
         assert(t_P().nrows() == t_P().ncols());
         auto k = N().size();
+        auto cumP = cumSum_reverse(t_P());
         N_channel_state out(Matrix<double>(1, k, 0.0));
         for (std::size_t i = 0; i < k; ++i) {
-            std::size_t N_remaining = N()[i];
-            double p_remaining = 1;
+            auto N_remaining = static_cast<std::size_t>(std::round(N()[i]));
             for (std::size_t j = 0; j + 1 < k; ++j) {
                 if (N_remaining > 0) {
                     auto n = std::binomial_distribution<std::size_t>(N_remaining,
-                                                                     t_P()(i, j) / p_remaining)(mt);
+                                                                     t_P()(i, j) / cumP(i, j))(mt);
                     N_remaining -= n;
-                    p_remaining -= t_P()(i, j);
-                    out()[j] += n;
+                    out()[j] += static_cast<double>(n);
                 }
             }
-            out()[k - 1] += N_remaining;
+            out()[k - 1] += static_cast<double>(N_remaining);
         }
         return out;
     }

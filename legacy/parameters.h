@@ -45,9 +45,7 @@ template <class Transformation>
 class template_transformation : public base_transformation {
    public:
     template_transformation() = default;
-    virtual std::string to_string() const override {
-        return Transformation{}.name();
-    }
+    virtual std::string to_string() const override { return Transformation{}.name(); }
     virtual Maybe_unique<base_transformation> from_string(const std::string& m) const override {
         if (m == to_string())
             return new template_transformation();
@@ -57,18 +55,12 @@ class template_transformation : public base_transformation {
     virtual std::unique_ptr<base_transformation> clone() const override {
         return std::unique_ptr<base_transformation>(new template_transformation());
     }
-    virtual double tr(double x) const override {
-        return Transformation{}.tr(x);
-    }
+    virtual double tr(double x) const override { return Transformation{}.tr(x); }
     virtual Derivative<double, double> tr(Derivative<double, double> x) const override {
         return Transformation{}.tr(x);
     }
-    virtual std::string tr(std::string x) const override {
-        return Transformation{}.tr(x);
-    }
-    virtual double inv(double tr_x) const override {
-        return Transformation{}.inv(tr_x);
-    }
+    virtual std::string tr(std::string x) const override { return Transformation{}.tr(x); }
+    virtual double inv(double tr_x) const override { return Transformation{}.inv(tr_x); }
     virtual Derivative<double, double> inv(Derivative<double, double> tr_x) const override {
         return Transformation{}.inv(tr_x);
     }
@@ -78,9 +70,7 @@ class template_transformation : public base_transformation {
         return Transformation{}.inv(tr_x);
     }
 
-    virtual bool is_fixed() const override {
-        return Transformation{}.isfixed();
-    }
+    virtual bool is_fixed() const override { return Transformation{}.isfixed(); }
 };
 
 inline auto clone(const std::vector<std::unique_ptr<base_transformation>>& p) {
@@ -110,23 +100,18 @@ class transformations_vector : public transformations_vector_t {
     using transformations_vector_t::size;
     using base_type = transformations_vector_t;
     transformations_vector(base_type&& other)
-        : base_type(std::move(other)), m_fixed{get_fixed(*this)} {
-    }
+        : base_type(std::move(other)), m_fixed{get_fixed(*this)} {}
     transformations_vector(base_type const& other)
-        : base_type(clone(other)), m_fixed{get_fixed(*this)} {
-    }
+        : base_type(clone(other)), m_fixed{get_fixed(*this)} {}
 
     transformations_vector(const transformations_vector& other)
-        : base_type(clone(static_cast<base_type const&>(other))), m_fixed{get_fixed(*this)} {
-    }
+        : base_type(clone(static_cast<base_type const&>(other))), m_fixed{get_fixed(*this)} {}
     transformations_vector() = default;
     transformations_vector(transformations_vector&&) = default;
     transformations_vector& operator=(transformations_vector&&) = default;
     transformations_vector& operator=(transformations_vector const&) = default;
 
-    auto& fixed_set() const {
-        return m_fixed;
-    }
+    auto& fixed_set() const { return m_fixed; }
 
     auto get_transformed_names(const std::vector<std::string>& names) const {
         assert(names.size() == size());
@@ -156,86 +141,40 @@ class transformations_vector : public transformations_vector_t {
 };
 
 struct Identity_Tr {
-    static constexpr auto name() {
-        return "Linear";
-    }
-    double tr(double x) const {
-        return x;
-    }
-    Derivative<double, double> tr(Derivative<double, double> x) const {
-        return x;
-    }
-    std::string tr(std::string x) const {
-        return x;
-    }
-    double inv(double x) const {
-        return x;
-    }
-    Derivative<double, double> inv(Derivative<double, double> x) const {
-        return x;
-    }
-    Derivative<double, Matrix<double>> inv(Derivative<double, Matrix<double>> x) const {
-        return x;
-    }
+    static constexpr auto name() { return "Linear"; }
+    double tr(double x) const { return x; }
+    Derivative<double, double> tr(Derivative<double, double> x) const { return x; }
+    std::string tr(std::string x) const { return x; }
+    double inv(double x) const { return x; }
+    Derivative<double, double> inv(Derivative<double, double> x) const { return x; }
+    Derivative<double, Matrix<double>> inv(Derivative<double, Matrix<double>> x) const { return x; }
 
-    bool isfixed() {
-        return false;
-    }
+    bool isfixed() { return false; }
 };
 
 struct Log10_Tr {
-    static constexpr auto name() {
-        return "Log10";
-    }
-    double tr(double x) const {
-        return std::log10(x);
-    }
-    Derivative<double, double> tr(Derivative<double, double> x) const {
-        return log(x);
-    }
+    static constexpr auto name() { return "Log10"; }
+    double tr(double x) const { return std::log10(x); }
+    Derivative<double, double> tr(Derivative<double, double> x) const { return log(x); }
 
-    std::string tr(std::string x) const {
-        return "log10_" + x;
-    }
-    double inv(double x) const {
-        return std::pow(10.0, x);
-    }
-    Derivative<double, double> inv(Derivative<double, double> x) const {
-        return pow(10.0, x);
-    }
+    std::string tr(std::string x) const { return "log10_" + x; }
+    double inv(double x) const { return std::pow(10.0, x); }
+    Derivative<double, double> inv(Derivative<double, double> x) const { return pow(10.0, x); }
     Derivative<double, Matrix<double>> inv(Derivative<double, Matrix<double>> x) const {
         return pow(10.0, x);
     }
-    bool isfixed() const {
-        return false;
-    }
+    bool isfixed() const { return false; }
 };
 
 struct Fixed_Tr {
-    static constexpr auto name() {
-        return "Fixed";
-    }
-    double tr(double x) const {
-        return x;
-    }
-    double inv(double x) const {
-        return x;
-    }
-    Derivative<double, double> tr(Derivative<double, double> x) const {
-        return x;
-    }
-    std::string tr(std::string) const {
-        return "";
-    }
-    Derivative<double, double> inv(Derivative<double, double> x) const {
-        return x;
-    }
-    Derivative<double, Matrix<double>> inv(Derivative<double, Matrix<double>> x) const {
-        return x;
-    }
-    bool isfixed() const {
-        return true;
-    }
+    static constexpr auto name() { return "Fixed"; }
+    double tr(double x) const { return x; }
+    double inv(double x) const { return x; }
+    Derivative<double, double> tr(Derivative<double, double> x) const { return x; }
+    std::string tr(std::string) const { return ""; }
+    Derivative<double, double> inv(Derivative<double, double> x) const { return x; }
+    Derivative<double, Matrix<double>> inv(Derivative<double, Matrix<double>> x) const { return x; }
+    bool isfixed() const { return true; }
 };
 
 template <class... Transformations>
@@ -294,22 +233,18 @@ class Parameters_values {
     Parameters_Transformations const* m_par;
 
    public:
-    auto& parameters() const {
-        return *m_par;
-    }
+    auto& parameters() const { return *m_par; }
     const std::vector<std::string>& names() const;
 
     template <class VectorType>
         requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
     Parameters_values(const Parameters_Transformations& par, VectorType&& x)
-        : m_values{x.size(), 1, std::forward<VectorType>(x)}, m_par{&par} {
-    }
+        : m_values{x.size(), 1, std::forward<VectorType>(x)}, m_par{&par} {}
 
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
     Parameters_values(const Parameters_Transformations& par, MatrixType&& x)
-        : m_values{std::forward<MatrixType>(x)}, m_par{&par} {
-    }
+        : m_values{std::forward<MatrixType>(x)}, m_par{&par} {}
 
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
@@ -327,26 +262,15 @@ class Parameters_values {
     //            std::vector<std::string> const &ParNames)
     //     : ptr_IdName{&IdName}, ptr_ParNames{&ParNames},
     //     m_values{ParNames.size(), 1} {}
-    Parameters_values() {
-    }
+    Parameters_values() {}
 
-    auto& operator()() const {
-        return m_values;
-    }
-    auto& operator()() {
-        return m_values;
-    }
+    auto& operator()() const { return m_values; }
+    auto& operator()() { return m_values; }
 
-    auto size() const {
-        return m_values.size();
-    }
+    auto size() const { return m_values.size(); }
 
-    auto& operator[](std::size_t i) const {
-        return (*this)()[i];
-    }
-    auto& operator[](std::size_t i) {
-        return (*this)()[i];
-    }
+    auto& operator[](std::size_t i) const { return (*this)()[i]; }
+    auto& operator[](std::size_t i) { return (*this)()[i]; }
 
     Matrix<double> operator[](std::pair<std::size_t, std::size_t> ij) const {
         if (m_values.size() == m_values.ncols()) {
@@ -406,14 +330,10 @@ class Parameters_Names {
 
    public:
     Parameters_Names(std::vector<std::string>&& x)
-        : m_index_map{get_index_map(x)}, m_ParNames{std::move(x)} {
-    }
+        : m_index_map{get_index_map(x)}, m_ParNames{std::move(x)} {}
     Parameters_Names(std::vector<std::string> const& x)
-        : m_index_map{get_index_map(x)}, m_ParNames{x} {
-    }
-    auto& operator()() const {
-        return m_ParNames;
-    }
+        : m_index_map{get_index_map(x)}, m_ParNames{x} {}
+    auto& operator()() const { return m_ParNames; }
     Maybe_error<std::size_t> operator[](const std::string& name) const {
         auto it = m_index_map.find(name);
         if (it != m_index_map.end())
@@ -433,12 +353,8 @@ class Parameters_Transformations {
         for (std::size_t i = 0; i < names.size(); ++i) out[names[i]] = i;
         return out;
     }
-    auto& transf() const {
-        return m_tr;
-    }
-    auto& standard_values() const {
-        return m_standard_values;
-    }
+    auto& transf() const { return m_tr; }
+    auto& standard_values() const { return m_standard_values; }
 
    private:
     std::string m_IdName;
@@ -495,9 +411,7 @@ class Parameters_Transformations {
     }
 
    public:
-    auto standard_parameter() const {
-        return Parameters_values(*this, m_standard_values);
-    }
+    auto standard_parameter() const { return Parameters_values(*this, m_standard_values); }
 
     template <class C_Matrix>
         requires U<C_Matrix, Matrix<double>>
@@ -505,9 +419,7 @@ class Parameters_Transformations {
         return free_to_all(x);
     }
 
-    auto tr(const Matrix<double>& x) const {
-        return all_to_free(x);
-    }
+    auto tr(const Matrix<double>& x) const { return all_to_free(x); }
 
     void push_back(const std::string& name, std::unique_ptr<base_transformation>&& transf,
                    double value) {
@@ -529,20 +441,12 @@ class Parameters_Transformations {
 
        public:
         static constexpr bool is_Parameters = true;
-        Names() {
-        }
+        Names() {}
         Names(std::vector<std::string> const& names)
-            : m_names{names}, m_index_map{get_index_map(names)} {
-        }
-        auto& operator()() const {
-            return m_names;
-        }
-        auto& names() const {
-            return m_names;
-        }
-        auto& operator[](std::size_t i) const {
-            return m_names[i];
-        }
+            : m_names{names}, m_index_map{get_index_map(names)} {}
+        auto& operator()() const { return m_names; }
+        auto& names() const { return m_names; }
+        auto& operator[](std::size_t i) const { return m_names[i]; }
 
         Maybe_error<std::size_t> operator[](const std::string& name) const {
             auto it = m_index_map.find(name);
@@ -567,8 +471,7 @@ class Parameters_Transformations {
           m_index_map{get_index_map(ParNames)},
           m_tr{tr},
           m_standard_values{std::forward<MatrixType>(std_values)},
-          m_TrParNames{tr.get_transformed_names(ParNames)} {
-    }
+          m_TrParNames{tr.get_transformed_names(ParNames)} {}
 
     template <class MatrixType>
         requires std::is_same_v<std::vector<double>, std::decay_t<MatrixType>>
@@ -580,26 +483,18 @@ class Parameters_Transformations {
           m_index_map{get_index_map(ParNames)},
           m_standard_values{
               Matrix<double>(std_values.size(), 1, std::forward<MatrixType>(std_values))},
-          m_TrParNames{tr.get_transformed_names(ParNames)} {
-    }
+          m_TrParNames{tr.get_transformed_names(ParNames)} {}
 
     // Parameters(std::string const &IdName,
     //            std::vector<std::string> const &ParNames)
     //     : ptr_IdName{&IdName}, ptr_ParNames{&ParNames},
     //     m_values{ParNames.size(), 1} {}
-    Parameters_Transformations() {
-    }
+    Parameters_Transformations() {}
 
-    std::vector<std::string> const& names() const {
-        return m_ParNames;
-    }
-    auto& transformed_names() const {
-        return m_TrParNames;
-    }
+    std::vector<std::string> const& names() const { return m_ParNames; }
+    auto& transformed_names() const { return m_TrParNames; }
 
-    auto& IdName() const {
-        return m_IdName;
-    }
+    auto& IdName() const { return m_IdName; }
     Maybe_error<std::size_t> operator[](const std::string& name) const {
         auto it = m_index_map.find(name);
         if (it != m_index_map.end())
@@ -608,9 +503,7 @@ class Parameters_Transformations {
             return error_message("name not found");
     }
 
-    auto size() const {
-        return m_standard_values.size();
-    }
+    auto size() const { return m_standard_values.size(); }
 
     friend std::ostream& operator<<(std::ostream& os, Parameters_Transformations const& p) {
         write_Parameters(os, "\t", p);
@@ -637,20 +530,16 @@ class Parameters_transformed {
         return true;
     }
 
-    auto& parameters() const {
-        return *m_par;
-    }
+    auto& parameters() const { return *m_par; }
     template <class VectorType>
         requires std::is_same_v<std::vector<double>, std::decay_t<VectorType>>
     Parameters_transformed(const Parameters_Transformations& par, VectorType&& x)
-        : m_par{&par}, m_values{x.size(), 1, std::forward<VectorType>(x)} {
-    }
+        : m_par{&par}, m_values{x.size(), 1, std::forward<VectorType>(x)} {}
 
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
     Parameters_transformed(const Parameters_Transformations& par, MatrixType&& x)
-        : m_values{std::forward<MatrixType>(x)}, m_par{&par} {
-    }
+        : m_values{std::forward<MatrixType>(x)}, m_par{&par} {}
 
     template <class MatrixType>
         requires std::is_same_v<Matrix<double>, std::decay_t<MatrixType>>
@@ -668,30 +557,17 @@ class Parameters_transformed {
     //            std::vector<std::string> const &ParNames)
     //     : ptr_IdName{&IdName}, ptr_ParNames{&ParNames},
     //     m_values{ParNames.size(), 1} {}
-    Parameters_transformed() {
-    }
+    Parameters_transformed() {}
 
-    auto& operator()() const {
-        return m_values;
-    }
-    auto& operator()() {
-        return m_values;
-    }
+    auto& operator()() const { return m_values; }
+    auto& operator()() { return m_values; }
 
-    auto size() const {
-        return m_values.size();
-    }
+    auto size() const { return m_values.size(); }
 
-    auto& operator[](std::size_t i) const {
-        return (*this)()[i];
-    }
-    auto& operator[](std::size_t i) {
-        return (*this)()[i];
-    }
+    auto& operator[](std::size_t i) const { return (*this)()[i]; }
+    auto& operator[](std::size_t i) { return (*this)()[i]; }
 
-    auto to_value() const {
-        return Parameters_values(parameters(), parameters().inv((*this)()));
-    }
+    auto to_value() const { return Parameters_values(parameters(), parameters().inv((*this)())); }
 };
 
 // template <class Id>
@@ -733,54 +609,55 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
     const std::string filename, const std::string separator, const std::string& ModelName,
     const std::vector<std::string>& ParamNames) {
     std::ifstream f(filename);
-    if (!f)
+    if (!f) {
         return error_message("file " + filename + " does not exists or cannot be opened");
-    else {
-        std::string line;
-        std::getline(f, line);
-        std::stringstream ss(line);
-
-        ss >> ::septr("model_name") >> ::septr(separator) >> ::septr("i_par") >>
-            ::septr(separator) >> ::septr("parameter_name") >> ::septr(separator) >>
-            ::septr("parameter_transformation") >> ::septr(separator) >>
-            ::septr("parameter_value") >> ::septr(separator) >> ::septr("transformed_mean");
-
-        if (!ss)
-            return error_message("file " + filename + " column titles" + line +
-                                 " do not correspond ");
-        else {
-            std::size_t i_par;
-            string_and_separator transformation_and_sep(separator);
-            double value;
-            double mean;
-            std::vector<double> v;
-            std::vector<double> means;
-            transformations_vector trs;
-            std::getline(f, line);
-            ss = std::stringstream(line);
-            while (ss >> ::septr(ModelName) >> ::septr(separator) >> i_par >> ::septr(separator) >>
-                   ::septr(ParamNames[i_par]) >> ::septr(separator) >> transformation_and_sep >>
-                   value >> ::septr(separator) >> mean) {
-                if (i_par != v.size())
-                    return error_message("i_par out of order: i_par=" + std::to_string(i_par) +
-                                         " size=" + std::to_string(v.size()));
-
-                auto Maybe_tr = MyTranformations::from_string(transformation_and_sep());
-                if (!Maybe_tr)
-                    return Maybe_tr.error();
-                if (Maybe_tr.value()->tr(value) != mean)
-                    mean = Maybe_tr.value()->tr(value);
-                trs.push_back(std::move(Maybe_tr.value()));
-                v.push_back(value);
-
-                means.push_back(mean);
-                std::getline(f, line);
-                ss = std::stringstream(line);
-            }
-
-            return Parameters_Transformations(ModelName, ParamNames, std::move(trs), v);
-        }
     }
+    std::string line;
+    std::getline(f, line);
+    std::stringstream ss(line);
+
+    ss >> ::septr("model_name") >> ::septr(separator) >> ::septr("i_par") >> ::septr(separator) >>
+        ::septr("parameter_name") >> ::septr(separator) >> ::septr("parameter_transformation") >>
+        ::septr(separator) >> ::septr("parameter_value") >> ::septr(separator) >>
+        ::septr("transformed_mean");
+
+    if (!ss) {
+        return error_message("file " + filename + " column titles" + line + " do not correspond ");
+    }
+
+    std::size_t i_par;
+    string_and_separator transformation_and_sep(separator);
+    double value;
+    double mean;
+    std::vector<double> v;
+    std::vector<double> means;
+    transformations_vector trs;
+    std::getline(f, line);
+    ss = std::stringstream(line);
+    while (ss >> ::septr(ModelName) >> ::septr(separator) >> i_par >> ::septr(separator) >>
+           ::septr(ParamNames[i_par]) >> ::septr(separator) >> transformation_and_sep >> value >>
+           ::septr(separator) >> mean) {
+        if (i_par != v.size()) {
+            return error_message("i_par out of order: i_par=" + std::to_string(i_par) +
+                                 " size=" + std::to_string(v.size()));
+        }
+
+        auto Maybe_tr = MyTranformations::from_string(transformation_and_sep());
+        if (!Maybe_tr) {
+            return Maybe_tr.error();
+        }
+        if (Maybe_tr.value()->tr(value) != mean) {
+            mean = Maybe_tr.value()->tr(value);
+        }
+        trs.push_back(std::move(Maybe_tr.value()));
+        v.push_back(value);
+
+        means.push_back(mean);
+        std::getline(f, line);
+        ss = std::stringstream(line);
+    }
+
+    return Parameters_Transformations(ModelName, ParamNames, trs, v);
 }
 
 inline std::vector<std::string> const& Parameters_values::names() const {

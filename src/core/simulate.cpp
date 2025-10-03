@@ -25,9 +25,10 @@ namespace macrodr::cmd {
 
 Maybe_error<Simulated_Recording<includes_N_state_evolution<false>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
-    const Experiment& e, const Simulation_Parameters& sim, const Recording& r, std::size_t myseed) {
+    const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
     myseed = calc_seed(myseed);
     mt_64i mt(myseed);
+    Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
     return Macro_DMR{}.sample(mt, model, par, e, sim, r);
 }
 
