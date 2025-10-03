@@ -5,6 +5,9 @@
 #include <macrodr/cmd/load_parameters.h>
 #include <macrodr/cmd/patch_model.h>
 #include <macrodr/cmd/simulate.h>
+#include <parameters.h>
+
+#include <cstddef>
 
 // Legacy registry builders used until migrated
 #include "CLI_function_table.h"
@@ -31,9 +34,9 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
     cm.push_function("simulate",
                      dsl::to_typed_function<interface::IModel<var::Parameters_values> const&,
                                             const var::Parameters_values&, const Experiment&,
-                                            const Simulation_Parameters&, const Recording&, size_t>(
+                                            const Recording&, std::size_t, std::size_t>(
                          &cmd::run_simulations, "model", "parameter_values", "experiment",
-                         "Simulation_Parameters", "Recording", "seed"));
+                         "observations", "number_of_substeps", "seed"));
 
     return cm;
 }
@@ -55,18 +58,21 @@ dsl::Compiler make_compiler_new() {
                                             &macrodr::cmd::load_experiment, "filename",
                                             "frequency_of_sampling", "initial_ATP"));
 
+    cm.push_function("load_observations", dsl::to_typed_function<std::string>(
+                                              &macrodr::cmd::load_recording, "filename"));
+
     // Expose low-level model/qmodel helpers
     using ModelPtr = std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>;
 
     // Load parameters file (filename, sep) using model’s schema
     cm.push_function("load_parameters",
-                     dsl::to_typed_function<ModelPtr, std::pair<std::string, std::string>>(
-                         &macrodr::cmd::load_parameters, "model", "parameter_values"));
+                     dsl::to_typed_function<ModelPtr, std::string>(&macrodr::cmd::load_parameters,
+                                                                   "model", "parameter_file"));
 
     // load_parameter_values returns transformations (safer to persist)
-    cm.push_function("load_parameter_values",
-                     dsl::to_typed_function<ModelPtr, std::pair<std::string, std::string>>(
-                         &macrodr::cmd::load_parameter_values, "model", "parameter_values"));
+    cm.push_function("get_standard_parameter_values",
+                     dsl::to_typed_function<var::Parameters_Transformations>(
+                         &macrodr::cmd::get_standard_parameter_values, "parameters"));
 
     {
         using Return = Maybe_error<macrodr::cmd::PatchModel>;

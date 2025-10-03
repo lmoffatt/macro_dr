@@ -14,9 +14,10 @@
 #include "type_name.h"
 //#include "grammar_typed.h"
 //#include "grammar_typed.h"
-#include "maybe_error.h"
 #include <macrodr/interface/IModel.h>
 #include <macrodr/io/json/convert.h>
+
+#include "maybe_error.h"
 namespace macrodr::dsl {
 namespace detail {
 
@@ -41,7 +42,6 @@ using function_argument_storage_t = typename function_argument_storage<Arg>::typ
 
 }  // namespace detail
 
-
 template <class Lexer, class Compiler>
 class Environment;
 template <class Lexer, class Compiler>
@@ -58,10 +58,11 @@ template <class Lexer, class Compiler, class T>
 class typed_literal;
 
 template <class Lexer, class Compiler, class T>
-Maybe_error<void> load_literal_from_json_helper(
-    const macrodr::io::json::Json& value, const std::string& path,
-    macrodr::io::json::conv::TagPolicy policy, const Identifier<Lexer>& id,
-    Environment<Lexer, Compiler>& env);
+Maybe_error<void> load_literal_from_json_helper(const macrodr::io::json::Json& value,
+                                                const std::string& path,
+                                                macrodr::io::json::conv::TagPolicy policy,
+                                                const Identifier<Lexer>& id,
+                                                Environment<Lexer, Compiler>& env);
 
 template <class Lexer, class Compiler>
 class untyped_argument_list;
@@ -228,7 +229,8 @@ class field_compiler {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& /*unused*/,
         untyped_literal<Lexer, Compiler> const& t_arg) const
-        requires literal_decodable<T>::value {
+        requires literal_decodable<T>::value
+    {
         auto maybe_value = from_literal<T>(t_arg());
         if (!maybe_value) {
             return maybe_value.error();
@@ -239,7 +241,8 @@ class field_compiler {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& /*unused*/,
         untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
-        requires(!literal_decodable<T>::value) {
+        requires(!literal_decodable<T>::value)
+    {
         return error_message(std::string{"literal arguments are not supported for type "} +
                              type_name<T>() + "; use a variable or JSON helper function");
     }
@@ -340,7 +343,8 @@ class field_compiler_precondition {
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Compiler const& /*unused*/, untyped_literal<Lexer, Compiler> const& t_arg) const
-        requires literal_decodable<T>::value {
+        requires literal_decodable<T>::value
+    {
         auto maybe_value = from_literal<T>(t_arg());
         if (!maybe_value) {
             return maybe_value.error();
@@ -350,7 +354,8 @@ class field_compiler_precondition {
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Compiler const& /*unused*/, untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
-        requires(!literal_decodable<T>::value) {
+        requires(!literal_decodable<T>::value)
+    {
         return error_message(std::string{"literal arguments are not supported for type "} +
                              type_name<T>() + "; use a variable or JSON helper function");
     }
@@ -425,8 +430,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     template <class T>
     using storage_t = detail::function_argument_storage_t<T>;
 
-    using argument_compilers_t =
-        std::tuple<field_compiler<Lexer, Compiler, storage_t<Args>>...>;
+    using argument_compilers_t = std::tuple<field_compiler<Lexer, Compiler, storage_t<Args>>...>;
 
     argument_compilers_t m_args;
     F m_f;
@@ -467,8 +471,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     }
 
     [[nodiscard]] auto make_invoker() const {
-        return [fn = m_f](storage_t<Args>... values)
-                   -> std::invoke_result_t<F, Args...> {
+        return [fn = m_f](storage_t<Args>... values) -> std::invoke_result_t<F, Args...> {
             return std::invoke(fn, adapt_argument<Args>(values)...);
         };
     }
@@ -486,6 +489,10 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
             return std::make_unique<typed_function_evaluation<Lexer, Compiler, WrappedF>>(
                 std::move(invoker), std::tuple<>{});
         } else {
+            if (args.arg().size() != sizeof...(Is)) {
+                return error_message("argument count mismatch: expected ", sizeof...(Is), ", got ",
+                                     args.arg().size());
+            }
             auto Maybe_tuple = promote_Maybe_error(
                 std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
             if (!Maybe_tuple) {
@@ -498,8 +505,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     }
 
    public:
-    function_compiler(F t_f,
-                      field_compiler<Lexer, Compiler, storage_t<Args>>&&... t_args)
+    function_compiler(F t_f, field_compiler<Lexer, Compiler, storage_t<Args>>&&... t_args)
         : m_args{std::move(t_args)...}, m_f{t_f} {}
 
     [[nodiscard]] Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_function_evaluation(
@@ -540,8 +546,8 @@ class predicate_compiler : public base_function_compiler<Lexer, Compiler> {
         if (!x) {
             return x.error();
         }
-        return std::make_unique<typed_predicate_evaluation<Lexer, Compiler, F, T>>(m_f,
-                                                                                   std::move(x.value()));
+        return std::make_unique<typed_predicate_evaluation<Lexer, Compiler, F, T>>(
+            m_f, std::move(x.value()));
     }
 
     // base_function_compiler interface
@@ -567,7 +573,9 @@ class Compiler {
     };
 
     // Support overloaded functions: multiple compilers per identifier
-    std::map<Identifier<Lexer>, std::vector<std::unique_ptr<base_function_compiler<Lexer, Compiler>>>> m_func;
+    std::map<Identifier<Lexer>,
+             std::vector<std::unique_ptr<base_function_compiler<Lexer, Compiler>>>>
+        m_func;
     std::map<std::string, TypeEntry> m_type_registry;
 
    public:
@@ -610,7 +618,7 @@ class Compiler {
     }
 
     [[nodiscard]] Maybe_error<std::vector<base_function_compiler<Lexer, Compiler> const*>>
-    get_functions(const Identifier<Lexer>& id) const {
+        get_functions(const Identifier<Lexer>& id) const {
         auto it = m_func.find(id);
         if (it == m_func.end()) {
             return error_message(id() + " function is not defined");
@@ -653,7 +661,8 @@ class Compiler {
             auto& dst_vec = m_func[name];
             for (const auto& fn : vec) {
                 if (fn) {
-                    auto cloned = std::unique_ptr<base_function_compiler<Lexer, Compiler>>(fn->clone());
+                    auto cloned =
+                        std::unique_ptr<base_function_compiler<Lexer, Compiler>>(fn->clone());
                     cloned->register_types(*this);
                     dst_vec.emplace_back(std::move(cloned));
                 }
@@ -691,7 +700,7 @@ class Compiler {
         return out;
     }
 
-  private:
+   private:
     template <class Value>
     static TypeEntry make_entry() {
         return TypeEntry{
@@ -727,7 +736,7 @@ class Compiler {
         }
     }
 
-  public:
+   public:
     template <class T>
     void ensure_type_registered() {
         using Value = std::remove_cvref_t<T>;
