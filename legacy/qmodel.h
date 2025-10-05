@@ -421,10 +421,10 @@ class uses_variance_aproximation_value
     : public var::constexpr_Var_value<bool, uses_variance_aproximation> {};
 
 template <bool b>
-class uses_variance_correction_aproximation
-    : public var::constexpr_Var<bool, uses_variance_correction_aproximation, b> {};
-class uses_variance_correction_aproximation_value
-    : public var::constexpr_Var_value<bool, uses_variance_correction_aproximation> {};
+class uses_taylor_variance_correction_aproximation
+    : public var::constexpr_Var<bool, uses_taylor_variance_correction_aproximation, b> {};
+class uses_taylor_variance_correction_aproximation_value
+    : public var::constexpr_Var_value<bool, uses_taylor_variance_correction_aproximation> {};
 
 template <bool b>
 class uses_adaptive_aproximation : public var::constexpr_Var<bool, uses_adaptive_aproximation, b> {
@@ -469,8 +469,8 @@ concept uses_variance_aproximation_c =
     var::is_this_constexpr_Var_c<T, bool, uses_variance_aproximation>;
 
 template <class T>
-concept uses_variance_correction_aproximation_c =
-    var::is_this_constexpr_Var_c<T, bool, uses_variance_correction_aproximation>;
+concept uses_taylor_variance_correction_aproximation_c =
+    var::is_this_constexpr_Var_c<T, bool, uses_taylor_variance_correction_aproximation>;
 
 class Probability_error_tolerance : public var::Constant<Probability_error_tolerance, double> {};
 
@@ -628,7 +628,7 @@ template <class recursive, class averaging, class variance, class variance_corre
 
     requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
              uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 struct Qdt_u {
     using type = double;
 };
@@ -1222,7 +1222,7 @@ Maybe_error<Transfer_Op_to<CQx, P>> expm_sure(const CQx& x) {
 template <class recursive, class averaging, class variance, class variance_correction>
     requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
              uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 struct MacroR2;
 class Macro_DMR {
     template <class C_double>
@@ -2979,7 +2979,7 @@ class Macro_DMR {
         requires(uses_recursive_aproximation_c<recursive> &&
                  uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
-                 uses_variance_correction_aproximation_c<variance_correction>)
+                 uses_taylor_variance_correction_aproximation_c<variance_correction>)
     Maybe_error<std::tuple<Transfer_Op_to<C_Qdt, y_mean>, Transfer_Op_to<C_Qdt, y_var>,
                            Transfer_Op_to<C_Qdt, P_mean>, Transfer_Op_to<C_Qdt, P_Cov>,
                            Transfer_Op_to<C_Qdt, double>, macror_algorithm>>
@@ -3035,8 +3035,8 @@ class Macro_DMR {
                 if (!std::isfinite(primitive(delta_emu)) || primitive(delta_emu) <= 0)
                     return safely_calculate_y_mean_yvar_Pmean_PCov<
                         recursive, averaging, variance,
-                        uses_variance_correction_aproximation<false>>(t_prior, t_Qdt, m, N, p_y,
-                                                                      fs);
+                        uses_taylor_variance_correction_aproximation<false>>(t_prior, t_Qdt, m, N,
+                                                                             p_y, fs);
 
                 auto ms0 = (ms - e / N) / 2 + std::sqrt(delta_emu) / 2;
 
@@ -3049,8 +3049,8 @@ class Macro_DMR {
                     primitive(N * ms0 + N * gSg - N * zeta * sqr(sSg)) <= 0)
                     return safely_calculate_y_mean_yvar_Pmean_PCov<
                         recursive, averaging, variance,
-                        uses_variance_correction_aproximation<false>>(t_prior, t_Qdt, m, N, p_y,
-                                                                      fs);
+                        uses_taylor_variance_correction_aproximation<false>>(t_prior, t_Qdt, m, N,
+                                                                             p_y, fs);
 
                 auto r_y_var = build<y_var>(e + N * ms0 + N * gSg - N * zeta * sqr(sSg));
                 auto& t_P = get<P>(t_Qdt);
@@ -3078,9 +3078,9 @@ class Macro_DMR {
                     !all_Covariance_elements(primitive(r_P_cov())))
                     return safely_calculate_Pmean_Pcov<
                         recursive, averaging, variance,
-                        uses_variance_correction_aproximation<false>>(is_y_nan, std::move(r_y_mean),
-                                                                      std::move(r_y_var), t_prior,
-                                                                      t_Qdt, m, N, p_y, fs, SmD);
+                        uses_taylor_variance_correction_aproximation<false>>(
+                        is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
+                        p_y, fs, SmD);
                 else {
                     auto r_macro_algo = macror_algorithm(
                         ToString(MacroR2<recursive, averaging, variance, variance_correction>{}));
@@ -3125,7 +3125,8 @@ class Macro_DMR {
             if (!std::isfinite(primitive(gSg)) || primitive(gSg) <= 0)
                 return safely_calculate_y_mean_yvar_Pmean_PCov<
                     recursive, uses_averaging_aproximation<0>, uses_variance_aproximation<false>,
-                    uses_variance_correction_aproximation<false>>(t_prior, t_Qdt, m, N, p_y, fs);
+                    uses_taylor_variance_correction_aproximation<false>>(t_prior, t_Qdt, m, N, p_y,
+                                                                         fs);
             auto r_y_mean = build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
             if constexpr (PoissonDif)
                 e = e + get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
@@ -3139,9 +3140,9 @@ class Macro_DMR {
                 } else {
                     return safely_calculate_Pmean_Pcov<
                         recursive, averaging, uses_variance_aproximation<false>,
-                        uses_variance_correction_aproximation<false>>(is_y_nan, std::move(r_y_mean),
-                                                                      std::move(r_y_var), t_prior,
-                                                                      t_Qdt, m, N, p_y, fs, SmD);
+                        uses_taylor_variance_correction_aproximation<false>>(
+                        is_y_nan, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
+                        p_y, fs, SmD);
                 }
             }
             return safely_calculate_Pmean_Pcov<recursive, averaging, variance, variance_correction>(
@@ -3187,13 +3188,13 @@ class Macro_DMR {
         }
     }
 
-    template <class recursive, class averaging, class variance, class variance_correction,
+    template <class recursive, class averaging, class variance, class taylor_variance_correction,
               class C_Patch_State, class C_Qdt, class C_Patch_Model, class C_double>
 
         requires(uses_recursive_aproximation_c<recursive> &&
                  uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
-                 uses_variance_correction_aproximation_c<variance_correction>)
+                 uses_taylor_variance_correction_aproximation_c<taylor_variance_correction>)
     Maybe_error<std::tuple<Transfer_Op_to<C_Qdt, y_mean>, Transfer_Op_to<C_Qdt, y_var>,
                            Transfer_Op_to<C_Qdt, P_mean>, Transfer_Op_to<C_Qdt, P_Cov>,
                            Transfer_Op_to<C_Qdt, double>, macror_algorithm>>
@@ -3208,11 +3209,11 @@ class Macro_DMR {
         auto chi2 = dy * chi;
         if (y_is_nan) {
             return safely_calculate_Pmean_Pcov<uses_recursive_aproximation<false>, averaging,
-                                               variance, variance_correction>(
+                                               variance, taylor_variance_correction>(
                 false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N, p_y, fs, SmD);
         }
         auto r_macro_algo = macror_algorithm(
-            ToString(MacroR2<recursive, averaging, variance, variance_correction>{}));
+            ToString(MacroR2<recursive, averaging, variance, taylor_variance_correction>{}));
 
         auto const& t_P = get<P>(t_Qdt);
         auto const& p_P_mean = get<P_mean>(t_prior);
@@ -3240,7 +3241,7 @@ class Macro_DMR {
             auto chi = dy / r_y_var();
             auto chi2 = dy * chi;
 
-            if constexpr (!variance_correction::value) {
+            if constexpr (!taylor_variance_correction::value) {
                 if constexpr (averaging::value == 2) {
                     auto& t_gmean_i = get<gmean_i>(t_Qdt);
                     auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
@@ -3262,7 +3263,7 @@ class Macro_DMR {
                         !all_Covariance_elements(primitive(r_P_cov())))
                         return safely_calculate_Pmean_Pcov<uses_recursive_aproximation<false>,
                                                            averaging, variance,
-                                                           variance_correction>(
+                                                           taylor_variance_correction>(
                             false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                             p_y, fs, SmD);
                     else
@@ -3290,7 +3291,7 @@ class Macro_DMR {
                         !all_Covariance_elements(primitive(r_P_cov())))
                         return safely_calculate_Pmean_Pcov<uses_recursive_aproximation<false>,
                                                            averaging, variance,
-                                                           variance_correction>(
+                                                           taylor_variance_correction>(
                             false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                             p_y, fs, SmD);
                     else
@@ -3306,7 +3307,7 @@ class Macro_DMR {
                     if (!Maybe_r_P_mean) {
                         return safely_calculate_Pmean_Pcov<uses_recursive_aproximation<false>,
                                                            averaging, variance,
-                                                           variance_correction>(
+                                                           taylor_variance_correction>(
                             false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                             p_y, fs, SmD);
                     }
@@ -3317,7 +3318,7 @@ class Macro_DMR {
                     if (!Maybe_r_P_cov) {
                         return safely_calculate_Pmean_Pcov<uses_recursive_aproximation<false>,
                                                            averaging, variance,
-                                                           variance_correction>(
+                                                           taylor_variance_correction>(
                             false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                             p_y, fs, SmD);
                     }
@@ -3328,7 +3329,7 @@ class Macro_DMR {
                         !all_Covariance_elements(primitive(r_P_cov())))
                         return safely_calculate_Pmean_Pcov<uses_recursive_aproximation<false>,
                                                            averaging, variance,
-                                                           variance_correction>(
+                                                           taylor_variance_correction>(
                             false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N,
                             p_y, fs, SmD);
                     else
@@ -3389,9 +3390,9 @@ class Macro_DMR {
                     !all_Covariance_elements(primitive(r_P_cov())))
                     return safely_calculate_Pmean_Pcov<
                         recursive, averaging, variance,
-                        uses_variance_correction_aproximation<false>>(false, std::move(r_y_mean),
-                                                                      std::move(r_y_var), t_prior,
-                                                                      t_Qdt, m, N, p_y, fs, SmD);
+                        uses_taylor_variance_correction_aproximation<false>>(
+                        false, std::move(r_y_mean), std::move(r_y_var), t_prior, t_Qdt, m, N, p_y,
+                        fs, SmD);
                 else
                     return std::tuple(std::move(r_P_mean), std::move(r_P_cov),
                                       std::move(r_macro_algo));
@@ -3406,7 +3407,7 @@ class Macro_DMR {
         requires(uses_recursive_aproximation_c<recursive> &&
                  uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
-                 uses_variance_correction_aproximation_c<variance_correction> &&
+                 uses_taylor_variance_correction_aproximation_c<variance_correction> &&
                  /*(U<std::decay_t<C_Patch_State>,
                                                          Patch_State>||U<std::decay_t<C_Patch_State>,
                                                          Patch_State_and_Evolution>
@@ -3490,7 +3491,7 @@ class Macro_DMR {
         requires(uses_recursive_aproximation_c<recursive> &&
                  uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
-                 uses_variance_correction_aproximation_c<variance_correction> &&
+                 uses_taylor_variance_correction_aproximation_c<variance_correction> &&
                  /*(U<std::decay_t<C_Patch_State>,
                                                          Patch_State>||U<std::decay_t<C_Patch_State>,
                                                          Patch_State_and_Evolution>
@@ -3861,7 +3862,7 @@ class Macro_DMR {
                  uses_recursive_aproximation_c<recursive> &&
                  uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
-                 uses_variance_correction_aproximation_c<variance_correction> &&
+                 uses_taylor_variance_correction_aproximation_c<variance_correction> &&
                  return_predictions_c<predictions> &&
                  is_of_this_template_type_v<FuncTable, FuncMap_St>)
     auto log_Likelihood(FuncTable& f, const Model& model, const C_Parameters& par,
@@ -3976,13 +3977,13 @@ class Macro_DMR {
                                         // MacroR2<::V<uses_recursive_aproximation<false>>,
                                         //         v_averaging,
                                         //         ::V<uses_variance_aproximation<false>>,
-                                        //         ::V<uses_variance_correction_aproximation(
+                                        //         ::V<uses_taylor_variance_correction_aproximation(
                                         //             false)>>{},
                                         // std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
 
-                                        MacroR2<uses_recursive_aproximation<false>, averaging,
-                                                variance,
-                                                uses_variance_correction_aproximation<false>>{}(
+                                        MacroR2<
+                                            uses_recursive_aproximation<false>, averaging, variance,
+                                            uses_taylor_variance_correction_aproximation<false>>{}(
                                             f_local, std::move(t_prior), t_Qdtm, m, Nch,
                                             y()[i_step], fs);
                                 }
@@ -4015,9 +4016,9 @@ class Macro_DMR {
                                                                           std::move(t_prior), t_Qdt,
                                                                           m, Nch, y()[i_step], fs);
                                 } else {
-                                    return MacroR2<uses_recursive_aproximation<false>, averaging,
-                                                   variance,
-                                                   uses_variance_correction_aproximation<false>>{}(
+                                    return MacroR2<
+                                        uses_recursive_aproximation<false>, averaging, variance,
+                                        uses_taylor_variance_correction_aproximation<false>>{}(
                                         f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step],
                                         fs);
                                 }
@@ -4221,7 +4222,7 @@ template <class recursive, class averaging, class variance, class variance_corre
 
     requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
              uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 struct MacroR2 {
     friend std::string ToString(MacroR2) {
         std::string out = "MacroR";
@@ -4270,7 +4271,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 struct Likelihood_Model_constexpr {
     Model m;
     Simulation_n_sub_dt n_sub_dt;
@@ -4295,14 +4296,14 @@ struct Likelihood_Model_constexpr {
 };
 
 template <class adaptive_range, class recursive_range, class averaging_range, class variance_range,
-          class variance_correction_range, class Model>
+          class taylor_variance_correction_range, class Model>
     requires(
         var::is_this_constexpr_Var_domain_c<adaptive_range, bool, uses_adaptive_aproximation> &&
         var::is_this_constexpr_Var_domain_c<recursive_range, bool, uses_recursive_aproximation> &&
         var::is_this_constexpr_Var_domain_c<averaging_range, int, uses_averaging_aproximation> &&
         var::is_this_constexpr_Var_domain_c<variance_range, bool, uses_variance_aproximation> &&
-        var::is_this_constexpr_Var_domain_c<variance_correction_range, bool,
-                                            uses_variance_correction_aproximation>)
+        var::is_this_constexpr_Var_domain_c<taylor_variance_correction_range, bool,
+                                            uses_taylor_variance_correction_aproximation>)
 struct Likelihood_Model_regular {
     Model m;
     Simulation_n_sub_dt n_sub_dt;
@@ -4310,76 +4311,75 @@ struct Likelihood_Model_regular {
     uses_recursive_aproximation_value recursive;
     uses_averaging_aproximation_value averaging;
     uses_variance_aproximation_value variance;
-    uses_variance_correction_aproximation_value variance_correction;
+    uses_taylor_variance_correction_aproximation_value taylor_variance_correction;
 
     static constexpr adaptive_range range_adaptive = {};
     static constexpr recursive_range range_recursive = {};
     static constexpr averaging_range range_averaging = {};
     static constexpr variance_range range_variance = {};
-    static constexpr variance_correction_range range_variance_correction = {};
+    static constexpr taylor_variance_correction_range range_variance_correction = {};
 
-    Likelihood_Model_regular(const Model& model, Simulation_n_sub_dt n_sub_dt,
-                             uses_adaptive_aproximation_value adaptive,
-                             uses_recursive_aproximation_value recursive,
-                             uses_averaging_aproximation_value averaging,
-                             uses_variance_aproximation_value variance,
-                             uses_variance_correction_aproximation_value variance_correction)
+    Likelihood_Model_regular(
+        const Model& model, Simulation_n_sub_dt n_sub_dt, uses_adaptive_aproximation_value adaptive,
+        uses_recursive_aproximation_value recursive, uses_averaging_aproximation_value averaging,
+        uses_variance_aproximation_value variance,
+        uses_taylor_variance_correction_aproximation_value taylor_variance_correction)
         : m{model},
           n_sub_dt{n_sub_dt},
           adaptive{adaptive},
           recursive{recursive},
           averaging{averaging},
           variance{variance},
-          variance_correction{variance_correction} {}
+          taylor_variance_correction{taylor_variance_correction} {}
 
     using cartesian = algebra_2<std::tuple, std::variant>::P_constexpr<
         typename adaptive_range::variant_type, typename recursive_range::variant_type,
         typename averaging_range::variant_type, typename variance_range::variant_type,
-        typename variance_correction_range::variant_type>;
+        typename taylor_variance_correction_range::variant_type>;
 
     template <class, class>
     struct Likelihood_Model_variant_impl;
     template <class... adaptive, class... recursive, class... averaging, class... variance,
-              class... variance_correction, class M>
+              class... taylor_variance_correction, class M>
 
         requires(
             (uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>) &&
+             uses_taylor_variance_correction_aproximation_c<taylor_variance_correction>) &&
             ...)
     struct Likelihood_Model_variant_impl<
-        std::variant<std::tuple<adaptive, recursive, averaging, variance, variance_correction>...>,
+        std::variant<
+            std::tuple<adaptive, recursive, averaging, variance, taylor_variance_correction>...>,
         M> {
-        using type = std::variant<Likelihood_Model_constexpr<adaptive, recursive, averaging,
-                                                             variance, variance_correction, M>...>;
+        using type =
+            std::variant<Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
+                                                    taylor_variance_correction, M>...>;
     };
 
     using Likelihood_Model_variant = typename Likelihood_Model_variant_impl<cartesian, Model>::type;
 
     Maybe_error<Likelihood_Model_variant> get_variant() const {
-        auto car = promote_Maybe_error(
-            std::make_tuple(adaptive_range::to_variant(adaptive.value),
-                            recursive_range::to_variant(recursive.value),
-                            averaging_range::to_variant(averaging.value),
-                            variance_range::to_variant(variance.value),
-                            variance_correction_range::to_variant(variance_correction.value)));
+        auto car = promote_Maybe_error(std::make_tuple(
+            adaptive_range::to_variant(adaptive.value),
+            recursive_range::to_variant(recursive.value),
+            averaging_range::to_variant(averaging.value),
+            variance_range::to_variant(variance.value),
+            taylor_variance_correction_range::to_variant(taylor_variance_correction.value)));
 
-        if (!car)
+        if (!car) {
             return car.error();
-        else {
-            return std::apply(
-                [this](auto... t) {
-                    return std::visit(
-                        [this](auto... v) -> Likelihood_Model_variant {
-                            auto l =
-                                Likelihood_Model_constexpr<std::decay_t<decltype(v)>..., Model>(
-                                    m, n_sub_dt);
-                            return Likelihood_Model_variant{std::move(l)};
-                        },
-                        t...);
-                },
-                car.value());
         }
+        return std::apply(
+            [this](auto... t) {
+                return std::visit(
+                    [this](auto... v) -> Likelihood_Model_variant {
+                        auto l = Likelihood_Model_constexpr<std::decay_t<decltype(v)>..., Model>(
+                            m, n_sub_dt);
+                        return Likelihood_Model_variant{std::move(l)};
+                    },
+                    t...);
+            },
+            car.value());
     }
 };
 
@@ -4398,12 +4398,12 @@ struct Likelihood_Model_regular {
 //         std::variant<::V<uses_variance_aproximation<false>>, ::V<uses_variance_aproximation<true>>>;
 
 //     using v_uses_variance_correction_aproximation =
-//         std::variant<::V<uses_variance_correction_aproximation<false>>,
-//                      ::V<uses_variance_correction_aproximation<true>>>;
+//         std::variant<::V<uses_taylor_variance_correction_aproximation<false>>,
+//                      ::V<uses_taylor_variance_correction_aproximation<true>>>;
 
 //     template <uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
 //               uses_averaging_aproximation averaging, uses_variance_aproximation variance,
-//               uses_variance_correction_aproximation variance_correction, class Model>
+//               uses_taylor_variance_correction_aproximation variance_correction, class Model>
 //     auto template_op(::V<adaptive>, ::V<recursive>, ::V<averaging>, ::V<variance>,
 //                      ::V<variance_correction>, const Model& model,
 //                      Simulation_n_sub_dt n_sub_dt) const {
@@ -4432,7 +4432,7 @@ struct Likelihood_Model_regular {
 //     template <class Model>
 //     auto bool_op(uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
 //                  uses_averaging_aproximation averaging, uses_variance_aproximation variance,
-//                  uses_variance_correction_aproximation variance_correction, const Model& model,
+//                  uses_taylor_variance_correction_aproximation variance_correction, const Model& model,
 //                  Simulation_n_sub_dt n_sub_dt) const {
 //         v_uses_adaptive_aproximation t_adaptive;
 //         if (adaptive::value)
@@ -4463,9 +4463,9 @@ struct Likelihood_Model_regular {
 
 //         v_uses_variance_correction_aproximation t_var_corr;
 //         if (variance_correction::value)
-//             t_var_corr = ::V<uses_variance_correction_aproximation<true>>{};
+//             t_var_corr = ::V<uses_taylor_variance_correction_aproximation<true>>{};
 //         else
-//             t_var_corr = ::V<uses_variance_correction_aproximation<false>>{};
+//             t_var_corr = ::V<uses_taylor_variance_correction_aproximation<false>>{};
 
 //         return this->variant_op(t_adaptive, t_recursive, t_averaging, t_variance, t_var_corr, model,
 //                                 n_sub_dt);
@@ -4486,11 +4486,11 @@ struct Likelihood_Model_regular {
 //     using v_uses_variance_aproximation = std::variant<::V<uses_variance_aproximation<true>>>;
 
 //     using v_uses_variance_correction_aproximation =
-//         std::variant<::V<uses_variance_correction_aproximation<false>>>;
+//         std::variant<::V<uses_taylor_variance_correction_aproximation<false>>>;
 
 //     template <uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
 //               uses_averaging_aproximation averaging, uses_variance_aproximation variance,
-//               uses_variance_correction_aproximation variance_correction, class Model>
+//               uses_taylor_variance_correction_aproximation variance_correction, class Model>
 //     auto template_op(::V<adaptive>, ::V<recursive>, ::V<averaging>, ::V<variance>,
 //                      ::V<variance_correction>, const Model& model,
 //                      Simulation_n_sub_dt n_sub_dt) const {
@@ -4519,7 +4519,7 @@ struct Likelihood_Model_regular {
 //     template <class Model>
 //     auto bool_op(uses_adaptive_aproximation adaptive, uses_recursive_aproximation recursive,
 //                  uses_averaging_aproximation averaging, uses_variance_aproximation variance,
-//                  uses_variance_correction_aproximation variance_correction, const Model& model,
+//                  uses_taylor_variance_correction_aproximation variance_correction, const Model& model,
 //                  Simulation_n_sub_dt n_sub_dt) const {
 //         v_uses_adaptive_aproximation t_adaptive;
 //         if (adaptive::value)
@@ -4545,7 +4545,7 @@ struct Likelihood_Model_regular {
 //         t_variance = ::V<uses_variance_aproximation<true>>{};
 
 //         v_uses_variance_correction_aproximation t_var_corr;
-//         t_var_corr = ::V<uses_variance_correction_aproximation<false>>{};
+//         t_var_corr = ::V<uses_taylor_variance_correction_aproximation<false>>{};
 
 //         return this->variant_op(t_adaptive, t_recursive, t_averaging, t_variance, t_var_corr, model,
 //                                 n_sub_dt);
@@ -4557,7 +4557,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 auto make_Likelihood_Model(const Model& m, Simulation_n_sub_dt n_sub_dt) {
     return Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
                                       Model>(m, n_sub_dt);
@@ -4570,7 +4570,7 @@ template <class adaptive, class recursive, class averaging, class variance,
     requires(uses_adaptive_aproximation_c<adaptive>,
              uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
-                 uses_variance_correction_aproximation_c<variance_correction>)
+                 uses_taylor_variance_correction_aproximation_c<variance_correction>)
 Maybe_error<logLs> logLikelihood(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
@@ -4591,7 +4591,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 Maybe_error<dlogLs> dlogLikelihood(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
@@ -4614,7 +4614,7 @@ template <class adaptive, class recursive, class averaging, class variance,
           class variance_correction, class FuncTable, class Model, class Variables, class DataType>
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 Maybe_error<dlogLs> diff_logLikelihood(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
@@ -4685,7 +4685,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
@@ -4702,7 +4702,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 Maybe_error<logL_y_yvar> logLikelihood_Y_Predictions(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
@@ -4719,7 +4719,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 Maybe_error<std::vector<Patch_State_Evolution>> fractioned_logLikelihoodPredictions(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
@@ -4799,7 +4799,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
              !is_of_this_template_type_v<Variables, std::vector>)
 auto simulate(mt_64i& mt,
               const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
@@ -4813,7 +4813,7 @@ template <class adaptive, class recursive, class averaging, class variance,
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
-             uses_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
 auto simulate(mt_64i& mt,
               const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
                                                variance_correction, Model>& lik,

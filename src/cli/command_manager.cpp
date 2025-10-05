@@ -1,5 +1,6 @@
 #include <macrodr/cli/command_manager.h>
 #include <macrodr/cmd/cli_meta.h>
+#include <macrodr/cmd/likelihood.h>
 #include <macrodr/cmd/load_experiment.h>
 #include <macrodr/cmd/load_model.h>
 #include <macrodr/cmd/load_parameters.h>
@@ -134,6 +135,25 @@ dsl::Compiler make_compiler_new() {
                              static_cast<FnPSfromVals>(&macrodr::cmd::path_state), "model",
                              "values", "initial_atp"));
     }
+
+    cm.push_function(
+        "calc_likelihood",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&, const Recording&,
+                               bool, bool, int, bool, bool>(
+            &cmd::calculate_likelihood, "model", "parameters", "experiment", "data",
+            "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
+
+    cm.push_function(
+        "calc_likelihood",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&,
+                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               bool, int, bool, bool>(
+            &cmd::calculate_simulation_likelihood, "model", "parameters", "experiment", "data",
+            "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
 
     return cm;
 }

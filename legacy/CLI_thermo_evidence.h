@@ -108,7 +108,7 @@ std::move(Maybe_param1_prior.value()); std::size_t thermo_jumps_every =
                   uses_recursive_aproximation(recursive_approximation),
                   uses_averaging_aproximation(averaging_approximation),
                   uses_variance_aproximation(variance_correction),
-                  uses_variance_correction_aproximation(
+                  uses_taylor_variance_correction_aproximation(
                       variance_correction_approximation),
                   model0, Simulation_n_sub_dt(n_sub_dt));
               // using m2=typename
@@ -214,7 +214,7 @@ inline void calc_thermo_evidence(std::string id, std::string model, std::string 
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -344,7 +344,7 @@ inline void calc_thermo_evidence_continuation(std::string id, std::size_t ith,
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),

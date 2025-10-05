@@ -5,11 +5,7 @@
 #include <string>
 
 #include "CLI_macro_dr_base.h"
-//#include "cuevi.h"
-#include "function_memoization.h"
 #include "maybe_error.h"
-#include "models_MoffattHume_allosteric.h"
-#include "parallel_tempering.h"
 #include "parameters.h"
 //#include "parameters_derivative.h"
 #include <macrodr/interface/IModel.h>
