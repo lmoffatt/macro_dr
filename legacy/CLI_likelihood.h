@@ -62,7 +62,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -74,7 +74,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -86,7 +86,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -104,7 +104,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -116,7 +116,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -128,7 +128,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -146,7 +146,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -158,7 +158,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -170,7 +170,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<true>,
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -188,7 +188,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<false>,
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -200,7 +200,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<false>,
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -212,7 +212,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<false>,
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -230,7 +230,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<false>,
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<0>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -242,7 +242,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<false>,
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<1>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -254,7 +254,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_recursive_aproximation<false>,
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
-                                                uses_variance_correction_aproximation<false>,
+                                                uses_taylor_variance_correction_aproximation<false>,
                                                 return_predictions<2>>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {

@@ -37,7 +37,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                       return m
                           .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
                                   uses_variance_aproximation<true>,
-                                  uses_variance_correction_aproximation<false>>(
+                                  uses_taylor_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
@@ -48,7 +48,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                       return m
                           .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
                                   uses_variance_aproximation<false>,
-                                  uses_variance_correction_aproximation<false>>(
+                                  uses_taylor_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
@@ -59,7 +59,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                       return m
                           .Macror<uses_recursive_aproximation<false>,
                                   uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
-                                  uses_variance_correction_aproximation<false>>(
+                                  uses_taylor_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             // var::Thread_Memoizer(
@@ -187,7 +187,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
             //         in_progress::S<::V<uses_averaging_aproximation<2>>>,
             //         in_progress::S<::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation<false>>>>{});
+            //             ::V<uses_taylor_variance_correction_aproximation<false>>>>{});
             // .append_Fs<MacroR2>(
             //     in_progress::P<
             //         in_progress::S<::V<uses_recursive_aproximation<false>>,
@@ -198,8 +198,8 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
             //         in_progress::S<::V<uses_variance_aproximation<false>>,
             //                        ::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation<false>>,
-            //             ::V<uses_variance_correction_aproximation<true>>>>{})
+            //             ::V<uses_taylor_variance_correction_aproximation<false>>,
+            //             ::V<uses_taylor_variance_correction_aproximation<true>>>>{})
             ;
     };
 }
@@ -226,7 +226,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                       return m
                           .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
                                   uses_variance_aproximation<true>,
-                                  uses_variance_correction_aproximation<false>>(
+                                  uses_taylor_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
@@ -237,7 +237,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                       return m
                           .Macror<uses_recursive_aproximation<true>, uses_averaging_aproximation<2>,
                                   uses_variance_aproximation<false>,
-                                  uses_variance_correction_aproximation<false>>(
+                                  uses_taylor_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::Time_it_st(
@@ -248,7 +248,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                       return m
                           .Macror<uses_recursive_aproximation<false>,
                                   uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
-                                  uses_variance_correction_aproximation<false>>(
+                                  uses_taylor_variance_correction_aproximation<false>>(
                               std::forward<decltype(x)>(x)...);
                   })),
             var::F(Calc_Qdt_step{},
@@ -345,7 +345,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
             //         in_progress::S<::V<uses_averaging_aproximation<2>>>,
             //         in_progress::S<::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation<false>>>>{});
+            //             ::V<uses_taylor_variance_correction_aproximation<false>>>>{});
             // .append_Fs<MacroR2>(
             //     in_progress::P<
             //         in_progress::S<::V<uses_recursive_aproximation<false>>,
@@ -356,8 +356,8 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
             //         in_progress::S<::V<uses_variance_aproximation<false>>,
             //                        ::V<uses_variance_aproximation<true>>>,
             //         in_progress::S<
-            //             ::V<uses_variance_correction_aproximation<false>>,
-            //             ::V<uses_variance_correction_aproximation<true>>>>{})
+            //             ::V<uses_taylor_variance_correction_aproximation<false>>,
+            //             ::V<uses_taylor_variance_correction_aproximation<true>>>>{})
             ;
     };
 }
@@ -497,14 +497,14 @@ inline void calc_likelihood_old(std::string outfilename, std::string model,
                     auto modelLikelihood = make_Likelihood_Model<
                         uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
                         uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
-                        uses_variance_correction_aproximation<false>>(
+                        uses_taylor_variance_correction_aproximation<false>>(
                         model0, Simulation_n_sub_dt(n_sub_dt));
                     auto lik =
                         Macro_DMR{}
                             .log_Likelihood<
                                 uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
                                 uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
-                                uses_variance_correction_aproximation<false>,
+                                uses_taylor_variance_correction_aproximation<false>,
                                 return_predictions<2>>(ftbl3, model0, param1, get<Recording>(y()),
                                                        experiment);
                     if (lik)
@@ -578,7 +578,8 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
                     var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                     var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                     var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-                    var::constexpr_Var_domain<bool, uses_variance_correction_aproximation, true>,
+                    var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                              true>,
                     decltype(model0)>(
                     model0, Simulation_n_sub_dt(n_sub_dt),
                     uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -692,7 +693,7 @@ inline void calc_fraction_evidence(std::string model, prior_value_type prior,
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -813,7 +814,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                     var::constexpr_Var_domain<bool, uses_variance_aproximation,
                                                               true>,
                                     var::constexpr_Var_domain<
-                                        bool, uses_variance_correction_aproximation, true>,
+                                        bool, uses_taylor_variance_correction_aproximation, true>,
                                     decltype(model0)>(
                                     model0, Simulation_n_sub_dt(n_sub_dt),
                                     uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -946,7 +947,7 @@ saving_itervals, random_jumps
                         auto modelLikelihood = make_Likelihood_Model<
                             uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
                             uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
-                            uses_variance_correction_aproximation<false>>(
+                            uses_taylor_variance_correction_aproximation<false>>(
                             model0, Simulation_n_sub_dt(n_sub_dt));
                         auto opt3 =
                             cuevi::evidence(ftbl3, std::move(cbc), param1_prior, modelLikelihood, y,

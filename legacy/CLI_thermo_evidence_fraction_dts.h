@@ -139,8 +139,8 @@ inline void calc_thermo_evidence_fraction_dts(std::string id, std::string model,
                             var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                             var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-                            var::constexpr_Var_domain<bool, uses_variance_correction_aproximation,
-                                                      true>,
+                            var::constexpr_Var_domain<
+                                bool, uses_taylor_variance_correction_aproximation, true>,
                             decltype(model0)>(
                             model0, Simulation_n_sub_dt(n_sub_dt),
                             uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -279,8 +279,8 @@ inline void calc_thermo_evidence_fraction_dts_continuation(std::string id, std::
                             var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
                             var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-                            var::constexpr_Var_domain<bool, uses_variance_correction_aproximation,
-                                                      true>,
+                            var::constexpr_Var_domain<
+                                bool, uses_taylor_variance_correction_aproximation, true>,
                             decltype(model0)>(
                             model0, Simulation_n_sub_dt(n_sub_dt),
                             uses_adaptive_aproximation_value(adaptive_aproximation),

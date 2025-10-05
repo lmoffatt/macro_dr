@@ -121,7 +121,7 @@ inline void calc_thermo_levenberg_evidence(std::string id, std::string model, st
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -252,7 +252,7 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),

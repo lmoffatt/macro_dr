@@ -81,7 +81,7 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
                     std::move(thermo_algorithm);
 
                 auto [adaptive_aproximation, recursive_approximation, averaging_approximation,
-                      variance_correction, variance_correction_approximation, n_sub_dt] =
+                      variance_correction, taylor_variance_correction_approximation, n_sub_dt] =
                     likelihood;
 
                 using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
@@ -126,15 +126,15 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
                                 uses_recursive_aproximation_value(recursive_approximation),
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
-                                uses_variance_correction_aproximation_value(
-                                    variance_correction_approximation))
+                                uses_taylor_variance_correction_aproximation_value(
+                                    taylor_variance_correction_approximation))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
@@ -202,7 +202,7 @@ inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::s
                     std::move(thermo_algorithm);
 
                 auto [adaptive_aproximation, recursive_approximation, averaging_approximation,
-                      variance_correction, variance_correction_approximation, n_sub_dt] =
+                      variance_correction, taylor_variance_correction_approximation, n_sub_dt] =
                     likelihood;
 
                 using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
@@ -247,15 +247,15 @@ inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::s
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
                                 uses_recursive_aproximation_value(recursive_approximation),
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
-                                uses_variance_correction_aproximation_value(
-                                    variance_correction_approximation))
+                                uses_taylor_variance_correction_aproximation_value(
+                                    taylor_variance_correction_approximation))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
@@ -335,7 +335,7 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                     std::move(thermo_algorithm);
 
                 auto [adaptive_aproximation, recursive_approximation, averaging_approximation,
-                      variance_correction, variance_correction_approximation, n_sub_dt] =
+                      variance_correction, taylor_variance_correction_approximation, n_sub_dt] =
                     likelihood;
 
                 using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
@@ -380,15 +380,15 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
                                 uses_recursive_aproximation_value(recursive_approximation),
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
-                                uses_variance_correction_aproximation_value(
-                                    variance_correction_approximation))
+                                uses_taylor_variance_correction_aproximation_value(
+                                    taylor_variance_correction_approximation))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
@@ -469,7 +469,7 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
                     std::move(thermo_algorithm);
 
                 auto [adaptive_aproximation, recursive_approximation, averaging_approximation,
-                      variance_correction, variance_correction_approximation, n_sub_dt] =
+                      variance_correction, taylor_variance_correction_approximation, n_sub_dt] =
                     likelihood;
 
                 using MyModel = typename std::decay_t<decltype(model0)>::my_Id;
@@ -514,15 +514,15 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
                                 var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
-                                    bool, uses_variance_correction_aproximation, true>,
+                                    bool, uses_taylor_variance_correction_aproximation, true>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
                                 uses_recursive_aproximation_value(recursive_approximation),
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
-                                uses_variance_correction_aproximation_value(
-                                    variance_correction_approximation))
+                                uses_taylor_variance_correction_aproximation_value(
+                                    taylor_variance_correction_approximation))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
