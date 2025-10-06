@@ -21,7 +21,7 @@ model_handle load_model(const std::string& model_name) {
     }
 
     // Move out the variant of owning pointers to concrete model types
-    auto model = std::move(Maybe_model.value());
+    auto model = Maybe_model.value();
 
     // Wrap the concrete model into a polymorphic interface erased to IModel<var::Parameters_values>
     return std::visit(
@@ -30,6 +30,27 @@ model_handle load_model(const std::string& model_name) {
             auto iface =
                 macrodr::interface::make_model_interface<ModelType, var::Parameters_values>(
                     *model0ptr);
+            return iface;
+        },
+        model);
+}
+
+dmodel_handle load_dmodel(const std::string& model_name) {
+    auto Maybe_model = macrodr::get_model(model_name);
+    if (!Maybe_model) {
+        return Maybe_model.error();
+    }
+
+    // Move out the variant of owning pointers to concrete model types
+    auto model = Maybe_model.value();
+
+    // Wrap the concrete model into a polymorphic interface erased to IModel<var::Parameters_values>
+    return std::visit(
+        [](auto&& model0ptr) -> dmodel_handle {
+            using ModelType = std::decay_t<decltype(*model0ptr)>;
+            auto iface = macrodr::interface::make_model_interface<
+                ModelType, var::Parameters_values,
+                var::Derivative<var::Parameters_values, var::Parameters_transformed>>(*model0ptr);
             return iface;
         },
         model);

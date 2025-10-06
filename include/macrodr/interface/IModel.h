@@ -49,6 +49,13 @@ struct IModel : public IObject,
     [[nodiscard]] virtual std::string model_name() const = 0;
     [[nodiscard]] virtual const std::vector<std::string>& names() const = 0;
     [[nodiscard]] virtual std::size_t number_of_states() const = 0;
+    template <typename PV>
+        requires((std::is_same_v<PV, ParamValues> || ...))
+    [[nodiscard]] Maybe_error<macrodr::Transfer_Op_to<PV, macrodr::Patch_Model>> operator()(
+        const PV& parameters) const {
+        using App = IParameterApplication<PV, macrodr::Transfer_Op_to<PV, macrodr::Patch_Model>>;
+        return static_cast<const App&>(*this).operator()(parameters);
+    }
 
     [[nodiscard]] virtual std::unique_ptr<IModel<ParamValues...>> clone() const = 0;
 };

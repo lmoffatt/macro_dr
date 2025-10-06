@@ -18,6 +18,7 @@
 #include "variables.h"
 
 namespace var {
+
 class base_transformation {
    public:
     virtual std::string to_string() const = 0;
@@ -223,7 +224,7 @@ bool verify(const transformations_vector& p, const V<double>& value, const V<dou
 }
 
 class Parameters_Transformations;
-
+class Parameters_transformed;
 class Parameters_values {
    public:
     using value_type = Matrix<double>;
@@ -262,7 +263,13 @@ class Parameters_values {
     //            std::vector<std::string> const &ParNames)
     //     : ptr_IdName{&IdName}, ptr_ParNames{&ParNames},
     //     m_values{ParNames.size(), 1} {}
-    Parameters_values() {}
+    Parameters_values() : m_par{nullptr} {}
+
+    Parameters_values(Parameters_values const&) = default;
+    Parameters_values(Parameters_values&&) noexcept = default;
+    Parameters_values& operator=(Parameters_values const&) = default;
+    Parameters_values& operator=(Parameters_values&&) noexcept = default;
+    ~Parameters_values() = default;
 
     auto& operator()() const { return m_values; }
     auto& operator()() { return m_values; }
@@ -283,6 +290,8 @@ class Parameters_values {
             return out;
         }
     }
+
+    auto to_transformed() const -> Parameters_transformed;
 };
 
 inline Maybe_error<bool> compare_contents(
@@ -662,6 +671,10 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
 
 inline std::vector<std::string> const& Parameters_values::names() const {
     return parameters().names();
+}
+
+inline auto Parameters_values::to_transformed() const -> Parameters_transformed {
+    return {parameters(), parameters().tr((*this)())};
 }
 
 }  // namespace var

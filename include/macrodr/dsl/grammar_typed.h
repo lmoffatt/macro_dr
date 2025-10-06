@@ -3,6 +3,7 @@
 #include "grammar_Identifier.h"
 //#include "grammar_untyped.h"
 #include <concepts>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -375,6 +376,65 @@ class typed_identifier : public typed_expression<Lexer, Compiler, T> {
 };
 
 template <class Lexer, class Compiler, class T>
+class typed_identifier_ref_const
+    : public typed_expression<Lexer, Compiler, std::reference_wrapper<const T>> {
+    Identifier<Lexer> m_id;
+
+   public:
+    explicit typed_identifier_ref_const(Identifier<Lexer> id) : m_id(std::move(id)) {}
+
+    typed_identifier_ref_const* clone() const override {
+        return new typed_identifier_ref_const(*this);
+    }
+
+    Maybe_error<std::reference_wrapper<const T>> run(
+        const Environment<Lexer, Compiler>& env) const override {
+        auto May_x = env.get(m_id);
+        if (!May_x) {
+            return May_x.error();
+        }
+        auto literal =
+            dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(May_x.value());
+        if (!literal) {
+            auto actual = type_name(*May_x.value());
+            return error_message(std::string("identifier '") + m_id() +
+                                 "' is not bound to the expected reference type (actual: " +
+                                 actual + ")");
+        }
+        return std::cref(literal->value_ref());
+    }
+};
+
+template <class Lexer, class Compiler, class T>
+class typed_identifier_ref
+    : public typed_expression<Lexer, Compiler, std::reference_wrapper<T>> {
+    Identifier<Lexer> m_id;
+
+   public:
+    explicit typed_identifier_ref(Identifier<Lexer> id) : m_id(std::move(id)) {}
+
+    typed_identifier_ref* clone() const override { return new typed_identifier_ref(*this); }
+
+    Maybe_error<std::reference_wrapper<T>> run(
+        const Environment<Lexer, Compiler>& env) const override {
+        auto May_x = env.get(m_id);
+        if (!May_x) {
+            return May_x.error();
+        }
+        auto literal_const =
+            dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(May_x.value());
+        if (!literal_const) {
+            auto actual = type_name(*May_x.value());
+            return error_message(std::string("identifier '") + m_id() +
+                                 "' is not bound to the expected reference type (actual: " +
+                                 actual + ")");
+        }
+        auto literal = const_cast<typed_literal<Lexer, Compiler, T>*>(literal_const);
+        return std::ref(literal->value_ref());
+    }
+};
+
+template <class Lexer, class Compiler, class T>
 class typed_expression : public base_typed_expression<Lexer, Compiler> {
    public:
     [[nodiscard]] std::string type_name() const override { return macrodr::dsl::type_name<T>(); }
@@ -650,6 +710,9 @@ class typed_literal<Lexer, Compiler, T> : public typed_expression<Lexer, Compile
     typed_literal(T const& x) : m_value(x) {}
 
     ~typed_literal() override = default;
+
+    const T& value_ref() const { return m_value; }
+    T& value_ref() { return m_value; }
 
     [[nodiscard]] Maybe_error<T> run(
         Environment<Lexer, Compiler> const& /*unused*/) const override {

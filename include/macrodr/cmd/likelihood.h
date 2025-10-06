@@ -1,5 +1,6 @@
 #pragma once
 
+#include <distributions.h>
 #include <macrodr/interface/IModel.h>
 
 #include "qmodel.h"
@@ -23,6 +24,25 @@ inline auto calculate_simulation_likelihood(
                                 adaptive_approximation, recursive_approximation,
                                 averaging_approximation, variance_approximation,
                                 taylor_variance_correction_approximation);
+}
+
+auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& model0,
+                           const var::Parameters_values& par, const Experiment& e,
+                           const Recording& r, bool adaptive_approximation,
+                           bool recursive_approximation, int averaging_approximation,
+                           bool variance_approximation,
+                           bool taylor_variance_correction_approximation) -> Maybe_error<dlogLs>;
+
+inline auto calculate_simulation_dlikelihood(
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const Experiment& e, const Simulated_Recording<includes_N_state_evolution<false>>& simulation,
+    bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
+    bool variance_approximation, bool taylor_variance_correction_approximation)
+    -> Maybe_error<dlogLs> {
+    return calculate_dlikelihood(model0, par, e, get<Recording>(simulation()),
+                                 adaptive_approximation, recursive_approximation,
+                                 averaging_approximation, variance_approximation,
+                                 taylor_variance_correction_approximation);
 }
 
 }  // namespace macrodr::cmd

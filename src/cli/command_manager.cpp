@@ -72,7 +72,7 @@ dsl::Compiler make_compiler_new() {
 
     // load_parameter_values returns transformations (safer to persist)
     cm.push_function("get_standard_parameter_values",
-                     dsl::to_typed_function<var::Parameters_Transformations>(
+                     dsl::to_typed_function<var::Parameters_Transformations const&>(
                          &macrodr::cmd::get_standard_parameter_values, "parameters"));
 
     {
@@ -112,18 +112,18 @@ dsl::Compiler make_compiler_new() {
     }
 
     using PatchModel = macrodr::Transfer_Op_to<var::Parameters_values, macrodr::Patch_Model>;
-    cm.push_function("calc_eigen", dsl::to_typed_function<PatchModel, double>(
+    cm.push_function("calc_eigen", dsl::to_typed_function<PatchModel const&, double>(
                                        &macrodr::cmd::calc_eigen, "patch_model", "atp"));
 
     using QxEig = macrodr::Transfer_Op_to<PatchModel, macrodr::Qx_eig>;
-    cm.push_function("calc_peq", dsl::to_typed_function<QxEig, PatchModel>(
+    cm.push_function("calc_peq", dsl::to_typed_function<QxEig const&, PatchModel const&>(
                                      &macrodr::cmd::calc_peq, "qx_eig", "patch_model"));
 
     // Patch state initial condition helpers
     {
         using RetPS = Maybe_error<macrodr::Patch_State>;
         using FnPSfromPM = RetPS (*)(const macrodr::cmd::PatchModel&, double);
-        cm.push_function("path_state", dsl::to_typed_function<PatchModel, double>(
+        cm.push_function("path_state", dsl::to_typed_function<PatchModel const&, double>(
                                            static_cast<FnPSfromPM>(&macrodr::cmd::path_state),
                                            "patch_model", "initial_atp"));
     }
@@ -131,7 +131,7 @@ dsl::Compiler make_compiler_new() {
         using RetPS = Maybe_error<macrodr::Patch_State>;
         using FnPSfromVals = RetPS (*)(const ModelPtr&, const var::Parameters_values&, double);
         cm.push_function("path_state",
-                         dsl::to_typed_function<ModelPtr, var::Parameters_values, double>(
+                         dsl::to_typed_function<ModelPtr, var::Parameters_values const&, double>(
                              static_cast<FnPSfromVals>(&macrodr::cmd::path_state), "model",
                              "values", "initial_atp"));
     }
@@ -152,6 +152,25 @@ dsl::Compiler make_compiler_new() {
                                const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_likelihood, "model", "parameters", "experiment", "data",
+            "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
+
+    cm.push_function(
+        "calc_dlikelihood",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&, const Recording&,
+                               bool, bool, int, bool, bool>(
+            &cmd::calculate_dlikelihood, "model", "parameters", "experiment", "data",
+            "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
+
+    cm.push_function(
+        "calc_dlikelihood",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&,
+                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               bool, int, bool, bool>(
+            &cmd::calculate_simulation_dlikelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
             "variance_approximation", "taylor_variance_correction"));
 
