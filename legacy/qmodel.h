@@ -2,6 +2,8 @@
 #define QMODEL_H
 //#include "cuevi.h"
 // #include "experiment.h"
+#include <distributions.h>
+
 #include "experiment.h"
 #include "fold.h"
 #include "function_memoization.h"
@@ -12,6 +14,8 @@
 // Ensure LAPACK-backed helpers are available to Macro_DMR and friends
 #include "lapack_headers.h"
 // #include "models_MoffattHume_linear.h"
+#include <macrodr/dsl/type_name.h>
+
 #include <cmath>
 #include <cstddef>
 #include <fstream>
@@ -44,7 +48,7 @@
 #include "type_algebra.h"
 #include "variables.h"
 namespace macrodr {
-
+using dsl::type_name;
 using var::Parameters_Transformations;
 using var::Power;
 using var::Product;
@@ -70,6 +74,7 @@ using var::F;
 using var::FuncMap_St;
 using var::Time_it_st;
 
+using dsl::type_name;
 /*
 class State_Model;
 
@@ -677,7 +682,7 @@ C_Patch_Model add_Patch_inactivation(C_Patch_Model&& m, C_double const& deactiva
     get<Q0>(m) = v_Q0;
     get<g>(m) = v_g;
     get<P_initial>(m) = v_Pini;
-    return std::move(m);
+    return std::forward<C_Patch_Model>(m);
 }
 
 template <class C_Patch_Model>
@@ -718,6 +723,19 @@ std::pair<C_Patch_Model, double> remove_Patch_inactivation(C_Patch_Model const& 
 class Patch_State_Evolution : public Var<Patch_State_Evolution, std::vector<Patch_State>> {
    public:
     friend std::string className(Patch_State_Evolution) { return "Patch_State_Evolution"; }
+    using value_type = std::vector<Patch_State>;
+};
+
+class dPatch_State_Evolution
+    : public Var<dPatch_State_Evolution,
+                 std::vector<var::Derivative<Patch_State, var::Parameters_transformed>>> {
+   public:
+    friend std::string className(dPatch_State_Evolution) { return "dPatch_State_Evolution"; }
+};
+
+class dLogLs_Evolution : public Var<dLogLs_Evolution, std::vector<dlogLs>> {
+   public:
+    friend std::string className(dLogLs_Evolution) { return "dLogLs_Evolution"; }
 };
 
 class ymean_Evolution : public Var<ymean_Evolution, std::vector<y_mean>> {
@@ -735,6 +753,17 @@ using logL_y_yvar = var::Vector_Space<logL, elogL, vlogL, ymean_Evolution, yvar_
 using Patch_State_and_Evolution =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL, vplogL,
                  macror_algorithm, Patch_State_Evolution>;
+
+using dPatch_State_and_Evolution =
+    Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
+                 var::Derivative<elogL, var::Parameters_transformed>, vlogL,
+                 var::Derivative<P_mean, var::Parameters_transformed>,
+                 var::Derivative<P_Cov, var::Parameters_transformed>,
+                 var::Derivative<y_mean, var::Parameters_transformed>,
+                 var::Derivative<y_var, var::Parameters_transformed>,
+                 var::Derivative<plogL, var::Parameters_transformed>,
+                 var::Derivative<eplogL, var::Parameters_transformed>, vplogL, macror_algorithm,
+                 dPatch_State_Evolution>;
 
 using Patch_State_and_y_Evolution =
     Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL, vplogL,
@@ -2719,7 +2748,7 @@ class Macro_DMR {
     template <class... Variances, class C_Vector_Space>
     Maybe_error<bool> test_conductance_variances(const C_Vector_Space& q,
                                                  Conductance_variance_error_tolerance tol) {
-        return ((typeid(Variances).name() >> test_conductance_variance(get<Variances>(q)(), tol)) &&
+        return ((type_name<Variances>() >> test_conductance_variance(get<Variances>(q)(), tol)) &&
                 ...);
     }
 
@@ -3153,7 +3182,9 @@ class Macro_DMR {
 
     template <class C_y_var>
     auto calculate_logL(bool y_is_nan, C_y_var const& r_y_var, auto& chi2, auto& p_logL,
-                        auto& p_elogL, auto& p_vlogL, auto& m) const {
+                        auto& p_elogL, auto& p_vlogL, auto& m) const
+        -> std::tuple<Transfer_Op_to<C_y_var, plogL>, Transfer_Op_to<C_y_var, eplogL>, vplogL,
+                      Transfer_Op_to<C_y_var, logL>, Transfer_Op_to<C_y_var, elogL>, vlogL> {
         if (y_is_nan)
             return std::tuple(Transfer_Op_to<C_y_var, plogL>(NaN),
                               Transfer_Op_to<C_y_var, eplogL>(NaN), vplogL(0.0), p_logL, p_elogL,
@@ -3453,7 +3484,17 @@ class Macro_DMR {
             print(ss, primitive(t_Qdt)) << "tprior";
             print(ss, primitive(t_prior));
             return error_message(ss.str());
-        } else if constexpr (U<C_Patch_State, Patch_State_and_Evolution>) {
+        }
+        if constexpr (U<C_Patch_State, Patch_State_and_Evolution> &&
+                      !var::is_derivative_v<C_Patch_State>) {
+            auto& ev = get<Patch_State_Evolution>(t_prior);
+            ev().push_back(build<Patch_State>(r_logL, r_elogL, r_vlogL, r_P_mean, r_P_cov, r_y_mean,
+                                              r_y_var, r_plogL, r_eplogL, r_vplogL, r_algo));
+            return build<Patch_State_and_Evolution>(r_logL, r_elogL, r_vlogL, r_P_mean, r_P_cov,
+                                                    r_y_mean, r_y_var, r_plogL, r_eplogL, r_vplogL,
+                                                    r_algo, std::move(ev));
+        } else if constexpr (U<C_Patch_State, Patch_State_and_Evolution> &&
+                             var::is_derivative_v<C_Patch_State>) {
             auto& ev = get<Patch_State_Evolution>(t_prior);
             ev().push_back(build<Patch_State>(r_logL, r_elogL, r_vlogL, r_P_mean, r_P_cov, r_y_mean,
                                               r_y_var, r_plogL, r_eplogL, r_vplogL, r_algo));
@@ -3799,11 +3840,9 @@ class Macro_DMR {
     auto init(const C_Patch_Model& m, initial_ATP_concentration initial_x)
         -> Maybe_error<std::conditional_t<
             var::is_derivative_v<C_Patch_Model>,
-            Transfer_Op_to<C_Patch_Model,
-                           std::conditional_t<predictions::value == 2, Patch_State_and_Evolution,
-
-                                              Patch_State_and_Hessian>>,
-
+            std::conditional_t<predictions::value == 2,
+                               Transfer_Op_to<C_Patch_Model, Patch_State_and_Evolution>,
+                               Transfer_Op_to<C_Patch_Model, Patch_State_and_Hessian>>,
             std::conditional_t<predictions::value == 2, Patch_State_and_Evolution,
                                std::conditional_t<predictions::value == 1,
                                                   Patch_State_and_y_Evolution, Patch_State>>>> {
@@ -3831,10 +3870,11 @@ class Macro_DMR {
                     y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN),
                     macror_algorithm(""), FIM(SymPosDefMatrix<double>(n_par, n_par, 0.0)));
             } else {
-                return Transfer_Op_to<C_Patch_Model, Patch_State>(
+                return build<Patch_State_and_Evolution>(
                     logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean), std::move(r_P_cov),
                     y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN),
-                    macror_algorithm(""));
+                    macror_algorithm(""),
+                    var::Derivative<Patch_State_Evolution, var::Parameters_transformed>{});
             }
         } else if constexpr (predictions::value == 1) {
             return Transfer_Op_to<C_Patch_Model, Patch_State_and_y_Evolution>(
@@ -3842,10 +3882,11 @@ class Macro_DMR {
                 y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN), macror_algorithm(""),
                 ymean_Evolution(), yvar_Evolution());
         } else if constexpr (predictions::value == 2) {
-            return Transfer_Op_to<C_Patch_Model, Patch_State_and_Evolution>(
-                logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean), std::move(r_P_cov),
-                y_mean(NaN), y_var(NaN), plogL(NaN), eplogL(NaN), vplogL(NaN), macror_algorithm(""),
-                Patch_State_Evolution());
+            return Patch_State_and_Evolution(logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean),
+                                             std::move(r_P_cov), y_mean(NaN), y_var(NaN),
+                                             plogL(NaN), eplogL(NaN), vplogL(NaN),
+                                             macror_algorithm(""), Patch_State_Evolution());
+
         } else {
             return Transfer_Op_to<C_Patch_Model, Patch_State>(
                 logL(0.0), elogL(0.0), vlogL(0.0), std::move(r_P_mean), std::move(r_P_cov),
@@ -3884,10 +3925,10 @@ class Macro_DMR {
         using Transf = transformation_type_t<C_Parameters>;
         using C_Patch_State = std::conditional_t<
             var::is_derivative_v<C_Parameters>,
-            Op_t<Transf, std::conditional_t<predictions::value == 2, Patch_State_and_Evolution,
-                                            std::conditional_t<predictions::value == 1,
-                                                               Patch_State_and_y_Evolution,
-                                                               Patch_State_and_Hessian>>>,
+            std::conditional_t<predictions::value == 2, Op_t<Transf, Patch_State_and_Evolution>,
+                               std::conditional_t<predictions::value == 1,
+                                                  Op_t<Transf, Patch_State_and_y_Evolution>,
+                                                  Op_t<Transf, Patch_State_and_Hessian>>>,
 
             std::conditional_t<predictions::value == 2, Patch_State_and_Evolution,
                                std::conditional_t<predictions::value == 1,
@@ -3903,6 +3944,7 @@ class Macro_DMR {
 
             auto gege = 0;
             auto f_local = f.create("_lik");
+            constexpr bool test_derivative = true;
             if (!ini)
                 return ini.error();
             else {
@@ -3921,6 +3963,43 @@ class Macro_DMR {
                         auto j_segment = std::min(Nchs.size() - 1, i_segment + 1);
                         auto r = std::max(1.0, time / time_segment - i_segment);
                         auto Nch = Nchs[i_segment] * (1 - r) + r * Nchs[j_segment];
+                        constexpr bool test_eigen = true;
+                        constexpr bool test_Qx = true;
+                        if constexpr (test_Qx) {
+                            const auto dx = 1e-6;
+                            const auto eps = 1e-9;
+                            auto test_der_Qx = var::test_Derivative(
+
+                                [this, &t_step](auto l_m) {
+                                    return calc_Qx(l_m, get<ATP_concentration>(t_step()[0]));
+                                },
+                                dx, eps, m);
+                            if (!test_der_Qx) {
+                                std::cerr << "\n -----start Qx error-----\n";
+
+                                std::cerr << test_der_Qx.error()();
+                                std::cerr << "\n -----end Qx test error-----\n";
+                                return Maybe_error<C_Patch_State>(test_der_Qx.error());
+                            }
+                        }
+
+                        if constexpr (test_eigen) {
+                            const auto dx = 1e-6;
+                            const auto eps = 1e-9;
+                            auto test_der_eigen = var::test_Derivative(
+
+                                [this, &t_step](auto l_m) {
+                                    return calc_eigen(l_m, get<ATP_concentration>(t_step()[0]));
+                                },
+                                dx, eps, m);
+                            if (!test_der_eigen) {
+                                std::cerr << "\n -----start eigen test error-----\n";
+
+                                std::cerr << test_der_eigen.error()();
+                                std::cerr << "\n -----end eigen test error-----\n";
+                                return Maybe_error<C_Patch_State>(test_der_eigen.error());
+                            }
+                        }
 
                         if constexpr (!adaptive::value) {
                             if constexpr (!variance_correction::value) {
@@ -3928,6 +4007,22 @@ class Macro_DMR {
                                 if (!Maybe_t_Qdtm)
                                     return Maybe_error<C_Patch_State>(Maybe_t_Qdtm.error());
                                 auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
+                                if constexpr (test_derivative) {
+                                    const auto dx = 1e-6;
+                                    const auto eps = 1e-2;
+
+                                    auto test_der_t_Qdtm = var::test_Derivative(
+                                        [this, &t_step, &fs, &f_local](auto const& l_m,
+                                                                       auto const& l_Qx) {
+                                            return calc_Qdtm(f_local, l_m, t_step, fs);
+                                        },
+                                        dx, eps, m, t_Qdtm);
+                                    if (true && !test_der_t_Qdtm) {
+                                        std::cerr << test_der_t_Qdtm.error()();
+                                        std::cerr << "\nt_step\n" << t_step;
+                                        return Maybe_error<C_Patch_State>(test_der_t_Qdtm.error());
+                                    }
+                                }
                                 return MacroR2<recursive, averaging, variance,
                                                variance_correction>{}(
                                     f_local, std::move(t_prior), t_Qdtm, m, Nch, y()[i_step], fs);
@@ -3937,6 +4032,24 @@ class Macro_DMR {
                                 if (!Maybe_t_Qdt)
                                     return Maybe_error<C_Patch_State>(Maybe_t_Qdt.error());
                                 auto t_Qdt = std::move(Maybe_t_Qdt.value());
+
+                                if constexpr (test_derivative) {
+                                    const auto dx = 1e-6;
+                                    const auto eps = 1e-2;
+
+                                    auto test_der_t_Qdt = var::test_Derivative(
+                                        [this, &t_step, &fs, &f_local](auto const& l_m,
+                                                                       auto const& l_Qx) {
+                                            return calc_Qdt(f_local, l_m, t_step, fs);
+                                        },
+                                        dx, eps, m, t_Qdt);
+                                    if (true && !test_der_t_Qdt) {
+                                        std::cerr << test_der_t_Qdt.error()();
+                                        std::cerr << "\nt_step\n" << t_step;
+                                        return Maybe_error<C_Patch_State>(test_der_t_Qdt.error());
+                                    }
+                                }
+
                                 return MacroR2<recursive, averaging, variance,
                                                variance_correction>{}(
                                     f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
@@ -3947,6 +4060,22 @@ class Macro_DMR {
                                 if (!Maybe_t_Qdtm)
                                     return Maybe_error<C_Patch_State>(Maybe_t_Qdtm.error());
                                 auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
+
+                                if constexpr (test_derivative) {
+                                    const auto dx = 1e-6;
+                                    const auto eps = 1e-2;
+
+                                    auto test_der_t_Qdtm = var::test_Derivative(
+                                        [this, &t_step, &fs, &f_local](auto const& l_m) {
+                                            return calc_Qdtm(f_local, l_m, t_step, fs);
+                                        },
+                                        dx, eps, m, t_Qdtm);
+                                    if (true && !test_der_t_Qdtm) {
+                                        std::cerr << test_der_t_Qdtm.error()();
+                                        std::cerr << "\nt_step\n" << t_step;
+                                        return Maybe_error<C_Patch_State>(test_der_t_Qdtm.error());
+                                    }
+                                }
 
                                 double mg = getvalue(primitive(get<P_mean>(t_prior)()) *
                                                      primitive(get<gmean_i>(t_Qdtm)()));
@@ -3992,6 +4121,22 @@ class Macro_DMR {
                                 if (!Maybe_t_Qdt)
                                     return Maybe_error<C_Patch_State>(Maybe_t_Qdt.error());
                                 auto t_Qdt = std::move(Maybe_t_Qdt.value());
+                                if constexpr (test_derivative) {
+                                    const auto dx = 1e-6;
+                                    const auto eps = 1e-2;
+
+                                    auto test_der_t_Qdt = var::test_Derivative(
+                                        [this, &t_step, &fs, &f_local](auto const& l_m,
+                                                                       auto const& l_Qx) {
+                                            return calc_Qdt(f_local, l_m, t_step, fs);
+                                        },
+                                        dx, eps, m, t_Qdt);
+                                    if (true && !test_der_t_Qdt) {
+                                        std::cerr << test_der_t_Qdt.error()();
+                                        std::cerr << "\nt_step\n" << t_step;
+                                        return Maybe_error<C_Patch_State>(test_der_t_Qdt.error());
+                                    }
+                                }
 
                                 double mg = getvalue(primitive(get<P_mean>(t_prior)()) *
                                                      primitive(get<gmean_i>(t_Qdt)()));
@@ -4694,6 +4839,25 @@ Maybe_error<Patch_State_Evolution> logLikelihoodPredictions(
     return Macro_DMR{}
         .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
                         return_predictions<2>>(f, lik.m, p, y, var);
+}
+
+template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class FuncTable, class Model, class Variables, class DataType>
+
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
+Maybe_error<var::Derivative<Patch_State_Evolution, var::Parameters_transformed>>
+    dlogLikelihoodPredictions(
+        FuncTable& f,
+        const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
+                                         variance_correction, Model>& lik,
+        var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
+    auto dp = var::selfDerivative(p);
+    auto dpp = dp.to_value();
+    return Macro_DMR{}
+        .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
+                        return_predictions<2>>(f, lik.m, dpp, y, var);
 }
 
 template <class adaptive, class recursive, class averaging, class variance,

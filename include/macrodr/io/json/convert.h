@@ -18,6 +18,8 @@
 #include "matrix.h"
 #include "macrodr/dsl/type_name.h"
 #include "variables.h"
+#include "derivative_operator.h"
+#include "matrix_derivative.h"
 // IModel interface for model pointer serialization
 #include <macrodr/interface/IModel.h>
 // Bring legacy parameter types for optional JSON views
@@ -41,6 +43,29 @@ template <class T>
 inline constexpr bool has_json_codec_v = has_json_codec<T>::value;
 
 namespace detail {
+
+inline Json number_or_null(double v) {
+    if (std::isfinite(v)) {
+        return Json::number(v);
+    }
+    return Json::null();
+}
+
+template <class T>
+Json value_to_json(const T& value, TagPolicy policy) {
+    if constexpr (std::is_same_v<std::decay_t<T>, double>) {
+        return number_or_null(static_cast<double>(value));
+    } else if constexpr (requires { to_json(value, policy); }) {
+        return to_json(value, policy);
+    } else if constexpr (requires { value(); to_json(value(), policy); }) {
+        return to_json(value(), policy);
+    } else {
+        Json obj = Json::object();
+        obj.obj.emplace("type", Json::string(macrodr::dsl::type_name<T>()));
+        obj.obj.emplace("value", Json::null());
+        return obj;
+    }
+}
 
 inline std::string json_type_name(Json::Type t) {
     switch (t) {
@@ -505,7 +530,7 @@ inline Json to_json(const Matrix<double>& m, TagPolicy) {
     for (std::size_t i = 0; i < m.nrows(); ++i) {
         Json row = Json::array();
         for (std::size_t jcol = 0; jcol < m.ncols(); ++jcol) {
-            row.arr.push_back(Json::number(m(i, jcol)));
+            row.arr.push_back(detail::number_or_null(m(i, jcol)));
         }
         rows.arr.push_back(std::move(row));
     }
@@ -554,9 +579,8 @@ inline Json to_json(const DiagonalMatrix<double>& m, TagPolicy) {
     obj.obj.emplace("rows", Json::number(static_cast<double>(m.nrows())));
     obj.obj.emplace("cols", Json::number(static_cast<double>(m.ncols())));
     Json diag = Json::array();
-    for (std::size_t i = 0; i < m.size(); ++i) {
-        diag.arr.push_back(Json::number(m[i]));
-    }
+    for (std::size_t i = 0; i < m.size(); ++i)
+        diag.arr.push_back(detail::number_or_null(m[i]));
     obj.obj.emplace("diag", std::move(diag));
     return obj;
 }
@@ -634,7 +658,7 @@ inline Json to_json(const SymPosDefMatrix<double>& m, TagPolicy policy) {
     for (std::size_t i = 0; i < m.nrows(); ++i) {
         Json row = Json::array();
         for (std::size_t j = 0; j < m.ncols(); ++j) {
-            row.arr.push_back(Json::number(m(i, j)));
+            row.arr.push_back(detail::number_or_null(m(i, j)));
         }
         rows.arr.push_back(std::move(row));
     }
@@ -647,7 +671,7 @@ inline Json to_json(const SymmetricMatrix<double>& m, TagPolicy policy) {
     for (std::size_t i = 0; i < m.nrows(); ++i) {
         Json row = Json::array();
         for (std::size_t j = 0; j < m.ncols(); ++j) {
-            row.arr.push_back(Json::number(m(i, j)));
+            row.arr.push_back(detail::number_or_null(m(i, j)));
         }
         rows.arr.push_back(std::move(row));
     }
@@ -660,7 +684,8 @@ inline Json to_json(const DiagPosDetMatrix<double>& m, TagPolicy policy) {
     obj.obj.emplace("rows", Json::number(static_cast<double>(m.nrows())));
     obj.obj.emplace("cols", Json::number(static_cast<double>(m.ncols())));
     Json diag = Json::array();
-    for (std::size_t i = 0; i < m.size(); ++i) diag.arr.push_back(Json::number(m[i]));
+    for (std::size_t i = 0; i < m.size(); ++i)
+        diag.arr.push_back(detail::number_or_null(m[i]));
     obj.obj.emplace("diag", std::move(diag));
     return obj;
 }
@@ -679,6 +704,54 @@ inline Maybe_error<void> from_json(const Json& j, DiagPosDetMatrix<double>& out,
                                    TagPolicy policy) {
     (void)j; (void)out; (void)policy;
     return error_message(path + ": deserialization for DiagPosDetMatrix<double> not supported");
+}
+
+template <class Value, class DX>
+Json to_json(const var::d_d_<Value, DX>& d, TagPolicy policy) {
+    return detail::value_to_json(d(), policy);
+}
+
+template <class Value, class DX>
+Maybe_error<void> from_json(const Json& j, var::d_d_<Value, DX>& out, const std::string& path,
+                           TagPolicy policy) {
+    (void)j;
+    (void)out;
+    (void)policy;
+    return error_message(path + ": deserialization for derivative components not supported");
+}
+
+template <class Primitive, class Differential>
+Json to_json(const var::Derivative<Primitive, Differential>& value, TagPolicy policy) {
+    Json obj = Json::object();
+    obj.obj.emplace("primitive", detail::value_to_json(value.primitive(), policy));
+    obj.obj.emplace("derivative", detail::value_to_json(value.derivative(), policy));
+    return obj;
+}
+
+// Specialization for derivatives of vectors: serialize elementwise derivatives
+template <class T, class DX>
+Json to_json(const var::Derivative<std::vector<T>, DX>& value, TagPolicy policy) {
+    Json obj = Json::object();
+    // Primitive is the underlying std::vector<T>
+    obj.obj.emplace("primitive", detail::value_to_json(value.primitive(), policy));
+
+    // Derivative: array with each element's derivative JSON
+    Json darr = Json::array();
+    for (const auto& elem : value) {
+        // elem is Derivative<T, DX>
+        darr.arr.push_back(detail::value_to_json(elem.derivative(), policy));
+    }
+    obj.obj.emplace("derivative", std::move(darr));
+    return obj;
+}
+
+template <class Primitive, class Differential>
+Maybe_error<void> from_json(const Json& j, var::Derivative<Primitive, Differential>& out,
+                           const std::string& path, TagPolicy policy) {
+    (void)j;
+    (void)out;
+    (void)policy;
+    return error_message(path + ": deserialization for derivatives is not supported");
 }
 
 template <class A, class B>
@@ -780,12 +853,28 @@ inline Json to_json(const var::Parameters_values& pv, TagPolicy policy) {
     return obj;
 }
 
+inline Json to_json(const var::Parameters_transformed& pt, TagPolicy policy) {
+    (void)policy;
+    Json obj = Json::object();
+    obj.obj.emplace("schema_id", Json::string(""));
+    obj.obj.emplace("values", to_json(pt(), TagPolicy::None));
+    return obj;
+}
+
 inline Maybe_error<void> from_json(const Json& j, var::Parameters_values& out,
                                    const std::string& path, TagPolicy policy) {
     (void)j;
     (void)out;
     (void)policy;
     return error_message(path + ": deserialization for var::Parameters_values requires model context");
+}
+
+inline Maybe_error<void> from_json(const Json& j, var::Parameters_transformed& out,
+                                   const std::string& path, TagPolicy policy) {
+    (void)j;
+    (void)out;
+    (void)policy;
+    return error_message(path + ": deserialization for var::Parameters_transformed requires model context");
 }
 
 // Transformations vector: array of tags
