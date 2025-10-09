@@ -129,7 +129,6 @@ N_Ch_mean_value,qmodel.h,['qmodel.h'],Internal
 N_Ch_std,qmodel.h,['qmodel.h'],Internal
 N_Ch_tau,qmodel.h,['qmodel.h'],Internal
 N_channel_state,qmodel.h,['qmodel.h'],Internal
-Nelson_Normalization,lapack_headers.h,['lapack_headers.h'],Internal
 Number_of_Channels_mean,qmodel.h,['qmodel.h'],Internal
 Number_of_Channels_stddev,qmodel.h,['qmodel.h'],Internal
 Number_of_States,qmodel.h,['qmodel.h'],Internal
@@ -163,7 +162,6 @@ Qn_to_Qdtm,qmodel.h,['qmodel.h'],Internal
 Qx,qmodel.h,['qmodel.h'],Internal
 Recoding,qmodel.h,['qmodel.h'],Internal
 Reporter,parallel_tempering_linear_regression.h,['parallel_tempering_linear_regression.h'],Internal
-Right_Eigenvector_Nelson_Normalization,lapack_headers.h,['lapack_headers.h'],Internal
 Sampler,distributions.h,['distributions.h'],Internal
 Simulated_Step,qmodel.h,['qmodel.h'],Internal
 State_Model,qmodel.h,['qmodel.h'],Internal
