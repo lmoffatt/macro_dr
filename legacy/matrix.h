@@ -143,7 +143,7 @@ Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double>& x,
 Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>> Lapack_EigenSystem(
     const Matrix<double>& x, bool does_permutations = true, bool does_diagonal_scaling = true,
     bool computes_eigenvalues_condition_numbers = false,
-    bool computes_eigenvectors_condition_numbers = false, bool do_Nelson_Normalization = false);
+    bool computes_eigenvectors_condition_numbers = false);
 
 Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
     Lapack_Symm_EigenSystem(const SymmetricMatrix<double>& x, std::string kind = "lower");
@@ -1845,11 +1845,10 @@ auto qr(const Matrix<T>& a) {
 inline auto eigs(const Matrix<double>& x, bool does_permutations = false,
                  bool does_diagonal_scaling = false,
                  bool computes_eigenvalues_condition_numbers = false,
-                 bool computes_eigenvectors_condition_numbers = false,
-                 bool do_Nelson_Normalization = false) {
+                 bool computes_eigenvectors_condition_numbers = false) {
     return lapack::Lapack_EigenSystem(
         x, does_permutations, does_diagonal_scaling, computes_eigenvalues_condition_numbers,
-        computes_eigenvectors_condition_numbers, do_Nelson_Normalization);
+        computes_eigenvectors_condition_numbers);
 }
 
 inline auto eigs(const SymmetricMatrix<double>& x) {

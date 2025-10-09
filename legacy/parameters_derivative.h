@@ -1083,10 +1083,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
          bool does_permutations = false, bool does_diagonal_scaling = false,
          bool computes_eigenvalues_condition_numbers = false,
          bool computes_eigenvectors_condition_numbers = false) {
-    bool do_Nelson_Normalization = true;
     auto res = eigs(x.primitive(), does_permutations, does_diagonal_scaling,
-                    computes_eigenvalues_condition_numbers, computes_eigenvectors_condition_numbers,
-                    do_Nelson_Normalization);
+                    computes_eigenvalues_condition_numbers, computes_eigenvectors_condition_numbers);
 
     if (!res)
         return res.error();
@@ -1119,25 +1117,31 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
         auto Maybe_derVR = apply_maybe(
             [&VR, &lambda, &VL, &VRRV](auto const& dx) -> Maybe_error<Matrix<double>> {
                 Matrix<double> C(VR.nrows(), VR.ncols());
-                for (std::size_t k = 0; k < VR.nrows(); ++k) {
-                    auto uk = VR(":", k);
+                for (std::size_t i = 0; i < VR.ncols(); ++i) {
+                    auto ui = VR(":", i);
                     for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (k != j) {
+                        if (i != j) {
                             auto vTj = tr(VL(":", j));
                             auto uj = VR(":", j);
-                            double dl = lambda[k] - lambda[j];
-                            auto dl_vTJvuj = dl * getvalue(vTj * uj);
-                            if (dl_vTJvuj == 0)
+                            double dl = lambda[i] - lambda[j];
+                            auto denom = dl * getvalue(vTj * uj);
+                            if (denom == 0)
                                 return error_message("nan value for derivative");
-                            C(k, j) = getvalue(vTj * dx * uk) / dl_vTJvuj;
+                            // Store C(i,j) == coefficient C(j,i) in standard notation
+                            C(i, j) = getvalue(vTj * dx * ui) / denom;
                         }
                     }
-                    C(k, k) = 0;
+                    // Diagonal from 2-norm gauge on columns: u_i^T du_i = 0
+                    auto gii = VRRV(i, i);
+                    if (gii == 0)
+                        return error_message("nan value for derivative");
+                    double sii = 0.0;
                     for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (k != j)
-                            C(k, k) -= VRRV(k, j) * C(k, j);
+                        if (i != j) sii += VRRV(i, j) * C(i, j);
                     }
+                    C(i, i) = -sii / gii;
                 }
+                // dVR = (C^T) * VR (given our storage of C)
                 return tr(C) * VR;
             },
             x.derivative()());
@@ -1145,11 +1149,41 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
             return Maybe_derVR.error();
         auto dVR =
             Derivative<Matrix<double>, Parameters_transformed>(VR, Maybe_derVR.value(), x.dx());
-        auto dVL = inv(dVR);
-        if (!dVL)
-            return dVL.error();
-        else
-            return std::tuple(dVR, dLambda, dVL.value());
+        // Compute dVL consistently: dVL = - C * VL with the same C per direction
+        auto Maybe_derVL = apply_maybe(
+            [&VR, &lambda, &VL, &VRRV](auto const& dx) -> Maybe_error<Matrix<double>> {
+                Matrix<double> C(VR.nrows(), VR.ncols());
+                for (std::size_t i = 0; i < VR.ncols(); ++i) {
+                    auto ui = VR(":", i);
+                    for (std::size_t j = 0; j < VR.ncols(); ++j) {
+                        if (i != j) {
+                            auto vTj = tr(VL(":", j));
+                            auto uj = VR(":", j);
+                            double dl = lambda[i] - lambda[j];
+                            auto denom = dl * getvalue(vTj * uj);
+                            if (denom == 0)
+                                return error_message("nan value for derivative");
+                            C(i, j) = getvalue(vTj * dx * ui) / denom;
+                        }
+                    }
+                    auto gii = VRRV(i, i);
+                    if (gii == 0)
+                        return error_message("nan value for derivative");
+                    double sii = 0.0;
+                    for (std::size_t j = 0; j < VR.ncols(); ++j) {
+                        if (i != j) sii += VRRV(i, j) * C(i, j);
+                    }
+                    C(i, i) = -sii / gii;
+                }
+                // dVL = - C * VL (consistent with dVR assembly and biorthogonal gauge)
+                return (-1.0) * (C * VL);
+            },
+            x.derivative()());
+        if (!Maybe_derVL)
+            return Maybe_derVL.error();
+        auto dVL =
+            Derivative<Matrix<double>, Parameters_transformed>(VL, Maybe_derVL.value(), x.dx());
+        return std::tuple(dVR, dLambda, dVL);
     }
 }
 

@@ -603,7 +603,7 @@ Maybe_error<DownTrianMatrix<double>> Lapack_chol(const SymPosDefMatrix<double>& 
 inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
     Lapack_EigenSystem(const Matrix<double>& x, bool does_permutations, bool does_diagonal_scaling,
                        bool computes_eigenvalues_condition_numbers,
-                       bool computes_eigenvectors_condition_numbers, bool do_Nelson_Normalization);
+                       bool computes_eigenvectors_condition_numbers);
 
 }  // namespace lapack
 template <>
@@ -1185,38 +1185,12 @@ inline auto sort_by_eigenvalue(std::tuple<C_Matrix, C_DiagonalMatrix, C_Matrix> 
     return std::tuple(VLs, Ls, VRs);
 }
 
-inline Matrix<double>& Right_Eigenvector_Nelson_Normalization(Matrix<double>& X) {
-    assert(X.nrows() == X.ncols());
-    auto n = X.nrows();
-    for (std::size_t k = 0; k < n; ++k) {
-        double max = 0;
-        for (std::size_t i = 0; i < n; ++i)
-            if (std::abs(X(i, k)) >= std::abs(max)) {
-                max = X(i, k);
-            }
-        for (std::size_t i = 0; i < n; ++i) X(i, k) = X(i, k) / max;
-    }
-    return X;
-}
-inline bool Nelson_Normalization(Matrix<double>& VR, Matrix<double>& VL) {
-    Right_Eigenvector_Nelson_Normalization(VR);
-    bool ok = true;
-    for (std::size_t i = 0; i < VR.nrows(); ++i) {
-        double sum = 0;
-        for (std::size_t j = 0; j < VR.ncols(); ++j) sum += VL(i, j) * VR(j, i);
-        for (std::size_t j = 0; j < VR.ncols(); ++j) VL(i, j) = VL(i, j) / sum;
-        if (sum != 0)
-            ok = false;
-    }
-    return ok;
-    //   assert((are_Equal<true, Matrix<double>>().test_prod(
-    //       VR * VL, Matrix_Generators::eye<double>(VR.ncols()), std::cerr)));
-}
+// Nelson normalization was removed from the codebase.
 
 inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
     Lapack_EigenSystem(const Matrix<double>& x, bool does_permutations, bool does_diagonal_scaling,
                        bool computes_eigenvalues_condition_numbers,
-                       bool computes_eigenvectors_condition_numbers, bool do_Nelson_Normalization) {
+                       bool computes_eigenvectors_condition_numbers) {
     return_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>,
                  Lapack_EigenSystem>
         Error;
@@ -1574,9 +1548,6 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
     } else {
         auto VL_cpp = tr(VR_lapack);
         auto VR_cpp = tr(VL_lapack);
-        if (do_Nelson_Normalization)
-            if (!Nelson_Normalization(VR_cpp, VL_cpp))
-                return error_message("singular normalization");
 
         if constexpr (false) {
             assert(([&VR_cpp, &WR, &x, &VL_cpp]() {
@@ -1609,16 +1580,10 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
                    }()) &&
                    " fails in eigendecomposition");
         }
-        if (do_Nelson_Normalization)
-            return sort_by_eigenvalue(std::make_tuple(
-                                          // return std::make_tuple(
-                                          VR_cpp, WR, VL_cpp),
-                                      x);  // in reality VL, L, VR because of transposition
-        else
-            return std::make_tuple(
-                // return std::make_tuple(
-                VR_cpp, WR,
-                VL_cpp);  // in reality VL, L, VR because of transposition
+        // Always return eigenpairs sorted by eigenvalue for determinism.
+        return sort_by_eigenvalue(std::make_tuple(
+                                      VR_cpp, WR, VL_cpp),
+                                  x);  // in reality VL, L, VR because of transposition
     }
 }
 
@@ -2048,9 +2013,6 @@ Parameters
         lapack::ddisna_(&JOB, &M, &N, &W[0], &RCOND[0], &INFO);
         auto VL_cpp = Z;
         auto VR_cpp = tr(Z);
-        if (!Nelson_Normalization(VR_cpp, VL_cpp))
-            return error_message("singular normalization");
-
         return std::tuple(VR_cpp, W, VL_cpp);
     }
 }
