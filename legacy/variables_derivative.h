@@ -13,40 +13,26 @@ class Derivative<Var<Id, T>, X> {
     static constexpr bool is_variable = true;
     template <class S>
         requires(std::constructible_from<Derivative<T, X>, S>)
-    constexpr Derivative(S&& t_x) : m_x{std::forward<S>(t_x)} {
-    }
-    constexpr auto& operator()() {
-        return m_x;
-    }
-    constexpr auto& operator()() const {
-        return m_x;
-    }
-    constexpr auto& operator[](Var<Id>) const {
-        return *this;
-    }
+    constexpr Derivative(S&& t_x) : m_x{std::forward<S>(t_x)} {}
+    constexpr auto& operator()() { return m_x; }
+    constexpr auto& operator()() const { return m_x; }
+    constexpr auto& operator[](Var<Id>) const { return *this; }
 
     template <class... Ts>
     constexpr auto operator()(const Ts&...) const {
         return Derivative<Id, X>(*this);
     }
 
-    constexpr Derivative() {
-    }
-    constexpr auto& value() const {
-        return m_x;
-    }
-    auto& primitive() const {
-        return m_x.primitive();
-    }
-    auto& derivative() const {
-        return m_x.derivative();
-    }
+    constexpr Derivative() = default;
+    constexpr auto& value() const { return m_x; }
+    decltype(auto) primitive() const { return m_x.primitive(); }
+    auto derivative() const { return m_x.derivative(); }
 
-    auto& dx() const {
-        return m_x.dx();
-    }
+    auto& dx() const { return m_x.dx(); }
+    bool has_dx() const { return m_x.has_dx(); }
+
     friend auto& print(std::ostream& os, const Derivative& x) {
-        os << typeid(Id).name() << ": \n";
+        os << type_name<Id>() << ": \n";
         print(os, x.value());
         os << "\n";
         return os;
@@ -66,17 +52,10 @@ class Derivative<Fun<Id, F, T...>, X> {
     template <class... S>
         requires((std::constructible_from<Derivative<T, X>, S>) && ...)
     constexpr Derivative(Var<Id>, F const& t_f, S&&... t_x)
-        : m_x{std::forward<S>(t_x)...}, m_f{t_f} {
-    }
-    constexpr auto& operator()() {
-        return m_x;
-    }
-    constexpr auto& operator()() const {
-        return m_x;
-    }
-    constexpr auto& operator[](Var<Id>) const {
-        return *this;
-    }
+        : m_x{std::forward<S>(t_x)...}, m_f{t_f} {}
+    constexpr auto& operator()() { return m_x; }
+    constexpr auto& operator()() const { return m_x; }
+    constexpr auto& operator[](Var<Id>) const { return *this; }
 
     template <class... Ts>
     constexpr auto operator()(const Ts&... ts) {
@@ -90,15 +69,15 @@ class Derivative<Fun<Id, F, T...>, X> {
             [this, &ts...](auto&... xs) { return std::invoke(m_f, xs..., ts...); }, m_x));
     }
 
-    constexpr Derivative() {
-    }
+    constexpr Derivative() = default;
 
     decltype(auto) dx() const {
         return std::apply([](auto&... ds) -> decltype(auto) { return get_dx_of_dfdx(ds...); }, m_x);
     }
+    bool has_dx() const { return (std::get<decltype(T())>(m_x).has_dx() || ... || false); }
 
     friend auto& print(std::ostream& os, const Derivative& x) {
-        os << typeid(Id).name() << ": \n";
+        os << type_name<Id>() << ": \n";
         print(os, x.m_x);
         os << "\t";
         return os;
@@ -124,12 +103,9 @@ class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids
     }
     static constexpr bool is_vector_space = true;
 
-    Derivative() {
-    }
-    Derivative(Derivative_t<Ids, X>&&... t_vars) : base_type{std::move(t_vars)...} {
-    }
-    Derivative(Derivative_t<Ids, X> const&... t_vars) : base_type{t_vars...} {
-    }
+    Derivative() = default;
+    Derivative(Derivative_t<Ids, X>&&... t_vars) : base_type{std::move(t_vars)...} {}
+    Derivative(Derivative_t<Ids, X> const&... t_vars) : base_type{t_vars...} {}
     // Vector_Space(std::decay_t <decltype(std::declval<Vars const&>().value())> ... t_vars): Vars{std::move(t_vars)}...{}
 
     friend auto& operator<<(std::ostream& os, const Derivative& x) {
@@ -141,6 +117,9 @@ class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids
     Vector_Space<Ids...> primitive() const {
         return Vector_Space<Ids...>(var::primitive(get<Ids>(*this))...);
     }
+
+    auto dx() const { return get_dx_of_dfdx(get<Ids>(*this)...); }
+    bool has_dx() const { return (var::has_dx(get<Ids>(*this)) || ... || false); }
 };
 
 template <class... Ids, class X>
@@ -161,22 +140,15 @@ class Derivative<Id, X> : public Derivative<typename Id::variable_type, X> {
 
     template <class IdT>
         requires std::is_same_v<Id, std::decay_t<IdT>>
-    Derivative(IdT&& m) : base_type{std::forward<IdT>(m)()} {
-    }
-    auto primitive() const {
-        return Id(base_type::primitive());
-    }
+    Derivative(IdT&& m) : base_type{std::forward<IdT>(m)()} {}
+    decltype(auto) primitive() const { return Id(base_type::primitive()); }
 
-    Derivative(base_type&& m) : base_type{std::move(m)} {
-    }
-    Derivative(base_type const& m) : base_type{m} {
-    }
-    Derivative() {
-    }
+    Derivative(base_type&& m) : base_type{std::move(m)} {}
+    Derivative(base_type const& m) : base_type{m} {}
+    Derivative() = default;
 
-    auto& dx() const {
-        return base_type::dx();
-    }
+    auto& dx() const { return base_type::dx(); }
+    bool has_dx() const { return base_type::has_dx(); }
 };
 
 template <class Id, class T, class X>

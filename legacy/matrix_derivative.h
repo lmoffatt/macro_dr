@@ -5,7 +5,9 @@
 
 #include "derivative_operator.h"
 #include "matrix.h"
+#include "matrix_der_traits.h"
 #include "variables.h"
+
 namespace var {
 
 template <template <class> class T_Matrix>
@@ -17,17 +19,14 @@ class d_d_<T_Matrix<double>, double> {
     using value_type = T_Matrix<double>;
     template <class aMatrix>
         requires std::constructible_from<M_der_t<T_Matrix<double>>, aMatrix>
-    d_d_(aMatrix&& dydx) : m_dydx{std::forward<aMatrix>(dydx)} {
-    }
-    constexpr d_d_() {
-    }
+    d_d_(aMatrix&& dydx) : m_dydx{std::forward<aMatrix>(dydx)} {}
+    constexpr d_d_() = default;
+    [[nodiscard]] d_d_(const d_d_&) = default;
+    d_d_(d_d_&&) = default;
+    d_d_& operator=(const d_d_&) = default;
 
-    auto& operator()() {
-        return m_dydx;
-    }
-    auto& operator()() const {
-        return m_dydx;
-    }
+    auto& operator()() { return m_dydx; }
+    auto& operator()() const { return m_dydx; }
 };
 
 template <template <class> class Matrix, class T>
@@ -40,17 +39,14 @@ class d_d_<T, Matrix<double>> {
 
     template <class aMatrix>
         requires std::constructible_from<Matrix<M_der_t<T>>, aMatrix>
-    constexpr d_d_(aMatrix&& dydx) : m_dydx{std::forward<aMatrix>(dydx)} {
-    }
-    constexpr d_d_() {
-    }
+    constexpr d_d_(aMatrix&& dydx) : m_dydx{std::forward<aMatrix>(dydx)} {}
+    constexpr d_d_() = default;
+    [[nodiscard]] d_d_(const d_d_&) = default;
+    d_d_(d_d_&&) = default;
+    d_d_& operator=(const d_d_&) = default;
 
-    constexpr auto& operator()() {
-        return m_dydx;
-    }
-    constexpr auto operator()() const {
-        return m_dydx;
-    }
+    constexpr auto& operator()() { return m_dydx; }
+    constexpr auto operator()() const { return m_dydx; }
 };
 
 template <template <class> class Matrix>
@@ -67,20 +63,12 @@ class Derivative<Matrix<double>,
     template <class P, class D>
         requires(std::constructible_from<primitive_type, P> &&
                  std::constructible_from<derivative_type, D>)
-    Derivative(P&& t_x, D&& t_d) : m_x{std::forward<P>(t_x)}, m_d{std::forward<D>(t_d)} {
-    }
-    Derivative() {
-    }
+    Derivative(P&& t_x, D&& t_d) : m_x{std::forward<P>(t_x)}, m_d{std::forward<D>(t_d)} {}
+    Derivative() = default;
 
-    auto& primitive() {
-        return m_x;
-    }
-    auto& primitive() const {
-        return m_x;
-    }
-    auto& derivative() const {
-        return m_d;
-    }
+    auto& primitive() { return m_x; }
+    auto& primitive() const { return m_x; }
+    auto& derivative() const { return m_d; }
     auto operator()(std::size_t i, std::size_t j) const {
         return Derivative<double, double>(primitive()(i, j), derivative()(i, j));
     }
@@ -89,18 +77,12 @@ class Derivative<Matrix<double>,
         return Derivative<double, double>(primitive()[i], derivative()[i]);
     }
 
-    auto& dx() const {
-        return m_d.dx();
-    }
-    auto ncols() const {
-        return m_x.ncols();
-    }
-    auto nrows() const {
-        return m_x.nrows();
-    }
-    auto size() const {
-        return m_x.size();
-    }
+    auto& dx() const { return m_d.dx(); }
+    [[nodiscard]] bool has_dx() const { return m_d.has_dx(); }
+
+    auto ncols() const { return m_x.ncols(); }
+    auto nrows() const { return m_x.nrows(); }
+    auto size() const { return m_x.size(); }
 };
 
 template <template <class> class Matrix>
@@ -116,23 +98,14 @@ class Derivative<double,
    public:
     template <class D>
         requires(std::constructible_from<derivative_type, D>)
-    Derivative(double t_x, D&& t_d) : m_x{t_x}, m_d{std::forward<D>(t_d)} {
-    }
-    Derivative() {
-    }
+    Derivative(double t_x, D&& t_d) : m_x{t_x}, m_d{std::forward<D>(t_d)} {}
+    Derivative() = default;
 
-    auto& primitive() {
-        return m_x;
-    }
-    auto& primitive() const {
-        return m_x;
-    }
-    auto& derivative() const {
-        return m_d;
-    }
-    auto& dx() const {
-        return m_d.dx();
-    }
+    auto& primitive() { return m_x; }
+    auto& primitive() const { return m_x; }
+    auto& derivative() const { return m_d; }
+    auto& dx() const { return m_d.dx(); }
+    bool has_dx() const { return m_d.has_dx(); }
 };
 
 template <template <class> class Matrix>
@@ -148,37 +121,22 @@ class Derivative<
     derivative_type m_d;
 
    public:
-    auto ncols() const {
-        return m_x.ncols();
-    }
-    auto nrows() const {
-        return m_x.nrows();
-    }
-    auto size() const {
-        return m_x.size();
-    }
-    Derivative() {
-    }
+    auto ncols() const { return m_x.ncols(); }
+    auto nrows() const { return m_x.nrows(); }
+    auto size() const { return m_x.size(); }
+    Derivative() = default;
 
     template <class P, class D>
         requires(std::constructible_from<primitive_type, P> &&
                  std::constructible_from<derivative_type, D>)
 
-    Derivative(P&& t_x, D&& t_d) : m_x{std::forward<P>(t_x)}, m_d{std::forward<D>(t_d)} {
-    }
+    Derivative(P&& t_x, D&& t_d) : m_x{std::forward<P>(t_x)}, m_d{std::forward<D>(t_d)} {}
 
-    auto& primitive() {
-        return m_x;
-    }
-    auto& primitive() const {
-        return m_x;
-    }
-    auto& derivative() const {
-        return m_d;
-    }
-    auto& dx() const {
-        return m_d.dx();
-    }
+    auto& primitive() { return m_x; }
+    auto& primitive() const { return m_x; }
+    auto& derivative() const { return m_d; }
+    auto& dx() const { return m_d.dx(); }
+    bool has_dx() const { return m_d.has_dx(); }
 
     auto operator()(std::size_t i, std::size_t j) const {
         return Derivative<double, Matrix<double>>(

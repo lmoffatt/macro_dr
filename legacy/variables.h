@@ -2,6 +2,8 @@
 #define VARIABLES_H
 
 //#include "derivative_operator.h"
+#include <macrodr/dsl/type_name.h>
+
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -12,9 +14,10 @@
 
 #include "general_algorithm_on_containers.h"
 #include "general_output_operator.h"
-#include "macrodr/dsl/type_name.h"
 #include "maybe_error.h"
+
 namespace var {
+using macrodr::dsl::type_name;
 
 template <class Id>
 struct Unit {
@@ -114,7 +117,7 @@ class Var<Id, T> {
     }
 
     friend auto& print(std::ostream& os, const Var& x) {
-        os << typeid(Id).name() << ": \n";
+        os << type_name<Id>() << ": \n";
         print(os, x.value());
         os << "\n";
         return os;
@@ -132,7 +135,7 @@ class Var<Id, T> {
                                               double AbsError, std::size_t max_errors) {
         auto out = compare_contents(s0(), s1(), RelError, AbsError, max_errors);
         if (!out)
-            return error_message("\n" + std::string(typeid(Id).name()) + ": \n" + out.error()());
+            return error_message("\n" + type_name<Id>() + ": \n" + out.error()());
         else
             return out;
     }
@@ -157,7 +160,7 @@ Maybe_error<bool> compare_contents(const Var<Id, T>& s0, const Var<Id, T>& s1, d
                                    double AbsError, std::size_t max_errors) {
     auto out = compare_contents(s0(), s1(), RelError, AbsError, max_errors);
     if (!out)
-        return error_message("\n" + std::string(typeid(Id).name()) + ": \n" + out.error()());
+        return error_message("\n" + macrodr::dsl::type_name<Id>() + ": \n" + out.error()());
     else
         return out;
 }
@@ -205,7 +208,7 @@ class Constant<Id, T> {
     friend double fullsum(const Constant& x) { return fullsum(x()); }
 
     friend auto& print(std::ostream& os, const Constant& x) {
-        os << typeid(Id).name() << ": \n";
+        os << type_name<Id>() << ": \n";
         print(os, x.value());
         os << "\n";
         return os;
@@ -235,7 +238,7 @@ class Constant<Id, T> {
                                               std::size_t max_errors) {
         auto out = compare_contents(s0.value(), s1.value(), RelError, AbsError, max_errors);
         if (!out)
-            return error_message("\n" + std::string(typeid(Id).name()) + ": \n" + out.error()());
+            return error_message("\n" + type_name<Id>() + ": \n" + out.error()());
         else
             return out;
     }
@@ -246,7 +249,7 @@ Maybe_error<bool> compare_contents(const Constant<Id, T>& s0, const Constant<Id,
                                    double RelError, double AbsError, std::size_t max_errors) {
     auto out = compare_contents(s0.value(), s1.value(), RelError, AbsError, max_errors);
     if (!out)
-        return error_message("\n" + std::string(typeid(Id).name()) + ": \n" + out.error()());
+        return error_message("\n" + type_name<Id>() + ": \n" + out.error()());
     else
         return out;
 }
@@ -507,7 +510,7 @@ class Vector_Space : public Vars... {
         (print(os, static_cast<Vars const&>(tu)), ...);
         os << ">\n";
         return os;
-        //  ((os<<typeid(Vars).name()<<" :=\t"<<static_cast<Vars const&>(tu).value()<<"\t"),...);
+        //  ((os<<type_name<Id>()(Vars).name()<<" :=\t"<<static_cast<Vars const&>(tu).value()<<"\t"),...);
         // return os
     }
 
@@ -646,7 +649,7 @@ class Vector_Map_Space : public VarMaps... {
    public:
     static constexpr bool is_vector_map_space = true;
 
-    Vector_Map_Space() {}
+    Vector_Map_Space() = default;
 };
 
 inline Maybe_error<bool> test_equality(double x, double y, double eps) {
@@ -663,7 +666,7 @@ template <class Id, class T>
 Maybe_error<bool> test_equality(const Var<Id, T>& one, const Var<Id, T>& two, double eps) {
     auto test = test_equality(one(), two(), eps);
     if (!test) {
-        return error_message(std::string("\n\n") + typeid(Id).name() + std::string(" error: ") +
+        return error_message(std::string("\n\n") + type_name<Id>() + std::string(" error: ") +
                              test.error()());
     } else
         return true;
@@ -674,7 +677,7 @@ Maybe_error<bool> test_equality(const Constant<Id, T>& one, const Constant<Id, T
                                 double eps) {
     auto test = test_equality(one(), two(), eps);
     if (!test) {
-        return error_message(std::string("\n\n") + typeid(Id).name() + std::string(" error: ") +
+        return error_message(std::string("\n\n") + type_name<Id>() + std::string(" error: ") +
                              test.error()());
     } else
         return true;

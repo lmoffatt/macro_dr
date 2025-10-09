@@ -3,7 +3,9 @@
 
 #include <concepts>
 #include <ostream>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "matrix.h"
 #include "maybe_error.h"
@@ -82,10 +84,29 @@ constexpr d_d_<T, T> self_derivative(const T&);
 template <class, class>
 class Derivative;
 
+namespace detail {
+
+// Primary: non-container → Derivative<F, X>
+template <class F, class X>
+struct derivative_op_impl {
+    using type = Derivative<F, X>;
+};
+
+// Specialization: std::vector<T, Alloc> → std::vector<Derivative<T, X>>
+template <class T, class Alloc, class X>
+struct derivative_op_impl<std::vector<T, Alloc>, X> {
+    using type = std::vector<Derivative<T, X>>;
+};
+// Forwarding wrapper to strip cv/ref before dispatching to impl
+template <class F, class X>
+struct derivative_op : derivative_op_impl<std::remove_cvref_t<F>, X> {};
+
+}  // namespace detail
+
 template <class X>
 struct Derivative_Op {
     template <class F>
-    using type = Derivative<F, X>;
+    using type = typename detail::derivative_op<F, X>::type;
 };
 
 struct Maybe_error_Op {
@@ -126,19 +147,12 @@ class d_d_<double, double> {
 
    public:
     using value_type = double;
-    constexpr d_d_(double dydx, const double& x) : m_dydx{dydx}, ptr_dx{&x} {
-    }
-    constexpr auto& operator()() {
-        return m_dydx;
-    }
-    constexpr auto operator()() const {
-        return m_dydx;
-    }
-    constexpr d_d_() {
-    }
-    constexpr auto& dx() const {
-        return *ptr_dx;
-    }
+    constexpr d_d_(double dydx, const double& x) : m_dydx{dydx}, ptr_dx{&x} {}
+    constexpr auto& operator()() { return m_dydx; }
+    constexpr auto operator()() const { return m_dydx; }
+    constexpr d_d_() = default;
+    [[nodiscard]] constexpr auto& dx() const { return *ptr_dx; }
+    [[nodiscard]] constexpr bool has_dx() const { return ptr_dx != nullptr; }
 };
 
 template <>
@@ -148,21 +162,17 @@ class d_d_<double, Matrix<double>> {
 
    public:
     using value_type = double;
-    d_d_(Matrix<double> const& dydx, const Matrix<double>& x) : m_dydx{dydx}, ptr_dx{&x} {
-    }
-    d_d_(Matrix<double>&& dydx, const Matrix<double>& x) : m_dydx{std::move(dydx)}, ptr_dx{&x} {
-    }
-    auto& operator()() {
-        return m_dydx;
-    }
-    auto operator()() const {
-        return m_dydx;
-    }
-    d_d_() {
-    }
-    auto& dx() const {
-        return *ptr_dx;
-    }
+    d_d_(Matrix<double> const& dydx, const Matrix<double>& x) : m_dydx{dydx}, ptr_dx{&x} {}
+    d_d_(Matrix<double>&& dydx, const Matrix<double>& x) : m_dydx{std::move(dydx)}, ptr_dx{&x} {}
+    auto& operator()() { return m_dydx; }
+    auto operator()() const { return m_dydx; }
+    d_d_() = default;
+    [[nodiscard]] d_d_(const d_d_&) = default;
+    d_d_(d_d_&&) = default;
+    d_d_& operator=(const d_d_&) = default;
+    d_d_& operator=(d_d_&&) = default;
+    auto& dx() const { return *ptr_dx; }
+    [[nodiscard]] bool has_dx() const { return ptr_dx != nullptr; }
 };
 
 constexpr auto self_derivative(const double& x) {
@@ -176,14 +186,9 @@ class Primitive {
    public:
     template <class aT>
         requires std::is_same_v<T, std::decay_t<aT>>
-    constexpr Primitive(aT&& y) : m_y{std::forward<aT>(y)} {
-    }
-    constexpr auto& operator()() {
-        return m_y;
-    }
-    constexpr auto& operator()() const {
-        return m_y;
-    }
+    constexpr Primitive(aT&& y) : m_y{std::forward<aT>(y)} {}
+    constexpr auto& operator()() { return m_y; }
+    constexpr auto& operator()() const { return m_y; }
 };
 
 template <class T>
@@ -191,14 +196,9 @@ class Primitive<Matrix<T>> : public Matrix<T> {
    public:
     template <class aT>
         requires std::is_same_v<Matrix<T>, std::decay_t<aT>>
-    constexpr Primitive(aT&& y) : Matrix<T>{std::forward<aT>(y)} {
-    }
-    constexpr auto& operator()() {
-        return static_cast<Matrix<T>&>(*this);
-    }
-    constexpr auto& operator()() const {
-        return static_cast<Matrix<T> const&>(*this);
-    }
+    constexpr Primitive(aT&& y) : Matrix<T>{std::forward<aT>(y)} {}
+    constexpr auto& operator()() { return static_cast<Matrix<T>&>(*this); }
+    constexpr auto& operator()() const { return static_cast<Matrix<T> const&>(*this); }
 };
 
 template <class N, class D>
@@ -215,6 +215,16 @@ std::ostream& print(std::ostream& os, const Derivative<N, D>& d) {
     print(os, primitive(d));
     os << "\n derivative: \n";
     print(os, derivative(d)());
+    return os;
+}
+
+template <class... N, class D>
+std::ostream& print(std::ostream& os, const Derivative<var::Vector_Space<N...>, D>& d) {
+    ((os << "\n"
+         << type_name<N>(),
+      ": \n", print(os, primitive(get<N>(d))), os << "\n derivative: \n",
+      print(os, derivative(get<N>(d))())),
+     ..., 1);
     return os;
 }
 
@@ -236,23 +246,15 @@ class Derivative<double, double> {
     d_d_<double, double> m_d;
 
    public:
-    auto& primitive() const {
-        return m_x;
-    }
-    auto& derivative() const {
-        return m_d;
-    }
+    auto& primitive() const { return m_x; }
+    auto& derivative() const { return m_d; }
 
-    constexpr Derivative(double fx, double dfdx, const double& dx) : m_x{fx}, m_d{dfdx, dx} {
-    }
+    constexpr Derivative(double fx, double dfdx, const double& dx) : m_x{fx}, m_d{dfdx, dx} {}
 
-    constexpr Derivative(double x, const double& dx) : m_x{x}, m_d{0.0, dx} {
-    }
-    Derivative() {
-    }
-    auto& dx() const {
-        return m_d.dx();
-    }
+    constexpr Derivative(double x, const double& dx) : m_x{x}, m_d{0.0, dx} {}
+    Derivative() = default;
+    auto& dx() const { return m_d.dx(); }
+    [[nodiscard]] bool has_dx() const { return m_d.has_dx(); }
 
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
@@ -312,27 +314,18 @@ class Derivative<double, Matrix<double>> {
     d_d_<double, Matrix<double>> m_d;
 
    public:
-    auto& primitive() const {
-        return m_x;
-    }
-    auto& derivative() const {
-        return m_d;
-    }
+    auto& primitive() const { return m_x; }
+    auto& derivative() const { return m_d; }
 
     Derivative(double fx, Matrix<double> const& dfdx, const Matrix<double>& dx)
-        : m_x{fx}, m_d{dfdx, dx} {
-    }
+        : m_x{fx}, m_d{dfdx, dx} {}
     Derivative(double fx, Matrix<double>&& dfdx, const Matrix<double>& dx)
-        : m_x{fx}, m_d{std::move(dfdx), dx} {
-    }
+        : m_x{fx}, m_d{std::move(dfdx), dx} {}
 
-    Derivative(double x, const Matrix<double>& dx) : m_x{x}, m_d{dx - dx, dx} {
-    }
-    Derivative() {
-    }
-    auto& dx() const {
-        return m_d.dx();
-    }
+    Derivative(double x, const Matrix<double>& dx) : m_x{x}, m_d{dx - dx, dx} {}
+    Derivative() = default;
+
+    auto& dx() const { return m_d.dx(); }
 
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
@@ -414,10 +407,12 @@ struct NoDerivative {
     friend T operator+(NoDerivative, T&& x) {
         return std::forward<T>(x);
     }
-    NoDerivative operator()() const {
-        return {};
-    }
+    NoDerivative operator()() const { return {}; }
 };
+
+inline std::ostream& print(std::ostream& os, const NoDerivative& /*unused*/) {
+    return os;
+}
 
 template <class>
 struct is_derivative : public std::false_type {};
@@ -447,6 +442,18 @@ template <class X>
     requires(!is_derivative_v<X>)
 auto derivative(X&&) {
     return NoDerivative{};
+}
+
+template <class T>
+    requires(!is_derivative_v<T>)
+bool has_dx(const T& /*x*/) {
+    return false;
+}
+
+template <class T>
+    requires(is_derivative_v<T>)
+bool has_dx(const T& x) {
+    return x.has_dx();
 }
 
 template <class X, class Y>
@@ -520,8 +527,17 @@ decltype(auto) get_dx_of_dfdx(const T&, const Ts&... xs) {
 }
 
 template <class F, class X, class T, class... Ts>
+    requires(!is_derivative_v<T>)
 decltype(auto) get_dx_of_dfdx(const Derivative<F, X>& x, const T&, const Ts&...) {
     return get_dx_of_dfdx(x);
+}
+
+template <class F, class X, class T, class... Ts>
+decltype(auto) get_dx_of_dfdx(const Derivative<F, X>& x, const Derivative<T, X>& y, const Ts&...) {
+    if (x.has_dx()) {
+        return get_dx_of_dfdx(x);
+    }
+    return get_dx_of_dfdx(y);
 }
 
 //auto a=Derivative<double,double>(9.9,9.9);

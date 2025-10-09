@@ -8,56 +8,60 @@ namespace var {
 
 template <class F, class Parameters, class... Xs>
 Maybe_error<bool> test_Derivative(F f, const Parameters x, double dx, double eps, Xs const&... xs) {
-    auto dY = f(xs...);
-    if (!(is_valid(dY)))
-        return get_error(dY);
-    else {
-        auto T0 = Taylor_first(get_value(dY), x, dx);
+    auto MaybedY = f(xs...);
+    auto MaybeY = f(primitive(xs)...);
 
-        auto T1 = std::invoke(f, Taylor_first(xs, x, dx)...);
-        if (!is_valid(T1))
-            return get_error(T1);
-
-        auto out = test_equality(T0, get_value(T1), eps);
-        auto dout = test_equality(get_value(T0) - primitive(get_value(dY)),
-                                  get_value(T1) - primitive(get_value(dY)), eps);
-        if (!out) {
-            std::stringstream ss;
-            ss << "\n test_Derivative on function ";
-            ss << typeid(F).name();
-            ss << " with delta parameters " << typeid(Parameters).name() << " equal to: ";
-            ss << "\n x dx\n" << x() << "\ndx=" << dx << "\n";
-            ss << "eps =" << eps << "\n";
-
-            ss << "\n-----error---------------\n";
-            ss << dout.error()();
-
-            ss << "\n--------------------\n";
-
-            ss << "\n--------------------\n";
-
-            ss << "\n dY\n";
-            //print(ss,get_value(dY));
-            ss << "\n--------------------\n";
-            ss << "\n--------------------\n";
-            ss << "\n T0\n";
-            print(ss, T0);
-            ss << "\n--------------------\n";
-            ss << "\n T1\n";
-            print(ss, get_value(T1));
-            ss << "\n--------------------\n";
-            ss << "\n--------------------\n";
-            ss << "\n delta_T0\n";
-            print(ss, get_value(T0) - primitive(get_value(dY)));
-            ss << "\n--------------------\n";
-            ss << "\n--------------------\n";
-            print(ss, get_value(T1) - primitive(get_value(dY)));
-            ss << "\n--------------------\n";
-            return error_message(ss.str());
-
-        } else
-            return dout;
+    if (!(is_valid(MaybedY))) {
+        return get_error(MaybedY);
     }
+    if (!(is_valid(MaybeY))) {
+        return get_error(MaybeY);
+    }
+    auto dY = std::move(MaybedY.value());
+    auto Y = std::move(MaybeY.value());
+
+    auto same_primitive = test_equality(primitive(dY), Y, eps);
+    if (!same_primitive) {
+        std::stringstream ss;
+        ss << "\n-----different primitive parts!!! ---- \n";
+        ss << "\n Test_Derivative on function ";
+        ss << type_name<F>();
+        ss << " with parameters " << type_name<Parameters>() << " equal to: ";
+        ss << "eps =" << eps << "\n";
+        ss << same_primitive.error()();
+        ss << "\n-----end of primitive parts--------\n";
+        return error_message(ss.str());
+    }
+
+    auto T0 = Taylor_first(dY, x, dx);
+    auto MaybedY1 = std::invoke(f, Taylor_first(xs, x, dx)...);
+    if (!is_valid(MaybedY1)) {
+        return get_error(MaybedY1);
+    }
+    auto dY1 = std::move(MaybedY1.value());
+
+    auto out = test_equality(T0, dY1, eps);
+
+    //    auto dout = test_equality(get_value(T0) - primitive(get_value(dY)),
+    //                              get_value(T1) - primitive(get_value(dY)), eps);
+    if (!out) {
+        std::stringstream ss;
+        ss << "\n Test_Derivative on function ";
+        ss << type_name<F>();
+        ss << " with delta parameters " << type_name<Parameters>() << " equal to: ";
+        ss << "\n x dx\n" << x() << "\ndx=" << dx << "\n";
+        ss << "eps =" << eps << "\n";
+
+        ss << "\n-----error---------------\n";
+        ss << out.error()();
+
+        ss << "\n--------------------\n";
+
+        ss << "\n--------------------\n";
+
+        return error_message(ss.str());
+    }
+    return true;
 }
 
 template <class F, class... Xs>
