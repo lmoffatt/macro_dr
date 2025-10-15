@@ -2,6 +2,8 @@ set(TEST_SOURCES
     cli/test_cli_helpers.cpp
     cli/test_env_persistence.cpp
     io/json/test_convert.cpp
+    math/test_eigs.cpp
+    math/test_taylor_convergence.cpp
     ${PROJECT_SOURCE_DIR}/third_party/catch2/catch_amalgamated.cpp
 )
 

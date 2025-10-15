@@ -7,6 +7,7 @@
 #include <utility>
 #include <variant>
 
+#include "qmodel.h"
 #include "allosteric_models.h"
 #include "models_MoffattHume_allosteric.h"
 #include "models_MoffattHume_linear.h"

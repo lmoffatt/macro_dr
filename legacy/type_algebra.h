@@ -353,6 +353,19 @@ auto Apply_variant(F&& f, std::tuple<Vs...> const& x) {
     return Apply_variant_of_tuples(std::forward<F>(f), variant_of_tuples);
 }
 
+namespace detail_zip_tuple {
+template <class F, class... T, std::size_t... I>
+auto zip_tuple_impl(F&& f, std::tuple<T...> const& x, std::tuple<T...> const& y,
+                    std::index_sequence<I...> /**/) {
+    return std ::tuple{std::invoke(std::forward<F>(f), std::get<I>(x), std::get<I>(y))...};
+}
+}  // namespace detail_zip_tuple
+template <class F, class... T>
+auto zip_tuple(F&& f, std::tuple<T...> const& x, std::tuple<T...> const& y) {
+    return detail_zip_tuple::zip_tuple_impl(std::forward<F>(f), x, y,
+                                            std::make_index_sequence<sizeof...(T)>{});
+}
+
 namespace safe_visitor {
 
 template <class F, class... Ts>

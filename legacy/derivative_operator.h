@@ -1,6 +1,9 @@
 #ifndef DERIVATIVE_OPERATOR_H
 #define DERIVATIVE_OPERATOR_H
 
+#include <general_algorithm_on_containers.h>
+
+#include <cassert>
 #include <concepts>
 #include <ostream>
 #include <type_traits>
@@ -140,6 +143,26 @@ struct transformation_type<Derivative<T, X>> {
     using type = Derivative_Op<X>;
 };
 
+#include <type_traits>
+#include <utility>
+
+template <class T>
+concept HasDx = requires(const T& t) {
+    { t.dx() };  // optionally: -> /* some constraint */;
+};
+
+template <class T>
+    requires HasDx<std::remove_reference_t<T>>
+auto& get_dx(T const& x) {
+    return x.dx();
+}
+
+template <class T>
+    requires(!HasDx<std::remove_reference_t<T>>)
+auto& get_dx(const T& x) {
+    return x;
+}
+
 template <>
 class d_d_<double, double> {
     double m_dydx;
@@ -253,11 +276,15 @@ class Derivative<double, double> {
 
     constexpr Derivative(double x, const double& dx) : m_x{x}, m_d{0.0, dx} {}
     Derivative() = default;
-    auto& dx() const { return m_d.dx(); }
+    auto& dx() const {
+        assert(m_d.has_dx());
+        return m_d.dx();
+    }
     [[nodiscard]] bool has_dx() const { return m_d.has_dx(); }
 
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
+        assert(x.derivative().has_dx());
         return Derivative(f, f * x.derivative()(), x.dx());
     }
 
@@ -269,10 +296,12 @@ class Derivative<double, double> {
     }
 
     friend auto min(const Derivative& x, double y) {
-        if (x.primitive() >= y)
+        if (x.primitive() >= y) {
             return x;
-        else
+        } else {
+            assert(x.derivative().has_dx());
             return Derivative(y, 0.0 * x.derivative()(), x.dx());
+        }
     }
 
     friend auto log(const Derivative& x) {
@@ -325,10 +354,14 @@ class Derivative<double, Matrix<double>> {
     Derivative(double x, const Matrix<double>& dx) : m_x{x}, m_d{dx - dx, dx} {}
     Derivative() = default;
 
-    auto& dx() const { return m_d.dx(); }
+    auto& dx() const {
+        assert(m_d.has_dx());
+        return m_d.dx();
+    }
 
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
+        assert(x.derivative().has_dx());
         return Derivative(f, f * x.derivative()(), x.dx());
     }
 

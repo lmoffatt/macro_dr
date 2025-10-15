@@ -1026,7 +1026,7 @@ auto calc_Qij(const Conformational_interaction_scheme& inter, const var::Paramet
         return Maybe_i_base.error();
     auto i_base = Maybe_i_base.value();
     auto k = par()[i_base];
-    std::decay_t<decltype(k)> out = 0.0;
+    auto out = k * 0.0;
     for (auto& e : v_int_tr_map()) {
         auto ki = k * e.second();
 

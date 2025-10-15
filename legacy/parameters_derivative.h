@@ -1,7 +1,18 @@
 #ifndef PARAMETERS_DERIVATIVE_H
 #define PARAMETERS_DERIVATIVE_H
 
+#include <cassert>
+#include <cmath>
+
+// Toggleable assertion for derivative dx-pointer checks.
+// Define MACRODR_STRICT_DX_ASSERT at compile time to enable hard asserts.
+#ifndef MACRODR_STRICT_DX_ASSERT
+#define MACRODR_DX_ASSERT(cond) ((void)0)
+#else
+#define MACRODR_DX_ASSERT(cond) assert(cond)
+#endif
 #include <cstddef>
+#include <limits>
 #include <vector>
 
 #include "derivative_operator.h"
@@ -97,7 +108,11 @@ class d_d_<double, Parameters_transformed> {
     auto& operator()() { return m_dydx; }
     auto& operator()() const { return m_dydx; }
 
-    auto& dx() const { return *ptr_dx; }
+    auto& dx() const {
+        MACRODR_DX_ASSERT(ptr_dx != nullptr &&
+                          "Derivative d_d_<double, Parameters_transformed> missing dx pointer");
+        return *ptr_dx;
+    }
     bool has_dx() const { return ptr_dx != nullptr; }
     void set_dx(Parameters_transformed const& x) { ptr_dx = &x; }
 
@@ -134,7 +149,11 @@ class d_d_<aMatrix<double>, Parameters_transformed> {
     constexpr auto& operator()() { return m_dydx; }
     constexpr auto& operator()() const { return m_dydx; }
 
-    auto& dx() const { return *ptr_par; }
+    auto& dx() const {
+        MACRODR_DX_ASSERT(ptr_par != nullptr &&
+                          "Derivative d_d_<Matrix, Parameters_transformed> missing dx pointer");
+        return *ptr_par;
+    }
     bool has_dx() const { return ptr_par != nullptr; }
     void set_dx(Parameters_transformed const& x) { ptr_par = &x; }
 
@@ -143,6 +162,7 @@ class d_d_<aMatrix<double>, Parameters_transformed> {
         using S = std::decay_t<std::invoke_result_t<F, aMatrix<double>>>;
         Matrix<S> x(a().nrows(), a().ncols());
         for (std::size_t i = 0; i < x.size(); ++i) x[i] = f(a()[i]);
+        assert(a.has_dx());
         return d_d_<S, Parameters_transformed>(x, a.dx());
     }
 
@@ -153,6 +173,10 @@ class d_d_<aMatrix<double>, Parameters_transformed> {
         Matrix<S> x(a().nrows(), a().ncols());
 
         for (std::size_t i = 0; i < std::min(x.size(), b().size()); ++i) x[i] = f(a()[i], b()[i]);
+
+        if (a.has_dx() && a.dx().size() > 0) {
+            return d_d_<S, Parameters_transformed>(x, a.dx());
+        }
         return d_d_<S, Parameters_transformed>(x, b.dx());
     }
 
@@ -161,6 +185,9 @@ class d_d_<aMatrix<double>, Parameters_transformed> {
         using S = std::decay_t<std::invoke_result_t<F, aMatrix<double>, double>>;
         Matrix<S> x(a().nrows(), a().ncols());
         for (std::size_t i = 0; i < std::min(x.size(), b().size()); ++i) x[i] = f(a()[i], b()[i]);
+        if (a.has_dx() && a.dx().size() > 0) {
+            return d_d_<S, Parameters_transformed>(x, a.dx());
+        }
         return d_d_<S, Parameters_transformed>(x, b.dx());
     }
 
@@ -169,7 +196,10 @@ class d_d_<aMatrix<double>, Parameters_transformed> {
         using S = std::decay_t<std::invoke_result_t<F, double, aMatrix<double>>>;
         Matrix<S> x(a().nrows(), a().ncols());
         for (std::size_t i = 0; i < x.size(); ++i) x[i] = f(b()[i], a()[i]);
-        return d_d_<S, Parameters_transformed>(x, a.dx());
+        if (a.has_dx() && a.dx().size() > 0) {
+            return d_d_<S, Parameters_transformed>(x, a.dx());
+        }
+        return d_d_<S, Parameters_transformed>(x, b.dx());
     }
 
     friend auto operator*(d_d_ const& df, const Parameters_transformed& x) {
@@ -277,7 +307,7 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
         return *this;
     }
 
-    Derivative(double t_x) : m_x{t_x}, m_d{} {}
+    Derivative(double t_x) : m_x{t_x} {}
 
     Derivative(const Derivative& x) = default;
     Derivative(Derivative&& x) = default;
@@ -305,9 +335,14 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
                     x.derivative()(), y.derivative()()),
                 x.dx());
         else if (x.derivative()().size() == 0)
-            return Derivative(fx / fy, -fx / fy / fy * y.derivative()(), x.dx());
+            return Derivative(fx / fy, -fx / fy / fy * y.derivative()(), y.dx());
         else
             return Derivative(fx / fy, x.derivative()() / fy, x.dx());
+    }
+
+    friend auto operator/(double x, const Derivative& y) {
+        auto fy = y.primitive();
+        return Derivative(x / fy, -x / fy / fy * y.derivative()(), y.dx());
     }
 
     friend auto elemDivSafe(const Derivative& x, const Derivative& y, double eps) {
@@ -328,6 +363,28 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
         else
             return Derivative(elemDivSafe(fx, fy, eps), elemDivSafe(x.derivative()(), fy, eps),
                               x.dx());
+    }
+
+    friend auto elemDivSoftAbs(const Derivative& x, const Derivative& y, double eps) {
+        auto fx = x.primitive();
+        auto fy = y.primitive();
+        auto denom = std::sqrt(fy * fy + eps * eps);
+        if (denom == 0.0)
+            denom = std::numeric_limits<double>::epsilon();
+        auto inv_denom = 1.0 / denom;
+        auto inv_denom3 = inv_denom * inv_denom * inv_denom;
+        if ((x.derivative()().size() > 0) && (y.derivative()().size() > 0))
+            return Derivative(
+                elemDivSoftAbs(fx, fy, eps),
+                zip([inv_denom, inv_denom3, fx, fy](
+                        auto dx, auto dy) { return dx * inv_denom - fx * fy * inv_denom3 * dy; },
+                    x.derivative()(), y.derivative()()),
+                x.dx());
+        else if (x.derivative()().size() == 0)
+            return Derivative(elemDivSoftAbs(fx, fy, eps), -fx * fy * inv_denom3 * y.derivative()(),
+                              x.dx());
+        else
+            return Derivative(elemDivSoftAbs(fx, fy, eps), x.derivative()() * inv_denom, x.dx());
     }
 
     friend auto operator*(const Derivative& x, const Derivative& y) {
@@ -394,6 +451,15 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
             x.dx());
     }
 
+    friend auto sqrt(const Derivative& x) {
+        auto p = x.primitive();
+        auto root = std::sqrt(p);
+        if (root == 0.0)
+            return Derivative(root, 0.0 * x.derivative()(), x.dx());
+        auto scale = 0.5 / root;
+        return Derivative(root, x.derivative()() * scale, x.dx());
+    }
+
     friend bool operator==(Derivative const& one, double val) { return one.primitive() == val; }
 };
 
@@ -424,12 +490,15 @@ class Derivative<T_Matrix<double>,
 
     template <class F>
     friend auto apply(F&& f, const Derivative& x) {
-        return outside_in(apply(std::forward<F>(f), inside_out(x)));
+        return outside_in(apply(std::forward<F>(f), inside_out(x)), x.dx());
     }
 
     template <class F>
     friend auto zip(F&& f, const Derivative& x, const Derivative& y) {
-        return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)));
+        if (x.has_dx() && x.dx().size() > 0) {
+            return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)), x.dx());
+        }
+        return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)), y.dx());
     }
 
     template <class P, class D>
@@ -467,14 +536,22 @@ class Derivative<T_Matrix<double>,
     template <template <class> class anotherCompatibleMatrix>
     friend auto operator*(const Derivative& x,
                           anotherCompatibleMatrix<Derivative<double, d_type>> const& t_y) {
-        auto Y = outside_in(t_y);
+        if (x.has_dx() && x.dx().size() > 0) {
+            auto Y = outside_in(t_y, x.dx());
+            return x * Y;
+        }
+        auto Y = outside_in(t_y, get_dx_of_dfdx_container(t_y));
         return x * Y;
     }
 
     template <template <class> class anotherCompatibleMatrix>
     friend auto operator*(anotherCompatibleMatrix<Derivative<double, d_type>> const& t_y,
                           const Derivative& x) {
-        auto Y = outside_in(t_y);
+        if (x.has_dx() && x.dx().size() > 0) {
+            auto Y = outside_in(t_y, x.dx());
+            return Y * x;
+        }
+        auto Y = outside_in(t_y, get_dx_of_dfdx_container(t_y));
         return Y * x;
     }
 
@@ -579,9 +656,7 @@ class Derivative<std::vector<T>, Parameters_transformed>
     }
 
     // Minimal JSON-friendly derivative payload (empty matrix)
-    auto derivative() const {
-        return Matrix<double>();
-    }
+    auto derivative() const { return Matrix<double>(); }
 
     auto& dx() const { return (*this)[0].derivative().dx(); }
 };
@@ -590,9 +665,22 @@ template <class F>
     requires requires(Derivative<F, Parameters_transformed>& f) {
         { f.derivative()().nrows() };
     }
-
 auto& get_dx_of_dfdx(const Derivative<F, Parameters_transformed>& f) {
+    assert(f.has_dx());
     return f.dx();
+}
+
+template <class F, template <class> class Container>
+Parameters_transformed const& get_dx_of_dfdx_container(
+    const Container<Derivative<F, Parameters_transformed>>& f) {
+    assert(f.size() > 0);
+    for (std::size_t i = 0; i < f.size(); ++i) {
+        if (f[i].has_dx() && f[i].dx().size() > 0) {
+            return f[i].dx();
+        }
+    }
+    assert(false);
+    return f[0].dx();
 }
 
 template <template <class> class notSymmetricMatrix>
@@ -604,12 +692,19 @@ auto inside_out(const Derivative<notSymmetricMatrix<double>, Parameters_transfor
     notSymmetricMatrix<Derivative<double, Parameters_transformed>> out(x.nrows(), x.ncols());
 
     auto der = inside_out(x.derivative());
-    if (der.size() > 0)
-        for (std::size_t i = 0; i < out.size(); ++i)
+    if (der.size() > 0) {
+        for (std::size_t i = 0; i < out.size(); ++i) {
             out[i] = Derivative<double, Parameters_transformed>(x.primitive()[i], der[i]);
-    else
-        for (std::size_t i = 0; i < out.size(); ++i)
-            out[i] = Derivative<double, Parameters_transformed>(x.primitive()[i]);
+        }
+    } else {
+        // No derivative payload available yet; still carry the dx pointer
+        // so downstream code can access parameter context safely.
+        auto zero = Matrix<double>(x.derivative()().nrows(), x.derivative()().ncols(), 0.0);
+        for (std::size_t i = 0; i < out.size(); ++i) {
+            out[i] = Derivative<double, Parameters_transformed>(
+                x.primitive()[i], d_d_<double, Parameters_transformed>(zero, x.dx()));
+        }
+    }
     return out;
 }
 
@@ -627,7 +722,7 @@ auto inside_out(const Derivative<aSymmetricMatrix<double>, Parameters_transforme
 }
 
 template <template <class> class Matrix>
-auto& outside_in(const Matrix<double>& x) {
+auto& outside_in(const Matrix<double>& x, ...) {
     return x;
 }
 
@@ -641,7 +736,8 @@ template <template <class> class notSymmetricMatrix>
              (!(std::is_same_v<SymmetricMatrix<double>, notSymmetricMatrix<double>> ||
                 std::is_same_v<SymPosDefMatrix<double>, notSymmetricMatrix<double>>)))
 
-auto outside_in(const notSymmetricMatrix<Derivative<double, Parameters_transformed>>& x) {
+auto outside_in(const notSymmetricMatrix<Derivative<double, Parameters_transformed>>& x,
+                const Parameters_transformed& dx) {
     auto prim = notSymmetricMatrix<double>(x.nrows(), x.ncols());
     for (std::size_t i = 0; i < prim.size(); ++i) prim[i] = x[i].primitive();
 
@@ -651,14 +747,15 @@ auto outside_in(const notSymmetricMatrix<Derivative<double, Parameters_transform
     for (std::size_t i = 0; i < der.size(); ++i)
         for (std::size_t j = 0; j < der[i].size(); ++j) der[i][j] = x[j].derivative()()[i];
 
-    return Derivative<notSymmetricMatrix<double>, Parameters_transformed>(
-        std::move(prim), std::move(der), x[0].dx());
+    return Derivative<notSymmetricMatrix<double>, Parameters_transformed>(std::move(prim),
+                                                                          std::move(der), dx);
 }
 
 template <template <class> class aSymmetricMatrix>
     requires(std::is_same_v<SymmetricMatrix<double>, aSymmetricMatrix<double>> ||
              std::is_same_v<SymPosDefMatrix<double>, aSymmetricMatrix<double>>)
-auto outside_in(const aSymmetricMatrix<Derivative<double, Parameters_transformed>>& x) {
+auto outside_in(const aSymmetricMatrix<Derivative<double, Parameters_transformed>>& x,
+                const Parameters_transformed& dx) {
     auto prim = aSymmetricMatrix<double>(x.nrows(), x.ncols());
     for (std::size_t i = 0; i < prim.nrows(); ++i)
         for (std::size_t j = 0; j <= i; ++j) prim.set(i, j, x(i, j).primitive());
@@ -671,8 +768,10 @@ auto outside_in(const aSymmetricMatrix<Derivative<double, Parameters_transformed
             for (std::size_t j2 = 0; j2 <= j1; ++j2)
                 der[i].set(j1, j2, x(j1, j2).derivative()()[i]);
 
+    // Preserve the parameter context from the elements (use first element's dx)
+    // to ensure the resulting symmetric matrix derivative carries a valid dx pointer.
     return Derivative<aSymmetricMatrix<double>, Parameters_transformed>(std::move(prim),
-                                                                        std::move(der));
+                                                                        std::move(der), dx);
 }
 
 template <template <class> class aSymmetricMatrix>
@@ -703,8 +802,11 @@ template <template <class> class aNonSymmetricMatrix>
     requires(std::is_same_v<Matrix<double>, aNonSymmetricMatrix<double>>)
 void set(Derivative<aNonSymmetricMatrix<double>, Parameters_transformed>& x, std::size_t i,
          std::size_t j, double value) {
+    // Preserve parameter context when injecting a scalar into a matrix derivative.
+    // Without passing x.dx(), the temporary derivative would carry a null dx pointer
+    // and downstream accesses to Y.dx().parameters() would segfault during diagnostics.
     d_d_<double, Parameters_transformed> der(
-        Matrix<double>(x.derivative()().nrows(), x.derivative()().ncols(), 0.0));
+        Matrix<double>(x.derivative()().nrows(), x.derivative()().ncols(), 0.0), x.dx());
     Derivative<double, Parameters_transformed> dv(value, der);
     set(x, i, j, dv);
 }
@@ -784,13 +886,13 @@ class Derivative<Parameters_transformed, Parameters_transformed> {
         for (std::size_t i_out = 0; i_out < out.size(); ++i_out) {
             if ((m_fixed.size() > i_fi) && (i_out == m_fixed[i_fi])) {
                 out[i_out] = Derivative<double, Parameters_transformed>(p.standard_values()[i_out],
-                                                                        x[0].dx());
+                                                                        m_x.dx());
                 ++i_fi;
             } else {
                 out[i_out] = p.transf()[i_out]->inv(x[i_in]());
                 // transf() works with derivatives with respect to matrices
                 // the information regarding the parameter has to be added
-                out[i_out].derivative().set_dx(x[i_in].dx());
+                out[i_out].derivative().set_dx(m_x.dx());
                 ++i_in;
             }
         }
@@ -822,7 +924,8 @@ class Derivative<Parameters_transformed, Parameters_transformed> {
     Derivative<Parameters_values, Parameters_transformed> to_value() {
         auto v = inside_out((*this)());
         auto out = free_to_all(v);
-        return Derivative<Parameters_values, Parameters_transformed>(parameters(), outside_in(out));
+        return Derivative<Parameters_values, Parameters_transformed>(parameters(),
+                                                                     outside_in(out, m_x.dx()));
     }
 };
 
@@ -883,6 +986,13 @@ template <template <class> class aMatrix>
 auto elemDivSafe(const Derivative<aMatrix<double>, Parameters_transformed>& a,
                  const Derivative<aMatrix<double>, Parameters_transformed>& b, double eps) {
     return zip([eps](auto& x, auto& y) { return elemDivSafe(x, y, eps); }, a, b);
+}
+
+template <template <class> class aMatrix>
+    requires aMatrix<double>::is_Matrix
+auto elemDivSoftAbs(const Derivative<aMatrix<double>, Parameters_transformed>& a,
+                    const Derivative<aMatrix<double>, Parameters_transformed>& b, double eps) {
+    return zip([eps](auto& x, auto& y) { return elemDivSoftAbs(x, y, eps); }, a, b);
 }
 
 template <template <class> class aMatrix>
@@ -985,14 +1095,14 @@ auto operator*(const Derivative<aMatrix<double>, Parameters_transformed>& a, bMa
 
 template <template <class> class aMatrix, template <class> class bMatrix>
     requires aMatrix<double>::is_Matrix
-auto operator*(const bMatrix<double>& b,
-               const Derivative<aMatrix<double>, Parameters_transformed>& a) {
+auto operator*(const bMatrix<double>& a,
+               const Derivative<aMatrix<double>, Parameters_transformed>& b) {
     using S = std::decay_t<decltype(aMatrix<double>{} * bMatrix<double>{})>;
-    auto& fa = primitive(a);
-    auto& fb = b;
+    auto& fa = a;
+    auto& fb = primitive(b);
 
     return Derivative<S, Parameters_transformed>(
-        fb * fa, apply_par([&fa, &fb](auto const& da) { return fb * da; }, derivative(a)));
+        fa * fb, apply_par([&fa](auto const& db) { return fa * db; }, derivative(b)));
 }
 
 template <template <class> class aMatrix>
@@ -1083,8 +1193,9 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
          bool does_permutations = false, bool does_diagonal_scaling = false,
          bool computes_eigenvalues_condition_numbers = false,
          bool computes_eigenvectors_condition_numbers = false) {
-    auto res = eigs(x.primitive(), does_permutations, does_diagonal_scaling,
-                    computes_eigenvalues_condition_numbers, computes_eigenvectors_condition_numbers);
+    auto res =
+        eigs(x.primitive(), does_permutations, does_diagonal_scaling,
+             computes_eigenvalues_condition_numbers, computes_eigenvectors_condition_numbers);
 
     if (!res)
         return res.error();
@@ -1137,7 +1248,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
                         return error_message("nan value for derivative");
                     double sii = 0.0;
                     for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (i != j) sii += VRRV(i, j) * C(i, j);
+                        if (i != j)
+                            sii += VRRV(i, j) * C(i, j);
                     }
                     C(i, i) = -sii / gii;
                 }
@@ -1171,7 +1283,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
                         return error_message("nan value for derivative");
                     double sii = 0.0;
                     for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (i != j) sii += VRRV(i, j) * C(i, j);
+                        if (i != j)
+                            sii += VRRV(i, j) * C(i, j);
                     }
                     C(i, i) = -sii / gii;
                 }
@@ -1185,6 +1298,103 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
             Derivative<Matrix<double>, Parameters_transformed>(VL, Maybe_derVL.value(), x.dx());
         return std::tuple(dVR, dLambda, dVL);
     }
+}
+
+// Enforce CTMC-generator conventions on eigendecomposition (derivative):
+// - deterministically place the zero eigenvalue at index 0
+// - apply the corresponding column permutation to VR and VL, and reorder lambda
+// - zero-mode gauge: set dλ0 = 0 and du0 = 0 for all directions
+inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>,
+                              Derivative<DiagonalMatrix<double>, Parameters_transformed>,
+                              Derivative<Matrix<double>, Parameters_transformed>>>
+    eig_enforce_q_mode(const Matrix<double>& /*Q*/,
+                       const std::tuple<Derivative<Matrix<double>, Parameters_transformed>,
+                                        Derivative<DiagonalMatrix<double>, Parameters_transformed>,
+                                        Derivative<Matrix<double>, Parameters_transformed>>& de,
+                       double tol = 1e-12) {
+    auto dVR = std::get<0>(de);
+    auto dL = std::get<1>(de);
+    auto dVL = std::get<2>(de);
+
+    auto& VR = dVR.primitive();
+    auto& L = dL.primitive();
+    auto& VL = dVL.primitive();
+    const std::size_t n = VR.ncols();
+    if (n == 0)
+        return de;
+
+    // Determine zero-eigen index on primitive
+    std::size_t k0 = 0;
+    double amin = std::abs(L[0]);
+    for (std::size_t i = 1; i < n; ++i) {
+        if (std::abs(L[i]) < amin) {
+            amin = std::abs(L[i]);
+            k0 = i;
+        }
+    }
+
+    // Build permutation bringing k0 -> 0
+    Matrix<double> Per(n, n, 0.0);
+    std::vector<std::size_t> order(n);
+    order[0] = k0;
+    std::size_t w = 1;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (i == k0)
+            continue;
+        order[w++] = i;
+    }
+    for (std::size_t i = 0; i < n; ++i) Per(i, order[i]) = 1.0;
+    auto PerT = tr(Per);
+
+    // Permute primitives
+    auto VRp = VR * PerT;
+    auto VLp = VL * PerT;
+    DiagonalMatrix<double> Lp(L.nrows(), L.ncols());
+    for (std::size_t i = 0; i < n; ++i) Lp[i] = L[order[i]];
+
+    // Permute derivatives
+    auto permute_cols = [&PerT](const Matrix<double>& M) { return M * PerT; };
+
+    auto dVR_new =
+        apply_par([&permute_cols](auto const& d) { return permute_cols(d); }, dVR.derivative());
+    auto dVL_new =
+        apply_par([&permute_cols](auto const& d) { return permute_cols(d); }, dVL.derivative());
+    auto dL_new = apply_par(
+        [&order, n](auto const& d) {
+            DiagonalMatrix<double> out(n, n);
+            for (std::size_t i = 0; i < n; ++i) out[i] = d[order[i]];
+            return out;
+        },
+        dL.derivative());
+
+    // Zero-mode gauge: dλ0 = 0; du0 = 0
+    for (std::size_t k = 0; k < dL_new().size(); ++k) {
+        if (dL_new()[k].nrows() > 0)
+            dL_new()[k][0] = 0.0;
+    }
+    for (std::size_t k = 0; k < dVR_new().size(); ++k) {
+        // zero first column
+        for (std::size_t r = 0; r < dVR_new()[k].nrows(); ++r) dVR_new()[k](r, 0) = 0.0;
+    }
+
+    // Rebuild derivatives
+    auto dVR_out = Derivative<Matrix<double>, Parameters_transformed>(VRp, dVR_new(), dVR.dx());
+    auto dL_out = Derivative<DiagonalMatrix<double>, Parameters_transformed>(Lp, dL_new(), dL.dx());
+    auto dVL_out = Derivative<Matrix<double>, Parameters_transformed>(VLp, dVL_new(), dVL.dx());
+
+    // Biorthogonal rescaling on primitive left eigenvectors so v_i^T u_i = 1
+    for (std::size_t i = 0; i < n; ++i) {
+        auto ui = dVR_out.primitive()(":", i);
+        auto vTi = tr(dVL_out.primitive()(":", i));
+        double s = getvalue(vTi * ui);
+        if (std::abs(s) <= tol)
+            return error_message("eig_enforce_q_mode(d): singular (v_i^T u_i == 0)");
+        for (std::size_t r = 0; r < dVL_out.primitive().nrows(); ++r)
+            dVL_out.primitive()(r, i) = dVL_out.primitive()(r, i) / s;
+        // NOTE: derivative adjustment for scaling is omitted (s treated as constant here).
+    }
+
+    return std::tuple(dVR_out, dL_out, dVL_out);
 }
 
 inline auto Taylor_first(Derivative<double, Parameters_transformed> const& f,
