@@ -256,7 +256,7 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
                 build<Proportional_Noise>(v_prop_noise),
 
                 build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
-                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
+                Binomial_magical_number(5.0), min_P(1e-12), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
         [npar](const auto& patch_model)
@@ -371,7 +371,7 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
                 build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
                 build<Pink_Noise>(v_pink_noise), build<Proportional_Noise>(v_prop_noise),
                 build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
-                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
+                Binomial_magical_number(5.0), min_P(1e-12), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
         [npar](const auto& patch_model)
@@ -539,7 +539,7 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
                 build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
                 build<Pink_Noise>(v_pink_noise), build<Proportional_Noise>(v_prop_noise),
                 build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
-                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
+                Binomial_magical_number(5.0), min_P(1e-12), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
         [npar](const auto& patch_model)
@@ -738,7 +738,7 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
                 build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
                 build<Pink_Noise>(v_pink_noise), build<Proportional_Noise>(v_prop_noise),
                 build<Current_Baseline>(v_baseline), N_Ch_mean_time_segment_duration(121),
-                Binomial_magical_number(5.0), min_P(1e-7), Probability_error_tolerance(1e-2),
+                Binomial_magical_number(5.0), min_P(1e-12), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
         [npar](const auto& patch_model)
@@ -954,7 +954,7 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //                     build<Proportional_Noise>(v_prop_noise),
 //                     build<Current_Baseline>(v_baseline),
 //                   N_Ch_mean_time_segment_duration(120000),
-//                   Binomial_magical_number(5.0), min_P(1e-7),
+//                   Binomial_magical_number(5.0), min_P(1e-12),
 //                   Probability_error_tolerance(1e-2),
 //                   Conductance_variance_error_tolerance(1e-2)),
 //               v_Inac_rate);
@@ -1091,7 +1091,7 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //                     build<Proportional_Noise>(v_prop_noise),
 //                     build<Current_Baseline>(v_baseline),
 //                   N_Ch_mean_time_segment_duration(120000),
-//                   Binomial_magical_number(5.0), min_P(1e-7),
+//                   Binomial_magical_number(5.0), min_P(1e-12),
 //                   Probability_error_tolerance(1e-2),
 //                   Conductance_variance_error_tolerance(1e-2));
 //             else
@@ -1273,7 +1273,7 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //                     build<Proportional_Noise>(v_prop_noise),
 //                     build<Current_Baseline>(v_baseline),
 //                   N_Ch_mean_time_segment_duration(120000),
-//                   Binomial_magical_number(5.0), min_P(1e-7),
+//                   Binomial_magical_number(5.0), min_P(1e-12),
 //                   Probability_error_tolerance(1e-2),
 //                   Conductance_variance_error_tolerance(1e-2));
 //           },
@@ -1401,7 +1401,7 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //                   build<N_Ch_mean>(v_N0), build<Current_Noise>(v_curr_noise),
 //                   build<Current_Baseline>(v_baseline),
 //                   N_Ch_mean_time_segment_duration(120000),
-//                   Binomial_magical_number(5.0), min_P(1e-7),
+//                   Binomial_magical_number(5.0), min_P(1e-12),
 //                   Probability_error_tolerance(1e-2),
 //                   Conductance_variance_error_tolerance(1e-2)),
 //               v_Inac_rate);
@@ -1519,7 +1519,7 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //                     build<Proportional_Noise>(v_prop_noise),
 //                     build<Current_Baseline>(v_baseline),
 //                   N_Ch_mean_time_segment_duration(120000),
-//                   Binomial_magical_number(5.0), min_P(1e-7),
+//                   Binomial_magical_number(5.0), min_P(1e-12),
 //                   Probability_error_tolerance(1e-2),
 //                   Conductance_variance_error_tolerance(1e-2)),
 //               v_Inac_rate);
@@ -1630,7 +1630,7 @@ static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //                     build<Proportional_Noise>(v_prop_noise),
 //                   build<Current_Baseline>(v_baseline),
 //                   N_Ch_mean_time_segment_duration(120000),
-//                   Binomial_magical_number(5.0), min_P(1e-7),
+//                   Binomial_magical_number(5.0), min_P(1e-12),
 //                   Probability_error_tolerance(1e-2),
 //                   Conductance_variance_error_tolerance(1e-2)),
 //               v_Inac_rate);

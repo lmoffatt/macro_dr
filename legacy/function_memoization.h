@@ -41,13 +41,14 @@ class Memoiza_all_values {
     template <class F, class... Ts>
         requires(std::is_convertible_v<std::invoke_result_t<F, Ts...>, Y>)
     auto& get_or_calc(F&& f, Ts&&... xs) {
-        auto x = match(std::forward<Ts>(xs)...);
-        if (auto it = m_values.find(x); it != m_values.end())
+        auto key = match(std::forward<Ts>(xs)...);
+        if (auto it = m_values.find(key); it != m_values.end())
             return it->second;
-        else {
-            m_values[x] = std::invoke(std::forward<F>(f), std::forward<Ts>(xs)...);
-            return m_values[x];
-        }
+        // Construct the value once and emplace to avoid default-construct + assign,
+        // which can drop internal pointers in complex payloads (e.g., derivatives).
+        auto val = std::invoke(std::forward<F>(f), std::forward<Ts>(xs)...);
+        auto [it_new, inserted] = m_values.emplace(std::move(key), std::move(val));
+        return it_new->second;
     }
 };
 
@@ -152,6 +153,13 @@ class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer> {
 
     auto& get_Fun() {
         return m_f.get_Fun();
+    }
+    auto const& get_Fun() const {
+        return m_f.get_Fun();
+    }
+
+    auto as_function() const {
+        return m_f.create();
     }
 
     constexpr Single_Thread_Memoizer(F<Id, Fun...>&& t_f, Memoizer)

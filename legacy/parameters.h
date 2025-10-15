@@ -561,6 +561,11 @@ class Parameters_transformed {
     Parameters_transformed create(VectorType&& x) {
         return Parameters_transformed(parameters(), std::forward<VectorType>(x));
     }
+    Parameters_transformed(Parameters_transformed const&) = default;
+    Parameters_transformed(Parameters_transformed&&) noexcept = default;
+    Parameters_transformed& operator=(Parameters_transformed const&) = default;
+    Parameters_transformed& operator=(Parameters_transformed&&) noexcept = default;
+    ~Parameters_transformed() = default;
 
     // Parameters(std::string const &IdName,
     //            std::vector<std::string> const &ParNames)

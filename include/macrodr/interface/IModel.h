@@ -8,6 +8,7 @@
 
 #include "IObject.h"
 #include "parameters.h"
+#include "derivative_operator.h"
 #include "qmodel.h"
 
 namespace macrodr::interface {
@@ -37,7 +38,9 @@ struct IParameterApplication {
 template <typename... ParamValues>
 struct IModel : public IObject,
                 public virtual IParameterApplication<
-                    ParamValues, macrodr::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>... {
+                    ParamValues, var::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>... {
+    // Bring base operator() overloads into scope to avoid hiding warnings
+    using IParameterApplication<ParamValues, var::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>::operator()...;
     // inside template <typename... ParamValues> struct IModel ...
     IModel(const IModel&) = default;
     IModel& operator=(const IModel&) = default;
@@ -51,9 +54,9 @@ struct IModel : public IObject,
     [[nodiscard]] virtual std::size_t number_of_states() const = 0;
     template <typename PV>
         requires((std::is_same_v<PV, ParamValues> || ...))
-    [[nodiscard]] Maybe_error<macrodr::Transfer_Op_to<PV, macrodr::Patch_Model>> operator()(
+    [[nodiscard]] Maybe_error<var::Transfer_Op_to<PV, macrodr::Patch_Model>> operator()(
         const PV& parameters) const {
-        using App = IParameterApplication<PV, macrodr::Transfer_Op_to<PV, macrodr::Patch_Model>>;
+        using App = IParameterApplication<PV, var::Transfer_Op_to<PV, macrodr::Patch_Model>>;
         return static_cast<const App&>(*this).operator()(parameters);
     }
 
@@ -120,17 +123,17 @@ class ConcreteModel
     : public IModel<ParamValues...>,
       public virtual ConcreteBaseScheme<Scheme>,
       public ConcreteParameterApplication<
-          Scheme, ParamValues, macrodr::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>... {
+          Scheme, ParamValues, var::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>... {
     using SchemeBase = ConcreteBaseScheme<Scheme>;
 
    public:
     using ConcreteParameterApplication<
         Scheme, ParamValues,
-        macrodr::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>::operator()...;
+        var::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>::operator()...;
     explicit ConcreteModel(Scheme s)
         : SchemeBase(std::move(s)),
           ConcreteParameterApplication<Scheme, ParamValues,
-                                       macrodr::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>(
+                                       var::Transfer_Op_to<ParamValues, macrodr::Patch_Model>>(
               SchemeBase::scheme())... {}
     // In ConcreteModel<T...>
 

@@ -19,6 +19,20 @@
 #include "type_algebra.h"
 namespace var {
 
+template <class, class, class>
+class Single_Thread_Memoizer;
+
+template <typename T>
+struct is_single_thread_memoizer : std::false_type {};
+
+template <class Id, class... Fun, template <class...> class F, class Memoizer>
+struct is_single_thread_memoizer<Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer>>
+    : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_single_thread_memoizer_v =
+    is_single_thread_memoizer<std::decay_t<T>>::value;
+
 template <std::size_t N>
 class Event_Timing {
     using Stype = std::decay_t<decltype(std::chrono::high_resolution_clock::now())>;
@@ -29,8 +43,7 @@ class Event_Timing {
     std::size_t m_i = 0;
 
    public:
-    Event_Timing(const Stype& s) : m_start{s} {
-    }
+    Event_Timing(const Stype& s) : m_start{s} {}
     void record(const std::string& s) {
         m_labels[m_i] = s;
         m_dur[m_i] =
@@ -44,16 +57,10 @@ class Event_Timing {
             std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - m_start)
                 .count();
     }
-    void advance(std::size_t ipos) {
-        m_i += ipos;
-    }
-    auto& operator[](std::size_t i) const {
-        return m_dur[i];
-    }
+    void advance(std::size_t ipos) { m_i += ipos; }
+    auto& operator[](std::size_t i) const { return m_dur[i]; }
 
-    void reset() {
-        m_i = 0;
-    }
+    void reset() { m_i = 0; }
 
     void report_title(std::ostream& os) {
         os << "Iter" << "," << "time_iter" << "," << "iter_duration";
@@ -87,43 +94,28 @@ class F {
     using myId = Id;
     static constexpr bool is_threadable = false;
 
-    auto& get_Fun() {
-        return m_f;
-    }
-    constexpr F(Id, Fun&& t_f) : m_f{std::move(t_f)} {
-    }
-    constexpr F(Fun&& t_f) : m_f{std::move(t_f)} {
-    }
-    constexpr F(Fun const& t_f) : m_f{t_f} {
-    }
+    auto& get_Fun() { return m_f; }
+    constexpr F(Id, Fun&& t_f) : m_f{std::move(t_f)} {}
+    constexpr F(Fun&& t_f) : m_f{std::move(t_f)} {}
+    constexpr F(Fun const& t_f) : m_f{t_f} {}
     template <class... Ts>
     constexpr auto operator()(Ts&&... ts) const {
         return m_f(std::forward<Ts>(ts)...);
     }
 
-    F create() const {
-        return F(m_f);
-    }
+    F create() const { return F(m_f); }
 
     template <class... Ts>
     friend auto apply_F(F const me, Ts&&... ts) {
         return me.m_f(std::forward<Ts>(ts)...);
     }
-    constexpr F() {
-    }
-    constexpr auto& operator[](Id) {
-        return *this;
-    }
-    constexpr auto& operator[](Id) const {
-        return *this;
-    }
+    constexpr F() {}
+    constexpr auto& operator[](Id) { return *this; }
+    constexpr auto& operator[](Id) const { return *this; }
 
-    constexpr auto& operator+=(F) const {
-        return *this;
-    }
+    constexpr auto& operator+=(F) const { return *this; }
 
-    void clear() const {
-    }
+    void clear() const {}
 };
 
 template <template <auto...> class MacroR, auto... t>
@@ -187,27 +179,16 @@ class Time_it_st<Id, F<Id, Fun...>> {
    public:
     using myId = Id;
 
-    auto& get_Fun() {
-        return m_f.get_Fun();
-    }
+    auto& get_Fun() { return m_f.get_Fun(); }
 
     constexpr Time_it_st(F<Id, Fun...>&& t_f)
-        : m_f{std::move(t_f)}, m_sum{std::chrono::nanoseconds::zero()}, m_count{0ul} {
-    }
+        : m_f{std::move(t_f)}, m_sum{std::chrono::nanoseconds::zero()}, m_count{0ul} {}
     constexpr Time_it_st() = default;
-    auto& operator[](Id) {
-        return *this;
-    }
-    auto& operator[](Id) const {
-        return *this;
-    }
+    auto& operator[](Id) { return *this; }
+    auto& operator[](Id) const { return *this; }
 
-    auto naked_function() const {
-        return m_f;
-    }
-    auto create() const {
-        return Time_it_st(m_f.create());
-    }
+    auto naked_function() const { return m_f; }
+    auto create() const { return Time_it_st(m_f.create()); }
 
     template <class... Ts>
     auto operator()(Ts&&... ts) {
@@ -249,13 +230,9 @@ class Time_it_st<Id, F<Id, Fun...>> {
         return std::chrono::duration<double>(m_sum / std::max(m_count, 1ul)).count();
     }
 
-    auto total_duration() const {
-        return std::chrono::duration<double>(m_sum).count();
-    }
+    auto total_duration() const { return std::chrono::duration<double>(m_sum).count(); }
 
-    auto count() const {
-        return m_count;
-    }
+    auto count() const { return m_count; }
 
     void reset() {
         m_sum = std::chrono::nanoseconds::zero();
@@ -316,34 +293,33 @@ class FuncMap_St : public Fs... {
         return Nothing{};
     }
 
-    void clear() {
-        (clearit(static_cast<Fs&>(*this)), ...);
-    }
+    void clear() { (clearit(static_cast<Fs&>(*this)), ...); }
 
-    auto& file() const {
-        return m_filename;
-    }
+    auto& file() const { return m_filename; }
 
     FuncMap_St(const std::string path, std::size_t sampling_interval,
                std::size_t max_number_of_values_per_iteration, Fs&&... fs)
         : Fs{std::move(fs)}...,
           m_filename{path},
           m_sampling_interval{sampling_interval},
-          m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {
-    }
+          m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
 
     FuncMap_St(const std::string path, std::size_t sampling_interval,
                std::size_t max_number_of_values_per_iteration, Fs const&... fs)
         : Fs{fs}...,
           m_filename{path},
           m_sampling_interval{sampling_interval},
-          m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {
-    }
+          m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
 
     FuncMap_St create(const std::string& suffix) const {
         return FuncMap_St(file() + suffix, m_sampling_interval,
                           m_max_number_of_values_per_iteration,
                           static_cast<Fs const&>(*this).create()...);
+    }
+
+    auto de_memoization() const {
+        return FuncMap_St(m_filename, m_sampling_interval, m_max_number_of_values_per_iteration,
+                          strip_memoizer(static_cast<const Fs&>(*this))...);
     }
 
     template <class Id, class... Ts>
@@ -432,6 +408,16 @@ class FuncMap_St : public Fs... {
         //using test=typename decltype(ss)::multi;
         return this->append_Fs_S<MacroR>(ss);
     }
+
+   private:
+    template <typename Component>
+    static auto strip_memoizer(const Component& component) {
+        if constexpr (is_single_thread_memoizer_v<Component>) {
+            return component.as_function();
+        } else {
+            return component;
+        }
+    }
 };
 
 template <class... Fs, class F, class G>
@@ -480,35 +466,22 @@ class Test_it<Id, F<Id, Fun...>, Preconditions, Postconditions> {
 
     static constexpr bool is_threadable = true;
 
-    void clear(I_thread i) {
-        clearit(m_f, i);
-    }
+    void clear(I_thread i) { clearit(m_f, i); }
 
-    auto& get_Fun() {
-        return m_f.get_Fun();
-    }
+    auto& get_Fun() { return m_f.get_Fun(); }
 
     constexpr Test_it(F<Id, Fun...>&& t_f, std::size_t n_threads)
         : m_f{std::move(t_f)},
           m_sum{n_threads, std::chrono::nanoseconds::zero()},
           m_count{std::vector<std::size_t>(n_threads, 0ul)},
-          m_n_threads{n_threads} {
-    }
+          m_n_threads{n_threads} {}
     constexpr Test_it() = default;
-    auto& operator[](Id) {
-        return *this;
-    }
-    auto& operator[](Id) const {
-        return *this;
-    }
+    auto& operator[](Id) { return *this; }
+    auto& operator[](Id) const { return *this; }
 
-    auto naked_function() const {
-        return m_f;
-    }
+    auto naked_function() const { return m_f; }
 
-    auto n_threads() const {
-        return m_n_threads;
-    }
+    auto n_threads() const { return m_n_threads; }
 
     template <class... Ts>
     auto operator()(I_thread i_thread, Ts&&... ts) {
@@ -589,9 +562,7 @@ class Test_it<Id, F<Id, Fun...>, Preconditions, Postconditions> {
         return out;
     }
 
-    auto count() const {
-        return m_count;
-    }
+    auto count() const { return m_count; }
 
     void reset() {
         for (auto& e : m_sum) e = std::chrono::nanoseconds::zero();

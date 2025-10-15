@@ -15,11 +15,18 @@
 #include "lexer_typed.h"
 #include "maybe_error.h"
 #include "type_name.h"
-#include <macrodr/io/json/convert.h>
+// JSON types only; avoid heavy codec header here to reduce cycles
+#include <macrodr/io/json/minijson.h>
+namespace macrodr::io::json { struct Json; namespace conv { enum class TagPolicy : int; } }
 // Schemas
 #include "parameters.h"
 
 namespace macrodr::dsl {
+// Forward declarations to break subtle include ordering issues
+template <class Lexer, class Compiler>
+class base_function_compiler;
+template <class Lexer, class Compiler, class T>
+class Identifier_compiler; // defined in lexer_typed.h
 template <class Lexer, class Compiler, class T>
 class field_compiler;
 template <class Lexer, class Compiler>
@@ -34,6 +41,9 @@ template <class Lexer, class Compiler>
 class base_Identifier_compiler;
 template <class Lexer, class Compiler, class T>
 class typed_expression;
+// Forward declare typed_literal for earlier use in identifier_ref helpers
+template <class Lexer, class Compiler, class T>
+class typed_literal;
 
 template <class Lexer, class Compiler>
 class Environment {
@@ -484,7 +494,10 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
         if constexpr (std::is_void_v<ValueType>) {
             return error_message(std::string{"cannot serialize void expression of type "} +
                                  this->type_name());
-        } else if constexpr (!macrodr::io::json::conv::has_json_codec_v<ValueType>) {
+        } else if constexpr (!requires(ValueType v) {
+                                 (void)macrodr::io::json::conv::to_json(
+                                     v, macrodr::io::json::conv::TagPolicy{});
+                             }) {
             return error_message(std::string{"no JSON codec registered for type "} +
                                  this->type_name());
         } else {
@@ -854,7 +867,7 @@ inline Maybe_error<void> load_literal_from_json_helper(
     if (!schema) return error_message(path + ": unknown schema id '" + schema_id + "'");
     Matrix<double> mv;
     auto st = macrodr::io::json::conv::from_json(*vals, mv, path + ".values",
-                                                 macrodr::io::json::conv::TagPolicy::None);
+                                                 macrodr::io::json::conv::TagPolicy{});
     if (!st) return st;
     var::Parameters_values pv(*schema, mv);
     auto literal = std::make_unique<typed_literal<Lexer, Compiler, var::Parameters_values>>(pv);

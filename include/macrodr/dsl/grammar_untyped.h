@@ -406,6 +406,7 @@ inline Maybe_error<typed_program<Lexer, Compiler>> compile_program(
     return out;
 }
 
+template <class Lexer, class Compiler>
 inline Maybe_error<typed_program<Lexer, Compiler>> compile_and_run_program_line_by_line(
     Environment<Lexer, Compiler>& cm, const untyped_program<Lexer, Compiler>& s) {
     typed_program<Lexer, Compiler> out;

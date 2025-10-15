@@ -106,6 +106,14 @@ inline double elemDivSafe(double x, double y, double eps = std::numeric_limits<d
         return 0;
 }
 
+inline double elemDivSoftAbs(double x, double y,
+                             double eps = std::numeric_limits<double>::epsilon()) {
+    double denom = std::sqrt(y * y + eps * eps);
+    if (denom == 0.0)
+        return 0.0;
+    return x / denom;
+}
+
 namespace lapack {
 Matrix<double> Lapack_Full_Product(const Matrix<double>& x, const Matrix<double>& y,
                                    bool transpose_x, bool transpose_y, double alpha = 1.0,
@@ -899,6 +907,18 @@ inline auto elemDivSafe(const Matrix<double>& x, const Matrix<double>& y, double
 inline auto elemDivSafe(const Matrix<double>& x, double y, double eps) {
     auto out = x;
     for (std::size_t i = 0; i < x.size(); ++i) out[i] = elemDivSafe(x[i], y, eps);
+    return out;
+}
+
+inline auto elemDivSoftAbs(const Matrix<double>& x, const Matrix<double>& y, double eps) {
+    auto out = x;
+    for (std::size_t i = 0; i < x.size(); ++i) out[i] = elemDivSoftAbs(x[i], y[i], eps);
+    return out;
+}
+
+inline auto elemDivSoftAbs(const Matrix<double>& x, double y, double eps) {
+    auto out = x;
+    for (std::size_t i = 0; i < x.size(); ++i) out[i] = elemDivSoftAbs(x[i], y, eps);
     return out;
 }
 
@@ -1853,6 +1873,59 @@ inline auto eigs(const Matrix<double>& x, bool does_permutations = false,
 
 inline auto eigs(const SymmetricMatrix<double>& x) {
     return lapack::Lapack_Symm_EigenSystem(x);
+}
+
+// Enforce CTMC-generator conventions on eigendecomposition (primitive):
+// - deterministically place the zero eigenvalue at index 0
+// - apply the corresponding column permutation to VR and VL
+// - biorthogonal rescaling of (VL, VR) so that v_i^T u_i = 1 for all i
+inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+eig_enforce_q_mode(const Matrix<double>& /*Q*/,
+                   const std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>& e,
+                   double tol = 1e-12) {
+    auto [VR, L, VL] = e;
+    if (VR.ncols() == 0)
+        return std::tuple(VR, L, VL);
+
+    const std::size_t n = VR.ncols();
+    // Find eigenvalue closest to zero
+    std::size_t k0 = 0;
+    double amin = std::abs(L[0]);
+    for (std::size_t i = 1; i < n; ++i) {
+        if (std::abs(L[i]) < amin) {
+            amin = std::abs(L[i]);
+            k0 = i;
+        }
+    }
+    // Build permutation bringing k0 -> 0 and keeping others in order
+    Matrix<double> Per(n, n, 0.0);
+    std::vector<std::size_t> order(n);
+    order[0] = k0;
+    std::size_t w = 1;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (i == k0) continue;
+        order[w++] = i;
+    }
+    for (std::size_t i = 0; i < n; ++i) Per(i, order[i]) = 1.0;
+    auto PerT = tr(Per);
+
+    // Apply permutation
+    auto VRp = VR * PerT;
+    auto VLp = VL * PerT;
+    DiagonalMatrix<double> Lp(L.nrows(), L.ncols());
+    for (std::size_t i = 0; i < n; ++i) Lp[i] = L[order[i]];
+
+    // Biorthogonal diagonal rescaling: v_i^T u_i = 1
+    for (std::size_t i = 0; i < n; ++i) {
+        auto ui = VRp(":", i);
+        auto vTi = tr(VLp(":", i));
+        double s = getvalue(vTi * ui);
+        if (std::abs(s) <= tol)
+            return error_message("eig_enforce_q_mode: singular (v_i^T u_i == 0)");
+        // Scale left eigenvector column i
+        for (std::size_t r = 0; r < VLp.nrows(); ++r) VLp(r, i) = VLp(r, i) / s;
+    }
+    return std::tuple(VRp, Lp, VLp);
 }
 
 inline auto XXT(const Matrix<double>& a) {

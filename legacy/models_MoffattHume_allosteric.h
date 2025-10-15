@@ -100,7 +100,7 @@ static auto scheme_5 = Allost1::Model("scheme_5", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
         [names, m](const auto& patch_model)
@@ -246,7 +246,7 @@ static auto scheme_6 = Allost1::Model("scheme_6", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
         [names, m](const auto& patch_model)
@@ -392,7 +392,7 @@ static auto scheme_7 = Allost1::Model("scheme_7", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
         [names, m](const auto& patch_model)
@@ -541,7 +541,7 @@ static auto scheme_8 = Allost1::Model("scheme_8", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
         [names, m](const auto& patch_model)
@@ -678,7 +678,7 @@ static auto scheme_9 = Allost1::Model("scheme_9", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
@@ -825,7 +825,7 @@ static auto scheme_10 = Allost1::Model("scheme_10", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
@@ -987,7 +987,7 @@ static auto scheme_11 = Allost1::Model("scheme_11", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
@@ -1131,7 +1131,7 @@ static auto scheme_12 = Allost1::Model("scheme_12", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
@@ -1269,7 +1269,7 @@ static auto scheme_13 = Allost1::Model("scheme_13", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
@@ -1413,7 +1413,7 @@ static auto scheme_14 = Allost1::Model("scheme_14", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
@@ -1566,7 +1566,7 @@ static auto scheme_15 = Allost1::Model("scheme_15", []() {
                     build<Current_Noise>(v_curr_noise), build<Pink_Noise>(v_pink_noise),
                     build<Proportional_Noise>(v_prop_noise), build<Current_Baseline>(v_baseline),
                     N_Ch_mean_time_segment_duration(120000), Binomial_magical_number(5.0),
-                    min_P(1e-7), Probability_error_tolerance(1e-2),
+                    min_P(1e-12), Probability_error_tolerance(1e-2),
                     Conductance_variance_error_tolerance(1e-2));
         },
 
