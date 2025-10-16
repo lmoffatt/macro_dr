@@ -19,6 +19,21 @@
 
 #include "maybe_error.h"
 namespace macrodr::dsl {
+// JSON specification hook: by default, map to macrodr::io::json::conv
+template <class L>
+struct json_spec {
+    using TagPolicy = macrodr::io::json::conv::TagPolicy;
+    using Json = macrodr::io::json::Json;
+    template <class T>
+    static Json to_json(const T& v, TagPolicy policy) {
+        return macrodr::io::json::conv::to_json(v, policy);
+    }
+    template <class T>
+    static Maybe_error<void> from_json(const Json& j, T& out, const std::string& path,
+                                       TagPolicy policy) {
+        return macrodr::io::json::conv::from_json(j, out, path, policy);
+    }
+};
 namespace detail {
 
 template <class T>
@@ -74,9 +89,9 @@ template <class Lexer, class Compiler, class T>
 class typed_literal;
 
 template <class Lexer, class Compiler, class T>
-Maybe_error<void> load_literal_from_json_helper(const macrodr::io::json::Json& value,
+Maybe_error<void> load_literal_from_json_helper(const typename json_spec<Lexer>::Json& value,
                                                 const std::string& path,
-                                                macrodr::io::json::conv::TagPolicy policy,
+                                                typename json_spec<Lexer>::TagPolicy policy,
                                                 const Identifier<Lexer>& id,
                                                 Environment<Lexer, Compiler>& env);
 

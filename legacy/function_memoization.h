@@ -32,11 +32,8 @@ class Memoiza_all_values {
     }
 
    public:
-    constexpr Memoiza_all_values() {
-    }
-    void clear() {
-        m_values.clear();
-    }
+    constexpr Memoiza_all_values() {}
+    void clear() { m_values.clear(); }
 
     template <class F, class... Ts>
         requires(std::is_convertible_v<std::invoke_result_t<F, Ts...>, Y>)
@@ -55,9 +52,7 @@ class Memoiza_all_values {
 template <class... memoiza>
 class Memoiza_overload : public memoiza... {
    public:
-    void clear() {
-        ((memoiza::clear(), ...));
-    }
+    void clear() { ((memoiza::clear(), ...)); }
     //Memoiza_overload(memoiza&&... m): memoiza{std::move(m)}...{}
 
     //Memoiza_overload()=default;
@@ -111,8 +106,7 @@ class Memoiza_closed_values {
         m_values.resize(m_index.size());
     }
 
-    constexpr Memoiza_closed_values() {
-    }
+    constexpr Memoiza_closed_values() {}
 
     template <class F>
         requires(std::is_convertible_v<std::invoke_result_t<F, X>, Y>)
@@ -151,35 +145,22 @@ class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer> {
    public:
     using myId = Id;
 
-    auto& get_Fun() {
-        return m_f.get_Fun();
-    }
-    auto const& get_Fun() const {
-        return m_f.get_Fun();
-    }
+    auto& get_Fun() { return m_f.get_Fun(); }
+    auto const& get_Fun() const { return m_f.get_Fun(); }
 
-    auto as_function() const {
-        return m_f.create();
-    }
+    auto as_function() const { return m_f.create(); }
+
+    F<Id, Fun...> bare_function() const { return m_f; }
 
     constexpr Single_Thread_Memoizer(F<Id, Fun...>&& t_f, Memoizer)
-        : m_f{std::move(t_f)}, m_memoiza{} {
-    }
-    constexpr Single_Thread_Memoizer(F<Id, Fun...>&& t_f) : m_f{std::move(t_f)}, m_memoiza{} {
-    }
+        : m_f{std::move(t_f)}, m_memoiza{} {}
+    constexpr Single_Thread_Memoizer(F<Id, Fun...>&& t_f) : m_f{std::move(t_f)}, m_memoiza{} {}
 
-    constexpr Single_Thread_Memoizer() {
-    }
-    auto& operator[](Id) {
-        return *this;
-    }
-    auto& operator[](Id) const {
-        return *this;
-    }
+    constexpr Single_Thread_Memoizer() {}
+    auto& operator[](Id) { return *this; }
+    auto& operator[](Id) const { return *this; }
 
-    auto create() const {
-        return Single_Thread_Memoizer(m_f.create());
-    }
+    auto create() const { return Single_Thread_Memoizer(m_f.create()); }
 
     template <class... Ts>
     auto& operator()(Ts&&... ts) {
@@ -191,9 +172,7 @@ class Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer> {
         return me(std::forward<Ts>(ts)...);
     }
 
-    constexpr auto& operator+=(Single_Thread_Memoizer const&) {
-        return *this;
-    }
+    constexpr auto& operator+=(Single_Thread_Memoizer const&) { return *this; }
 };
 
 template <class Id, class... Fun, template <class...> class F, class Memoizer>
@@ -221,30 +200,22 @@ class Thread_Memoizer<Id, F<Id, Fun...>, Memoizer<Y, Xs...>> {
 
     static constexpr bool is_threadable = true;
 
-    auto& get_Fun() {
-        return m_f.get_Fun();
-    }
+    auto& get_Fun() { return m_f.get_Fun(); }
+
+    F<Id, Fun...> bare_function() const { return m_f; }
 
     constexpr Thread_Memoizer(F<Id, Fun...>&& t_f, Memoizer<Y, Xs...>, std::size_t n_threads)
-        : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {
-    }
+        : m_f{std::move(t_f)}, m_memoiza{n_threads}, m_n_threads{n_threads} {}
 
     void clear(I_thread i) {
         assert(i.i < m_n_threads);
         m_memoiza[i.i % m_n_threads].clear();
     }
-    constexpr Thread_Memoizer() {
-    }
-    auto& operator[](Id) {
-        return *this;
-    }
-    auto& operator[](Id) const {
-        return *this;
-    }
+    constexpr Thread_Memoizer() {}
+    auto& operator[](Id) { return *this; }
+    auto& operator[](Id) const { return *this; }
 
-    auto n_threads() const {
-        return m_n_threads;
-    }
+    auto n_threads() const { return m_n_threads; }
 
     template <class... Ts>
     auto& operator()(I_thread i_thread, Ts&&... ts) {

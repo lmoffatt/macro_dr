@@ -19,20 +19,6 @@
 #include "type_algebra.h"
 namespace var {
 
-template <class, class, class>
-class Single_Thread_Memoizer;
-
-template <typename T>
-struct is_single_thread_memoizer : std::false_type {};
-
-template <class Id, class... Fun, template <class...> class F, class Memoizer>
-struct is_single_thread_memoizer<Single_Thread_Memoizer<Id, F<Id, Fun...>, Memoizer>>
-    : std::true_type {};
-
-template <typename T>
-inline constexpr bool is_single_thread_memoizer_v =
-    is_single_thread_memoizer<std::decay_t<T>>::value;
-
 template <std::size_t N>
 class Event_Timing {
     using Stype = std::decay_t<decltype(std::chrono::high_resolution_clock::now())>;
@@ -104,6 +90,8 @@ class F {
     }
 
     F create() const { return F(m_f); }
+
+    F bare_function() const { return F(m_f); }
 
     template <class... Ts>
     friend auto apply_F(F const me, Ts&&... ts) {
@@ -189,6 +177,8 @@ class Time_it_st<Id, F<Id, Fun...>> {
 
     auto naked_function() const { return m_f; }
     auto create() const { return Time_it_st(m_f.create()); }
+
+    F<Id, Fun...> bare_function() const { return m_f; }
 
     template <class... Ts>
     auto operator()(Ts&&... ts) {
@@ -317,9 +307,10 @@ class FuncMap_St : public Fs... {
                           static_cast<Fs const&>(*this).create()...);
     }
 
-    auto de_memoization() const {
-        return FuncMap_St(m_filename, m_sampling_interval, m_max_number_of_values_per_iteration,
-                          strip_memoizer(static_cast<const Fs&>(*this))...);
+    auto to_bare_functions() const {
+        return FuncMap_St<std::decay_t<decltype(static_cast<const Fs&>(*this).bare_function())>...>(
+            m_filename, m_sampling_interval, m_max_number_of_values_per_iteration,
+            static_cast<const Fs&>(*this).bare_function()...);
     }
 
     template <class Id, class... Ts>
@@ -407,16 +398,6 @@ class FuncMap_St : public Fs... {
         auto ss = (... * Ss{});
         //using test=typename decltype(ss)::multi;
         return this->append_Fs_S<MacroR>(ss);
-    }
-
-   private:
-    template <typename Component>
-    static auto strip_memoizer(const Component& component) {
-        if constexpr (is_single_thread_memoizer_v<Component>) {
-            return component.as_function();
-        } else {
-            return component;
-        }
     }
 };
 

@@ -467,14 +467,23 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
     if (!ok) {
         std::stringstream ss;
         ss << std::setprecision(10);
+        ss << "--------------------------------------------------------------------------------";
+        ss << "-------------------------ERROR ";
         if (Y0.has_dx())
-            ss << print_delta_parameters(Y0.dx().parameters(), h) << "\t";
+            ss << print_delta_parameters(Y0.dx().parameters(), h) << "-----------------------\n";
         else
-            ss << "[missing dx pointer]" << "\t";
+            ss << "[missing dx pointer]" << "-----------------------\n";
         ss << "||h||=" << detail_taylor::norm_of(h) << "\t";
         ss << "D_minus=" << D_minus << "\t";
         ss << "J_u=" << J_u << "\t";
         ss << "D_plus=" << D_plus << "\n";
+        ss << "D_test=" << D_test << "\n";
+        ss << "D_p=" << D_p << "\n";
+        ss << "D_n=" << D_m << "\n";
+
+        ss << "D_test_tol=" << D_test_tol << "\n";
+
+        ss << "------------------------------------------------------------------\n\n\n";
         return error_message(ss.str());
     }
     return ok;
@@ -541,6 +550,9 @@ Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
         auto Maybe_Yp = std::invoke(f, Taylor_first(xs, p, h)...);
         auto Maybe_Yn = std::invoke(f, Taylor_first(xs, p, -h)...);
 
+        auto Tp = Taylor_first(dY, p, h);
+        auto Tn = Taylor_first(dY, p, -h);
+
         if (!is_valid(Maybe_Yp)) {
             return get_error(Maybe_Yp);
         }
@@ -549,6 +561,9 @@ Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
         }
         auto Y_p = std::move(get_value(Maybe_Yp));
         auto Y_n = std::move(get_value(Maybe_Yn));
+
+        auto diff_p = Y_p - Tp;
+        auto diff_n = Y_n - Tn;
         auto new_ok = test_clarke_brackets(dY, p, h, Y_p, Y_n);
         ok = concatenate_error(std::move(ok), std::move(new_ok));
     }

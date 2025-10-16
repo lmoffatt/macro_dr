@@ -9,6 +9,10 @@
 #include "IObject.h"
 #include "parameters.h"
 #include "derivative_operator.h"
+// Avoid dragging CLI through qmodel when included by the interface
+#ifndef QMODEL_NO_CLI
+#define QMODEL_NO_CLI
+#endif
 #include "qmodel.h"
 
 namespace macrodr::interface {

@@ -1546,6 +1546,9 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
         }
 
     } else {
+        // Note: Due to Fortran/C++ orientation, we transpose and swap here.
+        // VL_cpp holds what LAPACK reports as right eigenvectors; VR_cpp holds the left ones.
+        // Downstream code expects the tuple ordering to be (VR, L, VL).
         auto VL_cpp = tr(VR_lapack);
         auto VR_cpp = tr(VL_lapack);
 
@@ -1581,9 +1584,10 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
                    " fails in eigendecomposition");
         }
         // Always return eigenpairs sorted by eigenvalue for determinism.
+        // Keep public contract used elsewhere: (VR, L, VL)
         return sort_by_eigenvalue(std::make_tuple(
                                       VR_cpp, WR, VL_cpp),
-                                  x);  // in reality VL, L, VR because of transposition
+                                  x);
     }
 }
 

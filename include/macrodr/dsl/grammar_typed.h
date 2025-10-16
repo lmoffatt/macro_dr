@@ -15,9 +15,6 @@
 #include "lexer_typed.h"
 #include "maybe_error.h"
 #include "type_name.h"
-// JSON types only; avoid heavy codec header here to reduce cycles
-#include <macrodr/io/json/minijson.h>
-namespace macrodr::io::json { struct Json; namespace conv { enum class TagPolicy : int; } }
 // Schemas
 #include "parameters.h"
 
@@ -253,7 +250,7 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
 
     virtual Maybe_error<SerializedExpression> serialize_json(
         const Environment<Lexer, Compiler>& env,
-        macrodr::io::json::conv::TagPolicy policy) const {
+        typename json_spec<Lexer>::TagPolicy policy) const {
         return error_message(std::string{"serialization unavailable for type "} +
                              this->type_name());
     }
@@ -489,15 +486,12 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
 
     Maybe_error<SerializedExpression> serialize_json(
         const Environment<Lexer, Compiler>& env,
-        macrodr::io::json::conv::TagPolicy policy) const override {
+        typename json_spec<Lexer>::TagPolicy policy) const override {
         using ValueType = std::remove_cvref_t<T>;
         if constexpr (std::is_void_v<ValueType>) {
             return error_message(std::string{"cannot serialize void expression of type "} +
                                  this->type_name());
-        } else if constexpr (!requires(ValueType v) {
-                                 (void)macrodr::io::json::conv::to_json(
-                                     v, macrodr::io::json::conv::TagPolicy{});
-                             }) {
+        } else if constexpr (!macrodr::io::json::conv::has_json_codec_v<ValueType>) {
             return error_message(std::string{"no JSON codec registered for type "} +
                                  this->type_name());
         } else {
@@ -507,7 +501,7 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
             }
             SerializedExpression out;
             out.type = this->type_name();
-            out.value = macrodr::io::json::conv::to_json(maybe_value.value(), policy);
+            out.value = json_spec<Lexer>::to_json(maybe_value.value(), policy);
             return out;
         }
     }
@@ -831,12 +825,12 @@ class typed_literal<Lexer, Compiler, void> : public typed_expression<Lexer, Comp
 
 template <class Lexer, class Compiler, class T>
 Maybe_error<void> load_literal_from_json_helper(
-    const macrodr::io::json::Json& value, const std::string& path,
-    macrodr::io::json::conv::TagPolicy policy, const Identifier<Lexer>& id,
+    const typename json_spec<Lexer>::Json& value, const std::string& path,
+    typename json_spec<Lexer>::TagPolicy policy, const Identifier<Lexer>& id,
     Environment<Lexer, Compiler>& env) {
     using Value = std::remove_cvref_t<T>;
     Value decoded{};
-    auto status = macrodr::io::json::conv::from_json(value, decoded, path, policy);
+    auto status = json_spec<Lexer>::from_json(value, decoded, path, policy);
     if (!status) {
         return status;
     }
@@ -850,10 +844,10 @@ Maybe_error<void> load_literal_from_json_helper(
 template <class Lexer, class Compiler, class T,
           std::enable_if_t<std::is_same_v<std::remove_cvref_t<T>, var::Parameters_values>, int> = 0>
 inline Maybe_error<void> load_literal_from_json_helper(
-    const macrodr::io::json::Json& value, const std::string& path,
-    macrodr::io::json::conv::TagPolicy /*policy*/, const Identifier<Lexer>& id,
+    const typename json_spec<Lexer>::Json& value, const std::string& path,
+    typename json_spec<Lexer>::TagPolicy /*policy*/, const Identifier<Lexer>& id,
     Environment<Lexer, Compiler>& env) {
-    using Json = macrodr::io::json::Json;
+    using Json = typename json_spec<Lexer>::Json;
     if (value.type != Json::Type::Object) {
         return error_message(path + ": expected object for Parameters_values");
     }
@@ -866,8 +860,8 @@ inline Maybe_error<void> load_literal_from_json_helper(
     auto schema = env.get_parameter_schema(schema_id);
     if (!schema) return error_message(path + ": unknown schema id '" + schema_id + "'");
     Matrix<double> mv;
-    auto st = macrodr::io::json::conv::from_json(*vals, mv, path + ".values",
-                                                 macrodr::io::json::conv::TagPolicy{});
+    auto st = json_spec<Lexer>::from_json(*vals, mv, path + ".values",
+                                          typename json_spec<Lexer>::TagPolicy{});
     if (!st) return st;
     var::Parameters_values pv(*schema, mv);
     auto literal = std::make_unique<typed_literal<Lexer, Compiler, var::Parameters_values>>(pv);
