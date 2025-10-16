@@ -1235,6 +1235,12 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
                             auto vTj = tr(VL(":", j));
                             auto uj = VR(":", j);
                             double dl = lambda[i] - lambda[j];
+                            // Handle (near-)degenerate eigenvalues by freezing intra-cluster mixing
+                            double rel = std::abs(dl) / (std::abs(lambda[i]) + std::abs(lambda[j]) + 1.0);
+                            if (rel <= 1e-12) {
+                                C(i, j) = 0.0;  // do not rotate within the degenerate subspace
+                                continue;
+                            }
                             auto denom = dl * getvalue(vTj * uj);
                             if (denom == 0)
                                 return error_message("nan value for derivative");
@@ -1253,8 +1259,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
                     }
                     C(i, i) = -sii / gii;
                 }
-                // dVR = (C^T) * VR (given our storage of C)
-                return tr(C) * VR;
+                // du_i = sum_j u_j * C(i,j) => dVR = VR * (C^T)
+                return VR * tr(C);
             },
             x.derivative()());
         if (!Maybe_derVR)
@@ -1272,6 +1278,11 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
                             auto vTj = tr(VL(":", j));
                             auto uj = VR(":", j);
                             double dl = lambda[i] - lambda[j];
+                            double rel = std::abs(dl) / (std::abs(lambda[i]) + std::abs(lambda[j]) + 1.0);
+                            if (rel <= 1e-12) {
+                                C(i, j) = 0.0;  // freeze intra-cluster mixing
+                                continue;
+                            }
                             auto denom = dl * getvalue(vTj * uj);
                             if (denom == 0)
                                 return error_message("nan value for derivative");
@@ -1288,8 +1299,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
                     }
                     C(i, i) = -sii / gii;
                 }
-                // dVL = - C * VL (consistent with dVR assembly and biorthogonal gauge)
-                return (-1.0) * (C * VL);
+                // Left eigenvectors as columns v_i: dv = - V * C
+                return (-1.0) * (VL * C);
             },
             x.derivative()());
         if (!Maybe_derVL)
@@ -1323,25 +1334,35 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
     if (n == 0)
         return de;
 
-    // Determine zero-eigen index on primitive
-    std::size_t k0 = 0;
-    double amin = std::abs(L[0]);
-    for (std::size_t i = 1; i < n; ++i) {
-        if (std::abs(L[i]) < amin) {
-            amin = std::abs(L[i]);
-            k0 = i;
+    // Determine indices belonging to the (near-)zero eigenvalue cluster
+    std::vector<std::size_t> zero_idx;
+    zero_idx.reserve(n);
+    for (std::size_t i = 0; i < n; ++i)
+        if (std::abs(L[i]) <= tol) zero_idx.push_back(i);
+
+    // If none detected (defensive), fall back to picking the smallest-in-magnitude
+    if (zero_idx.empty()) {
+        std::size_t k0 = 0;
+        double amin = std::abs(L[0]);
+        for (std::size_t i = 1; i < n; ++i) {
+            if (std::abs(L[i]) < amin) {
+                amin = std::abs(L[i]);
+                k0 = i;
+            }
         }
+        zero_idx.push_back(k0);
     }
 
-    // Build permutation bringing k0 -> 0
+    // Build permutation bringing the entire zero cluster to the front, preserving order
     Matrix<double> Per(n, n, 0.0);
     std::vector<std::size_t> order(n);
-    order[0] = k0;
-    std::size_t w = 1;
+    std::size_t w = 0;
+    // first, the zero-cluster indices in their original order
+    for (auto k : zero_idx) order[w++] = k;
+    // then all remaining indices
     for (std::size_t i = 0; i < n; ++i) {
-        if (i == k0)
-            continue;
-        order[w++] = i;
+        bool is_zero = std::find(zero_idx.begin(), zero_idx.end(), i) != zero_idx.end();
+        if (!is_zero) order[w++] = i;
     }
     for (std::size_t i = 0; i < n; ++i) Per(i, order[i]) = 1.0;
     auto PerT = tr(Per);
@@ -1367,14 +1388,12 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
         },
         dL.derivative());
 
-    // Zero-mode gauge: dλ0 = 0; du0 = 0
+    // Zero-mode gauge: set all zero-cluster eigenvalue derivatives to 0
+    const std::size_t m0 = zero_idx.size();
     for (std::size_t k = 0; k < dL_new().size(); ++k) {
-        if (dL_new()[k].nrows() > 0)
-            dL_new()[k][0] = 0.0;
-    }
-    for (std::size_t k = 0; k < dVR_new().size(); ++k) {
-        // zero first column
-        for (std::size_t r = 0; r < dVR_new()[k].nrows(); ++r) dVR_new()[k](r, 0) = 0.0;
+        if (dL_new()[k].nrows() > 0) {
+            for (std::size_t i = 0; i < std::min(m0, dL_new()[k].size()); ++i) dL_new()[k][i] = 0.0;
+        }
     }
 
     // Rebuild derivatives

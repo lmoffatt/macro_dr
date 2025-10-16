@@ -260,31 +260,21 @@ class Matrix {
     static constexpr bool is_Matrix = true;
     static constexpr bool is_Symmetric = false;
     static constexpr bool is_Diagonal = false;
-    
-    auto ncols() const {
-        return ncols_;
-    }
-    auto nrows() const {
-        return nrows_;
-    }
-    auto size() const {
-        return size_;
-    }
+
+    auto ncols() const { return ncols_; }
+    auto nrows() const { return nrows_; }
+    auto size() const { return size_; }
     ~Matrix() {
         if constexpr (!Matrix_uses_vector)  //  std::cerr<<"release "<<size()<<"\n";
             delete[] x_;
     }
-    static int cell_width() {
-        return 12;
-    }
-    explicit Matrix() {
-    }
+    static int cell_width() { return 12; }
+    explicit Matrix() {}
     explicit Matrix(std::size_t _nrows, std::size_t _ncols, bool initialize = true)
         : size_{_nrows * _ncols},
           nrows_{_nrows},
           ncols_{_ncols},
-          x_{initialize_matrix_container<T, Matrix_uses_vector>(size_, initialize)} {
-    }
+          x_{initialize_matrix_container<T, Matrix_uses_vector>(size_, initialize)} {}
     explicit Matrix(std::size_t _nrows, std::size_t _ncols, T value)
         : size_{_nrows * _ncols},
           nrows_{_nrows},
@@ -324,8 +314,7 @@ class Matrix {
         : size_{x.size()},
           nrows_{x.nrows()},
           ncols_{x.ncols()},
-          x_{std::exchange(x.x_, empty_matrix_container<T, Matrix_uses_vector>())} {
-    }
+          x_{std::exchange(x.x_, empty_matrix_container<T, Matrix_uses_vector>())} {}
 
     friend class DiagonalMatrix<T>;
 
@@ -400,15 +389,9 @@ class Matrix {
         return x_[i * ncols_ + j];
     }
 
-    void set(std::size_t i, std::size_t j, const T& x) {
-        operator()(i, j) = x;
-    }
-    void set(std::size_t i, std::size_t j, T&& x) {
-        operator()(i, j) = std::move(x);
-    }
-    void set(std::size_t i, T x) {
-        operator[](i) = x;
-    }
+    void set(std::size_t i, std::size_t j, const T& x) { operator()(i, j) = x; }
+    void set(std::size_t i, std::size_t j, T&& x) { operator()(i, j) = std::move(x); }
+    void set(std::size_t i, T x) { operator[](i) = x; }
 
     auto operator()(std::size_t i, const char* ch) const {
         assert(i < nrows() && std::strcmp(ch, ":") == 0);
@@ -428,7 +411,7 @@ class Matrix {
         assert((i < nrows()) && (j < ncols()));
         return x_[i * ncols_ + j];
     }
-  
+
     template <class S>
         requires(std::is_same_v<S, T> && std::is_same_v<S, double>)
     friend auto operator*(const Matrix& a, const Matrix<S>& b) {
@@ -540,9 +523,7 @@ class Matrix {
         return lapack::Lapack_Full_Product(a, b, true, false);
     }
 
-    friend auto inv(const Matrix& a) {
-        return lapack::Lapack_Full_inv(a);
-    }
+    friend auto inv(const Matrix& a) { return lapack::Lapack_Full_inv(a); }
 
     friend auto tr(const Matrix& a) {
         Matrix out(a.ncols(), a.nrows(), false);
@@ -660,35 +641,25 @@ class SymmetricMatrix : public Matrix<T> {
     using base_type = Matrix<T>;
 
    protected:
-    explicit SymmetricMatrix(base_type&& x) : base_type{std::move(x)} {
-    }
-    explicit SymmetricMatrix(base_type const& x) : base_type{x} {
-    }
+    explicit SymmetricMatrix(base_type&& x) : base_type{std::move(x)} {}
+    explicit SymmetricMatrix(base_type const& x) : base_type{x} {}
 
    public:
     static constexpr bool is_Matrix = true;
     static constexpr bool is_Symmetric = true;
     static constexpr bool is_Diagonal = false;
 
-    operator Matrix<T> const&() {
-        return static_cast<Matrix<T> const&>(*this);
-    }
+    operator Matrix<T> const&() { return static_cast<Matrix<T> const&>(*this); }
 
-    explicit SymmetricMatrix(std::size_t _nrows) : base_type(_nrows, _nrows, false) {
-    }
+    explicit SymmetricMatrix(std::size_t _nrows) : base_type(_nrows, _nrows, false) {}
     explicit SymmetricMatrix(std::size_t _nrows, std::size_t, T value)
-        : base_type(_nrows, _nrows, value) {
-    }
-    explicit SymmetricMatrix(std::size_t _nrows, std::size_t) : base_type(_nrows, _nrows) {
-    }
+        : base_type(_nrows, _nrows, value) {}
+    explicit SymmetricMatrix(std::size_t _nrows, std::size_t) : base_type(_nrows, _nrows) {}
 
-    SymmetricMatrix(const SymmetricMatrix& x) : base_type(x) {
-    }
-    SymmetricMatrix(SymmetricMatrix&& x) : base_type(std::move(x)) {
-    }
+    SymmetricMatrix(const SymmetricMatrix& x) : base_type(x) {}
+    SymmetricMatrix(SymmetricMatrix&& x) : base_type(std::move(x)) {}
 
-    SymmetricMatrix() {
-    }
+    SymmetricMatrix() {}
 
     SymmetricMatrix& operator=(const SymmetricMatrix& x) {
         static_cast<base_type&>(*this) = static_cast<base_type const&>(x);
@@ -706,26 +677,13 @@ class SymmetricMatrix : public Matrix<T> {
                 base_type::operator()(j, i) = x;
         }
     }
-    auto operator()(std::size_t i, std::size_t j) const {
-        return base_type::operator()(i, j);
-    }
-    auto& operator[](std::size_t i) const {
-        return base_type::operator[](i);
-    }
-    auto& operator[](std::size_t i) {
-        return base_type::operator[](i);
-    }
-    auto ncols() const {
-        return base_type::ncols();
-    }
-    auto nrows() const {
-        return base_type::nrows();
-    }
-    auto size() const {
-        return base_type::size();
-    }
-    ~SymmetricMatrix() {
-    }
+    auto operator()(std::size_t i, std::size_t j) const { return base_type::operator()(i, j); }
+    auto& operator[](std::size_t i) const { return base_type::operator[](i); }
+    auto& operator[](std::size_t i) { return base_type::operator[](i); }
+    auto ncols() const { return base_type::ncols(); }
+    auto nrows() const { return base_type::nrows(); }
+    auto size() const { return base_type::size(); }
+    ~SymmetricMatrix() {}
 
     friend auto operator*(const SymmetricMatrix& a, const SymmetricMatrix& b) {
         return lapack::Lapack_Sym_Product(a, b, true);
@@ -788,13 +746,9 @@ class SymmetricMatrix : public Matrix<T> {
         return out;
     }
 
-    friend auto inv(const SymmetricMatrix& a) {
-        return lapack::Lapack_Symm_inv(a);
-    }
+    friend auto inv(const SymmetricMatrix& a) { return lapack::Lapack_Symm_inv(a); }
 
-    friend auto& tr(const SymmetricMatrix& a) {
-        return a;
-    }
+    friend auto& tr(const SymmetricMatrix& a) { return a; }
 
     template <class F>
     friend auto apply(F&& f, SymmetricMatrix&& x) {
@@ -953,23 +907,17 @@ class UpTrianMatrix : public Matrix<T> {
         for (std::size_t i = 0; i < nrows(); ++i)
             for (std::size_t j = 0; j < i; ++j) base_type::operator()(i, j) = 0;
     }
-    operator Matrix<T> const&() {
-        return static_cast<Matrix<T> const&>(*this);
-    }
-    explicit UpTrianMatrix(base_type&& x) : base_type{std::move(x)} {
-    }
+    operator Matrix<T> const&() { return static_cast<Matrix<T> const&>(*this); }
+    explicit UpTrianMatrix(base_type&& x) : base_type{std::move(x)} {}
 
     explicit UpTrianMatrix(std::size_t _nrows, bool initialize = true)
-        : base_type(_nrows, _nrows, initialize) {
-    }
+        : base_type(_nrows, _nrows, initialize) {}
     explicit UpTrianMatrix(std::size_t _nrows, T value) : base_type(_nrows, _nrows, value) {
         fill_the_zeros();
     }
 
-    UpTrianMatrix(const UpTrianMatrix& x) : base_type(x) {
-    }
-    UpTrianMatrix(UpTrianMatrix&& x) : base_type(std::move(x)) {
-    }
+    UpTrianMatrix(const UpTrianMatrix& x) : base_type(x) {}
+    UpTrianMatrix(UpTrianMatrix&& x) : base_type(std::move(x)) {}
 
     UpTrianMatrix& operator=(const UpTrianMatrix& x) {
         static_cast<base_type&>(*this) = static_cast<base_type const&>(x);
@@ -983,24 +931,13 @@ class UpTrianMatrix : public Matrix<T> {
         assert(j >= i);
         base_type::operator()(i, j) = x;
     }
-    auto& operator()(std::size_t i, std::size_t j) const {
-        return base_type::operator()(i, j);
-    }
-    auto ncols() const {
-        return base_type::ncols();
-    }
-    auto nrows() const {
-        return base_type::nrows();
-    }
-    auto size() const {
-        return base_type::size();
-    }
-    ~UpTrianMatrix() {
-    }
+    auto& operator()(std::size_t i, std::size_t j) const { return base_type::operator()(i, j); }
+    auto ncols() const { return base_type::ncols(); }
+    auto nrows() const { return base_type::nrows(); }
+    auto size() const { return base_type::size(); }
+    ~UpTrianMatrix() {}
 
-    friend auto inv(const UpTrianMatrix& a) {
-        return lapack::Lapack_UT_inv(a, false);
-    }
+    friend auto inv(const UpTrianMatrix& a) { return lapack::Lapack_UT_inv(a, false); }
 
     friend auto operator*(const UpTrianMatrix& a, const Matrix<T>& b) {
         return lapack::Lapack_Triang_Product(a, b, true, true, false, false);
@@ -1040,25 +977,18 @@ class DownTrianMatrix : public Matrix<T> {
         for (std::size_t i = 0; i < nrows(); ++i)
             for (std::size_t j = i + 1; j < ncols(); ++j) base_type::operator()(i, j) = 0;
     }
-    operator Matrix<T> const&() {
-        return static_cast<Matrix<T> const&>(*this);
-    }
-    explicit DownTrianMatrix(base_type&& x) : base_type{std::move(x)} {
-    }
-    explicit DownTrianMatrix(base_type const& x) : base_type{x} {
-    }
+    operator Matrix<T> const&() { return static_cast<Matrix<T> const&>(*this); }
+    explicit DownTrianMatrix(base_type&& x) : base_type{std::move(x)} {}
+    explicit DownTrianMatrix(base_type const& x) : base_type{x} {}
 
     explicit DownTrianMatrix(std::size_t _nrows, bool initialize = true)
-        : base_type(_nrows, _nrows, initialize) {
-    }
+        : base_type(_nrows, _nrows, initialize) {}
     explicit DownTrianMatrix(std::size_t _nrows, T value) : base_type(_nrows, _nrows, value) {
         fill_the_zeros();
     }
 
-    DownTrianMatrix(const DownTrianMatrix& x) : base_type(x) {
-    }
-    DownTrianMatrix(DownTrianMatrix&& x) : base_type(std::move(x)) {
-    }
+    DownTrianMatrix(const DownTrianMatrix& x) : base_type(x) {}
+    DownTrianMatrix(DownTrianMatrix&& x) : base_type(std::move(x)) {}
 
     DownTrianMatrix& operator=(const DownTrianMatrix& x) {
         static_cast<base_type&>(*this) = static_cast<base_type const&>(x);
@@ -1072,24 +1002,13 @@ class DownTrianMatrix : public Matrix<T> {
         assert(j <= i);
         base_type::operator()(i, j) = x;
     }
-    auto& operator()(std::size_t i, std::size_t j) const {
-        return base_type::operator()(i, j);
-    }
-    auto ncols() const {
-        return base_type::ncols();
-    }
-    auto nrows() const {
-        return base_type::nrows();
-    }
-    auto size() const {
-        return base_type::size();
-    }
-    ~DownTrianMatrix() {
-    }
+    auto& operator()(std::size_t i, std::size_t j) const { return base_type::operator()(i, j); }
+    auto ncols() const { return base_type::ncols(); }
+    auto nrows() const { return base_type::nrows(); }
+    auto size() const { return base_type::size(); }
+    ~DownTrianMatrix() {}
 
-    friend auto inv(const DownTrianMatrix& a) {
-        return lapack::Lapack_LT_inv(a, false);
-    }
+    friend auto inv(const DownTrianMatrix& a) { return lapack::Lapack_LT_inv(a, false); }
 
     friend auto operator*(const DownTrianMatrix& a, const Matrix<T>& b) {
         return lapack::Lapack_Triang_Product(a, b, false, true, false, false);
@@ -1166,10 +1085,8 @@ template <class T>
 class SymPosDefMatrix : public SymmetricMatrix<T> {
     using base_type = SymmetricMatrix<T>;
 
-    explicit SymPosDefMatrix(base_type&& x) : base_type{std::move(x)} {
-    }
-    explicit SymPosDefMatrix(Matrix<T>&& x) : base_type{std::move(x)} {
-    }
+    explicit SymPosDefMatrix(base_type&& x) : base_type{std::move(x)} {}
+    explicit SymPosDefMatrix(Matrix<T>&& x) : base_type{std::move(x)} {}
 
    public:
     static constexpr bool is_Matrix = true;
@@ -1183,29 +1100,20 @@ class SymPosDefMatrix : public SymmetricMatrix<T> {
     template <class K>
     friend Maybe_error<SymPosDefMatrix<K>> lapack::Lapack_LT_Cholesky_inv(
         const DownTrianMatrix<K>& x);
-    operator Matrix<T> const&() {
-        return static_cast<Matrix<T> const&>(*this);
-    }
-    operator SymmetricMatrix<T> const&() {
-        return static_cast<SymmetricMatrix<T> const&>(*this);
-    }
+    operator Matrix<T> const&() { return static_cast<Matrix<T> const&>(*this); }
+    operator SymmetricMatrix<T> const&() { return static_cast<SymmetricMatrix<T> const&>(*this); }
 
     explicit SymPosDefMatrix(std::size_t _nrows, std::size_t _ncols, bool initialize = true)
-        : base_type(_nrows, _nrows, initialize) {
-    }
-    explicit SymPosDefMatrix(std::size_t _nrows, std::size_t, T value) : base_type(_nrows, value) {
-    }
+        : base_type(_nrows, _nrows, initialize) {}
+    explicit SymPosDefMatrix(std::size_t _nrows, std::size_t, T value) : base_type(_nrows, value) {}
 
-    explicit SymPosDefMatrix(std::size_t _nrows, T value) : base_type(_nrows, value) {
-    }
+    explicit SymPosDefMatrix(std::size_t _nrows, T value) : base_type(_nrows, value) {}
 
     static SymPosDefMatrix I_sware_it_is_possitive(base_type x) {
         return SymPosDefMatrix(std::move(x));
     }
-    SymPosDefMatrix(const SymPosDefMatrix& x) : base_type(x) {
-    }
-    SymPosDefMatrix(SymPosDefMatrix&& x) : base_type(std::move(static_cast<base_type&>(x))) {
-    }
+    SymPosDefMatrix(const SymPosDefMatrix& x) : base_type(x) {}
+    SymPosDefMatrix(SymPosDefMatrix&& x) : base_type(std::move(static_cast<base_type&>(x))) {}
 
     template <class S>
         requires(std::is_same_v<T, std::decay_t<decltype(T{}, S{})>>)
@@ -1228,26 +1136,14 @@ class SymPosDefMatrix : public SymmetricMatrix<T> {
         return *this;
     }
 
-    SymPosDefMatrix() {
-    }
+    SymPosDefMatrix() {}
 
-    void set(std::size_t i, std::size_t j, double x) {
-        base_type::set(i, j, x);
-    }
-    auto operator()(std::size_t i, std::size_t j) const {
-        return base_type::operator()(i, j);
-    }
-    auto ncols() const {
-        return base_type::ncols();
-    }
-    auto nrows() const {
-        return base_type::nrows();
-    }
-    auto size() const {
-        return base_type::size();
-    }
-    ~SymPosDefMatrix() {
-    }
+    void set(std::size_t i, std::size_t j, double x) { base_type::set(i, j, x); }
+    auto operator()(std::size_t i, std::size_t j) const { return base_type::operator()(i, j); }
+    auto ncols() const { return base_type::ncols(); }
+    auto nrows() const { return base_type::nrows(); }
+    auto size() const { return base_type::size(); }
+    ~SymPosDefMatrix() {}
 
     template <class S>
         requires(std::is_same_v<T, std::decay_t<decltype(T{}, S{})>>)
@@ -1307,13 +1203,9 @@ class SymPosDefMatrix : public SymmetricMatrix<T> {
         return SymPosDefMatrix(b * static_cast<SymmetricMatrix<T> const&>(a));
     }
 
-    friend auto inv(const SymPosDefMatrix& a) {
-        return lapack::Lapack_SymmPosDef_inv(a);
-    }
+    friend auto inv(const SymPosDefMatrix& a) { return lapack::Lapack_SymmPosDef_inv(a); }
 
-    friend auto tr(const SymPosDefMatrix& a) {
-        return a;
-    }
+    friend auto tr(const SymPosDefMatrix& a) { return a; }
 
     friend Maybe_error<DownTrianMatrix<T>> cholesky(const SymPosDefMatrix& x) {
         return lapack::Lapack_chol(x);
@@ -1352,8 +1244,7 @@ class DiagonalMatrix {
         : size_{std::min(_nrows, _ncols)},
           nrows_{_nrows},
           ncols_{_ncols},
-          x_{initialize_matrix_container<T, Matrix_uses_vector>(size_, initialize)} {
-    }
+          x_{initialize_matrix_container<T, Matrix_uses_vector>(size_, initialize)} {}
     explicit DiagonalMatrix(std::size_t _nrows, std::size_t _ncols, T value)
         : size_{std::min(_nrows, _ncols)},
           nrows_{_nrows},
@@ -1379,8 +1270,8 @@ class DiagonalMatrix {
         }
     }
 
-    explicit DiagonalMatrix(const std::vector<T>& a) : DiagonalMatrix(Matrix<T>(a.size(), 1ul, a)) {
-    }
+    explicit DiagonalMatrix(const std::vector<T>& a)
+        : DiagonalMatrix(Matrix<T>(a.size(), 1ul, a)) {}
 
     explicit DiagonalMatrix(Matrix<T>&& a)
         : size_{(a.ncols() == 1 || a.nrows() == 1) ? a.size() : std::min(a.nrows(), a.ncols())},
@@ -1397,8 +1288,7 @@ class DiagonalMatrix {
             for (std::size_t i = 0; i < size(); ++i) (*this)[i] = a(i, i);
         }
     }
-    DiagonalMatrix() {
-    }
+    DiagonalMatrix() {}
     DiagonalMatrix(const DiagonalMatrix& x)
         : size_{x.size()},
           nrows_{x.nrows()},
@@ -1410,8 +1300,7 @@ class DiagonalMatrix {
         : size_{x.size()},
           nrows_{x.nrows()},
           ncols_{x.ncols()},
-          x_{std::exchange(x.x_, empty_matrix_container<T, Matrix_uses_vector>())} {
-    }
+          x_{std::exchange(x.x_, empty_matrix_container<T, Matrix_uses_vector>())} {}
 
     DiagonalMatrix& operator=(const DiagonalMatrix& x) {
         if (&x != this) {
@@ -1441,12 +1330,8 @@ class DiagonalMatrix {
         return *this;
     }
 
-    auto& operator[](std::size_t i) {
-        return x_[i];
-    }
-    auto& operator[](std::size_t i) const {
-        return x_[i];
-    }
+    auto& operator[](std::size_t i) { return x_[i]; }
+    auto& operator[](std::size_t i) const { return x_[i]; }
     auto operator()(std::size_t i, std::size_t j) const {
         if (i == j)
             return x_[i];
@@ -1454,22 +1339,14 @@ class DiagonalMatrix {
             return T{};
     }
 
-    auto ncols() const {
-        return ncols_;
-    }
-    auto nrows() const {
-        return nrows_;
-    }
-    auto size() const {
-        return size_;
-    }
+    auto ncols() const { return ncols_; }
+    auto nrows() const { return nrows_; }
+    auto size() const { return size_; }
     ~DiagonalMatrix() {
         if constexpr (!Matrix_uses_vector)
             delete[] x_;
     }
-    static int cell_width() {
-        return 12;
-    }
+    static int cell_width() { return 12; }
 
     friend auto operator*(const DiagonalMatrix& a, const Matrix<double>& b) {
         assert(a.ncols() == b.nrows() && "matrix product dimensions mismatch");
@@ -1548,9 +1425,7 @@ class DiagonalMatrix {
         return apply([](auto const& a) { return inv(a); }, a);
     }
 
-    friend auto tr(const DiagonalMatrix& a) {
-        return a;
-    }
+    friend auto tr(const DiagonalMatrix& a) { return a; }
 
     friend auto diag(const DiagonalMatrix& a) {
         Matrix out(a.size(), 1, false);
@@ -1570,9 +1445,7 @@ class DiagonalMatrix {
         return out;
     }
 
-    void set(std::size_t i, T x) {
-        (*this)[i] = x;
-    }
+    void set(std::size_t i, T x) { (*this)[i] = x; }
 
     void set(std::size_t i, std::size_t j, T x) {
         assert(i == j);
@@ -1638,6 +1511,14 @@ class DiagonalMatrix {
     }
 };
 
+inline auto elemMult(const DiagonalMatrix<double>& x, const DiagonalMatrix<double>& y) {
+    auto out = x;
+    for (std::size_t i = 0; i < x.size(); ++i) {
+        out[i] = x[i] * y[i];
+    }
+    return out;
+}
+
 template <class Matrix>
     requires(Matrix::is_Matrix)
 std::ostream& print(std::ostream& os, const Matrix& x) {
@@ -1650,8 +1531,7 @@ DiagPosDetMatrix<T> XTX(const DiagonalMatrix<T>& a);
 template <class T>
 class DiagPosDetMatrix : public DiagonalMatrix<T> {
    private:
-    DiagPosDetMatrix(DiagonalMatrix<T>&& x) : base_type{x} {
-    }
+    DiagPosDetMatrix(DiagonalMatrix<T>&& x) : base_type{x} {}
 
    public:
     static constexpr bool is_Matrix = true;
@@ -1659,29 +1539,21 @@ class DiagPosDetMatrix : public DiagonalMatrix<T> {
     static constexpr bool is_Diagonal = true;
 
     using base_type = DiagonalMatrix<T>;
-    explicit DiagPosDetMatrix(std::size_t _nrows, std::size_t) : base_type{_nrows, _nrows, false} {
-    }
+    explicit DiagPosDetMatrix(std::size_t _nrows, std::size_t) : base_type{_nrows, _nrows, false} {}
     explicit DiagPosDetMatrix(std::size_t _nrows, std::size_t, T value)
-        : base_type{_nrows, _nrows, value} {
-    }
-    explicit DiagPosDetMatrix(std::initializer_list<T>&& a) : base_type(std::move(a)) {
-    }
+        : base_type{_nrows, _nrows, value} {}
+    explicit DiagPosDetMatrix(std::initializer_list<T>&& a) : base_type(std::move(a)) {}
 
-    explicit DiagPosDetMatrix(const Matrix<T>& a) : base_type(a) {
-    }
+    explicit DiagPosDetMatrix(const Matrix<T>& a) : base_type(a) {}
 
-    explicit DiagPosDetMatrix(Matrix<T>&& a) : base_type(std::move(a)) {
-    }
+    explicit DiagPosDetMatrix(Matrix<T>&& a) : base_type(std::move(a)) {}
 
-    explicit DiagPosDetMatrix(const std::vector<T>& a) : base_type(a) {
-    }
+    explicit DiagPosDetMatrix(const std::vector<T>& a) : base_type(a) {}
 
     using base_type::operator[];
     using base_type::operator();
-    DiagPosDetMatrix() {
-    }
-    ~DiagPosDetMatrix() {
-    }
+    DiagPosDetMatrix() {}
+    ~DiagPosDetMatrix() {}
 
     template <class T0>
     friend DiagPosDetMatrix<T0> XXT(const DiagonalMatrix<T0>& a);
@@ -1702,9 +1574,7 @@ class DiagPosDetMatrix : public DiagonalMatrix<T> {
         return out;
     }
 
-    friend auto& tr(const DiagPosDetMatrix& a) {
-        return a;
-    }
+    friend auto& tr(const DiagPosDetMatrix& a) { return a; }
 
     friend Maybe_error<DiagPosDetMatrix> cholesky(const DiagPosDetMatrix& a) {
         DiagPosDetMatrix out(a.nrows(), a.nrows());
@@ -1866,9 +1736,9 @@ inline auto eigs(const Matrix<double>& x, bool does_permutations = false,
                  bool does_diagonal_scaling = false,
                  bool computes_eigenvalues_condition_numbers = false,
                  bool computes_eigenvectors_condition_numbers = false) {
-    return lapack::Lapack_EigenSystem(
-        x, does_permutations, does_diagonal_scaling, computes_eigenvalues_condition_numbers,
-        computes_eigenvectors_condition_numbers);
+    return lapack::Lapack_EigenSystem(x, does_permutations, does_diagonal_scaling,
+                                      computes_eigenvalues_condition_numbers,
+                                      computes_eigenvectors_condition_numbers);
 }
 
 inline auto eigs(const SymmetricMatrix<double>& x) {
@@ -1880,31 +1750,35 @@ inline auto eigs(const SymmetricMatrix<double>& x) {
 // - apply the corresponding column permutation to VR and VL
 // - biorthogonal rescaling of (VL, VR) so that v_i^T u_i = 1 for all i
 inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
-eig_enforce_q_mode(const Matrix<double>& /*Q*/,
-                   const std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>& e,
-                   double tol = 1e-12) {
+    eig_enforce_q_mode(const Matrix<double>& /*Q*/,
+                       const std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>& e,
+                       double tol = 1e-12) {
     auto [VR, L, VL] = e;
     if (VR.ncols() == 0)
         return std::tuple(VR, L, VL);
 
     const std::size_t n = VR.ncols();
-    // Find eigenvalue closest to zero
-    std::size_t k0 = 0;
-    double amin = std::abs(L[0]);
-    for (std::size_t i = 1; i < n; ++i) {
-        if (std::abs(L[i]) < amin) {
-            amin = std::abs(L[i]);
-            k0 = i;
-        }
+
+    // Identify (near-)zero eigenvalue cluster indices
+    std::vector<std::size_t> zero_idx;
+    zero_idx.reserve(n);
+    for (std::size_t i = 0; i < n; ++i) if (std::abs(L[i]) <= tol) zero_idx.push_back(i);
+
+    if (zero_idx.empty()) {
+        // Fallback: pick smallest-magnitude eigenvalue as the zero-mode
+        std::size_t k0 = 0; double amin = std::abs(L[0]);
+        for (std::size_t i = 1; i < n; ++i) if (std::abs(L[i]) < amin) { amin = std::abs(L[i]); k0 = i; }
+        zero_idx.push_back(k0);
     }
-    // Build permutation bringing k0 -> 0 and keeping others in order
+
+    // Build permutation bringing the entire zero cluster to the front, preserving relative order
     Matrix<double> Per(n, n, 0.0);
     std::vector<std::size_t> order(n);
-    order[0] = k0;
-    std::size_t w = 1;
+    std::size_t w = 0;
+    for (auto k : zero_idx) order[w++] = k;
     for (std::size_t i = 0; i < n; ++i) {
-        if (i == k0) continue;
-        order[w++] = i;
+        bool in_zero = std::find(zero_idx.begin(), zero_idx.end(), i) != zero_idx.end();
+        if (!in_zero) order[w++] = i;
     }
     for (std::size_t i = 0; i < n; ++i) Per(i, order[i]) = 1.0;
     auto PerT = tr(Per);
@@ -1922,7 +1796,6 @@ eig_enforce_q_mode(const Matrix<double>& /*Q*/,
         double s = getvalue(vTi * ui);
         if (std::abs(s) <= tol)
             return error_message("eig_enforce_q_mode: singular (v_i^T u_i == 0)");
-        // Scale left eigenvector column i
         for (std::size_t r = 0; r < VLp.nrows(); ++r) VLp(r, i) = VLp(r, i) / s;
     }
     return std::tuple(VRp, Lp, VLp);

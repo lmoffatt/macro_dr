@@ -1588,7 +1588,21 @@ class Macro_DMR {
         auto maybe_eig = eigs(v_Qx());
         if (!maybe_eig)
             return maybe_eig.error();
-        auto [v_V, v_l, ignore] = std::move(maybe_eig.value());
+        auto eig = std::move(maybe_eig.value());
+        // Enforce CTMC conventions consistently on primitive and derivative outputs
+        using VOut = std::decay_t<decltype(std::get<0>(eig))>;
+        if constexpr (std::is_same_v<VOut, Matrix<double>>) {
+            auto enforced = ::eig_enforce_q_mode(v_Qx(), eig);
+            if (!enforced)
+                return enforced.error();
+            eig = std::move(enforced.value());
+        } else if constexpr (std::is_same_v<VOut, var::Derivative<Matrix<double>, var::Parameters_transformed>>) {
+            auto enforced = var::eig_enforce_q_mode(v_Qx().primitive(), eig);
+            if (!enforced)
+                return enforced.error();
+            eig = std::move(enforced.value());
+        }
+        auto [v_V, v_l, ignore] = std::move(eig);
         auto Maybe_W = inv(v_V);
         if (!Maybe_W)
             return Maybe_W.error();
@@ -4181,9 +4195,8 @@ class Macro_DMR {
                             }
                         }
 
-                        if constexpr (!test_eigen) {
+                        if constexpr (test_eigen) {
                             const auto h = 1e-6;
-                            const auto ratio_target = 2.5;  // eigen is delicate; allow slack
                             auto test_der_eigen = var::test_derivative_clarke(
                                 [this, &t_step](auto l_m) {
                                     auto me = calc_eigen(l_m, get<ATP_concentration>(t_step()[0]));
@@ -4269,7 +4282,7 @@ class Macro_DMR {
                                 auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
                                 if constexpr (test_derivative) {
                                     const auto h = 1e-4;
-                                    auto f_no_memoi = f_local.de_memoization();
+                                    auto f_no_memoi = f_local.to_bare_functions();
 
                                     auto test_der_t_Qdtm = test_derivative_clarke(
                                         [this, &t_step, &fs, &f_no_memoi](auto const& l_m) {
@@ -4284,7 +4297,7 @@ class Macro_DMR {
                                         if (Maybe_t_Qdtm_no_stab) {
                                             auto t_Qdtm_no_stab =
                                                 std::move(Maybe_t_Qdtm_no_stab.value());
-                                            auto f_no_memoi = f_local.de_memoization();
+                                            auto f_no_memoi = f_local.to_bare_functions();
 
                                             auto test_no_stab = var::test_derivative_clarke(
                                                 [this, &t_step, &fs, &f_no_memoi](
@@ -4319,7 +4332,7 @@ class Macro_DMR {
 
                                 if constexpr (test_derivative) {
                                     const auto h = 1e-7;
-                                    auto f_no_memoi = f_local.de_memoization();
+                                    auto f_no_memoi = f_local.to_bare_functions();
 
                                     auto test_der_t_Qdt = var::test_derivative_clarke(
                                         [this, &t_step, &fs, &f_no_memoi](auto const& l_m,
@@ -4371,7 +4384,7 @@ class Macro_DMR {
 
                                 if constexpr (test_derivative) {
                                     const auto h = 1e-7;
-                                    auto f_no_memoi = f_local.de_memoization();
+                                    auto f_no_memoi = f_local.to_bare_functions();
 
                                     auto test_der_t_Qdtm = var::test_derivative_clarke(
                                         [this, &t_step, &fs, &f_no_memoi](auto const& l_m) {
@@ -6562,6 +6575,8 @@ using fractioned_simulation_type =
 }  // namespace macrodr
 
 // Include CLI function table after all qmodel types are defined to avoid cycles
+#ifndef QMODEL_NO_CLI
 #include <CLI_function_table.h>
+#endif
 
 #endif  // QMODEL_H
