@@ -148,12 +148,12 @@ inline Maybe_error<DownTrianMatrix<double>> Lapack_LT_inv(const DownTrianMatrix<
 
 Maybe_error<UpTrianMatrix<double>> Lapack_UT_inv(const UpTrianMatrix<double>& x, bool ones_in_diag);
 
-Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>> Lapack_EigenSystem(
+Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>> Lapack_EigenSystem(
     const Matrix<double>& x, bool does_permutations = true, bool does_diagonal_scaling = true,
     bool computes_eigenvalues_condition_numbers = false,
     bool computes_eigenvectors_condition_numbers = false);
 
-Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
     Lapack_Symm_EigenSystem(const SymmetricMatrix<double>& x, std::string kind = "lower");
 
 }  // namespace lapack
@@ -473,7 +473,7 @@ class Matrix {
 
     friend auto operator-(const Matrix& a, const Matrix& b) {
         if (a.size() == 0)
-            return b * (-1.0);
+            return a;  // avoid promotion issues for non-floating T
         else if (b.size() == 0)
             return a;
         else
@@ -1762,12 +1762,19 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
     // Identify (near-)zero eigenvalue cluster indices
     std::vector<std::size_t> zero_idx;
     zero_idx.reserve(n);
-    for (std::size_t i = 0; i < n; ++i) if (std::abs(L[i]) <= tol) zero_idx.push_back(i);
+    for (std::size_t i = 0; i < n; ++i)
+        if (std::abs(L[i]) <= tol)
+            zero_idx.push_back(i);
 
     if (zero_idx.empty()) {
         // Fallback: pick smallest-magnitude eigenvalue as the zero-mode
-        std::size_t k0 = 0; double amin = std::abs(L[0]);
-        for (std::size_t i = 1; i < n; ++i) if (std::abs(L[i]) < amin) { amin = std::abs(L[i]); k0 = i; }
+        std::size_t k0 = 0;
+        double amin = std::abs(L[0]);
+        for (std::size_t i = 1; i < n; ++i)
+            if (std::abs(L[i]) < amin) {
+                amin = std::abs(L[i]);
+                k0 = i;
+            }
         zero_idx.push_back(k0);
     }
 
@@ -1778,7 +1785,8 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
     for (auto k : zero_idx) order[w++] = k;
     for (std::size_t i = 0; i < n; ++i) {
         bool in_zero = std::find(zero_idx.begin(), zero_idx.end(), i) != zero_idx.end();
-        if (!in_zero) order[w++] = i;
+        if (!in_zero)
+            order[w++] = i;
     }
     for (std::size_t i = 0; i < n; ++i) Per(i, order[i]) = 1.0;
     auto PerT = tr(Per);
@@ -1799,6 +1807,68 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
         for (std::size_t r = 0; r < VLp.nrows(); ++r) VLp(r, i) = VLp(r, i) / s;
     }
     return std::tuple(VRp, Lp, VLp);
+}
+
+struct Block {
+    std::size_t begin{};
+    std::size_t end{};
+};
+
+inline std::vector<Block> cluster_blocks(const DiagonalMatrix<double>& L, double tol) {
+    std::vector<Block> blocks;
+    if (L.size() == 0)
+        return blocks;
+
+    std::size_t i = 0;
+    const std::size_t n = L.size();
+    while (i < n) {
+        std::size_t j = i + 1;
+        for (; j < n; ++j) {
+            const double gap = std::abs(L[j] - L[j - 1]);
+            const double scale = 1.0 + std::abs(L[j]) + std::abs(L[j - 1]);
+            if (gap / scale > tol)
+                break;
+        }
+        blocks.push_back(Block{i, j});
+        i = j;
+    }
+    return blocks;
+}
+
+inline Matrix<double> select_columns(std::size_t ncols, const Block& b) {
+    Matrix<double> S(ncols, b.end - b.begin, 0.0);
+    for (std::size_t j = 0; j < b.end - b.begin; ++j) S(b.begin + j, j) = 1.0;
+    return S;
+}
+
+inline Matrix<double> select_rows(std::size_t nrows, const Block& b) {
+    Matrix<double> S(b.end - b.begin, nrows, 0.0);
+    for (std::size_t i = 0; i < b.end - b.begin; ++i) S(i, b.begin + i) = 1.0;
+    return S;
+}
+
+inline DiagonalMatrix<double> select_diag(std::size_t n, const Block& b) {
+    DiagonalMatrix<double> D(n, n);
+    for (std::size_t i = 0; i < n; ++i) D[i] = 0.0;
+    for (std::size_t i = b.begin; i < b.end; ++i) D[i] = 1.0;
+    return D;
+}
+
+template <class MatLike, class DiagLike>
+struct SpectralProjectors {
+    MatLike V;
+    MatLike W;
+    DiagLike L;
+    std::vector<Block> blocks;
+};
+
+template <class MatLike, class DiagLike>
+SpectralProjectors<MatLike, DiagLike> make_projectors(MatLike V, MatLike W, DiagLike L,
+                                                      double tol) {
+    SpectralProjectors<MatLike, DiagLike> sp{std::move(V), std::move(W), std::move(L), {}};
+    auto Lprim = primitive(sp.L);
+    sp.blocks = cluster_blocks(Lprim, tol);
+    return sp;
 }
 
 inline auto XXT(const Matrix<double>& a) {

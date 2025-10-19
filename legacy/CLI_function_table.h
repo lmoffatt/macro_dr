@@ -166,9 +166,9 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                       return out;
                   }),
                 var::Memoiza_overload<
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>,
+                    var::Memoiza_all_values<Maybe_error<Eigs>, ATP_concentration>,
                     var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<Qx_eig, var::Parameters_transformed>>,
+                        Maybe_error<var::Derivative<Eigs, var::Parameters_transformed>>,
                         ATP_concentration>>{})
 
             // var::Time_it(
@@ -324,9 +324,9 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                       return out;
                   }),
                 var::Memoiza_overload<
-                    var::Memoiza_all_values<Maybe_error<Qx_eig>, ATP_concentration>,
+                    var::Memoiza_all_values<Maybe_error<Eigs>, ATP_concentration>,
                     var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<Qx_eig, var::Parameters_transformed>>,
+                        Maybe_error<var::Derivative<Eigs, var::Parameters_transformed>>,
                         ATP_concentration>>{})
 
             // var::Time_it(

@@ -457,8 +457,9 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
     using std::abs;
     auto D_test = elemMult(D_p, D_m);
     auto D_residual =
-        (apply([](auto x) { return abs(x); }, Yp()) + apply([](auto x) { return abs(x); }, Yn()) +
-         apply([](auto x) { return abs(x); }, Y0.primitive()())) *
+        (apply([](auto x) { using std::abs; return abs(static_cast<double>(x)); }, Yp()) +
+         apply([](auto x) { using std::abs; return abs(static_cast<double>(x)); }, Yn()) +
+         apply([](auto x) { using std::abs; return abs(static_cast<double>(x)); }, Y0.primitive()())) *
         (4.0 / std::abs(t) * eps);
 
     auto D_test_tol = D_test + D_residual;

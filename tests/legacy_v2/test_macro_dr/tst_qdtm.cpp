@@ -26,18 +26,18 @@ TEST_CASE("Test Qdtm ", "[Qdtm]") {
 
     auto Maybe_Qx_eig = macrodr::Macro_DMR{}.calc_eigen(Qx);
     REQUIRE(Maybe_Qx_eig);
-    auto Qx_eig = std::move(Maybe_Qx_eig.value());
+    auto Eigs = std::move(Maybe_Qx_eig.value());
 
     double dt = 1e-3;
-    auto Maybe_Qdt = macrodr::Macro_DMR{}.calc_Qdt_eig(func_table, m, Qx_eig,
-                                                       macrodr::number_of_samples(10), dt);
+    auto Maybe_Qdt =
+        macrodr::Macro_DMR{}.calc_Qdt_eig(func_table, m, Eigs, macrodr::number_of_samples(10), dt);
     auto Maybe_Qdt_Taylor =
         macrodr::Macro_DMR{}.calc_Qdt_taylor(m, Qx, macrodr::number_of_samples(10), 1e-3, 10);
     REQUIRE(Maybe_Qdt);
     auto r_Qdt = std::move(Maybe_Qdt.value());
 
-    auto Maybe_Qdtm = macrodr::Macro_DMR{}.calc_Qdtm_eig(func_table, m, Qx_eig,
-                                                         macrodr::number_of_samples(10), dt);
+    auto Maybe_Qdtm =
+        macrodr::Macro_DMR{}.calc_Qdtm_eig(func_table, m, Eigs, macrodr::number_of_samples(10), dt);
 
     REQUIRE(Maybe_Qdtm);
     auto r_Qdtm = std::move(Maybe_Qdtm.value());
@@ -48,12 +48,12 @@ TEST_CASE("Test Qdtm ", "[Qdtm]") {
 
     auto r_Qdt2 = macrodr::Macro_DMR{}.Qn_to_Qdt(r_Qn);
 
-    auto Maybe_Qdt2 = macrodr::Macro_DMR{}.calc_Qdt_eig(func_table, m, Qx_eig,
+    auto Maybe_Qdt2 = macrodr::Macro_DMR{}.calc_Qdt_eig(func_table, m, Eigs,
                                                         macrodr::number_of_samples(20), 2 * dt);
     auto Qdt22 = std::move(Maybe_Qdt2.value());
     CHECK(compare_contents(Qdt22, r_Qdt2, std::sqrt(eps), std::sqrt(eps), 10));
 
-    auto Maybe_Qdtm_2 = macrodr::Macro_DMR{}.calc_Qdtm_eig(func_table, m, Qx_eig,
+    auto Maybe_Qdtm_2 = macrodr::Macro_DMR{}.calc_Qdtm_eig(func_table, m, Eigs,
                                                            macrodr::number_of_samples(10), 2e-3);
 
     CHECK(compare_contents(r_Qdtm, extract<macrodr::Qdtm>(r_Qdt), eps * 100, 10));
