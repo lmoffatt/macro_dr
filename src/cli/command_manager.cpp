@@ -116,7 +116,7 @@ dsl::Compiler make_compiler_new() {
     cm.push_function("calc_eigen", dsl::to_typed_function<PatchModel const&, double>(
                                        &macrodr::cmd::calc_eigen, "patch_model", "atp"));
 
-    using QxEig = macrodr::Transfer_Op_to<PatchModel, macrodr::Qx_eig>;
+    using QxEig = macrodr::Transfer_Op_to<PatchModel, macrodr::Eigs>;
     cm.push_function("calc_peq", dsl::to_typed_function<QxEig const&, PatchModel const&>(
                                      &macrodr::cmd::calc_peq, "qx_eig", "patch_model"));
 

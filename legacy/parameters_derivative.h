@@ -1073,9 +1073,22 @@ auto operator*(const Derivative<aMatrix<double>, Parameters_transformed>& a,
             fa * fb,
             zip_par([&fa, &fb](auto const& da, auto const& db) { return fa * db + da * fb; },
                     derivative(a), derivative(b)));
-    else if ((derivative(a)().size() == 0) && (derivative(a)().size() == 0))
-        return Derivative<S, Parameters_transformed>(fa * fb);
-    else if (derivative(a)().size() == 0)
+    else if ((derivative(a)().size() == 0) && (derivative(b)().size() == 0)) {
+        // Both differentials are structurally empty. Preserve parameter context to avoid
+        // constructing a Derivative<> without a dx pointer, which would later trip assertions
+        // in apply_par/operator*.
+        if (a.has_dx()) {
+            d_d_<S, Parameters_transformed> zero_df(static_cast<const S&>(fa * fb), a.dx());
+            return Derivative<S, Parameters_transformed>(fa * fb, zero_df);
+        } else if (b.has_dx()) {
+            d_d_<S, Parameters_transformed> zero_df(static_cast<const S&>(fa * fb), b.dx());
+            return Derivative<S, Parameters_transformed>(fa * fb, zero_df);
+        } else {
+            // No parameter context available; return a derivative wrapper with no dx.
+            // Downstream code should treat this as non-differentiable.
+            return Derivative<S, Parameters_transformed>(fa * fb);
+        }
+    } else if (derivative(a)().size() == 0)
         return Derivative<S, Parameters_transformed>(
             fa * fb, apply_par([&fa](auto const& db) { return fa * db; }, derivative(b)));
     else
@@ -1186,8 +1199,8 @@ Maybe_error<Derivative<Matrix<double>, Parameters_transformed>> inv(
     }
 }
 
-inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>,
-                              Derivative<DiagonalMatrix<double>, Parameters_transformed>,
+inline Maybe_error<std::tuple<Derivative<DiagonalMatrix<double>, Parameters_transformed>,
+                              Derivative<Matrix<double>, Parameters_transformed>,
                               Derivative<Matrix<double>, Parameters_transformed>>>
     eigs(const Derivative<Matrix<double>, Parameters_transformed>& x,
          bool does_permutations = false, bool does_diagonal_scaling = false,
@@ -1197,118 +1210,53 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
         eigs(x.primitive(), does_permutations, does_diagonal_scaling,
              computes_eigenvalues_condition_numbers, computes_eigenvectors_condition_numbers);
 
-    if (!res)
+    if (!res) {
         return res.error();
-    else {
-        auto [VR, lambda, VL] = std::move(res).value();
-
-        auto Maybe_derlambda = apply_maybe(
-            [VR, lambda, VL](auto const& dx) -> Maybe_error<DiagonalMatrix<double>> {
-                auto out = DiagonalMatrix<double>(lambda.nrows(), lambda.ncols());
-                for (std::size_t i = 0; i < lambda.size(); ++i) {
-                    auto vT = tr(VL(":", i));
-                    auto u = VR(":", i);
-                    auto vT_u = getvalue(vT * u);
-                    if (vT_u == 0)
-                        return error_message("nan value for derivative");
-                    out[i] = getvalue(vT * dx * u) / getvalue(vT * u);
-                }
-                return out;
-            },
-            x.derivative()());
-        if (!Maybe_derlambda)
-            return Maybe_derlambda.error();
-        //using test=typename decltype(Maybe_derlambda)::thet;
-
-        auto dLambda = Derivative<DiagonalMatrix<double>, Parameters_transformed>(
-            lambda, std::move(Maybe_derlambda.value()), x.dx());
-
-        auto VRRV = XTX(VR);
-
-        auto Maybe_derVR = apply_maybe(
-            [&VR, &lambda, &VL, &VRRV](auto const& dx) -> Maybe_error<Matrix<double>> {
-                Matrix<double> C(VR.nrows(), VR.ncols());
-                for (std::size_t i = 0; i < VR.ncols(); ++i) {
-                    auto ui = VR(":", i);
-                    for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (i != j) {
-                            auto vTj = tr(VL(":", j));
-                            auto uj = VR(":", j);
-                            double dl = lambda[i] - lambda[j];
-                            // Handle (near-)degenerate eigenvalues by freezing intra-cluster mixing
-                            double rel = std::abs(dl) / (std::abs(lambda[i]) + std::abs(lambda[j]) + 1.0);
-                            if (rel <= 1e-12) {
-                                C(i, j) = 0.0;  // do not rotate within the degenerate subspace
-                                continue;
-                            }
-                            auto denom = dl * getvalue(vTj * uj);
-                            if (denom == 0)
-                                return error_message("nan value for derivative");
-                            // Store C(i,j) == coefficient C(j,i) in standard notation
-                            C(i, j) = getvalue(vTj * dx * ui) / denom;
-                        }
-                    }
-                    // Diagonal from 2-norm gauge on columns: u_i^T du_i = 0
-                    auto gii = VRRV(i, i);
-                    if (gii == 0)
-                        return error_message("nan value for derivative");
-                    double sii = 0.0;
-                    for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (i != j)
-                            sii += VRRV(i, j) * C(i, j);
-                    }
-                    C(i, i) = -sii / gii;
-                }
-                // du_i = sum_j u_j * C(i,j) => dVR = VR * (C^T)
-                return VR * tr(C);
-            },
-            x.derivative()());
-        if (!Maybe_derVR)
-            return Maybe_derVR.error();
-        auto dVR =
-            Derivative<Matrix<double>, Parameters_transformed>(VR, Maybe_derVR.value(), x.dx());
-        // Compute dVL consistently: dVL = - C * VL with the same C per direction
-        auto Maybe_derVL = apply_maybe(
-            [&VR, &lambda, &VL, &VRRV](auto const& dx) -> Maybe_error<Matrix<double>> {
-                Matrix<double> C(VR.nrows(), VR.ncols());
-                for (std::size_t i = 0; i < VR.ncols(); ++i) {
-                    auto ui = VR(":", i);
-                    for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (i != j) {
-                            auto vTj = tr(VL(":", j));
-                            auto uj = VR(":", j);
-                            double dl = lambda[i] - lambda[j];
-                            double rel = std::abs(dl) / (std::abs(lambda[i]) + std::abs(lambda[j]) + 1.0);
-                            if (rel <= 1e-12) {
-                                C(i, j) = 0.0;  // freeze intra-cluster mixing
-                                continue;
-                            }
-                            auto denom = dl * getvalue(vTj * uj);
-                            if (denom == 0)
-                                return error_message("nan value for derivative");
-                            C(i, j) = getvalue(vTj * dx * ui) / denom;
-                        }
-                    }
-                    auto gii = VRRV(i, i);
-                    if (gii == 0)
-                        return error_message("nan value for derivative");
-                    double sii = 0.0;
-                    for (std::size_t j = 0; j < VR.ncols(); ++j) {
-                        if (i != j)
-                            sii += VRRV(i, j) * C(i, j);
-                    }
-                    C(i, i) = -sii / gii;
-                }
-                // Left eigenvectors as columns v_i: dv = - V * C
-                return (-1.0) * (VL * C);
-            },
-            x.derivative()());
-        if (!Maybe_derVL)
-            return Maybe_derVL.error();
-        auto dVL =
-            Derivative<Matrix<double>, Parameters_transformed>(VL, Maybe_derVL.value(), x.dx());
-        return std::tuple(dVR, dLambda, dVL);
     }
+    auto [lambda, VR, VL] = std::move(res).value();
+
+    auto G = apply([&VR, &VL](auto const& x_k) { return tr(VL) * x_k * VR; }, x.derivative()());
+
+    auto der_lambda = apply([](auto const& dx) -> DiagonalMatrix<double> { return diag(dx); }, G);
+
+    auto der_VR = apply(
+        [&VR, &lambda](Matrix<double> const& Gk) {
+            auto omega_k = Gk - Gk;
+            for (std::size_t i = 0; i < Gk.nrows(); ++i) {
+                for (std::size_t j = 0; j < Gk.ncols(); ++j) {
+                    if ((lambda[i] - lambda[j]) > 100 * sqrt(eps)) {
+                        omega_k(i, j) = -Gk(i, j) / (lambda[i] - lambda[j]);
+                    }
+                }
+            }
+            return VR * omega_k;
+        },
+        G);
+
+    auto der_VL = apply(
+        [&VL, &lambda](Matrix<double> const& Gk) {
+            auto omega_k = Gk - Gk;
+            for (std::size_t i = 0; i < Gk.nrows(); ++i) {
+                for (std::size_t j = 0; j < Gk.ncols(); ++j) {
+                    if ((lambda[i] - lambda[j]) > 100 * sqrt(eps)) {
+                        omega_k(i, j) = -Gk(i, j) / (lambda[i] - lambda[j]);
+                    }
+                }
+            }
+            return tr(omega_k) * VL * (-1.0);
+        },
+        G);
+
+    auto dlambda = Derivative<DiagonalMatrix<double>, Parameters_transformed>(
+        std::move(lambda), std::move(der_lambda), x.dx());
+
+    auto dVR = Derivative<Matrix<double>, Parameters_transformed>(std::move(VR), std::move(der_VR),
+                                                                  x.dx());
+    auto dVL = Derivative<Matrix<double>, Parameters_transformed>(std::move(VL), std::move(der_VL),
+                                                                  x.dx());
+
+    // Match primitive order: (L, VR, VL)
+    return std::tuple(std::move(dlambda), std::move(dVR), std::move(dVL));
 }
 
 // Enforce CTMC-generator conventions on eigendecomposition (derivative):
@@ -1338,7 +1286,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
     std::vector<std::size_t> zero_idx;
     zero_idx.reserve(n);
     for (std::size_t i = 0; i < n; ++i)
-        if (std::abs(L[i]) <= tol) zero_idx.push_back(i);
+        if (std::abs(L[i]) <= tol)
+            zero_idx.push_back(i);
 
     // If none detected (defensive), fall back to picking the smallest-in-magnitude
     if (zero_idx.empty()) {
@@ -1362,7 +1311,8 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
     // then all remaining indices
     for (std::size_t i = 0; i < n; ++i) {
         bool is_zero = std::find(zero_idx.begin(), zero_idx.end(), i) != zero_idx.end();
-        if (!is_zero) order[w++] = i;
+        if (!is_zero)
+            order[w++] = i;
     }
     for (std::size_t i = 0; i < n; ++i) Per(i, order[i]) = 1.0;
     auto PerT = tr(Per);
@@ -1396,21 +1346,48 @@ inline Maybe_error<std::tuple<Derivative<Matrix<double>, Parameters_transformed>
         }
     }
 
-    // Rebuild derivatives
+    // Rebuild derivatives with permutation applied (no scaling yet)
     auto dVR_out = Derivative<Matrix<double>, Parameters_transformed>(VRp, dVR_new(), dVR.dx());
     auto dL_out = Derivative<DiagonalMatrix<double>, Parameters_transformed>(Lp, dL_new(), dL.dx());
     auto dVL_out = Derivative<Matrix<double>, Parameters_transformed>(VLp, dVL_new(), dVL.dx());
 
-    // Biorthogonal rescaling on primitive left eigenvectors so v_i^T u_i = 1
+    // Biorthogonal rescaling on primitive left eigenvectors so v_i^T u_i = 1,
+    // with consistent derivative adjustment for the scaling factor s = v_i^T u_i.
     for (std::size_t i = 0; i < n; ++i) {
+        // Compute inner product s before scaling primitives
         auto ui = dVR_out.primitive()(":", i);
-        auto vTi = tr(dVL_out.primitive()(":", i));
-        double s = getvalue(vTi * ui);
+        auto vcol = dVL_out.primitive()(":", i);
+        auto vTi_pre = tr(vcol);
+        double s = getvalue(vTi_pre * ui);
         if (std::abs(s) <= tol)
             return error_message("eig_enforce_q_mode(d): singular (v_i^T u_i == 0)");
+
+        // Scale left eigenvector primitive column by 1/s
         for (std::size_t r = 0; r < dVL_out.primitive().nrows(); ++r)
             dVL_out.primitive()(r, i) = dVL_out.primitive()(r, i) / s;
-        // NOTE: derivative adjustment for scaling is omitted (s treated as constant here).
+
+        // Adjust derivatives to account for scaling: v'_i = v_i / s
+        // d v'_i = (1/s) d v_i - (ds/s) v'_i, where ds = dv_i^T u_i + v_i^T du_i (computed pre-scale)
+        for (std::size_t k = 0; k < dVL_out.derivative()().size(); ++k) {
+            // Skip empty derivative directions
+            if (dVL_out.derivative()()[k].nrows() == 0)
+                continue;
+
+            // Column i of derivative matrices before scaling adjustment
+            auto dvi_col = dVL_out.derivative()()[k](
+                ":", i);  // currently unscaled derivative; we'll overwrite
+            auto dui_col = dVR_out.derivative()()[k](":", i);
+
+            double ds_k = getvalue(tr(dvi_col) * ui + vTi_pre * dui_col);
+
+            // Update column entries in-place using v'_i now stored in primitive
+            for (std::size_t r = 0; r < dVL_out.derivative()()[k].nrows(); ++r) {
+                double dv_ir = dVL_out.derivative()()[k](
+                    r, i);  // this is still unscaled value from previous line
+                double vprime_r = dVL_out.primitive()(r, i);  // scaled primitive value (v_i / s)
+                dVL_out.derivative()()[k](r, i) = dv_ir / s - (ds_k / s) * vprime_r;
+            }
+        }
     }
 
     return std::tuple(dVR_out, dL_out, dVL_out);

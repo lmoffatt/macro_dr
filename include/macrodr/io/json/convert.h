@@ -537,6 +537,19 @@ inline Json to_json(const Matrix<double>& m, TagPolicy) {
     return rows;
 }
 
+// Minimal serializer for index matrices used by spectral Blocks (std::size_t)
+inline Json to_json(const Matrix<std::size_t>& m, TagPolicy) {
+    Json rows = Json::array();
+    for (std::size_t i = 0; i < m.nrows(); ++i) {
+        Json row = Json::array();
+        for (std::size_t jcol = 0; jcol < m.ncols(); ++jcol) {
+            row.arr.push_back(Json::number(static_cast<double>(m(i, jcol))));
+        }
+        rows.arr.push_back(std::move(row));
+    }
+    return rows;
+}
+
 inline Maybe_error<void> from_json(const Json& j, Matrix<double>& out, const std::string& path,
                                    TagPolicy) {
     if (j.type != Json::Type::Array) {
@@ -568,6 +581,45 @@ inline Maybe_error<void> from_json(const Json& j, Matrix<double>& out, const std
                                          "number", cell.type);
             }
             m(i, jcol) = cell.num;
+        }
+    }
+    out = std::move(m);
+    return {};
+}
+
+inline Maybe_error<void> from_json(const Json& j, Matrix<std::size_t>& out, const std::string& path,
+                                   TagPolicy) {
+    if (j.type != Json::Type::Array) {
+        return detail::type_error(path, "array", j.type);
+    }
+    if (j.arr.empty()) {
+        out = Matrix<std::size_t>();
+        return {};
+    }
+    if (j.arr.front().type != Json::Type::Array) {
+        return detail::type_error(path + "[0]", "array", j.arr.front().type);
+    }
+    std::size_t rows = j.arr.size();
+    std::size_t cols = j.arr.front().arr.size();
+    Matrix<std::size_t> m(rows, cols, false);
+    for (std::size_t i = 0; i < rows; ++i) {
+        const auto& row = j.arr[i];
+        if (row.type != Json::Type::Array) {
+            return detail::type_error(path + "[" + std::to_string(i) + "]", "array", row.type);
+        }
+        if (row.arr.size() != cols) {
+            return error_message(path + ": inconsistent row lengths");
+        }
+        for (std::size_t jcol = 0; jcol < cols; ++jcol) {
+            const auto& cell = row.arr[jcol];
+            if (cell.type != Json::Type::Number) {
+                return detail::type_error(path + "[" + std::to_string(i) + "][" +
+                                             std::to_string(jcol) + "]",
+                                         "number", cell.type);
+            }
+            double v = cell.num;
+            if (v < 0) v = 0;  // clamp
+            m(i, jcol) = static_cast<std::size_t>(v);
         }
     }
     out = std::move(m);

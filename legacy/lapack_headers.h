@@ -2,6 +2,7 @@
 #define LAPACK_HEADERS_H
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -600,7 +601,7 @@ Maybe_error<SymPosDefMatrix<double>> Lapack_SymmPosDef_inv(const SymPosDefMatrix
 
 Maybe_error<DownTrianMatrix<double>> Lapack_chol(const SymPosDefMatrix<double>& x);
 
-inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
     Lapack_EigenSystem(const Matrix<double>& x, bool does_permutations, bool does_diagonal_scaling,
                        bool computes_eigenvalues_condition_numbers,
                        bool computes_eigenvectors_condition_numbers);
@@ -1140,58 +1141,68 @@ extern "C" void dgeevx_(char* BALANC, char* JOBVL, char* JOBVR, char* SENSE, int
                         double* /* precision, dimension( * ) */ WORK, int* LWORK,
                         int* /*dimension( * ) */ IWORK, int* INFO);
 
-template <class C_Matrix, class C_DiagonalMatrix>
-inline auto sort_by_eigenvalue(std::tuple<C_Matrix, C_DiagonalMatrix, C_Matrix> const& e,
-                               const C_Matrix& x) {
-    auto& [VL, L, VR] = e;
+template <class C_DiagonalMatrix, class C_Matrix>
+inline auto sort_by_eigenvalue(std::tuple<C_DiagonalMatrix, C_Matrix, C_Matrix> const& e,
+                               const C_Matrix& x)
+    -> std::tuple<C_DiagonalMatrix, C_Matrix, C_Matrix> {
+    auto& [L, VR, VL] = e;
     std::vector<std::pair<double, std::size_t>> la(L.size());
 
     for (std::size_t i = 0; i < L.size(); ++i) la[i] = std::pair(var::primitive(L)[i], i);
-    std::sort(la.begin(), la.end());
+    // Sort eigenvalues in non-increasing order: more positive first
+    std::sort(la.begin(), la.end(), [](auto const& a, auto const& b) { return a.first > b.first; });
+
     Matrix<double> Per(VL.nrows(), VL.nrows(), 0.0);
     for (std::size_t i = 0; i < la.size(); ++i) Per(i, la[i].second) = 1.0;
 
     auto PerT = tr(Per);
 
-    auto VLs = VL * PerT;
-    auto Ls = Per * L * PerT;
     auto VRs = VR * PerT;
+    auto VLs = VL * PerT;
+    C_DiagonalMatrix Ls(L.nrows(), L.ncols());
+    for (std::size_t i = 0; i < la.size(); ++i) Ls[i] = var::primitive(L)[la[i].second];
 
     assert((
-        [&e, &VRs, &Ls, &VLs, &x, &L, &VL, &VR]() {
-            if (!(norm_1(VLs * Ls * inv(VLs).value() - x) / norm_1(x) < std::sqrt(eps) * 1000) ||
-                !(norm_1(inv(tr(VRs)).value() * Ls * tr(VRs) - x) / norm_1(x) <
-                  std::sqrt(eps) * 1000)) {
-                std::cerr << "e" << e;
-                std::cerr << "VRs" << VRs;
-                std::cerr << "Ls" << Ls;
-                std::cerr << "VLs" << VLs;
-                std::cerr << "x" << x;
-                std::cerr << "VL * L * inv(VL).value()" << VL * L * inv(VL).value();
-                std::cerr << "VLs * Ls * VLsinv" << VLs * Ls * inv(VL).value();
-                std::cerr << "VLs * Ls * VLsinv-x" << VLs * Ls * inv(VL).value() - x;
-
-                std::cerr << "inv(tr(VR)).value() * L * tr(VR)" << inv(tr(VR)).value() * L * tr(VR);
-                std::cerr << "inv(tr(VRs)).value() * Ls * tr(VRs)"
-                          << inv(tr(VRs)).value() * Ls * tr(VRs);
-                std::cerr << "inv(tr(VRs)).value() * Ls * tr(VRs)-x"
-                          << inv(tr(VRs)).value() * Ls * tr(VRs) - x;
+        [&VRs, &Ls, &VLs, &x, &VR, &L, &VL]() {
+            if (!(norm_1(VRs * Ls * tr(VLs) - x) / norm_1(x) < std::sqrt(eps) * 1000)) {
+                std::cerr << "\nL\n" << L;
+                std::cerr << "\nLs\n" << Ls;
+                std::cerr << "\nVR\n" << VR;
+                std::cerr << "\nVRs\n" << VRs;
+                std::cerr << "\nVL\n" << VL;
+                std::cerr << "\nVLs\n" << VLs;
+                std::cerr << "\nVR * L * tr(VL)\n" << VR * L * tr(VL);
+                std::cerr << "\nVRs * Ls * tr(VLs)\n" << VRs * Ls * tr(VLs);
+                std::cerr << "\nx\n" << x;
                 return false;
-            } else
-                return true;
+            }
+            return true;
         }(),
         " fails in eigendecomposition"));
 
-    return std::tuple(VLs, Ls, VRs);
+    return std::tuple(Ls, VRs, VLs);
 }
 
 // Nelson normalization was removed from the codebase.
 
-inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+inline auto make_them_orthonormal(const Matrix<double>& u, Matrix<double>&& v) -> Matrix<double> {
+    for (std::size_t j = 0; j < u.ncols(); ++j) {
+        double d = 0;
+        for (std::size_t i = 0; i < u.nrows(); ++i) {
+            d += u(i, j) * v(i, j);
+        }
+        for (std::size_t i = 0; i < u.nrows(); ++i) {
+            v(i, j) = v(i, j) / d;
+        }
+    }
+    return std::move(v);
+}
+
+inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
     Lapack_EigenSystem(const Matrix<double>& x, bool does_permutations, bool does_diagonal_scaling,
                        bool computes_eigenvalues_condition_numbers,
                        bool computes_eigenvectors_condition_numbers) {
-    return_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>,
+    return_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>,
                  Lapack_EigenSystem>
         Error;
 
@@ -1546,48 +1557,37 @@ inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<dou
         }
 
     } else {
+        if (norm_1(WI) > std::sqrt(eps)) {
+            std::stringstream ss;
+            ss << "Complex eigenvalues!!. Big imaginary component of the eigenvalues detected: \n"
+               << WI << "\n";
+            return Error(ss.str());
+        }
         // Note: Due to Fortran/C++ orientation, we transpose and swap here.
-        // VL_cpp holds what LAPACK reports as right eigenvectors; VR_cpp holds the left ones.
-        // Downstream code expects the tuple ordering to be (VR, L, VL).
-        auto VL_cpp = tr(VR_lapack);
+        // LAPACK ran on A^T; map back to A: VR_cpp = tr(VL_lapack), VL_cpp = tr(VR_lapack)
         auto VR_cpp = tr(VL_lapack);
+        auto VL_cpp = make_them_orthonormal(VR_cpp, tr(VR_lapack));
 
-        if constexpr (false) {
+        constexpr const bool test_eigs = true;
+
+        if constexpr (test_eigs) {
             assert(([&VR_cpp, &WR, &x, &VL_cpp]() {
-                       if (inv(VR_cpp).valid() &&
-                           !(norm_1(VR_cpp * WR * inv(VR_cpp).value() - x) / norm_1(x) <
-                             std::sqrt(eps) * 1000)) {
+                       if ((!(norm_1(VR_cpp * WR * tr(VL_cpp) - x) / norm_1(x) <
+                              std::sqrt(eps) * 1000))) {
                            std::cerr << "\nx\n" << x;
                            std::cerr << "\nVR_cpp\n" << VR_cpp;
                            std::cerr << "\nWR\n" << WR;
                            std::cerr << "\nVL_cpp\n" << VL_cpp;
-
-                           std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()\n"
-                                     << VR_cpp * WR * inv(VR_cpp).value();
-                           std::cerr << "\nVR_cpp * WR * inv(VR_cpp).value()-x\n"
-                                     << VR_cpp * WR * inv(VR_cpp).value() - x;
-
-                           std::cerr << "norm_1(VR_cpp * WR * inv(VR_cpp).value() - x)"
-                                     << norm_1(VR_cpp * WR * inv(VR_cpp).value() - x);
-                           std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)\n"
-                                     << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
-                           std::cerr << "\ninv(tr(VR_cpp)).value() * WR * tr(VR_cpp)-x \n"
-                                     << inv(tr(VR_cpp)).value() * WR * tr(VR_cpp);
-
-                           std::cerr << "\nstd::sqrt(eps)\n" << std::sqrt(eps) << "\n";
+                           std::cerr << "\nVR_cpp * WR * tr(VL_cpp)\n" << VR_cpp * WR * tr(VL_cpp);
                            return false;
-
-                       } else {
-                           return true;
                        }
+                       return true;
                    }()) &&
                    " fails in eigendecomposition");
         }
-        // Always return eigenpairs sorted by eigenvalue for determinism.
-        // Keep public contract used elsewhere: (VR, L, VL)
-        return sort_by_eigenvalue(std::make_tuple(
-                                      VR_cpp, WR, VL_cpp),
-                                  x);
+        // Always return eigenpairs sorted by eigenvalue (more positive first).
+        // Public contract: (L, VR, VL)
+        return sort_by_eigenvalue(std::make_tuple(WR, VR_cpp, VL_cpp), x);
     }
 }
 
@@ -1605,8 +1605,11 @@ extern "C" void dsyevx_(char* JOBZ, char* RANGE, char* UPLO, int* N,
 
 extern "C" void ddisna_(char* JOB, int* M, int* N, double* D, double* SEP, int* INFO);
 
-inline Maybe_error<std::tuple<Matrix<double>, DiagonalMatrix<double>, Matrix<double>>>
+inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
     Lapack_Symm_EigenSystem(const SymmetricMatrix<double>& x, std::string kind) {
+    return_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>,
+                 Lapack_Symm_EigenSystem>
+        Error;
     using lapack::dsyevx_;
 
     /** DSYEVX computes the eigenvalues and, optionally, the left and/or right eigenvectors for SY matrices
@@ -2017,7 +2020,9 @@ Parameters
         lapack::ddisna_(&JOB, &M, &N, &W[0], &RCOND[0], &INFO);
         auto VL_cpp = Z;
         auto VR_cpp = tr(Z);
-        return std::tuple(VR_cpp, W, VL_cpp);
+        // Sort to match non-symmetric path (more positive first) and return (L, VR, VL)
+        auto Xrec = VR_cpp * W * tr(VL_cpp);
+        return sort_by_eigenvalue(std::make_tuple(W, VR_cpp, VL_cpp), Xrec);
     }
 }
 
