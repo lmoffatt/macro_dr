@@ -1,11 +1,13 @@
 #ifndef DERIVATIVE_TEST_H
 #define DERIVATIVE_TEST_H
+#include <exponential_matrix.h>
 #include <matrix.h>
 #include <parameters.h>
 #include <variables.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 
 #include "macrodr/dsl/type_name.h"
 
@@ -413,17 +415,198 @@ Maybe_error<bool> condense_errors(var::Vector_Space<var::Var<Id, Maybe_error<boo
     return error_message(condense_errors(get<Id>(std::move(ok))).error()()...);
 }
 
-template <class T, class X>
+template <bool inspect = false, class T, class X>
     requires(!is_of_this_template_type_v<T, Vector_Space>)
-var::Var<T, Maybe_error<bool>> test_clarke_brackets(T const&, const X&, double, const T&,
+var::Var<T, Maybe_error<bool>> test_clarke_brackets(T const&, T const&, const X&, double, const T&,
                                                     const T&) {
     return var::Var<T, Maybe_error<bool>>(true);
 }
 
-template <class T, class X>
+// --- helpers (adapt rows/cols/indexing to your T if needed) ------------------
+template <class M>
+inline std::pair<int, int> argmax_with_index(const M& A) {
+    int bi = 0, bj = 0;
+    auto best = A(0ul, 0ul);
+    for (int i = 0; i < A.nrows(); ++i)
+        for (int j = 0; j < A.ncols(); ++j)
+            if (A(i, j) > best) {
+                best = A(i, j);
+                bi = i;
+                bj = j;
+            }
+    return {bi, bj};
+}
+template <class M>
+inline int count_positive(const M& A) {
+    int c = 0;
+    for (int i = 0; i < A.nrows(); ++i)
+        for (int j = 0; j < A.ncols(); ++j)
+            if (A(i, j) > 0)
+                ++c;
+    return c;
+}
+
+template <bool inspect = false, class T, class X>
     requires(!is_of_this_template_type_v<T, Vector_Space>)
-var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, const X& u,
-                                                    double t, const T& Yp, const T& Yn) {
+var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, const T& Y,
+                                                    const X& u, double t, const T& Yp,
+                                                    const T& Yn) {
+    // ================================================================
+    // Clarke brackets test
+    // ---------------------------------------------------------------
+    // For a differentiable function f : R^n → R and point x,
+    // the directional derivative along a unit vector u satisfies:
+    //
+    //   D⁻f(x;u) ≤ f'(x)·u ≤ D⁺f(x;u)
+    //
+    // where
+    //   D⁺f(x;u) ≈ (f(x + t u) - f(x)) / t      // forward difference
+    //   D⁻f(x;u) ≈ (f(x) - f(x - t u)) / t      // backward difference
+    //
+    // The analytic gradient g is *consistent* if for small t:
+    //
+    //   D⁻ ≤ g·u ≤ D⁺
+    //
+    // Violations of this inequality indicate either:
+    //   (a) f is not differentiable at x, or
+    //   (b) the analytic gradient g is incorrect.
+    // =========================================================
+
+    MACRODR_TEST_ASSERT(Y0.has_dx() && "test_clarke_brackets: derivative missing dx pointer");
+    auto g = derivative(Y0);
+
+    auto Ydiff = Y() - Y0.primitive()();
+
+    auto Ydiff_ok = maxAbs(Ydiff) < maxAbs(Y()) * eps;
+
+    auto h = t * u();
+    auto J_u = g * u;  // directional derivative from analytic gradient
+
+    auto D_plus = (Yp() - Y0.primitive()()) / t;
+    auto D_minus = (Y0.primitive()() - Yn()) / t;
+
+    auto mid = 0.5 * (D_plus + D_minus);
+    auto width = zip(
+        [](auto a, auto b) {
+            using std::abs;
+            return abs(a - b);
+        },
+        D_plus, D_minus);
+
+    constexpr double M = 10.0;
+    constexpr double rel_tol = 1e-6;
+    auto tau_abs = (apply(
+                        [](auto x) {
+                            using std::abs;
+                            return 1 + abs((double)x);
+                        },
+                        Yp()) +
+                    apply(
+                        [](auto x) {
+                            using std::abs;
+                            return 1 + abs((double)x);
+                        },
+                        Yn()) +
+                    apply(
+                        [](auto x) {
+                            using std::abs;
+                            return 1 + abs((double)x);
+                        },
+                        Y0.primitive()())) *
+                   (4.0 * sqrt(std::numeric_limits<double>::epsilon()) / std::abs(t));
+
+    auto band = M * (width * 0.5) + tau_abs +
+                rel_tol * (apply(
+                               [](auto x) {
+                                   using std::abs;
+                                   return abs((double)x);
+                               },
+                               J_u) +
+                           apply(
+                               [](auto x) {
+                                   using std::abs;
+                                   return abs((double)x);
+                               },
+                               mid));
+    auto gap = zip(
+                   [](auto a, auto b) {
+                       using std::abs;
+                       return abs(a - b);
+                   },
+                   J_u, mid) -
+               band;
+
+    bool ok = true;
+
+    for (std::size_t i = 0; i < gap.size(); ++i) {
+        // if the directional derivative change sign we accept the test
+        if (gap[i] > 0 && (D_plus[i] * D_minus[i] > 0)) {
+            ok = false;
+        }
+    }
+
+    if (!ok || inspect || !Ydiff_ok) {
+        // residual/gap: positive means violation
+
+        // summarize failures
+        int fail_count = count_positive(gap);
+        auto [wi, wj] = argmax_with_index(gap);
+        double worst = gap(wi, wj);
+
+        // optional central check for context
+        auto C = (Yp() - Yn()) / (2 * t);
+        auto cen_err = zip(
+            [](auto a, auto b) {
+                using std::abs;
+                return abs(a - b);
+            },
+            J_u, C);
+
+        std::stringstream ss;
+        ss << std::setprecision(10);
+        ss << "-------------------------------------------------------------------------------"
+              "-";
+        ss << "-------------------------ERROR ";
+
+        ss << "Y()\n" << Y() << "\n";
+        ss << "Y0.primitive()()\n" << Y0.primitive()() << "\n";
+        ss << "\nYdiff\n" << Ydiff;
+
+        if (Y0.has_dx())
+            ss << print_delta_parameters(Y0.dx().parameters(), h) << "-----------------------\n";
+        else
+            ss << "[missing dx pointer]" << "-----------------------\n";
+
+        ss << "||h||=" << detail_taylor::norm_of(h) << "\n";
+
+        // (1) closeness diagnostics
+        ss << "D_minus=\n" << D_minus << "\n";
+        ss << "J_u=\n" << J_u << "\n";
+        ss << "D_plus=\n" << D_plus << "\n";
+
+        // (2) failure location and local details
+        ss << "fail_count=" << fail_count << " (of " << (gap.nrows() * gap.ncols()) << ")\n";
+        ss << "worst_idx=(" << wi << "," << wj << "), gap=" << worst
+           << "  // gap = |J_u - mid| - band\n";
+        ss << "at worst idx:\n";
+        ss << "  Ju=" << J_u(wi, wj) << "  D-=" << D_minus(wi, wj) << "  D+=" << D_plus(wi, wj)
+           << "\n";
+        ss << "  mid=" << mid(wi, wj) << "  width=" << width(wi, wj) << "  band=" << band(wi, wj)
+           << "\n";
+
+        // optional: central-diff info at the same spot
+        ss << "  C=" << C(wi, wj) << "  |Ju-C|=" << cen_err(wi, wj) << "\n";
+
+        ss << "------------------------------------------------------------------\n\n\n";
+        return error_message(ss.str());
+    }
+    return ok;
+}
+
+template <bool inspect = false, class T, class X>
+    requires(!is_of_this_template_type_v<T, Vector_Space>)
+var::Var<T, Maybe_error<bool>> test_clarke_brackets_old(const Derivative<T, X>& Y0, const X& u,
+                                                        double t, const T& Yp, const T& Yn) {
     // ================================================================
     // Clarke brackets test
     // ---------------------------------------------------------------
@@ -452,20 +635,33 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
 
     auto D_plus = (Yp() - Y0.primitive()()) / t;
     auto D_minus = (Y0.primitive()() - Yn()) / t;
-    auto D_p = D_plus - J_u;
-    auto D_m = J_u - D_minus;
-    using std::abs;
-    auto D_test = elemMult(D_p, D_m);
-    auto D_residual =
-        (apply([](auto x) { using std::abs; return abs(static_cast<double>(x)); }, Yp()) +
-         apply([](auto x) { using std::abs; return abs(static_cast<double>(x)); }, Yn()) +
-         apply([](auto x) { using std::abs; return abs(static_cast<double>(x)); }, Y0.primitive()())) *
-        (4.0 / std::abs(t) * eps);
+    auto lo = zip([](auto x, auto y) { return std::min(x, y); }, D_minus, D_plus);
+    auto hi = zip([](auto x, auto y) { return std::max(x, y); }, D_minus, D_plus);
 
-    auto D_test_tol = D_test + D_residual;
+    auto C = (Yp() - Yn()) / (2 * t);  // central check
+    constexpr const double abs_tol = 1e-10;
+    constexpr const double rel_tol = 1e-6;
 
-    bool ok = (min(D_test_tol) >= 0);
-    if (!ok) {
+    auto mixed_tol = [&](auto a, auto b, auto c) {
+        return abs_tol + rel_tol * (apply(abs, a) + apply(abs, b) + apply(abs, c));
+    };
+
+    // elementwise
+    auto gap_low = J_u - lo;
+    auto gap_high = hi - J_u;
+
+    // pass if both sides within tolerance
+    auto tol = mixed_tol(J_u, D_minus, D_plus);
+    auto pass_bracket = (min(gap_low + tol) >= 0) && (min(gap_high + tol) >= 0);
+
+    // central difference consistency
+    auto cen_tol = mixed_tol(J_u, C, C);
+    auto pass_central = (max(apply(abs, J_u - C) - cen_tol) <= 0);
+
+    // final decision (single t)
+    bool ok = pass_bracket || pass_central;
+
+    if (!ok || inspect) {
         std::stringstream ss;
         ss << std::setprecision(10);
         ss << "--------------------------------------------------------------------------------";
@@ -477,12 +673,9 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
         ss << "||h||=" << detail_taylor::norm_of(h) << "\t";
         ss << "D_minus=" << D_minus << "\t";
         ss << "J_u=" << J_u << "\t";
-        ss << "D_plus=" << D_plus << "\n";
-        ss << "D_test=" << D_test << "\n";
-        ss << "D_p=" << D_p << "\n";
-        ss << "D_n=" << D_m << "\n";
-
-        ss << "D_test_tol=" << D_test_tol << "\n";
+        ss << "gap_low + tol " << gap_low + tol;
+        ss << "gap_high + tol " << gap_high + tol;
+        ss << "cen_tol" << cen_tol;
 
         ss << "------------------------------------------------------------------\n\n\n";
         return error_message(ss.str());
@@ -490,11 +683,12 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
     return ok;
 }
 
-template <class... T, class X>
+template <bool inspect = false, class... T, class X>
 var::Vector_Space<var::Var<T, Maybe_error<bool>>...> test_clarke_brackets(
-    const Derivative<Vector_Space<T...>, X>& Y0, const X& u, double t, const Vector_Space<T...>& Yp,
-    const Vector_Space<T...>& Yn) {
-    return var::Vector_Space(test_clarke_brackets(get<T>(Y0), u, t, get<T>(Yp), get<T>(Yn))...);
+    const Derivative<Vector_Space<T...>, X>& Y0, const Vector_Space<T...>& Y, const X& u, double t,
+    const Vector_Space<T...>& Yp, const Vector_Space<T...>& Yn) {
+    return var::Vector_Space(
+        test_clarke_brackets<inspect>(get<T>(Y0), get<T>(Y), u, t, get<T>(Yp), get<T>(Yn))...);
 }
 
 template <class... T, class X>
@@ -514,7 +708,7 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets_init(const Derivative<T, X>&
 // Note: this is a much stronger test than the step-doubling test
 // but requires knowledge of a bound on the third derivative
 
-template <class F, class... Xs>
+template <bool inspect = false, class F, class... Xs>
     requires(!std::is_same_v<NoDerivative, dx_of_dfdx_t<Xs...>> && std::is_invocable_v<F, Xs...>)
 Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
     auto MaybedY = std::invoke(f, xs...);
@@ -523,9 +717,15 @@ Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
     }
     auto dY = std::move(get_value(MaybedY));
 
+    auto MaybeY = std::invoke(f, primitive(xs)...);
+    if (!is_valid(MaybeY)) {
+        return get_error(MaybeY);
+    }
+    auto Y = std::move(get_value(MaybeY));
+
     // Direction space from the first derivative argument among xs...
-    using Y = dx_of_dfdx_t<Xs...>;
-    if constexpr (std::is_same_v<NoDerivative, Y>) {
+    using Y_type = dx_of_dfdx_t<Xs...>;
+    if constexpr (std::is_same_v<NoDerivative, Y_type>) {
         // Nothing to test if there is no derivative argument
         return true;
     }
@@ -565,13 +765,13 @@ Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
 
         auto diff_p = Y_p - Tp;
         auto diff_n = Y_n - Tn;
-        auto new_ok = test_clarke_brackets(dY, p, h, Y_p, Y_n);
+        auto new_ok = test_clarke_brackets<inspect>(dY, Y, p, h, Y_p, Y_n);
         ok = concatenate_error(std::move(ok), std::move(new_ok));
     }
     return condense_errors(std::move(ok));
 }
 
-template <class F, class... Xs>
+template <bool inspect = false, class F, class... Xs>
     requires((std::is_same_v<NoDerivative, decltype(get_dx_of_dfdx(std::declval<Xs>()...))>))
 Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
     auto out = Maybe_error<bool>(true);

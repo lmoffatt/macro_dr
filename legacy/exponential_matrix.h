@@ -8,7 +8,7 @@
 #include "matrix.h"
 #include "matrix_derivative.h"
 #include "maybe_error.h"
-#include "qmodel.h"
+//#include "qmodel.h"
 
 using var::primitive;
 

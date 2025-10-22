@@ -67,3 +67,24 @@ After this mapping we rescale `VL_cpp` and `VR_cpp` to enforce `u_i^T v_i = 1`.
 - Shapes: `VL` and `VR` are `n×n`, `L` is a diagonal `n×n`.
 - Degeneracies: within a degenerate eigenvalue cluster, the basis is not unique; only the invariant subspace is well‑defined. The sort order is deterministic (by eigenvalue), but individual columns may vary under perturbations.
 - For CTMC generators `Q`, a dedicated post‑processing may reorder the zero‑mode and apply a consistent gauge; the core contracts above remain unchanged.
+
+## Gauge Freedom and Differentiation
+
+Eigenvectors are defined only up to (i) column‑wise rescalings that preserve `u_i^T v_i = 1` and (ii)
+rotations within degenerate eigenspaces. Consequently, the derivative of `V` and `U` with respect to
+parameters is not intrinsic: it depends on how the gauge is chosen as a function of the parameters.
+
+Two common gauges appear in MacroDR:
+
+- LAPACK gauge (DGEEVX): right/left eigenvectors are 2‑norm normalized with an additional phase
+  convention (largest component made real). This gauge may change discontinuously as parameters vary
+  (e.g., sign flips when the “largest component” changes).
+- Biorthogonal/zero‑diagonal gauge: enforce `U^T V = I` and choose the coupling matrix `Ω` with
+  `diag(Ω) = 0`. Standard first‑order formulas then give `G = U^T (dA) V`, `Ω_{ij} = G_{ij} / (λ_j − λ_i)`
+  for `i ≠ j`, `Ω_{ii} = 0`, and `dV = V Ω`, `dU = − U Ω^T`.
+
+Because these gauges differ, finite‑difference estimates (which follow the LAPACK gauge) and analytic
+derivatives (in biorthogonal gauge) can legitimately disagree even for well‑separated eigenvalues.
+For derivative testing, prefer gauge‑invariant quantities (e.g., `A ≈ V Λ U^T`, projectors
+`P_i = v_i u_i^T`, or `Qdt = V e^{Λ dt} U^T`). If raw `V`/`U` must be compared across parameters,
+align columns to a reference by maximum correlation and flip signs to ensure positive correlation.

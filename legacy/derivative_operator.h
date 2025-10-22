@@ -371,6 +371,19 @@ class Derivative<double, Matrix<double>> {
         else
             return Derivative(y, 0.0 * x.derivative()(), x.dx());
     }
+    friend auto max(const Derivative& x, const Derivative& y) {
+        if (x.primitive() < y.primitive()) {
+            return y;
+        }
+        return x;
+    }
+
+    friend auto min(const Derivative& x, const Derivative& y) {
+        if (x.primitive() < y.primitive()) {
+            return y;
+        }
+        return x;
+    }
 
     friend auto min(const Derivative& x, double y) {
         if (x.primitive() >= y)

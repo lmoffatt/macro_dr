@@ -1,7 +1,7 @@
 
-model = load_model("scheme_10_inact")
+model = load_model("scheme_1")
 
-parameter = load_parameters(model, "data/models_Ag/scheme_10_inact_par.csv")
+parameter = load_parameters(model, "data/models_Ag/scheme_1_par.csv")
 
 
 experiment = load_experiment(
@@ -15,7 +15,7 @@ observations = load_observations(
 par_values = get_standard_parameter_values(parameter)
 
 
-model_str="scheme_10_inact"
+model_str="scheme_1"
 
 
 dlogLik = calc_dlikelihood(model = model, parameters = par_values, experiment = experiment, data = observations,

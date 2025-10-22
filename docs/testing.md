@@ -61,3 +61,20 @@ A workflow can run the same steps (`cmake --build`, `ctest`) on every push.
 Create `.github/workflows/ci.yml` with a standard Ubuntu runner to reuse the
 commands above.
 
+## Derivative Tests and Eigen‑Based Flows
+
+When a pipeline depends on an eigendecomposition of a nonsymmetric matrix, take care in how you test
+derivatives:
+
+- Avoid asserting derivatives of raw eigenvectors `V`/`U`. Eigenvectors are gauge‑dependent; their
+  derivatives depend on the normalization/phase convention and can differ from finite‑difference
+  estimates based on LAPACK’s gauge.
+- Prefer gauge‑invariant objects: full reconstruction `A ≈ V Λ U^T`, spectral projectors
+  `P_i = v_i u_i^T`, or the small‑time kernel `Qdt = V e^{Λ dt} U^T`.
+- Disable non‑smooth stabilizers for derivative tests (e.g., use `StabilizerPolicyDisabled`) to avoid
+  clamping/masking steps that break differentiability.
+- If you must compare eigenvectors across parameter perturbations, align columns by maximum
+  correlation with a reference and flip signs to ensure positive correlation before differencing.
+
+See `docs/adr/ADR-003-eigenvector-derivatives-and-testing.md` and `docs/math/eigensystem.md` for
+background and formulas.

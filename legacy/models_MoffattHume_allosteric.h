@@ -1605,7 +1605,7 @@ inline auto get_model(std::string modelName) {
         //                             &model6_Eff_no_inactivation, &model7,
         //                             &model8, &model9);
         //Models_Library(&scheme_1_d);
-        Models_Library(/*&scheme_1, &scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
+        Models_Library(&scheme_1, /*&scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
                         &scheme_8, &scheme_9, &scheme_10, &scheme_11, 
                        /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ /*&scheme_1_d,
                        &scheme_2_d, &scheme_3_d, &scheme_4_d, 
@@ -1628,8 +1628,8 @@ inline Maybe_error<std::size_t> get_num_parameters(std::string model) {
 
 inline auto get_model_scheme(std::string modelName) {
     auto allmodels =  // Models_Library(&scheme_1_d);
-        Models_Library(/*
-            &scheme_1, &scheme_2, &scheme_3, &scheme_4, &scheme_5, &scheme_6, &scheme_7, &scheme_8,
+        Models_Library(
+            &scheme_1, /*&scheme_2, &scheme_3, &scheme_4, &scheme_5, &scheme_6, &scheme_7, &scheme_8,
             &scheme_9, &scheme_10, &scheme_11,
             /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*//* &scheme_1_d, &scheme_2_d,
             &scheme_3_d, &scheme_4_d, &scheme_5_d, &scheme_6_d, &scheme_7_d, &scheme_8_d,
@@ -1640,8 +1640,8 @@ inline auto get_model_scheme(std::string modelName) {
 
 inline void print_model_Priors(double covar) {
     auto allmodels =  //Models_Library(&scheme_1_d);
-        Models_Library(/*
-            &scheme_1, &scheme_2, &scheme_3, &scheme_4, &scheme_5, &scheme_6, &scheme_7, &scheme_8,
+        Models_Library(
+            &scheme_1, /*&scheme_2, &scheme_3, &scheme_4, &scheme_5, &scheme_6, &scheme_7, &scheme_8,
             &scheme_9, &scheme_10, &scheme_11,
             /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*//* &scheme_1_d, &scheme_2_d,
             &scheme_3_d, &scheme_4_d, &scheme_5_d, &scheme_6_d, &scheme_7_d, &scheme_8_d,
