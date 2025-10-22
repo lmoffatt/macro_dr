@@ -352,7 +352,7 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
             return Derivative(elemDivSafe(fx, fy, eps),
                               zip(
                                   [fx, fy, eps](auto dx, auto dy) {
-                                      return elemDivSafe(dx, fy, eps) -
+                                      return elemDivSafe(1.0, fy, eps) * dx -
                                              elemDivSafe(fx, fy * fy, eps) * dy;
                                   },
                                   x.derivative()(), y.derivative()()),
@@ -418,6 +418,28 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
             return x;
         else
             return Derivative(y, 0.0 * x.derivative()(), x.dx());
+    }
+
+    friend bool operator>(const Derivative& x, const Derivative& y) {
+        return x.primitive() > y.primitive();
+    }
+
+    friend bool operator<(const Derivative& x, const Derivative& y) {
+        return x.primitive() < y.primitive();
+    }
+
+    friend auto max(const Derivative& x, const Derivative& y) {
+        if (x.primitive() >= y.primitive())
+            return x;
+        else
+            return y;
+    }
+
+    friend auto min(const Derivative& x, const Derivative& y) {
+        if (x.primitive() <= y.primitive())
+            return x;
+        else
+            return y;
     }
 
     friend auto log(const Derivative& x) {
@@ -1222,10 +1244,10 @@ inline Maybe_error<std::tuple<Derivative<DiagonalMatrix<double>, Parameters_tran
     auto der_VR = apply(
         [&VR, &lambda](Matrix<double> const& Gk) {
             auto omega_k = Gk - Gk;
-            for (std::size_t i = 0; i < Gk.nrows(); ++i) {
-                for (std::size_t j = 0; j < Gk.ncols(); ++j) {
-                    if ((lambda[i] - lambda[j]) > 100 * sqrt(eps)) {
-                        omega_k(i, j) = -Gk(i, j) / (lambda[i] - lambda[j]);
+            for (std::size_t j = 0; j < Gk.nrows(); ++j) {
+                for (std::size_t k = 0; k < Gk.ncols(); ++k) {
+                    if (std::abs(lambda[k] - lambda[j]) > 100 * sqrt(eps)) {
+                        omega_k(j, k) = Gk(j, k) / (lambda[k] - lambda[j]);
                     }
                 }
             }
@@ -1238,12 +1260,12 @@ inline Maybe_error<std::tuple<Derivative<DiagonalMatrix<double>, Parameters_tran
             auto omega_k = Gk - Gk;
             for (std::size_t i = 0; i < Gk.nrows(); ++i) {
                 for (std::size_t j = 0; j < Gk.ncols(); ++j) {
-                    if ((lambda[i] - lambda[j]) > 100 * sqrt(eps)) {
-                        omega_k(i, j) = -Gk(i, j) / (lambda[i] - lambda[j]);
+                    if (std::abs(lambda[i] - lambda[j]) > 100 * sqrt(eps)) {
+                        omega_k(i, j) = Gk(i, j) / (lambda[j] - lambda[i]);
                     }
                 }
             }
-            return tr(omega_k) * VL * (-1.0);
+            return VL * tr(omega_k) * (-1.0);
         },
         G);
 
