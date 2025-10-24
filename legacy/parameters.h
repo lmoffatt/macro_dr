@@ -640,7 +640,7 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
     }
 
     std::size_t i_par;
-    string_and_separator transformation_and_sep(separator);
+    std::string transformation;
     double value;
     double mean;
     std::vector<double> v;
@@ -648,15 +648,27 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
     transformations_vector trs;
     std::getline(f, line);
     ss = std::stringstream(line);
-    while (ss >> ::septr(ModelName) >> ::septr(separator) >> i_par >> ::septr(separator) >>
-           ::septr(ParamNames[i_par]) >> ::septr(separator) >> transformation_and_sep >> value >>
-           ::septr(separator) >> mean) {
+    std::string ModelName_candidate; 
+    std::string ParamName_candidate;
+
+    while (ss >> char_delimited(ModelName_candidate, separator[0])>>septr(separator)
+     >> char_delimited(i_par, separator[0])  >>septr(separator)
+     >> char_delimited(ParamName_candidate, separator[0])  >>septr(separator)
+     >> char_delimited(transformation, separator[0])  >>septr(separator)
+     >> char_delimited(value, separator[0])>>septr(separator)  
+     >> mean) {
+        if (ModelName!=ModelName_candidate)
+        {return error_message("modelName candidate wrong ", ModelName_candidate, " expected: ", ModelName);}
+        if (ParamName_candidate!=ParamNames[i_par])
+        {return error_message("Parameter name candidate wrong at i_par=",i_par,"  :", ParamName_candidate, " expected: ", ParamNames[i_par]);}
+        
+        
         if (i_par != v.size()) {
             return error_message("i_par out of order: i_par=" + std::to_string(i_par) +
                                  " size=" + std::to_string(v.size()));
         }
 
-        auto Maybe_tr = MyTranformations::from_string(transformation_and_sep());
+        auto Maybe_tr = MyTranformations::from_string(transformation);
         if (!Maybe_tr) {
             return Maybe_tr.error();
         }
@@ -670,7 +682,10 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
         std::getline(f, line);
         ss = std::stringstream(line);
     }
-
+    if(i_par+1!=ParamNames.size()) 
+     {
+        return error_message("only ",i_par," parameters. Last line ",line);
+     }
     return Parameters_Transformations(ModelName, ParamNames, trs, v);
 }
 

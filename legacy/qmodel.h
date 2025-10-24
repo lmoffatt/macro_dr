@@ -3744,11 +3744,11 @@ class Macro_DMR {
                                   std::move(r_logL), std::move(r_elogL),
                                   build<vlogL>(p_vlogL() + 0.5));
             } else {
-                auto r_plogL = build<plogL>(
-                    -log(Poisson_noise_normalization(
-                        primitive(r_y_var()), primitive(get<Proportional_Noise>(m).value()))) -
-                    0.5 * chi2);
-                auto r_pelogL = Transfer_Op_to<C_y_var, eplogL>(Poisson_noise_expected_logL(
+                auto r_plogL = build<plogL>(0.5 * chi2-
+                    log(var::Poisson_noise_normalization(
+                    primitive(r_y_var()), primitive(get<Proportional_Noise>(m).value()))) 
+                    );
+                auto r_pelogL = build<eplogL>(r_plogL()-r_plogL()+var::Poisson_noise_expected_logL(
                     primitive(r_y_var()), primitive(get<Proportional_Noise>(m).value())));
                 auto r_logL = build<logL>(p_logL() + r_plogL());
                 auto r_elogL = build<elogL>(p_elogL() + r_pelogL());
@@ -4045,7 +4045,7 @@ class Macro_DMR {
             auto& yev = get<ymean_Evolution>(t_prior);
             yev().push_back(r_y_mean);
             auto& yvev = get<yvar_Evolution>(t_prior);
-            yvev().push_back(r_y_var);
+            yvev().push_back(r_y_var);  
             return build<Patch_State_and_y_Evolution>(
                 r_logL, r_elogL, r_vlogL, r_P_mean, r_P_cov, r_y_mean, r_y_var, r_plogL, r_eplogL,
                 r_vplogL, r_algo, std::move(yev), std::move(yvev));
@@ -4306,10 +4306,10 @@ class Macro_DMR {
                 r_eplogL() = -0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5;
             } else {
                 r_plogL() =
-                    -log(Poisson_noise_normalization(
+                    -log(var::Poisson_noise_normalization(
                         primitive(r_y_var()), primitive(get<Proportional_Noise>(m).value()))) -
                     0.5 * chi2;
-                r_eplogL() = Poisson_noise_expected_logL(
+                r_eplogL() =var::Poisson_noise_expected_logL(
                     primitive(r_y_var()), primitive(get<Proportional_Noise>(m).value()));
             }
         } else {
@@ -4485,6 +4485,7 @@ class Macro_DMR {
             auto gege = 0;
             auto f_local = f.create("_lik");
             constexpr bool test_derivative = true;
+            constexpr bool test_macroir_derivative = true;
             if (!ini)
                 return ini.error();
             else {
@@ -4547,9 +4548,15 @@ class Macro_DMR {
                                     auto f_no_memoi = f_local.to_bare_functions();
 
                                     auto test_der_t_Qdtm = test_derivative_clarke(
-                                        [this, &t_step, &fs, &f_no_memoi](auto const& l_m) {
-                                            return calc_Qdtm<StabilizerPolicyDisabled>(
+                                        [this, &t_step, &fs, &f_no_memoi](auto const& l_m)
+                                            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_m)>,var::Vector_Space<P, gmean_i, gtotal_ij,
+                                                                             gsqr_i, gvar_i>>> {
+                                            auto maybe_res = calc_Qdtm<StabilizerPolicyDisabled>(
                                                 f_no_memoi, l_m, t_step, fs);
+                                            if (!maybe_res.valid())
+                                                return maybe_res.error();
+                                            return select<P, gmean_i, gtotal_ij, gsqr_i, gvar_i>(
+                                                std::move(maybe_res.value()));
                                         },
                                         h, m);
                                     if (true && !test_der_t_Qdtm) {
@@ -4590,6 +4597,37 @@ class Macro_DMR {
                                         return Maybe_error<C_Patch_State>(test_der_t_Qdtm.error());
                                     }
                                 }
+
+                               if constexpr (test_macroir_derivative){
+                                    const auto h = 1e-7;
+                                    auto f_no_memoi = f_local.to_bare_functions();
+                                    auto c_prior=t_prior;
+
+                                    auto tt_prior=select<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL,
+                                 vplogL,macror_algorithm>(std::move(c_prior));
+                                
+                                    auto test_der_macroir= test_derivative_clarke<false>(
+                                        [this, &fs, &f_no_memoi,&y,i_step]
+                                        (auto l_t_prior,auto const& l_Qdtm, auto const& l_m,auto const& l_Nch)
+                                            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_t_prior)>,
+                                            var::Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL,vplogL>>> 
+                                    {
+                                        
+                                    auto Maybe_res =MacroR2<recursive, averaging, variance,
+                                               variance_correction>{}(
+                                    f_no_memoi, std::move(l_t_prior), l_Qdtm, l_m, l_Nch, y()[i_step], fs);
+                                    if (!Maybe_res) return Maybe_res.error(); 
+                                    return select<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL,
+                                 vplogL>(std::move(Maybe_res.value())); 
+                                    
+                                },
+                                        h, tt_prior,t_Qdtm, m,Nch);
+                                    if (true && !test_der_macroir) {
+                                        std::cerr << "\nError on i_step: "<< i_step<<"\ty: "<<y()[i_step]<<" t_step: "<<t_step<<"\n";
+                                        std::cerr << test_der_macroir.error()();
+                                    }
+                                }
+                               
 
                                 return MacroR2<recursive, averaging, variance,
                                                variance_correction>{}(

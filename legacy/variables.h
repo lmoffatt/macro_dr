@@ -2,6 +2,7 @@
 #define VARIABLES_H
 
 //#include "derivative_operator.h"
+#include <derivative_fwd.h>
 #include <macrodr/dsl/type_name.h>
 
 #include <cmath>
@@ -18,6 +19,7 @@
 
 namespace var {
 using macrodr::dsl::type_name;
+using ::print;
 
 template <class Id>
 struct Unit {
@@ -474,6 +476,12 @@ class Vector_Space : public Vars... {
         return x[Var<Id>{}];
     }
 
+    template <class... SelIds>
+        requires(!is_derivative_v<Vars> && ...)
+    friend auto select(Vector_Space&& x) {
+        return Vector_Space<SelIds...>(std::move(get<SelIds>(x))...);
+    }
+
     template <class Id, class Id2>
         requires requires(Vector_Space const& xx) {
             { get<Id2>(get<Id>(xx)) };
@@ -576,6 +584,7 @@ class Vector_Space : public Vars... {
         return Vector_Space(Vars(d * get<Vars>(one)())...);
     }
 };
+
 
 template <class... Vars>
 Maybe_error<bool> compare_contents(Vector_Space<Vars...> const& a, Vector_Space<Vars...> const& b,
