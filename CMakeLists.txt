@@ -43,8 +43,15 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -fmax-errors=5
         -ftime-report
         -Wno-ctad-maybe-unsupported
-        -fdiagnostics-all-candidates
     )
+
+    # Some CI environments (e.g., GCC < 12) don't support
+    # -fdiagnostics-all-candidates. Probe before adding it.
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag("-fdiagnostics-all-candidates" HAS_DIAG_ALL_CANDIDATES)
+    if (HAS_DIAG_ALL_CANDIDATES)
+        add_compile_options(-fdiagnostics-all-candidates)
+    endif()
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0")
@@ -263,4 +270,3 @@ install(DIRECTORY ${MACRODR_PUBLIC_INC}/macrodr
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 message(STATUS "PROJECT_SOURCE_DIR is: ${PROJECT_SOURCE_DIR}")
 ## Packaging/export of CMake config removed for now (was untested).
-
