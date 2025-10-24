@@ -1,7 +1,7 @@
 
 model = load_model("scheme_1")
 
-parameter = load_parameters(model, "data/models_Ag/scheme_1_par.csv")
+parameter = load_parameters(model, "data/models_Ag_log_baseline/scheme_1_PI_par.csv")
 
 
 experiment = load_experiment(

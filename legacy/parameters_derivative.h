@@ -90,7 +90,7 @@ auto build_(std::size_t nrows, std::size_t ncols,
 template <>
 class d_d_<double, Parameters_transformed> {
     Matrix<double> m_dydx;
-    Parameters_transformed const* ptr_dx;
+    Parameters_transformed const* ptr_dx=nullptr;
 
    public:
     using value_type = Matrix<double>;
@@ -127,7 +127,7 @@ template <template <class> class aMatrix>
     requires(aMatrix<double>::is_Matrix)
 class d_d_<aMatrix<double>, Parameters_transformed> {
     Matrix<aMatrix<double>> m_dydx;
-    Parameters_transformed const* ptr_par;
+    Parameters_transformed const* ptr_par=nullptr;
 
    public:
     using value_type = Matrix<aMatrix<double>>;

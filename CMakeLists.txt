@@ -43,6 +43,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -fmax-errors=5
         -ftime-report
         -Wno-ctad-maybe-unsupported
+        -fdiagnostics-all-candidates
     )
 endif()
 

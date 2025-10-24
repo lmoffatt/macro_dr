@@ -329,7 +329,7 @@ bool load_vars_line(std::istream& f, T& x, Ts&... xs) {
 }
 
 template <class T>
-    requires(var::StringLike<T> && !std::is_same_v<T, septr>)
+//    requires(var::StringLike<T> && !std::is_same_v<T, septr>)
 std::istream& operator>>(std::istream& is, char_delimited<T>&& se) {
     std::string string_candidate;
     char c = '\0';
@@ -345,11 +345,11 @@ std::istream& operator>>(std::istream& is, char_delimited<T>&& se) {
     return is;
 }
 
-template <class T>
-    requires((!var::StringLike<T>) || std::is_same_v<T, septr>)
-std::istream& operator>>(std::istream& is, char_delimited<T>&& se) {
-    is >> se.m_value;
-    return is;
-}
+// template <class T>
+//     requires((!var::StringLike<T>) || std::is_same_v<T, septr>)
+// std::istream& operator>>(std::istream& is, char_delimited<T>&& se) {
+//     is >> se.m_value;
+//     return is;
+// }
 
 #endif  // GENERAL_OUTPUT_OPERATOR_H

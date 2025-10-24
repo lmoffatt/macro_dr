@@ -101,6 +101,13 @@ class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids
     friend auto& get(Derivative& x) {
         return static_cast<Derivative_t<Id, X>&>(x);
     }
+
+    template <class... SelIds>
+    friend auto select(Derivative&& x) {
+        return Derivative<Vector_Space<SelIds...>, X>(std::move(get<SelIds>(x))...);
+    }
+
+
     static constexpr bool is_vector_space = true;
 
     Derivative() = default;
@@ -123,13 +130,13 @@ class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids
 };
 
 template <class... Ids, class X>
-auto get_dx_of_dfdx(const Derivative<Vector_Space<Ids...>, X>& f) {
+auto const& get_dx_of_dfdx(const Derivative<Vector_Space<Ids...>, X>& f) {
     return get_dx_of_dfdx(get<Ids>(f)...);
 }
 
 template <class... Ids, class X, class Parameters>
 auto Taylor_first(const Derivative<Vector_Space<Ids...>, X>& f, const Parameters& x, double eps) {
-    return Vector_Space<Ids...>(Ids(Taylor_first(get<Ids>(f), x, eps))...);
+    return Vector_Space<Ids...>(Ids(Taylor_first(get<Ids>(f), x, eps).value())...);
 }
 
 template <class Id, class X>

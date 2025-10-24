@@ -35,6 +35,14 @@
 #include "parameters_derivative.h"
 
 namespace var {
+template <class T>
+using underlying_t = std::decay_t<decltype(std::declval<T>()())>;
+
+template <class T>
+inline constexpr bool is_matrix_like_v =
+is_Matrix_v<std::decay_t<T>> || is_Matrix_v<underlying_t<T>>;
+
+
 
 template <class F, class Parameters, class... Xs>
 Maybe_error<bool> test_Derivative(F f, const Parameters x, double dx, double eps, Xs const&... xs) {
@@ -107,7 +115,7 @@ template <class F, class... Xs>
     requires(!(std::is_same_v<NoDerivative, decltype(get_dx_of_dfdx(std::declval<Xs>()...))>))
 Maybe_error<bool> test_Derivative(F f, double dx, double eps, const Xs&... xs) {
     using Y = dx_of_dfdx_t<Xs...>;
-    decltype(auto) x = get_dx_of_dfdx(xs...);
+    auto const& x = get_dx_of_dfdx(xs...);
 
     auto out = Maybe_error<bool>(true);
 
@@ -447,7 +455,8 @@ inline int count_positive(const M& A) {
 }
 
 template <bool inspect = false, class T, class X>
-    requires(!is_of_this_template_type_v<T, Vector_Space>)
+requires(!is_of_this_template_type_v<T, Vector_Space> &&
+is_matrix_like_v<T>)    
 var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, const T& Y,
                                                     const X& u, double t, const T& Yp,
                                                     const T& Yn) {
@@ -492,6 +501,7 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
             return abs(a - b);
         },
         D_plus, D_minus);
+
 
     constexpr double M = 10.0;
     constexpr double rel_tol = 1e-6;
@@ -602,6 +612,86 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
     }
     return ok;
 }
+
+
+template <bool inspect = false, class T, class X>
+requires(!is_of_this_template_type_v<T, Vector_Space> &&
+!is_matrix_like_v<T>)    
+var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, const T& Y,
+                                                    const X& u, double t, const T& Yp,
+                                                    const T& Yn) {
+    // ================================================================
+    // Clarke brackets test
+    // ---------------------------------------------------------------
+    // For a differentiable function f : R^n → R and point x,
+    // the directional derivative along a unit vector u satisfies:
+    //
+    //   D⁻f(x;u) ≤ f'(x)·u ≤ D⁺f(x;u)
+    //
+    // where
+    //   D⁺f(x;u) ≈ (f(x + t u) - f(x)) / t      // forward difference
+    //   D⁻f(x;u) ≈ (f(x) - f(x - t u)) / t      // backward difference
+    //
+    // The analytic gradient g is *consistent* if for small t:
+    //
+    //   D⁻ ≤ g·u ≤ D⁺
+    //
+    // Violations of this inequality indicate either:
+    //   (a) f is not differentiable at x, or
+    //   (b) the analytic gradient g is incorrect.
+    // =========================================================
+
+    MACRODR_TEST_ASSERT(Y0.has_dx() && "test_clarke_brackets: derivative missing dx pointer");
+   // Analytic directional derivative J[u]
+auto g = derivative(Y0);      // d_d_<double, X> for T = double
+auto h = t * u();
+auto J_u = g * u;           // dot with direction (see parameters_derivative.h)
+
+// Forward/backward diffs
+auto f0 = Y0.primitive()();
+auto D_plus  = (Yp() - f0) / t;
+auto D_minus = (f0 - Yn()) / t;
+
+// Basic closeness guard (same as matrix flavor)
+auto Ydiff = Y() - f0;
+auto Ydiff_ok = std::abs(Ydiff) < std::abs(Y()) * eps;
+
+// Bracket band (scalar)
+auto mid   = 0.5 * (D_plus + D_minus);
+auto width = std::abs(D_plus - D_minus);
+
+auto M = 10.0;
+auto rel_tol = 1e-5;
+auto abs_tol = 1e-5;
+
+auto band = M * (0.5 * width) +  rel_tol * (std::abs(J_u) + std::abs(mid))+ abs_tol;
+auto gap  = std::abs(J_u - mid) - band;
+
+// Accept if inside band, or if the directional slope changes sign (non-smooth, acceptable)
+bool ok = !(gap > 0.0 && (D_plus * D_minus > 0.0));
+if ((!ok || inspect || !Ydiff_ok )&&!std::isnan(mid)) {
+    // Optional central check for context
+    auto C = (Yp() - Yn()) / (2.0 * t);
+    auto cen_err = std::abs(J_u - C);
+
+    std::stringstream ss;
+    ss << std::setprecision(10);
+    ss << "---------------- Clarke (scalar) ----------------\n";
+    ss << "Y()=" << Y() << "  Y0=" << f0 << "  Ydiff=" << Ydiff << "\n";
+    if (Y0.has_dx())
+        ss << print_delta_parameters(Y0.dx().parameters(), h) << "-----------------------\n";
+    else
+        ss << "[missing dx pointer]-----------------------\n";
+    ss << "||h||=" << detail_taylor::norm_of(h) << "\n";
+    ss << "D-=" << D_minus << "  J[u]=" << J_u << "  D+=" << D_plus << "\n";
+    ss << "mid=" << mid << "  width=" << width << "  band=" << band << "  gap=" << gap << "\n";
+    ss << "C=" << C << "  |J-C|=" << cen_err << "\n";
+    return error_message(ss.str());
+}
+return ok;
+}
+
+
 
 template <bool inspect = false, class T, class X>
     requires(!is_of_this_template_type_v<T, Vector_Space>)

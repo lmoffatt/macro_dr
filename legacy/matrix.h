@@ -213,6 +213,8 @@ auto apply(F&& f, Matrix<T_Matrix<double>> const& a) {
     for (std::size_t i = 0; i < x.size(); ++i) x[i] = f(a[i]);
     return x;
 }
+
+
 template <class F, template <class> class T_Matrix>
     requires(is_Maybe_error<std::invoke_result_t<F, T_Matrix<double>>>)
 auto apply_maybe(F&& f, Matrix<T_Matrix<double>> const& a) -> Maybe_error<
@@ -487,6 +489,9 @@ class Matrix {
         for (std::size_t i = 0; i < x.size(); ++i) out[i] = f(x[i], y[i]);
         return out;
     }
+
+
+    
 
     template <class F, class S>
         requires S::is_Matrix
