@@ -1,6 +1,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "matrix.h"
+#include "lapack_headers.h"
 
 using ::Matrix;
 using ::DiagonalMatrix;
