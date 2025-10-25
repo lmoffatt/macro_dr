@@ -369,7 +369,7 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
+    compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
                           untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
         return error_message(std::string{"argument '"} + id()() +
                              "' expects a reference to an environment variable; literals are not allowed");

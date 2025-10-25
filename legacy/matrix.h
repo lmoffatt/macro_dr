@@ -491,7 +491,7 @@ class Matrix {
     }
 
 
-    
+
 
     template <class F, class S>
         requires S::is_Matrix
@@ -2078,5 +2078,6 @@ bool operator==(const Matrix& x, const Matrix& y) {
                 return false;
     return true;
 }
+
 
 #endif  // MATRIX_H
