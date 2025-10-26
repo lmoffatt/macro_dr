@@ -1,0 +1,179 @@
+---
+title: "json"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(jsonlite)
+```
+
+```{r}
+data<-fromJSON("runs/run-20251007-234831/snapshots/step_10.json")
+```
+```{r}
+library(jsonlite)
+
+path <- "runs/run-20251007-234831/snapshots/step_10.json"
+
+txt  <- paste(readLines(path, warn = FALSE), collapse = "\n")
+# Reemplaza NaN/Inf (con o sin signo) por null
+txt2 <- gsub("\\b[-+]?nan\\b|\\b[-+]?inf(?:inity)?\\b", "null",
+             txt, perl = TRUE, ignore.case = TRUE)
+
+data <- fromJSON(txt2)
+
+```
+
+```{r}
+library(tibble)
+library(dplyr)
+
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
+# Helper genérico: aplana un entry con $id y $value -> una fila
+.flatten_entry <- function(ids, vals, zero_based = TRUE, name_map = c("P_Cov" = "PCov")) {
+  zoff <- if (zero_based) 1L else 0L
+  out <- list()
+  for (k in seq_along(ids)) {
+    nm0 <- ids[[k]]
+    nm  <- if (nm0 %in% names(name_map)) name_map[[nm0]] else nm0
+    v   <- vals[[k]]
+
+    if (is.matrix(v)) {
+      if (nrow(v) == 1L || ncol(v) == 1L) {
+        vv <- as.vector(v)
+        for (i in seq_along(vv)) out[[sprintf("%s_%d", nm, i - zoff)]] <- vv[[i]]
+      } else {
+        for (r in seq_len(nrow(v))) for (c in seq_len(ncol(v)))
+          out[[sprintf("%s_%d_%d", nm, r - zoff, c - zoff)]] <- v[r, c]
+      }
+    } else if (is.atomic(v) && length(v) > 1L) {
+      vv <- as.vector(v)
+      for (i in seq_along(vv)) out[[sprintf("%s_%d", nm, i - zoff)]] <- vv[[i]]
+    } else {
+      out[[nm]] <- v[1]
+    }
+  }
+  as_tibble_row(out)
+}
+
+flatten_logLikP <- function(data, zero_based = TRUE) {
+  # Paths posibles (según tus dumps previos):
+  lst <- data$variables$logLikP$value$value$vars %||%
+         data$variables$logLikP$value$vars
+  if (is.null(lst)) stop("No encuentro vars para logLikP en data")
+  rows <- lapply(lst, function(x) .flatten_entry(x$id, x$value, zero_based = zero_based))
+  bind_rows(rows)
+}
+
+flatten_dlogLikP <- function(data, zero_based = TRUE) {
+  lst <- data$variables$dlogLikP$value$primitive$value$vars %||%
+         data$variables$dlogLikP$value$value$vars
+  if (is.null(lst)) stop("No encuentro vars para dlogLikP en data")
+  rows <- lapply(lst, function(x) .flatten_entry(x$id, x$value, zero_based = zero_based))
+  bind_rows(rows)
+}
+
+
+```
+
+
+
+```{r}
+library(tibble)
+library(dplyr)
+
+flatten_logLikP <- function(data, zero_based = TRUE) {
+  lst <- data$variables$logLikP$value$vars
+  zoff <- if (zero_based) 1L else 0L
+   # renombres
+
+  row_from_entry <- function(x) {
+    ids  <- x$id
+    vals <- x$value
+    out  <- list()
+    for (k in seq_along(ids)) {
+      nm0 <- ids[[k]]
+      nm  <- if (nm0 %in% names(name_map)) name_map[[nm0]] else nm0
+      v   <- vals[[k]]
+      if (is.matrix(v)) {
+        if (nrow(v) == 1L || ncol(v) == 1L) {
+          vv <- as.vector(v)
+          for (i in seq_along(vv)) out[[sprintf("%s_%d", nm, i - zoff)]] <- vv[[i]]
+        } else {
+          for (r in seq_len(nrow(v))) for (c in seq_len(ncol(v)))
+            out[[sprintf("%s_%d_%d", nm, r - zoff, c - zoff)]] <- v[r, c]
+        }
+      } else if (is.atomic(v) && length(v) > 1L) {
+        vv <- as.vector(v)
+        for (i in seq_along(vv)) out[[sprintf("%s_%d", nm, i - zoff)]] <- vv[[i]]
+      } else {
+        out[[nm]] <- v[1]
+      }
+    }
+    as_tibble_row(out)
+  }
+
+  bind_rows(lapply(lst, row_from_entry))
+}
+
+```
+
+```{r}
+library(tibble)
+library(dplyr)
+
+df <- flatten_logLikP(data)   # índices 0-based: P_mean_0, PCov_0_0, etc.
+ddf <- flatten_dlogLikP(data)  # si prefieres 1-based
+
+```
+
+```{r}
+
+vars<-colnames(df)
+
+```
+
+
+```{r}
+library(rlang)
+library(tidyverse)
+for (v in vars)
+{
+  print(
+    ggplot(df)+geom_point(aes(x = 1:nrow(df), y= !!sym( v) ))
+    
+  )
+}  
+```
+```{r}
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=logL))+geom_point(data=ddf,aes(x=1:nrow(df), y=logL, color="der"))
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=elogL))+geom_point(data=ddf,aes(x=1:nrow(df), y=elogL, color="der"))
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=y_mean))+geom_point(data=ddf,aes(x=1:nrow(df), y=y_mean, color="der"))
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=y_var))+geom_point(data=ddf,aes(x=1:nrow(df), y=y_var, color="der"))
+
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=plogL))+geom_point(data=ddf,aes(x=1:nrow(df), y=plogL, color="der"))
+
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=eplogL))+geom_point(data=ddf,aes(x=1:nrow(df), y=eplogL, color="der"))
+```
+
+
+```{r}
+ggplot(df)+geom_point(aes(x=1:nrow(df), y=macror_algorithm))
+ggplot(ddf)+geom_point(aes(x=1:nrow(df), y=macror_algorithm))
+
+```
+
+
+
+
+
+
+
+
+
+

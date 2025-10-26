@@ -17,6 +17,8 @@
 
 #include "maybe_error.h"
 #include "type_algebra.h"
+
+// Forward declaration to avoid heavy includes where we only need the Id type
 namespace var {
 
 template <std::size_t N>
@@ -288,18 +290,18 @@ class FuncMap_St : public Fs... {
     auto& file() const { return m_filename; }
 
     FuncMap_St(const std::string path, std::size_t sampling_interval,
-               std::size_t max_number_of_values_per_iteration, Fs&&... fs)
+               std::size_t max_number_of_values_per_iteration, Fs... fs)
         : Fs{std::move(fs)}...,
           m_filename{path},
           m_sampling_interval{sampling_interval},
           m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
 
-    FuncMap_St(const std::string path, std::size_t sampling_interval,
-               std::size_t max_number_of_values_per_iteration, Fs const&... fs)
-        : Fs{fs}...,
-          m_filename{path},
-          m_sampling_interval{sampling_interval},
-          m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
+    // FuncMap_St(const std::string path, std::size_t sampling_interval,
+    //            std::size_t max_number_of_values_per_iteration, Fs const&... fs)
+    //     : Fs{fs}...,
+    //       m_filename{path},
+    //       m_sampling_interval{sampling_interval},
+    //       m_max_number_of_values_per_iteration{max_number_of_values_per_iteration} {}
 
     FuncMap_St create(const std::string& suffix) const {
         return FuncMap_St(file() + suffix, m_sampling_interval,
@@ -426,6 +428,23 @@ auto insert(const std::string& path, FuncMap_St<G, Fs...> const& fun, F const& f
                    fun[typename Fs::myId{}])
                       .first,
                   ff...);
+}
+
+// -- Convenience helpers ----------------------------------------------------
+
+// Factory: build an empty function map (no registered functions)
+inline auto create_empty_function_map()
+    -> FuncMap_St<>
+{
+    return FuncMap_St<>("filename", 1, 100);
+}
+
+// Compile-time detector: does the table provide F?
+// Usage: if constexpr (var::has_it_defined<F>(f)) { ... }
+template <class F,class FunctionTable>
+constexpr bool has_it_defined(const FunctionTable&/*f*/) {
+    return !std::is_same_v<Nothing,
+                           decltype(std::declval<const FunctionTable&>()[F{}])>;
 }
 
 namespace partially_implemented {

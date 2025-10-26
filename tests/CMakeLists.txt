@@ -5,6 +5,8 @@ set(TEST_SOURCES
     math/test_eigs.cpp
     math/test_eigensystem_contract.cpp
     math/test_taylor_convergence.cpp
+    macroir/test_qdt_derivatives.cpp
+    macroir/test_macroir_derivatives.cpp
     ${PROJECT_SOURCE_DIR}/third_party/catch2/catch_amalgamated.cpp
 )
 

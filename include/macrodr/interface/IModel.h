@@ -55,6 +55,7 @@ struct IModel : public IObject,
 
     [[nodiscard]] virtual std::string model_name() const = 0;
     [[nodiscard]] virtual const std::vector<std::string>& names() const = 0;
+    [[nodiscard]] virtual var::Parameters_Transformations parameters_transformations() const =0;
     [[nodiscard]] virtual std::size_t number_of_states() const = 0;
     template <typename PV>
         requires((std::is_same_v<PV, ParamValues> || ...))
@@ -158,6 +159,11 @@ class ConcreteModel
         return SchemeBase::scheme().model_name();
     }
 
+    [[nodiscard]] var::Parameters_Transformations parameters_transformations() const override {
+        return SchemeBase::scheme().parameters_transformations();
+    }
+
+   
     [[nodiscard]] const std::vector<std::string>& names() const override {
         return SchemeBase::scheme().names();
     }
