@@ -3007,7 +3007,14 @@ class Macro_DMR {
     auto calc_Qdt_ATP_step(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step,
                            double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         auto dt = get<number_of_samples>(t_step)() / fs;
-        auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+
+        auto t_Qeig = [this,&f,&m,&t_step](){ 
+            if constexpr (var::has_it_defined<Calc_eigen>(f))
+                 return f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+            else
+                return calc_eigen( m, get<ATP_concentration>(t_step));
+        }();
+
         if (t_Qeig) {
             auto Maybe_Qdt =
                 calc_Qdt_eig<Policy>(f, m, t_Qeig.value(), get<number_of_samples>(t_step), dt);

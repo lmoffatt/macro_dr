@@ -646,46 +646,47 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
     std::vector<double> v;
     std::vector<double> means;
     transformations_vector trs;
-    std::getline(f, line);
-    ss = std::stringstream(line);
-    std::string ModelName_candidate; 
+    std::string ModelName_candidate;
     std::string ParamName_candidate;
 
-    while (ss >> char_delimited(ModelName_candidate, separator[0])>>septr(separator)
-     >> char_delimited(i_par, separator[0])  >>septr(separator)
-     >> char_delimited(ParamName_candidate, separator[0])  >>septr(separator)
-     >> char_delimited(transformation, separator[0])  >>septr(separator)
-     >> char_delimited(value, separator[0])>>septr(separator)  
-     >> mean) {
-        if (ModelName!=ModelName_candidate)
-        {return error_message("modelName candidate wrong ", ModelName_candidate, " expected: ", ModelName);}
-        if (ParamName_candidate!=ParamNames[i_par])
-        {return error_message("Parameter name candidate wrong at i_par=",i_par,"  :", ParamName_candidate, " expected: ", ParamNames[i_par]);}
-        
-        
-        if (i_par != v.size()) {
-            return error_message("i_par out of order: i_par=" + std::to_string(i_par) +
-                                 " size=" + std::to_string(v.size()));
-        }
-
-        auto Maybe_tr = MyTranformations::from_string(transformation);
-        if (!Maybe_tr) {
-            return Maybe_tr.error();
-        }
-        if (Maybe_tr.value()->tr(value) != mean) {
-            mean = Maybe_tr.value()->tr(value);
-        }
-        trs.push_back(std::move(Maybe_tr.value()));
-        v.push_back(value);
-
-        means.push_back(mean);
-        std::getline(f, line);
+    while (std::getline(f, line)) {
         ss = std::stringstream(line);
+
+        if (ss >> char_delimited(ModelName_candidate, separator[0]) >> septr(separator) >>
+            char_delimited(i_par, separator[0]) >> septr(separator) >>
+            char_delimited(ParamName_candidate, separator[0]) >> septr(separator) >>
+            char_delimited(transformation, separator[0]) >> septr(separator) >>
+            char_delimited(value, separator[0]) >> septr(separator) >> mean) {
+            if (ModelName != ModelName_candidate) {
+                return error_message("modelName candidate wrong ", ModelName_candidate,
+                                     " expected: ", ModelName);
+            }
+            if (ParamName_candidate != ParamNames[i_par]) {
+                return error_message("Parameter name candidate wrong at i_par=", i_par, "  :",
+                                     ParamName_candidate, " expected: ", ParamNames[i_par]);
+            }
+
+            if (i_par != v.size()) {
+                return error_message("i_par out of order: i_par=" + std::to_string(i_par) +
+                                     " size=" + std::to_string(v.size()));
+            }
+
+            auto Maybe_tr = MyTranformations::from_string(transformation);
+            if (!Maybe_tr) {
+                return Maybe_tr.error();
+            }
+            if (Maybe_tr.value()->tr(value) != mean) {
+                mean = Maybe_tr.value()->tr(value);
+            }
+            trs.push_back(std::move(Maybe_tr.value()));
+            v.push_back(value);
+
+            means.push_back(mean);
+        }
     }
-    if(i_par+1!=ParamNames.size()) 
-     {
-        return error_message("only ",i_par," parameters. Last line ",line);
-     }
+    if (i_par + 1 != ParamNames.size()) {
+        return error_message("only ", i_par, " parameters. Last line ", line);
+    }
     return Parameters_Transformations(ModelName, ParamNames, trs, v);
 }
 

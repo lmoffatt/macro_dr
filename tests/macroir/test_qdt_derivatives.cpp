@@ -38,10 +38,7 @@ TEST_CASE("macroir: Qdt derivative (Clarke)", "[macroir][derivatives][qdt]") {
 
     // Load plain model to obtain parameter transformations
     auto maybe_m = macrodr::cmd::load_model("scheme_1");
-    if (!maybe_m) {
-        // Surface the error in the test log
-        INFO(maybe_m.error()());
-    }
+    if (!maybe_m) { UNSCOPED_INFO(maybe_m.error()()); }
     REQUIRE(maybe_m.valid());
     auto model0 = std::move(maybe_m.value());
 
@@ -51,9 +48,7 @@ TEST_CASE("macroir: Qdt derivative (Clarke)", "[macroir][derivatives][qdt]") {
 
     // Load derivative-aware model
     auto dmodel = macrodr::cmd::load_dmodel("scheme_1");
-    if (!dmodel) {
-        INFO(dmodel.error()());
-    }
+    if (!dmodel) { UNSCOPED_INFO(dmodel.error()()); }
     REQUIRE(dmodel.valid());
     auto model0_d = std::move(dmodel.value());
 
@@ -61,9 +56,7 @@ TEST_CASE("macroir: Qdt derivative (Clarke)", "[macroir][derivatives][qdt]") {
     auto dp = var::selfDerivative(par_transformed);
     auto dpp = dp.to_value();
     auto maybe_dm = (*model0_d)(dpp);
-    if (!maybe_dm) {
-        INFO(maybe_dm.error()());
-    }
+    if (!maybe_dm) { UNSCOPED_INFO(maybe_dm.error()()); }
     REQUIRE(maybe_dm.valid());
     auto dm = std::move(maybe_dm.value());
 
@@ -82,11 +75,6 @@ TEST_CASE("macroir: Qdt derivative (Clarke)", "[macroir][derivatives][qdt]") {
         },
         h, dm);
 
-    if (!test_der_t_Qdtm) {
-        // Print detailed diagnostic for failure
-        std::cerr << "[macroir][qdt] Clarke derivative failed: "
-                  << test_der_t_Qdtm.error()();
-        INFO(test_der_t_Qdtm.error()());
-    }
+    if (!test_der_t_Qdtm) { UNSCOPED_INFO(test_der_t_Qdtm.error()()); }
     REQUIRE(test_der_t_Qdtm);
 }
