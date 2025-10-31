@@ -442,7 +442,7 @@ inline auto create_empty_function_map()
 // Compile-time detector: does the table provide F?
 // Usage: if constexpr (var::has_it_defined<F>(f)) { ... }
 template <class F,class FunctionTable>
-constexpr bool has_it_defined(const FunctionTable&/*f*/) {
+constexpr bool has_it_defined() {
     return !std::is_same_v<Nothing,
                            decltype(std::declval<const FunctionTable&>()[F{}])>;
 }

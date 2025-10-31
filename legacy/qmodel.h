@@ -2983,7 +2983,7 @@ class Macro_DMR {
                             double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         auto dt = get<number_of_samples>(t_step)() / fs;
         auto t_Qeig = [&f,&t_step,&m](){
-         if constexpr (var::has_it_defined<Calc_eigen>(f))
+         if constexpr (var::has_it_defined<Calc_eigen, decltype(f)>())
              return f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
         else
             return  Macro_DMR{}.calc_eigen(m, get<ATP_concentration>(t_step));     
@@ -3009,7 +3009,7 @@ class Macro_DMR {
         auto dt = get<number_of_samples>(t_step)() / fs;
 
         auto t_Qeig = [this,&f,&m,&t_step](){ 
-            if constexpr (var::has_it_defined<Calc_eigen>(f))
+            if constexpr (var::has_it_defined<Calc_eigen, decltype(f)>())
                  return f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
             else
                 return calc_eigen( m, get<ATP_concentration>(t_step));
