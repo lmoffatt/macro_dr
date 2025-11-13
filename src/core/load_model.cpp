@@ -9,7 +9,7 @@
 
 #include "qmodel.h"
 #include "allosteric_models.h"
-#include "models_MoffattHume_allosteric.h"
+#include "models_used.h"
 #include "models_MoffattHume_linear.h"
 #include "parameters.h"
 

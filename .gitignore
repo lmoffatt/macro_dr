@@ -31,7 +31,11 @@
 *.dll
 *.exe
 
+# zip files
+*.zip
 
+# compilation errors
+compilation.txt
 
 # DSL-related generated files
 *.rec
@@ -46,6 +50,9 @@
 ops/runs/
 projects/*/runs/
 projects/*/ops/runs/
+projects/*/scheme_*.txt
+
+
 
 # Test logs
 tests/_logs/

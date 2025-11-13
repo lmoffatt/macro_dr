@@ -1,0 +1,41 @@
+2/10/25, 11:06 - Los mensajes y las llamadas están cifrados de extremo a extremo. Solo las personas en este chat pueden leerlos, escucharlos o compartirlos. Obtén más información.
+2/10/25, 11:06 - Creaste este grupo
+2/10/25, 11:09 - Luciano Moffatt: <Multimedia omitido>
+2/10/25, 11:10 - Luciano Moffatt: _Bueno, ¿cuál es la idea ahora de Macro IR? Lo que tengo que hacer es implementar el Score y el Theme y el Simulation. O sea, Simulation, te voy a correr un montón de Simulations, después de cada Simulation tengo que ver que hay que calcular la Likelihood, pero incluyendo el Score y el Theme, y luego todo eso, digamos, con esta sample, realizar el Test. Eso es es lo que tengo que hacer. Entonces ahora lo que tengo que mirar es este... Yo lo que pensaba hacer era restituir el Evenberg-McQuart Evidence-Levenberg-McQuart para ver que eso funcione. Bueno, podría ser, intentar hacer eso. No sé si no creo que sea una mala idea tenerlo ya porque eso, digamos, de alguna manera antes funcionaba, funcionó una vez pero no sé si funciona en el contexto de las nuevas las nuevas formas de manejar la evidencia, los DTS que le llamaba yo que el salto sea din a ver bueno la otra cosa es recuperar el cumulative evidence pero creo que son dos cosas diferentes yo podría intentar_...
+2/10/25, 11:10 - Luciano Moffatt: 
+_recuperar esto a ver si compila lo de de Bembert Macquarie Cumulative Evidence la cosa es que cumulative evidence yo no sé, o sea bueno es todo un tema porque tenía todo un montón de abstracciones que bueno, que después entraron en desuso porque bueno, eso lo discontinue todo, entonces yo no sé cuánto de eso es recuperable o si vale la pena recuperar eso es todo un tema parte me parece que que esto me va a distraer de mi enfoque entonces mi enfoque tiene que ser ahora recuperar el score y el fin con lo que hay sin tratar de recuperar el 11 Brahma Quart, no, eso no tiene sentido entonces no lo voy a hacer bueno, ya me quedó claro entonces ahora voy a pasar a lo que digamos al esquema del día para plantear lo que tengo que hacer_
+ -- Transcrito por zapia.com, tu IA personal
+
+2/10/25, 11:10 - Luciano Moffatt: Implementación de Score, Theme y Simulation
+
+- Tengo que implementar el Score, el Theme y la Simulation.
+- Después de cada Simulation tengo que calcular la Likelihood, incluyendo el Score y el Theme, y luego realizar el Test.
+- Estaba pensando en restituir el Evenberg-McQuart Evidence-Levenberg-McQuart para ver si funciona.
+- También pensaba en recuperar el cumulative evidence, pero no sé cuánto de eso es recuperable.
+- Mi enfoque tiene que ser ahora recuperar el score y el theme con lo que hay, sin tratar de recuperar el Evenberg-McQuart.
+
+-- Resumido por zapia.com, tu IA personal
+7/10/25, 13:41 - Luciano Moffatt: <Multimedia omitido>
+7/10/25, 13:47 - Luciano Moffatt: <Multimedia omitido>
+5/11/25, 10:40 - Luciano Moffatt: _-----_----+++----
+5/11/25, 10:41 - Luciano Moffatt: Octubre 7
+_-----------
+5/11/25, 10:41 - Luciano Moffatt: _bueno acá estoy de vuelta en la reserva un montón de llama esto el sarro me sale cerro del río bueno Bueno, logré implementar, o por lo menos que me devuelva, que compile, la derivada de la log likelihood, incluso por sample, o sea, de cada sample, o sea, te guarde la evolución la evolución de la likelihood y la evolución de la derivada de la likelihood por sample. Bien, y lo que vi con eso es que mi implementación del sistema de derivadas es un tanto... tiene agujeros es decir tiene dangling pointers en lo que respecta a lo que llama el delta x o sea yo tengo una derivada de una función respecto de un x entonces yo lo que hago es guardo un puntero al x este respecto del cual estoy derivando y la implementación hacía que de repente ese delta x no me lo inicializara a un puntero null pointer sino a cualquier cosa y despu digamos lo que hac era que bueno en un momento dado me generaba una matriz de una cantidad infinita de filas y columnas Pero eso más o menos lo solucioné como para que no ocurra, pero no es una implementación a lo que voy muy robusta, que digamos, hay mucho que trabajar en la implementación de las derivadas. yo creo que tengo que hacer un enfoque distinto en el cual tenga que ser mucho más genérico y bueno y eso es trabajo para otra otra iteración de macro IR o lo que sea pero bueno no es muy, o sea tendría que un poco tapar los agujeros que tiene por lo menos para que no tenga bugs muy evidentes pero es no es una muy buena implementación eso es lo que quiero decir pero por lo menos lo que tendría que hacer es pasar un poco el códex, a ver que me limpie un poco el código de posibles errores me está dando una diferencia entre la log likelihood directa y en la que yo calculo la likelihood o sea que hay algún error en algún lado tengo que verificar donde está bueno para eso es que quise hacer la evolución de la log likelihood para poder ver si encuentro eso por ejemplo que esté metiendo la log likelihood de los puntos que no tienen que no tengo medida o algo así no sé, pero bueno tengo que ver ese punto, más que nada bueno es un día más o menos renduoso bueno, voy a ver si saco fotos de eso de y_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:41 - Luciano Moffatt: _Bueno, la siguiente idea se me ocurrió es hacer una especie de salvar a la carta, es decir, digamos para la evolución del patch state y la evolución de lo que sería la derivada del patch este poder definir en el comando de entrada que es lo que es algo así no salvo una cantidad ridículamente grande de cosas también habría que ver si bueno si lo salvo en formato jason un formato con vectores pero otra cosa eso tengo que probar primero a ver que tan ineficiente es el guardado de Jason ¿no?_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:42 - Luciano Moffatt: ----------------------------------
+Octubre 7 Resumen
+----------------------------
+5/11/25, 10:42 - Luciano Moffatt: Avances y problemas con la implementación de la derivada de la log likelihood
+
+- Implementé la derivada de la log likelihood, incluso por sample, guardando la evolución de la likelihood y su derivada.
+- Mi implementación del sistema de derivadas tiene agujeros, especialmente con los dangling pointers en el delta x.
+- La implementación actual no es robusta y requiere mucho trabajo, posiblemente con un enfoque más genérico en futuras iteraciones.
+- Necesito revisar el código para limpiar posibles errores y solucionar la diferencia entre la log likelihood directa y la calculada.
+- Estoy investigando la evolución de la log likelihood para identificar posibles errores, como incluir puntos sin medida.
+- El día ha sido rendidor y planeo tomar fotos.
+
+-- Resumido por zapia.com, tu IA personal

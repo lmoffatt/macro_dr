@@ -8,7 +8,7 @@
 //#include "cuevi.h"
 #include "function_memoization.h"
 #include "maybe_error.h"
-#include "models_MoffattHume_allosteric.h"
+#include "models_used.h"
 #include "parallel_tempering.h"
 #include "parameters.h"
 //#include "parameters_derivative.h"

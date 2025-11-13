@@ -13,7 +13,7 @@
 #include <macrodr/cli/command_manager.h>
 #include <macrodr/io/path_resolver.h>
 
-#include "models_MoffattHume_allosteric.h"
+#include "models_used.h"
 
 namespace macrodr::cli::app {
 

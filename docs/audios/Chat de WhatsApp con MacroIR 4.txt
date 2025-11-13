@@ -1,0 +1,232 @@
+17/10/25, 11:47 - Los mensajes y las llamadas están cifrados de extremo a extremo. Solo las personas en este chat pueden leerlos, escucharlos o compartirlos. Obtén más información.
+17/10/25, 11:47 - Creaste este grupo
+17/10/25, 11:56 - Luciano Moffatt: <Multimedia omitido>
+17/10/25, 12:00 - Luciano Moffatt: <Multimedia omitido>
+20/10/25, 11:29 - Luciano Moffatt: <Multimedia omitido>
+22/10/25, 15:02 - Luciano Moffatt: <Multimedia omitido>
+22/10/25, 15:09 - Luciano Moffatt: <Multimedia omitido>
+23/10/25, 15:10 - Luciano Moffatt: <Multimedia omitido>
+23/10/25, 15:12 - Luciano Moffatt: <Multimedia omitido>
+23/10/25, 15:14 - Luciano Moffatt: <Multimedia omitido>
+28/10/25, 10:22 - Luciano Moffatt: 
+28/10/25, 10:23 - Luciano Moffatt: <Multimedia omitido>
+31/10/25, 12:05 - Luciano Moffatt: <Multimedia omitido>
+31/10/25, 12:06 - Luciano Moffatt: <Multimedia omitido>
+31/10/25, 12:08 - Luciano Moffatt: <Multimedia omitido>
+31/10/25, 15:34 - Luciano Moffatt: <Multimedia omitido>
+31/10/25, 15:39 - Luciano Moffatt: <Multimedia omitido>
+31/10/25, 16:19 - Luciano Moffatt: <Multimedia omitido>
+5/11/25, 10:19 - Luciano Moffatt: -----------------------------------------------------------
+5/11/25, 10:19 - Luciano Moffatt: 17 de octubre
+------------------------------------------------ <Se editó este mensaje.>
+5/11/25, 10:19 - Luciano Moffatt: _Bueno, empieza un nuevo grupo, una nueva vida. No, bueno, hoy Andrea me decía que era importante publicar un segundo paper y estoy un poco trabado desde hace ya un par de semanas con el tema del cálculo de las derivadas. Eso, digamos, reactivar esa parte del código me está llevando mucho tiempo. Claro, es un código complejo, la derivación automática es una cosa compleja. Y bueno, lo que yo me embarré bastante es con las derivadas de los eigen systems, o sea, los autovalores y autovectores, porque justamente los autovectores son indeterminados, o sea, vos no tenés un conjunto único, no hay una función autovectores, es un espacio, O sea, entonces sacar la derivada de eso es medio un quilombo, es medio como imposible. Entonces al final lo que hice es, digo, bueno, sí, es imposible, no lo hago y saco directamente la derivada de las magnitudes, de las variables que sí tienen derivada, que serían la probabilidad de transición y la conductancia condicional al estado inicial y al estado final, constancia media, varíanza de la conductancia media y luego sus derivadas entonces todo eso me llevó a un largo chat con chat GPT que me sirvieron de mucho porque encontré que quizás la mejor manera de calcular eso sea con la exponencial matriz usando la aproximación esa de PAD que usa MATLAB y que expandiendo esa exponencial matriz con la derivada, poniendo la derivada de Q en el medio digamos en la parte vos repet Q pones Q Q 0 y Q una matriz 2x2 una matriz de bloques Y eso vos le sacás la exponencial matriz y, digamos, lo que sería la parte, el bloque ese superior derecho te daría la derivada. Y si le pones en vez de la derivada de la matriz, la conductancia te da la conductancia media y tenés otros procesos para conseguir la varianza y las derivadas. todo eso está, le hice a Chagipiti hacer un látex que explica todo eso, entonces la idea sería bueno reimplementar más o menos la mitad de macro R con eso, que quizás le quite algunas de las de los problemitas que tenía de inestabilidad numérica y todo eso quizás funcione mejor, quizás no también podría mantener la como se dice las claro, lo que tendría que tener es las, para que esto funcione usar las proyecciones que se llaman o sea, tendrías bueno, eso lo está todo en el en el látex que hace Chachipiti tenés tres métodos que serían, uno es el exponencial matriz, otro es con proyecciones que es bastante parecido a como lo hago lo único que vos como que calculás las proyecciones por cada, por cada, ¿cómo que se llama? Ay, no me sale, por cada autovalor, bueno habr que poner los bloques de autovalores que son iguales etc etc y digamos calcul claro la calcul las derivadas proyecci Entonces en definitiva digamos lo que voy a tener que hacer es que el c de la derivada de P de TXP sería así QDP QDT QDT creo que se llama tendría que ser diferente, no va a ser digamos va a tener que tener su propia especialización que no es lo que yo quiero eventualmente yo quiero digamos como que cada haya una única implementación pero en este caso me parece que es imposible o bueno, qué sé yo, por ahí lo puedo hacer con if con text en el medio bueno la cuestión es que con eso podría calcular las derivadas entonces habría dos métodos que serían el exponencial matriz y este el de las proyecciones habría un tercer método que es con la JUR de composition y no sé que no entendí una verga de todo eso y este en realidad no ofrecería mucha ventaja respecto de la exponencial matriz con la, digamos la aproximación de PADES según lo que dice Chassipiti con lo cual, digamos, podría dejar estas dos, la de proyecciones que es la que está digamos, básicamente y después la otra, la de exponencial matriz después tendría la tercera que es esta de Taylor, que bueno, es parecida a la exponencial matriz, si querés bien entonces todo eso tendría que calcular las derivadas son las derivadas forward entonces ¿cuál es el siguiente tema? el siguiente tema es el de las claro, porque el tema salió que cuando ya ahora quería calcular la derivada de la, por ejemplo, de la varianza o de la..._
+5/11/25, 10:19 - Luciano Moffatt: _media ah ya la exponencial matriz hac medio digamos peleaguda era un poco m compleja Y entonces me tir la posibilidad de usar lo que llaman la backpropagation para el c de las derivadas Con lo que me di cuenta de que eso lo podía aplicar para calcular la likelihood de toda la función. o sea, el gradiente, y que podría el gradiente ser mucho más barato de lo que estoy teniendo, porque yo ahora estoy consumiendo, digamos, 20 veces una light yield para sacar un gradiente, y ahora calcularía 3 veces una light yield para sacar el gradiente, una cosa así, con la backpropagation. Pero, pero, pero, pero, el tema es que si hago así, no puedo calcular los gradientes de las LockLightLightIndividuales y ahí sí tendría que usar la Forward Propagation. O sea, que los gradientes de las LockLightLightIndividuales me sirvían para calcular el Gessiano, ¿no es cierto? Eso usando lo que sería la aproximación del Levenberg Markward. Pero como no voy a usar el Evenberg-Mackware ahora, sino que simplemente estoy caracterizando el algoritmo que ya tengo, entonces no es necesario hacer la implementación del Backware, que yo ya estaba haciéndolo prácticamente en mi cabeza, sino que eso quedaría para después de que publique el paper. aunque digamos es tentador en cuanto que puede ser que sea más rápido pero no es la idea de que sea más rápido la idea es tener algo que sea robusto y confiable después buscaremos que sea más rápido entonces en definitiva el plan para hoy lo voy a poner en un próximo audio no este_
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:19 - Luciano Moffatt: 
+La transcripción es muy larga? Presiona el botón debajo para obtener un resumen.
+
+5/11/25, 10:19 - Luciano Moffatt: _Bueno, el plan para hoy entonces es, digamos, seguir en el mismo barco, o sea, no tirar toda la mierda y empezar de nuevo, que eso es lo que yo ya estaba a punto de hacer. entonces primero implementar las derivadas a partir de proyecciones nada más, o sea si hay degeneración en la inversa, bueno me jodo, igual tengo siempre el backup de la expansión de Taylor y lo que sí calculo las derivadas de una vez y por todas, así yo puedo comprobar que el método funciona. Si esto se demora mucho más, entonces yo ya pasaría a calcular los scores usando diferencias finitas. finitas Yo creo que no la verdad es que a esta altura no veo raz por la cual ese m no sea tan bueno como el de las derivadas que en realidad es una de las preguntas que yo me hago es la pena hacer las derivadas anal o con las derivadas finitas es lo mismo o hasta es mejor porque de alguna manera estás incluyendo digamos la curvatura del espacio o lo que sea esa es una pregunta en principio dicen que bueno sería mejor analítica si es lo que dice el Chargy Pity pero bueno pero de todos modos para llegar a buen puerto y tener el paper yo lo que tengo que lograr es lo que ya dije de antes es la expectativa del score tiene que darme cero y la varianza tiene que ser igual a la Fisher Information Matrix y eso es un sanity check para mostrar que la implementaci de la log likelihood es la correcta Yo creo que eso ya m o menos ser suficiente para el paper o sea, por lo menos un paper más o menos corto que presente eso nomás. Para acá, para un modelo un poco complejo como este. Uno lo podría presentar, la verdad, como un modelo un poco más simple y este otro modelo más complejo y verlo en cerca de los puntos óptimos no sé si algo así tendría que hacer bueno eso ya lo tenía más o menos determinado que hacer yo lo que tengo que lograr es que me funcione sí, esto sería la derivada de la loglikelihood y bueno, y pueda hacer un test de la loglikelihood eso es lo que yo quer hacer o sea yo lo que quer hacer es que pueda hacer yo test de mi software para saber que estoy pisando sobre firme y no sobre terreno de revaladizo ese es un poco mi motivación ahora digamos, bueno, tengo tengo que pensar muy bien porque claro, siempre hay cosas nuevas, más interesantes, más difíciles para hacer. No me tengo que tentar, tengo que lograr terminar esto para poder presentar un segundo paper este año. Y bueno, por el año que viene iré sacando las otras ideas que estaban por ahí, dando vueltas en la Cumulative Evidence, hacer alguna forma de implementación con el gradiente y Backpropagation y algo que se asemeje, que se inspire en los métodos que han sido tan exitosos para la inteligencia artificial, tienen que poder ser aplicados para esto._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:19 - Luciano Moffatt: 
+La transcripción es muy larga? Presiona el botón debajo para obtener un resumen.
+
+5/11/25, 10:20 - Luciano Moffatt: -----------------------------------
+17 de octubre resumen
+----------------------------------- <Se editó este mensaje.>
+5/11/25, 10:20 - Luciano Moffatt: Avances y desafíos en el cálculo de derivadas y optimización de algoritmos
+
+- El autor está trabajando en el cálculo de derivadas para un segundo paper y se encuentra con dificultades, especialmente con las derivadas de los eigen systems.
+- Está explorando el uso de la exponencial matriz con la aproximación de PAD, inspirada por sugerencias de ChatGPT, para calcular las derivadas de manera más eficiente.
+- Considera reimplementar parte de su código en macro R utilizando este método, buscando mejorar la estabilidad numérica.
+- Evalúa diferentes métodos como el de proyecciones y la JUR de composition, aunque esta última no parece ofrecer ventajas significativas.
+- Está considerando el uso de backpropagation para calcular la likelihood de la función, lo que podría reducir el costo computacional del gradiente.
+- Decide posponer la implementación del Backware para después de la publicación del paper, priorizando la robustez y confiabilidad del algoritmo actual sobre la velocidad.
+- El plan para el día será detallado en un próximo audio.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:20 - Luciano Moffatt: Plan para seguir trabajando en el proyecto
+
+- El plan es seguir trabajando en el proyecto sin empezar de cero.
+- Implementar las derivadas a partir de proyecciones, usando la expansión de Taylor como respaldo.
+- Calcular las derivadas de una vez para comprobar que el método funciona.
+- Si se demora mucho, calcular los scores usando diferencias finitas.
+- La expectativa del score tiene que dar cero y la varianza igual a la Fisher Information Matrix.
+- Esto sería suficiente para un paper corto sobre el modelo.
+- Lograr que funcione la derivada de la loglikelihood y hacer un test de la loglikelihood.
+- Poder hacer tests del software para asegurar que la implementación es correcta.
+- Terminar esto para presentar un segundo paper este año.
+- Para el año que viene, implementar ideas con gradiente y Backpropagation.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:21 - Luciano Moffatt: --------------------------------------
+20 de octubre
+---------------------------------------- <Se editó este mensaje.>
+5/11/25, 10:21 - Luciano Moffatt: _Bueno, no creo que hay cuatro. Bueno, finalmente logré entender por qué no me estaban dando las derivadas. Simplemente era algo que yo ya lo había entendido antes, pero bueno. Lo hice carne en serio. Que es que vos no podés tomar la derivada de los autovectores. La tomás, tenés una una. Pero después hacés la derivada por diferencias y te da cualquier panada, te da otra cosa. ¿por qué es eso? porque bueno porque el algoritmo decide ir por otro lado entonces no te queda para que sea uniforme tendría que tener algún tipo de propiedad pero es medio al pedo porque después vos simplemente tomás la derivada la cosa que sí importa que en este caso sería la derivada de la matriz de problemas de transición la conductancia condicional a estado inicial y estado final etc etc Y bueno eso s te da la derivada te da bien Entonces ya est digamos eso estar solucionado Ahora tendr que nada m probar que la derivada de la conllamada Bueno, tengo que hacer dos cosas. Primero, eso funciona sí o sí y solo si no hago correcciones. Entonces las correcciones tienen que pasar a ser un elemento fundamental del algoritmo. no saber cuándo corrijo, si es necesario corregir, etcétera, etcétera. Eso por un lado. Y por el otro lado, bueno, tengo que ver que macro DR, las derivadas también las calcule bien. Y bueno, una vez que ya tengo eso, ya ahora puedo sí ponerme a probar el tema de la operanza del FID y el SCORE y todo eso. Y con eso ya tendría mi paper más o menos cerrado, que lo tendría que ver si puedo liquidar ya, por lo menos empezar a tener la estructura de esta semana, hacer una nota más o menos corta en Biofísica Journal o algo así, y listo, con eso salvo el año._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:22 - Luciano Moffatt: ---------------------------
+20 de octubre resumen
+--------------------------- <Se editó este mensaje.>
+5/11/25, 10:22 - Luciano Moffatt: Entendimiento de las Derivadas y Plan para el Paper
+
+- El autor finalmente entendió por qué no le estaban dando las derivadas.
+- No se puede tomar la derivada de los autovectores.
+- Hay que probar que la derivada de la función llamada funciona.
+- Las correcciones tienen que pasar a ser un elemento fundamental del algoritmo.
+- Hay que ver que macro DR, las derivadas también las calcule bien.
+- Una vez que tenga eso, puede ponerse a probar el tema de la operanza del FID y el SCORE.
+- Con eso tendría su paper más o menos cerrado.
+- Tendría que ver si puede liquidar el paper ya, empezar a tener la estructura de esta semana, hacer una nota más o menos corta en Biofísica Journal o algo así, y con eso salva el año.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:22 - Luciano Moffatt: --------------------------------------
+22 de octubre
+------------------------------------ <Se editó este mensaje.>
+5/11/25, 10:23 - Luciano Moffatt: _Ok, bueno, estoy con MacroIR en el cuarto chat. ¿En qué estoy? Bueno, estoy testeando la derivada, la derivada numérica. No me estaba dando, encontré una serie de errores, los corregí y ahora me está dando. y me da un error para algunos estados, que yo supongo que es un error numérico, que no representa un verdadero error de la derivada analítica, sino un error numérico. y bueno, ahora logré que pasara, poniendo condiciones como por ejemplo que si cambia el signo de la derivada diferencial positiva y negativa entonces eso directamente no considero ese punto como para testearlo y que adem soy un poco más generoso en el ancho de los intervalos es cuatro veces la diferencia entre positiva y negativa con eso digamos aparentemente pasarían los test y ahora me da un error en otra cosa que no sé lo que es que tengo que solucionar una vez que solucione eso tengo que ver la derivada de el algoritmo macro de r y además tengo que ver la derivada de q dt para para el caso de la varianza de la g bar y j que eso todavía no lo tengo establecido de que esté bien sin embargo digamos como no en principio no voy a incluir eso en el paper podr obviarlo el chau en el algoritmo que publique nada m y entonces la idea es una vez que pase la derivada de macro de r entonces ya me pongo a ampliar y ver la esperanza de la del score que sea cero y la varianza del score que sea la esperanza de la ficha information matrix serían esos dos los dos test que tengo que probar para ver qué el algoritmo funciona y una vez que demuestro que funciona entonces este lo que veo es que bueno adem este con se dice converge al valor verdadero sea hago la matriz de confusi con este y empiezo con modelos simples hago con esquema 1 de esquema 1 2 3 y 4 una cosa as bien que converja rápido y después por ahí pruebo uno en el esquema 10 en el 9 en lo que sería el 8 y 9 con eso debería tener el paper liquidado. Esa sería más o menos la idea, me parece. ¿Qué es lo que me queda de duda de esta cosa? Es que, bueno, no... Que, digamos, yo no estaría probando el esquema 6, que es el que yo sé que daría mejor, pero bueno, eso lo dejaría yo para más adelante para, digamos, mostrar eso en particular entonces con un esquema así podría zafar_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:23 - Luciano Moffatt: 
+La transcripción es muy larga? Presiona el botón debajo para obtener un resumen.
+
+5/11/25, 10:23 - Luciano Moffatt: _A ver, ¿cuáles son los dos conceptos que quiero imponer en el paper? Bueno, el concepto 1 de macro IR es mejor que macro R y que macro NR y macro INR. O sea, tendría esos cuatro modelos y tendría que mostrar en qué condiciones es necesario, digamos, pasar de uno a otro, etc. Y los macro NR, quiero decir, ¿qué significan? O sea, bueno, que vos no tenés confianza en el grado de libertad del test, pero bueno, digamos, el test en principio no te deformaría demasiado los datos, esa es la idea. Pero bueno, sí, por ahí, no sé, probablemente te deforme lo que sea la conductancia o esas cosas. Pero bien entonces ser mostrar esos cuatro entonces ser a ver digamos mostrar que el primer mensaje es macro IR es mejor ese es el punto uno punto 2 es macro y r permite diferenciar modelos esquemas y ahí veo también a ver qué pasa con macro nr a ver si los diferencia también o no, o lo que sea. Y para eso, bueno, uso estos modelos simples, y bueno, entonces es la idea, el mensaje del paper es un sistema de medir la evidencia permite diferenciar modelos cinéticos en base a macrocorrientes. Eso sería un poco la idea. Entonces, para eso no necesito hacer modelos súper complejos, pero bueno, podría incluirlos también. Yo los tengo que incluir porque está el otro paper que hace, pero en el principio podría incluirlos y mantenerlo en una cosa más o menos simple. bien y eso s lo pongo con yo no s eso con mis datos o sea s bueno hay datos que digamos que yo estoy fiteando bueno s pero bueno ya est fiteados entonces ah es la pregunta bueno hago con eso Pero en cuanto los datos ya están publicados, bueno, pero puedo decir que es la última versión del algoritmo, y bueno, puede haber una pequeña diferencia o algo así, eso justifica su publicación respecto de la publicación anterior, podría ser. Claro, porque acá el tema es qué condición, o sea, cómo hago para que el algoritmo funcione, o sea, que no se vaya a la mierda, y eso un poco tenía que ver con forzar, a que la probabilidad sea estable que no se vaya a la mierda y bueno, eso tengo que ver si la tengo que forzar o no si la tengo que forzar entonces la forzaré y eso tendría que registrarlo quizás digamos quizás sería también un dato porque es importante ese dato de qu es lo que hay que hacer para que esto funcione y bueno una cosa que ten que hacer era eso tendr que ver qu elementos de las cosas que funcionan puedo sacar y que siga funcionando cuál sería la configuración mínima que igualmente funciona eso es un poco mucho pero bueno, una configuración que funcione y bueno, y eso sí definirla del todo. Pero sí, yo creo que el paper son dos figuras, fundamentalmente. Una figura es los testes estos de FIM y todos esos para esos cuatro algoritmos, y después la confusion model para los cuatro esquemas cinéticos. Creo que con eso yo tendría el paper más o menos. digamos ahí cuál es el mensaje del paper es bueno, tenemos un un esquema una plataforma para diferenciar esquemas cinéticos eso_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:23 - Luciano Moffatt: 
+La transcripción es muy larga? Presiona el botón debajo para obtener un resumen.
+
+5/11/25, 10:23 - Luciano Moffatt: ---------------------------
+22 de octubre resumen
+---------------------------- <Se editó este mensaje.>
+5/11/25, 10:24 - Luciano Moffatt: Resumen de avance con MacroIR
+
+- Estoy testeando la derivada numérica y, tras corregir errores, ahora me está dando.
+- Me da un error para algunos estados que supongo que es numérico.
+- Logré que pasara poniendo condiciones y siendo más generoso en el ancho de los intervalos.
+- Ahora me da un error en otra cosa que tengo que solucionar.
+- Tengo que ver la derivada del algoritmo macro de r y la derivada de q dt para el caso de la varianza de la g bar y j.
+- Como no voy a incluir eso en el paper, podría obviarlo en el algoritmo que publique.
+- La idea es, una vez que pase la derivada de macro de r, ampliar y ver la esperanza del score que sea cero y la varianza del score que sea la esperanza de la ficha information matrix.
+- Una vez que demuestre que funciona, veo que converge al valor verdadero y empiezo con modelos simples con esquemas 1, 2, 3 y 4 para que converja rápido.
+- Después probaría uno en el esquema 10, en el 9, en lo que sería el 8 y 9, con lo que debería tener el paper liquidado.
+- No estaría probando el esquema 6, que es el que sé que daría mejor, pero lo dejaría para más adelante.
+- Con un esquema así podría zafar.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:24 - Luciano Moffatt: Ideas principales para un paper sobre macrocorrientes
+
+- El concepto principal es que macro IR es mejor que macro R, macro NR y macro INR.
+- Se busca mostrar en qué condiciones es necesario pasar de un modelo a otro.
+- Macro IR permite diferenciar modelos y esquemas.
+- Se utilizan modelos simples para demostrar la idea.
+- El mensaje del paper es que un sistema de medición de evidencia permite diferenciar modelos cinéticos en base a macrocorrientes.
+- Se discute cómo hacer que el algoritmo funcione y qué configuración mínima se necesita.
+- El paper incluirá figuras de los testes de FIM y la confusion model para los cuatro algoritmos.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:25 - Luciano Moffatt: ----------------------------------
+5/11/25, 10:25 - Luciano Moffatt: ---------------------------------
+23 de octubre
+------------------------------------ <Se editó este mensaje.>
+5/11/25, 10:25 - Luciano Moffatt: _Bueno, acá me voy reportando para macro IR. Bueno, logré que la derivada de lo que sería Q de T funcione. Hice un poquito de trampa en el sentido de que como la derivada de G, min, y B, y J, o sea, la derivada de la constancia dada el estado inicial y dado el estado final. Digamos, tiene mucho error porque vos los dividís por una probabilidad de PIJ muy chica. entonces lo que hice es la eliminé del test y simplemente testeo G total y J que tiene menos error y está también P y J o sea, están las dos y bueno entonces de esa manera digamos testeo las dos derivadas bien de una si esas dos son correctas la siguiente debería ser correcta también en principio entonces de esa manera me evito que falle esa de situaciones digamos cr a esos estados muy poco visitados Bien, con eso solucioné eso, tuve que inventar una nueva fusión que se llama Select, en honor a Tiverse, que selecciono variables de una de un vector space pero también de una derivada de vector space. En fin, y eso me hace pensar que está todo el tema de cómo navegar en variables que son, digamos, functores de variables, que vos tenés una variable, su derivada, etc. Y cómo generar funciones que funcionen en todos los functores sobre esas variables. sobre esas variables de esos tipos y bueno el tema este de la lo que sería lo equivalente a una transposición que vos tengas el vector del derivado o la derivada del vector serían tendrían la misma información pero bueno, vamos a los organizar de otra manera diferente y bueno eso es todo todo un temita Gracias._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:25 - Luciano Moffatt: 
+La transcripción es muy larga? Presiona el botón debajo para obtener un resumen.
+
+5/11/25, 10:25 - Luciano Moffatt: _ese temita se soluciona bueno, teniendo relaciones de equivalencia entre las cosas que son equivalentes, ¿no? si la derivada del vector es lo mismo que el vector de la derivada bueno, decirlo y listo hacer, digamos como acá, esta es una variable que es el cociente de ambas cosas y bueno y poder representarlo de una manera o de la otra de acuerdo a lo que convenga. Y todo eso implica una serie de decisiones en cuanto a la arquitectura del software que son importantes de hacer, pero que si lo solucionás eso te abriría la posibilidad de hacer programas bastante expresivos y complejos y correctos de una manera más o menos. Quizás fácil si se toman las, digamos, de hacer las, si solucionan los problemas que hay que solucionar._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:25 - Luciano Moffatt: _En ese sentido tengo en mente una especie de Kinooloon 2.0 donde vos tengas una especie de variable universal, que vos tengas un vector de memoria importante que después lo puedas meter en una encuda o algo así. y que bueno, vos tenés un mapa de cómo ves esa información, cómo la asignás valor a cada uno de esos valores de memoria, y bueno, y operás a nivel de la máscara o a nivel de los datos. eso sería digamos una cosa que uno podría implementando eso bueno tener algo que podría ser computacionalmente competitivo en cuanto a que pod generar pod imaginar cosas o escalar cosas bastante f y correctamente Bueno a eso habr que agregarle bueno al tema del error O sea ac lo que me qued muy claro es de d me ven la idea de medir el error de las variables derivadas Y es en esto, es que estos test de la derivada de la conductancia condicional a inicio y final, no hay manera de que funcionen si no tenés alguna medida del error que tiene esa estimación digamos, vos no sabés si falla porque tenés un error de cálculo o si falla por una cuestión de que numéricamente es inestable y bueno eso a la larga hay que hacerlo bien es necesario. Bueno, eso es un poco el estado de la programación científica, ¿no? En los programas estos que podrían modelar sistemas._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:25 - Luciano Moffatt: -----------------------------------------------
+23 de octubre Resumen
+------------------------------------ <Se editó este mensaje.>
+5/11/25, 10:26 - Luciano Moffatt: Reporte de Avances en macro IR
+
+- Se logró que la derivada de Q de T funcione.
+- Se eliminó la derivada de G del test debido a errores al dividir por una probabilidad de PIJ muy chica, y se testearon G total y J, que tienen menos error.
+- Se inventó una nueva función llamada Select para seleccionar variables de un vector space y su derivada.
+- Se plantea el tema de cómo navegar en variables que son functores de variables y cómo generar funciones que funcionen en todos los functores sobre esas variables.
+- Se menciona la transposición entre el vector del derivado y la derivada del vector.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:26 - Luciano Moffatt: Ideas sobre Kinooloon 2.0, medición de error y programación científica
+
+- Se plantea un Kinooloon 2.0 con una variable universal y un vector de memoria.
+- Se menciona la importancia de un mapa para asignar valor a los valores de memoria y operar a nivel de máscara o datos.
+- Se destaca la necesidad de medir el error de las variables derivadas.
+- Se indica que los tests de la derivada de la conductancia condicional requieren una medida del error de estimación.
+- Se reflexiona sobre el estado de la programación científica y el modelado de sistemas.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:27 - Luciano Moffatt: -------------------------------------
+Octubre 28
+--------------------------------- <Se editó este mensaje.>
+5/11/25, 10:27 - Luciano Moffatt: _Bueno, reporte de Macro IR4 del martes 28 de octubre de 1968 de 2025. Estoy acá, frente al río de la Plata. El mar, el río está relativamente calmo. Logré compilar el test de la derivada de Macro y R, pero todavía no corre bien por un problema de que no lee los archivos de los parámetros y tampoco está muy... y bueno, tengo que ver cómo debuguear eso y quizás tener un buen reporte de errores un reporte de errores mejor bueno, quizás esto no... no sé si lo voy a hacer hoy o más bien hoy voy a trabajar con DataBound Que estoy muy atrasado con eso Así que bueno, trabajaré con DataBound_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:31 - Luciano Moffatt: --------------------------------------
+Octubre 31
++++++++++++++++++++++
+5/11/25, 10:33 - Luciano Moffatt: _Bueno, creo que hice como tres audios de diez minutos en ideas, hablando de la multiplicación de matrices, y eso como de ahí salga algo, alguna idea que permita avanzar algo en algo, ¿no? O sea, en fin. Y bueno, llegué a algo que es aplicable aquí y ahora para macro IR. Y lo siguiente, ya me había olvidado, pero uno de los resultados teóricos más importantes que saqué en estos últimos tiempos es darme cuenta que la diferencia entre la expected posterior likelihood y la prior likelihood, algo así, es la KL distance entre el prior y el posterior. Entonces qu implica Que de cualquier experimento que hagamos con un modelo vamos a tener dos variables o sea la likelihood evidencia y la KL divergence y eso lo podemos ver como dos par o variables lo afectan. Uno es el ancho y la ubicación la distancia entre el prior y el digamos, no el posterior, sino el verdadero valor de cómo eso me afecta y me y eso y en función del número de datos ¿no? O sea, como para ver un poco el tema de cuánto pesa el prior ¿no? Cómo hacer para que para entender el peso del prior cuál es un prior realmente no informativo especialmente eso en el caso de modelos más complejos que son los que de muchas interacciones y todos que ya rondan en lo muy dudoso Yo creo que ese tema ser excelente como digamos para cerrar el paper que estoy haciendo para presentar el método, porque realmente cierra una duda que yo tengo, y que de alguna manera, digamos, lograr algún tipo de relación entre, digamos, cuán errado está el prior, cuán informativo es, y cuántos datos tenés y eso afecta el verdadero valor que vos encontrás, etc. me parece que eso eso ser lo digamos el tercer punto no porque el paper hab dicho que era la estimaci de la que el fin sea validar el la de clic o del otro es la cross correlation pero claro la tercera ser ver un poco agarrar un modelo y ver una especie de claro de validación cruzada pero ya con priors ridículos priors apartados de la realidad priors serían voy a encontrar un término priors errados serían falsos priors o no sé cómo llamarlo, o sea, habría que encontrar un término que indique realmente de cuando vos estás meando fuera del tarro muy mal. Claro, sí, sí, eso digamos, que la idea es hacer dos príos, posiblemente uno con mucha más varianza que el otro, y chao. Eso sería..._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:33 - Luciano Moffatt: _Bueno, más o menos quedó, que es lo que voy a hacer ahora que termine Macro y R, cierre esta etapa, una etapa que ya tengo que planificar el cierre de la empresa. como, se me acuerdo que una vez hicimos un curso hice un curso de de startup o qué sé yo y había uno que se puso a charlar, que era alguien que había hecho una empresa y todo nos contó su experiencia y una cosa que me quedó es que bueno, que él ya había hecho una empresa y que bueno, vino el 2001 y le dijeron los socios, y dijeron no, no nos queremos ir, hay que cerrar y él pataleó y la socia le dijo mira, tenés que cerrar, es así o sea ¿me quieren ir? tenés que cerrar no hay tutía, entonces la pasó un año entero cerrando la empresa esa, qué sé yo y bueno, qué sé yo, o sea yo creo que Macro R Macro IR es un proyecto que que voy a tener que cerrar entonces tengo que dejarlo, digamos empaquetado de una manera decente que la gente no me odie demasiado después. Qué sé yo. Entonces, bueno, esa sería un poco la idea. También puede ser que algo lo usen y que eso me dé alguna guita. Digamos, eso no estaría mal después de haber puesto tanto esfuerzo en eso. si bien digamos un poco de idea es que eso me sirvió de entrenamiento como para hacer el proyecto este de proyecto de país que es el que realmente me interesa hacer que es como me encanta as pensarlo como un modelo total y que todo pase por ah Eso me fascina es como no es para un gui pero bueno. En fin. Es el tratado del mundo de mi papá. El tratado del mundo. Sí. Es eso. Es un proyecto que me... Es alucinante, no sé. bueno entonces bueno, ¿cómo cerramos Macro IR? bueno, entonces lo que hay que tener es básicamente comandos que la gente pueda usar que la gente pueda entender lo que hacen que sean fáciles de entender, que sean fáciles de comprobar que digamos, que lo que hacen sea correcto Y pues bueno, dentro de eso es una maraña de cables que agarrate si lo entendés. Pero bueno, eso después de que yo haga todo el cableado de todos los comandos y cómo se funciona en cada uno, después eso lo voy a ir ajustando un poquito. Pero bueno, no quiero perder demasiado tiempo porque yo sé que si me pongo a ajustar voy a tardar mucho. y la idea es esto irlo cerrando porque yo creo que ya cumplió su ciclo o sea vivo muchos años con esto bueno, me sirvió para algunas cosas para fundamentalmente estar dormido y no pensar pero bueno es hora de poner mis habilidades al servicio de la patria como dir Candela y s qu s ver qu hacer algo un poco m interesante o no s interactuar con m gente no s pero bueno la cuesti es que nada esa es la idea no sea la idea es saber tener estos cosas porque claro si yo lo hago al revés digo bueno acá lo que el motor, la guía, el carro que guía es terminar un nuevo paper, eso es más fácil, digamos, es un objetivo bien claro, terminar el paper, pum, entonces, ¿qué tengo que hacer para terminar el paper? Y bueno, y entre otras cosas, una de las cosas que tengo que hacer para terminar el paper es tener un clima más o menos decente, que la gente pueda replicarlo, digamos, yo creo que eso está bien, eso es lo que tiene que ser. y eso es lo que va a hacer entonces, sí, fundamentalmente y que hacer los gráficos sea, digamos algo, digamos, que se puede escribir en algún script o lenguaje, ¿no? o sea, bueno, en principio podría ser en R o un makefile o algo así, eso es una cosa que bueno, igual todavía no llegué a ese punto, pero no estaría mal tener digamos alguna especie de makefile que instale todo más o menos automáticamente, automáticamente. Claro, si yo hago como una especie de docker, entonces todo eso es más o menos autom y r Igual eso creo que es un paso m all Ya ir hacia eso de entrada es un poco demasiado pero bueno pero si la idea de bueno tenerlo un programa que bueno sí que responda a preguntas más o menos rápido bueno tengo sacar estos dos papers y el tercero que sería el tercero y me asusto de que los tiempos o lo que sea bueno no tengo tengo más bien y bueno y además tengo que ver de optimizar un poco macro de r claro, sí bueno, ahí lo que tendría..._
+5/11/25, 10:33 - Luciano Moffatt: _que hacer es hacerlo correr en GPUs, pero es un poco mucho, no sé o tratar de optimizar el algoritmo no sé eso me atrae bastante sería lindo hacerlo no sé si lo voy a cerrar totalmente porque bueno, esas cosas no, pero creo que lo mejor es liberar mis neuronas para otras cosas para hacer sí, modelos quizás de otro estilo no tan detallistas no tan digamos, zarpados sino para un poco más globales más más rápido digamos no sé que no sean las cosas tan lentas como esto que hago es una carreta_
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:33 - Luciano Moffatt: _Bueno, a ver, entonces, ¿cuál es la situación de MacroIR? Bueno, tengo ese programa así medio inentendible y complejo. Entonces, la idea es, bueno, más o menos, tratar de, así con unos clavos, digamos, yo imagino como unos clavos, que son estos test, que fijan comportamientos, cosa que, digamos, yo pueda después empezar a cambiarlo, eventualmente, si quiero. Pero bueno, un poco, yo ya veo que esto va a llegar a un punto donde no, va a quedar ahí, Va a quedar fosilizado en algo, que terminaré con este paper y quizás el paper con Cecilia Boussat y algún otro paper más con Gustavo. y después bueno, que se arreglen la gente que lo quiera usar. Yo después de eso, la idea mía es cerrar ese boliche y meterme con la fundación, me sale decir que sería, no sería la fundación, sería... A ver, bueno, eso voy a hablar ahora en otro lado, a ver qué es lo que voy a hacer..._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:33 - Luciano Moffatt: _y un poco eso de la klm distance también indican cuando es al pedo calcular la evidencia porque si la klm distance por ejemplo con mucha cantidad de datos termina siendo que se yo el número de parámetros dividido dos o no sé una cosa así que sería como como la aproximación de no me acuerdo se llama de Euler o no sé, de Poisson, no me acuerdo, que hay una fórmula de la evidencia. Eso sería interesante también ver esos límites, ¿no? O sea, cuando, digamos, ya tenés tantos datos que los cálculos quizás se simplifican, ¿no? Eso también es una buena pregunta a hacerse. ¿Qué?_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:33 - Luciano Moffatt: _acá una de las hipótesis es que si vos tenés prior más anchos vos podrías no diferenciar o sea vos estarías castigando más firmemente modelos con más parámetros eso sería un poco una de las hipótesis a testear o sea, yo creo que casi, casi que eso podría ser un paper, digamos, que analice todas estas cosas a fondo, ¿no? O sea, no sé si realmente no da para un tercer paper, es un paper extra nada, no diría que eso pensarlo un poco porque realmente da, da para bastante y este y digamos quizás hacer un trabajo sistemático no esté mal Pero no estaría mal dejar planteado el tema y como para después que otra gente lo haga esto, escuchamos a un estudio de su matito, después simplemente, bueno, pudieron la piedra._
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:33 - Luciano Moffatt: _Bueno, última parada con MacroIR. ¿En qué estado está MacroIR? Bueno, está en un estado extraño porque es una especie de programa musurgoso que gran parte de las funciones más importantes son funciones estáticas de una clase que no tiene miembros, una cosa medio extraña. No me acuerdo por qué hice eso. la cuestión es que un poco la política que tomé es la de tocar lo menos posible asegurarme que funcione poner test que indiquen que funcione tratar de establecer algún tipo de línea de comandos que sea estable y bueno y hacer exactamente eso o sea los test que indican que el algoritmo es confiable Y luego una vez que tenga todo eso tratar de reorganizar el programa para que sea un poco m tratable o sea que tenga una estructura un poquito mejor para que pueda continuar existiendo o lo que sea claramente a ver en qué estado estamos con macro IR bueno, logramos sacar un paper, lo cual no es poco igualmente yo todavía no hice los testeos del algoritmo que me gustaría hacer que eso es el segundo paper que voy a hacer después voy a hacer un tercer paper con toda esta serie de estudios que yo había planteado respecto de cómo afecta el prior y el número de datos, la evidencia y la contracción del prior, o sea, la ganancia de información, no se habría que poner un nombre, que sería lo que uno aprende acerca de los parámetros, o sea, que es la diferencia, o sea, es la KL distance entre K,_
+
+ -- Transcrito por zapia.com, tu IA personal
+5/11/25, 10:33 - Luciano Moffatt: ---------------------------------------------
+Octubre 31 Resumen
+----------------------------------------
+5/11/25, 10:36 - Luciano Moffatt: Ideas sobre multiplicación de matrices, KL distance y el peso del prior
+
+- He estado trabajando en ideas sobre la multiplicación de matrices.
+- Uno de los resultados teóricos más importantes que saqué en estos últimos tiempos es darme cuenta que la diferencia entre la expected posterior likelihood y la prior likelihood es la KL distance entre el prior y el posterior.
+- De cualquier experimento que hagamos con un modelo vamos a tener dos variables: la likelihood evidencia y la KL divergence.
+- Se puede ver cómo el ancho y la ubicación la distancia entre el prior y el verdadero valor de cómo eso me afecta y en función del número de datos.
+- Se busca entender el peso del prior y cuál es un prior realmente no informativo.
+- Este tema sería excelente para cerrar el paper que estoy haciendo para presentar el método.
+- Se busca lograr algún tipo de relación entre cuán errado está el prior, cuán informativo es, y cuántos datos tenés y eso afecta el verdadero valor que vos encontrás.
+- El paper tratará sobre la estimación de la validación cruzada pero ya con priors ridículos, priors apartados de la realidad, priors errados.
+- La idea es hacer dos príos, posiblemente uno con mucha más varianza que el otro.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:36 - Luciano Moffatt: Planes de cierre de Macro R y transición a un nuevo proyecto
+
+- El autor planea cerrar el proyecto Macro R y pasar a un nuevo proyecto.
+- Reflexiona sobre los desafíos de cerrar un negocio y la necesidad de empaquetar Macro R de manera amigable para el usuario.
+- Discute la importancia de crear comandos fáciles de entender y el potencial para que otros usen el proyecto.
+- Menciona el deseo de completar un paper y optimizar Macro R, posiblemente usando GPUs.
+- Expresa la necesidad de liberar sus neuronas para otros proyectos.
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:36 - Luciano Moffatt: Planes para MacroIR y proyectos futuros
+
+- El programa MacroIR es complejo y necesita ser simplificado.
+- Se busca fijar comportamientos en el programa a través de tests.
+- El hablante anticipa que el programa quedará estancado en su estado actual.
+- El hablante planea terminar un paper sobre el tema, posiblemente con colaboradores.
+- Después de completar el paper, el hablante tiene la intención de cerrar el proyecto y dedicarse a otra cosa (posiblemente una fundación).
+
+-- Resumido por zapia.com, tu IA personal
+5/11/25, 10:36 - Luciano Moffatt: Estado actual y planes futuros para MacroIR
+
+- MacroIR está en un estado extraño, con funciones estáticas en una clase sin miembros.
+- La política es tocar lo menos posible, asegurar que funcione y poner tests que lo indiquen.
+- Se logró sacar un paper, pero faltan testeos para un segundo paper.
+- Se planea un tercer paper sobre cómo afecta el prior y el número de datos a la ganancia de información.
+
+-- Resumido por zapia.com, tu IA personal

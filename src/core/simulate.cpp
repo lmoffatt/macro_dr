@@ -18,7 +18,7 @@
 #include <macrodr/interface/IModel.h>
 
 #include "lapack_headers.h"
-#include "models_MoffattHume_allosteric.h"
+#include "models_used.h"
 #include "qmodel.h"
 #include "random_samplers.h"
 
