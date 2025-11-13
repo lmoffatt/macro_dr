@@ -1,7 +1,8 @@
 #pragma once
 
+#include <models_simple.h>
 #include "models_MoffattHume_allosteric.h"
-
+#include "models_simple.h"
 namespace macrodr{
 
    
@@ -12,7 +13,7 @@ namespace macrodr{
         //                             &model6_Eff_no_inactivation, &model7,
         //                             &model8, &model9);
         //Models_Library(&p2x2::scheme_1_d);
-        Models_Library(&p2x2::scheme_1, /*&p2x2::scheme_2, &p2x2::scheme_3, &p2x2::scheme_4,&p2x2::scheme_5, &p2x2::scheme_6, &p2x2::scheme_7,
+        Models_Library(&simple::scheme_CO,&simple::scheme_CCO,&simple::scheme_COC,&p2x2::scheme_1, /*&p2x2::scheme_2, &p2x2::scheme_3, &p2x2::scheme_4,&p2x2::scheme_5, &p2x2::scheme_6, &p2x2::scheme_7,
                         &p2x2::scheme_8, &p2x2::scheme_9, &p2x2::scheme_10, &p2x2::scheme_11, 
                        /* &p2x2::scheme_12, &p2x2::scheme_13,  &p2x2::scheme_14,  &p2x2::scheme_15,*/ /*&p2x2::scheme_1_d,
                        &p2x2::scheme_2_d, &p2x2::scheme_3_d, &p2x2::scheme_4_d, 
@@ -35,7 +36,7 @@ inline Maybe_error<std::size_t> get_num_parameters(std::string model) {
 
 inline auto get_model_scheme(std::string modelName) {
     auto allmodels =  // Models_Library(&p2x2::scheme_1_d);
-        Models_Library(
+        Models_Library(&simple::scheme_CO,&simple::scheme_CCO,&simple::scheme_COC,
             &p2x2::scheme_1, /*&p2x2::scheme_2, &p2x2::scheme_3, &p2x2::scheme_4, &p2x2::scheme_5, &p2x2::scheme_6, &p2x2::scheme_7, &p2x2::scheme_8,
             &p2x2::scheme_9, &p2x2::scheme_10, &p2x2::scheme_11,
             /* &p2x2::scheme_12, &p2x2::scheme_13,  &p2x2::scheme_14,  &p2x2::scheme_15,*//* &p2x2::scheme_1_d, &p2x2::scheme_2_d,
@@ -47,7 +48,7 @@ inline auto get_model_scheme(std::string modelName) {
 
 inline void print_model_Priors(double covar) {
     auto allmodels =  //Models_Library(&p2x2::scheme_1_d);
-        Models_Library(
+        Models_Library(&simple::scheme_CO,&simple::scheme_CCO,&simple::scheme_COC,
             &p2x2::scheme_1, /*&p2x2::scheme_2, &p2x2::scheme_3, &p2x2::scheme_4, &p2x2::scheme_5, &p2x2::scheme_6, &p2x2::scheme_7, &p2x2::scheme_8,
             &p2x2::scheme_9, &p2x2::scheme_10, &p2x2::scheme_11,
             /* &p2x2::scheme_12, &p2x2::scheme_13,  &p2x2::scheme_14,  &p2x2::scheme_15,*//* &p2x2::scheme_1_d, &p2x2::scheme_2_d,

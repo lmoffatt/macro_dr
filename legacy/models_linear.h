@@ -47,7 +47,7 @@ struct Model_Patch {
 
         auto& model_name() const { return m_name; }
 
-        std::variant<std::monostate, Model*> operator[](const std::string& name) {
+        std::variant<std::monostate, Model const*> operator[](const std::string& name) const {
             if (name == m_name)
                 return this;
             else
@@ -116,6 +116,12 @@ struct Model_Patch {
                                        std::tuple_element_t<1, decltype(std::declval<F&&>()())>>;
 };
 
+struct Model0 : public Model_Patch<Model0> {};
+struct Model1 : public Model_Patch<Model1> {};
+
+struct Allost1 : public Model_Patch<Allost1> {};
+
+
 template <class Id, class F, class Finv>
 auto add_Patch_inactivation_to_model(typename Model_Patch<Id>::template Model<F, Finv> const& model,
                                      double inactivation_value,
@@ -180,6 +186,7 @@ auto add_Patch_inactivation_to_model(typename Model_Patch<Id>::template Model<F,
                 std::move(tr_param));
         });
 }
+
 
 template <class... Ms>
 class Models_Library {

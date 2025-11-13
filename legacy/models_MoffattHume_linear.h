@@ -6,14 +6,10 @@
 namespace macrodr::p2x2 {
 
 
-struct Model0 : public Model_Patch<Model0> {};
-struct Model1 : public Model_Patch<Model1> {};
-
-struct Allost1 : public Model_Patch<Allost1> {};
 
 class Model00_7;
 
-static auto scheme_1 = Model0::Model("scheme_1", []() {
+static const auto scheme_1 = Model0::Model("scheme_1", []() {
     auto names_model =
         std::vector<std::string>{"kon", "koff", "gating_on", "gating_off", "unitary_current"};
     auto names_other = std::vector<std::string>{"Current_Noise", "Pink_Noise", "Proportional_Noise",
@@ -127,7 +123,7 @@ static auto scheme_1 = Model0::Model("scheme_1", []() {
         std::move(tr_param));
 });
 
-static auto scheme_2 = Model0::Model("scheme_2", []() {
+static const auto scheme_2 = Model0::Model("scheme_2", []() {
     auto names_model = std::vector<std::string>{
         "kon", "koff", "flipping_on", "flipping_off", "gating_on", "gating_off", "unitary_current"};
     auto names_other = std::vector<std::string>{"Current_Noise", "Pink_Noise", "Proportional_Noise",
@@ -246,7 +242,7 @@ static auto scheme_2 = Model0::Model("scheme_2", []() {
         std::move(tr_param));
 });
 
-static auto scheme_3 = Model0::Model("scheme_3", []() {
+static const auto scheme_3 = Model0::Model("scheme_3", []() {
     auto names_model = std::vector<std::string>{"kon_0",
                                                 "koff_0",
                                                 "kon_1",
@@ -438,7 +434,7 @@ static auto scheme_3 = Model0::Model("scheme_3", []() {
         std::move(tr_param));
 });
 
-static auto scheme_4 = Model0::Model("scheme_4", []() {
+static const auto scheme_4 = Model0::Model("scheme_4", []() {
     auto names_model = std::vector<std::string>{"kon_0",
                                                 "koff_0",
                                                 "kon_1",
@@ -640,14 +636,14 @@ static auto scheme_4 = Model0::Model("scheme_4", []() {
         std::move(tr_param));
 });
 
-static auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(
+static const auto scheme_1_d = add_Patch_inactivation_to_model<Model0>(
     scheme_1, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(
+static const auto scheme_2_d = add_Patch_inactivation_to_model<Model0>(
     scheme_2, 1e-5, var::MyTranformations::from_string("Log10").value());
-static auto scheme_3_d = add_Patch_inactivation_to_model<Model0>(
+static const auto scheme_3_d = add_Patch_inactivation_to_model<Model0>(
     scheme_3, 1e-5, var::MyTranformations::from_string("Log10").value());
-static auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
+static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
     scheme_4, 1e-5, var::MyTranformations::from_string("Log10").value());
 
 #if 0
