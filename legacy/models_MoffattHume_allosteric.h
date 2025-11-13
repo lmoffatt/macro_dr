@@ -5,7 +5,8 @@
 #include "models_MoffattHume_linear.h"
 #include "variables.h"
 
-namespace macrodr {
+namespace macrodr::p2x2 {
+
 
 static auto scheme_5 = Allost1::Model("scheme_5", []() {
     auto v_binding = Conformational_change_label{"Binding"};
@@ -1598,90 +1599,9 @@ static auto scheme_15 = Allost1::Model("scheme_15", []() {
 static auto scheme_15_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_15, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-inline auto get_model(std::string modelName) {
-    auto allmodels =
-        // Models_Library(&model00, &model00_7, &model01, &model4, &model4_g_lin,
-        //                             &model6, &model6_no_inactivation,
-        //                             &model6_Eff_no_inactivation, &model7,
-        //                             &model8, &model9);
-        //Models_Library(&scheme_1_d);
-        Models_Library(&scheme_1, /*&scheme_2, &scheme_3, &scheme_4,&scheme_5, &scheme_6, &scheme_7,
-                        &scheme_8, &scheme_9, &scheme_10, &scheme_11, 
-                       /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*/ /*&scheme_1_d,
-                       &scheme_2_d, &scheme_3_d, &scheme_4_d, 
-                       &scheme_5_d, &scheme_6_d,
-                       &scheme_7_d,  &scheme_8_d,
-                       &scheme_9_d, */ &scheme_10_d /*, 
-                       &scheme_11_d/*,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d*/);
-    return allmodels[modelName];
-}
 
-inline Maybe_error<std::size_t> get_num_parameters(std::string model) {
-    auto maybe_model = get_model(model);
-    if (!maybe_model)
-        return maybe_model.error();
 
-    return std::visit(
-        [&](auto model0ptr) { return model0ptr->parameters_transformations().names().size(); },
-        maybe_model.value());
-}
 
-inline auto get_model_scheme(std::string modelName) {
-    auto allmodels =  // Models_Library(&scheme_1_d);
-        Models_Library(
-            &scheme_1, /*&scheme_2, &scheme_3, &scheme_4, &scheme_5, &scheme_6, &scheme_7, &scheme_8,
-            &scheme_9, &scheme_10, &scheme_11,
-            /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*//* &scheme_1_d, &scheme_2_d,
-            &scheme_3_d, &scheme_4_d, &scheme_5_d, &scheme_6_d, &scheme_7_d, &scheme_8_d,
-            &scheme_9_d, */&scheme_10_d/*,
-            &scheme_11_d /*,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d*/);
-    return allmodels[modelName];
-}
-
-inline void print_model_Priors(double covar) {
-    auto allmodels =  //Models_Library(&scheme_1_d);
-        Models_Library(
-            &scheme_1, /*&scheme_2, &scheme_3, &scheme_4, &scheme_5, &scheme_6, &scheme_7, &scheme_8,
-            &scheme_9, &scheme_10, &scheme_11,
-            /* &scheme_12, &scheme_13,  &scheme_14,  &scheme_15,*//* &scheme_1_d, &scheme_2_d,
-            &scheme_3_d, &scheme_4_d, &scheme_5_d, &scheme_6_d, &scheme_7_d, &scheme_8_d,
-            &scheme_9_d, */&scheme_10_d/*,
-            &scheme_11_d /*,  &scheme_12_d,  &scheme_13_d, &scheme_14_d,  &scheme_15_d*/);
-    //,
-    //
-    //                     &model6, &model6_no_inactivation,
-    //                     &model6_Eff_no_inactivation, &model7, &model8,
-    //                     &model9);
-
-    std::apply(
-        [&covar](auto... ptr_models) {
-            (
-                [&covar](auto modelp) {
-                    auto& tr_par = modelp->parameters_transformations();
-                    //   var::Parameters_Transformations tr_par(par,
-                    //   modelp->parameters_transformations());
-                    auto prior = var::prior_around(tr_par, covar);
-                    var::write_Parameters(tr_par.IdName() + "_par.csv", ",", tr_par);
-                    write_Prior(tr_par.IdName() + "_prior.csv", ",", prior);
-                }(ptr_models),
-                ...);
-        },
-        allmodels());
-}
-
-// inline auto get_model_old(std::string modelName) -> std::variant<
-//     /*decltype(&model4),*/ decltype(&model6_Eff_no_inactivation)> {
-//   using return_type = std::variant<
-//       /*decltype(&model4), */ decltype(&model6_Eff_no_inactivation)>;
-
-//   //  if (modelName=="model4")
-//   //     return return_type(&model4);
-//   // else
-//   return return_type(&model6_Eff_no_inactivation);
-//   // }
-
-using Model_v = decltype(get_model(std::string{}));
-
-}  // namespace macrodr
+}  // namespace macrodr::p2x2
 
 #endif  // MODELS_MOFFATTHUME_ALLOSTERIC_H

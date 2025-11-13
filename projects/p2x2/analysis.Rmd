@@ -12,12 +12,9 @@ library(jsonlite)
 ```
 
 ```{r}
-data<-fromJSON("runs/run-20251007-234831/snapshots/step_10.json")
-```
-```{r}
 library(jsonlite)
 
-path <- "runs/run-20251007-234831/snapshots/step_10.json"
+path <- "runs/run-20251031-190352/snapshots/step_11.json"
 
 txt  <- paste(readLines(path, warn = FALSE), collapse = "\n")
 # Reemplaza NaN/Inf (con o sin signo) por null
@@ -134,7 +131,7 @@ ddf <- flatten_dlogLikP(data)  # si prefieres 1-based
 
 ```{r}
 
-vars<-colnames(df)
+vars<-colnames(ddf)
 
 ```
 
@@ -145,11 +142,14 @@ library(tidyverse)
 for (v in vars)
 {
   print(
-    ggplot(df)+geom_point(aes(x = 1:nrow(df), y= !!sym( v) ))
+    ggplot(ddf)+geom_point(aes(x = 1:nrow(ddf), y= !!sym( v) ))
     
   )
 }  
 ```
+
+
+
 ```{r}
 ggplot(df)+geom_point(aes(x=1:nrow(df), y=logL))+geom_point(data=ddf,aes(x=1:nrow(df), y=logL, color="der"))
 ggplot(df)+geom_point(aes(x=1:nrow(df), y=elogL))+geom_point(data=ddf,aes(x=1:nrow(df), y=elogL, color="der"))
