@@ -8,7 +8,7 @@
 namespace macrodr::p2x2 {
 
 
-static auto scheme_5 = Allost1::Model("scheme_5", []() {
+static const auto scheme_5 = Allost1::Model("scheme_5", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_gating = Conformational_change_label{"Gating"};
 
@@ -129,10 +129,10 @@ static auto scheme_5 = Allost1::Model("scheme_5", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_5_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_5_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_5, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_6 = Allost1::Model("scheme_6", []() {
+static const auto scheme_6 = Allost1::Model("scheme_6", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_gating = Conformational_change_label{"Gating"};
@@ -275,10 +275,10 @@ static auto scheme_6 = Allost1::Model("scheme_6", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_6_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_6_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_6, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_7 = Allost1::Model("scheme_7", []() {
+static const auto scheme_7 = Allost1::Model("scheme_7", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_gating = Conformational_change_label{"Gating"};
@@ -421,10 +421,10 @@ static auto scheme_7 = Allost1::Model("scheme_7", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_7_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_7_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_7, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_8 = Allost1::Model("scheme_8", []() {
+static const auto scheme_8 = Allost1::Model("scheme_8", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
 
@@ -574,10 +574,10 @@ static auto scheme_8 = Allost1::Model("scheme_8", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_8_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_8_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_8, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_9 = Allost1::Model("scheme_9", []() {
+static const auto scheme_9 = Allost1::Model("scheme_9", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
 
@@ -712,10 +712,10 @@ static auto scheme_9 = Allost1::Model("scheme_9", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_9_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_9_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_9, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_10 = Allost1::Model("scheme_10", []() {
+static const auto scheme_10 = Allost1::Model("scheme_10", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
 
@@ -859,10 +859,10 @@ static auto scheme_10 = Allost1::Model("scheme_10", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_10_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_10_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_10, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_11 = Allost1::Model("scheme_11", []() {
+static const auto scheme_11 = Allost1::Model("scheme_11", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
 
@@ -1021,10 +1021,10 @@ static auto scheme_11 = Allost1::Model("scheme_11", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_11_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_11_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_11, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_12 = Allost1::Model("scheme_12", []() {
+static const auto scheme_12 = Allost1::Model("scheme_12", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_gating = Conformational_change_label{"Gating"};
@@ -1161,10 +1161,10 @@ static auto scheme_12 = Allost1::Model("scheme_12", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_12_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_12_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_12, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_13 = Allost1::Model("scheme_13", []() {
+static const auto scheme_13 = Allost1::Model("scheme_13", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_gating = Conformational_change_label{"Gating"};
@@ -1299,10 +1299,10 @@ static auto scheme_13 = Allost1::Model("scheme_13", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_13_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_13_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_13, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_14 = Allost1::Model("scheme_14", []() {
+static const auto scheme_14 = Allost1::Model("scheme_14", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_gating = Conformational_change_label{"Gating"};
@@ -1443,10 +1443,10 @@ static auto scheme_14 = Allost1::Model("scheme_14", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_14_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_14_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_14, 1e-5, var::MyTranformations::from_string("Log10").value());
 
-static auto scheme_15 = Allost1::Model("scheme_15", []() {
+static const auto scheme_15 = Allost1::Model("scheme_15", []() {
     auto v_binding = Conformational_change_label{"Binding"};
     auto v_rocking = Conformational_change_label{"Rocking"};
     auto v_gating = Conformational_change_label{"Gating"};
@@ -1596,7 +1596,7 @@ static auto scheme_15 = Allost1::Model("scheme_15", []() {
         p, names_vec, a_Q0_formula, a_Qa_formula, a_g_formula, std::move(tr_param));
 });
 
-static auto scheme_15_d = add_Patch_inactivation_to_model<Allost1>(
+static const auto scheme_15_d = add_Patch_inactivation_to_model<Allost1>(
     scheme_15, 1e-5, var::MyTranformations::from_string("Log10").value());
 
 
