@@ -1,26 +1,29 @@
 
 ---
-
 # MacroIR DSL Grammar Specification (BNF)
 # Status: DRAFT
-# Last Updated: 2025-07-17
+# Last Updated: 2025-11-14
 # Scope: untyped input syntax (prior to compilation)
 
 ```bnf
 
-<program>         ::= <statement>*                 
+<program>         ::= <statement>*
 # A program is a sequence of statements.
-# Example:     
+# Example:
 #   simulate(...)
 #   a = simulate(...)
 
 <statement>       ::= <assignment>
-                   | <function_call>
-                   | <identifier>
-                   | <literal>
-                   | <string_literal>
-                   | <argument_list>
+                    | <function_call>
+                    | <identifier>
+                    | <literal>
+                    | <string_literal>
+                    | <argument_list>
+                    | <vector_literal>
+                    | <tuple_literal>
 # Each line is parsed independently into one of the statement types.
+# Vector and tuple literals are allowed as top-level statements
+# for REPL-style exploration.
 
 <assignment>      ::= <identifier> "=" <expression>
 # Variable binding
@@ -35,15 +38,33 @@
 # .str() → "model=lin, parameters=values"
 
 <argument>        ::= <assignment>
-                   | <expression>
+                    | <expression>
 # Accepts either named or positional argument
 
 <expression>      ::= <literal>
-                   | <string_literal>
-                   | <identifier>
-                   | <function_call>
-                   | <argument_list>
-# General expression node (used in RHS)
+                    | <string_literal>
+                    | <identifier>
+                    | <function_call>
+                    | <argument_list>
+                    | <vector_literal>
+                    | <tuple_literal>
+# General expression node (used in RHS). Now includes vector and
+# tuple literals as first-class expressions.
+
+<vector_literal>  ::= "[" <expression_list>? "]"
+# Homogeneous collections (vectors/sets) are written with square brackets.
+# Example:
+#   [1, 2, 3]
+#   [likelihood(m1), likelihood(m2)]
+
+<tuple_literal>   ::= "{" <expression_list>? "}"
+# Heterogeneous positional collections (tuples/pairs) are written with braces.
+# Example:
+#   {model1, param_set1}
+#   {0.1, "fast"}
+
+<expression_list> ::= <expression> ("," <expression>)*
+# Generic comma-separated list of expressions used inside vectors and tuples.
 
 <literal>         ::= <number>
 <number>          ::= [0-9]+ ("." [0-9]+)?
@@ -57,17 +78,4 @@
 <identifier>      ::= [a-zA-Z_][a-zA-Z0-9_]*
 # Function names and variable references
 # .str() → "simulate", "Qdt", "beta1"
-```
-
----
-
-### ✅ Notes
-
-* This grammar directly corresponds to the structures defined in:
-
-  * `untyped_program`, `untyped_statement`, `untyped_function_evaluation`, `untyped_assignment`
-* Function arguments are structurally parsed and support nesting (e.g., `simulate(model=init("lin"))`)
-* Comments (`#`) are parsed and ignored outside of string literals
-
----
 
