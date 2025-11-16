@@ -1,6 +1,7 @@
 #ifndef LEXER_TYPED_H
 #define LEXER_TYPED_H
 //#include "grammar_typed.h"
+#include <algorithm>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -8,6 +9,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "grammar_Identifier.h"
 #include "literal_decode.h"
@@ -77,6 +79,12 @@ template <class Lexer, class Compiler, class T>
 class typed_expression;
 
 template <class Lexer, class Compiler, class T>
+class typed_vector_construction;
+
+template <class Lexer, class Compiler, class... T>
+class typed_tuple_construction;
+
+template <class Lexer, class Compiler, class T>
 class typed_identifier;
 
 template <class Lexer, class Compiler, class T>
@@ -142,9 +150,34 @@ class untyped_literal;
 template <class Lexer, class Compiler>
 class untyped_function_evaluation;
 
+template <class Lexer, class Compiler>
+class untyped_vector_construction;
+
+template <class Lexer, class Compiler>
+class untyped_tuple_construction;
+
 template <class Lexer, class Compiler, class P, class T>
     requires(std::is_same_v<Maybe_error<T>, std::invoke_result_t<P, T>>)
 class typed_predicate_evaluation;
+
+
+template <class Lexer, class Compiler,  class... Ts>
+ class tuple_compiler;
+
+ template<class Lexer, class Compiler,class T>
+ struct tuple_compiler_impl{
+    using type=T;
+ };
+
+template<class Lexer, class Compiler,class... Ts>
+ struct tuple_compiler_impl<Lexer, Compiler,std::tuple<Ts...>>{
+    using type=tuple_compiler<Lexer,Compiler,Ts...>;
+ };
+
+ template<class Lexer,class Compiler, class T>
+ using tuple_compiler_t=typename tuple_compiler_impl<Lexer,Compiler, T>::type;
+
+
 
 template <class Lexer, class Compiler>
 class base_Identifier_compiler {
@@ -228,7 +261,8 @@ Maybe_unique<typed_expression<Lexer, Compiler, T>> get_typed_expresion(
     }
     return get_typed_expresion<T, Ss...>(expr);
 }
-
+template <class Lexer, class Compiler, class T>
+class vector_compiler ;
 template <class Lexer, class Compiler, class T>
 class field_compiler {
     Identifier<Lexer> m_id;
@@ -291,9 +325,30 @@ class field_compiler {
         auto exp_ptr = dynamic_cast<typed_expression<Lexer, Compiler, T> const*>(expr.get());
         if (exp_ptr != nullptr) {
             return dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.release());
-        } else
-            return error_message("type mismatch");
+        }
+        return error_message(t_arg.str(), "is a function evalution but not of type",
+                             type_name<T>());
     }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_vector_construction<Lexer, Compiler> const& t_arg) const 
+        requires(is_of_this_template_type_v<T,std::vector>)
+        {
+        auto environment_local_copy = cm;
+        return vector_compiler<Lexer,Compiler,typename T::value_type>{}.compile_vector_construction(
+            environment_local_copy, t_arg.args());
+    }
+
+[[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_tuple_construction<Lexer, Compiler> const& t_arg) const 
+        requires(is_of_this_template_type_v<T,std::tuple>)
+        {
+        auto environment_local_copy = cm;
+        return tuple_compiler_t<Lexer,Compiler,T>{}.compile_tuple_construction(environment_local_copy, t_arg);
+    }
+
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& cm,
@@ -303,15 +358,29 @@ class field_compiler {
             return compile_this_argument(cm, *ptr);
         }
         auto li_ptr = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg);
-        if (li_ptr != nullptr)
+        if (li_ptr != nullptr) {
             return compile_this_argument(cm, *li_ptr);
-        else {
-            auto f_ptr = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg);
-            if (f_ptr != nullptr)
-                return compile_this_argument(cm, *f_ptr);
-            else
-                return error_message("nj");
         }
+        if (auto f_ptr =
+                dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_argument(cm, *f_ptr);
+        }
+        if constexpr (is_of_this_template_type_v<T, std::vector>) {
+            if (auto fn =
+                    dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
+                return compile_this_argument(cm, *fn);
+            }
+        }
+        if constexpr (is_of_this_template_type_v<T, std::tuple>) {
+            if (auto fn =
+                    dynamic_cast<untyped_tuple_construction<Lexer, Compiler> const*>(&t_arg)) {
+                return compile_this_argument(cm, *fn);
+            }
+        }
+
+        return error_message(t_arg.str(),
+                             " is an untyped expression that is not an identifier nor a literal  "
+                             "nor a function evaluation");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
@@ -341,6 +410,9 @@ class field_compiler {
     }
 };
 
+
+
+
 template <class Lexer, class Compiler, class T>
 class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
     Identifier<Lexer> m_id;
@@ -352,8 +424,8 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
     [[nodiscard]] auto& id() const { return m_id; }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
-                          untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        compile_this_argument(Environment<Lexer, Compiler> const& cm,
+                              untyped_identifier<Lexer, Compiler> const& t_arg) const {
         auto maybe_stored = cm.get(t_arg());
         if (maybe_stored) {
             auto stored = maybe_stored.value();
@@ -369,22 +441,24 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
-                          untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
-        return error_message(std::string{"argument '"} + id()() +
-                             "' expects a reference to an environment variable; literals are not allowed");
+        compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} + id()() +
+            "' expects a reference to an environment variable; literals are not allowed");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
-                          untyped_function_evaluation<Lexer, Compiler> const& /*t_arg*/) const {
-        return error_message(std::string{"argument '"} + id()() +
-                             "' expects a reference to an environment variable; function calls are not allowed");
+        compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_function_evaluation<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} + id()() +
+            "' expects a reference to an environment variable; function calls are not allowed");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
-                          untyped_expression<Lexer, Compiler> const& t_arg) const {
+        compile_this_argument(Environment<Lexer, Compiler> const& cm,
+                              untyped_expression<Lexer, Compiler> const& t_arg) const {
         if (auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg)) {
             return compile_this_argument(cm, *ptr);
         }
@@ -394,13 +468,22 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
         if (auto fn = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg)) {
             return compile_this_argument(cm, *fn);
         }
-        return error_message("invalid argument: expected identifier expression for reference parameter");
+        if (auto fn = dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_argument(cm, *fn);
+        }
+        if (auto fn = dynamic_cast<untyped_tuple_construction<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_argument(cm, *fn);
+        }
+        return error_message(
+            "invalid argument: expected identifier expression for reference parameter");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
-                          std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
-        if (auto assignment = dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
+        compile_this_argument(
+            Environment<Lexer, Compiler> const& cm,
+            std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
+        if (auto assignment =
+                dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
             bool congruent = assignment->id()()() == this->id()();
             if (!congruent) {
                 return error_message("the argument id expected: " + id()() +
@@ -426,8 +509,8 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
     [[nodiscard]] auto& id() const { return m_id; }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
-                          untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        compile_this_argument(Environment<Lexer, Compiler> const& cm,
+                              untyped_identifier<Lexer, Compiler> const& t_arg) const {
         auto maybe_stored = cm.get(t_arg());
         if (maybe_stored) {
             auto stored = maybe_stored.value();
@@ -443,22 +526,24 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
-                          untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
-        return error_message(std::string{"argument '"} + id()() +
-                             "' expects a reference to an environment variable; literals are not allowed");
+        compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} + id()() +
+            "' expects a reference to an environment variable; literals are not allowed");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
-                          untyped_function_evaluation<Lexer, Compiler> const& /*t_arg*/) const {
-        return error_message(std::string{"argument '"} + id()() +
-                             "' expects a reference to an environment variable; function calls are not allowed");
+        compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_function_evaluation<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} + id()() +
+            "' expects a reference to an environment variable; function calls are not allowed");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
-                          untyped_expression<Lexer, Compiler> const& t_arg) const {
+        compile_this_argument(Environment<Lexer, Compiler> const& cm,
+                              untyped_expression<Lexer, Compiler> const& t_arg) const {
         if (auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg)) {
             return compile_this_argument(cm, *ptr);
         }
@@ -468,13 +553,16 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
         if (auto fn = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg)) {
             return compile_this_argument(cm, *fn);
         }
-        return error_message("invalid argument: expected identifier expression for reference parameter");
+        return error_message(
+            "invalid argument: expected identifier expression for reference parameter");
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
-    compile_this_argument(Environment<Lexer, Compiler> const& cm,
-                          std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
-        if (auto assignment = dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
+        compile_this_argument(
+            Environment<Lexer, Compiler> const& cm,
+            std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
+        if (auto assignment =
+                dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
             bool congruent = assignment->id()()() == this->id()();
             if (!congruent) {
                 return error_message("the argument id expected: " + id()() +
@@ -488,6 +576,290 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
         return error_message("invalid argument: expected assignment or expression");
     }
 };
+
+
+template <class Lexer, class Compiler, class T>
+struct element_compiler {
+   
+   public:
+   
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        auto Maybe_id = cm.get_Identifier(t_arg());
+        if (!Maybe_id) {
+            return Maybe_id.error();
+        }
+        auto expr = std::move(Maybe_id.value());
+        auto ptr = dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.get());
+        if (ptr != nullptr) {
+            return dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.release());
+        }
+        const auto expected = type_name<T>();
+        const auto actual = expr->type_name();
+        return error_message(std::string("unexpected type: expected ") + expected + ", got " +
+                             actual);
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_literal<Lexer, Compiler> const& t_arg) const
+        requires literal_decodable<T>::value
+    {
+        auto maybe_value = from_literal<T>(t_arg());
+        if (!maybe_value) {
+            return maybe_value.error();
+        }
+        return new typed_literal<Lexer, Compiler, T>(std::move(maybe_value.value()));
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
+        requires(!literal_decodable<T>::value)
+    {
+        return error_message(std::string{"literal arguments are not supported for type "} +
+                             type_name<T>() + "; use a variable or JSON helper function");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
+        auto environment_local_copy = cm;
+        auto Maybe_expr = t_arg.compile_expression(environment_local_copy);
+
+        if (!Maybe_expr) {
+            return Maybe_expr.error();
+        }
+        auto expr = std::move(Maybe_expr.value());
+        auto exp_ptr = dynamic_cast<typed_expression<Lexer, Compiler, T> const*>(expr.get());
+        if (exp_ptr != nullptr) {
+            return dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.release());
+        }
+        return error_message(t_arg.str(), "is a function evalution but not of type",
+                             type_name<T>());
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_vector_construction<Lexer, Compiler> const& t_arg) const 
+        requires(is_of_this_template_type_v<T,std::vector>)
+        {
+        auto environment_local_copy = cm;
+        return vector_compiler<Lexer,Compiler,typename T::value_type>{}.compile_vector_construction(environment_local_copy, t_arg);
+    }
+
+[[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_tuple_construction<Lexer, Compiler> const& t_arg) const 
+        requires(is_of_this_template_type_v<T,std::tuple>)
+        {
+        auto environment_local_copy = cm;
+        return tuple_compiler_t<Lexer,Compiler,T>{}.compile_tuple_construction(environment_local_copy, t_arg);
+    }
+
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_expression<Lexer, Compiler> const& t_arg) const {
+        auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg);
+        if (ptr != nullptr) {
+            return compile_this_element(cm, *ptr);
+        }
+        auto li_ptr = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg);
+        if (li_ptr != nullptr) {
+            return compile_this_element(cm, *li_ptr);
+        }
+        if (auto f_ptr =
+                dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *f_ptr);
+        }
+        if constexpr (is_of_this_template_type_v<T, std::vector>) {
+            if (auto fn =
+                    dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
+                return compile_this_element(cm, *fn);
+            }
+        }
+        if constexpr (is_of_this_template_type_v<T, std::tuple>) {
+            if (auto fn =
+                    dynamic_cast<untyped_tuple_construction<Lexer, Compiler> const*>(&t_arg)) {
+                return compile_this_element(cm, *fn);
+            }
+        }
+
+        return error_message(t_arg.str(),
+                             " is an untyped expression that is not an identifier nor a literal  "
+                             "nor a function evaluation");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
+        auto ptr = dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get());
+        if (ptr != nullptr) {
+            auto out = compile_this_element(cm, ptr->expression());
+            if (!out) {
+                return error_message(std::string("\n element  ") + ptr->id()()() + ": \n" +
+                                     out.error()());
+            }
+            return out;
+        }
+        auto ptr2 = dynamic_cast<untyped_expression<Lexer, Compiler> const*>(t_arg.get());
+
+        if (ptr2 != nullptr) {
+            return compile_this_element(cm, *ptr2);
+        }
+        return error_message(
+            "if it is  neither an assigment nor an expression, what the fuck is it?");
+    }
+};
+
+template <class Lexer, class Compiler, class T>
+class element_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
+   
+   public:
+   
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& cm,
+                              untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        auto maybe_stored = cm.get(t_arg());
+        if (maybe_stored) {
+            auto stored = maybe_stored.value();
+            auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
+            if (!literal) {
+                const auto actual = stored ? stored->type_name() : std::string{"<null>"};
+                return error_message(std::string{"identifier '"} + t_arg()() +
+                                     "' cannot bind to '" + type_name<const T&>() +
+                                     "'; current value has type " + actual);
+            }
+        }
+        return new typed_identifier_ref_const<Lexer, Compiler, T>(t_arg());
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"}  +
+            "' expects a reference to an environment variable; literals are not allowed");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_function_evaluation<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} + 
+            "' expects a reference to an environment variable; function calls are not allowed");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& cm,
+                              untyped_expression<Lexer, Compiler> const& t_arg) const {
+        if (auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *ptr);
+        }
+        if (auto lit = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *lit);
+        }
+        if (auto fn = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *fn);
+        }
+        if (auto fn = dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *fn);
+        }
+        if (auto fn = dynamic_cast<untyped_tuple_construction<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *fn);
+        }
+        return error_message(
+            "invalid argument: expected identifier expression for reference parameter");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
+        compile_this_element(
+            Environment<Lexer, Compiler> const& cm,
+            std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
+        if (auto assignment =
+                dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
+            return compile_this_element(cm, assignment->expression());
+        }
+        if (auto expr = dynamic_cast<untyped_expression<Lexer, Compiler> const*>(t_arg.get())) {
+            return compile_this_element(cm, *expr);
+        }
+        return error_message("invalid argument: expected assignment or expression");
+    }
+};
+
+template <class Lexer, class Compiler, class T>
+class element_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
+   
+   public:
+    
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& cm,
+                              untyped_identifier<Lexer, Compiler> const& t_arg) const {
+        auto maybe_stored = cm.get(t_arg());
+        if (maybe_stored) {
+            auto stored = maybe_stored.value();
+            auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
+            if (!literal) {
+                const auto actual = stored ? stored->type_name() : std::string{"<null>"};
+                return error_message(std::string{"identifier '"} + t_arg()() +
+                                     "' cannot bind to '" + type_name<T&>() +
+                                     "'; current value has type " + actual);
+            }
+        }
+        return new typed_identifier_ref<Lexer, Compiler, T>(t_arg());
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_literal<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} + 
+            "' expects a reference to an environment variable; literals are not allowed");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& /*cm*/,
+                              untyped_function_evaluation<Lexer, Compiler> const& /*t_arg*/) const {
+        return error_message(
+            std::string{"argument '"} +
+            "' expects a reference to an environment variable; function calls are not allowed");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
+        compile_this_element(Environment<Lexer, Compiler> const& cm,
+                              untyped_expression<Lexer, Compiler> const& t_arg) const {
+        if (auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *ptr);
+        }
+        if (auto lit = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *lit);
+        }
+        if (auto fn = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_element(cm, *fn);
+        }
+        return error_message(
+            "invalid argument: expected identifier expression for reference parameter");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
+        compile_this_element(
+            Environment<Lexer, Compiler> const& cm,
+            std::unique_ptr<untyped_statement<Lexer, Compiler>> const& t_arg) const {
+        if (auto assignment =
+                dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
+            return compile_this_element(cm, assignment->expression());
+        }
+        if (auto expr = dynamic_cast<untyped_expression<Lexer, Compiler> const*>(t_arg.get())) {
+            return compile_this_element(cm, *expr);
+        }
+        return error_message("invalid argument: expected assignment or expression");
+    }
+};
+
+
+
 
 template <class Lexer, class Compiler, class T, class P>
     requires(std::is_same_v<std::invoke_result_t<P, T>, Maybe_error<T>>)
@@ -567,16 +939,22 @@ class field_compiler_precondition {
             return compile_this_argument(cm, *ptr);
         }
         auto li_ptr = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg);
-        if (li_ptr != nullptr)
+        if (li_ptr != nullptr) {
             return compile_this_argument(cm, *li_ptr);
-        else {
-            auto f_ptr = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg);
-            if (f_ptr != nullptr)
-                return compile_this_argument(cm, *f_ptr);
-            else
-                return error_message(
-                    "unexpected node: expected identifier, literal, or function call");
         }
+        auto f_ptr = dynamic_cast<untyped_function_evaluation<Lexer, Compiler> const*>(&t_arg);
+        if (f_ptr != nullptr) {
+            return compile_this_argument(cm, *f_ptr);
+        }
+        auto v_ptr = dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg);
+        if (v_ptr != nullptr) {
+            return compile_this_argument(cm, *v_ptr);
+        }
+        auto t_ptr = dynamic_cast<untyped_tuple_construction<Lexer, Compiler> const*>(&t_arg);
+        if (t_ptr != nullptr) {
+            return compile_this_argument(cm, *t_ptr);
+        }
+        return error_message("unexpected node: expected identifier, literal, or function call");
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
@@ -619,7 +997,8 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
         using Base = std::remove_reference_t<Param>;
         using StorageType = std::remove_reference_t<Storage>;
         if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
-                      std::is_same_v<StorageType, std::reference_wrapper<std::remove_const_t<Base>>>) {
+                      std::is_same_v<StorageType,
+                                     std::reference_wrapper<std::remove_const_t<Base>>>) {
             return static_cast<Param>(storage.get());
         } else if constexpr (std::is_lvalue_reference_v<Param>) {
             if constexpr (detail::is_unique_ptr<StorageType>::value) {
@@ -659,8 +1038,7 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     }
 
     template <std::size_t... Is>
-    [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] [[nodiscard]] Maybe_unique<
-        base_typed_expression<Lexer, Compiler>>
+    [[nodiscard]] Maybe_unique<base_typed_expression<Lexer, Compiler>>
         compile_function_evaluation_impl(std::index_sequence<Is...> /*unused*/,
                                          Environment<Lexer, Compiler> const& cm,
                                          const untyped_argument_list<Lexer, Compiler>& args) const {
@@ -708,6 +1086,98 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
         if constexpr (!std::is_void_v<Return>) {
             registry.template ensure_type_registered<Return>();
         }
+    }
+};
+
+
+template <class Lexer, class Compiler, class... Ts>
+class tuple_compiler {
+
+    // Holder types used in evaluation (same rule as for function arguments)
+    template <class U>
+    using storage_t = detail::function_argument_storage_t<U>;
+
+    using arg_compilers_t =
+        std::tuple<element_compiler<Lexer, Compiler, storage_t<Ts>>...>;
+
+    arg_compilers_t m_args;
+
+    template <std::size_t... Is>
+    [[nodiscard]] Maybe_unique<
+        typed_expression<Lexer, Compiler, std::tuple<Ts...>>>
+    compile_impl(std::index_sequence<Is...>,
+                 Environment<Lexer, Compiler> const& env,
+                 const untyped_argument_list<Lexer, Compiler>& args) const
+    {
+        if (args.arg().size() != sizeof...(Is)) {
+            return error_message("tuple arity mismatch: expected ",
+                                 sizeof...(Is), ", got ", args.arg().size());
+        }
+
+        // Compile each element → unique_ptr<typed_expression<storage_t<T>>>
+        auto maybe_args =
+            promote_Maybe_error(std::tuple(
+                std::get<Is>(m_args).compile_this_element(env, args.arg()[Is])...
+            ));
+
+        if (!maybe_args) return maybe_args.error();
+
+        // Construct typed_tuple_construction<Ts...>
+        return std::make_unique<
+            typed_tuple_construction<Lexer, Compiler, Ts...>>(
+                std::move(maybe_args.value()));
+    }
+
+public:
+
+    [[nodiscard]] Maybe_unique<
+        typed_expression<Lexer, Compiler, std::tuple<Ts...>>>
+    compile_tuple_construction(Environment<Lexer, Compiler> const& env,
+                               const untyped_tuple_construction<Lexer, Compiler>& t) const
+    {
+        return compile_impl(std::index_sequence_for<Ts...>{}, env, t.args());
+    }
+};
+
+
+
+template <class Lexer, class Compiler, class T>
+class vector_compiler {
+    // Holder type for a single element
+    template <class K>
+    using storage_t = detail::function_argument_storage_t<K>;
+
+    using element_compiler_t = element_compiler<Lexer, Compiler, storage_t<T>>;
+
+    element_compiler_t m_elem;
+
+   public:
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::vector<T>>>
+    compile_vector_construction(Environment<Lexer, Compiler> const& cm,
+                                const untyped_argument_list<Lexer, Compiler>& args) const {
+        using expr_t = typed_expression<Lexer, Compiler, storage_t<T>>;
+
+        std::vector<std::unique_ptr<expr_t>> compiled;
+        compiled.reserve(args.arg().size());
+
+        std::string err;
+
+        auto n = args.arg().size();
+        for (std::size_t i = 0; i < n; ++i) {
+            auto maybe_elem = m_elem.compile_this_element(cm, args.arg()[i]);
+            if (!maybe_elem) {
+                err += std::to_string(i) + ": " + maybe_elem.error()();
+            } else {
+                compiled.emplace_back(std::move(maybe_elem.value()));
+            }
+        }
+
+        if (!err.empty()) {
+            return error_message(err);
+        }
+
+        return std::make_unique<typed_vector_construction<Lexer, Compiler, T>>(
+            std::move(compiled));
     }
 };
 

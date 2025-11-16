@@ -1,0 +1,47 @@
+model = load_model("scheme_CO")
+
+parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
+
+
+experiment = load_experiment(
+    filename = "data/experiments/Moffatt_Hume_2007_ATP_time_idealized_2.txt",
+    frequency_of_sampling = 50e3,
+    initial_ATP = 0.0)
+
+observations = load_observations(
+    filename = "data/experiments/Moffatt_Hume_2007_ATP_time_recording.txt")
+
+par_values = get_standard_parameter_values(parameter)
+
+
+model_str="scheme_1"
+
+
+
+simulation  = simulate(model= model, parameter_values = par_values, experiment = experiment,
+                         observations = observations, number_of_substeps = 10, seed = 42)
+
+dlogLik = calc_dlikelihood(model = model, parameters = par_values, experiment = experiment, data = simulation,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1, taylor_variance_correction = 0)
+
+logLik = calc_likelihood(model = model, parameters = par_values, experiment = experiment, data = simulation,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1, taylor_variance_correction = 0)
+
+difflogLik = calc_diff_likelihood(model = model, parameters = par_values, experiment = experiment, data = simulation,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1, taylor_variance_correction = 0, delta_param =1e-5)
+
+
+
+
+logLikP = calc_likelihood_predictions(model = model, parameters = par_values, experiment = experiment, data = simulation,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1, taylor_variance_correction = 0)
+
+
+dlogLikP = calc_dlikelihood_predictions(model = model_str, parameters = par_values, experiment = experiment, data = simulation,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1, taylor_variance_correction = 0)
+

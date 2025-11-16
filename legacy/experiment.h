@@ -91,6 +91,31 @@ using Experiment =
 template <class Parameter>
 class save_Parameter;
 namespace macrodr {
+
+inline Experiment build_experiment(std::vector<std::pair<std::size_t,std::vector<ATP_step>>> repetitions,
+    Frequency_of_Sampling fs,
+    initial_ATP_concentration atp0, 
+    Time t0)
+{
+     double sample_time=1.0/fs();
+     Time t=t0; 
+     Recording_conditions out;
+     for (auto & repetition : repetitions)
+     {
+        auto n_rep=repetition.first; 
+        auto& step= repetition.second; 
+        for (std::size_t j=0; j<n_rep; ++j){
+            out().emplace_back(t,step); 
+            for (auto & k : step)
+            {
+                t()=t()+get<number_of_samples>(k)()*sample_time;
+            }
+        }
+     }
+     return {out,fs,atp0};   
+}
+
+
 inline auto& extract_double(std::istream& is, double& r, char sep) {
     std::stringstream ss;
     is.get(*ss.rdbuf(), sep);

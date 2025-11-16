@@ -1,55 +1,40 @@
-Based on the parsing and grammar logic implemented in `grammar_untyped.h` and `lexer_untyped.h`, here is a faithful draft of `dsl/grammar.bnf` that matches the actual supported syntax in MacroIR today:
-
----
-
-```bnf
-# MacroIR DSL Grammar Specification (BNF)
-# Status: DRAFT
-# Last Updated: 2025-07-17
-
-<program>         ::= <statement>*                       # Multiple statements per program
+<program>         ::= <statement>*
 
 <statement>       ::= <assignment>
-                   | <function_call>
-                   | <identifier>
-                   | <literal>
-                   | <string_literal>
-                   | <argument_list>
+                    | <function_call>
+                    | <identifier>
+                    | <literal>
+                    | <string_literal>
+                    | <argument_list>
+                    | <vector_literal>
+                    | <tuple_literal>
 
-<assignment>      ::= <identifier> "=" <expression>      # a = f(...)
+<assignment>      ::= <identifier> "=" <expression>
 
-<function_call>   ::= <identifier> "(" <argument_list>? ")"  # simulate(...)
+<function_call>   ::= <identifier> "(" <argument_list>? ")"
 
-<argument_list>   ::= <argument> ("," <argument>)*       # supports keyword args
+<argument_list>   ::= <argument> ("," <argument>)*
 
 <argument>        ::= <assignment>
-                   | <expression>
+                    | <expression>
 
 <expression>      ::= <literal>
-                   | <string_literal>
-                   | <identifier>
-                   | <function_call>
-                   | <argument_list>
+                    | <string_literal>
+                    | <identifier>
+                    | <function_call>
+                    | <argument_list>
+                    | <vector_literal>
+                    | <tuple_literal>
+
+<vector_literal>  ::= "[" <expression_list>? "]"
+
+<tuple_literal>   ::= "{" <expression_list>? "}"
+
+<expression_list> ::= <expression> ("," <expression>)*
 
 <literal>         ::= <number>
-<number>          ::= [0-9]+ ("." [0-9]+)?                # supports floats
+<number>          ::= [0-9]+ ("." [0-9]+)?
 
-<string_literal>  ::= "\"" .*? "\""                      # quoted string
+<string_literal>  ::= "\"" .*? "\""
 
-<identifier>      ::= [a-zA-Z_][a-zA-Z0-9_]*              # function names, variable names
-```
-
----
-
-### 🧠 Observed Implementation Constraints
-
-* Argument lists can contain both positional expressions and keyword assignments.
-* Nested expressions are supported (e.g., `simulate(model=init("lin"))`).
-* Literals include numeric and string types; identifiers and function calls are contextually resolved.
-* No control flow, blocks, or multi-line structures yet.
-* Comments (`# ...`) are parsed but ignored.
-
----
-
-Would you like this BNF version embedded with comments for each rule and a `.str()` rendering example per case?
-
+<identifier>      ::= [a-zA-Z_][a-zA-Z0-9_]*

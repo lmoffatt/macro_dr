@@ -60,6 +60,13 @@ dsl::Compiler make_compiler_new() {
                                             &macrodr::cmd::load_experiment, "filename",
                                             "frequency_of_sampling", "initial_ATP"));
 
+    cm.push_function(
+        "create_experiment",
+        dsl::to_typed_function<std::vector<std::tuple<std::size_t, std::size_t, double>>, double,
+                               double, double>(&macrodr::cmd::create_experiment,
+                                               "experiment_structure", "frequency_of_sampling",
+                                               "initial_ATP", "initial_time"));
+
     cm.push_function("load_observations", dsl::to_typed_function<std::string>(
                                               &macrodr::cmd::load_recording, "filename"));
 

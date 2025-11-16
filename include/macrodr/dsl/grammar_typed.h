@@ -674,6 +674,212 @@ class typed_predicate_evaluation : public typed_expression<Lexer, Compiler, T> {
     }
 };
 
+
+template <class Lexer, class Compiler, class T>
+class typed_vector_construction
+    : public typed_expression<Lexer, Compiler, std::vector<T>> {
+
+    // Internal holder type (same rule as for function/tuple arguments)
+    template <class U>
+    using storage_t = detail::function_argument_storage_t<U>;
+
+    // Expressions producing storage_t<T> elements
+    std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>> m_args;
+
+    // Same adaptation logic as function_compiler / typed_tuple_construction
+    template <class Param, class Storage>
+    static decltype(auto) adapt(Storage& storage) {
+        using Base        = std::remove_reference_t<Param>;
+        using StorageType = std::remove_reference_t<Storage>;
+
+        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
+                      std::is_same_v<StorageType, std::reference_wrapper<std::remove_const_t<Base>>>) {
+            return static_cast<Param>(storage.get());
+        } else if constexpr (std::is_lvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Param>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Param>(*storage);
+            } else {
+                if constexpr (std::is_const_v<Base>) {
+                    return static_cast<const Base&>(storage);
+                } else {
+                    return static_cast<Base&>(storage);
+                }
+            }
+        } else if constexpr (std::is_rvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Base&&>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Base&&>(*storage);
+            } else {
+                return static_cast<Base&&>(storage);
+            }
+        } else {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return std::move(storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return storage;
+            } else {
+                return static_cast<Param>(std::move(storage));
+            }
+        }
+    }
+
+   public:
+    using storage_args =
+        std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>>;
+
+    explicit typed_vector_construction(storage_args&& args)
+        : m_args{std::move(args)} {}
+
+    typed_vector_construction(storage_args const& args)
+        : m_args{clone_vector(args)} {}
+
+    ~typed_vector_construction() override = default;
+
+    typed_vector_construction(const typed_vector_construction& other)
+        : m_args{clone_vector(other.m_args)} {}
+
+    typed_vector_construction(typed_vector_construction&&) noexcept = default;
+    typed_vector_construction& operator=(typed_vector_construction&&) noexcept = default;
+
+    typed_vector_construction& operator=(const typed_vector_construction& other) {
+        if (this != &other) {
+            m_args = clone_vector(other.m_args);
+        }
+        return *this;
+    }
+
+    [[nodiscard]] typed_vector_construction* clone() const override {
+        return new typed_vector_construction(*this);
+    }
+
+    [[nodiscard]] Maybe_error<std::vector<T>>
+    run(const Environment<Lexer, Compiler>& env) const override {
+        std::vector<T> out;
+        out.reserve(m_args.size());
+        std::string err;
+
+        for (std::size_t i = 0; i < m_args.size(); ++i) {
+            auto maybe_elem = m_args[i]->run(env);  // Maybe_error<storage_t<T>>
+            if (!maybe_elem) {
+                err += std::to_string(i) + ": " + maybe_elem.error()();
+            } else {
+                out.emplace_back(adapt<T>(maybe_elem.value()));
+            }
+        }
+
+        if (!err.empty()) {
+            return error_message(err);
+        }
+        return out;
+    }
+};
+
+
+template <class Lexer, class Compiler, class... Ts>
+class typed_tuple_construction
+    : public typed_expression<Lexer, Compiler, std::tuple<Ts...>> {
+
+    // Internal holder type (same rule as function_compiler)
+    template <class U>
+    using storage_t = detail::function_argument_storage_t<U>;
+
+    // Store expressions producing storage_t<Ts>...
+    std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<Ts>>>...> m_args;
+
+    // Same adaptation logic as in function_compiler
+    template <class Param, class Storage>
+    static decltype(auto) adapt(Storage& storage) {
+        using Base        = std::remove_reference_t<Param>;
+        using StorageType = std::remove_reference_t<Storage>;
+
+        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
+                      std::is_same_v<StorageType, std::reference_wrapper<std::remove_const_t<Base>>>) {
+            return static_cast<Param>(storage.get());
+        } else if constexpr (std::is_lvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Param>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Param>(*storage);
+            } else {
+                if constexpr (std::is_const_v<Base>) {
+                    return static_cast<const Base&>(storage);
+                } else {
+                    return static_cast<Base&>(storage);
+                }
+            }
+        } else if constexpr (std::is_rvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Base&&>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Base&&>(*storage);
+            } else {
+                return static_cast<Base&&>(storage);
+            }
+        } else {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return std::move(storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return storage;
+            } else {
+                return static_cast<Param>(std::move(storage));
+            }
+        }
+    }
+
+   public:
+    using tuple_type   = std::tuple<Ts...>;
+    using storage_args = std::tuple<std::unique_ptr<typed_expression<Lexer,Compiler,storage_t<Ts>>>...>;
+
+    explicit typed_tuple_construction(storage_args&& t)
+        : m_args{std::move(t)} {}
+
+    ~typed_tuple_construction() override = default;
+
+    typed_tuple_construction(const typed_tuple_construction& other)
+        : m_args{ clone_tuple(other.m_args) } {}  // <── use of clone_tuple
+
+    [[nodiscard]] typed_tuple_construction* clone() const override {
+        return new typed_tuple_construction(*this);
+    }
+
+    [[nodiscard]] Maybe_error<std::tuple<Ts...>>
+    run(const Environment<Lexer, Compiler>& env) const override {
+
+        // Evaluate each element → Maybe_error<storage_t<T>>
+        auto maybe_storage =
+            std::apply([&](auto&... exprs) {
+                return std::tuple(exprs->run(env)...);
+            }, m_args);
+
+        bool ok = true;
+        std::string msg;
+
+        // Aggregate errors
+        std::apply([&](auto&... me) {
+            (([&]{
+                if (!me.valid()) {
+                    ok = false;
+                    msg += me.error()();
+                }
+            }()), ...);
+        }, maybe_storage);
+
+        if (!ok) return error_message(msg);
+
+        // Build the real tuple<Ts...>
+        auto builder = [&](auto&... me) {
+            return std::tuple<Ts...>( adapt<Ts>(me.value())... );
+        };
+
+        return std::apply(builder, maybe_storage);
+    }
+};
+
+
+
 template <class Lexer, class Compiler, class T>
 base_typed_assigment<Lexer, Compiler>* typed_expression<Lexer, Compiler, T>::compile_assigment(
     Identifier<Lexer> id) {

@@ -274,12 +274,12 @@ class untyped_argument_list : public untyped_expression<Lexer, Compiler> {
         : m_list{dsl::clone(t_list)} {}
 
     untyped_argument_list(std::vector<std::unique_ptr<untyped_statement<Lexer, Compiler>>>&& t_list)
-        : m_list{t_list} {}
+        : m_list{std::move(t_list)} {}
     untyped_argument_list(const untyped_argument_list& other)
         : m_list{dsl::clone_vector(other.m_list)} {}
 
     untyped_argument_list(untyped_argument_list&& other) noexcept
-        : m_list{std::move(other.t_list)} {}
+        : m_list{std::move(other.m_list)} {}
 
     untyped_argument_list() = default;
 
@@ -390,6 +390,73 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
                              "' with provided arguments:\n" + errors);
     }
 };
+
+template <class Lexer, class Compiler>
+class untyped_vector_construction : public untyped_expression<Lexer, Compiler> {
+    std::unique_ptr<untyped_argument_list<Lexer, Compiler>> m_arg;
+
+   public:
+    untyped_vector_construction(untyped_argument_list<Lexer, Compiler>* t_arg)
+        :  m_arg{t_arg} {}
+    ~untyped_vector_construction() override = default;
+    untyped_vector_construction(untyped_vector_construction&& other) noexcept
+        :  m_arg{std::move(other.m_arg)} {}
+
+    untyped_vector_construction(untyped_vector_construction const& other)
+        :  m_arg{other.m_arg->clone()} {}
+
+    [[nodiscard]] auto& args() const { return *m_arg; }
+
+    [[nodiscard]] std::string type_of_statement() const override { return statement_type(); }
+    static std::string statement_type() { return "untyped_vector_construction"; }
+
+    [[nodiscard]] untyped_vector_construction* clone() const override {
+        return new untyped_vector_construction(*this);
+    }
+    [[nodiscard]] std::string str() const final { return std::string(Lexer::vector_list_start) + m_arg->str()+ std::string(Lexer::vector_list_end) ; }
+
+    // untyped_expression interface
+
+    Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
+        Environment<Lexer, Compiler>& /*cm*/) const override {
+        return error_message("type unknown at this point");
+    }
+};
+
+template <class Lexer, class Compiler>
+class untyped_tuple_construction : public untyped_expression<Lexer, Compiler> {
+    std::unique_ptr<untyped_argument_list<Lexer, Compiler>> m_arg;
+
+   public:
+    untyped_tuple_construction(untyped_argument_list<Lexer, Compiler>* t_arg)
+        :  m_arg{t_arg} {}
+    ~untyped_tuple_construction() override = default;
+    untyped_tuple_construction(untyped_tuple_construction&& other) noexcept
+        :  m_arg{std::move(other.m_arg)} {}
+
+    untyped_tuple_construction(untyped_tuple_construction const& other)
+        :  m_arg{other.m_arg->clone()} {}
+
+    [[nodiscard]] auto& args() const { return *m_arg; }
+
+    [[nodiscard]] std::string type_of_statement() const override { return statement_type(); }
+    static std::string statement_type() { return "untyped_tuple_construction"; }
+
+    [[nodiscard]] untyped_tuple_construction* clone() const override {
+        return new untyped_tuple_construction(*this);
+    }
+    [[nodiscard]] std::string str() const final { return std::string(Lexer::tuple_list_start) + m_arg->str()+ 
+        std::string(Lexer::tuple_list_end) ; }
+
+    // untyped_expression interface
+
+    Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
+        Environment<Lexer, Compiler>& /*cm*/) const override {
+        return error_message("type unknown at this point");
+    }
+};
+
+
 template <class Lexer, class Compiler>
 inline Maybe_error<typed_program<Lexer, Compiler>> compile_program(
     Environment<Lexer, Compiler>& cm, const untyped_program<Lexer, Compiler>& s) {
