@@ -70,6 +70,94 @@ auto typed_function_evaluation<F, Args...>::run(const Environment& env) const {
 
 ---
 
+### 🔹 Vector Literal Evaluation
+
+```cpp
+template <class Lexer, class Compiler, class T>
+Maybe_error<std::vector<T>>
+typed_vector_construction<Lexer,Compiler,T>::run(const Environment<Lexer,Compiler>& env) const {
+    using storage_t = detail::function_argument_storage_t<T>;
+
+    std::vector<T> out;
+    out.reserve(m_args.size());
+    std::string err;
+
+    for (std::size_t i = 0; i < m_args.size(); ++i) {
+        // Each arg: typed_expression<storage_t>
+        auto maybe_elem = m_args[i]->run(env);  // Maybe_error<storage_t>
+        if (!maybe_elem) {
+            err += std::to_string(i) + ": " + maybe_elem.error()();
+            continue;
+        }
+        // Same adaptation logic as function arguments
+        out.emplace_back(adapt<T>(maybe_elem.value()));
+    }
+
+    if (!err.empty()) {
+        return error_message(err);
+    }
+    return out;
+}
+````
+
+### 🔹 Tuple Literal Evaluation
+
+```cpp
+template <class Lexer, class Compiler, class... Ts>
+Maybe_error<std::tuple<Ts...>>
+typed_tuple_construction<Lexer,Compiler,Ts...>::run(const Environment<Lexer,Compiler>& env) const {
+    using storage_t = detail::function_argument_storage_t;
+
+    // Evaluate each element → Maybe_error<storage_t<Tk>>
+    auto maybe_storage = std::apply(
+        [&](auto&... exprs) {
+            return std::tuple(exprs->run(env)...);
+        }, m_args);
+
+    bool ok = true;
+    std::string msg;
+
+    std::apply([&](auto&... me) {
+        (([&]{
+            if (!me.valid()) {
+                ok = false;
+                msg += me.error()();
+            }
+        }()), ...);
+    }, maybe_storage);
+
+    if (!ok) {
+        return error_message(msg);
+    }
+
+    // Build the exposed tuple<Ts...>, adapting each storage element
+    auto builder = [&](auto&... me) {
+        return std::tuple<Ts...>( adapt<Ts>(me.value())... );
+    };
+
+    return std::apply(builder, maybe_storage);
+}
+```
+
+### 🔹 Reference Semantics in Composites
+
+* Elements compiled as `std::reference_wrapper<T>` or `std::reference_wrapper<const T>`
+  behave like function arguments:
+
+  * At runtime they **read** from or **write** to values stored in the `Environment`.
+  * For vectors/tuples of references, individual elements remain aliases to
+    the underlying environment literals.
+* Elements compiled as owning types (`T`, `std::unique_ptr<T>`, etc.) behave
+  as value copies or ownership transfers, depending on the underlying storage
+  type and `adapt<>()` rule.
+
+```
+
+---
+
+
+---
+
 ### ✅ Highlights From the Actual Code
 
 * Each compiled statement is a `typed_statement` with a `run_statement()` method.

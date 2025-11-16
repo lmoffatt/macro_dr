@@ -78,5 +78,128 @@ Raw Text → Lexer → Untyped Program (`p`)
 
 ---
 
+---
+
+## 5. Composite Values: Vectors and Tuples
+
+### 5.1 Untyped Nodes
+
+Two new untyped AST nodes represent composite literals:
+
+- `untyped_vector_construction<Lexer,Compiler>` – parses `[e1, e2, …]`
+- `untyped_tuple_construction<Lexer,Compiler>` – parses `{e1, e2, …}`
+
+They can appear both as:
+- Top-level statements (for REPL use), and
+- Sub-expressions inside function calls and assignments.
+
+### 5.2 Storage vs Exposed Types
+
+The typed layer distinguishes:
+
+- **Exposed type** – what the DSL user sees:
+  - Vectors: `std::vector<T>`
+  - Tuples: `std::tuple<Ts...>`
+- **Storage type** – what the compiler actually stores for each element, via
+
+```cpp
+template<class Arg>
+using function_argument_storage_t =
+    detail::function_argument_storage_t<Arg>;
+````
+
+Rules (same as for function arguments):
+
+* `T`, `const T` → stored as `T` (decayed)
+* `T&`, `const T&` → stored as `std::reference_wrapper<T>` / `std::reference_wrapper<const T>`
+* `const IModel<...>&` → stored as `std::unique_ptr<IModel<...>>`
+
+This guarantees that vectors/tuples behave consistently with function parameters, including ownership and reference semantics.
+
+### 5.3 element_compiler
+
+`element_compiler<Lexer,Compiler,T>` is the unnamed analogue of `field_compiler`:
+
+* Compiles **one positional element** of a vector/tuple to
+  `typed_expression<Lexer,Compiler,T>` (or to the storage type).
+
+* Handles:
+
+  * identifiers (`untyped_identifier`)
+  * literals (`untyped_literal`, when `literal_decodable<T>`)
+  * function calls (`untyped_function_evaluation`)
+  * nested `[ ... ]` and `{ ... }` when `T` is a `std::vector<...>` or `std::tuple<...>`.
+
+* For reference elements (`T = std::reference_wrapper<U>`), only identifiers
+  are accepted; literals and function calls are rejected by design.
+
+### 5.4 vector_compiler and typed_vector_construction
+
+For vectors:
+
+```cpp
+template<class Lexer, class Compiler, class T>
+class vector_compiler {
+    using storage_t = function_argument_storage_t<T>;
+    // ...
+    Maybe_unique<typed_expression<Lexer,Compiler,std::vector<T>>>
+    compile_vector_construction(Environment<Lexer,Compiler> const&,
+                                const untyped_argument_list<Lexer,Compiler>&);
+};
+```
+
+* `vector_compiler` compiles each element using `element_compiler<Lexer,Compiler,storage_t>`.
+* The result is a `typed_vector_construction<Lexer,Compiler,T>` that:
+
+  * stores a `std::vector< unique_ptr<typed_expression<storage_t>> >`
+  * on `run(env)`:
+
+    * evaluates each element to `storage_t`
+    * uses the same `adapt<T>(storage)` logic as function calls
+    * returns `std::vector<T>`.
+
+Thus vector literals `[e1, e2, …]` are first-class expressions with type `std::vector<T>`.
+
+### 5.5 tuple_compiler and typed_tuple_construction
+
+For tuples:
+
+```cpp
+template<class Lexer, class Compiler, class... Ts>
+class tuple_compiler {
+    using storage_t<U> = function_argument_storage_t<U>;
+    // ...
+    Maybe_unique<typed_expression<Lexer,Compiler,std::tuple<Ts...>>>
+    compile_tuple_construction(Environment<Lexer,Compiler> const&,
+                               const untyped_tuple_construction<Lexer,Compiler>&);
+};
+```
+
+* `tuple_compiler` uses a `std::tuple` of `element_compiler<Lexer,Compiler,storage_t<Ts>>...`.
+
+* It builds a `typed_tuple_construction<Lexer,Compiler,Ts...>` with:
+
+  * internal storage: `std::tuple< unique_ptr<typed_expression<storage_t<Ts>>>... >`
+  * exposed type: `std::tuple<Ts...>`.
+
+* On `run(env)`, it:
+
+  * evaluates each element into `storage_t<Tk>`
+  * adapts them via the same `adapt<Tk>(storage)` logic
+  * returns `std::tuple<Ts...>`.
+
+### 5.6 Interaction with Single-Pass Compilation
+
+* Vectors and tuples **do not change** the single-pass model:
+
+  * They are compiled in place as ordinary expressions.
+  * Elements are resolved using the same environment/Compiler lookup as scalar expressions.
+* The same **“defined-before-use”** rule applies to identifiers inside `[ ... ]` and `{ ... ]`.
+* Elements that compile to references (`std::reference_wrapper<...>`) preserve the current
+  constraint: they must be identifiers bound in the environment at execution time.
+
+````
+
+
 *Keep this document for reference when evolving the DSL's compilation strategy.*
 

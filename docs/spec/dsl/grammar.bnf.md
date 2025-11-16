@@ -24,6 +24,15 @@
 # Each line is parsed independently into one of the statement types.
 # Vector and tuple literals are allowed as top-level statements
 # for REPL-style exploration.
+# Typing notes (informal, see type_rules.md for full details):
+# - A `[e1, e2, ...]` literal has type `std::vector<T>` if all `ei` have type `T`.
+# - A `{e1, e2, ...]` literal has type `std::tuple<T1, T2, ...>` where each `Ti`
+#   is the type of `ei`.
+# - Vector and tuple literals can appear anywhere an <expression> is allowed,
+#   including as function arguments and in assignments.
+# - Elements that are compiled as references (`T&`, `const T&`) must be
+#   identifier expressions; literals and inline function calls are rejected
+#   for such positions.
 
 <assignment>      ::= <identifier> "=" <expression>
 # Variable binding
