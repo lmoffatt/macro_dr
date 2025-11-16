@@ -25,7 +25,7 @@ static const auto scheme_CO = Model0::Model("scheme_CO", []() {
 
     names_model.insert(names_model.end(), names_other.begin(), names_other.end());
     auto p =
-        Matrix<double>(10, 1, std::vector<double>{0.1, 100,1, 1e-3, 5, 1e-2, 1, 5000});
+        Matrix<double>(6, 1, std::vector<double>{0.1, 100,1, 1e-3, 0, 5000});
 
     auto tr = std::vector<std::string>(p.size(), "Log10");
     assert(tr.size() == p.size());
@@ -118,7 +118,7 @@ static const auto scheme_CCO = Model0::Model("scheme_CCO", []() {
 
     names_model.insert(names_model.end(), names_other.begin(), names_other.end());
     auto p =
-        Matrix<double>(10, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 5, 1e-2, 1, 5000});
+        Matrix<double>(8, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 0, 5000});
 
     auto tr = std::vector<std::string>(p.size(), "Log10");
     assert(tr.size() == p.size());
@@ -219,7 +219,7 @@ static const auto scheme_COC = Model0::Model("scheme_COC", []() {
 
     names_model.insert(names_model.end(), names_other.begin(), names_other.end());
     auto p =
-        Matrix<double>(10, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3, 5, 1e-2, 1, 5000});
+        Matrix<double>(8, 1, std::vector<double>{6.73, 166, 743, 45.3, 1, 1e-3,  0, 5000});
 
     auto tr = std::vector<std::string>(p.size(), "Log10");
     assert(tr.size() == p.size());
