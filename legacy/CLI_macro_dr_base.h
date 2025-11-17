@@ -132,10 +132,10 @@ inline dsl::Compiler make_experiment_compiler() {
                          &get_function_Table_maker_value, "filename", "num_scouts_per_ensemble"));
     cm.push_function("get_Experiment",
                      dsl::to_typed_function<std::string, double, double>(
-                         &get_Experiment, "filename", "frequency_of_sampling", "initial_ATP"));
+                         &get_Experiment, "filename", "frequency_of_sampling", "initial_agonist"));
     cm.push_function("get_Experiment_file",
                      dsl::to_typed_function<std::string, double, double>(
-                         &get_Experiment_file, "filename", "frequency_of_sampling", "initial_ATP"));
+                         &get_Experiment_file, "filename", "frequency_of_sampling", "initial_agonist"));
     return cm;
 }
 

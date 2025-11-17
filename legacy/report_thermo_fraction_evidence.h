@@ -280,7 +280,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
                     if (is_valid(prediction)) {
                         auto& predictions = prediction.value();
                         for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
-                            auto v_ev = get<macrodr::ATP_evolution>(
+                            auto v_ev = get<macrodr::Agonist_evolution>(
                                 get<macrodr::Recording_conditions>(x[i_frac])()[i_step]);
 
                             auto time = get<macrodr::Time>(

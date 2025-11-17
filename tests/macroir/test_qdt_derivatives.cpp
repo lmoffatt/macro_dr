@@ -32,8 +32,8 @@ TEST_CASE("macroir: Qdt derivative (Clarke)", "[macroir][derivatives][qdt]") {
     // Empty function registry (no memoized functions)
     auto f_no_memoi = var::create_empty_function_map();
 
-    // Single ATP step: 10 samples at 1000 uM, sampling frequency 50 kHz
-    auto t_step = macrodr::ATP_step(macrodr::number_of_samples(10), macrodr::ATP_concentration(1000));
+    // Single agonist step: 10 samples at 1000 uM, sampling frequency 50 kHz
+    auto t_step = macrodr::Agonist_step(macrodr::number_of_samples(10), macrodr::Agonist_concentration(1000));
     double fs = 50e3;
 
     // Load plain model to obtain parameter transformations

@@ -69,7 +69,7 @@ const double fs=50e3;
     REQUIRE(maybe_dm.valid());
     auto dm = std::move(maybe_dm.value());
     using namespace macrodr; 
-    auto Maybe_t_prior = Macro_DMR{}.init<return_predictions<0>>(dm, get<initial_ATP_concentration>(experiment));
+    auto Maybe_t_prior = Macro_DMR{}.init<return_predictions<0>>(dm, get<initial_agonist_concentration>(experiment));
     if (!Maybe_t_prior) { UNSCOPED_INFO(Maybe_t_prior.error()()); }
     REQUIRE(Maybe_t_prior.valid());
     auto t_prior = std::move(Maybe_t_prior.value());
@@ -81,8 +81,8 @@ const double fs=50e3;
     Maybe_error<bool> result(true);
     for (std::size_t i_step = 0; i_step < record.size(); ++i_step)
     { 
-    ATP_evolution const& t_step =
-                            get<ATP_evolution>(get<Recording_conditions>(experiment)()[i_step]);
+    Agonist_evolution const& t_step =
+                            get<Agonist_evolution>(get<Recording_conditions>(experiment)()[i_step]);
 
 
     auto Maybe_t_Qdtm = Macro_DMR{}.calc_Qdtm(f_no_memoi, dm, t_step, fs);

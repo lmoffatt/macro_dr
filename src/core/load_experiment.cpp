@@ -11,10 +11,10 @@
 
 namespace macrodr::cmd {
 
-Experiment load_experiment(std::string const& filename, double frequency_of_sampling, double initial_ATP) {
+Experiment load_experiment(std::string const& filename, double frequency_of_sampling, double initial_agonist) {
    using namespace macrodr;
     Experiment e;
-    auto Maybe_exp = load_experiment(filename, ",", frequency_of_sampling, initial_ATP, e);
+    auto Maybe_exp = load_experiment(filename, ",", frequency_of_sampling, initial_agonist, e);
     if (Maybe_exp) {
         return e;
     }          
@@ -22,25 +22,25 @@ Experiment load_experiment(std::string const& filename, double frequency_of_samp
 
         return {std::move(recording_conditions),
                           Frequency_of_Sampling(frequency_of_sampling),
-                          initial_ATP_concentration(ATP_concentration(initial_ATP))};
+                          initial_agonist_concentration(Agonist_concentration(initial_agonist))};
    
 }
 
 Experiment create_experiment(std::vector<std::tuple<std::size_t,std::size_t,double>> repetitions,
     double fs,
-    double atp0, 
+    double agonist0, 
     double t0){
     Frequency_of_Sampling fs_out(fs);
-    initial_ATP_concentration atp0_out{ATP_concentration{atp0}}; 
+    initial_agonist_concentration agonist0_out{Agonist_concentration{agonist0}}; 
     Time t0_out(t0);
 
-    std::vector<std::pair<std::size_t,std::vector<ATP_step>>> repetitions_out;
+    std::vector<std::pair<std::size_t,std::vector<Agonist_step>>> repetitions_out;
     repetitions_out.reserve(repetitions.size());
     for (auto& rep:repetitions){
        repetitions_out.emplace_back(std::get<0>(rep), 
-       std::vector<ATP_step>{1,ATP_step{number_of_samples{get<1>(rep)}, ATP_concentration{get<2>(rep)}}}); 
+       std::vector<Agonist_step>{1,Agonist_step{number_of_samples{get<1>(rep)}, Agonist_concentration{get<2>(rep)}}}); 
     }
-    return build_experiment(repetitions_out,fs_out,atp0_out,t0_out);
+    return build_experiment(repetitions_out,fs_out,agonist0_out,t0_out);
 }
 
  Maybe_error<Recording> load_recording(const std::string& filename) {
