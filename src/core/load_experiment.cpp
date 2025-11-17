@@ -52,4 +52,17 @@ Experiment create_experiment(std::vector<std::tuple<std::size_t,std::size_t,doub
     }
     return e;
     }
+
+ Recording define_recording(std::vector<double> values){
+    Recording r;
+    r().reserve(values.size());
+    for (auto&& v:std::move(values))
+    {
+        r().emplace_back(v);
+    }
+    return r;
+
+ }
+
+
 } // namespace macrodr::cmd

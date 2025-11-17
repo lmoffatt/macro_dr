@@ -70,7 +70,12 @@ dsl::Compiler make_compiler_new() {
     cm.push_function("load_observations", dsl::to_typed_function<std::string>(
                                               &macrodr::cmd::load_recording, "filename"));
 
-    // Expose low-level model/qmodel helpers
+    
+    cm.push_function("set_observations", dsl::to_typed_function<std::vector<double>>(
+                                              &macrodr::cmd::define_recording, "values_set"));
+
+    
+                                              // Expose low-level model/qmodel helpers
     using ModelPtr = std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>;
 
     // Load parameters file (filename, sep) using model’s schema
