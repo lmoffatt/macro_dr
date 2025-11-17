@@ -16,4 +16,6 @@ namespace macrodr::cmd {
 
  Maybe_error<Recording> load_recording(const std::string& filename) ;
 
+ Recording define_recording(std::vector<double> values);
+
 }

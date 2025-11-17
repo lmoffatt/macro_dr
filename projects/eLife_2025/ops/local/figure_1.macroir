@@ -3,18 +3,17 @@ model = load_model("scheme_CO")
 parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
 
 
-experiment = load_experiment(
-    filename = "data/experiments/Moffatt_Hume_2007_ATP_time_idealized_2.txt",
-    frequency_of_sampling = 50e3,
-    initial_ATP = 0.0)
-
-observations = load_observations(
-    filename = "data/experiments/Moffatt_Hume_2007_ATP_time_recording.txt")
+experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,1000,10.0}], 
+frequency_of_sampling = 50e3,
+initial_ATP = 0.0, 
+initial_time = 0.0)
+                                
+observations = set_observations(values_set= [0,0])
 
 par_values = get_standard_parameter_values(parameter)
 
 
-model_str="scheme_1"
+model_str="scheme_CO"
 
 
 

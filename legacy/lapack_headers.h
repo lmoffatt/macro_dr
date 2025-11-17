@@ -1506,7 +1506,7 @@ inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<dou
           If SENSE = 'N' or 'E', not referenced.
 
 */
-    Matrix<int> /*dimension( * ) */ IWORK(2, x.nrows() - 2);
+    Matrix<int> /*dimension( * ) */ IWORK(2, std::max(3ul,x.nrows()) - 2);
 
     /**
 [out]	INFO
