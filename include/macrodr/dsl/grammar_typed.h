@@ -953,6 +953,9 @@ class typed_literal<Lexer, Compiler, std::unique_ptr<T>>
     explicit typed_literal(std::unique_ptr<T>&& x) : m_value(std::move(x)) {}
     explicit typed_literal(const std::unique_ptr<T>& x) : m_value(clone_ptr(x)) {}
 
+    const std::unique_ptr<T>& value_ref() const { return m_value; }
+    std::unique_ptr<T>& value_ref() { return m_value; }
+
     typed_literal(const typed_literal& other) : m_value(clone_ptr(other.m_value)) {}
     typed_literal& operator=(const typed_literal& other) {
         if (this != &other)
@@ -996,6 +999,9 @@ class typed_literal<Lexer, Compiler, Maybe_error<std::unique_ptr<T>>>
    public:
     explicit typed_literal(value_type&& x) : m_value(std::move(x)) {}
     explicit typed_literal(const value_type& x) : m_value(clone_value(x)) {}
+
+    const value_type& value_ref() const { return m_value; }
+    value_type& value_ref() { return m_value; }
 
     typed_literal(const typed_literal& other) : m_value(clone_value(other.m_value)) {}
     typed_literal& operator=(const typed_literal& other) {

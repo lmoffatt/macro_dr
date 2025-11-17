@@ -29,7 +29,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
             [outfilename, &par, &ftbl3, &experiment, &recording, &likelihood](auto model0ptr) {
                 auto& model0 = *model0ptr;
 
-                // auto [path, filename, average_the_ATP_evolution,
+                // auto [path, filename, average_the_agonist_evolution,
                 //       num_scouts_per_ensemble, number_trials_until_give_up,
                 //       thermo_jump_factor, max_iter_equilibrium,
                 //       n_points_per_decade_beta_high, n_points_per_decade_beta_low,

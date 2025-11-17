@@ -1522,7 +1522,7 @@ class Macro_DMR {
 
     template <class C_Patch_Model>
         requires U<C_Patch_Model, Patch_Model>
-    auto calc_Qx(const C_Patch_Model& m, ATP_concentration x) -> Transfer_Op_to<C_Patch_Model, Qx> {
+    auto calc_Qx(const C_Patch_Model& m, Agonist_concentration x) -> Transfer_Op_to<C_Patch_Model, Qx> {
         auto v_Qx = build<Qx>(get<Q0>(m)() + get<Qa>(m)() * x.value());
         Matrix<double> u(v_Qx().ncols(), 1, 1.0);
         v_Qx() = v_Qx() - diag(v_Qx() * u);
@@ -1532,7 +1532,7 @@ class Macro_DMR {
     }
     template <class C_Q0, class C_Qa>
         requires U<C_Q0, Q0>
-    auto calc_Qx(const C_Q0& t_Q0, const C_Qa& t_Qa, ATP_concentration x)
+    auto calc_Qx(const C_Q0& t_Q0, const C_Qa& t_Qa, Agonist_concentration x)
         -> Transfer_Op_to<C_Q0, Qx> {
         auto v_Qx = build<Qx>(t_Q0() + t_Qa() * x.value());
         Matrix<double> u(v_Qx().ncols(), 1, 1.0);
@@ -1545,7 +1545,7 @@ class Macro_DMR {
     template <class Policy = StabilizerPolicyEnabled, class C_Q0, class C_Qa>
         requires U<C_Q0, Q0>
     Maybe_error<Transfer_Op_to<C_Q0, P_initial>> calc_Pinitial(const C_Q0& t_Q0, const C_Qa& t_Qa,
-                                                               ATP_concentration x, N_St nstates) {
+                                                               Agonist_concentration x, N_St nstates) {
         auto p0 = Matrix<double>(1ul, nstates(), 1.0 / nstates());
         auto t_Qx = calc_Qx(t_Q0, t_Qa, x);
         auto v_eig_Qx = calc_eigen(t_Qx);
@@ -1606,7 +1606,7 @@ class Macro_DMR {
 
     template <class C_Patch_Model>
         requires U<C_Patch_Model, Patch_Model>
-    auto calc_eigen(const C_Patch_Model& m, ATP_concentration x)
+    auto calc_eigen(const C_Patch_Model& m, Agonist_concentration x)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Eigs>> {
         return calc_eigen(calc_Qx(m, x));
     }
@@ -1717,9 +1717,9 @@ class Macro_DMR {
 
     template <class Vs, class Patch_Model>
         requires Vs::is_vector_map_space
-    Maybe_error<Eigs const*> get_eigen(Vs& buffer_calc, const Patch_Model& m, ATP_concentration x) {
+    Maybe_error<Eigs const*> get_eigen(Vs& buffer_calc, const Patch_Model& m, Agonist_concentration x) {
         auto Maybe_eigen =
-            buffer_calc[var::Vector_Map<Eigs>{}][var::Vector_Space<ATP_concentration>(x)];
+            buffer_calc[var::Vector_Map<Eigs>{}][var::Vector_Space<Agonist_concentration>(x)];
         if (Maybe_eigen)
             return Maybe_eigen;
         else {
@@ -2960,10 +2960,10 @@ class Macro_DMR {
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
         requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdtg_ATP_step(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step,
+    auto calc_Qdtg_agonist_step(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step,
                             double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> {
         auto dt = get<number_of_samples>(t_step)() / fs;
-        auto t_Qeig = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+        auto t_Qeig = f.fstop(Calc_eigen{}, m, get<Agonist_concentration>(t_step));
 
         if (t_Qeig) {
             auto Maybe_Qdt =
@@ -2972,21 +2972,21 @@ class Macro_DMR {
 
                 return Maybe_Qdt.value();
         }
-        auto t_Eigs = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
+        auto t_Eigs = build<Qx>(calc_Qx(m, get<Agonist_concentration>(t_step)));
         return calc_Qdtg_taylor<Policy>(m, t_Eigs, get<number_of_samples>(t_step), dt);
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
         requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdtm_ATP_step(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step,
+    auto calc_Qdtm_agonist_step(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step,
                             double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         auto dt = get<number_of_samples>(t_step)() / fs;
         auto t_Qeig = [&f,&t_step,&m](){
          if constexpr (var::has_it_defined<Calc_eigen, decltype(f)>())
-             return f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+             return f.fstop(Calc_eigen{}, m, get<Agonist_concentration>(t_step));
         else
-            return  Macro_DMR{}.calc_eigen(m, get<ATP_concentration>(t_step));     
+            return  Macro_DMR{}.calc_eigen(m, get<Agonist_concentration>(t_step));     
         }(); 
         
      if (t_Qeig) {
@@ -2997,22 +2997,22 @@ class Macro_DMR {
 
                 return Maybe_Qdt.value();
         }
-        auto t_Eigs = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
+        auto t_Eigs = build<Qx>(calc_Qx(m, get<Agonist_concentration>(t_step)));
         return calc_Qdtm_taylor(m, t_Eigs, get<number_of_samples>(t_step), dt);
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
         requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdt_ATP_step(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step,
+    auto calc_Qdt_agonist_step(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step,
                            double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         auto dt = get<number_of_samples>(t_step)() / fs;
 
         auto t_Qeig = [this,&f,&m,&t_step](){ 
             if constexpr (var::has_it_defined<Calc_eigen, decltype(f)>())
-                 return f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+                 return f.fstop(Calc_eigen{}, m, get<Agonist_concentration>(t_step));
             else
-                return calc_eigen( m, get<ATP_concentration>(t_step));
+                return calc_eigen( m, get<Agonist_concentration>(t_step));
         }();
 
         if (t_Qeig) {
@@ -3021,55 +3021,55 @@ class Macro_DMR {
             if (Maybe_Qdt)
                 return Maybe_Qdt;
         }
-        auto t_Qx = build<Qx>(calc_Qx(m, get<ATP_concentration>(t_step)));
+        auto t_Qx = build<Qx>(calc_Qx(m, get<Agonist_concentration>(t_step)));
         return calc_Qdt_taylor<Policy>(m, t_Qx, get<number_of_samples>(t_step), dt);
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdt(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step, double fs)
+    auto calc_Qdt(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         if constexpr (std::is_same_v<Policy, StabilizerPolicyEnabled>) {
             if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdt_step{}])>)
-                return calc_Qdt_ATP_step<Policy>(f, m, t_step, fs);
+                return calc_Qdt_agonist_step<Policy>(f, m, t_step, fs);
             else
                 return f.f(Calc_Qdt_step{}, m, t_step, fs);
         } else {
-            return calc_Qdt_ATP_step<Policy>(f, m, t_step, fs);
+            return calc_Qdt_agonist_step<Policy>(f, m, t_step, fs);
         }
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step, double fs)
+    auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         if constexpr (std::is_same_v<Policy, StabilizerPolicyEnabled>) {
             if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtm_step{}])>)
-                return calc_Qdtm_ATP_step<Policy>(f, m, t_step, fs);
+                return calc_Qdtm_agonist_step<Policy>(f, m, t_step, fs);
             else
                 return f.f(Calc_Qdtm_step{}, m, t_step, fs);
         } else {
-            return calc_Qdtm_ATP_step<Policy>(f, m, t_step, fs);
+            return calc_Qdtm_agonist_step<Policy>(f, m, t_step, fs);
         }
     }
 
     template <class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdtg(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step, double fs)
+    auto calc_Qdtg(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> {
         if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtm_step{}])>)
-            return calc_Qdtg_ATP_step(f, m, t_step, fs);
+            return calc_Qdtg_agonist_step(f, m, t_step, fs);
         else
             return f.f(Calc_Qdtg_step{}, m, t_step, fs);
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qn_bisection(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step,
+    auto calc_Qn_bisection(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step,
                            double fs, int order) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qn>> {
         auto dt = get<number_of_samples>(t_step)() / fs;
         auto ns = get<number_of_samples>(t_step);
-        auto t_Eigs = f.fstop(Calc_eigen{}, m, get<ATP_concentration>(t_step));
+        auto t_Eigs = f.fstop(Calc_eigen{}, m, get<Agonist_concentration>(t_step));
 
         if (!t_Eigs)
             return t_Eigs.error();
@@ -3090,7 +3090,7 @@ class Macro_DMR {
 
     template <class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdt_bisection(FunctionTable& f, const C_Patch_Model& m, const ATP_step& t_step,
+    auto calc_Qdt_bisection(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step,
                             double fs, std::size_t order)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         auto maybe_Qn = calc_Qn_bisection(f, m, t_step, fs, order);
@@ -3103,10 +3103,10 @@ class Macro_DMR {
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model> )
-    auto calc_Qdt(FunctionTable& f, const C_Patch_Model& m, const std::vector<ATP_step>& t_step,
+    auto calc_Qdt(FunctionTable& f, const C_Patch_Model& m, const std::vector<Agonist_step>& t_step,
                   double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         if (t_step.empty())
-            return error_message("Emtpy ATP step");
+            return error_message("Emtpy agonist step");
         else {
             auto v_Qdt0 = calc_Qdt<Policy>(f, m, t_step[0], fs);
             if (!v_Qdt0)
@@ -3131,10 +3131,10 @@ class Macro_DMR {
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model> )
-    auto calc_Qdtg(FunctionTable& f, const C_Patch_Model& m, const std::vector<ATP_step>& t_step,
+    auto calc_Qdtg(FunctionTable& f, const C_Patch_Model& m, const std::vector<Agonist_step>& t_step,
                    double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> {
         if (t_step.empty())
-            return error_message("Emtpy ATP step");
+            return error_message("Emtpy agonist step");
         if (t_step.size() == 1)
             return calc_Qdtg(f, m, t_step[0], fs);
 
@@ -3162,10 +3162,10 @@ class Macro_DMR {
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model> )
-    auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const std::vector<ATP_step>& t_step,
+    auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const std::vector<Agonist_step>& t_step,
                    double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         if (t_step.empty())
-            return error_message("Emtpy ATP step");
+            return error_message("Emtpy agonist step");
         if (t_step.size() == 1)
             return calc_Qdtm<Policy>(f, m, t_step[0], fs);
 
@@ -3193,10 +3193,10 @@ class Macro_DMR {
     template <class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model> )
     auto calc_Qdt_bisection(FunctionTable& f, const C_Patch_Model& m,
-                            const std::vector<ATP_step>& t_step, double fs, std::size_t order)
+                            const std::vector<Agonist_step>& t_step, double fs, std::size_t order)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         if (t_step.empty())
-            return error_message("Emtpy ATP step");
+            return error_message("Emtpy agonist step");
         else {
             auto v_Qn0 = calc_Qn_bisection(f, m, t_step[0], fs, order);
             if (!v_Qn0)
@@ -3217,21 +3217,21 @@ class Macro_DMR {
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     //   requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdt(FunctionTable& f, const C_Patch_Model& m, const ATP_evolution& t_step, double fs)
+    auto calc_Qdt(FunctionTable& f, const C_Patch_Model& m, const Agonist_evolution& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         return calc_Qdt<Policy>(f, m, t_step(), fs);
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     //   requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const ATP_evolution& t_step, double fs)
+    auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const Agonist_evolution& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         return calc_Qdtm<Policy>(f, m, t_step(), fs);
     }
 
     template <class FunctionTable, class C_Patch_Model>
     //   requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_Qdt_bisection(FunctionTable& f, const C_Patch_Model& m, const ATP_evolution& t_step,
+    auto calc_Qdt_bisection(FunctionTable& f, const C_Patch_Model& m, const Agonist_evolution& t_step,
                             double fs, std::size_t order)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
         return calc_Qdt_bisection(f, m, t_step(), fs, order);
@@ -3412,7 +3412,7 @@ class Macro_DMR {
 
     //    Maybe_error<Patch_State> DVR(const Patch_State &t_prior, Qdt const
     //    &t_Qdt,
-    //                                 Patch_Model const &m, const ATP_step &p,
+    //                                 Patch_Model const &m, const Agonist_step &p,
     //                                 const Patch_current &p_y, double fs)
     //                                 const
     //                                 {
@@ -4389,7 +4389,7 @@ class Macro_DMR {
 
     template <class predictions, class C_Patch_Model>
         requires return_predictions_c<predictions> && U<C_Patch_Model, Patch_Model>
-    auto init(const C_Patch_Model& m, initial_ATP_concentration initial_x)
+    auto init(const C_Patch_Model& m, initial_agonist_concentration initial_x)
         -> Maybe_error<std::conditional_t<
             var::is_derivative_v<C_Patch_Model>,
             std::conditional_t<predictions::value == 2,
@@ -4492,7 +4492,7 @@ class Macro_DMR {
         else {
             auto m = std::move(get_value(Maybe_m));
             auto fs = get<Frequency_of_Sampling>(e).value();
-            auto ini = init<predictions>(m, get<initial_ATP_concentration>(e));
+            auto ini = init<predictions>(m, get<initial_agonist_concentration>(e));
 
             auto gege = 0;
             auto f_local = f.create("_lik");
@@ -4505,8 +4505,8 @@ class Macro_DMR {
                     0ul, y().size(), std::move(ini).value(),
                     [this, &f_local, &m, fs, &e, &y, &gege](C_Patch_State&& t_prior,
                                                             std::size_t i_step) {
-                        ATP_evolution const& t_step =
-                            get<ATP_evolution>(get<Recording_conditions>(e)()[i_step]);
+                        Agonist_evolution const& t_step =
+                            get<Agonist_evolution>(get<Recording_conditions>(e)()[i_step]);
 
                         auto time = get<Time>(get<Recording_conditions>(e)()[i_step])();
                         auto time_segment = get<N_Ch_mean_time_segment_duration>(m)();
@@ -4522,7 +4522,7 @@ class Macro_DMR {
                             const auto h = 1e-7;
                             auto test_der_Qx = var::test_derivative_clarke(
                                 [this, &t_step](auto l_m) {
-                                    return calc_Qx(l_m, get<ATP_concentration>(t_step()[0]));
+                                    return calc_Qx(l_m, get<Agonist_concentration>(t_step()[0]));
                                 },
                                 h, m);
                             if (!test_der_Qx) {
@@ -4538,7 +4538,7 @@ class Macro_DMR {
                             const auto h = 1e-7;
                             auto test_der_eigen = var::test_derivative_clarke(
                                 [this, &t_step](auto l_m) {
-                                    return calc_eigen(l_m, get<ATP_concentration>(t_step()[0]));
+                                    return calc_eigen(l_m, get<Agonist_concentration>(t_step()[0]));
                                 },
                                 h, m);
                             if (!test_der_eigen) {
@@ -4865,7 +4865,7 @@ class Macro_DMR {
 
     template <class Policy = StabilizerPolicyEnabled, class Patch_Model>
     Maybe_error<Simulated_Sub_Step> sub_sub_sample(mt_64i& mt, Simulated_Sub_Step const& t_sim_step,
-                                                   const Patch_Model& m, const ATP_step& t_s,
+                                                   const Patch_Model& m, const Agonist_step& t_s,
                                                    std::size_t n_sub_dt, double fs) {
         auto& t_g = get<g>(m);
         auto N = get<N_channel_state>(t_sim_step);
@@ -4873,7 +4873,7 @@ class Macro_DMR {
         auto sum_samples = get<number_of_samples>(t_sim_step)();
 
         auto n_samples = get<number_of_samples>(t_s)();
-        auto tQx = calc_Qx(m, get<ATP_concentration>(t_s));
+        auto tQx = calc_Qx(m, get<Agonist_concentration>(t_s));
 
         auto dt = n_samples / fs;
         auto sub_dt = dt / n_sub_dt;
@@ -4899,7 +4899,7 @@ class Macro_DMR {
     template <class Patch_Model>
     Maybe_error<Simulated_Sub_Step> sub_sub_sample(mt_64i& mt, Simulated_Sub_Step&& t_sim_step,
                                                    const Patch_Model& m,
-                                                   const std::vector<ATP_step>& t_s,
+                                                   const std::vector<Agonist_step>& t_s,
                                                    std::size_t n_sub_dt, double fs) {
         for (std::size_t i = 0; i < t_s.size(); ++i) {
             auto Maybe_sub_step =
@@ -4917,7 +4917,7 @@ class Macro_DMR {
     Maybe_error<Simulated_Step<keep_N_state>> sub_sample(mt_64i& mt,
                                                          Simulated_Step<keep_N_state>&& t_sim_step,
                                                          const Patch_Model& m,
-                                                         const ATP_evolution& t_s,
+                                                         const Agonist_evolution& t_s,
                                                          std::size_t n_sub_dt, double fs) {
         // auto &N = get<N_channel_state>(t_sim_step);
 
@@ -4958,7 +4958,7 @@ class Macro_DMR {
     template <typename keep_N_state, class Patch_Model>
         requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
     Simulated_Step<keep_N_state> init_sim(mt_64i& mt, const Patch_Model& m, const Experiment& e) {
-        auto initial_x = get<initial_ATP_concentration>(e);
+        auto initial_x = get<initial_agonist_concentration>(e);
         auto v_Qx = calc_Qx(m, initial_x());
         auto r_P_mean = P_mean(get<P_initial>(m)());
         auto N = get<N_Ch_mean>(m)()[0];
@@ -5567,57 +5567,57 @@ Maybe_error<std::vector<Patch_State_Evolution>> fractioned_logLikelihoodPredicti
     return out;
 }
 
-inline auto get_num_samples(const ATP_step& e) {
+inline auto get_num_samples(const Agonist_step& e) {
     return get<number_of_samples>(e)();
 }
 
-inline auto get_num_samples(const std::vector<ATP_step>& e) {
+inline auto get_num_samples(const std::vector<Agonist_step>& e) {
     double out = 0;
     for (auto& elem : e) out += get_num_samples(elem);
     return out;
 }
 
-inline auto get_num_samples(const ATP_evolution& e) {
+inline auto get_num_samples(const Agonist_evolution& e) {
     return get_num_samples(e());
 }
 
-inline ATP_evolution average_ATP_step(ATP_step const& x) {
-    return std::vector<ATP_step>(1, x);
+inline Agonist_evolution average_agonist_step(Agonist_step const& x) {
+    return std::vector<Agonist_step>(1, x);
 }
 
-inline ATP_evolution average_ATP_step(std::vector<ATP_step> const& x) {
+inline Agonist_evolution average_agonist_step(std::vector<Agonist_step> const& x) {
     if (x.empty())
         return x;
     else if (x.size() == 1)
         return x;
     else {
-        auto out = std::vector<ATP_step>{x[0]};
+        auto out = std::vector<Agonist_step>{x[0]};
         for (std::size_t i = 1; i < x.size(); ++i) {
-            if ((get<ATP_concentration>(out.back())() != get<ATP_concentration>(x[i])()) &&
-                ((get<ATP_concentration>(out.back())() == 0) ||
-                 (get<ATP_concentration>(x[i])() == 0))) {
+            if ((get<Agonist_concentration>(out.back())() != get<Agonist_concentration>(x[i])()) &&
+                ((get<Agonist_concentration>(out.back())() == 0) ||
+                 (get<Agonist_concentration>(x[i])() == 0))) {
                 out.push_back(x[i]);
             } else {
                 auto n1 = get<number_of_samples>(out.back())();
                 auto n2 = get<number_of_samples>(x[i])();
-                auto new_ATP = (get<ATP_concentration>(out.back())() * n1 +
-                                get<ATP_concentration>(x[i])() * n2) /
+                auto new_agonist = (get<Agonist_concentration>(out.back())() * n1 +
+                                get<Agonist_concentration>(x[i])() * n2) /
                                (n1 + n2);
                 get<number_of_samples>(out.back())() = n1 + n2;
-                get<ATP_concentration>(out.back())() = new_ATP;
+                get<Agonist_concentration>(out.back())() = new_agonist;
             }
         }
         return out;
     }
 }
 
-// static ATP_evolution average_ATP_step(ATP_evolution const & x){
+// static Agonist_evolution average_agonist_step(Agonist_evolution const & x){
 //     return std::visit([] (auto const& a){return
-//     average_ATP_step(a);},x());}
+//     average_agonist_step(a);},x());}
 
-inline ATP_evolution average_ATP_step(ATP_evolution const& x, bool average_the_evolution) {
+inline Agonist_evolution average_agonist_step(Agonist_evolution const& x, bool average_the_evolution) {
     if (average_the_evolution)
-        return average_ATP_step(x());
+        return average_agonist_step(x());
     else
         return x;
 }
@@ -5655,15 +5655,15 @@ auto simulate(mt_64i& mt,
 static Experiment_step average_Experimental_step(Experiment_step const& x,
                                                  bool average_the_evolution) {
     return Experiment_step(get<Time>(x),
-                           average_ATP_step(get<ATP_evolution>(x), average_the_evolution));
+                           average_agonist_step(get<Agonist_evolution>(x), average_the_evolution));
 }
 
-static ATP_evolution add_ATP_step_i(std::vector<ATP_step>&& x, std::vector<ATP_step>&& y) {
+static Agonist_evolution add_agonist_step_i(std::vector<Agonist_step>&& x, std::vector<Agonist_step>&& y) {
     if (x.empty())
         return std::move(y);
     else {
         for (std::size_t i = 0; i < y.size(); ++i) {
-            if (get<ATP_concentration>(x.back())() == get<ATP_concentration>(y[i])()) {
+            if (get<Agonist_concentration>(x.back())() == get<Agonist_concentration>(y[i])()) {
                 get<number_of_samples>(x.back())() += get<number_of_samples>(y[i])();
             } else {
                 x.push_back(y[i]);
@@ -5673,44 +5673,44 @@ static ATP_evolution add_ATP_step_i(std::vector<ATP_step>&& x, std::vector<ATP_s
     }
 }
 
-static ATP_evolution add_ATP_step_i(ATP_step&& x, std::vector<ATP_step>&& y) {
-    return add_ATP_step_i(std::vector<ATP_step>{std::move(x)}, std::move(y));
+static Agonist_evolution add_agonist_step_i(Agonist_step&& x, std::vector<Agonist_step>&& y) {
+    return add_agonist_step_i(std::vector<Agonist_step>{std::move(x)}, std::move(y));
 }
 
-static ATP_evolution add_ATP_step_i(std::vector<ATP_step>&& x, ATP_step&& e) {
+static Agonist_evolution add_agonist_step_i(std::vector<Agonist_step>&& x, Agonist_step&& e) {
     if (x.empty()) {
         x.push_back(e);
         return x;
-    } else if (get<ATP_concentration>(x.back())() == get<ATP_concentration>(e)()) {
+    } else if (get<Agonist_concentration>(x.back())() == get<Agonist_concentration>(e)()) {
         get<number_of_samples>(x.back())() += get<number_of_samples>(e)();
     } else {
         x.push_back(std::move(e));
     }
     return x;
 }
-static ATP_evolution add_ATP_step_i(ATP_step&& x, ATP_step&& e) {
-    if (get<ATP_concentration>(x)() == get<ATP_concentration>(e)()) {
+static Agonist_evolution add_agonist_step_i(Agonist_step&& x, Agonist_step&& e) {
+    if (get<Agonist_concentration>(x)() == get<Agonist_concentration>(e)()) {
         get<number_of_samples>(x)() += get<number_of_samples>(e)();
-        return std::vector<ATP_step>{std::move(x)};
+        return std::vector<Agonist_step>{std::move(x)};
     } else {
-        return std::vector<ATP_step>{std::move(x), std::move(e)};
+        return std::vector<Agonist_step>{std::move(x), std::move(e)};
     }
 }
 
-static ATP_evolution add_ATP_step(ATP_evolution&& x, ATP_evolution&& e) {
-    return add_ATP_step_i(std::move(x()), std::move(e()));
+static Agonist_evolution add_agonist_step(Agonist_evolution&& x, Agonist_evolution&& e) {
+    return add_agonist_step_i(std::move(x()), std::move(e()));
 }
 #ifdef ZOMBIE
 namespace zombie {
 
 class experiment_fractioner {
     std::vector<std::size_t> segments = {73, 33, 22, 22, 4};
-    bool average_ATP_evolution = 10;
+    bool average_agonist_evolution = 10;
 
    public:
     experiment_fractioner(const std::vector<std::size_t>& t_segments,
-                          bool average_the_ATP_evolution)
-        : segments{t_segments}, average_ATP_evolution{average_the_ATP_evolution} {}
+                          bool average_the_agonist_evolution)
+        : segments{t_segments}, average_agonist_evolution{average_the_agonist_evolution} {}
 
     static auto average_Recording(const Recording_conditions& e, const Recording& y,
                                   const std::vector<std::size_t>& indexes0,
@@ -5725,7 +5725,7 @@ class experiment_fractioner {
         std::size_t sum_samples = 0;
         std::size_t ii = 0;
 
-        ATP_evolution v_ATP = std::vector<ATP_step>{};
+        Agonist_evolution v_agonist = std::vector<Agonist_step>{};
 
         for (std::size_t i = 0; i < size(y()); ++i) {
             if (indexes0[i] == indexes1[ii]) {
@@ -5736,14 +5736,14 @@ class experiment_fractioner {
                     auto n_samples = get_num_samples(e()[i]);
                     sum_y += y()[i]() * n_samples;
                     sum_samples += n_samples;
-                    v_ATP = add_ATP_step(std::move(v_ATP),
-                                         average_ATP_step(e()[i], average_the_evolution));
+                    v_agonist = add_agonist_step(std::move(v_agonist),
+                                         average_agonist_step(e()[i], average_the_evolution));
 
                     out_y[ii] = Patch_current(sum_y / sum_samples);
-                    out_x[ii] = Experiment_step(get<Time>(e()[i]), v_ATP);
+                    out_x[ii] = Experiment_step(get<Time>(e()[i]), v_agonist);
                     sum_y = 0;
                     sum_samples = 0;
-                    v_ATP = std::vector<ATP_step>{};
+                    v_agonist = std::vector<Agonist_step>{};
                 }
                 ++ii;
             } else {
@@ -5751,8 +5751,8 @@ class experiment_fractioner {
                 auto n_samples = get_num_samples(e()[i]);
                 sum_y += y()[i]() * n_samples;
                 sum_samples += n_samples;
-                v_ATP =
-                    add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i], average_the_evolution));
+                v_agonist =
+                    add_agonist_step(std::move(v_agonist), average_agonist_step(e()[i], average_the_evolution));
             }
         }
 
@@ -5779,7 +5779,7 @@ class experiment_fractioner {
         std::size_t sum_samples = 0;
         std::size_t ii = 0;
 
-        ATP_evolution v_ATP = std::vector<ATP_step>{};
+        Agonist_evolution v_agonist = std::vector<Agonist_step>{};
 
         for (std::size_t i = 0; i < size(yr()); ++i) {
             if (indexes0[i] == indexes1[ii]) {
@@ -5792,18 +5792,18 @@ class experiment_fractioner {
                     auto n_samples = get_num_samples(e()[i]);
                     sum_y += yr()[i]() * n_samples;
                     sum_samples += n_samples;
-                    v_ATP = add_ATP_step(std::move(v_ATP),
-                                         average_ATP_step(e()[i], average_the_evolution));
+                    v_agonist = add_agonist_step(std::move(v_agonist),
+                                         average_agonist_step(e()[i], average_the_evolution));
 
                     out_y[ii] = Patch_current(sum_y / sum_samples);
 
-                    out_x[ii] = Experiment_step(get<Time>(e()[i]), v_ATP);
+                    out_x[ii] = Experiment_step(get<Time>(e()[i]), v_agonist);
                     if constexpr (keep_N_state::value)
                         out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
 
                     sum_y = 0;
                     sum_samples = 0;
-                    v_ATP = std::vector<ATP_step>{};
+                    v_agonist = std::vector<Agonist_step>{};
                 }
                 ++ii;
             } else {
@@ -5811,8 +5811,8 @@ class experiment_fractioner {
                 auto n_samples = get_num_samples(e()[i]);
                 sum_y += yr()[i]() * n_samples;
                 sum_samples += n_samples;
-                v_ATP =
-                    add_ATP_step(std::move(v_ATP), average_ATP_step(e()[i], average_the_evolution));
+                v_agonist =
+                    add_agonist_step(std::move(v_agonist), average_agonist_step(e()[i], average_the_evolution));
             }
         }
         Simulated_Recording<keep_N_state> out_sim;
@@ -5845,14 +5845,14 @@ class experiment_fractioner {
         cuevi::by_fraction<Recording> y_out(n_frac);
         cuevi::by_fraction<Experiment> x_out(
             n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                               get<initial_ATP_concentration>(x)));
+                               get<initial_agonist_concentration>(x)));
         y_out[n_frac - 1] = y;
         x_out[n_frac - 1] = x;
 
         for (std::size_t i = n_frac - 1; i > 0; --i) {
             std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
                 average_Recording(get<Recording_conditions>(x_out[i]), y_out[i], indexes[i],
-                                  indexes[i - 1], average_ATP_evolution);
+                                  indexes[i - 1], average_agonist_evolution);
         }
 
         // std::abort();
@@ -5887,14 +5887,14 @@ class experiment_fractioner {
         cuevi::by_fraction<Recording> y_out(n_frac);
         cuevi::by_fraction<Experiment> x_out(
             n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                               get<initial_ATP_concentration>(x)));
+                               get<initial_agonist_concentration>(x)));
         y_out[n_frac - 1] = y;
         x_out[n_frac - 1] = x;
 
         for (std::size_t i = n_frac - 1; i > 0; --i) {
             std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
                 average_Recording(get<Recording_conditions>(x_out[i]), y_out[i], indexes[i],
-                                  indexes[i - 1], average_ATP_evolution);
+                                  indexes[i - 1], average_agonist_evolution);
         }
         return std::tuple(std::move(y_out), std::move(x_out));
     }
@@ -5924,14 +5924,14 @@ class experiment_fractioner {
         cuevi::by_fraction<Simulated_Recording<keep_N_state>> y_out(n_frac);
         cuevi::by_fraction<Experiment> x_out(
             n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                               get<initial_ATP_concentration>(x)));
+                               get<initial_agonist_concentration>(x)));
         y_out[n_frac - 1] = sim;
         x_out[n_frac - 1] = x;
 
         for (std::size_t i = n_frac - 1; i > 0; --i) {
             std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
                 average_Recording(get<Recording_conditions>(x_out[i]), y_out[i], indexes[i],
-                                  indexes[i - 1], average_ATP_evolution);
+                                  indexes[i - 1], average_agonist_evolution);
         }
         return std::tuple(std::move(y_out), std::move(x_out));
     }
@@ -6020,7 +6020,7 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
                     if (is_valid(prediction)) {
                         auto& predictions = prediction.value();
                         for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
-                            auto v_ev = get<ATP_evolution>(get<Recording_conditions>(x)()[i_step]);
+                            auto v_ev = get<Agonist_evolution>(get<Recording_conditions>(x)()[i_step]);
 
                             auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
                             auto num_smples = get_num_samples(v_ev);
@@ -6069,8 +6069,8 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
 template <class Parameters>
 void report_title(save_Predictions<Parameters>& s, thermo_levenberg_mcmc const&, ...) {
     s.f << "iter" << s.sep << "iter_time" << s.sep << "beta" << s.sep << "walker_id" << s.sep
-        << "i_step" << s.sep << "time" << s.sep << "num_samples" << s.sep << "ATP" << s.sep
-        << "ATP_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep
+        << "i_step" << s.sep << "time" << s.sep << "num_samples" << s.sep << "agonist" << s.sep
+        << "Agonist_evolution" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep
         << "plogL" << s.sep << "pelogL"
         << "\n";
 }
@@ -6115,14 +6115,14 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
         if (is_valid(prediction)) {
             auto& predictions = prediction.value();
             for (std::size_t i_step = 0; i_step < size(y); ++i_step) {
-                auto v_ev = get<ATP_evolution>(get<Recording_conditions>(x)()[i_step]);
+                auto v_ev = get<Agonist_evolution>(get<Recording_conditions>(x)()[i_step]);
 
                 auto time = get<Time>(get<Recording_conditions>(x)()[i_step]);
                 auto num_smples = get_num_samples(v_ev);
 
                 s.f << iter << s.sep << dur.count() << s.sep << t_beta[i_b] << s.sep << walker_id
                     << s.sep << i_step << s.sep << time << s.sep << num_samples << s.sep
-                    << ToString(average_ATP_step(v_ev, true)) << s.sep << ToString(v_ev) << s.sep
+                    << ToString(average_agonist_step(v_ev, true)) << s.sep << ToString(v_ev) << s.sep
                     << y()[i_step]() << s.sep
 
                     << get<y_mean>(predictions()[i_step]) << s.sep
@@ -6135,12 +6135,12 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
     //   std::cerr<<"report save_Predictions end\n";
 }
 
-inline std::string ToString(const ATP_step& ev) {
+inline std::string ToString(const Agonist_step& ev) {
     return std::to_string(get<number_of_samples>(ev)()) + "  " +
-           std::to_string(get<ATP_concentration>(ev)());
+           std::to_string(get<Agonist_concentration>(ev)());
 }
 
-inline std::string ToString(const std::vector<ATP_step>& ev) {
+inline std::string ToString(const std::vector<Agonist_step>& ev) {
     std::string out;
     for (auto& e : ev) {
         out += ToString(e) + "  ";
@@ -6148,7 +6148,7 @@ inline std::string ToString(const std::vector<ATP_step>& ev) {
     return out;
 }
 
-inline std::string ToString(const ATP_evolution& ev) {
+inline std::string ToString(const Agonist_evolution& ev) {
     return ToString(ev());
 }
 
@@ -6165,7 +6165,7 @@ void report(std::string filename, const Patch_State_Evolution& predictions,
       << ","
       << "num_samples"
       << ","
-      << "ATP_step"
+      << "Agonist_step"
       << ","
       << "v_ev"
       << ","
@@ -6194,11 +6194,11 @@ void report(std::string filename, const Patch_State_Evolution& predictions,
     }
     f << "\n";
     for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
-        auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
+        auto v_ev = get<Agonist_evolution>(get<Recording_conditions>(xs)()[i_step]);
         for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows(); ++i) {
             for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_step])().ncols(); ++j) {
                 f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step]) << ","
-                  << get_num_samples(v_ev) << "," << ToString(average_ATP_step(v_ev, true)) << ","
+                  << get_num_samples(v_ev) << "," << ToString(average_agonist_step(v_ev, true)) << ","
                   << ToString(v_ev) << "," << ys()[i_step]() << ","
                   << get<y_mean>(predictions()[i_step]) << "," << get<y_var>(predictions()[i_step])
                   << "," << get<plogL>(predictions()[i_step]) << ","
@@ -6277,7 +6277,7 @@ void save_Likelihood_Predictions(std::string filename, const Patch_State_Evoluti
       << ","
       << "num_samples"
       << ","
-      << "ATP_step"
+      << "Agonist_step"
       << ","
       << "v_ev"
       << ","
@@ -6307,11 +6307,11 @@ void save_Likelihood_Predictions(std::string filename, const Patch_State_Evoluti
     else
         f << "\n";
     for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
-        auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
+        auto v_ev = get<Agonist_evolution>(get<Recording_conditions>(xs)()[i_step]);
         for (std::size_t i = 0; i < get<P_Cov>(predictions()[i_step])().nrows(); ++i) {
             for (std::size_t j = 0; j < get<P_Cov>(predictions()[i_step])().ncols(); ++j) {
                 f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step]) << ","
-                  << get_num_samples(v_ev) << "," << ToString(average_ATP_step(v_ev, true)) << ","
+                  << get_num_samples(v_ev) << "," << ToString(average_agonist_step(v_ev, true)) << ","
                   << ToString(v_ev) << "," << ys()[i_step]() << ","
                   << get<y_mean>(predictions()[i_step]) << "," << get<y_var>(predictions()[i_step])
                   << "," << get<plogL>(predictions()[i_step]) << ","
@@ -6351,7 +6351,7 @@ void save_Likelihood_Predictions(std::string filename, const logL_y_yvar& predic
       << ","
       << "num_samples"
       << ","
-      << "ATP_step"
+      << "Agonist_step"
       << ","
       << "v_ev"
       << ","
@@ -6367,9 +6367,9 @@ void save_Likelihood_Predictions(std::string filename, const logL_y_yvar& predic
     else
         f << "\n";
     for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
-        auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
+        auto v_ev = get<Agonist_evolution>(get<Recording_conditions>(xs)()[i_step]);
         f << i_step << "," << get<Time>(get<Recording_conditions>(xs)()[i_step]) << ","
-          << get_num_samples(v_ev) << "," << ToString(average_ATP_step(v_ev, true)) << ","
+          << get_num_samples(v_ev) << "," << ToString(average_agonist_step(v_ev, true)) << ","
           << ToString(v_ev) << "," << ys()[i_step]() << ","
           << get<ymean_Evolution>(predictions)()[i_step] << ","
           << get<yvar_Evolution>(predictions)()[i_step] << "\n";
@@ -6413,7 +6413,7 @@ void save_fractioned_Likelihood_Predictions(
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     f << "i_frac" << sep << "i_step" << sep << "t_ini" << sep << "time" << sep << "i_sub_step"
-      << sep << "number_of_samples" << sep << "ATP_concentration" << sep << "macror_algorithm"
+      << sep << "number_of_samples" << sep << "Agonist_concentration" << sep << "macror_algorithm"
       << sep << "y" << sep << "y_mean" << sep << "y_var" << sep << "plogL" << sep << "eplogL" << sep
       << "logL" << sep << "i_state" << sep << "P_mean" << sep << "j_state" << sep << "P_Cov";
     if constexpr (keep_N_state::value)
@@ -6429,7 +6429,7 @@ void save_fractioned_Likelihood_Predictions(
         auto& xs = v_xs[i_frac];
         auto& predictions = v_predictions[i_frac];
         for (std::size_t i_step = 0; i_step < size(ys); ++i_step) {
-            auto v_ev = get<ATP_evolution>(get<Recording_conditions>(xs)()[i_step]);
+            auto v_ev = get<Agonist_evolution>(get<Recording_conditions>(xs)()[i_step]);
             for (std::size_t i_sub_step = 0; i_sub_step < v_ev.size(); ++i_sub_step) {
                 for (std::size_t i_state = 0; i_state < get<P_Cov>(predictions()[i_step])().nrows();
                      ++i_state) {
@@ -6438,7 +6438,7 @@ void save_fractioned_Likelihood_Predictions(
                         f << i_frac << sep << i_step << sep << t_ini << sep
                           << get<Time>(get<Recording_conditions>(xs)()[i_step]) << sep << i_sub_step
                           << sep << get<number_of_samples>(v_ev[i_sub_step]) << sep
-                          << get<ATP_concentration>(v_ev[i_sub_step]) << sep
+                          << get<Agonist_concentration>(v_ev[i_sub_step]) << sep
                           << get<macror_algorithm>(predictions()[i_step]) << sep << ys()[i_step]()
                           << sep << get<y_mean>(predictions()[i_step]) << sep
                           << get<y_var>(predictions()[i_step]) << sep
@@ -6523,14 +6523,14 @@ void report(FunctionTable& f, std::size_t iter, const Duration& dur,
                     auto& predictions = prediction.value();
                     for (std::size_t i_step = 0; i_step < size(ys[i_frac()]); ++i_step) {
                         auto v_ev =
-                            get<ATP_evolution>(get<Recording_conditions>(xs[i_frac()])()[i_step]);
+                            get<Agonist_evolution>(get<Recording_conditions>(xs[i_frac()])()[i_step]);
 
                         s.f << iter << s.sep << dur.count() << s.sep << i_cu << s.sep << i_frac()
                             << s.sep << nsamples << s.sep << beta() << s.sep << i_walker << s.sep
                             << get<cuevi::Walker_id>(wa())() << s.sep << i_step << s.sep
                             << get<Time>(get<Recording_conditions>(xs[i_frac()])()[i_step]) << s.sep
                             << get_num_samples(v_ev) << s.sep
-                            << ToString(average_ATP_step(v_ev, true)) << s.sep << ToString(v_ev)
+                            << ToString(average_agonist_step(v_ev, true)) << s.sep << ToString(v_ev)
                             << s.sep << ys[i_frac()]()[i_step]() << s.sep
                             << get<y_mean>(predictions()[i_step]) << s.sep
                             << get<y_var>(predictions()[i_step]) << s.sep
@@ -6546,7 +6546,7 @@ void report_title(save_Predictions<ParameterType>& s, cuevi::Cuevi_mcmc<Paramete
                   ...) {
     s.f << "iter" << s.sep << "iter_time" << s.sep << "i_cu" << s.sep << "i_frac" << s.sep
         << "nsamples" << s.sep << "beta" << s.sep << "i_walker" << s.sep << "Walker_id" << s.sep
-        << "i_step" << s.sep << "Time" << s.sep << "num_samples" << s.sep << "average_ATP_step"
+        << "i_step" << s.sep << "Time" << s.sep << "num_samples" << s.sep << "average_agonist_step"
         << s.sep << "v_ev" << s.sep << "Y_obs" << s.sep << "Y_pred" << s.sep << "Y_var" << s.sep
         << "plogL" << s.sep << "eplogL"
         << "\n";
@@ -6555,7 +6555,7 @@ void report_title(save_Predictions<ParameterType>& s, cuevi::Cuevi_mcmc<Paramete
 /*
 auto cuevi_Model_by_convergence(
     std::string path, std::string filename,
-    const std::vector<std::size_t> &t_segments, bool average_the_ATP_evolution,
+    const std::vector<std::size_t> &t_segments, bool average_the_agonist_evolution,
     
     std::size_t num_scouts_per_ensemble, double min_fraction,
     std::size_t thermo_jumps_every, std::size_t max_iter, double max_ratio,
@@ -6565,7 +6565,7 @@ auto cuevi_Model_by_convergence(
       checks_derivative_var_ratio<deprecated::cuevi_mcmc,
                                   var::Parameters_transformed>(max_iter,
                                                                    max_ratio),
-      experiment_fractioner(t_segments, average_the_ATP_evolution),
+      experiment_fractioner(t_segments, average_the_agonist_evolution),
       save_mcmc<var::Parameters_transformed,
                 save_likelihood<var::Parameters_transformed>,
                 save_Parameter<var::Parameters_transformed>, save_Evidence,
@@ -6585,13 +6585,13 @@ cuevi::Cuevi_Algorithm<
     cuevi_less_than_max_iteration>
     new_cuevi_Model_by_iteration(
         std::string path, std::string filename, const std::vector<std::size_t>& t_segments,
-        bool average_the_ATP_evolution, std::size_t num_scouts_per_ensemble,
+        bool average_the_agonist_evolution, std::size_t num_scouts_per_ensemble,
         std::size_t number_trials_until_give_up, double min_fraction,
         std::size_t thermo_jumps_every, std::size_t max_iter_equilibrium,
         double n_points_per_decade_beta, double n_points_per_decade_fraction, double medium_beta,
         double stops_at, bool includes_the_zero, Saving_intervals sint, bool random_jumps) {
     return cuevi::Cuevi_Algorithm(
-        experiment_fractioner(t_segments, average_the_ATP_evolution),
+        experiment_fractioner(t_segments, average_the_agonist_evolution),
         save_mcmc<var::Parameters_transformed, save_likelihood<var::Parameters_transformed>,
                   save_Parameter<var::Parameters_transformed>, save_Evidence,
                   save_Predictions<var::Parameters_transformed>>(
@@ -6848,7 +6848,7 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>> calc_ex
     save_fractioned_Recording(filename + "_recording.csv", ",", ys);
     return std::tuple(filename + "_experiment.csv", filename + "_recording.csv",
                       get<Frequency_of_Sampling>(experiment)(),
-                      get<initial_ATP_concentration>(experiment)()());
+                      get<initial_agonist_concentration>(experiment)()());
 }
 
 inline Maybe_error<std::tuple<std::string, std::string, double, double>> calc_simulation_fractions(
@@ -6881,7 +6881,7 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>> calc_si
     save_fractioned_simulation(filename + "_frac_recording.csv", ",", ys);
     return std::tuple(filename + "_frac_experiment.csv", filename + "_frac_recording.csv",
                       get<Frequency_of_Sampling>(experiment)(),
-                      get<initial_ATP_concentration>(experiment)()());
+                      get<initial_agonist_concentration>(experiment)()());
 }
 
 using fractioned_experiment_type =

@@ -91,7 +91,7 @@ static const auto scheme_5 = Allost1::Model("scheme_5", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -237,7 +237,7 @@ static const auto scheme_6 = Allost1::Model("scheme_6", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -383,7 +383,7 @@ static const auto scheme_7 = Allost1::Model("scheme_7", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -532,7 +532,7 @@ static const auto scheme_8 = Allost1::Model("scheme_8", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -669,7 +669,7 @@ static const auto scheme_9 = Allost1::Model("scheme_9", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -816,7 +816,7 @@ static const auto scheme_10 = Allost1::Model("scheme_10", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -978,7 +978,7 @@ static const auto scheme_11 = Allost1::Model("scheme_11", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -1122,7 +1122,7 @@ static const auto scheme_12 = Allost1::Model("scheme_12", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -1260,7 +1260,7 @@ static const auto scheme_13 = Allost1::Model("scheme_13", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -1404,7 +1404,7 @@ static const auto scheme_14 = Allost1::Model("scheme_14", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else
@@ -1557,7 +1557,7 @@ static const auto scheme_15 = Allost1::Model("scheme_15", []() {
 
             auto Nst = get<N_St>(m());
             auto Maybe_v_P_initial =
-                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+                macrodr::Macro_DMR{}.calc_Pinitial(a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
             if (!Maybe_v_P_initial)
                 return Maybe_v_P_initial.error();
             else

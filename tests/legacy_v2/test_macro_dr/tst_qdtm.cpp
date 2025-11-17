@@ -22,7 +22,7 @@ TEST_CASE("Test Qdtm ", "[Qdtm]") {
     auto func_table = macrodr::cmd::get_function_Table_maker_St(
         "../macro_dr/test_macro_dr/examples/tst.txt", 0ul)();
 
-    auto Qx = macrodr::Macro_DMR{}.calc_Qx(m, macrodr::ATP_concentration(0.0));
+    auto Qx = macrodr::Macro_DMR{}.calc_Qx(m, macrodr::Agonist_concentration(0.0));
 
     auto Maybe_Qx_eig = macrodr::Macro_DMR{}.calc_eigen(Qx);
     REQUIRE(Maybe_Qx_eig);

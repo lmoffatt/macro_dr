@@ -52,20 +52,20 @@ inline void calc_thermo_evidence_fraction_dts(std::string id, std::string model,
     if (!Maybe_frac_experiment)
         return;
     auto frac_experiment = Maybe_frac_experiment.value();
-    auto [fname_experiment, fname_simulation, fs, iniATP] = frac_experiment;
+    auto [fname_experiment, fname_simulation, fs, iniagonist] = frac_experiment;
     std::string filename = id + "_" + model + "_" + time_now() + "_" + std::to_string(myseed);
 
     if (true) {
         std::ofstream f("thermo_evidence_fraction_dts_" + id + ".txt");
         save_vars(f, filename, model, prior, likelihood, fname_simulation, fname_experiment, fs,
-                  iniATP, thermo_algorithm, sampling_interval, max_number_of_values_per_iteration,
+                  iniagonist, thermo_algorithm, sampling_interval, max_number_of_values_per_iteration,
                   myseed);
     }
     using namespace macrodr;
     std::vector<Experiment> xs;
     std::vector<Recording> ys;
 
-    auto Maybe_e = load_fractioned_experiment(fname_experiment, ",", fs, iniATP, xs);
+    auto Maybe_e = load_fractioned_experiment(fname_experiment, ",", fs, iniagonist, xs);
 
     auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",", ys);
     if (!Maybe_e.valid() || !Maybe_ys.valid()) {
@@ -184,7 +184,7 @@ inline void calc_thermo_evidence_fraction_dts_continuation(std::string id, std::
     std::string fname_simulation;
     std::string fname_experiment;
     double fs;
-    double iniATP;
+    double iniagonist;
 
     std::size_t myseed;
     std::string filename;
@@ -195,7 +195,7 @@ inline void calc_thermo_evidence_fraction_dts_continuation(std::string id, std::
             return;
         }
         load_vars(f, filename, model, prior, likelihood, fname_simulation, fname_experiment, fs,
-                  iniATP, thermo_algorithm, sampling_interval, max_number_of_values_per_iteration,
+                  iniagonist, thermo_algorithm, sampling_interval, max_number_of_values_per_iteration,
                   myseed);
     }
     std::string oldfilename = filename;
@@ -208,7 +208,7 @@ inline void calc_thermo_evidence_fraction_dts_continuation(std::string id, std::
     std::vector<Experiment> xs;
     std::vector<Recording> ys;
 
-    auto Maybe_e = load_fractioned_experiment(fname_experiment, ",", fs, iniATP, xs);
+    auto Maybe_e = load_fractioned_experiment(fname_experiment, ",", fs, iniagonist, xs);
 
     auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",", ys);
     if (!Maybe_e.valid() || !Maybe_ys.valid()) {

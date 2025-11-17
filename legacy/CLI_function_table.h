@@ -70,7 +70,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
             //              return m.calc_Qdt_bisection(
             //                  std::forward<decltype(x)>(x)...,bisection_order);
             //            }),
-            //     var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step,
+            //     var::Memoiza_all_values<Maybe_error<Qdt>, Agonist_step,
             //     double>{}, num_scouts_per_ensemble / 2),
             var::Single_Thread_Memoizer(
                 var::F(Calc_Qdt_step{},
@@ -79,7 +79,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                                auto test_der_t_Qdt = var::test_Derivative(
                                    [&t_step, &fs, &f](auto const& l_m) {
                                        auto ma = Macro_DMR{};
-                                       return ma.calc_Qdt_ATP_step(f, l_m, t_step, fs);
+                                       return ma.calc_Qdt_agonist_step(f, l_m, t_step, fs);
                                    },
                                    1e-6, 1e-2, m);
                                if (true && !test_der_t_Qdt) {
@@ -90,12 +90,12 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                            }
                            auto ma = Macro_DMR{};
 
-                           return ma.calc_Qdt_ATP_step(std::forward<decltype(f)>(f), m, t_step, fs);
+                           return ma.calc_Qdt_agonist_step(std::forward<decltype(f)>(f), m, t_step, fs);
                        }),
                 var::Memoiza_overload<
-                    var::Memoiza_all_values<Maybe_error<Qdt>, ATP_step, double>,
+                    var::Memoiza_all_values<Maybe_error<Qdt>, Agonist_step, double>,
                     var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<Qdt, var::Parameters_transformed>>, ATP_step,
+                        Maybe_error<var::Derivative<Qdt, var::Parameters_transformed>>, Agonist_step,
                         double>>{}),
             // var::Parameters_transformed
             var::Single_Thread_Memoizer(
@@ -105,7 +105,7 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                                auto test_der_t_Qdtm = var::test_Derivative(
                                    [&t_step, &fs, &f](auto const& l_m) {
                                        auto ma = Macro_DMR{};
-                                       return ma.calc_Qdtm_ATP_step(f, l_m, t_step, fs);
+                                       return ma.calc_Qdtm_agonist_step(f, l_m, t_step, fs);
                                    },
                                    1e-6, 1e-2, m);
                                if (true && !test_der_t_Qdtm) {
@@ -118,20 +118,20 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                            }
                            auto ma = Macro_DMR{};
 
-                           return ma.calc_Qdtm_ATP_step(std::forward<decltype(f)>(f), m, t_step,
+                           return ma.calc_Qdtm_agonist_step(std::forward<decltype(f)>(f), m, t_step,
                                                         fs);
                        }),
                 var::Memoiza_overload<
-                    var::Memoiza_all_values<Maybe_error<Qdtm>, ATP_step, double>,
+                    var::Memoiza_all_values<Maybe_error<Qdtm>, Agonist_step, double>,
                     var::Memoiza_all_values<
-                        Maybe_error<var::Derivative<Qdtm, var::Parameters_transformed>>, ATP_step,
+                        Maybe_error<var::Derivative<Qdtm, var::Parameters_transformed>>, Agonist_step,
                         double>>{}),
             // var::Time_it(
             //     var::F(Calc_Qdt_step{},
             //            [](auto &&...x) {
             //              auto m = Macro_DMR{};
             //              return
-            //              m.calc_Qdt_ATP_step(std::forward<decltype(x)>(x)...);
+            //              m.calc_Qdt_agonist_step(std::forward<decltype(x)>(x)...);
             //            })),
 
             var::F(Calc_Qdt{},
@@ -146,14 +146,14 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
               }),
             var::Single_Thread_Memoizer(
                 F(Calc_eigen{},
-                  [](auto& mo, auto& ATP, auto&&... x) {
+                  [](auto& mo, auto& agonist, auto&&... x) {
                       auto m = Macro_DMR{};
 
-                      auto out = m.calc_eigen(mo, ATP, std::forward<decltype(x)>(x)...);
+                      auto out = m.calc_eigen(mo, agonist, std::forward<decltype(x)>(x)...);
                       if constexpr (false) {
                           if (out) {
                               auto test_der_eigen = var::test_Derivative(
-                                  [&m, &ATP](auto l_m) { return m.calc_eigen(l_m, ATP); }, 1e-6,
+                                  [&m, &agonist](auto l_m) { return m.calc_eigen(l_m, agonist); }, 1e-6,
                                   1e-2, mo);
 
                               if (!test_der_eigen) {
@@ -166,10 +166,10 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                       return out;
                   }),
                 var::Memoiza_overload<
-                    var::Memoiza_all_values<Maybe_error<Eigs>, ATP_concentration>,
+                    var::Memoiza_all_values<Maybe_error<Eigs>, Agonist_concentration>,
                     var::Memoiza_all_values<
                         Maybe_error<var::Derivative<Eigs, var::Parameters_transformed>>,
-                        ATP_concentration>>{})
+                        Agonist_concentration>>{})
 
             // var::Time_it(
             //     F(Calc_eigen{},
@@ -257,7 +257,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                            auto test_der_t_Qdt = var::test_Derivative(
                                [&t_step, &fs, &f](auto const& l_m) {
                                    auto ma = Macro_DMR{};
-                                   return ma.calc_Qdt_ATP_step(f, l_m, t_step, fs);
+                                   return ma.calc_Qdt_agonist_step(f, l_m, t_step, fs);
                                },
                                1e-6, 1e-2, m);
                            if (true && !test_der_t_Qdt) {
@@ -268,7 +268,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                        }
                        auto ma = Macro_DMR{};
 
-                       return ma.calc_Qdt_ATP_step(std::forward<decltype(f)>(f), m, t_step, fs);
+                       return ma.calc_Qdt_agonist_step(std::forward<decltype(f)>(f), m, t_step, fs);
                    }),
             var::F(Calc_Qdtm_step{},
                    [](auto& f, auto& m, auto& t_step, double fs) {
@@ -276,7 +276,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                            auto test_der_t_Qdtm = var::test_Derivative(
                                [&t_step, &fs, &f](auto const& l_m) {
                                    auto ma = Macro_DMR{};
-                                   return ma.calc_Qdtm_ATP_step(f, l_m, t_step, fs);
+                                   return ma.calc_Qdtm_agonist_step(f, l_m, t_step, fs);
                                },
                                1e-6, 1e-2, m);
                            if (true && !test_der_t_Qdtm) {
@@ -289,7 +289,7 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                        }
                        auto ma = Macro_DMR{};
 
-                       return ma.calc_Qdtm_ATP_step(std::forward<decltype(f)>(f), m, t_step, fs);
+                       return ma.calc_Qdtm_agonist_step(std::forward<decltype(f)>(f), m, t_step, fs);
                    }),
 
             var::F(Calc_Qdt{},
@@ -304,14 +304,14 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
               }),
             var::Single_Thread_Memoizer(
                 F(Calc_eigen{},
-                  [](auto& mo, auto& ATP, auto&&... x) {
+                  [](auto& mo, auto& agonist, auto&&... x) {
                       auto m = Macro_DMR{};
 
-                      auto out = m.calc_eigen(mo, ATP, std::forward<decltype(x)>(x)...);
+                      auto out = m.calc_eigen(mo, agonist, std::forward<decltype(x)>(x)...);
                       if constexpr (false) {
                           if (out) {
                               auto test_der_eigen = var::test_Derivative(
-                                  [&m, &ATP](auto l_m) { return m.calc_eigen(l_m, ATP); }, 1e-6,
+                                  [&m, &agonist](auto l_m) { return m.calc_eigen(l_m, agonist); }, 1e-6,
                                   1e-2, mo);
 
                               if (!test_der_eigen) {
@@ -324,10 +324,10 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                       return out;
                   }),
                 var::Memoiza_overload<
-                    var::Memoiza_all_values<Maybe_error<Eigs>, ATP_concentration>,
+                    var::Memoiza_all_values<Maybe_error<Eigs>, Agonist_concentration>,
                     var::Memoiza_all_values<
                         Maybe_error<var::Derivative<Eigs, var::Parameters_transformed>>,
-                        ATP_concentration>>{})
+                        Agonist_concentration>>{})
 
             // var::Time_it(
             //     F(Calc_eigen{},
@@ -440,11 +440,11 @@ inline auto set_CueviAlgorithm(
     std::size_t num_scouts_per_ensemble, std::size_t number_trials_until_give_up, double stops_at,
     double medium_beta, bool includes_zero, bool random_jumps, std::size_t max_iter_equilibrium,
     std::string path, double n_points_per_decade_beta_high, double n_points_per_decade_beta_low,
-    bool average_the_ATP_evolution, std::string filename, std::size_t thermo_jumps_every,
+    bool average_the_agonist_evolution, std::string filename, std::size_t thermo_jumps_every,
     std::size_t sampling_interval, std::size_t max_number_of_values_per_iteration) {
     using namespace macrodr;
 
-    return std::tuple(path, filename, average_the_ATP_evolution, num_scouts_per_ensemble,
+    return std::tuple(path, filename, average_the_agonist_evolution, num_scouts_per_ensemble,
                       number_trials_until_give_up, thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low, medium_beta,
                       stops_at, includes_zero, random_jumps, sampling_interval,
@@ -470,7 +470,7 @@ inline void calc_likelihood_old(std::string outfilename, std::string model,
              &algorithm](auto model0ptr) {
                 auto& model0 = *model0ptr;
 
-                auto [path, filename, average_the_ATP_evolution, num_scouts_per_ensemble,
+                auto [path, filename, average_the_agonist_evolution, num_scouts_per_ensemble,
                       number_trials_until_give_up, thermo_jump_factor, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low, medium_beta,
                       stops_at, includes_zero, random_jumps, sampling_interval,
@@ -541,7 +541,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
         [&ftbl3, &frac_simulation, &likelihood_algo, &par,
          &file_name](auto model0ptr) -> Maybe_error<std::string> {
             auto& model0 = *model0ptr;
-            auto [experiment, simulation, fs, iniATP] = frac_simulation;
+            auto [experiment, simulation, fs, iniagonist] = frac_simulation;
 
             auto [adaptive_aproximation, recursive_approximation, averaging_approximation,
                   variance_correction, variance_correction_approximation, n_sub_dt] =
@@ -555,7 +555,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
 
             std::vector<Experiment> xs;
             std::vector<Simulated_Recording<includes_N_state_evolution<true>>> ys;
-            auto Maybe_e = load_fractioned_experiment(experiment, ",", fs, iniATP, xs);
+            auto Maybe_e = load_fractioned_experiment(experiment, ",", fs, iniagonist, xs);
 
             auto Maybe_y = load_fractioned_simulation(simulation, ",", ys);
 
@@ -636,14 +636,14 @@ inline void calc_fraction_evidence(std::string model, prior_value_type prior,
                 auto& model0 = *model0ptr;
                 myseed = calc_seed(myseed);
                 mt_64i mt(myseed);
-                auto [fname_experiment, fname_simulation, fs, iniATP] = frac_experiment;
+                auto [fname_experiment, fname_simulation, fs, iniagonist] = frac_experiment;
                 std::vector<Experiment> xs;
                 std::vector<Recording> ys;
-                auto Maybe_e = load_fractioned_experiment(fname_experiment, ",", fs, iniATP, xs);
+                auto Maybe_e = load_fractioned_experiment(fname_experiment, ",", fs, iniagonist, xs);
 
                 auto Maybe_ys = load_fractioned_Recording(fname_simulation, ",", ys);
 
-                auto [path, file_name, average_the_ATP_evolution, num_scouts_per_ensemble,
+                auto [path, file_name, average_the_agonist_evolution, num_scouts_per_ensemble,
                       number_trials_until_give_up, thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low, medium_beta,
                       stops_at, includes_zero, random_jumps, sampling_interval,
@@ -751,7 +751,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
 
                 auto [min_fraction, n_points_per_decade_fraction, segments] =
                     std::move(fraction_algo);
-                auto [path, file_name, average_the_ATP_evolution, num_scouts_per_ensemble,
+                auto [path, file_name, average_the_agonist_evolution, num_scouts_per_ensemble,
                       number_trials_until_give_up, thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low, medium_beta,
                       stops_at, includes_zero, random_jumps, sampling_interval,
@@ -797,7 +797,7 @@ inline void calc_evidence(std::string model, prior_value_type prior,
                                     sampling_interval, max_number_of_values_per_iteration))));
 
                             auto cbc = new_cuevi_Model_by_iteration(
-                                path, filename, t_segments_used, average_the_ATP_evolution,
+                                path, filename, t_segments_used, average_the_agonist_evolution,
                                 num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
                                 thermo_jumps_every, max_iter_equilibrium,
                                 n_points_per_decade_beta_low, n_points_per_decade_fraction,
@@ -869,7 +869,7 @@ inline void calc_evidence_continuation(std::string model, prior_value_type prior
                 myseed = calc_seed(myseed);
                 mt_64i mt(myseed);
                 /*
-* path, filename, average_the_ATP_evolution,
+* path, filename, average_the_agonist_evolution,
 num_scouts_per_ensemble, number_trials_until_give_up,
 thermo_jumps_every, max_iter_equilibrium,
 n_points_per_decade, medium_beta, stops_at, includes_zero,
@@ -878,7 +878,7 @@ saving_itervals, random_jumps
                 auto [min_fraction, n_points_per_decade_fraction, segments] =
                     std::move(fraction_algo);
 
-                auto [path, file_name, average_the_ATP_evolution, num_scouts_per_ensemble,
+                auto [path, file_name, average_the_agonist_evolution, num_scouts_per_ensemble,
                       number_trials_until_give_up, thermo_jumps_every, max_iter_equilibrium,
                       n_points_per_decade_beta_high, n_points_per_decade_beta_low, medium_beta,
                       stops_at, includes_zero, random_jumps, sampling_interval,
@@ -913,7 +913,7 @@ saving_itervals, random_jumps
 
                         std::vector<std::size_t> t_segments_7 = {73, 33, 22, 22};
 
-                        bool average_the_ATP_evolution = true;
+                        bool average_the_agonist_evolution = true;
 
                         /**
                * @brief cbc cumulative evidence algorithm, ends using
@@ -938,7 +938,7 @@ saving_itervals, random_jumps
                                 std::pair(sampling_interval, max_number_of_values_per_iteration))));
 
                         auto cbc = new_cuevi_Model_by_iteration(
-                            path, filename, t_segments_used, average_the_ATP_evolution,
+                            path, filename, t_segments_used, average_the_agonist_evolution,
                             num_scouts_per_ensemble, number_trials_until_give_up, min_fraction,
                             thermo_jumps_every, max_iter_equilibrium, n_points_per_decade_beta_low,
                             n_points_per_decade_fraction, medium_beta, stops_at, includes_zero,
@@ -969,7 +969,7 @@ inline dsl::Compiler make_cuevi_compiler() {
             &set_CueviAlgorithm, "num_scouts_per_ensemble", "number_trials_until_give_up",
             "stops_at", "medium_beta", "includes_zero", "random_jumps", "max_iter_equilibrium",
             "path", "n_points_per_decade_beta_high", "n_points_per_decade_beta_low",
-            "average_the_ATP_evolution", "filename", "thermo_jumps_every", "sampling_interval",
+            "average_the_agonist_evolution", "filename", "thermo_jumps_every", "sampling_interval",
             "max_number_of_values_per_iteration"));
     // Si hay comandos tipo evidence_fraction con cuevi, van aquí.
     return cm;

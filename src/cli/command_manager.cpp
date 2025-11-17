@@ -58,14 +58,14 @@ dsl::Compiler make_compiler_new() {
                      dsl::to_typed_function<std::string>(&cmd::load_model, "model_name"));
     cm.push_function("load_experiment", dsl::to_typed_function<std::string, double, double>(
                                             &macrodr::cmd::load_experiment, "filename",
-                                            "frequency_of_sampling", "initial_ATP"));
+                                            "frequency_of_sampling", "initial_agonist"));
 
     cm.push_function(
         "create_experiment",
         dsl::to_typed_function<std::vector<std::tuple<std::size_t, std::size_t, double>>, double,
                                double, double>(&macrodr::cmd::create_experiment,
                                                "experiment_structure", "frequency_of_sampling",
-                                               "initial_ATP", "initial_time"));
+                                               "initial_agonist", "initial_time"));
 
     cm.push_function("load_observations", dsl::to_typed_function<std::string>(
                                               &macrodr::cmd::load_recording, "filename"));
@@ -88,15 +88,11 @@ dsl::Compiler make_compiler_new() {
                      dsl::to_typed_function<var::Parameters_Transformations const&>(
                          &macrodr::cmd::get_standard_parameter_values, "parameters"));
 
-    {
-        using Return = Maybe_error<macrodr::cmd::PatchModel>;
-        using FnPatchFromFile =
-            Return (*)(const ModelPtr&, const std::pair<std::string, std::string>&);
-        cm.push_function("patch_model",
-                         dsl::to_typed_function<ModelPtr, std::pair<std::string, std::string>>(
-                             static_cast<FnPatchFromFile>(&macrodr::cmd::patch_model), "model",
-                             "parameter_values"));
-    }
+    cm.push_function(
+        "patch_model",
+        dsl::to_typed_return_function<Maybe_error<macrodr::cmd::PatchModel>, ModelPtr const&,
+                                      std::pair<std::string, std::string> const&>(
+            &macrodr::cmd::patch_model, "model", "parameter_values"));
     // Overload: patch from in-memory values
     {
         using Return = Maybe_error<macrodr::cmd::PatchModel>;
@@ -126,7 +122,7 @@ dsl::Compiler make_compiler_new() {
 
     using PatchModel = macrodr::Transfer_Op_to<var::Parameters_values, macrodr::Patch_Model>;
     cm.push_function("calc_eigen", dsl::to_typed_function<PatchModel const&, double>(
-                                       &macrodr::cmd::calc_eigen, "patch_model", "atp"));
+                                       &macrodr::cmd::calc_eigen, "patch_model", "agonist"));
 
     using QxEig = macrodr::Transfer_Op_to<PatchModel, macrodr::Eigs>;
     cm.push_function("calc_peq", dsl::to_typed_function<QxEig const&, PatchModel const&>(
@@ -138,7 +134,7 @@ dsl::Compiler make_compiler_new() {
         using FnPSfromPM = RetPS (*)(const macrodr::cmd::PatchModel&, double);
         cm.push_function("path_state", dsl::to_typed_function<PatchModel const&, double>(
                                            static_cast<FnPSfromPM>(&macrodr::cmd::path_state),
-                                           "patch_model", "initial_atp"));
+                                           "patch_model", "initial_agonist"));
     }
     {
         using RetPS = Maybe_error<macrodr::Patch_State>;
@@ -146,7 +142,7 @@ dsl::Compiler make_compiler_new() {
         cm.push_function("path_state",
                          dsl::to_typed_function<ModelPtr, var::Parameters_values const&, double>(
                              static_cast<FnPSfromVals>(&macrodr::cmd::path_state), "model",
-                             "values", "initial_atp"));
+                             "values", "initial_agonist"));
     }
 
     cm.push_function(

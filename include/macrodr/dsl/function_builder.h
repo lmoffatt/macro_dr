@@ -21,6 +21,17 @@ auto to_typed_function(F t_f, String&&... args) {
                  to_Identifier<Lexer>(std::forward<String>(args)).value())...);
 }
 
+template <class R,class... Args,  class... String>
+    requires((sizeof...(Args) == sizeof...(String)) &&
+             (std::is_constructible_v<std::string, String> && ...) )
+auto to_typed_return_function(R (*t_f)(Args...), String&&... args) {
+    using F=R(*)(Args...);
+    return std::make_unique<function_compiler<Lexer, Compiler, F, Args...>>(
+        t_f, field_compiler<Lexer, Compiler, detail::function_argument_storage_t<Args>>(
+                 to_Identifier<Lexer>(std::forward<String>(args)).value())...);
+}
+
+
 template <class T, class P>
     requires(std::is_same_v<Maybe_error<T>, std::invoke_result_t<P, T>>)
 auto to_typed_predicate(P t_f, std::string arg) {

@@ -762,7 +762,7 @@ static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //         auto v_N0 = p()[std::pair{Npar + 5, Npar + 5}];
 //         auto Nst = get<N_St>(m());
 //         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
-//             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+//             a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
 //         if (v_P_initial.valid())
 //           return add_Patch_inactivation(
 //               build<Patch_Model>(
@@ -899,7 +899,7 @@ static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //             auto v_N0 = p()[std::pair{Npar + 4, Npar + 4}];
 //             auto Nst = get<N_St>(m());
 //             auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
-//                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+//                 a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
 //             if (v_P_initial.valid())
 
 //               return build<Patch_Model>(
@@ -1080,7 +1080,7 @@ static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //             auto v_N0 = tr_p()[std::pair{Npar + 4, Npar + 4}];
 //             auto Nst = get<N_St>(m());
 //             auto Maybe_v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
-//                 a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+//                 a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
 //             if (!Maybe_v_P_initial)
 //               return Maybe_v_P_initial.error();
 //             else
@@ -1211,7 +1211,7 @@ static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //         auto v_N0 = p[std::pair(Npar + 5, Npar + 5)];
 //         auto Nst = get<N_St>(m());
 //         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
-//             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+//             a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
 
 //         if (v_P_initial.valid())
 //           return add_Patch_inactivation(
@@ -1326,7 +1326,7 @@ static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //             a_g()));
 //         auto Nst = get<N_St>(m());
 //         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
-//             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+//             a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
 
 //         if (v_P_initial.valid())
 //           return add_Patch_inactivation(
@@ -1437,7 +1437,7 @@ static const auto scheme_4_d = add_Patch_inactivation_to_model<Model0>(
 //             a_g()));
 //         auto Nst = get<N_St>(m());
 //         auto v_P_initial = macrodr::Macro_DMR{}.calc_Pinitial(
-//             a_Q0, a_Qa, ATP_concentration(0.0), Nst);
+//             a_Q0, a_Qa, Agonist_concentration(0.0), Nst);
 //         if (v_P_initial.valid())
 
 //           return add_Patch_inactivation(

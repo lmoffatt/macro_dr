@@ -95,14 +95,14 @@ Maybe_error<PatchModel> patch_model(const ModelPtr& model, const var::Parameters
     return maybe_pm.value();
 }
 
-Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initial_atp) {
+Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initial_agonist) {
     if (auto chk = validate_patch_model_dims(pm); !chk) {
         return chk.error();
     }
     auto m = Macro_DMR{};
     // predictions<0> returns Patch_State (no evolution stored)
     auto maybe_init = m.init<return_predictions<0>>(pm,
-                                                   initial_ATP_concentration(ATP_concentration(initial_atp)));
+                                                   initial_agonist_concentration(Agonist_concentration(initial_agonist)));
     if (!maybe_init) {
         return maybe_init.error();
     }
@@ -116,20 +116,20 @@ Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initia
 
 Maybe_error<macrodr::Patch_State> path_state(const ModelPtr& model,
                                              const var::Parameters_values& values,
-                                             double initial_atp) {
+                                             double initial_agonist) {
     auto maybe_pm = patch_model(model, values);
     if (!maybe_pm) {
         return maybe_pm.error();
     }
-    return path_state(maybe_pm.value(), initial_atp);
+    return path_state(maybe_pm.value(), initial_agonist);
 }
 
-Maybe_error<QxEig> calc_eigen(const PatchModel& pm, double atp_concentration) {
+Maybe_error<QxEig> calc_eigen(const PatchModel& pm, double Agonist_concentration) {
     if (auto chk = validate_patch_model_dims(pm); !chk) {
         return chk.error();
     }
     auto m = Macro_DMR{};
-    return m.calc_eigen(pm, ::macrodr::ATP_concentration(atp_concentration));
+    return m.calc_eigen(pm, ::macrodr::Agonist_concentration(Agonist_concentration));
 }
 
 PMean calc_peq(const QxEig& qx_eig, const PatchModel& pm) {

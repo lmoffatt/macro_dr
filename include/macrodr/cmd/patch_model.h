@@ -30,16 +30,16 @@ Maybe_error<PatchModel> patch_model(const ModelPtr& model, const var::Parameters
 Maybe_error<PatchModel> patch_model(const ModelPtr& model,
                                     const var::Parameters_Transformations& tr);
 
-// Build a Patch_State from a Patch_Model and an initial ATP concentration
-Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initial_atp);
+// Build a Patch_State from a Patch_Model and an initial Agonist concentration
+Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initial_agonist);
 
 // Convenience: directly from model + parameter values
 Maybe_error<macrodr::Patch_State> path_state(const ModelPtr& model,
                                              const var::Parameters_values& values,
-                                             double initial_atp);
+                                             double initial_agonist);
 
 // Expose a couple of low-level qmodel helpers
-Maybe_error<QxEig> calc_eigen(const PatchModel& pm, double atp_concentration);
+Maybe_error<QxEig> calc_eigen(const PatchModel& pm, double Agonist_concentration);
 
 PMean calc_peq(const QxEig& qx_eig, const PatchModel& pm);
 

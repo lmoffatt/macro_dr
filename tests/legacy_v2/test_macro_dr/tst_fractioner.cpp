@@ -14,7 +14,7 @@ TEST_CASE("Another test with Catch2", "[fancy]") {
                    [](double x) { return Patch_current(x); });
 
     Experiment x(Recording_conditions{}, Frequency_of_Sampling(50e3),
-                 initial_ATP_concentration(ATP_concentration(0)));
+                 initial_agonist_concentration(Agonist_concentration(0)));
     std::vector<std::tuple<double, double, double>> ev = {
         {0, 50, 0},      {1e-3, 100, 1},   {3e-3, 50, 0},   {0.8e-3, 100, 1},
         {1.4e-3, 50, 0}, {1.8e-3, 100, 1}, {0, 50, 0},      {1e-3, 100, 1},
@@ -24,8 +24,8 @@ TEST_CASE("Another test with Catch2", "[fancy]") {
                    [](std::tuple<double, double, double> x0) {
                        return Experiment_step(
                            Time(get<0>(x0)),
-                           ATP_evolution(std::vector<ATP_step>{ATP_step(
-                               number_of_samples(get<1>(x0)), ATP_concentration(get<2>(x0)))}));
+                           Agonist_evolution(std::vector<Agonist_step>{Agonist_step(
+                               number_of_samples(get<1>(x0)), Agonist_concentration(get<2>(x0)))}));
                    });
 
     auto init_seed = calc_seed(0);
@@ -40,7 +40,7 @@ TEST_CASE("Another test with Catch2", "[fancy]") {
         n_frac);
     deprecated::by_fraction<Experiment> x_out(
         n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                           get<initial_ATP_concentration>(x)));
+                           get<initial_agonist_concentration>(x)));
 
     y_out[n_frac - 1] = sim;
     x_out[n_frac - 1] = x;
