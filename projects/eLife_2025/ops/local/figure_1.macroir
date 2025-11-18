@@ -3,12 +3,12 @@ model = load_model("scheme_CO")
 parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
 
 
-experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,10000,10000.0},{1,1000,10000.0},{1,10000,10000.0}], 
+experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,100,10.0},{1,100,10.0},{1,100,10.0}], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
 initial_time = 0.0)
                                 
-observations = set_observations(values_set= [0,0])
+observations = set_observations(values_set= [0,0,0,0])
 
 par_values = get_standard_parameter_values(parameter)
 
@@ -18,6 +18,6 @@ model_str="scheme_CO"
 
 
 simulation  = simulate_with_sub_intervals(model= model, parameter_values = par_values, experiment = experiment,
-                         observations = observations, number_of_substeps = 10, seed = 0)
+                         observations = observations, number_of_substeps = 250, seed = 0)
 
-simulation_file = write_csv( experiment= experiment,simulation=simulation, number_of_substates=10, path= "figure_1_simulation")
+simulation_file = write_csv( experiment= experiment,simulation=simulation, number_of_substates=250, path= "figure_1_simulation")
