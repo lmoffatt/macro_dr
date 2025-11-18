@@ -700,7 +700,7 @@ ymean_Evolution,qmodel.h,['qmodel.h'],Internal
 yvar_Evolution,qmodel.h,['qmodel.h'],Internal
 zip_par,parameters_derivative.h,['parameters_derivative.h'],Internal
 A,lapack_headers.h,"['maybe_error.h', 'qmodel.h', 'lapack_headers.h', 'experiment.h', 'parallel_tempering.h']",Provider
-ATP_concentration,experiment.h,"['CLI_function_table.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'experiment.h', 'models_MoffattHume_linear.h']",Provider
+Agonist_concentration,experiment.h,"['CLI_function_table.h', 'qmodel.h', 'models_MoffattHume_allosteric.h', 'experiment.h', 'models_MoffattHume_linear.h']",Provider
 ATP_evolution,experiment.h,"['experiment.h', 'qmodel.h']",Provider
 AT_B_A,parameters_derivative.h,"['parameters_derivative.h', 'qmodel.h']",Provider
 Abstract,grammar_untyped.h,"['grammar_untyped.h', 'grammar_Identifier.h']",Provider
@@ -1007,7 +1007,7 @@ includes_N_state_evolution,qmodel.h,"['CLI_function_table.h', 'qmodel.h']",Provi
 init,allosteric_models.h,"['fold.h', 'allosteric_models.h', 'qmodel.h']",Provider
 init_mts,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
 init_thermo_mcmc,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
-initial_ATP_concentration,experiment.h,"['experiment.h', 'qmodel.h']",Provider
+initial_Agonist_concentration,experiment.h,"['experiment.h', 'qmodel.h']",Provider
 initial_beta_dts,parallel_tempering.h,"['parallel_tempering_linear_regression.h', 'parallel_tempering.h']",Provider
 insert,general_output_operator.h,"['grammar_typed.h', 'general_output_operator.h', 'models_MoffattHume_allosteric.h', 'function_measure_verification_and_optimization.h', 'function_memoization.h', 'parallel_tempering.h', 'models_MoffattHume_linear.h', 'parallel_tempering_linear_regression.h', 'allosteric_models.h']",Provider
 insert_new_formula,qmodel.h,"['models_MoffattHume_linear.h', 'qmodel.h']",Provider
