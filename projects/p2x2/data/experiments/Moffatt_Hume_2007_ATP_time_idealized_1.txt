@@ -1,4 +1,4 @@
-i_step,time,i_sub_step,number_of_samples,ATP_concentration
+i_step,time,i_sub_step,number_of_samples,Agonist_concentration
 0,0.006849999999999999,0,685,0
 1,0.02055,0,685,0
 2,0.03424,0,684,0
