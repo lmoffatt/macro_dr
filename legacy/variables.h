@@ -503,6 +503,28 @@ class Vector_Space : public Vars... {
         return Vector_Space<Vars..., Vars2...>(std::move(get<Vars>(one))...,
                                                std::move(get<Vars2>(two))...);
     }
+    
+    template <class Var1>
+    friend auto push_back_var(Vector_Space&&one, Var1&& two){
+        return Vector_Space<Vars..., Var1>(std::move(get<Vars>(one))...,
+                                               std::move(two));
+    }
+
+    template<class Tag, class Indicator, class Var>
+    requires (is_a_v<Tag,Indicator>)
+    friend auto conditional_get(Vector_Space&&v){
+        return get<Var>(std::move(v));
+    }
+
+    template<class Tag, class Indicator, class Var>
+    requires (!is_a_v<Tag,Indicator>)
+    friend auto conditional_get(Vector_Space&&/*v*/){
+        return Nothing{};
+    }
+
+    
+
+
 
     // Vector_Space(std::decay_t <decltype(std::declval<Vars const&>().value())> ... t_vars): Vars{std::move(t_vars)}...{}
     friend std::ostream& operator<<(std::ostream& os, const Vector_Space& tu) {
@@ -584,6 +606,10 @@ class Vector_Space : public Vars... {
         return Vector_Space(Vars(d * get<Vars>(one)())...);
     }
 };
+
+
+
+
 
 
 template <class... Vars>

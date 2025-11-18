@@ -19,20 +19,7 @@ namespace macrodr::cmd {
 
  Recording define_recording(std::vector<double> values);
 
- inline Maybe_error<std::string> write_csv(Experiment const& e, Recording const& r, std::string path)
- {
-    path=path+".csv";
-     std::ofstream f(path); 
-     if (!f.is_open())
-     {
-      return error_message("cannot open ",path);
-     }
-     double fs=get<Frequency_of_Sampling>(e)();
-     f<<"time"<<",";
-     return path; 
-
-
- }
+Maybe_error<std::string> write_csv(Experiment const& e, Recording const& r, std::string path);
 
 
 }

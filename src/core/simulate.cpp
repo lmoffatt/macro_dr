@@ -16,6 +16,7 @@
 #include "parameters.h"
 //#include "parameters_derivative.h"
 #include <macrodr/interface/IModel.h>
+#include <macrodr/cmd/load_experiment.h>
 
 #include "lapack_headers.h"
 #include "models_used.h"
@@ -24,7 +25,7 @@
 
 namespace macrodr::cmd {
 
-Maybe_error<Simulated_Recording<includes_N_state_evolution<false>>> run_simulations(
+Maybe_error<Simulated_Recording<is_a_t<>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
     myseed = calc_seed(myseed);
@@ -97,5 +98,13 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
             model_v);
     }
 }
+
+Maybe_error<std::string> write_csv(Experiment const& e,
+    Simulated_Recording<is_a_t<>> const& simulation, std::string  path)
+    {
+        return write_csv(e,get<Recording>(simulation()),path);
+    }
+
+
 
 }  // namespace macrodr::cmd

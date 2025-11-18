@@ -7,7 +7,9 @@
 #include <macrodr/cmd/load_parameters.h>
 #include <macrodr/cmd/patch_model.h>
 #include <macrodr/cmd/simulate.h>
+#include <maybe_error.h>
 #include <parameters.h>
+#include <qmodel.h>
 
 #include <cstddef>
 
@@ -16,6 +18,7 @@
 #include "CLI_likelihood.h"
 #include "CLI_macro_dr_base.h"
 #include "CLI_thermo_evidence_dts.h"
+#include "function_builder.h"
 #include "lapack_headers.h"
 
 namespace macrodr::cli {
@@ -74,7 +77,14 @@ dsl::Compiler make_compiler_new() {
     cm.push_function("set_observations", dsl::to_typed_function<std::vector<double>>(
                                               &macrodr::cmd::define_recording, "values_set"));
 
-    
+    cm.push_function("write_csv", dsl::to_typed_return_function<
+        Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
+            "experiment","simulation", "path"));
+    cm.push_function("write_csv", dsl::to_typed_return_function<
+        Maybe_error<std::string>,Experiment const&,Recording const&, std::string >(&macrodr::cmd::write_csv,
+            "experiment","observations", "path"));
+
+
                                               // Expose low-level model/qmodel helpers
     using ModelPtr = std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>;
 
@@ -158,7 +168,7 @@ dsl::Compiler make_compiler_new() {
         "calc_likelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               const Simulated_Recording<is_a_t<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -177,7 +187,7 @@ dsl::Compiler make_compiler_new() {
         "calc_dlikelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               const Simulated_Recording<is_a_t<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_dlikelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -196,7 +206,7 @@ dsl::Compiler make_compiler_new() {
         "calc_diff_likelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               const Simulated_Recording<is_a_t<>>&, bool,
                                bool, int, bool, bool, double>(
             &cmd::calculate_simulation_diff_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -215,7 +225,7 @@ dsl::Compiler make_compiler_new() {
         "calc_likelihood_predictions",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               const Simulated_Recording<is_a_t<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_likelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -233,7 +243,7 @@ dsl::Compiler make_compiler_new() {
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               const Simulated_Recording<is_a_t<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_dlikelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -242,7 +252,7 @@ dsl::Compiler make_compiler_new() {
     cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const std::string&, const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<includes_N_state_evolution<false>>&, bool,
+                               const Simulated_Recording<is_a_t<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_dlikelihood_predictions_model, "model", "parameters",
             "experiment", "data", "adaptive_approximation", "recursive_approximation",

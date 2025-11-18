@@ -7,7 +7,7 @@ parameter = load_parameters(model, "data/models_Ag_log_baseline/scheme_1_PI_par.
 experiment = load_experiment(
     filename = "data/experiments/Moffatt_Hume_2007_ATP_time_idealized_2.txt",
     frequency_of_sampling = 50e3,
-    initial_ATP = 0.0)
+    initial_agonist = 0.0)
 
 observations = load_observations(
     filename = "data/experiments/Moffatt_Hume_2007_ATP_time_recording.txt")

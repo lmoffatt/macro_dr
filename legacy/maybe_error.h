@@ -64,6 +64,38 @@ template <typename C, template <typename, auto...> class V>
 inline constexpr bool is_of_this_template_value_type_v =
     is_of_this_template_value_type<C, V>::value;
 
+
+template<typename Derived, typename Base>
+inline constexpr bool is_a_v= std::is_base_of_v<Base, Derived>;
+
+template<typename...Ds>
+struct is_a_t:public Ds...{};
+
+
+template<class T,class Tag,class... Us>
+struct Conditional_concat;
+
+template<class T,class Tag,class... Us>
+using  Conditional_concat_t=typename Conditional_concat<T,Tag,Us...>::type;
+
+
+template<class Condition, class Action>
+struct If_then{};
+
+
+
+
+template<template<class...>class V,class... Ts,class Tag>
+struct Conditional_concat<V<Ts...>, Tag>{
+    using type= V<Ts...>;
+};
+
+template<template<class...>class V,class... Ts,class Tag,class Condition, class U,class... Conditions, class...Us>
+struct Conditional_concat<V<Ts...>, Tag, If_then<Condition,U>,If_then<Conditions,Us>...>{
+    using type=Conditional_concat_t<std::conditional_t<is_a_v<Tag, Condition>, 
+      V<Ts...,U>, V<Ts...>>,Tag, If_then<Conditions,Us>...>;
+};
+
 template <class T>
 struct return_type;
 
