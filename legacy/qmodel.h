@@ -5005,12 +5005,12 @@ class Macro_DMR {
             if constexpr (is_a_v<Simulate_tag,includes_only_channel_sub_current>) {
                 auto& c=get<Only_Ch_Curent_Sub_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())(); 
                 auto& n= get<Only_Ch_Curent_Sub_Evolution>(t_sub_step);
-                c.insert(c.end(),std::make_move_iterator(n.begin(), std::make_move_iterator(n.end())));
+                c.insert(c.end(),n().begin(), n().end());
             }
             if constexpr (is_a_v<Simulate_tag,includes_N_state_sub_evolution>) {
                 auto& c=get<N_Ch_State_Sub_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())(); 
                 auto& n= get<N_Ch_State_Sub_Evolution>(t_sub_step);
-                c.insert(c.end(),std::make_move_iterator(n.begin(), std::make_move_iterator(n.end())));
+                 c.insert(c.end(),n().begin(), n().end());
             }
             
             if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
@@ -5090,6 +5090,14 @@ class Macro_DMR {
         const Simulation_Parameters& sim, const Recording& r = Recording{}) {
         return sample_<is_a_t<includes_N_state_evolution>>(mt, model, par, e, sim, r);
     }
+
+    template <class Model>
+    Maybe_error<Simulated_Recording<is_a_t<includes_only_channel_sub_current>>> sample_sub_y(
+        mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
+        const Simulation_Parameters& sim, const Recording& r = Recording{}) {
+        return sample_<is_a_t<includes_only_channel_sub_current>>(mt, model, par, e, sim, r);
+    }
+
 };
 
 template <class recursive, class averaging, class variance, class variance_correction>
