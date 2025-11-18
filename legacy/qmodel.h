@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <concepts>
 #include <fstream>
 #include <functional>
 #include <iterator>
@@ -25,6 +26,7 @@
 #include <map>
 #include <numeric>
 #include <random>
+#include <type_traits>
 #include <set>
 #include <sstream>
 #include <string>
@@ -816,59 +818,104 @@ using Patch_State_and_Hessian = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, 
 
 class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
-template <bool value>
-class includes_N_state_evolution
-    : public var::constexpr_Var<bool, includes_N_state_evolution, value> {};
 
-template <class T>
-concept includes_N_state_evolution_c =
-    var::is_this_constexpr_Var_v<T, bool, includes_N_state_evolution>;
+struct includes_N_state_evolution{};
+struct includes_only_channel_current{};
+
+struct includes_N_state_sub_evolution{};
+struct includes_only_channel_sub_current{};
+
 
 class N_Ch_State_Evolution : public Var<N_Ch_State_Evolution, std::vector<N_channel_state>> {};
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+class Only_Ch_Curent_Evolution : public Var<Only_Ch_Curent_Evolution, std::vector<Patch_current>> {};
+
+class N_Ch_State_Sub_Evolution : public Var<N_Ch_State_Sub_Evolution, std::vector<N_channel_state>> {};
+
+class Only_Ch_Curent_Sub_Evolution : public Var<Only_Ch_Curent_Sub_Evolution, std::vector<Patch_current>> {};
+
+
+
+
+template <typename Simulate_tag>
 class Simulated_Recording
-    : public Var<
-          Simulated_Recording<keep_N_state>,
-          std::conditional_t<keep_N_state::value, Vector_Space<Recording, N_Ch_State_Evolution>,
-                             Vector_Space<Recording>>> {
+    : public Var<Simulated_Recording<Simulate_tag>,
+                  Conditional_concat_t<
+                  Vector_Space<Recording>, 
+                  Simulate_tag,
+                  If_then<includes_N_state_evolution, N_Ch_State_Evolution>,
+                  If_then<includes_only_channel_current, Only_Ch_Curent_Evolution>,
+                  If_then<includes_N_state_sub_evolution, N_Ch_State_Sub_Evolution>,
+                  If_then<includes_only_channel_sub_current, Only_Ch_Curent_Sub_Evolution>>>{
    public:
-    constexpr static const bool includes_N = keep_N_state::value;
-    using Var<Simulated_Recording<keep_N_state>,
-              std::conditional_t<keep_N_state::value, Vector_Space<Recording, N_Ch_State_Evolution>,
-                                 Vector_Space<Recording>>>::Var;
+    constexpr static const bool includes_N = is_a_v<Simulate_tag,includes_N_state_evolution>;
+    using Var<Simulated_Recording<Simulate_tag>,
+                  Conditional_concat_t<
+                  Vector_Space<Recording>, 
+                  Simulate_tag,
+                  If_then<includes_N_state_evolution, N_Ch_State_Evolution>,
+                  If_then<includes_only_channel_current, Only_Ch_Curent_Evolution>,
+                  If_then<includes_N_state_sub_evolution, N_Ch_State_Sub_Evolution>,
+                  If_then<includes_only_channel_sub_current, Only_Ch_Curent_Sub_Evolution>>>::Var;
 };
 
-using v_Simulated_Recording = std::variant<Simulated_Recording<includes_N_state_evolution<false>>,
-                                           Simulated_Recording<includes_N_state_evolution<true>>>;
+using Simulated_recording =
+    Simulated_Recording<is_a_t<>>;
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+using v_Simulated_Recording = std::variant<Simulated_Recording<is_a_t<>>,
+Simulated_Recording<is_a_t<includes_only_channel_current>>,
+                                           Simulated_Recording<is_a_t<includes_N_state_evolution>>>;
+
+template <typename Simulate_tag>
 class Simulated_Step
-    : public Var<Simulated_Step<keep_N_state>,
-                 Vector_Space<N_channel_state, Simulated_Recording<keep_N_state>>> {
+    : public Var<Simulated_Step<Simulate_tag>,
+                 Vector_Space<N_channel_state, Simulated_Recording<Simulate_tag>>> {
     // using Vector_Space<N_channel_state,
-    // Simulated_Recording<keep_N_state>>::Vector_Space;
+    // Simulated_Recording<Simulate_tag>>::Vector_Space;
 };
 
-using Simulated_Sub_Step = Vector_Space<N_channel_state, number_of_samples, y_sum>;
+template<typename Simulate_tag>
+using Simulated_Sub_Step_t = Conditional_concat_t<
+                  Vector_Space<N_channel_state, number_of_samples, y_sum>, 
+                  Simulate_tag,
+                  If_then<includes_N_state_sub_evolution, N_Ch_State_Sub_Evolution>,
+                  If_then<includes_only_channel_sub_current, Only_Ch_Curent_Sub_Evolution>>;
+
+template<typename Simulate_tag>
+Simulated_Sub_Step_t<Simulate_tag> Simulated_Sub_Step_build(N_channel_state N){
+    auto out=Simulated_Sub_Step_t<is_a_t<>>(N,number_of_samples(0),y_sum(0.0));
+    auto out2= [](auto&& o){
+           if constexpr(is_a_v<Simulate_tag,includes_N_state_sub_evolution>)
+           {
+            return push_back_var(std::move(o),N_Ch_State_Sub_Evolution{});
+           }
+           else return std::move(o);
+    }(std::move(out));
+    return [](auto&& o){
+           if constexpr(is_a_v<Simulate_tag,includes_only_channel_sub_current>)
+           {
+            return push_back_var(std::move(o),Only_Ch_Curent_Sub_Evolution{});
+           }
+           else return std::move(o);
+    }(std::move(out2));
+    
+}
+                  
 
 using Simulation_Parameters = Vector_Space<Simulation_n_sub_dt>;
 
-template <typename includesN>
-    requires var::is_this_constexpr_Var_v<includesN, bool, includes_N_state_evolution>
+template <typename Simulate_tag>
 void save_simulation(std::string const& filename, const std::string& separator,
-                     Simulated_Recording<includesN> const& sim) {
+                     Simulated_Recording<Simulate_tag> const& sim) {
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_step" << separator << "patch_current";
-    if constexpr (includesN::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << separator << "i_state" << separator << "N_state";
     f << "\n";
 
-    if constexpr (includesN::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         auto N = get<N_Ch_State_Evolution>(sim());
         auto y = get<Recording>(sim());
         for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
@@ -885,11 +932,9 @@ void save_simulation(std::string const& filename, const std::string& separator,
     }
 }
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
-
+template<typename Simulate_tag>
 Maybe_error<bool> load_simulation(std::string const& fname, std::string separator,
-                                  Simulated_Recording<keep_N_state>& r) {
+                                  Simulated_Recording<Simulate_tag>& r) {
     std::ifstream f(fname);
     if (!f)
         return error_message("cannot open file " + fname);
@@ -897,7 +942,7 @@ Maybe_error<bool> load_simulation(std::string const& fname, std::string separato
     std::getline(f, line);
     std::stringstream ss(line);
 
-    if constexpr (keep_N_state::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         if (!(ss >> septr("i_step") >> septr(separator) >> septr("patch_current") >>
               septr(separator) >> septr("i_state") >> septr(separator) >> septr("N_state")))
             return error_message("titles are wrong : expected  \ni_step" + separator +
@@ -919,7 +964,7 @@ Maybe_error<bool> load_simulation(std::string const& fname, std::string separato
     double val;
     auto& e = get<Recording>(r());
 
-    if constexpr (!keep_N_state::value) {
+    if constexpr (!is_a_v<Simulate_tag,includes_N_state_evolution>) {
         while (extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
             if (i_step_prev != i_step) {
                 if (i_step != e().size())
@@ -980,19 +1025,18 @@ Maybe_error<bool> load_simulation(std::string const& fname, std::string separato
     }
 }
 
-template <typename includesN>
-    requires var::is_this_constexpr_Var_v<includesN, bool, includes_N_state_evolution>
+template <typename Simulate_tag>
 void save_fractioned_simulation(std::string filename, std::string separator,
-                                std::vector<Simulated_Recording<includesN>> const& vsim) {
+                                std::vector<Simulated_Recording<Simulate_tag>> const& vsim) {
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_frac" << separator << "i_step" << separator << "patch_current";
-    if constexpr (includesN::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << separator << "i_state" << separator << "N_state";
     f << "\n";
 
-    if constexpr (includesN::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         for (std::size_t i_frac = 0; i_frac < vsim.size(); ++i_frac) {
             auto& sim = vsim[i_frac];
             auto N = get<N_Ch_State_Evolution>(sim());
@@ -1015,10 +1059,9 @@ void save_fractioned_simulation(std::string filename, std::string separator,
     }
 }
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+template<typename Simulate_tag>
 Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::string separator,
-                                             std::vector<Simulated_Recording<keep_N_state>>& rs) {
+                                             std::vector<Simulated_Recording<Simulate_tag>>& rs) {
     std::ifstream f(fname);
     if (!f)
         return error_message("cannot open file " + fname);
@@ -1030,7 +1073,7 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
           septr("patch_current")))
         return error_message("titles are wrong : expected  i_step:" + separator +
                              "patch_current; found:" + line);
-    if constexpr (keep_N_state::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         if (!(ss >> septr(separator) >> septr("i_state") >> septr(separator) >> septr("N_state")))
             return error_message("titles are wrong : expected  i_state:" + separator +
                                  "N_state; found:" + line);
@@ -1043,9 +1086,9 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
     std::size_t i_step_prev = std::numeric_limits<std::size_t>::max();
 
     double val;
-    Simulated_Recording<keep_N_state> r;
+    Simulated_Recording<Simulate_tag> r;
 
-    if constexpr (!keep_N_state::value) {
+    if constexpr (!is_a_v<Simulate_tag,includes_N_state_evolution>) {
         while (extract_double(ss >> i_frac >> septr(separator) >> i_step >> septr(separator), val,
                               separator[0])) {
             if (i_frac_prev != i_frac) {
@@ -1054,7 +1097,7 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
                                          " found:" + std::to_string(i_step));
                 if (i_frac > 0) {
                     rs.push_back(r);
-                    r = Simulated_Recording<keep_N_state>{};
+                    r = Simulated_Recording<Simulate_tag>{};
                 }
                 i_step_prev = std::numeric_limits<std::size_t>::max();
             }
@@ -1089,7 +1132,7 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
                         N_channel_state(Matrix<double>(1, n_channel_states, N_state)));
                     rs.push_back(r);
                     N_state.clear();
-                    r = Simulated_Recording<keep_N_state>{};
+                    r = Simulated_Recording<Simulate_tag>{};
                 }
                 i_frac_prev = i_frac;
             }
@@ -1141,19 +1184,18 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
 
 inline Maybe_error<bool> load_simulation(std::string const& fname, std::string separator,
                                          v_Simulated_Recording& r) {
-    Simulated_Recording<includes_N_state_evolution<true>> try_N_state;
+    Simulated_Recording<is_a_t<includes_N_state_evolution>> try_N_state;
     auto Maybe_N_state = load_simulation(fname, separator, try_N_state);
     if (Maybe_N_state.valid()) {
         r = try_N_state;
         return true;
     }
-    r = Simulated_Recording<includes_N_state_evolution<false>>{};
+    r = Simulated_Recording<is_a_t<>>{};
     return load_simulation(fname, separator, r);
 }
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
-void save_simulation(std::string name, std::vector<Simulated_Recording<keep_N_state>> const& r) {
+template<typename Simulate_tag>
+void save_simulation(std::string name, std::vector<Simulated_Recording<Simulate_tag>> const& r) {
     std::ofstream f(name);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
     f << "nrep"
@@ -1161,7 +1203,7 @@ void save_simulation(std::string name, std::vector<Simulated_Recording<keep_N_st
       << "i_step"
       << ","
       << "patch_current";
-    if constexpr (keep_N_state::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         f << ","
           << "i_state"
           << ","
@@ -4863,10 +4905,11 @@ class Macro_DMR {
         }
     }
 
-    template <class Policy = StabilizerPolicyEnabled, class Patch_Model>
-    Maybe_error<Simulated_Sub_Step> sub_sub_sample(mt_64i& mt, Simulated_Sub_Step const& t_sim_step,
+    template <typename Simulate_tag, class Policy = StabilizerPolicyEnabled,class Patch_Model>
+    Maybe_error<Simulated_Sub_Step_t<Simulate_tag>> sub_sub_sample(mt_64i& mt, Simulated_Sub_Step_t<Simulate_tag> const& t_sim_step,
                                                    const Patch_Model& m, const Agonist_step& t_s,
                                                    std::size_t n_sub_dt, double fs) {
+        auto r_sim_step=t_sim_step;                                             
         auto& t_g = get<g>(m);
         auto N = get<N_channel_state>(t_sim_step);
         double ysum = get<y_sum>(t_sim_step)();
@@ -4880,30 +4923,41 @@ class Macro_DMR {
 
         double sub_sample = 1.0 * n_samples / n_sub_dt;
         auto Maybe_t_P = calc_P<Policy>(m, tQx, sub_dt, get<min_P>(m)());
-        if (!Maybe_t_P)
+        if (!Maybe_t_P){
             return Maybe_t_P.error();
-        else {
+        }
             auto t_P = std::move(Maybe_t_P.value());
             for (std::size_t i = 0; i < n_sub_dt; ++i) {
                 N = sample_Multinomial(mt, t_P, N);
-                ysum += getvalue(N() * t_g()) * sub_sample;
+                auto y =getvalue(N() * t_g());
+                ysum += y * sub_sample;
+                if constexpr(is_a_v<Simulate_tag,includes_only_channel_sub_current>)
+                    {
+                        get<Only_Ch_Curent_Sub_Evolution>(r_sim_step)().emplace_back(y);
+                    }
+                if constexpr(is_a_v<Simulate_tag,includes_N_state_sub_evolution>)
+                {
+                        get<N_Ch_State_Sub_Evolution>(r_sim_step)().emplace_back(N);
+                    
+                }    
             }
             sum_samples += n_samples;
             //  std::cerr << N << sum_samples << "  " << ysum << "  "
             //            << ysum / sum_samples << "\n";
-            return Simulated_Sub_Step(N_channel_state(N), number_of_samples(sum_samples),
-                                      y_sum(ysum));
-        }
+            get<N_channel_state>(r_sim_step)=N; 
+            get<number_of_samples>(r_sim_step)()=sum_samples; 
+            get<y_sum>(r_sim_step)()=ysum; 
+            return r_sim_step;
     }
 
-    template <class Patch_Model>
-    Maybe_error<Simulated_Sub_Step> sub_sub_sample(mt_64i& mt, Simulated_Sub_Step&& t_sim_step,
+    template <typename Simulate_tag,class Patch_Model>
+    Maybe_error<Simulated_Sub_Step_t<Simulate_tag>> sub_sub_sample(mt_64i& mt, Simulated_Sub_Step_t<Simulate_tag>&& t_sim_step,
                                                    const Patch_Model& m,
                                                    const std::vector<Agonist_step>& t_s,
                                                    std::size_t n_sub_dt, double fs) {
         for (std::size_t i = 0; i < t_s.size(); ++i) {
             auto Maybe_sub_step =
-                sub_sub_sample(mt, std::move(t_sim_step), m, t_s[i], n_sub_dt, fs);
+                sub_sub_sample<Simulate_tag>(mt, std::move(t_sim_step), m, t_s[i], n_sub_dt, fs);
             if (!Maybe_sub_step)
                 return Maybe_sub_step.error();
             else
@@ -4912,10 +4966,9 @@ class Macro_DMR {
         return t_sim_step;
     }
 
-    template <typename keep_N_state, class Patch_Model>
-        requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
-    Maybe_error<Simulated_Step<keep_N_state>> sub_sample(mt_64i& mt,
-                                                         Simulated_Step<keep_N_state>&& t_sim_step,
+    template <typename Simulate_tag, class Patch_Model>
+    Maybe_error<Simulated_Step<Simulate_tag>> sub_sample(mt_64i& mt,
+                                                         Simulated_Step<Simulate_tag>&& t_sim_step,
                                                          const Patch_Model& m,
                                                          const Agonist_evolution& t_s,
                                                          std::size_t n_sub_dt, double fs) {
@@ -4923,22 +4976,21 @@ class Macro_DMR {
 
         // std::cerr<<N();
 
-        auto t_sub_step = Simulated_Sub_Step(get<N_channel_state>(t_sim_step()),
-                                             number_of_samples(0ul), y_sum(0.0));
+        auto t_sub_step = Simulated_Sub_Step_build<Simulate_tag>(get<N_channel_state>(t_sim_step()));
 
-        auto Maybe_t_sub_step = sub_sub_sample(mt, std::move(t_sub_step), m, t_s(), n_sub_dt, fs);
+        auto Maybe_t_sub_step = sub_sub_sample<Simulate_tag>(mt, std::move(t_sub_step), m, t_s(), n_sub_dt, fs);
 
-        if (!Maybe_t_sub_step)
+        if (!Maybe_t_sub_step){
             return Maybe_t_sub_step.error();
-        else {
-            t_sub_step = std::move(Maybe_t_sub_step.value());
+        }   
+        t_sub_step = std::move(Maybe_t_sub_step.value());
             double y_mean = get<y_sum>(t_sub_step)() / get<number_of_samples>(t_sub_step)();
             get<N_channel_state>(t_sim_step()) = get<N_channel_state>(t_sub_step);
 
-            auto& t_e_step = get<Recording>(get<Simulated_Recording<keep_N_state>>(t_sim_step())());
+            auto& t_e_step = get<Recording>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())());
             double e = get<Current_Noise>(m)() * fs / get<number_of_samples>(t_sub_step)() +
                        get<Pink_Noise>(m).value();
-            ;
+            
             auto y_baseline = get<Current_Baseline>(m);
 
             auto y = y_mean + y_baseline() + std::normal_distribution<double>()(mt) * std::sqrt(e);
@@ -4946,31 +4998,44 @@ class Macro_DMR {
             if (ey > 0)
                 y = y + std::normal_distribution<double>()(mt) * std::sqrt(ey);
             t_e_step().emplace_back(Patch_current(y));
-            if constexpr (keep_N_state::value) {
-                get<N_Ch_State_Evolution>(get<Simulated_Recording<keep_N_state>>(t_sim_step())())()
+            if constexpr (is_a_v<Simulate_tag,includes_only_channel_current>) {
+                get<Only_Ch_Curent_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())()
+                    .emplace_back(y_mean);
+            }
+            if constexpr (is_a_v<Simulate_tag,includes_only_channel_sub_current>) {
+                auto& c=get<Only_Ch_Curent_Sub_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())(); 
+                auto& n= get<Only_Ch_Curent_Sub_Evolution>(t_sub_step);
+                c.insert(c.end(),std::make_move_iterator(n.begin(), std::make_move_iterator(n.end())));
+            }
+            if constexpr (is_a_v<Simulate_tag,includes_N_state_sub_evolution>) {
+                auto& c=get<N_Ch_State_Sub_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())(); 
+                auto& n= get<N_Ch_State_Sub_Evolution>(t_sub_step);
+                c.insert(c.end(),std::make_move_iterator(n.begin(), std::make_move_iterator(n.end())));
+            }
+            
+            if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+                get<N_Ch_State_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())()
                     .push_back(get<N_channel_state>(t_sim_step()));
             }
 
             return t_sim_step;
-        }
+        
     }
 
-    template <typename keep_N_state, class Patch_Model>
-        requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
-    Simulated_Step<keep_N_state> init_sim(mt_64i& mt, const Patch_Model& m, const Experiment& e) {
+    template <typename Simulate_tag, class Patch_Model>
+     Simulated_Step<Simulate_tag> init_sim(mt_64i& mt, const Patch_Model& m, const Experiment& e) {
         auto initial_x = get<initial_agonist_concentration>(e);
         auto v_Qx = calc_Qx(m, initial_x());
         auto r_P_mean = P_mean(get<P_initial>(m)());
         auto N = get<N_Ch_mean>(m)()[0];
-        auto sim = Simulated_Recording<keep_N_state>{};
+        auto sim = Simulated_Recording<Simulate_tag>{};
         auto N_state = sample_Multinomial(mt, r_P_mean, N);
-        return Simulated_Step<keep_N_state>(
-            Vector_Space(std::move(N_state), Simulated_Recording<keep_N_state>{}));
+        return Simulated_Step<Simulate_tag>(
+            Vector_Space(std::move(N_state), Simulated_Recording<Simulate_tag>{}));
     }
 
-    template <typename keep_N_state>
-        requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
-    static Simulated_Recording<keep_N_state> copy_NaNs(Simulated_Recording<keep_N_state>&& sim,
+    template <typename Simulate_tag>
+     static Simulated_Recording<Simulate_tag> copy_NaNs(Simulated_Recording<Simulate_tag>&& sim,
                                                        const Recording& r) {
         for (std::size_t i = 0; i < size(r()); ++i)
             if (std::isnan(r()[i]()))
@@ -4979,10 +5044,10 @@ class Macro_DMR {
         return std::move(sim);
     }
 
-    template <typename keep_N_state, class Model>
-        requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+    template <typename Simulate_tag, class Model>
+        
 
-    Maybe_error<Simulated_Recording<keep_N_state>> sample_(mt_64i& mt, const Model& model,
+    Maybe_error<Simulated_Recording<Simulate_tag>> sample_(mt_64i& mt, const Model& model,
                                                            const var::Parameters_values& par,
                                                            const Experiment& e,
                                                            const Simulation_Parameters& sim,
@@ -4997,33 +5062,33 @@ class Macro_DMR {
             auto fs = get<Frequency_of_Sampling>(e).value();
             auto sim_recording = Recording{};
 
-            auto ini = init_sim<keep_N_state>(mt, m, e);
+            auto ini = init_sim<Simulate_tag>(mt, m, e);
             auto run = fold(get<Recording_conditions>(e)(), ini,
-                            [this, &m, fs, n_sub_dt, &mt](Simulated_Step<keep_N_state>&& t_sim_step,
+                            [this, &m, fs, n_sub_dt, &mt](Simulated_Step<Simulate_tag>&& t_sim_step,
                                                           Experiment_step const& t_step) {
-                                return Maybe_error<Simulated_Step<keep_N_state>>(sub_sample(
+                                return Maybe_error<Simulated_Step<Simulate_tag>>(sub_sample(
                                     mt, std::move(t_sim_step), m, t_step, n_sub_dt(), fs));
                             });
             if (!run)
                 return run.error();
             else {
-                return copy_NaNs(std::move(get<Simulated_Recording<keep_N_state>>(run.value()())),
+                return copy_NaNs(std::move(get<Simulated_Recording<Simulate_tag>>(run.value()())),
                                  r);
             }
         }
     }
     template <class Model>
-    Maybe_error<Simulated_Recording<includes_N_state_evolution<false>>> sample(
+    Maybe_error<Simulated_Recording<is_a_t<>>> sample(
         mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
         const Simulation_Parameters& sim, const Recording& r = Recording{}) {
-        return sample_<includes_N_state_evolution<false>>(mt, model, par, e, sim, r);
+        return sample_<is_a_t<>>(mt, model, par, e, sim, r);
     }
 
     template <class Model>
-    Maybe_error<Simulated_Recording<includes_N_state_evolution<true>>> sample_N(
+    Maybe_error<Simulated_Recording<is_a_t<includes_N_state_evolution>>> sample_N(
         mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
         const Simulation_Parameters& sim, const Recording& r = Recording{}) {
-        return sample_<includes_N_state_evolution<true>>(mt, model, par, e, sim, r);
+        return sample_<is_a_t<includes_N_state_evolution>>(mt, model, par, e, sim, r);
     }
 };
 
@@ -5759,11 +5824,11 @@ class experiment_fractioner {
         return std::tuple(Recording_conditions(out_x), Recording(out_y));
     }
 
-    template <typename keep_N_state>
-        requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+    template <typename Simulate_tag>
+        
 
     static auto average_Recording(const Recording_conditions& e,
-                                  const Simulated_Recording<keep_N_state>& sim,
+                                  const Simulated_Recording<Simulate_tag>& sim,
                                   const std::vector<std::size_t>& indexes0,
                                   const std::vector<std::size_t>& indexes1,
                                   bool average_the_evolution) {
@@ -5785,7 +5850,7 @@ class experiment_fractioner {
             if (indexes0[i] == indexes1[ii]) {
                 if (sum_samples == 0) {
                     out_y[ii] = yr()[i];
-                    if constexpr (keep_N_state::value)
+                    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
                         out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
                     out_x[ii] = average_Experimental_step(e()[i], average_the_evolution);
                 } else {
@@ -5798,7 +5863,7 @@ class experiment_fractioner {
                     out_y[ii] = Patch_current(sum_y / sum_samples);
 
                     out_x[ii] = Experiment_step(get<Time>(e()[i]), v_agonist);
-                    if constexpr (keep_N_state::value)
+                    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
                         out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
 
                     sum_y = 0;
@@ -5815,9 +5880,9 @@ class experiment_fractioner {
                     add_agonist_step(std::move(v_agonist), average_agonist_step(e()[i], average_the_evolution));
             }
         }
-        Simulated_Recording<keep_N_state> out_sim;
+        Simulated_Recording<Simulate_tag> out_sim;
         get<Recording>(out_sim())() = std::move(out_y);
-        if constexpr (keep_N_state::value)
+        if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
             get<N_Ch_State_Evolution>(out_sim())() = std::move(out_N);
 
         return std::tuple(Recording_conditions(out_x), std::move(out_sim));
@@ -5899,10 +5964,10 @@ class experiment_fractioner {
         return std::tuple(std::move(y_out), std::move(x_out));
     }
 
-    template <typename keep_N_state>
-        requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+    template <typename Simulate_tag>
+        
 
-    auto operator()(const Simulated_Recording<keep_N_state>& sim, const Experiment& x, mt_64i& mt,
+    auto operator()(const Simulated_Recording<Simulate_tag>& sim, const Experiment& x, mt_64i& mt,
                     std::size_t num_parameters, double n_points_per_decade_fraction) const {
         auto& yr = get<Recording>(sim());
         assert(size(yr()) == size(get<Recording_conditions>(x)()));
@@ -5921,7 +5986,7 @@ class experiment_fractioner {
         // std::cerr << indexes;
         // std::abort();
         auto n_frac = size(indexes);
-        cuevi::by_fraction<Simulated_Recording<keep_N_state>> y_out(n_frac);
+        cuevi::by_fraction<Simulated_Recording<Simulate_tag>> y_out(n_frac);
         cuevi::by_fraction<Experiment> x_out(
             n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
                                get<initial_agonist_concentration>(x)));
@@ -6152,11 +6217,10 @@ inline std::string ToString(const Agonist_evolution& ev) {
     return ToString(ev());
 }
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+template<typename Simulate_tag>
 
 void report(std::string filename, const Patch_State_Evolution& predictions,
-            const Simulated_Recording<keep_N_state>& y, const Experiment& xs) {
+            const Simulated_Recording<Simulate_tag>& y, const Experiment& xs) {
     auto& ys = get<Recording>(y());
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_step"
@@ -6188,7 +6252,7 @@ void report(std::string filename, const Patch_State_Evolution& predictions,
       << "j"
       << ","
       << "P_Cov";
-    if constexpr (keep_N_state::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         f << ","
           << "N";
     }
@@ -6205,7 +6269,7 @@ void report(std::string filename, const Patch_State_Evolution& predictions,
                   << get<eplogL>(predictions()[i_step]) << "," << get<logL>(predictions()[i_step])
                   << "," << i << "," << get<P_mean>(predictions()[i_step])()[i] << "," << j << ","
                   << get<P_Cov>(predictions()[i_step])()(i, j);
-                if constexpr (keep_N_state::value)
+                if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
                     f << "," << get<N_Ch_State_Evolution>(y())()[i_step]()[i] << "\n";
                 else
                     f << "\n";
@@ -6264,11 +6328,10 @@ void report(FunctionTable&, std::size_t iter, const Duration& dur,
     }
 }
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+template<typename Simulate_tag>
 
 void save_Likelihood_Predictions(std::string filename, const Patch_State_Evolution& predictions,
-                                 const Simulated_Recording<keep_N_state>& y, const Experiment& xs) {
+                                 const Simulated_Recording<Simulate_tag>& y, const Experiment& xs) {
     auto& ys = get<Recording>(y());
     std::ofstream f(filename + "_patch_state_evolution.csv");
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "i_step"
@@ -6300,7 +6363,7 @@ void save_Likelihood_Predictions(std::string filename, const Patch_State_Evoluti
       << "j"
       << ","
       << "P_Cov";
-    if constexpr (keep_N_state::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << ","
           << "N"
           << "\n";
@@ -6318,7 +6381,7 @@ void save_Likelihood_Predictions(std::string filename, const Patch_State_Evoluti
                   << get<eplogL>(predictions()[i_step]) << "," << get<logL>(predictions()[i_step])
                   << "," << i << "," << get<P_mean>(predictions()[i_step])()[i] << "," << j << ","
                   << get<P_Cov>(predictions()[i_step])()(i, j);
-                if constexpr (keep_N_state::value)
+                if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
                     f << "," << get<N_Ch_State_Evolution>(y())()[i_step]()[i] << "\n";
                 else
                     f << "\n";
@@ -6333,11 +6396,10 @@ inline void save_Likelihood_Predictions(std::string filename,
     std::visit([&](auto& y) { save_Likelihood_Predictions(filename, predictions, y, xs); }, sim_y);
 }
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+template<typename Simulate_tag>
 
 void save_Likelihood_Predictions(std::string filename, const logL_y_yvar& predictions,
-                                 const Simulated_Recording<keep_N_state>& y, const Experiment& xs) {
+                                 const Simulated_Recording<Simulate_tag>& y, const Experiment& xs) {
     auto& ys = get<Recording>(y());
     std::ofstream flogL(filename + "_logL.csv");
     flogL << std::setprecision(std::numeric_limits<double>::digits10 + 1) << "logL" << ","
@@ -6360,7 +6422,7 @@ void save_Likelihood_Predictions(std::string filename, const logL_y_yvar& predic
       << "y_mean"
       << ","
       << "y_var";
-    if constexpr (keep_N_state::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << ","
           << "N"
           << "\n";
@@ -6402,13 +6464,12 @@ inline auto new_thermo_Model_by_max_iter_dts(
 #ifdef ZOMBIE
 namespace zombie {
 
-template <typename keep_N_state>
-    requires var::is_this_constexpr_Var_v<keep_N_state, bool, includes_N_state_evolution>
+template<typename Simulate_tag>
 
 void save_fractioned_Likelihood_Predictions(
     std::string filename, const std::string& sep,
     const std::vector<Patch_State_Evolution>& v_predictions,
-    const std::vector<Simulated_Recording<keep_N_state>>& v_y,
+    const std::vector<Simulated_Recording<Simulate_tag>>& v_y,
     const std::vector<Experiment>& v_xs) {
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
@@ -6416,7 +6477,7 @@ void save_fractioned_Likelihood_Predictions(
       << sep << "number_of_samples" << sep << "Agonist_concentration" << sep << "macror_algorithm"
       << sep << "y" << sep << "y_mean" << sep << "y_var" << sep << "plogL" << sep << "eplogL" << sep
       << "logL" << sep << "i_state" << sep << "P_mean" << sep << "j_state" << sep << "P_Cov";
-    if constexpr (keep_N_state::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << ","
           << "N"
           << "\n";
@@ -6447,7 +6508,7 @@ void save_fractioned_Likelihood_Predictions(
                           << get<logL>(predictions()[i_step]) << sep << i_state << sep
                           << get<P_mean>(predictions()[i_step])()[i_state] << sep << j_state << sep
                           << get<P_Cov>(predictions()[i_step])()(i_state, j_state);
-                        if constexpr (keep_N_state::value)
+                        if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
                             f << sep << get<N_Ch_State_Evolution>(y())()[i_step]()[i_state] << "\n";
                         else
                             f << "\n";
@@ -6713,18 +6774,17 @@ auto thermo_Model_by_max_iter(std::string path, std::string filename,
 }  // namespace zombie
 #endif
 
-template <class Parameter, class includesN>
-    requires(includes_N_state_evolution_c<includesN>)
-void report_model(save_Parameter<Parameter>& s, Simulated_Recording<includesN> const& sim) {
+template <class Parameter, class Simulate_tag>
+void report_model(save_Parameter<Parameter>& s, Simulated_Recording<Simulate_tag> const& sim) {
     std::ofstream f(s.fname + "_simulation.csv");
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_step" << s.sep << "patch_current";
-    if constexpr (includesN::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << s.sep << "i_state" << s.sep << "N_state";
     f << "\n";
 
-    if constexpr (includesN::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         auto N = get<N_Ch_State_Evolution>(sim());
         auto y = get<Recording>(sim());
         for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
@@ -6741,19 +6801,18 @@ void report_model(save_Parameter<Parameter>& s, Simulated_Recording<includesN> c
     }
 }
 
-template <class includesN>
-    requires(includes_N_state_evolution_c<includesN>)
+template <class Simulate_tag>
 void save_Simulated_Recording(std::string const& filename, const std::string& separator,
-                              Simulated_Recording<includesN> const& sim) {
+                              Simulated_Recording<Simulate_tag> const& sim) {
     std::ofstream f(filename);
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_step" << separator << "patch_current";
-    if constexpr (includesN::value)
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
         f << separator << "i_state" << separator << "N_state";
     f << "\n";
 
-    if constexpr (includesN::value) {
+    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
         auto N = get<N_Ch_State_Evolution>(sim());
         auto y = get<Recording>(sim());
         for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
@@ -6868,7 +6927,7 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>> calc_si
     auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
     if (!Maybe_segments)
         return Maybe_segments.error();
-    Simulated_Recording<includes_N_state_evolution<true>> y;
+    Simulated_Recording<is_a_t<includes_N_state_evolution>> y;
     auto Maybe_y = load_simulation(simulation, ",", y);
     if (!Maybe_y)
         return Maybe_y.error();

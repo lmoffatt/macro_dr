@@ -37,7 +37,7 @@ static const auto scheme_CO = Model0::Model("scheme_CO", []() {
         [](const auto& p) -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(p)>, Patch_Model>> {
             auto on = p[0];
             auto off = p[1];
-            auto v_unitary_current = p[3] * -1.0;
+            auto v_unitary_current = p[2] * -1.0;
             auto Npar = 3ul;
             auto v_curr_noise = p[Npar];
             auto v_baseline = p[Npar + 1];

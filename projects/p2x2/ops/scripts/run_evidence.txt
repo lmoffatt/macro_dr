@@ -4,7 +4,7 @@ modelParameter = load_Parameter(filename = "../macro_dr/models/model4_par.csv", 
 
 prior_model = load_Prior(filename = "../macro_dr/models/model4_prior.csv", separator= ",")
 
-experiment = get_Experiment(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7.txt", frequency_of_sampling = 50e3, initial_ATP = 0) 
+experiment = get_Experiment(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7.txt", frequency_of_sampling = 50e3, initial_agonist = 0) 
 
 observations = get_Observations(filename = "../macro_dr/experiments/Moffatt_Hume_2007_ATP_time_7.txt") 
 
