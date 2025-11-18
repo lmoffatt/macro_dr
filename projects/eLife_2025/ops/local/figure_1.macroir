@@ -17,7 +17,7 @@ model_str="scheme_CO"
 
 
 
-simulation  = simulate(model= model, parameter_values = par_values, experiment = experiment,
+simulation  = simulate_with_sub_intervals(model= model, parameter_values = par_values, experiment = experiment,
                          observations = observations, number_of_substeps = 10, seed = 0)
 
-simulation_file = write_csv( experiment= experiment,simulation=simulation, path= "figure_1_simulation")
+simulation_file = write_csv( experiment= experiment,simulation=simulation, number_of_substates=10, path= "figure_1_simulation")
