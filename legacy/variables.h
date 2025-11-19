@@ -634,6 +634,49 @@ auto sep(Maybe_error<Vector_Space<Vars...>> const& x, const std::string& s) {
         return x.value().sep(s);
 }
 
+
+// 1. Concept definition: Checks if get<Id>(v) is a valid expression
+template<class V, class Id>
+concept gets_it_c = requires(V&& v) {
+    // Uses ADL to find 'get'
+    get<Id>(std::forward<V>(v)); 
+};
+
+// 2. The struct helper
+template<typename...Vars>
+struct please_include {
+    template <class Id>
+    static constexpr bool has_it = (std::is_same_v<Id, Vars> || ...);
+};
+
+// 3. Implementation Helper
+template<class V, class Id>
+constexpr bool check_has_it() {
+    // Check if it is a Vector_Space
+    if constexpr (is_of_this_template_type_v<std::decay_t<V>, Vector_Space>) {
+        return gets_it_c<V, Id>;
+    } 
+    // Check if it is a var::please_include
+    else if constexpr (is_of_this_template_type_v<std::decay_t<V>, please_include>) {
+        return std::decay_t<V>::template has_it<Id>;
+    } 
+    else {
+        return false;
+    }
+}
+
+// 4. The final variable template
+template<class V, class Id>
+inline constexpr bool has_it_v = check_has_it<V, Id>();
+
+
+
+
+
+
+
+
+
 template <class Id, class... Vars>
 auto getv(Maybe_error<Vector_Space<Vars...>> const& x) -> Maybe_error<Id> {
     if (!x)
@@ -651,6 +694,8 @@ template <class Id, class... Vars>
 auto& fun(Vector_Space<Vars...>& x) {
     return x[Var<Id>{}];
 }
+
+
 
 template <class...>
 class Vector_Map;

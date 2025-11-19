@@ -45,7 +45,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
 
                 auto Maybe_param1 = var::load_Parameters(par.first, par.second, model0.model_name(),
                                                          model0.names());
-                Simulated_Recording<is_a_t<>> y;
+                Simulated_Recording<var::please_include<>> y;
                 auto Maybe_y = load_simulation(recording, ",", y);
                 if (!Maybe_param1.valid() || !Maybe_y.valid()) {
                     std::cerr << "---------ERROR_______________\n";

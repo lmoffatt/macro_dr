@@ -14,11 +14,11 @@
 
 namespace macrodr::cmd {
 
-Maybe_error<Simulated_Recording<is_a_t<>>> run_simulations(
+Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
-Maybe_error<Simulated_Recording<is_a_t<includes_only_channel_sub_current>>> run_simulations_with_sub_intervals(
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
@@ -29,10 +29,10 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
                                        simulation_algo_type sim_algo_type);
 
 Maybe_error<std::string> write_csv(Experiment const& e,
-    Simulated_Recording<is_a_t<>> const& simulation, std::string  path);
+    Simulated_Recording<var::please_include<>> const& simulation, std::string  path);
 
 Maybe_error<std::string> write_csv(Experiment const& e,
-    Simulated_Recording<is_a_t<includes_only_channel_sub_current>> const& simulation, std::size_t n_sub, std::string  path);
+    Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const& simulation, std::size_t n_sub, std::string  path);
 
 }  // namespace macrodr::cmd
 
