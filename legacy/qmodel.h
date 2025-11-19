@@ -816,14 +816,11 @@ using Patch_State_and_y_Evolution =
 using Patch_State_and_Hessian = Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var,
                                              plogL, eplogL, vplogL, macror_algorithm, FIM>;
 
-class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
 
-struct includes_N_state_evolution{};
-struct includes_only_channel_current{};
+                                             class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
 
-struct includes_N_state_sub_evolution{};
-struct includes_only_channel_sub_current{};
+
 
 
 class N_Ch_State_Evolution : public Var<N_Ch_State_Evolution, std::vector<N_channel_state>> {};
@@ -840,31 +837,23 @@ class Only_Ch_Curent_Sub_Evolution : public Var<Only_Ch_Curent_Sub_Evolution, st
 template <typename Simulate_tag>
 class Simulated_Recording
     : public Var<Simulated_Recording<Simulate_tag>,
-                  Conditional_concat_t<
+                  add_t<
                   Vector_Space<Recording>, 
-                  Simulate_tag,
-                  If_then<includes_N_state_evolution, N_Ch_State_Evolution>,
-                  If_then<includes_only_channel_current, Only_Ch_Curent_Evolution>,
-                  If_then<includes_N_state_sub_evolution, N_Ch_State_Sub_Evolution>,
-                  If_then<includes_only_channel_sub_current, Only_Ch_Curent_Sub_Evolution>>>{
+                  Simulate_tag>>{
    public:
-    constexpr static const bool includes_N = is_a_v<Simulate_tag,includes_N_state_evolution>;
+    constexpr static const bool includes_N = var::has_it_v<Simulate_tag,N_Ch_State_Evolution>;
     using Var<Simulated_Recording<Simulate_tag>,
-                  Conditional_concat_t<
+                  add_t<
                   Vector_Space<Recording>, 
-                  Simulate_tag,
-                  If_then<includes_N_state_evolution, N_Ch_State_Evolution>,
-                  If_then<includes_only_channel_current, Only_Ch_Curent_Evolution>,
-                  If_then<includes_N_state_sub_evolution, N_Ch_State_Sub_Evolution>,
-                  If_then<includes_only_channel_sub_current, Only_Ch_Curent_Sub_Evolution>>>::Var;
+                  Simulate_tag>>::Var;
 };
 
 using Simulated_recording =
-    Simulated_Recording<is_a_t<>>;
+    Simulated_Recording<var::please_include<>>;
 
-using v_Simulated_Recording = std::variant<Simulated_Recording<is_a_t<>>,
-Simulated_Recording<is_a_t<includes_only_channel_current>>,
-                                           Simulated_Recording<is_a_t<includes_N_state_evolution>>>;
+using v_Simulated_Recording = std::variant<Simulated_Recording<var::please_include<>>,
+Simulated_Recording<var::please_include<Only_Ch_Curent_Evolution>>,
+                                           Simulated_Recording<var::please_include<N_Ch_State_Evolution>>>;
 
 template <typename Simulate_tag>
 class Simulated_Step
@@ -875,30 +864,16 @@ class Simulated_Step
 };
 
 template<typename Simulate_tag>
-using Simulated_Sub_Step_t = Conditional_concat_t<
+using Simulated_Sub_Step_t = add_if_present_t<
                   Vector_Space<N_channel_state, number_of_samples, y_sum>, 
-                  Simulate_tag,
-                  If_then<includes_N_state_sub_evolution, N_Ch_State_Sub_Evolution>,
-                  If_then<includes_only_channel_sub_current, Only_Ch_Curent_Sub_Evolution>>;
+                  Simulate_tag,N_Ch_State_Sub_Evolution,Only_Ch_Curent_Sub_Evolution>;
 
-template<typename Simulate_tag>
+
+                  template<typename Simulate_tag>
 Simulated_Sub_Step_t<Simulate_tag> Simulated_Sub_Step_build(N_channel_state N){
-    auto out=Simulated_Sub_Step_t<is_a_t<>>(N,number_of_samples(0),y_sum(0.0));
-    auto out2= [](auto&& o){
-           if constexpr(is_a_v<Simulate_tag,includes_N_state_sub_evolution>)
-           {
-            return push_back_var(std::move(o),N_Ch_State_Sub_Evolution{});
-           }
-           else return std::move(o);
-    }(std::move(out));
-    return [](auto&& o){
-           if constexpr(is_a_v<Simulate_tag,includes_only_channel_sub_current>)
-           {
-            return push_back_var(std::move(o),Only_Ch_Curent_Sub_Evolution{});
-           }
-           else return std::move(o);
-    }(std::move(out2));
-    
+    Simulated_Sub_Step_t<Simulate_tag> out; 
+    get<N_channel_state>(out)=N;
+    return out;
 }
                   
 
@@ -911,11 +886,11 @@ void save_simulation(std::string const& filename, const std::string& separator,
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_step" << separator << "patch_current";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << separator << "i_state" << separator << "N_state";
     f << "\n";
 
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         auto N = get<N_Ch_State_Evolution>(sim());
         auto y = get<Recording>(sim());
         for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
@@ -942,7 +917,7 @@ Maybe_error<bool> load_simulation(std::string const& fname, std::string separato
     std::getline(f, line);
     std::stringstream ss(line);
 
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         if (!(ss >> septr("i_step") >> septr(separator) >> septr("patch_current") >>
               septr(separator) >> septr("i_state") >> septr(separator) >> septr("N_state")))
             return error_message("titles are wrong : expected  \ni_step" + separator +
@@ -964,7 +939,7 @@ Maybe_error<bool> load_simulation(std::string const& fname, std::string separato
     double val;
     auto& e = get<Recording>(r());
 
-    if constexpr (!is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (!var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         while (extract_double(ss >> i_step >> septr(separator), val, separator[0])) {
             if (i_step_prev != i_step) {
                 if (i_step != e().size())
@@ -1032,11 +1007,11 @@ void save_fractioned_simulation(std::string filename, std::string separator,
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_frac" << separator << "i_step" << separator << "patch_current";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << separator << "i_state" << separator << "N_state";
     f << "\n";
 
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         for (std::size_t i_frac = 0; i_frac < vsim.size(); ++i_frac) {
             auto& sim = vsim[i_frac];
             auto N = get<N_Ch_State_Evolution>(sim());
@@ -1073,7 +1048,7 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
           septr("patch_current")))
         return error_message("titles are wrong : expected  i_step:" + separator +
                              "patch_current; found:" + line);
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         if (!(ss >> septr(separator) >> septr("i_state") >> septr(separator) >> septr("N_state")))
             return error_message("titles are wrong : expected  i_state:" + separator +
                                  "N_state; found:" + line);
@@ -1088,7 +1063,7 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
     double val;
     Simulated_Recording<Simulate_tag> r;
 
-    if constexpr (!is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (!var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         while (extract_double(ss >> i_frac >> septr(separator) >> i_step >> septr(separator), val,
                               separator[0])) {
             if (i_frac_prev != i_frac) {
@@ -1184,13 +1159,13 @@ Maybe_error<bool> load_fractioned_simulation(std::string const& fname, std::stri
 
 inline Maybe_error<bool> load_simulation(std::string const& fname, std::string separator,
                                          v_Simulated_Recording& r) {
-    Simulated_Recording<is_a_t<includes_N_state_evolution>> try_N_state;
+    Simulated_Recording<var::please_include<N_Ch_State_Evolution>> try_N_state;
     auto Maybe_N_state = load_simulation(fname, separator, try_N_state);
     if (Maybe_N_state.valid()) {
         r = try_N_state;
         return true;
     }
-    r = Simulated_Recording<is_a_t<>>{};
+    r = Simulated_Recording<var::please_include<>>{};
     return load_simulation(fname, separator, r);
 }
 
@@ -1203,7 +1178,7 @@ void save_simulation(std::string name, std::vector<Simulated_Recording<Simulate_
       << "i_step"
       << ","
       << "patch_current";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         f << ","
           << "i_state"
           << ","
@@ -4931,11 +4906,11 @@ class Macro_DMR {
                 N = sample_Multinomial(mt, t_P, N);
                 auto y =getvalue(N() * t_g());
                 ysum += y * sub_sample;
-                if constexpr(is_a_v<Simulate_tag,includes_only_channel_sub_current>)
+                if constexpr(var::has_it_v<Simulate_tag,Only_Ch_Curent_Sub_Evolution>)
                     {
                         get<Only_Ch_Curent_Sub_Evolution>(r_sim_step)().emplace_back(y);
                     }
-                if constexpr(is_a_v<Simulate_tag,includes_N_state_sub_evolution>)
+                if constexpr(var::has_it_v<Simulate_tag,N_Ch_State_Sub_Evolution>)
                 {
                         get<N_Ch_State_Sub_Evolution>(r_sim_step)().emplace_back(N);
                     
@@ -4998,22 +4973,22 @@ class Macro_DMR {
             if (ey > 0)
                 y = y + std::normal_distribution<double>()(mt) * std::sqrt(ey);
             t_e_step().emplace_back(Patch_current(y));
-            if constexpr (is_a_v<Simulate_tag,includes_only_channel_current>) {
+            if constexpr (var::has_it_v<Simulate_tag,Only_Ch_Curent_Evolution>) {
                 get<Only_Ch_Curent_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())()
                     .emplace_back(y_mean);
             }
-            if constexpr (is_a_v<Simulate_tag,includes_only_channel_sub_current>) {
+            if constexpr (var::has_it_v<Simulate_tag,Only_Ch_Curent_Sub_Evolution>) {
                 auto& c=get<Only_Ch_Curent_Sub_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())(); 
                 auto& n= get<Only_Ch_Curent_Sub_Evolution>(t_sub_step);
                 c.insert(c.end(),n().begin(), n().end());
             }
-            if constexpr (is_a_v<Simulate_tag,includes_N_state_sub_evolution>) {
+            if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Sub_Evolution>) {
                 auto& c=get<N_Ch_State_Sub_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())(); 
                 auto& n= get<N_Ch_State_Sub_Evolution>(t_sub_step);
                  c.insert(c.end(),n().begin(), n().end());
             }
             
-            if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+            if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
                 get<N_Ch_State_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())()
                     .push_back(get<N_channel_state>(t_sim_step()));
             }
@@ -5078,24 +5053,24 @@ class Macro_DMR {
         }
     }
     template <class Model>
-    Maybe_error<Simulated_Recording<is_a_t<>>> sample(
+    Maybe_error<Simulated_Recording<var::please_include<>>> sample(
         mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
         const Simulation_Parameters& sim, const Recording& r = Recording{}) {
-        return sample_<is_a_t<>>(mt, model, par, e, sim, r);
+        return sample_<var::please_include<>>(mt, model, par, e, sim, r);
     }
 
     template <class Model>
-    Maybe_error<Simulated_Recording<is_a_t<includes_N_state_evolution>>> sample_N(
+    Maybe_error<Simulated_Recording<var::please_include<N_Ch_State_Evolution>>> sample_N(
         mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
         const Simulation_Parameters& sim, const Recording& r = Recording{}) {
-        return sample_<is_a_t<includes_N_state_evolution>>(mt, model, par, e, sim, r);
+        return sample_<var::please_include<N_Ch_State_Evolution>>(mt, model, par, e, sim, r);
     }
 
     template <class Model>
-    Maybe_error<Simulated_Recording<is_a_t<includes_only_channel_sub_current>>> sample_sub_y(
+    Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> sample_sub_y(
         mt_64i& mt, const Model& model, const var::Parameters_values& par, const Experiment& e,
         const Simulation_Parameters& sim, const Recording& r = Recording{}) {
-        return sample_<is_a_t<includes_only_channel_sub_current>>(mt, model, par, e, sim, r);
+        return sample_<var::please_include<Only_Ch_Curent_Sub_Evolution>>(mt, model, par, e, sim, r);
     }
 
 };
@@ -5858,7 +5833,7 @@ class experiment_fractioner {
             if (indexes0[i] == indexes1[ii]) {
                 if (sum_samples == 0) {
                     out_y[ii] = yr()[i];
-                    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+                    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
                         out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
                     out_x[ii] = average_Experimental_step(e()[i], average_the_evolution);
                 } else {
@@ -5871,7 +5846,7 @@ class experiment_fractioner {
                     out_y[ii] = Patch_current(sum_y / sum_samples);
 
                     out_x[ii] = Experiment_step(get<Time>(e()[i]), v_agonist);
-                    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+                    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
                         out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
 
                     sum_y = 0;
@@ -5890,7 +5865,7 @@ class experiment_fractioner {
         }
         Simulated_Recording<Simulate_tag> out_sim;
         get<Recording>(out_sim())() = std::move(out_y);
-        if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+        if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
             get<N_Ch_State_Evolution>(out_sim())() = std::move(out_N);
 
         return std::tuple(Recording_conditions(out_x), std::move(out_sim));
@@ -6260,7 +6235,7 @@ void report(std::string filename, const Patch_State_Evolution& predictions,
       << "j"
       << ","
       << "P_Cov";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         f << ","
           << "N";
     }
@@ -6277,7 +6252,7 @@ void report(std::string filename, const Patch_State_Evolution& predictions,
                   << get<eplogL>(predictions()[i_step]) << "," << get<logL>(predictions()[i_step])
                   << "," << i << "," << get<P_mean>(predictions()[i_step])()[i] << "," << j << ","
                   << get<P_Cov>(predictions()[i_step])()(i, j);
-                if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+                if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
                     f << "," << get<N_Ch_State_Evolution>(y())()[i_step]()[i] << "\n";
                 else
                     f << "\n";
@@ -6371,7 +6346,7 @@ void save_Likelihood_Predictions(std::string filename, const Patch_State_Evoluti
       << "j"
       << ","
       << "P_Cov";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << ","
           << "N"
           << "\n";
@@ -6389,7 +6364,7 @@ void save_Likelihood_Predictions(std::string filename, const Patch_State_Evoluti
                   << get<eplogL>(predictions()[i_step]) << "," << get<logL>(predictions()[i_step])
                   << "," << i << "," << get<P_mean>(predictions()[i_step])()[i] << "," << j << ","
                   << get<P_Cov>(predictions()[i_step])()(i, j);
-                if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+                if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
                     f << "," << get<N_Ch_State_Evolution>(y())()[i_step]()[i] << "\n";
                 else
                     f << "\n";
@@ -6430,7 +6405,7 @@ void save_Likelihood_Predictions(std::string filename, const logL_y_yvar& predic
       << "y_mean"
       << ","
       << "y_var";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << ","
           << "N"
           << "\n";
@@ -6485,7 +6460,7 @@ void save_fractioned_Likelihood_Predictions(
       << sep << "number_of_samples" << sep << "Agonist_concentration" << sep << "macror_algorithm"
       << sep << "y" << sep << "y_mean" << sep << "y_var" << sep << "plogL" << sep << "eplogL" << sep
       << "logL" << sep << "i_state" << sep << "P_mean" << sep << "j_state" << sep << "P_Cov";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << ","
           << "N"
           << "\n";
@@ -6516,7 +6491,7 @@ void save_fractioned_Likelihood_Predictions(
                           << get<logL>(predictions()[i_step]) << sep << i_state << sep
                           << get<P_mean>(predictions()[i_step])()[i_state] << sep << j_state << sep
                           << get<P_Cov>(predictions()[i_step])()(i_state, j_state);
-                        if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+                        if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
                             f << sep << get<N_Ch_State_Evolution>(y())()[i_step]()[i_state] << "\n";
                         else
                             f << "\n";
@@ -6788,11 +6763,11 @@ void report_model(save_Parameter<Parameter>& s, Simulated_Recording<Simulate_tag
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_step" << s.sep << "patch_current";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << s.sep << "i_state" << s.sep << "N_state";
     f << "\n";
 
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         auto N = get<N_Ch_State_Evolution>(sim());
         auto y = get<Recording>(sim());
         for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
@@ -6816,11 +6791,11 @@ void save_Simulated_Recording(std::string const& filename, const std::string& se
     f << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
     f << "i_step" << separator << "patch_current";
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>)
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>)
         f << separator << "i_state" << separator << "N_state";
     f << "\n";
 
-    if constexpr (is_a_v<Simulate_tag,includes_N_state_evolution>) {
+    if constexpr (var::has_it_v<Simulate_tag,N_Ch_State_Evolution>) {
         auto N = get<N_Ch_State_Evolution>(sim());
         auto y = get<Recording>(sim());
         for (auto i_step = 0ul; i_step < N().size(); ++i_step) {
@@ -6935,7 +6910,7 @@ inline Maybe_error<std::tuple<std::string, std::string, double, double>> calc_si
     auto Maybe_segments = load_segments_length_for_fractioning(segments, ",");
     if (!Maybe_segments)
         return Maybe_segments.error();
-    Simulated_Recording<is_a_t<includes_N_state_evolution>> y;
+    Simulated_Recording<var::please_include<N_Ch_State_Evolution>> y;
     auto Maybe_y = load_simulation(simulation, ",", y);
     if (!Maybe_y)
         return Maybe_y.error();

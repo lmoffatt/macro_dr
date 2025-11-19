@@ -72,6 +72,19 @@ template<typename...Ds>
 struct is_a_t:public Ds...{};
 
 
+template<class V, class T> struct is_in_impl{static constexpr const bool value=false;};
+
+
+
+template<template<typename...>class V, class...Us,class T>
+struct is_in_impl<V<Us...>, T>{
+   static constexpr bool value= (std::is_same_v<Us,T>||...);
+};
+
+template <class V, class T>
+static constexpr const bool is_in_v=is_in_impl<V, T>::value; 
+
+
 template<class T,class Tag,class... Us>
 struct Conditional_concat;
 
@@ -95,6 +108,41 @@ struct Conditional_concat<V<Ts...>, Tag, If_then<Condition,U>,If_then<Conditions
     using type=Conditional_concat_t<std::conditional_t<is_a_v<Tag, Condition>, 
       V<Ts...,U>, V<Ts...>>,Tag, If_then<Conditions,Us>...>;
 };
+
+template<class V, class U>struct add_impl;
+
+
+
+template<template<class...> class V, class...Vs, template<class...>class U, class...Us>
+struct add_impl<V<Vs...>,U<Us...>>{
+    using type=V<Vs...,Us...>;
+};
+
+template<class V, class U>
+using add_t=typename add_impl<V,U>::type;
+
+
+
+template<class V, class U, class... Ts> struct add_if_present_impl;
+template<class V, class U, class... Ts>
+using add_if_present_t=typename add_if_present_impl<V,U, Ts...>::type;
+
+template<template<class...> class V, class...Vs, template<class...>class U, class...Us>
+struct add_if_present_impl<V<Vs...>,U<Us...>>{
+    using type=V<Vs...>;
+};
+
+
+template<template<class...> class V, class...Vs, template<class...>class U, class...Us, class T, class...Ts>
+struct add_if_present_impl<V<Vs...>,U<Us...>,T,Ts...>{
+    using type=std::conditional_t<is_in_v<U<Us...>,T>, 
+    add_if_present_t<V<Vs...,T>,U<Us...>,Ts...>,
+    add_if_present_t<V<Vs...>,U<Us...>,Ts...>>;
+};
+
+template<class V, class U>
+using add_t=typename add_impl<V,U>::type;
+
 
 template <class T>
 struct return_type;

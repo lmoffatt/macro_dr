@@ -484,7 +484,7 @@ inline void calc_likelihood_old(std::string outfilename, std::string model,
 
                 auto Maybe_param1 = var::load_Parameters(par.first, par.second, model0.model_name(),
                                                          model0.names());
-                Simulated_Recording<is_a_t<>> y;
+                Simulated_Recording<var::please_include<>> y;
                 auto Maybe_y = load_simulation(recording, ",", y);
                 if (!Maybe_param1.valid() || !Maybe_y.valid()) {
                     std::cerr << "---------ERROR_______________\n";
@@ -554,7 +554,7 @@ inline Maybe_error<std::string> calc_fraction_likelihood(
                 var::load_Parameters(par.first, par.second, model0.model_name(), model0.names());
 
             std::vector<Experiment> xs;
-            std::vector<Simulated_Recording<is_a_t<includes_N_state_evolution>>> ys;
+            std::vector<Simulated_Recording<var::please_include<N_Ch_State_Evolution>>> ys;
             auto Maybe_e = load_fractioned_experiment(experiment, ",", fs, iniagonist, xs);
 
             auto Maybe_y = load_fractioned_simulation(simulation, ",", ys);

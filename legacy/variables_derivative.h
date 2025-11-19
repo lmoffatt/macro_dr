@@ -16,7 +16,7 @@ class Derivative<Var<Id, T>, X> {
     constexpr Derivative(S&& t_x) : m_x{std::forward<S>(t_x)} {}
     constexpr auto& operator()() { return m_x; }
     constexpr auto& operator()() const { return m_x; }
-    constexpr auto& operator[](Var<Id>) const { return *this; }
+    //constexpr auto& operator[](Var<Id>) const { return *this; }
 
     template <class... Ts>
     constexpr auto operator()(const Ts&...) const {
@@ -149,6 +149,9 @@ class Derivative<Id, X> : public Derivative<typename Id::variable_type, X> {
         requires std::is_same_v<Id, std::decay_t<IdT>>
     Derivative(IdT&& m) : base_type{std::forward<IdT>(m)()} {}
     decltype(auto) primitive() const { return Id(base_type::primitive()); }
+
+    constexpr auto const& operator[](Var<Id>) const { return *this; }
+    constexpr auto & operator[](Var<Id>)  { return *this; }
 
     Derivative(base_type&& m) : base_type{std::move(m)} {}
     Derivative(base_type const& m) : base_type{m} {}

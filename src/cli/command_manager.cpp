@@ -10,6 +10,7 @@
 #include <maybe_error.h>
 #include <parameters.h>
 #include <qmodel.h>
+#include <variables.h>
 
 #include <cstddef>
 
@@ -95,7 +96,7 @@ dsl::Compiler make_compiler_new() {
         dsl::to_typed_return_function<
         Maybe_error<std::string>,
         Experiment const&,
-        Simulated_Recording<is_a_t<includes_only_channel_sub_current>> const&, 
+        Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&, 
         std::size_t,
         std::string >(
             &macrodr::cmd::write_csv,
@@ -187,7 +188,7 @@ dsl::Compiler make_compiler_new() {
         "calc_likelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<is_a_t<>>&, bool,
+                               const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -206,7 +207,7 @@ dsl::Compiler make_compiler_new() {
         "calc_dlikelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<is_a_t<>>&, bool,
+                               const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_dlikelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -225,7 +226,7 @@ dsl::Compiler make_compiler_new() {
         "calc_diff_likelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<is_a_t<>>&, bool,
+                               const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool, double>(
             &cmd::calculate_simulation_diff_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -244,7 +245,7 @@ dsl::Compiler make_compiler_new() {
         "calc_likelihood_predictions",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<is_a_t<>>&, bool,
+                               const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_likelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -262,7 +263,7 @@ dsl::Compiler make_compiler_new() {
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<is_a_t<>>&, bool,
+                               const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_dlikelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
@@ -271,7 +272,7 @@ dsl::Compiler make_compiler_new() {
     cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const std::string&, const var::Parameters_values&, const Experiment&,
-                               const Simulated_Recording<is_a_t<>>&, bool,
+                               const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
             &cmd::calculate_simulation_dlikelihood_predictions_model, "model", "parameters",
             "experiment", "data", "adaptive_approximation", "recursive_approximation",
