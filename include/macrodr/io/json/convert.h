@@ -138,6 +138,23 @@ struct var_traits<var::Var<Id, Value>> : var_traits_impl<Id, Value> {};
 template <class Id, class Value>
 struct var_traits<var::Constant<Id, Value>> : var_traits_impl<Id, Value> {};
 
+// Derivative wrapper: forward to the underlying untransformed type
+template <class T, class X>
+struct var_traits<var::Derivative<T, X>> : var_traits<var::untransformed_type_t<var::Derivative<T, X>>> {};
+
+// Access the underlying stored value of a Var/Constant by explicitly casting to its base
+// to avoid ambiguity with other inherited members (e.g., derivative wrappers).
+template <class VarType>
+auto& var_value(VarType& v) {
+    using Base = typename VarType::variable_type;
+    return static_cast<Base&>(v).value();
+}
+template <class VarType>
+auto const& var_value(const VarType& v) {
+    using Base = typename VarType::variable_type;
+    return static_cast<const Base&>(v).value();
+}
+
 template <class T>
 struct var_traits {
     using base = typename T::variable_type;
@@ -283,12 +300,12 @@ Maybe_error<void> from_json(const Json& j, DiagPosDetMatrix<double>& out, const 
 // var::Var and Vector_Space
 template <class VarType>
 Json to_json(const VarType& value, TagPolicy policy = TagPolicy::None)
-    requires detail::is_var<VarType>::value;
+    requires(detail::is_var<VarType>::value && !detail::is_vector_space_v<VarType>);
 
 template <class VarType>
 Maybe_error<void> from_json(const Json& j, VarType& out, const std::string& path,
                             TagPolicy policy)
-    requires detail::is_var<VarType>::value;
+    requires(detail::is_var<VarType>::value && !detail::is_vector_space_v<VarType>);
 
 template <class... Vars>
 Json to_json(const var::Vector_Space<Vars...>& value, TagPolicy policy = TagPolicy::None);
@@ -1011,10 +1028,10 @@ inline Maybe_error<void> from_json(const Json& j, var::Parameters_Transformation
 
 template <class VarType>
 Json to_json(const VarType& value, TagPolicy policy)
-    requires detail::is_var<VarType>::value {
+    requires(detail::is_var<VarType>::value && !detail::is_vector_space_v<VarType>) {
     Json obj = Json::object();
     obj.obj.emplace("id", Json::string(detail::var_id_name<VarType>()));
-    obj.obj.emplace("value", to_json(value(), policy));
+    obj.obj.emplace("value", to_json(detail::var_value(value), policy));
     if (policy != TagPolicy::None) {
         obj.obj.emplace("type", Json::string(detail::value_type_name<VarType>()));
     }
@@ -1024,7 +1041,7 @@ Json to_json(const VarType& value, TagPolicy policy)
 template <class VarType>
 Maybe_error<void> from_json(const Json& j, VarType& out, const std::string& path,
                             TagPolicy policy)
-    requires detail::is_var<VarType>::value {
+    requires(detail::is_var<VarType>::value && !detail::is_vector_space_v<VarType>) {
     if (j.type != Json::Type::Object) {
         return detail::type_error(path, "object", j.type);
     }
@@ -1042,7 +1059,7 @@ Maybe_error<void> from_json(const Json& j, VarType& out, const std::string& path
     if (id != expected) {
         return error_message(path + ": unexpected id '" + id + "' (expected '" + expected + "')");
     }
-    auto status = from_json(*value_json, out(), path + ".value", policy);
+    auto status = from_json(*value_json, detail::var_value(out), path + ".value", policy);
     if (!status) {
         return status;
     }

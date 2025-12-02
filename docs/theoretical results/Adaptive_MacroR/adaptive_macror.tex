@@ -1,0 +1,258 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Adaptive MacroR:\\A Hybrid Discrete--Macroscopic Framework\\
+for Multi-Scale Channel Ensemble Inference}
+
+\author{Internal Note --- MacroDR/MacroIR Project}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document outlines the conceptual foundations for an ``Adaptive MacroR''
+framework capable of simultaneously handling microscopic, mesoscopic, and
+macroscopic channel subpopulations within a single Bayesian model.  The goal
+is to unify single-channel inference, macroscopic (MacroIR) inference, and
+intermediate cases into one multi-scale method capable of tracking dynamics
+from zero-current conditions (few active channels) up to maximal-current
+regimes (hundreds or thousands of channels).  This note defines the
+generative model, the inference steps, and a roadmap for further development.
+\end{abstract}
+
+\section{Motivation}
+
+Biophysical channel populations span a wide range of ensemble sizes.  At very
+low occupancy (e.g.\ channels recovering from desensitization), the
+observations are inherently discrete, and single-channel inference is the
+correct description.  At high occupancy, the macroscopic state of the
+population is well described by the Gaussian approximation used in MacroIR.
+Between these extremes lies a mesoscopic regime where neither approximation
+is fully adequate.
+
+The \emph{Adaptive MacroR} idea is to blend these three regimes into a single
+hierarchical state representation consisting of:
+\begin{enumerate}
+  \item a microscopic sector (explicit channels, discrete Markov chains),
+  \item a mesoscopic sector (small counts with weakly discrete effects),
+  \item a macroscopic sector (large counts, continuous Gaussian state).
+\end{enumerate}
+
+Each interval update uses a mixture of exact discrete inference and Gaussian
+MacroIR inference.  The division between sectors is dynamic and adapts to the
+scale of the signal.
+
+\section{State Representation}
+
+At each time we assume the ensemble is partitioned into:
+\begin{itemize}
+  \item \textbf{Microscopic channels:}
+    \[
+      X^{(m)}_c(t) \in \{1,\ldots,K\}, \qquad
+      c = 1,\ldots,N_{\mathrm{micro}}.
+    \]
+    Each is a full Markov chain with exact discrete states.
+
+  \item \textbf{Macroscopic block:}
+    \[
+      \bigl( \bm{\mu}^{\mathrm{macro}}(t),\;
+              \bm{\Sigma}^{\mathrm{macro}}(t) \bigr),
+    \]
+    describing the occupancy distribution of the remaining
+    $N_{\mathrm{macro}}$ channels via Gaussian MacroIR.
+
+  \item \textbf{Mesoscopic extensions (optional):}
+    These may track a small number of low-count components with
+    geometry-aware approximations (e.g.\ logit-Gaussian) or small discrete
+    mixtures.  They act as an intermediate layer but are not required in the
+    minimal model.
+\end{itemize}
+
+The total number of channels is
+\[
+  N_{\mathrm{ch}}
+  =
+  N_{\mathrm{micro}} + N_{\mathrm{macro}}.
+\]
+
+\section{Generative Model}
+
+For an interval $[0,t]$, the total averaged current is
+\begin{equation}
+\label{eq:total-current}
+  \overline{y}_{0\to t}
+  =
+  \underbrace{\sum_{c=1}^{N_{\mathrm{micro}}}
+     \overline{y}^{(m)}_{c,0\to t}}_{\mathrm{microscopic}}
+  +
+  \underbrace{\overline{y}^{\mathrm{macro}}_{0\to t}}_{\mathrm{MacroIR}}
+  +
+  \epsilon_{0\to t},
+\end{equation}
+where $\epsilon_{0\to t}$ denotes instrument/binning noise.  For each
+microscopic channel $c$,
+\[
+  \overline{y}^{(m)}_{c,0\to t}
+  =
+  \overline{\Gamma}_{i_0\to i_t}^{(c)}
+\]
+with boundary-conditioned statistics exactly as in the single-channel model.
+
+For the macroscopic block, MacroIR provides a Gaussian predictive model:
+\[
+  \overline{y}^{\mathrm{macro}}_{0\to t}
+  \sim
+  \mathcal{N}\bigl(
+    \overline{y}^{\mathrm{pred}},\;
+    \sigma_{\mathrm{pred}}^2
+  \bigr),
+\]
+using the tilde operators and variance-inflation adaptation described
+elsewhere.
+
+Conditioned on the microscopic configuration, the full distribution of
+(\ref{eq:total-current}) is Gaussian.  Therefore the model is a finite mixture
+of Gaussians, with mixture components indexed by the microscopic states.
+
+\section{Inference Procedure}
+
+For each interval:
+
+\subsection{1. Propagation}
+
+\begin{itemize}
+  \item \textbf{Microscopic sector:}
+    For each explicit channel
+    propagate its Markov chain exactly:
+    \[
+      \Pr\bigl[X^{(m)}_c(t)=i_t\bigr]
+      =
+      \sum_{i_0}
+        \Pr\bigl[X^{(m)}_c(0)=i_0\bigr]
+        P_{i_0\to i_t}(t).
+    \]
+
+  \item \textbf{Macroscopic sector:}
+    Use MacroIR propagation:
+    \[
+      \bm{\mu}^{\mathrm{macro}}_{\mathrm{prop}}
+      = \bm{\mu}^{\mathrm{macro}}_0 \mathbf{P}(t),
+    \]
+    \[
+      \bm{\Sigma}^{\mathrm{macro}}_{\mathrm{prop}}
+      =
+      \mathbf{P}(t)^\top
+      \bigl(
+          \bm{\Sigma}^{\mathrm{macro}}_0
+          -
+          \mathrm{diag}(\bm{\mu}^{\mathrm{macro}}_0)
+      \bigr)
+      \mathbf{P}(t)
+      -
+      \mathrm{diag}(\bm{\mu}^{\mathrm{macro}}_{\mathrm{prop}}).
+    \]
+\end{itemize}
+
+\subsection{2. Predictive Current}
+
+\begin{itemize}
+  \item \textbf{Microscopic part:}
+    Compute exact boundary-conditioned means for each channel and sum them:
+    \[
+      \overline{y}^{\mathrm{micro}}_{\mathrm{pred}}
+      =
+      \sum_{c=1}^{N_{\mathrm{micro}}}
+        \sum_{i_0,i_t}
+        \Pr[X^{(m)}_c(0)=i_0,i_t]
+        \,\overline{\Gamma}_{i_0\to i_t}^{(c)}.
+    \]
+
+  \item \textbf{Macroscopic part:}
+    Use standard MacroIR:
+    \[
+      \overline{y}^{\mathrm{macro}}_{\mathrm{pred}}
+      =
+      N_{\mathrm{macro}}\,
+      \bm{\mu}^{\mathrm{macro}}_0
+      \;\overline{\bm{\gamma}}_0,
+    \]
+    with $\overline{\bm{\gamma}}_0$ from the boundary-lifted mean.
+\end{itemize}
+
+Thus:
+\[
+  \overline{y}^{\mathrm{pred}}
+  =
+  \overline{y}^{\mathrm{micro}}_{\mathrm{pred}}
+  +
+  \overline{y}^{\mathrm{macro}}_{\mathrm{pred}}.
+\]
+
+\subsection{3. Update with Measurement}
+
+Conditioned on the microscopic states, the likelihood is Gaussian with mean
+$\overline{y}^{\mathrm{pred}}$ and variance $\sigma^2_{\mathrm{eff}}$ (possibly
+inflated).  The posterior over microscopic states is updated exactly (or
+approximately), and the MacroIR block is updated using
+\[
+  \bm{\mu}^{\mathrm{macro}}_{\mathrm{post}}
+  =
+  \bm{\mu}^{\mathrm{prop}}
+  +
+  \frac{\bm{g}\,\delta}{\sigma^2_{\mathrm{eff}}},
+\]
+\[
+  \bm{\Sigma}^{\mathrm{macro}}_{\mathrm{post}}
+  =
+  \bm{\Sigma}^{\mathrm{prop}}
+  -
+  \frac{\bm{g}\bm{g}^\top}{\sigma^2_{\mathrm{eff}}}.
+\]
+
+\subsection{4. Adaptive Sector Reassignment}
+
+After each interval, diagnostics determine whether certain parts of the
+macroscopic block should be promoted to microscopic/mesoscopic treatment or
+vice versa.  Typical criteria include:
+\begin{itemize}
+  \item persistent boundary hits in some coordinates
+        (large variance-inflation factors),
+  \item extremely small expected occupancy in some states
+        ($N_{\mathrm{macro}} \mu_i \ll 1$),
+  \item repeated large residuals in directions dominated by a small number of
+        states.
+\end{itemize}
+
+Channels or fractions of the population may then be moved across sectors.
+
+\section{Discussion and Roadmap}
+
+The Adaptive MacroR framework provides a principled route to unifying
+single-channel and macroscopic inference.  Its conceptual appeal lies in:
+\begin{itemize}
+  \item exact treatment of low-count events,
+  \item efficient Gaussian treatment of large ensembles,
+  \item a tunable mesoscopic layer allowing intermediate levels of detail,
+  \item a natural interpretation as a Rao--Blackwellized filter.
+\end{itemize}
+
+Future development includes:
+\begin{enumerate}
+  \item formalizing the mesoscopic sector (e.g.\ logit-Gaussian mixtures),
+  \item designing adaptive splitting heuristics based on predictive variance,
+        occupancy, and curvature diagnostics,
+  \item implementing a minimal hybrid prototype (1--2 explicit channels
+        plus a macro block),
+  \item verifying the approach on simulated desensitization/recovery
+        scenarios.
+\end{enumerate}
+
+The long-term goal is a unified inference engine capable of dealing with
+single-channel resolution and macroscopic currents in one coherent Bayesian
+framework.
+
+\end{document}

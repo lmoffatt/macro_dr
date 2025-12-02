@@ -95,23 +95,16 @@ Maybe_error<PatchModel> patch_model(const ModelPtr& model, const var::Parameters
     return maybe_pm.value();
 }
 
-Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double initial_agonist) {
+Maybe_error<macrodr::Patch_State> path_state(const PatchModel& pm, double /*initial_agonist*/) {
     if (auto chk = validate_patch_model_dims(pm); !chk) {
         return chk.error();
     }
     auto m = Macro_DMR{};
-    // predictions<0> returns Patch_State (no evolution stored)
-    auto maybe_init = m.init<return_predictions<0>>(pm,
-                                                   initial_agonist_concentration(Agonist_concentration(initial_agonist)));
+    auto maybe_init = m.init(pm);
     if (!maybe_init) {
         return maybe_init.error();
     }
-    if constexpr (std::is_same_v<decltype(maybe_init.value()), Patch_State>) {
-        return maybe_init.value();
-    } else {
-        // Transfer_Op_to may wrap Patch_State for type propagation; normalize via construction
-        return static_cast<Patch_State>(maybe_init.value());
-    }
+    return maybe_init.value();
 }
 
 Maybe_error<macrodr::Patch_State> path_state(const ModelPtr& model,

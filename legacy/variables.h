@@ -71,7 +71,7 @@ class Var<Id> {};
 
 template <class Id, class T>
 class Var<Id, T> {
-    T m_x;
+    T m_x=T{};
 
     template <class K>
         requires(std::is_same_v<K, T> && !std::is_same_v<K, double>)
@@ -93,6 +93,7 @@ class Var<Id, T> {
     static constexpr bool is_constant = false;
 
     using variable_type = Var<Id, T>;
+    using value_type=T;
 
     template <class S>
         requires std::is_convertible_v<S, T>
@@ -106,7 +107,8 @@ class Var<Id, T> {
     constexpr auto& operator[](Var<Id>) { return *this; }
     constexpr auto& operator[](Var<Id>) const { return *this; }
     constexpr Var() = default;
-    constexpr auto& value() const { return m_x; }
+    constexpr auto& value() { return m_x; }
+    constexpr auto const& value() const { return m_x; }
 
     template <class... Ts>
     constexpr auto operator()(const Ts&...) {
@@ -205,6 +207,7 @@ class Constant<Id, T> {
     }
 
     constexpr Constant() = default;
+    constexpr auto& value() { return m_x; }
     constexpr auto& value() const { return m_x; }
 
     friend double fullsum(const Constant& x) { return fullsum(x()); }
@@ -481,6 +484,11 @@ class Vector_Space : public Vars... {
     friend auto select(Vector_Space&& x) {
         return Vector_Space<SelIds...>(std::move(get<SelIds>(x))...);
     }
+    template <class... SelIds>
+    friend auto select_d(Vector_Space&& x) {
+        return Vector_Space<std::decay_t<decltype(get<SelIds>(x))>...>(std::move(get<SelIds>(x))...);
+    }
+
 
     template <class Id, class Id2>
         requires requires(Vector_Space const& xx) {
@@ -491,6 +499,9 @@ class Vector_Space : public Vars... {
     }
 
     static constexpr bool is_vector_space = true;
+
+    template <class Id>
+    static constexpr bool has_it = (std::is_same_v<Id, Vars> || ...);
 
     Vector_Space() : Vars{}... {}
     Vector_Space(Vars&&... t_vars) : Vars{std::move(t_vars)}... {}
@@ -642,7 +653,12 @@ concept gets_it_c = requires(V&& v) {
     get<Id>(std::forward<V>(v)); 
 };
 
-// 2. The struct helper
+template<class V, class Id>
+using get_type_t = std::conditional_t<gets_it_c<V,Id>,decltype(get<Id>(std::declval<V>())), Nothing>;
+
+
+
+// 2. The struct helpera
 template<typename...Vars>
 struct please_include {
     template <class Id>
@@ -652,22 +668,29 @@ struct please_include {
 // 3. Implementation Helper
 template<class V, class Id>
 constexpr bool check_has_it() {
-    // Check if it is a Vector_Space
+    // Vector_Space: check membership by type, avoid instantiating get<> for missing Id
     if constexpr (is_of_this_template_type_v<std::decay_t<V>, Vector_Space>) {
-        return gets_it_c<V, Id>;
-    } 
-    // Check if it is a var::please_include
+        using VS = std::decay_t<V>;
+        return VS::template has_it<Id>;
+    }
+    // Derivative<Vector_Space<...>, X>: inspect the underlying Vector_Space
+    else if constexpr (is_derivative_v<std::decay_t<V>> &&
+                       is_of_this_template_type_v<untransformed_type_t<std::decay_t<V>>,
+                                                  Vector_Space>) {
+        using VS = untransformed_type_t<std::decay_t<V>>;
+        return VS::template has_it<Id>;
+    }
+    // var::please_include
     else if constexpr (is_of_this_template_type_v<std::decay_t<V>, please_include>) {
         return std::decay_t<V>::template has_it<Id>;
-    } 
-    else {
+    } else {
         return false;
     }
 }
 
 // 4. The final variable template
 template<class V, class Id>
-inline constexpr bool has_it_v = check_has_it<V, Id>();
+inline constexpr bool has_it_v = check_has_it<std::decay_t<V>, Id>();
 
 
 

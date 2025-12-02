@@ -26,7 +26,10 @@ class Derivative<Var<Id, T>, X> {
     constexpr Derivative() = default;
     constexpr auto& value() const { return m_x; }
     decltype(auto) primitive() const { return m_x.primitive(); }
-    auto derivative() const { return m_x.derivative(); }
+    
+    auto derivative() const 
+    requires requires (const Derivative<T, X>& d) { d.derivative(); }
+    { return m_x.derivative(); }
 
     auto& dx() const { return m_x.dx(); }
     bool has_dx() const { return m_x.has_dx(); }

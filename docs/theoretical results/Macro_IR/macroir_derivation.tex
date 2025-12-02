@@ -1,0 +1,1270 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Derivation of the MacroIR Interval Update\\[4pt]
+A Pedagogical Tutorial}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\diag}{\operatorname{diag}}
+
+%------------------------------------------------------------
+% 0. Overview and link to the specification
+%------------------------------------------------------------
+
+\section*{0. Overview}
+
+This note derives, step by step, the formulas collected in the
+\emph{MacroIR Interval Update: Unified Boundary-State and Tilde Operator Spec} document.
+
+The aim is pedagogical: a new student should be able to recover all of the
+following from first principles:
+
+\begin{itemize}
+  \item Propagation of the macroscopic mean and covariance:
+    \(\boldsymbol{\mu}^{\text{prop}}(t)\), \(\boldsymbol{\Sigma}^{\text{prop}}(t)\).
+  \item The boundary-state covariance and its compressed representation via the
+    \emph{tilde} operator.
+  \item The predictive mean and variance of the interval-averaged current.
+  \item The cross-covariance vector \(\mathbf{g} = \widetilde{\gamma^\top\Sigma}\).
+\end{itemize}
+
+Throughout we work at the level of \emph{counts} of channels, and then normalise
+by \(N_{\text{ch}}\) to define the macroscopic statistics
+\((\boldsymbol{\mu}_0,\boldsymbol{\Sigma}_0)\).
+
+The notation is aligned with the specification document but this tutorial is
+otherwise self-contained.
+
+\bigskip
+
+%------------------------------------------------------------
+% 1. Basic ensemble model and notation
+%------------------------------------------------------------
+
+\section{Basic ensemble model and notation}
+
+We consider an ensemble of \(N_{\text{ch}}\) independent Markov channels, each
+with \(K\) microscopic states.
+
+\subsection{State counts and macroscopic statistics}
+
+Let
+\[
+  \mathbf{N}_0
+  =
+  \begin{pmatrix}
+    N_{0,1}\\ \vdots \\ N_{0,K}
+  \end{pmatrix}
+  \in \mathbb{N}^K
+\]
+denote the \emph{counts} of channels in each state at time \(0\).
+
+We define \emph{per-channel} macroscopic statistics as
+\begin{align}
+  \boldsymbol{\mu}_0
+  &= \frac{1}{N_{\text{ch}}}\,\E[\mathbf{N}_0],
+  \label{eq:mu0-def}
+  \\
+  \boldsymbol{\Sigma}_0
+  &= \frac{1}{N_{\text{ch}}}\,
+     \Cov(\mathbf{N}_0).
+  \label{eq:Sigma0-def}
+\end{align}
+Thus
+\[
+  \E[\mathbf{N}_0] = N_{\text{ch}}\,\boldsymbol{\mu}_0,
+  \qquad
+  \Cov(\mathbf{N}_0) = N_{\text{ch}}\,\boldsymbol{\Sigma}_0.
+\]
+This convention is crucial: all covariance matrices in the spec
+(\(\boldsymbol{\Sigma}_0,\boldsymbol{\Sigma}^{\text{prop}}(t)\), etc.) are
+\emph{per-channel} covariances, i.e.\ total covariances divided by
+\(N_{\text{ch}}\).
+
+\subsection{Markov dynamics}
+
+Each channel follows a continuous-time Markov chain with generator \(\mathbf{Q}\)
+and transition matrix
+\[
+  \mathbf{P}(t) = e^{\mathbf{Q}t}
+  \in \mathbb{R}^{K\times K},
+  \qquad
+  P_{i_0\to i_t}(t) = [\mathbf{P}(t)]_{i_0 i_t}.
+\]
+We adopt the convention that \(\mathbf{P}(t)\) is \emph{row-stochastic}:
+\[
+  \sum_{i_t} P_{i_0\to i_t}(t) = 1 \quad\text{for each } i_0.
+\]
+
+\subsection{Instantaneous and interval currents}
+
+At any time \(\tau\), a single channel in state \(k\) carries an instantaneous
+current (or conductance-based current) \(y(\tau)\) with
+\[
+  \E[y(\tau)\mid \text{state}(\tau)=k] = \gamma_k,
+\]
+plus additional fast fluctuations we will later summarise by an intrinsic
+interval variance.
+
+Over an interval \([0,t]\), the \emph{interval-averaged} current of a single
+channel is
+\[
+  \overline{y}_{0\to t}
+  = \frac{1}{t}\int_0^t y(\tau)\,\mathrm{d}\tau.
+\]
+
+The key objects from the spec are the \emph{boundary-conditioned} mean and
+variance of this interval current:
+\begin{align}
+  \overline{\Gamma}_{i_0\to i_t}
+  &=
+  \E\!\left[
+    \overline{y}_{0\to t}
+    \,\middle|\,
+    \text{start in } i_0,\,\text{end in } i_t
+  \right],
+  \label{eq:Gamma-def}
+  \\
+  \overline{V}_{i_0\to i_t}
+  &=
+  \Var\!\left(
+    \overline{y}_{0\to t}
+    \,\middle|\,
+    \text{start in } i_0,\,\text{end in } i_t
+  \right).
+  \label{eq:V-def}
+\end{align}
+We assume these are precomputed from microscopic physics (e.g.\ via a Bessel
+filter or similar); we do not derive them here.
+
+We collect them in \(K\times K\) matrices
+\[
+  \overline{\mathbf{\Gamma}} = (\overline{\Gamma}_{i_0\to i_t}),
+  \qquad
+  \overline{\mathbf{V}} = (\overline{V}_{i_0\to i_t}).
+\]
+
+%------------------------------------------------------------
+% 2. Boundary counts and their distribution
+%------------------------------------------------------------
+
+\section{Boundary counts and their distribution}
+
+\subsection{Definition of boundary counts}
+
+For the ensemble, define the \emph{boundary counts}
+\[
+  N_{i_0\to i_t}
+  =
+  \text{number of channels that start in } i_0 \text{ and end in } i_t
+\]
+over the interval \([0,t]\).
+
+We collect them into a \(K^2\)-dimensional vector
+\[
+  \mathbf{B}
+  =
+  \bigl( N_{i_0\to i_t} \bigr)_{i_0,i_t}.
+\]
+
+Conditioned on \(\mathbf{N}_0\), the counts in different rows \(i_0\) are
+independent. For a fixed start state \(i_0\),
+\[
+  \bigl(N_{i_0\to 1},\dots,N_{i_0\to K}\bigr)
+  \,\big|\,
+  N_{0,i_0}
+  \sim
+  \operatorname{Multinomial}\!\bigl(N_{0,i_0},\,\mathbf{P}_{i_0\cdot}(t)\bigr),
+\]
+where \(\mathbf{P}_{i_0\cdot}(t)\) is the \(i_0\)-th row of \(\mathbf{P}(t)\).
+
+\subsection{Mean of boundary counts}
+
+From the multinomial definition,
+\[
+  \E[N_{i_0\to i_t}\mid \mathbf{N}_0]
+  =
+  N_{0,i_0}\,P_{i_0\to i_t}(t).
+\]
+Taking expectation over \(\mathbf{N}_0\),
+\begin{align}
+  \E[N_{i_0\to i_t}]
+  &=
+  \E\!\bigl[\,\E[N_{i_0\to i_t}\mid \mathbf{N}_0]\,\bigr]
+  =
+  \E[N_{0,i_0}]\,P_{i_0\to i_t}(t)
+  \nonumber\\
+  &=
+  N_{\text{ch}}\,\mu_{0,i_0}\,P_{i_0\to i_t}(t).
+  \label{eq:boundary-mean}
+\end{align}
+
+\subsection{Covariance of boundary counts}
+
+We compute
+\(
+  \Cov(N_{i_0\to i_t}, N_{j_0\to j_t})
+\)
+via the law of total covariance:
+\[
+  \Cov(X,Y)
+  =
+  \E[\Cov(X,Y\mid Z)] + \Cov(\E[X\mid Z],\E[Y\mid Z]).
+\]
+
+Set
+\(
+  X = N_{i_0\to i_t},\;
+  Y = N_{j_0\to j_t},\;
+  Z = \mathbf{N}_0.
+\)
+
+\paragraph{Step 1: conditional covariance.}
+
+\begin{itemize}
+  \item If \(i_0\neq j_0\), then different rows of the multinomial construction
+  are conditionally independent, so
+  \[
+    \Cov(N_{i_0\to i_t}, N_{j_0\to j_t}\mid \mathbf{N}_0) = 0.
+  \]
+  \item If \(i_0 = j_0\), we use standard multinomial covariances:
+  \[
+    \Cov(N_{i_0\to i_t}, N_{i_0\to j_t}\mid \mathbf{N}_0)
+    =
+    N_{0,i_0}
+    \bigl[
+      P_{i_0\to i_t}(t)\,\delta_{i_t j_t}
+      - P_{i_0\to i_t}(t)P_{i_0\to j_t}(t)
+    \bigr],
+  \]
+  where \(\delta_{ij}\) is the Kronecker delta.
+\end{itemize}
+Thus
+\begin{equation}
+  \Cov(N_{i_0\to i_t}, N_{j_0\to j_t}\mid \mathbf{N}_0)
+  =
+  \delta_{i_0 j_0}\,
+  N_{0,i_0}
+  \bigl[
+    P_{i_0\to i_t}(t)\,\delta_{i_t j_t}
+    - P_{i_0\to i_t}(t)P_{i_0\to j_t}(t)
+  \bigr].
+  \label{eq:boundary-cond-cov}
+\end{equation}
+
+Taking expectation over \(\mathbf{N}_0\) and using
+\(\E[N_{0,i_0}] = N_{\text{ch}}\,\mu_{0,i_0}\),
+\begin{align}
+  \E\bigl[
+    \Cov(N_{i_0\to i_t}, N_{j_0\to j_t}\mid \mathbf{N}_0)
+  \bigr]
+  &=
+  \delta_{i_0 j_0}\,
+  N_{\text{ch}}\mu_{0,i_0}
+  \bigl[
+    P_{i_0\to i_t}(t)\,\delta_{i_t j_t}
+    - P_{i_0\to i_t}(t)P_{i_0\to j_t}(t)
+  \bigr].
+  \label{eq:boundary-first-term}
+\end{align}
+
+\paragraph{Step 2: covariance of conditional means.}
+
+We also have
+\[
+  \E[N_{i_0\to i_t}\mid \mathbf{N}_0]
+  = N_{0,i_0}P_{i_0\to i_t}(t),
+  \qquad
+  \E[N_{j_0\to j_t}\mid \mathbf{N}_0]
+  = N_{0,j_0}P_{j_0\to j_t}(t).
+\]
+Therefore
+\begin{align}
+  \Cov\bigl(
+    \E[N_{i_0\to i_t}\mid \mathbf{N}_0],
+    \E[N_{j_0\to j_t}\mid \mathbf{N}_0]
+  \bigr)
+  &=
+  P_{i_0\to i_t}(t)
+  P_{j_0\to j_t}(t)
+  \Cov(N_{0,i_0},N_{0,j_0})
+  \nonumber\\
+  &=
+  P_{i_0\to i_t}(t)
+  P_{j_0\to j_t}(t)
+  \bigl( N_{\text{ch}}\,\Sigma_{0,i_0 j_0}\bigr),
+  \label{eq:boundary-second-term}
+\end{align}
+using \(\Cov(\mathbf{N}_0) = N_{\text{ch}}\boldsymbol{\Sigma}_0\).
+
+\paragraph{Step 3: combine both terms.}
+
+Adding \eqref{eq:boundary-first-term} and \eqref{eq:boundary-second-term},
+\begin{align}
+  \Cov(N_{i_0\to i_t}, N_{j_0\to j_t})
+  &=
+  \delta_{i_0 j_0}\,
+  N_{\text{ch}}\mu_{0,i_0}
+  \bigl[
+    P_{i_0\to i_t}(t)\,\delta_{i_t j_t}
+    - P_{i_0\to i_t}(t)P_{i_0\to j_t}(t)
+  \bigr]
+  \nonumber\\
+  &\quad
+  +
+  N_{\text{ch}}
+  \Sigma_{0,i_0 j_0}
+  P_{i_0\to i_t}(t)
+  P_{j_0\to j_t}(t).
+  \label{eq:boundary-cov-counts}
+\end{align}
+
+It is convenient to define the \emph{per-channel boundary covariance}
+\[
+  \Sigma^{\text{prior}}_{0\to t,(i_0\to i_t)(j_0\to j_t)}
+  :=
+  \frac{1}{N_{\text{ch}}}
+  \Cov(N_{i_0\to i_t}, N_{j_0\to j_t}).
+\]
+Then \eqref{eq:boundary-cov-counts} becomes
+\begin{align}
+  \Sigma^{\text{prior}}_{0\to t,(i_0\to i_t)(j_0\to j_t)}
+  &=
+  P_{i_0\to i_t}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  P_{j_0\to j_t}(t)
+  \nonumber\\
+  &\quad
+  +
+  \delta_{i_0 j_0}\delta_{i_t j_t}
+  \mu_{0,i_0}P_{i_0\to i_t}(t).
+  \label{eq:boundary-cov-final}
+\end{align}
+This is exactly the boundary covariance stated (componentwise) in the
+specification document.
+
+%------------------------------------------------------------
+% 3. Propagation of mean and covariance to time t
+%------------------------------------------------------------
+
+\section{Propagation of mean and covariance to time \texorpdfstring{$t$}{t}}
+
+We next derive the macroscopic mean
+\(\boldsymbol{\mu}^{\text{prop}}(t)\) and covariance
+\(\boldsymbol{\Sigma}^{\text{prop}}(t)\) at the end of the interval.
+
+\subsection{Mean propagation}
+
+Let \(\mathbf{N}(t)\) denote the state counts at time \(t\), with components
+\(N_t(a)\). Conditional on \(\mathbf{N}_0\),
+\[
+  \E[N_t(a)\mid \mathbf{N}_0]
+  =
+  \sum_{i_0} N_{0,i_0}P_{i_0\to a}(t)
+  =
+  \bigl(\mathbf{P}(t)^\top\mathbf{N}_0\bigr)_a.
+\]
+Taking expectation,
+\begin{align}
+  \E[\mathbf{N}(t)]
+  &=
+  \mathbf{P}(t)^\top\,\E[\mathbf{N}_0]
+  =
+  \mathbf{P}(t)^\top\,
+  \bigl(N_{\text{ch}}\boldsymbol{\mu}_0\bigr).
+\end{align}
+Dividing by \(N_{\text{ch}}\), we obtain
+\[
+  \boldsymbol{\mu}^{\text{prop}}(t)
+  :=
+  \frac{1}{N_{\text{ch}}}\E[\mathbf{N}(t)]
+  =
+  \mathbf{P}(t)^\top\boldsymbol{\mu}_0.
+\]
+This is the mean-propagation formula
+\[
+  \boxed{
+    \boldsymbol{\mu}^{\text{prop}}(t)
+    =
+    \mathbf{P}(t)^\top\boldsymbol{\mu}_0.
+  }
+\]
+
+\subsection{Covariance propagation via boundary counts}
+
+We now derive the covariance of \(\mathbf{N}(t)\) using the boundary covariance
+\eqref{eq:boundary-cov-final}. By definition,
+\[
+  N_t(a) = \sum_{i_0} N_{i_0\to a},
+\]
+so
+\[
+  \Cov(N_t(a),N_t(b))
+  =
+  \sum_{i_0,j_0}
+  \Cov(N_{i_0\to a},N_{j_0\to b}).
+\]
+Dividing by \(N_{\text{ch}}\) and substituting
+\(\Sigma^{\text{prior}}_{0\to t} = \Cov(\mathbf{B})/N_{\text{ch}}\) from
+\eqref{eq:boundary-cov-final},
+\begin{align}
+  \Sigma^{\text{prop}}_{ab}(t)
+  &:=
+  \frac{1}{N_{\text{ch}}}
+  \Cov(N_t(a),N_t(b))
+  \nonumber\\
+  &=
+  \sum_{i_0,j_0}
+  \Sigma^{\text{prior}}_{0\to t,(i_0\to a)(j_0\to b)}.
+  \label{eq:Sigma-prop-def}
+\end{align}
+
+Insert \eqref{eq:boundary-cov-final}:
+\begin{align}
+  \Sigma^{\text{prop}}_{ab}(t)
+  &=
+  \sum_{i_0,j_0}
+  P_{i_0\to a}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  P_{j_0\to b}(t)
+  \nonumber\\
+  &\quad
+  +
+  \sum_{i_0,j_0}
+  \delta_{i_0 j_0}\delta_{ab}
+  \mu_{0,i_0}P_{i_0\to a}(t).
+\end{align}
+The second sum simplifies immediately:
+\[
+  \sum_{i_0,j_0}
+  \delta_{i_0 j_0}\delta_{ab}
+  \mu_{0,i_0}P_{i_0\to a}(t)
+  =
+  \delta_{ab}
+  \sum_{i_0}
+  \mu_{0,i_0}P_{i_0\to a}(t)
+  =
+  \delta_{ab}\,\mu^{\text{prop}}_a(t),
+\]
+since \(\boldsymbol{\mu}^{\text{prop}}(t)=\mathbf{P}(t)^\top\boldsymbol{\mu}_0\).
+
+The first sum can be recognised as a matrix product:
+\begin{align}
+  &\sum_{i_0,j_0}
+  P_{i_0\to a}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  P_{j_0\to b}(t)
+  \nonumber\\
+  &\qquad =
+  \bigl[
+    \mathbf{P}(t)^\top
+    \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+    \mathbf{P}(t)
+  \bigr]_{ab}.
+\end{align}
+
+Thus, in matrix form,
+\[
+  \boxed{
+    \boldsymbol{\Sigma}^{\text{prop}}(t)
+    =
+    \mathbf{P}(t)^\top
+    \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+    \mathbf{P}(t)
+    +
+    \diag\bigl(\boldsymbol{\mu}^{\text{prop}}(t)\bigr).
+  }
+\]
+This is the covariance propagation formula used in the spec.
+
+%------------------------------------------------------------
+% 4. Start-conditioned interval current statistics
+%------------------------------------------------------------
+
+\section{Start-conditioned interval current statistics}
+
+We now connect the boundary counts to the interval-averaged current.
+
+\subsection{Boundary-conditioned single-channel current}
+
+For a single channel with boundary state \((i_0,i_t)\), the interval current
+\(\overline{y}_{0\to t}\) has:
+\begin{itemize}
+  \item mean \(\overline{\Gamma}_{i_0\to i_t}\) (from \eqref{eq:Gamma-def}),
+  \item intrinsic variance \(\overline{V}_{i_0\to i_t}\) (from \eqref{eq:V-def}).
+\end{itemize}
+
+We do \emph{not} need to know the full path distribution; all path dependence is
+summarised in these boundary-conditioned statistics.
+
+\subsection{Start-conditioned mean and variance}
+
+Define the start-conditioned mean interval current:
+\[
+  (\overline{\gamma}_0)_{i_0}
+  :=
+  \E\!\left[
+    \overline{y}_{0\to t}
+    \,\middle|\,
+    \text{start in } i_0
+  \right].
+\]
+Conditioning on the end state \(i_t\),
+\begin{align}
+  (\overline{\gamma}_0)_{i_0}
+  &=
+  \sum_{i_t}
+  \E\!\left[
+    \overline{y}_{0\to t}
+    \,\middle|\,
+    i_0,i_t
+  \right]
+  \mathbb{P}(i_t\mid i_0)
+  =
+  \sum_{i_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  P_{i_0\to i_t}(t).
+\end{align}
+In matrix form, if we define
+\[
+  \mathbf{G}
+  := \overline{\mathbf{\Gamma}}\circ \mathbf{P}(t),
+  \qquad
+  G_{i_0 i_t}
+  = \overline{\Gamma}_{i_0\to i_t}P_{i_0\to i_t}(t),
+\]
+then
+\[
+  \overline{\boldsymbol{\gamma}}_0
+  = \mathbf{G}\mathbf{1},
+\]
+where \(\mathbf{1}\) is the all-ones column vector.
+
+Similarly, the start-conditioned intrinsic variance is
+\[
+  (\sigma^2_{\overline{\gamma}_0})_{i_0}
+  :=
+  \Var\!\left(
+    \overline{y}_{0\to t}
+    \,\middle|\,
+    \text{start in } i_0
+  \right)
+  =
+  \sum_{i_t}
+  \overline{V}_{i_0\to i_t}P_{i_0\to i_t}(t).
+\]
+Defining
+\[
+  \mathbf{V}
+  := \overline{\mathbf{V}}\circ \mathbf{P}(t),
+  \qquad
+  V_{i_0 i_t}
+  = \overline{V}_{i_0\to i_t}P_{i_0\to i_t}(t),
+\]
+we can write
+\[
+  \boldsymbol{\sigma}^2_{\overline{\gamma}_0}
+  = \mathbf{V}\mathbf{1}.
+\]
+
+These quantities appear in the predictive mean and variance of the ensemble
+current.
+
+%------------------------------------------------------------
+% 5. Predictive mean of the interval current
+%------------------------------------------------------------
+
+\section{Predictive mean of the interval current}
+
+Let \(\overline{y}^{\text{tot}}_{0\to t}\) denote the total interval-averaged
+current of the ensemble (sum over all channels). Ignoring instrument noise for
+the moment, we can write
+\[
+  \overline{y}^{\text{tot}}_{0\to t}
+  \approx
+  \sum_{i_0,i_t}
+  \overline{\Gamma}_{i_0\to i_t} N_{i_0\to i_t}.
+\]
+Taking expectation and using \eqref{eq:boundary-mean},
+\begin{align}
+  \E[\overline{y}^{\text{tot}}_{0\to t}]
+  &=
+  \sum_{i_0,i_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  \E[N_{i_0\to i_t}]
+  \nonumber\\
+  &=
+  \sum_{i_0,i_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  N_{\text{ch}}\mu_{0,i_0} P_{i_0\to i_t}(t)
+  \nonumber\\
+  &=
+  N_{\text{ch}}
+  \sum_{i_0}
+  \mu_{0,i_0}
+  \left(
+    \sum_{i_t}
+    \overline{\Gamma}_{i_0\to i_t}
+    P_{i_0\to i_t}(t)
+  \right)
+  \nonumber\\
+  &=
+  N_{\text{ch}}\,
+  \boldsymbol{\mu}_0^\top \overline{\boldsymbol{\gamma}}_0.
+\end{align}
+
+The spec writes this as
+\[
+  \boxed{
+    \overline{y}^{\text{pred}}_{0\to t}
+    =
+    N_{\text{ch}}\,
+    \boldsymbol{\mu}_0^\top \overline{\boldsymbol{\gamma}}_0,
+  }
+\]
+where
+\(\overline{y}^{\text{pred}}_{0\to t}\) is the predictive mean total current.
+
+Instrument/binning noise is added later at the variance level, not to the mean.
+
+%------------------------------------------------------------
+% 6. Predictive variance and the bilinear tilde operator
+%------------------------------------------------------------
+
+\section{Predictive variance and the bilinear tilde operator}
+
+We now derive the predictive variance of the ensemble current and the bilinear
+tilde operator
+\(\widetilde{\gamma^\top\Sigma\gamma}\).
+
+\subsection{Variance decomposition}
+
+Let \(\eta\) denote the measurement noise over the interval \([0,t]\), with
+variance
+\[
+  \Var(\eta) = \epsilon^2_{0\to t}
+  = \frac{\epsilon^2}{t} + \nu^2.
+\]
+Write the total current as
+\[
+  \overline{y}^{\text{tot}}_{0\to t}
+  =
+  Y_{\text{macro}}
+  +
+  Y_{\text{intr}}
+  +
+  \eta
+\]
+where
+\begin{itemize}
+  \item \(Y_{\text{macro}}\) captures the variability due to uncertainty in the
+  \emph{occupancy distribution} at the start of the interval, and the
+  randomness of which boundary states are realised (through \(\mathbf{N}_0\) and
+  \(\mathbf{B}\)).
+
+  \item \(Y_{\text{intr}}\) captures the \emph{intrinsic} interval-current
+  variability \(\overline{V}_{i_0\to i_t}\) for each realised boundary state.
+
+  \item \(\eta\) is the instrument/binning noise.
+\end{itemize}
+
+Under the usual assumptions of independence (instrument noise independent of
+channel dynamics; intrinsic fluctuations independent across channels conditional
+on boundary states), we obtain
+\[
+  \Var(\overline{y}^{\text{tot}}_{0\to t})
+  =
+  \Var(Y_{\text{macro}})
+  +
+  \Var(Y_{\text{intr}})
+  +
+  \epsilon^2_{0\to t}.
+\]
+We now compute the first two terms separately.
+
+\subsection{Macro-variance via boundary covariance}
+
+The macro part is the component that would remain if each boundary state
+\((i_0,i_t)\) contributed deterministically \(\overline{\Gamma}_{i_0\to i_t}\)
+given \(N_{i_0\to i_t}\). That is,
+\[
+  Y_{\text{macro}}
+  =
+  \sum_{i_0,i_t}
+  \overline{\Gamma}_{i_0\to i_t} N_{i_0\to i_t}.
+\]
+
+Define the flattened weight vector
+\[
+  w_{(i_0\to i_t)}
+  := \overline{\Gamma}_{i_0\to i_t}.
+\]
+Then
+\[
+  Y_{\text{macro}} = \mathbf{w}^\top\mathbf{B}.
+\]
+
+Its variance is
+\[
+  \Var(Y_{\text{macro}})
+  =
+  \mathbf{w}^\top\Cov(\mathbf{B})\mathbf{w}
+  =
+  N_{\text{ch}}\,
+  \mathbf{w}^\top
+  \boldsymbol{\Sigma}^{\text{prior}}_{0\to t}
+  \mathbf{w},
+\]
+since \(\Cov(\mathbf{B})/N_{\text{ch}}=\boldsymbol{\Sigma}^{\text{prior}}_{0\to t}\).
+
+This suggests defining the \emph{bilinear tilde operator} for the interval
+current as
+\[
+  \widetilde{\gamma^\top\Sigma\gamma}
+  :=
+  \mathbf{w}^\top
+  \boldsymbol{\Sigma}^{\text{prior}}_{0\to t}
+  \mathbf{w},
+\]
+so that
+\[
+  \Var(Y_{\text{macro}})
+  =
+  N_{\text{ch}}\,
+  \widetilde{\gamma^\top\Sigma\gamma}.
+\]
+
+We now show that this definition leads to the compact formula
+\[
+  \widetilde{\gamma^\top\Sigma\gamma}
+  =
+  \overline{\boldsymbol{\gamma}}_0^\top
+  \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+  \overline{\boldsymbol{\gamma}}_0
+  +
+  \boldsymbol{\mu}_0^\top
+  \bigl[\mathbf{H}\mathbf{1}\bigr],
+\]
+with a suitable matrix \(\mathbf{H}\).
+
+\subsection{Explicit evaluation of
+\texorpdfstring{$\widetilde{\gamma^\top\Sigma\gamma}$}{tilde(gammaTSigmagamma)}}
+
+Recall
+\eqref{eq:boundary-cov-final}:
+\[
+  \Sigma^{\text{prior}}_{0\to t,(i_0\to i_t)(j_0\to j_t)}
+  =
+  P_{i_0\to i_t}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  P_{j_0\to j_t}(t)
+  +
+  \delta_{i_0 j_0}\delta_{i_t j_t}
+  \mu_{0,i_0}P_{i_0\to i_t}(t).
+\]
+Then
+\begin{align}
+  \widetilde{\gamma^\top\Sigma\gamma}
+  &=
+  \sum_{i_0,i_t}
+  \sum_{j_0,j_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  \Sigma^{\text{prior}}_{0\to t,(i_0\to i_t)(j_0\to j_t)}
+  \overline{\Gamma}_{j_0\to j_t}
+  \nonumber\\
+  &=
+  T_1 + T_2,
+  \label{eq:tilde-split}
+\end{align}
+where
+\begin{align*}
+  T_1
+  &=
+  \sum_{i_0,i_t}
+  \sum_{j_0,j_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  P_{i_0\to i_t}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  P_{j_0\to j_t}(t)
+  \overline{\Gamma}_{j_0\to j_t},
+  \\
+  T_2
+  &=
+  \sum_{i_0,i_t}
+  \sum_{j_0,j_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  \delta_{i_0 j_0}\delta_{i_t j_t}
+  \mu_{0,i_0}P_{i_0\to i_t}(t)
+  \overline{\Gamma}_{j_0\to j_t}.
+\end{align*}
+
+\paragraph{Term \(T_1\).}
+
+Introduce the start-conditioned mean interval current
+\[
+  (\overline{\gamma}_0)_{i_0}
+  =
+  \sum_{i_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  P_{i_0\to i_t}(t),
+\]
+so that
+\[
+  \overline{\gamma}_{0,i_0}
+  =
+  \sum_{i_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  P_{i_0\to i_t}(t).
+\]
+Then
+\begin{align*}
+  T_1
+  &=
+  \sum_{i_0,j_0}
+  \left(
+    \sum_{i_t}
+    \overline{\Gamma}_{i_0\to i_t}
+    P_{i_0\to i_t}(t)
+  \right)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  \left(
+    \sum_{j_t}
+    \overline{\Gamma}_{j_0\to j_t}
+    P_{j_0\to j_t}(t)
+  \right)
+  \\
+  &=
+  \sum_{i_0,j_0}
+  \overline{\gamma}_{0,i_0}
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  \overline{\gamma}_{0,j_0}
+  \\
+  &=
+  \overline{\boldsymbol{\gamma}}_0^\top
+  \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+  \overline{\boldsymbol{\gamma}}_0.
+\end{align*}
+
+\paragraph{Term \(T_2\).}
+
+Here the Kronecker deltas collapse the sums:
+\begin{align*}
+  T_2
+  &=
+  \sum_{i_0,i_t}
+  \overline{\Gamma}_{i_0\to i_t}
+  \mu_{0,i_0}P_{i_0\to i_t}(t)
+  \overline{\Gamma}_{i_0\to i_t}
+  \\
+  &=
+  \sum_{i_0}
+  \mu_{0,i_0}
+  \sum_{i_t}
+  \overline{\Gamma}_{i_0\to i_t}^2
+  P_{i_0\to i_t}(t).
+\end{align*}
+Define the matrix
+\[
+  H_{i_0 i_t}
+  :=
+  \overline{\Gamma}_{i_0\to i_t}^2
+  P_{i_0\to i_t}(t),
+  \qquad
+  \mathbf{H}
+  = (H_{i_0 i_t}),
+\]
+and note that
+\[
+  (\mathbf{H}\mathbf{1})_{i_0}
+  =
+  \sum_{i_t}
+  H_{i_0 i_t}
+  =
+  \sum_{i_t}
+  \overline{\Gamma}_{i_0\to i_t}^2
+  P_{i_0\to i_t}(t).
+\]
+Then
+\[
+  T_2
+  =
+  \boldsymbol{\mu}_0^\top
+  \bigl(\mathbf{H}\mathbf{1}\bigr).
+\]
+
+\paragraph{Combine both terms.}
+
+From \eqref{eq:tilde-split} we obtain
+\[
+  \boxed{
+    \widetilde{\gamma^\top\Sigma\gamma}
+    =
+    \overline{\boldsymbol{\gamma}}_0^\top
+    \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+    \overline{\boldsymbol{\gamma}}_0
+    +
+    \boldsymbol{\mu}_0^\top
+    \bigl[\mathbf{H}\mathbf{1}\bigr].
+  }
+\]
+
+\subsection{Intrinsic interval variance}
+
+The intrinsic contribution \(Y_{\text{intr}}\) comes from the random deviations
+of each channel's interval current around its boundary-conditioned mean
+\(\overline{\Gamma}_{i_0\to i_t}\). For a single channel starting in state
+\(i_0\), the intrinsic variance is
+\[
+  \Var(\overline{y}_{0\to t}\mid \text{start in } i_0)
+  =
+  \sum_{i_t}
+  \overline{V}_{i_0\to i_t}P_{i_0\to i_t}(t)
+  =
+  (\sigma^2_{\overline{\gamma}_0})_{i_0}.
+\]
+For an ensemble of \(N_{\text{ch}}\) independent channels, the intrinsic
+variance contribution to the total current is
+\[
+  \Var(Y_{\text{intr}})
+  =
+  N_{\text{ch}}\,
+  \E\!\left[
+    \Var(\overline{y}_{0\to t}\mid \text{start state})
+  \right]
+  =
+  N_{\text{ch}}\,
+  \sum_{i_0}
+  \mu_{0,i_0}(\sigma^2_{\overline{\gamma}_0})_{i_0}.
+\]
+In vector form,
+\[
+  \Var(Y_{\text{intr}})
+  =
+  N_{\text{ch}}\,
+  \boldsymbol{\mu}_0^\top
+  \boldsymbol{\sigma}^2_{\overline{\gamma}_0}.
+\]
+
+\subsection{Full predictive variance}
+
+Putting macro, intrinsic, and measurement components together,
+\begin{align*}
+  \Var(\overline{y}^{\text{tot}}_{0\to t})
+  &=
+  \epsilon^2_{0\to t}
+  +
+  N_{\text{ch}}\,
+  \widetilde{\gamma^\top\Sigma\gamma}
+  +
+  N_{\text{ch}}\,
+  \boldsymbol{\mu}_0^\top
+  \boldsymbol{\sigma}^2_{\overline{\gamma}_0}.
+\end{align*}
+This is the predictive variance formula quoted in the spec:
+\[
+  \boxed{
+    \sigma^2_{\overline{y}^{\text{pred}}}
+    =
+    \epsilon^2_{0\to t}
+    +
+    N_{\text{ch}}\,
+    \widetilde{\gamma^\top\Sigma\gamma}
+    +
+    N_{\text{ch}}\,
+    \boldsymbol{\mu}_0^\top
+    \boldsymbol{\sigma}^2_{\overline{\gamma}_0}.
+  }
+\]
+
+%------------------------------------------------------------
+% 7. Vector tilde and the cross-covariance g
+%------------------------------------------------------------
+
+\section{Vector tilde and the cross-covariance \texorpdfstring{$\mathbf{g}$}{g}}
+
+We finally derive the cross-covariance vector
+\(\mathbf{g}=\widetilde{\gamma^\top\Sigma}\) between the state counts at time
+\(t\) and the ensemble interval current.
+
+\subsection{Definition and normalisation}
+
+We are interested in the per-channel cross-covariance
+\[
+  \mathbf{g}
+  :=
+  \frac{1}{N_{\text{ch}}}
+  \Cov\bigl(\mathbf{N}(t),\,\overline{y}^{\text{tot}}_{0\to t}\bigr)
+  \in\mathbb{R}^K.
+\]
+Writing
+\(\overline{y}^{\text{tot}}_{0\to t} = \mathbf{w}^\top\mathbf{B} + \text{(intrinsic + noise)}\)
+and noting that intrinsic and instrument noise are independent of the counts, we
+only need the covariance between \(\mathbf{N}(t)\) and \(\mathbf{w}^\top\mathbf{B}\).
+Thus
+\begin{align*}
+  \mathbf{g}
+  &=
+  \frac{1}{N_{\text{ch}}}
+  \Cov\bigl(\mathbf{N}(t),\,\mathbf{w}^\top\mathbf{B}\bigr).
+\end{align*}
+
+\subsection{Expressing \texorpdfstring{$\mathbf{N}(t)$}{N(t)} in terms of boundary counts}
+
+Recall
+\[
+  N_t(a) = \sum_{i_0} N_{i_0\to a}.
+\]
+Thus
+\[
+  \Cov(N_t(a),\mathbf{w}^\top\mathbf{B})
+  =
+  \sum_{i_0}
+  \sum_{j_0,j_t}
+  \Cov(N_{i_0\to a},N_{j_0\to j_t})
+  \overline{\Gamma}_{j_0\to j_t}.
+\]
+
+Dividing by \(N_{\text{ch}}\) and using
+\(\Cov(N_{i_0\to a},N_{j_0\to j_t})/N_{\text{ch}}
+= \Sigma^{\text{prior}}_{0\to t,(i_0\to a)(j_0\to j_t)}\),
+we have
+\[
+  g_a
+  =
+  \sum_{i_0,j_0,j_t}
+  \Sigma^{\text{prior}}_{0\to t,(i_0\to a)(j_0\to j_t)}
+  \overline{\Gamma}_{j_0\to j_t}.
+\]
+
+Substituting \eqref{eq:boundary-cov-final},
+\begin{align*}
+  g_a
+  &=
+  \sum_{i_0,j_0,j_t}
+  P_{i_0\to a}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  P_{j_0\to j_t}(t)
+  \overline{\Gamma}_{j_0\to j_t}
+  \\
+  &\quad
+  +
+  \sum_{i_0,j_0,j_t}
+  \delta_{i_0 j_0}
+  \delta_{a j_t}
+  \mu_{0,i_0}
+  P_{i_0\to a}(t)
+  \overline{\Gamma}_{j_0\to j_t}.
+\end{align*}
+
+\paragraph{First term.}
+
+Introduce \(\overline{\boldsymbol{\gamma}}_0\) as before:
+\[
+  \overline{\gamma}_{0,j_0}
+  =
+  \sum_{j_t}
+  \overline{\Gamma}_{j_0\to j_t}
+  P_{j_0\to j_t}(t).
+\]
+Then
+\begin{align*}
+  \text{(first term)}
+  &=
+  \sum_{i_0,j_0}
+  P_{i_0\to a}(t)
+  \bigl[
+    \Sigma_{0,i_0 j_0}
+    - \delta_{i_0 j_0}\mu_{0,i_0}
+  \bigr]
+  \overline{\gamma}_{0,j_0}
+  \\
+  &=
+  \bigl[
+    \mathbf{P}(t)^\top
+    \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+    \overline{\boldsymbol{\gamma}}_0
+  \bigr]_a.
+\end{align*}
+
+\paragraph{Second term.}
+
+Here
+\[
+  \sum_{i_0,j_0,j_t}
+  \delta_{i_0 j_0}
+  \delta_{a j_t}
+  \mu_{0,i_0}
+  P_{i_0\to a}(t)
+  \overline{\Gamma}_{j_0\to j_t}
+  =
+  \sum_{i_0}
+  \mu_{0,i_0}
+  P_{i_0\to a}(t)
+  \overline{\Gamma}_{i_0\to a}.
+\]
+This is the \(a\)-th component of
+\[
+  \mathbf{G}^\top\boldsymbol{\mu}_0,
+\]
+since
+\((\mathbf{G}^\top\boldsymbol{\mu}_0)_a = \sum_{i_0}G_{i_0 a}\mu_{0,i_0}\)
+with \(G_{i_0 a}=\overline{\Gamma}_{i_0\to a}P_{i_0\to a}(t)\).
+
+\paragraph{Combine both terms.}
+
+Thus
+\[
+  \boxed{
+    \mathbf{g}
+    =
+    \widetilde{\gamma^\top\Sigma}
+    =
+    \mathbf{P}(t)^\top
+    \bigl(\boldsymbol{\Sigma}_0-\diag(\boldsymbol{\mu}_0)\bigr)
+    \overline{\boldsymbol{\gamma}}_0
+    +
+    \mathbf{G}^\top\boldsymbol{\mu}_0.
+  }
+\]
+
+This is precisely the vector tilde formula in the spec.
+
+%------------------------------------------------------------
+% 8. Kalman-style measurement update (sketch)
+%------------------------------------------------------------
+
+\section{Kalman-style measurement update (sketch)}
+
+Once we have
+\begin{itemize}
+  \item the propagated state
+  \(\boldsymbol{\mu}^{\text{prop}}(t),\boldsymbol{\Sigma}^{\text{prop}}(t)\),
+  \item the predictive current mean and variance
+  \(\overline{y}^{\text{pred}}_{0\to t},\sigma^2_{\overline{y}^{\text{pred}}}\),
+  \item the cross-covariance \(\mathbf{g}\),
+\end{itemize}
+the Gaussian update is exactly the standard scalar Kalman filter in a
+\(K\)-dimensional state space.
+
+The joint (approximate) Gaussian of
+\((\mathbf{N}(t)/N_{\text{ch}}, \overline{y}^{\text{tot}}_{0\to t})\) has mean
+\(\bigl(\boldsymbol{\mu}^{\text{prop}}(t), \overline{y}^{\text{pred}}_{0\to t}\bigr)\)
+and covariance
+\[
+  \begin{pmatrix}
+    \boldsymbol{\Sigma}^{\text{prop}}(t)
+    & \mathbf{g} \\
+    \mathbf{g}^\top
+    & \sigma^2_{\overline{y}^{\text{pred}}}
+  \end{pmatrix}.
+\]
+Conditioning on the observed value
+\(\overline{y}^{\text{obs}}_{0\to t}\) yields
+\begin{align*}
+  \boldsymbol{\mu}^{\text{post}}(t)
+  &=
+  \boldsymbol{\mu}^{\text{prop}}(t)
+  +
+  \frac{\mathbf{g}}{\sigma^2_{\overline{y}^{\text{pred}}}}
+  \,\delta,
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}(t)
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}}(t)
+  -
+  \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\overline{y}^{\text{pred}}}},
+\end{align*}
+where
+\(
+  \delta
+  =
+  \overline{y}^{\text{obs}}_{0\to t}
+  -\overline{y}^{\text{pred}}_{0\to t}.
+\)
+These are the update formulas in the spec.
+
+%------------------------------------------------------------
+% 9. How to generalise and extend the theory
+%------------------------------------------------------------
+
+\section{How to generalise and extend the theory}
+
+For further development, a student can use the same structural pattern:
+
+\begin{enumerate}
+  \item \textbf{Specify new boundary-weighted observables.}  
+  For any observable that can be expressed as a weighted sum of boundary counts,
+  e.g.\ higher-order moments of the current or other measurement channels,
+  identify the appropriate boundary weight matrices
+  \(\overline{\mathbf{U}},\overline{\mathbf{W}}\).
+
+  \item \textbf{Reuse the boundary covariance.}  
+  The formula \eqref{eq:boundary-cov-final} for the per-channel boundary
+  covariance is the core building block. Any quadratic form in boundary counts
+  reduces to combinations of:
+  \[
+    \mathbf{P}(t)^\top \boldsymbol{\Sigma}_0 \mathbf{P}(t),
+    \qquad
+    \diag(\boldsymbol{\mu}_0),
+    \qquad
+    \diag(\boldsymbol{\mu}^{\text{prop}}(t)).
+  \]
+
+  \item \textbf{Define general bilinear tilde operators.}  
+  For two boundary-weight matrices
+  \(\overline{\mathbf{U}},\overline{\mathbf{W}}\), one can define
+  \(\widetilde{u^\top\Sigma w}\) exactly as in Section~6, replacing
+  \(\overline{\mathbf{\Gamma}}\) with \(\overline{\mathbf{U}}\) and
+  \(\overline{\mathbf{W}}\), and obtain general cross-variance formulas.
+
+  \item \textbf{Derive vector tildes for new observables.}  
+  If a new observable couples to the state at time \(t\), compute its
+  cross-covariance with \(\mathbf{N}(t)\) exactly as in Section~7.
+\end{enumerate}
+
+In all cases the structure is the same:
+\begin{itemize}
+  \item lift from macroscopic state space to boundary space,
+  \item modulate with the transition matrix \(\mathbf{P}(t)\) and the prior
+  covariance \(\boldsymbol{\Sigma}_0\),
+  \item collapse back to scalar or vector via the chosen weights.
+\end{itemize}
+The tilde operator is simply a compact notation for this
+``lift--modulate--collapse'' computation.
+
+\end{document}

@@ -69,10 +69,10 @@ const double fs=50e3;
     REQUIRE(maybe_dm.valid());
     auto dm = std::move(maybe_dm.value());
     using namespace macrodr; 
-    auto Maybe_t_prior = Macro_DMR{}.init<return_predictions<0>>(dm, get<initial_agonist_concentration>(experiment));
+    auto Maybe_t_prior = Macro_DMR{}.init(dm);
     if (!Maybe_t_prior) { UNSCOPED_INFO(Maybe_t_prior.error()()); }
     REQUIRE(Maybe_t_prior.valid());
-    auto t_prior = std::move(Maybe_t_prior.value());
+    auto t_prior = ddMacro_State<elogL, vlogL, P_mean, P_Cov, y_mean, y_var>(std::move(Maybe_t_prior.value()));
     auto record = get<Recording_conditions>(experiment)();
 
 
@@ -97,13 +97,13 @@ const double fs=50e3;
                 f_no_memoi, std::move(t_prior), t_Qdtm, dm, Nch, y()[i_step], fs);
     if (!Maybe_prior_next) { UNSCOPED_INFO(Maybe_prior_next.error()()); }
     REQUIRE(Maybe_prior_next.valid());
-    auto t_prior = select<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL, vplogL, macrodr::macror_algorithm>(std::move(Maybe_prior_next.value()));
+    auto t_prior = select<logL, elogL, vlogL, Patch_State, y_mean, y_var>(std::move(Maybe_prior_next.value()));
 
 
     auto result_i = var::test_derivative_clarke<false>(
         [&](auto l_t_prior, auto const& l_Qdtm, auto const& l_m, auto const& l_Nch)
-            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_t_prior)>,
-                var::Vector_Space<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL, vplogL>>> {
+            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_m)>,
+                var::Vector_Space<logL, elogL, vlogL, Patch_State, y_mean, y_var>>> {
 
                     
             auto Maybe_res = MacroR2<uses_recursive_aproximation<true>,
@@ -112,7 +112,7 @@ const double fs=50e3;
                                                 uses_taylor_variance_correction_aproximation<false>>{}(
                 f_no_memoi, std::move(l_t_prior), l_Qdtm, l_m, l_Nch, y()[i_step], fs);
             if (!Maybe_res) return Maybe_res.error();
-            return select<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var, plogL, eplogL, vplogL>(
+            return select<logL, elogL, vlogL, Patch_State, y_mean, y_var>(
                 std::move(Maybe_res.value()));
         },
         h,

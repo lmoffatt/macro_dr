@@ -50,7 +50,7 @@ auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& mode
                            const Recording& r, bool adaptive_approximation,
                            bool recursive_approximation, int averaging_approximation,
                            bool variance_approximation,
-                           bool taylor_variance_correction_approximation) -> Maybe_error<dlogLs> {
+                           bool taylor_variance_correction_approximation) -> Maybe_error<dMacro_State_Hessian_minimal> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -95,7 +95,7 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
                                bool recursive_approximation, int averaging_approximation,
                                bool variance_approximation,
                                bool taylor_variance_correction_approximation, double delta_param)
-    -> Maybe_error<dlogLs> {
+    -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -140,7 +140,7 @@ auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_va
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
                                       bool taylor_variance_correction_approximation)
-    -> Maybe_error<Patch_State_Evolution> {
+    -> Maybe_error<Macro_State_Ev_predictions> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -178,7 +178,7 @@ auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_v
                                        bool recursive_approximation, int averaging_approximation,
                                        bool variance_approximation,
                                        bool taylor_variance_correction_approximation)
-    -> Maybe_error<var::Derivative<Patch_State_Evolution, var::Parameters_transformed>> {
+    -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -224,7 +224,7 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
                                              int averaging_approximation,
                                              bool variance_approximation,
                                              bool taylor_variance_correction_approximation)
-    -> Maybe_error<var::Derivative<Patch_State_Evolution, var::Parameters_transformed>> {
+    -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -238,7 +238,7 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
     auto model0_d = dmodel.value();
     return std::visit(
         [&](auto m_ptr)
-            -> Maybe_error<var::Derivative<Patch_State_Evolution, var::Parameters_transformed>> {
+            -> Maybe_error<dMacro_State_Ev_gradient_all> {
             auto& m = *m_ptr;
             auto maybe_modelLikelihood =
 
@@ -263,8 +263,7 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
 
             return std::visit(
                 [&ftbl3, &par_transformed, &e, &r](auto& modelLikelihood)
-                    -> Maybe_error<
-                        var::Derivative<Patch_State_Evolution, var::Parameters_transformed>> {
+                    -> Maybe_error<dMacro_State_Ev_gradient_all> {
                     return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par_transformed, r, e);
                 },
                 modelLikelihood_v);

@@ -1,0 +1,576 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Trust-Region Kalman Mean Update for MacroIR\\[4pt]
+(Variance Inflation to Enforce Probability Constraints)}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\diag}{\operatorname{diag}}
+
+% ============================================================
+% 1. Problem statement
+% ============================================================
+
+\section{Problem statement}
+
+In the MacroIR interval update, after propagating the mean and covariance to
+time \(t\), we perform a scalar Kalman update using the interval-averaged
+current \(\overline{y}^{\text{obs}}_{0\to t}\).
+
+Let:
+\begin{itemize}
+  \item \(\boldsymbol{\mu}^{\text{prop}}(t)\in\mathbb{R}^K\): propagated
+        per-channel mean occupancy at time \(t\).
+  \item \(\boldsymbol{\Sigma}^{\text{prop}}(t)\in\mathbb{R}^{K\times K}\):
+        propagated per-channel covariance at time \(t\).
+  \item \(\overline{y}^{\text{pred}}_{0\to t}\): predictive mean interval
+        current.
+  \item \(\sigma^2_{\text{pred}}\): predictive variance of the interval
+        current, including intrinsic and measurement contributions.
+  \item \(\delta := \overline{y}^{\text{obs}}_{0\to t} -
+        \overline{y}^{\text{pred}}_{0\to t}\): residual.
+  \item \(\mathbf{g} \in \mathbb{R}^K\): cross-covariance vector between the
+        state at time \(t\) and the interval current
+        (the MacroIR vector tilde \(\widetilde{\gamma^\top\Sigma}\)).
+\end{itemize}
+
+The standard scalar Gaussian conditioning (Kalman) update is
+\begin{align}
+  \boldsymbol{\mu}^{\text{post}}(t)
+  &=
+  \boldsymbol{\mu}^{\text{prop}}(t)
+  +
+  \frac{\mathbf{g}\,\delta}{\sigma^2_{\text{pred}}},
+  \label{eq:std-mean-update}
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}(t)
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}}(t)
+  -
+  \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}}.
+  \label{eq:std-cov-update}
+\end{align}
+
+\paragraph{Issue.}
+In this purely Gaussian update, the mean is unconstrained: a large
+residual \(|\delta|\) can push some components of
+\(\boldsymbol{\mu}^{\text{post}}(t)\) outside the probability simplex, e.g.\
+\(\mu^{\text{post}}_i < 0\) or \(\mu^{\text{post}}_i > 1\).
+This is unacceptable since occupancies must remain in \((0,1)\)
+(or at least in a small open box inside the simplex).
+
+On the other hand, in an exactly consistent joint Gaussian model the covariance
+update \eqref{eq:std-cov-update} \emph{cannot} produce negative variances: it
+is the Schur complement of a positive semidefinite joint covariance, hence
+remains positive semidefinite (see Section~\ref{sec:covariance-psd}).
+Any negative eigenvalues that arise in practice are due to approximation and
+floating-point effects, not to the algebra of Gaussian conditioning itself.
+
+\paragraph{Goal.}
+We want a minimal distortion of the Gaussian update that:
+\begin{enumerate}
+  \item keeps all \(\mu^{\text{post}}_i(t)\) in \([p_{\min},p_{\max}]\),
+        with \(0 < p_{\min} \ll 1\);
+  \item preserves the standard Gaussian conditioning structure for the
+        covariance (up to mild numerical regularisation);
+  \item has a clear interpretation at the log-likelihood level, since MacroIR
+        fundamentally cares about the per-interval evidence.
+\end{enumerate}
+
+We explicitly do not reparameterize the state (e.g.\ via logits); we stay in
+the “Gaussian-ish’’ regime in \(\boldsymbol{\mu}\)-space and only introduce a
+trust region on the mean update.
+
+% ============================================================
+% 2. Solution (implementation-ready recipe)
+% ============================================================
+
+\section{Solution (implementation-ready recipe)}
+
+We introduce a shrink factor \(\alpha\in[0,1]\) on the Kalman update and
+compute the maximal \(\alpha\) that keeps the mean inside the safe region.
+This is exactly equivalent to an inflation of the predictive variance in the
+likelihood.  The covariance update is scaled by the same \(\alpha\) to preserve
+the usual Kalman algebra and the log-likelihood interpretation.
+
+\subsection{Parameters}
+
+We enforce probabilistic floors to prevent the update from leaving the simplex.
+
+\begin{itemize}
+  \item \(p_{\min} > 0\): minimum admissible occupancy per state
+        (e.g.\ \(10^{-10}\)).  This prevents probabilities from reaching exact
+        zero, which would create degenerate directions and numerical problems.
+
+  \item \(p_{\max} = 1 - (K-1)p_{\min}\): corresponding maximum occupancy
+        ensuring that \(\sum_i \mu_i = 1\) remains feasible.
+
+  \item Optionally, a small variance floor
+        \(v_{\min} = \kappa\,p_{\min}(1-p_{\min})\) with
+        \(\kappa\in[0.01,0.1]\) (e.g.\ \(\kappa=0.03\))
+        can be used \emph{after} the update as a purely numerical safeguard
+        if floating-point drift drives some diagonal entries slightly below
+        this scale.  This floor is not used to determine \(\alpha\).
+\end{itemize}
+
+\subsection{Step 1: Compute the unconstrained update direction}
+
+Define
+\[
+  \Delta\boldsymbol{\mu}
+  :=
+  \frac{\mathbf{g}\,\delta}{\sigma^2_{\text{pred}}},
+\]
+so the unconstrained mean update would be
+\[
+  \boldsymbol{\mu}^{\text{post}}_{\text{unc}}
+  =
+  \boldsymbol{\mu}^{\text{prop}} + \Delta\boldsymbol{\mu}.
+\]
+
+The corresponding (unscaled) covariance update is
+\[
+  \boldsymbol{\Sigma}^{\text{post}}_{\text{unc}}
+  =
+  \boldsymbol{\Sigma}^{\text{prop}} -
+  \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}}.
+\]
+
+These define the direction of the update.  The actual step length will be
+chosen by the trust-region constraints.
+
+\subsection{Step 2: Define a scaled update with factor \(\alpha\)}
+
+Instead of taking the full step, use
+\begin{align}
+  \boldsymbol{\mu}^{\text{post}}(\alpha)
+  &=
+  \boldsymbol{\mu}^{\text{prop}} +
+  \alpha\,\Delta\boldsymbol{\mu},
+  \label{eq:alpha-mean}
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}(\alpha)
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}} -
+  \alpha\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}}.
+  \label{eq:alpha-cov}
+\end{align}
+Here \(\alpha\in[0,1]\).  Both mean and covariance are updated with the same
+\(\alpha\), which will correspond to using an effective variance
+\(\sigma^2_{\text{eff}} = \sigma^2_{\text{pred}}/\alpha\) in a standard
+Kalman update (see Section~\ref{subsec:scaled-update-equivalence}).
+
+\subsection{Step 3: Constraints from probabilities}
+
+For each component \(j\in\{1,\dots,K\}\) we require
+\[
+  p_{\min} \le \mu^{\text{post}}_j(\alpha) \le p_{\max},
+\]
+with
+\[
+  \mu^{\text{post}}_j(\alpha)
+  =
+  \mu^{\text{prop}}_j + \alpha\,\Delta\mu_j,\quad
+  \Delta\mu_j
+  =
+  \frac{g_j\,\delta}{\sigma^2_{\text{pred}}}.
+\]
+
+We only consider indices with \(\Delta\mu_j\neq 0\), since the others do not
+move and therefore never constrain \(\alpha\).
+
+\paragraph{Lower bound.}
+If \(\Delta\mu_j < 0\), the lower bound is potentially active:
+\[
+  \mu^{\text{prop}}_j + \alpha\,\Delta\mu_j \ge p_{\min}
+  \quad\Longrightarrow\quad
+  \alpha
+  \le
+  \alpha^{(\text{mean,low})}_j
+  :=
+  \frac{\mu^{\text{prop}}_j - p_{\min}}{|\Delta\mu_j|}.
+\]
+
+\paragraph{Upper bound.}
+If \(\Delta\mu_j > 0\), the upper bound is potentially active:
+\[
+  \mu^{\text{prop}}_j + \alpha\,\Delta\mu_j \le p_{\max}
+  \quad\Longrightarrow\quad
+  \alpha
+  \le
+  \alpha^{(\text{mean,high})}_j
+  :=
+  \frac{p_{\max} - \mu^{\text{prop}}_j}{\Delta\mu_j}.
+\]
+
+For each \(j\) with \(\Delta\mu_j\neq 0\), define
+\[
+  \alpha^{(\text{mean})}_j
+  :=
+  \begin{cases}
+    \alpha^{(\text{mean,low})}_j,  & \Delta\mu_j < 0,\\[4pt]
+    \alpha^{(\text{mean,high})}_j, & \Delta\mu_j > 0.
+  \end{cases}
+\]
+
+The admissible interval for \(\alpha\) is therefore
+\[
+  0 \le \alpha \le \alpha_{\text{mean}},
+\]
+with
+\[
+  \alpha_{\text{mean}}
+  :=
+  \min_{j:\,\Delta\mu_j\neq 0}\,\alpha^{(\text{mean})}_j.
+\]
+
+If no component moves (\(\Delta\boldsymbol{\mu}=\mathbf{0}\)), we define
+\(\alpha_{\text{mean}}:=1\); in that case the mean is already consistent with
+the observation and no variance inflation is needed.
+
+If \(\alpha_{\text{mean}}\le 0\) (which can happen if the unconstrained
+direction immediately leaves the safe box), we interpret this as a signal to
+strongly down-weight or ignore this observation (see below).
+
+\subsection{Step 4: Final shrink factor and variance inflation}
+
+We now define the actual shrink factor
+\[
+  \alpha^\star
+  :=
+  \max\bigl(0,\min(1,\alpha_{\text{mean}})\bigr).
+\]
+
+Two limiting cases are useful:
+\begin{itemize}
+  \item If \(\alpha^\star=1\), we recover the standard Gaussian update with
+        no variance inflation.
+  \item If \(\alpha^\star=0\), we perform \emph{no} Kalman correction:
+        \(\boldsymbol{\mu}^{\text{post}}=\boldsymbol{\mu}^{\text{prop}}\) and
+        \(\boldsymbol{\Sigma}^{\text{post}}=\boldsymbol{\Sigma}^{\text{prop}}\).
+        In practice, one may treat such intervals as fully rejected outliers.
+\end{itemize}
+
+In implementation, it is often convenient to introduce a small threshold
+(e.g.\ \(\alpha_{\min}=10^{-3}\)) and:
+\begin{itemize}
+  \item if \(\alpha^\star < \alpha_{\min}\), skip the update and set
+        \(\alpha^\star:=0\);
+  \item otherwise use \(\alpha^\star\) as computed.
+\end{itemize}
+This makes the “outlier” behaviour explicit: a sufficiently incompatible
+observation leaves the mean and covariance unchanged.
+
+Define the (per-interval) variance inflation factor
+\[
+  \phi := \begin{cases}
+    \dfrac{1}{\alpha^\star}, & \alpha^\star>0,\\[6pt]
+    1, & \alpha^\star=0
+  \end{cases}
+  \quad\text{so that}\quad
+  \phi\ge 1.
+\]
+The effective predictive variance used in the update and in the
+log-likelihood is
+\[
+  \sigma^2_{\text{eff}} := \phi\,\sigma^2_{\text{pred}}
+  =
+  \begin{cases}
+    \dfrac{\sigma^2_{\text{pred}}}{\alpha^\star}, & \alpha^\star>0,\\[6pt]
+    \sigma^2_{\text{pred}}, & \alpha^\star=0.
+  \end{cases}
+\]
+In the outlier case \(\alpha^\star=0\) we do not actually use
+\(\sigma^2_{\text{eff}}\) for an update, since the step is suppressed.
+
+The implemented update is therefore
+\begin{align}
+  \boldsymbol{\mu}^{\text{post}}
+  &=
+  \boldsymbol{\mu}^{\text{prop}}
+  +
+  \alpha^\star\,\Delta\boldsymbol{\mu},
+  \label{eq:final-mean-update}
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}}
+  -
+  \alpha^\star\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}},
+  \label{eq:final-cov-update}
+\end{align}
+or, equivalently, as a standard Kalman update with inflated variance
+\(\sigma^2_{\text{eff}} = \sigma^2_{\text{pred}}/\alpha^\star\) whenever
+\(\alpha^\star>0\).
+
+\subsection{Step 5: Log-likelihood contribution for this interval}
+
+When we treat the update as a Kalman step with effective variance
+\(\sigma^2_{\text{eff}} = \phi\,\sigma^2_{\text{pred}}\) (\(\alpha^\star>0\)),
+the per-interval Gaussian log-likelihood is
+\[
+  \ell
+  =
+  \log p(\overline{y}^{\text{obs}}_{0\to t}\mid \text{state})
+  =
+  -\frac{1}{2}
+  \left[
+    \log\bigl(2\pi\sigma^2_{\text{eff}}\bigr)
+    +
+    \frac{\delta^2}{\sigma^2_{\text{eff}}}
+  \right]
+  =
+  -\frac{1}{2}
+  \left[
+    \log\bigl(2\pi\phi\sigma^2_{\text{pred}}\bigr)
+    +
+    \frac{\delta^2}{\phi\,\sigma^2_{\text{pred}}}
+  \right].
+\]
+
+If the interval is classified as a hard outlier
+(\(\alpha^\star=0\), update skipped), there are two consistent choices:
+\begin{itemize}
+  \item either do not add any contribution to the evidence from this interval;
+  \item or add the likelihood with the original predictive variance
+        \(\sigma^2_{\text{pred}}\), documenting that the observation has no
+        effect on the state but still contributes to the evidence.
+\end{itemize}
+This choice is a modelling decision rather than part of the trust-region
+mechanism itself.
+
+% ============================================================
+% 3. Why the covariance stays positive semidefinite
+% ============================================================
+
+\section{Why the covariance stays positive semidefinite}
+\label{sec:covariance-psd}
+
+Consider the joint Gaussian model for the state \(x\in\mathbb{R}^K\) and the
+scalar observation \(y\):
+\[
+\begin{pmatrix} x \\ y \end{pmatrix}
+\sim
+\mathcal{N}\!\left(
+\begin{pmatrix}\mu_x \\ \mu_y\end{pmatrix},
+\begin{pmatrix}
+\Sigma_{xx} & g \\
+g^\top      & \sigma_y^2
+\end{pmatrix}
+\right),
+\]
+with:
+\begin{itemize}
+  \item \(\Sigma_{xx} = \boldsymbol{\Sigma}^{\text{prop}}\),
+  \item \(g = \operatorname{Cov}(x,y) = \mathbf{g}\),
+  \item \(\sigma_y^2 = \sigma^2_{\text{pred}}\).
+\end{itemize}
+
+The conditional covariance of \(x\) given \(y\) is
+\[
+  \Sigma^{\text{post}}
+  =
+  \Sigma_{xx} - \frac{g\,g^\top}{\sigma_y^2},
+\]
+i.e.\ exactly the rank-1 downdate in \eqref{eq:std-cov-update}.  This is the
+Schur complement of \(\sigma_y^2\) in the joint covariance matrix.
+
+If the joint covariance
+\[
+  \begin{pmatrix}
+  \Sigma_{xx} & g \\
+  g^\top      & \sigma_y^2
+  \end{pmatrix}
+\]
+is positive semidefinite, then its Schur complement \(\Sigma^{\text{post}}\)
+is also positive semidefinite.  In particular:
+\begin{itemize}
+  \item all eigenvalues of \(\Sigma^{\text{post}}\) are nonnegative;
+  \item all diagonal entries \(\Sigma^{\text{post}}_{ii} \ge 0\).
+\end{itemize}
+
+At the level of individual components, consider the \(2\times 2\) marginal for
+\((x_i,y)\):
+\[
+  \begin{pmatrix}
+  \Sigma_{xx,ii} & g_i \\
+  g_i            & \sigma_y^2
+  \end{pmatrix}.
+\]
+Positive semidefiniteness of this matrix implies
+\[
+  g_i^2 \le \Sigma_{xx,ii}\,\sigma_y^2,
+\]
+which guarantees
+\[
+  \Sigma^{\text{post}}_{ii}
+  =
+  \Sigma_{xx,ii} - \frac{g_i^2}{\sigma_y^2}
+  \ge 0.
+\]
+
+Therefore, in an exact Gaussian model, the covariance update cannot produce
+negative variances.  Any negative diagonals or small negative eigenvalues
+encountered in practice must arise from:
+\begin{itemize}
+  \item approximate construction of \(\Sigma_{xx}, g, \sigma_y^2\)
+        (e.g.\ tilde operators, discretisation, model mismatch),
+  \item floating-point errors and accumulated roundoff over many updates.
+\end{itemize}
+
+In MacroIR, those are handled as numerical hygiene:
+\begin{itemize}
+  \item symmetrising the covariance 
+        \(\boldsymbol{\Sigma}^{\text{post}}
+          \leftarrow (\boldsymbol{\Sigma}^{\text{post}}
+          + \boldsymbol{\Sigma}^{\text{post}\,\top})/2\),
+  \item optionally clipping tiny negative eigenvalues in a PSD repair step,
+  \item or enforcing a small floor \(v_{\min}\) a posteriori if needed.
+\end{itemize}
+These steps are separate from the trust-region logic and do not influence
+\(\alpha\), which is purely determined by the probability constraints on
+\(\boldsymbol{\mu}\).
+
+% ============================================================
+% 4. Detailed deductions
+% ============================================================
+
+\section{Detailed deductions}
+\label{sec:detailed-deductions}
+
+For completeness, we summarise the algebraic steps that justify the formulas
+above.
+
+\subsection{Scaled update and its equivalence to variance inflation}
+\label{subsec:scaled-update-equivalence}
+
+Starting from the standard update:
+\begin{align*}
+  \boldsymbol{\mu}^{\text{post}}
+  &=
+  \boldsymbol{\mu}^{\text{prop}} +
+  \frac{\mathbf{g}\,\delta}{\sigma^2_{\text{pred}}},
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}} -
+  \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}},
+\end{align*}
+introduce \(\alpha\in[0,1]\) and define
+\begin{align*}
+  \boldsymbol{\mu}^{\text{post}}(\alpha)
+  &=
+  \boldsymbol{\mu}^{\text{prop}} +
+  \alpha\,\frac{\mathbf{g}\,\delta}{\sigma^2_{\text{pred}}},
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}(\alpha)
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}} -
+  \alpha\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}}.
+\end{align*}
+Set
+\[
+  \sigma^2_{\text{eff}}
+  :=
+  \frac{\sigma^2_{\text{pred}}}{\alpha}
+  \quad\Longleftrightarrow\quad
+  \alpha
+  =
+  \frac{\sigma^2_{\text{pred}}}{\sigma^2_{\text{eff}}}.
+\]
+Then
+\begin{align*}
+  \boldsymbol{\mu}^{\text{post}}(\alpha)
+  &=
+  \boldsymbol{\mu}^{\text{prop}} +
+  \frac{\mathbf{g}\,\delta}{\sigma^2_{\text{eff}}},
+  \\
+  \boldsymbol{\Sigma}^{\text{post}}(\alpha)
+  &=
+  \boldsymbol{\Sigma}^{\text{prop}} -
+  \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{eff}}}.
+\end{align*}
+This is exactly the standard Kalman update with predictive variance
+\(\sigma^2_{\text{eff}}\).
+Writing \(\phi = \sigma^2_{\text{eff}}/\sigma^2_{\text{pred}} = 1/\alpha\),
+we can also say that we inflated the predictive variance by a factor \(\phi\).
+
+\subsection{Probability constraints}
+
+For each component,
+\[
+  \mu^{\text{post}}_j(\alpha)
+  =
+  \mu^{\text{prop}}_j + \alpha\,\Delta\mu_j,\quad
+  \Delta\mu_j
+  =
+  \frac{g_j\,\delta}{\sigma^2_{\text{pred}}}.
+\]
+We require
+\[
+  p_{\min}
+  \le
+  \mu^{\text{post}}_j(\alpha)
+  \le
+  p_{\max}.
+\]
+
+If \(\Delta\mu_j < 0\), the lower bound can be active and yields
+\[
+  \alpha
+  \le
+  \alpha^{(\text{mean,low})}_j
+  :=
+  \frac{\mu^{\text{prop}}_j - p_{\min}}{|\Delta\mu_j|}.
+\]
+If \(\Delta\mu_j > 0\), the upper bound can be active and yields
+\[
+  \alpha
+  \le
+  \alpha^{(\text{mean,high})}_j
+  :=
+  \frac{p_{\max} - \mu^{\text{prop}}_j}{\Delta\mu_j}.
+\]
+If \(\Delta\mu_j=0\), there is no constraint from component \(j\).
+
+Taking the minimum over all moving components gives \(\alpha_{\text{mean}}\),
+and hence \(\alpha^\star = \max(0,\min(1,\alpha_{\text{mean}}))\), as used in
+the implementation.
+
+\subsection{Log-likelihood with inflated variance}
+
+With effective variance \(\sigma^2_{\text{eff}} = \phi\sigma^2_{\text{pred}}\),
+the per-interval Gaussian log-likelihood is
+\[
+  \ell
+  =
+  -\frac{1}{2}
+  \left[
+    \log\bigl(2\pi\sigma^2_{\text{eff}}\bigr)
+    +
+    \frac{\delta^2}{\sigma^2_{\text{eff}}}
+  \right]
+  =
+  -\frac{1}{2}
+  \left[
+    \log\bigl(2\pi\phi\sigma^2_{\text{pred}}\bigr)
+    +
+    \frac{\delta^2}{\phi\sigma^2_{\text{pred}}}
+  \right].
+\]
+As \(\phi\) increases, the quadratic term decreases like \(1/\phi\), while the
+normalisation term grows like \(\log\phi\).  Each time we inflate the variance
+to protect the state, we automatically pay a corresponding “price’’ in
+likelihood.
+
+\end{document}
