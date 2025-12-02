@@ -1,5 +1,6 @@
 #ifndef DERIVATIVE_TEST_H
 #define DERIVATIVE_TEST_H
+#include <derivative_fwd.h>
 #include <exponential_matrix.h>
 #include <matrix.h>
 #include <parameters.h>
@@ -430,6 +431,9 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(T const&, T const&, const X&
     return var::Var<T, Maybe_error<bool>>(true);
 }
 
+
+
+
 // --- helpers (adapt rows/cols/indexing to your T if needed) ------------------
 template <class M>
 inline std::pair<int, int> argmax_with_index(const M& A) {
@@ -616,6 +620,7 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
 
 template <bool inspect = false, class T, class X>
 requires(!is_of_this_template_type_v<T, Vector_Space> &&
+  !is_of_this_template_type_v<decltype(std::declval<T>()()), Vector_Space> && 
 !is_matrix_like_v<T>)    
 var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, const T& Y,
                                                     const X& u, double t, const T& Yp,
@@ -772,9 +777,21 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets_old(const Derivative<T, X>& 
     }
     return ok;
 }
+template <bool inspect = false, class T, class X>
+requires(is_of_this_template_type_v<decltype(std::declval<T>()()), Vector_Space>)
+auto test_clarke_brackets(
+    const Derivative<T, X>& Y0, const T& Y, const X& u, double t,
+    const T& Yp, const T& Yn) {
+    auto inner = test_clarke_brackets<inspect>(Y0(), Y(), u, t, Yp(), Yn());
+    // Collapse nested Vector_Space error details into a single Maybe_error<bool>
+    auto condensed = condense_errors(std::move(inner));
+    return var::Var<T, Maybe_error<bool>>(std::move(condensed));
+}
+
+
 
 template <bool inspect = false, class... T, class X>
-var::Vector_Space<var::Var<T, Maybe_error<bool>>...> test_clarke_brackets(
+auto test_clarke_brackets(
     const Derivative<Vector_Space<T...>, X>& Y0, const Vector_Space<T...>& Y, const X& u, double t,
     const Vector_Space<T...>& Yp, const Vector_Space<T...>& Yn) {
     return var::Vector_Space(
@@ -782,15 +799,44 @@ var::Vector_Space<var::Var<T, Maybe_error<bool>>...> test_clarke_brackets(
 }
 
 template <class... T, class X>
-var::Vector_Space<var::Var<T, Maybe_error<bool>>...> test_clarke_brackets_init(
-    const Derivative<Vector_Space<T...>, X>&) {
-    return var::Vector_Space(var::Var<T, Maybe_error<bool>>(true)...);
+auto test_clarke_brackets_init(
+    const Derivative<Vector_Space<T...>, X>& x) {
+    return var::Vector_Space(test_clarke_brackets_init(get<T>(x))...);
 }
 
+// Vars whose value() is a Vector_Space should still be treated as atomic
+// variables for initialization so we don't try to build nested Vector_Space
+// components (e.g., Patch_State wraps a Vector_Space<P_mean, P_Cov>).
 template <class T, class X>
+    requires(requires { std::decay_t<T>::is_variable; } &&
+             is_of_this_template_type_v<decltype(std::declval<T>()()), Vector_Space>)
 var::Var<T, Maybe_error<bool>> test_clarke_brackets_init(const Derivative<T, X>&) {
     return var::Var<T, Maybe_error<bool>>(true);
 }
+
+template <class T, class X>
+requires(!is_of_this_template_type_v<T, Vector_Space>&& !is_of_this_template_type_v<decltype(std::declval<T>()()), Vector_Space>)
+var::Var<T, Maybe_error<bool>> test_clarke_brackets_init(const Derivative<T, X>&) {
+    return var::Var<T, Maybe_error<bool>>(true);
+}
+
+template <class T>
+    requires(requires { std::decay_t<T>::is_variable; } &&
+             !is_of_this_template_type_v<std::decay_t<T>, Vector_Space>)
+var::Var<T, Maybe_error<bool>> test_clarke_brackets_init(const T&) {
+    return var::Var<T, Maybe_error<bool>>(true);
+}
+
+
+
+template <class T, class X>
+    requires(is_of_this_template_type_v<decltype(std::declval<T>()()), Vector_Space> &&
+             !(requires { std::decay_t<T>::is_variable; }))
+auto  test_clarke_brackets_init(const Derivative<T, X>& x)  {
+    return test_clarke_brackets_init(x());
+}
+
+
 
 // Taylor convergence test using norm-based residuals and known bound on third derivative
 // Accept if || f(x+h p) - (f(x) + J(x)[p] h) ||  <= max_third_deriv_norm * ||h||^3 /           6
@@ -799,14 +845,15 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets_init(const Derivative<T, X>&
 // but requires knowledge of a bound on the third derivative
 
 template <bool inspect = false, class F, class... Xs>
-    requires(!std::is_same_v<NoDerivative, dx_of_dfdx_t<Xs...>> && std::is_invocable_v<F, Xs...>)
+    requires(!std::is_same_v<NoDerivative, dx_of_dfdx_t<Xs...>> && std::is_invocable_v<F, Xs...>&& 
+            is_derivative_v<decltype(get_value(std::invoke(std::declval<F>(), std::declval<Xs>()...)))>)
 Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
     auto MaybedY = std::invoke(f, xs...);
     if (!is_valid(MaybedY)) {
         return get_error(MaybedY);
     }
     auto dY = std::move(get_value(MaybedY));
-
+    static_assert(is_derivative_v<decltype(dY)>);
     auto MaybeY = std::invoke(f, primitive(xs)...);
     if (!is_valid(MaybeY)) {
         return get_error(MaybeY);

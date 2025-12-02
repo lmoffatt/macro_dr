@@ -1,0 +1,411 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+
+\begin{document}
+
+\section*{Macrologit: Logit-Space Laplace Approximation for MacroTaylor}
+
+We consider an ensemble of $N_{\text{ch}}$ independent Markov channels with $K$ microscopic states.
+The macroscopic occupancy vector is
+\[
+\bm{p} = (p_1,\dots,p_K),\qquad
+p_i \ge 0,\quad
+\sum_{i=1}^K p_i = 1.
+\]
+
+Over a single interval we observe a scalar current $y$ with MacroTaylor likelihood
+\[
+F_{\text{data}}(\bm{p})
+=
+\frac{1}{2}\log V(\bm{p})
++
+\frac{1}{2}\frac{\delta(\bm{p})^2}{V(\bm{p})},
+\]
+where
+\[
+\mu_y(\bm{p}) = N_{\text{ch}}\,(\bm{p}\cdot\bm{\gamma}),
+\qquad
+\delta(\bm{p}) = y - \mu_y(\bm{p}),
+\qquad
+V(\bm{p}) = \epsilon^2 + N_{\text{ch}}\,(\bm{p}\cdot\bm{\sigma}^2).
+\]
+Here $\bm{\gamma}$ is the per-state single-channel current and
+$\bm{\sigma}^2$ the per-state intrinsic variance (MacroTaylor objects).
+
+A ``Gaussian on the simplex'' prior is specified by a per-channel covariance
+$\bm{\Sigma}$ (rank $K-1$ on the simplex) and a prior mean $\bm{\mu}$.
+The corresponding fraction-level prior for $\bm{p}$ is
+\[
+F_{\text{prior}}(\bm{p})
+=
+\frac{N_{\text{ch}}}{2}\,
+(\bm{p}-\bm{\mu})\,\bm{\Sigma}^{-1}(\bm{p}-\bm{\mu})^\top.
+\]
+
+The exact negative log-posterior in $\bm{p}$ is
+\[
+F_{\text{exact}}(\bm{p})
+=
+F_{\text{data}}(\bm{p})
++
+F_{\text{prior}}(\bm{p}).
+\]
+
+MacroTaylor provides explicit formulas for the gradient
+$\bm{g}_p(\bm{p}) = \nabla_{\bm{p}}F_{\text{exact}}(\bm{p})$
+and Hessian $\bm{H}_p(\bm{p}) = \nabla^2_{\bm{p}}F_{\text{exact}}(\bm{p})$,
+with a rank-2 data curvature in the directions spanned by
+$\bm{\gamma}$ and $\bm{\sigma}^2$.
+
+\subsection*{1. Softmax parametrisation of the simplex}
+
+We introduce unconstrained logits $\bm{\theta}\in\mathbb{R}^{K-1}$ by choosing state $K$
+as reference (gauge).
+Define the extended logit vector
+\[
+\tilde{\bm{\theta}} = (\theta_1,\dots,\theta_{K-1},0)\in\mathbb{R}^K,
+\]
+and the normalising constant
+\[
+Z(\bm{\theta})
+=
+\sum_{j=1}^K \exp(\tilde{\theta}_j)
+=
+1 + \sum_{k=1}^{K-1} \exp(\theta_k).
+\]
+
+\paragraph{Softmax definition.}
+The softmax (reference-state) map $\bm{\theta}\mapsto\bm{p}(\bm{\theta})$ is
+\[
+p_i(\bm{\theta}) = \frac{\exp(\tilde{\theta}_i)}{Z(\bm{\theta})},
+\quad i=1,\dots,K.
+\]
+Explicitly:
+\[
+p_i(\bm{\theta}) = \frac{\exp(\theta_i)}{Z(\bm{\theta})},
+\quad i=1,\dots,K-1,
+\qquad
+p_K(\bm{\theta}) = \frac{1}{Z(\bm{\theta})}.
+\]
+By construction
+\[
+p_i(\bm{\theta}) > 0,\qquad
+\sum_{i=1}^K p_i(\bm{\theta}) = 1
+\quad\text{for all }\bm{\theta}.
+\]
+
+\paragraph{Softmax Jacobian.}
+The Jacobian $J(\bm{\theta}) = \partial\bm{p}/\partial\bm{\theta}$ is a
+$K\times(K-1)$ matrix with entries
+\[
+J_{ij}(\bm{\theta})
+=
+\frac{\partial p_i}{\partial \theta_j},
+\quad i=1,\dots,K,\ j=1,\dots,K-1.
+\]
+
+For $i\le K-1$ and $j\le K-1$:
+\[
+\frac{\partial p_i}{\partial\theta_j}
+=
+p_i(\delta_{ij} - p_j),
+\]
+and for the reference state $K$:
+\[
+\frac{\partial p_K}{\partial\theta_j}
+=
+-\,p_K\,p_j,
+\qquad j=1,\dots,K-1.
+\]
+
+Equivalently, in block form, write
+\[
+\bm{p}_{1:K-1}
+=
+\begin{bmatrix} p_1 \\ \vdots \\ p_{K-1} \end{bmatrix},
+\qquad
+\bm{p}_{1:K-1}\bm{p}_{1:K-1}^\top
+\in\mathbb{R}^{(K-1)\times(K-1)}.
+\]
+Then
+\[
+J(\bm{\theta})
+=
+\begin{bmatrix}
+\mathrm{diag}(\bm{p}_{1:K-1}) - \bm{p}_{1:K-1}\bm{p}_{1:K-1}^\top\\[4pt]
+-\,p_K\,\bm{p}_{1:K-1}^\top
+\end{bmatrix}.
+\]
+
+Because $\sum_i p_i(\bm{\theta})\equiv 1$, we have
+\[
+\bm{1}^\top J(\bm{\theta}) = \bm{0}^\top,
+\qquad
+J(\bm{\theta})^\top\bm{1} = \bm{0},
+\]
+so the image of $J$ lies in the tangent space of the simplex:
+all allowed perturbations $\delta\bm{p} = J \,\delta\bm{\theta}$ satisfy
+$\bm{1}^\top \delta\bm{p} = 0$.
+
+\subsection*{2. Prior and posterior in logit space}
+
+We place a Gaussian prior on $\bm{\theta}$:
+\[
+\bm{\theta} \sim \mathcal{N}(\bm{m},\bm{S}),
+\]
+with mean $\bm{m}\in\mathbb{R}^{K-1}$ and covariance
+$\bm{S}\in\mathbb{R}^{(K-1)\times(K-1)}$.
+The prior contribution to the energy is
+\[
+F_{\text{prior}}(\bm{\theta})
+=
+\frac{1}{2}(\bm{\theta}-\bm{m})^\top\bm{S}^{-1}(\bm{\theta}-\bm{m})
+\quad(+\ \text{constant}).
+\]
+
+The MacroTaylor data term becomes a function of $\bm{\theta}$ via
+$\bm{p}(\bm{\theta})$:
+\[
+F_{\text{data}}(\bm{\theta})
+=
+F_{\text{data}}\bigl(\bm{p}(\bm{\theta})\bigr).
+\]
+
+The exact negative log-posterior in logit space is therefore
+\[
+F_{\text{exact}}(\bm{\theta})
+=
+F_{\text{data}}\bigl(\bm{p}(\bm{\theta})\bigr)
++
+\frac{1}{2}(\bm{\theta}-\bm{m})^\top\bm{S}^{-1}(\bm{\theta}-\bm{m}).
+\]
+
+\subsection*{3. Gradient in logit space}
+
+Let $\bm{g}_p(\bm{p})$ denote the MacroTaylor gradient of $F_{\text{exact}}$
+with respect to $\bm{p}$, treated as a row vector:
+\[
+\bm{g}_p(\bm{p}) = \nabla_{\bm{p}} F_{\text{exact}}(\bm{p}).
+\]
+By the chain rule,
+\[
+\bm{g}_\theta(\bm{\theta})
+=
+\nabla_{\bm{\theta}} F_{\text{exact}}(\bm{\theta})
+=
+(\bm{\theta}-\bm{m})^\top\bm{S}^{-1}
++
+J(\bm{\theta})^\top\,\bm{g}_p\bigl(\bm{p}(\bm{\theta})\bigr).
+\]
+This is the gradient used in Newton or quasi-Newton updates in logit space.
+
+\subsection*{4. Hessian and Laplace covariance in logit space}
+
+For the data term,
+\[
+F_{\text{data}}(\bm{\theta})
+=
+F_{\text{data}}\bigl(\bm{p}(\bm{\theta})\bigr),
+\]
+we have
+\[
+\nabla_{\bm{\theta}} F_{\text{data}}
+=
+J(\bm{\theta})^\top\bm{g}_p(\bm{p}),
+\]
+\[
+\nabla_{\bm{\theta}}^2 F_{\text{data}}
+=
+J(\bm{\theta})^\top\bm{H}_p(\bm{p})J(\bm{\theta})
++
+\sum_{i=1}^K g_{p,i}(\bm{p})\,\nabla_{\bm{\theta}}^2 p_i(\bm{\theta}),
+\]
+where $\bm{H}_p(\bm{p})$ is the MacroTaylor Hessian in $\bm{p}$ and
+$g_{p,i}$ is the $i$-th component of $\bm{g}_p$.
+
+The exact posterior Hessian in logit space is
+\[
+\bm{H}_\theta(\bm{\theta})
+=
+\nabla_{\bm{\theta}}^2 F_{\text{exact}}(\bm{\theta})
+=
+\bm{S}^{-1}
++
+J(\bm{\theta})^\top\bm{H}_p(\bm{p})J(\bm{\theta})
++
+\sum_{i=1}^K g_{p,i}(\bm{p})\,\nabla_{\bm{\theta}}^2 p_i(\bm{\theta}).
+\]
+
+Near the MAP $\bm{\theta}^\star$ the last term (curvature of the softmax mapping itself) is typically small when the posterior is concentrated.
+A Gauss--Newton approximation drops this term:
+\[
+\bm{H}_\theta(\bm{\theta}^\star)
+\approx
+\bm{S}^{-1}
++
+J(\bm{\theta}^\star)^\top\bm{H}_p\bigl(\bm{p}(\bm{\theta}^\star)\bigr)
+J(\bm{\theta}^\star).
+\]
+
+The logit-space Laplace covariance is then
+\[
+\bm{\Sigma}_\theta^{\text{post}}
+\approx
+\bm{H}_\theta(\bm{\theta}^\star)^{-1}.
+\]
+
+\subsection*{5. Induced mean and covariance in occupancy space}
+
+The posterior over $\bm{p}$ induced by the Gaussian posterior in $\bm{\theta}$ is
+logistic-normal and skewed.
+We approximate its first two moments by a Taylor expansion of $\bm{p}(\bm{\theta})$
+around $\bm{\theta}^\star$.
+
+Write the $i$-th component as $p_i(\bm{\theta})$ and denote its gradient and Hessian
+with respect to $\bm{\theta}$ at $\bm{\theta}^\star$ by
+\[
+\bm{j}_i := \nabla_{\bm{\theta}} p_i(\bm{\theta})\big|_{\bm{\theta}^\star}
+\in\mathbb{R}^{K-1},
+\qquad
+\bm{H}_i := \nabla_{\bm{\theta}}^2 p_i(\bm{\theta})\big|_{\bm{\theta}^\star}
+\in\mathbb{R}^{(K-1)\times(K-1)}.
+\]
+By definition,
+\[
+\bm{j}_i^\top
+\text{ is the $i$-th row of }J(\bm{\theta}^\star).
+\]
+
+\paragraph{Second-order mean (default).}
+Using a second-order Taylor expansion and taking the Gaussian expectation, the mean of $p_i$ is approximated by
+\[
+\mathbb{E}[p_i]
+\approx
+p_i(\bm{\theta}^\star)
++
+\frac{1}{2}\,\mathrm{tr}\bigl(\bm{H}_i\,\bm{\Sigma}_\theta^{\text{post}}\bigr),
+\qquad i=1,\dots,K.
+\]
+Thus our default Macrologit posterior mean in occupancy space is
+\[
+(\bm{\mu}_p)_i
+\approx
+p_i(\bm{\theta}^\star)
++
+\frac{1}{2}\,\mathrm{tr}\bigl(\bm{H}_i\,\bm{\Sigma}_\theta^{\text{post}}\bigr).
+\]
+
+The softmax Hessians $\bm{H}_i$ can be computed analytically from the definition
+$p_i(\bm{\theta}) = \exp(\tilde{\theta}_i)/Z(\bm{\theta})$.
+(For implementation: derive $\nabla_{\bm{\theta}}^2 p_i$ once symbolically and reuse it.)
+
+\paragraph{First-order covariance (delta method).}
+For the covariance we keep the first-order (delta method) approximation:
+to first order in $(\bm{\theta}-\bm{\theta}^\star)$,
+\[
+\bm{p}(\bm{\theta})
+\approx
+\bm{p}(\bm{\theta}^\star)
++
+J(\bm{\theta}^\star)(\bm{\theta}-\bm{\theta}^\star),
+\]
+so
+\[
+\bm{\Sigma}_p
+\approx
+J(\bm{\theta}^\star)\,\bm{\Sigma}_\theta^{\text{post}}\,J(\bm{\theta}^\star)^\top.
+\]
+
+Because $J(\bm{\theta}^\star)$ satisfies
+$\bm{1}^\top J(\bm{\theta}^\star)=\bm{0}^\top$, the induced covariance obeys
+\[
+\bm{\Sigma}_p\,\bm{1} = \bm{0},
+\qquad
+\bm{1}^\top\bm{\Sigma}_p = \bm{0}^\top,
+\]
+so all fluctuations lie in the tangent space of the simplex and the sum of probabilities is preserved.
+
+If desired, a purely first-order mean approximation is obtained by dropping the Hessian terms:
+\[
+(\bm{\mu}_p)_i \approx p_i(\bm{\theta}^\star).
+\]
+In Macrologit we use the second-order expression above as the default.
+
+\subsection*{6. Macrologit interval update algorithm (summary)}
+
+For one interval and observation $y$:
+
+\begin{enumerate}
+\item \textbf{Prior in logit space.}
+Start from a prior
+$\bm{\theta}\sim\mathcal{N}(\bm{m},\bm{S})$,
+or map a prior in $\bm{p}$ to logits via
+$\bm{\theta}_0 = \mathrm{logit}(\bm{p}_0)$ (reference-state gauge).
+
+\item \textbf{Newton iterations in $\bm{\theta}$.}
+At a current iterate $\bm{\theta}_k$:
+\begin{enumerate}
+\item Compute $\bm{p}_k = \bm{p}(\bm{\theta}_k)$ via the softmax definition.
+\item Evaluate the MacroTaylor gradient $\bm{g}_p(\bm{p}_k)$ and Hessian $\bm{H}_p(\bm{p}_k)$ in $\bm{p}$.
+\item Compute the softmax Jacobian $J_k = J(\bm{\theta}_k)$.
+\item Form
+\[
+\bm{g}_\theta(\bm{\theta}_k)
+=
+(\bm{\theta}_k-\bm{m})^\top\bm{S}^{-1}
++
+J_k^\top\bm{g}_p(\bm{p}_k),
+\]
+\[
+\bm{H}_\theta(\bm{\theta}_k)
+\approx
+\bm{S}^{-1}
++
+J_k^\top\bm{H}_p(\bm{p}_k)J_k
+\]
+(Gauss--Newton approximation).
+\item Take a Newton step
+\[
+\Delta\bm{\theta}_k
+=
+-\,\bm{g}_\theta(\bm{\theta}_k)\,
+\bm{H}_\theta(\bm{\theta}_k)^{-1},
+\qquad
+\bm{\theta}_{k+1} = \bm{\theta}_k + \Delta\bm{\theta}_k.
+\]
+\end{enumerate}
+
+\item \textbf{MAP and logit covariance.}
+Iterate until convergence to the MAP $\bm{\theta}^\star$.
+Approximate the logit posterior as
+\[
+\bm{\theta}\mid y \approx
+\mathcal{N}(\bm{\theta}^\star,\bm{\Sigma}_\theta^{\text{post}}),
+\qquad
+\bm{\Sigma}_\theta^{\text{post}}
+\approx
+\bm{H}_\theta(\bm{\theta}^\star)^{-1}.
+\]
+
+\item \textbf{Posterior in occupancy space.}
+Compute the Macrologit posterior summary in $\bm{p}$:
+\[
+(\bm{\mu}_p)_i
+\approx
+p_i(\bm{\theta}^\star)
++
+\frac{1}{2}\,\mathrm{tr}\bigl(\bm{H}_i\,\bm{\Sigma}_\theta^{\text{post}}\bigr),
+\qquad
+\bm{\Sigma}_p
+\approx
+J(\bm{\theta}^\star)\,\bm{\Sigma}_\theta^{\text{post}}\,J(\bm{\theta}^\star)^\top.
+\]
+This respects
+$p_i>0$ and $\sum_i p_i=1$ by construction, and fluctuations remain in the tangent space of the simplex.
+\end{enumerate}
+
+Away from the boundaries of the simplex, the resulting MAP and covariance in $\bm{p}$ agree, to Laplace order, with the linear MacroTaylor approximation performed directly in $\bm{p}$-space.
+Near the boundaries, the logit parametrisation prevents illegal probabilities while preserving the MacroTaylor interval likelihood structure.
+
+\end{document}

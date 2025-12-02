@@ -110,7 +110,14 @@ struct Conditional_concat<V<Ts...>, Tag, If_then<Condition,U>,If_then<Conditions
 };
 
 template<class V, class U>struct add_impl;
+template<class V, class U>
+using add_t=typename add_impl<V,U>::type;
 
+template<template<class...> class V, class...Vs, class aVar>
+requires (aVar::is_variable)
+struct add_impl<V<Vs...>,aVar>{
+    using type=add_t<V<Vs...>,typename aVar::value_type>;
+};
 
 
 template<template<class...> class V, class...Vs, template<class...>class U, class...Us>

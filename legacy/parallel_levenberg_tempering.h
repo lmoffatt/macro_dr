@@ -125,7 +125,7 @@ struct levenberg_mcmc {
     std::size_t i_walker;
     var::Parameters_transformed m_x;
     dlogPs m_logP;
-    dlogLs m_logL;
+    dMacro_State_Hessian_minimal m_logL;
 
     logLs get_logLs() const {
         return {get<logL>(m_logL), get<elogL>(m_logL), get<vlogL>(m_logL)};
@@ -550,7 +550,7 @@ void step_levenberg_thermo_mcmc(FunctionTable& f, std::size_t& iter, thermo_leve
     ++iter;
 }
 
-inline double calc_logA(double betai, double betaj, dlogLs const& logLi, dlogLs const& logLj) {
+inline double calc_logA(double betai, double betaj, dMacro_State_Hessian_minimal const& logLi, dMacro_State_Hessian_minimal const& logLj) {
     return -(betai - betaj) * (get<logL>(logLi)() - get<logL>(logLj)());
 }
 

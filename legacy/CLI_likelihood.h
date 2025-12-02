@@ -63,7 +63,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<0>>(
+                                                Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
@@ -75,7 +75,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<1>>(
+                                                Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         //  std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
@@ -87,7 +87,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<2>>(
+                                                Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -105,7 +105,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<0>>(
+                                                Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
@@ -117,7 +117,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<1>>(
+                                                Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
@@ -129,7 +129,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<2>>(
+                                                Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -147,7 +147,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<0>>(
+                                                Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
@@ -159,7 +159,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<1>>(
+                                                Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
@@ -171,7 +171,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<2>>(
+                                                Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -189,7 +189,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<0>>(
+                                                Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
@@ -201,7 +201,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<1>>(
+                                                Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
@@ -213,7 +213,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<2>>(
+                                                Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);
@@ -231,7 +231,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<0>>(
+                                                Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         std::cerr << "<\nlog_Likelihood\n" << lik0 << "\n";
@@ -243,7 +243,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<1>>(
+                                                Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
                         // std::cerr<<"\nlog_Likelihood 1\n"<<lik1<<"\n";
@@ -255,7 +255,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
-                                                return_predictions<2>>(
+                                                Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
                             save_Likelihood_Predictions(outfilename, lik1.value(), y, experiment);

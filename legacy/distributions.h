@@ -232,7 +232,8 @@ class logEv : public var::Var<logEv, double> {
 };
 
 class logL : public var::Var<logL, double> {
-   public:
+    public:
+
     friend std::string className(logL) {
         return "logL";
     }
@@ -324,7 +325,7 @@ inline logLs nan_logL() {
                  vlogL(std::numeric_limits<double>::quiet_NaN()));
 }
 
-using dlogLs = var::Vector_Space<logL, elogL, vlogL, Grad, FIM>;
+using dMacro_State_Hessian_minimal = var::Vector_Space<logL, elogL, vlogL, Grad, FIM>;
 using dlogPs = var::Vector_Space<logL, Grad, FIM>;
 
 template <class... Vs>
