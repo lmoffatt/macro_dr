@@ -835,7 +835,21 @@ struct dMacro_State
     : public Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
                           var::Derivative<Patch_State, var::Parameters_transformed>, Vars...> {
     dMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
-        get<var::Derivative<Patch_State, var::Parameters_transformed>>((*this)) = std::move(dps);
+        auto const& dx = var::get_dx_of_dfdx(dps);
+
+        // Seed the prior patch state (carries dx).
+        get<var::Derivative<Patch_State, var::Parameters_transformed>>(*this) = std::move(dps);
+        // Accumulators start at zero/empty but share the same dx.
+        auto& l = get<var::Derivative<logL, var::Parameters_transformed>>(*this);
+        l = var::Derivative<logL, var::Parameters_transformed>(build<logL>(0.0));
+        l.derivative().set_dx(dx);
+        auto set_dx_if_present = [&](auto& component) {
+            if constexpr (requires { component.derivative().set_dx(dx); }) {
+                component.derivative().set_dx(dx);
+            }
+        };
+        if constexpr (sizeof...(Vars) > 0)
+            ((get<Vars>(*this) = Vars{}, set_dx_if_present(get<Vars>(*this)), 0) , ... );
     }
     dMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
                  var::Derivative<Patch_State, var::Parameters_transformed>&& dps, Vars&&... vars)
@@ -852,7 +866,20 @@ template <typename... Vars>
 struct ddMacro_State
     : public var::Derivative<Vector_Space<logL, Patch_State, Vars...>, var::Parameters_transformed> {
     ddMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
+        auto const& dx = var::get_dx_of_dfdx(dps);
         get<Patch_State>(*this) = std::move(dps);
+
+        auto& l = get<logL>(*this);
+        l = build<logL>(0.0);
+        l.derivative().set_dx(dx);
+
+        auto set_dx_if_present = [&](auto& component) {
+            if constexpr (requires { component.derivative().set_dx(dx); }) {
+                component.derivative().set_dx(dx);
+            }
+        };
+        if constexpr (sizeof...(Vars) > 0)
+             ((get<Vars>(*this) = Vars{}, set_dx_if_present(get<Vars>(*this)), 0), ...);
     }
     ddMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
                   var::Derivative<Patch_State, var::Parameters_transformed>&& dps,
