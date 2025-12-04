@@ -861,6 +861,20 @@ struct ddMacro_State
               std::move(dl), std::move(dps), std::forward<Vars>(vars)...) {}
 };
 
+}  // namespace macrodr
+
+// Teach the generic derivative machinery that ddMacro_State lives in the
+// Parameters_transformed derivative universe, so that Transfer_Op_to and
+// related helpers propagate derivatives correctly.
+namespace var {
+template <class... Vars>
+struct transformation_type<macrodr::ddMacro_State<Vars...>> {
+    using type = Derivative_Op<Parameters_transformed>;
+};
+}  // namespace var
+
+namespace macrodr {
+
 using predictions_element =
     var::please_include<logL, elogL, vlogL, y_mean, y_var, P_mean, P_Cov, trust_coefficient>;
 
@@ -2163,6 +2177,16 @@ class Macro_DMR {
         auto& t_landa = get<lambda>(t_Qx);
         auto& t_W = get<W>(t_Qx);
         auto& t_g = get<g>(m);
+        using GType = std::decay_t<decltype(t_g)>;
+        using DX = var::dx_of_dfdx_t<GType>;
+        auto const& dx = [&]() -> const DX& {
+            if constexpr (var::is_derivative_v<GType>) {
+                return var::get_dx_of_dfdx(t_g);
+            } else {
+                static const DX no{};
+                return no;
+            }
+        }();
         auto t_min_P = get<min_P>(m);
         if constexpr (!Policy::enforce_gmean_bounds) {
             t_min_P() = eps;
@@ -2208,7 +2232,7 @@ class Macro_DMR {
                 }
             }
 
-            auto t_WgV_E2 = var::outside_in(std::move(WgV_E2), get_dx(t_V));
+            auto t_WgV_E2 = var::outside_in(std::move(WgV_E2), dx);
             auto r_gtotal_ij =
                 force_gtotal_in_range<Policy>(build<gtotal_ij>(t_V() * t_WgV_E2 * t_W()), t_g, r_P);
 
@@ -2255,7 +2279,7 @@ class Macro_DMR {
                     rgsqr_i[i] = rgsqr_i[i] + 2 * t_V()(i, k0) * WgV_Wg_E2[k0];
             }
 
-            auto r_gsqr_i = build<gsqr_i>(var::outside_in(rgsqr_i, var::get_dx(t_landa)));
+            auto r_gsqr_i = build<gsqr_i>(var::outside_in(rgsqr_i, dx));
 
             auto r_gvar_i = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
 
@@ -2391,7 +2415,16 @@ class Macro_DMR {
         auto& Wmat = get<W>(t_Eigs);
         auto& Ldiag = get<lambda>(t_Eigs);
         auto& t_g = get<g>(m);
-        auto& dx = get_dx(t_g);
+        using GType = std::decay_t<decltype(t_g)>;
+        using DX = var::dx_of_dfdx_t<GType>;
+        auto const& dx = [&]() -> const DX& {
+            if constexpr (var::is_derivative_v<GType>) {
+                return var::get_dx_of_dfdx(t_g);
+            } else {
+                static const DX no{};
+                return no;
+            }
+        }();
         auto t_min_P = get<min_P>(m);
         auto v_ladt = Ldiag() * dt;
         auto v_exp_ladt = apply(
@@ -2457,7 +2490,7 @@ class Macro_DMR {
                 auto Win_in = var::inside_out(Wmat());
                 auto tmp = mul_mm(Vin_in, WgV_E2);
                 auto prod_in = mul_mm(tmp, Win_in);
-                auto base = build<gtotal_ij>(var::outside_in(prod_in, get_dx(Vmat)));
+                auto base = build<gtotal_ij>(var::outside_in(prod_in, dx));
                 if constexpr (Policy::enforce_gmean_bounds)
                     return force_gmean_in_range(std::move(base), t_g);
                 else
@@ -2603,7 +2636,16 @@ class Macro_DMR {
         auto& Ldiag = get<lambda>(t_Eigs);
         auto& Wmat = get<W>(t_Eigs);
         auto& t_g = get<g>(m);
-        auto& dx = get_dx(t_g);
+        using GType = std::decay_t<decltype(t_g)>;
+        using DX = var::dx_of_dfdx_t<GType>;
+        auto const& dx = [&]() -> const DX& {
+            if constexpr (var::is_derivative_v<GType>) {
+                return var::get_dx_of_dfdx(t_g);
+            } else {
+                static const DX no{};
+                return no;
+            }
+        }();
         auto t_min_P = get<min_P>(m);
         auto v_ladt = Ldiag() * dt;
         auto v_exp_ladt = apply(
@@ -2666,7 +2708,7 @@ class Macro_DMR {
                 auto Win_in = var::inside_out(Wmat());
                 auto tmp = mul_mm(Vin_in, WgV_E2);
                 auto prod_in = mul_mm(tmp, Win_in);
-                auto base = build<gtotal_ij>(var::outside_in(prod_in, get_dx(Vmat)));
+                auto base = build<gtotal_ij>(var::outside_in(prod_in, dx));
                 if constexpr (Policy::enforce_gmean_bounds)
                     return force_gmean_in_range(std::move(base), t_g);
                 else
@@ -2717,7 +2759,7 @@ class Macro_DMR {
                 for (std::size_t i = 0; i < prod3_in.nrows(); ++i)
                     for (std::size_t j = 0; j < prod3_in.ncols(); ++j)
                         prod3_in.set(i, j, prod3_in(i, j) + prod3_in(i, j));
-                return build<gtotal_sqr_ij>(var::outside_in(prod3_in, get_dx(Vmat)));
+                return build<gtotal_sqr_ij>(var::outside_in(prod3_in, dx));
             } else {
                 auto Vin_in = var::inside_out(Vmat());
                 auto Win_in = var::inside_out(Wmat());
@@ -4085,8 +4127,12 @@ class Macro_DMR {
     template <class C_y_var>
     auto calculate_logL(bool y_is_nan, C_y_var const& r_y_var, auto const& chi2,
                         trust_coefficient alfa, auto& m) const -> Transfer_Op_to<C_y_var, logL> {
+        using DX = var::dx_of_dfdx_t<C_y_var>;
+        auto const& dx = var::get_dx_of_dfdx(r_y_var);
+
         if (y_is_nan) {
-            return build<logL>(0);
+            auto base = var::init_with_dx<DX>(0.0, dx);
+            return build<logL>(std::move(base));
         }
         if (get<Proportional_Noise>(m).value() == 0) {
             return build<logL>(-0.5 * log(2 * std::numbers::pi * r_y_var() * alfa()) -
@@ -4100,8 +4146,12 @@ class Macro_DMR {
 
     template <class C_y_var, class CPatch_State>
     auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, auto& m) const {
+        using DX = var::dx_of_dfdx_t<C_y_var>;
+        auto const& dx = var::get_dx_of_dfdx(r_y_var);
+
         if (y_is_nan) {
-            return build<elogL>(0);
+            auto base = var::init_with_dx<DX>(0.0, dx);
+            return build<elogL>(std::move(base));
         }
         if (get<Proportional_Noise>(m).value() == 0) {
             return build<elogL>(-0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5);
@@ -4155,13 +4205,10 @@ class Macro_DMR {
         }();
         auto r_y_mean = build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i) + y_baseline());
         auto gSg = getvalue(TranspMult(t_gmean_i, SmD) * t_gmean_i);
-        auto e = get<Current_Noise>(m).value() * fs / get<number_of_samples>(t_Qdt).value() +
-                 get<Pink_Noise>(m).value();
         auto dy = y - r_y_mean();
-        if constexpr (PoissonDif)
-            e = e + get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
-        else
-            e = e + get<Proportional_Noise>(m).value() * abs(y);
+        auto e = get<Current_Noise>(m).value() * fs / get<number_of_samples>(t_Qdt).value() +
+                 get<Pink_Noise>(m).value() +
+                 get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
 
         auto r_y_var = build<y_var>(e);
         r_y_var() = r_y_var() + N * gSg;
@@ -4231,8 +4278,6 @@ class Macro_DMR {
         auto SmD = get<P_Cov>(t_prior())() - diag(p_P_mean());
         auto y_baseline = get<Current_Baseline>(m);
         constexpr bool PoissonDif = true;
-        auto e = get<Current_Noise>(m).value() * fs / get<number_of_samples>(t_Qdt).value() +
-                 get<Pink_Noise>(m).value();
         auto& t_gmean_i = [&t_Qdt, &m]() -> decltype(auto) {
             if constexpr (averaging::value > 0)
                 return get<gmean_i>(t_Qdt);
@@ -4253,10 +4298,9 @@ class Macro_DMR {
             }
         }();
         auto r_y_mean = build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
-        if constexpr (PoissonDif)
-            e = e + get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
-        else
-            e = e + get<Proportional_Noise>(m).value() * abs(y);
+        auto e = get<Current_Noise>(m).value() * fs / get<number_of_samples>(t_Qdt).value() +
+                 get<Pink_Noise>(m).value() +
+                 get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
         auto r_y_var = build<y_var>(e + N * gSg);
         if constexpr (variance::value) {
             auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
@@ -4902,7 +4946,20 @@ class Macro_DMR {
             return ini.error();
         }
 
+        using DX = var::dx_of_dfdx_t<C_Parameters>;
+        if constexpr (!std::is_same_v<DX, var::NoDerivative>) {
+            MACRODR_DX_ASSERT(var::has_dx(par) &&
+                              "log_Likelihood: derivative parameters missing dx()");
+            MACRODR_DX_ASSERT(var::has_dx(ini.value()) &&
+                              "log_Likelihood: init(m) result missing dx in derivative mode");
+        }
+
         auto t_macro = MacroState(std::move(ini.value()));
+
+        if constexpr (!std::is_same_v<DX, var::NoDerivative>) {
+            MACRODR_DX_ASSERT(var::has_dx(t_macro) &&
+                              "log_Likelihood: MacroState constructed without dx in derivative mode");
+        }
 
         auto Maybe_run = fold(
             0ul, y().size(), std::move(t_macro),

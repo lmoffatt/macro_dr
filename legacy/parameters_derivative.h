@@ -6,11 +6,14 @@
 
 // Toggleable assertion for derivative dx-pointer checks.
 // Define MACRODR_STRICT_DX_ASSERT at compile time to enable hard asserts.
-#ifndef MACRODR_STRICT_DX_ASSERT
-#define MACRODR_DX_ASSERT(cond) ((void)0)
-#else
-#define MACRODR_DX_ASSERT(cond) assert(cond)
+#ifndef MACRODR_DX_ASSERT
+  #ifndef MACRODR_STRICT_DX_ASSERT
+    #define MACRODR_DX_ASSERT(cond) ((void)0)
+  #else
+    #define MACRODR_DX_ASSERT(cond) assert(cond)
+  #endif
 #endif
+
 #include <cstddef>
 #include <limits>
 #include <vector>
@@ -162,7 +165,8 @@ class d_d_<aMatrix<double>, Parameters_transformed> {
         using S = std::decay_t<std::invoke_result_t<F, aMatrix<double>>>;
         Matrix<S> x(a().nrows(), a().ncols());
         for (std::size_t i = 0; i < x.size(); ++i) x[i] = f(a()[i]);
-        assert(a.has_dx());
+        MACRODR_DX_ASSERT(a.has_dx() &&
+                          "apply_par: d_d_<Matrix<double>,Parameters_transformed> missing dx");
         return d_d_<S, Parameters_transformed>(x, a.dx());
     }
 
@@ -307,6 +311,13 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
         return *this;
     }
 
+    // Value-only constructor: used in a few generic
+    // algorithms (e.g. clamping helpers) where a
+    // derivative shell is constructed from a scalar.
+    // These shells deliberately have no dx(); any
+    // attempt to use them in a semantic derivative
+    // context will trip MACRODR_DX_ASSERT when
+    // dx() or get_dx_of_dfdx(...) is called.
     Derivative(double t_x) : m_x{t_x} {}
 
     Derivative(const Derivative& x) = default;
@@ -540,6 +551,10 @@ class Derivative<T_Matrix<double>,
 
     template <class P>
         requires(std::constructible_from<primitive_type, P>)
+    // Value-only constructor: provides an empty-shell derivative
+    // with no dx() for container / structural uses. Semantic paths
+    // should prefer constructors that also set dx(), and misuse is
+    // guarded at runtime via MACRODR_DX_ASSERT in dx accessors.
     Derivative(P&& t_x) : m_x{std::forward<P>(t_x)}, m_d{} {}
 
     auto& primitive_non_const() { return m_x; }  // {return static_cast<primitive_type&>(*this);}
@@ -688,7 +703,8 @@ template <class F>
         { f.derivative()().nrows() };
     }
 auto& get_dx_of_dfdx(const Derivative<F, Parameters_transformed>& f) {
-    assert(f.has_dx());
+    MACRODR_DX_ASSERT(f.has_dx() &&
+                      "get_dx_of_dfdx: Derivative<F, Parameters_transformed> missing dx pointer");
     return f.dx();
 }
 

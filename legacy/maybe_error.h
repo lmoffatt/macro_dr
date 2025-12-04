@@ -476,6 +476,18 @@ inline Maybe_error<bool> operator&&(Maybe_error<bool>&& one, Maybe_error<bool>&&
         return error_message(one.error()() + two.error()());
 }
 
+// Logical OR for Maybe_error<bool>: return the first valid result if any,
+// otherwise aggregate error messages.
+inline Maybe_error<bool> operator||(Maybe_error<bool>&& one, Maybe_error<bool>&& two) {
+    if (one.valid()) {
+        return std::move(one);
+    }
+    if (two.valid()) {
+        return std::move(two);
+    }
+    return error_message(one.error()() + two.error()());
+}
+
 template <class T>
 Maybe_error<std::vector<T>> promote_Maybe_error(std::vector<Maybe_error<T>> const& x) {
     std::vector<T> out(size(x));

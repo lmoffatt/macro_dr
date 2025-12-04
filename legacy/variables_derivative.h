@@ -142,6 +142,20 @@ auto Taylor_first(const Derivative<Vector_Space<Ids...>, X>& f, const Parameters
     return Vector_Space<Ids...>(Ids(Taylor_first(get<Ids>(f), x, eps).value())...);
 }
 
+// initialize overload for Vector_Space values:
+// when the input lives in a derivative universe, lift each component Id into
+// a Derivative_t<Id,X> that shares the same dx() pointer. This complements
+// the scalar initialize(Input,T) in derivative_operator.h.
+template <class Input, class... Ids>
+    requires(var::is_derivative_v<std::decay_t<Input>>)
+auto initialize(Vector_Space<Ids...>&& v, const Input& in) {
+    using Dir = dx_of_dfdx_t<std::decay_t<Input>>;
+    static_assert(!std::is_same_v<Dir, NoDerivative>,
+                  "initialize(Vector_Space,Input): derivative input has no dx_of_dfdx_t direction");
+
+    return Derivative<Vector_Space<Ids...>, Dir>(initialize(get<Ids>(std::move(v)), in)...);
+}
+
 template <class Id, class X>
     requires(Id::is_variable)
 class Derivative<Id, X> : public Derivative<typename Id::variable_type, X> {
