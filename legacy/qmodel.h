@@ -840,16 +840,20 @@ struct dMacro_State
         // Seed the prior patch state (carries dx).
         get<var::Derivative<Patch_State, var::Parameters_transformed>>(*this) = std::move(dps);
         // Accumulators start at zero/empty but share the same dx.
-        auto& l = get<var::Derivative<logL, var::Parameters_transformed>>(*this);
-        l = var::Derivative<logL, var::Parameters_transformed>(build<logL>(0.0));
-        l.derivative().set_dx(dx);
-        auto set_dx_if_present = [&](auto& component) {
-            if constexpr (requires { component.derivative().set_dx(dx); }) {
-                component.derivative().set_dx(dx);
+        auto seed_with_dx = [&](auto& component) {
+            using Comp = std::decay_t<decltype(component)>;
+            if constexpr (std::constructible_from<Comp, decltype(dx) const&>) {
+                component = Comp(dx);
+            } else {
+                component = Comp{};
+                if constexpr (requires { component.derivative().set_dx(dx); }) {
+                    component.derivative().set_dx(dx);
+                }
             }
         };
+        seed_with_dx(get<var::Derivative<logL, var::Parameters_transformed>>(*this));
         if constexpr (sizeof...(Vars) > 0)
-            ((get<Vars>(*this) = Vars{}, set_dx_if_present(get<Vars>(*this)), 0) , ... );
+            ((seed_with_dx(get<Vars>(*this))), ...);
     }
     dMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
                  var::Derivative<Patch_State, var::Parameters_transformed>&& dps, Vars&&... vars)
@@ -869,17 +873,20 @@ struct ddMacro_State
         auto const& dx = var::get_dx_of_dfdx(dps);
         get<Patch_State>(*this) = std::move(dps);
 
-        auto& l = get<logL>(*this);
-        l = build<logL>(0.0);
-        l.derivative().set_dx(dx);
-
-        auto set_dx_if_present = [&](auto& component) {
-            if constexpr (requires { component.derivative().set_dx(dx); }) {
-                component.derivative().set_dx(dx);
+        auto seed_with_dx = [&](auto& component) {
+            using Comp = std::decay_t<decltype(component)>;
+            if constexpr (std::constructible_from<Comp, decltype(dx) const&>) {
+                component = Comp(dx);
+            } else {
+                component = Comp{};
+                if constexpr (requires { component.derivative().set_dx(dx); }) {
+                    component.derivative().set_dx(dx);
+                }
             }
         };
+        seed_with_dx(get<logL>(*this));
         if constexpr (sizeof...(Vars) > 0)
-             ((get<Vars>(*this) = Vars{}, set_dx_if_present(get<Vars>(*this)), 0), ...);
+            ((seed_with_dx(get<Vars>(*this))), ...);
     }
     ddMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
                   var::Derivative<Patch_State, var::Parameters_transformed>&& dps,

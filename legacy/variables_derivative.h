@@ -18,6 +18,16 @@ class Derivative<Var<Id, T>, X> {
     constexpr auto& operator()() const { return m_x; }
     //constexpr auto& operator[](Var<Id>) const { return *this; }
 
+    // Seed with a dx pointer and zero derivative.
+    template <class DX>
+        requires std::constructible_from<Derivative<T, X>, T, const DX&>
+    explicit Derivative(const DX& dx) : m_x{T{}, dx} {}
+
+    // Seed with a value and dx pointer.
+    template <class V, class DX>
+        requires std::constructible_from<Derivative<T, X>, V, const DX&>
+    Derivative(V&& value, const DX& dx) : m_x{std::forward<V>(value), dx} {}
+
     template <class... Ts>
     constexpr auto operator()(const Ts&...) const {
         return Derivative<Id, X>(*this);
@@ -26,10 +36,18 @@ class Derivative<Var<Id, T>, X> {
     constexpr Derivative() = default;
     constexpr auto& value() const { return m_x; }
     decltype(auto) primitive() const { return m_x.primitive(); }
-    
-    auto derivative() const 
-    requires requires (const Derivative<T, X>& d) { d.derivative(); }
-    { return m_x.derivative(); }
+
+    auto& derivative()
+        requires requires (Derivative<T, X>& d) { d.derivative(); }
+    {
+        return m_x.derivative();
+    }
+
+    auto& derivative() const
+        requires requires (const Derivative<T, X>& d) { d.derivative(); }
+    {
+        return m_x.derivative();
+    }
 
     auto& dx() const { return m_x.dx(); }
     bool has_dx() const { return m_x.has_dx(); }
@@ -94,6 +112,7 @@ template <class... Ids, class X>
     requires(Ids::is_variable && ...)
 class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids, X>...> {
     using base_type = Vector_Space<Derivative_t<Ids, X>...>;
+    using dx_type = dx_of_dfdx_t<Derivative_t<Ids, X>...>;
 
    public:
     template <class Id>
@@ -116,6 +135,25 @@ class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids
     Derivative() = default;
     Derivative(Derivative_t<Ids, X>&&... t_vars) : base_type{std::move(t_vars)...} {}
     Derivative(Derivative_t<Ids, X> const&... t_vars) : base_type{t_vars...} {}
+    // Seed every component with the same dx pointer when available.
+    template <class DX>
+        requires(std::same_as<std::decay_t<DX>, dx_type> &&
+                 ((std::constructible_from<Derivative_t<Ids, X>, const DX&> ||
+                   std::default_initializable<Derivative_t<Ids, X>>) &&
+                  ...))
+    explicit Derivative(const DX& dx) : base_type{make_component<Derivative_t<Ids, X>>(dx)...} {}
+
+   private:
+    template <class Comp, class DX>
+    static auto make_component(const DX& dx) {
+        if constexpr (std::constructible_from<Comp, const DX&>) {
+            return Comp(dx);
+        } else {
+            return Comp{};
+        }
+    }
+
+   public:
     // Vector_Space(std::decay_t <decltype(std::declval<Vars const&>().value())> ... t_vars): Vars{std::move(t_vars)}...{}
 
     friend auto& operator<<(std::ostream& os, const Derivative& x) {
@@ -161,6 +199,8 @@ template <class Id, class X>
 class Derivative<Id, X> : public Derivative<typename Id::variable_type, X> {
    public:
     using base_type = Derivative<typename Id::variable_type, X>;
+
+    using base_type::base_type;
 
     template <class IdT>
         requires std::is_same_v<Id, std::decay_t<IdT>>
