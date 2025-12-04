@@ -13,6 +13,17 @@
 #include "matrix.h"
 #include "maybe_error.h"
 #include "variables.h"
+
+// Toggleable assertion for derivative dx-pointer checks in the core
+// derivative machinery. If MACRODR_STRICT_DX_ASSERT is defined,
+// dx-related assertions are enabled; otherwise they are compiled out.
+#ifndef MACRODR_DX_ASSERT
+  #ifndef MACRODR_STRICT_DX_ASSERT
+    #define MACRODR_DX_ASSERT(cond) ((void)0)
+  #else
+    #define MACRODR_DX_ASSERT(cond) assert(cond)
+  #endif
+#endif
 namespace var {
 
 /**
@@ -157,14 +168,16 @@ class Derivative<double, double> {
     constexpr Derivative(double x, const double& dx) : m_x{x}, m_d{0.0, dx} {}
     Derivative() = default;
     auto& dx() const {
-        assert(m_d.has_dx());
+        MACRODR_DX_ASSERT(m_d.has_dx() &&
+                          "Derivative<double,double>::dx() called without valid dx pointer");
         return m_d.dx();
     }
     [[nodiscard]] bool has_dx() const { return m_d.has_dx(); }
 
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
-        assert(x.derivative().has_dx());
+        MACRODR_DX_ASSERT(x.derivative().has_dx() &&
+                          "exp(Derivative<double,double>): missing dx pointer");
         return Derivative(f, f * x.derivative()(), x.dx());
     }
 
@@ -179,7 +192,8 @@ class Derivative<double, double> {
         if (x.primitive() >= y) {
             return x;
         } else {
-            assert(x.derivative().has_dx());
+            MACRODR_DX_ASSERT(x.derivative().has_dx() &&
+                              "min(Derivative<double,double>): missing dx pointer");
             return Derivative(y, 0.0 * x.derivative()(), x.dx());
         }
     }
@@ -235,13 +249,15 @@ class Derivative<double, Matrix<double>> {
     Derivative() = default;
 
     auto& dx() const {
-        assert(m_d.has_dx());
+        MACRODR_DX_ASSERT(m_d.has_dx() &&
+                          "Derivative<double,Matrix<double>>::dx() called without valid dx pointer");
         return m_d.dx();
     }
 
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
-        assert(x.derivative().has_dx());
+        MACRODR_DX_ASSERT(x.derivative().has_dx() &&
+                          "exp(Derivative<double,Matrix<double>>): missing dx pointer");
         return Derivative(f, f * x.derivative()(), x.dx());
     }
 
@@ -552,6 +568,37 @@ auto operator-(const T& x, const S& y) {
     using F = decltype(x - primitive(y));
 
     return Derivative<F, X>(x - primitive(y), derivative(y)() * (-1.0), y.dx());
+}
+
+// Helper: initialize a value `x` either as a plain primitive (when `input`
+// does not live in the derivative universe) or as a Derivative<...,Dir>
+// sharing the same dx() pointer as `input`.
+//
+// This is the disciplined entry point for "always have dx by construction":
+// - If `input` is not a var::Derivative, we just return `x`.
+// - If `input` is a var::Derivative and `T` is primitive, we lift `x` into
+//   Derivative<T, dx_of_dfdx_t<Input>> using `input.dx()`.
+//
+// More specialized lifting (e.g. for Vector_Space-valued outputs) can be
+// added later by providing additional overloads or partial specializations.
+
+// Primitive path: input is not a derivative → keep T as-is.
+template <class Input, class T>
+    requires(!is_derivative_v<std::decay_t<Input>>)
+auto initialize(T&& x, const Input&) {
+    return std::forward<T>(x);
+}
+
+// Derivative path: input is a derivative (or wraps one) and T is primitive.
+template <class Input, class T>
+    requires(is_derivative_v<std::decay_t<Input>> && !is_derivative_v<std::decay_t<T>>)
+auto initialize(T&& x, const Input& in) {
+    using Dir = dx_of_dfdx_t<std::decay_t<Input>>;
+    static_assert(!std::is_same_v<Dir, NoDerivative>,
+                  "initialize(Input,T): derivative input has no dx_of_dfdx_t direction");
+
+    using F = std::decay_t<T>;
+    return Derivative<F, Dir>(std::forward<T>(x), in.dx());
 }
 
 auto max(is_Container auto const& c) {

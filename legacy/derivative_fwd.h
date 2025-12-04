@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <type_traits>
 #include <vector>
 #include <maybe_error.h>
 namespace var {
@@ -231,6 +232,22 @@ bool has_dx(const T& x) {
 template <class X, class Y>
 decltype(auto) derivative(const Derivative<X, Y>& d) {
     return d.derivative();
+}
+
+// Initialize a value `x` either as a plain primitive (when DX == NoDerivative)
+// or as a Derivative<x, DX> sharing an explicit dx() pointer. This is the
+// building block for "always have dx by construction" at the function level:
+// synthesize a single DX/dx from the formal parameters, then call
+// init_with_dx<DX>(value, dx) wherever you need constants in that derivative
+// universe.
+template <class DX, class T>
+auto init_with_dx(T&& x, const DX& dx) {
+    if constexpr (std::is_same_v<std::decay_t<DX>, NoDerivative>) {
+        return std::forward<T>(x);
+    } else {
+        using F = std::decay_t<T>;
+        return Derivative<F, std::decay_t<DX>>(std::forward<T>(x), dx);
+    }
 }
 
 

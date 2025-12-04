@@ -900,9 +900,17 @@ Maybe_error<bool> test_derivative_clarke(F f, double h, const Xs&... xs) {
         auto Y_p = std::move(get_value(Maybe_Yp));
         auto Y_n = std::move(get_value(Maybe_Yn));
 
-        auto diff_p = Y_p - Tp;
-        auto diff_n = Y_n - Tn;
-        auto new_ok = test_clarke_brackets<inspect>(dY, Y, p, h, Y_p, Y_n);
+        // Work with primitives for Clarke brackets so the vector-space
+        // overloads see a consistent value type even if f returns
+        // Derivative<...> in some instantiations.
+        auto Y_p_prim = primitive(Y_p);
+        auto Y_n_prim = primitive(Y_n);
+        auto Y_prim = primitive(Y);
+
+        auto diff_p = Y_p_prim - Tp;
+        auto diff_n = Y_n_prim - Tn;
+        auto new_ok =
+            test_clarke_brackets<inspect>(dY, Y_prim, p, h, Y_p_prim, Y_n_prim);
         ok = concatenate_error(std::move(ok), std::move(new_ok));
     }
     return condense_errors(std::move(ok));

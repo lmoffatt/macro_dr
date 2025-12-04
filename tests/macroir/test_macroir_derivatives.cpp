@@ -77,49 +77,46 @@ const double fs=50e3;
 
 
     auto Nch = get<N_Ch_mean>(dm)()[0];
-    
+
     Maybe_error<bool> result(true);
-    for (std::size_t i_step = 0; i_step < record.size(); ++i_step)
-    { 
-    Agonist_evolution const& t_step =
-                            get<Agonist_evolution>(get<Recording_conditions>(experiment)()[i_step]);
+    for (std::size_t i_step = 0; i_step < record.size(); ++i_step) {
+        Agonist_evolution const& t_step =
+            get<Agonist_evolution>(get<Recording_conditions>(experiment)()[i_step]);
 
+        auto Maybe_t_Qdtm = Macro_DMR{}.calc_Qdtm(f_no_memoi, dm, t_step, fs);
+        if (!Maybe_t_Qdtm) {
+            UNSCOPED_INFO(Maybe_t_Qdtm.error()());
+        }
+        REQUIRE(Maybe_t_Qdtm.valid());
+        auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
 
-    auto Maybe_t_Qdtm = Macro_DMR{}.calc_Qdtm(f_no_memoi, dm, t_step, fs);
-    if (!Maybe_t_Qdtm) { UNSCOPED_INFO(Maybe_t_Qdtm.error()()); }
-    REQUIRE(Maybe_t_Qdtm.valid());
-    auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
+        auto result_i = var::test_derivative_clarke<false>(
+            [&](auto l_t_prior, auto const& l_Qdtm, auto const& l_m, auto const& l_Nch)
+                -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_t_prior)>,
+                                              var::Vector_Space<logL, Patch_State, elogL, vlogL,
+                                                                P_mean, P_Cov, y_mean, y_var>>> {
+                auto Maybe_res = MacroR2<uses_recursive_aproximation<true>,
+                                         uses_averaging_aproximation<2>,
+                                         uses_variance_aproximation<true>,
+                                         uses_taylor_variance_correction_aproximation<false>>{}(
+                    f_no_memoi, std::move(l_t_prior), l_Qdtm, l_m, l_Nch, y()[i_step], fs);
+                if (!Maybe_res)
+                    return Maybe_res.error();
+                return std::move(Maybe_res.value());
+            },
+            h, t_prior, t_Qdtm, dm, Nch);
+        result = std::move(result) && std::move(result_i);
 
-    auto Maybe_prior_next=MacroR2<uses_recursive_aproximation<true>,
-                                                uses_averaging_aproximation<2>,
-                                                uses_variance_aproximation<true>,
-                                                uses_taylor_variance_correction_aproximation<false>>{}(
-                f_no_memoi, std::move(t_prior), t_Qdtm, dm, Nch, y()[i_step], fs);
-    if (!Maybe_prior_next) { UNSCOPED_INFO(Maybe_prior_next.error()()); }
-    REQUIRE(Maybe_prior_next.valid());
-    auto t_prior = select<logL, elogL, vlogL, Patch_State, y_mean, y_var>(std::move(Maybe_prior_next.value()));
-
-
-    auto result_i = var::test_derivative_clarke<false>(
-        [&](auto l_t_prior, auto const& l_Qdtm, auto const& l_m, auto const& l_Nch)
-            -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_m)>,
-                var::Vector_Space<logL, elogL, vlogL, Patch_State, y_mean, y_var>>> {
-
-                    
-            auto Maybe_res = MacroR2<uses_recursive_aproximation<true>,
-                                                uses_averaging_aproximation<2>,
-                                                uses_variance_aproximation<true>,
-                                                uses_taylor_variance_correction_aproximation<false>>{}(
-                f_no_memoi, std::move(l_t_prior), l_Qdtm, l_m, l_Nch, y()[i_step], fs);
-            if (!Maybe_res) return Maybe_res.error();
-            return select<logL, elogL, vlogL, Patch_State, y_mean, y_var>(
-                std::move(Maybe_res.value()));
-        },
-        h,
-        t_prior, t_Qdtm, dm, Nch);
-    result = result || result_i;          
-                
-            
+        auto Maybe_prior_next = MacroR2<uses_recursive_aproximation<true>,
+                                        uses_averaging_aproximation<2>,
+                                        uses_variance_aproximation<true>,
+                                        uses_taylor_variance_correction_aproximation<false>>{}(
+            f_no_memoi, std::move(t_prior), t_Qdtm, dm, Nch, y()[i_step], fs);
+        if (!Maybe_prior_next) {
+            UNSCOPED_INFO(Maybe_prior_next.error()());
+        }
+        REQUIRE(Maybe_prior_next.valid());
+        t_prior = std::move(Maybe_prior_next.value());
     }
 
     REQUIRE(result);
