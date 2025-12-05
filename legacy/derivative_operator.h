@@ -386,6 +386,12 @@ auto get_dx_of_dfdx(const T&, const Ts&... ) {
     return NoDerivative{};
 }
 
+// Prefer the dx pointer carried by a Derivative when it is the first argument.
+template <class F, class X>
+auto const& get_dx_of_dfdx(const Derivative<F, X>& x) {
+    return x.dx();
+}
+
 
 template <class T,class T0, class... Ts>
     requires(!is_derivative_v<T>&&(is_derivative_v<T0>||...||is_derivative_v<Ts>))
@@ -402,14 +408,14 @@ template <class F, class X, class T,class... Ts>
     requires(is_derivative_v<T>||...||is_derivative_v<Ts>)
 auto const& get_dx_of_dfdx(const Derivative<F, X>& x,  const T& y, const Ts&...z) {
     if (x.has_dx()) {
-        return get_dx_of_dfdx(x);
+        return x.dx();
     }
     return get_dx_of_dfdx(y,z...);
 }
 template <class F, class X, class T,class... Ts>
     requires(!is_derivative_v<T>&&...&&!is_derivative_v<Ts>)
 auto const& get_dx_of_dfdx(const Derivative<F, X>& x,  const T& , const Ts&...) {
-        return get_dx_of_dfdx(x);
+        return x.dx();
 }
 
 
