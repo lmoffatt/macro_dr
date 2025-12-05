@@ -490,7 +490,10 @@ var::Var<T, Maybe_error<bool>> test_clarke_brackets(const Derivative<T, X>& Y0, 
 
     auto Ydiff = Y() - Y0.primitive()();
 
-    auto Ydiff_ok = maxAbs(Ydiff) < maxAbs(Y()) * eps;
+    auto y_norm = maxAbs(Y());
+    auto ydiff_norm = maxAbs(Ydiff);
+    // Accept exact match or relative closeness; the zero-baseline case should pass.
+    auto Ydiff_ok = (ydiff_norm <= eps) || (ydiff_norm <= y_norm * eps);
 
     auto h = t * u();
     auto J_u = g * u;  // directional derivative from analytic gradient
@@ -659,7 +662,10 @@ auto D_minus = (f0 - Yn()) / t;
 
 // Basic closeness guard (same as matrix flavor)
 auto Ydiff = Y() - f0;
-auto Ydiff_ok = std::abs(Ydiff) < std::abs(Y()) * eps;
+auto y_norm = std::abs(Y());
+auto ydiff_norm = std::abs(Ydiff);
+// Accept exact match or relative closeness; handle zero-baseline gracefully.
+auto Ydiff_ok = (ydiff_norm <= eps) || (ydiff_norm <= y_norm * eps);
 
 // Bracket band (scalar)
 auto mid   = 0.5 * (D_plus + D_minus);
