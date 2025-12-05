@@ -166,7 +166,7 @@ class Derivative<Vector_Space<Ids...>, X> : public Vector_Space<Derivative_t<Ids
         return Vector_Space<Ids...>(var::primitive(get<Ids>(*this))...);
     }
 
-    auto dx() const { return get_dx_of_dfdx(get<Ids>(*this)...); }
+    auto const& dx() const { return get_dx_of_dfdx(get<Ids>(*this)...); }
     bool has_dx() const { return (var::has_dx(get<Ids>(*this)) || ... || false); }
 };
 

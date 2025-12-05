@@ -72,7 +72,7 @@ const double fs=50e3;
     auto Maybe_t_prior = Macro_DMR{}.init(dm);
     if (!Maybe_t_prior) { UNSCOPED_INFO(Maybe_t_prior.error()()); }
     REQUIRE(Maybe_t_prior.valid());
-    auto t_prior = ddMacro_State<elogL, vlogL, P_mean, P_Cov, y_mean, y_var>(std::move(Maybe_t_prior.value()));
+    auto t_prior = ddMacro_State<elogL, vlogL, y_mean, y_var>(std::move(Maybe_t_prior.value()));
     auto record = get<Recording_conditions>(experiment)();
 
 
@@ -94,7 +94,7 @@ const double fs=50e3;
             [&](auto l_t_prior, auto const& l_Qdtm, auto const& l_m, auto const& l_Nch)
                 -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(l_t_prior)>,
                                               var::Vector_Space<logL, Patch_State, elogL, vlogL,
-                                                                P_mean, P_Cov, y_mean, y_var>>> {
+                                                                y_mean, y_var>>> {
                 auto Maybe_res = MacroR2<uses_recursive_aproximation<true>,
                                          uses_averaging_aproximation<2>,
                                          uses_variance_aproximation<true>,
