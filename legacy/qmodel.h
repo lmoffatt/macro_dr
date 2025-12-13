@@ -5976,6 +5976,29 @@ Maybe_error<Macro_State_Ev_predictions> logLikelihoodPredictions(
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class FunctionTable, class Model, class Parameters,
+          class Variables, class DataType>
+
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction>)
+Maybe_error<Macro_State_Ev_diagnostic> logLikelihoodDiagnostic(
+    FunctionTable& f,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
+                                     Model>& lik,
+    Parameters const& p, const DataType& y, const Variables& var) {
+    return Macro_DMR{}
+        .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
+                        Macro_State_Ev_diagnostic>(f, lik.m, p, y, var);
+}
+
+
+
+
+
+
+
+template <class adaptive, class recursive, class averaging, class variance,
           class variance_correction, class FuncTable, class Model, class Variables, class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&

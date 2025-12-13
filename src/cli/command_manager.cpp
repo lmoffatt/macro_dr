@@ -105,6 +105,37 @@ dsl::Compiler make_compiler_new() {
             "number_of_substates",
             "path"));
 
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      Simulated_Recording<var::please_include<>> const&,
+                                      Macro_State_Ev_predictions const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      Simulated_Recording<var::please_include<>> const&,
+                                      Macro_State_Ev_diagnostic const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      Simulated_Recording<var::please_include<>> const&,
+                                      dMacro_State_Ev_gradient_all const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>, Experiment const&,
+            Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
+            dMacro_State_Ev_gradient_all const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+
+            
+
                                               // Expose low-level model/qmodel helpers
     using ModelPtr = std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>;
 
@@ -259,6 +290,26 @@ dsl::Compiler make_compiler_new() {
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
             "variance_approximation", "taylor_variance_correction"));
 
+cm.push_function(
+        "calc_likelihood_diagnostic",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&, const Recording&,
+                               bool, bool, int, bool, bool>(
+            &cmd::calculate_likelihood_diagnostics, "model", "parameters", "experiment", "data",
+            "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
+
+cm.push_function(
+        "calc_likelihood_diagnostic",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&, 
+                               const  Simulated_Recording<var::please_include<>>&&,
+                               bool, bool, int, bool, bool>(
+            &cmd::calculate_simulation_likelihood_diagnostics, "model", "parameters", "experiment", "data",
+            "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
+
+
     cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
@@ -270,6 +321,17 @@ dsl::Compiler make_compiler_new() {
             "variance_approximation", "taylor_variance_correction"));
 
     cm.push_function(
+        "calc_dlikelihood_predictions",
+        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+                               const var::Parameters_values&, const Experiment&,
+                               const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>&, bool,
+                               bool, int, bool, bool>(
+            &cmd::calculate_simulation_sub_dlikelihood_predictions, "model", "parameters", "experiment",
+            "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
+            "variance_approximation", "taylor_variance_correction"));
+
+   
+            cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const std::string&, const var::Parameters_values&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
