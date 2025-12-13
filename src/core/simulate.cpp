@@ -139,7 +139,7 @@ Maybe_error<std::string> write_csv(Experiment const& e,
      }
      
      double ns=1.0/get<Frequency_of_Sampling>(e)();
-     f<<"step_kind"<<","<<"n_step"<<","<<"n_sub_step"<<","<<"step_start"<<","<<"step_end"<<","<<"step_middle"<<","<<"Agonist"<<","<<"patch_current"<<"\n";
+     f<<"n_step"<<","<<"n_sub_step"<<","<<"step_start"<<","<<"step_end"<<","<<"step_middle"<<","<<"Agonist"<<","<<"patch_current"<<"\n";
       
      double step_start=0.0;
     
@@ -168,7 +168,8 @@ Maybe_error<std::string> write_csv(Experiment const& e,
         double Agonist = get<Agonist_concentration>(ev[j])();
         double Patch_current =sub_y()[ii]();
         ++ii;
-        f<<"sub"<<","<<n_step<<","<<k<<","<<step_start<<","<<step_end<<","<<step_middle<<","<<Agonist<<","<<Patch_current<<"\n";
+        f<<"sub"<<","<<n_step<<","<<k<<","<<step_start<<","<<step_end<<","
+        <<step_middle<<","<<Agonist<<","<<Patch_current<<"\n";
         step_start=step_end;    
         }
     }
