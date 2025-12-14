@@ -20,4 +20,6 @@ Maybe_error<var::Parameters_Transformations> load_parameters(const ModelPtr& mod
 // Convenience: legacy alias returning transformations rather than raw values (safer across steps)
 var::Parameters_values get_standard_parameter_values(var::Parameters_Transformations const& tr);
 
+var::Parameters_transformed get_standard_parameter_transformed_values(var::Parameters_Transformations const& tr);
+
 }  // namespace macrodr::cmd

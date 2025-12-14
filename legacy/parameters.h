@@ -422,6 +422,8 @@ class Parameters_Transformations {
    public:
     auto standard_parameter() const { return Parameters_values(*this, m_standard_values); }
 
+   [[nodiscard]] Parameters_transformed standard_parameter_transformed() const;
+
     template <class C_Matrix>
         requires U<C_Matrix, Matrix<double>>
     auto inv(const C_Matrix& x) const {
@@ -583,6 +585,10 @@ class Parameters_transformed {
 
     auto to_value() const { return Parameters_values(parameters(), parameters().inv((*this)())); }
 };
+
+[[nodiscard]] inline Parameters_transformed Parameters_Transformations::standard_parameter_transformed() const { 
+    return Parameters_transformed(*this, this->tr(m_standard_values)); }
+
 
 // template <class Id>
 // void report_model(std::string filename, std::string sep,

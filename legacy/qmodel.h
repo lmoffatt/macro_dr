@@ -25,6 +25,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <random>
 #include <set>
@@ -821,6 +822,11 @@ class Evolution_of : public Var<Evolution_of<T>, std::vector<T>> {
     using value_type = std::vector<T>;
 };
 
+template <class V, class Id>
+concept has_var_c = requires(V&& v) {
+    std::forward<V>(v)[var::Var<Id>{}];
+};
+
 template <typename... Vars>
 struct Macro_State : public Vector_Space<logL, Patch_State, Vars...> {
     Macro_State() = default;
@@ -928,7 +934,8 @@ using Macro_State_minimal = Macro_State<>;
 
 using Macro_State_reg = add_t<Macro_State_minimal, var::please_include<elogL, vlogL>>;
 
-using dMacro_State_Hessian_minimal = add_t<dMacro_State<>, var::please_include<FIM>>;
+using dMacro_State_Hessian_minimal =
+    add_t<dMacro_State<>, var::please_include<FIM>>;
 
 using diff_Macro_State_Gradient_Hessian =
     add_t<Macro_State<>, var::please_include<elogL, vlogL, Grad, FIM>>;
@@ -951,11 +958,13 @@ using dMacro_State_Ev_gradient_all =
 
 template <class VS>
 constexpr bool is_Algo_dynamic() {
-    if constexpr (var::has_it_v<VS, Evolution>) {
-        using el = typename var::get_type_t<VS, Evolution>::element_type;
-        return var::has_it_v<el, Algo_State_Dynamic>;
+    if constexpr (has_var_c<VS const&, Evolution>) {
+        using Evo = std::decay_t<decltype(std::declval<VS const&>()[var::Var<Evolution>{}])>;
+        using El = typename Evo::element_type;
+        return has_var_c<El const&, Algo_State_Dynamic>;
+    } else {
+        return false;
     }
-    return false;
 }
 
 template <class C_Patch_Model, class C_double>
@@ -4393,7 +4402,7 @@ class Macro_DMR {
             Transfer_Op_to<C_Patch_State, Algo_State_Dynamic> out;
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
-            get<Chi2>(out())() = std::move(chi2);
+            get<Chi2>(out()) = std::move(chi2);
             if constexpr (averaging::value == 2) {
                 get<P_mean_t20_y1>(out())() = std::move(r_P_mean());
                 get<P_Cov_t20_y1>(out())() = std::move(r_P_cov());
@@ -4478,16 +4487,75 @@ class Macro_DMR {
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<Macro_State<vVars...>> update(Macro_State<vVars...>&& t_prior_all,
                                               C_Algo_State&& algo, logL const& t_logL) const {
+        // Update patch state for recursion.
+        {
+            auto& ps = get<Patch_State>(t_prior_all);
+            if constexpr (has_var_c<decltype(algo()) const&, P_mean> &&
+                          has_var_c<decltype(algo()) const&, P_Cov>) {
+                get<P_mean>(ps()) = get<P_mean>(algo());
+                get<P_Cov>(ps()) = get<P_Cov>(algo());
+            } else if constexpr (requires { algo.get_P_mean(); algo.get_P_Cov(); }) {
+                get<P_mean>(ps())() = algo.get_P_mean();
+                get<P_Cov>(ps())() = algo.get_P_Cov();
+            }
+        }
+
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
-        if constexpr (var::has_it_v<Macro_State<vVars...>, elogL>)
+
+        // Optional accumulators when both state and Algo_State provide them.
+        if constexpr (has_var_c<Macro_State<vVars...>&, elogL> &&
+                      has_var_c<decltype(algo()) const&, elogL>) {
             get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + get<elogL>(algo)();
-        if constexpr (var::has_it_v<Macro_State<vVars...>, vlogL>)
+        }
+        if constexpr (has_var_c<Macro_State<vVars...>&, vlogL> &&
+                      has_var_c<decltype(algo()) const&, vlogL>) {
             get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + get<vlogL>(algo)();
+        }
 
-        if constexpr (var::has_it_v<Macro_State<vVars...>, Evolution>) {
+        if constexpr (has_var_c<Macro_State<vVars...>&, Evolution>) {
             auto& evo = get<Evolution>(t_prior_all)();
+            using Evo = std::decay_t<decltype(get<Evolution>(t_prior_all))>;
+            using Element = typename Evo::element_type;
 
-            evo.emplace_back(algo);
+            Element el{};
+
+            if constexpr (has_var_c<Element&, logL>) {
+                get<logL>(el) = t_logL;
+            }
+            // Avoid uninitialized Constant defaults.
+            if constexpr (has_var_c<Element&, elogL>) {
+                get<elogL>(el)() = 0.0;
+            }
+            if constexpr (has_var_c<Element&, vlogL>) {
+                get<vlogL>(el)() = 0.0;
+            }
+
+            auto copy_component = [&](auto type_tag) {
+                using Id = typename decltype(type_tag)::type;
+                if constexpr (has_var_c<Element&, Id> && has_var_c<decltype(algo()) const&, Id>) {
+                    if constexpr (requires { get<Id>(el) = get<Id>(algo()); }) {
+                        get<Id>(el) = get<Id>(algo());
+                    } else if constexpr (requires { get<Id>(el) = var::primitive(get<Id>(algo())); }) {
+                        get<Id>(el) = var::primitive(get<Id>(algo()));
+                    }
+                }
+            };
+
+            // Common predicted fields.
+            copy_component(std::type_identity<y_mean>{});
+            copy_component(std::type_identity<y_var>{});
+            copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<P_mean>{});
+            copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<Chi2>{});
+
+            if constexpr (has_var_c<Element&, Algo_State_Dynamic>) {
+                if constexpr (requires { get<Algo_State_Dynamic>(el) = algo; }) {
+                    get<Algo_State_Dynamic>(el) = algo;
+                }
+            }
+
+            evo.emplace_back(std::move(el));
         }
         return std::move(t_prior_all);
     }
@@ -4539,16 +4607,64 @@ class Macro_DMR {
     Maybe_error<dMacro_State<vVars...>> update(
         dMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
         var::Derivative<logL, var::Parameters_transformed> const& t_logL) const {
+        // Update patch state (including derivatives) for recursion.
+        {
+            auto& ps = get<Patch_State>(t_prior_all);
+            if constexpr (has_var_c<decltype(algo()) const&, P_mean> &&
+                          has_var_c<decltype(algo()) const&, P_Cov>) {
+                get<P_mean>(ps()) = get<P_mean>(algo());
+                get<P_Cov>(ps()) = get<P_Cov>(algo());
+            }
+        }
+
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
-        if constexpr (var::has_it_v<Macro_State<vVars...>, elogL>)
-            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + get<elogL>(algo);
-        if constexpr (var::has_it_v<Macro_State<vVars...>, vlogL>)
-            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + get<vlogL>(algo);
 
-        if constexpr (var::has_it_v<Macro_State<vVars...>, Evolution>) {
+        if constexpr (has_var_c<dMacro_State<vVars...>&, Evolution>) {
             auto& evo = get<Evolution>(t_prior_all)();
+            using Evo = std::decay_t<decltype(get<Evolution>(t_prior_all))>;
+            using Element = typename Evo::element_type;
 
-            evo.emplace_back(algo);
+            Element el{};
+
+            if constexpr (has_var_c<Element&, logL>) {
+                get<logL>(el) = t_logL;
+            }
+            auto seed_zero = [&](auto type_tag) {
+                using Id = typename decltype(type_tag)::type;
+                if constexpr (has_var_c<Element&, Id>) {
+                    using Comp = std::decay_t<decltype(get<Id>(el))>;
+                    if constexpr (var::is_derivative_v<Comp>) {
+                        if constexpr (std::constructible_from<Comp, decltype(t_logL.dx()) const&>) {
+                            get<Id>(el) = Comp(t_logL.dx());
+                        }
+                    } else if constexpr (requires { get<Id>(el)() = 0.0; }) {
+                        get<Id>(el)() = 0.0;
+                    }
+                }
+            };
+
+            seed_zero(std::type_identity<elogL>{});
+            seed_zero(std::type_identity<vlogL>{});
+
+            auto copy_component = [&](auto type_tag) {
+                using Id = typename decltype(type_tag)::type;
+                if constexpr (has_var_c<Element&, Id> && has_var_c<decltype(algo()) const&, Id>) {
+                    if constexpr (requires { get<Id>(el) = get<Id>(algo()); }) {
+                        get<Id>(el) = get<Id>(algo());
+                    } else if constexpr (requires { get<Id>(el) = var::primitive(get<Id>(algo())); }) {
+                        get<Id>(el) = var::primitive(get<Id>(algo()));
+                    }
+                }
+            };
+
+            copy_component(std::type_identity<y_mean>{});
+            copy_component(std::type_identity<y_var>{});
+            copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<P_mean>{});
+            copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<Chi2>{});
+
+            evo.emplace_back(std::move(el));
         }
         return std::move(t_prior_all);
     }
@@ -4558,16 +4674,64 @@ class Macro_DMR {
     Maybe_error<ddMacro_State<vVars...>> update(
         ddMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
         var::Derivative<logL, var::Parameters_transformed> const& t_logL) const {
+        // Update patch state (including derivatives) for recursion.
+        {
+            auto& ps = get<Patch_State>(t_prior_all);
+            if constexpr (has_var_c<decltype(algo()) const&, P_mean> &&
+                          has_var_c<decltype(algo()) const&, P_Cov>) {
+                get<P_mean>(ps()) = get<P_mean>(algo());
+                get<P_Cov>(ps()) = get<P_Cov>(algo());
+            }
+        }
+
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
-        if constexpr (var::has_it_v<Macro_State<vVars...>, elogL>)
-            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + get<elogL>(algo);
-        if constexpr (var::has_it_v<Macro_State<vVars...>, vlogL>)
-            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + get<vlogL>(algo);
 
-        if constexpr (var::has_it_v<ddMacro_State<vVars...>, Evolution>) {
+        if constexpr (has_var_c<ddMacro_State<vVars...>&, Evolution>) {
             auto& evo = get<Evolution>(t_prior_all)();
+            using Evo = std::decay_t<decltype(get<Evolution>(t_prior_all))>;
+            using Element = typename Evo::element_type;
 
-            evo.emplace_back(algo);
+            Element el{};
+
+            if constexpr (has_var_c<Element&, logL>) {
+                get<logL>(el) = t_logL;
+            }
+            auto seed_zero = [&](auto type_tag) {
+                using Id = typename decltype(type_tag)::type;
+                if constexpr (has_var_c<Element&, Id>) {
+                    using Comp = std::decay_t<decltype(get<Id>(el))>;
+                    if constexpr (var::is_derivative_v<Comp>) {
+                        if constexpr (std::constructible_from<Comp, decltype(t_logL.dx()) const&>) {
+                            get<Id>(el) = Comp(t_logL.dx());
+                        }
+                    } else if constexpr (requires { get<Id>(el)() = 0.0; }) {
+                        get<Id>(el)() = 0.0;
+                    }
+                }
+            };
+
+            seed_zero(std::type_identity<elogL>{});
+            seed_zero(std::type_identity<vlogL>{});
+
+            auto copy_component = [&](auto type_tag) {
+                using Id = typename decltype(type_tag)::type;
+                if constexpr (has_var_c<Element&, Id> && has_var_c<decltype(algo()) const&, Id>) {
+                    if constexpr (requires { get<Id>(el) = get<Id>(algo()); }) {
+                        get<Id>(el) = get<Id>(algo());
+                    } else if constexpr (requires { get<Id>(el) = var::primitive(get<Id>(algo())); }) {
+                        get<Id>(el) = var::primitive(get<Id>(algo()));
+                    }
+                }
+            };
+
+            copy_component(std::type_identity<y_mean>{});
+            copy_component(std::type_identity<y_var>{});
+            copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<P_mean>{});
+            copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<Chi2>{});
+
+            evo.emplace_back(std::move(el));
         }
         return std::move(t_prior_all);
     }

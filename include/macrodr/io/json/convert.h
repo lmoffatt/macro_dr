@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <map>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -790,11 +791,19 @@ Maybe_error<void> from_json(const Json& j, var::d_d_<Value, DX>& out, const std:
 }
 
 template <class Primitive, class Differential>
-Json to_json(const var::Derivative<Primitive, Differential>& value, TagPolicy policy) {
+Json to_json(const var::Derivative<Primitive, Differential>& value, TagPolicy policy)
+    requires requires(const var::Derivative<Primitive, Differential>& v) { v.primitive(); v.derivative(); } {
     Json obj = Json::object();
     obj.obj.emplace("primitive", detail::value_to_json(value.primitive(), policy));
     obj.obj.emplace("derivative", detail::value_to_json(value.derivative(), policy));
     return obj;
+}
+
+template <class Primitive, class Differential>
+Json to_json(const var::Derivative<Primitive, Differential>& value, TagPolicy policy)
+    requires(!requires(const var::Derivative<Primitive, Differential>& v) { v.derivative(); } &&
+             requires(const var::Derivative<Primitive, Differential>& v) { v(); }) {
+    return detail::value_to_json(value(), policy);
 }
 
 // Specialization for derivatives of vectors: serialize elementwise derivatives
@@ -884,6 +893,47 @@ Json to_json(const std::unique_ptr<T>& p, TagPolicy policy) {
         obj.obj.emplace("type", Json::string(macrodr::dsl::type_name<T>()));
         obj.obj.emplace("value", Json::null());
         return obj;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Shared ptr codec (pointee-first if available)
+// -----------------------------------------------------------------------------
+template <class T>
+Json to_json(const std::shared_ptr<T>& p, TagPolicy policy) {
+    if (!p) {
+        return Json::null();
+    }
+    if constexpr (has_json_codec_v<T>) {
+        return to_json(*p, policy);
+    } else {
+        Json obj = Json::object();
+        obj.obj.emplace("type", Json::string(macrodr::dsl::type_name<T>()));
+        obj.obj.emplace("value", Json::null());
+        return obj;
+    }
+}
+
+template <class T>
+Maybe_error<void> from_json(const Json& j, std::shared_ptr<T>& out, const std::string& path,
+                            TagPolicy policy) {
+    if (j.type == Json::Type::Null) {
+        out.reset();
+        return {};
+    }
+    if constexpr (has_json_codec_v<T>) {
+        auto tmp = std::make_shared<T>();
+        auto status = from_json(j, *tmp, path, policy);
+        if (!status) {
+            return status;
+        }
+        out = std::move(tmp);
+        return {};
+    } else {
+        (void)out;
+        (void)policy;
+        return error_message(path + ": deserialization for shared_ptr<" + macrodr::dsl::type_name<T>() +
+                             "> is not supported");
     }
 }
 

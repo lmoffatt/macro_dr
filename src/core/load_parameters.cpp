@@ -20,4 +20,10 @@ Maybe_error<var::Parameters_Transformations> load_parameters(const ModelPtr& mod
 var::Parameters_values get_standard_parameter_values(var::Parameters_Transformations const& tr) {
     return var::Parameters_values(tr, tr.standard_values());
 }
+
+var::Parameters_transformed get_standard_parameter_transformed_values(var::Parameters_Transformations const& tr) {
+    return tr.standard_parameter_transformed();
+}
+
+
 }  // namespace macrodr::cmd
