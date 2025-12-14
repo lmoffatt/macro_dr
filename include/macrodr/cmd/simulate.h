@@ -18,8 +18,16 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
+Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
+    const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
+
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,

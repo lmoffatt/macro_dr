@@ -13,7 +13,7 @@
 
 namespace macrodr::cmd {
 auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
-                          const var::Parameters_values& par, const Experiment& e,
+                          const var::Parameters_transformed& par, const Experiment& e,
                           const Recording& r, bool adaptive_approximation,
                           bool recursive_approximation, int averaging_approximation,
                           bool variance_approximation,
@@ -43,15 +43,16 @@ auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model
     }
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
+    auto par_values = par.to_value();
     return std::visit(
-        [&ftbl3, &par, &e, &r](auto& modelLikelihood) {
-            return logLikelihood(ftbl3, modelLikelihood, par, r, e);
+        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood) {
+            return logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
         },
         modelLikelihood_v);
 }
 
 auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& model0,
-                           const var::Parameters_values& par, const Experiment& e,
+                           const var::Parameters_transformed& par, const Experiment& e,
                            const Recording& r, bool adaptive_approximation,
                            bool recursive_approximation, int averaging_approximation,
                            bool variance_approximation,
@@ -59,8 +60,6 @@ auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& mode
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
-
-    auto par_transformed = par.to_transformed();
 
     auto dmodel = load_dmodel(model0.model_name());
     if (!dmodel) {
@@ -88,14 +87,14 @@ auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& mode
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
     return std::visit(
-        [&ftbl3, &par_transformed, &e, &r](auto& modelLikelihood) {
-            return dlogLikelihood(ftbl3, modelLikelihood, par_transformed, r, e);
+        [&ftbl3, &par, &e, &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Hessian_minimal> {
+            return dlogLikelihood(ftbl3, modelLikelihood, par, r, e);
         },
         modelLikelihood_v);
 }
 
 auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& model0,
-                               const var::Parameters_values& par, const Experiment& e,
+                               const var::Parameters_transformed& par, const Experiment& e,
                                const Recording& r, bool adaptive_approximation,
                                bool recursive_approximation, int averaging_approximation,
                                bool variance_approximation,
@@ -105,8 +104,6 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto par_transformed = par.to_transformed();
-
     auto dmodel = load_dmodel(model0.model_name());
     if (!dmodel) {
         return dmodel.error();
@@ -133,14 +130,14 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
     return std::visit(
-        [&ftbl3, &par_transformed, &e, &r, delta_param](auto& modelLikelihood) {
-            return diff_logLikelihood(ftbl3, modelLikelihood, par_transformed, r, e, delta_param);
+        [&ftbl3, &par, &e, &r, delta_param](auto& modelLikelihood) {
+            return diff_logLikelihood(ftbl3, modelLikelihood, par, r, e, delta_param);
         },
         modelLikelihood_v);
 }
 
 auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_values>& model0,
-                                      const var::Parameters_values& par, const Experiment& e,
+                                      const var::Parameters_transformed& par, const Experiment& e,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
@@ -170,15 +167,16 @@ auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_va
     }
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
+    auto par_values = par.to_value();
     return std::visit(
-        [&ftbl3, &par, &e, &r](auto& modelLikelihood) {
-            return logLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood) {
+            return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
         },
         modelLikelihood_v);
 }
 
 auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_values>& model0,
-                                      const var::Parameters_values& par, const Experiment& e,
+                                      const var::Parameters_transformed& par, const Experiment& e,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
@@ -208,9 +206,10 @@ auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_va
     }
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
+    auto par_values = par.to_value();
     return std::visit(
-        [&ftbl3, &par, &e, &r](auto& modelLikelihood) {
-            return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par, r, e);
+        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood) {
+            return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
         },
         modelLikelihood_v);
 }
@@ -219,7 +218,7 @@ auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_va
 
 
 auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_values>& model0,
-                                       const var::Parameters_values& par, const Experiment& e,
+                                       const var::Parameters_transformed& par, const Experiment& e,
                                        const Recording& r, bool adaptive_approximation,
                                        bool recursive_approximation, int averaging_approximation,
                                        bool variance_approximation,
@@ -228,8 +227,6 @@ auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_v
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
-
-    auto par_transformed = par.to_transformed();
 
     auto dmodel = load_dmodel(model0.model_name());
     if (!dmodel) {
@@ -257,14 +254,14 @@ auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_v
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
     return std::visit(
-        [&ftbl3, &par_transformed, &e, &r](auto& modelLikelihood) {
-            return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par_transformed, r, e);
+        [&ftbl3, &par, &e, &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+            return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
         },
         modelLikelihood_v);
 }
 
 auto calculate_dlikelihood_predictions_model(const std::string& model_name,
-                                             const var::Parameters_values& par, const Experiment& e,
+                                             const var::Parameters_transformed& par, const Experiment& e,
                                              const Recording& r, bool adaptive_approximation,
                                              bool recursive_approximation,
                                              int averaging_approximation,
@@ -274,8 +271,6 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
-
-    auto par_transformed = par.to_transformed();
 
     auto dmodel = get_model(model_name);
     if (!dmodel) {
@@ -308,9 +303,9 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
             auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
             return std::visit(
-                [&ftbl3, &par_transformed, &e, &r](auto& modelLikelihood)
+                [&ftbl3, &par, &e, &r](auto& modelLikelihood)
                     -> Maybe_error<dMacro_State_Ev_gradient_all> {
-                    return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par_transformed, r, e);
+                    return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
                 },
                 modelLikelihood_v);
         },
@@ -318,161 +313,6 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
 };
 
 
-
-template <bool DerivsAsColumns = false>
-Maybe_error<std::string> write_csv(Experiment const& e,
-                                   Simulated_Recording<var::please_include<>> const& simulation,
-                                   dMacro_State_Ev_gradient_all const& lik, std::string path) {
-    const auto path_ = path + ".csv";
-    std::ofstream f(path_);
-    if (!f.is_open()) {
-        return error_message("cannot open ", path_);
-    }
-
-    const auto& conds = get<Recording_conditions>(e);
-    const auto& y = get<Recording>(simulation());
-
-    if (conds().size() != y().size()) {
-        return error_message("Experiment samples ", conds().size(),
-                             " differ from Recording samples ", y().size());
-    }
-
-    const auto& grad_evo =
-        get<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(lik)();
-    if (grad_evo.size() != conds().size()) {
-        return error_message("Gradient evolution size ", grad_evo.size(),
-                             " differs from samples ", conds().size());
-    }
-
-    // Parameter axis (names/order) comes from the global dlogL derivative.
-    const auto& dlogL_total = get<var::Derivative<logL, var::Parameters_transformed>>(lik);
-    const auto& params = dlogL_total.dx();
-    const auto& param_names = params.parameters().names();
-
-    auto write_derivatives_as_columns = [&](auto const& d) {
-        const auto& m = d.derivative()();  // Matrix<double>
-        for (std::size_t idx = 0; idx < m.size(); ++idx) f << "," << m[idx];
-    };
-
-    auto write_derivatives_as_rows =
-        [&](auto const& d, std::string_view target, double n_step, std::size_t sub_step,
-            double step_start, double step_end, double step_mid, double agonist, double patch,
-            double primitive, double logL, double elogL, double y_mean, double y_var,
-            double trust) {
-            const auto& m = d.derivative()();  // Matrix<double>
-            for (std::size_t r = 0; r < m.nrows(); ++r) {
-                for (std::size_t c = 0; c < m.ncols(); ++c) {
-                    f << "derivative," << n_step << "," << sub_step << "," << step_start << ","
-                      << step_end << "," << step_mid << "," << agonist << "," << patch << ","
-                      << logL << "," << elogL << "," << y_mean << "," << y_var << "," << trust
-                      << "," << target << "," << r << "," << c << "," << param_names[r] << ","
-                      << primitive << "," << m(r, c) << "\n";
-                }
-            }
-        };
-
-    // Meta section: enough to rebuild experiment/parameter context.
-    f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
-    f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
-    f << "meta,n_samples," << conds().size() << "\n";
-    for (std::size_t i = 0; i < param_names.size(); ++i) {
-        f << "param," << i << "," << param_names[i] << "\n";
-    }
-
-    // Full experiment description (each Agonist_step)
-    f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
-    for (std::size_t i = 0; i < conds().size(); ++i) {
-        double t = get<Time>(conds()[i])();
-        const auto& evo = get<Agonist_evolution>(conds()[i])();
-        for (std::size_t j = 0; j < evo.size(); ++j) {
-            const double ns = get<number_of_samples>(evo[j])();
-            const double duration = ns / get<Frequency_of_Sampling>(e)();
-            const double t_end = t + duration;
-            f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
-              << "," << get<Agonist_concentration>(evo[j])() << "\n";
-            t = t_end;
-        }
-    }
-
-    if constexpr (DerivsAsColumns) {
-        f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
-             "logL,elogL,y_mean,y_var,trust";
-        for (auto const& name : param_names) f << ",dlogL[" << name << "]";
-        for (auto const& name : param_names) f << ",delogL[" << name << "]";
-        for (auto const& name : param_names) f << ",dy_mean[" << name << "]";
-        for (auto const& name : param_names) f << ",dy_var[" << name << "]";
-        f << "\n";
-    } else {
-        f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
-             "logL,elogL,y_mean,y_var,trust,target,param_index,param_col,param_name,primitive,"
-             "derivative_value\n";
-    }
-
-    const double fs = get<Frequency_of_Sampling>(e)();
-    for (std::size_t i = 0; i < conds().size(); ++i) {
-        double step_start = get<Time>(conds()[i])();
-        const auto& evo = get<Agonist_evolution>(conds()[i])();
-        const auto& grad = grad_evo[i];
-
-        const auto& dlogL = get<var::Derivative<logL, var::Parameters_transformed>>(grad);
-        const auto& delogL = get<var::Derivative<elogL, var::Parameters_transformed>>(grad);
-        const auto& dy_mean = get<var::Derivative<y_mean, var::Parameters_transformed>>(grad);
-        const auto& dy_var = get<var::Derivative<y_var, var::Parameters_transformed>>(grad);
-        const double trust = get<trust_coefficient>(grad)();
-
-        for (std::size_t j = 0; j < evo.size(); ++j) {
-            const double ns = get<number_of_samples>(evo[j])();
-            const double duration = ns / fs;
-            const double step_end = step_start + duration;
-            const double step_mid = 0.5 * (step_start + step_end);
-            const double agonist = get<Agonist_concentration>(evo[j])();
-            const double n_step =
-                static_cast<double>(i) +
-                static_cast<double>(j) / static_cast<double>(evo.size());
-            const double patch = y()[i]();
-
-            if constexpr (DerivsAsColumns) {
-                f << "data," << n_step << "," << j << "," << step_start << "," << step_end << ","
-                  << step_mid << "," << agonist << "," << patch << "," << dlogL.primitive() << ","
-                  << delogL.primitive() << "," << dy_mean.primitive() << "," << dy_var.primitive()
-                  << "," << trust;
-
-                write_derivatives_as_columns(dlogL);
-                write_derivatives_as_columns(delogL);
-                write_derivatives_as_columns(dy_mean);
-                write_derivatives_as_columns(dy_var);
-                f << "\n";
-            } else {
-                // Data row with primitives for this step.
-                const double logL_p = dlogL.primitive()();
-                const double elogL_p = delogL.primitive()();
-                const double y_mean_p = dy_mean.primitive()();
-                const double y_var_p = dy_var.primitive()();
-
-                f << "data," << n_step << "," << j << "," << step_start << "," << step_end << ","
-                  << step_mid << "," << agonist << "," << patch << "," << logL_p << ","
-                  << elogL_p << "," << y_mean_p << "," << y_var_p << "," << trust << ",,,,,,\n";
-
-                write_derivatives_as_rows(dlogL, "dlogL", n_step, j, step_start, step_end,
-                                          step_mid, agonist, patch, logL_p, logL_p, elogL_p,
-                                          y_mean_p, y_var_p, trust);
-                write_derivatives_as_rows(delogL, "delogL", n_step, j, step_start, step_end,
-                                          step_mid, agonist, patch, elogL_p, logL_p, elogL_p,
-                                          y_mean_p, y_var_p, trust);
-                write_derivatives_as_rows(dy_mean, "dy_mean", n_step, j, step_start, step_end,
-                                          step_mid, agonist, patch, y_mean_p, logL_p, elogL_p,
-                                          y_mean_p, y_var_p, trust);
-                write_derivatives_as_rows(dy_var, "dy_var", n_step, j, step_start, step_end,
-                                          step_mid, agonist, patch, y_var_p, logL_p, elogL_p,
-                                          y_mean_p, y_var_p, trust);
-            }
-
-            step_start = step_end;
-        }
-    }
-
-    return path_;
-}
 
 template <class VS>
 struct vector_space_types;
@@ -495,7 +335,13 @@ double primitive_to_double(const T& x) {
 template <class Lik>
 std::vector<std::string> get_param_names_if_any(const Lik& lik) {
     std::vector<std::string> param_names;
-    if constexpr (requires { var::get_dx_of_dfdx(lik).parameters().names(); }) {
+    // Prefer extracting dx() from a concrete derivative component (e.g. get<logL>(dMacro_State)),
+    // since the container itself might not be a Derivative<> even when it stores derivatives.
+    if constexpr (macrodr::has_var_c<Lik const&, logL> &&
+                  requires { var::get_dx_of_dfdx(get<logL>(lik)).parameters().names(); }) {
+        const auto& names = var::get_dx_of_dfdx(get<logL>(lik)).parameters().names();
+        param_names.assign(names.begin(), names.end());
+    } else if constexpr (requires { var::get_dx_of_dfdx(lik).parameters().names(); }) {
         const auto& names = var::get_dx_of_dfdx(lik).parameters().names();
         param_names.assign(names.begin(), names.end());
     }
@@ -665,7 +511,7 @@ struct StateWriter {
 
 // (1) Experiment + Simulation + State with per-sample Evolution
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
-    requires(var::gets_it_c<TMacro_State<vVars...> const&, Evolution>)
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
 Maybe_error<std::string> write_csv(Experiment const& e, Simulated_Recording<SimTag> const& simulation,
                                    TMacro_State<vVars...> const& lik, std::string path) {
     const auto path_ = path + ".csv";
@@ -683,10 +529,6 @@ Maybe_error<std::string> write_csv(Experiment const& e, Simulated_Recording<SimT
 
     const auto& evo = get<Evolution>(lik);
     const auto& evo_vec = evo();
-    if (evo_vec.empty()) {
-        // No evolution to index per-sample: fall back to state-only serialization.
-        return write_csv(lik, path);
-    }
     if (evo_vec.size() != conds().size()) {
         return error_message("Evolution samples ", evo_vec.size(),
                              " differ from Recording samples ", conds().size());
@@ -783,16 +625,16 @@ Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::strin
 
     StateWriter w{f, param_names};
 
-    auto handle_root = [&](auto type_tag) -> Maybe_error<bool> {
-        using Id = typename decltype(type_tag)::type;
-        if constexpr (is_of_this_template_type_v<Id, Evolution_of>) {
-            // Skip evolution containers in the state-only view.
-            return true;
-        } else if constexpr (var::gets_it_c<TMacro_State<vVars...> const&, Id>) {
-            return emit_component_rows(w, macrodr::dsl::type_name<Id>(), get<Id>(lik));
-        } else {
-            return true;
-        }
+	    auto handle_root = [&](auto type_tag) -> Maybe_error<bool> {
+	        using Id = typename decltype(type_tag)::type;
+	        if constexpr (is_of_this_template_type_v<Id, Evolution_of>) {
+	            // Skip evolution containers in the state-only view.
+	            return true;
+	        } else if constexpr (var::gets_it_c<TMacro_State<vVars...> const&, Id>) {
+	            return emit_component_rows(w, macrodr::dsl::type_name<Id>(), get<Id>(lik));
+	        } else {
+	            return true;
+	        }
     };
 
     Maybe_error<bool> ok = true;
@@ -821,17 +663,18 @@ template Maybe_error<std::string> write_csv<
     Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, diagnostic_element>>> const&,
     std::string);
 
-template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State,
-    Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
-    Experiment const&, Simulated_Recording<var::please_include<>> const&,
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&, std::string);
+	template Maybe_error<std::string> write_csv<
+	    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+	    Experiment const&, Simulated_Recording<var::please_include<>> const&,
+	    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+	    std::string);
 
-template Maybe_error<std::string> write_csv<
-    var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
-    Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
-    Experiment const&, Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&, std::string);
+	template Maybe_error<std::string> write_csv<
+	    var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
+	    Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+	    Experiment const&, Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
+	    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+	    std::string);
 
 template Maybe_error<std::string> write_csv<Macro_State, elogL, vlogL,
                                             Evolution_of<add_t<Vector_Space<>, predictions_element>>>(
@@ -843,8 +686,9 @@ template Maybe_error<std::string> write_csv<Macro_State, elogL, vlogL,
     Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, diagnostic_element>>> const&,
     std::string);
 
-template Maybe_error<std::string> write_csv<dMacro_State,
-                                            Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&, std::string);
+	template Maybe_error<std::string>
+	write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+	    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+	    std::string);
 
 }  // namespace macrodr::cmd

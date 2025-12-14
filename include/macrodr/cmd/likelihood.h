@@ -7,7 +7,7 @@
 
 namespace macrodr::cmd {
 auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
-                          const var::Parameters_values& par, const Experiment& e,
+                          const var::Parameters_transformed& par, const Experiment& e,
                           const Recording& r, bool adaptive_approximation,
                           bool recursive_approximation, int averaging_approximation,
                           bool variance_approximation,
@@ -15,7 +15,7 @@ auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model
     -> Maybe_error<Vector_Space<logL, elogL, vlogL>>;
 
 inline auto calculate_simulation_likelihood(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
@@ -27,14 +27,14 @@ inline auto calculate_simulation_likelihood(
 }
 
 auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& model0,
-                           const var::Parameters_values& par, const Experiment& e,
+                           const var::Parameters_transformed& par, const Experiment& e,
                            const Recording& r, bool adaptive_approximation,
                            bool recursive_approximation, int averaging_approximation,
                            bool variance_approximation,
                            bool taylor_variance_correction_approximation) -> Maybe_error<dMacro_State_Hessian_minimal>;
 
 inline auto calculate_simulation_dlikelihood(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
@@ -45,7 +45,7 @@ inline auto calculate_simulation_dlikelihood(
                                  taylor_variance_correction_approximation);
 }
 auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& model0,
-                               const var::Parameters_values& par, const Experiment& e,
+                               const var::Parameters_transformed& par, const Experiment& e,
                                const Recording& r, bool adaptive_approximation,
                                bool recursive_approximation, int averaging_approximation,
                                bool variance_approximation,
@@ -53,7 +53,7 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
     -> Maybe_error<diff_Macro_State_Gradient_Hessian>;
 
 inline auto calculate_simulation_diff_likelihood(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation, double delta_param)
@@ -65,7 +65,7 @@ inline auto calculate_simulation_diff_likelihood(
 }
 
 auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_values>& model0,
-                                      const var::Parameters_values& par, const Experiment& e,
+                                      const var::Parameters_transformed& par, const Experiment& e,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
@@ -73,7 +73,7 @@ auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_va
     -> Maybe_error<Macro_State_Ev_predictions>;
 
 inline auto calculate_simulation_likelihood_predictions(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
@@ -85,7 +85,7 @@ inline auto calculate_simulation_likelihood_predictions(
 }
 
 auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_values>& model0,
-                                      const var::Parameters_values& par, const Experiment& e,
+                                      const var::Parameters_transformed& par, const Experiment& e,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
@@ -93,7 +93,7 @@ auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_va
     -> Maybe_error<Macro_State_Ev_diagnostic>;
 
 inline auto calculate_simulation_likelihood_diagnostics(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e,const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
@@ -106,7 +106,7 @@ inline auto calculate_simulation_likelihood_diagnostics(
 
 
 auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_values>& model0,
-                                       const var::Parameters_values& par, const Experiment& e,
+                                       const var::Parameters_transformed& par, const Experiment& e,
                                        const Recording& r, bool adaptive_approximation,
                                        bool recursive_approximation, int averaging_approximation,
                                        bool variance_approximation,
@@ -114,7 +114,7 @@ auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_v
     -> Maybe_error<dMacro_State_Ev_gradient_all>;
 
 inline auto calculate_simulation_dlikelihood_predictions(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
@@ -128,7 +128,7 @@ inline auto calculate_simulation_dlikelihood_predictions(
 
 
 inline auto calculate_simulation_sub_dlikelihood_predictions(
-    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_values& par,
+    const interface::IModel<var::Parameters_values>& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
@@ -142,7 +142,7 @@ inline auto calculate_simulation_sub_dlikelihood_predictions(
 
 
 auto calculate_dlikelihood_predictions_model(const std::string& model0,
-                                             const var::Parameters_values& par, const Experiment& e,
+                                             const var::Parameters_transformed& par, const Experiment& e,
                                              const Recording& r, bool adaptive_approximation,
                                              bool recursive_approximation,
                                              int averaging_approximation,
@@ -151,7 +151,7 @@ auto calculate_dlikelihood_predictions_model(const std::string& model0,
     -> Maybe_error<dMacro_State_Ev_gradient_all>;
 
 inline auto calculate_simulation_dlikelihood_predictions_model(
-    const std::string& model0, const var::Parameters_values& par, const Experiment& e,
+    const std::string& model0, const var::Parameters_transformed& par, const Experiment& e,
     const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
     bool variance_approximation, bool taylor_variance_correction_approximation)
