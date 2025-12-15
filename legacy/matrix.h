@@ -844,6 +844,8 @@ inline auto elemMult(const Matrix<double>& x, const Matrix<double>& y) {
     return out;
 }
 
+
+
 template <class T, class S>
 auto elemMult(const Matrix<S>& x, const Matrix<T>& y) -> Matrix<std::decay_t<decltype(T{} * S{})>> {
     Matrix<std::decay_t<decltype(T{} * S{})>> out(x.nrows(), x.ncols());
