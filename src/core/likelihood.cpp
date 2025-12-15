@@ -1,4 +1,5 @@
 #include <CLI_function_table.h>
+#include <derivative_fwd.h>
 #include <derivative_operator.h>
 #include <macrodr/cmd/likelihood.h>
 #include <macrodr/dsl/type_name.h>
@@ -349,11 +350,11 @@ std::vector<std::string> get_param_names_if_any(const Lik& lik) {
 }
 
 inline std::string append_index(std::string base, std::size_t i) {
-    return base + "[" + std::to_string(i) + "]";
+    return base + "_" + std::to_string(i);
 }
 
 inline std::string append_index(std::string base, std::size_t i, std::size_t j) {
-    return base + "[" + std::to_string(i) + "," + std::to_string(j) + "]";
+    return base + "_" + std::to_string(i) + "_" + std::to_string(j);
 }
 
 template <class Writer, class T>
@@ -366,8 +367,8 @@ Maybe_error<bool> emit_value_rows(Writer& w, std::string label, const T& x) {
         return std::apply(
             [&](auto... type_tags) -> Maybe_error<bool> {
                 Maybe_error<bool> ok = true;
-                ((ok = ok ? emit_component_rows(w, label + "." + macrodr::dsl::type_name<
-                                                           typename decltype(type_tags)::type>(),
+                ((ok = ok ? emit_component_rows(w,  macrodr::dsl::type_name_no_namespace<
+                                                           var::untransformed_type_t<typename decltype(type_tags)::type>>(),
                                                 get<typename decltype(type_tags)::type>(x))
                           : ok),
                  ...);
@@ -380,6 +381,12 @@ Maybe_error<bool> emit_value_rows(Writer& w, std::string label, const T& x) {
         w.write_value(std::move(label), static_cast<double>(x));
         return true;
     } else if constexpr (requires { x.nrows(); x.ncols(); x(0ul, 0ul); }) {
+        if (x.nrows() == 1 || x.ncols() == 1) {
+        for (std::size_t i = 0; i < x.size(); ++i) {
+            w.write_value(append_index(label, i), static_cast<double>(x[i]));
+        }
+        return true;
+        }
         for (std::size_t r = 0; r < x.nrows(); ++r) {
             for (std::size_t c = 0; c < x.ncols(); ++c) {
                 w.write_value(append_index(label, r, c), static_cast<double>(x(r, c)));
@@ -431,8 +438,8 @@ Maybe_error<bool> emit_derivative_rows(Writer& w, std::string label, const Der& 
         return std::apply(
             [&](auto... type_tags) -> Maybe_error<bool> {
                 Maybe_error<bool> ok = true;
-                ((ok = ok ? emit_component_rows(w, label + "." + macrodr::dsl::type_name<
-                                                           typename decltype(type_tags)::type>(),
+                ((ok = ok ? emit_component_rows(w,  macrodr::dsl::type_name_no_namespace<
+                                                           var::untransformed_type_t<typename decltype(type_tags)::type>>(),
                                                 get<typename decltype(type_tags)::type>(d))
                           : ok),
                  ...);
@@ -441,7 +448,7 @@ Maybe_error<bool> emit_derivative_rows(Writer& w, std::string label, const Der& 
             Tuple{});
     } else if constexpr (requires { d.derivative()(); }) {
         const double prim = primitive_to_double(d);
-        w.write_value(label, prim);
+       // w.write_value(label, prim);
 
         const auto& m = d.derivative()();
         for (std::size_t r = 0; r < m.nrows(); ++r) {
@@ -536,29 +543,6 @@ Maybe_error<std::string> write_csv(Experiment const& e, Simulated_Recording<SimT
 
     const auto param_names = get_param_names_if_any(lik);
 
-    // Meta section: enough to rebuild experiment/parameter context.
-    f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
-    f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
-    f << "meta,n_samples," << conds().size() << "\n";
-    for (std::size_t i = 0; i < param_names.size(); ++i) {
-        f << "param," << i << "," << param_names[i] << "\n";
-    }
-
-    // Full experiment description (each Agonist_step)
-    f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
-    for (std::size_t i = 0; i < conds().size(); ++i) {
-        double t = get<Time>(conds()[i])();
-        const auto& ag = get<Agonist_evolution>(conds()[i])();
-        for (std::size_t j = 0; j < ag.size(); ++j) {
-            const double ns = get<number_of_samples>(ag[j])();
-            const double duration = ns / get<Frequency_of_Sampling>(e)();
-            const double t_end = t + duration;
-            f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
-              << "," << get<Agonist_concentration>(ag[j])() << "\n";
-            t = t_end;
-        }
-    }
-
     f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
          "component,param_index,param_col,param_name,primitive,derivative_value\n";
 
@@ -585,7 +569,7 @@ Maybe_error<std::string> write_csv(Experiment const& e, Simulated_Recording<SimT
 
             auto handle_component = [&](auto type_tag) -> Maybe_error<bool> {
                 using Comp = typename decltype(type_tag)::type;
-                return emit_component_rows(w, macrodr::dsl::type_name<Comp>(), get<Comp>(el));
+                return emit_component_rows(w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Comp>>(), get<Comp>(el));
             };
 
             Maybe_error<bool> ok = true;
@@ -631,7 +615,7 @@ Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::strin
 	            // Skip evolution containers in the state-only view.
 	            return true;
 	        } else if constexpr (var::gets_it_c<TMacro_State<vVars...> const&, Id>) {
-	            return emit_component_rows(w, macrodr::dsl::type_name<Id>(), get<Id>(lik));
+	            return emit_component_rows(w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Id>>(), get<Id>(lik));
 	        } else {
 	            return true;
 	        }
