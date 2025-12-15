@@ -1,5 +1,6 @@
 #ifndef GSL_INTEGRATE_H
 #define GSL_INTEGRATE_H
+#include <exponential_matrix.h>
 #include <cmath>
 #include <limits>
 #include <tuple>
@@ -129,7 +130,7 @@ requires (U<C_double,double>)
         //  auto epsrel=std::sqrt(eps);
         auto epsabs = std::pow(eps, 0.25);
         auto epsrel = epsabs;
-        C_double result;
+        double result;
         double abserr;
         auto limit = 30;
         auto workspace = gsl_integration_workspace_alloc(limit);
@@ -139,7 +140,7 @@ requires (U<C_double,double>)
         F.params = params;
         gsl_integration_qagi(&F, epsabs, epsrel, limit, workspace, &result, &abserr);
         gsl_integration_workspace_free(workspace);
-        return result;
+        return primitive(Poisson_noise_ratio)/Poisson_noise_ratio* result;
     }
 }
 
@@ -160,11 +161,11 @@ auto Poisson_noise_expected_lik_logL_pr(C_double Poisson_noise_ratio) {
         auto workspace = gsl_integration_workspace_alloc(limit);
         gsl_function F;
         F.function = f_lik_logL_Poisson_noise_f;  // Set integrand
-        double params[] = {Poisson_noise_ratio};
+        double params[] = {primitive(Poisson_noise_ratio)};
         F.params = params;
         gsl_integration_qagi(&F, epsabs, epsrel, limit, workspace, &result, &abserr);
         gsl_integration_workspace_free(workspace);
-        return result;
+        return result*primitive(Poisson_noise_ratio)/Poisson_noise_ratio;
     }
 }
 

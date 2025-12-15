@@ -701,7 +701,7 @@ class y_mean : public var::Var<y_mean, double> {
 class y_var : public var::Var<y_var, double> {
     friend std::string className(y_var) { return "y_var"; }
 };
-class trust_coefficient : public var::Constant<trust_coefficient, double> {
+class trust_coefficient : public var::Var<trust_coefficient, double> {
     friend std::string className(trust_coefficient) { return "trust_coefficient"; }
 };
 
@@ -910,6 +910,25 @@ namespace var {
 template <class... Vars>
 struct transformation_type<macrodr::ddMacro_State<Vars...>> {
     using type = Derivative_Op<Parameters_transformed>;
+};
+
+template <class... Vars>
+struct is_derivative<macrodr::ddMacro_State<Vars...>> : std::true_type {};
+
+template <class... Vars, class... Ds>
+struct dx_of_dfdx<macrodr::ddMacro_State<Vars...>, Ds...> {
+    using type = Parameters_transformed;
+};
+
+template <class G, class... Vars, class... Ds>
+    requires(!is_derivative_v<G>)
+struct dx_of_dfdx<G, macrodr::ddMacro_State<Vars...>, Ds...> {
+    using type = Parameters_transformed;
+};
+
+template <class F, class... Vars, class... Ds>
+struct dx_of_dfdx<Derivative<F, Parameters_transformed>, macrodr::ddMacro_State<Vars...>, Ds...> {
+    using type = Parameters_transformed;
 };
 }  // namespace var
 
@@ -4187,22 +4206,29 @@ class Macro_DMR {
         }
     }
 
-    template <class C_y_var, class CPatch_State>
-    auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, auto& m) const {
-        using DX = var::dx_of_dfdx_t<C_y_var>;
-        auto const& dx = var::get_dx_of_dfdx(r_y_var);
+	    template <class C_y_var>
+	    auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, trust_coefficient alfa, auto& m) const {
+	        using DX = var::dx_of_dfdx_t<C_y_var>;
+	        auto const& dx = var::get_dx_of_dfdx(r_y_var);
 
         if (y_is_nan) {
             auto base = var::init_with_dx<DX>(0.0, dx);
             return build<elogL>(std::move(base));
         }
-        if (get<Proportional_Noise>(m).value() == 0) {
-            return build<elogL>(-0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5);
-        } else {
-            return build<elogL>(var::Poisson_noise_expected_logL(
-                primitive(r_y_var()), primitive(get<Proportional_Noise>(m).value())));
-        }
-    }
+	        if (get<Proportional_Noise>(m).value() == 0) {
+	            return build<elogL>(-0.5 * log(2 * std::numbers::pi * r_y_var()*alfa()) - 0.5);
+	        } else {
+	            const auto pn_value = get<Proportional_Noise>(m).value();
+	            if constexpr (var::is_derivative_v<std::decay_t<decltype(pn_value)>>) {
+	                return build<elogL>(var::Poisson_noise_expected_logL(r_y_var() * alfa(),
+	                                                                    pn_value));
+	            } else {
+	                auto pn = var::init_with_dx<DX>(pn_value, dx);
+	                return build<elogL>(
+	                    var::Poisson_noise_expected_logL(r_y_var() * alfa(), pn));
+	            }
+	        }
+	    }
 
     auto calculate_trust_coefficient(Matrix<double> const& t_pmean, Matrix<double> const& d,
                                      double factor) const {
@@ -4391,6 +4417,8 @@ class Macro_DMR {
         }
         auto r_logL = calculate_logL(false, r_y_var, chi2, alfa, m);
 
+        auto r_elogL = calculate_elogL(false, r_y_var, alfa,  m);
+
         if constexpr (!dynamic) {
             Transfer_Op_to<C_Patch_State, Algo_State> out;
             get<y_mean>(out()) = std::move(r_y_mean);
@@ -4488,7 +4516,8 @@ class Macro_DMR {
     template <class... vVars, class C_Algo_State>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<Macro_State<vVars...>> update(Macro_State<vVars...>&& t_prior_all,
-                                              C_Algo_State&& algo, logL const& t_logL) const {
+                                              C_Algo_State&& algo, logL const& t_logL, elogL const& t_elogL ) const 
+                                              {
         // Update patch state for recursion.
         {
             auto& ps = get<Patch_State>(t_prior_all);
@@ -4505,13 +4534,11 @@ class Macro_DMR {
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
 
         // Optional accumulators when both state and Algo_State provide them.
-        if constexpr (has_var_c<Macro_State<vVars...>&, elogL> &&
-                      has_var_c<decltype(algo()) const&, elogL>) {
-            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + get<elogL>(algo)();
+        if constexpr (has_var_c<Macro_State<vVars...>&, elogL> ) {
+            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
         }
-        if constexpr (has_var_c<Macro_State<vVars...>&, vlogL> &&
-                      has_var_c<decltype(algo()) const&, vlogL>) {
-            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + get<vlogL>(algo)();
+        if constexpr (has_var_c<Macro_State<vVars...>&, vlogL> ) {
+            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + 0.5;
         }
 
         if constexpr (has_var_c<Macro_State<vVars...>&, Evolution>) {
@@ -4526,10 +4553,10 @@ class Macro_DMR {
             }
             // Avoid uninitialized Constant defaults.
             if constexpr (has_var_c<Element&, elogL>) {
-                get<elogL>(el)() = 0.0;
+                get<elogL>(el)() = t_elogL();   
             }
             if constexpr (has_var_c<Element&, vlogL>) {
-                get<vlogL>(el)() = 0.0;
+                get<vlogL>(el)() = 0.5;
             }
 
             auto copy_component = [&](auto type_tag) {
@@ -4563,15 +4590,29 @@ class Macro_DMR {
     }
 
     
-    template <class... vVars, class C_Algo_State>
+    template <class... vVars, class C_Algo_State, class C_logL, class C_elogL>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<Vector_Space<vVars...>> update(Vector_Space<vVars...>&& t_prior_all,
-                                              C_Algo_State&& algo, logL const& t_logL) const {
+                                              C_Algo_State&& algo, C_logL const& t_logL,C_elogL const& t_elogL) const {
+        // If this Vector_Space carries a Patch_State, keep recursion semantics consistent with
+        // Macro_State/dMacro_State/ddMacro_State updates.
+        if constexpr (has_var_c<Vector_Space<vVars...>&, Patch_State>) {
+            auto& ps = get<Patch_State>(t_prior_all);
+            if constexpr (has_var_c<decltype(algo()) const&, P_mean> &&
+                          has_var_c<decltype(algo()) const&, P_Cov>) {
+                get<P_mean>(ps()) = get<P_mean>(algo());
+                get<P_Cov>(ps()) = get<P_Cov>(algo());
+            } else if constexpr (requires { algo.get_P_mean(); algo.get_P_Cov(); }) {
+                get<P_mean>(ps())() = algo.get_P_mean();
+                get<P_Cov>(ps())() = algo.get_P_Cov();
+            }
+        }
+
         get<logL>(t_prior_all) ()= get<logL>(t_prior_all)() + t_logL();
         if constexpr (var::has_it_v<Macro_State<vVars...>, elogL>)
-            get<elogL>(t_prior_all) ()= get<elogL>(t_prior_all)() + get<elogL>(algo)();
+            get<elogL>(t_prior_all) ()= get<elogL>(t_prior_all)() + t_elogL();
         if constexpr (var::has_it_v<Macro_State<vVars...>, vlogL>)
-            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + get<vlogL>(algo)();
+            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + 0.5;
 
         if constexpr (var::has_it_v<Vector_Space<vVars...>, Evolution>) {
             auto& evo = get<Evolution>(t_prior_all);
@@ -4581,18 +4622,16 @@ class Macro_DMR {
         return std::move(t_prior_all);
     }
 
-    template <class... vVars, class C_Algo_State>
+    template <class... vVars, class C_Algo_State, class C_elogL >
     Maybe_error<var::Derivative<Vector_Space<vVars...>, var::Parameters_transformed>>
     update(var::Derivative<Vector_Space<vVars...>, var::Parameters_transformed>&& t_prior_all,
            C_Algo_State&& algo,
-           var::Derivative<logL, var::Parameters_transformed> const& t_logL) const {
+           var::Derivative<logL, var::Parameters_transformed> const& t_logL, C_elogL const& t_elogL) const {
         get<logL>(t_prior_all) ()= get<logL>(t_prior_all)() + t_logL();
-        if constexpr (var::has_it_v<Macro_State<vVars...>, elogL> &&
-                      var::has_it_v<std::decay_t<C_Algo_State>, elogL>)
-            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + get<elogL>(algo)();
-        if constexpr (var::has_it_v<Macro_State<vVars...>, vlogL> &&
-                      var::has_it_v<std::decay_t<C_Algo_State>, vlogL>)
-            get<vlogL>(t_prior_all) ()= get<vlogL>(t_prior_all)() + get<vlogL>(algo());
+        if constexpr (var::has_it_v<Macro_State<vVars...>, elogL> )
+            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
+        if constexpr (var::has_it_v<Macro_State<vVars...>, vlogL> )
+            get<vlogL>(t_prior_all) ()= get<vlogL>(t_prior_all)() + 0.5;
 
         if constexpr (var::has_it_v<Vector_Space<vVars...>, Evolution> &&
                       var::has_it_v<std::decay_t<C_Algo_State>, Evolution>) {
@@ -4603,12 +4642,12 @@ class Macro_DMR {
         return std::move(t_prior_all);
     }
 
-    
-    template <class... vVars, class C_Algo_State>
+
+    template <class... vVars, class C_Algo_State, class C_elogL>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<dMacro_State<vVars...>> update(
         dMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
-        var::Derivative<logL, var::Parameters_transformed> const& t_logL) const {
+        var::Derivative<logL, var::Parameters_transformed> const& t_logL, C_elogL const& t_elogL) const {
         // Update patch state (including derivatives) for recursion.
         {
             auto& ps = get<Patch_State>(t_prior_all);
@@ -4620,6 +4659,10 @@ class Macro_DMR {
         }
 
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
+       if constexpr (var::has_it_v<dMacro_State<vVars...>, elogL> )
+            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
+        if constexpr (var::has_it_v<dMacro_State<vVars...>, vlogL> )
+            get<vlogL>(t_prior_all) ()= get<vlogL>(t_prior_all)() + 0.5;
 
         if constexpr (has_var_c<dMacro_State<vVars...>&, Evolution>) {
             auto& evo = get<Evolution>(t_prior_all)();
@@ -4631,22 +4674,18 @@ class Macro_DMR {
             if constexpr (has_var_c<Element&, logL>) {
                 get<logL>(el) = t_logL;
             }
-            auto seed_zero = [&](auto type_tag) {
-                using Id = typename decltype(type_tag)::type;
-                if constexpr (has_var_c<Element&, Id>) {
-                    using Comp = std::decay_t<decltype(get<Id>(el))>;
-                    if constexpr (var::is_derivative_v<Comp>) {
-                        if constexpr (std::constructible_from<Comp, decltype(t_logL.dx()) const&>) {
-                            get<Id>(el) = Comp(t_logL.dx());
-                        }
-                    } else if constexpr (requires { get<Id>(el)() = 0.0; }) {
-                        get<Id>(el)() = 0.0;
-                    }
+            if constexpr (has_var_c<Element&, elogL>) {
+                get<elogL>(el) = t_elogL;
+            }
+            if constexpr (has_var_c<Element&, vlogL>) {
+                if constexpr (requires { get<vlogL>(el)() = 0.5; }) {
+                    get<vlogL>(el)() = 0.5;
+                } else {
+                    get<vlogL>(el) = 0.5;
                 }
-            };
+            }
 
-            seed_zero(std::type_identity<elogL>{});
-            seed_zero(std::type_identity<vlogL>{});
+
 
             auto copy_component = [&](auto type_tag) {
                 using Id = typename decltype(type_tag)::type;
@@ -4738,6 +4777,79 @@ class Macro_DMR {
         return std::move(t_prior_all);
     }
 
+    template <class... vVars, class C_Algo_State, class C_elogL>
+        requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
+    Maybe_error<ddMacro_State<vVars...>> update(
+        ddMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
+        var::Derivative<logL, var::Parameters_transformed> const& t_logL,
+        C_elogL const& t_elogL) const {
+        // Update patch state (including derivatives) for recursion.
+        {
+            auto& ps = get<Patch_State>(t_prior_all);
+            if constexpr (has_var_c<decltype(algo()) const&, P_mean> &&
+                          has_var_c<decltype(algo()) const&, P_Cov>) {
+                get<P_mean>(ps()) = get<P_mean>(algo());
+                get<P_Cov>(ps()) = get<P_Cov>(algo());
+            }
+        }
+
+        get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
+
+        if constexpr (var::has_it_v<ddMacro_State<vVars...>, elogL>) {
+            get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL();
+        }
+        if constexpr (var::has_it_v<ddMacro_State<vVars...>, vlogL>) {
+            get<vlogL>(t_prior_all)() = get<vlogL>(t_prior_all)() + 0.5;
+        }
+
+        if constexpr (has_var_c<ddMacro_State<vVars...>&, Evolution>) {
+            auto& evo = get<Evolution>(t_prior_all)();
+            using Evo = std::decay_t<decltype(get<Evolution>(t_prior_all))>;
+            using Element = typename Evo::element_type;
+
+            Element el{};
+
+            if constexpr (has_var_c<Element&, logL>) {
+                get<logL>(el) = t_logL;
+            }
+            if constexpr (has_var_c<Element&, elogL>) {
+                if constexpr (requires { get<elogL>(el) = t_elogL; }) {
+                    get<elogL>(el) = t_elogL;
+                } else if constexpr (requires { get<elogL>(el) = var::primitive(t_elogL); }) {
+                    get<elogL>(el) = var::primitive(t_elogL);
+                } else if constexpr (requires { get<elogL>(el)() = var::primitive(t_elogL)(); }) {
+                    get<elogL>(el)() = var::primitive(t_elogL)();
+                }
+            }
+            if constexpr (has_var_c<Element&, vlogL>) {
+                if constexpr (requires { get<vlogL>(el)() = 0.5; }) {
+                    get<vlogL>(el)() = 0.5;
+                }
+            }
+
+            auto copy_component = [&](auto type_tag) {
+                using Id = typename decltype(type_tag)::type;
+                if constexpr (has_var_c<Element&, Id> && has_var_c<decltype(algo()) const&, Id>) {
+                    if constexpr (requires { get<Id>(el) = get<Id>(algo()); }) {
+                        get<Id>(el) = get<Id>(algo());
+                    } else if constexpr (requires { get<Id>(el) = var::primitive(get<Id>(algo())); }) {
+                        get<Id>(el) = var::primitive(get<Id>(algo()));
+                    }
+                }
+            };
+
+            copy_component(std::type_identity<y_mean>{});
+            copy_component(std::type_identity<y_var>{});
+            copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<P_mean>{});
+            copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<Chi2>{});
+
+            evo.emplace_back(std::move(el));
+        }
+        return std::move(t_prior_all);
+    }
+
     template <class recursive, class averaging, class variance, class variance_correction,
               class FunctionTable, class C_Macro_State, class C_Qdt, class C_Patch_Model,
               class C_double>
@@ -4775,8 +4887,11 @@ class Macro_DMR {
         auto y = p_y.value();
         bool y_is_nan = std::isnan(y);
         auto r_logL = calculate_logL(y_is_nan, r_y_var, r_chi2, r_trust_coefficient, m);
+        auto r_elogL = calculate_elogL(y_is_nan, r_y_var, r_trust_coefficient, m);
+        
+       
         auto r_prior_all =
-            update(std::move(t_prior_all), std::move(r_Algo_state), std::move(r_logL));
+            update(std::move(t_prior_all), std::move(r_Algo_state), std::move(r_logL), std::move(r_elogL));
         return std::move(r_prior_all);
     }
 
