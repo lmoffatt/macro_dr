@@ -30,6 +30,12 @@ Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
+inline Simulated_Recording<var::please_include<>> remove_intervals(
+    const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>& simulation){
+    return Simulated_Recording<var::please_include<>>(
+        get<Recording>(simulation()));         
+    }
+
 Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,
                                        experiment_type experiment, std::size_t myseed,
                                        const std::string& modelName,

@@ -92,6 +92,12 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
                 "seed"));
     }
 
+    cm.push_function(
+        "remove_intervals",
+        dsl::to_typed_function<
+            Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&>(
+            &cmd::remove_intervals, "simulation_with_sub_intervals"));  
+  
     return cm;
 }
 

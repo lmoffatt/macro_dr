@@ -131,7 +131,7 @@ Maybe_error<std::string> write_csv(Experiment const& e,
 Maybe_error<std::string> write_csv(Experiment const& e,
     Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const& simulation, std::size_t n_sub,std::string  path)
     {
-        const auto path_ = path + ".csv";
+        auto path_ = path + ".csv";
         std::ofstream f(path_);
         if (!f.is_open()) {
             return error_message("cannot open ", path_);
@@ -156,24 +156,24 @@ Maybe_error<std::string> write_csv(Experiment const& e,
                                  " differ from expected ", expected_sub);
         }
 
-        f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
-        f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
-        f << "meta,n_samples," << n_samples << "\n";
-        f << "meta,n_substates," << n_sub << "\n";
+        // f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
+        // f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
+        // f << "meta,n_samples," << n_samples << "\n";
+        // f << "meta,n_substates," << n_sub << "\n";
 
-        f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
-        for (std::size_t i = 0; i < n_samples; ++i) {
-            double t = get<Time>(conds()[i])();
-            const auto& ev = get<Agonist_evolution>(conds()[i])();
-            for (std::size_t j = 0; j < ev.size(); ++j) {
-                const double ns = get<number_of_samples>(ev[j])();
-                const double duration = ns / get<Frequency_of_Sampling>(e)();
-                const double t_end = t + duration;
-                f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
-                  << "," << get<Agonist_concentration>(ev[j])() << "\n";
-                t = t_end;
-            }
-        }
+        // f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
+        // for (std::size_t i = 0; i < n_samples; ++i) {
+        //     double t = get<Time>(conds()[i])();
+        //     const auto& ev = get<Agonist_evolution>(conds()[i])();
+        //     for (std::size_t j = 0; j < ev.size(); ++j) {
+        //         const double ns = get<number_of_samples>(ev[j])();
+        //         const double duration = ns / get<Frequency_of_Sampling>(e)();
+        //         const double t_end = t + duration;
+        //         f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
+        //           << "," << get<Agonist_concentration>(ev[j])() << "\n";
+        //         t = t_end;
+        //     }
+        // }
 
         f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current\n";
 

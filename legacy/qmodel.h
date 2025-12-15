@@ -4247,7 +4247,7 @@ class Macro_DMR {
             }
         }();
         auto r_y_mean = build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i) + y_baseline());
-        auto gSg = getvalue(TranspMult(t_gmean_i, SmD) * t_gmean_i);
+        auto gSg = getvalue(TranspMult(t_gmean_i, get<P_Cov>(t_prior())()) * t_gmean_i);
         auto dy = y - r_y_mean();
         auto e = get<Current_Noise>(m).value() * fs / get<number_of_samples>(t_Qdt).value() +
                  get<Pink_Noise>(m).value() +
@@ -4318,7 +4318,9 @@ class Macro_DMR {
         }
         auto const& t_P = get<P>(t_Qdt);
         auto const& p_P_mean = get<P_mean>(t_prior());
-        auto SmD = get<P_Cov>(t_prior())() - diag(p_P_mean());
+        auto const& p_P_Cov= get<P_Cov>(t_prior());
+        
+        auto SmD = p_P_Cov()  - diag(p_P_mean());
         auto y_baseline = get<Current_Baseline>(m);
         constexpr bool PoissonDif = true;
         auto& t_gmean_i = [&t_Qdt, &m]() -> decltype(auto) {
@@ -4328,7 +4330,7 @@ class Macro_DMR {
                 return get<g>(m);
         }();
 
-        auto gSg = [&t_gmean_i, &SmD, &p_P_mean, &t_Qdt]() {
+        auto gSg = [&t_gmean_i,&p_P_Cov, &SmD, &p_P_mean, &t_Qdt]() {
             if constexpr (averaging::value == 2) {
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
                 auto& t_gmean_ij = get<gmean_ij>(t_Qdt);
@@ -4337,7 +4339,7 @@ class Macro_DMR {
                 return getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i()) +
                        getvalue(p_P_mean() * (elemMult(t_gtotal_ij(), t_gmean_ij()) * u));
             } else {
-                return getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i());
+                return getvalue(TranspMult(t_gmean_i(), p_P_Cov()) * t_gmean_i());
             }
         }();
         auto r_y_mean = build<y_mean>(N * getvalue(p_P_mean() * t_gmean_i()) + y_baseline());
@@ -4357,14 +4359,14 @@ class Macro_DMR {
         auto dy = y - r_y_mean();
         auto chi = dy / r_y_var();
         auto chi2 = build<Chi2>(dy * chi);
-        auto gS = [&t_gmean_i, &SmD, &p_P_mean, &t_Qdt, &t_P]() {
+        auto gS = [&t_gmean_i, &p_P_Cov,&SmD, &p_P_mean, &t_Qdt, &t_P]() {
             if constexpr (averaging::value == 2) {
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
 
                 return TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
                 ;
             } else {
-                return TranspMult(t_gmean_i(), SmD) * t_P();
+                return TranspMult(t_gmean_i(), p_P_Cov());
             }
         }();
         auto n_P_mean = p_P_mean() * t_P();
@@ -4403,13 +4405,14 @@ class Macro_DMR {
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
             get<Chi2>(out()) = std::move(chi2);
+            get<trust_coefficient>(out()) = alfa;
             if constexpr (averaging::value == 2) {
                 get<P_mean_t20_y1>(out())() = std::move(r_P_mean());
                 get<P_Cov_t20_y1>(out())() = std::move(r_P_cov());
-                auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
+                auto& t_gmean_i = get<gmean_i>(t_Qdt);
 
-                auto gS0 = TranspMult(t_gmean_i(), get<P_Cov>(t_prior())()) +
-                           TranspMult(t_gtotal_ij(), p_P_mean());
+                auto gS0 = TranspMult(t_gmean_i(), p_P_Cov() )+
+                          elemMult( p_P_mean(),t_gmean_i()) ;
 
                 auto Maybe_r_P_mean_t11_y0 = to_Probability(p_P_mean() * t_P());
                 auto Maybe_r_P_mean_t10_y1 = to_Probability(p_P_mean() + alfa() * chi * gS0);
@@ -4443,8 +4446,7 @@ class Macro_DMR {
                 static_assert(averaging::value == 1 || averaging::value == 0);
                 get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
                 get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
-                auto gS0 = TranspMult(t_gmean_i(), get<P_Cov>(t_prior())()) +
-                           TranspMult(t_gmean_i(), p_P_mean());
+                auto gS0 = TranspMult(t_gmean_i(), get<P_Cov>(t_prior())());
 
                 auto Maybe_r_P_mean_t1_y1 = to_Probability(p_P_mean() + chi * gS0);
 
@@ -4475,7 +4477,7 @@ class Macro_DMR {
     auto safely_calculate_Algo_State(C_Patch_State const& t_prior, C_Qdt const& t_Qdt,
                                      C_Patch_Model const& m, C_double const& N,
                                      const Patch_current& p_y, double fs) const {
-        if constexpr (recursive::value) {
+        if constexpr (!recursive::value) {
             return safely_calculate_Algo_State_non_recursive<dynamic, averaging, variance>(
                 t_prior, t_Qdt, m, N, p_y, fs);
         }
