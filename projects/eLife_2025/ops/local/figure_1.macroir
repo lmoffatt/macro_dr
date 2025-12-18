@@ -15,6 +15,8 @@ par_tr = get_standard_parameter_transformed_values(parameter)
 
 model_str="scheme_CO"
 
+
+
 simulation_with_sub_intervals  = simulate_with_sub_intervals(model= model, parameter_values = par_tr, experiment = experiment,
                          observations = observations, number_of_substeps = 250, seed = 0)
 
@@ -23,24 +25,27 @@ simulation_file = write_csv(experiment= experiment, simulation=simulation_with_s
 
 simulation = remove_intervals(simulation_with_sub_intervals)
 
-likelihood_predictions = calc_likelihood_predictions(model =model, parameters=par_tr, experiment =experiment, 
-            data = simulation,
+
+macro_IRV = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
             variance_approximation = 1, taylor_variance_correction = 0)
+
+
+
+likelihood_predictions = calc_likelihood_predictions(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
+            data = simulation)
 
 likelihood_predictions_file = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_predictions,
    path= "figure_1_likelihood_predictions")
 
-likelihood_diagnostic = calc_likelihood_diagnostic(model =model, parameters=par_tr, experiment =experiment, data = simulation,
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 1, taylor_variance_correction = 0)
+likelihood_diagnostic = calc_likelihood_diagnostic(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
+data = simulation)
 
 diagnostic_file = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic,
    path= "figure_1_likelihood_diagnostic")
 
-dlikelihood_predictions = calc_dlikelihood_predictions(model =model, parameters=par_tr, experiment =experiment, data = simulation,
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 1, taylor_variance_correction = 0)
+dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
+data = simulation)
 
 dlikelihood_file = write_csv(experiment= experiment, simulation = simulation, likelihood = dlikelihood_predictions, 
    path= "figure_1_dlikelihood_predictions")
