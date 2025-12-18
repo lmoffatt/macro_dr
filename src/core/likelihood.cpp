@@ -13,6 +13,143 @@
 #include "qmodel.h"
 
 namespace macrodr::cmd {
+
+namespace {
+
+template <class adaptive, class recursive, class averaging, class variance, class taylor, class Model,
+          class FuncTable>
+auto calculate_mdlikelihood_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, Model>& lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r) -> Maybe_error<dMacro_State_Hessian_minimal> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
+                                                  decltype(*model0_d)>(*model0_d, lik.n_sub_dt);
+    return dlogLikelihood(ftbl3, dlikelihood, par, r, e);
+}
+
+template <class adaptive, class recursive, class averaging, class variance, class taylor, class Model,
+          class FuncTable>
+auto calculate_mdiff_likelihood_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, Model>& lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r, double delta_param) -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
+                                                  decltype(*model0_d)>(*model0_d, lik.n_sub_dt);
+    return diff_logLikelihood(ftbl3, dlikelihood, par, r, e, delta_param);
+}
+
+template <class adaptive, class recursive, class averaging, class variance, class taylor, class Model,
+          class FuncTable>
+auto calculate_mdlikelihood_predictions_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, Model>& lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
+                                                  decltype(*model0_d)>(*model0_d, lik.n_sub_dt);
+    return dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
+}
+
+}  // namespace
+
+auto calculate_mlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
+                           const var::Parameters_transformed& par, const Experiment& e,
+                           const Recording& r) -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
+    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+
+    auto par_values = par.to_value();
+
+    return std::visit(
+        [&](const auto& modelLikelihood) {
+            return logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
+        },
+        modelLikelihood_v);
+}
+
+auto calculate_mdlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
+                            const var::Parameters_transformed& par, const Experiment& e,
+                            const Recording& r) -> Maybe_error<dMacro_State_Hessian_minimal> {
+    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+
+   
+    return std::visit(
+        [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Hessian_minimal> {
+            return calculate_mdlikelihood_impl(modelLikelihood, ftbl3, par, e, r);
+        },
+        modelLikelihood_v);
+}
+
+auto calculate_mdiff_likelihood(const likelihood_algorithm_type& modelLikelihood_v,
+                                const var::Parameters_transformed& par, const Experiment& e,
+                                const Recording& r, double delta_param)
+    -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
+    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+
+  
+    return std::visit(
+        [&](const auto& modelLikelihood) -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
+            return calculate_mdiff_likelihood_impl(modelLikelihood, ftbl3, par, e, r, delta_param);
+        },
+        modelLikelihood_v);
+}
+
+auto calculate_mlikelihood_predictions(const likelihood_algorithm_type& modelLikelihood_v,
+                                       const var::Parameters_transformed& par, const Experiment& e,
+                                       const Recording& r) -> Maybe_error<Macro_State_Ev_predictions> {
+    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+
+    auto par_values = par.to_value();
+
+    return std::visit(
+        [&](const auto& modelLikelihood) {
+            return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
+        },
+        modelLikelihood_v);
+}
+
+auto calculate_mlikelihood_diagnostics(const likelihood_algorithm_type& modelLikelihood_v,
+                                       const var::Parameters_transformed& par, const Experiment& e,
+                                       const Recording& r) -> Maybe_error<Macro_State_Ev_diagnostic> {
+    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+
+     auto par_values = par.to_value();
+
+    return std::visit(
+        [&](const auto& modelLikelihood) {
+            return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
+        },
+        modelLikelihood_v);
+}
+
+auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLikelihood_v,
+                                        const var::Parameters_transformed& par, const Experiment& e,
+                                        const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+
+   
+    return std::visit(
+        [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+            return calculate_mdlikelihood_predictions_impl(modelLikelihood, ftbl3, par, e, r);
+        },
+        modelLikelihood_v);
+}
+
+
+
 auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
                           const var::Parameters_transformed& par, const Experiment& e,
                           const Recording& r, bool adaptive_approximation,

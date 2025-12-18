@@ -223,20 +223,20 @@ struct algebra_2 {
         using type = constexpr_S<X, Y>;
     };
 
-    template <class X, class Y0, class Y1, class... Ys>
+    template <class X, class Y0, class... Ys>
         requires(!is_sum<X>)
-    struct S_constexpr_impl<X, constexpr_S<Y0, Y1, Ys...>> {
-        using type = constexpr_S<X, Y0, Y1, Ys...>;
+    struct S_constexpr_impl<X, constexpr_S<Y0, Ys...>> {
+        using type = constexpr_S<X, Y0, Ys...>;
     };
-    template <class X0, class X1, class... Xs, class Y>
+    template <class X0, class... Xs, class Y>
         requires(!is_sum<Y>)
-    struct S_constexpr_impl<constexpr_S<X0, X1, Xs...>, Y> {
-        using type = constexpr_S<X0, X1, Xs..., Y>;
+    struct S_constexpr_impl<constexpr_S<X0, Xs...>, Y> {
+        using type = constexpr_S<X0, Xs..., Y>;
     };
 
-    template <class X0, class X1, class... Xs, class Y0, class Y1, class... Ys>
-    struct S_constexpr_impl<constexpr_S<X0, X1, Xs...>, constexpr_S<Y0, Y1, Ys...>> {
-        using type = constexpr_S<X0, X1, Xs..., Y0, Y1, Ys...>;
+    template <class X0, class... Xs, class Y0, class... Ys>
+    struct S_constexpr_impl<constexpr_S<X0, Xs...>, constexpr_S<Y0, Ys...>> {
+        using type = constexpr_S<X0, Xs..., Y0, Ys...>;
     };
 
     template <class X0, class... Xs>

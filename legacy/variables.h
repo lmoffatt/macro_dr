@@ -371,7 +371,7 @@ struct constexpr_Var_domain {
             // std::string joined;
             // ((joined += std::to_string(allowed) + ", "), ...);
             return error_message(std::to_string(x) + " is not in " +
-                                 macrodr::dsl::type_name<Id<allowed...>>() + "\n");
+                                 macrodr::dsl::type_name<variant_type>() + "\n");
         }
         return it->second;
     }

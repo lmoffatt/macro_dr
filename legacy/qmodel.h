@@ -4188,7 +4188,7 @@ class Macro_DMR {
 
     template <class C_y_var>
     auto calculate_logL(bool y_is_nan, C_y_var const& r_y_var, auto const& chi2,
-                        trust_coefficient alfa, auto& m) const -> Transfer_Op_to<C_y_var, logL> {
+                        auto const& alfa, auto& m) const -> Transfer_Op_to<C_y_var, logL> {
         using DX = var::dx_of_dfdx_t<C_y_var>;
         auto const& dx = var::get_dx_of_dfdx(r_y_var);
 
@@ -4207,7 +4207,7 @@ class Macro_DMR {
     }
 
 	    template <class C_y_var>
-	    auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, trust_coefficient alfa, auto& m) const {
+	    auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, auto const& alfa, auto& m) const {
 	        using DX = var::dx_of_dfdx_t<C_y_var>;
 	        auto const& dx = var::get_dx_of_dfdx(r_y_var);
 

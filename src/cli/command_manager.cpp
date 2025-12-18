@@ -258,6 +258,71 @@ dsl::Compiler make_compiler_new() {
                              "values", "initial_agonist"));
     }
 
+    cm.push_function("build_likelihood_function",
+                     dsl::to_typed_function<
+                         interface::IModel<var::Parameters_values> const&, bool, bool, int, bool,
+                         bool>(&macrodr::cmd::build_likelihood_function, "model",
+                                "adaptive_approximation", "recursive_approximation",
+                                "averaging_approximation", "variance_approximation",
+                                "taylor_variance_correction")
+                            );
+
+    cm.push_function(
+        "calc_likelihood",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Recording&>(
+            &cmd::calculate_mlikelihood, "likelihood_algorithm", "parameters", "experiment", "data"));
+
+    cm.push_function(
+        "calc_dlikelihood",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Recording&>(
+            &cmd::calculate_mdlikelihood, "likelihood_algorithm", "parameters", "experiment",
+            "data"));
+
+    cm.push_function(
+        "calc_diff_likelihood",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&, const var::Parameters_transformed&,
+                               const Experiment&, const Recording&, double>(
+            &cmd::calculate_mdiff_likelihood, "likelihood_algorithm", "parameters", "experiment",
+            "data", "delta_param"));
+
+    cm.push_function(
+        "calc_likelihood_predictions",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Recording&>(
+            &cmd::calculate_mlikelihood_predictions, "likelihood_algorithm", "parameters",
+            "experiment", "data"));
+
+        cm.push_function(
+        "calc_likelihood_predictions",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Simulated_Recording<var::please_include<>>&>(
+            &cmd::calculate_simulation_mlikelihood_predictions, "likelihood_algorithm", "parameters",
+            "experiment", "data")); 
+
+
+    cm.push_function(
+        "calc_likelihood_diagnostic",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Recording&>(
+            &cmd::calculate_mlikelihood_diagnostics, "likelihood_algorithm", "parameters",
+            "experiment", "data"));
+    cm.push_function(
+        "calc_likelihood_diagnostic",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Simulated_Recording<var::please_include<>>&&>(
+            &cmd::calculate_simulated_mlikelihood_diagnostics, "likelihood_algorithm", "parameters",
+            "experiment", "data"));
+
+
+    cm.push_function(
+        "calc_dlikelihood_predictions",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&, const Recording&>(
+            &cmd::calculate_mdlikelihood_predictions, "likelihood_algorithm", "parameters",
+            "experiment", "data"));
+
     cm.push_function(
         "calc_likelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
@@ -316,7 +381,7 @@ dsl::Compiler make_compiler_new() {
             "variance_approximation", "taylor_variance_correction", "delta_param"));
 
     cm.push_function(
-        "cal_likelihood_predictions",
+        "calc_likelihood_predictions",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool>(
