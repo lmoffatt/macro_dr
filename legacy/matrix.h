@@ -525,7 +525,7 @@ class Matrix {
     }
 
     friend auto MultTransp(const Matrix& a, const Matrix& b) {
-        return lapack::Lapack_Full_Product(a, b, true, false);
+        return lapack::Lapack_Full_Product(a, b, false, true);
     }
 
     friend auto inv(const Matrix& a) { return lapack::Lapack_Full_inv(a); }
@@ -2032,10 +2032,21 @@ inline Maybe_error<bool> test_equality(std::integral auto x, std::integral auto 
         return true;
 }
 
+
 template <template <class> class aMatrix>
 Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double>& two,
-                                double eps) {
+                                double eps=0.0) {
     auto out = Maybe_error<bool>(true);
+    
+        if (one.nrows() != two.nrows() || one.ncols() != two.ncols()) {
+            return error_message("Matrix dimensions differ: (" + std::to_string(one.nrows()) + "," +
+                                 std::to_string(one.ncols()) + ") vs (" +
+                                 std::to_string(two.nrows()) + "," +
+                                 std::to_string(two.ncols()) + ")");
+        }
+    if (eps == 0.0) {
+        eps = std::numeric_limits<double>::epsilon() * std::max({std::abs(norm_inf(one)), std::abs(norm_inf(two)), 1.0}) * 100; 
+    }
     for (std::size_t i = 0; i < one.nrows(); ++i)
         for (std::size_t j = 0; j < one.ncols(); ++j) {
             auto test = test_equality(one(i, j), two(i, j), eps);
@@ -2049,9 +2060,20 @@ Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double
         ss << one << "\n differs from \n" << two;
         ss << out.error()();
         return error_message(ss.str());
-    } else
+    } else {
         return out;
+    }
 }
+
+namespace var{
+template <template <class> class aMatrix>
+Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double>& two,
+                                double eps=0.0){
+return ::test_equality(one, two, eps);
+
+                                }
+                         
+                            }
 
 template <typename Matrix>
     requires Matrix::is_Matrix

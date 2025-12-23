@@ -6,23 +6,25 @@
 
 #include <type_traits>
 
+#include "patch_model.h"
 #include "qmodel.h"
 
 namespace macrodr::cmd {
 
-inline auto build_likelihood_function(const interface::IModel<var::Parameters_values>& model0,
+inline auto build_likelihood_function(const ModelPtr& model0,
                                       bool adaptive_approximation, bool recursive_approximation,
                                       int averaging_approximation, bool variance_approximation,
                                       bool taylor_variance_correction_approximation) {
     auto nsub = Simulation_n_sub_dt(100);
+    const interface::IModel<var::Parameters_values>& model_ref = *model0;
 
     return Likelihood_Model_regular<
                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
                var::constexpr_Var_domain<int, uses_averaging_aproximation,0,1, 2>,
-               var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+               var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-               decltype(model0)>(model0, nsub,
+               decltype(model_ref)>(model_ref, nsub,
                                  uses_adaptive_aproximation_value(adaptive_approximation),
                                  uses_recursive_aproximation_value(recursive_approximation),
                                  uses_averaging_aproximation_value(averaging_approximation),
@@ -33,8 +35,7 @@ inline auto build_likelihood_function(const interface::IModel<var::Parameters_va
 }
 
 using likelihood_algorithm_type = var::untransformed_type_t<decltype(build_likelihood_function(
-    std::declval<const interface::IModel<var::Parameters_values>&>(), false, false, 2, true,
-    false))>;
+    std::declval<const ModelPtr&>(), false, false, 2, true, false))>;
 
 auto calculate_mlikelihood(const likelihood_algorithm_type& likelihood_algorithm,
                            const var::Parameters_transformed& par, const Experiment& e,
@@ -83,6 +84,14 @@ auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& likelih
                                         const var::Parameters_transformed& par, const Experiment& e,
                                         const Recording& r)
     -> Maybe_error<dMacro_State_Ev_gradient_all>;
+
+inline auto calculate_simulation_mdlikelihood_predictions(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation)
+    -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    return calculate_mdlikelihood_predictions(likelihood_algorithm, par, e,
+                                              get<Recording>(simulation()));
+}
 
 auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
                           const var::Parameters_transformed& par, const Experiment& e,

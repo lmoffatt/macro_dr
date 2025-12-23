@@ -52,3 +52,9 @@ add_test(NAME macrodr_cli_env_flags
                  --env-save-path ${CMAKE_CURRENT_BINARY_DIR}/env_flags
                  --check-syntax
                  -e "alpha = 1.0")
+
+add_test(NAME macrodr_cli_likelihood_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/likelihood_smoke.macroir --env-save step)
+set_tests_properties(macrodr_cli_likelihood_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")

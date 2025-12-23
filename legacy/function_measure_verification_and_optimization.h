@@ -87,6 +87,7 @@ class F {
     constexpr F(Fun&& t_f) : m_f{std::move(t_f)} {}
     constexpr F(Fun const& t_f) : m_f{t_f} {}
     template <class... Ts>
+    requires std::is_invocable_v<Fun, Ts...>
     constexpr auto operator()(Ts&&... ts) const {
         return m_f(std::forward<Ts>(ts)...);
     }
@@ -316,7 +317,13 @@ class FuncMap_St : public Fs... {
     }
 
     template <class Id, class... Ts>
-    //   requires(!std::is_same_v<Nothing,std::decay_t<decltype(FuncMap_St{}[Id{}])>>)
+   requires requires (FuncMap_St& me, Id id) {
+        // 1. Check if the expression is valid
+        { me[id] }; 
+        
+        // 2. Check the boolean condition (Nested Requirement)
+        requires !std::is_same_v<std::remove_cvref_t<decltype(me[id])>, Nothing>;
+    }
     auto f(Id, Ts&&... ts) {
         //     if constexpr(std::is_same_v<Nothing,decltype((*this)[Id{}])>)
         //         static_assert(false);

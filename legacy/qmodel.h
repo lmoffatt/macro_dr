@@ -315,21 +315,20 @@ auto to_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
                     if (std::isnan(derivative(x)()[i][0]))
                         return error_message("error in derivative");
 
-    constexpr double smooth_eps = 1e-12;
+    constexpr double smooth_eps = 0;
     auto out = apply(
         [smooth_eps](auto const& value) {
             using ValueType = std::decay_t<decltype(value)>;
             using std::sqrt;
             auto half = 0.5;
-            auto eps_like = smooth_eps;
+            auto eps_like = smooth_eps*smooth_eps;
             auto term = value * value + eps_like;
             auto sqrt_term = sqrt(term);
             return half * (value + sqrt_term);
         },
         x);
-
     if (var::min(primitive(out)) < 0)
-        return error_message(" fuck");
+        return error_message("how did negative Probability arise?");
 
     auto s = var::sum(out);
     if (s == 0)
@@ -450,6 +449,17 @@ class P_mean_t2_y1 : public var::Var<P_mean_t2_y1, Matrix<double>> {
     friend std::string className(P_mean_t2_y1) { return "P_mean_t2_y1"; }
 };
 
+class P_mean_t15_y0 : public var::Var<P_mean_t15_y0, Matrix<double>> {
+   public:
+    friend std::string className(P_mean_t15_y0) { return "P_mean_t15_y0"; }
+};
+
+class P_mean_t15_y1 : public var::Var<P_mean_t15_y1, Matrix<double>> {
+   public:
+    friend std::string className(P_mean_t15_y1) { return "P_mean_t15_y1"; }
+};
+
+
 class P_mean_t1_y1 : public var::Var<P_mean_t1_y1, Matrix<double>> {
    public:
     friend std::string className(P_mean_t1_y1) { return "P_mean_t1_y1"; }
@@ -462,7 +472,7 @@ class P_mean_t20_y1 : public var::Var<P_mean_t20_y1, Matrix<double>> {
 
 class P_mean_t11_y0 : public var::Var<P_mean_t11_y0, Matrix<double>> {
    public:
-    friend std::string className(P_mean_t11_y0) { return "P_mean_t01_y0"; }
+    friend std::string className(P_mean_t11_y0) { return "P_mean_t11_y0"; }
 };
 
 class P_mean_t10_y1 : public var::Var<P_mean_t10_y1, Matrix<double>> {
@@ -470,9 +480,30 @@ class P_mean_t10_y1 : public var::Var<P_mean_t10_y1, Matrix<double>> {
     friend std::string className(P_mean_t10_y1) { return "P_mean_t10_y1"; }
 };
 
+class P_mean_0t_y0 : public var::Var<P_mean_0t_y0, Matrix<double>> {
+   public:
+    friend std::string className(P_mean_0t_y0) { return "P_mean_0t_y0"; }
+};
+
+class P_mean_0t_y1 : public var::Var<P_mean_0t_y1, Matrix<double>> {
+   public:
+    friend std::string className(P_mean_0t_y1) { return "P_mean_0t_y1"; }
+};
+
+
 class P_Cov : public var::Var<P_Cov, SymmetricMatrix<double>> {
     friend std::string className(P_Cov) { return "P_Cov"; }
 };
+
+class P_var_ii_0t_y0 : public var::Var<P_var_ii_0t_y0, Matrix<double>> {
+    friend std::string className(P_var_ii_0t_y0) { return "P_var_ii_0t_y0"; }
+};
+
+
+class P_var_ii_0t_y1 : public var::Var<P_var_ii_0t_y1, Matrix<double>> {
+    friend std::string className(P_var_ii_0t_y1) { return "P_var_ii_0t_y1"; }
+};
+
 
 class P_Cov_t2_y0 : public var::Var<P_Cov_t2_y0, SymmetricMatrix<double>> {
    public:
@@ -483,6 +514,18 @@ class P_Cov_t2_y1 : public var::Var<P_Cov_t2_y1, SymmetricMatrix<double>> {
    public:
     friend std::string className(P_Cov_t2_y1) { return "P_Cov_t2_y1"; }
 };
+
+class P_Cov_t15_y0 : public var::Var<P_Cov_t15_y0, SymmetricMatrix<double>> {
+   public:
+    friend std::string className(P_Cov_t15_y0) { return "P_Cov_t15_y0"; }
+};
+
+class P_Cov_t15_y1 : public var::Var<P_Cov_t15_y1, SymmetricMatrix<double>> {
+   public:
+    friend std::string className(P_Cov_t15_y1) { return "P_Cov_t15_y1"; }
+};
+
+
 
 class P_Cov_t1_y1 : public var::Var<P_Cov_t1_y1, SymmetricMatrix<double>> {
    public:
@@ -496,7 +539,7 @@ class P_Cov_t20_y1 : public var::Var<P_Cov_t20_y1, SymmetricMatrix<double>> {
 
 class P_Cov_t11_y0 : public var::Var<P_Cov_t11_y0, SymmetricMatrix<double>> {
    public:
-    friend std::string className(P_Cov_t11_y0) { return "P_Cov_t01_y0"; }
+    friend std::string className(P_Cov_t11_y0) { return "P_Cov_t11_y0"; }
 };
 
 class P_Cov_t10_y1 : public var::Var<P_Cov_t10_y1, SymmetricMatrix<double>> {
@@ -619,7 +662,11 @@ class Transition_rate_W
 */
 
 class P : public Var<P, Matrix<double>> {
-    friend std::string className(P) { return "P_ij"; }
+    friend std::string className(const P&) { return "P_ij"; }
+};
+
+class P_half : public Var<P_half, Matrix<double>> {
+    friend std::string className(const P_half&) { return "Ph_ij"; }
 };
 
 template <class Policy = StabilizerPolicyEnabled, class C_Matrix>
@@ -733,7 +780,7 @@ using Qn = Vector_Space<number_of_samples, min_P, P, PG_n, PGG_n>;
 
 using Eigs = Vector_Space<lambda, V, W>;
 
-using Qdtg = Vector_Space<number_of_samples, min_P, P, g>;
+using Qdtg = Vector_Space<number_of_samples, min_P, P_half, g>;
 
 using Qdtm =
     Vector_Space<number_of_samples, min_P, P, gmean_i, gtotal_ij, gmean_ij, gsqr_i, gvar_i>;
@@ -764,29 +811,35 @@ inline void save(const std::string name, const Patch_Model& m) {
     f_g << std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<g>(m) << "\n";
 }
 
+ 
+
 class Algo_State_Dynamic
     : public var::Var<
           Algo_State_Dynamic,
-          Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P_mean_t2_y0, P_mean_t2_y1,
-                       P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, P_Cov_t2_y0,
-                       P_Cov_t2_y1, P_Cov_t1_y1, P_Cov_t20_y1, P_Cov_t11_y0, P_Cov_t10_y1>> {
+          Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
+                       P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, 
+                       P_mean_0t_y0,P_mean_0t_y1,P_var_ii_0t_y0,P_var_ii_0t_y1,
+                       P_Cov_t2_y0,
+                       P_Cov_t2_y1,P_Cov_t15_y0,
+                       P_Cov_t15_y1, P_Cov_t1_y1, P_Cov_t20_y1, P_Cov_t11_y0, P_Cov_t10_y1>> {
    public:
     Matrix<double> const& get_P_mean() const {
-        if (get<P_mean_t2_y0>((*this)())().size() > 0) {
-            return get<P_mean_t2_y0>((*this)())();
-        }
         if (get<P_mean_t2_y1>((*this)())().size() > 0) {
             return get<P_mean_t2_y1>((*this)())();
         }
+        if (get<P_mean_t2_y0>((*this)())().size() > 0) {
+            return get<P_mean_t2_y0>((*this)())();
+        }
+        
         return get<P_mean_t20_y1>((*this)())();
     }
     SymmetricMatrix<double> const& get_P_Cov() const {
-        if (get<P_Cov_t2_y0>((*this)())().size() > 0) {
-            return get<P_Cov_t2_y0>((*this)())();
-        }
         if (get<P_Cov_t2_y1>((*this)())().size() > 0) {
             return get<P_Cov_t2_y1>((*this)())();
+        }if (get<P_Cov_t2_y0>((*this)())().size() > 0) {
+            return get<P_Cov_t2_y0>((*this)())();
         }
+        
         return get<P_Cov_t20_y1>((*this)())();
     }
 };
@@ -2190,11 +2243,11 @@ class Macro_DMR {
                    std::move(v_gvar_i), std::move(v_gtotal_var_ij), std::move(v_gvar_ij));
     }
 
-    template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
-        requires(U<C_Patch_Model, Patch_Model>)
-    Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> calc_Qdtg_eig(FunctionTable&&,
+    template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model, class C_Qx_eig>
+   requires(U<C_Patch_Model, Patch_Model> && U<C_Qx_eig, Eigs>)
+     Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> calc_Qdtg_eig(FunctionTable&&,
                                                                    const C_Patch_Model& m,
-                                                                   const Eigs& t_Eigs,
+                                                                   const C_Qx_eig& t_Eigs,
                                                                    number_of_samples ns,
                                                                    double dt) {
         using Trans = transformation_type_t<C_Patch_Model>;
@@ -2204,7 +2257,7 @@ class Macro_DMR {
         const auto& t_landa = get<lambda>(t_Eigs);
         const auto& t_g = get<g>(m);
         const auto t_min_P = get<min_P>(m);
-        auto v_ladt = t_landa() * dt;
+        auto v_ladt = t_landa() * dt *0.5;
         auto v_exp_ladt = apply(
             [](auto const& x) {
                 using std::exp;
@@ -2217,7 +2270,7 @@ class Macro_DMR {
         if (!Maybe_r_P) {
             return Maybe_r_P.error();
         }
-        auto r_P = std::move(Maybe_r_P.value());
+        auto r_P = build<P_half>(std::move(Maybe_r_P.value())());
         if (std::isnan(primitive(var::max(r_P())))) {
             return error_message("nan P");
         }
@@ -2962,7 +3015,7 @@ class Macro_DMR {
                                                                       number_of_samples ns,
                                                                       double dt,
                                                                       std::size_t order = 5ul) {
-        auto v_Qrun = t_Eigs() * dt;
+        auto v_Qrun = t_Eigs() * dt*0.5;
         double max = maxAbs(primitive(v_Qrun));
         double desired = 0.125 / 4.0;
         int n;
@@ -2977,7 +3030,7 @@ class Macro_DMR {
         if (!Maybe_P_sub) {
             return Maybe_P_sub.error();
         } else {
-            return build<Qdtg>(ns, get<min_P>(m), std::move(Maybe_P_sub.value()), get<g>(m));
+            return build<Qdtg>(ns, get<min_P>(m), build<P_half>(std::move(Maybe_P_sub.value()())), get<g>(m));
         }
     }
 
@@ -3316,7 +3369,7 @@ class Macro_DMR {
     auto calc_Qdtm(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         if constexpr (std::is_same_v<Policy, StabilizerPolicyEnabled>) {
-            if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtm_step{}])>)
+            if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtg_step{}])>)
                 return calc_Qdtm_agonist_step<Policy>(f, m, t_step, fs);
             else
                 return f.f(Calc_Qdtm_step{}, m, t_step, fs);
@@ -3329,7 +3382,7 @@ class Macro_DMR {
     // requires(U<C_Patch_Model, Patch_Model>)
     auto calc_Qdtg(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> {
-        if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtm_step{}])>)
+        if constexpr (std::is_same_v<Nothing, decltype(f[Calc_Qdtg_step{}])>)
             return calc_Qdtg_agonist_step(f, m, t_step, fs);
         else
             return f.f(Calc_Qdtg_step{}, m, t_step, fs);
@@ -3414,19 +3467,19 @@ class Macro_DMR {
         auto v_Qdt0 = calc_Qdtg(f, m, t_step[0], fs);
         if (!v_Qdt0)
             return v_Qdt0.error();
-        auto v_Prun = get<P>(v_Qdt0.value());
+        auto v_Prun = get<P_half>(v_Qdt0.value());
         auto v_ns = get<number_of_samples>(v_Qdt0.value())();
         for (std::size_t i = 1; i < t_step.size(); ++i) {
-            auto v_Qdti = calc_Qdt<Policy>(f, m, t_step[i], fs);
+            auto v_Qdti = calc_Qdtg(f, m, t_step[i], fs);
             if (!v_Qdti)
                 return v_Qdti.error();
             else {
                 auto Maybe_v_Prun =
-                    to_Transition_Probability<Policy>(v_Prun() * get<P>(v_Qdti.value())());
+                    to_Transition_Probability<Policy>(v_Prun() * get<P_half>(v_Qdti.value())());
                 if (!Maybe_v_Prun)
                     return Maybe_v_Prun.error();
 
-                v_Prun = std::move(Maybe_v_Prun.value());
+                v_Prun() = std::move(Maybe_v_Prun.value()());
                 v_ns = v_ns + get<number_of_samples>(v_Qdti.value())();
             }
         }
@@ -3502,6 +3555,14 @@ class Macro_DMR {
                    double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
         return calc_Qdtm<Policy>(f, m, t_step(), fs);
     }
+
+ template <class FunctionTable, class C_Patch_Model>
+    //   requires(U<C_Patch_Model, Patch_Model>)
+    auto calc_Qdtg(FunctionTable& f, const C_Patch_Model& m, const Agonist_evolution& t_step,
+                   double fs) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> {
+        return calc_Qdtg(f, m, t_step(), fs);
+    }
+
 
     template <class FunctionTable, class C_Patch_Model>
     //   requires(U<C_Patch_Model, Patch_Model>)
@@ -3974,7 +4035,7 @@ class Macro_DMR {
                     fs, SmD);
             }
         } else /* if constexpr (averaging::value == 1) */ {
-            auto& t_gmean_i = get<gmean_i>(t_Qdt);
+            auto& t_gmean_i = [&t_Qdt](){ if constexpr(averaging::value>0) {return get<gmean_i>(t_Qdt);} else {return get<g>(t_Qdt);} }();    
             auto gSg = getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i());
             if (!std::isfinite(primitive(gSg)) || primitive(gSg) <= 0)
                 return safely_calculate_y_mean_yvar_Pmean_PCov<
@@ -4261,8 +4322,19 @@ class Macro_DMR {
         constexpr bool PoissonDif = true;
         auto& y = p_y.value();
 
-        auto const& t_P = get<P>(t_Qdt);
-        auto const& p_P_mean = get<P_mean>(t_prior());
+        auto const& t_P = [&t_Qdt]() { 
+            if constexpr(averaging::value > 0) 
+               {return get<P>(t_Qdt);} 
+            else {return get<P_half>(t_Qdt); }}
+            ();
+        auto  p_P_mean = get<P_mean>(t_prior());
+        auto  p_P_Cov = get<P_Cov>(t_prior());
+        if constexpr (averaging::value == 0) {
+            p_P_mean() = p_P_mean() * t_P();
+            p_P_Cov() = AT_B_A(t_P(), p_P_Cov() - diag(p_P_mean())) + diag(p_P_mean() * t_P());
+        }
+
+
         auto SmD = get<P_Cov>(t_prior())() - diag(p_P_mean());
         auto y_baseline = get<Current_Baseline>(m);
         auto const& t_gmean_i = [&t_Qdt, &m]() -> auto const& {
@@ -4339,31 +4411,55 @@ class Macro_DMR {
         auto& y = p_y.value();
         if (std::isnan(y)) {
             return safely_calculate_Algo_State_non_recursive<
-                dynamic, uses_averaging_aproximation<0>, uses_variance_aproximation<false>>(
+                dynamic, averaging, uses_variance_aproximation<false>>(
                 t_prior, t_Qdt, m, N, p_y, fs);
         }
-        auto const& t_P = get<P>(t_Qdt);
-        auto const& p_P_mean = get<P_mean>(t_prior());
-        auto const& p_P_Cov= get<P_Cov>(t_prior());
+        auto const& t_P = [&t_Qdt](){
+            if constexpr(averaging::value==0){
+                return get<P_half>(t_Qdt);
+            }
+            else{
+                return get<P>(t_Qdt);
+            }
+        }();   
+        auto p_P_mean =[&t_prior, &t_P]()->decltype(auto){
+            if constexpr(averaging::value>0){
+                return get<P_mean>(t_prior());
+            }
+            else{
+            return build<P_mean>(to_Probability(get<P_mean>(t_prior())()* t_P()).value());
+            }   
+        }(); 
+        auto p_P_Cov =[&t_prior, &t_P, &p_P_mean]()->decltype(auto){
+            if constexpr(averaging::value>0){
+                return get<P_Cov>(t_prior());
+            }
+            else{
+            return build<P_Cov>(AT_B_A(t_P(), get<P_Cov>(t_prior())() -diag(get<P_mean>(t_prior())())) + diag(p_P_mean()));
+            }   
+        }(); 
         
         auto SmD = p_P_Cov()  - diag(p_P_mean());
+       
+
         auto y_baseline = get<Current_Baseline>(m);
         constexpr bool PoissonDif = true;
         auto& t_gmean_i = [&t_Qdt, &m]() -> decltype(auto) {
             if constexpr (averaging::value > 0)
                 return get<gmean_i>(t_Qdt);
             else
-                return get<g>(m);
+                return get<g>(t_Qdt);
         }();
 
         auto gSg = [&t_gmean_i,&p_P_Cov, &SmD, &p_P_mean, &t_Qdt]() {
             if constexpr (averaging::value == 2) {
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
                 auto& t_gmean_ij = get<gmean_ij>(t_Qdt);
-                Matrix<double> u(t_gmean_i().nrows(), 1, 1.0);
-
+                Matrix<double> u(p_P_mean().size(), 1, 1.0);
+        
                 return getvalue(TranspMult(t_gmean_i(), SmD) * t_gmean_i()) +
                        getvalue(p_P_mean() * (elemMult(t_gtotal_ij(), t_gmean_ij()) * u));
+                       
             } else {
                 return getvalue(TranspMult(t_gmean_i(), p_P_Cov()) * t_gmean_i());
             }
@@ -4373,7 +4469,7 @@ class Macro_DMR {
                  get<Pink_Noise>(m).value() +
                  get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
         auto r_y_var = build<y_var>(e + N * gSg);
-        if constexpr (variance::value) {
+        if constexpr (variance::value&& averaging::value>0) {
             auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
             if (std::isfinite(primitive(ms)) && primitive(ms) >= 0) {
                 r_y_var() = r_y_var() + N * ms;
@@ -4395,11 +4491,25 @@ class Macro_DMR {
                 return TranspMult(t_gmean_i(), p_P_Cov());
             }
         }();
-        auto n_P_mean = p_P_mean() * t_P();
-        auto alfa = calculate_trust_coefficient(primitive(n_P_mean), primitive(chi) * primitive(gS),
+        auto alfa = [&](){
+            if constexpr (averaging::value==2)  {
+            return  calculate_trust_coefficient(primitive(p_P_mean()*t_P()), primitive(chi) * primitive(gS),
                                                 trust_multiplying_factor);
+                                            
+            }
+            else {
+            return  calculate_trust_coefficient(primitive(p_P_mean()), primitive(chi) * primitive(gS),
+                                                trust_multiplying_factor);
+            }}();
 
-        auto Maybe_r_P_mean = to_Probability(n_P_mean + alfa() * chi * gS);
+
+        auto Maybe_r_P_mean = [&](){ 
+            if constexpr (averaging::value==2){
+            return to_Probability( p_P_mean() * t_P() + alfa() * chi * gS);}
+            else{
+            return to_Probability((p_P_mean() + alfa() * chi * gS) * t_P());
+        }
+        }();
         if (!Maybe_r_P_mean)
             return Maybe_r_P_mean.error();
         auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
@@ -4434,12 +4544,21 @@ class Macro_DMR {
             get<y_var>(out()) = std::move(r_y_var);
             get<Chi2>(out()) = std::move(chi2);
             get<trust_coefficient>(out()) = alfa;
+            if constexpr (averaging::value == 0) {
+                get<P_half>(out())= get<P_half>(t_Qdt);
+            } else{
+                     get<P>(out())= get<P>(t_Qdt);
+            } 
+            if constexpr (averaging::value>0) {
+                get<gmean_i>(out())=  get<gmean_i>(t_Qdt);
+                get<gvar_i>(out()) =  get<gvar_i>(t_Qdt);
+            }
             if constexpr (averaging::value == 2) {
-                get<P_mean_t20_y1>(out())() = std::move(r_P_mean());
-                get<P_Cov_t20_y1>(out())() = std::move(r_P_cov());
+
+
                 auto& t_gmean_i = get<gmean_i>(t_Qdt);
 
-                auto gS0 = TranspMult(t_gmean_i(), p_P_Cov() )+
+                auto gS0 = TranspMult(t_gmean_i(), SmD )+
                           elemMult( p_P_mean(),t_gmean_i()) ;
 
                 auto Maybe_r_P_mean_t11_y0 = to_Probability(p_P_mean() * t_P());
@@ -4452,8 +4571,41 @@ class Macro_DMR {
                     return Maybe_r_P_mean_t10_y1.error();
                 }
 
+                
+                
+                auto r_P_mean_0t_y0= diag(p_P_mean())*t_P();
+                auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
+
+                auto GS=  diag(TranspMult(t_gmean_i(), SmD)) * t_P() + diag(p_P_mean())* t_gtotal_ij();
+                
+                auto r_P_mean_0t_y1= r_P_mean_0t_y0 + alfa()*chi*GS;
+
+                auto r_P_var_ii_0t_y0= diag(p_P_Cov())*elemMult(t_P(),t_P())+diag(p_P_mean())*(t_P()-elemMult(t_P(),t_P()));
+                auto r_P_var_ii_0t_y1= r_P_var_ii_0t_y0 - (alfa()*N/r_y_var())* elemMult(GS,GS);
+                Matrix<double> uT(1ul,p_P_mean().size(), 1.0);
+         
+               
+                assert(var::test_equality(to_Probability(uT*r_P_mean_0t_y0).value(), Maybe_r_P_mean_t11_y0.value()));
+                assert(var::test_equality(to_Probability(uT*r_P_mean_0t_y1).value(), r_P_mean()));
+                assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y0)).value(), p_P_mean()));
+                assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y1)).value(), Maybe_r_P_mean_t10_y1.value()));
+
                 get<P_mean_t11_y0>(out())() = std::move(Maybe_r_P_mean_t11_y0.value());
                 get<P_mean_t10_y1>(out())() = std::move(Maybe_r_P_mean_t10_y1.value());
+                
+                get<P_mean_t20_y1>(out())() = std::move(r_P_mean());
+                get<P_Cov_t20_y1>(out())() = std::move(r_P_cov());
+                get<gtotal_ij>(out()) = get<gtotal_ij>(t_Qdt);
+                get<gmean_ij>(out()) = get<gmean_ij>(t_Qdt);
+
+                get<P_mean_0t_y0>(out())()= std::move(r_P_mean_0t_y0);
+                get<P_mean_0t_y1>(out())()= std::move(r_P_mean_0t_y1);
+                get<P_var_ii_0t_y0>(out())()= std::move(r_P_var_ii_0t_y0);
+                get<P_var_ii_0t_y1>(out())()= std::move(r_P_var_ii_0t_y1);  
+
+
+                
+                
                 auto Maybe_r_P_cov_t11_y0 =
                     to_Covariance_Probability(AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()));
                 auto Maybe_r_P_cov_t10_y1 = to_Covariance_Probability(
@@ -4469,28 +4621,90 @@ class Macro_DMR {
                 get<P_Cov_t11_y0>(out())() = std::move(Maybe_r_P_cov_t11_y0.value());
                 get<P_Cov_t10_y1>(out())() = std::move(Maybe_r_P_cov_t10_y1.value());
 
-            } else  //if constexpr (averaging::value ==1)
+            } else  if constexpr (averaging::value ==1)
             {
-                static_assert(averaging::value == 1 || averaging::value == 0);
-                get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
-                get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
-                auto gS0 = TranspMult(t_gmean_i(), get<P_Cov>(t_prior())());
-
-                auto Maybe_r_P_mean_t1_y1 = to_Probability(p_P_mean() + chi * gS0);
+        
+                auto Maybe_r_P_mean_t2_y0 = to_Probability(p_P_mean() * t_P());
+                if (!Maybe_r_P_mean_t2_y0) {
+                    return Maybe_r_P_mean_t2_y0.error();
+                }
+                auto Maybe_r_P_mean_t1_y1 = to_Probability(p_P_mean() + alfa() *chi * gS);
 
                 if (!Maybe_r_P_mean_t1_y1) {
                     return Maybe_r_P_mean_t1_y1.error();
                 }
 
-                get<P_mean_t1_y1>(out())() = std::move(Maybe_r_P_mean_t1_y1.value());
+                auto Maybe_r_P_cov_t2_y0 =
+                    to_Covariance_Probability(AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()));
+                if (!Maybe_r_P_cov_t2_y0) {
+                    return Maybe_r_P_cov_t2_y0.error();  
+                }
                 auto Maybe_r_P_cov_t1_y1 = to_Covariance_Probability(
-                    get<P_Cov>(t_prior())() - (alfa() * N / r_y_var()) * XTX(gS0));
+                    get<P_Cov>(t_prior())() - (alfa() * N / r_y_var()) * XTX(gS));
 
                 if (!Maybe_r_P_cov_t1_y1) {
                     return Maybe_r_P_cov_t1_y1.error();
                 }
+                
+                auto r_P_mean_0t_y0= diag(p_P_mean())*t_P();
+                
+                auto r_P_mean_0t_y1= diag(Maybe_r_P_mean_t1_y1.value())*t_P();
+
+                auto r_P_var_ii_0t_y0= diag(p_P_Cov())*elemMult(t_P(),t_P())+
+                diag(p_P_mean())*(t_P()-elemMult(t_P(),t_P()));
+
+                auto r_P_var_ii_0t_y1= diag(Maybe_r_P_cov_t1_y1.value())*elemMult(t_P(),t_P())+
+                diag(Maybe_r_P_mean_t1_y1.value())*(t_P()-elemMult(t_P(),t_P()));
+
+
+                Matrix<double> uT(1UL,p_P_mean().size(), 1.0);
+         
+                assert(var::test_equality(to_Probability(uT*r_P_mean_0t_y0).value(), Maybe_r_P_mean_t2_y0.value()));
+                assert(var::test_equality(to_Probability(uT*r_P_mean_0t_y1).value(), r_P_mean()));
+                assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y0)).value(), p_P_mean()));
+                assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y1)).value(), Maybe_r_P_mean_t1_y1.value()));
+                get<P_mean_0t_y0>(out())()= std::move(r_P_mean_0t_y0);
+                get<P_mean_0t_y1>(out())()= std::move(r_P_mean_0t_y1);
+                get<P_var_ii_0t_y0>(out())()= std::move(r_P_var_ii_0t_y0);
+                get<P_var_ii_0t_y1>(out())()= std::move(r_P_var_ii_0t_y1);  
+
+
+                get<P_Cov_t2_y0>(out())() = std::move(Maybe_r_P_cov_t2_y0.value());    
+                get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
+                get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
+                get<P_mean_t2_y0>(out())() = std::move(Maybe_r_P_mean_t2_y0.value());
+                get<P_mean_t1_y1>(out())() = std::move(Maybe_r_P_mean_t1_y1.value());
+
+
 
                 get<P_Cov_t1_y1>(out())() = std::move(Maybe_r_P_cov_t1_y1.value());
+            }
+            else{
+                static_assert(averaging::value == 0);
+                get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
+                get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
+                auto gS0 = TranspMult(t_gmean_i(), p_P_Cov());
+
+                auto Maybe_r_P_mean_t15_y1 = to_Probability(p_P_mean() + chi * gS0);
+
+                if (!Maybe_r_P_mean_t15_y1) {
+                    return Maybe_r_P_mean_t15_y1.error();
+                }
+
+                get<P_mean_t15_y1>(out())() = std::move(Maybe_r_P_mean_t15_y1.value());
+                auto Maybe_r_P_cov_t15_y1 = to_Covariance_Probability(
+                    p_P_Cov() - (alfa() * N / r_y_var()) * XTX(gS0));
+
+                if (!Maybe_r_P_cov_t15_y1) {
+                    return Maybe_r_P_cov_t15_y1.error();
+                }
+
+                get<P_Cov_t15_y1>(out())() = std::move(Maybe_r_P_cov_t15_y1.value());
+                get<P_mean_t15_y0>(out())() = std::move(p_P_mean());
+                get<P_Cov_t15_y0>(out())() = std::move(p_P_Cov());
+
+                
+
             }
             return out;
         }
@@ -5325,7 +5539,14 @@ class Macro_DMR {
                 }
                 if constexpr (!adaptive::value) {
                     if constexpr (!variance_correction::value) {
-                        auto Maybe_t_Qdtm = calc_Qdtm(f_local, m, t_step, fs);
+                        auto Maybe_t_Qdtm = [this, &f_local,&m,&t_step,&fs]()
+                        {
+                            if constexpr( averaging::value>0){
+                                return calc_Qdtm(f_local, m, t_step, fs);}
+                             else{
+                                return calc_Qdtg(f_local, m, t_step, fs);
+                             }
+                        }();
                         if (!Maybe_t_Qdtm)
                             return Maybe_error<MacroState>(Maybe_t_Qdtm.error());
                         auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
@@ -5468,18 +5689,23 @@ class Macro_DMR {
                     }
                 } else {
                     if constexpr (!variance_correction::value) {
-                        auto Maybe_t_Qdtm = calc_Qdtm(f_local, m, t_step, fs);
+                        auto Maybe_t_Qdtm = [this,& f_local, &m, &t_step, &fs]() {
+                           if constexpr(averaging::value>0){
+                            return calc_Qdtm(f_local, m, t_step, fs);}
+                           else{
+                            return calc_Qdtg(f_local, m, t_step, fs);}
+                        }();
                         if (!Maybe_t_Qdtm)
                             return Maybe_error<MacroState>(Maybe_t_Qdtm.error());
                         auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
 
-                        if constexpr (test_derivative) {
+                        if constexpr (test_derivative && averaging::value>0 ) {
                             const auto h = 1e-7;
                             auto f_no_memoi = f_local.to_bare_functions();
 
                             auto test_der_t_Qdtm = var::test_derivative_clarke(
                                 [this, &t_step, &fs, &f_no_memoi](auto const& l_m) {
-                                    return calc_Qdtm(f_no_memoi, l_m, t_step, fs);
+                                    return calc_T_Qdtm(f_no_memoi, l_m, t_step, fs);
                                 },
                                 h, m, t_Qdtm);
                             if (true && !test_der_t_Qdtm) {
@@ -5509,10 +5735,17 @@ class Macro_DMR {
                             }
                         }
 
+                        auto& t_gmean_i = [&t_Qdtm]() ->auto &{
+                            if constexpr (averaging::value > 0) {
+                                return get<gmean_i>(t_Qdtm);
+                            } else {
+                                return get<g>(t_Qdtm);
+                            }
+                        }();
                         double mg = getvalue(primitive(get<P_mean>(get<Patch_State>(t_prior)())()) *
-                                             primitive(get<gmean_i>(t_Qdtm)()));
-                        double g_max = var::max(get<gmean_i>(primitive(t_Qdtm))());
-                        double g_min = var::min(get<gmean_i>(primitive(t_Qdtm))());
+                                             primitive(t_gmean_i)());
+                        double g_max = var::max(primitive(t_gmean_i)());
+                        double g_min = var::min(primitive(t_gmean_i)());
                         double g_range = g_max - g_min;
                         auto N = primitive(Nch);
                         auto p_bi = (g_max - mg) / g_range;

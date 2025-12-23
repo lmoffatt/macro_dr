@@ -260,8 +260,8 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function("build_likelihood_function",
                      dsl::to_typed_function<
-                         interface::IModel<var::Parameters_values> const&, bool, bool, int, bool,
-                         bool>(&macrodr::cmd::build_likelihood_function, "model",
+                         ModelPtr const&, bool, bool, int, bool, bool>(
+                         &macrodr::cmd::build_likelihood_function, "model",
                                 "adaptive_approximation", "recursive_approximation",
                                 "averaging_approximation", "variance_approximation",
                                 "taylor_variance_correction")
@@ -322,6 +322,14 @@ dsl::Compiler make_compiler_new() {
                                const var::Parameters_transformed&, const Experiment&, const Recording&>(
             &cmd::calculate_mdlikelihood_predictions, "likelihood_algorithm", "parameters",
             "experiment", "data"));
+
+    cm.push_function(
+        "calc_dlikelihood_predictions",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const Simulated_Recording<var::please_include<>>&>(
+            &cmd::calculate_simulation_mdlikelihood_predictions, "likelihood_algorithm",
+            "parameters", "experiment", "data"));
 
     cm.push_function(
         "calc_likelihood",
