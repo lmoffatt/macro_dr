@@ -460,7 +460,10 @@ class Vector_Space : public Vars... {
     //
 
     template <class Id>
-        requires(!std::is_convertible_v<Vector_Space const&, Id const&>)
+        requires(!std::is_convertible_v<Vector_Space const&, Id const&> && 
+             requires(Vector_Space const& xx) { // 'xx' introduced here
+                 { xx[Var<Id>{}] };             // Compound requirement checking validity
+             })
     friend auto const& get(Vector_Space const& x) {
         return x[Var<Id>{}];
     }
@@ -474,7 +477,10 @@ class Vector_Space : public Vars... {
 
     template <class Id>
     friend auto& get(Vector_Space& x)
-        requires(!std::is_convertible_v<Vector_Space&, Id&>)
+        requires(!std::is_convertible_v<Vector_Space const&, Id const&> && 
+             requires(Vector_Space & xx) { // 'xx' introduced here
+                 { xx[Var<Id>{}] };             // Compound requirement checking validity
+             })
     {
         return x[Var<Id>{}];
     }

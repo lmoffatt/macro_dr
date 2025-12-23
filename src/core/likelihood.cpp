@@ -164,9 +164,9 @@ auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model
     auto maybe_modelLikelihood =
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             decltype(model0)>(model0, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
@@ -207,9 +207,9 @@ auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& mode
     auto maybe_modelLikelihood =
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             decltype(*model0_d)>(*model0_d, nsub,
                                  uses_adaptive_aproximation_value(adaptive_approximation),
@@ -250,9 +250,9 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
     auto maybe_modelLikelihood =
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             decltype(*model0_d)>(*model0_d, nsub,
                                  uses_adaptive_aproximation_value(adaptive_approximation),
@@ -288,9 +288,9 @@ auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_va
     auto maybe_modelLikelihood =
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             decltype(model0)>(model0, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
@@ -327,9 +327,9 @@ auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_va
     auto maybe_modelLikelihood =
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             decltype(model0)>(model0, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
@@ -374,9 +374,9 @@ auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_v
     auto maybe_modelLikelihood =
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             decltype(*model0_d)>(*model0_d, nsub,
                                  uses_adaptive_aproximation_value(adaptive_approximation),
@@ -422,12 +422,11 @@ auto calculate_dlikelihood_predictions_model(const std::string& model_name,
             auto maybe_modelLikelihood =
 
                 Likelihood_Model_regular<
-                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-                    var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 2>,
-                    var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-                    var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
-                                              false>,
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0,1,2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
                     decltype(m)>(m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
                                  uses_recursive_aproximation_value(recursive_approximation),
                                  uses_averaging_aproximation_value(averaging_approximation),
