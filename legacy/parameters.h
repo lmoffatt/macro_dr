@@ -673,8 +673,7 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
             }
 
             if (i_par != v.size()) {
-                return error_message("i_par out of order: i_par=" + std::to_string(i_par) +
-                                     " size=" + std::to_string(v.size()));
+                return error_message("i_par out of order: i_par=",i_par,"(",ParamName_candidate,") vs size=", v.size()); 
             }
 
             auto Maybe_tr = MyTranformations::from_string(transformation);
@@ -688,6 +687,8 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
             v.push_back(value);
 
             means.push_back(mean);
+        }else if (!line.empty()) {
+            return error_message("cannot parse line: ", line);
         }
     }
     if (i_par + 1 != ParamNames.size()) {

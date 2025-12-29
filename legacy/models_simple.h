@@ -160,7 +160,7 @@ static const auto scheme_CCO = Model0::Model("scheme_CCO", []() {
                 Binomial_magical_number(5.0), min_P(1e-12), Probability_error_tolerance(1e-2),
                 Conductance_variance_error_tolerance(1e-2));
         },
-        [npar](const auto& patch_model)
+        [npar](const auto& patch_model) 
             -> Maybe_error<Transfer_Op_to<std::decay_t<decltype(patch_model)>, Matrix<double>>> {
             auto& v_Q0 = get<Q0>(patch_model);
             auto& v_Qa = get<Qa>(patch_model);

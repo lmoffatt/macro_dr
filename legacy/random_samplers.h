@@ -10,17 +10,20 @@
 constexpr std::size_t large_prime = 654612646693;
 
 class mt_64i {
+    public:
+    using result_type = typename std::mt19937_64::result_type;
+private:
     std::mt19937_64 m_s;
     unsigned long long m_i;
+    result_type m_initial_seed;
 
    public:
-    using result_type = typename std::mt19937_64::result_type;
 
-    explicit mt_64i(result_type value) : m_s{value}, m_i{0} {
+    explicit mt_64i(result_type value) : m_s{value}, m_i{0}, m_initial_seed{value} {
     }
 
     template <class Sseq>
-    explicit mt_64i(Sseq& s) : m_s{s}, m_i{0} {
+    explicit mt_64i(Sseq& s) : m_s{s}, m_i{0}, m_initial_seed{0} {
     }
 
     static constexpr result_type min() {
@@ -30,9 +33,13 @@ class mt_64i {
         return std::mt19937_64::max();
     }
 
+    [[nodiscard]] auto initial_seed() const {
+        return m_initial_seed;
+    }   
     void seed(typename std::mt19937_64::result_type value) {
         m_i = 0;
         m_s.seed(value);
+        m_initial_seed = value;    
     }
     template <class Sseq>
     void seed(Sseq& seq) {
@@ -50,12 +57,12 @@ class mt_64i {
     }
 
     friend std::ostream& operator<<(std::ostream& os, const mt_64i& e) {
-        os << e.m_i << "\t " << e.m_s;
+        os << e.m_initial_seed << "\t " << e.m_i << "\t " << e.m_s;
         return os;
     }
 
     friend std::istream& operator>>(std::istream& is, mt_64i& e) {
-        is >> e.m_i >> e.m_s;
+        is >> e.m_initial_seed >> e.m_i >> e.m_s;
         return is;
     }
 

@@ -93,6 +93,27 @@ inline auto calculate_simulation_mdlikelihood_predictions(
                                               get<Recording>(simulation()));
 }
 
+inline auto calculate_n_simulation_mdlikelihood_predictions(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
+    -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>> {
+    
+    std::vector<dMacro_State_Ev_gradient_all> results;
+    results.reserve(simulation.size());
+    for (const  auto& sim : simulation){
+        auto res = calculate_mdlikelihood_predictions(likelihood_algorithm, par, e,
+                                              get<Recording>(sim()));
+        if (!res){
+            return res.error();
+        }
+        results.push_back(std::move(res.value()));        
+    }
+    return results;
+}
+
+
+
+
 auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
                           const var::Parameters_transformed& par, const Experiment& e,
                           const Recording& r, bool adaptive_approximation,
@@ -246,6 +267,12 @@ template <typename SimTag, template <typename...> class TMacro_State, typename..
 Maybe_error<std::string> write_csv(Experiment const& e,
                                    Simulated_Recording<SimTag> const& simulation,
                                    TMacro_State<vVars...> const& lik, std::string path);
+
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Recording<SimTag>> const& simulation,
+                                   std::vector<TMacro_State<vVars...>> const& liks, std::string path);
 
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path);

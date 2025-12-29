@@ -6,6 +6,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "CLI_macro_dr_base.h"
 //#include "cuevi.h"
@@ -15,8 +16,8 @@
 #include "parallel_tempering.h"
 #include "parameters.h"
 //#include "parameters_derivative.h"
-#include <macrodr/interface/IModel.h>
 #include <macrodr/cmd/load_experiment.h>
+#include <macrodr/interface/IModel.h>
 #include <variables.h>
 
 #include "lapack_headers.h"
@@ -30,10 +31,11 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
     myseed = calc_seed(myseed);
+
     mt_64i mt(myseed);
     Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
     return Macro_DMR{}.sample(mt, model, par, e, sim, r);
-}
+   }
 
 Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
@@ -41,22 +43,84 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     return run_simulations(model, par.to_value(), e, r, n_sub, myseed);
 }
 
-Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
     const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
-    const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
+    std::size_t n_simulations, const Experiment& e, const Recording& r, std::size_t n_sub,
+    std::size_t myseed) {
+    myseed = calc_seed(myseed);
+
+    mt_64i mt(myseed);
+    std::vector<Simulated_Recording<var::please_include<>>> result;
+    result.reserve(n_simulations);
+    for (std::size_t i = 0; i < n_simulations; ++i) {
+        Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
+        auto maybe_sim = Macro_DMR{}.sample(mt, model, par, e, sim, r);
+        if (!maybe_sim) {
+            return maybe_sim.error();
+        }
+        result.push_back(maybe_sim.value());
+    }
+    return result;
+}
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
+    std::size_t n_simulations, const Experiment& e, const Recording& r, std::size_t n_sub,
+    std::size_t myseed) {
+    return run_n_simulations(model, par.to_value(), n_simulations, e, r, n_sub, myseed);
+}
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
+    run_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+                                         const var::Parameters_values& par,const Experiment& e,
+                                         const Recording& r, std::size_t n_sub,
+                                         std::size_t myseed) {
     myseed = calc_seed(myseed);
     mt_64i mt(myseed);
-    Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-    return Macro_DMR{}.sample_sub_y(mt, model, par, e, sim, r);
+     Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
+      return  Macro_DMR{}.sample_sub_y(mt, model, par, e, sim, r);
+  }
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
+    run_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+                                         const var::Parameters_transformed& par, const Experiment& e,
+                                         const Recording& r, std::size_t n_sub,
+                                         std::size_t myseed) {
+    return run_simulations_with_sub_intervals(model, par.to_value(), e, r, n_sub,
+                                                myseed);
 }
 
-Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
-    const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
-    return run_simulations_with_sub_intervals(model, par.to_value(), e, r, n_sub, myseed);
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>>
+    run_n_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+                                         const var::Parameters_values& par,
+                                         std::size_t n_simulations, const Experiment& e,
+                                         const Recording& r, std::size_t n_sub,
+                                         std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    mt_64i mt(myseed);
+    std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> result;
+    result.reserve(n_simulations);
+    for (std::size_t i = 0; i < n_simulations; ++i) {
+        Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
+        auto maybe_sim = Macro_DMR{}.sample_sub_y(mt, model, par, e, sim, r);
+        if (!maybe_sim) {
+            return maybe_sim.error();
+        }
+        result.push_back(maybe_sim.value());
+    }
+    return result;
 }
 
-
+Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>>
+    run_n_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+                                         const var::Parameters_transformed& par,
+                                         std::size_t n_simulations, const Experiment& e,
+                                         const Recording& r, std::size_t n_sub,
+                                         std::size_t myseed) {
+    return run_n_simulations_with_sub_intervals(model, par.to_value(), n_simulations, e, r, n_sub,
+                                                myseed);
+}
 
 Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,
                                        experiment_type experiment, std::size_t myseed,
@@ -124,22 +188,179 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
 }
 
 Maybe_error<std::string> write_csv(Experiment const& e,
-    Simulated_Recording<var::please_include<>> const& simulation, std::string  path)
-    {
-        return write_csv(e,get<Recording>(simulation()),path);
-    }
-Maybe_error<std::string> write_csv(Experiment const& e,
-    Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const& simulation, std::size_t n_sub,std::string  path)
-    {
-        auto path_ = path + ".csv";
-        std::ofstream f(path_);
-        if (!f.is_open()) {
-            return error_message("cannot open ", path_);
-        }
+                                   std::vector<Simulated_Recording<var::please_include<>>> const& simulation,
+                                    std::string path) {
+    auto path_=path+".csv";
+     std::ofstream f(path_); 
+     if (!f.is_open())
+     {
+      return error_message("cannot open ",path_);
+     }
+     const auto& E=get<Recording_conditions>(e);
 
-        const auto& conds = get<Recording_conditions>(e);
-        const auto& y = get<Recording>(simulation());
-        const auto& sub_y = get<Only_Ch_Curent_Sub_Evolution>(simulation());
+     auto n_samples=E().size(); 
+     
+     double ns=1.0/get<Frequency_of_Sampling>(e)();
+     f<<"n_simulation"<<","<<"n_step"<<","<<"step_start"<<","<<"step_end"<<","<<"step_middle"<<","<<"Agonist"<<","<<"patch_current"<<"\n";
+      
+     double step_start=0.0;
+    
+     for (std::size_t sim_index=0; sim_index<simulation.size(); ++sim_index){
+        const auto& r_sim=get<Recording>(simulation[sim_index]());
+        if (n_samples!= r_sim().size()){
+            return error_message("Experiment samples", n_samples," differ from Recording samples ",r_sim().size());
+         }
+        step_start=0.0;
+        for (std::size_t i=0; i<n_samples; ++i){
+            auto const& ev= get<Agonist_evolution>(E()[i])();
+            for (std::size_t j=0; j<ev.size(); ++j){
+            auto n_step=static_cast<double>(i)+static_cast<double>(j)/static_cast<double>(ev.size());
+            double step_end= step_start+ get<number_of_samples>(ev[j])()*ns;
+            double step_middle=(step_start+step_end)/2;
+            double Agonist = get<Agonist_concentration>(ev[j])();
+            double Patch_current =r_sim()[i]();
+            f<<sim_index<<","<<n_step<<","<<step_start<<","<<step_end<<","<<step_middle<<","<<Agonist<<","<<Patch_current<<"\n";
+            step_start=step_end;    
+            }
+         }
+     }
+     
+     return path_; 
+}
+
+
+Maybe_error<std::string> write_csv(Experiment const& e,
+                                   Simulated_Recording<var::please_include<>> const& simulation,
+                                   std::string path) {
+    return write_csv(e, get<Recording>(simulation()), path);
+}
+
+
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const& simulation,
+    std::size_t n_sub, std::string path) {
+    auto path_ = path + ".csv";
+    std::ofstream f(path_);
+    if (!f.is_open()) {
+        return error_message("cannot open ", path_);
+    }
+
+    const auto& conds = get<Recording_conditions>(e);
+    const auto& y = get<Recording>(simulation());
+    const auto& sub_y = get<Only_Ch_Curent_Sub_Evolution>(simulation());
+
+    const std::size_t n_samples = conds().size();
+    if (n_samples != y().size()) {
+        return error_message("Experiment samples ", n_samples, " differ from Recording samples ",
+                             y().size());
+    }
+
+    std::size_t expected_sub = 0;
+    for (std::size_t i = 0; i < n_samples; ++i) {
+        expected_sub += get<Agonist_evolution>(conds()[i])().size() * n_sub;
+    }
+    if (expected_sub != sub_y().size()) {
+        return error_message("Sub evolution samples ", sub_y().size(), " differ from expected ",
+                             expected_sub);
+    }
+
+    // f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
+    // f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
+    // f << "meta,n_samples," << n_samples << "\n";
+    // f << "meta,n_substates," << n_sub << "\n";
+
+    // f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
+    // for (std::size_t i = 0; i < n_samples; ++i) {
+    //     double t = get<Time>(conds()[i])();
+    //     const auto& ev = get<Agonist_evolution>(conds()[i])();
+    //     for (std::size_t j = 0; j < ev.size(); ++j) {
+    //         const double ns = get<number_of_samples>(ev[j])();
+    //         const double duration = ns / get<Frequency_of_Sampling>(e)();
+    //         const double t_end = t + duration;
+    //         f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
+    //           << "," << get<Agonist_concentration>(ev[j])() << "\n";
+    //         t = t_end;
+    //     }
+    // }
+
+    f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current\n";
+
+    const double fs = get<Frequency_of_Sampling>(e)();
+    std::size_t ii = 0;
+    for (std::size_t i = 0; i < n_samples; ++i) {
+        double step_start = get<Time>(conds()[i])();
+        const auto& ev = get<Agonist_evolution>(conds()[i])();
+        for (std::size_t j = 0; j < ev.size(); ++j) {
+            const double ns = get<number_of_samples>(ev[j])();
+            const double duration = ns / fs;
+            const double step_end = step_start + duration;
+            const double step_mid = 0.5 * (step_start + step_end);
+            const double agonist = get<Agonist_concentration>(ev[j])();
+            const double n_step =
+                static_cast<double>(i) + static_cast<double>(j) / static_cast<double>(ev.size());
+            const double patch = y()[i]();
+
+            f << "full," << n_step << ",0," << step_start << "," << step_end << "," << step_mid
+              << "," << agonist << "," << patch << "\n";
+
+            for (std::size_t k = 0; k < n_sub; ++k) {
+                const double frac0 = static_cast<double>(k) / static_cast<double>(n_sub);
+                const double frac1 = static_cast<double>(k + 1) / static_cast<double>(n_sub);
+                const double sub_start = step_start + duration * frac0;
+                const double sub_end = step_start + duration * frac1;
+                const double sub_mid = 0.5 * (sub_start + sub_end);
+                const double n_step_sub =
+                    static_cast<double>(i) +
+                    (static_cast<double>(j) + frac1) / static_cast<double>(ev.size());
+                const double patch_sub = sub_y()[ii]();
+                ++ii;
+
+                f << "sub," << n_step_sub << "," << k << "," << sub_start << "," << sub_end << ","
+                  << sub_mid << "," << agonist << "," << patch_sub << "\n";
+            }
+
+            step_start = step_end;
+        }
+    }
+
+    return path_;
+}
+
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    std::vector<    Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const& simulation,
+    std::size_t n_sub, std::string path) {
+    auto path_ = path + ".csv";
+    std::ofstream f(path_);
+    if (!f.is_open()) {
+        return error_message("cannot open ", path_);
+    }
+
+    const auto& conds = get<Recording_conditions>(e);
+    // f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
+    // f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
+    // f << "meta,n_samples," << n_samples << "\n";
+    // f << "meta,n_substates," << n_sub << "\n";
+
+    // f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
+    // for (std::size_t i = 0; i < n_samples; ++i) {
+    //     double t = get<Time>(conds()[i])();
+    //     const auto& ev = get<Agonist_evolution>(conds()[i])();
+    //     for (std::size_t j = 0; j < ev.size(); ++j) {
+    //         const double ns = get<number_of_samples>(ev[j])();
+    //         const double duration = ns / get<Frequency_of_Sampling>(e)();
+    //         const double t_end = t + duration;
+    //         f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
+    //           << "," << get<Agonist_concentration>(ev[j])() << "\n";
+    //         t = t_end;
+    //     }
+    // }
+
+    f << "n_simulation,nrow_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current\n";
+    for (std::size_t sim_index = 0; sim_index < simulation.size(); ++sim_index) {
+        const auto& y = get<Recording>(simulation[sim_index]());
+        const auto& sub_y = get<Only_Ch_Curent_Sub_Evolution>(simulation[sim_index]());
 
         const std::size_t n_samples = conds().size();
         if (n_samples != y().size()) {
@@ -152,39 +373,17 @@ Maybe_error<std::string> write_csv(Experiment const& e,
             expected_sub += get<Agonist_evolution>(conds()[i])().size() * n_sub;
         }
         if (expected_sub != sub_y().size()) {
-            return error_message("Sub evolution samples ", sub_y().size(),
-                                 " differ from expected ", expected_sub);
+            return error_message("Sub evolution samples ", sub_y().size(), " differ from expected ",
+                                 expected_sub);
         }
 
-        // f << "meta,frequency_of_sampling," << get<Frequency_of_Sampling>(e)() << "\n";
-        // f << "meta,initial_agonist," << get<initial_agonist_concentration>(e)()() << "\n";
-        // f << "meta,n_samples," << n_samples << "\n";
-        // f << "meta,n_substates," << n_sub << "\n";
-
-        // f << "experiment_step,step_index,agonist_index,time_start,time_end,number_of_samples,agonist\n";
-        // for (std::size_t i = 0; i < n_samples; ++i) {
-        //     double t = get<Time>(conds()[i])();
-        //     const auto& ev = get<Agonist_evolution>(conds()[i])();
-        //     for (std::size_t j = 0; j < ev.size(); ++j) {
-        //         const double ns = get<number_of_samples>(ev[j])();
-        //         const double duration = ns / get<Frequency_of_Sampling>(e)();
-        //         const double t_end = t + duration;
-        //         f << "experiment_step," << i << "," << j << "," << t << "," << t_end << "," << ns
-        //           << "," << get<Agonist_concentration>(ev[j])() << "\n";
-        //         t = t_end;
-        //     }
-        // }
-
-        f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current\n";
-
-        const double fs = get<Frequency_of_Sampling>(e)();
         std::size_t ii = 0;
         for (std::size_t i = 0; i < n_samples; ++i) {
             double step_start = get<Time>(conds()[i])();
             const auto& ev = get<Agonist_evolution>(conds()[i])();
             for (std::size_t j = 0; j < ev.size(); ++j) {
                 const double ns = get<number_of_samples>(ev[j])();
-                const double duration = ns / fs;
+                const double duration = ns / get<Frequency_of_Sampling>(e)();
                 const double step_end = step_start + duration;
                 const double step_mid = 0.5 * (step_start + step_end);
                 const double agonist = get<Agonist_concentration>(ev[j])();
@@ -192,8 +391,8 @@ Maybe_error<std::string> write_csv(Experiment const& e,
                     static_cast<double>(i) + static_cast<double>(j) / static_cast<double>(ev.size());
                 const double patch = y()[i]();
 
-                f << "full," << n_step << ",0," << step_start << "," << step_end << "," << step_mid
-                  << "," << agonist << "," << patch << "\n";
+                f << sim_index << ",full," << n_step << ",0," << step_start << "," << step_end
+                  << "," << step_mid << "," << agonist << "," << patch << "\n";
 
                 for (std::size_t k = 0; k < n_sub; ++k) {
                     const double frac0 = static_cast<double>(k) / static_cast<double>(n_sub);
@@ -202,23 +401,19 @@ Maybe_error<std::string> write_csv(Experiment const& e,
                     const double sub_end = step_start + duration * frac1;
                     const double sub_mid = 0.5 * (sub_start + sub_end);
                     const double n_step_sub =
-                        static_cast<double>(i) +
-                        (static_cast<double>(j) + frac1) / static_cast<double>(ev.size());
+                        static_cast<double>(i) +                (static_cast<double>(j) + frac1) / static_cast<double>(ev.size());
                     const double patch_sub = sub_y()[ii]();
-                    ++ii;
-
-                    f << "sub," << n_step_sub << "," << k << "," << sub_start << "," << sub_end
-                      << "," << sub_mid << "," << agonist << "," << patch_sub << "\n";
+                    ++ii;       
+                    f << sim_index << ",sub," << n_step_sub << "," << k << "," << sub_start << ","
+                      << sub_end << "," << sub_mid << "," << agonist << "," << patch_sub << "\n";
                 }
-
                 step_start = step_end;
             }
         }
-
-        return path_;
-	 }
-
-
+    }   
+    
+    return path_;
+}
 
 
 }  // namespace macrodr::cmd

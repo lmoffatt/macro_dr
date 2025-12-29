@@ -5,6 +5,7 @@
 #include <macrodr/dsl/type_name.h>
 #include <parameters.h>
 #include <concepts>
+#include <cstddef>
 #include <string_view>
 #include <tuple>
 #include <utility>
@@ -634,6 +635,35 @@ struct SampleWriter {
     }
 };
 
+struct SampleWriter_i {
+    std::ostream& f;
+    std::vector<std::string> const& param_names;
+    std::size_t n_simulation;
+    double n_step;
+    std::size_t sub_step;
+    double step_start;
+    double step_end;
+    double step_mid;
+    double agonist;
+    double patch;
+
+    void write_value(std::string component, double primitive) {
+        f << "value," << n_simulation << "," << n_step << "," << sub_step << "," << step_start << "," << step_end << ","
+          << step_mid << "," << agonist << "," << patch << "," << component << ",,,," << primitive
+          << ",\n";
+    }
+
+    void write_derivative(const std::string& component, std::size_t r, std::size_t c, double prim,
+                          double deriv_value) {
+        const auto& pname = (r < param_names.size()) ? param_names[r] : std::string{};
+        f << "derivative," << n_simulation << "," << n_step << "," << sub_step << "," << step_start << "," << step_end
+          << "," << step_mid << "," << agonist << "," << patch << "," << component << "," << r
+          << "," << c << "," << pname << "," << prim << "," << deriv_value << "\n";
+    }
+};
+
+
+
 struct StateWriter {
     std::ostream& f;
     std::vector<std::string> const& param_names;
@@ -725,6 +755,91 @@ Maybe_error<std::string> write_csv(Experiment const& e, Simulated_Recording<SimT
     return path_;
 }
 
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Recording<SimTag>> const& simulation,
+                                   std::vector<TMacro_State<vVars...>> const& liks, std::string path) {
+    auto path_ = path + ".csv";
+    std::ofstream f(path_);
+    if (!f.is_open()) {
+        return error_message("cannot open ", path_);
+    }
+    if (simulation.size() != liks.size()) {
+        return error_message("number of Simulated_Recordings ", simulation.size(),
+                             " differ from number of Likelihood states ", liks.size());
+    }   
+
+    const auto& conds = get<Recording_conditions>(e);
+    for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
+        const auto& y = get<Recording>(simulation[sim_i]());
+        if (conds().size() != y().size()) {
+            return error_message("Experiment samples ", conds().size(),
+                                 " differ from Recording samples ", y().size());
+        }
+    }   
+    
+   
+    f << "row_kind,n_simulation,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
+         "component,param_index,param_col,param_name,primitive,derivative_value\n";
+    for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
+    const auto& y = get<Recording>(simulation[sim_i]());
+    const auto& lik = liks[sim_i]; 
+    const auto& evo = get<Evolution>(lik);
+    const auto& evo_vec = evo();
+    if (evo_vec.size() != conds().size()) {
+        return error_message("Evolution samples ", evo_vec.size(),
+                             " differ from Recording samples ", conds().size());
+    }
+
+    const auto param_names = get_param_names_if_any(lik);
+
+    using Element = typename std::decay_t<decltype(evo)>::element_type;
+    using ComponentTuple = typename vector_space_types<Element>::types;
+
+    const double fs = get<Frequency_of_Sampling>(e)();
+    for (std::size_t i = 0; i < conds().size(); ++i) {
+        double step_start = get<Time>(conds()[i])();
+        const auto& ag = get<Agonist_evolution>(conds()[i])();
+        const auto& el = evo_vec[i];
+        for (std::size_t j = 0; j < ag.size(); ++j) {
+            const double ns = get<number_of_samples>(ag[j])();
+            const double duration = ns / fs;
+            const double step_end = step_start + duration;
+            const double step_mid = 0.5 * (step_start + step_end);
+            const double agonist = get<Agonist_concentration>(ag[j])();
+            const double n_step =
+                static_cast<double>(i) + static_cast<double>(j) / static_cast<double>(ag.size());
+            const double patch = y()[i]();
+
+            SampleWriter_i w{f, param_names, sim_i, n_step, j, step_start, step_end, step_mid, agonist,
+                           patch};
+
+            auto handle_component = [&](auto type_tag) -> Maybe_error<bool> {
+                using Comp = typename decltype(type_tag)::type;
+                return emit_component_rows(w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Comp>>(), get<Comp>(el));
+            };
+
+            Maybe_error<bool> ok = true;
+            []<std::size_t... Is>(auto&& handle, Maybe_error<bool>& ok_ref,
+                                  std::index_sequence<Is...>) {
+                ((ok_ref = ok_ref ? handle(std::tuple_element_t<Is, ComponentTuple>{}) : ok_ref),
+                 ...);
+            }(handle_component, ok, std::make_index_sequence<std::tuple_size_v<ComponentTuple>>{});
+            if (!ok || !ok.value()) {
+                return ok.error()();
+            }
+
+            step_start = step_end;
+        }
+    }
+}
+
+    return path_;
+}
+
+
+
 // (2) State without Evolution (no Experiment/Simulation indexing)
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path) {
@@ -787,6 +902,12 @@ template Maybe_error<std::string> write_csv<
 	    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
 	    Experiment const&, Simulated_Recording<var::please_include<>> const&,
 	    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+	    std::string);
+
+	template Maybe_error<std::string> write_csv<
+	    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+	    Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
+	    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
 	    std::string);
 
 	template Maybe_error<std::string> write_csv<
