@@ -1,6 +1,7 @@
 #ifndef GRAMMAR_UNTYPED_H
 #define GRAMMAR_UNTYPED_H
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -374,6 +375,7 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
         }
         const auto& overloads = Maybe_fns.value();
         std::string errors;
+        std::size_t i_overload = 0;
         for (auto* fn : overloads) {
             if (fn == nullptr) {
                 continue;
@@ -383,13 +385,15 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
                 return attempt;  // success on this overload
             }
             // Accumulate diagnostics (best-effort, do not explode)
-            errors += attempt.error()();
-            errors += "\n";
+
+            errors += std::to_string(i_overload) + " overload: " + attempt.error()();
+            ++i_overload;
+            errors += "\n\n";
         }
-        return error_message(std::string{"no matching overload for function '"} + fid().str() +
-                             "' with provided arguments:\n" + errors);
+        return error_message(std::string{"\nno matching overload for function '"} + fid().str() +
+                             "' with provided arguments:"+args().str()+"\n" + errors);
     }
-};
+};  
 
 template <class Lexer, class Compiler>
 class untyped_vector_construction : public untyped_expression<Lexer, Compiler> {

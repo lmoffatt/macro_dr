@@ -292,6 +292,9 @@ class min_P : public var::Constant<min_P, double> {};
 
 class N_Ch_std : public var::Var<N_Ch_std, double> {};
 
+class SeedNumber : public var::Constant<SeedNumber, std::size_t> {};
+
+
 class Current_Noise : public var::Var<Current_Noise, double> {};
 
 class Pink_Noise : public var::Var<Pink_Noise, double> {};
@@ -505,6 +508,17 @@ class P_var_ii_0t_y1 : public var::Var<P_var_ii_0t_y1, Matrix<double>> {
 };
 
 
+class d_gS: public var::Var<d_gS, Matrix<double>> {
+    friend std::string className(d_gS) { return "d_gS"; }
+};  
+
+class d_GS: public var::Var<d_GS, Matrix<double>> {
+    friend std::string className(d_GS) { return "d_GS"; }
+};  
+
+
+
+
 class P_Cov_t2_y0 : public var::Var<P_Cov_t2_y0, SymmetricMatrix<double>> {
    public:
     friend std::string className(P_Cov_t2_y0) { return "P_Cov_t2_y0"; }
@@ -674,16 +688,10 @@ Maybe_error<Transfer_Op_to<C_Matrix, P>> to_Transition_Probability(C_Matrix cons
     if constexpr (!Policy::project_transition_probability) {
         return build<P>(x);
     }
-    constexpr double smooth_eps = 1e-12;
     auto out = apply(
-        [smooth_eps](auto const& value) {
-            using ValueType = std::decay_t<decltype(value)>;
-            using std::sqrt;
-            auto half = ValueType(0.5);
-            auto eps_like = ValueType(smooth_eps);
-            auto term = value * value + eps_like;
-            auto sqrt_term = sqrt(term);
-            return half * (value + sqrt_term);
+        [](auto const& value) {
+            using std::abs;
+            return abs(value);
         },
         x);
     auto sumP = out * Matrix<double>(out.ncols(), 1ul, 1.0);
@@ -694,11 +702,11 @@ Maybe_error<Transfer_Op_to<C_Matrix, P>> to_Transition_Probability(C_Matrix cons
             //  std::cerr << "rro";
             return error_message("not transition prob");
         }
-    if (s)
+    if (s){
         // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
-        return build<P>(s.value() * out);
-    else
-        return s.error();
+        return build<P>(s.value() * out);}
+    else{
+        return s.error();}
 }
 
 class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
@@ -816,7 +824,7 @@ inline void save(const std::string name, const Patch_Model& m) {
 class Algo_State_Dynamic
     : public var::Var<
           Algo_State_Dynamic,
-          Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
+          Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
                        P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, 
                        P_mean_0t_y0,P_mean_0t_y1,P_var_ii_0t_y0,P_var_ii_0t_y1,
                        P_Cov_t2_y0,
@@ -1119,10 +1127,10 @@ class Only_Ch_Curent_Sub_Evolution
 
 template <typename Simulate_tag>
 class Simulated_Recording
-    : public Var<Simulated_Recording<Simulate_tag>, add_t<Vector_Space<Recording>, Simulate_tag>> {
+    : public Var<Simulated_Recording<Simulate_tag>, add_t<Vector_Space<SeedNumber,Recording>, Simulate_tag>> {
    public:
     constexpr static const bool includes_N = var::has_it_v<Simulate_tag, N_Ch_State_Evolution>;
-    using Var<Simulated_Recording<Simulate_tag>, add_t<Vector_Space<Recording>, Simulate_tag>>::Var;
+    using Var<Simulated_Recording<Simulate_tag>, add_t<Vector_Space<SeedNumber,Recording>, Simulate_tag>>::Var;
 };
 
 using Simulated_recording = Simulated_Recording<var::please_include<>>;
@@ -4482,7 +4490,7 @@ class Macro_DMR {
         auto chi = dy / r_y_var();
         auto chi2 = build<Chi2>(dy * chi);
         auto gS = [&t_gmean_i, &p_P_Cov,&SmD, &p_P_mean, &t_Qdt, &t_P]() {
-            if constexpr (averaging::value == 2) {
+            if constexpr (averaging::value == 2) {  
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
 
                 return TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
@@ -4580,8 +4588,10 @@ class Macro_DMR {
                 
                 auto r_P_mean_0t_y1= r_P_mean_0t_y0 + alfa()*chi*GS;
 
-                auto r_P_var_ii_0t_y0= diag(p_P_Cov())*elemMult(t_P(),t_P())+diag(p_P_mean())*(t_P()-elemMult(t_P(),t_P()));
-                auto r_P_var_ii_0t_y1= r_P_var_ii_0t_y0 - (alfa()*N/r_y_var())* elemMult(GS,GS);
+                auto r_P_var_ii_0t_y0= SmD*t_P()+diag(p_P_mean())*t_P(); 
+
+                
+                auto r_P_var_ii_0t_y1= r_P_var_ii_0t_y0 - (alfa()*N/r_y_var())* TranspMult(gS0,gS);
                 Matrix<double> uT(1ul,p_P_mean().size(), 1.0);
          
                
@@ -4590,6 +4600,11 @@ class Macro_DMR {
                 assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y0)).value(), p_P_mean()));
                 assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y1)).value(), Maybe_r_P_mean_t10_y1.value()));
 
+                assert(var::test_equality(uT*GS,gS));
+                assert(var::test_equality(MultTransp(uT,GS),gS0));
+                
+
+                get<d_GS>(out())() = std::move(GS);
                 get<P_mean_t11_y0>(out())() = std::move(Maybe_r_P_mean_t11_y0.value());
                 get<P_mean_t10_y1>(out())() = std::move(Maybe_r_P_mean_t10_y1.value());
                 
@@ -4650,12 +4665,12 @@ class Macro_DMR {
                 
                 auto r_P_mean_0t_y1= diag(Maybe_r_P_mean_t1_y1.value())*t_P();
 
-                auto r_P_var_ii_0t_y0= diag(p_P_Cov())*elemMult(t_P(),t_P())+
-                diag(p_P_mean())*(t_P()-elemMult(t_P(),t_P()));
+                auto r_P_var_ii_0t_y0= SmD*t_P()+diag(p_P_mean())*t_P(); 
 
-                auto r_P_var_ii_0t_y1= diag(Maybe_r_P_cov_t1_y1.value())*elemMult(t_P(),t_P())+
-                diag(Maybe_r_P_mean_t1_y1.value())*(t_P()-elemMult(t_P(),t_P()));
+                auto SmD1= Maybe_r_P_cov_t1_y1.value() - diag(Maybe_r_P_mean_t1_y1.value());
+                auto r_P_var_ii_0t_y1= SmD1*t_P()+diag(Maybe_r_P_mean_t1_y1.value())*t_P(); 
 
+                
 
                 Matrix<double> uT(1UL,p_P_mean().size(), 1.0);
          
@@ -4675,6 +4690,7 @@ class Macro_DMR {
                 get<P_mean_t2_y0>(out())() = std::move(Maybe_r_P_mean_t2_y0.value());
                 get<P_mean_t1_y1>(out())() = std::move(Maybe_r_P_mean_t1_y1.value());
 
+                get<d_gS>(out())() = std::move(gS);
 
 
                 get<P_Cov_t1_y1>(out())() = std::move(Maybe_r_P_cov_t1_y1.value());
@@ -4702,6 +4718,7 @@ class Macro_DMR {
                 get<P_Cov_t15_y1>(out())() = std::move(Maybe_r_P_cov_t15_y1.value());
                 get<P_mean_t15_y0>(out())() = std::move(p_P_mean());
                 get<P_Cov_t15_y0>(out())() = std::move(p_P_Cov());
+                get<d_gS>(out())() = std::move(gS);
 
                 
 
@@ -5955,6 +5972,7 @@ class Macro_DMR {
         auto r_P_mean = P_mean(get<P_initial>(m)());
         auto N = get<N_Ch_mean>(m)()[0];
         auto sim = Simulated_Recording<Simulate_tag>{};
+        get<SeedNumber>(sim())() = mt.initial_seed();
         auto N_state = sample_Multinomial(mt, r_P_mean, N);
         return Simulated_Step<Simulate_tag>(
             Vector_Space(std::move(N_state), Simulated_Recording<Simulate_tag>{}));

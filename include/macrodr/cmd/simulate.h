@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <string>
+#include <vector>
 
 #include "CLI_macro_dr_base.h"
 #include "maybe_error.h"
@@ -19,7 +20,7 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, 
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
@@ -27,14 +28,42 @@ Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, 
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 inline Simulated_Recording<var::please_include<>> remove_intervals(
     const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>& simulation){
-    return Simulated_Recording<var::please_include<>>(
-        get<Recording>(simulation()));         
-    }
+
+    return Simulated_Recording<var::please_include<> >{{get<SeedNumber>(simulation()), get<Recording>(simulation())}};
+}
+
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>> run_n_simulations_with_sub_intervals(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,  std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>> run_simulations_with_sub_intervals(
+    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, std::size_t n_simulations,  
+    const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
+
+inline std::vector<Simulated_Recording<var::please_include<>>> remove_n_intervals(
+    const std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>& simulation){
+
+std::vector<Simulated_Recording<var::please_include<> >> result;
+result.reserve(simulation.size());
+for (const auto& sim : simulation){
+    result.push_back(Simulated_Recording<var::please_include<> >{{get<SeedNumber>(sim()), get<Recording>(sim())}});
+}
+    return result;
+}
 
 Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_type recording_file,
                                        experiment_type experiment, std::size_t myseed,
@@ -42,11 +71,24 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
                                        parameters_value_type parameter_files,
                                        simulation_algo_type sim_algo_type);
 
-Maybe_error<std::string> write_csv(Experiment const& e,
-    Simulated_Recording<var::please_include<>> const& simulation, std::string  path);
+
 
 Maybe_error<std::string> write_csv(Experiment const& e,
+    std::vector<Simulated_Recording<var::please_include<>>> const& simulation, std::string  path);
+
+Maybe_error<std::string> write_csv(Experiment const& e, 
+    std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const& simulation, std::size_t n_sub, std::string  path);
+
+Maybe_error<std::string> write_csv(Experiment const& e,
+    Simulated_Recording<var::please_include<> > const& simulation, std::string  path);
+
+
+Maybe_error<std::string> write_csv(Experiment const& e, 
     Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const& simulation, std::size_t n_sub, std::string  path);
+
+    Maybe_error<std::string> write_csv(Experiment const& e, 
+    std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const& simulation, std::size_t n_sub, const std::string& path);
+
 
 }  // namespace macrodr::cmd
 

@@ -390,7 +390,7 @@ class field_compiler {
         if (ptr != nullptr) {
             bool const is_argument_id_congruent = ptr->id()()() == this->id()();
             if (!is_argument_id_congruent) {
-                return error_message("the argument id expected: " + id()() +
+                return error_message(" the argument id expected: " + id()() +
                                      " found: " + ptr->id()()());
             }
             auto out = compile_this_argument(cm, ptr->expression());
@@ -433,7 +433,7 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
             if (!literal) {
                 const auto actual = stored ? stored->type_name() : std::string{"<null>"};
                 return error_message(std::string{"identifier '"} + t_arg()() +
-                                     "' cannot bind to '" + type_name<const T&>() +
+                                     "' cannot bind to expected '" + type_name<const T&>() +
                                      "'; current value has type " + actual);
             }
         }
@@ -486,7 +486,7 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
                 dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
             bool congruent = assignment->id()()() == this->id()();
             if (!congruent) {
-                return error_message("the argument id expected: " + id()() +
+                return error_message(" the argument id expected: " + id()() +
                                      " found: " + assignment->id()()());
             }
             return compile_this_argument(cm, assignment->expression());
@@ -518,7 +518,7 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
             if (!literal) {
                 const auto actual = stored ? stored->type_name() : std::string{"<null>"};
                 return error_message(std::string{"identifier '"} + t_arg()() +
-                                     "' cannot bind to '" + type_name<T&>() +
+                                     "' cannot bind to expected '" + type_name<T&>() +
                                      "'; current value has type " + actual);
             }
         }
@@ -565,7 +565,7 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
                 dynamic_cast<untyped_assignment<Lexer, Compiler> const*>(t_arg.get())) {
             bool congruent = assignment->id()()() == this->id()();
             if (!congruent) {
-                return error_message("the argument id expected: " + id()() +
+                return error_message(" the argument id expected: " + id()() +
                                      " found: " + assignment->id()()());
             }
             return compile_this_argument(cm, assignment->expression());
@@ -729,7 +729,7 @@ class element_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
             if (!literal) {
                 const auto actual = stored ? stored->type_name() : std::string{"<null>"};
                 return error_message(std::string{"identifier '"} + t_arg()() +
-                                     "' cannot bind to '" + type_name<const T&>() +
+                                     "' cannot bind to expected'" + type_name<const T&>() +
                                      "'; current value has type " + actual);
             }
         }
@@ -804,7 +804,7 @@ class element_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
             if (!literal) {
                 const auto actual = stored ? stored->type_name() : std::string{"<null>"};
                 return error_message(std::string{"identifier '"} + t_arg()() +
-                                     "' cannot bind to '" + type_name<T&>() +
+                                     "' cannot bind to expected '" + type_name<T&>() +
                                      "'; current value has type " + actual);
             }
         }
@@ -964,7 +964,7 @@ class field_compiler_precondition {
         if (ptr != nullptr) {
             bool is_argument_id_congruent = ptr->id()()() == this->id()();
             if (!is_argument_id_congruent) {
-                return error_message("the argument id expected: " + id()() +
+                return error_message(" the argument id expected: " + id()() +
                                      " found: " + ptr->id()()());
             }
             return compile_this_argument(cm, ptr->expression());
@@ -1050,13 +1050,13 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
                 std::move(invoker), std::tuple<>{});
         } else {
             if (args.arg().size() != sizeof...(Is)) {
-                return error_message("argument count mismatch: expected ", sizeof...(Is), ", got ",
-                                     args.arg().size());
+                return error_message("count mismatch: expected ", sizeof...(Is), ", got ",
+                                     args.arg().size(),"\n expected arguments ",(get<Is>(m_args).id()()+" ")..., "found:  ", args.str());
             }
             auto Maybe_tuple = promote_Maybe_error(
                 std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));
             if (!Maybe_tuple) {
-                return Maybe_tuple.error();
+                return error_message("In", str(),": ",Maybe_tuple.error()());
             }
             return std::make_unique<
                 typed_function_evaluation<Lexer, Compiler, WrappedF, storage_t<Args>...>>(
@@ -1079,6 +1079,15 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     [[nodiscard]] base_function_compiler<Lexer, Compiler>* clone() const override {
         return new function_compiler(*this);
     }
+
+    auto str()  const -> std::string  {
+        return std::apply(
+            [this](auto&&... compiled_args) {
+                return (std::string{"function with arguments: "} +
+                        ... + (compiled_args.id()() + " "));
+            },
+            m_args);
+    }  
 
     void register_types(Compiler& registry) const override {
         using Return = underlying_value_type_t<std::invoke_result_t<F, Args...>>;

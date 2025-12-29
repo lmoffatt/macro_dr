@@ -62,6 +62,26 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
                 static_cast<SimFromTransformed>(&cmd::run_simulations), "model",
                 "parameter_values", "experiment", "observations", "number_of_substeps", "seed"));
     }
+    cm.push_function(
+            "simulate",
+            dsl::to_typed_return_function<
+            Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>>,
+            interface::IModel<var::Parameters_values> const&, 
+                                   const var::Parameters_transformed&, std::size_t,const Experiment&,
+                                   const Recording&, std::size_t, std::size_t>(
+                cmd::run_n_simulations, "model",
+                "parameter_transformed", "n_simulations", "experiment", "observations", "number_of_substeps", "seed"));
+    
+    cm.push_function(
+            "simulate",
+            dsl::to_typed_return_function<
+            Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>>,
+            interface::IModel<var::Parameters_values> const&, 
+                                   const var::Parameters_values&, std::size_t,const Experiment&,
+                                   const Recording&, std::size_t, std::size_t>(
+                cmd::run_n_simulations, "model",
+                "parameter_values", "n_simulations", "experiment", "observations", "number_of_substeps", "seed"));
+    
 
     {
         using SimSubFromValues = Maybe_error<
@@ -88,7 +108,7 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
                                    const var::Parameters_transformed&, const Experiment&,
                                    const Recording&, std::size_t, std::size_t>(
                 static_cast<SimSubFromTransformed>(&cmd::run_simulations_with_sub_intervals),
-                "model", "parameter_values", "experiment", "observations", "number_of_substeps",
+                "model", "parameters", "experiment", "observations", "number_of_substeps",
                 "seed"));
     }
 
@@ -136,6 +156,9 @@ dsl::Compiler make_compiler_new() {
         Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","simulation", "path"));
     cm.push_function("write_csv", dsl::to_typed_return_function<
+        Maybe_error<std::string>,Experiment const&,std::vector<Simulated_recording> const&, std::string >(&macrodr::cmd::write_csv,
+            "experiment","simulation", "path"));
+    cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Recording const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","observations", "path"));
 
@@ -172,6 +195,14 @@ dsl::Compiler make_compiler_new() {
                                       Simulated_Recording<var::please_include<>> const&,
                                       dMacro_State_Ev_gradient_all const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      std::vector<Simulated_Recording<var::please_include<>>> const&,
+                                      std::vector<dMacro_State_Ev_gradient_all> const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulations", "likelihood", "path"));
+
 
     cm.push_function(
         "write_csv",
@@ -332,6 +363,15 @@ dsl::Compiler make_compiler_new() {
             "parameters", "experiment", "data"));
 
     cm.push_function(
+        "calc_dlikelihood_predictions",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const std::vector<Simulated_Recording<var::please_include<> >>&>(
+            &cmd::calculate_n_simulation_mdlikelihood_predictions, "likelihood_algorithm",
+            "parameters", "experiment", "data_series"));
+
+
+            cm.push_function(
         "calc_likelihood",
         dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
