@@ -105,6 +105,11 @@ Tests
 - `legacy/`: existing heavy subsystems (kept compiling, wrapped by Core/CMD)
 - `docs/`: architecture docs and ADRs
 
+## Related Architecture Notes
+
+- `docs/architecture/macro_state_types.md` — rationale for `Macro_State`, `dMacro_State`, and `ddMacro_State`.
+- `docs/architecture/moment_statistics.md` — moment/variance tracking helpers and usage notes.
+
 ## Interactions (Examples)
 
 Load Experiment
@@ -135,4 +140,3 @@ Simulate
 - Validation policy: always on vs debug/configurable per command.
 - Vectorization scope: which entities must be vectorizable (parameters, states).
 - Naming: “Domain Entities” vs “Domain Model”.
-

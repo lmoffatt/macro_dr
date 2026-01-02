@@ -357,7 +357,7 @@ Parameters
                 SIDE = 'R' or 'r'   C := alpha*B*A + beta*C,
 */
 
-    char UPLO = 'L';
+    char UPLO = kSymmetricUplo;
     /*
   [in]	UPLO
 
@@ -743,7 +743,7 @@ Parameters
 
 */
 
-        char UPLO = 'L';
+        char UPLO = kSymmetricUplo;
 
         int INFO = 0;
         int N = a.ncols();
@@ -995,7 +995,7 @@ Purpose:
 
 Parameters
 */
-    char UPLO = 'L';
+    char UPLO = kSymmetricUplo;
 
     /*
  * [in]	UPLO
@@ -1657,11 +1657,8 @@ Parameters
 
 
 */
-    char UPLO;
-    if (kind == "lower")
-        UPLO = 'U';
-    else
-        UPLO = 'L';
+    (void)kind;
+    char UPLO = kSymmetricUplo;
 
     /*
     [in]	N
@@ -2191,6 +2188,149 @@ Parameters
 extern "C" void dsyrk_(char* UPLO, char* TRANS, int* N, int* K, double* ALPHA, double* A, int* LDA,
                        double* BETA, double* C, int* LDC);
 
+inline auto& Lapack_Product_Self_Transpose_vectorized_impl(const Matrix<double>& a, SymPosDefMatrix<double>& c,
+            char UPLO_in_c = 'U',
+                                               double alpha = 1, double beta = 0) {
+    assert(a.size()==c.ncols());
+    assert(c.ncols()==c.nrows());
+    char UPLO = (UPLO_in_c == 'U') ? 'L' : 'U';
+    bool first_transposed_in_c=true;
+    /*
+    [in]	UPLO
+
+              UPLO is CHARACTER*1
+               On  entry,   UPLO  specifies  whether  the  upper  or  lower
+               triangular  part  of the  array  C  is to be  referenced  as
+               follows:
+
+                  UPLO = 'U' or 'u'   Only the  upper triangular part of  C
+                                      is to be referenced.
+
+                  UPLO = 'L' or 'l'   Only the  lower triangular part of  C
+                                      is to be referenced.
+*/
+    char TRANS = first_transposed_in_c ? 'N' : 'T';
+    /*
+  [in]	TRANS
+
+            TRANS is CHARACTER*1
+             On entry,  TRANS  specifies the operation to be performed as
+             follows:
+
+                TRANS = 'N' or 'n'   C := alpha*A*A**T + beta*C.
+
+                TRANS = 'T' or 't'   C := alpha*A**T*A + beta*C.
+
+                TRANS = 'C' or 'c'   C := alpha*A**T*A + beta*C.
+
+*/
+
+    int N = c.nrows();
+    /*      [in]	N
+
+              N is INTEGER
+                  On entry,  N specifies the order of the matrix C.  N must be
+          at least zero.
+  */
+    int K = 1;
+
+    /*
+                [in]	K
+
+                        K is INTEGER
+                            On entry with  TRANS = 'N' or 'n',  K  specifies
+   the number of  columns   of  the   matrix   A,   and  on   entry   with
+        TRANS = 'T' or 't' or 'C' or 'c',  K  specifies  the  number
+        of rows of the matrix  A.  K must be at least zero.
+
+*/
+    double ALPHA = alpha;
+
+    /*
+*     [in]	ALPHA
+
+            ALPHA is DOUBLE PRECISION.
+             On entry, ALPHA specifies the scalar alpha.
+
+*/
+    double& A = const_cast<double&>(a[0]);
+
+    /*
+
+  [in]	A
+
+            A is DOUBLE PRECISION array, dimension ( LDA, ka ), where ka is
+             k  when  TRANS = 'N' or 'n',  and is  n  otherwise.
+             Before entry with  TRANS = 'N' or 'n',  the  leading  n by k
+             part of the array  A  must contain the matrix  A,  otherwise
+             the leading  k by n  part of the array  A  must contain  the
+             matrix A.
+
+* */
+
+    int LDA = first_transposed_in_c ? N : K;
+
+    /*
+ *     [in]	LDA
+
+            LDA is INTEGER
+             On entry, LDA specifies the first dimension of A as declared
+             in  the  calling  (sub)  program.   When  TRANS = 'N' or 'n'
+             then  LDA must be at least  max( 1, n ), otherwise  LDA must
+             be at least  max( 1, k ).
+
+ * */
+
+    double BETA = beta;
+    /*
+ *     [in]	BETA
+
+            BETA is DOUBLE PRECISION.
+             On entry, BETA specifies the scalar beta.
+
+*/
+
+    double& C = c[0];
+
+    /*
+  [in,out]	C
+
+            C is DOUBLE PRECISION array, dimension ( LDC, N )
+             Before entry  with  UPLO = 'U' or 'u',  the leading  n by n
+             upper triangular part of the array C must contain the upper
+             triangular part  of the  symmetric matrix  and the strictly
+             lower triangular part of C is not referenced.  On exit, the
+             upper triangular part of the array  C is overwritten by the
+             upper triangular part of the updated matrix.
+             Before entry  with  UPLO = 'L' or 'l',  the leading  n by n
+             lower triangular part of the array C must contain the lower
+             triangular part  of the  symmetric matrix  and the strictly
+             upper triangular part of C is not referenced.  On exit, the
+             lower triangular part of the array  C is overwritten by the
+             lower triangular part of the updated matrix.
+*/
+
+    int LDC = N;
+
+    /*
+  [in]	LDC
+
+            LDC is INTEGER
+             On entry, LDC specifies the first dimension of C as declared
+             in  the  calling  (sub)  program.   LDC  must  be  at  least
+             max( 1, n ).
+
+
+ * */
+
+    dsyrk_(&UPLO, &TRANS, &N, &K, &ALPHA, &A, &LDA, &BETA, &C, &LDC);
+
+    copy_UT_to_LT(c);
+    return c;
+}
+
+
+
 inline auto& Lapack_Product_Self_Transpose_mod(const Matrix<double>& a, SymPosDefMatrix<double>& c,
                                                bool first_transposed_in_c, char UPLO_in_c = 'U',
                                                double alpha = 1, double beta = 0) {
@@ -2373,7 +2513,21 @@ inline SymPosDefMatrix<double> Lapack_Product_Self_Transpose(const Matrix<double
     SymPosDefMatrix<double> c(n, n, false);
     c = Lapack_Product_Self_Transpose_mod(a, c, first_transposed_in_c, UPLO_in_c, alpha, beta);
     return c;
-};
+}
+
+inline SymPosDefMatrix<double> Lapack_Product_Self_Transpose_vectorized(const Matrix<double>& a,
+                                                             char UPLO_in_c, double alpha,
+                                                             double beta) {
+    std::size_t n = a.size() ;
+    SymPosDefMatrix<double> c(n, n, false);
+    c = Lapack_Product_Self_Transpose_vectorized_impl(a, c, UPLO_in_c, alpha, beta);
+    return c;
+}
+
+
+
+
+
 
 inline Maybe_error<DownTrianMatrix<double>> Lapack_chol(const SymPosDefMatrix<double>& x) {
     return_error<DownTrianMatrix<double>, Lapack_chol> Error;
@@ -2394,7 +2548,7 @@ inline Maybe_error<DownTrianMatrix<double>> Lapack_chol(const SymPosDefMatrix<do
 
 Parameters
 */
-    char UPLO = 'U';
+    char UPLO = kSymmetricUplo;
     /*
  *
  * [in]	UPLO

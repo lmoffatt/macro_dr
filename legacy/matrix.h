@@ -1,6 +1,8 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+//#include <lapack_headers.h>
+
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -14,6 +16,11 @@
 #include <vector>
 
 #include "maybe_error.h"
+
+// Canonical storage convention for symmetric matrices: store and expose the
+// upper triangle; LAPACK calls use this UPLO consistently.
+inline constexpr bool kSymmetricUseUpper = true;
+inline constexpr char kSymmetricUplo = kSymmetricUseUpper ? 'U' : 'L';
 template <class>
 class Matrix;
 template <class>
@@ -130,6 +137,10 @@ SymPosDefMatrix<double> Lapack_Product_Self_Transpose(const Matrix<double>& a,
                                                       char UPLO_in_c = 'U', double alpha = 1,
                                                       double beta = 0);
 
+SymPosDefMatrix<double> Lapack_Product_Self_Transpose_vectorized(const Matrix<double>& a,
+                                                                 char UPLO_in_c = 'U', double alpha = 1,
+                                                      double beta = 0);
+
 std::pair<Matrix<double>, Matrix<double>> Lapack_QR(const Matrix<double>& x);
 Maybe_error<Matrix<double>> Lapack_Full_inv(const Matrix<double>& a);
 
@@ -213,7 +224,6 @@ auto apply(F&& f, Matrix<T_Matrix<double>> const& a) {
     for (std::size_t i = 0; i < x.size(); ++i) x[i] = f(a[i]);
     return x;
 }
-
 
 template <class F, template <class> class T_Matrix>
     requires(is_Maybe_error<std::invoke_result_t<F, T_Matrix<double>>>)
@@ -490,9 +500,6 @@ class Matrix {
         return out;
     }
 
-
-
-
     template <class F, class S>
         requires S::is_Matrix
     friend auto zip(F&& f, const Matrix& x, const Matrix<S>& y) {
@@ -654,8 +661,6 @@ class SymmetricMatrix : public Matrix<T> {
     static constexpr bool is_Symmetric = true;
     static constexpr bool is_Diagonal = false;
 
-    operator Matrix<T> const&() { return static_cast<Matrix<T> const&>(*this); }
-
     explicit SymmetricMatrix(std::size_t _nrows) : base_type(_nrows, _nrows, false) {}
     explicit SymmetricMatrix(std::size_t _nrows, std::size_t, T value)
         : base_type(_nrows, _nrows, value) {}
@@ -676,19 +681,41 @@ class SymmetricMatrix : public Matrix<T> {
     }
 
     void set(std::size_t i, std::size_t j, const T& x) {
-        if (size() > 0) {
-            base_type::operator()(i, j) = x;
-            if (i != j)
-                base_type::operator()(j, i) = x;
+        if (size() == 0)
+            return;
+        if constexpr (kSymmetricUseUpper) {
+            if (i > j)
+                std::swap(i, j);
+        } else {
+            if (j > i)
+                std::swap(i, j);
+        }
+        base_type::operator()(i, j) = x;
+    }
+
+    auto operator()(std::size_t i, std::size_t j) const {
+        if constexpr (kSymmetricUseUpper) {
+            return (i <= j) ? base_type::operator()(i, j) : base_type::operator()(j, i);
+        } else {
+            return (j <= i) ? base_type::operator()(i, j) : base_type::operator()(j, i);
         }
     }
-    auto operator()(std::size_t i, std::size_t j) const { return base_type::operator()(i, j); }
     auto& operator[](std::size_t i) const { return base_type::operator[](i); }
     auto& operator[](std::size_t i) { return base_type::operator[](i); }
     auto ncols() const { return base_type::ncols(); }
     auto nrows() const { return base_type::nrows(); }
     auto size() const { return base_type::size(); }
     ~SymmetricMatrix() {}
+
+    friend auto& operator<<(std::ostream& os, const SymmetricMatrix& x) {
+        os << "\n";
+        for (std::size_t i = 0; i < x.nrows(); ++i) {
+            for (std::size_t j = 0; j < x.ncols(); ++j)
+                os << std::setw(base_type::cell_width()) << x(i, j) << " ";
+            os << "\n";
+        }
+        return os;
+    }
 
     friend auto operator*(const SymmetricMatrix& a, const SymmetricMatrix& b) {
         return lapack::Lapack_Sym_Product(a, b, true);
@@ -757,8 +784,8 @@ class SymmetricMatrix : public Matrix<T> {
 
     template <class F>
     friend auto apply(F&& f, SymmetricMatrix&& x) {
-        for (std::size_t i = 0; i < x.size(); ++i)
-            for (std::size_t j = i; j < x.size(); ++j) x.set(i, j, f(x(i, j)));
+        for (std::size_t i = 0; i < x.nrows(); ++i)
+            for (std::size_t j = i; j < x.ncols(); ++j) x.set(i, j, f(x(i, j)));
         return x;
     }
 
@@ -766,7 +793,7 @@ class SymmetricMatrix : public Matrix<T> {
     friend auto zip(F&& f, const SymmetricMatrix& x, const SymmetricMatrix& y) {
         assert(x.nrows() == y.nrows() && "same size");
 
-        SymmetricMatrix out(x.nrows(), false);
+        SymmetricMatrix out(x.nrows());
         for (std::size_t i = 0; i < x.nrows(); ++i)
             for (std::size_t j = i; j < x.ncols(); ++j) out.set(i, j, f(x(i, j), y(i, j)));
         return out;
@@ -830,6 +857,26 @@ auto xtAy(const Matrix<T>& x, const SymmetricMatrix<T>& A, const Matrix<T>& y) {
     return out;
 }
 
+template <class T>
+Matrix<T> to_dense(const SymmetricMatrix<T>& x) {
+    Matrix<T> out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.nrows(); ++i){
+        for (std::size_t j = 0; j < x.ncols(); ++j){ out(i, j) = x(i, j);}}
+    return out;
+}
+
+template <class T>
+Matrix<T> to_vector_half(const SymmetricMatrix<T>& x) {
+    Matrix<T> out((x.nrows()*x.ncols())/2,1, false);
+    std::size_t index = 0;
+    for (std::size_t i = 0; i < x.nrows(); ++i){
+        for (std::size_t j = i; j < x.ncols(); ++j){ 
+            out[index] = x(i, j);}}
+    return out;
+}
+
+
+
 template <class F, class T>
 auto apply(F&& f, const SymmetricMatrix<T>& x) {
     SymmetricMatrix<T> out(x.nrows());
@@ -843,8 +890,6 @@ inline auto elemMult(const Matrix<double>& x, const Matrix<double>& y) {
     for (std::size_t i = 0; i < x.size(); ++i) out[i] = x[i] * y[i];
     return out;
 }
-
-
 
 template <class T, class S>
 auto elemMult(const Matrix<S>& x, const Matrix<T>& y) -> Matrix<std::decay_t<decltype(T{} * S{})>> {
@@ -1883,6 +1928,11 @@ inline auto XXT(const Matrix<double>& a) {
 }
 
 template <class T>
+inline auto XTX_vect(const Matrix<T>& a) {
+    return lapack::Lapack_Product_Self_Transpose_vectorized(a);
+}
+
+template <class T>
 auto XXT(const DiagonalMatrix<T>& a) {
     return DiagPosDetMatrix<T>(a * a);
 }
@@ -1907,11 +1957,14 @@ inline auto XTX(const Matrix<std::size_t>& a) {
 }
 
 inline auto sqr_X(const Matrix<double>& a) {
-    if (a.ncols() < a.nrows())
-        return XXT(a);
-    else
-        return XTX(a);
+     return lapack::Lapack_Product_Self_Transpose_vectorized(a);
 }
+
+inline auto sqr_X(const SymmetricMatrix<double>& a) {
+    auto vecth= to_vector_half(a);
+    return lapack::Lapack_Product_Self_Transpose_vectorized(vecth);
+}
+
 
 inline auto sqr_X(double a) {
     return a * a;
@@ -2032,20 +2085,19 @@ inline Maybe_error<bool> test_equality(std::integral auto x, std::integral auto 
         return true;
 }
 
-
 template <template <class> class aMatrix>
 Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double>& two,
-                                double eps=0.0) {
+                                double eps = 0.0) {
     auto out = Maybe_error<bool>(true);
-    
-        if (one.nrows() != two.nrows() || one.ncols() != two.ncols()) {
-            return error_message("Matrix dimensions differ: (" + std::to_string(one.nrows()) + "," +
-                                 std::to_string(one.ncols()) + ") vs (" +
-                                 std::to_string(two.nrows()) + "," +
-                                 std::to_string(two.ncols()) + ")");
-        }
+
+    if (one.nrows() != two.nrows() || one.ncols() != two.ncols()) {
+        return error_message("Matrix dimensions differ: (" + std::to_string(one.nrows()) + "," +
+                             std::to_string(one.ncols()) + ") vs (" + std::to_string(two.nrows()) +
+                             "," + std::to_string(two.ncols()) + ")");
+    }
     if (eps == 0.0) {
-        eps = std::numeric_limits<double>::epsilon() * std::max({std::abs(norm_inf(one)), std::abs(norm_inf(two)), 1.0}) * 100; 
+        eps = std::numeric_limits<double>::epsilon() *
+              std::max({std::abs(norm_inf(one)), std::abs(norm_inf(two)), 1.0}) * 100;
     }
     for (std::size_t i = 0; i < one.nrows(); ++i)
         for (std::size_t j = 0; j < one.ncols(); ++j) {
@@ -2065,15 +2117,14 @@ Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double
     }
 }
 
-namespace var{
+namespace var {
 template <template <class> class aMatrix>
 Maybe_error<bool> test_equality(const aMatrix<double>& one, const aMatrix<double>& two,
-                                double eps=0.0){
-return ::test_equality(one, two, eps);
+                                double eps = 0.0) {
+    return ::test_equality(one, two, eps);
+}
 
-                                }
-                         
-                            }
+}  // namespace var
 
 template <typename Matrix>
     requires Matrix::is_Matrix
@@ -2102,6 +2153,5 @@ bool operator==(const Matrix& x, const Matrix& y) {
                 return false;
     return true;
 }
-
 
 #endif  // MATRIX_H

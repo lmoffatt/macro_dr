@@ -10,6 +10,7 @@
 
 #include "distributions.h"
 #include "matrix.h"
+#include "moment_statistics.h"
 #include "maybe_error.h"
 #include "variables.h"
 //using Parameters = Matrix<double>;
@@ -129,121 +130,6 @@ class Trial_statistics
             return 1.0 * get<Success_count>((*this)())() / count();
         else
             return error_message("");
-    }
-};
-
-struct count : public var::Constant<count, std::size_t> {
-    count() : var::Constant<count, std::size_t>{0} {
-    }
-    count(std::size_t n) : var::Constant<count, std::size_t>{n} {
-    }
-};
-
-template <class Va>
-struct mean : public var::Var<mean<Va>, Va> {};
-
-template <class Va>
-struct variance : public var::Var<variance<Va>, Va> {
-    variance() : var::Var<variance<Va>, Va>{Va(0.0)} {
-    }
-    variance(Va&& x) : var::Var<variance<Va>, Va>{std::move(x)} {
-    }
-    variance(Va const& x) : var::Var<variance<Va>, Va>{x} {
-    }
-};
-
-template <class Va>
-class Moment_statistics
-    : public var::Var<Moment_statistics<Va>, var::Vector_Space<mean<Va>, variance<Va>, count>> {
-   public:
-    using base_type =
-        var::Var<Moment_statistics<Va>, var::Vector_Space<mean<Va>, variance<Va>, count>>;
-
-   public:
-    Moment_statistics()
-        : base_type{var::Vector_Space{mean<Va>(Va{}), variance<Va>(Va{}), count{0}}} {
-    }
-    Moment_statistics(Va x)
-        : base_type{var::Vector_Space{mean<Va>(x), variance<Va>(x - x), count{1}}} {
-    }
-    Moment_statistics(mean<Va> x, variance<Va> v, count n) : base_type{var::Vector_Space{x, v, n}} {
-    }
-
-    friend Moment_statistics operator&(const Moment_statistics& one,
-                                       const Moment_statistics& other) {
-        double n0 = get<count>((one)())();
-        double n1 = get<count>((other)())();
-
-        auto m0 = get<mean<Va>>((one)())()();
-        auto m1 = get<mean<Va>>((other)())()();
-
-        auto v0 = get<variance<Va>>((one)())()();
-        auto v1 = get<variance<Va>>((other)())()();
-        double n = n0 + n1;
-
-        auto m = m0 + n1 / n * (m1 - m0);
-
-        auto malt = (m0 * n0 + m1 * n1) / n;
-
-        //  auto v = n>1?v0 + (n1-1)/(n-1)* (v1-v0) + n0/(n-1) * sqr_X(m0-m) + n1/(n-1) * sqr_X(m1-m):0;
-        auto v =
-            n > 1
-                ? ((n0 - 1) * v0 + n0 * sqr_X(m0) + (n1 - 1) * v1 + n1 * sqr_X(m1) - n * sqr_X(m)) /
-                      (n - 1)
-                : 0;
-        Moment_statistics out;
-        get<mean<Va>>((out)())()() = m;
-        get<variance<Va>>((out)())()() = v;
-        get<count>((out)())() = n;
-
-        return out;
-    }
-
-    Moment_statistics& operator&=(const Moment_statistics& other) {
-        *this = *this & other;
-        return *this;
-    }
-
-    Moment_statistics& operator&=(const Va& x) {
-        auto n0 = get<count>((*this)())();
-
-        auto m0 = get<mean<Va>>((*this)())()();
-
-        auto v0 = get<variance<Va>>((*this)())()();
-        auto n = n0 + 1;
-
-        auto m = m0 + (x() - m0) / n;
-        auto v = n > 1 ? v0 + (sqr_X(x() - m) - v0) / n0 + sqr_X(m0 - m) : 0;
-        // auto v = n>1? ((n0-1)* v0 + n0* sqr_X(m0) +   sqr_X(x()) - n * sqr_X(m))/(n-1):0;
-
-        get<count>((*this)())() = n;
-        get<variance<Va>>((*this)())()() = std::move(v);
-        get<mean<Va>>((*this)())()() = std::move(m);
-        return *this;
-    }
-    void reset() {
-        get<count>((*this)())() = 0;
-        get<mean<Va>>((*this)())() = Va{};
-        get<variance<Va>>((*this)())() = Va{};
-    }
-
-    friend Moment_statistics operator+(const Moment_statistics& one,
-                                       const Moment_statistics& other) {
-        auto n0 = get<count>((one)())();
-        auto m0 = get<mean<Va>>((one)())()();
-        auto v0 = get<variance<Va>>((one)())()();
-        auto n1 = get<count>((other)())();
-        auto m1 = get<mean<Va>>((other)())()();
-        auto v1 = get<variance<Va>>((other)())()();
-        return Moment_statistics(mean<Va>(Va(m0 + m1)), variance<Va>(Va(v0 + v1)),
-                                 count(std::min(n0, n1)));
-    }
-
-    friend Moment_statistics operator*(double a, Moment_statistics const& one) {
-        auto n0 = get<count>((one)())();
-        auto m0 = get<mean<Va>>((one)())()();
-        auto v0 = get<variance<Va>>((one)())()();
-        return Moment_statistics(mean<Va>(Va(m0 * a)), variance<Va>(Va(v0 * a * a)), count(n0));
     }
 };
 
