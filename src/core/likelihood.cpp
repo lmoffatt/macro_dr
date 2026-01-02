@@ -839,6 +839,16 @@ Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Re
 }
 
 
+auto calc_FIM_from_n_simulation_mdlikelihood_predictions(const std::vector<dMacro_State_Ev_gradient_all>& dlogLs)   {
+  for (std::size_t i=0; i<dlogLs.size(); ++i)
+    {
+         
+    }
+
+}
+
+
+
 
 // (2) State without Evolution (no Experiment/Simulation indexing)
 template <template <typename...> class TMacro_State, typename... vVars>

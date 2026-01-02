@@ -6455,7 +6455,7 @@ Maybe_error<diff_Macro_State_Gradient_Hessian> diff_logLikelihood(
         auto r_ymean = get<y_mean>(r_Ev()[i])();
         if (std::isfinite(r_yvar) && std::isfinite(r_ymean) && (r_yvar > 0)) {
             t_yvar[i] = 1.0 / r_yvar;
-            t_yvar_2[i] = 2.0 * t_yvar[i] * t_yvar[i];
+            t_yvar_2[i] = 2.0 /( t_yvar[i] * t_yvar[i]);
         } else {
             t_yvar[i] = 0;
             t_yvar_2[i] = 0;
