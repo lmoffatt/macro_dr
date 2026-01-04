@@ -886,10 +886,21 @@ auto apply(F&& f, const SymmetricMatrix<T>& x) {
 }
 
 inline auto elemMult(const Matrix<double>& x, const Matrix<double>& y) {
+    assert(x.size() == y.size());
     auto out = x;
     for (std::size_t i = 0; i < x.size(); ++i) out[i] = x[i] * y[i];
     return out;
 }
+
+inline auto elemMult(const SymmetricMatrix<double>& x, const SymmetricMatrix<double>& y) {
+    assert(x.size()==y.size());
+    SymmetricMatrix<double> out(x.nrows());
+
+     for (std::size_t i = 0; i < x.nrows(); ++i){
+        for (std::size_t j = i; j < x.ncols(); ++j) {out.set(i, j, x(i, j) * y(i, j));}}
+    return out;
+}
+
 
 template <class T, class S>
 auto elemMult(const Matrix<S>& x, const Matrix<T>& y) -> Matrix<std::decay_t<decltype(T{} * S{})>> {
@@ -1956,19 +1967,33 @@ inline auto XTX(const Matrix<std::size_t>& a) {
     }
 }
 
+template<bool include_covariance>
 inline auto sqr_X(const Matrix<double>& a) {
-     return lapack::Lapack_Product_Self_Transpose_vectorized(a);
+    if constexpr (include_covariance) {
+        return lapack::Lapack_Product_Self_Transpose_vectorized(a);
+    } else {
+     return elemMult(a, a);
+    }
 }
 
+template<bool include_covariance>
 inline auto sqr_X(const SymmetricMatrix<double>& a) {
     auto vecth= to_vector_half(a);
-    return lapack::Lapack_Product_Self_Transpose_vectorized(vecth);
+ if constexpr (include_covariance) {
+        return lapack::Lapack_Product_Self_Transpose_vectorized(vecth);
+    } else {
+     return elemMult(vecth, vecth);
+    }
 }
 
 
+template<bool include_covariance>
 inline auto sqr_X(double a) {
     return a * a;
 }
+
+
+
 
 template <template <class> class Matrix>
     requires(!Matrix<double>::is_Symmetric)

@@ -460,6 +460,24 @@ struct vector_space_types<var::Vector_Space<Cs...>> {
 };
 
 template <class T>
+struct state_component_types;
+
+template <typename... Vars>
+struct state_component_types<Macro_State<Vars...>> {
+    using types = std::tuple<std::type_identity<logL>, std::type_identity<Patch_State>,
+                             std::type_identity<Vars>...>;
+};
+
+template <typename... Vars>
+struct state_component_types<dMacro_State<Vars...>> {
+    using types = std::tuple<
+        std::type_identity<var::Derivative<logL, var::Parameters_transformed>>,
+        std::type_identity<var::Derivative<Patch_State, var::Parameters_transformed>>,
+        std::type_identity<Moment_statistics<Grad, true>>, std::type_identity<Hessian>,
+        std::type_identity<Vars>...>;
+};
+
+template <class T>
 double primitive_to_double(const T& x) {
     if constexpr (requires { x.primitive()(); }) {
         return x.primitive()();
@@ -567,6 +585,8 @@ Maybe_error<bool> emit_derivative_rows(Writer& w, std::string label, const Der& 
             return error_message("write_csv_rows: unsupported inside_out container for ", label,
                                  " (", macrodr::dsl::type_name<decltype(out)>(), ")");
         }
+    } else if constexpr (requires { d(); }) {
+        return emit_derivative_rows(w, std::move(label), d());
     } else if constexpr (var::is_derivative_v<Der> &&
                          is_of_this_template_type_v<var::untransformed_type_t<std::decay_t<Der>>,
                                                    var::Vector_Space>) {
@@ -609,6 +629,31 @@ Maybe_error<bool> emit_component_rows(Writer& w, std::string label, const T& x) 
     }
 }
 
+template <class Writer, class Lik>
+Maybe_error<bool> emit_state_rows(Writer& w, Lik const& lik) {
+    using Types = typename state_component_types<std::decay_t<Lik>>::types;
+    auto handle_component = [&](auto type_tag) -> Maybe_error<bool> {
+        using Id = typename decltype(type_tag)::type;
+        if constexpr (is_of_this_template_type_v<Id, Evolution_of>) {
+            return true;
+        } else if constexpr (var::gets_it_c<Lik const&, Id>) {
+            return emit_component_rows(
+                w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Id>>(),
+                get<Id>(lik));
+        } else {
+            return true;
+        }
+    };
+
+    Maybe_error<bool> ok = true;
+    std::apply(
+        [&](auto... type_tags) {
+            ((ok = ok ? handle_component(type_tags) : ok), ...);
+        },
+        Types{});
+    return ok;
+}
+
 struct SampleWriter {
     std::ostream& f;
     std::vector<std::string> const& param_names;
@@ -648,17 +693,18 @@ struct SampleWriter_i {
     double patch;
 
     void write_value(std::string component, double primitive) {
-        f << "value," << n_simulation << "," << n_step << "," << sub_step << "," << step_start << "," << step_end << ","
-          << step_mid << "," << agonist << "," << patch << "," << component << ",,,," << primitive
-          << ",\n";
+        f << "value," << n_simulation << "," << n_step << "," << sub_step << "," << step_start
+          << "," << step_end << "," << step_mid << "," << agonist << "," << patch << ","
+          << component << ",,,," << primitive << ",\n";
     }
 
     void write_derivative(const std::string& component, std::size_t r, std::size_t c, double prim,
                           double deriv_value) {
         const auto& pname = (r < param_names.size()) ? param_names[r] : std::string{};
-        f << "derivative," << n_simulation << "," << n_step << "," << sub_step << "," << step_start << "," << step_end
-          << "," << step_mid << "," << agonist << "," << patch << "," << component << "," << r
-          << "," << c << "," << pname << "," << prim << "," << deriv_value << "\n";
+        f << "derivative," << n_simulation << "," << n_step << "," << sub_step << ","
+          << step_start << "," << step_end << "," << step_mid << "," << agonist << "," << patch
+          << "," << component << "," << r << "," << c << "," << pname << "," << prim << ","
+          << deriv_value << "\n";
     }
 };
 
@@ -677,6 +723,45 @@ struct StateWriter {
                           double deriv_value) {
         const auto& pname = (r < param_names.size()) ? param_names[r] : std::string{};
         f << "derivative,,,,,,,"  // n_step,sub_step,step_start,step_end,step_middle,agonist,patch
+          << "," << component << "," << r << "," << c << "," << pname << "," << prim << ","
+          << deriv_value << "\n";
+    }
+};
+
+struct StateWriter_scoped {
+    std::ostream& f;
+    std::vector<std::string> const& param_names;
+
+    void write_value(std::string component, double primitive) {
+        f << "state_value,,,,,,,"  // n_step,sub_step,step_start,step_end,step_middle,agonist,patch
+          << "," << component << ",,,," << primitive << ",\n";
+    }
+
+    void write_derivative(const std::string& component, std::size_t r, std::size_t c, double prim,
+                          double deriv_value) {
+        const auto& pname = (r < param_names.size()) ? param_names[r] : std::string{};
+        f << "state_derivative,,,,,,,"  // n_step,sub_step,step_start,step_end,step_middle,agonist,patch
+          << "," << component << "," << r << "," << c << "," << pname << "," << prim << ","
+          << deriv_value << "\n";
+    }
+};
+
+struct StateWriter_i {
+    std::ostream& f;
+    std::vector<std::string> const& param_names;
+    std::size_t n_simulation;
+
+    void write_value(std::string component, double primitive) {
+        f << "state_value," << n_simulation
+          << ",,,,,,,"  // n_step,sub_step,step_start,step_end,step_middle,agonist,patch
+          << "," << component << ",,,," << primitive << ",\n";
+    }
+
+    void write_derivative(const std::string& component, std::size_t r, std::size_t c, double prim,
+                          double deriv_value) {
+        const auto& pname = (r < param_names.size()) ? param_names[r] : std::string{};
+        f << "state_derivative," << n_simulation
+          << ",,,,,,,"  // n_step,sub_step,step_start,step_end,step_middle,agonist,patch
           << "," << component << "," << r << "," << c << "," << pname << "," << prim << ","
           << deriv_value << "\n";
     }
@@ -714,6 +799,12 @@ Maybe_error<std::string> write_csv(Experiment const& e, Simulated_Recording<SimT
 
     using Element = typename std::decay_t<decltype(evo)>::element_type;
     using ComponentTuple = typename vector_space_types<Element>::types;
+
+    StateWriter_scoped w_state{f, param_names};
+    Maybe_error<bool> state_ok = emit_state_rows(w_state, lik);
+    if (!state_ok || !state_ok.value()) {
+        return state_ok.error()();
+    }
 
     const double fs = get<Frequency_of_Sampling>(e)();
     for (std::size_t i = 0; i < conds().size(); ++i) {
@@ -783,6 +874,9 @@ Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Re
     f << "row_kind,n_simulation,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
          "component,param_index,param_col,param_name,primitive,derivative_value\n";
     for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
+    
+
+
     const auto& y = get<Recording>(simulation[sim_i]());
     const auto& lik = liks[sim_i]; 
     const auto& evo = get<Evolution>(lik);
@@ -796,6 +890,12 @@ Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Re
 
     using Element = typename std::decay_t<decltype(evo)>::element_type;
     using ComponentTuple = typename vector_space_types<Element>::types;
+
+    StateWriter_i w_state{f, param_names, sim_i};
+    Maybe_error<bool> state_ok = emit_state_rows(w_state, lik);
+    if (!state_ok || !state_ok.value()) {
+        return state_ok.error()();
+    }
 
     const double fs = get<Frequency_of_Sampling>(e)();
     for (std::size_t i = 0; i < conds().size(); ++i) {
@@ -870,22 +970,7 @@ Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::strin
 
     StateWriter w{f, param_names};
 
-	    auto handle_root = [&](auto type_tag) -> Maybe_error<bool> {
-	        using Id = typename decltype(type_tag)::type;
-	        if constexpr (is_of_this_template_type_v<Id, Evolution_of>) {
-	            // Skip evolution containers in the state-only view.
-	            return true;
-	        } else if constexpr (var::gets_it_c<TMacro_State<vVars...> const&, Id>) {
-	            return emit_component_rows(w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Id>>(), get<Id>(lik));
-	        } else {
-	            return true;
-	        }
-    };
-
-    Maybe_error<bool> ok = true;
-    ok = ok ? handle_root(std::type_identity<logL>{}) : ok;
-    ok = ok ? handle_root(std::type_identity<Patch_State>{}) : ok;
-    ((ok = ok ? handle_root(std::type_identity<vVars>{}) : ok), ...);
+    Maybe_error<bool> ok = emit_state_rows(w, lik);
     if (!ok || !ok.value()) {
         return ok.error()();
     }
