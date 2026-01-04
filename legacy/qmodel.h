@@ -16,6 +16,7 @@
 #include "lapack_headers.h"
 // #include "models_MoffattHume_linear.h"
 #include <macrodr/dsl/type_name.h>
+#include <moment_statistics.h>
 
 #include <cmath>
 #include <concepts>
@@ -897,10 +898,12 @@ struct Macro_State : public Vector_Space<logL, Patch_State, Vars...> {
                                                    std::forward<Vars>(vars)...) {}
 };
 
-template <typename... Vars>
-struct dMacro_State
+template <typename... Vars>struct dMacro_State
     : public Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
-                          var::Derivative<Patch_State, var::Parameters_transformed>, Vars...> {
+                          var::Derivative<Patch_State, var::Parameters_transformed>, 
+                          Moment_statistics<Grad, true >,
+                          Hessian,
+                          Vars...> {
     dMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
         auto const& dx = var::get_dx_of_dfdx(dps);
 
@@ -923,14 +926,19 @@ struct dMacro_State
             ((seed_with_dx(get<Vars>(*this))), ...);
     }
     dMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
-                 var::Derivative<Patch_State, var::Parameters_transformed>&& dps, Vars&&... vars)
+                 var::Derivative<Patch_State, var::Parameters_transformed>&& dps, 
+                 Moment_statistics<Grad, true>&& grad,
+                 Hessian&& hess,
+                 Vars&&... vars)
         : Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
-                       var::Derivative<Patch_State, var::Parameters_transformed>, Vars...>(
-              std::move(dl), std::move(dps), std::forward<Vars>(vars)...) {}
-    dMacro_State() = default;   
-    
-                        
-    
+                       var::Derivative<Patch_State, var::Parameters_transformed>, 
+                       Moment_statistics<Grad, true>,
+                          Hessian,
+                          Vars...>(
+              std::move(dl), std::move(dps), std::move(grad), std::move(hess),
+              std::forward<Vars>(vars)...) {}
+    dMacro_State() = default;       
+                    
 };
 
 template <typename... Vars>
@@ -4747,7 +4755,7 @@ class Macro_DMR {
     template <class... vVars, class C_Algo_State>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<Macro_State<vVars...>> update(Macro_State<vVars...>&& t_prior_all,
-                                              C_Algo_State&& algo, logL const& t_logL, elogL const& t_elogL ) const 
+                                              C_Algo_State&& algo, logL const& t_logL, elogL const& t_elogL,... ) const 
                                               {
         // Update patch state for recursion.
         {
@@ -4824,7 +4832,7 @@ class Macro_DMR {
     template <class... vVars, class C_Algo_State, class C_logL, class C_elogL>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<Vector_Space<vVars...>> update(Vector_Space<vVars...>&& t_prior_all,
-                                              C_Algo_State&& algo, C_logL const& t_logL,C_elogL const& t_elogL) const {
+                                              C_Algo_State&& algo, C_logL const& t_logL,C_elogL const& t_elogL,...) const {
         // If this Vector_Space carries a Patch_State, keep recursion semantics consistent with
         // Macro_State/dMacro_State/ddMacro_State updates.
         if constexpr (has_var_c<Vector_Space<vVars...>&, Patch_State>) {
@@ -4857,7 +4865,7 @@ class Macro_DMR {
     Maybe_error<var::Derivative<Vector_Space<vVars...>, var::Parameters_transformed>>
     update(var::Derivative<Vector_Space<vVars...>, var::Parameters_transformed>&& t_prior_all,
            C_Algo_State&& algo,
-           var::Derivative<logL, var::Parameters_transformed> const& t_logL, C_elogL const& t_elogL) const {
+           var::Derivative<logL, var::Parameters_transformed> const& t_logL, C_elogL const& t_elogL,...) const {
         get<logL>(t_prior_all) ()= get<logL>(t_prior_all)() + t_logL();
         if constexpr (var::has_it_v<Macro_State<vVars...>, elogL> )
             get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
@@ -4878,7 +4886,10 @@ class Macro_DMR {
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<dMacro_State<vVars...>> update(
         dMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
-        var::Derivative<logL, var::Parameters_transformed> const& t_logL, C_elogL const& t_elogL) const {
+        var::Derivative<logL, var::Parameters_transformed> const& t_logL ,
+        C_elogL const& t_elogL, 
+        var::Derivative<y_mean, var::Parameters_transformed> const& t_ymean, 
+        var::Derivative<y_var, var::Parameters_transformed> const& t_yvar) const {
         // Update patch state (including derivatives) for recursion.
         {
             auto& ps = get<Patch_State>(t_prior_all);
@@ -4888,8 +4899,20 @@ class Macro_DMR {
                 get<P_Cov>(ps()) = get<P_Cov>(algo());
             }
         }
+        auto d_y_mean= t_ymean.derivative()();
+        auto d_y_var= t_yvar.derivative()();
+
+        auto r_y_var=t_yvar.primitive()();
+        auto t_Hessian= XXT(d_y_mean)/r_y_var +  XXT(d_y_var)/(2*r_y_var*r_y_var);
+
+        auto t_Gradient= Grad(t_logL.derivative()());
 
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
+        get<Grad>(t_prior_all)&= t_Gradient;
+
+
+        get<Hessian>(t_prior_all)() = get<Hessian>(t_prior_all)() + t_Hessian;
+        
        if constexpr (var::has_it_v<dMacro_State<vVars...>, elogL> )
             get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
         if constexpr (var::has_it_v<dMacro_State<vVars...>, vlogL> )
@@ -4945,7 +4968,7 @@ class Macro_DMR {
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
     Maybe_error<ddMacro_State<vVars...>> update(
         ddMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
-        var::Derivative<logL, var::Parameters_transformed> const& t_logL) const {
+        var::Derivative<logL, var::Parameters_transformed> const& t_logL,...) const {
         // Update patch state (including derivatives) for recursion.
         {
             auto& ps = get<Patch_State>(t_prior_all);
@@ -5013,7 +5036,7 @@ class Macro_DMR {
     Maybe_error<ddMacro_State<vVars...>> update(
         ddMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
         var::Derivative<logL, var::Parameters_transformed> const& t_logL,
-        C_elogL const& t_elogL) const {
+        C_elogL const& t_elogL,...) const {
         // Update patch state (including derivatives) for recursion.
         {
             auto& ps = get<Patch_State>(t_prior_all);
@@ -5122,8 +5145,8 @@ class Macro_DMR {
         
        
         auto r_prior_all =
-            update(std::move(t_prior_all), std::move(r_Algo_state), std::move(r_logL), std::move(r_elogL));
-        return std::move(r_prior_all);
+            update(std::move(t_prior_all), std::move(r_Algo_state), std::move(r_logL), std::move(r_elogL), r_y_mean, r_y_var);
+        return {std::move(r_prior_all)};
     }
 
     // template <class recursive, class averaging, class variance, class variance_correction,

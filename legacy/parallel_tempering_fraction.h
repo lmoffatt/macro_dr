@@ -110,11 +110,11 @@ struct thermo_fraction_mcmc  //:public thermo_mcmc<Parameters>
     }
 
     auto num_samples() const {
-        std::size_t min_samples = get<count>(walkers_sta[0][0].begin()->second()())();
+        std::size_t min_samples = get<count<logL>>(walkers_sta[0][0].begin()->second()())();
         for (std::size_t i = 0; i < walkers_sta.size(); ++i)
             for (std::size_t j = 0; j < walkers_sta[i].size(); ++j)
-                if (get<count>(walkers_sta[0][0].begin()->second()())() < min_samples)
-                    min_samples = get<count>(walkers_sta[0][0].begin()->second()())();
+                if (get<count<logL>>(walkers_sta[0][0].begin()->second()())() < min_samples)
+                    min_samples = get<count<logL>>(walkers_sta[0][0].begin()->second()())();
         return min_samples;
     }
 
@@ -238,17 +238,17 @@ inline auto calculate_sample_size(by_beta<ensemble<std::map<std::size_t, logL_st
                                   std::size_t i_beta, std::size_t i_frac) {
     auto it = sta[i_beta][0].find(i_frac);
     assert(it != sta[i_beta][0].end());
-    return get<count>(it->second()());
+    return get<count<logL>>(it->second()());
 }
 
 inline variance<logL> calculate_within_sta(ensemble<std::map<std::size_t, logL_statistics>>& sta,
                                            std::size_t i_frac) {
     variance<logL> within(logL(0.0));
-    count df(count(0));
+    count df(count<logL>(0));
     for (std::size_t i = 0; i < sta.size(); ++i) {
         auto it = sta[i].find(i_frac);
         assert(it != sta[i].end());
-        auto r_df = get<count>(it->second()())() - 1;
+        auto r_df = get<count<logL>>(it->second()())() - 1;
         within()() += r_df * get<variance<logL>>(it->second()())()();
         df() += r_df;
     }

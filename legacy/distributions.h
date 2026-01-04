@@ -284,10 +284,10 @@ class Grad : public var::Constant<Grad, Matrix<double>> {
     }
 };
 
-class Hess : public var::Constant<Hess, SymPosDefMatrix<double>> {
+class Hessian : public var::Constant<Hessian, SymPosDefMatrix<double>> {
    public:
-    friend std::string className(Hess) {
-        return "Hess";
+    friend std::string className(Hessian) {
+        return "Hessian";
     }
 };
 

@@ -180,11 +180,11 @@ struct thermo_mcmc {
     }
 
     auto num_samples() const {
-        std::size_t min_samples = get<count>(walkers_sta[0][0]()())();
+        std::size_t min_samples = get<count<logL>>(walkers_sta[0][0]()())();
         for (std::size_t i = 0; i < walkers_sta.size(); ++i)
             for (std::size_t j = 0; j < walkers_sta[i].size(); ++j)
-                if (get<count>(walkers_sta[i][j]()())() < min_samples)
-                    min_samples = get<count>(walkers_sta[i][j]()())();
+                if (get<count<logL>>(walkers_sta[i][j]()())() < min_samples)
+                    min_samples = get<count<logL>>(walkers_sta[i][j]()())();
         return min_samples;
     }
 
@@ -232,9 +232,9 @@ inline auto calculate_across_sta(by_beta<ensemble<logL_statistics>> const& sta) 
 
 inline variance<logL> calculate_within_sta(ensemble<logL_statistics> const& sta) {
     variance<logL> within = variance<logL>(logL(0.0));
-    count df = count(0ul);
+    count df = count<logL>(0ul);
     for (std::size_t i = 0; i < sta.size(); ++i) {
-        auto r_df = get<count>(sta[i]()())() - 1;
+        auto r_df = get<count<logL>>(sta[i]()())() - 1;
         within()() += r_df * get<variance<logL>>(sta[i]()())()();
         df() += r_df;
     }
@@ -249,7 +249,7 @@ inline auto calculate_within_sta(by_beta<ensemble<logL_statistics>> const& sta) 
 }
 inline auto calculate_sample_size(by_beta<ensemble<logL_statistics>> const& sta,
                                   std::size_t i_beta) {
-    return get<count>(sta[i_beta][0]()());
+    return get<count<logL>>(sta[i_beta][0]()());
 }
 
 inline double calculate_effective_sample_size(logL_statistics const& across,

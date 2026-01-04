@@ -111,6 +111,10 @@ inline auto calculate_n_simulation_mdlikelihood_predictions(
     return results;
 }
 
+auto calculate_FIM_from_mdlikelihood_predictions(const dMacro_State_Ev_gradient_all& dy);
+
+
+
 auto calculate_FIM_from_n_simulation_mdlikelihood_predictions(const std::vector<dMacro_State_Ev_gradient_all>& dy);
 
 
