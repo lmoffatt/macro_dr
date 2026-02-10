@@ -757,6 +757,13 @@ class y_mean : public var::Var<y_mean, double> {
 class y_var : public var::Var<y_var, double> {
     friend std::string className(y_var) { return "y_var"; }
 };
+
+class r_std : public var::Var<r_std, double> {
+    friend std::string className(r_std) { return "r_std"; }
+};
+
+
+
 class trust_coefficient : public var::Var<trust_coefficient, double> {
     friend std::string className(trust_coefficient) { return "trust_coefficient"; }
 };
@@ -825,7 +832,8 @@ inline void save(const std::string name, const Patch_Model& m) {
 class Algo_State_Dynamic
     : public var::Var<
           Algo_State_Dynamic,
-          Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
+          Vector_Space<y_mean, y_var, trust_coefficient, r_std,
+          Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
                        P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, 
                        P_mean_0t_y0,P_mean_0t_y1,P_var_ii_0t_y0,P_var_ii_0t_y1,
                        P_Cov_t2_y0,
@@ -855,15 +863,15 @@ class Algo_State_Dynamic
 
 class Algo_State
     : public var::Var<Algo_State,
-                      Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P_mean, P_Cov>> {
+                      Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P_mean, P_Cov>> {
    public:
     using base_type =
-        var::Var<Algo_State, Vector_Space<y_mean, y_var, trust_coefficient, Chi2, P_mean, P_Cov>>;
+        var::Var<Algo_State, Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P_mean, P_Cov>>;
     Algo_State(const Algo_State_Dynamic& p)
         : base_type{Vector_Space(get<y_mean>(p()), get<y_var>(p()), get<trust_coefficient>(p()),
+                                 get<r_std>(p()),
                                  get<Chi2>(p()),
-
-                                 P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()))} {}
+         P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()))} {}
 
     using base_type::Var;
 };
@@ -901,8 +909,6 @@ struct Macro_State : public Vector_Space<logL, Patch_State, Vars...> {
 template <typename... Vars>struct dMacro_State
     : public Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
                           var::Derivative<Patch_State, var::Parameters_transformed>, 
-                          Moment_statistics<Grad, true >,
-                          Hessian,
                           Vars...> {
     dMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
         auto const& dx = var::get_dx_of_dfdx(dps);
@@ -926,16 +932,12 @@ template <typename... Vars>struct dMacro_State
             ((seed_with_dx(get<Vars>(*this))), ...);
     }
     dMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
-                 var::Derivative<Patch_State, var::Parameters_transformed>&& dps, 
-                 Moment_statistics<Grad, true>&& grad,
-                 Hessian&& hess,
+                 var::Derivative<Patch_State, var::Parameters_transformed>&& dps,
                  Vars&&... vars)
         : Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
-                       var::Derivative<Patch_State, var::Parameters_transformed>, 
-                       Moment_statistics<Grad, true>,
-                          Hessian,
+                       var::Derivative<Patch_State, var::Parameters_transformed>,
                           Vars...>(
-              std::move(dl), std::move(dps), std::move(grad), std::move(hess),
+              std::move(dl), std::move(dps),
               std::forward<Vars>(vars)...) {}
     dMacro_State() = default;       
                     
@@ -1004,19 +1006,20 @@ struct dx_of_dfdx<Derivative<F, Parameters_transformed>, macrodr::ddMacro_State<
 namespace macrodr {
 
 using predictions_element =
-    var::please_include<logL, elogL, vlogL, y_mean, y_var, P_mean, P_Cov, trust_coefficient>;
+    var::please_include<logL, elogL, vlogL, y_mean, y_var, r_std,P_mean, P_Cov, trust_coefficient>;
 
 using diagnostic_element = var::please_include<logL, elogL, vlogL, Algo_State_Dynamic>;
 
 using gradient_minimal_element =
-    var::please_include<var::Derivative<logL, var::Parameters_transformed>, elogL, y_mean, y_var,
+    var::please_include<var::Derivative<logL, var::Parameters_transformed>, elogL, y_mean, y_var, r_std,
                         trust_coefficient>;
 
 using gradient_all_element =
     var::please_include<var::Derivative<logL, var::Parameters_transformed>,
                         var::Derivative<elogL, var::Parameters_transformed>,
                         var::Derivative<y_mean, var::Parameters_transformed>,
-                        var::Derivative<y_var, var::Parameters_transformed>, trust_coefficient>;
+                        var::Derivative<y_var, var::Parameters_transformed>,
+                        var::Derivative<r_std, var::Parameters_transformed>, trust_coefficient>;
 
 using Macro_State_minimal = Macro_State<>;
 
@@ -4369,7 +4372,8 @@ class Macro_DMR {
 
         auto r_y_var = build<y_var>(e);
         r_y_var() = r_y_var() + N * gSg;
-
+        using std::sqrt;
+        auto r_r_std= build<r_std>(dy/sqrt(r_y_var()));
         auto chi = dy / r_y_var();
         auto chi2 = build<Chi2>(dy * chi);
         auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P());
@@ -4393,6 +4397,7 @@ class Macro_DMR {
 
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
+            get<r_std>(out())= std::move(r_r_std);
             get<trust_coefficient>(out()) = alfa;
 
             get<Chi2>(out()) = std::move(chi2);
@@ -4404,6 +4409,7 @@ class Macro_DMR {
 
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
+            get<r_std>(out())= std::move(r_r_std);
             get<trust_coefficient>(out()) = alfa;
 
             get<Chi2>(out()) = std::move(chi2);
@@ -4496,6 +4502,8 @@ class Macro_DMR {
 
         auto dy = y - r_y_mean();
         auto chi = dy / r_y_var();
+        using std::sqrt; 
+        auto r_r_std=build<r_std>( dy/sqrt(r_y_var()));
         auto chi2 = build<Chi2>(dy * chi);
         auto gS = [&t_gmean_i, &p_P_Cov,&SmD, &p_P_mean, &t_Qdt, &t_P]() {
             if constexpr (averaging::value == 2) {  
@@ -4549,9 +4557,13 @@ class Macro_DMR {
             Transfer_Op_to<C_Patch_State, Algo_State> out;
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
+            get<r_std>(out())= std::move(r_r_std);
+            
             get<Chi2>(out())= std::move(chi2);
             get<P_mean>(out())() = std::move(r_P_mean());
             get<P_Cov>(out())() = std::move(r_P_cov());
+            get<r_std>(out())= std::move(r_r_std);
+
             get<trust_coefficient>(out()) = alfa;
             return out;
         } else {
@@ -4559,6 +4571,8 @@ class Macro_DMR {
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
             get<Chi2>(out()) = std::move(chi2);
+            get<r_std>(out())= std::move(r_r_std);
+            
             get<trust_coefficient>(out()) = alfa;
             if constexpr (averaging::value == 0) {
                 get<P_half>(out())= get<P_half>(t_Qdt);
@@ -4813,8 +4827,10 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<r_std>{});
             copy_component(std::type_identity<Chi2>{});
 
             if constexpr (has_var_c<Element&, Algo_State_Dynamic>) {
@@ -4903,16 +4919,18 @@ class Macro_DMR {
         auto d_y_var= t_yvar.derivative()();
 
         auto r_y_var=t_yvar.primitive()();
-        auto t_Hessian= XXT(d_y_mean)/r_y_var +  XXT(d_y_var)/(2*r_y_var*r_y_var);
-
-        auto t_Gradient= Grad(t_logL.derivative()());
-
-        get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
-        get<Grad>(t_prior_all)&= t_Gradient;
-
-
-        get<Hessian>(t_prior_all)() = get<Hessian>(t_prior_all)() + t_Hessian;
         
+        
+        get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
+       if constexpr (var::has_it_v<dMacro_State<vVars...>, covariance<Grad>> ){
+        auto t_CovGradient= covariance<Grad>(XXT(t_logL.derivative()()));
+        get<covariance<Grad>>(t_prior_all)() = get<covariance<Grad>>(t_prior_all)() + t_CovGradient();
+       }
+
+       if constexpr (var::has_it_v<dMacro_State<vVars...>, Hessian> ){
+        auto t_Hessian= XXT(d_y_mean)/r_y_var +  XXT(d_y_var)/(2*r_y_var*r_y_var);
+         get<Hessian>(t_prior_all)() = get<Hessian>(t_prior_all)() + t_Hessian;
+       }
        if constexpr (var::has_it_v<dMacro_State<vVars...>, elogL> )
             get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
         if constexpr (var::has_it_v<dMacro_State<vVars...>, vlogL> )
@@ -4955,6 +4973,8 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<r_std>{});
+            
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
             copy_component(std::type_identity<Chi2>{});
@@ -5022,8 +5042,10 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<r_std>{});
             copy_component(std::type_identity<Chi2>{});
 
             evo.emplace_back(std::move(el));
@@ -5097,6 +5119,8 @@ class Macro_DMR {
             copy_component(std::type_identity<trust_coefficient>{});
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
+            copy_component(std::type_identity<r_std>{});
+            
             copy_component(std::type_identity<Chi2>{});
 
             evo.emplace_back(std::move(el));
@@ -5136,6 +5160,8 @@ class Macro_DMR {
         auto r_Algo_state = std::move(Maybe_Algo.value());
         auto r_y_mean = get<y_mean>(r_Algo_state());
         auto r_y_var = get<y_var>(r_Algo_state());
+        auto r_r_std = get<r_std>(r_Algo_state());
+        
         auto r_chi2 = get<Chi2>(r_Algo_state());
         auto r_trust_coefficient = get<trust_coefficient>(r_Algo_state());
         auto y = p_y.value();

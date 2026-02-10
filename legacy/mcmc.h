@@ -143,6 +143,9 @@ class logL_statistics : public var::Constant<logL_statistics, Moment_statistics<
     logL_statistics(logL t_logL)
         : var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>(t_logL)} {
     }
+    logL_statistics(value_type_t<logL> t_logLv)
+        : var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>(t_logLv)} {
+    }
     logL_statistics()
         : var::Constant<logL_statistics, Moment_statistics<logL>>{Moment_statistics<logL>{}} {
     }

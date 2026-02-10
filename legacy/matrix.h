@@ -326,7 +326,11 @@ class Matrix {
         : size_{x.size()},
           nrows_{x.nrows()},
           ncols_{x.ncols()},
-          x_{std::exchange(x.x_, empty_matrix_container<T, Matrix_uses_vector>())} {}
+          x_{std::exchange(x.x_, empty_matrix_container<T, Matrix_uses_vector>())} {
+        x.size_ = 0;
+        x.nrows_ = 0;
+        x.ncols_ = 0;
+    }
 
     friend class DiagonalMatrix<T>;
 
@@ -359,6 +363,9 @@ class Matrix {
             } else {
                 x_ = std::move(x.x_);
             }
+            x.size_ = 0;
+            x.nrows_ = 0;
+            x.ncols_ = 0;
         }
         return *this;
     }

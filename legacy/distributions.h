@@ -313,6 +313,15 @@ class FIM : public var::Constant<FIM, SymPosDefMatrix<double>> {
     }
 };
 
+class Hessian_minus_CovGrad : public var::Constant<Hessian_minus_CovGrad, SymmetricMatrix<double>> {
+   public:
+    friend std::string className(Hessian_minus_CovGrad) {
+        return "Hessian_minus_CovGrad";
+    }
+};
+
+
+
 using logLs = var::Vector_Space<logL, elogL, vlogL>;
 
 inline logLs logLs_0() {

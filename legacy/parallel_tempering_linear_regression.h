@@ -153,7 +153,7 @@ class save_Evidence {
                     << s.sep << eff_size[i_beta]
 
                     << s.sep << meanPrior[i_beta] << r_logL.sep(s.sep) << varLik[i_beta].sep(s.sep)
-                    << across[i_beta]()().sep(s.sep) << s.sep << within[i_beta]()()
+                    << across[i_beta]()().sep(s.sep) << s.sep << within[i_beta]()
                     << plog_Evidence.sep(s.sep) << log_Evidence.sep(s.sep) << m_logL()().sep(s.sep)
                     << m_plog_Evidence()().sep(s.sep) << m_log_Evidence()().sep(s.sep) << s.sep
                     << deltaEvidence_variance[std::max(1ul, i_beta) - 1] << s.sep

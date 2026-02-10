@@ -209,7 +209,7 @@ void update(by_beta<ensemble<logL_statistics>>& walkers_sta,
 
 inline double calculate_logL_mean(ensemble<logL_statistics> const& sta) {
     double sum = 0;
-    for (std::size_t i = 1; i < sta.size(); ++i) sum += get<mean<logL>>(sta[i]()())()();
+    for (std::size_t i = 1; i < sta.size(); ++i) sum += get<mean<logL>>(sta[i]()())();
     return sum / sta.size();
 }
 inline by_beta<double> calculate_logL_mean(by_beta<ensemble<logL_statistics>> const& sta) {
@@ -235,10 +235,10 @@ inline variance<logL> calculate_within_sta(ensemble<logL_statistics> const& sta)
     count df = count<logL>(0ul);
     for (std::size_t i = 0; i < sta.size(); ++i) {
         auto r_df = get<count<logL>>(sta[i]()())() - 1;
-        within()() += r_df * get<variance<logL>>(sta[i]()())()();
+        within() += r_df * get<variance<logL>>(sta[i]()())();
         df() += r_df;
     }
-    within()() /= df();
+    within() /= df();
     return within;
 }
 
@@ -254,7 +254,7 @@ inline auto calculate_sample_size(by_beta<ensemble<logL_statistics>> const& sta,
 
 inline double calculate_effective_sample_size(logL_statistics const& across,
                                               variance<logL> const within) {
-    double effective_sample_size = within()() / get<variance<logL>>(across()())()();
+    double effective_sample_size = within() / get<variance<logL>>(across()())();
     return effective_sample_size;
 }
 
@@ -603,7 +603,7 @@ auto calculate_initial_logL0(thermo_mcmc<Parameters> const& initial_data) {
 template <class Parameters>
 auto initial_beta_dts(thermo_mcmc<Parameters>& initial_data) {
     auto initial_logL0 = calculate_initial_logL0(initial_data);
-    double log_beta_min = std::log10(1.0 / -get<mean<logL>>(initial_logL0()())()());
+    double log_beta_min = std::log10(1.0 / -get<mean<logL>>(initial_logL0()())());
     auto n = initial_data.beta.size();
     double dlog_beta = log_beta_min / (n - 2);
     std::vector<double> beta(n, 0.0);
@@ -1226,8 +1226,8 @@ auto calculate_delta_Evidence_variance(const thermo_mcmc<Parameters>& current,
     std::vector<double> deltaEvidence_variance(beta.size() - 1);
     auto n = beta.size() - 1;
     for (std::size_t i = 0; i < n; ++i) {
-        auto var0 = get<variance<logL>>(across[i]()())()();
-        auto var1 = get<variance<logL>>(across[i + 1]()())()();
+        auto var0 = get<variance<logL>>(across[i]()())();
+        auto var1 = get<variance<logL>>(across[i + 1]()())();
 
         deltaEvidence_variance[i] = sqr((beta[i + 1] - beta[i]) / 2.0) * (var0 + var1);
     }
@@ -1289,9 +1289,9 @@ auto calculate_logL_variance(const std::string& variance_approximation,
         auto accross = calculate_across_sta(current.walkers_sta);
         std::vector<double> dLdB(current.walkers_sta.size());
         for (std::size_t i = 0; i < dLdB.size(); ++i) {
-            auto L0 = get<mean<logL>>(accross[std::max(1ul, i) - 1]()())()();
-            auto L1 = get<mean<logL>>(accross[i]()())()();
-            auto L2 = get<mean<logL>>(accross[std::min(i + 1, dLdB.size() - 1)]()())()();
+            auto L0 = get<mean<logL>>(accross[std::max(1ul, i) - 1]()())();
+            auto L1 = get<mean<logL>>(accross[i]()())();
+            auto L2 = get<mean<logL>>(accross[std::min(i + 1, dLdB.size() - 1)]()())();
             auto dL0 = L1 - L0;
             auto dL1 = L2 - L1;
             auto dB0 = beta[i + 1] - beta[i];
@@ -1307,7 +1307,7 @@ auto calculate_logL_variance(const std::string& variance_approximation,
     } else {
         std::vector<double> dLdB(current.walkers_sta.size());
         auto within = calculate_within_sta(current.walkers_sta);
-        for (std::size_t i = 0; i < dLdB.size(); ++i) dLdB[i] = within[i]()();
+        for (std::size_t i = 0; i < dLdB.size(); ++i) dLdB[i] = within[i]();
         return dLdB;
     }
 }
@@ -1414,9 +1414,9 @@ std::vector<double> calculate_diff_Acceptance_over_variance_derivative(
         auto dvE0 = deltaEvidence_variance[i];
         auto dvE1 = deltaEvidence_variance[i + 1];
 
-        auto vaL0 = get<variance<logL>>(across[i]()())()();
-        auto vaL1 = get<variance<logL>>(across[i + 1]()())()();
-        auto vaL2 = get<variance<logL>>(across[i + 2]()())()();
+        auto vaL0 = get<variance<logL>>(across[i]()())();
+        auto vaL1 = get<variance<logL>>(across[i + 1]()())();
+        auto vaL2 = get<variance<logL>>(across[i + 2]()())();
 
         auto dvE0dB = 0.5 * dB0 * (vaL0 + vaL1);
         auto dvE1dB = 0.5 * dB1 * (vaL1 + vaL2);
