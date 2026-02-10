@@ -157,7 +157,7 @@ inline double calculate_logL_mean(ensemble<std::map<std::size_t, logL_statistics
     for (std::size_t i = 0; i < sta.size(); ++i) {
         auto it = sta[i].find(i_fr);
         if (it != sta[i].end())
-            sum += get<mean<logL>>(it->second()())()();
+            sum += get<mean<logL>>(it->second()())();
         else {
             std::cerr << "error in " << i << " i_fr" << i_fr << "\n";
             abort();
@@ -175,7 +175,7 @@ inline std::map<std::size_t, double> calculate_logL_mean(
         for (auto i_fr : i_fracs) {
             auto it = sta[i].find(i_fr);
             if (it != sta[i].end())
-                sum[i_fr] += get<mean<logL>>(it->second()())()();
+                sum[i_fr] += get<mean<logL>>(it->second()())();
             else {
                 std::cerr << "error in " << i << " i_fr" << i_fr << "\n";
                 abort();
@@ -249,10 +249,10 @@ inline variance<logL> calculate_within_sta(ensemble<std::map<std::size_t, logL_s
         auto it = sta[i].find(i_frac);
         assert(it != sta[i].end());
         auto r_df = get<count<logL>>(it->second()())() - 1;
-        within()() += r_df * get<variance<logL>>(it->second()())()();
+        within() += r_df * get<variance<logL>>(it->second()())();
         df() += r_df;
     }
-    within()() /= df();
+    within() /= df();
     return within;
 }
 
