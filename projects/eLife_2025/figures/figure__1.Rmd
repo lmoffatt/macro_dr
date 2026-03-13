@@ -1,0 +1,544 @@
+  //w/0---
+  title: "analysis"
+  author: "Luciano Moffatt"
+  date: "`r Sys.Date()`"
+  output: html_document
+  ---
+  
+  ```{r setup, include=FALSE}
+  knitr::opts_chunk$set(echo = TRUE)
+  library(tidyverse)
+  ```
+  
+  ```{r}
+  Nch=30
+  
+  filenames=c(
+    "data/figure_1_likelihood_diagnostic_NR",
+    "data/figure_1_likelihood_diagnostic_MNR",
+    "data/figure_1_likelihood_diagnostic_MNRV",
+    "data/figure_1_likelihood_diagnostic_R",
+    "data/figure_1_likelihood_diagnostic_MR",
+    "data/figure_1_likelihood_diagnostic_MRV",
+    "data/figure_1_likelihood_diagnostic_IR",
+    "data/figure_1_likelihood_diagnostic_IRV"
+    
+    
+  )
+  
+  algorithms=c("NR"
+               ,"MNR"
+               ,"MNRV"
+               ,"R"
+               ,"MR"
+               ,"MRV"
+               ,"IR"
+               ,"IRV"
+               )
+  
+  ```
+  
+  
+  ```{r}
+  
+  d=data.frame()
+  for (i in 1:length(filenames)){
+    
+    d0=read.csv(paste0(filenames[i],".csv"))
+    d0$algo=algorithms[i]
+    d=rbind(d,d0)
+  }
+  
+  ```
+  
+  ```{r}
+  d_s=read.csv("data/figure_1_simulation.csv")
+  ```
+  
+  
+  ```{r}
+  d%>%filter(component%in%c("logL","elogL","y_mean","y_var", "Chi2"))%>%select(n_step,primitive,algo,component)%>%pivot_wider(names_from = component,values_from = primitive)->dd
+  ```
+  
+  
+  ```{r}
+  d_NR=d%>%filter(algo=="NR")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  (
+    d_NR%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))
+  )/(
+  d_NR%>%ggplot()+
+  geom_segment( aes(x=step_start,xend=step_end, P_mean_t2_y0_1))+
+  geom_segment( aes(x=step_start,xend=step_end, P_mean_t2_y0_1+sqrt(P_Cov_t2_y0_1_1)), linetype = "dotted")+
+  geom_segment( aes(x=step_start,xend=step_end, P_mean_t2_y0_1-sqrt(P_Cov_t2_y0_1_1)), linetype = "dotted")
+  )/(
+  d_NR%>%ggplot()+
+  geom_segment( aes(x=step_start,xend=step_end, patch_current), color="red")+
+  geom_segment( aes(x=step_start,xend=step_end, y_mean))+
+  geom_segment( aes(x=step_start,xend=step_end, y_mean+sqrt(y_var)), linetype = "dotted")+
+  geom_segment( aes(x=step_start,xend=step_end, y_mean-sqrt(y_var)), linetype = "dotted")
+  )/(
+  d_NR%>%ggplot()+
+  geom_segment( aes(x=step_start,xend=step_end, logL))+
+  geom_segment( aes(x=step_start,xend=step_end, elogL), linetype = "dashed")+
+  geom_segment( aes(x=step_start,xend=step_end, elogL+sqrt(vlogL)), linetype = "dotted")+
+  geom_segment( aes(x=step_start,xend=step_end, elogL-sqrt(vlogL)), linetype = "dotted")
+  )
+  ```
+  
+  
+  
+  ```{r}
+  d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  (
+    d_R%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))
+  )/(
+  ggplot(d_R)+
+  geom_segment( aes(x=step_start+0.01*(step_end-step_start),xend=step_start+0.05*(step_end-step_start), P_mean_t15_y1_0))+
+  geom_segment( aes(x=step_start+0.01*(step_end-step_start),xend=step_start+0.05*(step_end-step_start), P_mean_t15_y1_0+sqrt(P_Cov_t15_y1_1_1)), linetype = "dotted")+
+  geom_segment( aes(x=step_start+0.01*(step_end-step_start),xend=step_start+0.05*(step_end-step_start), P_mean_t15_y1_0-sqrt(P_Cov_t15_y1_1_1)), linetype = "dotted")+
+  geom_segment( aes(x=step_end-0.05*(step_end-step_start),xend=step_end-0.01*(step_end-step_start), P_mean_t2_y1_0))+
+  geom_segment( aes(x=step_start,xend=step_start+0.02*(step_end-step_start), P_mean_t15_y1_0+sqrt(P_Cov_t15_y1_1_1)), linetype = "dotted")+
+  geom_segment( aes(x=step_start,xend=step_start+0.02*(step_end-step_start), P_mean_t15_y1_0-sqrt(P_Cov_t15_y1_1_1)), linetype = "dotted")
+  
+  )/(
+  d_R%>%ggplot()+
+  geom_segment( aes(x=step_start,xend=step_end, patch_current), color="red")+
+  geom_segment( aes(x=step_start,xend=step_end, y_mean))+
+  geom_segment( aes(x=step_start,xend=step_end, y_mean+sqrt(y_var)), linetype = "dotted")+
+  geom_segment( aes(x=step_start,xend=step_end, y_mean-sqrt(y_var)), linetype = "dotted")
+  )/(
+  d_R%>%ggplot()+
+  geom_segment( aes(x=step_start,xend=step_end, logL))+
+  geom_segment( aes(x=step_start,xend=step_end, elogL), linetype = "dashed")+
+  geom_segment( aes(x=step_start,xend=step_end, elogL+sqrt(vlogL)), linetype = "dotted")+
+  geom_segment( aes(x=step_start,xend=step_end, elogL-sqrt(vlogL)), linetype = "dotted")
+  )
+  ```
+  
+  
+  
+  
+  ```{r}
+  d_NR=d%>%filter(algo=="NR")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  (
+    d_NR%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))
+  )/(
+  ggplot(d_NR)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))
+    
+  )/(
+  ggplot(d_NR)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_start+0.05*(step_end-step_start), lag(P_mean_t2_y0_1), color="prior"))+
+  geom_segment( aes(x=step_start+0.05*(step_end-step_start), y=lag(P_mean_t2_y0_1),
+                xend= lead(step_start)+ 0.05*(lead(step_end)-lead(step_start)), yend= P_mean_t2_y0_1))   
+  )
+  
+  ```
+  
+  
+  
+  
+  
+  ```{r}
+  d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  (
+    d_R%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))
+  )/(
+  ggplot(d_R)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))
+    
+  )/(
+  ggplot(d_R)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_start+0.05*(step_end-step_start), P_mean_t15_y0_1, color="prior"))+
+  geom_point( aes(x=step_start+0.05*(step_end-step_start), P_mean_t15_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+0.05*(step_end-step_start), y=P_mean_t15_y1_1,
+                xend= lead(step_start)+ 0.05*(lead(step_end)-lead(step_start)), yend= lead(P_mean_t15_y0_1)))   
+  )
+  
+  ```
+  
+  
+  
+  
+  
+  
+  ```{r}
+  d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  (
+    d_MRV%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))
+  )/(
+  ggplot(d_MRV)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))
+    
+  )/(
+  ggplot(d_MRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_start+0.05*(step_end-step_start), lag(P_mean_t2_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+0.05*(step_end-step_start), P_mean_t1_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+0.05*(step_end-step_start), y=P_mean_t1_y1_1,
+                xend= lead(step_start)+ 0.05*(lead(step_end)-lead(step_start)), yend= P_mean_t2_y1_1))   
+  )
+  
+  ```
+  
+  
+  
+  
+  
+  
+  ```{r}
+  d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  d_IRV=d%>%filter(algo=="IRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  common_theme = theme_classic()  + theme( legend.position = "none")
+  
+  compact_theme <- common_theme +theme(
+    axis.title.x = element_blank(),
+    axis.text.x  = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "none",
+    plot.margin = margin(1, 5, 1, 5)
+  )
+  x_only_ticks=theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+  y_only_ticks=theme(axis.title.y = element_blank(), axis.text.y = element_blank())
+  no_y_axis= theme( axis.text.y = element_blank(), # Removes y-axis text
+           axis.title.y = element_blank(), # Removes y-axis title
+            axis.ticks.y = element_blank(), 
+          axis.line.y = element_blank())
+  no_x_axis= theme( axis.text.x = element_blank(), # Removes y-axis text
+           axis.title.x = element_blank(), # Removes y-axis title
+            axis.ticks.x = element_blank(), 
+          axis.line.x = element_blank())
+  y_no_title=theme(axis.title.y = element_blank())
+  
+  
+  xmin=min(d$step_start)
+  xmax=max(d$step_end)
+  
+  dx=xmax-xmin
+  x_scale<-scale_x_continuous(limits = c(xmin-0.05*dx, xmax+0.05*dx))
+  
+  
+  d_step_IR=0.1
+  d_step_MR= 0.1
+  
+  ((
+  ggplot(d_R)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))+
+    x_scale+
+    compact_theme+
+    ylab("interval\ncurrent")
+    
+  )/(
+  ggplot(d_R)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle+d_step_MR*(step_end-step_start), P_mean_t15_y0_1, color="prior"))+
+  geom_point( aes(x=step_middle+d_step_MR*(step_end-step_start), P_mean_t15_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_middle+d_step_MR*(step_end-step_start), y=P_mean_t15_y1_1,
+                xend= lead(step_middle)+ d_step_MR*(lead(step_end)-lead(step_start)), yend= lead(P_mean_t15_y0_1)))+
+    x_scale+
+    compact_theme+
+    ylab("open state\nprobability")
+    
+  )/(
+  ggplot(d_MRV) + geom_point(aes(x = step_middle, y=logL, color="posterior"))+ geom_point(aes(x = step_middle, y=elogL, color="prior"))+common_theme+x_scale+ ylab("interval\nlogLikelihood") +xlab("time") 
+    
+  )
+  )|((
+  ggplot(d_MRV)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))+
+    x_scale+
+    compact_theme+no_y_axis
+    
+  )/(
+  ggplot(d_MRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_start+d_step_MR*(step_end-step_start), lag(P_mean_t2_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_MR*(step_end-step_start), P_mean_t1_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+d_step_MR*(step_end-step_start), y=P_mean_t1_y1_1,
+                xend= lead(step_start)+ d_step_MR*(lead(step_end)-lead(step_start)), yend= P_mean_t2_y1_1))+
+    x_scale+
+    compact_theme+no_y_axis
+    
+  )/(
+  ggplot(d_MRV) + geom_point(aes(x = step_middle, y=logL, color="posterior"))+ geom_point(aes(x = step_middle, y=elogL, color="prior"))+common_theme+x_scale+no_y_axis +xlab("time") 
+    
+  )
+  )|(
+  
+  (
+  ggplot(d_IRV)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))+x_scale+compact_theme+no_y_axis
+    
+  )/(
+  ggplot(d_IRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), lag(P_mean_t20_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), P_mean_t10_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t20_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t11_y0_1, color="prior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t10_y1_1,
+        xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t20_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1_1),
+  xend=step_end-d_step_IR*(step_end-step_start),yend= P_mean_t11_y0_1, color="prior"))+
+  
+  geom_segment( aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t20_y1_1,
+                xend= lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=    P_mean_t20_y1_1))+
+    x_scale+
+    compact_theme+no_y_axis
+  )/(
+  ggplot(d_IRV) + geom_point(aes(x = step_middle, y=logL, color="posterior"))+ geom_point(aes(x = step_middle, y=elogL, color="prior"))+common_theme+x_scale+no_y_axis +xlab("time")  
+    
+  )
+  )
+  ```
+  
+  
+  
+  
+  
+  ```{r}
+  
+  d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  d_IRV=d%>%filter(algo=="IRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  common_theme = theme_classic()+ theme( legend.position = "right")
+  
+  compact_theme <- common_theme +theme(
+    axis.title.x = element_blank(),
+    axis.text.x  = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "right",
+    plot.margin = margin(1, 5, 1, 5)
+  )
+  x_only_ticks=theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+  y_only_ticks=theme(axis.title.y = element_blank(), axis.text.y = element_blank())
+  no_y_axis= theme( axis.text.y = element_blank(), # Removes y-axis text
+           axis.title.y = element_blank(), # Removes y-axis title
+            axis.ticks.y = element_blank(), 
+          axis.line.y = element_blank())
+  no_x_axis= theme( axis.text.x = element_blank(), # Removes y-axis text
+           axis.title.x = element_blank(), # Removes y-axis title
+            axis.ticks.x = element_blank(), 
+          axis.line.x = element_blank())
+  y_no_title=theme(axis.title.y = element_blank())
+  
+  
+  xmin=min(d$step_start)
+  xmax=max(d$step_end)
+  
+  dx=xmax-xmin
+  x_scale<-scale_x_continuous(limits = c(xmin-0.05*dx, xmax+0.05*dx))
+  
+  
+  d_step_IR=0.1
+  d_step_MR= 0.1
+  
+  (
+  ggplot(d_MRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch), color="darkgrey")+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), lag(P_mean_t2_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), P_mean_t1_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t2_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t2_y0_1, color="prior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y= lag(P_mean_t2_y1_1),
+                    xend=step_start+d_step_IR*(step_end-step_start), yend=P_mean_t1_y1_1, color="Bayes"))+
+  
+      geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t1_y1_1,
+        xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t2_y1_1, color="Markov"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t2_y1_1),
+  xend=step_end-d_step_IR*(step_end-step_start),yend= P_mean_t2_y0_1, color="Markov"))+
+  
+  geom_segment( aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t2_y1_1,
+                xend= lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=    P_mean_t2_y1_1, color="Markov"), arrow=arrow(length=unit(0.07,"in")))+
+    x_scale+
+    common_theme+
+    ylab("open state\nprobability")
+    
+  
+  )+(
+  
+  
+  ggplot(d_IRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch), color="darkgrey")+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), lag(P_mean_t20_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), P_mean_t10_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t20_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t11_y0_1, color="prior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1_1),
+                    xend=step_start+d_step_IR*(step_end-step_start),yend= P_mean_t10_y1_1, color="Bayes"), arrow=arrow(length=unit(0.07,"in")))+
+  geom_segment( aes(xend=step_end-d_step_IR*(step_end-step_start), yend= P_mean_t20_y1_1, x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t11_y0_1, color="Bayes"), arrow=arrow(length=unit(0.07,"in")))+
+  
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t10_y1_1,
+        xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t20_y1_1, color="Markov x Bayes"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1_1),
+  xend=step_end-d_step_IR*(step_end-step_start),yend= P_mean_t11_y0_1, color="Markov"))+
+  
+  geom_segment( aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t20_y1_1,
+                xend= lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=    P_mean_t20_y1_1, color="Markov"), arrow=arrow(length=unit(0.07,"in")))+
+    x_scale+
+    common_theme+no_y_axis
+  
+  )+ plot_layout(guides = "collect")
+  ```
+  
+  
+  
+  
+  ```{r}
+  d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  d_IRV=d%>%filter(algo=="IRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  common_theme = theme_classic()+ theme( legend.position = "right")
+  
+  compact_theme <- common_theme +theme(
+    axis.title.x = element_blank(),
+    axis.text.x  = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "right",
+    plot.margin = margin(1, 5, 1, 5)
+  )
+  x_only_ticks=theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+  y_only_ticks=theme(axis.title.y = element_blank(), axis.text.y = element_blank())
+  no_y_axis= theme( axis.text.y = element_blank(), # Removes y-axis text
+           axis.title.y = element_blank(), # Removes y-axis title
+            axis.ticks.y = element_blank(), 
+          axis.line.y = element_blank())
+  no_x_axis= theme( axis.text.x = element_blank(), # Removes y-axis text
+           axis.title.x = element_blank(), # Removes y-axis title
+            axis.ticks.x = element_blank(), 
+          axis.line.x = element_blank())
+  y_no_title=theme(axis.title.y = element_blank())
+  
+  
+  xmin=min(d$step_start)
+  xmax=max(d$step_end)
+  
+  dx=xmax-xmin
+  x_scale<-scale_x_continuous(limits = c(xmin-0.05*dx, xmax+0.05*dx))
+  
+  
+  d_step_IR=0.1
+  d_step_MR= 0.1
+  
+  (
+  ggplot(d_R)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch), color="darkgrey")+
+  geom_point( aes(x=step_middle+d_step_MR*(step_end-step_start), P_mean_t15_y0_1, color="prior"))+
+  geom_point( aes(x=step_middle+d_step_MR*(step_end-step_start), P_mean_t15_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_middle+d_step_MR*(step_end-step_start), y=P_mean_t15_y0_1, xend=step_middle+d_step_MR*(step_end-step_start), yend=P_mean_t15_y1_1, color="Bayes"),arrow = arrow(length=unit(0.07,"in")))+
+  geom_segment( aes(x=step_middle+d_step_MR*(step_end-step_start), y=P_mean_t15_y1_1,
+                xend= lead(step_middle)+ d_step_MR*(lead(step_end)-lead(step_start)), yend= lead(P_mean_t15_y0_1),color="Markov"), arrow = arrow(length=unit(0.07,"in")))+
+    x_scale+
+    common_theme+
+    ylab("open state\nprobability")
+    
+  
+  )+(
+  ggplot(d_MRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch), color="darkgrey")+
+  geom_point( aes(x=step_start+d_step_MR*(step_end-step_start), lag(P_mean_t2_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_MR*(step_end-step_start), P_mean_t1_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+d_step_MR*(step_end-step_start), y=lag(P_mean_t2_y1_1), xend=step_start+d_step_MR*(step_end-step_start), yend=P_mean_t1_y1_1, color="Bayes"), arrow=arrow(length=unit(0.07,"in")))+
+  geom_segment( aes(x=step_start+d_step_MR*(step_end-step_start), y=P_mean_t1_y1_1,
+                xend= lead(step_start)+ d_step_MR*(lead(step_end)-lead(step_start)), yend= P_mean_t2_y1_1, color= "Markov"),arrow=arrow(length=unit(0.07,"in")))+
+    x_scale+
+    common_theme+no_y_axis
+    
+  
+  )+(
+  
+  
+  ggplot(d_IRV)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch), color="darkgrey")+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), lag(P_mean_t20_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), P_mean_t10_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t20_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t11_y0_1, color="prior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1_1),
+                    xend=step_start+d_step_IR*(step_end-step_start),yend= P_mean_t10_y1_1, color="Bayes"), arrow=arrow(length=unit(0.07,"in")))+
+  geom_segment( aes(xend=step_end-d_step_IR*(step_end-step_start), yend= P_mean_t20_y1_1, x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t11_y0_1, color="Bayes"), arrow=arrow(length=unit(0.07,"in")))+
+  
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t10_y1_1,
+        xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t20_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1_1),
+  xend=step_end-d_step_IR*(step_end-step_start),yend= P_mean_t11_y0_1, color="Markov"))+
+  
+  geom_segment( aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t20_y1_1,
+                xend= lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=    P_mean_t20_y1_1, color="Markov"), arrow=arrow(length=unit(0.07,"in")))+
+    x_scale+
+    common_theme+no_y_axis
+  
+  )+ plot_layout(guides = "collect")
+  ```
+  
+  
+  
+  ```{r}
+  d_IR=d%>%filter(algo=="IR")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+  
+  
+  (
+    d_IR%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))
+  )/(
+  ggplot(d_IR)+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_middle, y_mean/-Nch, color="prior"))+
+  geom_point( aes(x=step_middle, patch_current/-Nch, color="posterior"))
+    
+  )/(
+  ggplot(d_IR)+
+  geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current/-Nch))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), lag(P_mean_t20_y1_1), color="prior"))+
+  geom_point( aes(x=step_start+d_step_IR*(step_end-step_start), P_mean_t10_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t20_y1_1, color="posterior"))+
+  geom_point( aes(x=step_end-d_step_IR*(step_end-step_start), P_mean_t11_y0_1, color="prior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t10_y1_1,
+        xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t20_y1_1, color="posterior"))+
+  geom_segment( aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1_1),
+  xend=step_end-d_step_IR*(step_end-step_start),yend= P_mean_t11_y0_1, color="prior"))+
+  
+  geom_segment( aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t20_y1_1,
+                xend= lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=    P_mean_t20_y1_1))   
+  )
+  
+  ```
+  
+  
+  ```{r}
+  library(patchwork)
+  d%>%filter(component=="y_mean")%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))+
+  geom_segment( aes(x=step_start,xend=step_end, primitive))+facet_wrap(~algo)
+  
+  
+  d%>%filter(component=="P_mean_t2_y0_1")%>%ggplot()+geom_point(aes(x=step_start,y=primitive, color=algo))
+  d%>%filter(component=="P_mean_t2_y1_1")%>%ggplot()+geom_point(aes(x=step_end,y=primitive, color=algo))+geom_point(data=d%>%filter(component=="P_mean_t1_y1_1"),aes(x=step_start,y=primitive, color=algo))
+  
+  ```
+  

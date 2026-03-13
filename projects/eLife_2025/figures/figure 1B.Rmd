@@ -1,0 +1,132 @@
+---
+title: "Figure 1B"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+library(ggplot2)
+library(ellipse)
+
+# --- 1. Definir los parámetros (Matrices) ---
+# Prior: Muy incierto (grande), correlación moderada
+mu_prior <- c(0, 0)
+cov_prior <- matrix(c(2.0, 1.0, 
+                      1.0, 2.0), 2)
+
+# Posterior: Más certero (pequeño), correlación fuerte, media desplazada
+mu_post <- c(1, 1)
+cov_post <- matrix(c(0.5, 0.4, 
+                     0.4, 0.5), 2)
+
+# --- 2. Generar datos geométricos (NO simulación) ---
+# Función auxiliar para crear el data.frame
+get_ellipse <- function(cov, mu, level, type) {
+  df <- as.data.frame(ellipse(cov, centre = mu, level = level, npoints = 200))
+  df$Type <- type
+  return(df)
+}
+
+# Generamos contornos al 95% de probabilidad
+df_prior <- get_ellipse(cov_prior, mu_prior, 0.95, "Prior (Creencia Inicial)")
+df_post  <- get_ellipse(cov_post, mu_post, 0.95, "Posterior (Con Datos)")
+df_all   <- rbind(df_prior, df_post)
+
+# --- 3. Plotting estilo Publicación ---
+ggplot(df_all, aes(x = x, y = y, fill = Type, color = Type)) +
+  
+  # A. Relleno semitransparente (Simula el "volumen" sin tapar)
+  geom_polygon(alpha = 0.3) + 
+  
+  # B. Borde sólido (Define el límite matemático exacto)
+  geom_path(linewidth = 1) +  
+  
+  # C. Puntos centrales (Medias)
+  annotate("point", x = mu_prior[1], y = mu_prior[2], shape = 3, size = 3, color = "#777777") +
+  annotate("point", x = mu_post[1], y = mu_post[2], shape = 19, size = 3, color = "#D55E00") +
+
+  # D. Estética minimalista académica
+  scale_fill_manual(values = c("#999999", "#D55E00")) +  # Gris neutro vs Naranja fuerte
+  scale_color_manual(values = c("#555555", "#D55E00")) +
+  
+  coord_fixed() + # Importante para no distorsionar la correlación
+  theme_bw() +    # Fondo blanco limpio
+  theme(
+    legend.position = c(0.15, 0.85),       # Leyenda dentro del plot (ahorra espacio)
+    legend.background = element_rect(fill = "white", color = "black", linewidth = 0.2),
+    panel.grid.minor = element_blank()     # Menos ruido visual
+  ) +
+  labs(
+    title = "Actualización Bayesiana",
+    x = "Parámetro $\\theta_1$", # LaTeX notation si usas renderizadores
+    y = "Parámetro $\\theta_2$"
+  )
+```
+```{r}
+library(ggplot2)
+library(ellipse)
+
+# --- 1. Helper Function ---
+# Generates a data frame for an ellipse given Mean and Covariance
+get_ellipse_df <- function(mu, sigma, label, level = 0.95) {
+  # Calculate ellipse points
+  # ellipse() expects a correlation matrix or covariance matrix
+  # If sigma is covariance, we pass it directly.
+  coords <- ellipse(sigma, centre = mu, level = level, npoints = 200)
+  df <- as.data.frame(coords)
+  df$Type <- label # Tag the data for ggplot grouping
+  return(df)
+}
+
+# --- 2. Define Parameters ---
+
+# A. PRIOR (High uncertainty, centered at 0,0)
+mu_prior <- c(0, 0)
+sigma_prior <- matrix(c(2.0, 1.2,  # Large variance, some correlation
+                        1.2, 2.0), nrow = 2)
+
+# B. POSTERIOR (Lower uncertainty, shifted center)
+# (In a real scenario, you calculate this via conjugate math. 
+# Here we define it manually to show the visual effect.)
+mu_post <- c(1.5, 1.0)
+sigma_post <- matrix(c(0.8, 0.4,   # Tighter covariance
+                       0.4, 0.6), nrow = 2)
+
+# --- 3. Generate Data ---
+df_prior <- get_ellipse_df(mu_prior, sigma_prior, "Prior")
+df_post  <- get_ellipse_df(mu_post, sigma_post, "Posterior")
+plot_data <- rbind(df_prior, df_post)
+
+# Create a separate data frame for the means (centers)
+centers <- data.frame(
+  x = c(mu_prior[1], mu_post[1]),
+  y = c(mu_prior[2], mu_post[2]),
+  Type = c("Prior", "Posterior")
+)
+
+# --- 4. Plot with ggplot ---
+ggplot(plot_data, aes(x = x, y = y, color = Type, fill = Type)) +
+  
+  # A. The Ellipses (95% Confidence Regions)
+  geom_polygon(alpha = 0.2) + # Filled region
+  geom_path(linewidth = 1) +  # Outline
+  
+  # B. The Means (Center points)
+  geom_point(data = centers, size = 3) +
+  
+  # C. Styling
+  scale_color_manual(values = c("Prior" = "#E69F00", "Posterior" = "#56B4E9")) +
+  scale_fill_manual(values = c("Prior" = "#E69F00", "Posterior" = "#56B4E9")) +
+  coord_fixed() + # Keeps the geometry true
+  theme_minimal() +
+  labs(title = "Bayesian Update: Prior vs. Posterior",
+       subtitle = "95% Probability Regions",
+       x = "Parameter 1",
+       y = "Parameter 2")
+```
+
