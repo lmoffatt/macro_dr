@@ -1,0 +1,100 @@
+
+\documentclass[9pt]{elife}
+
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{siunitx}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+\usepackage{bm}
+
+\title{Exact likelihoods for time-averaged stochastic data enable unbiased kinetic inference in biological systems}
+
+\author[1*]{Luciano Moffatt}
+\affil[1]{Instituto de Qu\'imica F\'isica de los Materiales, Medio Ambiente y Energ\'ia (INQUIMAE), CONICET; Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires, Ciudad de Buenos Aires, C1428EHA, Argentina}
+\corr{lmoffatt@qi.fcen.uba.ar}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Biological data are rarely instantaneous. From electrophysiology to single-molecule spectroscopy, every measurement integrates stochastic dynamics over finite time windows. Yet, most inference methods assume instantaneous sampling, leading to biased kinetic parameters when intrinsic rates exceed acquisition speed. Here we introduce \emph{MacroIR}, a general framework providing exact, recursive likelihoods for interval-averaged observations of continuous-time Markov models. By conditioning on both the start and end states of each window, MacroIR restores Markovianity at the level of intervals, computes their mean and variance exactly, and performs Kalman-like recursive updates in the original $k$-dimensional state space. Leveraging linear-operator identities, it avoids the apparent $k^2$ explosion of boundary-conditioned models. A built-in score-based self-consistency test (mean score $\approx 0$, variance $\approx$ Fisher information) confirms internal informational consistency. MacroIR resolves a longstanding problem in stochastic inference from averaged data and extends to a wide range of biological systems.
+\end{abstract}
+
+\section*{Introduction}
+\textbf{Motivation and scope.} Time-averaged signals are pervasive in biology: patch-clamp amplifiers integrate current over microseconds, fluorescence microscopes average photon fluxes, and population assays sample over hours. Yet our inference models typically assume we observe instantaneous states. This mismatch between sampling and likelihood construction induces systematic biases in kinetic inference whenever the system's internal timescales are faster than the measurement window. Despite decades of effort, an exact formulation of the likelihood for interval-averaged data remained elusive.
+
+\textbf{Conceptual advance.} \emph{MacroIR} (Macroscopic Interval Recursive) provides an exact, closed-form likelihood for interval-averaged data by conditioning on both the start and end states of each window. This boundary-conditioned formulation restores Markovianity at the level of intervals and enables recursive propagation of state moments, akin to a Kalman filter but in continuous time. Using linear-operator algebra, MacroIR avoids the exponential blow-up of naive start--end pair expansions, achieving analytical tractability in the original $k$-dimensional space.
+
+\textbf{Biological relevance.} Time-averaged data dominate electrophysiology, single-molecule, and cell population studies. In prior work (Moffatt, 2025; \emph{Communications Biology}, in press), MacroIR was used to uncover functional asymmetry in trimeric P2X receptors from ultrafast current recordings---a finding inaccessible with standard likelihood methods. Here we formalize the algorithmic and theoretical framework behind that discovery, validate it across multiple systems, and demonstrate its generality.
+
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=0.9\linewidth]{fig1_overview.pdf}
+% \caption{\textbf{Conceptual overview.} (A) Instantaneous vs. interval-averaged measurements. (B) Boundary-conditioned recursion of MacroIR. (C) Avoidance of $k^2$-state explosion via operator factorization.}
+% \label{fig:overview}
+% \end{figure}
+
+\section*{Theory}
+\subsection*{Interval-averaged observation model}
+Let $x_t$ be a CTMC with generator $Q$ and transition matrix $P(t)=e^{Qt}$. The observable $\bm{\gamma}\in\mathbb{R}^k$ assigns an output (e.g.\ current) to each state. The measured signal over an interval $[0,t]$ is
+\begin{equation}
+\bar y_{0\to t} = \frac{1}{t}\int_0^t \gamma(x_s)\,ds.
+\end{equation}
+Conditioned on the start and end states $(i,j)$, the expected interval signal is
+\begin{equation}
+\gamma_{i\to j}(t) = \frac{1}{P_{i\to j}(t)} \sum_{n_1,n_2} V_{i n_1}(V^{-1}\Gamma V)_{n_1 n_2}V^{-1}_{n_2 j}E_2(\lambda_{n_1} t, \lambda_{n_2} t),
+\end{equation}
+where $E_2(x,y)=(e^{x}-e^{y})/(x-y)$ and $Q=V\Lambda V^{-1}$. This evaluates the interval average exactly without enumerating all paths.
+
+\begin{tcolorbox}[colback=gray!5,colframe=gray!60,title=Boundary-conditioned two-point states (``meta-states'')]
+We define a \emph{boundary-conditioned two-point state} as the ordered pair $(i,j)$ describing the system’s start and end over a window of duration $t$. The $k^2$ such pairs form a formal space with generator $Q\oplus Q$. Because $e^{(Q\oplus Q)t}=e^{Qt}\otimes e^{Qt}$ factorizes, all boundary-conditioned expectations can be computed as bilinear forms in the original $k$-space, eliminating the need to materialize $k^2$ states.
+\end{tcolorbox}
+
+\subsection*{Recursive update and Kalman-like gain}
+Let $(\bm{\mu}^{\mathrm{prior}}_0,\Sigma^{\mathrm{prior}}_0)$ be the prior mean and covariance of state occupancy. With $P(t)=e^{Qt}$ and observation $y^{\mathrm{obs}}_{0\to t}$, the recursive update is
+\begin{align}
+\bm{\mu}^{\mathrm{post}}_{t} &= \bm{\mu}^{\mathrm{prior}}_0 P(t) + \frac{y^{\mathrm{obs}}_{0\to t}-y^{\mathrm{pred}}_{0\to t}}{\sigma^2_{y^{\mathrm{pred}}_{0\to t}}}\,K^\mu_{0\to t},\\
+\Sigma^{\mathrm{post}}_{t} &= \Sigma^{\mathrm{prior}}_{t} - \frac{1}{\sigma^2_{y^{\mathrm{pred}}_{0\to t}}}(K^\mu_{0\to t})^\top K^\mu_{0\to t},
+\end{align}
+where $K^\mu_{0\to t} = \mathrm{Cov}(x_t,\bar y_{0\to t})/\mathrm{Var}(\bar y_{0\to t})$. This \emph{gain} encapsulates the full $k^2$ start--end covariance structure without constructing it explicitly.
+
+\subsection*{Conceptual intuition}
+MacroIR’s efficiency arises from the linearity of the CTMC semigroup: $e^{(Q\oplus Q)t}=e^{Qt}\otimes e^{Qt}$. All interval statistics are bilinear in $e^{Qt}$, so the expectation and variance of $\bar y_{0\to t}$ remain computable in the original $k$-dimensional space. This collapses the apparent $k^2$ meta-space into ordinary matrix algebra, enabling fast and exact inference.
+
+\section*{Results}
+\subsection*{Synthetic recovery and benchmark comparisons}
+MacroIR accurately recovers parameters from simulated time-averaged data across bin sizes. Biases increase sharply for midpoint and non-recursive (NR) approximations when $\Delta$ exceeds the fastest kinetic timescale. Runtime scales as $O(k^3)$, comparable to ordinary matrix exponentials.
+
+\subsection*{Score-based self-consistency}
+For correctly specified likelihoods, the expected score is zero and its variance equals the Fisher information. MacroIR satisfies both, whereas midpoint and NR methods yield nonzero mean scores and underestimated variance. This diagnostic confirms informational consistency between data sampling and the inferred likelihood.
+
+\subsection*{Biological case study: P2X receptor kinetics}
+To illustrate biological impact, we reanalyzed ultrafast ATP-pulse recordings from rat P2X$_2$ receptors. MacroIR reproduced macroscopic currents and correctly ranked competing kinetic schemes, revealing asymmetric coupling between ligand binding and subunit rotation---a phenomenon missed by conventional methods. The full biological interpretation was presented in Moffatt (2025, \emph{Comm Biol}), but here the result serves as a validation of MacroIR’s capacity to extract new mechanistic insight from time-averaged data.
+
+\subsection*{Computational performance}
+The recursive propagation of mean and covariance introduces negligible overhead beyond matrix exponentials. Simulations show linear scaling in interval count and cubic in state dimension ($O(k^3)$). Modeling explicit analog filters (e.g.\ Bessel) via state-space augmentation increases cost $\sim$10-fold but remains feasible for moderate $k$.
+
+\section*{Discussion}
+MacroIR closes the gap between experimental sampling and likelihood-based inference for continuous-time Markov models. By integrating over true time intervals rather than assuming instantaneous observations, it removes a structural bias affecting decades of biological modeling. The method’s internal validation through the score test ensures informational self-consistency. While demonstrated here for ion-channel kinetics, the framework extends naturally to fluorescence trajectories, gene-expression bursts, and cell signaling cascades. The connection between data sampling and likelihood evaluation hints at a deeper duality between generation and inference, to be developed in future work.
+
+\section*{Data and Code Availability}
+All code implementing MacroIR and reproducing results will be available at a public GitHub repository upon submission, including validation scripts and figure-generation notebooks.
+
+\section*{Acknowledgements}
+I thank collaborators and colleagues for insightful discussions and the HPC facilities of CONICET and Universidad de Buenos Aires for computational resources.
+
+\section*{Author Contributions}
+LM conceived the study, developed the theory, implemented the algorithms, analyzed data, and wrote the manuscript.
+
+\section*{References}
+\begin{itemize}
+\item Moffatt L (2025) \emph{Bayesian inference of functional asymmetry in a ligand-gated ion channel}. Communications Biology, in press.
+\item Colquhoun D, Hawkes AG (1982) \emph{On the stochastic properties of single ion channels}. Phil Trans R Soc Lond B 300:1--59.
+\item Qin F, Auerbach A, Sachs F (2000) \emph{Hidden Markov modeling for single channel kinetics with filtering and correlated noise}. Biophys J 79:1928--1944.
+\item Milescu LS, Akk G, Sachs F (2005) \emph{Maximum likelihood estimation of ion channel kinetics from macroscopic currents}. Biophys J 88:2494--2515.
+\item Münch JL, Paul F, Schmauder R, Benndorf K (2022) \emph{Bayesian inference of kinetic schemes for ion channels by Kalman filtering}. eLife 11:e62714.
+\end{itemize}
+
+\end{document}
