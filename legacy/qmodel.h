@@ -761,7 +761,9 @@ class y_var : public var::Var<y_var, double> {
 class r_std : public var::Var<r_std, double> {
     friend std::string className(r_std) { return "r_std"; }
 };
-
+class r2_std : public var::Var<r2_std, double> {
+    friend std::string className(r2_std) { return "r2_std"; }
+};
 
 
 class trust_coefficient : public var::Var<trust_coefficient, double> {

@@ -17,6 +17,9 @@ namespace lapack {
 extern "C" void dgemm_(char* TRANSA, char* TRANSB, int* M, int* N, int* K, double* ALPHA, double* A,
                        int* LDA, double* B, int* LDB, double* BETA, double* C, int* LDC);
 
+extern "C" void dtrsm_(char* SIDE, char* UPLO, char* TRANSA, char* DIAG, int* M, int* N,
+                       double* ALPHA, double* A, int* LDA, double* B, int* LDB);
+
 extern "C" void dgeqrf_(int* M, int* N, double* A, int* LDA, double* TAU, double* WORK, int* LWORK,
                         int* INFO);
 
@@ -606,7 +609,24 @@ inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<dou
                        bool computes_eigenvalues_condition_numbers,
                        bool computes_eigenvectors_condition_numbers);
 
-}  // namespace lapack
+inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
+    Lapack_IDM_EigenSystem(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J);
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix(const SymPosDefMatrix<double>& H,
+                                                              const SymPosDefMatrix<double>& J);
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix(const SymPosDefMatrix<double>& H,
+                                                              const SymPosDefMatrix<double>& J);
+
+
+
+inline SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
+                                                              const SymPosDefMatrix<double>& R);
+
+}
+
+
+// namespace lapack
 template <>
 constexpr std::string function_name<&lapack::Lapack_Symm_inv>() {
     return "Lapack_Symm_inv";
@@ -646,6 +666,27 @@ template <>
 constexpr std::string function_name<&lapack::Lapack_EigenSystem>() {
     return "Lapack_EigenSystem";
 }
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_IDM_EigenSystem>() {
+    return "Lapack_IDM_EigenSystem";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_IDM_Matrix>() {
+    return "Lapack_IDM_Matrix";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_DCC_Matrix>() {
+    return "Lapack_DCC_Matrix";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_C_h_R_C_h>() {
+    return "Lapack_C_h_R_C_h";
+}
+
 
 namespace lapack {
 
@@ -1603,6 +1644,13 @@ extern "C" void dsyevx_(char* JOBZ, char* RANGE, char* UPLO, int* N,
                         int* LWORK, int* /*, dimension(*) */ IWORK, int* /*, dimension(*) */ IFAIL,
                         int* INFO);
 
+extern "C" void dsygvd_(int* ITYPE, char* JOBZ, char* UPLO, int* N,
+                        double* /* precision, dimension (LDA, N) */ A, int* LDA,
+                        double* /* precision, dimension (LDB, N) */ B, int* LDB,
+                        double* /* precision, dimension (N) */ W,
+                        double* /* precision, dimension (LWORK) */ WORK, int* LWORK,
+                        int* /* dimension (LIWORK) */ IWORK, int* LIWORK, int* INFO);
+
 extern "C" void ddisna_(char* JOB, int* M, int* N, double* D, double* SEP, int* INFO);
 
 inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
@@ -2021,6 +2069,268 @@ Parameters
         auto Xrec = VR_cpp * W * tr(VL_cpp);
         return sort_by_eigenvalue(std::make_tuple(W, VR_cpp, VL_cpp), Xrec);
     }
+}
+
+inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
+    Lapack_IDM_EigenSystem(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J) {
+    return_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>,
+                 Lapack_IDM_EigenSystem>
+        Error;
+
+    if (H.size() == 0 || J.size() == 0)
+        return Error("EMPTY MATRIX");
+    if (H.nrows() != H.ncols())
+        return Error("H is not square");
+    if (J.nrows() != J.ncols())
+        return Error("J is not square");
+    if (H.nrows() != J.nrows())
+        return Error("H and J have incompatible dimensions");
+
+    int N = static_cast<int>(H.nrows());
+    int ITYPE = 1;
+    char JOBZ = 'V';
+    char UPLO = kSymmetricUplo;
+    int LDA = N;
+    int LDB = N;
+    int INFO = 0;
+
+    auto A = to_dense(J);
+    auto B = to_dense(H);
+    DiagonalMatrix<double> W(H.nrows(), H.ncols(), false);
+
+    int LWORK = -1;
+    int LIWORK = -1;
+    double WORK_QUERY = 0.0;
+    int IWORK_QUERY = 0;
+
+    dsygvd_(&ITYPE, &JOBZ, &UPLO, &N, &A[0], &LDA, &B[0], &LDB, &W[0], &WORK_QUERY, &LWORK,
+            &IWORK_QUERY, &LIWORK, &INFO);
+
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("DSYGVD workspace query: illegal value in argument " +
+                         std::to_string(-INFO));
+        return Error("DSYGVD workspace query failed with INFO=" + std::to_string(INFO));
+    }
+
+    LWORK = std::max(1, static_cast<int>(WORK_QUERY));
+    LIWORK = std::max(1, IWORK_QUERY);
+    std::vector<double> WORK(static_cast<std::size_t>(LWORK));
+    std::vector<int> IWORK(static_cast<std::size_t>(LIWORK));
+
+    dsygvd_(&ITYPE, &JOBZ, &UPLO, &N, &A[0], &LDA, &B[0], &LDB, &W[0], &WORK[0], &LWORK,
+            &IWORK[0], &LIWORK, &INFO);
+
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("DSYGVD: illegal value in argument " + std::to_string(-INFO));
+        if (INFO <= N)
+            return Error("DSYGVD failed to converge with INFO=" + std::to_string(INFO));
+        return Error("DSYGVD: H is not positive definite at leading minor " +
+                     std::to_string(INFO - N));
+    }
+
+    // DSYGVD returns generalized eigenvectors in parameter coordinates.
+    auto V_param = tr(A);
+
+    // Reuse the Cholesky factor computed internally by DSYGVD (stored in B on exit).
+    // With this row-major wrapper, UPLO='U' maps the Fortran upper factor to C++ lower.
+    DownTrianMatrix<double> L_factor(H.nrows(), true);
+    if (UPLO == 'U') {
+        for (std::size_t i = 0; i < H.nrows(); ++i)
+            for (std::size_t j = 0; j <= i; ++j) L_factor.set(i, j, B(i, j));
+    } else if (UPLO == 'L') {
+        for (std::size_t i = 0; i < H.nrows(); ++i)
+            for (std::size_t j = 0; j <= i; ++j) L_factor.set(i, j, B(j, i));
+    } else {
+        return Error("DSYGVD called with invalid UPLO");
+    }
+
+    // Convert to the C-space basis u = H^{1/2} v using H = L L^T.
+    auto VR = tr(L_factor) * V_param;
+    auto VL = VR;
+
+    auto Xrec = VR * W * tr(VL);
+    return sort_by_eigenvalue(std::make_tuple(W, VR, VL), Xrec);
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix(const SymPosDefMatrix<double>& H,
+                                                              const SymPosDefMatrix<double>& J) {
+    return_error<SymPosDefMatrix<double>, Lapack_IDM_Matrix> Error;
+
+    if (H.size() == 0 || J.size() == 0)
+        return Error("EMPTY MATRIX");
+    if (H.nrows() != H.ncols())
+        return Error("H is not square");
+    if (J.nrows() != J.ncols())
+        return Error("J is not square");
+    if (H.nrows() != J.nrows())
+        return Error("H and J have incompatible dimensions");
+
+    int N = static_cast<int>(H.nrows());
+    int LDA = N;
+    int INFO = 0;
+    char UPLO = kSymmetricUplo;
+
+    auto H_fact = to_dense(H);
+    dpotrf_(&UPLO, &N, &H_fact[0], &LDA, &INFO);
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("DPOTRF(H): illegal value in argument " + std::to_string(-INFO));
+        return Error("DPOTRF(H): H is not positive definite at leading minor " +
+                     std::to_string(INFO));
+    }
+
+    auto J_fact = to_dense(J);
+    dpotrf_(&UPLO, &N, &J_fact[0], &LDA, &INFO);
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("DPOTRF(J): illegal value in argument " + std::to_string(-INFO));
+        return Error("DPOTRF(J): J is not positive definite at leading minor " +
+                     std::to_string(INFO));
+    }
+
+    DownTrianMatrix<double> L_H(H.nrows(), true);
+    DownTrianMatrix<double> L_J(J.nrows(), true);
+
+    if (UPLO == 'U') {
+        for (std::size_t i = 0; i < H.nrows(); ++i)
+            for (std::size_t j = 0; j <= i; ++j) {
+                L_H.set(i, j, H_fact(i, j));
+                L_J.set(i, j, J_fact(i, j));
+            }
+    } else if (UPLO == 'L') {
+        for (std::size_t i = 0; i < H.nrows(); ++i)
+            for (std::size_t j = 0; j <= i; ++j) {
+                L_H.set(i, j, H_fact(j, i));
+                L_J.set(i, j, J_fact(j, i));
+            }
+    } else {
+        return Error("DPOTRF called with invalid UPLO");
+    }
+
+    Matrix<double> A = L_H;
+    Matrix<double> X = L_J;
+
+    // Solve in C++ orientation: L_H * X = L_J.
+    // Because this wrapper stores row-major buffers and calls Fortran directly,
+    // the equivalent Fortran-side solve is right-sided with upper triangular A.
+    char SIDE = 'R';
+    char UPLO_TRI = 'U';
+    char TRANSA = 'N';
+    char DIAG = 'N';
+    int M = N;
+    int NRHS = N;
+    int LDB = M;
+    double ALPHA = 1.0;
+
+    dtrsm_(&SIDE, &UPLO_TRI, &TRANSA, &DIAG, &M, &NRHS, &ALPHA, &A[0], &LDA, &X[0], &LDB);
+
+    return Lapack_Product_Self_Transpose(X, false, kSymmetricUplo, 1.0, 0.0);
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix(const SymPosDefMatrix<double>& H,
+                                                              const SymPosDefMatrix<double>& J) {
+    return_error<SymPosDefMatrix<double>, Lapack_DCC_Matrix> Error;
+
+    if (H.size() == 0 || J.size() == 0)
+        return Error("EMPTY MATRIX");
+    if (H.nrows() != H.ncols())
+        return Error("H is not square");
+    if (J.nrows() != J.ncols())
+        return Error("J is not square");
+    if (H.nrows() != J.nrows())
+        return Error("H and J have incompatible dimensions");
+
+    int N = static_cast<int>(H.nrows());
+    int LDA = N;
+    int INFO = 0;
+    char UPLO = kSymmetricUplo;
+
+    auto H_fact = to_dense(H);
+    dpotrf_(&UPLO, &N, &H_fact[0], &LDA, &INFO);
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("DPOTRF(H): illegal value in argument " + std::to_string(-INFO));
+        return Error("DPOTRF(H): H is not positive definite at leading minor " +
+                     std::to_string(INFO));
+    }
+
+    auto J_fact = to_dense(J);
+    dpotrf_(&UPLO, &N, &J_fact[0], &LDA, &INFO);
+    if (INFO != 0) {
+        if (INFO < 0)
+            return Error("DPOTRF(J): illegal value in argument " + std::to_string(-INFO));
+        return Error("DPOTRF(J): J is not positive definite at leading minor " +
+                     std::to_string(INFO));
+    }
+
+    DownTrianMatrix<double> L_H(H.nrows(), true);
+    DownTrianMatrix<double> L_J(J.nrows(), true);
+
+    if (UPLO == 'U') {
+        for (std::size_t i = 0; i < H.nrows(); ++i)
+            for (std::size_t j = 0; j <= i; ++j) {
+                L_H.set(i, j, H_fact(i, j));
+                L_J.set(i, j, J_fact(i, j));
+            }
+    } else if (UPLO == 'L') {
+        for (std::size_t i = 0; i < H.nrows(); ++i)
+            for (std::size_t j = 0; j <= i; ++j) {
+                L_H.set(i, j, H_fact(j, i));
+                L_J.set(i, j, J_fact(j, i));
+            }
+    } else {
+        return Error("DPOTRF called with invalid UPLO");
+    }
+
+    Matrix<double> A = L_H;
+    Matrix<double> X = L_J;
+
+    // Solve in C++ orientation using Fortran right-sided triangular solves.
+    // First:  L_H * Y = L_J
+    // Second: L_H^T * X = Y  => X = H^{-1} * L_J
+    char SIDE = 'R';
+    char UPLO_TRI = 'U';
+    char DIAG = 'N';
+    int M = N;
+    int NRHS = N;
+    int LDB = M;
+    double ALPHA = 1.0;
+    char TRANSA = 'N';
+
+    dtrsm_(&SIDE, &UPLO_TRI, &TRANSA, &DIAG, &M, &NRHS, &ALPHA, &A[0], &LDA, &X[0], &LDB);
+
+    TRANSA = 'T';
+    dtrsm_(&SIDE, &UPLO_TRI, &TRANSA, &DIAG, &M, &NRHS, &ALPHA, &A[0], &LDA, &X[0], &LDB);
+
+    return Lapack_Product_Self_Transpose(X, false, kSymmetricUplo, 1.0, 0.0);
+}
+
+inline SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
+                                                 const SymPosDefMatrix<double>& R) {
+    assert(C.nrows() == C.ncols());
+    assert(R.nrows() == R.ncols());
+    assert(C.nrows() == R.nrows());
+
+    if (C.size() == 0) {
+        return SymPosDefMatrix<double>();
+    }
+
+    auto Maybe_L_C = Lapack_chol(C);
+    if (!Maybe_L_C) {
+        assert(false && "DPOTRF(C) failed in Lapack_C_h_R_C_h");
+        return SymPosDefMatrix<double>();
+    }
+
+    Matrix<double> L_C = static_cast<Matrix<double> const&>(Maybe_L_C.value());
+    Matrix<double> dense_out = L_C * to_dense(R) * tr(L_C);
+
+    SymPosDefMatrix<double> out(C.nrows(), C.ncols(), false);
+    for (std::size_t i = 0; i < out.nrows(); ++i)
+        for (std::size_t j = i; j < out.ncols(); ++j)
+            out.set(i, j, 0.5 * (dense_out(i, j) + dense_out(j, i)));
+    return out;
 }
 
 template <class T>

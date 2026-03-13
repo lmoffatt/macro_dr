@@ -284,4 +284,14 @@ Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Re
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path);
 
+
+auto calculate_boot_Likelihood_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 
+               const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
+    -> Maybe_error<std::vector<Macro_State_Ev_diagnostic>>;
+
+auto calculate_Likelihood_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 
+               const std::vector<Simulated_Recording<var::please_include<>>>& simulation, std::vector<std::size_t> indices);
+   
+
+
 }  // namespace macrodr::cmd

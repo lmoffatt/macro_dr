@@ -40,9 +40,6 @@ compilation.txt
 # DSL-related generated files
 *.rec
 *.log
-*.macroir.csv
-*.macroir.json
-*.macroir.out
 # legacy outputs (prefer projects/*/runs/ and ops/runs/)
 /tests/*/*/examples/
 
@@ -51,8 +48,32 @@ ops/runs/
 projects/*/runs/
 projects/*/ops/runs/
 projects/*/scheme_*.txt
+projects/*/scheme_*.csv
+*.csv
+*.ogg
 
+# gz files
+*.gz
 
+*.o
+# LaTeX temporaries
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.suppinfo
 
 # Test logs
 tests/_logs/
@@ -81,9 +102,17 @@ CMakeLists.txt.user*
 tags
 .DS_Store
 Thumbs.db
+
+# macro_dr generated files
+*description.txt
+
+
 # core dumps (avoid ignoring real source dir 'core/')
 *.core
 !core/   # allow core/ source dir if it exists
+
+# crude audio files
+*.opus
 
 # Coverage/profiling artifacts
 *.gcda

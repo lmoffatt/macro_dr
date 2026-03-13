@@ -269,6 +269,149 @@ class vlogL : public var::Constant<vlogL, double> {
     }
 };
 
+class dlogL : public var::Constant<dlogL, Matrix<double>> {
+   public:
+    friend std::string className(dlogL) {
+        return "dlogL";
+    }
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite(var::fullsum((*this)()))) {
+            std::stringstream ss;
+            ss << "dlogL  not finite: " << (*this)();
+            return error_message(ss.str());
+        }
+        return true;
+    }
+};
+
+class d2logL : public var::Constant<d2logL, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(d2logL) {
+        return "d2logL";
+    }
+};  
+
+
+
+
+
+class Residual_based_ESS : public var::Constant<Residual_based_ESS, double> {
+   public:
+    friend std::string className(Residual_based_ESS) {
+        return "Residual_based_ESS";
+    }
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite((*this)()))
+            return error_message("Residual_based_ESS not finite: " + std::to_string((*this)()));
+        if ((*this)() <= 0)
+            return error_message("Residual_based_ESS negative or cero: " + std::to_string((*this)()));
+
+        return true;
+    }
+};
+
+class Score_det_based_ESS : public var::Constant<Score_det_based_ESS, double> {
+   public:
+    friend std::string className(Score_det_based_ESS) {
+        return "Score_det_based_ESS";
+    }
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite((*this)()))
+            return error_message("Score_det_based_ESS not finite: " + std::to_string((*this)()));
+        if ((*this)() <= 0)
+            return error_message("Score_det_based_ESS negative or cero: " + std::to_string((*this)()));
+
+        return true;
+    }
+};
+
+class Score_trace_based_ESS : public var::Constant<Score_trace_based_ESS, double> {
+   public:
+    friend std::string className(Score_trace_based_ESS) {
+        return "Score_trace_based_ESS";
+    }
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite((*this)()))
+            return error_message("Score_trace_based_ESS not finite: " + std::to_string((*this)()));
+        if ((*this)() <= 0)
+            return error_message("Score_trace_based_ESS negative or cero: " + std::to_string((*this)()));
+
+        return true;
+    }
+};
+
+
+class Gaussian_Fisher_Information : public var::Constant<Gaussian_Fisher_Information, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Gaussian_Fisher_Information) {
+        return "Gaussian_Fisher_Information";
+    }
+};  
+
+class Score_Covariance_Matrix : public var::Constant<Score_Covariance_Matrix, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Score_Covariance_Matrix) {
+        return "Score_Covariance_Matrix";
+    }
+};  
+
+class Score_Sample_Covariance_Matrix : public var::Constant<Score_Sample_Covariance_Matrix, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Score_Sample_Covariance_Matrix) {
+        return "Score_Sample_Covariance_Matrix";
+    }
+};  
+
+
+
+class Information_Distortion_Matrix : public var::Constant<Information_Distortion_Matrix, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Information_Distortion_Matrix) {
+        return "Information_Distortion_Matrix";
+    }
+};  
+
+class Distortion_Corrected_Covariance : public var::Constant<Distortion_Corrected_Covariance, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Distortion_Corrected_Covariance) {
+        return "Distortion_Corrected_Covariance";
+    }
+};  
+
+class Score_Mean : public var::Constant<Score_Mean, Matrix<double>> {
+   public:
+    friend std::string className(Score_Mean) {
+        return "Score_Mean";
+    }
+};  
+
+class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, Matrix<double>> {
+   public:
+    friend std::string className(Distortion_Induced_Bias) {
+        return "Distortion_Induced_Bias";
+    }
+};  
+
+
+class Sample_Distortion_Matrix : public var::Constant<Sample_Distortion_Matrix, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Sample_Distortion_Matrix) {
+        return "Sample_Distortion_Matrix";
+    }
+};  
+
+class Correlation_Distortion_Matrix : public var::Constant<Correlation_Distortion_Matrix, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Correlation_Distortion_Matrix) {
+        return "Correlation_Distortion_Matrix";
+    }
+};  
+
+
+
+
+
+
 class Grad : public var::Constant<Grad, Matrix<double>> {
    public:
     friend std::string className(Grad) {

@@ -1,15 +1,23 @@
 #include <CLI_function_table.h>
 #include <derivative_fwd.h>
 #include <derivative_operator.h>
+#include <distributions.h>
 #include <macrodr/cmd/likelihood.h>
 #include <macrodr/dsl/type_name.h>
+#include <matrix.h>
+#include <moment_statistics.h>
 #include <parameters.h>
+#include <random_samplers.h>
+#include <variables.h>
 
+#include <bootstrap.h>
 #include <concepts>
 #include <cstddef>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "macrodr/cmd/load_model.h"
 #include "qmodel.h"
@@ -443,6 +451,9 @@ auto calculate_dlikelihood_predictions_model(
         },
         model0_d);
 };
+
+
+
 
 template <class VS>
 struct vector_space_types;
@@ -989,6 +1000,181 @@ Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::strin
 
     return path_;
 }
+
+
+
+template <class... Ms,class... Ids2, class... Fs>
+auto calculate_Likelihood_diagnostics_impl(const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    std::vector<std::size_t> indices, 
+    std::type_identity<Vector_Space<Ms...>> /*tag*/,
+    std::type_identity<Vector_Space<Ids2...>> /*tag*/,
+    Fs&&... fs){
+        static_assert(sizeof...(Ms) == sizeof...(Fs));
+        return Vector_Space<Ms..., Ids2...>(Ms(dy, indices, std::forward<Fs>(fs))..., Ids2()...);
+
+}
+
+template <class...Ids, bool... include_covariance, class... Fs>
+auto calculate_Likelihood_diagnostics_evolution_correlation_impl(const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    std::vector<std::size_t> indices, 
+    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids,include_covariance>...>>>  /*tag*/,
+    Fs&&... fs){
+        return Vector_Space<Moment_statistics<Sum<Ids>,include_covariance>...>
+        (Moment_statistics<Sum<Ids>,include_covariance>(dy,indices,
+                      [ &f = fs](const dMacro_State_Ev_gradient_all& d) {
+                        return Sum<Ids>(get<Evolution>(d)(), f)(); })...);
+        
+}
+
+
+
+
+
+
+template <class...Ids, bool... include_covariance,class...Id2s, class... Fs>
+auto calculate_Likelihood_diagnostics_evolution_impl(const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    std::vector<std::size_t> indices, 
+    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids,include_covariance>...>>> /*tag*/,
+    std::type_identity<Evolution_of<Vector_Space<Id2s...>>> /*tag2*/,
+    Fs&&... fs){
+        Evolution_of<Vector_Space<Moment_statistics<Ids,include_covariance>..., Id2s...>> out;
+        auto n=get<Evolution>(dy[0])().size();
+        for (std::size_t i=0; i<n; ++i){
+            out().emplace_back(calculate_Likelihood_diagnostics_impl(dy,indices,
+                std::type_identity<Vector_Space<Moment_statistics<Ids,include_covariance>...>>(),
+                std::type_identity<Vector_Space<Id2s...>> ()/*tag2*/,
+               [i, &f = fs](const dMacro_State_Ev_gradient_all& d) { return f(get<Evolution>(d)()[i]); }...));
+        }
+
+        return out;
+
+}
+
+
+
+
+
+
+auto calculate_Likelihood_diagnostics_evolution_f(const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    std::vector<std::size_t>const& indices)
+{
+
+   auto sum_moments=
+calculate_Likelihood_diagnostics_evolution_correlation_impl
+(dy,
+    indices,
+        std::type_identity<Evolution_of<Vector_Space<
+         Moment_statistics<logL>, 
+          Moment_statistics<elogL>, 
+          Moment_statistics<r_std>, 
+          Moment_statistics<r2_std>,
+         Moment_statistics<trust_coefficient>,
+         Moment_statistics<dlogL, true>,
+         Moment_statistics<Gaussian_Fisher_Information, false>
+         >>>{},
+        [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
+        [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
+        [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
+        [](const auto& evo_i) { return sqr(primitive(get<r_std>(evo_i))()); },
+        [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
+        [](const auto& evo_i) { return derivative(get<logL>(evo_i))(); },
+        [](const auto& evo_i) { return 
+            sqr_X<true>(derivative(get<y_mean>(evo_i))())*(1.0/primitive(get<y_var>(evo_i))())+
+            sqr_X<true>(derivative(get<y_var>(evo_i))())*(1.0/2.0/sqr(primitive(get<y_var>(evo_i))()))
+            ; });
+
+   auto evol_moments=calculate_Likelihood_diagnostics_evolution_impl(dy,
+    indices,
+        std::type_identity<Evolution_of<Vector_Space<
+         Moment_statistics<logL>, 
+          Moment_statistics<elogL>, 
+          Moment_statistics<y_mean>,
+          Moment_statistics<y_var>, 
+          Moment_statistics<r_std>, 
+         Moment_statistics<trust_coefficient>,
+         Moment_statistics<dlogL, true>,
+         Moment_statistics<Gaussian_Fisher_Information, false>
+         >>>{},
+        std::type_identity<Evolution_of<Vector_Space<  Sample_Distortion_Matrix>>>{},
+       
+        [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
+        [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
+        [](const auto& evo_i) { return primitive(get<y_mean>(evo_i))(); },
+        [](const auto& evo_i) { return primitive(get<y_var>(evo_i))(); },
+        [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
+        [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
+        [](const auto& evo_i) { return derivative(get<logL>(evo_i))(); },
+        [](const auto& evo_i) { return 
+            sqr_X<true>(derivative(get<y_mean>(evo_i))())*(1.0/primitive(get<y_var>(evo_i))())+
+            sqr_X<true>(derivative(get<y_var>(evo_i))())*(1.0/2.0/sqr(primitive(get<y_var>(evo_i))()))
+            ; });
+       
+        for ( auto& m : evol_moments()){
+           get<Sample_Distortion_Matrix>(m)()=idm_matrix(
+            get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())(),
+            get<covariance<dlogL>>(get<dlogL>(m)())(), 1e-6
+            ).value_or(SymPosDefMatrix<double>{});
+        }
+     
+        
+
+        auto sum_r_std=Sum<Moment_statistics<r_std>>(
+            evol_moments(), [](const auto& m) { return get<r_std>(m)(); });
+
+        auto sum_dlogL=Sum< Moment_statistics<dlogL, true>>(
+            evol_moments(), [](const auto& m) { return get<dlogL>(m)(); });
+        
+        auto sum_Gaussian_Fisher_Information=Sum< Moment_statistics<Gaussian_Fisher_Information, false>>(
+            evol_moments(), [](const auto& m) { return get<Gaussian_Fisher_Information>(m)(); });
+        
+        auto H= get<mean<Sum<Gaussian_Fisher_Information>>>(get<Sum<Gaussian_Fisher_Information>>(sum_moments)()); 
+
+        auto J= get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)()); 
+        
+       auto J_sample= get<covariance<dlogL>>(sum_dlogL()); 
+        
+
+         
+
+        auto idm=Information_Distortion_Matrix(idm_matrix(H(),J()).value_or(SymPosDefMatrix<double>{}) );
+        
+        
+        auto sdm=Sample_Distortion_Matrix(idm_matrix(H(),J_sample()).value_or(SymPosDefMatrix<double>{}) );
+
+        auto cdm=Correlation_Distortion_Matrix(idm_matrix(J (),J_sample()).value_or(SymPosDefMatrix<double>{}) );
+      
+        auto idm2= c_h_r_c_h_matrix(sdm(), cdm());
+        auto maybe_equal = var::compare_contents(idm2, idm());
+        assert(maybe_equal && maybe_equal.value());
+
+        auto dcc = Distortion_Corrected_Covariance(
+            dcc_matrix(H(), J(), 1e-6).value_or(SymPosDefMatrix<double>{}));
+
+        
+
+
+        
+
+        
+            
+        return push_back_var(std::move(sum_moments), 
+        std::move(sum_r_std), 
+        std::move(sum_dlogL), 
+        std::move(sum_Gaussian_Fisher_Information),
+        std::move(idm),
+        std::move(sdm),
+        std::move(cdm),
+        std::move(dcc),
+        std::move(evol_moments));
+}
+
+auto calculate_Likelihood_diagnostics_evolution(const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples, const std::set<double>&cis, mt_64i& mt) 
+    {
+      return bootstrap_it_to_Probit(&calculate_Likelihood_diagnostics_evolution_f, dy, n_boostrap_samples, cis,mt);
+      
+
+    }
+
 
 // Explicit instantiations for the CLI-registered overloads to avoid link errors.
 template Maybe_error<std::string>
