@@ -328,6 +328,21 @@ class Maybe_error : private std::variant<T, error_message> {
     constexpr T& value() & noexcept { return std::get<0>(*this); }
     constexpr const T&& value() const&& noexcept { return std::get<0>(std::move(*this)); }
     constexpr T&& value() && noexcept { return std::get<0>(std::move(*this)); }
+    template <class U>
+requires std::constructible_from<T, U&&>
+constexpr T value_or(U&& default_value) const& {
+    return this->index() == 0
+        ? std::get<0>(*this)
+        : static_cast<T>(std::forward<U>(default_value));
+}
+
+template <class U>
+requires std::constructible_from<T, U&&>
+constexpr T value_or(U&& default_value) && {
+    return this->index() == 0
+        ? std::move(std::get<0>(*this))
+        : static_cast<T>(std::forward<U>(default_value));
+}
     error_message error() const {
         if (*this)
             return error_message("");

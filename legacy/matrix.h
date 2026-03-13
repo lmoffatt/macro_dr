@@ -167,6 +167,15 @@ Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>> 
 Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
     Lapack_Symm_EigenSystem(const SymmetricMatrix<double>& x, std::string kind = "lower");
 
+Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
+    Lapack_IDM_EigenSystem(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J);
+Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix(const SymPosDefMatrix<double>& H,
+                                                       const SymPosDefMatrix<double>& J);
+Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix(const SymPosDefMatrix<double>& H,
+                                                       const SymPosDefMatrix<double>& J);
+SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
+                                         const SymPosDefMatrix<double>& R);
+
 }  // namespace lapack
 
 template <class T>
@@ -1813,6 +1822,40 @@ inline auto eigs(const Matrix<double>& x, bool does_permutations = false,
 
 inline auto eigs(const SymmetricMatrix<double>& x) {
     return lapack::Lapack_Symm_EigenSystem(x);
+}
+
+inline auto eigs_idm(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J) {
+    return lapack::Lapack_IDM_EigenSystem(H, J);
+}
+
+inline auto idm_matrix(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double e=0) {
+    if (e==0)
+    {return lapack::Lapack_IDM_Matrix(H, J);}
+
+return lapack::Lapack_IDM_Matrix(
+        SymPosDefMatrix<double>::I_sware_it_is_possitive(
+            H+DiagonalMatrix<double>(H.nrows(), H.ncols(), e)), 
+            J);
+        
+}
+
+inline auto c_h_r_c_h_matrix(const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double e=0) {
+    if (e==0)
+       { return lapack::Lapack_C_h_R_C_h(C, R);}
+    else
+       { return lapack::Lapack_C_h_R_C_h(
+        SymPosDefMatrix<double>::I_sware_it_is_possitive(
+            C+DiagonalMatrix<double>(C.nrows(), C.ncols(), e)), R);}
+}
+
+inline auto dcc_matrix(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double e = 0) {
+    if (e == 0)
+        return lapack::Lapack_DCC_Matrix(H, J);
+
+    return lapack::Lapack_DCC_Matrix(
+        SymPosDefMatrix<double>::I_sware_it_is_possitive(
+            H + DiagonalMatrix<double>(H.nrows(), H.ncols(), e)),
+        J);
 }
 
 // Enforce CTMC-generator conventions on eigendecomposition (primitive):

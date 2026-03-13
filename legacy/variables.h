@@ -515,16 +515,20 @@ class Vector_Space : public Vars... {
 
     auto sep(const std::string& s) const { return format(*this, s); }
 
-    template <class... Vars2>
-    friend auto concatenate(Vector_Space&& one, Vector_Space<Vars2...>&& two) {
-        return Vector_Space<Vars..., Vars2...>(std::move(get<Vars>(one))...,
-                                               std::move(get<Vars2>(two))...);
+    friend auto concatenate(Vector_Space&& one) {
+        return one;
     }
     
-    template <class Var1>
-    friend auto push_back_var(Vector_Space&&one, Var1&& two){
-        return Vector_Space<Vars..., Var1>(std::move(get<Vars>(one))...,
-                                               std::move(two));
+    template <class... Vars2, class...Vs>
+    friend auto concatenate(Vector_Space&& one, Vector_Space<Vars2...>&& two, Vs&&... rest){ 
+        return concatenate(Vector_Space<Vars..., Vars2...>(std::move(get<Vars>(one))...,
+                                               std::move(get<Vars2>(two))...), std::move(rest)...);
+    }
+    
+    template <class... Vars2>
+    friend auto push_back_var(Vector_Space&&one, Vars2&&... two){
+        return Vector_Space<Vars..., Vars2...>(std::move(get<Vars>(one))...,
+                                               std::move(two)...);
     }
 
     template<class Tag, class Indicator, class Var>
