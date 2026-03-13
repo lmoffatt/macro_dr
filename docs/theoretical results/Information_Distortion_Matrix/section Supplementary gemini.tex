@@ -1,0 +1,97 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb, amsfonts, geometry}
+\geometry{margin=1in}
+
+\title{Supplementary Information: Information Distortion, Effective Sample Size, and Corrected Covariance in Sequential Biophysical Measurements}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{1. Log-Likelihood and Score Definitions}
+Consider a trajectory of $T$ sequential measurement intervals (e.g., time steps in a patch-clamp recording or frames in a single-molecule fluorescence trace). [cite_start]The total log-likelihood is defined as[cite: 2, 3]:
+\begin{equation}
+\ell(\theta) = \sum_{t=1}^T \ell_t(\theta),
+\end{equation}
+[cite_start]with the total score $S(\theta)$, representing the gradient of the log-likelihood, defined as the sum of per-interval scores $s_t(\theta)$[cite: 3]:
+\begin{equation}
+S(\theta) = \sum_{t=1}^T s_t(\theta), \qquad s_t(\theta) = \nabla_\theta \ell_t(\theta).
+\end{equation}
+
+\section*{2. Model Curvature: Gaussian Fisher Information (GFI)}
+[cite_start]The model approximates the predictive likelihood at each interval as Gaussian: $y_t \sim \mathcal{N}(\mu_t(\theta), \sigma_t^2(\theta))$[cite: 5]. [cite_start]The total Gaussian Fisher Information $\mathbf{H}(\theta)$ represents the model's predicted sensitivity or curvature[cite: 7]:
+\begin{equation}
+\mathbf{H}(\theta) = \sum_{t=1}^T \mathbb{E}\left[\mathbf{I}_t^{\mathrm{G}}(\theta)\right] = - \mathbb{E}\left[\nabla_\theta^2 \ell(\theta)\right].
+\end{equation}
+In a biophysical context, $\mathbf{H}$ represents the expected precision of parameter estimates based on the assumed physical model (e.g., the sharpness of an energy landscape).
+
+\section*{3. Measuring Fluctuations: Sample vs. Total Covariance}
+To diagnose model failure, we compare the predicted curvature $\mathbf{H}$ against the actual observed fluctuations of the score. [cite_start]We distinguish between local noise and trajectory-wide dependencies[cite: 29, 31]:
+
+\begin{itemize}
+    [cite_start]\item \textbf{Sample Score Covariance ($\mathbf{J}_{\mathrm{sample}}$):} The sum of the variances of individual intervals[cite: 35]. This captures the ``local'' volatility of the data, as if each measurement were an independent sample:
+    \begin{equation}
+    \mathbf{J}_{\mathrm{sample}} = \sum_{t=1}^T \mathrm{Cov}(s_t).
+    \end{equation}
+    [cite_start]\item \textbf{Total Score Covariance ($\mathbf{J}_{\mathrm{total}}$):} The covariance of the total score sum, which captures the ``global'' volatility[cite: 8]. It includes both the local noise and all cross-interval temporal correlations:
+    \begin{equation}
+    \mathbf{J}_{\mathrm{total}} = \mathrm{Cov}(S(\theta)) = \mathbf{J}_{\mathrm{sample}} + 2\sum_{i<j}\mathrm{Cov}(s_i,s_j).
+    \end{equation}
+\end{itemize}
+
+\section*{4. Derivation of the Distortion-Corrected Covariance (DCC)}
+The standard error of parameter estimates $\hat{\theta}$ is often underestimated in biophysics due to unmodeled correlations. We derive a robust correction by performing a first-order Taylor expansion of the score function around the true parameters $\theta_0$:
+\begin{equation}
+S(\hat{\theta}) \approx S(\theta_0) + \nabla_\theta S(\theta_0) (\hat{\theta} - \theta_0).
+\end{equation}
+At the maximum likelihood estimate, the score is zero ($S(\hat{\theta}) = 0$). Replacing the empirical Hessian with its expectation ($-\mathbf{H}$), we solve for the estimation error:
+\begin{equation}
+(\hat{\theta} - \theta_0) \approx \mathbf{H}^{-1} S(\theta_0).
+\end{equation}
+The true covariance of the parameter estimates, $\Sigma_{\mathrm{DCC}}$, is the expectation of the squared error:
+\begin{equation}
+\Sigma_{\mathrm{DCC}} = \mathbb{E}\left[(\hat{\theta} - \theta_0)(\hat{\theta} - \theta_0)^\top\right] \approx \mathbf{H}^{-1} \mathbb{E}[S S^\top] \mathbf{H}^{-1}.
+\end{equation}
+[cite_start]Since $\mathbf{J}_{\mathrm{total}} = \mathbb{E}[S S^\top]$ (assuming a centered score), we arrive at the corrected covariance[cite: 11, 27]:
+\begin{equation}
+\Sigma_{\mathrm{DCC}} = \mathbf{H}^{-1} \mathbf{J}_{\mathrm{total}} \mathbf{H}^{-1}.
+\end{equation}
+This ``sandwich'' structure ensures that if the actual score fluctuations ($\mathbf{J}_{\mathrm{total}}$) are larger than the model-predicted curvature ($\mathbf{H}$), the parameter uncertainty is appropriately inflated.
+
+\section*{5. Decomposition of Information Distortion}
+[cite_start]The total Information Distortion Matrix ($\mathbf{C}$) quantifies the mismatch between the model's assumed geometry and the data's actual behavior[cite: 9, 28]:
+\begin{equation}
+\mathbf{C} = \mathbf{H}^{-1/2} \mathbf{J}_{\mathrm{total}} \mathbf{H}^{-1/2}.
+\end{equation}
+[cite_start]We decompose this distortion into two physically distinct components[cite: 19, 42]:
+
+\subsection*{5.1 Sample Distortion ($\mathbf{C}_{\mathrm{sample}}$)}
+[cite_start]This measures the instantaneous mismatch between the observed volatility of a single measurement and the model's predicted curvature[cite: 40, 41]:
+\begin{equation}
+\mathbf{C}_{\mathrm{sample}} = \mathbf{H}^{-1/2} \mathbf{J}_{\mathrm{sample}} \mathbf{H}^{-1/2}.
+\end{equation}
+If $\mathbf{C}_{\mathrm{sample}} \neq \mathbf{I}$, the model's physical assumptions (e.g., noise levels or state-space topology) are incorrect even at the single-sample level.
+
+\subsection*{5.2 Correlation Distortion ($\mathbf{R}$)}
+[cite_start]This measures the inflation of uncertainty due to temporal memory effects (e.g., slow conformational changes or diffusion)[cite: 35, 36]:
+\begin{equation}
+\mathbf{R} = \mathbf{J}_{\mathrm{sample}}^{-1/2} \mathbf{J}_{\mathrm{total}} \mathbf{J}_{\mathrm{sample}}^{-1/2}.
+\end{equation}
+If the data is temporally uncorrelated, $\mathbf{R} = \mathbf{I}$. [cite_start]The full distortion is thus a product of modeling errors and temporal dependencies[cite: 21, 42]:
+\begin{equation}
+\mathbf{C} = \mathbf{C}_{\mathrm{sample}}^{1/2} \mathbf{R} \mathbf{C}_{\mathrm{sample}}^{1/2}.
+\end{equation}
+
+\section*{6. Bias and Effective Sample Size}
+[cite_start]Together, these quantities distinguish between different failure modes of a biophysical model[cite: 28, 47]:
+\begin{itemize}
+    [cite_start]\item \textbf{Effective Sample Size:} If distortion is purely due to isotropic temporal correlation, then $\mathbf{C} \approx \kappa \mathbf{I}$, and the effective sample size is $T_{\mathrm{eff}} = T/\kappa$[cite: 15, 34].
+    [cite_start]\item \textbf{Distortion-Induced Bias (DIB):} If the expected score is non-zero ($\mathbb{E}[S] = \mathbf{g}$), it indicates a systematic drift or bias in the model[cite: 12, 46]:
+    \begin{equation}
+    \mathbf{b}_{\mathrm{DIB}} = \mathbf{H}^{-1} \mathbf{g}.
+    \end{equation}
+\end{itemize}
+
+\end{document}
