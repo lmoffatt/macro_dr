@@ -7,6 +7,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -228,6 +229,13 @@ template <class T>
 Maybe_error<void> from_json(const Json& j, std::vector<T>& out, const std::string& path,
                             TagPolicy policy = TagPolicy::None);
 
+template <class T>
+Json to_json(const std::set<T>& values, TagPolicy policy = TagPolicy::None);
+
+template <class T>
+Maybe_error<void> from_json(const Json& j, std::set<T>& out, const std::string& path,
+                            TagPolicy policy = TagPolicy::None);
+
 // Map conversions
 template <class V>
 Json to_json(const std::map<std::string, V>& m, TagPolicy policy = TagPolicy::None);
@@ -438,6 +446,33 @@ Maybe_error<void> from_json(const Json& j, std::vector<T>& out, const std::strin
             return status;
         }
         out.push_back(std::move(element));
+    }
+    return {};
+}
+
+template <class T>
+Json to_json(const std::set<T>& values, TagPolicy policy) {
+    Json arr = Json::array();
+    for (const auto& v : values) {
+        arr.arr.push_back(to_json(v, policy));
+    }
+    return arr;
+}
+
+template <class T>
+Maybe_error<void> from_json(const Json& j, std::set<T>& out, const std::string& path,
+                            TagPolicy policy) {
+    if (j.type != Json::Type::Array) {
+        return detail::type_error(path, "array", j.type);
+    }
+    out.clear();
+    for (std::size_t i = 0; i < j.arr.size(); ++i) {
+        T element{};
+        auto status = from_json(j.arr[i], element, path + "[" + std::to_string(i) + "]", policy);
+        if (!status) {
+            return status;
+        }
+        out.insert(std::move(element));
     }
     return {};
 }

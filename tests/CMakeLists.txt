@@ -1,4 +1,5 @@
 set(TEST_SOURCES
+    cmd/test_write_csv.cpp
     cli/test_cli_helpers.cpp
     cli/test_env_persistence.cpp
     io/json/test_convert.cpp
@@ -6,6 +7,7 @@ set(TEST_SOURCES
     math/test_eigensystem_contract.cpp
     math/test_c_h_r_c_h.cpp
     math/test_dcc_matrix.cpp
+    math/test_empty_self_product.cpp
     math/test_idm_eigs.cpp
     math/test_idm_matrix.cpp
     math/test_taylor_convergence.cpp
@@ -62,5 +64,17 @@ add_test(NAME macrodr_cli_env_flags
 add_test(NAME macrodr_cli_likelihood_smoke
          COMMAND $<TARGET_FILE:macrodr_cli> ../data/likelihood_smoke.macroir --env-save step)
 set_tests_properties(macrodr_cli_likelihood_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")
+
+add_test(NAME macrodr_cli_write_csv_vector_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/write_csv_vector_smoke.macroir)
+set_tests_properties(macrodr_cli_write_csv_vector_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")
+
+add_test(NAME macrodr_cli_likelihood_diagnostics_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/likelihood_diagnostics_smoke.macroir)
+set_tests_properties(macrodr_cli_likelihood_diagnostics_smoke PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     ENVIRONMENT "OMP_NUM_THREADS=1")

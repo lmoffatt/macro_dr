@@ -329,7 +329,7 @@ class Moment_statistics
     Moment_statistics()
         : base_type{
               var::Vector_Space{count<Id>{0}, mean<Id>(Id{}()),
-                                variance_type(sqr_X<include_covariance>(Id{}()))}} {
+                                variance_type{}}} {
     }
     Moment_statistics(Id x)
         : base_type{var::Vector_Space{count<Id>{1}, mean<Id>(x()), variance_type(sqr_X<include_covariance>(x()-x()))}} {
@@ -343,16 +343,19 @@ class Moment_statistics
     Moment_statistics(std::vector<Id>const& x)
         : base_type{
               var::Vector_Space{count<Id>{x.size()}, mean<Id>(Id{}()),
-                                variance_type(sqr_X<include_covariance>(Id{}()))}} {
+                                variance_type{}}} {
+        if (x.empty()) {
+            return;
+        }
         auto sum=Id{}();
-        auto sum2=sqr_X<include_covariance>(Id{}());
+        auto sum2=variance_type{}();
         for (const auto& xi : x) {
             sum = sum + xi();
             sum2 = sum2 + sqr_X<include_covariance>(xi());
         }
         get<mean<Id>>((*this)())()= sum/x.size();
         auto var= x.size()>1 ? (sum2 - x.size() * sqr_X<include_covariance>(get<mean<Id>>((*this)())()))/(x.size()-1)
-                             : sqr_X<include_covariance>(Id{}());
+                             : variance_type{}();
         get<variance_type>((*this)())()= var;
     }
     
@@ -361,16 +364,19 @@ class Moment_statistics
     Moment_statistics(std::vector<VectorSpace>const& x, const std::vector<std::size_t>& indices, F&& f)
         : base_type{
               var::Vector_Space{count<Id>{indices.size()}, mean<Id>(Id{}()),
-                                variance_type(sqr_X<include_covariance>(Id{}()))}} {
+                                variance_type{}}} {
+        if (indices.empty()) {
+            return;
+        }
         auto sum=Id{}();
-        auto sum2=sqr_X<include_covariance>(Id{}());
+        auto sum2=variance_type{}();
         for (const auto& i : indices) {
             sum = sum + std::forward<F>(f)(x[i]);
             sum2 = sum2 + sqr_X<include_covariance>(std::forward<F>(f)(x[i]));
         }
         get<mean<Id>>((*this)())()= sum/indices.size();
         auto var= indices.size()>1 ? (sum2 - indices.size() * sqr_X<include_covariance>(get<mean<Id>>((*this)())()))/(indices.size()-1)
-                                   : sqr_X<include_covariance>(Id{}());
+                                   : variance_type{}();
         get<variance_type>((*this)())()= var;
     }
     
@@ -692,6 +698,9 @@ class Probit_statistics
     
     static constexpr double LOWER_PERCENTILE = 0.025;
     static constexpr double UPPER_PERCENTILE = 0.975;
+
+    Probit_statistics()
+        : base_type{var::Vector_Space{mean<Id>{}, Probit_025<Id>{}, Probit_975<Id>{}}} {}
     
     Probit_statistics(value_type&& m, value_type&& p025, value_type&& p975):
         base_type{var::Vector_Space{mean<Id>(std::move( m)), Probit_025<Id>(std::move(p025)), Probit_975<Id>(std::move(p975))}} {}    
@@ -738,6 +747,8 @@ class Probit_statistics
 
     using value_type= value_type_t<mean<Id>>;
     
+    Probit_statistics()
+        : base_type{var::Vector_Space{mean<Id>{}, Probits<Id>{}}} {}
     
     Probit_statistics(value_type&& m, std::map<double,value_type>&& pbits):
          base_type{var::Vector_Space{mean<Id>(std::move( m)), Probits<Id>(std::move(pbits))}} {}

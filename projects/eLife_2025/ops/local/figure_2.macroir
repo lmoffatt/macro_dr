@@ -29,10 +29,10 @@ simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulati
 simulations2  = simulate(model= model2, parameter_transformed = par_tr2, n_simulations= 256, experiment = experiment,
                          observations = observations, number_of_substeps = 250, seed = 0)
 
-simulation_file = write_csv(experiment= experiment, simulation=simulations, 
+simulation_file = write_csv(experiment= experiment, simulations=simulations, 
    path= "figure_2_simulation")
 
-simulation_file2 = write_csv(experiment= experiment, simulation=simulations2, 
+simulation_file2 = write_csv(experiment= experiment, simulations=simulations2, 
    path= "figure_2_simulation")
 
 macro_NR = build_likelihood_function(model =model, 
@@ -100,3 +100,9 @@ data_series = simulations2)
 
 dlikelihood_file_MRV2 = write_csv(experiment= experiment, simulations = simulations2, likelihood = dlikelihood_predictions_MRV2, 
    path= "figure_2_dlikelihood_predictions_MRV2")
+
+likelihood_analysis_MRV2 = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions_MRV2 , n_boostrap_samples=1000,
+            probits = [ 0.025 , 0.975 ] , seed=42)
+
+likelihood_analysis_MRV2_res = write_csv(analysis = likelihood_analysis_MRV2,  
+   path= "figure_2_dlikelihood_analysis_MRV")

@@ -1,4 +1,5 @@
 #include <CLI_function_table.h>
+#include <bootstrap.h>
 #include <derivative_fwd.h>
 #include <derivative_operator.h>
 #include <distributions.h>
@@ -10,7 +11,6 @@
 #include <random_samplers.h>
 #include <variables.h>
 
-#include <bootstrap.h>
 #include <concepts>
 #include <cstddef>
 #include <string_view>
@@ -452,9 +452,6 @@ auto calculate_dlikelihood_predictions_model(
         model0_d);
 };
 
-
-
-
 template <class VS>
 struct vector_space_types;
 template <class... Cs>
@@ -475,14 +472,9 @@ template <typename... Vars>
 struct state_component_types<dMacro_State<Vars...>> {
     using types =
         std::tuple<std::type_identity<var::Derivative<logL, var::Parameters_transformed>>,
-                   std::type_identity<
-                          var::Derivative<Patch_State, var::Parameters_transformed>>,
-                   std::type_identity< 
-                          Moment_statistics<Hessian_minus_CovGrad>>,
-                   std::type_identity<
-                          covariance<Grad>>,
-                   std::type_identity<
-                          Hessian>,
+                   std::type_identity<var::Derivative<Patch_State, var::Parameters_transformed>>,
+                   std::type_identity<Moment_statistics<Hessian_minus_CovGrad>>,
+                   std::type_identity<covariance<Grad>>, std::type_identity<Hessian>,
                    std::type_identity<Vars>...>;
 };
 
@@ -791,6 +783,113 @@ struct StateWriter_i {
     }
 };
 
+template <class Writer, class Lik>
+Maybe_error<bool> emit_state_members(Writer& writer, detail::CsvContext ctx, const Lik& lik) {
+    using Types = typename state_component_types<std::decay_t<Lik>>::types;
+    Maybe_error<bool> ok = true;
+    []<std::size_t... Is>(Writer& w, detail::CsvContext base_ctx, const Lik& value,
+                          Maybe_error<bool>& ok_ref, std::index_sequence<Is...>) {
+        (([&] {
+            if (!ok_ref || !ok_ref.value()) {
+                return;
+            }
+            using Id = typename std::tuple_element_t<Is, Types>::type;
+            if constexpr (!is_of_this_template_type_v<Id, Evolution_of>) {
+                if constexpr (var::gets_it_c<Lik const&, Id>) {
+                    ok_ref = detail::emit_named_component(
+                        w, base_ctx, detail::component_label<Id>(), get<Id>(value));
+                }
+            }
+        }()),
+         ...);
+    }(writer, std::move(ctx), lik, ok, std::make_index_sequence<std::tuple_size_v<Types>>{});
+    return ok;
+}
+
+template <class Writer, class Lik>
+Maybe_error<bool> emit_state_rows_without_experiment(Writer& writer,
+                                                     std::optional<std::size_t> simulation_index,
+                                                     const Lik& lik) {
+    detail::CsvContext state_ctx;
+    state_ctx.scope = "state";
+    state_ctx.simulation_index = simulation_index;
+
+    auto ok = emit_state_members(writer, state_ctx, lik);
+    if (!ok || !ok.value()) {
+        return ok;
+    }
+
+    if constexpr (macrodr::has_var_c<Lik const&, Evolution>) {
+        const auto& evolution = get<Evolution>(lik)();
+        for (std::size_t i = 0; i < evolution.size(); ++i) {
+            detail::CsvContext evo_ctx;
+            evo_ctx.scope = "evolution";
+            evo_ctx.simulation_index = simulation_index;
+            evo_ctx.sample_index = i;
+            ok = detail::emit_any(writer, std::move(evo_ctx), evolution[i]);
+            if (!ok || !ok.value()) {
+                return ok;
+            }
+        }
+    }
+
+    return true;
+}
+
+template <class Writer, class Lik>
+Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experiment& e,
+                                                  const Recording& recording,
+                                                  std::optional<std::size_t> simulation_index,
+                                                  const Lik& lik) {
+    const auto& conditions = get<Recording_conditions>(e);
+    if (conditions().size() != recording().size()) {
+        return error_message("Experiment samples ", conditions().size(),
+                             " differ from Recording samples ", recording().size());
+    }
+
+    auto ok = emit_state_rows_without_experiment(writer, simulation_index, lik);
+    if (!ok || !ok.value()) {
+        return ok;
+    }
+
+    const auto& evolution = get<Evolution>(lik)();
+    if (evolution.size() != conditions().size()) {
+        return error_message("Evolution samples ", evolution.size(),
+                             " differ from Recording samples ", conditions().size());
+    }
+
+    const double fs = get<Frequency_of_Sampling>(e)();
+    for (std::size_t i = 0; i < conditions().size(); ++i) {
+        double step_start = get<Time>(conditions()[i])();
+        const auto& segments = get<Agonist_evolution>(conditions()[i])();
+        for (std::size_t j = 0; j < segments.size(); ++j) {
+            const double duration = get<number_of_samples>(segments[j])() / fs;
+            const double step_end = step_start + duration;
+
+            detail::CsvContext evo_ctx;
+            evo_ctx.scope = "evolution";
+            evo_ctx.simulation_index = simulation_index;
+            evo_ctx.sample_index = i;
+            evo_ctx.segment_index = j;
+            evo_ctx.n_step = static_cast<double>(i) +
+                             static_cast<double>(j) / static_cast<double>(segments.size());
+            evo_ctx.time_start = step_start;
+            evo_ctx.time_end = step_end;
+            evo_ctx.time_middle = 0.5 * (step_start + step_end);
+            evo_ctx.agonist = get<Agonist_concentration>(segments[j])();
+            evo_ctx.patch_current = recording()[i]();
+
+            ok = detail::emit_any(writer, std::move(evo_ctx), evolution[i]);
+            if (!ok || !ok.value()) {
+                return ok;
+            }
+            step_start = step_end;
+        }
+    }
+
+    return true;
+}
+
 // (1) Experiment + Simulation + State with per-sample Evolution
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
     requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
@@ -803,73 +902,12 @@ Maybe_error<std::string> write_csv(Experiment const& e,
         return error_message("cannot open ", path_);
     }
 
-    const auto& conds = get<Recording_conditions>(e);
-    const auto& y = get<Recording>(simulation());
-    if (conds().size() != y().size()) {
-        return error_message("Experiment samples ", conds().size(),
-                             " differ from Recording samples ", y().size());
+    detail::CsvWriter writer(f, detail::get_param_names_if_any(lik));
+    auto ok =
+        emit_state_rows_with_experiment(writer, e, get<Recording>(simulation()), std::nullopt, lik);
+    if (!ok || !ok.value()) {
+        return ok.error()();
     }
-
-    const auto& evo = get<Evolution>(lik);
-    const auto& evo_vec = evo();
-    if (evo_vec.size() != conds().size()) {
-        return error_message("Evolution samples ", evo_vec.size(),
-                             " differ from Recording samples ", conds().size());
-    }
-
-    const auto param_names = get_param_names_if_any(lik);
-
-    f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
-         "component,param_index,param_col,param_name,primitive,derivative_value\n";
-
-    using Element = typename std::decay_t<decltype(evo)>::element_type;
-    using ComponentTuple = typename vector_space_types<Element>::types;
-
-    StateWriter_scoped w_state{f, param_names};
-    Maybe_error<bool> state_ok = emit_state_rows(w_state, lik);
-    if (!state_ok || !state_ok.value()) {
-        return state_ok.error()();
-    }
-
-    const double fs = get<Frequency_of_Sampling>(e)();
-    for (std::size_t i = 0; i < conds().size(); ++i) {
-        double step_start = get<Time>(conds()[i])();
-        const auto& ag = get<Agonist_evolution>(conds()[i])();
-        const auto& el = evo_vec[i];
-        for (std::size_t j = 0; j < ag.size(); ++j) {
-            const double ns = get<number_of_samples>(ag[j])();
-            const double duration = ns / fs;
-            const double step_end = step_start + duration;
-            const double step_mid = 0.5 * (step_start + step_end);
-            const double agonist = get<Agonist_concentration>(ag[j])();
-            const double n_step =
-                static_cast<double>(i) + static_cast<double>(j) / static_cast<double>(ag.size());
-            const double patch = y()[i]();
-
-            SampleWriter w{f,        param_names, n_step,  j,    step_start,
-                           step_end, step_mid,    agonist, patch};
-
-            auto handle_component = [&](auto type_tag) -> Maybe_error<bool> {
-                using Comp = typename decltype(type_tag)::type;
-                return emit_component_rows(
-                    w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Comp>>(),
-                    get<Comp>(el));
-            };
-
-            Maybe_error<bool> ok = true;
-            []<std::size_t... Is>(auto&& handle, Maybe_error<bool>& ok_ref,
-                                  std::index_sequence<Is...>) {
-                ((ok_ref = ok_ref ? handle(std::tuple_element_t<Is, ComponentTuple>{}) : ok_ref),
-                 ...);
-            }(handle_component, ok, std::make_index_sequence<std::tuple_size_v<ComponentTuple>>{});
-            if (!ok || !ok.value()) {
-                return ok.error()();
-            }
-
-            step_start = step_end;
-        }
-    }
-
     return path_;
 }
 
@@ -889,91 +927,26 @@ Maybe_error<std::string> write_csv(Experiment const& e,
                              " differ from number of Likelihood states ", liks.size());
     }
 
-    const auto& conds = get<Recording_conditions>(e);
-    for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
-        const auto& y = get<Recording>(simulation[sim_i]());
-        if (conds().size() != y().size()) {
-            return error_message("Experiment samples ", conds().size(),
-                                 " differ from Recording samples ", y().size());
+    std::vector<std::string> param_names;
+    for (const auto& lik : liks) {
+        param_names = detail::get_param_names_if_any(lik);
+        if (!param_names.empty()) {
+            break;
         }
     }
 
-    f << "row_kind,n_simulation,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_"
-         "current,"
-         "component,param_index,param_col,param_name,primitive,derivative_value\n";
+    detail::CsvWriter writer(f, param_names);
     for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
-        const auto& y = get<Recording>(simulation[sim_i]());
-        const auto& lik = liks[sim_i];
-        const auto& evo = get<Evolution>(lik);
-        const auto& evo_vec = evo();
-        if (evo_vec.size() != conds().size()) {
-            return error_message("Evolution samples ", evo_vec.size(),
-                                 " differ from Recording samples ", conds().size());
-        }
-
-        const auto param_names = get_param_names_if_any(lik);
-
-        using Element = typename std::decay_t<decltype(evo)>::element_type;
-        using ComponentTuple = typename vector_space_types<Element>::types;
-
-        StateWriter_i w_state{f, param_names, sim_i};
-        Maybe_error<bool> state_ok = emit_state_rows(w_state, lik);
-        if (!state_ok || !state_ok.value()) {
-            return state_ok.error()();
-        }
-
-        const double fs = get<Frequency_of_Sampling>(e)();
-        for (std::size_t i = 0; i < conds().size(); ++i) {
-            double step_start = get<Time>(conds()[i])();
-            const auto& ag = get<Agonist_evolution>(conds()[i])();
-            const auto& el = evo_vec[i];
-            for (std::size_t j = 0; j < ag.size(); ++j) {
-                const double ns = get<number_of_samples>(ag[j])();
-                const double duration = ns / fs;
-                const double step_end = step_start + duration;
-                const double step_mid = 0.5 * (step_start + step_end);
-                const double agonist = get<Agonist_concentration>(ag[j])();
-                const double n_step = static_cast<double>(i) +
-                                      static_cast<double>(j) / static_cast<double>(ag.size());
-                const double patch = y()[i]();
-
-                SampleWriter_i w{f,          param_names, sim_i,    n_step,  j,
-                                 step_start, step_end,    step_mid, agonist, patch};
-
-                auto handle_component = [&](auto type_tag) -> Maybe_error<bool> {
-                    using Comp = typename decltype(type_tag)::type;
-                    return emit_component_rows(
-                        w, macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<Comp>>(),
-                        get<Comp>(el));
-                };
-
-                Maybe_error<bool> ok = true;
-                []<std::size_t... Is>(auto&& handle, Maybe_error<bool>& ok_ref,
-                                      std::index_sequence<Is...>) {
-                    ((ok_ref =
-                          ok_ref ? handle(std::tuple_element_t<Is, ComponentTuple>{}) : ok_ref),
-                     ...);
-                }(handle_component, ok,
-                  std::make_index_sequence<std::tuple_size_v<ComponentTuple>>{});
-                if (!ok || !ok.value()) {
-                    return ok.error()();
-                }
-
-                step_start = step_end;
-            }
+        auto ok = emit_state_rows_with_experiment(writer, e, get<Recording>(simulation[sim_i]()),
+                                                  sim_i, liks[sim_i]);
+        if (!ok || !ok.value()) {
+            return ok.error()();
         }
     }
-
     return path_;
 }
 
-auto calc_FIM_from_n_simulation_mdlikelihood_predictions(
-    const std::vector<dMacro_State_Ev_gradient_all>& dlogLs) {
-    for (std::size_t i = 0; i < dlogLs.size(); ++i) {
-    }
-}
-
-// (2) State without Evolution (no Experiment/Simulation indexing)
+// (2) State without Experiment indexing
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path) {
     const auto path_ = path + ".csv";
@@ -982,121 +955,89 @@ Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::strin
         return error_message("cannot open ", path_);
     }
 
-    const auto param_names = get_param_names_if_any(lik);
-    f << "meta,n_params," << param_names.size() << "\n";
-    for (std::size_t i = 0; i < param_names.size(); ++i) {
-        f << "param," << i << "," << param_names[i] << "\n";
-    }
-
-    f << "row_kind,n_step,sub_step,step_start,step_end,step_middle,agonist,patch_current,"
-         "component,param_index,param_col,param_name,primitive,derivative_value\n";
-
-    StateWriter w{f, param_names};
-
-    Maybe_error<bool> ok = emit_state_rows(w, lik);
+    detail::CsvWriter writer(f, detail::get_param_names_if_any(lik));
+    auto ok = emit_state_rows_without_experiment(writer, std::nullopt, lik);
     if (!ok || !ok.value()) {
         return ok.error()();
     }
-
     return path_;
 }
 
-
-
-template <class... Ms,class... Ids2, class... Fs>
+template <class... Ms, class... Ids2, class... Fs>
 auto calculate_Likelihood_diagnostics_impl(const std::vector<dMacro_State_Ev_gradient_all>& dy,
-    std::vector<std::size_t> indices, 
-    std::type_identity<Vector_Space<Ms...>> /*tag*/,
-    std::type_identity<Vector_Space<Ids2...>> /*tag*/,
-    Fs&&... fs){
-        static_assert(sizeof...(Ms) == sizeof...(Fs));
-        return Vector_Space<Ms..., Ids2...>(Ms(dy, indices, std::forward<Fs>(fs))..., Ids2()...);
-
+                                           std::vector<std::size_t> indices,
+                                           std::type_identity<Vector_Space<Ms...>> /*tag*/,
+                                           std::type_identity<Vector_Space<Ids2...>> /*tag*/,
+                                           Fs&&... fs) {
+    static_assert(sizeof...(Ms) == sizeof...(Fs));
+    return Vector_Space<Ms..., Ids2...>(Ms(dy, indices, std::forward<Fs>(fs))..., Ids2()...);
 }
 
-template <class...Ids, bool... include_covariance, class... Fs>
-auto calculate_Likelihood_diagnostics_evolution_correlation_impl(const std::vector<dMacro_State_Ev_gradient_all>& dy,
-    std::vector<std::size_t> indices, 
-    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids,include_covariance>...>>>  /*tag*/,
-    Fs&&... fs){
-        return Vector_Space<Moment_statistics<Sum<Ids>,include_covariance>...>
-        (Moment_statistics<Sum<Ids>,include_covariance>(dy,indices,
-                      [ &f = fs](const dMacro_State_Ev_gradient_all& d) {
-                        return Sum<Ids>(get<Evolution>(d)(), f)(); })...);
-        
+template <class... Ids, bool... include_covariance, class... Fs>
+auto calculate_Likelihood_diagnostics_evolution_correlation_impl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> indices,
+    std::type_identity<
+        Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>...>>> /*tag*/,
+    Fs&&... fs) {
+    return Vector_Space<Moment_statistics<Sum<Ids>, include_covariance>...>(
+        Moment_statistics<Sum<Ids>, include_covariance>(
+            dy, indices, [&f = fs](const dMacro_State_Ev_gradient_all& d) {
+                return Sum<Ids>(get<Evolution>(d)(), f)();
+            })...);
 }
 
+template <class... Ids, bool... include_covariance, class... Id2s, class... Fs>
+auto calculate_Likelihood_diagnostics_evolution_impl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> indices,
+    std::type_identity<
+        Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>...>>> /*tag*/,
+    std::type_identity<Evolution_of<Vector_Space<Id2s...>>> /*tag2*/, Fs&&... fs) {
+    Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>..., Id2s...>> out;
+    auto n = get<Evolution>(dy[0])().size();
+    for (std::size_t i = 0; i < n; ++i) {
+        out().emplace_back(calculate_Likelihood_diagnostics_impl(
+            dy, indices,
+            std::type_identity<Vector_Space<Moment_statistics<Ids, include_covariance>...>>(),
+            std::type_identity<Vector_Space<Id2s...>>() /*tag2*/,
+            [i, &f = fs](const dMacro_State_Ev_gradient_all& d) {
+                return f(get<Evolution>(d)()[i]);
+            }...));
+    }
 
-
-
-
-
-template <class...Ids, bool... include_covariance,class...Id2s, class... Fs>
-auto calculate_Likelihood_diagnostics_evolution_impl(const std::vector<dMacro_State_Ev_gradient_all>& dy,
-    std::vector<std::size_t> indices, 
-    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids,include_covariance>...>>> /*tag*/,
-    std::type_identity<Evolution_of<Vector_Space<Id2s...>>> /*tag2*/,
-    Fs&&... fs){
-        Evolution_of<Vector_Space<Moment_statistics<Ids,include_covariance>..., Id2s...>> out;
-        auto n=get<Evolution>(dy[0])().size();
-        for (std::size_t i=0; i<n; ++i){
-            out().emplace_back(calculate_Likelihood_diagnostics_impl(dy,indices,
-                std::type_identity<Vector_Space<Moment_statistics<Ids,include_covariance>...>>(),
-                std::type_identity<Vector_Space<Id2s...>> ()/*tag2*/,
-               [i, &f = fs](const dMacro_State_Ev_gradient_all& d) { return f(get<Evolution>(d)()[i]); }...));
-        }
-
-        return out;
-
+    return out;
 }
 
-
-
-
-
-
-auto calculate_Likelihood_diagnostics_evolution_f(const std::vector<dMacro_State_Ev_gradient_all>& dy,
-    std::vector<std::size_t>const& indices)
-{
-
-   auto sum_moments=
-calculate_Likelihood_diagnostics_evolution_correlation_impl
-(dy,
-    indices,
-        std::type_identity<Evolution_of<Vector_Space<
-         Moment_statistics<logL>, 
-          Moment_statistics<elogL>, 
-          Moment_statistics<r_std>, 
-          Moment_statistics<r2_std>,
-         Moment_statistics<trust_coefficient>,
-         Moment_statistics<dlogL, true>,
-         Moment_statistics<Gaussian_Fisher_Information, false>
-         >>>{},
+auto calculate_Likelihood_diagnostics_evolution_f(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices) {
+    auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
+        dy, indices,
+        std::type_identity<Evolution_of<
+            Vector_Space<Moment_statistics<logL>, Moment_statistics<elogL>,
+                         Moment_statistics<r_std>, Moment_statistics<r2_std>,
+                         Moment_statistics<trust_coefficient>, Moment_statistics<dlogL, true>,
+                         Moment_statistics<Gaussian_Fisher_Information, false>>>>{},
         [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
         [](const auto& evo_i) { return sqr(primitive(get<r_std>(evo_i))()); },
         [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
         [](const auto& evo_i) { return derivative(get<logL>(evo_i))(); },
-        [](const auto& evo_i) { return 
-            sqr_X<true>(derivative(get<y_mean>(evo_i))())*(1.0/primitive(get<y_var>(evo_i))())+
-            sqr_X<true>(derivative(get<y_var>(evo_i))())*(1.0/2.0/sqr(primitive(get<y_var>(evo_i))()))
-            ; });
+        [](const auto& evo_i) {
+            return sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                       (1.0 / primitive(get<y_var>(evo_i))()) +
+                   sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                       (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+        });
 
-   auto evol_moments=calculate_Likelihood_diagnostics_evolution_impl(dy,
-    indices,
+    auto evol_moments = calculate_Likelihood_diagnostics_evolution_impl(
+        dy, indices,
         std::type_identity<Evolution_of<Vector_Space<
-         Moment_statistics<logL>, 
-          Moment_statistics<elogL>, 
-          Moment_statistics<y_mean>,
-          Moment_statistics<y_var>, 
-          Moment_statistics<r_std>, 
-         Moment_statistics<trust_coefficient>,
-         Moment_statistics<dlogL, true>,
-         Moment_statistics<Gaussian_Fisher_Information, false>
-         >>>{},
-        std::type_identity<Evolution_of<Vector_Space<  Sample_Distortion_Matrix>>>{},
-       
+            Moment_statistics<logL>, Moment_statistics<elogL>, Moment_statistics<y_mean>,
+            Moment_statistics<y_var>, Moment_statistics<r_std>,
+            Moment_statistics<trust_coefficient>, Moment_statistics<dlogL, true>,
+            Moment_statistics<Gaussian_Fisher_Information, false>>>>{},
+        std::type_identity<Evolution_of<Vector_Space<Sample_Distortion_Matrix>>>{},
+
         [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<y_mean>(evo_i))(); },
@@ -1104,77 +1045,67 @@ calculate_Likelihood_diagnostics_evolution_correlation_impl
         [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
         [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
         [](const auto& evo_i) { return derivative(get<logL>(evo_i))(); },
-        [](const auto& evo_i) { return 
-            sqr_X<true>(derivative(get<y_mean>(evo_i))())*(1.0/primitive(get<y_var>(evo_i))())+
-            sqr_X<true>(derivative(get<y_var>(evo_i))())*(1.0/2.0/sqr(primitive(get<y_var>(evo_i))()))
-            ; });
-       
-        for ( auto& m : evol_moments()){
-           get<Sample_Distortion_Matrix>(m)()=idm_matrix(
-            get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())(),
-            get<covariance<dlogL>>(get<dlogL>(m)())(), 1e-6
-            ).value_or(SymPosDefMatrix<double>{});
-        }
-     
-        
+        [](const auto& evo_i) {
+            return sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                       (1.0 / primitive(get<y_var>(evo_i))()) +
+                   sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                       (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+        });
 
-        auto sum_r_std=Sum<Moment_statistics<r_std>>(
-            evol_moments(), [](const auto& m) { return get<r_std>(m)(); });
-
-        auto sum_dlogL=Sum< Moment_statistics<dlogL, true>>(
-            evol_moments(), [](const auto& m) { return get<dlogL>(m)(); });
-        
-        auto sum_Gaussian_Fisher_Information=Sum< Moment_statistics<Gaussian_Fisher_Information, false>>(
-            evol_moments(), [](const auto& m) { return get<Gaussian_Fisher_Information>(m)(); });
-        
-        auto H= get<mean<Sum<Gaussian_Fisher_Information>>>(get<Sum<Gaussian_Fisher_Information>>(sum_moments)()); 
-
-        auto J= get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)()); 
-        
-       auto J_sample= get<covariance<dlogL>>(sum_dlogL()); 
-        
-
-         
-
-        auto idm=Information_Distortion_Matrix(idm_matrix(H(),J()).value_or(SymPosDefMatrix<double>{}) );
-        
-        
-        auto sdm=Sample_Distortion_Matrix(idm_matrix(H(),J_sample()).value_or(SymPosDefMatrix<double>{}) );
-
-        auto cdm=Correlation_Distortion_Matrix(idm_matrix(J (),J_sample()).value_or(SymPosDefMatrix<double>{}) );
-      
-        auto idm2= c_h_r_c_h_matrix(sdm(), cdm());
-        auto maybe_equal = var::compare_contents(idm2, idm());
-        assert(maybe_equal && maybe_equal.value());
-
-        auto dcc = Distortion_Corrected_Covariance(
-            dcc_matrix(H(), J(), 1e-6).value_or(SymPosDefMatrix<double>{}));
-
-        
-
-
-        
-
-        
-            
-        return push_back_var(std::move(sum_moments), 
-        std::move(sum_r_std), 
-        std::move(sum_dlogL), 
-        std::move(sum_Gaussian_Fisher_Information),
-        std::move(idm),
-        std::move(sdm),
-        std::move(cdm),
-        std::move(dcc),
-        std::move(evol_moments));
-}
-
-auto calculate_Likelihood_diagnostics_evolution(const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples, const std::set<double>&cis, mt_64i& mt) 
-    {
-      return bootstrap_it_to_Probit(&calculate_Likelihood_diagnostics_evolution_f, dy, n_boostrap_samples, cis,mt);
-      
-
+    for (auto& m : evol_moments()) {
+        get<Sample_Distortion_Matrix>(m)() =
+            idm_matrix_regularized(
+                get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())(),
+                get<covariance<dlogL>>(get<dlogL>(m)())())
+                .value_or(SymPosDefMatrix<double>{});
     }
 
+    auto sum_r_std = Sum<Moment_statistics<r_std>>(evol_moments(),
+                                                   [](const auto& m) { return get<r_std>(m)(); });
+
+    auto sum_dlogL = Sum<Moment_statistics<dlogL, true>>(
+        evol_moments(), [](const auto& m) { return get<dlogL>(m)(); });
+
+    auto sum_Gaussian_Fisher_Information =
+        Sum<Moment_statistics<Gaussian_Fisher_Information, false>>(
+            evol_moments(), [](const auto& m) { return get<Gaussian_Fisher_Information>(m)(); });
+
+    auto H = get<mean<Sum<Gaussian_Fisher_Information>>>(
+        get<Sum<Gaussian_Fisher_Information>>(sum_moments)());
+
+    auto J = get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
+
+    auto J_sample = get<covariance<dlogL>>(sum_dlogL());
+
+    auto idm = Information_Distortion_Matrix(
+        idm_matrix_regularized(H(), J()).value_or(SymPosDefMatrix<double>{}));
+
+    auto sdm = Sample_Distortion_Matrix(
+        idm_matrix_regularized(H(), J_sample()).value_or(SymPosDefMatrix<double>{}));
+
+    auto cdm = Correlation_Distortion_Matrix(
+        idm_matrix_regularized(J_sample(), J()).value_or(SymPosDefMatrix<double>{}));
+
+    auto idm2 = Information_Distortion_Reconstituted(
+        c_h_r_c_h_matrix(sdm(), cdm()));
+    
+    auto dcc = Distortion_Corrected_Covariance(
+        dcc_matrix(H(), J(), 1e-6).value_or(SymPosDefMatrix<double>{}));
+
+    return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
+                         std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),
+                         std::move(cdm), std::move(dcc), std::move(evol_moments));
+}
+
+auto calculate_Likelihood_derivative_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed)
+    -> Analisis_derivative_diagnostic {
+
+    auto mt = mt_64i(seed);            
+    return bootstrap_it_to_Probit(&calculate_Likelihood_diagnostics_evolution_f, dy,
+                                  n_boostrap_samples, cis, mt);
+}
 
 // Explicit instantiations for the CLI-registered overloads to avoid link errors.
 template Maybe_error<std::string>
