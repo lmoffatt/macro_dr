@@ -31,3 +31,4 @@ timestamp_utc,commit,version,preset,total_files,compile_seconds_total,link_secon
 2025-12-14T22:06:12Z,698dc87dd204509d61427fb37c8703b69002f21e,698dc87,compile-stats-gcc-release,30,948.562000,7.223000,AMD EPYC 7763 64-Core Processor
 2025-12-15T00:13:45Z,93e77db3c4c9a9030b8d6c26c3035c747000e10b,93e77db,compile-stats-gcc-release,30,942.119000,6.188000,AMD EPYC 7763 64-Core Processor
 2026-03-13T02:05:54Z,46a60dd573b05e097f7c8c420d52221913f02dfb,46a60dd,compile-stats-gcc-release,34,1357.664000,1.236000,AMD EPYC 7763 64-Core Processor
+2026-03-15T21:56:57Z,b9eed91c83d65a2e521c92d5b67b4b258ebbf172,b9eed91,compile-stats-gcc-release,37,1072.865000,1.138000,Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz
