@@ -6,8 +6,7 @@ model2 = load_model("scheme_CCO")
 
 parameter2 = load_parameters(model2, "data/models/scheme_CCO_par.csv")
 
-experiment = create_experiment(experiment_structure=[{5,50,0.0},{4,25,10.0},{4,50,10.0},{4,100,10.0},{4,200,10.0},{4,400,10.0},{4,800,10.0},
-{4,25,0.0},{4,50,0.0},{4,100,0.0},{4,200,0.0},{4,400,0.0}], 
+experiment = create_experiment(experiment_structure=[{5,50,0.0},{4,25,10.0},{4,50,10.0},{4,50,10.0}], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
 initial_time = 0.0)
@@ -16,87 +15,36 @@ observations = set_observations(values_set= [0,0,0,0])
 
 par_tr = get_standard_parameter_transformed_values(parameter)
 
-par_tr2 = get_standard_parameter_transformed_values(parameter2)
  
 model_str="scheme_CO"
 
-model_str2="scheme_CCO"
 
 
-simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulations= 256, experiment = experiment,
+simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulations= 10, experiment = experiment,
                          observations = observations, number_of_substeps = 250, seed = 0)
 
-simulations2  = simulate(model= model2, parameter_transformed = par_tr2, n_simulations= 256, experiment = experiment,
-                         observations = observations, number_of_substeps = 250, seed = 0)
 
-simulation_file = write_csv(experiment= experiment, simulation=simulations, 
-   path= "figure_2_simulation")
+simulation_file = write_csv(experiment= experiment, simulations=simulations, 
+   path= "figure_2_simulation_test_test")
 
-simulation_file2 = write_csv(experiment= experiment, simulation=simulations2, 
-   path= "figure_2_simulation")
 
-macro_NR = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
-            variance_approximation = 0, taylor_variance_correction = 0)
-
-macro_R = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 0,
-            variance_approximation = 0, taylor_variance_correction = 0)
-
-macro_MNR = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
-            variance_approximation = 0, taylor_variance_correction = 0)
-
-macro_MR = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
-            variance_approximation = 0, taylor_variance_correction = 0)
-
-macro_MNRV = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
-            variance_approximation = 1, taylor_variance_correction = 0)
 
 macro_MRV = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
             variance_approximation = 1, taylor_variance_correction = 0)
 
-macro_IR = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 0 , taylor_variance_correction = 0)
-macro_IRV = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 1, taylor_variance_correction = 0)
 
 
-macro_MRV2 = build_likelihood_function(model =model2, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
-            variance_approximation = 1, taylor_variance_correction = 0)
 
-macro_IRV2 = build_likelihood_function(model =model2, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 1, taylor_variance_correction = 0)
-
-
-dlikelihood_predictions_IRV = calc_dlikelihood_predictions(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
-data_series = simulations)
-
-dlikelihood_file_IRV = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions_IRV, 
-   path= "figure_2_dlikelihood_predictions_IRV")
 
 dlikelihood_predictions_MRV = calc_dlikelihood_predictions(likelihood_algorithm =macro_MRV, parameters=par_tr, experiment =experiment, 
 data_series = simulations)
 
 dlikelihood_file_MRV = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions_MRV, 
-   path= "figure_2_dlikelihood_predictions_MRV")
+   path= "figure_2_dlikelihood_predictions_MRV_test")
 
+likelihood_analysis_MRV = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions_MRV , n_boostrap_samples=1000,
+            probits = [ 0.025 , 0.975 ] , seed=42)
 
-dlikelihood_predictions_IRV2 = calc_dlikelihood_predictions(likelihood_algorithm =macro_IRV2, parameters=par_tr2, experiment =experiment, 
-data_series = simulations2)
-
-dlikelihood_file_IRV2 = write_csv(experiment= experiment, simulations = simulations2, likelihood = dlikelihood_predictions_IRV2, 
-   path= "figure_2_dlikelihood_predictions_IRV2")
-
-dlikelihood_predictions_MRV2 = calc_dlikelihood_predictions(likelihood_algorithm =macro_MRV2, parameters=par_tr2, experiment =experiment, 
-data_series = simulations2)
-
-dlikelihood_file_MRV2 = write_csv(experiment= experiment, simulations = simulations2, likelihood = dlikelihood_predictions_MRV2, 
-   path= "figure_2_dlikelihood_predictions_MRV2")
+likelihood_analysis_MRV_res = write_csv(analysis = likelihood_analysis_MRV,  
+   path= "figure_2_dlikelihood_analysis_MRV_test")

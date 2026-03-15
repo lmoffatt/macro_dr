@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -80,6 +81,8 @@ class typed_expression;
 
 template <class Lexer, class Compiler, class T>
 class typed_vector_construction;
+template <class Lexer, class Compiler, class T>
+class typed_set_construction;
 
 template <class Lexer, class Compiler, class... T>
 class typed_tuple_construction;
@@ -264,6 +267,8 @@ Maybe_unique<typed_expression<Lexer, Compiler, T>> get_typed_expresion(
 template <class Lexer, class Compiler, class T>
 class vector_compiler ;
 template <class Lexer, class Compiler, class T>
+class set_compiler ;
+template <class Lexer, class Compiler, class T>
 class field_compiler {
     Identifier<Lexer> m_id;
 
@@ -340,6 +345,16 @@ class field_compiler {
             environment_local_copy, t_arg.args());
     }
 
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_vector_construction<Lexer, Compiler> const& t_arg) const
+        requires(is_of_this_template_type_v<T,std::set>)
+        {
+        auto environment_local_copy = cm;
+        return set_compiler<Lexer,Compiler,typename T::value_type>{}.compile_set_construction(
+            environment_local_copy, t_arg.args());
+    }
+
 [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& cm,
         untyped_tuple_construction<Lexer, Compiler> const& t_arg) const 
@@ -366,6 +381,12 @@ class field_compiler {
             return compile_this_argument(cm, *f_ptr);
         }
         if constexpr (is_of_this_template_type_v<T, std::vector>) {
+            if (auto fn =
+                    dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
+                return compile_this_argument(cm, *fn);
+            }
+        }
+        if constexpr (is_of_this_template_type_v<T, std::set>) {
             if (auto fn =
                     dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
                 return compile_this_argument(cm, *fn);
@@ -649,6 +670,16 @@ struct element_compiler {
         return vector_compiler<Lexer,Compiler,typename T::value_type>{}.compile_vector_construction(environment_local_copy, t_arg);
     }
 
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& cm,
+        untyped_vector_construction<Lexer, Compiler> const& t_arg) const
+        requires(is_of_this_template_type_v<T,std::set>)
+        {
+        auto environment_local_copy = cm;
+        return set_compiler<Lexer,Compiler,typename T::value_type>{}.compile_set_construction(
+            environment_local_copy, t_arg.args());
+    }
+
 [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
         Environment<Lexer, Compiler> const& cm,
         untyped_tuple_construction<Lexer, Compiler> const& t_arg) const 
@@ -675,6 +706,12 @@ struct element_compiler {
             return compile_this_element(cm, *f_ptr);
         }
         if constexpr (is_of_this_template_type_v<T, std::vector>) {
+            if (auto fn =
+                    dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
+                return compile_this_element(cm, *fn);
+            }
+        }
+        if constexpr (is_of_this_template_type_v<T, std::set>) {
             if (auto fn =
                     dynamic_cast<untyped_vector_construction<Lexer, Compiler> const*>(&t_arg)) {
                 return compile_this_element(cm, *fn);
@@ -1186,6 +1223,45 @@ class vector_compiler {
         }
 
         return std::make_unique<typed_vector_construction<Lexer, Compiler, T>>(
+            std::move(compiled));
+    }
+};
+
+template <class Lexer, class Compiler, class T>
+class set_compiler {
+    template <class K>
+    using storage_t = detail::function_argument_storage_t<K>;
+
+    using element_compiler_t = element_compiler<Lexer, Compiler, storage_t<T>>;
+
+    element_compiler_t m_elem;
+
+   public:
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::set<T>>>
+    compile_set_construction(Environment<Lexer, Compiler> const& cm,
+                             const untyped_argument_list<Lexer, Compiler>& args) const {
+        using expr_t = typed_expression<Lexer, Compiler, storage_t<T>>;
+
+        std::vector<std::unique_ptr<expr_t>> compiled;
+        compiled.reserve(args.arg().size());
+
+        std::string err;
+
+        auto n = args.arg().size();
+        for (std::size_t i = 0; i < n; ++i) {
+            auto maybe_elem = m_elem.compile_this_element(cm, args.arg()[i]);
+            if (!maybe_elem) {
+                err += std::to_string(i) + ": " + maybe_elem.error()();
+            } else {
+                compiled.emplace_back(std::move(maybe_elem.value()));
+            }
+        }
+
+        if (!err.empty()) {
+            return error_message(err);
+        }
+
+        return std::make_unique<typed_set_construction<Lexer, Compiler, T>>(
             std::move(compiled));
     }
 };

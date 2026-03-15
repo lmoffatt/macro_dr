@@ -85,4 +85,3 @@ TEST_CASE("persist_run_workspace writes artefacts") {
 
     std::filesystem::remove_all(temp_root);
 }
-

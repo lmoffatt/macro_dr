@@ -13,6 +13,7 @@
 #include <variables.h>
 
 #include <cstddef>
+#include <set>
 
 // Legacy registry builders used until migrated
 #include "CLI_function_table.h"
@@ -24,6 +25,17 @@
 
 namespace macrodr::cli {
 using std::size_t;
+
+namespace {
+
+auto calculate_likelihood_derivative_diagnostics_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed) {
+    return cmd::calculate_Likelihood_derivative_diagnostics(
+        dlikelihood_predictions, n_boostrap_samples, probits, seed);
+}
+
+}
 
 inline macrodr::dsl::Compiler make_simulations_compiler() {
     dsl::Compiler cm;
@@ -157,7 +169,7 @@ dsl::Compiler make_compiler_new() {
             "experiment","simulation", "path"));
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,std::vector<Simulated_recording> const&, std::string >(&macrodr::cmd::write_csv,
-            "experiment","simulation", "path"));
+            "experiment","simulations", "path"));
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Recording const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","observations", "path"));
@@ -211,6 +223,13 @@ dsl::Compiler make_compiler_new() {
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
             dMacro_State_Ev_gradient_all const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic const& ,
+                                          std::string >(
+            &macrodr::cmd::write_csv, "analysis",  "path"));
 
             
 
@@ -504,6 +523,16 @@ cm.push_function(
             &cmd::calculate_simulation_dlikelihood_predictions_model, "model", "parameters",
             "experiment", "data", "adaptive_approximation", "recursive_approximation",
             "averaging_approximation", "variance_approximation", "taylor_variance_correction"));
+
+      
+            cm.push_function(
+        "likelihood_derivative_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& , 
+    std::size_t, std::set<double>,  std::size_t>(
+            &calculate_likelihood_derivative_diagnostics_dsl, "dlikelihood_predictions", "n_boostrap_samples",
+            "probits", "seed"));
+     
+
 
     return cm;
 }

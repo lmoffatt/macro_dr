@@ -2503,6 +2503,9 @@ inline auto& Lapack_Product_Self_Transpose_vectorized_impl(const Matrix<double>&
                                                double alpha = 1, double beta = 0) {
     assert(a.size()==c.ncols());
     assert(c.ncols()==c.nrows());
+    if (a.size() == 0 || c.size() == 0) {
+        return c;
+    }
     char UPLO = (UPLO_in_c == 'U') ? 'L' : 'U';
     bool first_transposed_in_c=true;
     /*
@@ -2683,6 +2686,9 @@ inline auto& Lapack_Product_Self_Transpose_mod(const Matrix<double>& a, SymPosDe
           at least zero.
   */
     int K = first_transposed_in_c ? a.nrows() : a.ncols();
+    if (a.size() == 0 || c.size() == 0 || N == 0 || K == 0) {
+        return c;
+    }
 
     /*
                 [in]	K

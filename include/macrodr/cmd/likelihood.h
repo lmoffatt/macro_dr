@@ -3,8 +3,10 @@
 #include <derivative_fwd.h>
 #include <distributions.h>
 #include <macrodr/interface/IModel.h>
+#include <macrodr/cmd/detail/write_csv_common.h>
 
 #include <type_traits>
+#include <utility>
 
 #include "patch_model.h"
 #include "qmodel.h"
@@ -110,15 +112,6 @@ inline auto calculate_n_simulation_mdlikelihood_predictions(
     }
     return results;
 }
-
-auto calculate_FIM_from_mdlikelihood_predictions(const dMacro_State_Ev_gradient_all& dy);
-
-
-
-auto calculate_FIM_from_n_simulation_mdlikelihood_predictions(const std::vector<dMacro_State_Ev_gradient_all>& dy);
-
-
-
 
 
 auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
@@ -271,10 +264,15 @@ inline auto calculate_simulation_dlikelihood_predictions_model(
 }
 
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
 Maybe_error<std::string> write_csv(Experiment const& e,
                                    Simulated_Recording<SimTag> const& simulation,
                                    TMacro_State<vVars...> const& lik, std::string path);
 
+template <class... Vs>
+inline Maybe_error<std::string> write_csv(var::Vector_Space<Vs...> const& lik, std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
 
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
     requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
@@ -289,9 +287,40 @@ auto calculate_boot_Likelihood_diagnostics(const std::vector<dMacro_State_Ev_gra
                const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
     -> Maybe_error<std::vector<Macro_State_Ev_diagnostic>>;
 
-auto calculate_Likelihood_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 
-               const std::vector<Simulated_Recording<var::please_include<>>>& simulation, std::vector<std::size_t> indices);
+
+using Analisis_derivative_diagnostic = var::Vector_Space<
+        Probit_statistics<Moment_statistics<Sum<logL>, false>>,
+        Probit_statistics<Moment_statistics<Sum<elogL>, false>>,
+        Probit_statistics<Moment_statistics<Sum<macrodr::r_std>, false>>,
+        Probit_statistics<Moment_statistics<Sum<macrodr::r2_std>, false>>,
+        Probit_statistics<Moment_statistics<Sum<macrodr::trust_coefficient>, false>>,
+        Probit_statistics<Moment_statistics<Sum<dlogL>, true>>,
+        Probit_statistics<Moment_statistics<Sum<Gaussian_Fisher_Information>, false>>,
+        Probit_statistics<Sum<Moment_statistics<macrodr::r_std, false>>>,
+        Probit_statistics<Sum<Moment_statistics<dlogL, true>>>,
+        Probit_statistics<Sum<Moment_statistics<Gaussian_Fisher_Information, false>>>,
+        Probit_statistics<Information_Distortion_Matrix>,
+        Probit_statistics<Information_Distortion_Reconstituted>,
+        Probit_statistics<Sample_Distortion_Matrix>,
+        Probit_statistics<Correlation_Distortion_Matrix>,
+        Probit_statistics<Distortion_Corrected_Covariance>,
+        Probit_statistics<macrodr::Evolution_of<var::Vector_Space<
+            Moment_statistics<logL, false>, Moment_statistics<elogL, false>,
+            Moment_statistics<macrodr::y_mean, false>, Moment_statistics<macrodr::y_var, false>,
+            Moment_statistics<macrodr::r_std, false>,
+            Moment_statistics<macrodr::trust_coefficient, false>, Moment_statistics<dlogL, true>,
+            Moment_statistics<Gaussian_Fisher_Information, false>, Sample_Distortion_Matrix>>>> ; 
+
    
+ auto calculate_Likelihood_derivative_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 
+    std::size_t n_boostrap_samples, const std::set<double>&cis,  std::size_t seed)-> 
+   Analisis_derivative_diagnostic; 
+
+
+inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
 
 
 }  // namespace macrodr::cmd

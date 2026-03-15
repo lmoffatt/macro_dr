@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -767,6 +768,105 @@ class typed_vector_construction
                 err += std::to_string(i) + ": " + maybe_elem.error()();
             } else {
                 out.emplace_back(adapt<T>(maybe_elem.value()));
+            }
+        }
+
+        if (!err.empty()) {
+            return error_message(err);
+        }
+        return out;
+    }
+};
+
+template <class Lexer, class Compiler, class T>
+class typed_set_construction
+    : public typed_expression<Lexer, Compiler, std::set<T>> {
+
+    template <class U>
+    using storage_t = detail::function_argument_storage_t<U>;
+
+    std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>> m_args;
+
+    template <class Param, class Storage>
+    static decltype(auto) adapt(Storage& storage) {
+        using Base        = std::remove_reference_t<Param>;
+        using StorageType = std::remove_reference_t<Storage>;
+
+        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
+                      std::is_same_v<StorageType,
+                                     std::reference_wrapper<std::remove_const_t<Base>>>) {
+            return static_cast<Param>(storage.get());
+        } else if constexpr (std::is_lvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Param>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Param>(*storage);
+            } else {
+                if constexpr (std::is_const_v<Base>) {
+                    return static_cast<const Base&>(storage);
+                } else {
+                    return static_cast<Base&>(storage);
+                }
+            }
+        } else if constexpr (std::is_rvalue_reference_v<Param>) {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return static_cast<Base&&>(*storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return static_cast<Base&&>(*storage);
+            } else {
+                return static_cast<Base&&>(storage);
+            }
+        } else {
+            if constexpr (detail::is_unique_ptr<StorageType>::value) {
+                return std::move(storage);
+            } else if constexpr (std::is_pointer_v<StorageType>) {
+                return storage;
+            } else {
+                return static_cast<Param>(std::move(storage));
+            }
+        }
+    }
+
+   public:
+    using storage_args =
+        std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>>;
+
+    explicit typed_set_construction(storage_args&& args)
+        : m_args{std::move(args)} {}
+
+    typed_set_construction(storage_args const& args)
+        : m_args{clone_vector(args)} {}
+
+    ~typed_set_construction() override = default;
+
+    typed_set_construction(const typed_set_construction& other)
+        : m_args{clone_vector(other.m_args)} {}
+
+    typed_set_construction(typed_set_construction&&) noexcept = default;
+    typed_set_construction& operator=(typed_set_construction&&) noexcept = default;
+
+    typed_set_construction& operator=(const typed_set_construction& other) {
+        if (this != &other) {
+            m_args = clone_vector(other.m_args);
+        }
+        return *this;
+    }
+
+    [[nodiscard]] typed_set_construction* clone() const override {
+        return new typed_set_construction(*this);
+    }
+
+    [[nodiscard]] Maybe_error<std::set<T>>
+    run(const Environment<Lexer, Compiler>& env) const override {
+        std::set<T> out;
+        std::string err;
+
+        for (std::size_t i = 0; i < m_args.size(); ++i) {
+            auto maybe_elem = m_args[i]->run(env);
+            if (!maybe_elem) {
+                err += std::to_string(i) + ": " + maybe_elem.error()();
+            } else {
+                out.insert(adapt<T>(maybe_elem.value()));
             }
         }
 

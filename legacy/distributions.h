@@ -371,6 +371,15 @@ class Information_Distortion_Matrix : public var::Constant<Information_Distortio
     }
 };  
 
+class Information_Distortion_Reconstituted : public var::Constant<Information_Distortion_Reconstituted, SymPosDefMatrix<double>> {
+   public:
+    friend std::string className(Information_Distortion_Reconstituted) {
+        return "Information_Distortion_Reconstituted";
+    }
+};  
+
+
+
 class Distortion_Corrected_Covariance : public var::Constant<Distortion_Corrected_Covariance, SymPosDefMatrix<double>> {
    public:
     friend std::string className(Distortion_Corrected_Covariance) {
