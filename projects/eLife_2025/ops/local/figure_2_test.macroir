@@ -1,0 +1,50 @@
+model = load_model("scheme_CO")
+
+parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
+
+model2 = load_model("scheme_CCO")
+
+parameter2 = load_parameters(model2, "data/models/scheme_CCO_par.csv")
+
+experiment = create_experiment(experiment_structure=[{5,50,0.0},{4,25,10.0},{4,50,10.0},{4,50,10.0}], 
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0, 
+initial_time = 0.0)
+                                
+observations = set_observations(values_set= [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+ 
+model_str="scheme_CO"
+
+
+
+simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulations= 10, experiment = experiment,
+                         observations = observations, number_of_substeps = 250, seed = 0)
+
+
+simulation_file = write_csv(experiment= experiment, simulations=simulations, 
+   path= "figure_2_simulation_test_test")
+
+
+
+macro_MRV = build_likelihood_function(model =model, 
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0)
+
+
+
+
+
+dlikelihood_predictions_MRV = calc_dlikelihood_predictions(likelihood_algorithm =macro_MRV, parameters=par_tr, experiment =experiment, 
+data_series = simulations)
+
+dlikelihood_file_MRV = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions_MRV, 
+   path= "figure_2_dlikelihood_predictions_MRV_test")
+
+likelihood_analysis_MRV = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions_MRV , n_boostrap_samples=1000,
+            probits = [ 0.025 , 0.975 ] , seed=42)
+
+likelihood_analysis_MRV_res = write_csv(analysis = likelihood_analysis_MRV,  
+   path= "figure_2_dlikelihood_analysis_MRV_test")
