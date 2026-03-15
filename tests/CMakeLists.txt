@@ -10,6 +10,7 @@ set(TEST_SOURCES
     math/test_empty_self_product.cpp
     math/test_idm_eigs.cpp
     math/test_idm_matrix.cpp
+    math/test_probit_statistics.cpp
     math/test_taylor_convergence.cpp
     macroir/test_qdt_derivatives.cpp
     macroir/test_macroir_derivatives.cpp

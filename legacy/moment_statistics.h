@@ -570,11 +570,40 @@ inline auto get_mean_Probits(
     const std::set<double>& cis) 
 {
     assert(!bootstrap_estimates.empty());
-    
-    const auto rows = bootstrap_estimates.front().nrows();
-    const auto cols = bootstrap_estimates.front().ncols();
-    const auto total_elements = bootstrap_estimates.front().size();
-    const auto num_samples = bootstrap_estimates.size();
+
+    MatrixType<double>* shape_sample = nullptr;
+    std::vector<MatrixType<double>*> valid_matrices;
+    valid_matrices.reserve(bootstrap_estimates.size());
+
+    for (auto& matrix : bootstrap_estimates) {
+        if (matrix.size() == 0) {
+            assert(matrix.nrows() == 0);
+            assert(matrix.ncols() == 0);
+            continue;
+        }
+
+        if (shape_sample == nullptr) {
+            shape_sample = &matrix;
+        } else {
+            assert(matrix.nrows() == shape_sample->nrows());
+            assert(matrix.ncols() == shape_sample->ncols());
+            assert(matrix.size() == shape_sample->size());
+        }
+        valid_matrices.push_back(&matrix);
+    }
+
+    if (shape_sample == nullptr) {
+        std::map<double, MatrixType<double>> probits_map;
+        for (double ci : cis) {
+            probits_map.emplace(ci, MatrixType<double>{});
+        }
+        return std::make_pair(MatrixType<double>{}, std::move(probits_map));
+    }
+
+    const auto rows = shape_sample->nrows();
+    const auto cols = shape_sample->ncols();
+    const auto total_elements = shape_sample->size();
+    const auto num_samples = valid_matrices.size();
 
     // 1. Memory Optimization: Pre-allocate the pivot structure
     std::vector<std::vector<double>> cell_series(total_elements);
@@ -583,9 +612,9 @@ inline auto get_mean_Probits(
     }
 
     // Pivot: Matrices -> Cell-wise vectors
-    for (const auto& matrix : bootstrap_estimates) {
+    for (const auto* matrix : valid_matrices) {
         for (std::size_t i = 0; i < total_elements; ++i) {
-            cell_series[i].push_back(matrix[i]);
+            cell_series[i].push_back((*matrix)[i]);
         }
     }
 

@@ -65,6 +65,17 @@ constexpr std::string_view kUnifiedHeader =
     "param_index,param_col,param_name,"
     "value";
 
+SymPosDefMatrix<double> make_diag_spd(std::initializer_list<double> diag_vals) {
+    const std::size_t n = diag_vals.size();
+    SymPosDefMatrix<double> out(n, n, false);
+    std::size_t i = 0;
+    for (auto v : diag_vals) {
+        out.set(i, i, v);
+        ++i;
+    }
+    return out;
+}
+
 }  // namespace
 
 TEST_CASE("generic write_csv serializes moment and probit statistics", "[write_csv]") {
@@ -149,4 +160,43 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
     CHECK(second[15] == "primitive");
     CHECK(second[16] == "value");
     CHECK(second[21] == "0.2");
+}
+
+TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits and skips empty matrices",
+          "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_matrix_shapes");
+
+    {
+        const auto base = dir.path / "filtered_matrix_probit";
+        std::vector<Information_Distortion_Matrix> samples{
+            Information_Distortion_Matrix(SymPosDefMatrix<double>{}),
+            Information_Distortion_Matrix(make_diag_spd({2.0, 6.0})),
+            Information_Distortion_Matrix(make_diag_spd({4.0, 10.0}))};
+
+        auto summary = var::Vector_Space{
+            Probit_statistics<Information_Distortion_Matrix>(
+                samples, [](const auto& x) { return x(); }, std::set<double>{0.5})};
+
+        auto out = write_csv(summary, base.string());
+        REQUIRE(out);
+
+        const auto lines = read_lines(base.string() + ".csv");
+        CHECK(lines.front() == kUnifiedHeader);
+        REQUIRE(lines.size() == 9);
+    }
+
+    {
+        const auto base = dir.path / "empty_matrix";
+        auto summary = var::Vector_Space{Information_Distortion_Matrix(SymPosDefMatrix<double>{})};
+
+        auto out = write_csv(summary, base.string());
+        REQUIRE(out);
+
+        const auto lines = read_lines(base.string() + ".csv");
+        REQUIRE(lines.size() == 1);
+        CHECK(lines.front() == kUnifiedHeader);
+    }
 }
