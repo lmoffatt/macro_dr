@@ -1841,6 +1841,9 @@ return lapack::Lapack_IDM_Matrix(
 
 
 inline auto c_h_r_c_h_matrix(const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double e=0) {
+    if (C.size()==0) {return C;}
+    if (R.size()==0) {return R;}
+    
     if (e==0)
        { return lapack::Lapack_C_h_R_C_h(C, R);}
     else
