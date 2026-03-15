@@ -1839,24 +1839,6 @@ return lapack::Lapack_IDM_Matrix(
         
 }
 
-inline Maybe_error<SymPosDefMatrix<double>> idm_matrix_regularized(
-    const SymPosDefMatrix<double>& H,
-    const SymPosDefMatrix<double>& J) {
-    auto maybe_idm = idm_matrix(H, J);
-    if (maybe_idm) {return maybe_idm;}
-    for (double factor : {1e-8, 1e-6, 1e-4}) {
-        const double e = scale * factor;
-        auto maybe_regularized = lapack::Lapack_IDM_Matrix(
-            SymPosDefMatrix<double>::I_sware_it_is_possitive(
-                H + DiagonalMatrix<double>(H.nrows(), H.ncols(), e)),
-            SymPosDefMatrix<double>::I_sware_it_is_possitive(
-                J + DiagonalMatrix<double>(J.nrows(), J.ncols(), e)));
-        if (maybe_regularized) return maybe_regularized;
-        maybe_idm = std::move(maybe_regularized);
-    }
-
-    return maybe_idm;
-}
 
 inline auto c_h_r_c_h_matrix(const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double e=0) {
     if (e==0)

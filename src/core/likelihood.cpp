@@ -1054,7 +1054,7 @@ auto calculate_Likelihood_diagnostics_evolution_f(
 
     for (auto& m : evol_moments()) {
         get<Sample_Distortion_Matrix>(m)() =
-            idm_matrix_regularized(
+            idm_matrix(
                 get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())(),
                 get<covariance<dlogL>>(get<dlogL>(m)())())
                 .value_or(SymPosDefMatrix<double>{});
@@ -1078,13 +1078,13 @@ auto calculate_Likelihood_diagnostics_evolution_f(
     auto J_sample = get<covariance<dlogL>>(sum_dlogL());
 
     auto idm = Information_Distortion_Matrix(
-        idm_matrix_regularized(H(), J()).value_or(SymPosDefMatrix<double>{}));
+        idm_matrix(H(), J()).value_or(SymPosDefMatrix<double>{}));
 
     auto sdm = Sample_Distortion_Matrix(
-        idm_matrix_regularized(H(), J_sample()).value_or(SymPosDefMatrix<double>{}));
+        idm_matrix(H(), J_sample()).value_or(SymPosDefMatrix<double>{}));
 
     auto cdm = Correlation_Distortion_Matrix(
-        idm_matrix_regularized(J_sample(), J()).value_or(SymPosDefMatrix<double>{}));
+        idm_matrix(J_sample(), J()).value_or(SymPosDefMatrix<double>{}));
 
     auto idm2 = Information_Distortion_Reconstituted(
         c_h_r_c_h_matrix(sdm(), cdm()));
