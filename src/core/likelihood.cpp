@@ -1054,7 +1054,7 @@ auto calculate_Likelihood_diagnostics_evolution_f(
 
     for (auto& m : evol_moments()) {
         get<Sample_Distortion_Matrix>(m)() =
-            idm_matrix(
+            sample_distortion_matrix_subspace(
                 get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())(),
                 get<covariance<dlogL>>(get<dlogL>(m)())())
                 .value_or(SymPosDefMatrix<double>{});
@@ -1077,20 +1077,22 @@ auto calculate_Likelihood_diagnostics_evolution_f(
 
     auto J_sample = get<covariance<dlogL>>(sum_dlogL());
 
+    // Distortion quantities are evaluated on the retained informative subspace.
     auto idm = Information_Distortion_Matrix(
-        idm_matrix(H(), J()).value_or(SymPosDefMatrix<double>{}));
+        idm_matrix_subspace(H(), J()).value_or(SymPosDefMatrix<double>{}));
 
     auto sdm = Sample_Distortion_Matrix(
-        idm_matrix(H(), J_sample()).value_or(SymPosDefMatrix<double>{}));
+        sample_distortion_matrix_subspace(H(), J_sample()).value_or(SymPosDefMatrix<double>{}));
 
     auto cdm = Correlation_Distortion_Matrix(
-        idm_matrix(J_sample(), J()).value_or(SymPosDefMatrix<double>{}));
+        correlation_distortion_matrix_subspace(J_sample(), J())
+            .value_or(SymPosDefMatrix<double>{}));
 
     auto idm2 = Information_Distortion_Reconstituted(
-        c_h_r_c_h_matrix(sdm(), cdm()));
+        c_h_r_c_h_matrix_subspace(sdm(), cdm()).value_or(SymPosDefMatrix<double>{}));
     
     auto dcc = Distortion_Corrected_Covariance(
-        dcc_matrix(H(), J(), 1e-6).value_or(SymPosDefMatrix<double>{}));
+        dcc_matrix_subspace(H(), J()).value_or(SymPosDefMatrix<double>{}));
 
     return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
                          std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),

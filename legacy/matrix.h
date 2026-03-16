@@ -173,8 +173,22 @@ Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix(const SymPosDefMatrix<dou
                                                        const SymPosDefMatrix<double>& J);
 Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix(const SymPosDefMatrix<double>& H,
                                                        const SymPosDefMatrix<double>& J);
+Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix_Subspace(
+    const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double rtol,
+    double atol);
+Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix_Subspace(
+    const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double rtol,
+    double atol);
+Maybe_error<SymPosDefMatrix<double>> Lapack_Sample_Distortion_Matrix_Subspace(
+    const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J_sample, double rtol,
+    double atol);
+Maybe_error<SymPosDefMatrix<double>> Lapack_Correlation_Distortion_Matrix_Subspace(
+    const SymPosDefMatrix<double>& J_sample, const SymPosDefMatrix<double>& J_total, double rtol,
+    double atol);
 SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
                                          const SymPosDefMatrix<double>& R);
+Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
+    const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double rtol, double atol);
 
 }  // namespace lapack
 
@@ -1860,6 +1874,36 @@ inline auto dcc_matrix(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<d
         SymPosDefMatrix<double>::I_sware_it_is_possitive(
             H + DiagonalMatrix<double>(H.nrows(), H.ncols(), e)),
         J);
+}
+
+inline auto idm_matrix_subspace(const SymPosDefMatrix<double>& H,
+                                const SymPosDefMatrix<double>& J, double rtol = 1e-10,
+                                double atol = 0.0) {
+    return lapack::Lapack_IDM_Matrix_Subspace(H, J, rtol, atol);
+}
+
+inline auto dcc_matrix_subspace(const SymPosDefMatrix<double>& H,
+                                const SymPosDefMatrix<double>& J, double rtol = 1e-10,
+                                double atol = 0.0) {
+    return lapack::Lapack_DCC_Matrix_Subspace(H, J, rtol, atol);
+}
+
+inline auto sample_distortion_matrix_subspace(const SymPosDefMatrix<double>& H,
+                                              const SymPosDefMatrix<double>& J_sample,
+                                              double rtol = 1e-10, double atol = 0.0) {
+    return lapack::Lapack_Sample_Distortion_Matrix_Subspace(H, J_sample, rtol, atol);
+}
+
+inline auto correlation_distortion_matrix_subspace(
+    const SymPosDefMatrix<double>& J_sample, const SymPosDefMatrix<double>& J_total,
+    double rtol = 1e-10, double atol = 0.0) {
+    return lapack::Lapack_Correlation_Distortion_Matrix_Subspace(J_sample, J_total, rtol, atol);
+}
+
+inline auto c_h_r_c_h_matrix_subspace(const SymPosDefMatrix<double>& C,
+                                      const SymPosDefMatrix<double>& R,
+                                      double rtol = 1e-10, double atol = 0.0) {
+    return lapack::Lapack_C_h_R_C_h_Subspace(C, R, rtol, atol);
 }
 
 // Enforce CTMC-generator conventions on eigendecomposition (primitive):
