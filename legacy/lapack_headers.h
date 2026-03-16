@@ -683,8 +683,33 @@ constexpr std::string function_name<&lapack::Lapack_DCC_Matrix>() {
 }
 
 template <>
+constexpr std::string function_name<&lapack::Lapack_IDM_Matrix_Subspace>() {
+    return "Lapack_IDM_Matrix_Subspace";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_DCC_Matrix_Subspace>() {
+    return "Lapack_DCC_Matrix_Subspace";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_Sample_Distortion_Matrix_Subspace>() {
+    return "Lapack_Sample_Distortion_Matrix_Subspace";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_Correlation_Distortion_Matrix_Subspace>() {
+    return "Lapack_Correlation_Distortion_Matrix_Subspace";
+}
+
+template <>
 constexpr std::string function_name<&lapack::Lapack_C_h_R_C_h>() {
     return "Lapack_C_h_R_C_h";
+}
+
+template <>
+constexpr std::string function_name<&lapack::Lapack_C_h_R_C_h_Subspace>() {
+    return "Lapack_C_h_R_C_h_Subspace";
 }
 
 
@@ -2307,6 +2332,274 @@ inline Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix(const SymPosDefMat
     return Lapack_Product_Self_Transpose(X, false, kSymmetricUplo, 1.0, 0.0);
 }
 
+struct PSDRetainedEigensystem {
+    DiagonalMatrix<double> eigenvalues;
+    Matrix<double> eigenvectors;
+    std::vector<std::size_t> retained_indices;
+    double lambda_max = 0.0;
+};
+
+inline bool matrix_has_only_finite(const SymPosDefMatrix<double>& x) {
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = 0; j < x.ncols(); ++j)
+            if (!std::isfinite(x(i, j)))
+                return false;
+    return true;
+}
+
+inline Matrix<double> symmetrize_dense(const Matrix<double>& x) {
+    Matrix<double> out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = 0; j < x.ncols(); ++j)
+            out(i, j) = 0.5 * (x(i, j) + x(j, i));
+    return out;
+}
+
+inline SymPosDefMatrix<double> dense_to_semidefinite(const Matrix<double>& x) {
+    SymmetricMatrix<double> out(x.nrows());
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = i; j < x.ncols(); ++j)
+            out.set(i, j, 0.5 * (x(i, j) + x(j, i)));
+    return SymPosDefMatrix<double>::I_sware_it_is_possitive(std::move(out));
+}
+
+inline Maybe_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>>
+    symmetric_eigensystem_copy(const SymPosDefMatrix<double>& x, const std::string& name) {
+    return_error<std::tuple<DiagonalMatrix<double>, Matrix<double>, Matrix<double>>> Error{
+        "symmetric_eigensystem_copy: "};
+
+    SymmetricMatrix<double> x_copy(static_cast<SymmetricMatrix<double> const&>(x));
+    auto maybe_eigs = Lapack_Symm_EigenSystem(x_copy, "lower");
+    if (!maybe_eigs)
+        return Error(name + ": " + maybe_eigs.error()());
+    return maybe_eigs.value();
+}
+
+inline double subspace_tol(double lambda_max, double rtol, double atol) {
+    return std::max(atol, rtol * std::max(0.0, lambda_max));
+}
+
+inline Maybe_error<PSDRetainedEigensystem> retained_psd_eigensystem(
+    const SymPosDefMatrix<double>& x, const std::string& name, double rtol, double atol,
+    bool require_non_empty = true) {
+    return_error<PSDRetainedEigensystem> Error{"retained_psd_eigensystem: "};
+
+    if (x.size() == 0)
+        return Error(name + ": empty matrix");
+    if (x.nrows() != x.ncols())
+        return Error(name + ": matrix is not square");
+    if (!matrix_has_only_finite(x))
+        return Error(name + ": matrix has non-finite entries");
+
+    auto maybe_eigs = symmetric_eigensystem_copy(x, name);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+
+    const auto& [L, VR, VL] = maybe_eigs.value();
+    (void)VL;
+
+    double lambda_max = 0.0;
+    for (std::size_t i = 0; i < L.size(); ++i)
+        lambda_max = std::max(lambda_max, L[i]);
+    const double tol = subspace_tol(lambda_max, rtol, atol);
+
+    for (std::size_t i = 0; i < L.size(); ++i)
+        if (L[i] < -tol)
+            return Error(name + ": matrix is not positive semidefinite within tolerance");
+
+    std::vector<std::size_t> retained;
+    retained.reserve(L.size());
+    for (std::size_t i = 0; i < L.size(); ++i)
+        if (L[i] > tol)
+            retained.push_back(i);
+
+    if (retained.empty()) {
+        if (require_non_empty)
+            return Error(name + ": empty retained subspace");
+        return PSDRetainedEigensystem{std::move(L), std::move(VR), {}, lambda_max};
+    }
+
+    return PSDRetainedEigensystem{std::move(L), std::move(VR), std::move(retained), lambda_max};
+}
+
+inline Matrix<double> retained_basis(const PSDRetainedEigensystem& eigs) {
+    Matrix<double> basis(eigs.eigenvectors.nrows(), eigs.retained_indices.size(), false);
+    for (std::size_t col = 0; col < eigs.retained_indices.size(); ++col)
+        for (std::size_t row = 0; row < eigs.eigenvectors.nrows(); ++row)
+            basis(row, col) = eigs.eigenvectors(row, eigs.retained_indices[col]);
+    return basis;
+}
+
+inline DiagonalMatrix<double> retained_eigenvalues(const PSDRetainedEigensystem& eigs) {
+    DiagonalMatrix<double> out(eigs.retained_indices.size(), eigs.retained_indices.size(), false);
+    for (std::size_t i = 0; i < eigs.retained_indices.size(); ++i)
+        out[i] = eigs.eigenvalues[eigs.retained_indices[i]];
+    return out;
+}
+
+inline SymPosDefMatrix<double> reconstruct_psd_matrix(const PSDRetainedEigensystem& eigs) {
+    return dense_to_semidefinite(eigs.eigenvectors * eigs.eigenvalues * tr(eigs.eigenvectors));
+}
+
+inline SymPosDefMatrix<double> reconstruct_retained_psd_matrix(const PSDRetainedEigensystem& eigs) {
+    auto basis = retained_basis(eigs);
+    auto values = retained_eigenvalues(eigs);
+    if (basis.ncols() == 0)
+        return dense_to_semidefinite(Matrix<double>(basis.nrows(), basis.nrows(), 0.0));
+    return dense_to_semidefinite(basis * values * tr(basis));
+}
+
+inline auto project_to_basis(const Matrix<double>& basis, const SymPosDefMatrix<double>& x) {
+    return tr(basis) * to_dense(x) * basis;
+}
+
+inline auto embed_from_basis(const Matrix<double>& basis, const Matrix<double>& x_reduced) {
+    if (basis.ncols() == 0)
+        return Matrix<double>(basis.nrows(), basis.nrows(), 0.0);
+    return basis * x_reduced * tr(basis);
+}
+
+inline Maybe_error<Matrix<double>> validate_psd_dense(const Matrix<double>& x,
+                                                      const std::string& name, double rtol,
+                                                      double atol) {
+    return_error<Matrix<double>> Error{"validate_psd_dense: "};
+
+    auto x_sym = symmetrize_dense(x);
+    auto x_psd = dense_to_semidefinite(x_sym);
+    auto maybe_eigs = symmetric_eigensystem_copy(x_psd, name);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+
+    const auto& [L, VR, VL] = maybe_eigs.value();
+    (void)VR;
+    (void)VL;
+    double lambda_max = 0.0;
+    for (std::size_t i = 0; i < L.size(); ++i)
+        lambda_max = std::max(lambda_max, L[i]);
+    const double tol = subspace_tol(lambda_max, rtol, atol);
+
+    for (std::size_t i = 0; i < L.size(); ++i)
+        if (L[i] < -tol)
+            return Error(name + ": result is not positive semidefinite within tolerance");
+
+    return x_sym;
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_PSD_Normalized_Congruence_Matrix(
+    const SymPosDefMatrix<double>& A, const SymPosDefMatrix<double>& B,
+    const std::string& ref_name, const std::string& result_name, double rtol, double atol) {
+    return_error<SymPosDefMatrix<double>> Error{"Lapack_PSD_Normalized_Congruence_Matrix: "};
+
+    if (A.nrows() != B.nrows() || A.ncols() != B.ncols())
+        return Error(result_name + ": incompatible dimensions");
+    if (!matrix_has_only_finite(B))
+        return Error(result_name + ": secondary matrix has non-finite entries");
+
+    auto maybe_eigs = retained_psd_eigensystem(A, ref_name, rtol, atol, true);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+    const auto& eigs = maybe_eigs.value();
+    auto basis = retained_basis(eigs);
+    auto kept_eigenvalues = retained_eigenvalues(eigs);
+
+    auto projected = project_to_basis(basis, B);
+    DiagonalMatrix<double> inv_sqrt(kept_eigenvalues.nrows(), kept_eigenvalues.ncols(), false);
+    for (std::size_t i = 0; i < inv_sqrt.size(); ++i)
+        inv_sqrt[i] = 1.0 / std::sqrt(kept_eigenvalues[i]);
+
+    auto reduced = inv_sqrt * projected * inv_sqrt;
+    auto maybe_validated = validate_psd_dense(reduced, result_name, rtol, atol);
+    if (!maybe_validated)
+        return Error(maybe_validated.error()());
+
+    return dense_to_semidefinite(embed_from_basis(basis, maybe_validated.value()));
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_PSD_Congruence_Matrix(
+    const SymPosDefMatrix<double>& A, const SymPosDefMatrix<double>& B,
+    const std::string& ref_name, const std::string& result_name, double rtol, double atol) {
+    return_error<SymPosDefMatrix<double>> Error{"Lapack_PSD_Congruence_Matrix: "};
+
+    if (A.nrows() != B.nrows() || A.ncols() != B.ncols())
+        return Error(result_name + ": incompatible dimensions");
+    if (!matrix_has_only_finite(B))
+        return Error(result_name + ": secondary matrix has non-finite entries");
+
+    auto maybe_eigs = retained_psd_eigensystem(A, ref_name, rtol, atol, true);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+    const auto& eigs = maybe_eigs.value();
+    auto basis = retained_basis(eigs);
+    auto kept_eigenvalues = retained_eigenvalues(eigs);
+
+    auto projected = project_to_basis(basis, B);
+    DiagonalMatrix<double> sqrt_diag(kept_eigenvalues.nrows(), kept_eigenvalues.ncols(), false);
+    for (std::size_t i = 0; i < sqrt_diag.size(); ++i)
+        sqrt_diag[i] = std::sqrt(kept_eigenvalues[i]);
+
+    auto reduced = sqrt_diag * projected * sqrt_diag;
+    auto maybe_validated = validate_psd_dense(reduced, result_name, rtol, atol);
+    if (!maybe_validated)
+        return Error(maybe_validated.error()());
+
+    return dense_to_semidefinite(embed_from_basis(basis, maybe_validated.value()));
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix_Subspace(
+    const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double rtol,
+    double atol) {
+    return Lapack_PSD_Normalized_Congruence_Matrix(H, J, "H", "IDM subspace matrix", rtol, atol);
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix_Subspace(
+    const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double rtol,
+    double atol) {
+    return_error<SymPosDefMatrix<double>, Lapack_DCC_Matrix_Subspace> Error;
+
+    if (H.nrows() != H.ncols())
+        return Error("DCC subspace matrix: H is not square");
+    if (J.nrows() != J.ncols())
+        return Error("DCC subspace matrix: J is not square");
+    if (H.nrows() != J.nrows())
+        return Error("DCC subspace matrix: incompatible dimensions");
+    if (!matrix_has_only_finite(H) || !matrix_has_only_finite(J))
+        return Error("DCC subspace matrix: non-finite input");
+
+    auto maybe_eigs = retained_psd_eigensystem(H, "H", rtol, atol, true);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+    const auto& eigs = maybe_eigs.value();
+    auto basis = retained_basis(eigs);
+    auto kept_eigenvalues = retained_eigenvalues(eigs);
+
+    auto projected = project_to_basis(basis, J);
+    DiagonalMatrix<double> inv_diag(kept_eigenvalues.nrows(), kept_eigenvalues.ncols(), false);
+    for (std::size_t i = 0; i < inv_diag.size(); ++i)
+        inv_diag[i] = 1.0 / kept_eigenvalues[i];
+
+    auto reduced = inv_diag * projected * inv_diag;
+    auto maybe_validated = validate_psd_dense(reduced, "DCC subspace matrix", rtol, atol);
+    if (!maybe_validated)
+        return Error(maybe_validated.error()());
+
+    return dense_to_semidefinite(embed_from_basis(basis, maybe_validated.value()));
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_Sample_Distortion_Matrix_Subspace(
+    const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J_sample, double rtol,
+    double atol) {
+    return Lapack_PSD_Normalized_Congruence_Matrix(H, J_sample, "H",
+                                                   "sample distortion subspace matrix", rtol,
+                                                   atol);
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_Correlation_Distortion_Matrix_Subspace(
+    const SymPosDefMatrix<double>& J_sample, const SymPosDefMatrix<double>& J_total, double rtol,
+    double atol) {
+    return Lapack_PSD_Normalized_Congruence_Matrix(
+        J_sample, J_total, "J_sample", "correlation distortion subspace matrix", rtol, atol);
+}
+
 inline SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
                                                  const SymPosDefMatrix<double>& R) {
     assert(C.nrows() == C.ncols());
@@ -2331,6 +2624,12 @@ inline SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C
         for (std::size_t j = i; j < out.ncols(); ++j)
             out.set(i, j, 0.5 * (dense_out(i, j) + dense_out(j, i)));
     return out;
+}
+
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
+    const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double rtol, double atol) {
+    return Lapack_PSD_Congruence_Matrix(C, R, "C_sample", "reconstituted distortion matrix", rtol,
+                                        atol);
 }
 
 template <class T>
