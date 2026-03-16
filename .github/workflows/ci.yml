@@ -18,7 +18,7 @@ jobs:
         preset: [ gcc-release ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install dependencies
         run: sudo apt-get install -y libblas-dev liblapack-dev libgsl-dev
@@ -45,7 +45,7 @@ jobs:
           lscpu > "$stats_dir/cpu.txt"
 
       - name: Upload stats inputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compile-stats-${{ matrix.preset }}
           path: stats/${{ matrix.preset }}
@@ -57,11 +57,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Download stats inputs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: stats
       - name: Append compile stats
