@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "lapack_headers.h"
 #include "matrix.h"
 
 using ::Matrix;
