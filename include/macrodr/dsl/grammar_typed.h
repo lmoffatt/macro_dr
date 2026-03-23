@@ -404,11 +404,12 @@ class typed_identifier_ref_const
         auto literal =
             dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(May_x.value());
         if (!literal) {
+            auto expected = type_name<T>();
             auto actual = type_name(*May_x.value());
-            return error_message(std::string("identifier '") + m_id() +
-                                 "' is not bound to the expected reference type (actual: " +
-                                 actual + ")");
-        }
+                  return error_message(std::string("\n\tIdentifier '") + m_id() +
+                                 "' is not bound to the expected reference type \n\t\texpected: \n\t\t\t" +
+                                 expected + ", \n\t\tactual: \n\t\t\t" + actual+ "\n" );
+  }
         return std::cref(literal->value_ref());
     }
 };
@@ -432,10 +433,11 @@ class typed_identifier_ref
         auto literal_const =
             dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(May_x.value());
         if (!literal_const) {
+            auto expected = type_name<T>();
             auto actual = type_name(*May_x.value());
-            return error_message(std::string("identifier '") + m_id() +
-                                 "' is not bound to the expected reference type (actual: " +
-                                 actual + ")");
+            return error_message(std::string("\nIdentifier '") + m_id() +
+                                 "' is not bound to the expected reference type \n\texpected: \n\t\t" +
+                                 expected + ", \n\tactual: \n\t\t" + actual+ "\n" );
         }
         auto literal = const_cast<typed_literal<Lexer, Compiler, T>*>(literal_const);
         return std::ref(literal->value_ref());
@@ -543,7 +545,7 @@ class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
     Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const override {
         auto maybe_expr = expr()->run_expression_unique(env);
         if (!maybe_expr) {
-            return error_message(std::string("\n in assignment to ") + id()() + " : " +
+            return error_message(std::string("\nIn assignment to ") + id()() + ": " +
                                  maybe_expr.error()());
         }
         env.insert(id(), std::move(maybe_expr.value()));

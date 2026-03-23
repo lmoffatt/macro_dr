@@ -59,28 +59,28 @@ macro_IRV = build_likelihood_function(model =model,
             variance_approximation = 1, taylor_variance_correction = 0)
 
 likelihood_diagnostic_IRV = calc_likelihood_diagnostic(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_IRV = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IRV,
    path= "figure_1_likelihood_diagnostic_IRV")
 
 
 likelihood_diagnostic_NR = calc_likelihood_diagnostic(model =model, parameters=par_tr, experiment =experiment, 
-data = simulation,adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
+simulation = simulation,adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
             variance_approximation = 0, taylor_variance_correction = 0)
 
 diagnostic_file_NR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_NR,
    path= "figure_1_likelihood_diagnostic_NR")
 
 likelihood_diagnostic_R = calc_likelihood_diagnostic(likelihood_algorithm =macro_R, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_R = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_R,
    path= "figure_1_likelihood_diagnostic_R")
 
 
 likelihood_diagnostic_MNR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNR, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNR,
    path= "figure_1_likelihood_diagnostic_MNR")
@@ -88,14 +88,14 @@ diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation,
 
 
 likelihood_diagnostic_MR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MR, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_MR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MR,
    path= "figure_1_likelihood_diagnostic_MR")
 
 
 likelihood_diagnostic_MNRV = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNRV, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_MNRV = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNRV,
    path= "figure_1_likelihood_diagnostic_MNRV")
@@ -103,7 +103,7 @@ diagnostic_file_MNRV = write_csv(experiment= experiment, simulation = simulation
 
 
 likelihood_diagnostic_MRV = calc_likelihood_diagnostic(likelihood_algorithm =macro_MRV, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_MRV = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MRV,
    path= "figure_1_likelihood_diagnostic_MRV")
@@ -111,7 +111,7 @@ diagnostic_file_MRV = write_csv(experiment= experiment, simulation = simulation,
 
 
 likelihood_diagnostic_IR = calc_likelihood_diagnostic(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment, 
-data = simulation)
+simulation = simulation)
 
 diagnostic_file_IR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IR,
    path= "figure_1_likelihood_diagnostic_IR")

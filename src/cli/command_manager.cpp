@@ -363,7 +363,7 @@ dsl::Compiler make_compiler_new() {
         dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
                                const var::Parameters_transformed&, const Experiment&, const Simulated_Recording<var::please_include<>>&&>(
             &cmd::calculate_simulated_mlikelihood_diagnostics, "likelihood_algorithm", "parameters",
-            "experiment", "data"));
+            "experiment", "simulation"));
 
 
     cm.push_function(
@@ -489,7 +489,7 @@ cm.push_function(
                                const var::Parameters_transformed&, const Experiment&, 
                                const  Simulated_Recording<var::please_include<>>&&,
                                bool, bool, int, bool, bool>(
-            &cmd::calculate_simulation_likelihood_diagnostics, "model", "parameters", "experiment", "data",
+            &cmd::calculate_simulation_likelihood_diagnostics, "model", "parameters", "experiment", "simulation",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
             "variance_approximation", "taylor_variance_correction"));
 
