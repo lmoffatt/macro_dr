@@ -416,7 +416,7 @@ class field_compiler {
             }
             auto out = compile_this_argument(cm, ptr->expression());
             if (!out) {
-                return error_message(std::string("\nargument ") + ptr->id()()() + ": \n" +
+                return error_message(std::string("\n\t\t\targument ") + ptr->id()()() + ": \n\t\t\t\t" +
                                      out.error()());
             }
             return out;
@@ -427,7 +427,7 @@ class field_compiler {
             return compile_this_argument(cm, *ptr2);
         }
         return error_message(
-            "if it is  neither an assigment nor an expression, what the fuck is it?");
+            "\nif it is  neither an assigment nor an expression, what the fuck is it?");
     }
 };
 
@@ -1087,8 +1087,8 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
                 std::move(invoker), std::tuple<>{});
         } else {
             if (args.arg().size() != sizeof...(Is)) {
-                return error_message("count mismatch: expected ", sizeof...(Is), ", got ",
-                                     args.arg().size(),"\n expected arguments ",(get<Is>(m_args).id()()+" ")..., "found:  ", args.str());
+                return error_message("\n\t\tcount mismatch: \n\t\t\texpected ", sizeof...(Is), "\n\t\t\tgot ",
+                                     args.arg().size(),"\n\t\t\texpected arguments ",(get<Is>(m_args).id()()+" ")..., "\n\t\t\tfound:  ", args.str());
             }
             auto Maybe_tuple = promote_Maybe_error(
                 std::tuple(std::get<Is>(m_args).compile_this_argument(cm, args.arg()[Is])...));

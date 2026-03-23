@@ -386,7 +386,7 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
             }
             // Accumulate diagnostics (best-effort, do not explode)
 
-            errors += std::to_string(i_overload) + " overload: " + attempt.error()();
+            errors += std::to_string(i_overload +1 ) + " overload: " + attempt.error()();
             ++i_overload;
             errors += "\n\n";
         }
