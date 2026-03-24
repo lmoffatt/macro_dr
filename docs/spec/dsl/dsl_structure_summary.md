@@ -112,9 +112,16 @@ Rules (same as for function arguments):
 
 * `T`, `const T` → stored as `T` (decayed)
 * `T&`, `const T&` → stored as `std::reference_wrapper<T>` / `std::reference_wrapper<const T>`
-* `const IModel<...>&` → stored as `std::unique_ptr<IModel<...>>`
+* `ModelPtr` → stored as `ModelPtr`
+* `ModelPtr&`, `const ModelPtr&` → stored as
+  `std::reference_wrapper<ModelPtr>` /
+  `std::reference_wrapper<const ModelPtr>`
 
 This guarantees that vectors/tuples behave consistently with function parameters, including ownership and reference semantics.
+
+The older `const IModel<...>&` ownership exception is obsolete. Model-like
+polymorphic values should now cross the DSL boundary through explicit owning
+handles such as `ModelPtr`.
 
 ### 5.3 element_compiler
 
@@ -202,4 +209,3 @@ class tuple_compiler {
 
 
 *Keep this document for reference when evolving the DSL's compilation strategy.*
-

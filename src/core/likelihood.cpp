@@ -158,13 +158,14 @@ auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLi
         modelLikelihood_v);
 }
 
-auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model0,
+auto calculate_likelihood(const ModelPtr& model0,
                           const var::Parameters_transformed& par, const Experiment& e,
                           const Recording& r, bool adaptive_approximation,
                           bool recursive_approximation, int averaging_approximation,
                           bool variance_approximation,
                           bool taylor_variance_correction_approximation)
     -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
+    const auto& model_ref = *model0;
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -176,7 +177,7 @@ auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            decltype(model0)>(model0, nsub,
+            decltype(model_ref)>(model_ref, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
                               uses_recursive_aproximation_value(recursive_approximation),
                               uses_averaging_aproximation_value(averaging_approximation),
@@ -197,7 +198,7 @@ auto calculate_likelihood(const interface::IModel<var::Parameters_values>& model
         modelLikelihood_v);
 }
 
-auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& model0,
+auto calculate_dlikelihood(const ModelPtr& model0,
                            const var::Parameters_transformed& par, const Experiment& e,
                            const Recording& r, bool adaptive_approximation,
                            bool recursive_approximation, int averaging_approximation,
@@ -208,7 +209,7 @@ auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& mode
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto dmodel = load_dmodel(model0.model_name());
+    auto dmodel = load_dmodel(model0->model_name());
     if (!dmodel) {
         return dmodel.error();
     }
@@ -240,7 +241,7 @@ auto calculate_dlikelihood(const interface::IModel<var::Parameters_values>& mode
         modelLikelihood_v);
 }
 
-auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& model0,
+auto calculate_diff_likelihood(const ModelPtr& model0,
                                const var::Parameters_transformed& par, const Experiment& e,
                                const Recording& r, bool adaptive_approximation,
                                bool recursive_approximation, int averaging_approximation,
@@ -251,7 +252,7 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto dmodel = load_dmodel(model0.model_name());
+    auto dmodel = load_dmodel(model0->model_name());
     if (!dmodel) {
         return dmodel.error();
     }
@@ -283,13 +284,14 @@ auto calculate_diff_likelihood(const interface::IModel<var::Parameters_values>& 
         modelLikelihood_v);
 }
 
-auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_values>& model0,
+auto calculate_likelihood_predictions(const ModelPtr& model0,
                                       const var::Parameters_transformed& par, const Experiment& e,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
                                       bool taylor_variance_correction_approximation)
     -> Maybe_error<Macro_State_Ev_predictions> {
+    const auto& model_ref = *model0;
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -301,7 +303,7 @@ auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_va
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            decltype(model0)>(model0, nsub,
+            decltype(model_ref)>(model_ref, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
                               uses_recursive_aproximation_value(recursive_approximation),
                               uses_averaging_aproximation_value(averaging_approximation),
@@ -322,13 +324,14 @@ auto calculate_likelihood_predictions(const interface::IModel<var::Parameters_va
         modelLikelihood_v);
 }
 
-auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_values>& model0,
+auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                                       const var::Parameters_transformed& par, const Experiment& e,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
                                       bool taylor_variance_correction_approximation)
     -> Maybe_error<Macro_State_Ev_diagnostic> {
+    const auto& model_ref = *model0;
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -340,7 +343,7 @@ auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_va
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            decltype(model0)>(model0, nsub,
+            decltype(model_ref)>(model_ref, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
                               uses_recursive_aproximation_value(recursive_approximation),
                               uses_averaging_aproximation_value(averaging_approximation),
@@ -361,7 +364,7 @@ auto calculate_likelihood_diagnostics(const interface::IModel<var::Parameters_va
         modelLikelihood_v);
 }
 
-auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_values>& model0,
+auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                                        const var::Parameters_transformed& par, const Experiment& e,
                                        const Recording& r, bool adaptive_approximation,
                                        bool recursive_approximation, int averaging_approximation,
@@ -372,7 +375,7 @@ auto calculate_dlikelihood_predictions(const interface::IModel<var::Parameters_v
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto dmodel = load_dmodel(model0.model_name());
+    auto dmodel = load_dmodel(model0->model_name());
     if (!dmodel) {
         return dmodel.error();
     }

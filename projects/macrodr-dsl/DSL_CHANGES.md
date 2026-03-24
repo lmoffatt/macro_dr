@@ -174,6 +174,26 @@ Signals of draft/generated status:
 They remain useful explanatory documents, but they should not outrank the
 current implementation files.
 
+### 11. Model ownership at the DSL boundary was simplified
+
+Earlier DSL documentation described a special storage exception:
+
+- `const IModel<...>&` -> stored as owning `std::unique_ptr<IModel<...>>`
+
+That is no longer true.
+
+Current reality:
+
+- model-like values are stored in the environment as `ModelPtr`
+- creators return `ModelPtr`
+- ordinary readers of a model now accept `const ModelPtr&`
+- the special `IModel` storage exception was removed from
+  `function_argument_storage_t`
+
+This is an architectural cleanup, not just a cosmetic typedef change. It makes
+the DSL storage model generic again and avoids adding one special ownership rule
+per polymorphic family.
+
 ## Updated documentation rule for the DSL project
 
 For current DSL work:

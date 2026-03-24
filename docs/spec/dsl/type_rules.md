@@ -81,11 +81,22 @@ with the following cases:
 * `U` or `const U` → `storage_t = std::remove_cvref_t<U>`
 * `U&` or `const U&` → `storage_t = std::reference_wrapper<U>` /
   `std::reference_wrapper<const U>`
-* `const IModel<ParamValues...>&` → `storage_t = std::unique_ptr<IModel<ParamValues...>>`
+* `ModelPtr` → `storage_t = ModelPtr`
+* `ModelPtr&` or `const ModelPtr&` →
+  `storage_t = std::reference_wrapper<ModelPtr>` /
+  `std::reference_wrapper<const ModelPtr>`
 
 `field_compiler` (for function parameters) and `element_compiler` (for
 vector/tuple elements) always compile to `typed_expression<storage_t>` and
 later adapt to `U` at runtime.
+
+The older special case
+
+* `const IModel<ParamValues...>&` → `storage_t = std::unique_ptr<IModel<ParamValues...>>`
+
+is no longer part of the current DSL model. Model-like polymorphic values are
+expected to enter the environment as explicit owning handles and be consumed by
+ordinary readers through `const ModelPtr&`.
 
 ### Vector Type Rule
 

@@ -8,27 +8,27 @@
 #include "CLI_macro_dr_base.h"
 #include "maybe_error.h"
 #include "parameters.h"
+#include "patch_model.h"
 //#include "parameters_derivative.h"
-#include <macrodr/interface/IModel.h>
 
 #include "qmodel.h"
 
 namespace macrodr::cmd {
 
 Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const ModelPtr& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, 
+    const ModelPtr& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const ModelPtr& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, 
+    const ModelPtr& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 inline Simulated_Recording<var::please_include<>> remove_intervals(
@@ -39,19 +39,19 @@ inline Simulated_Recording<var::please_include<>> remove_intervals(
 
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,std::size_t n_simulations,
+    const ModelPtr& model, const var::Parameters_values& par,std::size_t n_simulations,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, std::size_t n_simulations,
+    const ModelPtr& model, const var::Parameters_transformed& par, std::size_t n_simulations,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>> run_n_simulations_with_sub_intervals(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,  std::size_t n_simulations,
+    const ModelPtr& model, const var::Parameters_values& par,  std::size_t n_simulations,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>> run_simulations_with_sub_intervals(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par, std::size_t n_simulations,  
+    const ModelPtr& model, const var::Parameters_transformed& par, std::size_t n_simulations,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
 
 inline std::vector<Simulated_Recording<var::please_include<>>> remove_n_intervals(
