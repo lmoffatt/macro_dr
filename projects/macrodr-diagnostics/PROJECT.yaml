@@ -1,0 +1,81 @@
+id: macrodr-diagnostics
+name: MacroDR Diagnostics
+type: project
+program: macroir
+status: active
+stage: framed
+publication_relevance: irrelevant
+summary: >
+  Improve parser/runtime diagnostics and error reporting across MacroDR, using
+  current failing workflows such as eLife figure scripts as acceptance cases.
+
+purpose: >
+  Make MacroDR failures easier to diagnose by providing better context and more
+  actionable error output.
+
+scope:
+  in:
+    - parser-facing diagnostics
+    - runtime error reporting
+    - script context reporting
+    - acceptance on real failing workflows
+  out:
+    - broad DSL redesign
+    - unrelated algorithmic changes
+    - paper writing
+
+deliverables:
+  - diagnostics project home
+  - current failure inventory
+  - improved diagnostic output
+  - acceptance on real workflows
+
+success_criteria:
+  - project identity is explicit
+  - representative failures are documented
+  - diagnostics expose better context
+  - at least one real workflow benefits
+
+checks:
+  - id: project_defined
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-diagnostics/PROJECT.md
+  - id: project_manifest_drafted
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-diagnostics/PROJECT.yaml
+  - id: failure_inventory_exists
+    type: design
+    required: true
+    status: pending
+    evidence: future diagnostics issue inventory
+  - id: improved_diagnostics_implemented
+    type: code
+    required: true
+    status: pending
+    evidence: future code changes
+  - id: workflow_acceptance_recorded
+    type: validation
+    required: true
+    status: pending
+    evidence: future acceptance on a failing workflow
+
+current_status:
+  completed:
+    - project need identified from active execution work
+    - project identity documents created
+  in_progress:
+    - defining the diagnostics scope and initial acceptance cases
+  next:
+    - inventory current failure cases
+    - identify DSL-dependent diagnostics needs
+    - implement first reporting improvements
+
+exit_criteria:
+  - project identity docs exist
+  - failure inventory exists
+  - improved diagnostics are implemented
+  - one real workflow shows better reporting

@@ -1,0 +1,98 @@
+id: macrodr-dsl
+name: MacroDR DSL
+type: project
+program: macroir
+status: active
+stage: framed
+publication_relevance: optional
+summary: >
+  Develop the MacroDR DSL as a bounded baseline project, especially where DSL
+  structure affects diagnostics, scripting, and language usability.
+
+purpose: >
+  Provide an explicit project home for DSL improvements needed by active
+  workflows and diagnostics work.
+
+scope:
+  in:
+    - DSL improvement inventory
+    - language/interface cleanup for active workflows
+    - diagnostics-enabling DSL changes
+  out:
+    - full language replacement
+    - unrelated runtime refactors
+    - project-specific figure logic
+
+deliverables:
+  - DSL project home
+  - DSL improvement inventory
+  - reconstructed DSL document
+  - DSL documentation delta
+  - first DSL improvement set
+  - diagnostics-enabling DSL changes
+
+success_criteria:
+  - project identity is explicit
+  - DSL pain points are documented
+  - the current DSL is reconstructed from docs and code
+  - DSL drift from older docs is explicit
+  - a bounded DSL improvement set is defined
+  - linkage to diagnostics is explicit
+
+checks:
+  - id: project_defined
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-dsl/PROJECT.md
+  - id: project_manifest_drafted
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-dsl/PROJECT.yaml
+  - id: dsl_inventory_exists
+    type: design
+    required: true
+    status: pass
+    evidence: projects/macrodr-dsl/INVENTORY.md
+  - id: dsl_reconstruction_written
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-dsl/DSL_RECONSTRUCTION.md
+  - id: dsl_doc_drift_recorded
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-dsl/DSL_CHANGES.md
+  - id: first_dsl_improvement_set_defined
+    type: design
+    required: true
+    status: pending
+    evidence: future bounded DSL improvement set
+  - id: diagnostics_linkage_defined
+    type: governance
+    required: true
+    status: pending
+    evidence: future mapping to diagnostics work
+
+current_status:
+  completed:
+    - project need identified from diagnostics and scripting work
+    - project identity documents created
+    - first DSL inventory file created
+    - current DSL reconstructed from docs and implementation anchors
+    - DSL documentation drift recorded explicitly
+  in_progress:
+    - defining the DSL scope and initial pain points
+    - seeding the inventory from active project failures
+  next:
+    - inspect the figure_1 workflow in detail
+    - identify diagnostics-enabling language changes
+    - define the first bounded DSL improvement set
+
+exit_criteria:
+  - project identity docs exist
+  - DSL inventory exists
+  - first DSL improvement set is defined
+  - diagnostics linkage is documented

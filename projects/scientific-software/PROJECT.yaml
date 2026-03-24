@@ -1,0 +1,77 @@
+id: scientific-software
+name: Scientific Software
+type: project
+program: macroir
+status: active
+stage: framed
+publication_relevance: optional
+summary: >
+  Track and curate the scientific-software theory line of work that forms part
+  of the conceptual foundation of the MacroIR / MacroDR program.
+
+purpose: >
+  Give the scientific-software workstream an explicit project home so its
+  documents can be classified, curated, promoted, and later internally split
+  if needed.
+
+scope:
+  in:
+    - project definition
+    - document classification
+    - first promoted scientific-software theory set
+    - support for future papers or subprojects
+  out:
+    - whole-repository reorganization
+    - MacroIR-specific mathematical theory
+    - unrelated implementation refactors
+
+deliverables:
+  - project definition
+  - initial document classification
+  - first promoted scientific-software theory set
+
+success_criteria:
+  - project has explicit identity
+  - scientific-software documents are distinguishable from MacroIR theory
+  - first promoted theory set can be identified
+  - later internal project splitting remains possible
+
+checks:
+  - id: project_folder_exists
+    type: structural
+    required: true
+    status: pass
+    evidence: projects/scientific-software/
+  - id: project_manifest_exists
+    type: structural
+    required: true
+    status: pass
+    evidence: projects/scientific-software/PROJECT.yaml
+  - id: program_registration_exists
+    type: governance
+    required: true
+    status: pending
+    evidence: projects/program-project-framework/PROGRAM.yaml
+  - id: initial_document_classification_exists
+    type: curation
+    required: true
+    status: pending
+    evidence: future classification document
+
+current_status:
+  completed:
+    - project folder created
+    - project definition written
+    - project manifest drafted
+  in_progress:
+    - registration in the program manifest
+  next:
+    - classify candidate scientific-software documents
+    - identify the first promoted theory set
+
+exit_criteria:
+  - README exists
+  - PROJECT.md exists
+  - PROJECT.yaml exists
+  - program registration exists
+  - first classification step exists

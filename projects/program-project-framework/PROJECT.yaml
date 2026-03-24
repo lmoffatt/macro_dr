@@ -1,0 +1,90 @@
+id: program-project-framework
+name: Program/Project Framework
+type: project
+program: macroir
+status: drafted
+stage: framed
+publication_relevance: optional
+summary: >
+  Define the vocabulary, manifests, lifecycle model, and repository
+  organization rules used to manage the MacroIR / MacroDR program.
+
+purpose: >
+  Build a practical framework that distinguishes program, baseline, project,
+  paper, release, run, artifact, and archive, and that can guide the
+  reorganization of the repository.
+
+scope:
+  in:
+    - canonical vocabulary
+    - draft PROGRAM.yaml and PROJECT.yaml manifests
+    - lifecycle and validation model
+    - top-level organization model for macro_dr
+    - document splitting rule
+  out:
+    - full repository reorganization
+    - file migration across the whole repo
+    - complete automation tooling
+    - rigid final ontology for all future work
+
+deliverables:
+  - vocabulary document
+  - lifecycle and checks document
+  - organization model
+  - draft PROJECT.yaml
+  - draft PROGRAM.yaml
+
+success_criteria:
+  - vocabulary is usable and internally consistent
+  - project and program manifests are justified by checks
+  - baseline is clearly distinguished from project
+  - framework supports non-paper deliverables
+  - framework can be used immediately in macro_dr
+
+checks:
+  - id: vocabulary_defined
+    type: conceptual
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/VOCABULARY.md
+  - id: lifecycle_defined
+    type: conceptual
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/LIFECYCLE.md
+  - id: organization_model_defined
+    type: structural
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/ORGANIZATION.md
+  - id: project_manifest_drafted
+    type: operational
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/PROJECT.yaml
+  - id: program_manifest_drafted
+    type: operational
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/PROGRAM.yaml
+  - id: applied_to_repo_reorganization
+    type: structural
+    required: true
+    status: pending
+    evidence: future Project 2
+
+current_status:
+  completed:
+    - vocabulary document drafted
+    - lifecycle model drafted
+    - organization model drafted
+    - project and program manifests drafted
+  in_progress:
+    - refinement through use in macro_dr
+  next:
+    - start repository reorganization project
+
+exit_criteria:
+  - all required draft documents exist
+  - manifest terms align with vocabulary
+  - framework is good enough to drive Project 2

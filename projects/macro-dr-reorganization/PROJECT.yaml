@@ -1,0 +1,119 @@
+id: macro-dr-reorganization
+name: MacroDR Reorganization
+type: project
+program: macroir
+status: active
+stage: validated
+publication_relevance: irrelevant
+summary: >
+  Reorganize the macro_dr repository to reflect the MacroIR program framework
+  and clearly separate program, theory, code, projects, papers, and archive.
+
+purpose: >
+  Translate the framework from Project 1 into a concrete repository structure
+  and migration plan for macro_dr.
+
+scope:
+  in:
+    - repository classification
+    - target directory model
+    - phased migration plan
+    - canonical-vs-archive mapping
+    - initial structural scaffolding
+  out:
+    - full content rewrite
+    - one-step total cleanup
+    - scientific content changes
+    - heavy automation tooling
+
+deliverables:
+  - repository classification document
+  - target directory model for macro_dr
+  - phased migration plan
+  - canonical-vs-archive mapping
+  - initial reorganized scaffolding
+  - first conservative theory and paper promotions
+
+success_criteria:
+  - each major material class has a clear destination
+  - active and archive materials are distinguishable
+  - papers are separated from execution projects
+  - code docs are separated from exploratory theory
+  - migration can proceed incrementally
+
+checks:
+  - id: project_defined
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macro-dr-reorganization/PROJECT.md
+  - id: project_manifest_drafted
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macro-dr-reorganization/PROJECT.yaml
+  - id: repository_classification_written
+    type: structural
+    required: true
+    status: pass
+    evidence: projects/macro-dr-reorganization/CLASSIFICATION.md
+  - id: target_directory_model_written
+    type: structural
+    required: true
+    status: pass
+    evidence: projects/macro-dr-reorganization/TARGET.md
+  - id: migration_plan_written
+    type: structural
+    required: true
+    status: pass
+    evidence: projects/macro-dr-reorganization/MIGRATION.md
+  - id: canonical_archive_mapping_written
+    type: governance
+    required: true
+    status: pass
+    evidence: projects/macro-dr-reorganization/MAPPING.md
+  - id: initial_structural_scaffolding_applied
+    type: structural
+    required: true
+    status: pass
+    evidence: README.md, program/, theory/, papers/
+  - id: first_theory_promotions_applied
+    type: structural
+    required: true
+    status: pass
+    evidence: theory/scientific-software/docs/, theory/macroir/docs/, theory/macroir/notes/, theory/macroir/archive/
+  - id: first_paper_promotions_applied
+    type: structural
+    required: true
+    status: pass
+    evidence: papers/macroir-elife-2025/, papers/archive/
+
+current_status:
+  completed:
+    - project folder created
+    - initial project definition written
+    - repository classification written
+    - target directory model written
+    - migration plan written
+    - canonical-vs-archive mapping written
+    - first top-level migration scaffolding applied
+    - first conservative theory promotions applied
+    - first conservative paper promotions applied
+    - `docs/eLife 2025/` migrated into paper-local docs and archive structure
+    - `docs/theoretical results/` migrated into theory structure
+    - `docs/audios/` migrated into program source-notes structure
+    - stale legacy docs archived under `program/archive/legacy-docs/`
+    - canonical program manifest promoted to `program/PROGRAM.yaml`
+  in_progress:
+    - project closeout and remaining archive/navigation decisions
+  next:
+    - confirm any remaining Communications Biology archive material
+    - optionally refine final navigation links
+    - mark the project as delivered
+
+exit_criteria:
+  - classification exists
+  - target directory model exists
+  - migration plan exists
+  - canonical-vs-archive mapping exists
+  - first reorganization moves have been applied
