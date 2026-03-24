@@ -186,7 +186,7 @@ inline Maybe_error<std::string> load_environment_json(
             using ModelPtr = std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>;
             ModelPtr model = std::move(handle.value());
             auto literal = std::make_unique<typed_literal<Lexer, Compiler, ModelPtr>>(std::move(model));
-            env.insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(literal->clone()));
+            env.insert(id, clone_strict(literal.get()));
             env.push_back(id, new Identifier_compiler<Lexer, Compiler, ModelPtr>(literal.release()));
             load_status = {};
         } else {
