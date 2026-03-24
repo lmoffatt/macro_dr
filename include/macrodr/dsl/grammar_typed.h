@@ -120,7 +120,7 @@ class Environment {
         insert(id, std::unique_ptr<base_typed_expression<Lexer, Compiler>>(expr));
     }
 
-    [[nodiscard]] Maybe_error<base_typed_expression<Lexer, Compiler> const*> get(
+    [[nodiscard]] Maybe_error<base_typed_expression<Lexer, Compiler> const*> get_RunValue(
         Identifier<Lexer> const& id) const {
         auto it = m_var.find(id);
         if (it == m_var.end()) {
@@ -149,8 +149,6 @@ class Environment {
 };
 
 template <class Lexer, class Compiler>
-class typed_argument_list;
-template <class Lexer, class Compiler>
 class base_Identifier_compiler;
 
 template <class Lexer, class Compiler>
@@ -162,8 +160,6 @@ class base_typed_statement {
     [[nodiscard]] virtual std::unique_ptr<base_typed_statement> clone_unique() const {
         return std::unique_ptr<base_typed_statement>(this->clone());
     }
-    virtual Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
-        typed_argument_list<Lexer, Compiler>* t_growing_list) const = 0;
     virtual Maybe_error<bool> run_statement(Environment<Lexer, Compiler>& env) const = 0;
 
     [[nodiscard]] virtual std::string type_name() const = 0;
@@ -188,8 +184,6 @@ class base_typed_assigment : public base_typed_statement<Lexer, Compiler> {
     [[nodiscard]] virtual Identifier<Lexer> const& id() const = 0;
     [[nodiscard]] virtual base_typed_expression<Lexer, Compiler>* expr() const = 0;
 
-    Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
-        typed_argument_list<Lexer, Compiler>* t_growing_list) const override;
 };
 
 template <class Lexer, class Compiler>
@@ -220,10 +214,6 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
         Identifier<Lexer> id) {
         return std::unique_ptr<base_typed_assigment<Lexer, Compiler>>(this->compile_assigment(id));
     }
-
-    MACRODR_DEPRECATED("Use compile_argument_list_unique() where applicable")
-    Maybe_error<typed_argument_list<Lexer, Compiler>*> compile_argument_list(
-        typed_argument_list<Lexer, Compiler>* t_growing_list) const override;
 
     MACRODR_DEPRECATED("Use run_expression_unique()")
     virtual Maybe_error<base_typed_expression<Lexer, Compiler>*> run_expression(
@@ -257,104 +247,6 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
     }
 };
 
-template <class Lexer, class Compiler>
-class typed_argument_list : public base_typed_expression<Lexer, Compiler> {
-    std::vector<std::unique_ptr<base_typed_expression<Lexer, Compiler>>> m_vec;
-    std::map<Identifier<Lexer>, std::unique_ptr<base_typed_expression<Lexer, Compiler>>> m_map;
-
-   public:
-    [[nodiscard]] std::string type_name() const override { return "argument_list"; }
-    ~typed_argument_list() override = default;
-    [[nodiscard]] typed_argument_list* clone() const override {
-        return new typed_argument_list(*this);
-    }
-    typed_argument_list(const typed_argument_list& other)
-        : m_vec(clone_vector(other.m_vec)), m_map{clone_map(other.m_map)} {}
-    typed_argument_list(typed_argument_list&&) noexcept = default;
-    typed_argument_list& operator=(typed_argument_list&&) noexcept = default;
-    typed_argument_list& operator=(const typed_argument_list& other) {
-        if (this != &other) {
-            m_vec = clone_vector(other.m_vec);
-            m_map = clone_map(other.m_map);
-        }
-        return *this;
-    }
-    [[nodiscard]] auto& arg_vector() const { return m_vec; }
-    [[nodiscard]] auto& arg_map() const { return m_map; }
-    void insert_assigment(base_typed_assigment<Lexer, Compiler> const& ass) {
-        m_map[ass.id()] =
-            std::unique_ptr<base_typed_expression<Lexer, Compiler>>(ass.expr()->clone());
-    }
-
-    Maybe_error<bool> push_back_expression(base_typed_expression<Lexer, Compiler> const& expr) {
-        if (!m_map.empty()) {
-            return error_message("assigment after expression in argument list");
-        }
-        m_vec.emplace_back(expr.clone());
-        return true;
-    }
-
-    typed_argument_list() = default;
-    base_typed_assigment<Lexer, Compiler>* compile_assigment(Identifier<Lexer> /*id*/) override {
-        return nullptr;
-    }
-
-    [[nodiscard]] base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const override {
-        return nullptr;
-    }
-
-    [[nodiscard]] base_typed_expression<Lexer, Compiler>* compile_identifier(
-        Identifier<Lexer> /*id*/) const override {
-        return nullptr;
-    };
-
-    // base_typed_expression interface
-
-    Maybe_error<dsl::base_typed_expression<Lexer, Compiler>*> run_expression(
-        dsl::Environment<Lexer, Compiler>& /*env*/) const override {
-        return error_message("no reason to get here");
-    }
-};
-
-template <class Lexer, class Compiler, class... T>
-class typed_argument_typed_list : public base_typed_expression<Lexer, Compiler> {
-    std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, T>>...> m_args;
-
-   public:
-    std::string type_name() const override { return "typed_argument_list"; }
-    virtual ~typed_argument_typed_list() = default;
-    virtual typed_argument_typed_list* clone() const override {
-        return new typed_argument_typed_list(clone_tuple(m_args));
-    }
-    typed_argument_typed_list(
-        std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, T>>...>&& t)
-        : m_args{std::move(t)} {}
-    auto& args() const { return m_args; }
-
-    virtual base_Identifier_compiler<Lexer, Compiler>* compile_identifier() const override {
-        return nullptr;
-    };
-
-    virtual base_typed_expression<Lexer, Compiler>* compile_identifier(
-        Identifier<Lexer> /*id*/) const override {
-        return nullptr;
-    };
-
-    virtual base_typed_assigment<Lexer, Compiler>* compile_assigment(
-        Identifier<Lexer> /*id*/) override {
-        return nullptr;
-    };
-
-    // base_typed_statement interface
-
-    // base_typed_expression interface
-
-    Maybe_error<dsl::base_typed_expression<Lexer, Compiler>*> run_expression(
-        dsl::Environment<Lexer, Compiler>& /*env*/) const override {
-        return error_message("still unresolved");
-    }
-};
-
 template <class Lexer, class Compiler, class T>
 class typed_assigment;
 template <class Lexer, class Compiler, class T>
@@ -370,7 +262,7 @@ class typed_identifier : public typed_expression<Lexer, Compiler, T> {
     [[nodiscard]] typed_identifier* clone() const override { return new typed_identifier(*this); }
 
     [[nodiscard]] Maybe_error<T> run(Environment<Lexer, Compiler> const& env) const override {
-        auto May_x = env.get(m_id);
+        auto May_x = env.get_RunValue(m_id);
         if (!May_x) {
             return May_x.error();
         }
@@ -397,7 +289,7 @@ class typed_identifier_ref_const
 
     Maybe_error<std::reference_wrapper<const T>> run(
         const Environment<Lexer, Compiler>& env) const override {
-        auto May_x = env.get(m_id);
+        auto May_x = env.get_RunValue(m_id);
         if (!May_x) {
             return May_x.error();
         }
@@ -546,7 +438,7 @@ class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
         auto maybe_expr = expr()->run_expression_unique(env);
         if (!maybe_expr) {
             return error_message(std::string("\nIn assignment to ") + id()() + ": " +
-                                 maybe_expr.error()());
+                                 maybe_expr.error()()+"\n");
         }
         env.insert(id(), std::move(maybe_expr.value()));
         return true;
@@ -1221,301 +1113,6 @@ class typed_program {
     }
 };
 
-template <class Lexer, class Compiler>
-Maybe_error<typed_argument_list<Lexer, Compiler>*>
-    base_typed_assigment<Lexer, Compiler>::compile_argument_list(
-        typed_argument_list<Lexer, Compiler>* t_growing_list) const {
-    t_growing_list->insert_assigment(*this);
-    return t_growing_list;
-}
-
-template <class Lexer, class Compiler>
-Maybe_error<typed_argument_list<Lexer, Compiler>*>
-    base_typed_expression<Lexer, Compiler>::compile_argument_list(
-        typed_argument_list<Lexer, Compiler>* t_growing_list) const {
-    auto May_be = t_growing_list->push_back_expression(*this);
-    if (!May_be) {
-        return May_be.error();
-    }
-    return t_growing_list;
-}
-
-/*
-
-template<class Lexer, class Compiler>
-    class base_typed_comment: public base_typed_literal<Lexer, Compiler>{
-    virtual ~base_typed_comment(){};
-    virtual std::string str() const = 0;
-    virtual base_typed_comment *clone() const = 0;
-
-};
-
-
-template<class Lexer, class Compiler>
-class base_typed_assigment: public base_typed_expression<Lexer, Compiler>{
-    virtual ~base_typed_assigment(){};
-    virtual std::string str() const = 0;
-    virtual base_typed_assigment *clone() const = 0;
-
-};
-
-template<class Lexer, class Compiler>
-class base_typed_argument_list: public base_typed_expression<Lexer, Compiler>{
-    virtual ~base_typed_argument_list(){};
-    virtual std::string str() const = 0;
-    virtual base_typed_argument_list *clone() const = 0;
-
-};
-
-*/
-
-/*
-
-template <class Lexer, class Compiler, class T>
-class typed_assignment : public typed_expression<Lexer, Compiler,T> {
-    std::unique_ptr<untyped_identifier<Lexer, Compiler>> m_id;
-    std::unique_ptr<typed_expression<Lexer, Compiler,T>> m_expr;
-
-public:
-    virtual ~typed_assignment(){};
-
-    // base_typed_statement interface
-public:
-
-
-    typed_assignment(untyped_identifier<Lexer, Compiler> *t_id,
-                       typed_expression<Lexer, Compiler,T> *t_expr)
-        : m_id{t_id}, m_expr{t_expr} {}
-
-    typed_assignment() {}
-    typed_assignment(typed_assignment &&other)
-        : m_id{std::move(other.m_id)}, m_expr{std::move(other.m_expr)} {}
-    typed_assignment(typed_assignment const &other)
-        : m_id{other.m_id->clone()}, m_expr{other.m_expr->clone()} {}
-
-    auto& id()const{ return *m_id;}
-    auto& expression()const{ return *m_expr;}
-
-
-    virtual std::string str() const override final {
-        return m_id->str() + std::string(Lexer::assignment_operator) +
-std::string(Lexer::assignment_sep) + m_expr->str();
-    }
-    virtual typed_assignment *clone() const override {
-        return new typed_assignment(*this);
-    };
-    virtual Maybe_error<typed_expression<Lexer,Compiler,T>*>
-    compile(const Compiler& t_cm, const untyped_expression<Lexer,Compiler>&
-t_expr)const{ if
-(t_expr.type_of_statement()!=untyped_assignment<Lexer,Compiler>::statement_type())
-        {
-            return error_message("");
-        }else
-        {
-            auto& v_asigm=dynamic_cast<untyped_assignment<Lexer,Compiler>const
-&>(t_expr); if (id().str()!=v_asigm.id().str())
-            {
-                return error_message("");
-            }else{
-                auto v_expr=expression().compile(t_cm,v_asigm.expression());
-                if (!v_expr)
-                    return v_expr.error();
-                else
-                {
-                    new
-typed_assignment<Lexer,Compiler,T>(id().clone(),v_expr.value());
-                }
-            }
-        }
-    }
-
-
-
-};
-
-
-
-template <class Lexer, class Compiler, class T>
-class typed_identifier : public typed_expression<Lexer, Compiler,T> {
-    Identifier<Lexer> m_id;
-
-public:
-    virtual ~typed_identifier(){};
-    typed_identifier(Identifier<Lexer> t_id) : m_id{t_id} {}
-    virtual typed_identifier *clone() const override {
-        return new typed_identifier(*this);
-    };
-
-    virtual std::string str() const override final { return m_id();}
-    virtual Maybe_error<typed_expression<Lexer,Compiler,T>*>
-    compile(const Compiler& t_cm, const untyped_expression<Lexer,Compiler>&
-t_expr)const{ return error_message("");
-    }
-
-
-    auto& operator()() const { return m_id; }
-};
-
-
-
-
-
-
-template <class Lexer, class Compiler, class T>
-    requires std::is_arithmetic_v<T>
-class typed_numeric_value : public typed_simple_expression<Lexer,Compiler,T> {
-    T m_number;
-public:
-    typed_numeric_value(T t_number): m_number{t_number}{}
-    virtual typed_numeric_value *clone() const override {
-        return new typed_numeric_value(*this);
-    };
-
-
-    virtual ~typed_numeric_value(){};
-};
-
-template < class Lexer, class Compiler>
-class typed_string_value : public typed_simple_expression<Lexer,std::string> {
-    std::string m_expression;
-
-public:
-
-    typed_string_value(std::string t_expression)
-        : m_expression{std::move(t_expression)} {}
-
-    virtual std::string str() const override  { return m_expression; };
-    auto &operator()() const { return m_expression; }
-};
-
-
-template < class Lexer, class Compiler>
-class typed_comment : public typed_statement<Lexer, Compiler> {
-    std::string m_comment;
-
-public:
-    typed_comment(std::string t_comment)
-        : m_comment{std::move(t_comment)} {}
-
-    virtual typed_comment *clone() const override {
-        return new typed_comment(*this);
-    };
-
-    virtual std::string str()const {
-        return std::string(Lexer::comment_start)+m_comment;
-    }
-    virtual ~typed_comment(){};
-};
-
-
-
-template <class Lexer, class Compiler, class T>
-class typed_identifier : public typed_expression<Lexer,Compiler,  T> {
-    Identifier<Lexer> m_id;
-
-public:
-    virtual ~typed_identifier(){};
-    typed_identifier(Identifier<Lexer> t_id) : m_id{t_id} {}
-    virtual typed_identifier *clone() const override {
-        return new typed_identifier(*this);
-    };
-
-    virtual std::string str() const override final { return m_id();}
-    auto& operator()() const { return m_id; }
-};
-
-
-
-
-template <class Lexer, class Compiler, class...Ts> class typed_argument_list :
-public base_typed_expression<Lexer, Compiler> {
-    std::tuple<std::unique_ptr<typed_expression<Lexer,Compiler,Ts>>...> m_tuple;
-
-public:
-    typed_argument_list(
-         std::unique_ptr<typed_expression<Lexer,Compiler,Ts>>const &... t_args)
-        : m_tuple{dsl::clone(t_args)...} {}
-
-    typed_argument_list(
-        std::unique_ptr<typed_expression<Lexer,Compiler,Ts>>&&... t_args)
-        : m_tuple{std::move(t_args)...} {}
-    typed_argument_list(
-        const typed_argument_list &other)
-        : m_tuple{std::apply( [](auto const& ...arg){ return
-std::tuple(dsl::clone(arg)...);},other)}{}
-
-    typed_argument_list(
-        typed_argument_list &&other)
-        : m_tuple{std::move(other.m_tuple)} {}
-
-    typed_argument_list(){}
-
-    virtual typed_argument_list *clone() const override {return new
-typed_argument_list(*this);}
-
-    virtual std::string str() const override final {
-        std::string out = std::string(Lexer::argument_list_start);
-//        if (m_tuple.size() > 0) {
-//            out += m_list[0]->str();
-//            for (auto i = 1ul; i < m_list.size(); ++i) {
-//                out += std::string(Lexer::argument_sep) + m_list[i]->str();
-//            }
-//        }
-//        out += Lexer::argument_list_end;
-        return out;
-    }
-};
-
-template <class Lexer, class Compiler, class T>
-class typed_assignment : public typed_expression<Lexer,Compiler,T> {
-    std::unique_ptr<typed_identifier<Lexer,Compiler,T>> m_id;
-    std::unique_ptr<typed_expression<Lexer,Compiler,T>> m_expr;
-
-public:
-    virtual ~typed_assignment() override {}
-    typed_assignment(typed_identifier<Lexer,Compiler,T> *t_id,
-                     typed_expression<Lexer,Compiler,T> *t_expr)
-        : m_id{t_id}, m_expr{t_expr} {}
-
-    typed_assignment() {}
-    typed_assignment(typed_assignment &&other)
-        : m_id{std::move(other.m_id)}, m_expr{std::move(other.m_expr)} {}
-    typed_assignment(typed_assignment const &other)
-        : m_id{other.m_id->clone()}, m_expr{other.m_expr->clone()} {}
-
-    virtual std::string str() const override final {
-        return m_id->str() + std::string(Lexer::assignment_operator) +
-std::string(Lexer::assignment_sep) + m_expr->str();
-    }
-    virtual typed_assignment *clone() const override {
-        return new typed_assignment(*this);
-    };
-};
-
-template <class Lexer, class Compiler, class T, class F, class... Args>
-    class typed_function_evaluation : public typed_expression<Lexer,Compiler,T>
-{ std::unique_ptr<typed_identifier<Lexer,Compiler,F>> m_fid;
-    std::unique_ptr<typed_argument_list<Lexer,Args...>> m_arg;
-
-public:
-    typed_function_evaluation(typed_identifier<Lexer,F> *t_fid,
-                                typed_argument_list<Lexer,Args...> *t_arg)
-        : m_fid{t_fid}, m_arg{t_arg }{}
-    virtual ~typed_function_evaluation(){};
-    typed_function_evaluation(typed_function_evaluation&& other):
-        m_fid{std::move(other.m_fid)},m_arg{std::move(other.m_arg)}{}
-
-    typed_function_evaluation(typed_function_evaluation const & other):
-        m_fid{other.m_fid->clone()},m_arg{other.m_arg->clone()}{}
-
-    virtual typed_function_evaluation* clone() const override {return new
-typed_function_evaluation(*this);} virtual std::string str() const override
-final { return m_fid->str() + m_arg->str();
-    }
-
-
-};
-*/
 }  // namespace macrodr::dsl
 
 #endif  // GRAMMAR_TYPED_H

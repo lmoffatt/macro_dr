@@ -309,31 +309,8 @@ class untyped_argument_list : public untyped_expression<Lexer, Compiler> {
     }
 
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& cm) const override {
-        auto out = compile_argument_list(cm);
-        if (!out) {
-            return out.error();
-        }
-        auto list = std::move(out.value());
-        return std::unique_ptr<base_typed_expression<Lexer, Compiler>>(std::move(list));
-    }
-
-    virtual Maybe_unique<typed_argument_list<Lexer, Compiler>> compile_argument_list(
-        Environment<Lexer, Compiler>& cm) const {
-        auto out = std::make_unique<typed_argument_list<Lexer, Compiler>>();
-        auto* current = out.get();
-        for (auto& e : arg()) {
-            auto v_c = e->compile_statement(cm);
-            if (!v_c) {
-                return v_c.error();
-            }
-            auto May_out = v_c.value()->compile_argument_list(current);
-            if (!May_out) {
-                return May_out.error();
-            }
-            current = May_out.value();
-        }
-        return out;
+        Environment<Lexer, Compiler>& /*cm*/) const override {
+        return error_message("argument lists are not first-class expressions in the current DSL");
     }
 };
 

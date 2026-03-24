@@ -104,8 +104,6 @@ Maybe_error<void> load_literal_from_json_helper(const typename json_spec<Lexer>:
 template <class Lexer, class Compiler>
 class untyped_argument_list;
 class Lexer;
-template <class Lexer, class Compiler>
-class typed_argument_list;
 
 template <class Lexer, class Compiler, class T, class S>
     requires(std::convertible_to<S, T>)
@@ -121,9 +119,6 @@ class untyped_program;
 
 template <class Lexer, class Compiler>
 class typed_program;
-
-template <class Lexer, class Compiler, class... T>
-class typed_argument_typed_list;
 
 template <class Lexer, class Compiler, class T>
 class typed_expression;
@@ -442,19 +437,25 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
         compile_this_argument(Environment<Lexer, Compiler> const& cm,
                               untyped_identifier<Lexer, Compiler> const& t_arg) const {
-        auto maybe_stored = cm.get(t_arg());
-        if (maybe_stored) {
-            auto stored = maybe_stored.value();
-            auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
-            if (!literal) {
-                const auto actual = stored ? stored->type_name() : std::string{"<null>"};
-                return error_message(std::string{"identifier '"} + t_arg()() +
-                                     "' cannot bind to expected '" + type_name<const T&>() +
-                                     "'; current value has type " + actual);
-            }
+        auto Maybe_id = cm.get_Identifier(t_arg());
+        if (!Maybe_id) {
+            return Maybe_id.error();
         }
-        return new typed_identifier_ref_const<Lexer, Compiler, T>(t_arg());
+        auto expr = std::move(Maybe_id.value());
+        auto ptr = dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.get());
+        if (ptr != nullptr) {
+            return   new typed_identifier_ref_const<Lexer, Compiler, T>(t_arg());
+   
+        }
+        const auto expected = type_name<T>();
+        const auto actual = expr->type_name();
+        return error_message(std::string("unexpected type: expected ") + expected + ", got " +
+                             actual);
+
+        
     }
+
+
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
         compile_this_argument(Environment<Lexer, Compiler> const& /*cm*/,
@@ -527,18 +528,22 @@ class field_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
         compile_this_argument(Environment<Lexer, Compiler> const& cm,
                               untyped_identifier<Lexer, Compiler> const& t_arg) const {
-        auto maybe_stored = cm.get(t_arg());
-        if (maybe_stored) {
-            auto stored = maybe_stored.value();
-            auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
-            if (!literal) {
-                const auto actual = stored ? stored->type_name() : std::string{"<null>"};
-                return error_message(std::string{"identifier '"} + t_arg()() +
-                                     "' cannot bind to expected '" + type_name<T&>() +
-                                     "'; current value has type " + actual);
-            }
+        auto Maybe_id = cm.get_Identifier(t_arg());
+        if (!Maybe_id) {
+            return Maybe_id.error();
         }
-        return new typed_identifier_ref<Lexer, Compiler, T>(t_arg());
+        auto expr = std::move(Maybe_id.value());
+        auto ptr = dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.get());
+        if (ptr != nullptr) {
+            return   new typed_identifier_ref<Lexer, Compiler, T>(t_arg());
+   
+        }
+        const auto expected = type_name<T>();
+        const auto actual = expr->type_name();
+        return error_message(std::string("unexpected type: expected ") + expected + ", got " +
+                             actual);
+
+        
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
@@ -754,7 +759,7 @@ class element_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<const T>>>
         compile_this_element(Environment<Lexer, Compiler> const& cm,
                               untyped_identifier<Lexer, Compiler> const& t_arg) const {
-        auto maybe_stored = cm.get(t_arg());
+        auto maybe_stored = cm.get_Identifier(t_arg());
         if (maybe_stored) {
             auto stored = maybe_stored.value();
             auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
@@ -829,7 +834,7 @@ class element_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, std::reference_wrapper<T>>>
         compile_this_element(Environment<Lexer, Compiler> const& cm,
                               untyped_identifier<Lexer, Compiler> const& t_arg) const {
-        auto maybe_stored = cm.get(t_arg());
+        auto maybe_stored = cm.get_Identifier(t_arg());
         if (maybe_stored) {
             auto stored = maybe_stored.value();
             auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);

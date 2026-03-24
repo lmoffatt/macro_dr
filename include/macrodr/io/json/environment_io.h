@@ -37,7 +37,7 @@ inline Maybe_error<std::string> save_environment_json(
     Json vars = Json::object();
     Json schemas = Json::object();
     for (auto const& id : env.list_variables()) {
-        auto maybe_ptr = env.get(id);
+        auto maybe_ptr = env.get_RunValue(id);
         if (!maybe_ptr) continue;  // skip missing
         const auto* expr = maybe_ptr.value();
         Json entry = Json::object();
