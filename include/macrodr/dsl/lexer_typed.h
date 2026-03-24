@@ -189,9 +189,11 @@ class Identifier_compiler : public base_Identifier_compiler<Lexer, Compiler> {
    public:
     ~Identifier_compiler() override = default;
     [[nodiscard]] Identifier_compiler* clone() const override {
-        return new Identifier_compiler(m_expr->clone());
+        return new Identifier_compiler(clone_strict(m_expr.get()));
     };
 
+    Identifier_compiler(std::unique_ptr<typed_expression<Lexer, Compiler, T>> t_expr)
+        : m_expr{std::move(t_expr)} {}
     Identifier_compiler(typed_expression<Lexer, Compiler, T>* t_expr) : m_expr{t_expr} {}
 
     [[nodiscard]] Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_Identifier(
@@ -762,7 +764,7 @@ class element_compiler<Lexer, Compiler, std::reference_wrapper<const T>> {
         auto maybe_stored = cm.get_Identifier(t_arg());
         if (maybe_stored) {
             auto stored = maybe_stored.value();
-            auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
+            auto literal = dynamic_cast<const typed_expression<Lexer, Compiler, T>*>(stored);
             if (!literal) {
                 const auto actual = stored ? stored->type_name() : std::string{"<null>"};
                 return error_message(std::string{"identifier '"} + t_arg()() +
@@ -837,7 +839,7 @@ class element_compiler<Lexer, Compiler, std::reference_wrapper<T>> {
         auto maybe_stored = cm.get_Identifier(t_arg());
         if (maybe_stored) {
             auto stored = maybe_stored.value();
-            auto literal = dynamic_cast<const typed_literal<Lexer, Compiler, T>*>(stored);
+            auto literal = dynamic_cast<const typed_expression<Lexer, Compiler, T>*>(stored);
             if (!literal) {
                 const auto actual = stored ? stored->type_name() : std::string{"<null>"};
                 return error_message(std::string{"identifier '"} + t_arg()() +

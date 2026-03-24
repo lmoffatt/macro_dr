@@ -80,3 +80,9 @@ add_test(NAME macrodr_cli_likelihood_diagnostics_smoke
 set_tests_properties(macrodr_cli_likelihood_diagnostics_smoke PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     ENVIRONMENT "OMP_NUM_THREADS=1")
+
+add_test(NAME macrodr_cli_write_csv_likelihood_overload_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/write_csv_likelihood_overload_smoke.macroir)
+set_tests_properties(macrodr_cli_write_csv_likelihood_overload_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")
