@@ -1,0 +1,11 @@
+# Transcripción
+
+- Archivo: `WhatsApp Ptt 2025-12-30 at 09.06.03.ogg`
+- Duración: 4:39
+- Motor: `whisper.cpp` (`whisper-cli`)
+- Modelo: `ggml-large-v3-turbo-q5_0`
+- Fecha: 2026-02-10
+
+---
+
+Estamos con una crisis. La crisis consiste en que no hay mucha diferencia entre macro MR y macro IR. Es más, hasta parece que macro MR es mejor porque tiene mayor varianza en el gradiente. Entonces voy a tener que optar por la opción nuclear que es calcular la Fishery Formation Matrix y ver el test en serie. de ver el gradiente solo, digamos, y me da bien, o sea, no encuentro ningún problema con macro MR, así que voy a tener que ir a la opción nuclear de usar la Fisher Information Matrix para ver esto. Entonces, con lo cual, yo lo que tengo que hacer es ahora implementar, digamos, un comando, una línea de comando de macro IR, registrar o dar la evolución de la Fisher Information Matrix. Puede ser la evolución o el total, o ambas. Es más fácil pensar en la evolución, porque la evolución sería inmediata. El tema acá es que van a quedar mucho más grandes los files, obviamente, vamos a tener el doble de K más K por K veces más parámetros con lo cual hace un poco pesado hacerlo para todos quizás se pueda calcular la ficha de Information Matrix por cada medida global o sea de la media O sea, no guardar de todas las samples, sino de la ficha de information matrix de la media. Eso lo que implica es una lógica un poco distinta que tendría que implementar, lo cual un poco complicaría las cosas. Podría tratar de sacarla, la ficha de information matrix, de cosas que ya tengo, de la IVAR y la IMIN, con lo cual en realidad yo no tendría que intervenir en el cálculo interno, sino en el posprocesamiento de todo lo que ya tengo. Eso hasta lo podría hacer el R. En realidad, y me ahorra de hacer quilombos en macro IR. Eso es una buena pregunta, si me conviene hacerlo en R o hacerlo en macro IR. Hacerlo en R, en macro IR, yo creo que puede ser un poco algebraicamente más fácil, porque tengo más acceso a la algebra lineal ahí. Entonces quizás lo que podría ser es tomar digamos o sea el objeto que es este vector de macro states sacar la hacer un simple comando que a partir de ahí no tenga las fichera information matrix me parece que esa es la solución más práctica y directa y rápida hablándole al celular pienso más que sino creíble que pensándolo así en el aire

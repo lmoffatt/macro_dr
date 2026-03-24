@@ -1,0 +1,115 @@
+id: macrodr-program-roadmap
+name: MacroDR Program Roadmap
+type: project
+program: macroir
+status: active
+stage: designed
+publication_relevance: optional
+summary: >
+  Define the medium-term roadmap of the MacroIR / MacroDR program across
+  theory, code, validation, execution projects, papers, and releases.
+
+purpose: >
+  Consolidate current planning material into a canonical program roadmap that
+  can guide sequencing and priorities.
+
+scope:
+  in:
+    - program workstream identification
+    - milestone definition
+    - dependency mapping
+    - active-project prioritization
+    - roadmap consolidation
+    - theory-to-implementation mapping
+    - canonical-vs-archive classification of roadmap sources
+  out:
+    - downstream project execution
+    - detailed implementation plans for every project
+    - scientific content rewrites
+
+deliverables:
+  - canonical program roadmap
+  - milestone structure
+  - dependency summary
+  - active-project prioritization
+  - theory-to-implementation mapping
+  - canonical-vs-archive classification for roadmap sources
+
+success_criteria:
+  - roadmap exists
+  - milestones are explicit
+  - major dependencies are explicit
+  - roadmap matches the current program structure
+  - theory-to-implementation mapping exists for the current validation path
+  - roadmap sources are classified into canonical vs archive
+
+checks:
+  - id: project_defined
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-program-roadmap/PROJECT.md
+  - id: project_manifest_drafted
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/macrodr-program-roadmap/PROJECT.yaml
+  - id: roadmap_source_exists
+    type: planning
+    required: true
+    status: pass
+    evidence: program/notes/Project Roadmap MacroIR.md
+  - id: canonical_roadmap_written
+    type: planning
+    required: true
+    status: pass
+    evidence: program/ROADMAP.md
+  - id: milestones_defined
+    type: planning
+    required: true
+    status: pass
+    evidence: program/ROADMAP.md
+  - id: dependencies_defined
+    type: planning
+    required: true
+    status: pass
+    evidence: program/ROADMAP.md
+  - id: theory_implementation_mapping_written
+    type: planning
+    required: true
+    status: pending
+    evidence: future roadmap mapping section or companion document
+  - id: roadmap_sources_classified
+    type: governance
+    required: true
+    status: pending
+    evidence: future canonical-vs-archive source classification
+
+current_status:
+  completed:
+    - project folder created
+    - project definition written
+    - project manifest drafted
+    - existing roadmap source identified
+    - first canonical roadmap draft written
+    - current roadmap priority narrowed to the MacroIR validation path
+    - roadmap source-of-truth inputs identified in manuscript and MacroIR theory docs
+  in_progress:
+    - refining milestones, dependencies, and project implications
+    - reconciling older roadmap notes with manuscript and curated theory docs
+    - defining theory-to-implementation mapping for the validation path
+    - classifying roadmap-relevant source documents into canonical vs archive
+  next:
+    - refine the validation-example milestone
+    - identify the active projects needed for the validation paper
+    - document the mapping between theory/manuscript documents and implemented algorithms
+    - classify the main roadmap source documents into canonical vs archive
+    - separate current roadmap work from later future directions
+
+exit_criteria:
+  - canonical roadmap exists
+  - milestones exist
+  - dependency summary exists
+  - active-project prioritization exists
+  - theory-to-implementation mapping exists
+  - roadmap source classification exists

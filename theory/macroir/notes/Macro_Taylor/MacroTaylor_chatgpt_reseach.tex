@@ -1,0 +1,1722 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+
+\title{Channel-Aware Laplace Approximation for the Posterior over $p$}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+This note collects the derivations for a channel-aware Laplace
+approximation of the posterior over the macroscopic occupancy vector
+$p$ of an ensemble of Markov channels, based on a single
+interval-averaged current measurement.
+
+The main goals are:
+\begin{itemize}
+  \item to obtain an explicit formula for the \emph{Gaussian
+        (Laplace) posterior covariance} $\Sigma_{\text{post}}$
+        in terms of the prior covariance $\Sigma_p$ and a rank-1
+        update defined by the measurement;
+  \item to write the \emph{mean update} in a form that does not
+        involve any explicit inverse of the (singular) prior covariance;
+  \item to emphasise that the posterior mean used in practice is
+        the \emph{MAP estimate} obtained by Newton iteration, and the
+        covariance is the \emph{Laplace covariance} given by the
+        curvature at the MAP.
+\end{itemize}
+
+Throughout, we keep the dependence of all intermediate objects on
+$p$ explicit: $\delta(p)$, $V(p)$, $v(p)$, etc.  Whenever we drop the
+argument and write $\delta$, $V$, $v$, they are implicitly evaluated
+at the current expansion point (either a fixed $p_0$, or the current
+iterate $p^{(k)}$ in Newton's method).
+
+\paragraph{Coordinates, simplex and singular covariance.}
+The macroscopic occupancy vector $p$ lives on the simplex
+$\{p \in \mathbb{R}^{1\times d} : p_i \ge 0,\ \sum_i p_i = 1\}$,
+a $(d-1)$-dimensional manifold embedded in $\mathbb{R}^{1\times d}$.
+The prior covariance $\Sigma_p$ is therefore singular as a
+$d\times d$ matrix in ambient coordinates.  Formally, one can view
+$\Sigma_p^{-1}$ as the inverse on the $(d-1)$-dimensional tangent
+subspace or as a pseudo-inverse, but \emph{in all final expressions
+we use in implementation, $\Sigma_p^{-1}$ cancels algebraically}.
+We never need to numerically invert a singular covariance.
+
+\section*{1. Setup and Notation}
+
+We consider:
+\begin{itemize}
+  \item A macroscopic occupancy vector
+  \[
+    p \in \mathbb{R}^{1\times d},
+  \]
+  a row vector of state probabilities.
+  \item A per-state conductance vector
+  \[
+    \gamma \in \mathbb{R}^{d\times 1},
+  \]
+  a column vector.
+  \item A per-state intrinsic-variance vector
+  \[
+    \sigma^2 \in \mathbb{R}^{d\times 1}.
+  \]
+\end{itemize}
+
+The prior over $p$ (restricted to the simplex) is Gaussian:
+\[
+  p \sim \mathcal{N}(\mu, \Sigma_p),
+\]
+where $\mu \in \mathbb{R}^{1\times d}$ is the prior mean and
+$\Sigma_p \in \mathbb{R}^{d\times d}$ is the prior covariance.
+As noted above, $\Sigma_p$ is singular in the ambient coordinates.
+
+We observe a scalar interval-averaged current $y$:
+\[
+  y \approx N_{\text{ch}} (p\cdot \gamma) + \text{noise},
+\]
+with $N_{\text{ch}}$ channels and:
+\begin{itemize}
+  \item extrinsic (measurement) noise variance $\epsilon^2$;
+  \item intrinsic ensemble variance $N_{\text{ch}} (p\cdot \sigma^2)$
+        arising from channel stochasticity.
+\end{itemize}
+
+Given a candidate state $p$, define
+\begin{align*}
+  \delta(p) &= y - N_{\text{ch}} (p\cdot \gamma),\\
+  V(p)      &= \epsilon^2 + N_{\text{ch}} (p\cdot \sigma^2),
+\end{align*}
+and the \emph{tilted} vector
+\[
+  v(p)
+  = \gamma + \frac{\delta(p)}{V(p)}\,\sigma^2
+  \in \mathbb{R}^{d\times 1}.
+\]
+
+We work with an energy function $E(p)$ proportional to the negative
+log-posterior,
+\[
+  p(p \mid y) \propto \exp\!\bigl(-\tfrac{1}{2}E(p)\bigr).
+\]
+
+We will denote:
+\begin{itemize}
+  \item $\mathbf{g}(p) = \nabla E(p)$, a \emph{row} vector
+        in $\mathbb{R}^{1\times d}$;
+  \item $\mathbf{H}(p) = \nabla^2 E(p)$, a $d\times d$ Hessian.
+\end{itemize}
+
+\section*{2. Laplace Approximation Around an Expansion Point}
+
+We approximate the posterior around an expansion point $p_0$ via a
+second-order Taylor expansion:
+\[
+  E(p)
+  \approx
+  E(p_0)
+  + (p - p_0)\,\mathbf{g}_0^\top
+  + \frac{1}{2}(p - p_0)\,\mathbf{H}_0\,(p - p_0)^\top,
+\]
+with
+\[
+  \mathbf{g}_0 = \nabla E(p_0),
+  \qquad
+  \mathbf{H}_0 = \nabla^2 E(p)\big|_{p=p_0}.
+\]
+
+Plugging this into
+\[
+  p(p \mid y) \propto \exp\!\bigl(-\tfrac{1}{2}E(p)\bigr)
+\]
+gives a Gaussian approximation
+\[
+  p(p \mid y)
+  \approx
+  \mathcal{N}\bigl(p_{\text{post}}, \Sigma_{\text{post}}\bigr),
+\]
+with
+\begin{align*}
+  \Sigma_{\text{post}} &\approx 2\,\mathbf{H}_0^{-1},\\[4pt]
+  p_{\text{post}} &\approx p_0 - \mathbf{g}_0\,\mathbf{H}_0^{-1}
+    = p_0 - \frac{1}{2}\mathbf{g}_0\,\Sigma_{\text{post}}.
+\end{align*}
+
+Conceptually, the Laplace covariance is the inverse curvature at the
+chosen expansion point, and the mean is the Newton step from $p_0$.
+In practice, we will:
+\begin{itemize}
+  \item use a special rank-1 structure of $\mathbf{H}_0$ to obtain
+        a closed-form $\Sigma_{\text{post}}$ in terms of $\Sigma_p$;
+  \item eliminate any explicit $\Sigma_p^{-1}$ from the mean update;
+  \item iterate the Newton step until convergence to obtain the MAP.
+\end{itemize}
+
+\section*{3. Energy, Gradient and Hessian as Functions of $p$}
+
+We decompose the energy into likelihood and prior terms:
+\[
+  E(p) = M(p) + P(p),
+\]
+with
+\begin{align*}
+  M(p) &= \frac{\delta(p)^2}{V(p)},\\
+  P(p) &= (p-\mu)\,(N_{\text{ch}}\Sigma_p^{-1})(p-\mu)^\top.
+\end{align*}
+
+Here
+\[
+  \delta(p) = y - N_{\text{ch}}(p\cdot \gamma),
+  \qquad
+  V(p) = \epsilon^2 + N_{\text{ch}}(p\cdot \sigma^2).
+\]
+
+The full gradient and Hessian, derived in detail in Section~7, can
+be compactly written as:
+\[
+  \mathbf{g}(p)
+  =
+  2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+  -
+  N_{\text{ch}}
+  \left[
+    \frac{2\delta(p)}{V(p)}\,\gamma^\top
+    + \frac{\delta(p)^2}{V(p)^2}\,(\sigma^2)^\top
+  \right],
+\]
+and
+\[
+  \mathbf{H}(p)
+  =
+  2 N_{\text{ch}}
+  \left[
+    \Sigma_p^{-1}
+    +
+    \frac{N_{\text{ch}}}{V(p)}\,v(p)\,v(p)^\top
+  \right],
+\]
+where
+\[
+  v(p) = \gamma + \frac{\delta(p)}{V(p)}\,\sigma^2.
+\]
+
+These expressions are valid for all $p$ on the simplex.  They show
+explicitly that $\delta$, $V$ and $v$ are functions of $p$.
+
+\section*{4. Rank-1 Structure and Closed-Form Covariance}
+
+The key structural observation is that the Hessian is a rank-1 update
+of the prior precision:
+\[
+  \mathbf{H}(p)
+  = 2N_{\text{ch}}
+    \left[
+      \Sigma_p^{-1}
+      + \frac{N_{\text{ch}}}{V(p)}\,v(p)v(p)^\top
+    \right].
+\]
+
+Define
+\[
+  u(p) = \sqrt{\frac{N_{\text{ch}}}{V(p)}}\,v(p),
+  \quad\Rightarrow\quad
+  u(p)u(p)^\top = \frac{N_{\text{ch}}}{V(p)}\,v(p)v(p)^\top.
+\]
+
+Then
+\[
+  \mathbf{H}(p)
+  = 2N_{\text{ch}}\bigl(\Sigma_p^{-1} + u(p)u(p)^\top\bigr).
+\]
+
+\subsection*{4.1 Sherman--Morrison Formula}
+
+Formally, for an invertible matrix $A$ and a rank-1 update $u u^\top$,
+the Sherman--Morrison formula says
+\[
+  (A + u u^\top)^{-1}
+  = A^{-1}
+    - \frac{A^{-1} u u^\top A^{-1}}{1 + u^\top A^{-1} u}.
+\]
+
+We apply this with $A=\Sigma_p^{-1}$ and $u = u(p_0)$ at the
+expansion point $p_0$.  On the tangent subspace of the simplex,
+$\Sigma_p$ has an inverse; at the algebraic level we write
+$A^{-1} = \Sigma_p$ and obtain
+\[
+  (\Sigma_p^{-1} + u u^\top)^{-1}
+  = \Sigma_p - \frac{\Sigma_p u u^\top \Sigma_p}{1 + u^\top \Sigma_p u}.
+\]
+
+Since
+\[
+  \mathbf{H}_0
+  = 2N_{\text{ch}}\bigl(\Sigma_p^{-1} + u u^\top\bigr),
+\]
+we get
+\[
+  \mathbf{H}_0^{-1}
+  = \frac{1}{2N_{\text{ch}}}
+    \left[
+      \Sigma_p - \frac{\Sigma_p u u^\top \Sigma_p}{1 + u^\top \Sigma_p u}
+    \right].
+\]
+
+The Laplace covariance at $p_0$ is
+\[
+  \Sigma_{\text{post}}
+  = 2\,\mathbf{H}_0^{-1}
+  = \frac{1}{N_{\text{ch}}}
+    \left[
+      \Sigma_p - \frac{\Sigma_p u u^\top \Sigma_p}{1 + u^\top \Sigma_p u}
+    \right].
+\]
+
+\subsection*{4.2 Expressing Everything in Terms of $v(p_0)$}
+
+At $p_0$ we have $u = \sqrt{\frac{N_{\text{ch}}}{V}}\,v$ with
+$V = V(p_0)$ and $v = v(p_0)$, so:
+\[
+  u u^\top
+  = \frac{N_{\text{ch}}}{V} v v^\top,
+\]
+and we define
+\[
+  s = v^\top \Sigma_p v.
+\]
+
+Then:
+\begin{align*}
+  \Sigma_p u u^\top \Sigma_p
+    &= \Sigma_p\left(\frac{N_{\text{ch}}}{V}v v^\top\right)\Sigma_p
+     = \frac{N_{\text{ch}}}{V}\,\Sigma_p v v^\top \Sigma_p,\\[4pt]
+  1 + u^\top\Sigma_p u
+    &= 1 + \frac{N_{\text{ch}}}{V}v^\top\Sigma_p v
+     = 1 + \frac{N_{\text{ch}}}{V}s
+     = \frac{V + N_{\text{ch}} s}{V}.
+\end{align*}
+
+Substituting:
+\[
+  \Sigma_{\text{post}}
+  = \frac{1}{N_{\text{ch}}}
+    \left[
+      \Sigma_p
+      - \frac{\frac{N_{\text{ch}}}{V}\Sigma_p v v^\top \Sigma_p}
+             {\frac{V + N_{\text{ch}} s}{V}}
+    \right]
+  = \frac{1}{N_{\text{ch}}}
+    \left[
+      \Sigma_p
+      - \frac{N_{\text{ch}}}{V + N_{\text{ch}} s}
+        \Sigma_p v v^\top \Sigma_p
+    \right].
+\]
+
+Thus we obtain the closed-form Laplace covariance:
+\[
+  \boxed{
+    \Sigma_{\text{post}}(p_0)
+    =
+    \frac{1}{N_{\text{ch}}}\,\Sigma_p
+    -
+    \frac{1}{V(p_0) + N_{\text{ch}}\,s(p_0)}\,
+    \Sigma_p v(p_0) v(p_0)^\top \Sigma_p
+  }
+\]
+with $s(p_0) = v(p_0)^\top \Sigma_p v(p_0)$.
+
+\paragraph{Singular covariance and implementation.}
+Note that:
+\begin{itemize}
+  \item The derivation uses $\Sigma_p^{-1}$ only as a formal device
+        on the intrinsic $(d-1)$-dimensional subspace.
+  \item The final expression for $\Sigma_{\text{post}}$ involves only
+        $\Sigma_p$, $v$ and $s$; no explicit inverse of $\Sigma_p$ appears.
+  \item This formula remains valid even when $\Sigma_p$ is singular in
+        ambient coordinates, so it is suitable for direct implementation.
+\end{itemize}
+
+\section*{5. Mean Update and Elimination of $\Sigma_p^{-1}$}
+
+The Laplace mean at $p_0$ is
+\[
+  p_{\text{post}}
+  \approx
+  p_0 - \mathbf{g}_0\,\mathbf{H}_0^{-1}
+  = p_0 - \frac{1}{2}\mathbf{g}_0\,\Sigma_{\text{post}},
+\]
+with
+\[
+  \mathbf{g}_0
+  =
+  2N_{\text{ch}}(p_0-\mu)\Sigma_p^{-1}
+  -
+  N_{\text{ch}}
+  \left[
+    \frac{2\delta}{V}\,\gamma^\top
+    + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+  \right],
+\]
+where $\delta = \delta(p_0)$ and $V = V(p_0)$.
+
+Introduce
+\[
+  \Delta p = p_0 - \mu,
+\]
+and rewrite:
+\[
+  \mathbf{g}_0
+  =
+  2N_{\text{ch}}\Delta p\,\Sigma_p^{-1}
+  -
+  N_{\text{ch}}
+  \left[
+    \frac{2\delta}{V}\,\gamma^\top
+    + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+  \right].
+\]
+
+Then
+\[
+  p_{\text{post}}
+  =
+  p_0 - \frac{1}{2}\mathbf{g}_0\,\Sigma_{\text{post}}
+  =
+  p_0
+  - N_{\text{ch}}\Delta p\,\Sigma_p^{-1}\Sigma_{\text{post}}
+  + \frac{N_{\text{ch}}}{2}
+    \left[
+      \frac{2\delta}{V}\,\gamma^\top
+      + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+    \right]\Sigma_{\text{post}}.
+\]
+Equivalently,
+\[
+  p_{\text{post}}
+  =
+  p_0
+  - N_{\text{ch}}\Delta p\,\Sigma_p^{-1}\Sigma_{\text{post}}
+  + \frac{N_{\text{ch}}\delta}{V}\,\gamma^\top\Sigma_{\text{post}}
+  + \frac{N_{\text{ch}}\delta^2}{2V^2}\,(\sigma^2)^\top\Sigma_{\text{post}}.
+\]
+
+\subsection*{5.1 Eliminating $\Sigma_p^{-1}$ Using $\Sigma_{\text{post}}$}
+
+We now use the explicit expression for
+\[
+  \Sigma_{\text{post}}
+  = \frac{1}{N_{\text{ch}}}\Sigma_p
+    -
+    \frac{1}{V + N_{\text{ch}} s}\,\Sigma_p v v^\top \Sigma_p
+\]
+to compute $\Sigma_p^{-1}\Sigma_{\text{post}}$ and thereby eliminate
+$\Sigma_p^{-1}$ from the mean.
+
+For notational compactness in this subsection, write
+$N = N_{\text{ch}}$, remembering they are the same quantity.
+
+First:
+\[
+  \begin{aligned}
+    \Sigma_p^{-1}\Sigma_{\text{post}}
+    &=
+    \Sigma_p^{-1}
+    \left(
+      \frac{1}{N}\Sigma_p
+      -
+      \frac{1}{V+Ns}\,\Sigma_p v v^\top\Sigma_p
+    \right)\\[4pt]
+    &=
+    \frac{1}{N}\underbrace{\Sigma_p^{-1}\Sigma_p}_{I}
+    -
+    \frac{1}{V+Ns}\,v v^\top \Sigma_p\\[4pt]
+    &=
+    \frac{1}{N}I - \frac{1}{V+Ns}\,v v^\top \Sigma_p.
+  \end{aligned}
+\]
+
+Therefore:
+\[
+  N\,\Delta p\,\Sigma_p^{-1}\Sigma_{\text{post}}
+  =
+  \Delta p - \frac{N}{V+Ns}\,\Delta p\,v v^\top \Sigma_p.
+\]
+
+Substituting into the expression for $p_{\text{post}}$:
+\[
+  \begin{aligned}
+    p_{\text{post}}
+    &=
+    p_0 - \Bigl[\Delta p - \frac{N}{V+Ns}\,\Delta p\,v v^\top \Sigma_p\Bigr]
+    + \frac{N\delta}{V}\,\gamma^\top\Sigma_{\text{post}}
+    + \frac{N\delta^2}{2V^2}\,(\sigma^2)^\top\Sigma_{\text{post}}\\[4pt]
+    &=
+    (p_0 - \Delta p)
+    + \frac{N}{V+Ns}\,\Delta p\,v v^\top \Sigma_p
+    + \frac{N\delta}{V}\,\gamma^\top\Sigma_{\text{post}}
+    + \frac{N\delta^2}{2V^2}\,(\sigma^2)^\top\Sigma_{\text{post}}.
+  \end{aligned}
+\]
+
+Since $p_0 - \Delta p = \mu$, we obtain:
+\[
+  \boxed{
+  \begin{aligned}
+    p_{\text{post}}
+    &=
+    \mu
+    + \frac{N_{\text{ch}}}{V + N_{\text{ch}} s}\,(p_0 - \mu)\,v v^\top \Sigma_p\\[4pt]
+    &\quad
+    + \frac{N_{\text{ch}}\delta}{V}\,\gamma^\top\Sigma_{\text{post}}
+    + \frac{N_{\text{ch}}\delta^2}{2V^2}\,(\sigma^2)^\top\Sigma_{\text{post}}.
+  \end{aligned}
+  }
+  \tag{2}
+\]
+
+Here $\Sigma_{\text{post}}$ is already expressed purely in terms of
+$\Sigma_p$, $v$, $s$ and $V$.  No explicit $\Sigma_p^{-1}$ survives:
+it has been completely cancelled.
+
+\paragraph{Interpretation.}
+\begin{itemize}
+  \item The first line in (2) pulls the mean back towards the prior
+        mean $\mu$, modulated by the rank-1 direction $v v^\top\Sigma_p$
+        and the competition between $V$ and $N_{\text{ch}}s$.
+  \item The second line captures the direct influence of the residual
+        $\delta$ through the conductance and intrinsic variance vectors
+        $(\gamma, \sigma^2)$, weighted by the covariance
+        $\Sigma_{\text{post}}$.
+  \item Equation (2) is the general mean update that should be
+        implemented numerically; it only requires multiplications by
+        $\Sigma_p$ and $\Sigma_{\text{post}}$, never their inverses.
+\end{itemize}
+
+\subsection*{5.2 Special Case: Expansion at the Prior Mean $p_0 = \mu$}
+
+Choosing $p_0 = \mu$ simplifies the expression significantly:
+\begin{itemize}
+  \item $\Delta p = p_0 - \mu = 0$,
+  \item the first line in (2) vanishes,
+  \item the gradient at $\mu$ reduces to
+  \[
+    \mathbf{g}_0
+    =
+    -N_{\text{ch}}\frac{\delta}{V}(\gamma^\top + v^\top),
+  \]
+  so
+  \[
+    p_{\text{post}}
+    =
+    \mu - \frac{1}{2}\mathbf{g}_0\Sigma_{\text{post}}
+    =
+    \mu + \frac{N_{\text{ch}}\delta}{2V}\,(\gamma^\top+v^\top)\Sigma_{\text{post}}.
+  \]
+\end{itemize}
+
+In this special case we obtain the concise one-step update:
+\[
+  \boxed{
+    p_{\text{post}}
+    \approx
+    \mu
+    + \frac{N_{\text{ch}}\delta}{2V}\,(\gamma^\top+v^\top)\Sigma_{\text{post}},
+  }
+\]
+with
+\begin{itemize}
+  \item $\delta = y - N_{\text{ch}}(\mu\cdot\gamma)$,
+  \item $V = \epsilon^2 + N_{\text{ch}}(\mu\cdot\sigma^2)$,
+  \item $v = \gamma + \dfrac{\delta}{V}\sigma^2$,
+  \item $\Sigma_{\text{post}}$ as in Section~4 with $p_0=\mu$.
+\end{itemize}
+
+This corresponds to a single Newton step from the prior mean, with a
+Laplace covariance frozen at that expansion point.
+
+\section*{6. Newton--MAP Scheme and MAP--Laplace Posterior}
+
+Up to now, $p_0$ has been a generic expansion point.  We now make
+explicit that:
+\begin{itemize}
+  \item the posterior mean of interest is the \emph{MAP} $p^\star$,
+        i.e.\ the minimum of $E(p)$;
+  \item the covariance we associate with this mean is the \emph{Laplace
+        covariance} $\Sigma_{\text{Lap}}$ given by the curvature at $p^\star$.
+\end{itemize}
+
+\subsection*{6.1 Defining the MAP}
+
+The posterior mode (MAP) is defined by
+\[
+  p^\star = \arg\min_{p} E(p)
+\]
+subject to the simplex constraints $p_i\ge 0$ and $\sum_i p_i = 1$.
+We seek this mode via Newton's method applied to $E(p)$.
+
+\subsection*{6.2 Newton Iteration}
+
+Let $p^{(k)}$ denote the current iterate (row vector).  One Newton step
+is:
+\[
+  p^{(k+1)}
+  =
+  p^{(k)} - \Delta p^{(k)},
+  \qquad
+  \mathbf{H}(p^{(k)})\,\Delta p^{(k)\top}
+  = \mathbf{g}(p^{(k)})^\top.
+\]
+
+Algorithmically:
+\begin{enumerate}
+  \item Initialise with a feasible point, typically $p^{(0)} = \mu$.
+  \item For $k=0,1,2,\dots$ until convergence:
+  \begin{enumerate}
+    \item Compute
+      $\delta^{(k)} = \delta(p^{(k)})$,
+      $V^{(k)} = V(p^{(k)})$,
+      $v^{(k)} = v(p^{(k)})$.
+    \item Form
+      $\mathbf{g}^{(k)} = \mathbf{g}(p^{(k)})$ and
+      $\mathbf{H}^{(k)} = \mathbf{H}(p^{(k)})$ using the formulas
+      in Section~3.
+    \item Compute the Laplace covariance
+      $\Sigma_{\text{post}}^{(k)}$
+      at $p^{(k)}$ using the closed form in Section~4.
+    \item Update the mean using the general formula (2) with
+      $p_0 = p^{(k)}$ and $\Sigma_{\text{post}} = \Sigma_{\text{post}}^{(k)}$:
+      \[
+        p^{(k+1)}
+        =
+        \mu
+        + \frac{N_{\text{ch}}}{V^{(k)} + N_{\text{ch}} s^{(k)}}\,(p^{(k)}-\mu)\,
+          v^{(k)} v^{(k)\top} \Sigma_p
+        + \frac{N_{\text{ch}}\delta^{(k)}}{V^{(k)}}\,\gamma^\top\Sigma_{\text{post}}^{(k)}
+        + \frac{N_{\text{ch}}\delta^{(k)2}}{2V^{(k)2}}\,(\sigma^2)^\top\Sigma_{\text{post}}^{(k)}.
+      \]
+      Here $s^{(k)} = v^{(k)\top}\Sigma_p v^{(k)}$.
+    \item Optionally project $p^{(k+1)}$ back onto the simplex
+      (enforce $p_i^{(k+1)}\ge 0$ and renormalise
+       $\sum_i p_i^{(k+1)}=1$).
+  \end{enumerate}
+\end{enumerate}
+
+If we stop after a single iteration from $p^{(0)}=\mu$, we recover
+the one-step expression of Section~5.2.  In general, Newton generates
+a sequence $p^{(k)}$ converging to the MAP $p^\star$, and we then
+set:
+\[
+  p_{\text{MAP}} = p^\star.
+\]
+
+\subsection*{6.3 MAP--Laplace Posterior}
+
+Once Newton has converged to $p^\star$, we define the
+\emph{MAP--Laplace posterior} as:
+\[
+  p\mid y
+  \approx
+  \mathcal{N}\!\bigl(p^\star, \Sigma_{\text{Lap}}\bigr),
+\]
+with covariance given by the inverse curvature at $p^\star$:
+\[
+  \Sigma_{\text{Lap}}
+  = \mathbf{H}(p^\star)^{-1}.
+\]
+
+Using the rank-1 structure, we compute $\Sigma_{\text{Lap}}$ via the
+same closed form as $\Sigma_{\text{post}}(p_0)$, simply evaluated at
+$p_0 = p^\star$:
+\[
+  \Sigma_{\text{Lap}}
+  =
+  \frac{1}{N_{\text{ch}}}\,\Sigma_p
+  -
+  \frac{1}{V(p^\star) + N_{\text{ch}} s(p^\star)}\,
+  \Sigma_p v(p^\star) v(p^\star)^\top \Sigma_p,
+\]
+with $s(p^\star) = v(p^\star)^\top\Sigma_p v(p^\star)$.
+
+Thus the computational recipe is:
+\begin{itemize}
+  \item iterate Newton using (2) until convergence to $p^\star$;
+  \item evaluate the rank-1 covariance formula at $p^\star$ to obtain
+        $\Sigma_{\text{Lap}}$.
+\end{itemize}
+
+\section*{7. Detailed Derivation of Gradient and Hessian}
+
+For completeness, we include the full derivation of the gradient and
+Hessian of $E(p)$.
+
+Recall:
+\[
+  E(p) = M(p) + P(p),
+  \qquad
+  M(p) = \frac{\delta^2}{V},
+  \qquad
+  P(p) = (p-\mu)\,(N_{\text{ch}}\Sigma_p^{-1})(p-\mu)^\top,
+\]
+with
+\[
+  \delta = y - N_{\text{ch}}(p\cdot\gamma),
+  \qquad
+  V = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2).
+\]
+
+Here $p$ is a row vector, $\gamma$ and $\sigma^2$ are column vectors.
+
+\subsection*{7.1 Prior Gradient and Hessian}
+
+Define the precision matrix $\Lambda_p = N_{\text{ch}}\Sigma_p^{-1}$.
+Then:
+\[
+  P(p) = (p-\mu)\Lambda_p(p-\mu)^\top.
+\]
+
+Using the standard formula for the gradient of a quadratic form
+$f(p) = (p-\mu)A(p-\mu)^\top$, with symmetric $A$, we have:
+\[
+  \nabla f(p) = 2(p-\mu)A,
+\]
+and
+\[
+  \nabla^2 f(p) = 2A.
+\]
+
+Thus:
+\begin{align*}
+  \nabla P(p) &= 2(p-\mu)\Lambda_p
+              = 2N_{\text{ch}}(p-\mu)\Sigma_p^{-1},\\[4pt]
+  \nabla^2 P(p) &= 2\Lambda_p
+                = 2N_{\text{ch}}\Sigma_p^{-1}.
+\end{align*}
+
+\subsection*{7.2 Likelihood Gradient}
+
+We have:
+\[
+  M(p) = \frac{\delta^2}{V},
+  \qquad
+  \delta = y - N_{\text{ch}}(p\cdot\gamma),
+  \qquad
+  V = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2).
+\]
+
+First compute the gradients of $\delta$ and $V$:
+\[
+  \nabla\delta(p) = -N_{\text{ch}}\gamma^\top,
+  \qquad
+  \nabla V(p) = N_{\text{ch}}(\sigma^2)^\top,
+\]
+both row vectors.
+
+Now apply the quotient rule to $M(p) = \delta^2/V$:
+\[
+  \nabla M(p)
+  = \frac{2\delta}{V}\,\nabla\delta
+    - \frac{\delta^2}{V^2}\,\nabla V.
+\]
+
+Substituting:
+\[
+  \nabla M(p)
+  =
+  \frac{2\delta}{V}(-N_{\text{ch}}\gamma^\top)
+  - \frac{\delta^2}{V^2}N_{\text{ch}}(\sigma^2)^\top
+  =
+  -N_{\text{ch}}
+  \left[
+    \frac{2\delta}{V}\,\gamma^\top
+    + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+  \right].
+\]
+
+\subsection*{7.3 Likelihood Hessian}
+
+Write:
+\[
+  M(p) = \delta^2 V^{-1}.
+\]
+
+We already have:
+\[
+  \nabla M(p)
+  =
+  a(p)\,\nabla\delta(p) - b(p)\,\nabla V(p),
+\]
+with:
+\[
+  a(p) = \frac{2\delta}{V},
+  \qquad
+  b(p) = \frac{\delta^2}{V^2}.
+\]
+
+Because $\delta$ and $V$ are affine in $p$, their Hessians vanish:
+$\nabla^2\delta = 0$, $\nabla^2 V = 0$.  Thus:
+\[
+  \nabla^2 M(p)
+  = (\nabla a)\,\nabla\delta - (\nabla b)\,\nabla V.
+\]
+
+It remains to compute $\nabla a$ and $\nabla b$.
+
+\paragraph{Gradient of $a(p)$.}
+\[
+  a(p) = \frac{2\delta}{V}.
+\]
+
+Using the quotient rule:
+\[
+  \nabla a
+  =
+  \frac{2}{V}\,\nabla\delta
+  - \frac{2\delta}{V^2}\,\nabla V.
+\]
+
+Substitute:
+\[
+  \nabla a
+  =
+  \frac{2}{V}(-N_{\text{ch}}\gamma^\top)
+  - \frac{2\delta}{V^2}N_{\text{ch}}(\sigma^2)^\top
+  =
+  -\frac{2N_{\text{ch}}}{V}\gamma^\top
+  - \frac{2N_{\text{ch}}\delta}{V^2}(\sigma^2)^\top.
+\]
+
+\paragraph{Gradient of $b(p)$.}
+\[
+  b(p) = \frac{\delta^2}{V^2}.
+\]
+
+Differentiating:
+\[
+  \nabla b
+  =
+  2\frac{\delta}{V^2}\,\nabla\delta
+  - 2\frac{\delta^2}{V^3}\,\nabla V.
+\]
+
+Substitute:
+\[
+  \nabla b
+  =
+  2\frac{\delta}{V^2}(-N_{\text{ch}}\gamma^\top)
+  - 2\frac{\delta^2}{V^3}N_{\text{ch}}(\sigma^2)^\top
+  =
+  -\frac{2N_{\text{ch}}\delta}{V^2}\gamma^\top
+  - \frac{2N_{\text{ch}}\delta^2}{V^3}(\sigma^2)^\top.
+\]
+
+\paragraph{Assembling the Hessian.}
+Recall:
+\[
+  \nabla^2 M(p)
+  = (\nabla a)\,\nabla\delta - (\nabla b)\,\nabla V.
+\]
+
+Using:
+\[
+  \nabla\delta = -N_{\text{ch}}\gamma^\top,
+  \qquad
+  \nabla V = N_{\text{ch}}(\sigma^2)^\top,
+\]
+we obtain:
+\[
+  \nabla^2 M(p)
+  =
+  (\nabla a)(-N_{\text{ch}}\gamma^\top)
+  - (\nabla b)N_{\text{ch}}(\sigma^2)^\top.
+\]
+
+Substituting the expressions for $\nabla a$ and $\nabla b$ and collecting
+terms, we arrive at:
+\[
+  \nabla^2 M(p)
+  =
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V}\gamma\gamma^\top
+    + \frac{\delta}{V^2}(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top)
+    + \frac{\delta^2}{V^3}\sigma^2(\sigma^2)^\top
+  \right].
+\]
+
+\subsection*{7.4 Full Gradient and Hessian}
+
+Combining prior and likelihood:
+
+\begin{align*}
+  \mathbf{g}(p)
+  &= \nabla E(p)
+   = \nabla M(p) + \nabla P(p)\\[2pt]
+  &= 2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+     - N_{\text{ch}}
+     \left[
+       \frac{2\delta}{V}\,\gamma^\top
+       + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+     \right],
+\end{align*}
+and:
+\begin{align*}
+  \mathbf{H}(p)
+  &= \nabla^2 E(p)
+   = \nabla^2 M(p) + \nabla^2 P(p)\\[2pt]
+  &= 2N_{\text{ch}}\Sigma_p^{-1}
+     + 2N_{\text{ch}}^2
+      \left[
+        \frac{1}{V}\gamma\gamma^\top
+        + \frac{\delta}{V^2}(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top)
+        + \frac{\delta^2}{V^3}\sigma^2(\sigma^2)^\top
+      \right].
+\end{align*}
+
+\subsection*{7.5 Rank-1 Factorisation of the Hessian}
+
+Define:
+\[
+  v = \gamma + \frac{\delta}{V}\sigma^2.
+\]
+
+Compute:
+\[
+  v v^\top
+  =
+  \gamma\gamma^\top
+  + \frac{\delta}{V}(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top)
+  + \frac{\delta^2}{V^2}\sigma^2(\sigma^2)^\top.
+\]
+
+Then:
+\[
+  \frac{N_{\text{ch}}}{V}v v^\top
+  =
+  \frac{N_{\text{ch}}}{V}\gamma\gamma^\top
+  + \frac{N_{\text{ch}}\delta}{V^2}(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top)
+  + \frac{N_{\text{ch}}\delta^2}{V^3}\sigma^2(\sigma^2)^\top,
+\]
+which matches exactly the bracketed term in the expression for
+$\nabla^2 M(p)$, scaled by $2N_{\text{ch}}^2$.
+
+Thus:
+\[
+  \nabla^2 M(p)
+  =
+  2N_{\text{ch}}^2\frac{1}{V}v v^\top,
+\]
+and so the full Hessian is:
+\[
+  \mathbf{H}(p)
+  =
+  2N_{\text{ch}}\Sigma_p^{-1}
+  + 2N_{\text{ch}}^2\frac{1}{V}v v^\top
+  =
+  2N_{\text{ch}}
+  \left[
+    \Sigma_p^{-1}
+    + \frac{N_{\text{ch}}}{V}v v^\top
+  \right].
+\]
+
+Introducing
+\[
+  u = \sqrt{\frac{N_{\text{ch}}}{V}}\,v,
+\]
+we recover:
+\[
+  \mathbf{H}(p)
+  = 2N_{\text{ch}}(\Sigma_p^{-1} + u u^\top),
+\]
+which is the starting point for the Sherman--Morrison inversion in
+Section~4.
+
+This completes the detailed derivation with consistent vector
+orientations, explicit dependence of $\delta$, $V$ and $v$ on $p$,
+and with all explicit uses of $\Sigma_p^{-1}$ eliminated from the
+implementable formulas for $p_{\text{post}}$ and $\Sigma_{\text{post}}$.
+
+\section*{8. Exact MAP Energy with $\log V$ and Rank-2 Hessian}
+
+In the previous sections we defined the energy as
+\[
+  E_{\text{quasi}}(p)
+  =
+  \frac{\delta(p)^2}{V(p)}
+  + (p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top,
+\]
+which corresponds to a \emph{quasi-likelihood} that uses $V(p)$ only as
+a weight for the squared residual.  This choice yields a rank-1 Hessian
+update and a simple closed form for $\Sigma_{\text{post}}$.
+
+If we take seriously the generative model
+\[
+  y \mid p \sim \mathcal{N}\bigl(N_{\text{ch}}(p\cdot\gamma),\, V(p)\bigr),
+\]
+then the \emph{exact} negative log-likelihood (up to an additive
+constant) is
+\[
+  E_{\text{like}}(p)
+  = \log V(p) + \frac{\delta(p)^2}{V(p)}.
+\]
+
+In this section we incorporate the $\log V(p)$ term and work with the
+\emph{exact} negative log-posterior
+\[
+  E_{\text{exact}}(p)
+  = \underbrace{\log V(p) + \frac{\delta(p)^2}{V(p)}}_{\text{data}}
+  + \underbrace{(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top}_{\text{prior}}
+  + \text{const}.
+\]
+
+As before:
+\[
+  \delta(p) = y - N_{\text{ch}}(p\cdot\gamma),
+  \qquad
+  V(p) = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2),
+\]
+and
+\[
+  v(p) = \gamma + \frac{\delta(p)}{V(p)}\,\sigma^2.
+\]
+
+The prior log-determinant term (pseudo-determinant of the singular
+$\Sigma_p$) is a constant in $p$ and therefore \emph{does not} affect
+the MAP; we ignore it here.
+
+\subsection*{8.1 Exact Gradient}
+
+We decompose
+\[
+  E_{\text{exact}}(p)
+  = L(p) + M(p) + P(p),
+\]
+with
+\[
+  L(p) = \log V(p),
+  \quad
+  M(p) = \frac{\delta(p)^2}{V(p)},
+  \quad
+  P(p) = (p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top.
+\]
+
+The gradients of $M$ and $P$ were already computed in Section~7:
+\[
+  \nabla M(p)
+  =
+  -N_{\text{ch}}
+  \left[
+    \frac{2\delta(p)}{V(p)}\,\gamma^\top
+    + \frac{\delta(p)^2}{V(p)^2}\,(\sigma^2)^\top
+  \right],
+\]
+\[
+  \nabla P(p)
+  = 2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}.
+\]
+
+For the new term $L(p) = \log V(p)$ we have
+\[
+  \nabla L(p)
+  = \frac{1}{V(p)}\,\nabla V(p)
+  = \frac{N_{\text{ch}}}{V(p)}\,(\sigma^2)^\top,
+\]
+since $\nabla V(p) = N_{\text{ch}}(\sigma^2)^\top$.
+
+Thus the \emph{exact} gradient becomes
+\[
+  \mathbf{g}_{\text{exact}}(p)
+  = \nabla E_{\text{exact}}(p)
+  = 2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+    - N_{\text{ch}}
+    \left[
+      \frac{2\delta(p)}{V(p)}\,\gamma^\top
+      + \frac{\delta(p)^2}{V(p)^2}\,(\sigma^2)^\top
+      - \frac{1}{V(p)}\,(\sigma^2)^\top
+    \right].
+\]
+
+Equivalently, grouping the $(\sigma^2)^\top$ terms:
+\[
+  \boxed{
+  \mathbf{g}_{\text{exact}}(p)
+  =
+  2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+  -
+  N_{\text{ch}}
+  \left[
+    \frac{2\delta(p)}{V(p)}\,\gamma^\top
+    + \left(\frac{\delta(p)^2}{V(p)^2} - \frac{1}{V(p)}\right)(\sigma^2)^\top
+  \right].
+  }
+\]
+
+This is what must be used in a true Newton iteration targeting the
+exact MAP.
+
+\subsection*{8.2 Exact Hessian and Rank-2 Structure}
+
+We now add the Hessian of $L(p)$ to the Hessian derived in
+Section~7 for $M(p)+P(p)$.
+
+From Section~7:
+\[
+  \nabla^2 P(p) = 2N_{\text{ch}}\Sigma_p^{-1},
+\]
+\[
+  \nabla^2 M(p)
+  =
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V(p)}\gamma\gamma^\top
+    + \frac{\delta(p)}{V(p)^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \frac{\delta(p)^2}{V(p)^3}\,\sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+For $L(p) = \log V(p)$, using $\nabla V(p) = N_{\text{ch}}(\sigma^2)^\top$
+and $\nabla^2 V(p) = 0$:
+\[
+  \nabla^2 L(p)
+  = -\frac{1}{V(p)^2}\,\bigl(\nabla V(p)\bigr)^\top\nabla V(p)
+  = -\frac{N_{\text{ch}}^2}{V(p)^2}\,\sigma^2\sigma^2{}^\top.
+\]
+
+Therefore:
+\[
+  \nabla^2\bigl(M(p) + L(p)\bigr)
+  =
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V(p)}\gamma\gamma^\top
+    + \frac{\delta(p)}{V(p)^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \left(\frac{\delta(p)^2}{V(p)^3} - \frac{1}{2V(p)^2}\right)
+      \sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+Adding the prior Hessian,
+\[
+  \nabla^2 P(p) = 2N_{\text{ch}}\Sigma_p^{-1},
+\]
+we obtain the full exact Hessian:
+\[
+  \mathbf{H}_{\text{exact}}(p)
+  =
+  2N_{\text{ch}}\Sigma_p^{-1}
+  +
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V(p)}\gamma\gamma^\top
+    + \frac{\delta(p)}{V(p)^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \left(\frac{\delta(p)^2}{V(p)^3} - \frac{1}{2V(p)^2}\right)
+      \sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+It is convenient to rewrite this as a \emph{rank-2} update of the prior
+precision.  As before, define
+\[
+  v(p) = \gamma + \frac{\delta(p)}{V(p)}\,\sigma^2,
+\]
+and let
+\[
+  u_1(p) = v(p),
+  \qquad
+  u_2(p) = \sigma^2.
+\]
+
+We will write the Hessian in the form
+\[
+  \mathbf{H}_{\text{exact}}(p)
+  = 2N_{\text{ch}}
+    \bigl[\Sigma_p^{-1} + U(p) C(p) U(p)^\top\bigr],
+\]
+with
+\[
+  U(p) = \bigl[u_1(p), u_2(p)\bigr] \in \mathbb{R}^{d\times 2},
+\]
+and $C(p)$ a $2\times 2$ diagonal matrix.
+
+From the rank-1 case we know that
+\[
+  \frac{N_{\text{ch}}}{V(p)}v(p)v(p)^\top
+  = \frac{N_{\text{ch}}}{V(p)}u_1(p)u_1(p)^\top
+\]
+generates the $M$-part of the Hessian without $\log V$.  The extra
+term from $L(p)$ is
+\[
+  -\frac{N_{\text{ch}}^2}{V(p)^2}\sigma^2\sigma^2{}^\top
+  = 2N_{\text{ch}}\left(-\frac{N_{\text{ch}}}{2V(p)^2}\right)
+    u_2(p)u_2(p)^\top.
+\]
+
+Thus we can take
+\[
+  C(p) = 
+  \begin{pmatrix}
+    \alpha(p) & 0\\[3pt]
+    0         & \beta(p)
+  \end{pmatrix},
+  \qquad
+  \alpha(p) = \frac{N_{\text{ch}}}{V(p)},
+  \qquad
+  \beta(p)  = -\frac{N_{\text{ch}}}{2V(p)^2},
+\]
+so that
+\[
+  U(p)C(p)U(p)^\top
+  = \alpha(p)u_1(p)u_1(p)^\top + \beta(p)u_2(p)u_2(p)^\top.
+\]
+
+We have therefore
+\[
+  \boxed{
+  \mathbf{H}_{\text{exact}}(p)
+  =
+  2N_{\text{ch}}
+  \bigl[
+    \Sigma_p^{-1} + U(p)C(p)U(p)^\top
+  \bigr],
+  }
+\]
+with a \emph{rank-2} update governed by $v(p)$ and $\sigma^2$.
+
+\subsection*{8.3 Woodbury Inversion and Exact Laplace Covariance}
+
+The Woodbury identity for a rank-$k$ update says that, for invertible
+$A$,
+\[
+  (A + U C U^\top)^{-1}
+  =
+  A^{-1}
+  - A^{-1}U\bigl(C^{-1} + U^\top A^{-1}U\bigr)^{-1}U^\top A^{-1},
+\]
+where $U$ is $d\times k$ and $C$ is $k\times k$.
+
+We apply this in the intrinsic $(d-1)$-dimensional subspace with
+\[
+  A = \Sigma_p^{-1},
+  \qquad
+  A^{-1} = \Sigma_p,
+  \qquad
+  U = U(p_0),
+  \qquad
+  C = C(p_0),
+\]
+for an expansion point $p_0$.  Then
+\[
+  \bigl(\Sigma_p^{-1} + U C U^\top\bigr)^{-1}
+  =
+  \Sigma_p
+  - \Sigma_p U K U^\top \Sigma_p,
+\]
+where
+\[
+  K
+  =
+  \bigl(C^{-1} + U^\top \Sigma_p U\bigr)^{-1}
+  \in \mathbb{R}^{2\times 2}.
+\]
+
+Since
+\[
+  \mathbf{H}_{\text{exact}}(p_0)
+  = 2N_{\text{ch}}\bigl(\Sigma_p^{-1} + U C U^\top\bigr),
+\]
+we get
+\[
+  \mathbf{H}_{\text{exact}}(p_0)^{-1}
+  =
+  \frac{1}{2N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U K U^\top \Sigma_p
+  \right].
+\]
+
+The \emph{exact} Laplace covariance at $p_0$ is
+\[
+  \Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  2\,\mathbf{H}_{\text{exact}}(p_0)^{-1}
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U K U^\top \Sigma_p
+  \right].
+\]
+
+Explicitly, at $p_0$:
+\[
+  U = \bigl[v(p_0),\ \sigma^2\bigr],
+\qquad
+  C =
+  \begin{pmatrix}
+    \alpha & 0\\[3pt]
+    0      & \beta
+  \end{pmatrix},
+\]
+with
+\[
+  \alpha = \frac{N_{\text{ch}}}{V(p_0)},
+  \qquad
+  \beta  = -\frac{N_{\text{ch}}}{2V(p_0)^2}.
+\]
+
+The $2\times 2$ matrix
+\[
+  M = C^{-1} + U^\top \Sigma_p U
+\]
+is
+\[
+  M =
+  \begin{pmatrix}
+    \alpha^{-1} + v^\top\Sigma_p v &
+    v^\top\Sigma_p \sigma^2\\[3pt]
+    \sigma^2{}^\top\Sigma_p v &
+    \beta^{-1} + \sigma^2{}^\top\Sigma_p \sigma^2
+  \end{pmatrix}
+  =
+  \begin{pmatrix}
+    \dfrac{V}{N_{\text{ch}}} + s &
+    b\\[10pt]
+    b &
+    -\dfrac{2V(p_0)^2}{N_{\text{ch}}} + c
+  \end{pmatrix},
+\]
+where
+\[
+  s = v^\top\Sigma_p v,
+  \qquad
+  b = v^\top\Sigma_p\sigma^2,
+  \qquad
+  c = \sigma^2{}^\top\Sigma_p\sigma^2.
+\]
+
+Then
+\[
+  K = M^{-1}
+\]
+is the inverse of a \emph{2-by-2} matrix, which can always be computed
+analytically or numerically with negligible cost relative to the
+channel-ensemble computations.
+
+Thus the exact MAP covariance is
+\[
+  \boxed{
+  \Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U(p_0) K(p_0) U(p_0)^\top \Sigma_p
+  \right],
+  }
+\]
+with $K(p_0) = \bigl(C(p_0)^{-1} + U(p_0)^\top\Sigma_p U(p_0)\bigr)^{-1}$.
+
+\paragraph{Remark (singular prior).}
+Again, $\Sigma_p^{-1}$ appears only formally in the Woodbury algebra.
+The implementable expression for
+$\Sigma_{\text{post}}^{\text{exact}}(p_0)$ contains only $\Sigma_p$,
+$U(p_0)$ and the small $2\times 2$ inverse $K(p_0)$.
+
+\subsection*{8.4 Exact Mean Update and Elimination of $\Sigma_p^{-1}$}
+
+The exact Laplace mean at $p_0$ is
+\[
+  p_{\text{post}}^{\text{exact}}
+  =
+  p_0 - \mathbf{g}_{\text{exact}}(p_0)\,\mathbf{H}_{\text{exact}}(p_0)^{-1}
+  =
+  p_0 - \frac{1}{2}\mathbf{g}_{\text{exact}}(p_0)\,
+         \Sigma_{\text{post}}^{\text{exact}}(p_0).
+\]
+
+Write
+\[
+  \Delta p = p_0 - \mu,
+\]
+and decompose the gradient as
+\[
+  \mathbf{g}_{\text{exact}}(p_0)
+  = 2N_{\text{ch}}\Delta p\,\Sigma_p^{-1}
+    - N_{\text{ch}}\,q^\top,
+\]
+where
+\[
+  q^\top
+  =
+  \frac{2\delta}{V}\,\gamma^\top
+  + \left(\frac{\delta^2}{V^2} - \frac{1}{V}\right)(\sigma^2)^\top,
+\]
+with $\delta = \delta(p_0)$ and $V = V(p_0)$.
+
+Then
+\[
+  p_{\text{post}}^{\text{exact}}
+  =
+  p_0
+  - N_{\text{ch}}\Delta p\,\Sigma_p^{-1}\Sigma_{\text{post}}^{\text{exact}}(p_0)
+  + \frac{N_{\text{ch}}}{2} q^\top \Sigma_{\text{post}}^{\text{exact}}(p_0).
+\]
+
+Using the exact covariance expression
+\[
+  \Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U K U^\top \Sigma_p
+  \right],
+\]
+we compute
+\[
+  \begin{aligned}
+  \Sigma_p^{-1}\Sigma_{\text{post}}^{\text{exact}}(p_0)
+  &=
+  \Sigma_p^{-1}
+  \left[
+    \frac{1}{N_{\text{ch}}}
+    \bigl(\Sigma_p - \Sigma_p U K U^\top \Sigma_p\bigr)
+  \right]\\[4pt]
+  &=
+  \frac{1}{N_{\text{ch}}}
+  \bigl(I - U K U^\top \Sigma_p\bigr).
+  \end{aligned}
+\]
+
+Thus
+\[
+  N_{\text{ch}}\Delta p\,\Sigma_p^{-1}\Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  \Delta p - \Delta p\,U K U^\top \Sigma_p.
+\]
+
+Substituting back:
+\[
+  \begin{aligned}
+  p_{\text{post}}^{\text{exact}}
+  &=
+  p_0
+  - \Bigl[\Delta p - \Delta p\,U K U^\top \Sigma_p\Bigr]
+  + \frac{N_{\text{ch}}}{2}q^\top\Sigma_{\text{post}}^{\text{exact}}(p_0)\\[4pt]
+  &=
+  (p_0 - \Delta p)
+  + \Delta p\,U K U^\top \Sigma_p
+  + \frac{N_{\text{ch}}}{2}q^\top\Sigma_{\text{post}}^{\text{exact}}(p_0).
+  \end{aligned}
+\]
+
+Since $p_0 - \Delta p = \mu$, we obtain the exact mean update in a form
+with no explicit $\Sigma_p^{-1}$:
+\[
+  \boxed{
+  p_{\text{post}}^{\text{exact}}
+  =
+  \mu
+  + \Delta p\,U(p_0) K(p_0) U(p_0)^\top \Sigma_p
+  + \frac{N_{\text{ch}}}{2}\,q^\top\Sigma_{\text{post}}^{\text{exact}}(p_0),
+  }
+\]
+with
+\[
+  \Delta p = p_0 - \mu,
+  \quad
+  q^\top
+  =
+  \frac{2\delta}{V}\,\gamma^\top
+  + \left(\frac{\delta^2}{V^2} - \frac{1}{V}\right)(\sigma^2)^\top,
+\]
+and $\Sigma_{\text{post}}^{\text{exact}}(p_0)$ given above.
+
+\subsection*{8.5 Summary: Rank-1 vs Rank-2 Schemes}
+
+We now have two related Laplace schemes:
+
+\begin{itemize}
+  \item \textbf{Quasi-Laplace (rank-1)}:
+    \begin{itemize}
+      \item Energy:
+        \(
+          E_{\text{quasi}}(p) = \delta(p)^2/V(p) + P(p)
+        \).
+      \item Hessian:
+        rank-1 update, closed form
+        \(
+        \Sigma_{\text{post}}(p_0)
+        =
+        \dfrac{1}{N_{\text{ch}}}\Sigma_p
+        - \dfrac{1}{V(p_0)+N_{\text{ch}}s(p_0)}\Sigma_p v(p_0)v(p_0)^\top\Sigma_p.
+        \)
+      \item Mean update:
+        Eq.~(2) in Section~5, no explicit $\Sigma_p^{-1}$.
+    \end{itemize}
+
+  \item \textbf{Exact MAP + Laplace (rank-2)}:
+    \begin{itemize}
+      \item Energy:
+        \(
+          E_{\text{exact}}(p) = \log V(p) + \delta(p)^2/V(p) + P(p)
+        \).
+      \item Hessian:
+        rank-2 update,
+        \(
+          \mathbf{H}_{\text{exact}}(p)
+          =
+          2N_{\text{ch}}\bigl[\Sigma_p^{-1} + U(p)C(p)U(p)^\top\bigr].
+        \)
+      \item Covariance:
+        \(
+          \Sigma_{\text{post}}^{\text{exact}}(p_0)
+          =
+          \dfrac{1}{N_{\text{ch}}}
+          \bigl[\Sigma_p - \Sigma_p U(p_0)K(p_0)U(p_0)^\top\Sigma_p\bigr]
+        \),
+        with a $2\times 2$ matrix $K(p_0)$.
+      \item Mean update:
+        the exact expression above, again without explicit $\Sigma_p^{-1}$.
+    \end{itemize}
+\end{itemize}
+
+From an implementation perspective, the heavy lifting in MacroIR/MacroDR
+remains the computation of the channel-ensemble statistics that define
+$\gamma$, $\sigma^2$, and thus $V(p)$ and $v(p)$.  Going from a rank-1
+to a rank-2 Hessian only requires a $2\times 2$ matrix inversion per
+interval, which is negligible compared to the cost of the boundary-state
+and tilde-operator computations.
+
+\section*{8. Exact MAP from the Gaussian Likelihood (with $\tfrac12$ factors)}
+
+Up to now we have worked with an ``energy''
+\[
+  E(p) = M(p) + P(p)
+\]
+(and in Section~8 with $E_{\text{exact}}(p)=L(p)+M(p)+P(p)$) without
+explicit $\tfrac12$ factors.  In this section we start from the
+\emph{actual} Gaussian likelihood and prior, write the \emph{true}
+negative log-posterior, and then explain how it relates to the
+energies used in the rest of the note.
+
+\subsection*{8.1 Gaussian likelihood and prior in standard form}
+
+Given a macroscopic state $p$, the scalar interval-averaged current
+is modelled as
+\[
+  y \mid p
+  \sim
+  \mathcal{N}\bigl(\mu_y(p),\,V(p)\bigr),
+  \qquad
+  \mu_y(p) = N_{\text{ch}}(p\cdot\gamma),
+\]
+with
+\[
+  V(p) = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2).
+\]
+
+The Gaussian likelihood is
+\[
+  p(y\mid p)
+  =
+  \frac{1}{\sqrt{2\pi V(p)}}
+  \exp\!\left(
+    -\frac{1}{2}\frac{\bigl(y-\mu_y(p)\bigr)^2}{V(p)}
+  \right).
+\]
+
+Define
+\[
+  \delta(p) = y - N_{\text{ch}}(p\cdot\gamma),
+\]
+so that
+\[
+  p(y\mid p)
+  =
+  \frac{1}{\sqrt{2\pi V(p)}}
+  \exp\!\left(
+    -\frac{1}{2}\frac{\delta(p)^2}{V(p)}
+  \right).
+\]
+
+The log-likelihood is therefore
+\[
+  \log p(y\mid p)
+  =
+  -\frac{1}{2}\log(2\pi)
+  -\frac{1}{2}\log V(p)
+  -\frac{1}{2}\frac{\delta(p)^2}{V(p)}.
+\]
+
+Ignoring the constant $-\tfrac12\log(2\pi)$, the \emph{negative}
+log-likelihood is
+\[
+  F_{\text{like}}(p)
+  =
+  \frac{1}{2}\log V(p)
+  + \frac{1}{2}\frac{\delta(p)^2}{V(p)}
+  \quad(+\ \text{const}).
+\]
+
+For the prior we assume
+\[
+  p \sim \mathcal{N}(\mu,\Sigma_p)
+\]
+on the simplex, with precision
+\[
+  \Lambda_p = N_{\text{ch}}\Sigma_p^{-1}.
+\]
+
+The prior density is
+\[
+  p(p)
+  \propto
+  \exp\!\left(
+    -\frac{1}{2}(p-\mu)\Lambda_p(p-\mu)^\top
+  \right),
+\]
+so the negative log-prior (up to a constant) is
+\[
+  F_{\text{prior}}(p)
+  =
+  \frac{1}{2}(p-\mu)\Lambda_p(p-\mu)^\top
+  =
+  \frac{1}{2}(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top.
+\]
+
+\subsection*{8.2 Exact negative log-posterior and scaling to ``energy''}
+
+The (unnormalised) posterior is
+\[
+  p(p\mid y) \propto p(y\mid p)\,p(p),
+\]
+so the \emph{exact} negative log-posterior is
+\[
+  F_{\text{exact}}(p)
+  = F_{\text{like}}(p) + F_{\text{prior}}(p)
+  \quad(+\ \text{const}),
+\]
+that is
+\[
+  F_{\text{exact}}(p)
+  =
+  \frac{1}{2}\log V(p)
+  + \frac{1}{2}\frac{\delta(p)^2}{V(p)}
+  + \frac{1}{2}(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top
+  \quad(+\ \text{const}).
+\]
+
+This is what one should minimise to obtain the true MAP:
+\[
+  p^\star = \arg\min_p F_{\text{exact}}(p).
+\]
+
+For algebraic convenience in the rest of the note we work with an
+\emph{energy} that is simply twice the negative log-posterior:
+\[
+  E_{\text{exact}}(p)
+  := 2F_{\text{exact}}(p).
+\]
+
+Up to an additive constant,
+\[
+  E_{\text{exact}}(p)
+  =
+  \underbrace{\log V(p) + \frac{\delta(p)^2}{V(p)}}_{L(p) + M(p)}
+  +
+  \underbrace{(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top}_{P(p)}.
+\]
+
+This is exactly the decomposition used in Section~8:
+\[
+  E_{\text{exact}}(p) = L(p) + M(p) + P(p).
+\]
+
+\emph{Important:} multiplying $F_{\text{exact}}$ by a positive constant
+does not change the MAP.  Moreover, since
+\[
+  E_{\text{exact}}(p) = 2F_{\text{exact}}(p),
+\]
+their Hessians satisfy
+\[
+  \nabla^2 E_{\text{exact}}(p) = 2\,\nabla^2 F_{\text{exact}}(p),
+\]
+and the Laplace covariance of the posterior,
+\[
+  \Sigma_{\text{Lap}} \approx
+  \bigl[\nabla^2 F_{\text{exact}}(p^\star)\bigr]^{-1},
+\]
+can be computed as
+\[
+  \Sigma_{\text{Lap}}
+  =
+  2\bigl[\nabla^2 E_{\text{exact}}(p^\star)\bigr]^{-1}.
+\]
+
+This is exactly the convention used earlier in the note, where we
+wrote
+\[
+  \Sigma_{\text{post}} = 2\,\mathbf{H}^{-1}
+\]
+with $\mathbf{H} = \nabla^2 E$.
+
+Thus:
+\begin{itemize}
+  \item all gradient and Hessian formulas derived for $E_{\text{exact}}$
+        (including the rank-2 Woodbury structure in Section~8) are
+        correct and correspond to $2\times$ the exact negative
+        log-posterior;
+  \item the MAP is obtained by minimising $F_{\text{exact}}$ or
+        equivalently $E_{\text{exact}}$;
+  \item the Laplace covariance is always
+        $\Sigma_{\text{Lap}} = 2\,\mathbf{H}_{\text{exact}}^{-1}$
+        when $\mathbf{H}_{\text{exact}} = \nabla^2 E_{\text{exact}}$.
+\end{itemize}
+
+\subsection*{8.3 Exact vs quasi energy}
+
+For comparison:
+\begin{itemize}
+  \item The \emph{exact} data term from the Gaussian likelihood is
+  \[
+    F_{\text{like}}(p)
+    =
+    \frac{1}{2}\log V(p)
+    + \frac{1}{2}\frac{\delta(p)^2}{V(p)}
+    \quad(+\ \text{const}),
+  \]
+  and the corresponding energy contribution in this note is
+  \[
+    L(p) + M(p) = \log V(p) + \frac{\delta(p)^2}{V(p)}
+    = 2F_{\text{like}}(p)\quad(+\ \text{const}).
+  \]
+
+  \item The earlier ``quasi'' scheme drops the $\log V(p)$ term and
+        keeps only $\delta(p)^2/V(p)$ (again up to a factor 2), which
+        yields a rank-1 Hessian and the simpler covariance formula.
+\end{itemize}
+
+In other words:
+\begin{itemize}
+  \item if you want the \emph{exact} Gaussian MAP, work with
+        $F_{\text{exact}}$ defined above; all rank-2 Hessian and
+        Woodbury formulas in Section~8 apply directly via
+        $E_{\text{exact}} = 2F_{\text{exact}}$ and
+        $\Sigma_{\text{Lap}} = 2\mathbf{H}_{\text{exact}}^{-1}$;
+  \item if you are happy with the quasi-likelihood (no $\log V$ term),
+        you can use the rank-1 scheme from the earlier sections.
+\end{itemize}
+
+\end{document}

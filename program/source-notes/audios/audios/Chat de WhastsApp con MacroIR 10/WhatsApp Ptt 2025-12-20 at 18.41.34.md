@@ -1,0 +1,11 @@
+# Transcripción
+
+- Archivo: `WhatsApp Ptt 2025-12-20 at 18.41.34.ogg`
+- Duración: 5:00
+- Motor: `whisper.cpp` (`whisper-cli`)
+- Modelo: `ggml-large-v3-turbo-q5_0`
+- Fecha: 2026-02-10
+
+---
+
+Bueno, me queda súper, súper claro ahora que el caso clave para entender la ventaja de macro IR respecto de macro MR es cuando vos empezás, cuando partís de que todos los canales están cerrados y medís durante la primera medición. del canal que es que están todos cerrados entonces cualquier la medición que vos hagas durante esa primera medición no te va no te puede cambiar tu prior por tu prio ya es este es único entonces la única manera de actualizar este tu conocimiento es con el estado al final de la medición y eso la única manera de conseguir si vos haces el update sobre el estado inicial. O sea, la única manera es hacer un update sobre el estado final al terminar la medición. A lo cual uno le hace pensar si vos no podés usar eso. Ah, pero el tema es que vos no podés, bueno, vos podrías, ¿no? o sea, predecir el estado final ¿me ahorraría algo? si vos predecís el estado final y haces un claro, puede ser vos medís lo que sería la conductancia condicional al estado final, no al estado inicial claro, pero vos lo que quiero saber es actualizas el estado inicial y el final. Creo que aún haciéndolo con el estado final, no tenés toda la información. Ahora me agarró la duda a ver si podría haber una estrategia en la cual vos actualizas el estado final, no el estado inicial. A mí me da la idea de que sí, que obviamente condiciona el estado inicial y final, es mucho mejor, porque vos ahora vos actualizas las dos posteriores, el posterior del estado inicial y el final. Sí, estoy seguro que es mejor. Pero bueno, el tema es que es mucho más claro ver que condicionar el estado inicial no sirve para cuando vos... Bueno, podría ser el reverso también. corriente que va cayendo por ejemplo vos podrías ahí está el reverso si vos ahí el estado final sabes que es casi ningún canal y el estado inicial este puede ser diferente el intervalo entonces ahí te conviene basado en el estado inicial o sea que claro está bien o sea que el mismo argumento que te sirve para un caso te sirve para el otro el converso lo cual lo ideal es tener los dos Bien.

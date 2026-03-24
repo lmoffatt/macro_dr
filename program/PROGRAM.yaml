@@ -1,0 +1,95 @@
+id: macroir
+name: MacroIR / MacroDR
+type: program
+status: evolving
+summary: >
+  Long-lived research and engineering program for recursive Bayesian inference
+  of kinetic models, its theory, implementation, validation, applications, and
+  publication outputs.
+
+purpose: >
+  Develop, validate, apply, and communicate the MacroIR / MacroDR framework as
+  an evolving baseline of theory, code, and canonical documentation.
+
+baseline:
+  branch: main
+  maturity: reorganized-initially
+  description: >
+    The current accepted state of theory, code, and canonical documentation in
+    the repository.
+
+workstreams:
+  - theory
+  - code
+  - validation
+  - execution projects
+  - papers
+  - documentation governance
+
+active_projects:
+  - program-project-framework
+  - macro-dr-reorganization
+  - scientific-software
+  - macrodr-program-roadmap
+  - eLife_2025
+  - macrodr-diagnostics
+  - macrodr-dsl
+
+checks:
+  - id: program_definition_exists
+    type: governance
+    required: true
+    status: pass
+    evidence: program/PROGRAM.md
+  - id: program_manifest_exists
+    type: governance
+    required: true
+    status: pass
+    evidence: program/PROGRAM.yaml
+  - id: baseline_vocabulary_exists
+    type: coherence
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/VOCABULARY.md
+  - id: baseline_lifecycle_exists
+    type: coherence
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/LIFECYCLE.md
+  - id: active_projects_registered
+    type: governance
+    required: true
+    status: pass
+    evidence: active_projects field
+  - id: repository_organization_defined
+    type: coherence
+    required: true
+    status: pass
+    evidence: projects/program-project-framework/ORGANIZATION.md
+  - id: baseline_build_passes
+    type: health
+    required: true
+    status: pending
+    evidence: core build/test workflow
+  - id: baseline_core_tests_pass
+    type: health
+    required: true
+    status: pending
+    evidence: tests and smoke checks
+  - id: release_criteria_defined
+    type: readiness
+    required: true
+    status: pending
+    evidence: future release criteria document
+
+dimensions:
+  maturity: structured
+  health: partially-known
+  coherence: improved
+  readiness: not-ready-for-release
+
+next_actions:
+  - connect program health checks to build and test workflows
+  - define release criteria for the baseline
+  - finish Project 2 closeout decisions
+  - define the canonical program roadmap in Project 3

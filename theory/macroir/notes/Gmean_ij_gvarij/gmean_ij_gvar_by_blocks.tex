@@ -1,0 +1,234 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+
+\title{Mean and Variance of Integrated Conductance in a Continuous-Time Markov Chain}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Setup}
+
+Let $X_t$ be a continuous-time Markov chain on a finite state space
+$\{1,\dots,K\}$ with generator $Q \in \mathbb{R}^{K\times K}$.
+We write the state-dependent conductance as a vector
+$\boldsymbol{\gamma} = (\gamma_1,\dots,\gamma_K)^\top$
+and let $\Gamma = \mathrm{diag}(\boldsymbol{\gamma})$.
+
+Given a time horizon $t>0$ and a sample path of the chain, we define the
+\emph{integrated conductance}
+\begin{equation}
+  A(t)
+  \;=\;
+  \int_0^t \gamma\bigl(X_s\bigr)\,ds.
+\end{equation}
+We are interested in the first two moments of $A(t)$, and in particular its
+mean and variance, conditional on the chain starting in state $i$ and ending
+in state $j$:
+\[
+  X_0 = i, \qquad X_t = j.
+\]
+
+Note that the interval-averaged conductance used in the main text is
+\begin{equation}
+  \bar\gamma_{i\to j}(t)
+  \;=\;
+  \frac{1}{t}\,
+  \mathbb{E}\!\bigl[A(t)\mid X_0=i,X_t=j\bigr],
+\end{equation}
+so moments of $\bar\gamma_{i\to j}(t)$ follow directly from moments of $A(t)$
+by dividing by powers of $t$.
+
+\section{Tilted generator and Feynman--Kac representation}
+
+Define the \emph{tilted generator}
+\begin{equation}
+  Q(\alpha) = Q + \alpha\,\Gamma, \qquad \alpha \in \mathbb{R},
+\end{equation}
+and the corresponding transition matrix
+\begin{equation}
+  P^{(\alpha)}(t) = e^{Q(\alpha) t}.
+\end{equation}
+A standard Feynman--Kac argument for continuous-time Markov chains yields
+\begin{equation}
+  P^{(\alpha)}_{ij}(t)
+  =
+  \mathbb{E}\Big[
+    \exp\!\Big(\alpha \int_0^t \gamma(X_s)\,ds\Big)\,
+    \mathbf{1}_{\{X_t=j\}}
+    \,\Big|\,
+    X_0=i
+  \Big].
+\end{equation}
+We abbreviate $A(t) = \int_0^t \gamma(X_s)\,ds$ and write
+$P(t) = P^{(0)}(t) = e^{Qt}$.
+
+Differentiating with respect to $\alpha$ at $\alpha=0$ gives
+\begin{align}
+  U_{ij}(t)
+  &:= \left.\frac{\partial}{\partial\alpha}
+            P^{(\alpha)}_{ij}(t)\right|_{\alpha=0}
+   = \mathbb{E}\big[A(t)\,\mathbf{1}_{\{X_t=j\}}\mid X_0=i\big],
+  \label{eq:Udef}
+  \\[4pt]
+  W_{ij}(t)
+  &:= \left.\frac{\partial^2}{\partial\alpha^2}
+            P^{(\alpha)}_{ij}(t)\right|_{\alpha=0}
+   = \mathbb{E}\big[A^2(t)\,\mathbf{1}_{\{X_t=j\}}\mid X_0=i\big].
+  \label{eq:Wdef}
+\end{align}
+
+\section{Conditional mean and variance of integrated conductance}
+
+By conditioning on the final state, we obtain
+\begin{align}
+  \mathbb{E}\big[A(t)\mid X_0=i, X_t=j\big]
+  &= \frac{U_{ij}(t)}{P_{ij}(t)},
+  \label{eq:meanAij}
+  \\[4pt]
+  \mathbb{E}\big[A^2(t)\mid X_0=i, X_t=j\big]
+  &= \frac{W_{ij}(t)}{P_{ij}(t)}.
+  \label{eq:secondmomentAij}
+\end{align}
+Therefore the conditional variance of the integrated conductance is
+\begin{equation}
+  \mathrm{Var}\big(A(t)\mid X_0=i, X_t=j\big)
+  =
+  \frac{W_{ij}(t)}{P_{ij}(t)}
+  -
+  \left(\frac{U_{ij}(t)}{P_{ij}(t)}\right)^2.
+  \label{eq:varAij}
+\end{equation}
+
+In terms of the interval-averaged conductance
+$\bar\gamma_{i\to j}(t) = A(t)/t$, we have
+\begin{align}
+  \mathbb{E}\big[\bar\gamma_{i\to j}(t)\big]
+  &= \frac{1}{t}\,\frac{U_{ij}(t)}{P_{ij}(t)},
+  \\[4pt]
+  \mathrm{Var}\big(\bar\gamma_{i\to j}(t)\big)
+  &= \frac{1}{t^2}
+     \left[
+       \frac{W_{ij}(t)}{P_{ij}(t)}
+       -
+       \left(\frac{U_{ij}(t)}{P_{ij}(t)}\right)^2
+     \right].
+\end{align}
+
+\section{Block-matrix representation}
+
+The derivatives in \eqref{eq:Udef}--\eqref{eq:Wdef} can be computed without
+explicit diagonalization of $Q$ using matrix exponentials of block matrices.
+
+\subsection{First derivative via a $2K\times 2K$ block matrix}
+
+Consider the augmented generator
+\begin{equation}
+  \mathcal{Q}_2
+  =
+  \begin{pmatrix}
+    Q & \Gamma\\
+    0 & Q
+  \end{pmatrix}
+  \in \mathbb{R}^{2K\times 2K}.
+\end{equation}
+Its exponential has the block form
+\begin{equation}
+  e^{\mathcal{Q}_2 t}
+  =
+  \begin{pmatrix}
+    e^{Qt} & F_1(t)\\
+    0      & e^{Qt}
+  \end{pmatrix},
+\end{equation}
+where
+\begin{equation}
+  F_1(t)
+  =
+  \int_0^t e^{Qu}\,\Gamma\,e^{Q(t-u)}\,du
+  =
+  \left.\frac{\partial}{\partial\alpha}
+    e^{(Q+\alpha\Gamma)t}\right|_{\alpha=0}.
+\end{equation}
+Identifying $F_1(t)$ with the first derivative of the tilted semigroup, we
+have
+\begin{equation}
+  U(t) = F_1(t),
+\end{equation}
+so the mean of $A(t)$ conditional on $(i,j)$ can be written as
+\begin{equation}
+  \mathbb{E}[A(t)\mid X_0=i,X_t=j]
+  = \frac{F_{1,ij}(t)}{[e^{Qt}]_{ij}}.
+\end{equation}
+
+\subsection{Second derivative via a $3K\times 3K$ block matrix}
+
+To access the second derivative simultaneously, define the $3K\times 3K$
+block matrix
+\begin{equation}
+  \mathcal{Q}_3
+  =
+  \begin{pmatrix}
+    Q & \Gamma & 0\\
+    0 & Q      & \Gamma\\
+    0 & 0      & Q
+  \end{pmatrix}.
+\end{equation}
+Its exponential has the form
+\begin{equation}
+  e^{\mathcal{Q}_3 t}
+  =
+  \begin{pmatrix}
+    e^{Qt} & F_1(t) & F_2(t)\\
+    0      & e^{Qt} & F_1(t)\\
+    0      & 0      & e^{Qt}
+  \end{pmatrix},
+\end{equation}
+where $F_1(t)$ is as above, and
+\begin{equation}
+  F_2(t)
+  =
+  \int_0^t ds_1
+  \int_0^{s_1} ds_2\;
+  e^{Q s_2}\,\Gamma\,
+  e^{Q(s_1-s_2)}\,\Gamma\,
+  e^{Q(t-s_1)}.
+\end{equation}
+
+The second derivative of the tilted semigroup can be written as the symmetric
+double integral
+\begin{equation}
+  W(t)
+  =
+  \left.\frac{\partial^2}{\partial\alpha^2}
+    e^{(Q+\alpha\Gamma)t}\right|_{\alpha=0}
+  =
+  \int_0^t\!\!\int_0^t
+   e^{Q s_<}\,\Gamma\,
+   e^{Q(s_>-s_<)}\,\Gamma\,
+   e^{Q(t-s_>)}\,ds_1\,ds_2,
+\end{equation}
+where $s_< = \min(s_1,s_2)$ and $s_> = \max(s_1,s_2)$. Since the square
+$[0,t]\times[0,t]$ splits into two identical triangular regions
+$s_2 < s_1$ and $s_1 < s_2$, we obtain
+\begin{equation}
+  W(t) = 2 F_2(t).
+\end{equation}
+
+Combining this with \eqref{eq:meanAij}--\eqref{eq:varAij}, we find
+\begin{align}
+  \mathbb{E}\big[A(t)\mid X_0=i,X_t=j\big]
+  &= \frac{F_{1,ij}(t)}{[e^{Qt}]_{ij}},
+  \\[4pt]
+  \mathbb{E}\big[A^2(t)\mid X_0=i,X_t=j\big]
+  &= \frac{2F_{2,ij}(t)}{[e^{Qt}]_{ij}},
+  \\[4pt]
+  \mathrm{Var}\big(A(t)\mid X_0=i,X_t=j\big)
+  &=
+  \frac{2F_{2,ij}(t)}{[e^{Qt}]_{ij}}
+  -
+  \left(\frac{F_{1,ij}(t)}{[e^{Qt}]_{ij}}\right)^2.
+\end{align}
+
+\end{document}
