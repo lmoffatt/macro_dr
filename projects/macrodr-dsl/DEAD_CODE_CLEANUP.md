@@ -31,6 +31,20 @@ The important implication is:
 - the modern path works directly from `untyped_argument_list`
 - it does not use the old typed argument-list machinery at runtime
 
+## Status
+
+Implemented in this cleanup pass:
+
+- removed the commented legacy block at the bottom of
+  `include/macrodr/dsl/grammar_typed.h`
+- removed the active-but-obsolete `typed_argument_list<Lexer, Compiler>`
+  scaffolding
+- removed `typed_argument_typed_list`
+- removed the `compile_argument_list(...)` virtual hook chain tied to that old
+  path
+- changed `untyped_argument_list::compile_expression(...)` to report that
+  argument lists are not first-class expressions in the current DSL
+
 ## A. Definitely dead: commented legacy block in `grammar_typed.h`
 
 There is a large commented block at:

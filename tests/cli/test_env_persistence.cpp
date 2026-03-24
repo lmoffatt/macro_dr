@@ -104,7 +104,7 @@ TEST_CASE("environment IO round-trips supported primitives") {
     REQUIRE(loaded);
 
     auto check_value = [&](const char* name, auto expected) {
-        auto maybe_expr = loaded_env.get(make_identifier(name));
+        auto maybe_expr = loaded_env.get_RunValue(make_identifier(name));
         REQUIRE(maybe_expr);
         using ValueType = decltype(expected);
         auto typed = as_typed<ValueType>(maybe_expr.value());
@@ -134,10 +134,10 @@ TEST_CASE("load replace clears prior environment") {
     auto result = macrodr::io::json::envio::load_environment_json(json_path, env, "replace");
     REQUIRE(result);
 
-    auto missing = env.get(make_identifier("x"));
+    auto missing = env.get_RunValue(make_identifier("x"));
     CHECK_FALSE(missing);
 
-    auto maybe_z = env.get(make_identifier("z"));
+    auto maybe_z = env.get_RunValue(make_identifier("z"));
     REQUIRE(maybe_z);
     auto typed_z = as_typed<double>(maybe_z.value());
     REQUIRE(typed_z != nullptr);
@@ -157,7 +157,7 @@ TEST_CASE("load reports skipped unsupported types") {
     auto loaded = macrodr::io::json::envio::load_environment_json(json_path, env);
     REQUIRE(loaded);
     CHECK(loaded.value().find("skipped 1 unsupported variable") != std::string::npos);
-    auto maybe = env.get(make_identifier("u"));
+    auto maybe = env.get_RunValue(make_identifier("u"));
     CHECK_FALSE(maybe);
 }
 
@@ -208,7 +208,7 @@ TEST_CASE("environment IO preserves matrix and vector space literals") {
     auto loaded = macrodr::io::json::envio::load_environment_json(json_path, loaded_env);
     REQUIRE(loaded);
 
-    auto loaded_matrix_expr = loaded_env.get(make_identifier("matrix"));
+    auto loaded_matrix_expr = loaded_env.get_RunValue(make_identifier("matrix"));
     REQUIRE(loaded_matrix_expr);
     auto matrix_typed = as_typed<Matrix<double>>(loaded_matrix_expr.value());
     REQUIRE(matrix_typed != nullptr);
@@ -221,7 +221,7 @@ TEST_CASE("environment IO preserves matrix and vector space literals") {
         for (std::size_t j = 0; j < mat.ncols(); ++j)
             CHECK(matrix_decoded(i, j) == Catch::Approx(mat(i, j)));
 
-    auto loaded_space_expr = loaded_env.get(make_identifier("space"));
+    auto loaded_space_expr = loaded_env.get_RunValue(make_identifier("space"));
     REQUIRE(loaded_space_expr);
     auto space_typed = as_typed<SpaceVar>(loaded_space_expr.value());
     REQUIRE(space_typed != nullptr);
