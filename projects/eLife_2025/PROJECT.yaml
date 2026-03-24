@@ -1,0 +1,100 @@
+id: eLife_2025
+name: eLife 2025 Execution
+type: project
+program: macroir
+status: active
+stage: implemented
+publication_relevance: direct
+summary: >
+  Execution and reproducibility project for the current MacroIR validation
+  paper, including runs, figure datasets, and figure-generation workflows.
+
+purpose: >
+  Own the operational path from selected models and experiments to validation
+  outputs and paper-support figures.
+
+scope:
+  in:
+    - execution scripts
+    - model and experiment inputs
+    - recorded runs
+    - figure datasets
+    - figure-generation workflows
+    - paper-support execution artifacts
+  out:
+    - program-level roadmap governance
+    - canonical paper planning pack
+    - whole-program theory-to-implementation mapping
+
+deliverables:
+  - validation run corpus
+  - figure datasets
+  - figure-generation workflow
+  - paper-support execution record
+
+success_criteria:
+  - project ownership is explicit
+  - execution scripts are identified
+  - run provenance exists
+  - figure datasets and notebooks exist
+  - linkage to the active paper pack is clear
+
+checks:
+  - id: project_defined
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/eLife_2025/PROJECT.md
+  - id: project_manifest_drafted
+    type: docs
+    required: true
+    status: pass
+    evidence: projects/eLife_2025/PROJECT.yaml
+  - id: execution_scripts_exist
+    type: repro
+    required: true
+    status: pass
+    evidence: projects/eLife_2025/ops/local/
+  - id: figure_workflows_exist
+    type: repro
+    required: true
+    status: pass
+    evidence: projects/eLife_2025/figures/
+  - id: run_records_exist
+    type: repro
+    required: true
+    status: pass
+    evidence: projects/eLife_2025/runs/
+  - id: project_runbook_exists
+    type: repro
+    required: true
+    status: pending
+    evidence: future runbook or workboard
+  - id: manuscript_linkage_documented
+    type: governance
+    required: true
+    status: pending
+    evidence: future mapping between runs and manuscript outputs
+
+current_status:
+  completed:
+    - execution assets exist under ops, figures, runs, and data
+    - many recorded runs already exist
+    - figure-support datasets are present
+    - project identity documents created
+    - root-level figure datasets normalized into figures/data
+    - root-level model inputs normalized into data/models
+    - debug and scratch residue moved into archive/debug
+  in_progress:
+    - clarifying the execution-path ownership of the validation-paper milestones
+  next:
+    - identify the main figure and validation workflows
+    - map roadmap execution milestones to this project
+    - add a runbook or workboard if needed
+    - document linkage from runs and figure datasets to manuscript outputs
+
+exit_criteria:
+  - project identity docs exist
+  - execution path is documented
+  - linkage to paper outputs is documented
+  - core workflows are reproducible enough to interpret or rerun
