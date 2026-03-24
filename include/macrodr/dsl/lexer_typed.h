@@ -60,11 +60,6 @@ struct function_argument_storage<T&> {
     using type = std::reference_wrapper<T>;
 };
 
-template <class... ParamValues>
-struct function_argument_storage<const macrodr::interface::IModel<ParamValues...>&> {
-    using type = std::unique_ptr<macrodr::interface::IModel<ParamValues...>>;
-};
-
 template <class Arg>
 using function_argument_storage_t = typename function_argument_storage<Arg>::type;
 

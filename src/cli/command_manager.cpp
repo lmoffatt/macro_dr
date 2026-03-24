@@ -25,6 +25,7 @@
 
 namespace macrodr::cli {
 using std::size_t;
+using ModelPtr = macrodr::cmd::ModelPtr;
 
 namespace {
 
@@ -51,11 +52,11 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
 
     {
         using SimFromValues = Maybe_error<Simulated_Recording<var::please_include<>>> (*)(
-            interface::IModel<var::Parameters_values> const&, const var::Parameters_values&,
+            const ModelPtr&, const var::Parameters_values&,
             const Experiment&, const Recording&, std::size_t, std::size_t);
         cm.push_function(
             "simulate",
-            dsl::to_typed_function<interface::IModel<var::Parameters_values> const&,
+            dsl::to_typed_function<const ModelPtr&,
                                    const var::Parameters_values&, const Experiment&,
                                    const Recording&, std::size_t, std::size_t>(
                 static_cast<SimFromValues>(&cmd::run_simulations), "model", "parameter_values",
@@ -64,33 +65,33 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
 
     {
         using SimFromTransformed = Maybe_error<Simulated_Recording<var::please_include<>>> (*)(
-            interface::IModel<var::Parameters_values> const&, const var::Parameters_transformed&,
+            const ModelPtr&, const var::Parameters_transformed&,
             const Experiment&, const Recording&, std::size_t, std::size_t);
         cm.push_function(
             "simulate",
-            dsl::to_typed_function<interface::IModel<var::Parameters_values> const&,
+            dsl::to_typed_function<const ModelPtr&,
                                    const var::Parameters_transformed&, const Experiment&,
                                    const Recording&, std::size_t, std::size_t>(
                 static_cast<SimFromTransformed>(&cmd::run_simulations), "model",
                 "parameter_values", "experiment", "observations", "number_of_substeps", "seed"));
     }
     cm.push_function(
-            "simulate",
-            dsl::to_typed_return_function<
+        "simulate",
+        dsl::to_typed_return_function<
             Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>>,
-            interface::IModel<var::Parameters_values> const&, 
-                                   const var::Parameters_transformed&, std::size_t,const Experiment&,
-                                   const Recording&, std::size_t, std::size_t>(
+            const ModelPtr&,
+            const var::Parameters_transformed&, std::size_t,const Experiment&,
+            const Recording&, std::size_t, std::size_t>(
                 cmd::run_n_simulations, "model",
                 "parameter_transformed", "n_simulations", "experiment", "observations", "number_of_substeps", "seed"));
     
     cm.push_function(
-            "simulate",
-            dsl::to_typed_return_function<
+        "simulate",
+        dsl::to_typed_return_function<
             Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>>,
-            interface::IModel<var::Parameters_values> const&, 
-                                   const var::Parameters_values&, std::size_t,const Experiment&,
-                                   const Recording&, std::size_t, std::size_t>(
+            const ModelPtr&,
+            const var::Parameters_values&, std::size_t,const Experiment&,
+            const Recording&, std::size_t, std::size_t>(
                 cmd::run_n_simulations, "model",
                 "parameter_values", "n_simulations", "experiment", "observations", "number_of_substeps", "seed"));
     
@@ -98,11 +99,11 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
     {
         using SimSubFromValues = Maybe_error<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> (*)(
-            interface::IModel<var::Parameters_values> const&, const var::Parameters_values&,
+            const ModelPtr&, const var::Parameters_values&,
             const Experiment&, const Recording&, std::size_t, std::size_t);
         cm.push_function(
             "simulate_with_sub_intervals",
-            dsl::to_typed_function<interface::IModel<var::Parameters_values> const&,
+            dsl::to_typed_function<const ModelPtr&,
                                    const var::Parameters_values&, const Experiment&,
                                    const Recording&, std::size_t, std::size_t>(
                 static_cast<SimSubFromValues>(&cmd::run_simulations_with_sub_intervals), "model",
@@ -112,11 +113,11 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
     {
         using SimSubFromTransformed = Maybe_error<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> (*)(
-            interface::IModel<var::Parameters_values> const&, const var::Parameters_transformed&,
+            const ModelPtr&, const var::Parameters_transformed&,
             const Experiment&, const Recording&, std::size_t, std::size_t);
         cm.push_function(
             "simulate_with_sub_intervals",
-            dsl::to_typed_function<interface::IModel<var::Parameters_values> const&,
+            dsl::to_typed_function<const ModelPtr&,
                                    const var::Parameters_transformed&, const Experiment&,
                                    const Recording&, std::size_t, std::size_t>(
                 static_cast<SimSubFromTransformed>(&cmd::run_simulations_with_sub_intervals),
@@ -234,8 +235,6 @@ dsl::Compiler make_compiler_new() {
             
 
                                               // Expose low-level model/qmodel helpers
-    using ModelPtr = std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>;
-
     // Load parameters file (filename, sep) using model’s schema
     cm.push_function("load_parameters",
                      dsl::to_typed_function<ModelPtr, std::string>(&macrodr::cmd::load_parameters,
@@ -392,7 +391,7 @@ dsl::Compiler make_compiler_new() {
 
             cm.push_function(
         "calc_likelihood",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool>(
             &cmd::calculate_likelihood, "model", "parameters", "experiment", "data",
@@ -401,7 +400,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_likelihood",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
@@ -411,7 +410,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_dlikelihood",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool>(
             &cmd::calculate_dlikelihood, "model", "parameters", "experiment", "data",
@@ -420,7 +419,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_dlikelihood",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
@@ -430,7 +429,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_diff_likelihood",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool, double>(
             &cmd::calculate_diff_likelihood, "model", "parameters", "experiment", "data",
@@ -439,7 +438,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_diff_likelihood",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool, double>(
@@ -449,7 +448,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_likelihood_predictions",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool>(
             &cmd::calculate_likelihood_predictions, "model", "parameters", "experiment", "data",
@@ -458,7 +457,7 @@ dsl::Compiler make_compiler_new() {
 
     cm.push_function(
         "calc_likelihood_predictions",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
@@ -467,7 +466,7 @@ dsl::Compiler make_compiler_new() {
             "variance_approximation", "taylor_variance_correction"));
     cm.push_function(
         "calc_dlikelihood_predictions",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool>(
             &cmd::calculate_dlikelihood_predictions, "model", "parameters", "experiment", "data",
@@ -476,7 +475,7 @@ dsl::Compiler make_compiler_new() {
 
 cm.push_function(
         "calc_likelihood_diagnostic",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
                                bool, bool, int, bool, bool>(
             &cmd::calculate_likelihood_diagnostics, "model", "parameters", "experiment", "data",
@@ -485,7 +484,7 @@ cm.push_function(
 
 cm.push_function(
         "calc_likelihood_diagnostic",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, 
                                const  Simulated_Recording<var::please_include<>>&&,
                                bool, bool, int, bool, bool>(
@@ -496,7 +495,7 @@ cm.push_function(
 
     cm.push_function(
         "calc_dlikelihood_predictions",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
                                bool, int, bool, bool>(
@@ -506,7 +505,7 @@ cm.push_function(
 
     cm.push_function(
         "calc_dlikelihood_predictions",
-        dsl::to_typed_function<const interface::IModel<var::Parameters_values>&,
+        dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>&, bool,
                                bool, int, bool, bool>(

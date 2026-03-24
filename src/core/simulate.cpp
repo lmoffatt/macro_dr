@@ -169,23 +169,23 @@ Maybe_error<bool> emit_simulation_rows_with_sub(csv_detail::CsvWriter& writer, c
 namespace macrodr::cmd {
 
 Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const ModelPtr& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
     myseed = calc_seed(myseed);
 
     mt_64i mt(myseed);
     Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-    return Macro_DMR{}.sample(mt, model, par, e, sim, r);
+    return Macro_DMR{}.sample(mt, *model, par, e, sim, r);
    }
 
 Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
+    const ModelPtr& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
     return run_simulations(model, par.to_value(), e, r, n_sub, myseed);
 }
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_values& par,
+    const ModelPtr& model, const var::Parameters_values& par,
     std::size_t n_simulations, const Experiment& e, const Recording& r, std::size_t n_sub,
     std::size_t myseed) {
     myseed = calc_seed(myseed);
@@ -195,7 +195,7 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
         Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-        auto maybe_sim = Macro_DMR{}.sample(mt, model, par, e, sim, r);
+        auto maybe_sim = Macro_DMR{}.sample(mt, *model, par, e, sim, r);
         if (!maybe_sim) {
             return maybe_sim.error();
         }
@@ -205,25 +205,25 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
 }
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
-    const interface::IModel<var::Parameters_values>& model, const var::Parameters_transformed& par,
+    const ModelPtr& model, const var::Parameters_transformed& par,
     std::size_t n_simulations, const Experiment& e, const Recording& r, std::size_t n_sub,
     std::size_t myseed) {
     return run_n_simulations(model, par.to_value(), n_simulations, e, r, n_sub, myseed);
 }
 
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
-    run_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+    run_simulations_with_sub_intervals(const ModelPtr& model,
                                          const var::Parameters_values& par,const Experiment& e,
                                          const Recording& r, std::size_t n_sub,
                                          std::size_t myseed) {
     myseed = calc_seed(myseed);
     mt_64i mt(myseed);
      Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-      return  Macro_DMR{}.sample_sub_y(mt, model, par, e, sim, r);
+      return  Macro_DMR{}.sample_sub_y(mt, *model, par, e, sim, r);
   }
 
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
-    run_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+    run_simulations_with_sub_intervals(const ModelPtr& model,
                                          const var::Parameters_transformed& par, const Experiment& e,
                                          const Recording& r, std::size_t n_sub,
                                          std::size_t myseed) {
@@ -233,7 +233,7 @@ Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution
 
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>>
-    run_n_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+    run_n_simulations_with_sub_intervals(const ModelPtr& model,
                                          const var::Parameters_values& par,
                                          std::size_t n_simulations, const Experiment& e,
                                          const Recording& r, std::size_t n_sub,
@@ -244,7 +244,7 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_S
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
         Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-        auto maybe_sim = Macro_DMR{}.sample_sub_y(mt, model, par, e, sim, r);
+        auto maybe_sim = Macro_DMR{}.sample_sub_y(mt, *model, par, e, sim, r);
         if (!maybe_sim) {
             return maybe_sim.error();
         }
@@ -254,7 +254,7 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_S
 }
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>>
-    run_n_simulations_with_sub_intervals(const interface::IModel<var::Parameters_values>& model,
+    run_n_simulations_with_sub_intervals(const ModelPtr& model,
                                          const var::Parameters_transformed& par,
                                          std::size_t n_simulations, const Experiment& e,
                                          const Recording& r, std::size_t n_sub,

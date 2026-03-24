@@ -215,9 +215,19 @@ Important cases:
 
 - `T` -> stored as decayed `T`
 - `const T&` / `T&` -> stored as `std::reference_wrapper<...>`
-- `const IModel<...>&` -> stored as owning `std::unique_ptr<IModel<...>>`
+- `ModelPtr` -> stored as owning `ModelPtr`
+- `const ModelPtr&` / `ModelPtr&` -> stored through the generic
+  `std::reference_wrapper<...>` rule
 
 This same pattern extends to composite values.
+
+The older special case
+
+- `const IModel<...>&` -> stored as owning `std::unique_ptr<IModel<...>>`
+
+is no longer part of the current model. Model-like polymorphic objects are now
+expected to cross the DSL boundary as explicit owning handles (`ModelPtr`) and
+are normally consumed by functions as `const ModelPtr&`.
 
 ### 9. Composite values
 

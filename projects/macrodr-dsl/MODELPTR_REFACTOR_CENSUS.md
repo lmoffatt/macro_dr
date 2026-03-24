@@ -15,6 +15,24 @@ Current intent:
 - also `cmd/` and `src/core/` signatures where they currently expose
   `const interface::IModel<var::Parameters_values>&`
 
+## Status
+
+Implemented:
+
+- removed the `function_argument_storage<const IModel<...>&>` specialization
+- normalized the simulation and likelihood registration surface to
+  `const ModelPtr&`
+- normalized the corresponding `cmd/` and `src/core/` signatures to
+  `const ModelPtr&`
+- updated the legacy `to_typed_function(...)` helper to use
+  `detail::function_argument_storage_t<Args>`
+
+Resolved handle policy:
+
+- creators return `ModelPtr`
+- ordinary non-consuming model users accept `const ModelPtr&`
+- `ModelPtr&&` remains reserved for a future genuine consuming API
+
 ## Summary
 
 This refactor touches four layers:
@@ -52,11 +70,12 @@ Files:
 - `include/macrodr/dsl/grammar_typed.h`
 
 Reason:
-- once `const IModel&` disappears from DSL-facing signatures, the generic rules
-  should be enough:
-  - `T`
-  - `const T&` / `T&`
-  - `std::unique_ptr<T>`
+- once `const IModel&` disappears from DSL-facing signatures, the generic
+  storage rules are enough:
+  - `T` stores as decayed `T`
+  - `const T&` / `T&` store through `std::reference_wrapper<...>`
+  - `ModelPtr` stores as `ModelPtr`
+  - `const ModelPtr&` / `ModelPtr&` use the ordinary reference-wrapper rule
 
 Important runtime sites:
 - `function_compiler::adapt_argument(...)`
@@ -93,7 +112,7 @@ This is the canonical registration assembly point.
 
 ### 1. Simulation registrations
 
-Current registrations using `const IModel&`:
+Previous registrations using `const IModel&`:
 - `simulate` overload from values
 - `simulate` overload from transformed values
 - `simulate` returning `vector<Simulated_Recording<...>>` from values
@@ -105,7 +124,7 @@ These are currently in the `make_simulations_compiler()` block.
 
 ### 2. Likelihood / diagnostics registrations
 
-Current registrations using `const IModel&`:
+Previous registrations using `const IModel&`:
 - `calc_likelihood`
 - `calc_dlikelihood`
 - `calc_diff_likelihood`
@@ -126,27 +145,26 @@ These already align conceptually and should be kept consistent:
 - `path_state` overload from model + values
 - `build_likelihood_function`
 
-These should be reviewed for signature consistency once the new rule is chosen:
-- by-value `ModelPtr`
-- `const ModelPtr&`
-- or mixed ownership policy
+These now align with the chosen policy and should stay consistent with it:
+- creators may return `ModelPtr`
+- ordinary readers should accept `const ModelPtr&`
 
 ## C. Must-change: public `cmd/` APIs
 
 ### 1. `include/macrodr/cmd/simulate.h`
 
-Current `const IModel&` family:
+Previous `const IModel&` family:
 - `run_simulations(...)` x2
 - `run_simulations_with_sub_intervals(...)` x2
 - `run_n_simulations(...)` x2
 - `run_n_simulations_with_sub_intervals(...)`
 - transformed `run_simulations_with_sub_intervals(...)` with `n_simulations`
 
-These are all candidates to normalize to `ModelPtr`-shaped signatures.
+These were normalized to `const ModelPtr&`.
 
 ### 2. `include/macrodr/cmd/likelihood.h`
 
-Current `const IModel&` family:
+Previous `const IModel&` family:
 - `calculate_likelihood(...)`
 - `calculate_simulation_likelihood(...)`
 - `calculate_dlikelihood(...)`
@@ -174,17 +192,17 @@ These are not the main refactor targets, but they anchor the intended type:
 
 ### 1. `src/core/simulate.cpp`
 
-Current implementation family using `const IModel&`:
+Previous implementation family using `const IModel&`:
 - `run_simulations(...)`
 - `run_simulations_with_sub_intervals(...)`
 - `run_n_simulations(...)`
 - `run_n_simulations_with_sub_intervals(...)`
 
-These must follow whatever new `cmd/` signature policy is chosen.
+These were updated to follow the `const ModelPtr&` policy.
 
 ### 2. `src/core/likelihood.cpp`
 
-Current implementation family using `const IModel&`:
+Previous implementation family using `const IModel&`:
 - `calculate_likelihood(...)`
 - `calculate_dlikelihood(...)`
 - `calculate_diff_likelihood(...)`
@@ -203,7 +221,7 @@ Files:
 - `projects/macrodr-dsl/DSL_CHANGES.md`
 
 Reason:
-- they currently describe the `const IModel& -> unique_ptr<IModel>` special case
+- they described the old `const IModel& -> unique_ptr<IModel>` special case
 
 ### 2. Existing spec docs
 
@@ -240,18 +258,18 @@ These areas already fit the new direction or are orthogonal:
 - JSON environment type registration, except for any model-related assumptions
   that may later be added
 
-## H. Main design decision still required
+## H. Standard handle policy
 
-Even under "full internal sweep", one detail still needs to be fixed explicitly:
+The standard handle policy is now:
 
-Which model-handle shape should be standard in the new signatures?
+- creators return `ModelPtr`
+- ordinary non-consuming readers accept `const ModelPtr&`
+- `ModelPtr&&` is reserved for a future consuming API if one appears
 
-Candidate shapes:
-- `ModelPtr`
-- `const ModelPtr&`
-- `ModelPtr&&` for consuming APIs
+Rationale:
 
-This choice affects:
-- how often ownership moves
-- whether a loaded model can be reused across multiple DSL calls
-- how much wrapper code is needed
+- the environment owns persistent model values
+- model handles are not meant to be copied
+- most simulation/likelihood/diagnostic calls read the model without consuming
+  ownership
+
