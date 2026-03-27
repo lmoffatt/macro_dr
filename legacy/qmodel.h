@@ -486,11 +486,13 @@ class P_mean_t10_y1 : public var::Var<P_mean_t10_y1, Matrix<double>> {
 
 class P_mean_0t_y0 : public var::Var<P_mean_0t_y0, Matrix<double>> {
    public:
+    // Boundary-state prior mean over the interval: (i0,it) -> P(X0=i0, Xt=it).
     friend std::string className(P_mean_0t_y0) { return "P_mean_0t_y0"; }
 };
 
 class P_mean_0t_y1 : public var::Var<P_mean_0t_y1, Matrix<double>> {
    public:
+    // Boundary-state posterior mean over the interval after conditioning on y_{0->t}.
     friend std::string className(P_mean_0t_y1) { return "P_mean_0t_y1"; }
 };
 
@@ -499,13 +501,15 @@ class P_Cov : public var::Var<P_Cov, SymmetricMatrix<double>> {
     friend std::string className(P_Cov) { return "P_Cov"; }
 };
 
-class P_var_ii_0t_y0 : public var::Var<P_var_ii_0t_y0, Matrix<double>> {
-    friend std::string className(P_var_ii_0t_y0) { return "P_var_ii_0t_y0"; }
+class P_cross_cov_0t_y0 : public var::Var<P_cross_cov_0t_y0, Matrix<double>> {
+    // Reduced cross-time covariance Cov(x_0, x_t) before conditioning on y_{0->t}.
+    friend std::string className(P_cross_cov_0t_y0) { return "P_cross_cov_0t_y0"; }
 };
 
 
-class P_var_ii_0t_y1 : public var::Var<P_var_ii_0t_y1, Matrix<double>> {
-    friend std::string className(P_var_ii_0t_y1) { return "P_var_ii_0t_y1"; }
+class P_cross_cov_0t_y1 : public var::Var<P_cross_cov_0t_y1, Matrix<double>> {
+    // Reduced cross-time covariance Cov(x_0, x_t) after conditioning on y_{0->t}.
+    friend std::string className(P_cross_cov_0t_y1) { return "P_cross_cov_0t_y1"; }
 };
 
 
@@ -554,6 +558,7 @@ class P_Cov_t20_y1 : public var::Var<P_Cov_t20_y1, SymmetricMatrix<double>> {
 
 class P_Cov_t11_y0 : public var::Var<P_Cov_t11_y0, SymmetricMatrix<double>> {
    public:
+    // One-time prior covariance at the end of the interval, before conditioning on y_{0->t}.
     friend std::string className(P_Cov_t11_y0) { return "P_Cov_t11_y0"; }
 };
 
@@ -837,7 +842,7 @@ class Algo_State_Dynamic
           Vector_Space<y_mean, y_var, trust_coefficient, r_std,
           Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
                        P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, 
-                       P_mean_0t_y0,P_mean_0t_y1,P_var_ii_0t_y0,P_var_ii_0t_y1,
+                       P_mean_0t_y0,P_mean_0t_y1,P_cross_cov_0t_y0,P_cross_cov_0t_y1,
                        P_Cov_t2_y0,
                        P_Cov_t2_y1,P_Cov_t15_y0,
                        P_Cov_t15_y1, P_Cov_t1_y1, P_Cov_t20_y1, P_Cov_t11_y0, P_Cov_t10_y1>> {
@@ -4605,6 +4610,8 @@ class Macro_DMR {
 
                 
                 
+                // Matrix form of the boundary-state prior mean:
+                // M^-_{0,t}(i0,it) = P(X0=i0, Xt=it) = mu_0(i0) P_{i0->it}(t).
                 auto r_P_mean_0t_y0= diag(p_P_mean())*t_P();
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
 
@@ -4612,10 +4619,13 @@ class Macro_DMR {
                 
                 auto r_P_mean_0t_y1= r_P_mean_0t_y0 + alfa()*chi*GS;
 
-                auto r_P_var_ii_0t_y0= SmD*t_P()+diag(p_P_mean())*t_P(); 
+                // Reduced start/end cross-covariance:
+                // C^-_{0,t} = Cov(x_0, x_t) = Sigma_0 P(t).
+                auto r_P_cross_cov_0t_y0= SmD*t_P()+diag(p_P_mean())*t_P(); 
 
                 
-                auto r_P_var_ii_0t_y1= r_P_var_ii_0t_y0 - (alfa()*N/r_y_var())* TranspMult(gS0,gS);
+                // Posterior reduced cross-covariance after conditioning on y_{0->t}.
+                auto r_P_cross_cov_0t_y1= r_P_cross_cov_0t_y0 - (alfa()*N/r_y_var())* TranspMult(gS0,gS);
                 Matrix<double> uT(1ul,p_P_mean().size(), 1.0);
          
                
@@ -4639,8 +4649,8 @@ class Macro_DMR {
 
                 get<P_mean_0t_y0>(out())()= std::move(r_P_mean_0t_y0);
                 get<P_mean_0t_y1>(out())()= std::move(r_P_mean_0t_y1);
-                get<P_var_ii_0t_y0>(out())()= std::move(r_P_var_ii_0t_y0);
-                get<P_var_ii_0t_y1>(out())()= std::move(r_P_var_ii_0t_y1);  
+                get<P_cross_cov_0t_y0>(out())()= std::move(r_P_cross_cov_0t_y0);
+                get<P_cross_cov_0t_y1>(out())()= std::move(r_P_cross_cov_0t_y1);  
 
 
                 
@@ -4685,14 +4695,17 @@ class Macro_DMR {
                     return Maybe_r_P_cov_t1_y1.error();
                 }
                 
+                // Matrix form of the boundary-state prior mean over the interval.
                 auto r_P_mean_0t_y0= diag(p_P_mean())*t_P();
                 
                 auto r_P_mean_0t_y1= diag(Maybe_r_P_mean_t1_y1.value())*t_P();
 
-                auto r_P_var_ii_0t_y0= SmD*t_P()+diag(p_P_mean())*t_P(); 
+                // Reduced start/end cross-covariance before conditioning on y_{0->t}.
+                auto r_P_cross_cov_0t_y0= SmD*t_P()+diag(p_P_mean())*t_P(); 
 
                 auto SmD1= Maybe_r_P_cov_t1_y1.value() - diag(Maybe_r_P_mean_t1_y1.value());
-                auto r_P_var_ii_0t_y1= SmD1*t_P()+diag(Maybe_r_P_mean_t1_y1.value())*t_P(); 
+                // Reduced start/end cross-covariance after conditioning on y_{0->t}.
+                auto r_P_cross_cov_0t_y1= SmD1*t_P()+diag(Maybe_r_P_mean_t1_y1.value())*t_P(); 
 
                 
 
@@ -4704,8 +4717,8 @@ class Macro_DMR {
                 assert(var::test_equality(to_Probability(MultTransp(uT,r_P_mean_0t_y1)).value(), Maybe_r_P_mean_t1_y1.value()));
                 get<P_mean_0t_y0>(out())()= std::move(r_P_mean_0t_y0);
                 get<P_mean_0t_y1>(out())()= std::move(r_P_mean_0t_y1);
-                get<P_var_ii_0t_y0>(out())()= std::move(r_P_var_ii_0t_y0);
-                get<P_var_ii_0t_y1>(out())()= std::move(r_P_var_ii_0t_y1);  
+                get<P_cross_cov_0t_y0>(out())()= std::move(r_P_cross_cov_0t_y0);
+                get<P_cross_cov_0t_y1>(out())()= std::move(r_P_cross_cov_0t_y1);  
 
 
                 get<P_Cov_t2_y0>(out())() = std::move(Maybe_r_P_cov_t2_y0.value());    
@@ -4925,12 +4938,15 @@ class Macro_DMR {
         
         get<logL>(t_prior_all)() = get<logL>(t_prior_all)() + t_logL();
        if constexpr (var::has_it_v<dMacro_State<vVars...>, covariance<Grad>> ){
-        auto t_CovGradient= covariance<Grad>(XXT(t_logL.derivative()()));
+        auto t_CovGradient = covariance<Grad>(
+            parameter_spd_payload(XXT(t_logL.derivative()()), var::get_dx_of_dfdx(t_logL)));
         get<covariance<Grad>>(t_prior_all)() = get<covariance<Grad>>(t_prior_all)() + t_CovGradient();
        }
 
        if constexpr (var::has_it_v<dMacro_State<vVars...>, Hessian> ){
-        auto t_Hessian= XXT(d_y_mean)/r_y_var +  XXT(d_y_var)/(2*r_y_var*r_y_var);
+        auto t_Hessian = parameter_spd_payload(
+            XXT(d_y_mean) / r_y_var + XXT(d_y_var) / (2 * r_y_var * r_y_var),
+            var::get_dx_of_dfdx(t_logL));
          get<Hessian>(t_prior_all)() = get<Hessian>(t_prior_all)() + t_Hessian;
        }
        if constexpr (var::has_it_v<dMacro_State<vVars...>, elogL> )
@@ -6537,8 +6553,8 @@ Maybe_error<diff_Macro_State_Gradient_Hessian> diff_logLikelihood(
 
     return diff_Macro_State_Gradient_Hessian(
         std::move(get<logL>(v_MacroEv)), std::move(get<Patch_State>(v_MacroEv)),
-        std::move(get<elogL>(v_MacroEv)), std::move(get<vlogL>(v_MacroEv)), Grad(std::move(G)),
-        FIM(std::move(r_FIM)));
+        std::move(get<elogL>(v_MacroEv)), std::move(get<vlogL>(v_MacroEv)),
+        Grad(std::move(G), p), FIM(std::move(r_FIM), p));
 }
 
 template <class adaptive, class recursive, class averaging, class variance,

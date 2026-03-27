@@ -1,16 +1,16 @@
-  //w/0---
+ ---
   title: "analysis"
   author: "Luciano Moffatt"
   date: "`r Sys.Date()`"
   output: html_document
-  ---
+---
   
-  ```{r setup, include=FALSE}
+```{r setup, include=FALSE}
   knitr::opts_chunk$set(echo = TRUE)
   library(tidyverse)
-  ```
+```
   
-  ```{r}
+```{r}
   Nch=30
   
   filenames=c(
@@ -36,10 +36,10 @@
                ,"IRV"
                )
   
-  ```
+```
   
   
-  ```{r}
+```{r}
   
   d=data.frame()
   for (i in 1:length(filenames)){
@@ -49,19 +49,19 @@
     d=rbind(d,d0)
   }
   
-  ```
+```
   
-  ```{r}
+```{r}
   d_s=read.csv("data/figure_1_simulation.csv")
-  ```
+```
   
   
-  ```{r}
+```{r}
   d%>%filter(component%in%c("logL","elogL","y_mean","y_var", "Chi2"))%>%select(n_step,primitive,algo,component)%>%pivot_wider(names_from = component,values_from = primitive)->dd
-  ```
+```
   
   
-  ```{r}
+```{r}
   d_NR=d%>%filter(algo=="NR")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -85,11 +85,11 @@
   geom_segment( aes(x=step_start,xend=step_end, elogL+sqrt(vlogL)), linetype = "dotted")+
   geom_segment( aes(x=step_start,xend=step_end, elogL-sqrt(vlogL)), linetype = "dotted")
   )
-  ```
+```
   
   
   
-  ```{r}
+```{r}
   d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   

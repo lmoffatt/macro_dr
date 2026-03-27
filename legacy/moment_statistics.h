@@ -13,6 +13,7 @@
 #include <vector>
 #include <set>
 #include "matrix.h"
+#include "parameter_indexed.h"
 #include "variables.h"
 
 template<class T>
@@ -258,7 +259,7 @@ struct Sum : public var::Var<Sum<Va>, value_type_t<Va>>{
     Sum(std::vector<VectorSpace>const& x,  F&& f)
         : var::Var<Sum<Va>, sum_type>{value_type_t<Va>{}} {
         for (const auto& v : x) {
-             (*this)() = (*this)() + std::forward<F>(f)(v);
+             (*this)() = (*this)() + sum_type(std::forward<F>(f)(v));
         }
        }
    
@@ -371,8 +372,9 @@ class Moment_statistics
         auto sum=Id{}();
         auto sum2=variance_type{}();
         for (const auto& i : indices) {
-            sum = sum + std::forward<F>(f)(x[i]);
-            sum2 = sum2 + sqr_X<include_covariance>(std::forward<F>(f)(x[i]));
+            auto xi = value_type_t<Id>(std::forward<F>(f)(x[i]));
+            sum = sum + xi;
+            sum2 = sum2 + sqr_X<include_covariance>(xi);
         }
         get<mean<Id>>((*this)())()= sum/indices.size();
         auto var= indices.size()>1 ? (sum2 - indices.size() * sqr_X<include_covariance>(get<mean<Id>>((*this)())()))/(indices.size()-1)
@@ -705,6 +707,34 @@ auto num_samples = bootstrap_estimates.size();
     }
 
     return std::make_pair(std::move(mean_vector), std::move(probits_map));
+}
+
+template <class ValueT, class Params>
+    requires var::ParameterMetadataLike<Params>
+inline auto get_mean_Probits(std::vector<var::ParameterIndexed<ValueT, Params>>& bootstrap_estimates,
+                             const std::set<double>& cis) {
+    assert(!bootstrap_estimates.empty());
+
+    std::vector<ValueT> values;
+    values.reserve(bootstrap_estimates.size());
+    const Params* metadata = nullptr;
+    for (auto& estimate : bootstrap_estimates) {
+        values.push_back(estimate.value());
+        if (metadata == nullptr && estimate.has_parameters()) {
+            metadata = estimate.parameters_ptr();
+        }
+    }
+
+    auto [mean_value, probits] = get_mean_Probits(values, cis);
+
+    var::ParameterIndexed<ValueT, Params> mean_out(std::move(mean_value), metadata);
+    std::map<double, var::ParameterIndexed<ValueT, Params>> probits_out;
+    for (auto& [level, value] : probits) {
+        probits_out.emplace(level,
+                            var::ParameterIndexed<ValueT, Params>(std::move(value), metadata));
+    }
+
+    return std::make_pair(std::move(mean_out), std::move(probits_out));
 }
 
 

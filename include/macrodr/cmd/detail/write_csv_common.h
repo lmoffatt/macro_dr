@@ -18,6 +18,7 @@
 
 #include "maybe_error.h"
 #include "moment_statistics.h"
+#include "parameter_indexed.h"
 #include "parameters_derivative.h"
 #include "qmodel.h"
 
@@ -214,7 +215,7 @@ class CsvWriter {
 
     void write_header() {
         out_ << "scope,simulation_index,sample_index,segment_index,sub_index,n_step,"
-                "time_start,time_end,time_middle,agonist,patch_current,"
+                "step_start,step_end,step_middle,agonist,patch_current,"
                 "component_path,value_row,value_col,"
                 "probit,calculus,statistic,quantile_level,"
                 "param_index,param_col,param_name,"
@@ -227,6 +228,28 @@ class CsvWriter {
 
 template <class T>
 std::optional<std::vector<std::string>> find_param_names(const T& x);
+
+inline void assign_vector_param_metadata(CsvContext& ctx, const std::vector<std::string>& names,
+                                         std::size_t index) {
+    ctx.param_index = index;
+    ctx.param_col.reset();
+    if (index < names.size()) {
+        ctx.param_name = names[index];
+    } else {
+        ctx.param_name.reset();
+    }
+}
+
+inline void assign_matrix_param_metadata(CsvContext& ctx, const std::vector<std::string>& names,
+                                         std::size_t row, std::size_t col) {
+    ctx.param_index = row;
+    ctx.param_col = col;
+    if (row < names.size() && col < names.size()) {
+        ctx.param_name = names[row] + "_" + names[col];
+    } else {
+        ctx.param_name.reset();
+    }
+}
 
 template <class Writer, class T>
 Maybe_error<bool> emit_any(Writer& w, CsvContext ctx, const T& x);
@@ -270,7 +293,13 @@ std::optional<std::vector<std::string>> find_param_names_in_vector_space(const T
 
 template <class T>
 std::optional<std::vector<std::string>> find_param_names(const T& x) {
-    if constexpr (var::is_derivative_v<std::remove_cvref_t<T>> &&
+    if constexpr (var::is_parameter_indexed_v<T>) {
+        auto names = var::parameter_names(x);
+        if (!names.empty()) {
+            return names;
+        }
+        return std::nullopt;
+    } else if constexpr (var::is_derivative_v<std::remove_cvref_t<T>> &&
                   requires { var::get_dx_of_dfdx(x).parameters().names(); }) {
         const auto& names = var::get_dx_of_dfdx(x).parameters().names();
         return std::vector<std::string>(names.begin(), names.end());
@@ -324,10 +353,14 @@ std::vector<std::string> get_param_names_if_any(const T& x) {
 
 template <class Writer, class T>
 Maybe_error<bool> emit_vector_like(Writer& w, CsvContext ctx, const T& x) {
+    const auto param_names = find_param_names(x);
     for (std::size_t i = 0; i < x.size(); ++i) {
         auto item_ctx = ctx;
         item_ctx.value_row = i;
         item_ctx.value_col.reset();
+        if (param_names.has_value()) {
+            assign_vector_param_metadata(item_ctx, *param_names, i);
+        }
         auto ok = emit_any(w, std::move(item_ctx), x[i]);
         if (!ok || !ok.value()) {
             return ok;
@@ -338,11 +371,15 @@ Maybe_error<bool> emit_vector_like(Writer& w, CsvContext ctx, const T& x) {
 
 template <class Writer, class T>
 Maybe_error<bool> emit_matrix_like(Writer& w, CsvContext ctx, const T& x) {
+    const auto param_names = find_param_names(x);
     if (x.nrows() == 1 || x.ncols() == 1) {
         for (std::size_t i = 0; i < x.size(); ++i) {
             auto item_ctx = ctx;
             item_ctx.value_row = i;
             item_ctx.value_col.reset();
+            if (param_names.has_value()) {
+                assign_vector_param_metadata(item_ctx, *param_names, i);
+            }
             auto ok = emit_any(w, std::move(item_ctx), x[i]);
             if (!ok || !ok.value()) {
                 return ok;
@@ -355,6 +392,9 @@ Maybe_error<bool> emit_matrix_like(Writer& w, CsvContext ctx, const T& x) {
             auto item_ctx = ctx;
             item_ctx.value_row = r;
             item_ctx.value_col = c;
+            if (param_names.has_value()) {
+                assign_matrix_param_metadata(item_ctx, *param_names, r, c);
+            }
             auto ok = emit_any(w, std::move(item_ctx), x(r, c));
             if (!ok || !ok.value()) {
                 return ok;

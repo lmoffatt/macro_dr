@@ -504,6 +504,14 @@ std::vector<std::string> get_param_names_if_any(const Lik& lik) {
     } else if constexpr (requires { var::get_dx_of_dfdx(lik).parameters().names(); }) {
         const auto& names = var::get_dx_of_dfdx(lik).parameters().names();
         param_names.assign(names.begin(), names.end());
+    } else if constexpr (macrodr::has_var_c<Lik const&, Grad> &&
+                         requires { var::parameter_names(get<Grad>(lik)()); }) {
+        param_names = var::parameter_names(get<Grad>(lik)());
+    } else if constexpr (macrodr::has_var_c<Lik const&, FIM> &&
+                         requires { var::parameter_names(get<FIM>(lik)()); }) {
+        param_names = var::parameter_names(get<FIM>(lik)());
+    } else if constexpr (requires { var::parameter_names(lik); }) {
+        param_names = var::parameter_names(lik);
     }
     return param_names;
 }
@@ -1024,12 +1032,17 @@ auto calculate_Likelihood_diagnostics_evolution_f(
         [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
         [](const auto& evo_i) { return sqr(primitive(get<r_std>(evo_i))()); },
         [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
-        [](const auto& evo_i) { return derivative(get<logL>(evo_i))(); },
         [](const auto& evo_i) {
-            return sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
-                       (1.0 / primitive(get<y_var>(evo_i))()) +
-                   sqr_X<true>(derivative(get<y_var>(evo_i))()) *
-                       (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+            return parameter_vector_payload(derivative(get<logL>(evo_i))(),
+                                            var::get_dx_of_dfdx(get<logL>(evo_i)));
+        },
+        [](const auto& evo_i) {
+            return parameter_spd_payload(
+                sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                        (1.0 / primitive(get<y_var>(evo_i))()) +
+                    sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                        (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))())),
+                var::get_dx_of_dfdx(get<y_mean>(evo_i)));
         });
 
     auto evol_moments = calculate_Likelihood_diagnostics_evolution_impl(
@@ -1047,20 +1060,29 @@ auto calculate_Likelihood_diagnostics_evolution_f(
         [](const auto& evo_i) { return primitive(get<y_var>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
         [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
-        [](const auto& evo_i) { return derivative(get<logL>(evo_i))(); },
         [](const auto& evo_i) {
-            return sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
-                       (1.0 / primitive(get<y_var>(evo_i))()) +
-                   sqr_X<true>(derivative(get<y_var>(evo_i))()) *
-                       (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+            return parameter_vector_payload(derivative(get<logL>(evo_i))(),
+                                            var::get_dx_of_dfdx(get<logL>(evo_i)));
+        },
+        [](const auto& evo_i) {
+            return parameter_spd_payload(
+                sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                        (1.0 / primitive(get<y_var>(evo_i))()) +
+                    sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                        (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))())),
+                var::get_dx_of_dfdx(get<y_mean>(evo_i)));
         });
 
     for (auto& m : evol_moments()) {
         get<Sample_Distortion_Matrix>(m)() =
-            sample_distortion_matrix_subspace(
-                get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())(),
-                get<covariance<dlogL>>(get<dlogL>(m)())())
-                .value_or(SymPosDefMatrix<double>{});
+            parameter_spd_payload(
+                sample_distortion_matrix_subspace(
+                    get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())()
+                        .value(),
+                    get<covariance<dlogL>>(get<dlogL>(m)())().value())
+                    .value_or(SymPosDefMatrix<double>{}),
+                get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())()
+                    .parameters_ptr());
     }
 
     auto sum_r_std = Sum<Moment_statistics<r_std>>(evol_moments(),
@@ -1082,20 +1104,26 @@ auto calculate_Likelihood_diagnostics_evolution_f(
 
     // Distortion quantities are evaluated on the retained informative subspace.
     auto idm = Information_Distortion_Matrix(
-        idm_matrix_subspace(H(), J()).value_or(SymPosDefMatrix<double>{}));
+        idm_matrix_subspace(H().value(), J().value()).value_or(SymPosDefMatrix<double>{}),
+        H().parameters_ptr());
 
     auto sdm = Sample_Distortion_Matrix(
-        sample_distortion_matrix_subspace(H(), J_sample()).value_or(SymPosDefMatrix<double>{}));
+        sample_distortion_matrix_subspace(H().value(), J_sample().value())
+            .value_or(SymPosDefMatrix<double>{}),
+        H().parameters_ptr());
 
     auto cdm = Correlation_Distortion_Matrix(
-        correlation_distortion_matrix_subspace(J_sample(), J())
-            .value_or(SymPosDefMatrix<double>{}));
+        correlation_distortion_matrix_subspace(J_sample().value(), J().value())
+            .value_or(SymPosDefMatrix<double>{}),
+        J_sample().parameters_ptr());
 
     auto idm2 = Information_Distortion_Reconstituted(
-        c_h_r_c_h_matrix_subspace(sdm(), cdm()).value_or(SymPosDefMatrix<double>{}));
+        c_h_r_c_h_matrix_subspace(sdm().value(), cdm().value()).value_or(SymPosDefMatrix<double>{}),
+        sdm().parameters_ptr());
     
     auto dcc = Distortion_Corrected_Covariance(
-        dcc_matrix_subspace(H(), J()).value_or(SymPosDefMatrix<double>{}));
+        dcc_matrix_subspace(H().value(), J().value()).value_or(SymPosDefMatrix<double>{}),
+        H().parameters_ptr());
 
     return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
                          std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),

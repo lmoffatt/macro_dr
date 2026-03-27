@@ -13,6 +13,7 @@
 
 #include "matrix.h"
 #include "maybe_error.h"
+#include "parameter_indexed.h"
 #include "random_samplers.h"
 #include "variables.h"
 
@@ -243,6 +244,12 @@ class logL : public var::Var<logL, double> {
         return true;
     }
 };
+
+using parameter_vector_payload = var::ParameterIndexed<Matrix<double>, var::Parameters_transformed>;
+using parameter_spd_payload =
+    var::ParameterIndexed<SymPosDefMatrix<double>, var::Parameters_transformed>;
+using parameter_symmetric_payload =
+    var::ParameterIndexed<SymmetricMatrix<double>, var::Parameters_transformed>;
 class elogL : public var::Var<elogL, double> {
    public:
     friend std::string className(elogL) {
@@ -269,8 +276,17 @@ class vlogL : public var::Constant<vlogL, double> {
     }
 };
 
-class dlogL : public var::Constant<dlogL, Matrix<double>> {
+class dlogL : public var::Constant<dlogL, parameter_vector_payload> {
+    using base_type = var::Constant<dlogL, parameter_vector_payload>;
+
    public:
+    using base_type::base_type;
+    dlogL() = default;
+    dlogL(Matrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+    dlogL(Matrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+
     friend std::string className(dlogL) {
         return "dlogL";
     }
@@ -341,22 +357,58 @@ class Score_trace_based_ESS : public var::Constant<Score_trace_based_ESS, double
 };
 
 
-class Gaussian_Fisher_Information : public var::Constant<Gaussian_Fisher_Information, SymPosDefMatrix<double>> {
+class Gaussian_Fisher_Information
+    : public var::Constant<Gaussian_Fisher_Information, parameter_spd_payload> {
+    using base_type = var::Constant<Gaussian_Fisher_Information, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Gaussian_Fisher_Information() = default;
+    Gaussian_Fisher_Information(SymPosDefMatrix<double> value,
+                                var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Gaussian_Fisher_Information(SymPosDefMatrix<double> value,
+                                var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Gaussian_Fisher_Information) {
         return "Gaussian_Fisher_Information";
     }
 };  
 
-class Score_Covariance_Matrix : public var::Constant<Score_Covariance_Matrix, SymPosDefMatrix<double>> {
+class Score_Covariance_Matrix
+    : public var::Constant<Score_Covariance_Matrix, parameter_spd_payload> {
+    using base_type = var::Constant<Score_Covariance_Matrix, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Score_Covariance_Matrix() = default;
+    Score_Covariance_Matrix(SymPosDefMatrix<double> value,
+                            var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Score_Covariance_Matrix(SymPosDefMatrix<double> value,
+                            var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Score_Covariance_Matrix) {
         return "Score_Covariance_Matrix";
     }
 };  
 
-class Score_Sample_Covariance_Matrix : public var::Constant<Score_Sample_Covariance_Matrix, SymPosDefMatrix<double>> {
+class Score_Sample_Covariance_Matrix
+    : public var::Constant<Score_Sample_Covariance_Matrix, parameter_spd_payload> {
+    using base_type = var::Constant<Score_Sample_Covariance_Matrix, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Score_Sample_Covariance_Matrix() = default;
+    Score_Sample_Covariance_Matrix(SymPosDefMatrix<double> value,
+                                   var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Score_Sample_Covariance_Matrix(SymPosDefMatrix<double> value,
+                                   var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Score_Sample_Covariance_Matrix) {
         return "Score_Sample_Covariance_Matrix";
     }
@@ -364,15 +416,40 @@ class Score_Sample_Covariance_Matrix : public var::Constant<Score_Sample_Covaria
 
 
 
-class Information_Distortion_Matrix : public var::Constant<Information_Distortion_Matrix, SymPosDefMatrix<double>> {
+class Information_Distortion_Matrix
+    : public var::Constant<Information_Distortion_Matrix, parameter_spd_payload> {
+    using base_type = var::Constant<Information_Distortion_Matrix, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Information_Distortion_Matrix() = default;
+    Information_Distortion_Matrix(SymPosDefMatrix<double> value,
+                                  var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Information_Distortion_Matrix(SymPosDefMatrix<double> value,
+                                  var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Information_Distortion_Matrix) {
         return "Information_Distortion_Matrix";
     }
 };  
 
-class Information_Distortion_Reconstituted : public var::Constant<Information_Distortion_Reconstituted, SymPosDefMatrix<double>> {
+class Information_Distortion_Reconstituted
+    : public var::Constant<Information_Distortion_Reconstituted, parameter_spd_payload> {
+    using base_type =
+        var::Constant<Information_Distortion_Reconstituted, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Information_Distortion_Reconstituted() = default;
+    Information_Distortion_Reconstituted(SymPosDefMatrix<double> value,
+                                         var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Information_Distortion_Reconstituted(SymPosDefMatrix<double> value,
+                                         var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Information_Distortion_Reconstituted) {
         return "Information_Distortion_Reconstituted";
     }
@@ -380,8 +457,20 @@ class Information_Distortion_Reconstituted : public var::Constant<Information_Di
 
 
 
-class Distortion_Corrected_Covariance : public var::Constant<Distortion_Corrected_Covariance, SymPosDefMatrix<double>> {
+class Distortion_Corrected_Covariance
+    : public var::Constant<Distortion_Corrected_Covariance, parameter_spd_payload> {
+    using base_type = var::Constant<Distortion_Corrected_Covariance, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Distortion_Corrected_Covariance() = default;
+    Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
+                                    var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
+                                    var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Distortion_Corrected_Covariance) {
         return "Distortion_Corrected_Covariance";
     }
@@ -402,15 +491,39 @@ class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, Ma
 };  
 
 
-class Sample_Distortion_Matrix : public var::Constant<Sample_Distortion_Matrix, SymPosDefMatrix<double>> {
+class Sample_Distortion_Matrix
+    : public var::Constant<Sample_Distortion_Matrix, parameter_spd_payload> {
+    using base_type = var::Constant<Sample_Distortion_Matrix, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Sample_Distortion_Matrix() = default;
+    Sample_Distortion_Matrix(SymPosDefMatrix<double> value,
+                             var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Sample_Distortion_Matrix(SymPosDefMatrix<double> value,
+                             var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Sample_Distortion_Matrix) {
         return "Sample_Distortion_Matrix";
     }
 };  
 
-class Correlation_Distortion_Matrix : public var::Constant<Correlation_Distortion_Matrix, SymPosDefMatrix<double>> {
+class Correlation_Distortion_Matrix
+    : public var::Constant<Correlation_Distortion_Matrix, parameter_spd_payload> {
+    using base_type = var::Constant<Correlation_Distortion_Matrix, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Correlation_Distortion_Matrix() = default;
+    Correlation_Distortion_Matrix(SymPosDefMatrix<double> value,
+                                  var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Correlation_Distortion_Matrix(SymPosDefMatrix<double> value,
+                                  var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Correlation_Distortion_Matrix) {
         return "Correlation_Distortion_Matrix";
     }
@@ -421,8 +534,17 @@ class Correlation_Distortion_Matrix : public var::Constant<Correlation_Distortio
 
 
 
-class Grad : public var::Constant<Grad, Matrix<double>> {
+class Grad : public var::Constant<Grad, parameter_vector_payload> {
+    using base_type = var::Constant<Grad, parameter_vector_payload>;
+
    public:
+    using base_type::base_type;
+    Grad() = default;
+    Grad(Matrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+    Grad(Matrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+
     friend std::string className(Grad) {
         return "Grad";
     }
@@ -436,15 +558,33 @@ class Grad : public var::Constant<Grad, Matrix<double>> {
     }
 };
 
-class Hessian : public var::Constant<Hessian, SymPosDefMatrix<double>> {
+class Hessian : public var::Constant<Hessian, parameter_spd_payload> {
+    using base_type = var::Constant<Hessian, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    Hessian() = default;
+    Hessian(SymPosDefMatrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Hessian(SymPosDefMatrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(Hessian) {
         return "Hessian";
     }
 };
 
-class FIM : public var::Constant<FIM, SymPosDefMatrix<double>> {
+class FIM : public var::Constant<FIM, parameter_spd_payload> {
+    using base_type = var::Constant<FIM, parameter_spd_payload>;
+
    public:
+    using base_type::base_type;
+    FIM() = default;
+    FIM(SymPosDefMatrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    FIM(SymPosDefMatrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
     friend std::string className(FIM) {
         return "FIM";
     }
@@ -465,8 +605,20 @@ class FIM : public var::Constant<FIM, SymPosDefMatrix<double>> {
     }
 };
 
-class Hessian_minus_CovGrad : public var::Constant<Hessian_minus_CovGrad, SymmetricMatrix<double>> {
+class Hessian_minus_CovGrad
+    : public var::Constant<Hessian_minus_CovGrad, parameter_symmetric_payload> {
+    using base_type = var::Constant<Hessian_minus_CovGrad, parameter_symmetric_payload>;
+
    public:
+    using base_type::base_type;
+    Hessian_minus_CovGrad() = default;
+    Hessian_minus_CovGrad(SymmetricMatrix<double> value,
+                          var::Parameters_transformed const& params)
+        : base_type(parameter_symmetric_payload(std::move(value), params)) {}
+    Hessian_minus_CovGrad(SymmetricMatrix<double> value,
+                          var::Parameters_transformed const* params)
+        : base_type(parameter_symmetric_payload(std::move(value), params)) {}
+
     friend std::string className(Hessian_minus_CovGrad) {
         return "Hessian_minus_CovGrad";
     }
