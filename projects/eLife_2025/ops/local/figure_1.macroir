@@ -3,7 +3,7 @@ model = load_model("scheme_CO")
 parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
 
 
-experiment = create_experiment(experiment_structure=[{1,250,0.0},{1,25,10.0},{1,25,10.0},{1,25,10.0},{1,25,10.0}], 
+experiment = create_experiment(experiment_structure=[{1,50,0.0},{1,50,100.0},{1,50,100.0},{1,50,100.0},{1,50,100.0}], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
 initial_time = 0.0)
@@ -21,7 +21,7 @@ simulation_with_sub_intervals  = simulate_with_sub_intervals(model= model, param
                          observations = observations, number_of_substeps = 250, seed = 0)
 
 simulation_file = write_csv(experiment= experiment, simulation=simulation_with_sub_intervals, number_of_substates=250,
-   path= "figure_1_simulation")
+   path= "figures/data/figure_1_simulation")
 
 simulation = remove_intervals(simulation_with_sub_intervals)
 
@@ -62,7 +62,7 @@ likelihood_diagnostic_IRV = calc_likelihood_diagnostic(likelihood_algorithm =mac
 simulation = simulation)
 
 diagnostic_file_IRV = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IRV,
-   path= "figure_1_likelihood_diagnostic_IRV")
+   path= "figures/data/figure_1_likelihood_diagnostic_IRV")
 
 
 likelihood_diagnostic_NR = calc_likelihood_diagnostic(model =model, parameters=par_tr, experiment =experiment, 
@@ -70,20 +70,20 @@ simulation = simulation,adaptive_approximation = 0, recursive_approximation = 0,
             variance_approximation = 0, taylor_variance_correction = 0)
 
 diagnostic_file_NR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_NR,
-   path= "figure_1_likelihood_diagnostic_NR")
+   path= "figures/data/figure_1_likelihood_diagnostic_NR")
 
 likelihood_diagnostic_R = calc_likelihood_diagnostic(likelihood_algorithm =macro_R, parameters=par_tr, experiment =experiment, 
 simulation = simulation)
 
 diagnostic_file_R = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_R,
-   path= "figure_1_likelihood_diagnostic_R")
+   path= "figures/data/figure_1_likelihood_diagnostic_R")
 
 
 likelihood_diagnostic_MNR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNR, parameters=par_tr, experiment =experiment, 
 simulation = simulation)
 
 diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNR,
-   path= "figure_1_likelihood_diagnostic_MNR")
+   path= "figures/data/figure_1_likelihood_diagnostic_MNR")
 
 
 
@@ -91,14 +91,14 @@ likelihood_diagnostic_MR = calc_likelihood_diagnostic(likelihood_algorithm =macr
 simulation = simulation)
 
 diagnostic_file_MR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MR,
-   path= "figure_1_likelihood_diagnostic_MR")
+   path= "figures/data/figure_1_likelihood_diagnostic_MR")
 
 
 likelihood_diagnostic_MNRV = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNRV, parameters=par_tr, experiment =experiment, 
 simulation = simulation)
 
 diagnostic_file_MNRV = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNRV,
-   path= "figure_1_likelihood_diagnostic_MNRV")
+   path= "figures/data/figure_1_likelihood_diagnostic_MNRV")
 
 
 
@@ -106,7 +106,7 @@ likelihood_diagnostic_MRV = calc_likelihood_diagnostic(likelihood_algorithm =mac
 simulation = simulation)
 
 diagnostic_file_MRV = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MRV,
-   path= "figure_1_likelihood_diagnostic_MRV")
+   path= "figures/data/figure_1_likelihood_diagnostic_MRV")
 
 
 
@@ -114,7 +114,7 @@ likelihood_diagnostic_IR = calc_likelihood_diagnostic(likelihood_algorithm =macr
 simulation = simulation)
 
 diagnostic_file_IR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IR,
-   path= "figure_1_likelihood_diagnostic_IR")
+   path= "figures/data/figure_1_likelihood_diagnostic_IR")
 
 
 
@@ -126,11 +126,11 @@ likelihood_predictions = calc_likelihood_predictions(likelihood_algorithm =macro
             data = simulation)
 
 likelihood_predictions_file = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_predictions,
-   path= "figure_1_likelihood_predictions")
+   path= "figures/data/figure_1_likelihood_predictions")
 
 
 dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
 data = simulation)
 
 dlikelihood_file = write_csv(experiment= experiment, simulation = simulation, likelihood = dlikelihood_predictions, 
-   path= "figure_1_dlikelihood_predictions")
+   path= "figures/data/figure_1_dlikelihood_predictions")

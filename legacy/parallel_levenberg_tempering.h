@@ -154,7 +154,8 @@ struct levenberg_mcmc {
         ProposedDistribution(double beta, double lambda) const {
         auto thFim = (get<FIM>(m_logP)() + get<FIM>(m_logL)() * beta);
 
-        auto FIml = SymPosDefMatrix<double>::I_sware_it_is_possitive(thFim + diag(thFim) * lambda);
+        auto FIml = SymPosDefMatrix<double>::I_sware_it_is_possitive(
+            thFim.value() + diag(thFim.value()) * lambda);
         auto G = get<Grad>(m_logP)() + get<Grad>(m_logL)() * beta;
 
         auto& x = m_x;
@@ -175,7 +176,7 @@ struct levenberg_mcmc {
             return true;
         }()));
 
-        auto opt = x() + thFiminv * G;
+        auto opt = x() + thFiminv * G.value();
         auto logDetCov = logdet(diag(chol.value()));
         if (!logDetCov)
             return logDetCov.error();
@@ -260,8 +261,8 @@ inline Maybe_error<dlogPs> dlogPrior(var::Parameters_Normal_Distribution const& 
     auto r_logP = prior.logP(ca);
     if (!r_logP)
         return r_logP.error();
-    return dlogPs{logL(r_logP.value()), Grad(prior.dlogP(ca)),
-                  FIM(SymPosDefMatrix<double>(prior.FIM(ca)))};
+    return dlogPs{logL(r_logP.value()), Grad(prior.dlogP(ca), ca),
+                  FIM(SymPosDefMatrix<double>(prior.FIM(ca)), ca)};
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables, class DataType,

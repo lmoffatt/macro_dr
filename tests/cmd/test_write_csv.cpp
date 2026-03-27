@@ -59,7 +59,7 @@ std::vector<std::string> split_csv_row(const std::string& row) {
 
 constexpr std::string_view kUnifiedHeader =
     "scope,simulation_index,sample_index,segment_index,sub_index,n_step,"
-    "time_start,time_end,time_middle,agonist,patch_current,"
+    "step_start,step_end,step_middle,agonist,patch_current,"
     "component_path,value_row,value_col,"
     "probit,calculus,statistic,quantile_level,"
     "param_index,param_col,param_name,"
@@ -74,6 +74,23 @@ SymPosDefMatrix<double> make_diag_spd(std::initializer_list<double> diag_vals) {
         ++i;
     }
     return out;
+}
+
+const var::Parameters_Transformations& test_parameter_transformations() {
+    static const auto transformations = [] {
+        auto maybe_tr = var::MyTranformations::from_strings({"Linear", "Linear"});
+        if (!maybe_tr) {
+            throw std::runtime_error(maybe_tr.error()());
+        }
+
+        return var::Parameters_Transformations("test_model", {"kon", "koff"}, maybe_tr.value(),
+                                               std::vector<double>{1.0, 2.0});
+    }();
+    return transformations;
+}
+
+var::Parameters_transformed make_test_parameters() {
+    return test_parameter_transformations().standard_parameter_transformed();
 }
 
 }  // namespace
@@ -199,4 +216,55 @@ TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits an
         REQUIRE(lines.size() == 1);
         CHECK(lines.front() == kUnifiedHeader);
     }
+}
+
+TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matrices", "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_parameter_indexed");
+    const auto base = dir.path / "parameter_indexed";
+
+    auto params = make_test_parameters();
+    Matrix<double> score(2, 1);
+    score[0] = 1.25;
+    score[1] = -0.75;
+
+    auto summary = var::Vector_Space{dlogL(std::move(score), params), FIM(make_diag_spd({2.0, 5.0}), params)};
+
+    auto out = write_csv(summary, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    REQUIRE(lines.size() == 7);
+    CHECK(lines.front() == kUnifiedHeader);
+
+    const auto dlogl0 = split_csv_row(lines[1]);
+    const auto dlogl1 = split_csv_row(lines[2]);
+    const auto fim00 = split_csv_row(lines[3]);
+    const auto fim01 = split_csv_row(lines[4]);
+    const auto fim10 = split_csv_row(lines[5]);
+    const auto fim11 = split_csv_row(lines[6]);
+
+    REQUIRE(dlogl0.size() == 22);
+    REQUIRE(fim00.size() == 22);
+
+    CHECK(dlogl0[11] == "dlogL");
+    CHECK(dlogl0[18] == "0");
+    CHECK(dlogl0[19].empty());
+    CHECK(dlogl0[20] == "kon");
+
+    CHECK(dlogl1[11] == "dlogL");
+    CHECK(dlogl1[18] == "1");
+    CHECK(dlogl1[19].empty());
+    CHECK(dlogl1[20] == "koff");
+
+    CHECK(fim00[11] == "FIM");
+    CHECK(fim00[18] == "0");
+    CHECK(fim00[19] == "0");
+    CHECK(fim00[20] == "kon_kon");
+
+    CHECK(fim01[20] == "kon_koff");
+    CHECK(fim10[20] == "koff_kon");
+    CHECK(fim11[20] == "koff_koff");
 }

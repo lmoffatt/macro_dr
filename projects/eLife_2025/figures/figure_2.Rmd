@@ -14,20 +14,15 @@ library(patchwork)
 ```{r}
 
 filenames=c(
-  "data/figure_2_dlikelihood_predictions_MRV",
-  "data/figure_2_dlikelihood_predictions_IRV",
-  "data/figure_2_dlikelihood_predictions_MRV2",
-  "data/figure_2_dlikelihood_predictions_IRV2"
-  
+  "data/figure_2_dlikelihood_analysis_MRV",
+  "data/figure_2_dlikelihood_analysis_IRV"
 )
 
 algorithms=c("MRV"
              ,"IRV"
-             ,"MRV"
-             ,"IRV"
              )
 
-schemes=c("scheme_CO","scheme_CO","scheme_CCO","scheme_CCO")
+schemes=c("scheme_CO","scheme_CO")
 ```
 
 
@@ -45,56 +40,23 @@ for (i in 1:length(filenames)){
 
 ```
 
-```{r}
-library(dplyr)
 
-result <- d %>%filter()%>%
-  group_by(
-    algo,scheme,row_kind, n_step, sub_step, step_start, step_end, 
-    step_middle, agonist, component, param_index, 
-    param_col, param_name
-  ) %>%
-  summarise(
-    across(
-      everything(), 
-      list(
-        mean = ~ mean(.x, na.rm = TRUE),
-        se   = ~ sd(.x, na.rm = TRUE) / sqrt(sum(!is.na(.x))),
-        n= ~ sum(!is.na(.x))
-      ),
-      .names = "{.col}_{.fn}"
-    ),
-    .groups = "drop"
-  )
+
+```{r}
+d<-d%>%mutate(component= component_path %>%
+           str_replace("^Probit_statistics_Moment_statistics.*\\.", "") %>%
+           str_replace("^Probit_statistics_Sum_Moment_statistics.*\\.", "Sum_")%>%
+           str_replace("^Probit_statistics_", "")%>%
+           str_replace("^Evolution.*\\.Moment_statistics_", "Evolution_")%>%
+   str_replace("^Evolution_of_Vector_Space_Moment_statistics_logL_false_Moment_statistics_elogL_false_Moment_statistics_y_mean_false_Moment_statistics_y_var_false_Moment_statistics_r_std_false_Moment_statistics_trust_coefficient_false_Moment_statistics_dlogL_true_Moment_statistics_Gaussian_Fisher_Information_false_Sample_Distortion_Matrix\\.", "Evolution_"))
+     
 ```
 
 ```{r}
-result%>%filter(row_kind=="derivative")%>%select(-param_index,-param_col)%>%pivot_wider(values_from = c(primitive_mean,primitive_se,derivative_value_mean,derivative_value_se), names_from = c(component,param_name))->dd
-```
-
-
-```{r, fig.width=180/24.5, fig.height=270/24.5}
-(
-result%>%filter(scheme=="scheme_CO", row_kind=="derivative")%>%ggplot()+geom_point(aes(x=step_middle,y=primitive_mean))+geom_linerange(aes(x=step_middle,y=primitive_mean, ymin = primitive_mean-primitive_se,ymax=primitive_mean+primitive_se))+facet_wrap(component~algo, scales = "free")
-  
-)/
-(
-result%>%filter(scheme=="scheme_CO",component=="logL", row_kind=="derivative")%>%ggplot()+geom_point(aes(x=step_middle,y=derivative_value_mean))+geom_linerange(aes(x=step_middle,y=derivative_value_mean, ymin = derivative_value_mean-derivative_value_se,ymax=derivative_value_mean+derivative_value_se))+facet_wrap(param_name~algo, scales = "free"))
+d%>%select(component)%>%distinct()%>%pull()
 
 ```
-
-
-```{r, fig.width=180/24.5, fig.height=270/24.5}
-(
-result%>%filter(scheme=="scheme_CCO", row_kind=="derivative")%>%ggplot()+geom_point(aes(x=step_middle,y=primitive_mean))+geom_linerange(aes(x=step_middle,y=primitive_mean, ymin = primitive_mean-primitive_se,ymax=primitive_mean+primitive_se))+facet_wrap(component~algo, scales = "free")
-  
-)/
-(
-result%>%filter(scheme=="scheme_CCO",component=="logL", row_kind=="derivative")%>%ggplot()+geom_point(aes(x=step_middle,y=derivative_value_mean))+geom_linerange(aes(x=step_middle,y=derivative_value_mean, ymin = derivative_value_mean-derivative_value_se,ymax=derivative_value_mean+derivative_value_se))+facet_wrap(param_name~algo, scales = "free"))
-
-```
-
 ```{r}
-result%>%filter(row_kind%in%c("state_value"), scheme=="scheme_CO")%>%select(algo,scheme,row_kind,component,primitive_mean,primitive_se,primitive_n)%>%View()
+d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(component,value_row,value_col,probit,calculus, quantile_level, param_name, value,algo,scheme)%>%arrange(component,value_row,value_col,algo,quantile_level)
 ```
 

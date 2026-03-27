@@ -22,6 +22,7 @@
 #include "variables.h"
 #include "derivative_operator.h"
 #include "matrix_derivative.h"
+#include "parameter_indexed.h"
 // IModel interface for model pointer serialization
 #include <macrodr/interface/IModel.h>
 // Bring legacy parameter types for optional JSON views
@@ -809,6 +810,25 @@ inline Maybe_error<void> from_json(const Json& j, DiagPosDetMatrix<double>& out,
                                    TagPolicy policy) {
     (void)j; (void)out; (void)policy;
     return error_message(path + ": deserialization for DiagPosDetMatrix<double> not supported");
+}
+
+template <class ValueT, class Params>
+    requires var::ParameterMetadataLike<Params>
+Json to_json(const var::ParameterIndexed<ValueT, Params>& value, TagPolicy policy) {
+    return detail::value_to_json(value.value(), policy);
+}
+
+template <class ValueT, class Params>
+    requires var::ParameterMetadataLike<Params>
+Maybe_error<void> from_json(const Json& j, var::ParameterIndexed<ValueT, Params>& out,
+                            const std::string& path, TagPolicy policy) {
+    ValueT payload{};
+    auto status = from_json(j, payload, path, policy);
+    if (!status) {
+        return status;
+    }
+    out = var::ParameterIndexed<ValueT, Params>(std::move(payload), out.parameters_ptr());
+    return {};
 }
 
 template <class Value, class DX>
