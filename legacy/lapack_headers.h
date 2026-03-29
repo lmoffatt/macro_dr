@@ -2347,6 +2347,14 @@ inline bool matrix_has_only_finite(const SymPosDefMatrix<double>& x) {
     return true;
 }
 
+inline bool matrix_has_only_finite(const Matrix<double>& x) {
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = 0; j < x.ncols(); ++j)
+            if (!std::isfinite(x(i, j)))
+                return false;
+    return true;
+}
+
 inline Matrix<double> symmetrize_dense(const Matrix<double>& x) {
     Matrix<double> out(x.nrows(), x.ncols(), false);
     for (std::size_t i = 0; i < x.nrows(); ++i)
@@ -2630,6 +2638,40 @@ inline Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
     const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double rtol, double atol) {
     return Lapack_PSD_Congruence_Matrix(C, R, "C_sample", "reconstituted distortion matrix", rtol,
                                         atol);
+}
+
+inline Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
+    const SymPosDefMatrix<double>& H, const Matrix<double>& g, double rtol, double atol) {
+    return_error<Matrix<double>> Error{"Lapack_Distortion_Induced_Bias_Subspace: "};
+
+    if (H.nrows() != H.ncols())
+        return Error("Distortion-induced bias: H is not square");
+    if (!matrix_has_only_finite(H) || !matrix_has_only_finite(g))
+        return Error("Distortion-induced bias: non-finite input");
+
+    const bool is_column_vector = g.nrows() == H.nrows() && g.ncols() == 1;
+    const bool is_row_vector = g.nrows() == 1 && g.ncols() == H.nrows();
+    if (!is_column_vector && !is_row_vector)
+        return Error("Distortion-induced bias: incompatible vector dimensions");
+
+    auto maybe_eigs = retained_psd_eigensystem(H, "H", rtol, atol, true);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+    const auto& eigs = maybe_eigs.value();
+    auto basis = retained_basis(eigs);
+    auto kept_eigenvalues = retained_eigenvalues(eigs);
+
+    DiagonalMatrix<double> inv_diag(kept_eigenvalues.nrows(), kept_eigenvalues.ncols(), false);
+    for (std::size_t i = 0; i < inv_diag.size(); ++i)
+        inv_diag[i] = 1.0 / kept_eigenvalues[i];
+
+    if (is_column_vector) {
+        auto projected = tr(basis) * g;
+        return basis * (inv_diag * projected);
+    }
+
+    auto projected = g * basis;
+    return (projected * inv_diag) * tr(basis);
 }
 
 template <class T>

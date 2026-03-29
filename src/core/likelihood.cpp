@@ -1052,7 +1052,8 @@ auto calculate_Likelihood_diagnostics_evolution_f(
             Moment_statistics<y_var>, Moment_statistics<r_std>,
             Moment_statistics<trust_coefficient>, Moment_statistics<dlogL, true>,
             Moment_statistics<Gaussian_Fisher_Information, false>>>>{},
-        std::type_identity<Evolution_of<Vector_Space<Sample_Distortion_Matrix>>>{},
+        std::type_identity<
+            Evolution_of<Vector_Space<Sample_Distortion_Matrix, Distortion_Induced_Bias>>>{},
 
         [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
@@ -1074,15 +1075,21 @@ auto calculate_Likelihood_diagnostics_evolution_f(
         });
 
     for (auto& m : evol_moments()) {
+        auto H_t = get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())();
+        auto g_t = get<mean<dlogL>>(get<dlogL>(m)())();
+
         get<Sample_Distortion_Matrix>(m)() =
             parameter_spd_payload(
                 sample_distortion_matrix_subspace(
-                    get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())()
-                        .value(),
-                    get<covariance<dlogL>>(get<dlogL>(m)())().value())
+                    H_t.value(), get<covariance<dlogL>>(get<dlogL>(m)())().value())
                     .value_or(SymPosDefMatrix<double>{}),
-                get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())()
-                    .parameters_ptr());
+                H_t.parameters_ptr());
+
+        get<Distortion_Induced_Bias>(m)() =
+            parameter_vector_payload(
+                distortion_induced_bias_subspace(H_t.value(), g_t.value())
+                    .value_or(Matrix<double>{}),
+                H_t.parameters_ptr());
     }
 
     auto sum_r_std = Sum<Moment_statistics<r_std>>(evol_moments(),
@@ -1101,6 +1108,7 @@ auto calculate_Likelihood_diagnostics_evolution_f(
     auto J = get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
 
     auto J_sample = get<covariance<dlogL>>(sum_dlogL());
+    auto score_mean = get<mean<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
 
     // Distortion quantities are evaluated on the retained informative subspace.
     auto idm = Information_Distortion_Matrix(
@@ -1125,9 +1133,13 @@ auto calculate_Likelihood_diagnostics_evolution_f(
         dcc_matrix_subspace(H().value(), J().value()).value_or(SymPosDefMatrix<double>{}),
         H().parameters_ptr());
 
+    auto dib = Distortion_Induced_Bias(
+        distortion_induced_bias_subspace(H().value(), score_mean().value()).value_or(Matrix<double>{}),
+        H().parameters_ptr());
+
     return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
                          std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),
-                         std::move(cdm), std::move(dcc), std::move(evol_moments));
+                         std::move(cdm), std::move(dcc), std::move(dib), std::move(evol_moments));
 }
 
 auto calculate_Likelihood_derivative_diagnostics(

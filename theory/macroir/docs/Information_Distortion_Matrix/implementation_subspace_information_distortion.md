@@ -33,8 +33,11 @@ The singular-capable helpers are:
 - `sample_distortion_matrix_subspace(H, J_sample, rtol, atol)`
 - `correlation_distortion_matrix_subspace(J_sample, J_total, rtol, atol)`
 - `c_h_r_c_h_matrix_subspace(C_sample, R, rtol, atol)`
+- `distortion_induced_bias_subspace(H, g, rtol, atol)`
 
-All return `Maybe_error<SymPosDefMatrix<double>>`.
+The matrix helpers return `Maybe_error<SymPosDefMatrix<double>>`.
+
+The DIB helper returns `Maybe_error<Matrix<double>>`.
 
 These are semantic wrappers. Internally they use two numerical kernels:
 
@@ -42,6 +45,8 @@ These are semantic wrappers. Internally they use two numerical kernels:
   `A^{-1/2} B A^{-1/2}` on the retained eigenspace of `A`
 - retained-eigenspace congruence:
   `A^{1/2} B A^{1/2}` on the retained eigenspace of `A`
+- retained-eigenspace inverse application:
+  `U_A \Lambda_A^{-1} U_A^T g` on the retained eigenspace of `A`
 
 ## Retained-Eigenspace Algorithm
 
@@ -90,6 +95,7 @@ In `calculate_Likelihood_diagnostics_evolution_f`:
 - correlation distortion uses `correlation_distortion_matrix_subspace(J_sample, J_total)`
 - reconstituted distortion uses `c_h_r_c_h_matrix_subspace(C_sample, R)`
 - corrected covariance uses `dcc_matrix_subspace(H, J_total)`
+- distortion-induced bias uses `distortion_induced_bias_subspace(H, g)`
 
 This matches the supplement notation:
 
@@ -99,6 +105,8 @@ This matches the supplement notation:
 - `C_sample`: sample distortion on the retained `H`-subspace
 - `R`: correlation distortion on the retained `J_sample`-subspace
 - `Sigma_DCC`: corrected covariance on the retained `H`-subspace
+- `g`: expected score vector
+- `b_DIB`: distortion-induced bias on the retained `H`-subspace
 
 ## Interpretation
 

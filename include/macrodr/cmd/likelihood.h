@@ -304,12 +304,14 @@ using Analisis_derivative_diagnostic = var::Vector_Space<
         Probit_statistics<Sample_Distortion_Matrix>,
         Probit_statistics<Correlation_Distortion_Matrix>,
         Probit_statistics<Distortion_Corrected_Covariance>,
+        Probit_statistics<Distortion_Induced_Bias>,
         Probit_statistics<macrodr::Evolution_of<var::Vector_Space<
             Moment_statistics<logL, false>, Moment_statistics<elogL, false>,
             Moment_statistics<macrodr::y_mean, false>, Moment_statistics<macrodr::y_var, false>,
             Moment_statistics<macrodr::r_std, false>,
             Moment_statistics<macrodr::trust_coefficient, false>, Moment_statistics<dlogL, true>,
-            Moment_statistics<Gaussian_Fisher_Information, false>, Sample_Distortion_Matrix>>>> ; 
+            Moment_statistics<Gaussian_Fisher_Information, false>, Sample_Distortion_Matrix,
+            Distortion_Induced_Bias>>>> ; 
 
    
  auto calculate_Likelihood_derivative_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 

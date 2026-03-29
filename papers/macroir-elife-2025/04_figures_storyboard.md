@@ -21,15 +21,15 @@ This is the “spec” for the main figures. Update it before updating code.
 
 - A reader can *visually* see “what changes” between MRV and IRV in one example.
 
-## Figure 2 — Score (derivatives) across time
+## Figure 2 — Information distortion across time
 
-**Question:** Do the derivatives computed by the approximation look stable/consistent?
+**Question:** How much information distortion and structural bias does each approximation induce over time?
 
 **Panels (proposed):**
 
-- (A) Per-interval log-likelihood contributions summary vs time (mean ± SE over simulations)
-- (B) Per-parameter score contributions vs time (mean ± SE)
-- (C) Compare at least two schemes (e.g. `scheme_CO` and `scheme_CCO`) to show robustness
+- (A) Per-timestep distortion-induced bias trajectories by parameter (mean + interval band)
+- (B) Per-timestep sample-distortion diagonal by parameter (mean + interval band)
+- (C) Global distortion summary: total DIB per parameter and diagonal of the total information distortion matrix
 
 **Existing prototype:**
 
@@ -38,7 +38,7 @@ This is the “spec” for the main figures. Update it before updating code.
 
 **Acceptance criteria:**
 
-- The figure makes it obvious which algorithm yields biased/noisy gradients (if any).
+- The figure makes it obvious which algorithm induces larger structural bias and distortion, and when that distortion appears within the interval sequence.
 
 ## Figure 3 — Validation: Score mean + FIM agreement + residuals
 

@@ -483,10 +483,28 @@ class Score_Mean : public var::Constant<Score_Mean, Matrix<double>> {
     }
 };  
 
-class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, Matrix<double>> {
+class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, parameter_vector_payload> {
+    using base_type = var::Constant<Distortion_Induced_Bias, parameter_vector_payload>;
+
    public:
+    using base_type::base_type;
+    Distortion_Induced_Bias() = default;
+    Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+    Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+
     friend std::string className(Distortion_Induced_Bias) {
         return "Distortion_Induced_Bias";
+    }
+
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite(var::fullsum((*this)()))) {
+            std::stringstream ss;
+            ss << "Distortion_Induced_Bias not finite: " << (*this)();
+            return error_message(ss.str());
+        }
+        return true;
     }
 };  
 

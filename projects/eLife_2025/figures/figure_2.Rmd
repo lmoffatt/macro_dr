@@ -37,9 +37,14 @@ for (i in 1:length(filenames)){
   
   d=rbind(d,d0)
 }
-
+d<- d %>%
+  select(where(~ !all(is.na(.))))
 ```
 
+```{r}
+d%>%select(component_path)%>%distinct()%>%pull()
+
+```
 
 
 ```{r}
@@ -48,7 +53,8 @@ d<-d%>%mutate(component= component_path %>%
            str_replace("^Probit_statistics_Sum_Moment_statistics.*\\.", "Sum_")%>%
            str_replace("^Probit_statistics_", "")%>%
            str_replace("^Evolution.*\\.Moment_statistics_", "Evolution_")%>%
-   str_replace("^Evolution_of_Vector_Space_Moment_statistics_logL_false_Moment_statistics_elogL_false_Moment_statistics_y_mean_false_Moment_statistics_y_var_false_Moment_statistics_r_std_false_Moment_statistics_trust_coefficient_false_Moment_statistics_dlogL_true_Moment_statistics_Gaussian_Fisher_Information_false_Sample_Distortion_Matrix\\.", "Evolution_"))
+          str_replace("^Evolution.*\\.", "Evolution_"))
+   
      
 ```
 
@@ -58,5 +64,40 @@ d%>%select(component)%>%distinct()%>%pull()
 ```
 ```{r}
 d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(component,value_row,value_col,probit,calculus, quantile_level, param_name, value,algo,scheme)%>%arrange(component,value_row,value_col,algo,quantile_level)
+```
+
+```{r}
+ds<-read.csv("data/figure_2_simulation.csv")%>%
+  select(where(~ !all(is.na(.))))
+```
+
+
+```{r}
+dc<-ds%>%group_by(n_step,step_start,step_middle,step_end,agonist)%>%summarise(y_observed=mean(patch_current))
+```
+```{r}
+df<-d%>%left_join(dc, by=join_by(sample_index==n_step))
+```
+
+
+
+```{r}
+d_DIB_evol<-
+  df%>%filter(component=="Evolution_Distortion_Induced_Bias")%>%select(param_name,algo,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+
+```
+```{r}
+d_DIB_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA))+geom_errorbar(aes(x=sample_index,ymin = quantile_0.025,ymax = quantile_0.975))+facet_wrap(param_name~algo, scales="free")
+
+```
+
+```{r}
+d_gradient_evol<-
+  df%>%filter(component=="Evolution_dlogL_true", statistic=="mean")%>%select(param_name,algo,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+
+```
+```{r}
+d_gradient_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA))+geom_errorbar(aes(x=sample_index,ymin = quantile_0.025,ymax = quantile_0.975))+facet_wrap(param_name~algo, scales="free")
+
 ```
 
