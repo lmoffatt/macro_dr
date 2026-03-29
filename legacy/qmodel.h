@@ -890,6 +890,8 @@ struct Evolution {};
 template <class T>
 class Evolution_of : public Var<Evolution_of<T>, std::vector<T>> {
    public:
+    using base_type = Var<Evolution_of<T>, std::vector<T>>;
+    using base_type::base_type;
     using element_type = T;
     auto& operator[](var::Var<Evolution>) { return *this; }
 
@@ -898,6 +900,26 @@ class Evolution_of : public Var<Evolution_of<T>, std::vector<T>> {
     friend std::string className(Evolution_of) { return "Macro_State_Evolution"; }
     using value_type = std::vector<T>;
 };
+
+template <class T>
+inline auto get_mean_Probits(std::vector<Evolution_of<T>>& bootstrap_estimates,
+                             const std::set<double>& cis) {
+    assert(!bootstrap_estimates.empty());
+
+    std::vector<std::vector<T>> values;
+    values.reserve(bootstrap_estimates.size());
+    for (auto& estimate : bootstrap_estimates)
+        values.push_back(estimate());
+
+    auto [mean_value, probits] = get_mean_Probits(values, cis);
+
+    Evolution_of<T> mean_out(std::move(mean_value));
+    std::map<double, Evolution_of<T>> probits_out;
+    for (auto& [level, value] : probits)
+        probits_out.emplace(level, Evolution_of<T>(std::move(value)));
+
+    return std::make_pair(std::move(mean_out), std::move(probits_out));
+}
 
 template <class V, class Id>
 concept has_var_c = requires(V&& v) {
@@ -980,6 +1002,11 @@ struct ddMacro_State
 };
 
 }  // namespace macrodr
+
+template <class T>
+struct mean_value_type_impl<macrodr::Evolution_of<T>> {
+    using type = macrodr::Evolution_of<T>;
+};
 
 // Teach the generic derivative machinery that ddMacro_State lives in the
 // Parameters_transformed derivative universe, so that Transfer_Op_to and

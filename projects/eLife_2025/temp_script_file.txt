@@ -17,7 +17,7 @@ model_str="scheme_CO"
 
 
 
-simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulations= 256, experiment = experiment,
+simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulations= 2048, experiment = experiment,
                          observations = observations, number_of_substeps = 250, seed = 0)
 
 

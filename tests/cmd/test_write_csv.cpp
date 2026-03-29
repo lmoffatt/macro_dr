@@ -76,6 +76,16 @@ SymPosDefMatrix<double> make_diag_spd(std::initializer_list<double> diag_vals) {
     return out;
 }
 
+Matrix<double> make_col_vector(std::initializer_list<double> vals) {
+    Matrix<double> out(vals.size(), 1, false);
+    std::size_t i = 0;
+    for (auto v : vals) {
+        out(i, 0) = v;
+        ++i;
+    }
+    return out;
+}
+
 const var::Parameters_Transformations& test_parameter_transformations() {
     static const auto transformations = [] {
         auto maybe_tr = var::MyTranformations::from_strings({"Linear", "Linear"});
@@ -216,6 +226,101 @@ TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits an
         REQUIRE(lines.size() == 1);
         CHECK(lines.front() == kUnifiedHeader);
     }
+}
+
+TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empty vectors",
+          "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_dib_shapes");
+    auto params = make_test_parameters();
+
+    {
+        const auto base = dir.path / "dib_probit";
+        std::vector<Distortion_Induced_Bias> samples{
+            Distortion_Induced_Bias(Matrix<double>{}, params),
+            Distortion_Induced_Bias(make_col_vector({1.0, -2.0}), params),
+            Distortion_Induced_Bias(make_col_vector({3.0, -4.0}), params)};
+
+        auto summary = var::Vector_Space{
+            Probit_statistics<Distortion_Induced_Bias>(
+                samples, [](const auto& x) { return x(); }, std::set<double>{0.5})};
+
+        auto out = write_csv(summary, base.string());
+        REQUIRE(out);
+
+        const auto lines = read_lines(base.string() + ".csv");
+        CHECK(lines.front() == kUnifiedHeader);
+        REQUIRE(lines.size() == 5);
+
+        const auto first = split_csv_row(lines[1]);
+        const auto second = split_csv_row(lines[2]);
+        REQUIRE(first.size() == 22);
+        REQUIRE(second.size() == 22);
+        CHECK(first[11] == "Probit_statistics_Distortion_Induced_Bias");
+        CHECK(first[20] == "kon");
+        CHECK(second[20] == "koff");
+    }
+
+    {
+        const auto base = dir.path / "empty_dib";
+        auto summary = var::Vector_Space{Distortion_Induced_Bias(Matrix<double>{}, params)};
+
+        auto out = write_csv(summary, base.string());
+        REQUIRE(out);
+
+        const auto lines = read_lines(base.string() + ".csv");
+        REQUIRE(lines.size() == 1);
+        CHECK(lines.front() == kUnifiedHeader);
+    }
+}
+
+TEST_CASE("generic write_csv keeps Gaussian Fisher variance matrix-shaped", "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_gfi_variance");
+    const auto base = dir.path / "gfi_variance";
+    auto params = make_test_parameters();
+
+    std::vector<Gaussian_Fisher_Information> samples{
+        Gaussian_Fisher_Information(make_diag_spd({2.0, 5.0}), params),
+        Gaussian_Fisher_Information(make_diag_spd({4.0, 9.0}), params)};
+
+    auto summary =
+        var::Vector_Space{Moment_statistics<Gaussian_Fisher_Information, false>(samples)};
+
+    auto out = write_csv(summary, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    CHECK(lines.front() == kUnifiedHeader);
+    REQUIRE(lines.size() == 10);
+
+    std::vector<std::vector<std::string>> variance_rows;
+    for (std::size_t i = 1; i < lines.size(); ++i) {
+        auto row = split_csv_row(lines[i]);
+        REQUIRE(row.size() == 22);
+        if (row[11] == "Moment_statistics_Gaussian_Fisher_Information_false" &&
+            row[16] == "variance") {
+            variance_rows.push_back(std::move(row));
+        }
+    }
+
+    REQUIRE(variance_rows.size() == 4);
+    CHECK(variance_rows[0][18] == "0");
+    CHECK(variance_rows[0][19] == "0");
+    CHECK(variance_rows[0][20] == "kon_kon");
+    CHECK(variance_rows[1][18] == "0");
+    CHECK(variance_rows[1][19] == "1");
+    CHECK(variance_rows[1][20] == "kon_koff");
+    CHECK(variance_rows[2][18] == "1");
+    CHECK(variance_rows[2][19] == "0");
+    CHECK(variance_rows[2][20] == "koff_kon");
+    CHECK(variance_rows[3][18] == "1");
+    CHECK(variance_rows[3][19] == "1");
+    CHECK(variance_rows[3][20] == "koff_koff");
 }
 
 TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matrices", "[write_csv]") {

@@ -81,6 +81,18 @@ set_tests_properties(macrodr_cli_likelihood_diagnostics_smoke PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     ENVIRONMENT "OMP_NUM_THREADS=1")
 
+add_test(NAME macrodr_cli_likelihood_diagnostics_contains_dib
+         COMMAND ${CMAKE_COMMAND}
+                 -DPROGRAM=$<TARGET_FILE:macrodr_cli>
+                 -DWORKING_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                 -DSCRIPT=../data/likelihood_diagnostics_smoke.macroir
+                 -DOUTPUT_FILE=likelihood_diagnostics_smoke.csv
+                 -DSUMMARY_COMPONENT=Probit_statistics_Distortion_Induced_Bias
+                 -DEVOLUTION_COMPONENT=Distortion_Induced_Bias.Distortion_Induced_Bias
+                 -P ${PROJECT_SOURCE_DIR}/tools/ctest_run_and_assert_file_contains.cmake)
+set_tests_properties(macrodr_cli_likelihood_diagnostics_contains_dib PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 add_test(NAME macrodr_cli_write_csv_likelihood_overload_smoke
          COMMAND $<TARGET_FILE:macrodr_cli> ../data/write_csv_likelihood_overload_smoke.macroir)
 set_tests_properties(macrodr_cli_write_csv_likelihood_overload_smoke PROPERTIES

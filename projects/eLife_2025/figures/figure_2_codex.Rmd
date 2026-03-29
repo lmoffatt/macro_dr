@@ -1,0 +1,302 @@
+---
+title: "Figure 2"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(patchwork)
+
+theme_set(theme_minimal(base_size = 12))
+algo_colors <- c(MRV = "#b24d22", IRV = "#0f6c7a")
+```
+
+```{r load-data}
+files <- tibble(
+  filename = c(
+    "data/figure_2_dlikelihood_analysis_MRV",
+    "data/figure_2_dlikelihood_analysis_IRV"
+  ),
+  algo = c("MRV", "IRV"),
+  scheme = c("scheme_CO", "scheme_CO")
+)
+
+load_parameter_metadata <- function(scheme) {
+  readr::read_csv(
+    file.path("..", "data", "models", paste0(scheme, "_par.csv")),
+    show_col_types = FALSE
+  ) |>
+    transmute(
+      scheme = scheme,
+      param_index = i_par,
+      base_param = parameter_name,
+      parameter_transformation = parameter_transformation,
+      transformed_value = transformed_mean,
+      transformed_axis = case_when(
+        parameter_transformation == "Log10" ~ paste0("log10(", parameter_name, ")"),
+        TRUE ~ parameter_name
+      ),
+      param_plot = paste0(
+        transformed_axis,
+        "\n",
+        "theta = ",
+        sprintf("%.2f", transformed_mean)
+      )
+    )
+}
+
+normalize_component <- function(x) {
+  case_when(
+    str_detect(x, "(^Probit_statistics_)?Information_Distortion_Matrix$") ~
+      "Information_Distortion_Matrix",
+    str_detect(x, "(^Probit_statistics_)?Information_Distortion_Reconstituted$") ~
+      "Information_Distortion_Reconstituted",
+    str_detect(x, "(^Probit_statistics_)?Sample_Distortion_Matrix$|\\.Sample_Distortion_Matrix$") ~
+      "Sample_Distortion_Matrix",
+    str_detect(x, "(^Probit_statistics_)?Correlation_Distortion_Matrix$") ~
+      "Correlation_Distortion_Matrix",
+    str_detect(x, "(^Probit_statistics_)?Distortion_Corrected_Covariance$") ~
+      "Distortion_Corrected_Covariance",
+    str_detect(x, "(^Probit_statistics_)?Distortion_Induced_Bias$|\\.Distortion_Induced_Bias$") ~
+      "Distortion_Induced_Bias",
+    TRUE ~ NA_character_
+  )
+}
+
+band_role <- function(probit, quantile_level) {
+  case_when(
+    probit == "mean" ~ "mean",
+    !is.na(quantile_level) & abs(quantile_level - 0.025) < 1e-9 ~ "lower",
+    !is.na(quantile_level) & abs(quantile_level - 0.975) < 1e-9 ~ "upper",
+    TRUE ~ NA_character_
+  )
+}
+
+extract_band <- function(df) {
+  df |>
+    mutate(band = band_role(probit, quantile_level)) |>
+    filter(!is.na(band)) |>
+    summarise(
+      value = dplyr::first(value),
+      .by = c(
+        algo, scheme, component, time_index, param_index, param,
+        transformed_axis, transformed_value, param_plot, band
+      )
+    ) |>
+    pivot_wider(names_from = band, values_from = value) |>
+    drop_na(mean, lower, upper)
+}
+
+parameter_metadata <- purrr::map_dfr(unique(files$scheme), load_parameter_metadata)
+param_levels <- parameter_metadata |>
+  arrange(transformed_value, param_index) |>
+  pull(param_plot)
+
+d <- purrr::pmap_dfr(files, function(filename, algo, scheme) {
+  readr::read_csv(paste0(filename, ".csv"), show_col_types = FALSE) |>
+    mutate(algo = algo, scheme = scheme)
+}) |>
+  mutate(
+    component = normalize_component(component_path),
+    param_index = suppressWarnings(as.integer(value_row)),
+    time_index = sample_index + 1,
+    param = coalesce(param_name, if_else(!is.na(value_row), paste0("param_", value_row), NA_character_))
+  ) |>
+  left_join(parameter_metadata, by = c("scheme", "param_index")) |>
+  mutate(
+    param = coalesce(base_param, param),
+    transformed_axis = coalesce(transformed_axis, param),
+    param_plot = factor(coalesce(param_plot, param), levels = unique(param_levels))
+  ) |>
+  filter(!is.na(component))
+
+stopifnot(nrow(d) > 0)
+```
+
+```{r build-panels}
+dib_time <- d |>
+  filter(
+    scope == "evolution",
+    component == "Distortion_Induced_Bias",
+    is.na(value_col)
+  ) |>
+  extract_band()
+
+sdm_time <- d |>
+  filter(
+    scope == "evolution",
+    component == "Sample_Distortion_Matrix",
+    !is.na(value_col),
+    value_row == value_col
+  ) |>
+  extract_band()
+
+sdm_total <- d |>
+  filter(
+    scope == "summary",
+    component == "Sample_Distortion_Matrix",
+    !is.na(value_col),
+    value_row == value_col
+  ) |>
+  extract_band()
+
+dib_total <- d |>
+  filter(
+    scope == "summary",
+    component == "Distortion_Induced_Bias",
+    is.na(value_col)
+  ) |>
+  extract_band()
+
+idm_total <- d |>
+  filter(
+    scope == "summary",
+    component == "Information_Distortion_Matrix",
+    !is.na(value_col),
+    value_row == value_col
+  ) |>
+  extract_band()
+
+idr_total <- d |>
+  filter(
+    scope == "summary",
+    component == "Information_Distortion_Reconstituted",
+    !is.na(value_col),
+    value_row == value_col
+  ) |>
+  extract_band()
+
+corr_total <- d |>
+  filter(
+    scope == "summary",
+    component == "Correlation_Distortion_Matrix",
+    !is.na(value_col),
+    value_row == value_col
+  ) |>
+  extract_band()
+
+dcc_total <- d |>
+  filter(
+    scope == "summary",
+    component == "Distortion_Corrected_Covariance",
+    !is.na(value_col),
+    value_row == value_col
+  ) |>
+  extract_band()
+
+fmt_interval <- function(mean, lower, upper) {
+  sprintf("%.3f [%.3f, %.3f]", mean, lower, upper)
+}
+
+global_dib_table <- dib_total |>
+  transmute(
+    Algorithm = algo,
+    Parameter = transformed_axis,
+    theta_log10 = round(transformed_value, 3),
+    `Global DIB [2.5%, 97.5%]` = fmt_interval(mean, lower, upper)
+  ) |>
+  arrange(theta_log10, Parameter, Algorithm)
+
+global_matrix_table <- bind_rows(
+  idm_total |> mutate(diagnostic = "diag(C_total)"),
+  idr_total |> mutate(diagnostic = "diag(C_reconstituted)"),
+  sdm_total |> mutate(diagnostic = "diag(C_sample)"),
+  corr_total |> mutate(diagnostic = "diag(R)"),
+  dcc_total |> mutate(diagnostic = "diag(Sigma_DCC)")
+) |>
+  transmute(
+    Algorithm = algo,
+    Parameter = transformed_axis,
+    theta_log10 = round(transformed_value, 3),
+    diagnostic,
+    interval = fmt_interval(mean, lower, upper)
+  ) |>
+  pivot_wider(names_from = diagnostic, values_from = interval) |>
+  arrange(theta_log10, Parameter, Algorithm)
+
+stopifnot(
+  nrow(dib_time) > 0,
+  nrow(sdm_time) > 0,
+  nrow(dib_total) > 0,
+  nrow(idm_total) > 0
+)
+
+p_dib_time <- ggplot(dib_time, aes(time_index, mean, color = algo, fill = algo)) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, color = "grey45") +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.16, linewidth = 0) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~param_plot, scales = "free_y") +
+  scale_color_manual(values = algo_colors) +
+  scale_fill_manual(values = algo_colors) +
+  labs(
+    title = "A. Distortion-induced bias by step",
+    x = "Step index",
+    y = "DIB in transformed coordinates"
+  )
+
+p_sdm_time <- ggplot(sdm_time, aes(time_index, mean, color = algo, fill = algo)) +
+  geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey45") +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.16, linewidth = 0) +
+  geom_line(linewidth = 0.7) +
+  facet_wrap(~param_plot, scales = "free_y") +
+  scale_color_manual(values = algo_colors) +
+  scale_fill_manual(values = algo_colors) +
+  labs(
+    title = "B. Sample-distortion diagonal by step",
+    x = "Step index",
+    y = "diag(C_sample) in transformed coordinates"
+  )
+
+dodge_width <- 0.45
+
+p_dib_total <- ggplot(
+  dib_total,
+  aes(param_plot, mean, ymin = lower, ymax = upper, color = algo)
+) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, color = "grey45") +
+  geom_pointrange(position = position_dodge(width = dodge_width), linewidth = 0.4) +
+  coord_flip() +
+  scale_color_manual(values = algo_colors) +
+  labs(
+    title = "C1. Total DIB",
+    x = NULL,
+    y = "DIB"
+  )
+
+p_idm_total <- ggplot(
+  idm_total,
+  aes(param_plot, mean, ymin = lower, ymax = upper, color = algo)
+) +
+  geom_hline(yintercept = 1, linetype = "dashed", linewidth = 0.3, color = "grey45") +
+  geom_pointrange(position = position_dodge(width = dodge_width), linewidth = 0.4) +
+  coord_flip() +
+  scale_color_manual(values = algo_colors) +
+  labs(
+    title = "C2. Total distortion diagonal",
+    x = NULL,
+    y = "diag(C)"
+  )
+```
+
+```{r global-tables}
+knitr::kable(
+  global_dib_table,
+  caption = "Global distortion-induced bias in transformed parameter coordinates."
+)
+
+knitr::kable(
+  global_matrix_table,
+  caption = "Global diagonal distortion diagnostics in transformed parameter coordinates."
+)
+```
+
+```{r plot-figure, fig.height=12, fig.width=8}
+(p_dib_time / p_sdm_time / (p_dib_total | p_idm_total)) +
+  plot_annotation(
+    title = "Figure 2. Information distortion diagnostics for MRV and IRV",
+    subtitle = "Per-step DIB and sample distortion, plus global DIB and total information distortion."
+  )
+```

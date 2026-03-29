@@ -189,6 +189,8 @@ SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
                                          const SymPosDefMatrix<double>& R);
 Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
     const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double rtol, double atol);
+Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
+    const SymPosDefMatrix<double>& H, const Matrix<double>& g, double rtol, double atol);
 
 }  // namespace lapack
 
@@ -897,11 +899,14 @@ Matrix<T> to_dense(const SymmetricMatrix<T>& x) {
 
 template <class T>
 Matrix<T> to_vector_half(const SymmetricMatrix<T>& x) {
-    Matrix<T> out((x.nrows()*x.ncols())/2,1, false);
+    Matrix<T> out((x.nrows() * (x.ncols() + 1)) / 2, 1, false);
     std::size_t index = 0;
-    for (std::size_t i = 0; i < x.nrows(); ++i){
-        for (std::size_t j = i; j < x.ncols(); ++j){ 
-            out[index] = x(i, j);}}
+    for (std::size_t i = 0; i < x.nrows(); ++i) {
+        for (std::size_t j = i; j < x.ncols(); ++j) {
+            out[index] = x(i, j);
+            ++index;
+        }
+    }
     return out;
 }
 
@@ -1906,6 +1911,12 @@ inline auto c_h_r_c_h_matrix_subspace(const SymPosDefMatrix<double>& C,
     return lapack::Lapack_C_h_R_C_h_Subspace(C, R, rtol, atol);
 }
 
+inline auto distortion_induced_bias_subspace(const SymPosDefMatrix<double>& H,
+                                             const Matrix<double>& g,
+                                             double rtol = 1e-10, double atol = 0.0) {
+    return lapack::Lapack_Distortion_Induced_Bias_Subspace(H, g, rtol, atol);
+}
+
 // Enforce CTMC-generator conventions on eigendecomposition (primitive):
 // - deterministically place the zero eigenvalue at index 0
 // - apply the corresponding column permutation to VR and VL
@@ -2076,11 +2087,13 @@ inline auto sqr_X(const Matrix<double>& a) {
 
 template<bool include_covariance>
 inline auto sqr_X(const SymmetricMatrix<double>& a) {
-    auto vecth= to_vector_half(a);
- if constexpr (include_covariance) {
+    if constexpr (include_covariance) {
+        // Covariances of symmetric matrices live in packed-entry space.
+        // If we export them directly, CSV labeling will need names for those packed coordinates.
+        auto vecth = to_vector_half(a);
         return lapack::Lapack_Product_Self_Transpose_vectorized(vecth);
     } else {
-     return elemMult(vecth, vecth);
+        return elemMult(a, a);
     }
 }
 
