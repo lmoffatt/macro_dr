@@ -15,6 +15,7 @@ This directory contains all formal specifications, documentation, and schemas th
 | `dsl/grammar.bnf.md`              | Human-readable commentary on grammar (incl. vectors/tuples) | `.md`  |
 | `dsl/type_rules.md`               | Type deduction rules for DSL expressions (scalars, vectors, tuples) | `.md` |
 | `dsl/run_rules.md`                | Runtime evaluation rules for compiled programs    | `.md`            |
+| `dsl/indexed_evaluation.md`       | Draft design for indexed expansion and `IndexedResults` | `.md`      |
 | `dsl/dsl_structure_summary.md`    | High-level architecture of the typed/untyped DSL  | `.md`            |
 | `dsl/functions.md`                | User-facing documentation of DSL functions        | `.md`            |
 | `schema/environment.schema.json`  | JSON Schema for `.macrodr.json` config files      | `.schema.json`   |

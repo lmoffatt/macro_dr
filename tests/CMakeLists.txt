@@ -1,7 +1,9 @@
 set(TEST_SOURCES
     cmd/test_write_csv.cpp
     cli/test_cli_helpers.cpp
+    cli/test_dsl_core_refactor.cpp
     cli/test_env_persistence.cpp
+    cli/test_indexed.cpp
     io/json/test_convert.cpp
     math/test_eigs.cpp
     math/test_eigensystem_contract.cpp
@@ -10,6 +12,7 @@ set(TEST_SOURCES
     math/test_empty_self_product.cpp
     math/test_idm_eigs.cpp
     math/test_idm_matrix.cpp
+    math/test_maybe_error.cpp
     math/test_subspace_distortion.cpp
     math/test_probit_statistics.cpp
     math/test_taylor_convergence.cpp
