@@ -63,6 +63,46 @@ struct function_argument_storage<T&> {
 template <class Arg>
 using function_argument_storage_t = typename function_argument_storage<Arg>::type;
 
+template <class Param, class Storage>
+decltype(auto) adapt_argument_like(Storage& storage) {
+    using Base = std::remove_reference_t<Param>;
+    using StorageType = std::remove_reference_t<Storage>;
+
+    if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
+                  std::is_same_v<StorageType,
+                                 std::reference_wrapper<std::remove_const_t<Base>>>) {
+        return static_cast<Param>(storage.get());
+    } else if constexpr (std::is_lvalue_reference_v<Param>) {
+        if constexpr (detail::is_unique_ptr<StorageType>::value) {
+            return static_cast<Param>(*storage);
+        } else if constexpr (std::is_pointer_v<StorageType>) {
+            return static_cast<Param>(*storage);
+        } else {
+            if constexpr (std::is_const_v<Base>) {
+                return static_cast<const Base&>(storage);
+            } else {
+                return static_cast<Base&>(storage);
+            }
+        }
+    } else if constexpr (std::is_rvalue_reference_v<Param>) {
+        if constexpr (detail::is_unique_ptr<StorageType>::value) {
+            return static_cast<Base&&>(*storage);
+        } else if constexpr (std::is_pointer_v<StorageType>) {
+            return static_cast<Base&&>(*storage);
+        } else {
+            return static_cast<Base&&>(storage);
+        }
+    } else {
+        if constexpr (detail::is_unique_ptr<StorageType>::value) {
+            return std::move(storage);
+        } else if constexpr (std::is_pointer_v<StorageType>) {
+            return storage;
+        } else {
+            return static_cast<Param>(std::move(storage));
+        }
+    }
+}
+
 }  // namespace detail
 
 template <class Lexer, class Compiler>
@@ -1031,48 +1071,9 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
     argument_compilers_t m_args;
     F m_f;
 
-    template <class Param, class Storage>
-    static decltype(auto) adapt_argument(Storage& storage) {
-        using Base = std::remove_reference_t<Param>;
-        using StorageType = std::remove_reference_t<Storage>;
-        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
-                      std::is_same_v<StorageType,
-                                     std::reference_wrapper<std::remove_const_t<Base>>>) {
-            return static_cast<Param>(storage.get());
-        } else if constexpr (std::is_lvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Param>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Param>(*storage);
-            } else {
-                if constexpr (std::is_const_v<Base>) {
-                    return static_cast<const Base&>(storage);
-                } else {
-                    return static_cast<Base&>(storage);
-                }
-            }
-        } else if constexpr (std::is_rvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Base&&>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Base&&>(*storage);
-            } else {
-                return static_cast<Base&&>(storage);
-            }
-        } else {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return std::move(storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return storage;
-            } else {
-                return static_cast<Param>(std::move(storage));
-            }
-        }
-    }
-
     [[nodiscard]] auto make_invoker() const {
         return [fn = m_f](storage_t<Args>... values) -> std::invoke_result_t<F, Args...> {
-            return std::invoke(fn, adapt_argument<Args>(values)...);
+            return std::invoke(fn, detail::adapt_argument_like<Args>(values)...);
         };
     }
 

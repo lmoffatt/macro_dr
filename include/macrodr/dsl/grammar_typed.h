@@ -10,6 +10,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "deprecation.h"
@@ -542,192 +543,70 @@ class typed_predicate_evaluation : public typed_expression<Lexer, Compiler, T> {
     }
 };
 
+namespace detail {
 
-template <class Lexer, class Compiler, class T>
-class typed_vector_construction
-    : public typed_expression<Lexer, Compiler, std::vector<T>> {
+template <class Container>
+struct homogeneous_container_ops;
 
-    // Internal holder type (same rule as for function/tuple arguments)
+template <class T, class Alloc>
+struct homogeneous_container_ops<std::vector<T, Alloc>> {
+    static void prepare(std::vector<T, Alloc>& out, std::size_t n) { out.reserve(n); }
+
     template <class U>
-    using storage_t = detail::function_argument_storage_t<U>;
-
-    // Expressions producing storage_t<T> elements
-    std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>> m_args;
-
-    // Same adaptation logic as function_compiler / typed_tuple_construction
-    template <class Param, class Storage>
-    static decltype(auto) adapt(Storage& storage) {
-        using Base        = std::remove_reference_t<Param>;
-        using StorageType = std::remove_reference_t<Storage>;
-
-        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
-                      std::is_same_v<StorageType, std::reference_wrapper<std::remove_const_t<Base>>>) {
-            return static_cast<Param>(storage.get());
-        } else if constexpr (std::is_lvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Param>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Param>(*storage);
-            } else {
-                if constexpr (std::is_const_v<Base>) {
-                    return static_cast<const Base&>(storage);
-                } else {
-                    return static_cast<Base&>(storage);
-                }
-            }
-        } else if constexpr (std::is_rvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Base&&>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Base&&>(*storage);
-            } else {
-                return static_cast<Base&&>(storage);
-            }
-        } else {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return std::move(storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return storage;
-            } else {
-                return static_cast<Param>(std::move(storage));
-            }
-        }
-    }
-
-   public:
-    using storage_args =
-        std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>>;
-
-    explicit typed_vector_construction(storage_args&& args)
-        : m_args{std::move(args)} {}
-
-    typed_vector_construction(storage_args const& args)
-        : m_args{clone_vector(args)} {}
-
-    ~typed_vector_construction() override = default;
-
-    typed_vector_construction(const typed_vector_construction& other)
-        : m_args{clone_vector(other.m_args)} {}
-
-    typed_vector_construction(typed_vector_construction&&) noexcept = default;
-    typed_vector_construction& operator=(typed_vector_construction&&) noexcept = default;
-
-    typed_vector_construction& operator=(const typed_vector_construction& other) {
-        if (this != &other) {
-            m_args = clone_vector(other.m_args);
-        }
-        return *this;
-    }
-
-    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
-        const override {
-        return std::make_unique<typed_vector_construction>(*this);
-    }
-
-    [[nodiscard]] Maybe_error<std::vector<T>>
-    run(const Environment<Lexer, Compiler>& env) const override {
-        std::vector<T> out;
-        out.reserve(m_args.size());
-        std::string err;
-
-        for (std::size_t i = 0; i < m_args.size(); ++i) {
-            auto maybe_elem = m_args[i]->run(env);  // Maybe_error<storage_t<T>>
-            if (!maybe_elem) {
-                err += std::to_string(i) + ": " + maybe_elem.error()();
-            } else {
-                out.emplace_back(adapt<T>(maybe_elem.value()));
-            }
-        }
-
-        if (!err.empty()) {
-            return error_message(err);
-        }
-        return out;
+    static void insert(std::vector<T, Alloc>& out, U&& value) {
+        out.emplace_back(std::forward<U>(value));
     }
 };
 
-template <class Lexer, class Compiler, class T>
-class typed_set_construction
-    : public typed_expression<Lexer, Compiler, std::set<T>> {
+template <class T, class Compare, class Alloc>
+struct homogeneous_container_ops<std::set<T, Compare, Alloc>> {
+    static void prepare(std::set<T, Compare, Alloc>& /*out*/, std::size_t /*n*/) {}
 
     template <class U>
-    using storage_t = detail::function_argument_storage_t<U>;
-
-    std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>> m_args;
-
-    template <class Param, class Storage>
-    static decltype(auto) adapt(Storage& storage) {
-        using Base        = std::remove_reference_t<Param>;
-        using StorageType = std::remove_reference_t<Storage>;
-
-        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
-                      std::is_same_v<StorageType,
-                                     std::reference_wrapper<std::remove_const_t<Base>>>) {
-            return static_cast<Param>(storage.get());
-        } else if constexpr (std::is_lvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Param>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Param>(*storage);
-            } else {
-                if constexpr (std::is_const_v<Base>) {
-                    return static_cast<const Base&>(storage);
-                } else {
-                    return static_cast<Base&>(storage);
-                }
-            }
-        } else if constexpr (std::is_rvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Base&&>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Base&&>(*storage);
-            } else {
-                return static_cast<Base&&>(storage);
-            }
-        } else {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return std::move(storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return storage;
-            } else {
-                return static_cast<Param>(std::move(storage));
-            }
-        }
+    static void insert(std::set<T, Compare, Alloc>& out, U&& value) {
+        out.insert(std::forward<U>(value));
     }
+};
 
+template <class Lexer, class Compiler, class Container, class T>
+class typed_homogeneous_container_construction
+    : public typed_expression<Lexer, Compiler, Container> {
    public:
+    template <class U>
+    using storage_t = function_argument_storage_t<U>;
+
     using storage_args =
         std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>>;
 
-    explicit typed_set_construction(storage_args&& args)
+    explicit typed_homogeneous_container_construction(storage_args&& args)
         : m_args{std::move(args)} {}
 
-    typed_set_construction(storage_args const& args)
+    explicit typed_homogeneous_container_construction(const storage_args& args)
         : m_args{clone_vector(args)} {}
 
-    ~typed_set_construction() override = default;
+    ~typed_homogeneous_container_construction() override = default;
 
-    typed_set_construction(const typed_set_construction& other)
+    typed_homogeneous_container_construction(
+        const typed_homogeneous_container_construction& other)
         : m_args{clone_vector(other.m_args)} {}
 
-    typed_set_construction(typed_set_construction&&) noexcept = default;
-    typed_set_construction& operator=(typed_set_construction&&) noexcept = default;
+    typed_homogeneous_container_construction(
+        typed_homogeneous_container_construction&&) noexcept = default;
+    typed_homogeneous_container_construction& operator=(
+        typed_homogeneous_container_construction&&) noexcept = default;
 
-    typed_set_construction& operator=(const typed_set_construction& other) {
+    typed_homogeneous_container_construction& operator=(
+        const typed_homogeneous_container_construction& other) {
         if (this != &other) {
             m_args = clone_vector(other.m_args);
         }
         return *this;
     }
 
-    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
-        const override {
-        return std::make_unique<typed_set_construction>(*this);
-    }
-
-    [[nodiscard]] Maybe_error<std::set<T>>
+    [[nodiscard]] Maybe_error<Container>
     run(const Environment<Lexer, Compiler>& env) const override {
-        std::set<T> out;
+        Container out;
+        homogeneous_container_ops<Container>::prepare(out, m_args.size());
         std::string err;
 
         for (std::size_t i = 0; i < m_args.size(); ++i) {
@@ -735,7 +614,8 @@ class typed_set_construction
             if (!maybe_elem) {
                 err += std::to_string(i) + ": " + maybe_elem.error()();
             } else {
-                out.insert(adapt<T>(maybe_elem.value()));
+                homogeneous_container_ops<Container>::insert(
+                    out, adapt_argument_like<T>(maybe_elem.value()));
             }
         }
 
@@ -743,6 +623,57 @@ class typed_set_construction
             return error_message(err);
         }
         return out;
+    }
+
+   protected:
+    storage_args m_args;
+};
+
+}  // namespace detail
+
+template <class Lexer, class Compiler, class T>
+class typed_vector_construction
+    : public detail::typed_homogeneous_container_construction<Lexer, Compiler, std::vector<T>, T> {
+    using base_type =
+        detail::typed_homogeneous_container_construction<Lexer, Compiler, std::vector<T>, T>;
+
+   public:
+    using storage_args = typename base_type::storage_args;
+    using base_type::base_type;
+
+    ~typed_vector_construction() override = default;
+
+    typed_vector_construction(const typed_vector_construction&) = default;
+    typed_vector_construction(typed_vector_construction&&) noexcept = default;
+    typed_vector_construction& operator=(const typed_vector_construction&) = default;
+    typed_vector_construction& operator=(typed_vector_construction&&) noexcept = default;
+
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override {
+        return std::make_unique<typed_vector_construction>(*this);
+    }
+};
+
+template <class Lexer, class Compiler, class T>
+class typed_set_construction
+    : public detail::typed_homogeneous_container_construction<Lexer, Compiler, std::set<T>, T> {
+    using base_type =
+        detail::typed_homogeneous_container_construction<Lexer, Compiler, std::set<T>, T>;
+
+   public:
+    using storage_args = typename base_type::storage_args;
+    using base_type::base_type;
+
+    ~typed_set_construction() override = default;
+
+    typed_set_construction(const typed_set_construction&) = default;
+    typed_set_construction(typed_set_construction&&) noexcept = default;
+    typed_set_construction& operator=(const typed_set_construction&) = default;
+    typed_set_construction& operator=(typed_set_construction&&) noexcept = default;
+
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override {
+        return std::make_unique<typed_set_construction>(*this);
     }
 };
 
@@ -757,46 +688,6 @@ class typed_tuple_construction
 
     // Store expressions producing storage_t<Ts>...
     std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<Ts>>>...> m_args;
-
-    // Same adaptation logic as in function_compiler
-    template <class Param, class Storage>
-    static decltype(auto) adapt(Storage& storage) {
-        using Base        = std::remove_reference_t<Param>;
-        using StorageType = std::remove_reference_t<Storage>;
-
-        if constexpr (std::is_same_v<StorageType, std::reference_wrapper<Base>> ||
-                      std::is_same_v<StorageType, std::reference_wrapper<std::remove_const_t<Base>>>) {
-            return static_cast<Param>(storage.get());
-        } else if constexpr (std::is_lvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Param>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Param>(*storage);
-            } else {
-                if constexpr (std::is_const_v<Base>) {
-                    return static_cast<const Base&>(storage);
-                } else {
-                    return static_cast<Base&>(storage);
-                }
-            }
-        } else if constexpr (std::is_rvalue_reference_v<Param>) {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return static_cast<Base&&>(*storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return static_cast<Base&&>(*storage);
-            } else {
-                return static_cast<Base&&>(storage);
-            }
-        } else {
-            if constexpr (detail::is_unique_ptr<StorageType>::value) {
-                return std::move(storage);
-            } else if constexpr (std::is_pointer_v<StorageType>) {
-                return storage;
-            } else {
-                return static_cast<Param>(std::move(storage));
-            }
-        }
-    }
 
    public:
     using tuple_type   = std::tuple<Ts...>;
@@ -841,7 +732,7 @@ class typed_tuple_construction
 
         // Build the real tuple<Ts...>
         auto builder = [&](auto&... me) {
-            return std::tuple<Ts...>( adapt<Ts>(me.value())... );
+            return std::tuple<Ts...>( detail::adapt_argument_like<Ts>(me.value())... );
         };
 
         return std::apply(builder, maybe_storage);

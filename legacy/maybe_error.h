@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <memory>
 #include <sstream>
@@ -170,7 +171,18 @@ overloaded(Ts...) -> overloaded<Ts...>;
 template <auto F>
 std::string function_name();
 
-struct Nothing {};
+struct Nothing {
+    friend auto     operator + ( Nothing, Nothing) {
+        return Nothing{};
+    } 
+    template<class T>
+    friend auto operator+(Nothing, T&& t) {
+        return std::forward<T>(t);
+    }
+    template<class T>    friend auto operator+(T&& t, Nothing) {
+        return std::forward<T>(t ); 
+    }
+};
 
 template <class T>
 concept has_size = requires(const T& a) {
@@ -213,18 +225,28 @@ constexpr bool is_valid(const T&) {
 
 template <class T>
     requires(!is_Maybe_error<T>)
-auto& get_value(const T& x) {
-    return x;
+decltype(auto) get_value(T&& x) {
+    return std::forward<T>(x);
 }
 
 template <class T>
-auto& get_value(const Maybe_error<T>& x) {
+decltype(auto) get_value(Maybe_error<T>& x) {
     return x.value();
 }
 
 template <class T>
-T get_value(Maybe_error<T>&& x) {
-    return std::move(x.value());
+decltype(auto) get_value(const Maybe_error<T>& x) {
+    return x.value();
+}
+
+template <class T>
+decltype(auto) get_value(Maybe_error<T>&& x) {
+    return std::move(x).value();
+}
+
+template <class T>
+decltype(auto) get_value(const Maybe_error<T>&& x) {
+    return std::move(x).value();
 }
 
 template <class C, class T>
@@ -241,6 +263,11 @@ class error_message {
    public:
     error_message() = default;
     error_message(std::string&& error) : m_{std::move(error)} {}
+
+    friend auto operator+(const error_message& a, const error_message& b) {
+        return error_message(a.m_ + (a.m_.empty() ? "" : "\n" )+ b.m_);
+    }
+
 
     template <class... T>
     error_message(T&&... args) {
@@ -555,6 +582,22 @@ Maybe_error<std::tuple<std::unique_ptr<Ts>...>> promote_Maybe_error(
         },
         std::move(x));
 }
+
+
+template<class F, class...Ts>
+auto apply_on_Maybe_error(F&& f, Ts&&... args)
+    -> Maybe_error<std::decay_t<decltype(
+        std::invoke(std::forward<F>(f), get_value(std::forward<Ts>(args))...))>> {
+    if ( (is_valid(args)&& ... && true)) {
+        return {std::invoke(std::forward<F>(f), get_value(std::forward<Ts>(args))...)};
+    }
+    
+    return  {(get_error(args)+...)};    
+
+}
+
+
+
 
 template <class... Ts>
     requires(((!is_of_this_template_type_v<Ts, std::unique_ptr>)) && ...)
