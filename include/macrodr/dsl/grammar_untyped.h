@@ -57,7 +57,7 @@ class untyped_expression : public untyped_statement<Lexer, Compiler> {
     [[nodiscard]] untyped_expression* clone() const override = 0;
 
     virtual Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& cm) const = 0;
+        const Environment<Lexer, Compiler>& cm) const = 0;
 
     Maybe_unique<base_typed_statement<Lexer, Compiler>> compile_statement(
         Environment<Lexer, Compiler>& cm) const override {
@@ -127,7 +127,7 @@ class untyped_literal : public untyped_expression<Lexer, Compiler> {
     auto& operator()() const { return m_expression; };
 
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& /*unused*/) const override {
+        const Environment<Lexer, Compiler>& /*unused*/) const override {
         return error_message("this should not happen");
     }
 };
@@ -145,7 +145,7 @@ class untyped_numeric_literal : public untyped_literal<Lexer, Compiler> {
     static std::string statement_type() { return "untyped_numeric_value"; }
 
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& /*unused*/) const override {
+        const Environment<Lexer, Compiler>& /*unused*/) const override {
         double const out = std::stod(this->str());
         return new typed_literal<Lexer, Compiler, double>(out);
     }
@@ -169,7 +169,7 @@ class untyped_string_literal : public untyped_literal<Lexer, Compiler> {
     static std::string statement_type() { return "untyped_string_value"; }
 
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& /*unused*/) const override {
+        const Environment<Lexer, Compiler>& /*unused*/) const override {
         return new typed_literal<Lexer, Compiler, std::string>(this->str());
     }
 };
@@ -217,7 +217,7 @@ class untyped_identifier : public untyped_expression<Lexer, Compiler> {
     static std::string statement_type() { return "untyped_identifier"; }
 
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& cm) const override {
+        const Environment<Lexer, Compiler>& cm) const override {
         return cm.get_Identifier(m_id);
     }
 };
@@ -309,7 +309,7 @@ class untyped_argument_list : public untyped_expression<Lexer, Compiler> {
     }
 
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& /*cm*/) const override {
+        const Environment<Lexer, Compiler>& /*cm*/) const override {
         return error_message("argument lists are not first-class expressions in the current DSL");
     }
 };
@@ -344,7 +344,7 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
     // untyped_expression interface
 
     Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& cm) const override {
+        const Environment<Lexer, Compiler>& cm) const override {
         // Try all overloads for this function identifier in registration order
         auto Maybe_fns = cm.compiler().get_functions(fid()());
         if (!Maybe_fns) {
@@ -399,7 +399,7 @@ class untyped_vector_construction : public untyped_expression<Lexer, Compiler> {
     // untyped_expression interface
 
     Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& /*cm*/) const override {
+        const Environment<Lexer, Compiler>& /*cm*/) const override {
         return error_message("type unknown at this point");
     }
 };
@@ -432,7 +432,7 @@ class untyped_tuple_construction : public untyped_expression<Lexer, Compiler> {
     // untyped_expression interface
 
     Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
-        Environment<Lexer, Compiler>& /*cm*/) const override {
+        const Environment<Lexer, Compiler>& /*cm*/) const override {
         return error_message("type unknown at this point");
     }
 };

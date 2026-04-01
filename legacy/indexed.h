@@ -38,11 +38,11 @@ std::vector<std::unique_ptr<Abstract>> clone_unique_vector(
 }
 
 struct AxisId {
-    std::size_t value = 0;
+    std::string idName;
 
     friend bool operator==(const AxisId& lhs, const AxisId& rhs) = default;
     friend bool operator<(const AxisId& lhs, const AxisId& rhs) {
-        return lhs.value < rhs.value;
+        return lhs.idName < rhs.idName;
     }
 };
 
@@ -67,7 +67,8 @@ struct AxisSize {
 struct Axis{
     AxisId m_id;
     AxisSize m_size;
-    Axis(AxisId id, AxisSize n): m_id(id), m_size(n) {}
+    Axis(AxisId&& id, AxisSize n): m_id(std::move(id)), m_size(n) {}
+    Axis(AxisId const& id, AxisSize n): m_id(id), m_size(n) {}
  };
 
 
@@ -102,12 +103,12 @@ struct Coordinate {
         for (std::size_t i = 0; i < axes.size(); ++i) {
             if (indexes[i].value >= axes[i].m_size.value) {
                 return error_message("coordinate index ", indexes[i].value,
-                                     " out of range for axis ", axes[i].m_id.value,
+                                     " out of range for axis ", axes[i].m_id.idName,
                                      " with size ", axes[i].m_size.value);
             }
             for (std::size_t j = i + 1; j < axes.size(); ++j) {
                 if (axes[i].m_id == axes[j].m_id) {
-                    return error_message("duplicate axis ", axes[i].m_id.value,
+                    return error_message("duplicate axis ", axes[i].m_id.idName,
                                          " in coordinate");
                 }
             }
@@ -163,7 +164,7 @@ struct Coordinate {
 struct IndexSpace {
     std::vector<Axis> m_axes;
 
-   bool includes(AxisId a)const {
+   bool includes(AxisId const& a)const {
         for (const auto& axis : m_axes) {
             if (axis.m_id == a) {
                 return true;
@@ -171,6 +172,14 @@ struct IndexSpace {
         }
         return false;
     }
+
+    template<class... AXIS>
+    requires (std::same_as<AXIS, Axis> && ...)
+    IndexSpace(AXIS&&... axes) : m_axes{std::forward<AXIS>(axes)...} {} 
+    
+    IndexSpace(std::vector<Axis> axes) : m_axes(std::move(axes)) {}
+
+    IndexSpace() = default;
 
     std::size_t size() const {
         std::size_t total = 1;
@@ -184,7 +193,7 @@ struct IndexSpace {
         for (std::size_t i = 0; i < m_axes.size(); ++i) {
             for (std::size_t j = i + 1; j < m_axes.size(); ++j) {
                 if (m_axes[i].m_id == m_axes[j].m_id) {
-                    return error_message("duplicate axis ", m_axes[i].m_id.value,
+                    return error_message("duplicate axis ", m_axes[i].m_id.idName,
                                          " in index space");
                 }
             }
@@ -214,7 +223,7 @@ struct IndexSpace {
             for (std::size_t j=0; j<coord.axes.size(); ++j) {
                 if (coord.axes[j].m_id == axis.m_id) {
                     if (coord.axes[j].m_size != axis.m_size) {
-                        return error_message("axis ", axis.m_id.value,
+                        return error_message("axis ", axis.m_id.idName,
                                              " size mismatch: expected ", axis.m_size.value,
                                              ", got ", coord.axes[j].m_size.value);
                     }
@@ -224,7 +233,7 @@ struct IndexSpace {
                 }
             }
             if (!found) {
-                return error_message("coordinate axis " + std::to_string(axis.m_id.value) + " not found in index space");
+                return error_message("coordinate axis " + axis.m_id.idName + " not found in index space");
             }
         }
         return Coordinate(m_axes, my_indexes);
@@ -259,6 +268,8 @@ class Indexed {
     const IndexSpace& index_space() const {
         return m_index_space;
     }
+
+   explicit Indexed(const T& value) :  m_values{value} {}
 
     IndexSpace& index_space() {
         return m_index_space;
@@ -421,7 +432,7 @@ auto merge_IndexSpaces(const IndexSpace& a, const IndexSpace& b) -> Maybe_error<
         if (it == out_axes.end()) {
             out_axes.push_back(axis_b);
         } else if (it->m_size != axis_b.m_size) {
-            return error_message("axis ", axis_b.m_id.value,
+            return error_message("axis ", axis_b.m_id.idName,
                                  " has conflicting sizes: ", it->m_size.value, " and ",
                                  axis_b.m_size.value);
         }
@@ -509,9 +520,6 @@ inline auto as_Maybe_IndexSpace(Maybe_error<IndexSpace> x) {
 template<class F,class ...Args>
 auto apply_Index(F&& f, Args&&... args) {
     auto index_space = get_IndexSpaces(args...);
-    if constexpr(std::is_same_v<decltype(index_space), Nothing>) {
-        return std::invoke( std::forward<F>(f), std::forward<Args>(args)...);
-    } else {
     using R= std::decay_t<std::invoke_result_t<F, decltype(get_value(at_coordinate(std::forward<Args>(args), std::declval<Coordinate>())))...>>; 
     auto maybe_index_space = as_Maybe_IndexSpace(std::move(index_space));
     if (!maybe_index_space) {
@@ -535,7 +543,6 @@ auto apply_Index(F&& f, Args&&... args) {
     if (!out_valid) { return Maybe_error<Indexed<R>>(out_valid.error()); }  
     return Maybe_error<Indexed<R>>(
         Indexed<R>(std::move(actual_index_space), std::move(out_valid.value())));
-}   
 };  
 
 
