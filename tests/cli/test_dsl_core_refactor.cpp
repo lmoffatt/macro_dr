@@ -9,6 +9,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <indexed.h>
 
 namespace dsl = macrodr::dsl;
 
@@ -53,6 +54,8 @@ int bump(int& x) { return ++x; }
 std::vector<int> echo_vector(std::vector<int> xs) { return xs; }
 std::set<int> echo_set(std::set<int> xs) { return xs; }
 std::tuple<int, int> echo_tuple(std::tuple<int, int> xs) { return xs; }
+std::size_t echo_size(std::size_t x) { return x; }
+std::size_t indexed_size(const var::Indexed<std::size_t>& xs) { return xs.size(); }
 
 }  // namespace
 
@@ -100,4 +103,43 @@ TEST_CASE("DSL shared argument adaptation and homogeneous containers remain beha
     CHECK(read_value<std::vector<int>>(env, "vector_result") == std::vector<int>{3, 1, 3});
     CHECK(read_value<std::set<int>>(env, "set_result") == std::set<int>{1, 3});
     CHECK(read_value<std::tuple<int, int>>(env, "tuple_result") == std::tuple<int, int>{2, 5});
+}
+
+TEST_CASE("DSL lifts scalar functions over indexed arguments and prefers exact indexed overloads") {
+    dsl::Compiler compiler;
+    REQUIRE(compiler.push_function("indexed",
+                                   dsl::to_typed_indexed_constructor<std::size_t>("name",
+                                                                                  "labels",
+                                                                                  "values")));
+    REQUIRE(compiler.push_function("identity_size",
+                                   dsl::to_typed_function<std::size_t>(&echo_size, "x")));
+    REQUIRE(compiler.push_function("shape", dsl::to_typed_function<std::size_t>(&echo_size, "x")));
+    REQUIRE(compiler.push_function(
+        "shape", dsl::to_typed_function<const var::Indexed<std::size_t>&>(&indexed_size, "x")));
+
+    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+
+    const std::string program_text =
+        "weights = indexed(name=\"models\", labels=[\"scheme_CO\",\"scheme_CCO\"], values=[1,2])\n"
+        "lifted = identity_size(x=weights)\n"
+        "shape_result = shape(x=weights)\n";
+
+    auto parsed = dsl::extract_program(program_text);
+    REQUIRE(parsed);
+
+    auto compiled = dsl::compile_program(env, parsed.value());
+    REQUIRE(compiled);
+
+    auto executed = compiled.value().run(env);
+    REQUIRE(executed);
+
+    auto lifted = read_value<var::Indexed<std::size_t>>(env, "lifted");
+    REQUIRE(lifted.values().size() == 2);
+    CHECK(lifted.index_space().m_axes.size() == 1);
+    CHECK(lifted.index_space().m_axes[0].m_id.idName == "models");
+    CHECK(lifted.index_space().m_axes[0].m_labels == std::vector<std::string>{"scheme_CO",
+                                                                               "scheme_CCO"});
+    CHECK(lifted.values() == std::vector<std::size_t>{1, 2});
+
+    CHECK(read_value<std::size_t>(env, "shape_result") == 2);
 }

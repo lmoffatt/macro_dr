@@ -18,6 +18,7 @@
 
 #include "maybe_error.h"
 #include "moment_statistics.h"
+#include "indexed.h"
 #include "parameter_indexed.h"
 #include "parameters_derivative.h"
 #include "qmodel.h"
@@ -144,6 +145,9 @@ struct CsvContext {
     std::optional<std::size_t> param_index;
     std::optional<std::size_t> param_col;
     std::optional<std::string> param_name;
+    std::optional<std::string> axis_name;
+    std::optional<std::size_t> axis_index;
+    std::optional<std::string> axis_label;
 };
 
 class CsvWriter {
@@ -200,6 +204,16 @@ class CsvWriter {
         if (ctx.param_name.has_value()) {
             write_string(*ctx.param_name);
         }
+        out_ << ",";
+        if (ctx.axis_name.has_value()) {
+            write_string(*ctx.axis_name);
+        }
+        out_ << ",";
+        write_optional(ctx.axis_index);
+        out_ << ",";
+        if (ctx.axis_label.has_value()) {
+            write_string(*ctx.axis_label);
+        }
         out_ << "," << value << "\n";
     }
 
@@ -219,6 +233,7 @@ class CsvWriter {
                 "component_path,value_row,value_col,"
                 "probit,calculus,statistic,quantile_level,"
                 "param_index,param_col,param_name,"
+                "axis_name,axis_index,axis_label,"
                 "value\n";
     }
 
@@ -365,6 +380,51 @@ Maybe_error<bool> emit_vector_like(Writer& w, CsvContext ctx, const T& x) {
         if (!ok || !ok.value()) {
             return ok;
         }
+    }
+    return true;
+}
+
+template <class Writer, class T>
+Maybe_error<bool> emit_indexed(Writer& w, CsvContext ctx, const var::Indexed<T>& x) {
+    auto valid = x.validate();
+    if (!valid) {
+        return valid.error();
+    }
+    const auto& space = x.index_space();
+    if (space.m_axes.size() > 1) {
+        return error_message("write_csv_rows: indexed CSV currently supports one-dimensional "
+                             "indexed values only");
+    }
+    if (space.m_axes.empty()) {
+        return true;
+    }
+    const auto& axis = space.m_axes.front();
+    auto maybe_coord = x.begin();
+    if (!maybe_coord) {
+        return maybe_coord.error();
+    }
+    auto coord = maybe_coord.value();
+    while (true) {
+        auto item_ctx = ctx;
+        item_ctx.axis_name = axis.m_id.idName;
+        item_ctx.axis_index = coord.index().front().value;
+        auto maybe_label = axis.label_for(coord.index().front());
+        if (!maybe_label) {
+            return maybe_label.error();
+        }
+        item_ctx.axis_label = maybe_label.value();
+        auto maybe_value = x.at(coord);
+        if (!maybe_value) {
+            return maybe_value.error();
+        }
+        auto ok = emit_any(w, std::move(item_ctx), maybe_value.value().get());
+        if (!ok || !ok.value()) {
+            return ok;
+        }
+        if (coord.last()) {
+            break;
+        }
+        coord.next();
     }
     return true;
 }
@@ -655,6 +715,8 @@ Maybe_error<bool> emit_any(Writer& w, CsvContext ctx, const T& x) {
             }
         }
         return true;
+    } else if constexpr (is_of_this_template_type_v<T, var::Indexed>) {
+        return emit_indexed(w, std::move(ctx), x);
     } else if constexpr (is_vector_space_v<T>) {
         return emit_vector_space(w, std::move(ctx), x);
     } else if constexpr (requires { x(); }) {
