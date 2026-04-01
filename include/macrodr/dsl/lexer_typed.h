@@ -17,6 +17,7 @@
 #include "type_name.h"
 //#include "grammar_typed.h"
 //#include "grammar_typed.h"
+#include <indexed.h>
 #include <macrodr/interface/IModel.h>
 #include <macrodr/io/json/convert.h>
 
@@ -322,6 +323,9 @@ class field_compiler {
         if (ptr != nullptr) {
             return dynamic_cast<typed_expression<Lexer, Compiler, T>*>(expr.release());
         }
+        auto Indexed_ptr = dynamic_cast<typed_expression<Lexer, Compiler, var::Indexed<T>>*>(expr.get());
+        
+
         const auto expected = type_name<T>();
         const auto actual = expr->type_name();
         return error_message(std::string("unexpected type: expected ") + expected + ", got " +
@@ -352,8 +356,7 @@ class field_compiler {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& cm,
         untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
-        auto environment_local_copy = cm;
-        auto Maybe_expr = t_arg.compile_expression(environment_local_copy);
+        auto Maybe_expr = t_arg.compile_expression(cm);
 
         if (!Maybe_expr) {
             return Maybe_expr.error();
@@ -372,9 +375,8 @@ class field_compiler {
         untyped_vector_construction<Lexer, Compiler> const& t_arg) const 
         requires(is_of_this_template_type_v<T,std::vector>)
         {
-        auto environment_local_copy = cm;
         return vector_compiler<Lexer,Compiler,typename T::value_type>{}.compile_vector_construction(
-            environment_local_copy, t_arg.args());
+            cm, t_arg.args());
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
@@ -382,9 +384,8 @@ class field_compiler {
         untyped_vector_construction<Lexer, Compiler> const& t_arg) const
         requires(is_of_this_template_type_v<T,std::set>)
         {
-        auto environment_local_copy = cm;
         return set_compiler<Lexer,Compiler,typename T::value_type>{}.compile_set_construction(
-            environment_local_copy, t_arg.args());
+            cm, t_arg.args());
     }
 
 [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
@@ -392,8 +393,7 @@ class field_compiler {
         untyped_tuple_construction<Lexer, Compiler> const& t_arg) const 
         requires(is_of_this_template_type_v<T,std::tuple>)
         {
-        auto environment_local_copy = cm;
-        return tuple_compiler_t<Lexer,Compiler,T>{}.compile_tuple_construction(environment_local_copy, t_arg);
+        return tuple_compiler_t<Lexer,Compiler,T>{}.compile_tuple_construction(cm, t_arg);
     }
 
 
@@ -688,8 +688,7 @@ struct element_compiler {
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
         Environment<Lexer, Compiler> const& cm,
         untyped_function_evaluation<Lexer, Compiler> const& t_arg) const {
-        auto environment_local_copy = cm;
-        auto Maybe_expr = t_arg.compile_expression(environment_local_copy);
+        auto Maybe_expr = t_arg.compile_expression(cm);
 
         if (!Maybe_expr) {
             return Maybe_expr.error();
@@ -708,8 +707,8 @@ struct element_compiler {
         untyped_vector_construction<Lexer, Compiler> const& t_arg) const 
         requires(is_of_this_template_type_v<T,std::vector>)
         {
-        auto environment_local_copy = cm;
-        return vector_compiler<Lexer,Compiler,typename T::value_type>{}.compile_vector_construction(environment_local_copy, t_arg);
+        return vector_compiler<Lexer,Compiler,typename T::value_type>{}.compile_vector_construction(
+            cm, t_arg.args());
     }
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
@@ -717,9 +716,8 @@ struct element_compiler {
         untyped_vector_construction<Lexer, Compiler> const& t_arg) const
         requires(is_of_this_template_type_v<T,std::set>)
         {
-        auto environment_local_copy = cm;
         return set_compiler<Lexer,Compiler,typename T::value_type>{}.compile_set_construction(
-            environment_local_copy, t_arg.args());
+            cm, t_arg.args());
     }
 
 [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
@@ -727,8 +725,7 @@ struct element_compiler {
         untyped_tuple_construction<Lexer, Compiler> const& t_arg) const 
         requires(is_of_this_template_type_v<T,std::tuple>)
         {
-        auto environment_local_copy = cm;
-        return tuple_compiler_t<Lexer,Compiler,T>{}.compile_tuple_construction(environment_local_copy, t_arg);
+        return tuple_compiler_t<Lexer,Compiler,T>{}.compile_tuple_construction(cm, t_arg);
     }
 
 

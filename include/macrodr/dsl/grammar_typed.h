@@ -15,10 +15,12 @@
 
 #include "deprecation.h"
 #include "lexer_typed.h"
+#include "macrodr/dsl/lexer_untyped.h"
 #include "maybe_error.h"
 #include "type_name.h"
 // Schemas
 #include "parameters.h"
+#include "indexed.h"
 
 namespace macrodr::dsl {
 // Forward declarations to break subtle include ordering issues
@@ -191,9 +193,7 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
 
     using base_typed_statement<Lexer, Compiler>::compile_identifier_unique;
 
-    [[nodiscard]] virtual std::unique_ptr<base_typed_expression<Lexer, Compiler>>
-        compile_identifier_unique(Identifier<Lexer> id) const = 0;
-
+    
     virtual std::unique_ptr<base_typed_assigment<Lexer, Compiler>> compile_assigment_unique(
         Identifier<Lexer> id) = 0;
 
@@ -328,16 +328,23 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
     [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
         const override = 0;
 
+    [[nodiscard]] virtual bool has_IndexSpace() const { return false;}
+
+
+    [[nodiscard]] virtual var::IndexSpace get_IndexSpace(Environment<Lexer, Compiler> const&) const {return {};};
+
+
+    [[nodiscard]] virtual Maybe_error<T> run(Environment<Lexer, Compiler> const&, var::Coordinate const&) const = 0;
+
+
     [[nodiscard]] virtual Maybe_error<T> run(Environment<Lexer, Compiler> const&) const = 0;
+
+
 
     std::unique_ptr<base_typed_assigment<Lexer, Compiler>> compile_assigment_unique(
         Identifier<Lexer> id) override;
 
-    [[nodiscard]] std::unique_ptr<base_typed_expression<Lexer, Compiler>> compile_identifier_unique(
-        Identifier<Lexer> id) const override {
-        return std::make_unique<typed_identifier<Lexer, Compiler, T>>(id);
-    }
-
+    
     [[nodiscard]] std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>
         compile_identifier_unique() const override {
         return std::make_unique<Identifier_compiler<Lexer, Compiler, T>>(clone_strict(this));
@@ -348,16 +355,51 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
     Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> run_expression_unique(
         dsl::Environment<Lexer, Compiler>& env) const override {
         if constexpr (std::is_void_v<T>) {
-            run(env);
-            return std::make_unique<typed_literal<Lexer, Compiler, T>>();
-        } else {
+            if(!has_IndexSpace(env)) {
+                run(env);
+                return std::make_unique<typed_literal<Lexer, Compiler, T>>();   
+            }
+            auto indexSpace = get_IndexSpace(env);
+            auto coord = indexSpace.begin();
+               while(true){
+                auto maybe_run = run(env, coord);
+                if (!maybe_run) {
+                    return error_message(std::string("\nIn expression at coordinate ") + coord.str() + ": " +
+                                         maybe_run.error());
+                }
+                if(coord == indexSpace.end()){
+                    break;
+                }
+                coord.next();
+            }
+         return std::make_unique<typed_literal<Lexer, Compiler, T>>();
+        }
+        if(!has_IndexSpace(env)) {
             auto Maybe_x = run(env);
             if (!Maybe_x) {
                 return Maybe_x.error();
             }
             return std::make_unique<typed_literal<Lexer, Compiler, T>>(std::move(Maybe_x.value()));
-        }
+            }
+        auto indexSpace = get_IndexSpace(env);
+            std::vector<T> values;
+            auto coord = indexSpace.begin();
+            while(true){
+                auto maybe_run = run(env, coord);
+                if (!maybe_run) {
+                    return error_message(std::string("\nIn expression at coordinate ") + coord.str() + ": " +
+                                         maybe_run.error());
+                }
+                values.push_back(std::move(maybe_run.value()));
+                if(coord == indexSpace.end()){
+                    break;
+                }
+                coord.next();
+            }
+            return std::make_unique<typed_literal<Lexer, Compiler, var::Indexed<T>>>({std::move(indexSpace), std::move(values)});                                         
     }
+    
+
 
     Maybe_error<SerializedExpression> serialize_json(
         const Environment<Lexer, Compiler>& env,
@@ -381,6 +423,152 @@ class typed_expression : public base_typed_expression<Lexer, Compiler> {
         }
     }
 };
+
+template <class Lexer, class Compiler, class T>
+class typed_expression<Lexer, Compiler, var::Indexed<T>> : public base_typed_expression<Lexer, Compiler> {
+   public:
+    [[nodiscard]] std::string type_name() const override { return macrodr::dsl::type_name<var::Indexed<T>>(); }
+
+    ~typed_expression() override = default;
+    // Complete special members to satisfy rule-of-five guidance for abstract base
+    typed_expression() = default;
+    typed_expression(const typed_expression&) = default;
+    typed_expression& operator=(const typed_expression&) = default;
+    typed_expression(typed_expression&&) noexcept = default;
+    typed_expression& operator=(typed_expression&&) noexcept = default;
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override = 0;
+
+    [[nodiscard]] virtual bool has_IndexSpace() const { return false;}
+
+
+    [[nodiscard]] virtual var::IndexSpace get_IndexSpace(Environment<Lexer, Compiler> const&) const {
+        return {};
+    };
+
+    [[nodiscard]] virtual var::IndexSpace get_myIndexSpace(Environment<Lexer, Compiler> const&) const = 0;
+
+    [[nodiscard]] virtual Maybe_error<var::Indexed<T>> run(Environment<Lexer, Compiler> const& env, var::Coordinate const&/**/) const {
+        return run(env);    
+    };
+
+    [[nodiscard]] virtual Maybe_error<T> run_by_coordinate(Environment<Lexer, Compiler> const&, var::Coordinate const&) const = 0;
+
+
+    [[nodiscard]] virtual Maybe_error<var::Indexed<T>> run(Environment<Lexer, Compiler> const&) const = 0;
+
+
+
+    std::unique_ptr<base_typed_assigment<Lexer, Compiler>> compile_assigment_unique(
+        Identifier<Lexer> id) override;
+
+    
+    [[nodiscard]] std::unique_ptr<base_Identifier_compiler<Lexer, Compiler>>
+        compile_identifier_unique() const override {
+        return std::make_unique<Identifier_compiler<Lexer, Compiler, var::Indexed<T>>>(clone_strict(this));
+    }
+
+    // base_typed_expression interface
+
+    Maybe_unique<dsl::base_typed_expression<Lexer, Compiler>> run_expression_unique(
+        dsl::Environment<Lexer, Compiler>& env) const override {
+        if constexpr (std::is_void_v<T>) {
+            if(!has_IndexSpace(env)) {
+                run(env);
+                return std::make_unique<typed_literal<Lexer, Compiler, T>>();   
+            }
+            auto indexSpace = get_IndexSpace(env);
+            auto coord = indexSpace.begin();
+               while(true){
+                auto maybe_run = run(env, coord);
+                if (!maybe_run) {
+                    return error_message(std::string("\nIn expression at coordinate ") + coord.str() + ": " +
+                                         maybe_run.error());
+                }
+                if(coord == indexSpace.end()){
+                    break;
+                }
+                coord.next();
+            }
+         return std::make_unique<typed_literal<Lexer, Compiler, T>>();
+        }
+        if(!has_IndexSpace(env)) {
+            auto Maybe_x = run(env);
+            if (!Maybe_x) {
+                return Maybe_x.error();
+            }
+            return std::make_unique<typed_literal<Lexer, Compiler, T>>(std::move(Maybe_x.value()));
+            }
+        auto indexSpace = get_IndexSpace(env);
+            std::vector<T> values;
+            auto coord = indexSpace.begin();
+            while(true){
+                auto maybe_run = run(env, coord);
+                if (!maybe_run) {
+                    return error_message(std::string("\nIn expression at coordinate ") + coord.str() + ": " +
+                                         maybe_run.error());
+                }
+                values.push_back(std::move(maybe_run.value()));
+                if(coord == indexSpace.end()){
+                    break;
+                }
+                coord.next();
+            }
+            return std::make_unique<typed_literal<Lexer, Compiler, var::Indexed<T>>>({std::move(indexSpace), std::move(values)});                                         
+    }
+    
+
+
+    Maybe_error<SerializedExpression> serialize_json(
+        const Environment<Lexer, Compiler>& env,
+        typename json_spec<Lexer>::TagPolicy policy) const override {
+        using ValueType = std::remove_cvref_t<T>;
+        if constexpr (std::is_void_v<ValueType>) {
+            return error_message(std::string{"cannot serialize void expression of type "} +
+                                 this->type_name());
+        } else if constexpr (!macrodr::io::json::conv::has_json_codec_v<ValueType>) {
+            return error_message(std::string{"no JSON codec registered for type "} +
+                                 this->type_name());
+        } else {
+            auto maybe_value = this->run(env);
+            if (!maybe_value) {
+                return maybe_value.error();
+            }
+            SerializedExpression out;
+            out.type = this->type_name();
+            out.value = json_spec<Lexer>::to_json(maybe_value.value(), policy);
+            return out;
+        }
+    }
+};
+
+
+
+template <class Lexer, class Compiler, class T>
+class typed_Indexed_expression : public typed_expression<Lexer, Compiler, T> {
+     std::unique_ptr<typed_expression<Lexer, Compiler, var::Indexed<T>>> m_indexed_expr;
+    public:
+    typed_Indexed_expression(std::unique_ptr<typed_expression<Lexer, Compiler, var::Indexed<T>>> expr) : m_indexed_expr(std::move(expr)) {}
+    ~typed_Indexed_expression() override = default;
+
+    ~typed_Indexed_expression() override = default;
+
+      [[nodiscard]] virtual bool has_IndexSpace() const { return true;}
+
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override {
+        return std::make_unique<typed_Indexed_expression>(*this);
+    }
+
+    [[nodiscard]] virtual var::IndexSpace get_IndexSpace(Environment<Lexer, Compiler> const& env) const {
+        return m_indexed_expr->get_myIndexSpace(env);
+    }
+
+    [[nodiscard]] Maybe_error<T> run(Environment<Lexer, Compiler> const& env, var::Coordinate coord) const override {
+        return m_indexed_expr->run_by_coordinate(env, coord);
+    }
+};
+
 
 template <class Lexer, class Compiler, class T>
 class typed_assigment : public base_typed_assigment<Lexer, Compiler> {
@@ -499,6 +687,48 @@ class typed_function_evaluation
                 Maybe_arg_tuple);
         }
     }
+
+    [[nodiscard]] virtual bool has_IndexSpace(Environment<Lexer, Compiler> const&) const{
+        return std::apply([](auto const&... args){ return ((args->has_IndexSpace()||...)); }, m_args);
+    }
+
+
+    [[nodiscard]] virtual var::IndexSpace get_IndexSpace(Environment<Lexer, Compiler> const& cm) const{
+        return std::apply([&cm](auto const&... args){
+           return get_IndexSpaces(args->get_IndexSpace(cm)...); }, m_args);
+    }
+    
+
+    [[nodiscard]] virtual Maybe_error<T> run(Environment<Lexer, Compiler> const& env, var::Coordinate const& coord) const {
+        if constexpr (sizeof...(Args) == 0) {
+            if constexpr (std::is_void_v<T>) {
+                this->m_f();
+                return Maybe_error<void>();
+            } else {
+                return Maybe_error<T>(this->m_f());
+            }
+        } else {
+            auto Maybe_arg_tuple = std::apply(
+                [this, &env, &coord](auto&... args) { return std::tuple(args->run(env, coord )...); }, m_args);
+            return std::apply(
+                [this](auto&&... Maybe_args) -> Maybe_error<T> {
+                    if ((Maybe_args.valid() && ...)) {
+                        if constexpr (std::is_void_v<T>) {
+                            this->m_f(std::move(Maybe_args.value())...);
+                            return Maybe_error<void>();
+                        } else {
+                            return Maybe_error<T>(this->m_f(std::move(Maybe_args.value())...));
+                        }
+                    } else {
+                        return error_message(((std::string{}) + ... + Maybe_args.error()()));
+                    }
+                },
+                Maybe_arg_tuple);
+        }
+    
+    }
+
+
 };
 
 template <class Lexer, class Compiler, class P, class T>
@@ -568,9 +798,9 @@ struct homogeneous_container_ops<std::set<T, Compare, Alloc>> {
     }
 };
 
-template <class Lexer, class Compiler, class Container, class T>
+template <class Lexer, class Compiler, class Container, class expressedType,class T>
 class typed_homogeneous_container_construction
-    : public typed_expression<Lexer, Compiler, Container> {
+    : public typed_expression<Lexer, Compiler, expressedType> {
    public:
     template <class U>
     using storage_t = function_argument_storage_t<U>;
@@ -633,9 +863,9 @@ class typed_homogeneous_container_construction
 
 template <class Lexer, class Compiler, class T>
 class typed_vector_construction
-    : public detail::typed_homogeneous_container_construction<Lexer, Compiler, std::vector<T>, T> {
+    : public detail::typed_homogeneous_container_construction<Lexer, Compiler, std::vector<T>, std::vector<T>, T> {
     using base_type =
-        detail::typed_homogeneous_container_construction<Lexer, Compiler, std::vector<T>, T>;
+        detail::typed_homogeneous_container_construction<Lexer, Compiler, std::vector<T>,    std::vector<T>, T>;
 
    public:
     using storage_args = typename base_type::storage_args;
@@ -656,9 +886,9 @@ class typed_vector_construction
 
 template <class Lexer, class Compiler, class T>
 class typed_set_construction
-    : public detail::typed_homogeneous_container_construction<Lexer, Compiler, std::set<T>, T> {
+    : public detail::typed_homogeneous_container_construction<Lexer, Compiler, std::set<T>,std::set<T>, T> {
     using base_type =
-        detail::typed_homogeneous_container_construction<Lexer, Compiler, std::set<T>, T>;
+        detail::typed_homogeneous_container_construction<Lexer, Compiler, std::set<T>,    std::set<T>,T>;
 
    public:
     using storage_args = typename base_type::storage_args;
@@ -741,6 +971,7 @@ class typed_tuple_construction
 
 
 
+
 template <class Lexer, class Compiler, class T>
 std::unique_ptr<base_typed_assigment<Lexer, Compiler>>
 typed_expression<Lexer, Compiler, T>::compile_assigment_unique(Identifier<Lexer> id) {
@@ -810,6 +1041,7 @@ class typed_literal<Lexer, Compiler, T> : public typed_expression<Lexer, Compile
         const override {
         return std::make_unique<typed_literal>(*this);
     }
+    
 };
 
 template <class Lexer, class Compiler, class T>
