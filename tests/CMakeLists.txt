@@ -101,3 +101,9 @@ add_test(NAME macrodr_cli_write_csv_likelihood_overload_smoke
 set_tests_properties(macrodr_cli_write_csv_likelihood_overload_smoke PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     ENVIRONMENT "OMP_NUM_THREADS=1")
+
+add_test(NAME macrodr_cli_figure_2_indexed_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/figure_2_indexed.macroir)
+set_tests_properties(macrodr_cli_figure_2_indexed_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")

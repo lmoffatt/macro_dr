@@ -2,6 +2,7 @@
 #define GRAMMAR_UNTYPED_H
 
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -345,7 +346,6 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
 
     Maybe_unique<base_typed_expression<Lexer, Compiler>> compile_expression(
         const Environment<Lexer, Compiler>& cm) const override {
-        // Try all overloads for this function identifier in registration order
         auto Maybe_fns = cm.compiler().get_functions(fid()());
         if (!Maybe_fns) {
             return Maybe_fns.error();
@@ -353,19 +353,30 @@ class untyped_function_evaluation : public untyped_expression<Lexer, Compiler> {
         const auto& overloads = Maybe_fns.value();
         std::string errors;
         std::size_t i_overload = 0;
+        std::unique_ptr<base_typed_expression<Lexer, Compiler>> best_expr;
+        std::size_t best_rank = std::numeric_limits<std::size_t>::max();
         for (auto* fn : overloads) {
             if (fn == nullptr) {
                 continue;
             }
             auto attempt = fn->compile_function_evaluation(cm, args());
             if (attempt) {
-                return attempt;  // success on this overload
+                auto candidate = std::move(attempt.value());
+                if (!best_expr || candidate.overload_rank < best_rank) {
+                    best_rank = candidate.overload_rank;
+                    best_expr = std::move(candidate.expr);
+                    if (best_rank == 0) {
+                        break;
+                    }
+                }
+            } else {
+                errors += std::to_string(i_overload + 1) + " overload: " + attempt.error()();
+                errors += "\n\n";
             }
-            // Accumulate diagnostics (best-effort, do not explode)
-
-            errors += std::to_string(i_overload +1 ) + " overload: " + attempt.error()();
             ++i_overload;
-            errors += "\n\n";
+        }
+        if (best_expr) {
+            return std::move(best_expr);
         }
         return error_message(std::string{"\nno matching overload for function '"} + fid().str() +
                              "' with provided arguments:"+args().str()+"\n" + errors);

@@ -165,6 +165,15 @@ dsl::Compiler make_compiler_new() {
     cm.push_function("set_observations", dsl::to_typed_function<std::vector<double>>(
                                               &macrodr::cmd::define_recording, "values_set"));
 
+    cm.push_function("indexed",
+                     dsl::to_typed_indexed_constructor<std::size_t>("name", "labels", "values"));
+    cm.push_function("indexed",
+                     dsl::to_typed_indexed_constructor<int>("name", "labels", "values"));
+    cm.push_function("indexed",
+                     dsl::to_typed_indexed_constructor<double>("name", "labels", "values"));
+    cm.push_function("indexed",
+                     dsl::to_typed_indexed_constructor<std::string>("name", "labels", "values"));
+
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","simulation", "path"));
@@ -231,6 +240,22 @@ dsl::Compiler make_compiler_new() {
             Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic const& ,
                                           std::string >(
             &macrodr::cmd::write_csv, "analysis",  "path"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, const var::Indexed<std::size_t>&,
+                                      std::string>(&macrodr::cmd::write_csv<std::size_t>,
+                                                   "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, const var::Indexed<int>&,
+                                      std::string>(&macrodr::cmd::write_csv<int>, "analysis",
+                                                   "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, const var::Indexed<double>&,
+                                      std::string>(&macrodr::cmd::write_csv<double>, "analysis",
+                                                   "path"));
 
             
 

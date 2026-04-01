@@ -63,6 +63,7 @@ constexpr std::string_view kUnifiedHeader =
     "component_path,value_row,value_col,"
     "probit,calculus,statistic,quantile_level,"
     "param_index,param_col,param_name,"
+    "axis_name,axis_index,axis_label,"
     "value";
 
 SymPosDefMatrix<double> make_diag_spd(std::initializer_list<double> diag_vals) {
@@ -159,8 +160,8 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
 
     const auto first = split_csv_row(lines[1]);
     const auto second = split_csv_row(lines[2]);
-    REQUIRE(first.size() == 22);
-    REQUIRE(second.size() == 22);
+    REQUIRE(first.size() == 25);
+    REQUIRE(second.size() == 25);
 
     CHECK(first[0] == "recording");
     CHECK(first[1].empty());
@@ -174,7 +175,7 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
     CHECK(first[14] == "point");
     CHECK(first[15] == "primitive");
     CHECK(first[16] == "value");
-    CHECK(first[21] == "0.1");
+    CHECK(first[24] == "0.1");
 
     CHECK(second[0] == "recording");
     CHECK(second[2] == "1");
@@ -186,7 +187,42 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
     CHECK(second[14] == "point");
     CHECK(second[15] == "primitive");
     CHECK(second[16] == "value");
-    CHECK(second[21] == "0.2");
+    CHECK(second[24] == "0.2");
+}
+
+TEST_CASE("generic write_csv serializes one-dimensional indexed values with axis metadata",
+          "[write_csv]") {
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_indexed");
+    const auto base = dir.path / "indexed_summary";
+
+    var::Axis axis{var::AxisId{"models"}, std::vector<std::string>{"scheme_CO", "scheme_CCO"}};
+    var::Indexed<std::size_t> indexed(var::IndexSpace{{axis}}, {1, 2});
+
+    auto out = write_csv(indexed, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    REQUIRE(lines.size() == 3);
+    CHECK(lines.front() == kUnifiedHeader);
+
+    const auto first = split_csv_row(lines[1]);
+    const auto second = split_csv_row(lines[2]);
+    REQUIRE(first.size() == 25);
+    REQUIRE(second.size() == 25);
+
+    CHECK(first[0] == "summary");
+    CHECK(first[11].empty());
+    CHECK(first[21] == "models");
+    CHECK(first[22] == "0");
+    CHECK(first[23] == "scheme_CO");
+    CHECK(first[24] == "1");
+
+    CHECK(second[21] == "models");
+    CHECK(second[22] == "1");
+    CHECK(second[23] == "scheme_CCO");
+    CHECK(second[24] == "2");
 }
 
 TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits and skips empty matrices",
@@ -256,8 +292,8 @@ TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empt
 
         const auto first = split_csv_row(lines[1]);
         const auto second = split_csv_row(lines[2]);
-        REQUIRE(first.size() == 22);
-        REQUIRE(second.size() == 22);
+        REQUIRE(first.size() == 25);
+        REQUIRE(second.size() == 25);
         CHECK(first[11] == "Probit_statistics_Distortion_Induced_Bias");
         CHECK(first[20] == "kon");
         CHECK(second[20] == "koff");
@@ -301,7 +337,7 @@ TEST_CASE("generic write_csv keeps Gaussian Fisher variance matrix-shaped", "[wr
     std::vector<std::vector<std::string>> variance_rows;
     for (std::size_t i = 1; i < lines.size(); ++i) {
         auto row = split_csv_row(lines[i]);
-        REQUIRE(row.size() == 22);
+        REQUIRE(row.size() == 25);
         if (row[11] == "Moment_statistics_Gaussian_Fisher_Information_false" &&
             row[16] == "variance") {
             variance_rows.push_back(std::move(row));
@@ -351,8 +387,8 @@ TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matri
     const auto fim10 = split_csv_row(lines[5]);
     const auto fim11 = split_csv_row(lines[6]);
 
-    REQUIRE(dlogl0.size() == 22);
-    REQUIRE(fim00.size() == 22);
+    REQUIRE(dlogl0.size() == 25);
+    REQUIRE(fim00.size() == 25);
 
     CHECK(dlogl0[11] == "dlogL");
     CHECK(dlogl0[18] == "0");

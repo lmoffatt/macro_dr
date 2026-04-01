@@ -274,6 +274,11 @@ inline Maybe_error<std::string> write_csv(var::Vector_Space<Vs...> const& lik, s
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }
 
+template <class T>
+inline Maybe_error<std::string> write_csv(var::Indexed<T> const& indexed, std::string path) {
+    return detail::write_summary_csv(indexed, std::move(path), "summary");
+}
+
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
     requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
 Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Recording<SimTag>> const& simulation,

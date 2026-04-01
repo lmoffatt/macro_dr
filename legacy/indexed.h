@@ -4,6 +4,7 @@
 #include <parameters_derivative.h>
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <functional>
 #include <initializer_list>
@@ -40,6 +41,13 @@ std::vector<std::unique_ptr<Abstract>> clone_unique_vector(
 struct AxisId {
     std::string idName;
 
+    AxisId() = default;
+    AxisId(std::string value) : idName(std::move(value)) {}
+    AxisId(const char* value) : idName(value) {}
+    template <class Integral>
+        requires(std::integral<std::remove_cvref_t<Integral>>)
+    AxisId(Integral value) : idName(std::to_string(value)) {}
+
     friend bool operator==(const AxisId& lhs, const AxisId& rhs) = default;
     friend bool operator<(const AxisId& lhs, const AxisId& rhs) {
         return lhs.idName < rhs.idName;
@@ -67,9 +75,40 @@ struct AxisSize {
 struct Axis{
     AxisId m_id;
     AxisSize m_size;
+    std::vector<std::string> m_labels;
+
     Axis(AxisId&& id, AxisSize n): m_id(std::move(id)), m_size(n) {}
     Axis(AxisId const& id, AxisSize n): m_id(id), m_size(n) {}
- };
+    Axis(AxisId&& id, std::vector<std::string> labels)
+        : m_id(std::move(id)),
+          m_size{labels.size()},
+          m_labels(std::move(labels)) {}
+    Axis(AxisId const& id, std::vector<std::string> labels)
+        : m_id(id),
+          m_size{labels.size()},
+          m_labels(std::move(labels)) {}
+
+    auto validate() const -> Maybe_error<bool> {
+        if (!m_labels.empty() && m_labels.size() != m_size.value) {
+            return error_message("axis ", m_id.idName, " label count mismatch: expected ",
+                                 m_size.value, ", got ", m_labels.size());
+        }
+        return true;
+    }
+
+    [[nodiscard]] bool has_labels() const { return !m_labels.empty(); }
+
+    auto label_for(AxisIndex index) const -> Maybe_error<std::string> {
+        if (index.value >= m_size.value) {
+            return error_message("axis index ", index.value, " out of range for axis ",
+                                 m_id.idName);
+        }
+        if (m_labels.empty()) {
+            return std::to_string(index.value);
+        }
+        return m_labels[index.value];
+    }
+};
 
 
 
@@ -155,6 +194,24 @@ struct Coordinate {
         }
         return flat;
     }
+
+    [[nodiscard]] std::string str() const {
+        std::string out = "{";
+        for (std::size_t i = 0; i < axes.size(); ++i) {
+            if (i > 0) {
+                out += ", ";
+            }
+            out += axes[i].m_id.idName + "=";
+            auto maybe_label = axes[i].label_for(indexes[i]);
+            if (maybe_label) {
+                out += maybe_label.value();
+            } else {
+                out += std::to_string(indexes[i].value);
+            }
+        }
+        out += "}";
+        return out;
+    }
   };
 
 
@@ -190,6 +247,12 @@ struct IndexSpace {
     }
 
     auto validate() const -> Maybe_error<bool> {
+        for (const auto& axis : m_axes) {
+            auto valid_axis = axis.validate();
+            if (!valid_axis) {
+                return valid_axis.error();
+            }
+        }
         for (std::size_t i = 0; i < m_axes.size(); ++i) {
             for (std::size_t j = i + 1; j < m_axes.size(); ++j) {
                 if (m_axes[i].m_id == m_axes[j].m_id) {
@@ -340,7 +403,11 @@ class Indexed {
         if (flat.value() >= m_values.size()) {
             return error_message("indexed value not found at requested coordinate");
         }
-        return std::cref(m_values[flat.value()]);
+        if constexpr (std::same_as<T, bool>) {
+            return error_message("indexed<bool> does not support borrowed coordinate access");
+        } else {
+            return std::cref(m_values[flat.value()]);
+        }
     }
 
     Maybe_error<std::reference_wrapper<T>> at(const Coordinate& where) {
@@ -355,7 +422,11 @@ class Indexed {
         if (flat.value() >= m_values.size()) {
             return error_message("indexed value not found at requested coordinate");
         }
-        return std::ref(m_values[flat.value()]);
+        if constexpr (std::same_as<T, bool>) {
+            return error_message("indexed<bool> does not support mutable borrowed coordinate access");
+        } else {
+            return std::ref(m_values[flat.value()]);
+        }
     }
 
     
@@ -435,6 +506,11 @@ auto merge_IndexSpaces(const IndexSpace& a, const IndexSpace& b) -> Maybe_error<
             return error_message("axis ", axis_b.m_id.idName,
                                  " has conflicting sizes: ", it->m_size.value, " and ",
                                  axis_b.m_size.value);
+        } else if (it->has_labels() && axis_b.has_labels() && it->m_labels != axis_b.m_labels) {
+            return error_message("axis ", axis_b.m_id.idName,
+                                 " has conflicting labels across indexed values");
+        } else if (!it->has_labels() && axis_b.has_labels()) {
+            it->m_labels = axis_b.m_labels;
         }
     }
     return IndexSpace{std::move(out_axes)};
