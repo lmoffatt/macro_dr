@@ -1,7 +1,9 @@
 #include <catch_amalgamated.hpp>
 
+#include <macrodr/cmd/detail/write_csv_common.h>
 #include <macrodr/cmd/likelihood.h>
 #include <macrodr/cmd/load_experiment.h>
+#include <macrodr/cmd/simulate.h>
 
 #include <filesystem>
 #include <fstream>
@@ -63,7 +65,7 @@ constexpr std::string_view kUnifiedHeader =
     "component_path,value_row,value_col,"
     "probit,calculus,statistic,quantile_level,"
     "param_index,param_col,param_name,"
-    "axis_name,axis_index,axis_label,"
+    "axis_name,axis_index,axis_label,n_substeps,"
     "value";
 
 SymPosDefMatrix<double> make_diag_spd(std::initializer_list<double> diag_vals) {
@@ -160,8 +162,8 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
 
     const auto first = split_csv_row(lines[1]);
     const auto second = split_csv_row(lines[2]);
-    REQUIRE(first.size() == 25);
-    REQUIRE(second.size() == 25);
+    REQUIRE(first.size() == 26);
+    REQUIRE(second.size() == 26);
 
     CHECK(first[0] == "recording");
     CHECK(first[1].empty());
@@ -175,7 +177,8 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
     CHECK(first[14] == "point");
     CHECK(first[15] == "primitive");
     CHECK(first[16] == "value");
-    CHECK(first[24] == "0.1");
+    CHECK(first[24].empty());
+    CHECK(first[25] == "0.1");
 
     CHECK(second[0] == "recording");
     CHECK(second[2] == "1");
@@ -187,7 +190,8 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
     CHECK(second[14] == "point");
     CHECK(second[15] == "primitive");
     CHECK(second[16] == "value");
-    CHECK(second[24] == "0.2");
+    CHECK(second[24].empty());
+    CHECK(second[25] == "0.2");
 }
 
 TEST_CASE("generic write_csv serializes one-dimensional indexed values with axis metadata",
@@ -209,20 +213,148 @@ TEST_CASE("generic write_csv serializes one-dimensional indexed values with axis
 
     const auto first = split_csv_row(lines[1]);
     const auto second = split_csv_row(lines[2]);
-    REQUIRE(first.size() == 25);
-    REQUIRE(second.size() == 25);
+    REQUIRE(first.size() == 26);
+    REQUIRE(second.size() == 26);
 
     CHECK(first[0] == "summary");
     CHECK(first[11].empty());
     CHECK(first[21] == "models");
     CHECK(first[22] == "0");
     CHECK(first[23] == "scheme_CO");
-    CHECK(first[24] == "1");
+    CHECK(first[24].empty());
+    CHECK(first[25] == "1");
 
     CHECK(second[21] == "models");
     CHECK(second[22] == "1");
     CHECK(second[23] == "scheme_CCO");
-    CHECK(second[24] == "2");
+    CHECK(second[24].empty());
+    CHECK(second[25] == "2");
+}
+
+TEST_CASE("simulation write_csv merges indexed simulation batches and emits n_substeps",
+          "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_indexed_simulations");
+    const auto base = dir.path / "indexed_simulations";
+
+    auto experiment = create_experiment({{1, 2, 5.0}, {1, 3, 7.0}}, 10.0, 0.0, 1.0);
+    auto recording_a = define_recording({0.1, 0.2});
+    auto recording_b = define_recording({0.3, 0.4});
+    auto recording_c = define_recording({0.5, 0.6});
+
+    var::Axis axis{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
+    var::Indexed<std::vector<Simulated_recording>> simulations(
+        var::IndexSpace{{axis}},
+        {{Simulated_recording{{SeedNumber{1}, recording_a}}},
+         {Simulated_recording{{SeedNumber{2}, recording_b}},
+          Simulated_recording{{SeedNumber{3}, recording_c}}}});
+
+    auto out = write_csv(experiment, simulations, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    REQUIRE(lines.size() == 7);
+    CHECK(lines.front() == kUnifiedHeader);
+
+    const auto first = split_csv_row(lines[1]);
+    const auto third = split_csv_row(lines[3]);
+    const auto last = split_csv_row(lines[6]);
+    REQUIRE(first.size() == 26);
+    REQUIRE(third.size() == 26);
+    REQUIRE(last.size() == 26);
+
+    CHECK(first[0] == "simulation");
+    CHECK(first[1] == "0");
+    CHECK(first[21] == "n_substeps");
+    CHECK(first[22] == "0");
+    CHECK(first[23] == "10");
+    CHECK(first[24] == "10");
+    CHECK(first[25] == "0.1");
+
+    CHECK(third[1] == "0");
+    CHECK(third[21] == "n_substeps");
+    CHECK(third[22] == "1");
+    CHECK(third[23] == "30");
+    CHECK(third[24] == "30");
+    CHECK(third[25] == "0.3");
+
+    CHECK(last[1] == "1");
+    CHECK(last[21] == "n_substeps");
+    CHECK(last[22] == "1");
+    CHECK(last[23] == "30");
+    CHECK(last[24] == "30");
+    CHECK(last[25] == "0.6");
+}
+
+TEST_CASE("simulation write_csv supports indexed single simulations", "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_indexed_single_simulation");
+    const auto base = dir.path / "indexed_single_simulation";
+
+    auto experiment = create_experiment({{1, 2, 5.0}, {1, 3, 7.0}}, 10.0, 0.0, 1.0);
+    auto recording_a = define_recording({0.1, 0.2});
+    auto recording_b = define_recording({0.3, 0.4});
+
+    var::Axis axis{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
+    var::Indexed<Simulated_recording> simulations(
+        var::IndexSpace{{axis}},
+        {Simulated_recording{{SeedNumber{1}, recording_a}},
+         Simulated_recording{{SeedNumber{2}, recording_b}}});
+
+    auto out = write_csv(experiment, simulations, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    REQUIRE(lines.size() == 5);
+    CHECK(lines.front() == kUnifiedHeader);
+
+    const auto first = split_csv_row(lines[1]);
+    const auto last = split_csv_row(lines[4]);
+    REQUIRE(first.size() == 26);
+    REQUIRE(last.size() == 26);
+
+    CHECK(first[0] == "simulation");
+    CHECK(first[1].empty());
+    CHECK(first[21] == "n_substeps");
+    CHECK(first[22] == "0");
+    CHECK(first[23] == "10");
+    CHECK(first[24] == "10");
+    CHECK(first[25] == "0.1");
+
+    CHECK(last[1].empty());
+    CHECK(last[21] == "n_substeps");
+    CHECK(last[22] == "1");
+    CHECK(last[23] == "30");
+    CHECK(last[24] == "30");
+    CHECK(last[25] == "0.4");
+}
+
+TEST_CASE("indexed write_csv helpers enforce exact one-dimensional spaces", "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    var::Axis n_substeps_a{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
+    var::Axis n_substeps_b{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
+    var::Axis models{var::AxisId{"models"}, std::vector<std::string>{"scheme_CO", "scheme_CCO"}};
+
+    auto same = macrodr::cmd::detail::require_matching_indexed_write_csv_spaces(
+        var::IndexSpace{{n_substeps_a}}, "simulation", var::IndexSpace{{n_substeps_b}},
+        "likelihood");
+    REQUIRE(same);
+
+    auto mismatch = macrodr::cmd::detail::require_matching_indexed_write_csv_spaces(
+        var::IndexSpace{{n_substeps_a}}, "simulation", var::IndexSpace{{models}}, "likelihood");
+    REQUIRE_FALSE(mismatch);
+    CHECK(mismatch.error()().find("same index space") != std::string::npos);
+
+    auto multi_axis = macrodr::cmd::detail::validate_indexed_write_csv_space(
+        var::IndexSpace{{n_substeps_a, models}}, "simulation");
+    REQUIRE_FALSE(multi_axis);
+    CHECK(multi_axis.error()().find("one-dimensional") != std::string::npos);
 }
 
 TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits and skips empty matrices",
@@ -292,8 +424,8 @@ TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empt
 
         const auto first = split_csv_row(lines[1]);
         const auto second = split_csv_row(lines[2]);
-        REQUIRE(first.size() == 25);
-        REQUIRE(second.size() == 25);
+        REQUIRE(first.size() == 26);
+        REQUIRE(second.size() == 26);
         CHECK(first[11] == "Probit_statistics_Distortion_Induced_Bias");
         CHECK(first[20] == "kon");
         CHECK(second[20] == "koff");
@@ -337,7 +469,7 @@ TEST_CASE("generic write_csv keeps Gaussian Fisher variance matrix-shaped", "[wr
     std::vector<std::vector<std::string>> variance_rows;
     for (std::size_t i = 1; i < lines.size(); ++i) {
         auto row = split_csv_row(lines[i]);
-        REQUIRE(row.size() == 25);
+        REQUIRE(row.size() == 26);
         if (row[11] == "Moment_statistics_Gaussian_Fisher_Information_false" &&
             row[16] == "variance") {
             variance_rows.push_back(std::move(row));
@@ -387,8 +519,8 @@ TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matri
     const auto fim10 = split_csv_row(lines[5]);
     const auto fim11 = split_csv_row(lines[6]);
 
-    REQUIRE(dlogl0.size() == 25);
-    REQUIRE(fim00.size() == 25);
+    REQUIRE(dlogl0.size() == 26);
+    REQUIRE(fim00.size() == 26);
 
     CHECK(dlogl0[11] == "dlogL");
     CHECK(dlogl0[18] == "0");

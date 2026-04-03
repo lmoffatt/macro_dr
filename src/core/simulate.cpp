@@ -33,7 +33,8 @@ using namespace macrodr;
 
 Maybe_error<bool> emit_simulation_rows(csv_detail::CsvWriter& writer, const Experiment& e,
                                        const Recording& recording,
-                                       std::optional<std::size_t> simulation_index) {
+                                       std::optional<std::size_t> simulation_index,
+                                       const csv_detail::CsvContext& base_ctx = {}) {
     const auto& conditions = get<Recording_conditions>(e);
     const auto n_samples = conditions().size();
     if (n_samples != recording().size()) {
@@ -49,7 +50,7 @@ Maybe_error<bool> emit_simulation_rows(csv_detail::CsvWriter& writer, const Expe
             const double duration = get<number_of_samples>(segments[j])() / fs;
             const double step_end = step_start + duration;
 
-            csv_detail::CsvContext ctx;
+            auto ctx = base_ctx;
             ctx.scope = "simulation";
             ctx.simulation_index = simulation_index;
             ctx.sample_index = i;
@@ -78,7 +79,8 @@ Maybe_error<bool> emit_simulation_rows_with_sub(csv_detail::CsvWriter& writer, c
                                                 const Recording& recording,
                                                 const SubEvolution& sub_evolution,
                                                 std::size_t n_sub,
-                                                std::optional<std::size_t> simulation_index) {
+                                                std::optional<std::size_t> simulation_index,
+                                                const csv_detail::CsvContext& base_ctx = {}) {
     if (n_sub == 0) {
         return error_message("number_of_substates must be greater than zero");
     }
@@ -110,7 +112,7 @@ Maybe_error<bool> emit_simulation_rows_with_sub(csv_detail::CsvWriter& writer, c
             const double step_mid = 0.5 * (step_start + step_end);
             const double agonist = get<Agonist_concentration>(segments[j])();
 
-            csv_detail::CsvContext full_ctx;
+            auto full_ctx = base_ctx;
             full_ctx.scope = "simulation";
             full_ctx.simulation_index = simulation_index;
             full_ctx.sample_index = i;
@@ -135,7 +137,7 @@ Maybe_error<bool> emit_simulation_rows_with_sub(csv_detail::CsvWriter& writer, c
                 const double sub_start = step_start + duration * frac0;
                 const double sub_end = step_start + duration * frac1;
 
-                csv_detail::CsvContext sub_ctx;
+                auto sub_ctx = base_ctx;
                 sub_ctx.scope = "simulation_sub";
                 sub_ctx.simulation_index = simulation_index;
                 sub_ctx.sample_index = i;
@@ -162,6 +164,26 @@ Maybe_error<bool> emit_simulation_rows_with_sub(csv_detail::CsvWriter& writer, c
         }
     }
     return true;
+}
+
+template <class IndexedValue, class EmitRows>
+Maybe_error<std::string> write_indexed_simulation_csv(const IndexedValue& indexed,
+                                                      std::string path, EmitRows&& emit_rows) {
+    auto valid = csv_detail::validate_indexed_write_csv_value(indexed, "simulation");
+    if (!valid) {
+        return valid.error();
+    }
+
+    return csv_detail::write_indexed_rows_csv(
+        indexed.index_space(), {}, std::move(path),
+        [&](csv_detail::CsvWriter& writer, const csv_detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_value = indexed.at(coord);
+            if (!maybe_value) {
+                return maybe_value.error();
+            }
+            return emit_rows(writer, base_ctx, maybe_value.value().get());
+        });
 }
 
 }  // namespace
@@ -348,6 +370,25 @@ Maybe_error<std::string> write_csv(Experiment const& e,
     return path_;
 }
 
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    const var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>& simulation,
+    std::string path) {
+    return write_indexed_simulation_csv(
+        simulation, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const auto& recordings) -> Maybe_error<bool> {
+            for (std::size_t sim_index = 0; sim_index < recordings.size(); ++sim_index) {
+                auto ok = emit_simulation_rows(writer, e, get<Recording>(recordings[sim_index]()),
+                                               sim_index, base_ctx);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
+}
+
 
 Maybe_error<std::string> write_csv(Experiment const& e,
                                    Simulated_Recording<var::please_include<>> const& simulation,
@@ -364,6 +405,17 @@ Maybe_error<std::string> write_csv(Experiment const& e,
         return ok.error()();
     }
     return path_;
+}
+
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    const var::Indexed<Simulated_Recording<var::please_include<>>>& simulation, std::string path) {
+    return write_indexed_simulation_csv(
+        simulation, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const auto& item) -> Maybe_error<bool> {
+            return emit_simulation_rows(writer, e, get<Recording>(item()), std::nullopt, base_ctx);
+        });
 }
 
 
@@ -389,6 +441,21 @@ Maybe_error<std::string> write_csv(
 
 Maybe_error<std::string> write_csv(
     Experiment const& e,
+    const var::Indexed<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>&
+        simulation,
+    std::size_t n_sub, std::string path) {
+    return write_indexed_simulation_csv(
+        simulation, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const auto& item) -> Maybe_error<bool> {
+            return emit_simulation_rows_with_sub(writer, e, get<Recording>(item()),
+                                                 get<Only_Ch_Curent_Sub_Evolution>(item()), n_sub,
+                                                 std::nullopt, base_ctx);
+        });
+}
+
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
     std::vector<    Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const& simulation,
     std::size_t n_sub, std::string path) {
     auto path_ = path + ".csv";
@@ -407,6 +474,29 @@ Maybe_error<std::string> write_csv(
         }
     }
     return path_;
+}
+
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    const var::Indexed<
+        std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>>&
+        simulation,
+    std::size_t n_sub, std::string path) {
+    return write_indexed_simulation_csv(
+        simulation, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const auto& recordings) -> Maybe_error<bool> {
+            for (std::size_t sim_index = 0; sim_index < recordings.size(); ++sim_index) {
+                auto ok = emit_simulation_rows_with_sub(
+                    writer, e, get<Recording>(recordings[sim_index]()),
+                    get<Only_Ch_Curent_Sub_Evolution>(recordings[sim_index]()), n_sub, sim_index,
+                    base_ctx);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
 }
 
 

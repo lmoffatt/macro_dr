@@ -178,8 +178,10 @@ template <class Lexer, class Compiler, class F, class... Args>
              std::is_void_v<std::invoke_result_t<F, Args...>>)
 class typed_lifted_function_evaluation;
 
-template <class Lexer, class Compiler, class T>
-class typed_indexed_construction;
+template <class Lexer, class Compiler, class F, class... Args>
+    requires(std::is_object_v<std::invoke_result_t<F, Args...>> ||
+             std::is_void_v<std::invoke_result_t<F, Args...>>)
+class typed_exact_indexed_function_evaluation;
 
 template <class Lexer, class Compiler>
 class untyped_program;
@@ -197,6 +199,9 @@ class untyped_statement;
 
 template <class Lexer, class Compiler>
 class untyped_numeric_literal;
+
+template <class Lexer, class Compiler>
+class untyped_string_literal;
 
 template <class Lexer, class Compiler>
 class untyped_identifier;
@@ -608,6 +613,29 @@ class parameter_compiler {
 
     [[nodiscard]] Maybe_unique<typed_argument<Lexer, Compiler, T>> compile_this_argument(
         Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_string_literal<Lexer, Compiler> const& t_arg) const
+        requires literal_decodable<T>::value
+    {
+        if constexpr (std::is_same_v<std::remove_cv_t<T>, std::string>) {
+            return new expression_argument<Lexer, Compiler, T>(
+                new typed_literal<Lexer, Compiler, T>(t_arg()));
+        } else {
+            return error_message(std::string{"unexpected type: expected "} + type_name<T>() +
+                                 ", got string");
+        }
+    }
+
+    [[nodiscard]] Maybe_unique<typed_argument<Lexer, Compiler, T>> compile_this_argument(
+        Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_string_literal<Lexer, Compiler> const& /*t_arg*/) const
+        requires(!literal_decodable<T>::value)
+    {
+        return error_message(std::string{"literal arguments are not supported for type "} +
+                             type_name<T>() + "; use a variable or JSON helper function");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_argument<Lexer, Compiler, T>> compile_this_argument(
+        Environment<Lexer, Compiler> const& /*unused*/,
         untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
         requires(!literal_decodable<T>::value)
     {
@@ -671,6 +699,9 @@ class parameter_compiler {
         untyped_expression<Lexer, Compiler> const& t_arg) const {
         if (auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg)) {
             return compile_this_argument(cm, *ptr);
+        }
+        if (auto s_lit = dynamic_cast<untyped_string_literal<Lexer, Compiler> const*>(&t_arg)) {
+            return compile_this_argument(cm, *s_lit);
         }
         if (auto lit = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg)) {
             return compile_this_argument(cm, *lit);
@@ -1006,6 +1037,28 @@ struct element_compiler {
 
     [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
         Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_string_literal<Lexer, Compiler> const& t_arg) const
+        requires literal_decodable<T>::value
+    {
+        if constexpr (std::is_same_v<std::remove_cv_t<T>, std::string>) {
+            return new typed_literal<Lexer, Compiler, T>(t_arg());
+        } else {
+            return error_message(std::string{"unexpected type: expected "} + type_name<T>() +
+                                 ", got string");
+        }
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& /*unused*/,
+        untyped_string_literal<Lexer, Compiler> const& /*t_arg*/) const
+        requires(!literal_decodable<T>::value)
+    {
+        return error_message(std::string{"literal arguments are not supported for type "} +
+                             type_name<T>() + "; use a variable or JSON helper function");
+    }
+
+    [[nodiscard]] Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_element(
+        Environment<Lexer, Compiler> const& /*unused*/,
         untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
         requires(!literal_decodable<T>::value)
     {
@@ -1063,6 +1116,10 @@ struct element_compiler {
         auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg);
         if (ptr != nullptr) {
             return compile_this_element(cm, *ptr);
+        }
+        auto str_ptr = dynamic_cast<untyped_string_literal<Lexer, Compiler> const*>(&t_arg);
+        if (str_ptr != nullptr) {
+            return compile_this_element(cm, *str_ptr);
         }
         auto li_ptr = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg);
         if (li_ptr != nullptr) {
@@ -1308,6 +1365,28 @@ class field_compiler_precondition {
     }
 
     Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Compiler const& /*unused*/,
+        untyped_string_literal<Lexer, Compiler> const& t_arg) const
+        requires literal_decodable<T>::value
+    {
+        if constexpr (std::is_same_v<std::remove_cv_t<T>, std::string>) {
+            return new typed_literal<Lexer, Compiler, T>(t_arg());
+        } else {
+            return error_message(std::string{"unexpected type: expected "} + type_name<T>() +
+                                 ", got string");
+        }
+    }
+
+    Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
+        Compiler const& /*unused*/,
+        untyped_string_literal<Lexer, Compiler> const& /*t_arg*/) const
+        requires(!literal_decodable<T>::value)
+    {
+        return error_message(std::string{"literal arguments are not supported for type "} +
+                             type_name<T>() + "; use a variable or JSON helper function");
+    }
+
+    Maybe_unique<typed_expression<Lexer, Compiler, T>> compile_this_argument(
         Compiler const& /*unused*/, untyped_literal<Lexer, Compiler> const& /*t_arg*/) const
         requires(!literal_decodable<T>::value)
     {
@@ -1341,6 +1420,10 @@ class field_compiler_precondition {
         auto ptr = dynamic_cast<untyped_identifier<Lexer, Compiler> const*>(&t_arg);
         if (ptr != nullptr) {
             return compile_this_argument(cm, *ptr);
+        }
+        auto s_ptr = dynamic_cast<untyped_string_literal<Lexer, Compiler> const*>(&t_arg);
+        if (s_ptr != nullptr) {
+            return compile_this_argument(cm, *s_ptr);
         }
         auto li_ptr = dynamic_cast<untyped_literal<Lexer, Compiler> const*>(&t_arg);
         if (li_ptr != nullptr) {
@@ -1418,15 +1501,17 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
         auto invoker = make_invoker();
         using WrappedF = decltype(invoker);
         using Return = underlying_value_type_t<std::invoke_result_t<F, Args...>>;
-        if constexpr (is_of_this_template_type_v<Return, var::Indexed>) {
-            return error_message("generic function_compiler does not support native indexed "
-                                 "return types; use a dedicated indexed constructor/compiler");
-        }
         if constexpr (sizeof...(Is) == 0) {
             compiled_function_candidate<Lexer, Compiler> out;
-            out.expr =
-                std::make_unique<typed_scalar_function_evaluation<Lexer, Compiler, WrappedF>>(
+            if constexpr (is_of_this_template_type_v<Return, var::Indexed>) {
+                out.expr = std::make_unique<
+                    typed_exact_indexed_function_evaluation<Lexer, Compiler, WrappedF>>(
                     std::move(invoker), std::tuple<>{});
+            } else {
+                out.expr =
+                    std::make_unique<typed_scalar_function_evaluation<Lexer, Compiler, WrappedF>>(
+                        std::move(invoker), std::tuple<>{});
+            }
             out.overload_rank = 0;
             return out;
         } else {
@@ -1443,14 +1528,25 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
             compiled_function_candidate<Lexer, Compiler> out;
             out.overload_rank = uses_pointwise_arguments(cm, compiled_args) ? 1U : 0U;
             if (out.overload_rank == 0) {
-                out.expr = std::make_unique<
-                    typed_scalar_function_evaluation<Lexer, Compiler, WrappedF,
-                                                     storage_t<Args>...>>(
-                    std::move(invoker), std::move(compiled_args));
+                if constexpr (is_of_this_template_type_v<Return, var::Indexed>) {
+                    out.expr = std::make_unique<
+                        typed_exact_indexed_function_evaluation<Lexer, Compiler, WrappedF,
+                                                                storage_t<Args>...>>(
+                        std::move(invoker), std::move(compiled_args));
+                } else {
+                    out.expr = std::make_unique<
+                        typed_scalar_function_evaluation<Lexer, Compiler, WrappedF,
+                                                         storage_t<Args>...>>(
+                        std::move(invoker), std::move(compiled_args));
+                }
             } else {
                 if constexpr (std::is_void_v<Return>) {
                     return error_message(
                         "lifted indexed calls are not supported for void-returning functions");
+                } else if constexpr (is_of_this_template_type_v<Return, var::Indexed>) {
+                    return error_message(
+                        "generic function_compiler does not support lifted native indexed "
+                        "return types");
                 } else {
                     out.expr = std::make_unique<
                         typed_lifted_function_evaluation<Lexer, Compiler, WrappedF,
@@ -1494,64 +1590,6 @@ class function_compiler : public base_function_compiler<Lexer, Compiler> {
         if constexpr (!std::is_void_v<Return>) {
             registry.template ensure_type_registered<Return>();
         }
-    }
-};
-
-template <class Lexer, class Compiler, class T>
-class indexed_constructor_compiler : public base_function_compiler<Lexer, Compiler> {
-    parameter_compiler<Lexer, Compiler, std::string> m_name;
-    parameter_compiler<Lexer, Compiler, std::vector<std::string>> m_labels;
-    parameter_compiler<Lexer, Compiler, std::vector<T>> m_values;
-
-   public:
-    indexed_constructor_compiler(Identifier<Lexer> name_id, Identifier<Lexer> labels_id,
-                                 Identifier<Lexer> values_id)
-        : m_name(std::move(name_id)),
-          m_labels(std::move(labels_id)),
-          m_values(std::move(values_id)) {}
-
-    [[nodiscard]] base_function_compiler<Lexer, Compiler>* clone() const override {
-        return new indexed_constructor_compiler(*this);
-    }
-
-    [[nodiscard]] Maybe_error<compiled_function_candidate<Lexer, Compiler>>
-    compile_function_evaluation(Environment<Lexer, Compiler> const& cm,
-                                const untyped_argument_list<Lexer, Compiler>& args) const override {
-        if (args.arg().size() != 3) {
-            return error_message("indexed(name, labels, values) expects exactly 3 arguments");
-        }
-
-        auto maybe_name = m_name.compile_this_argument(cm, args.arg()[0]);
-        if (!maybe_name) {
-            return error_message("indexed name: ", maybe_name.error()());
-        }
-        auto maybe_labels = m_labels.compile_this_argument(cm, args.arg()[1]);
-        if (!maybe_labels) {
-            return error_message("indexed labels: ", maybe_labels.error()());
-        }
-        auto maybe_values = m_values.compile_this_argument(cm, args.arg()[2]);
-        if (!maybe_values) {
-            return error_message("indexed values: ", maybe_values.error()());
-        }
-        if (maybe_name.value()->has_index_space(cm) || maybe_labels.value()->has_index_space(cm) ||
-            maybe_values.value()->has_index_space(cm)) {
-            return error_message(
-                "indexed(name, labels, values) only accepts scalar constructor arguments");
-        }
-
-        compiled_function_candidate<Lexer, Compiler> out;
-        out.overload_rank = 0;
-        out.expr = std::make_unique<typed_indexed_construction<Lexer, Compiler, T>>(
-            std::move(maybe_name.value()), std::move(maybe_labels.value()),
-            std::move(maybe_values.value()));
-        return out;
-    }
-
-    void register_types(Compiler& registry) const override {
-        registry.template ensure_type_registered<std::string>();
-        registry.template ensure_type_registered<std::vector<std::string>>();
-        registry.template ensure_type_registered<std::vector<T>>();
-        registry.template ensure_type_registered<var::Indexed<T>>();
     }
 };
 

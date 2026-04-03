@@ -1,11 +1,17 @@
-models = indexed(
+models_axis = axis(
     name="models",
-    labels=["scheme_CO","scheme_CCO"],
+    labels=["scheme_CO","scheme_CCO"])
+
+algorithms_axis = axis(
+    name="algorithms",
+    labels=["algo_A","algo_B","algo_C"])
+
+models = indexed_by(
+    axis=models_axis,
     values=[1,2])
 
-algorithms = indexed(
-    name="algorithms",
-    labels=["algo_A","algo_B","algo_C"],
+algorithms = indexed_by(
+    axis=algorithms_axis,
     values=[10,20,30])
 
 model_numbers = get_number(n=models)

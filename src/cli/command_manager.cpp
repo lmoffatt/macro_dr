@@ -1,6 +1,7 @@
 #include <experiment.h>
 #include <macrodr/cli/command_manager.h>
 #include <macrodr/cmd/cli_meta.h>
+#include <macrodr/cmd/indexed_construction.h>
 #include <macrodr/cmd/likelihood.h>
 #include <macrodr/cmd/load_experiment.h>
 #include <macrodr/cmd/load_model.h>
@@ -165,21 +166,67 @@ dsl::Compiler make_compiler_new() {
     cm.push_function("set_observations", dsl::to_typed_function<std::vector<double>>(
                                               &macrodr::cmd::define_recording, "values_set"));
 
-    cm.push_function("indexed",
-                     dsl::to_typed_indexed_constructor<std::size_t>("name", "labels", "values"));
-    cm.push_function("indexed",
-                     dsl::to_typed_indexed_constructor<int>("name", "labels", "values"));
-    cm.push_function("indexed",
-                     dsl::to_typed_indexed_constructor<double>("name", "labels", "values"));
-    cm.push_function("indexed",
-                     dsl::to_typed_indexed_constructor<std::string>("name", "labels", "values"));
+    cm.push_function("axis",
+                     dsl::to_typed_function<std::string, std::vector<std::string>>(
+                         &cmd::axis, "name", "labels"));
+    cm.push_function("indexed_bool_by",
+                     dsl::to_typed_function<var::Axis, std::vector<bool>>(
+                         &cmd::indexed_by<bool>, "axis", "values"));
+    cm.push_function("indexed_int_by",
+                     dsl::to_typed_function<var::Axis, std::vector<int>>(
+                         &cmd::indexed_by<int>, "axis", "values"));
+    cm.push_function("indexed_size_by",
+                     dsl::to_typed_function<var::Axis, std::vector<std::size_t>>(
+                         &cmd::indexed_by<std::size_t>, "axis", "values"));
+    cm.push_function("indexed_double_by",
+                     dsl::to_typed_function<var::Axis, std::vector<double>>(
+                         &cmd::indexed_by<double>, "axis", "values"));
+    cm.push_function("indexed_string_by",
+                     dsl::to_typed_function<var::Axis, std::vector<std::string>>(
+                         &cmd::indexed_by<std::string>, "axis", "values"));
+    cm.push_function("indexed_by",
+                     dsl::to_typed_function<var::Axis, std::vector<std::size_t>>(
+                         &cmd::indexed_by<std::size_t>, "axis", "values"));
+    cm.push_function("indexed_by",
+                     dsl::to_typed_function<var::Axis, std::vector<int>>(
+                         &cmd::indexed_by<int>, "axis", "values"));
+    cm.push_function("indexed_by",
+                     dsl::to_typed_function<var::Axis, std::vector<double>>(
+                         &cmd::indexed_by<double>, "axis", "values"));
+    cm.push_function("indexed_by",
+                     dsl::to_typed_function<var::Axis, std::vector<std::string>>(
+                         &cmd::indexed_by<std::string>, "axis", "values"));
+
+    using SimulationBatch = std::vector<Simulated_recording>;
+    using IndexedSimulation = var::Indexed<Simulated_recording>;
+    using IndexedSimulationBatch = var::Indexed<SimulationBatch>;
+    using SubSimulation =
+        Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>;
+    using IndexedSubSimulation = var::Indexed<SubSimulation>;
+    using GradientBatch = std::vector<dMacro_State_Ev_gradient_all>;
+    using IndexedPredictions = var::Indexed<Macro_State_Ev_predictions>;
+    using IndexedDiagnostics = var::Indexed<Macro_State_Ev_diagnostic>;
+    using IndexedGradients = var::Indexed<dMacro_State_Ev_gradient_all>;
+    using IndexedGradientBatch = var::Indexed<GradientBatch>;
+    using IndexedDerivativeDiagnostics =
+        var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic>;
 
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","simulation", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "path"));
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,std::vector<Simulated_recording> const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","simulations", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulations", "path"));
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Recording const&, std::string >(&macrodr::cmd::write_csv,
             "experiment","observations", "path"));
@@ -196,6 +243,12 @@ dsl::Compiler make_compiler_new() {
             "simulation", 
             "number_of_substates",
             "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSubSimulation const&, std::size_t, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "number_of_substates",
+            "path"));
 
     cm.push_function(
         "write_csv",
@@ -203,6 +256,24 @@ dsl::Compiler make_compiler_new() {
                                       Simulated_Recording<var::please_include<>> const&,
                                       Macro_State_Ev_predictions const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&,
+                                      Macro_State_Ev_predictions const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      Simulated_recording const&, IndexedPredictions const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&, IndexedPredictions const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
 
     cm.push_function(
         "write_csv",
@@ -210,6 +281,24 @@ dsl::Compiler make_compiler_new() {
                                       Simulated_Recording<var::please_include<>> const&,
                                       Macro_State_Ev_diagnostic const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&,
+                                      Macro_State_Ev_diagnostic const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      Simulated_recording const&, IndexedDiagnostics const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&, IndexedDiagnostics const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
 
     cm.push_function(
         "write_csv",
@@ -217,13 +306,48 @@ dsl::Compiler make_compiler_new() {
                                       Simulated_Recording<var::please_include<>> const&,
                                       dMacro_State_Ev_gradient_all const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&,
+                                      dMacro_State_Ev_gradient_all const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      Simulated_recording const&, IndexedGradients const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulation const&, IndexedGradients const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
 
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
-                                      std::vector<Simulated_Recording<var::please_include<>>> const&,
-                                      std::vector<dMacro_State_Ev_gradient_all> const&, std::string>(
+                                      SimulationBatch const&, GradientBatch const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulations", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, GradientBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      SimulationBatch const&, IndexedGradientBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, IndexedGradientBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
 
 
     cm.push_function(
@@ -233,6 +357,24 @@ dsl::Compiler make_compiler_new() {
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
             dMacro_State_Ev_gradient_all const&, std::string>(
             &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSubSimulation const&,
+                                      dMacro_State_Ev_gradient_all const&, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      SubSimulation const&, IndexedGradients const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSubSimulation const&, IndexedGradients const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulation", "likelihood", "path"));
 
     cm.push_function(
         "write_csv",
@@ -240,6 +382,10 @@ dsl::Compiler make_compiler_new() {
             Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic const& ,
                                           std::string >(
             &macrodr::cmd::write_csv, "analysis",  "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, IndexedDerivativeDiagnostics const&,
+                                      std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
 
     cm.push_function(
         "write_csv",

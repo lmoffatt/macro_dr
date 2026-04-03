@@ -791,109 +791,104 @@ class typed_lifted_function_evaluation
     }
 };
 
-template <class Lexer, class Compiler, class T>
-class typed_indexed_construction : public typed_expression<Lexer, Compiler, var::Indexed<T>> {
-    std::unique_ptr<typed_argument<Lexer, Compiler, std::string>> m_name;
-    std::unique_ptr<typed_argument<Lexer, Compiler, std::vector<std::string>>> m_labels;
-    std::unique_ptr<typed_argument<Lexer, Compiler, std::vector<T>>> m_values;
+template <class Lexer, class Compiler, class F, class... Args>
+    requires(std::is_object_v<std::invoke_result_t<F, Args...>> ||
+             std::is_void_v<std::invoke_result_t<F, Args...>>)
+class typed_exact_indexed_function_evaluation
+    : public typed_expression<Lexer, Compiler,
+                              underlying_value_type_t<std::invoke_result_t<F, Args...>>> {
+    using indexed_type = underlying_value_type_t<std::invoke_result_t<F, Args...>>;
+    using scalar_type = typename indexed_type::value_type;
 
-    [[nodiscard]] Maybe_error<var::Axis> build_axis(
-        Environment<Lexer, Compiler> const& env) const {
-        auto maybe_name = m_name->run(env);
-        if (!maybe_name) {
-            return maybe_name.error();
+    std::tuple<std::unique_ptr<typed_argument<Lexer, Compiler, Args>>...> m_args;
+    F m_f;
+
+    [[nodiscard]] Maybe_error<indexed_type> evaluate(
+        const Environment<Lexer, Compiler>& env) const {
+        if constexpr (sizeof...(Args) == 0) {
+            auto maybe_result = detail::invoke_typed(m_f);
+            if (!maybe_result) {
+                return maybe_result.error();
+            }
+            auto valid = maybe_result.value().validate();
+            if (!valid) {
+                return valid.error();
+            }
+            return maybe_result;
+        } else {
+            auto maybe_arg_tuple = std::apply(
+                [&env](auto const&... args) { return std::tuple(args->run(env)...); }, m_args);
+            return std::apply(
+                [this](auto&&... maybe_args) -> Maybe_error<indexed_type> {
+                    if (!((maybe_args.valid()) && ...)) {
+                        return error_message(((std::string{}) + ... + maybe_args.error()()));
+                    }
+                    auto maybe_result =
+                        detail::invoke_typed(this->m_f, std::move(maybe_args.value())...);
+                    if (!maybe_result) {
+                        return maybe_result.error();
+                    }
+                    auto valid = maybe_result.value().validate();
+                    if (!valid) {
+                        return valid.error();
+                    }
+                    return maybe_result;
+                },
+                maybe_arg_tuple);
         }
-        auto maybe_labels = m_labels->run(env);
-        if (!maybe_labels) {
-            return maybe_labels.error();
-        }
-        var::Axis axis{var::AxisId{std::move(maybe_name.value())}, std::move(maybe_labels.value())};
-        auto valid = axis.validate();
-        if (!valid) {
-            return valid.error();
-        }
-        return axis;
     }
 
    public:
-    typed_indexed_construction(
-        std::unique_ptr<typed_argument<Lexer, Compiler, std::string>> name,
-        std::unique_ptr<typed_argument<Lexer, Compiler, std::vector<std::string>>> labels,
-        std::unique_ptr<typed_argument<Lexer, Compiler, std::vector<T>>> values)
-        : m_name(std::move(name)), m_labels(std::move(labels)), m_values(std::move(values)) {}
+    typed_exact_indexed_function_evaluation(
+        F t_f, std::tuple<std::unique_ptr<typed_argument<Lexer, Compiler, Args>>...>&& t)
+        : m_args{std::move(t)}, m_f{t_f} {}
 
-    typed_indexed_construction(const typed_indexed_construction& other)
-        : m_name(other.m_name->clone_unique()),
-          m_labels(other.m_labels->clone_unique()),
-          m_values(other.m_values->clone_unique()) {}
+    typed_exact_indexed_function_evaluation(const typed_exact_indexed_function_evaluation& other)
+        : m_args{clone_tuple_unique(other.m_args)}, m_f{other.m_f} {}
 
-    typed_indexed_construction(typed_indexed_construction&&) noexcept = default;
-    typed_indexed_construction& operator=(typed_indexed_construction&&) noexcept = default;
-    typed_indexed_construction& operator=(const typed_indexed_construction& other) {
+    typed_exact_indexed_function_evaluation(typed_exact_indexed_function_evaluation&&) noexcept =
+        default;
+    typed_exact_indexed_function_evaluation& operator=(
+        typed_exact_indexed_function_evaluation&&) noexcept = default;
+    typed_exact_indexed_function_evaluation& operator=(
+        const typed_exact_indexed_function_evaluation& other) {
         if (this != &other) {
-            m_name = other.m_name->clone_unique();
-            m_labels = other.m_labels->clone_unique();
-            m_values = other.m_values->clone_unique();
+            m_args = clone_tuple_unique(other.m_args);
+            m_f = other.m_f;
         }
         return *this;
     }
 
     [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
         const override {
-        return std::make_unique<typed_indexed_construction>(*this);
+        return std::make_unique<typed_exact_indexed_function_evaluation>(*this);
+    }
+
+    [[nodiscard]] Maybe_error<indexed_type> run(
+        Environment<Lexer, Compiler> const& env) const override {
+        return evaluate(env);
     }
 
     [[nodiscard]] Maybe_error<var::IndexSpace> index_space(
         Environment<Lexer, Compiler> const& env) const override {
-        auto maybe_axis = build_axis(env);
-        if (!maybe_axis) {
-            return maybe_axis.error();
+        auto maybe_indexed = evaluate(env);
+        if (!maybe_indexed) {
+            return maybe_indexed.error();
         }
-        return var::IndexSpace{{std::move(maybe_axis.value())}};
+        return maybe_indexed.value().index_space();
     }
 
-    [[nodiscard]] Maybe_error<T> run_at(Environment<Lexer, Compiler> const& env,
-                                        var::Coordinate const& coord) const override {
-        auto maybe_space = index_space(env);
-        if (!maybe_space) {
-            return maybe_space.error();
+    [[nodiscard]] Maybe_error<scalar_type> run_at(Environment<Lexer, Compiler> const& env,
+                                                  var::Coordinate const& coord) const override {
+        auto maybe_indexed = evaluate(env);
+        if (!maybe_indexed) {
+            return maybe_indexed.error();
         }
-        auto maybe_values = m_values->run(env);
-        if (!maybe_values) {
-            return maybe_values.error();
+        auto maybe_ref = maybe_indexed.value().at(coord);
+        if (!maybe_ref) {
+            return maybe_ref.error();
         }
-        const auto& space = maybe_space.value();
-        if (maybe_values.value().size() != space.size()) {
-            return error_message("indexed values size mismatch: expected ", space.size(),
-                                 ", got ", maybe_values.value().size());
-        }
-        auto maybe_local = space.local_coordinate(coord);
-        if (!maybe_local) {
-            return maybe_local.error();
-        }
-        auto flat = maybe_local.value().flat_index();
-        if (flat >= maybe_values.value().size()) {
-            return error_message("indexed value not found at requested coordinate");
-        }
-        return maybe_values.value()[flat];
-    }
-
-    [[nodiscard]] Maybe_error<var::Indexed<T>> run(
-        Environment<Lexer, Compiler> const& env) const override {
-        auto maybe_space = index_space(env);
-        if (!maybe_space) {
-            return maybe_space.error();
-        }
-        auto maybe_values = m_values->run(env);
-        if (!maybe_values) {
-            return maybe_values.error();
-        }
-        if (maybe_values.value().size() != maybe_space.value().size()) {
-            return error_message("indexed values size mismatch: expected ",
-                                 maybe_space.value().size(), ", got ",
-                                 maybe_values.value().size());
-        }
-        return var::Indexed<T>(std::move(maybe_space.value()), std::move(maybe_values.value()));
+        return maybe_ref.value().get();
     }
 };
 

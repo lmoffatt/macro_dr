@@ -76,18 +76,40 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
 Maybe_error<std::string> write_csv(Experiment const& e,
     std::vector<Simulated_Recording<var::please_include<>>> const& simulation, std::string  path);
 
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const& simulation,
+    std::string path);
+
 Maybe_error<std::string> write_csv(Experiment const& e, 
     std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const& simulation, std::size_t n_sub, std::string  path);
 
 Maybe_error<std::string> write_csv(Experiment const& e,
     Simulated_Recording<var::please_include<> > const& simulation, std::string  path);
 
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    var::Indexed<Simulated_Recording<var::please_include<>>> const& simulation,
+    std::string path);
 
 Maybe_error<std::string> write_csv(Experiment const& e, 
     Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const& simulation, std::size_t n_sub, std::string  path);
 
-    Maybe_error<std::string> write_csv(Experiment const& e, 
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    var::Indexed<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&
+        simulation,
+    std::size_t n_sub, std::string path);
+
+Maybe_error<std::string> write_csv(Experiment const& e, 
     std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const& simulation, std::size_t n_sub, const std::string& path);
+
+Maybe_error<std::string> write_csv(
+    Experiment const& e,
+    var::Indexed<
+        std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>> const&
+        simulation,
+    std::size_t n_sub, std::string path);
 
 
 }  // namespace macrodr::cmd
