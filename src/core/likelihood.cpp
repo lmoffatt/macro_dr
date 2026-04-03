@@ -820,8 +820,9 @@ Maybe_error<bool> emit_state_members(Writer& writer, detail::CsvContext ctx, con
 template <class Writer, class Lik>
 Maybe_error<bool> emit_state_rows_without_experiment(Writer& writer,
                                                      std::optional<std::size_t> simulation_index,
-                                                     const Lik& lik) {
-    detail::CsvContext state_ctx;
+                                                     const Lik& lik,
+                                                     const detail::CsvContext& base_ctx = {}) {
+    auto state_ctx = base_ctx;
     state_ctx.scope = "state";
     state_ctx.simulation_index = simulation_index;
 
@@ -833,7 +834,7 @@ Maybe_error<bool> emit_state_rows_without_experiment(Writer& writer,
     if constexpr (macrodr::has_var_c<Lik const&, Evolution>) {
         const auto& evolution = get<Evolution>(lik)();
         for (std::size_t i = 0; i < evolution.size(); ++i) {
-            detail::CsvContext evo_ctx;
+            auto evo_ctx = base_ctx;
             evo_ctx.scope = "evolution";
             evo_ctx.simulation_index = simulation_index;
             evo_ctx.sample_index = i;
@@ -851,14 +852,15 @@ template <class Writer, class Lik>
 Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experiment& e,
                                                   const Recording& recording,
                                                   std::optional<std::size_t> simulation_index,
-                                                  const Lik& lik) {
+                                                  const Lik& lik,
+                                                  const detail::CsvContext& base_ctx = {}) {
     const auto& conditions = get<Recording_conditions>(e);
     if (conditions().size() != recording().size()) {
         return error_message("Experiment samples ", conditions().size(),
                              " differ from Recording samples ", recording().size());
     }
 
-    auto ok = emit_state_rows_without_experiment(writer, simulation_index, lik);
+    auto ok = emit_state_rows_without_experiment(writer, simulation_index, lik, base_ctx);
     if (!ok || !ok.value()) {
         return ok;
     }
@@ -877,7 +879,7 @@ Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experime
             const double duration = get<number_of_samples>(segments[j])() / fs;
             const double step_end = step_start + duration;
 
-            detail::CsvContext evo_ctx;
+            auto evo_ctx = base_ctx;
             evo_ctx.scope = "evolution";
             evo_ctx.simulation_index = simulation_index;
             evo_ctx.sample_index = i;
@@ -899,6 +901,31 @@ Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experime
     }
 
     return true;
+}
+
+template <class Lik>
+std::vector<std::string> first_non_empty_param_names(const std::vector<Lik>& liks) {
+    std::vector<std::string> param_names;
+    for (const auto& lik : liks) {
+        param_names = detail::get_param_names_if_any(lik);
+        if (!param_names.empty()) {
+            break;
+        }
+    }
+    return param_names;
+}
+
+template <class T>
+Maybe_error<std::reference_wrapper<const T>> indexed_front(const var::Indexed<T>& indexed) {
+    auto maybe_coord = indexed.begin();
+    if (!maybe_coord) {
+        return maybe_coord.error();
+    }
+    auto maybe_value = indexed.at(maybe_coord.value());
+    if (!maybe_value) {
+        return maybe_value.error();
+    }
+    return maybe_value.value();
 }
 
 // (1) Experiment + Simulation + State with per-sample Evolution
@@ -925,6 +952,104 @@ Maybe_error<std::string> write_csv(Experiment const& e,
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
     requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
 Maybe_error<std::string> write_csv(Experiment const& e,
+                                   var::Indexed<Simulated_Recording<SimTag>> const& simulation,
+                                   TMacro_State<vVars...> const& lik, std::string path) {
+    auto valid = detail::validate_indexed_write_csv_value(simulation, "simulation");
+    if (!valid) {
+        return valid.error();
+    }
+
+    return detail::write_indexed_rows_csv(
+        simulation.index_space(), detail::get_param_names_if_any(lik), std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_sim = simulation.at(coord);
+            if (!maybe_sim) {
+                return maybe_sim.error();
+            }
+            return emit_state_rows_with_experiment(writer, e,
+                                                   get<Recording>(maybe_sim.value().get()()),
+                                                   std::nullopt, lik, base_ctx);
+        });
+}
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e,
+                                   Simulated_Recording<SimTag> const& simulation,
+                                   var::Indexed<TMacro_State<vVars...>> const& lik,
+                                   std::string path) {
+    auto valid = detail::validate_indexed_write_csv_value(lik, "likelihood");
+    if (!valid) {
+        return valid.error();
+    }
+    auto maybe_first = indexed_front(lik);
+    if (!maybe_first) {
+        return maybe_first.error();
+    }
+
+    return detail::write_indexed_rows_csv(
+        lik.index_space(), detail::get_param_names_if_any(maybe_first.value().get()),
+        std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_lik = lik.at(coord);
+            if (!maybe_lik) {
+                return maybe_lik.error();
+            }
+            return emit_state_rows_with_experiment(writer, e, get<Recording>(simulation()),
+                                                   std::nullopt, maybe_lik.value().get(),
+                                                   base_ctx);
+        });
+}
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e,
+                                   var::Indexed<Simulated_Recording<SimTag>> const& simulation,
+                                   var::Indexed<TMacro_State<vVars...>> const& lik,
+                                   std::string path) {
+    auto sim_valid = detail::validate_indexed_write_csv_value(simulation, "simulation");
+    if (!sim_valid) {
+        return sim_valid.error();
+    }
+    auto lik_valid = detail::validate_indexed_write_csv_value(lik, "likelihood");
+    if (!lik_valid) {
+        return lik_valid.error();
+    }
+    auto spaces_match = detail::require_matching_indexed_write_csv_spaces(
+        simulation.index_space(), "simulation", lik.index_space(), "likelihood");
+    if (!spaces_match) {
+        return spaces_match.error();
+    }
+    auto maybe_first = indexed_front(lik);
+    if (!maybe_first) {
+        return maybe_first.error();
+    }
+
+    return detail::write_indexed_rows_csv(
+        simulation.index_space(), detail::get_param_names_if_any(maybe_first.value().get()),
+        std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_sim = simulation.at(coord);
+            if (!maybe_sim) {
+                return maybe_sim.error();
+            }
+            auto maybe_lik = lik.at(coord);
+            if (!maybe_lik) {
+                return maybe_lik.error();
+            }
+            return emit_state_rows_with_experiment(writer, e,
+                                                   get<Recording>(maybe_sim.value().get()()),
+                                                   std::nullopt, maybe_lik.value().get(),
+                                                   base_ctx);
+        });
+}
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e,
                                    std::vector<Simulated_Recording<SimTag>> const& simulation,
                                    std::vector<TMacro_State<vVars...>> const& liks,
                                    std::string path) {
@@ -938,13 +1063,7 @@ Maybe_error<std::string> write_csv(Experiment const& e,
                              " differ from number of Likelihood states ", liks.size());
     }
 
-    std::vector<std::string> param_names;
-    for (const auto& lik : liks) {
-        param_names = detail::get_param_names_if_any(lik);
-        if (!param_names.empty()) {
-            break;
-        }
-    }
+    auto param_names = first_non_empty_param_names(liks);
 
     detail::CsvWriter writer(f, param_names);
     for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
@@ -955,6 +1074,134 @@ Maybe_error<std::string> write_csv(Experiment const& e,
         }
     }
     return path_;
+}
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
+    std::vector<TMacro_State<vVars...>> const& liks, std::string path) {
+    auto valid = detail::validate_indexed_write_csv_value(simulation, "simulations");
+    if (!valid) {
+        return valid.error();
+    }
+    auto param_names = first_non_empty_param_names(liks);
+
+    return detail::write_indexed_rows_csv(
+        simulation.index_space(), param_names, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_sim = simulation.at(coord);
+            if (!maybe_sim) {
+                return maybe_sim.error();
+            }
+            const auto& batch = maybe_sim.value().get();
+            if (batch.size() != liks.size()) {
+                return error_message("number of Simulated_Recordings ", batch.size(),
+                                     " differ from number of Likelihood states ", liks.size());
+            }
+            for (std::size_t sim_i = 0; sim_i < batch.size(); ++sim_i) {
+                auto ok = emit_state_rows_with_experiment(writer, e, get<Recording>(batch[sim_i]()),
+                                                          sim_i, liks[sim_i], base_ctx);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
+}
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, std::vector<Simulated_Recording<SimTag>> const& simulation,
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path) {
+    auto valid = detail::validate_indexed_write_csv_value(liks, "likelihood");
+    if (!valid) {
+        return valid.error();
+    }
+    auto maybe_first = indexed_front(liks);
+    if (!maybe_first) {
+        return maybe_first.error();
+    }
+    auto param_names = first_non_empty_param_names(maybe_first.value().get());
+
+    return detail::write_indexed_rows_csv(
+        liks.index_space(), param_names, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_lik = liks.at(coord);
+            if (!maybe_lik) {
+                return maybe_lik.error();
+            }
+            const auto& batch = maybe_lik.value().get();
+            if (simulation.size() != batch.size()) {
+                return error_message("number of Simulated_Recordings ", simulation.size(),
+                                     " differ from number of Likelihood states ", batch.size());
+            }
+            for (std::size_t sim_i = 0; sim_i < simulation.size(); ++sim_i) {
+                auto ok =
+                    emit_state_rows_with_experiment(writer, e, get<Recording>(simulation[sim_i]()),
+                                                    sim_i, batch[sim_i], base_ctx);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
+}
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path) {
+    auto sim_valid = detail::validate_indexed_write_csv_value(simulation, "simulations");
+    if (!sim_valid) {
+        return sim_valid.error();
+    }
+    auto lik_valid = detail::validate_indexed_write_csv_value(liks, "likelihood");
+    if (!lik_valid) {
+        return lik_valid.error();
+    }
+    auto spaces_match = detail::require_matching_indexed_write_csv_spaces(
+        simulation.index_space(), "simulations", liks.index_space(), "likelihood");
+    if (!spaces_match) {
+        return spaces_match.error();
+    }
+    auto maybe_first = indexed_front(liks);
+    if (!maybe_first) {
+        return maybe_first.error();
+    }
+    auto param_names = first_non_empty_param_names(maybe_first.value().get());
+
+    return detail::write_indexed_rows_csv(
+        simulation.index_space(), param_names, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_sim = simulation.at(coord);
+            if (!maybe_sim) {
+                return maybe_sim.error();
+            }
+            auto maybe_lik = liks.at(coord);
+            if (!maybe_lik) {
+                return maybe_lik.error();
+            }
+            const auto& sims = maybe_sim.value().get();
+            const auto& batch = maybe_lik.value().get();
+            if (sims.size() != batch.size()) {
+                return error_message("number of Simulated_Recordings ", sims.size(),
+                                     " differ from number of Likelihood states ", batch.size());
+            }
+            for (std::size_t sim_i = 0; sim_i < sims.size(); ++sim_i) {
+                auto ok = emit_state_rows_with_experiment(writer, e, get<Recording>(sims[sim_i]()),
+                                                          sim_i, batch[sim_i], base_ctx);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
 }
 
 // (2) State without Experiment indexing
@@ -1162,9 +1409,55 @@ template Maybe_error<std::string>
 
 template Maybe_error<std::string>
     write_csv<var::please_include<>, Macro_State, elogL, vlogL,
+              Evolution_of<add_t<Vector_Space<>, predictions_element>>>(
+        Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
+        Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, predictions_element>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, Macro_State, elogL, vlogL,
+              Evolution_of<add_t<Vector_Space<>, predictions_element>>>(
+        Experiment const&, Simulated_Recording<var::please_include<>> const&,
+        var::Indexed<
+            Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, predictions_element>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, Macro_State, elogL, vlogL,
+              Evolution_of<add_t<Vector_Space<>, predictions_element>>>(
+        Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
+        var::Indexed<
+            Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, predictions_element>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, Macro_State, elogL, vlogL,
               Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>(
         Experiment const&, Simulated_Recording<var::please_include<>> const&,
         Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, diagnostic_element>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, Macro_State, elogL, vlogL,
+              Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>(
+        Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
+        Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, diagnostic_element>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, Macro_State, elogL, vlogL,
+              Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>(
+        Experiment const&, Simulated_Recording<var::please_include<>> const&,
+        var::Indexed<
+            Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, Macro_State, elogL, vlogL,
+              Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>(
+        Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
+        var::Indexed<
+            Macro_State<elogL, vlogL, Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>> const&,
         std::string);
 
 template Maybe_error<std::string> write_csv<
@@ -1174,8 +1467,45 @@ template Maybe_error<std::string> write_csv<
 
 template Maybe_error<std::string> write_csv<
     var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
+    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&, std::string);
+
+template Maybe_error<std::string> write_csv<
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    Experiment const&, Simulated_Recording<var::please_include<>> const&,
+    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    std::string);
+
+template Maybe_error<std::string> write_csv<
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
+    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    std::string);
+
+template Maybe_error<std::string> write_csv<
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
     Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
     std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    std::string);
+
+template Maybe_error<std::string> write_csv<
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    Experiment const&, var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
+    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    std::string);
+
+template Maybe_error<std::string> write_csv<
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
+    var::Indexed<
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>>> const&,
+    std::string);
+
+template Maybe_error<std::string> write_csv<
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    Experiment const&, var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
+    var::Indexed<
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>>> const&,
     std::string);
 
 template Maybe_error<std::string>
@@ -1184,6 +1514,32 @@ template Maybe_error<std::string>
         Experiment const&,
         Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
         dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
+              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+        Experiment const&,
+        var::Indexed<
+            Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&,
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
+              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+        Experiment const&,
+        Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
+        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
+              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+        Experiment const&,
+        var::Indexed<
+            Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&,
+        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
         std::string);
 
 template Maybe_error<std::string>

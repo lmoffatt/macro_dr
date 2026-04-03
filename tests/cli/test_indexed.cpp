@@ -11,6 +11,15 @@ var::Axis axis(std::size_t id, std::size_t n) {
     return var::Axis{var::AxisId{id}, var::AxisSize{n}};
 }
 
+var::Axis axis(std::string id, std::initializer_list<const char*> labels) {
+    std::vector<std::string> out;
+    out.reserve(labels.size());
+    for (const auto* label : labels) {
+        out.emplace_back(label);
+    }
+    return var::Axis{var::AxisId{std::move(id)}, std::move(out)};
+}
+
 var::Coordinate coordinate(std::initializer_list<var::Axis> axes,
                            std::initializer_list<var::AxisIndex> indexes) {
     return var::Coordinate(std::vector<var::Axis>(axes), std::vector<var::AxisIndex>(indexes));
@@ -54,6 +63,30 @@ TEST_CASE("Indexed apply_Index rejects conflicting shared-axis sizes") {
     CHECK(maybe.error()().find("conflicting sizes") != std::string::npos);
 }
 
+TEST_CASE("Indexed apply_Index merges identical labeled shared axes") {
+    var::Indexed<int> left(var::IndexSpace{{axis("algorithm", {"MRV", "IRV"})}}, {1, 2});
+    var::Indexed<int> right(var::IndexSpace{{axis("algorithm", {"MRV", "IRV"})}}, {10, 20});
+
+    auto maybe = var::apply_Index([](int x, int y) { return x + y; }, left, right);
+
+    REQUIRE(maybe);
+    REQUIRE(maybe.value().index_space().m_axes.size() == 1);
+    CHECK(maybe.value().index_space().m_axes[0].m_id.idName == "algorithm");
+    CHECK(maybe.value().index_space().m_axes[0].m_labels ==
+          std::vector<std::string>{"MRV", "IRV"});
+    CHECK(maybe.value().values() == std::vector<int>{11, 22});
+}
+
+TEST_CASE("Indexed apply_Index rejects conflicting shared-axis labels") {
+    var::Indexed<int> left(var::IndexSpace{{axis("algorithm", {"MRV", "IRV"})}}, {1, 2});
+    var::Indexed<int> right(var::IndexSpace{{axis("algorithm", {"A", "B"})}}, {10, 20});
+
+    auto maybe = var::apply_Index([](int x, int y) { return x + y; }, left, right);
+
+    REQUIRE_FALSE(maybe);
+    CHECK(maybe.error()().find("conflicting labels") != std::string::npos);
+}
+
 TEST_CASE("Indexed coordinate validation checks bounds and axis-size agreement") {
     var::Indexed<std::string> models(var::IndexSpace{{axis(1, 2)}}, {"CCO", "M2"});
 
@@ -66,6 +99,14 @@ TEST_CASE("Indexed coordinate validation checks bounds and axis-size agreement")
         models.at(coordinate({axis(1, 2)}, {var::AxisIndex{3}}));
     REQUIRE_FALSE(bad_index);
     CHECK(bad_index.error()().find("out of range") != std::string::npos);
+
+    var::Indexed<std::string> labeled_models(
+        var::IndexSpace{{axis("models", {"CCO", "M2"})}}, {"CCO", "M2"});
+
+    auto bad_labels =
+        labeled_models.at(coordinate({axis("models", {"X", "Y"})}, {var::AxisIndex{1}}));
+    REQUIRE_FALSE(bad_labels);
+    CHECK(bad_labels.error()().find("conflicting labels") != std::string::npos);
 
     auto duplicate_axis = coordinate({axis(1, 2), axis(1, 2)},
                                      {var::AxisIndex{0}, var::AxisIndex{1}});

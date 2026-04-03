@@ -31,19 +31,6 @@ auto to_typed_return_function(R (*t_f)(Args...), String&&... args) {
                  to_Identifier<Lexer>(std::forward<String>(args)).value())...);
 }
 
-template <class T, class NameString, class LabelsString, class ValuesString>
-    requires(std::is_constructible_v<std::string, NameString> &&
-             std::is_constructible_v<std::string, LabelsString> &&
-             std::is_constructible_v<std::string, ValuesString>)
-auto to_typed_indexed_constructor(NameString&& name_arg, LabelsString&& labels_arg,
-                                  ValuesString&& values_arg) {
-    return std::make_unique<indexed_constructor_compiler<Lexer, Compiler, T>>(
-        to_Identifier<Lexer>(std::forward<NameString>(name_arg)).value(),
-        to_Identifier<Lexer>(std::forward<LabelsString>(labels_arg)).value(),
-        to_Identifier<Lexer>(std::forward<ValuesString>(values_arg)).value());
-}
-
-
 template <class T, class P>
     requires(std::is_same_v<Maybe_error<T>, std::invoke_result_t<P, T>>)
 auto to_typed_predicate(P t_f, std::string arg) {

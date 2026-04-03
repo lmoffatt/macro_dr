@@ -229,6 +229,22 @@ inline bool is_equal_at_pos(const std::string& s, std::size_t pos, std::string_v
     return s.substr(pos, n.size()) == n;
 }
 
+inline bool is_identifier_continuation_at_pos(const std::string& s, std::size_t pos) {
+    return pos < s.size() && Lexer::alfanum.find(s[pos]) != std::string::npos;
+}
+
+inline Maybe_error<
+    std::pair<std::unique_ptr<untyped_literal<Lexer, Compiler>>, std::size_t>>
+extract_boolean_literal(const std::string& s, std::size_t pos) {
+    if (is_equal_at_pos(s, pos, "true") && !is_identifier_continuation_at_pos(s, pos + 4)) {
+        return std::pair(std::make_unique<untyped_literal<Lexer, Compiler>>("true"), pos + 4);
+    }
+    if (is_equal_at_pos(s, pos, "false") && !is_identifier_continuation_at_pos(s, pos + 5)) {
+        return std::pair(std::make_unique<untyped_literal<Lexer, Compiler>>("false"), pos + 5);
+    }
+    return error_message("");
+}
+
 inline Maybe_error<
     std::pair<std::unique_ptr<untyped_numeric_literal<Lexer, Compiler>>, std::size_t>>
     extract_numeric(const std::string& s, std::size_t pos) {
@@ -424,6 +440,17 @@ inline Maybe_error<
 inline Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer, Compiler>>, std::size_t>>
     extract_expression(const std::string& s, std::size_t pos) {
     auto last_pos = Lexer::skip_whitespaceline(s, pos);
+
+    auto maybe_boolean = extract_boolean_literal(s, last_pos);
+    if (maybe_boolean) {
+        return std::pair(std::unique_ptr<untyped_expression<Lexer, Compiler>>(
+                             maybe_boolean.value().first.release()),
+                         maybe_boolean.value().second);
+    }
+    if (!maybe_boolean.error()().empty()) {
+        return maybe_boolean.error();
+    }
+
     auto maybe_identifier = extract_identifier(s, last_pos);
 
     if (maybe_identifier) {
@@ -510,6 +537,17 @@ inline Maybe_error<std::pair<std::unique_ptr<untyped_expression<Lexer, Compiler>
 inline Maybe_error<std::pair<std::unique_ptr<untyped_statement<Lexer, Compiler>>, std::size_t>>
     extract_statement(const std::string& s, std::size_t pos) {
     auto last_pos = Lexer::skip_whitespaceline(s, pos);
+
+    auto maybe_boolean = extract_boolean_literal(s, last_pos);
+    if (maybe_boolean) {
+        return std::pair(std::unique_ptr<untyped_statement<Lexer, Compiler>>(
+                             maybe_boolean.value().first.release()),
+                         maybe_boolean.value().second);
+    }
+    if (!maybe_boolean.error()().empty()) {
+        return maybe_boolean.error();
+    }
+
     auto maybe_identifier = extract_identifier(s, last_pos);
 
     if (maybe_identifier) {

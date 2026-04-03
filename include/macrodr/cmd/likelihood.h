@@ -269,6 +269,26 @@ Maybe_error<std::string> write_csv(Experiment const& e,
                                    Simulated_Recording<SimTag> const& simulation,
                                    TMacro_State<vVars...> const& lik, std::string path);
 
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e,
+                                   var::Indexed<Simulated_Recording<SimTag>> const& simulation,
+                                   TMacro_State<vVars...> const& lik, std::string path);
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e,
+                                   Simulated_Recording<SimTag> const& simulation,
+                                   var::Indexed<TMacro_State<vVars...>> const& lik,
+                                   std::string path);
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(Experiment const& e,
+                                   var::Indexed<Simulated_Recording<SimTag>> const& simulation,
+                                   var::Indexed<TMacro_State<vVars...>> const& lik,
+                                   std::string path);
+
 template <class... Vs>
 inline Maybe_error<std::string> write_csv(var::Vector_Space<Vs...> const& lik, std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
@@ -283,6 +303,24 @@ template <typename SimTag, template <typename...> class TMacro_State, typename..
     requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
 Maybe_error<std::string> write_csv(Experiment const& e, std::vector<Simulated_Recording<SimTag>> const& simulation,
                                    std::vector<TMacro_State<vVars...>> const& liks, std::string path);
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
+    std::vector<TMacro_State<vVars...>> const& liks, std::string path);
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, std::vector<Simulated_Recording<SimTag>> const& simulation,
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path);
+
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path);
 
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path);

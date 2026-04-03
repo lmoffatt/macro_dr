@@ -148,6 +148,7 @@ struct CsvContext {
     std::optional<std::string> axis_name;
     std::optional<std::size_t> axis_index;
     std::optional<std::string> axis_label;
+    std::optional<std::size_t> n_substeps;
 };
 
 class CsvWriter {
@@ -214,6 +215,8 @@ class CsvWriter {
         if (ctx.axis_label.has_value()) {
             write_string(*ctx.axis_label);
         }
+        out_ << ",";
+        write_optional(ctx.n_substeps);
         out_ << "," << value << "\n";
     }
 
@@ -233,7 +236,7 @@ class CsvWriter {
                 "component_path,value_row,value_col,"
                 "probit,calculus,statistic,quantile_level,"
                 "param_index,param_col,param_name,"
-                "axis_name,axis_index,axis_label,"
+                "axis_name,axis_index,axis_label,n_substeps,"
                 "value\n";
     }
 
@@ -264,6 +267,128 @@ inline void assign_matrix_param_metadata(CsvContext& ctx, const std::vector<std:
     } else {
         ctx.param_name.reset();
     }
+}
+
+inline auto maybe_parse_n_substeps_label(const std::string& axis_name, const std::string& label)
+    -> std::optional<std::size_t> {
+    if (axis_name != "n_substeps" && axis_name != "number_of_substeps") {
+        return std::nullopt;
+    }
+    try {
+        std::size_t pos = 0;
+        auto parsed = std::stoull(label, &pos);
+        if (pos != label.size()) {
+            return std::nullopt;
+        }
+        return static_cast<std::size_t>(parsed);
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+inline Maybe_error<bool> assign_axis_metadata(CsvContext& ctx, const var::Axis& axis,
+                                              var::AxisIndex index) {
+    ctx.axis_name = axis.m_id.idName;
+    ctx.axis_index = index.value;
+    auto maybe_label = axis.label_for(index);
+    if (!maybe_label) {
+        return maybe_label.error();
+    }
+    ctx.axis_label = maybe_label.value();
+    ctx.n_substeps = maybe_parse_n_substeps_label(axis.m_id.idName, maybe_label.value());
+    return true;
+}
+
+inline bool same_axis_definition(const var::Axis& lhs, const var::Axis& rhs) {
+    return lhs.m_id == rhs.m_id && lhs.m_size == rhs.m_size && lhs.m_labels == rhs.m_labels;
+}
+
+inline Maybe_error<bool> validate_indexed_write_csv_space(const var::IndexSpace& space,
+                                                          std::string_view what) {
+    auto valid = space.validate();
+    if (!valid) {
+        return valid.error();
+    }
+    if (space.m_axes.size() > 1) {
+        return error_message("write_csv for ", std::string(what),
+                             " currently supports one-dimensional indexed values only");
+    }
+    return true;
+}
+
+template <class T>
+Maybe_error<bool> validate_indexed_write_csv_value(const var::Indexed<T>& indexed,
+                                                   std::string_view what) {
+    auto valid = indexed.validate();
+    if (!valid) {
+        return valid.error();
+    }
+    return validate_indexed_write_csv_space(indexed.index_space(), what);
+}
+
+inline Maybe_error<bool> require_matching_indexed_write_csv_spaces(
+    const var::IndexSpace& lhs, std::string_view lhs_name, const var::IndexSpace& rhs,
+    std::string_view rhs_name) {
+    auto lhs_valid = validate_indexed_write_csv_space(lhs, lhs_name);
+    if (!lhs_valid) {
+        return lhs_valid.error();
+    }
+    auto rhs_valid = validate_indexed_write_csv_space(rhs, rhs_name);
+    if (!rhs_valid) {
+        return rhs_valid.error();
+    }
+    if (lhs.m_axes.size() != rhs.m_axes.size()) {
+        return error_message("write_csv indexed arguments ", std::string(lhs_name), " and ",
+                             std::string(rhs_name), " must have the same index space");
+    }
+    if (lhs.m_axes.empty()) {
+        return true;
+    }
+    if (!same_axis_definition(lhs.m_axes.front(), rhs.m_axes.front())) {
+        return error_message("write_csv indexed arguments ", std::string(lhs_name), " and ",
+                             std::string(rhs_name), " must have the same index space");
+    }
+    return true;
+}
+
+template <class EmitRows>
+Maybe_error<std::string> write_indexed_rows_csv(const var::IndexSpace& space,
+                                                const std::vector<std::string>& param_names,
+                                                std::string path, EmitRows&& emit_rows) {
+    auto valid_space = validate_indexed_write_csv_space(space, "indexed values");
+    if (!valid_space) {
+        return valid_space.error();
+    }
+
+    const auto path_with_extension = path + ".csv";
+    std::ofstream f(path_with_extension);
+    if (!f.is_open()) {
+        return error_message("cannot open ", path_with_extension);
+    }
+
+    CsvWriter writer(f, param_names);
+    auto coord = space.begin();
+    while (true) {
+        CsvContext base_ctx;
+        if (!space.m_axes.empty()) {
+            auto maybe_meta = assign_axis_metadata(base_ctx, space.m_axes.front(), coord.index().front());
+            if (!maybe_meta) {
+                return maybe_meta.error();
+            }
+        }
+
+        auto ok = emit_rows(writer, base_ctx, coord);
+        if (!ok || !ok.value()) {
+            return ok.error()();
+        }
+
+        if (space.m_axes.empty() || coord.last()) {
+            break;
+        }
+        coord.next();
+    }
+
+    return path_with_extension;
 }
 
 template <class Writer, class T>
@@ -406,13 +531,10 @@ Maybe_error<bool> emit_indexed(Writer& w, CsvContext ctx, const var::Indexed<T>&
     auto coord = maybe_coord.value();
     while (true) {
         auto item_ctx = ctx;
-        item_ctx.axis_name = axis.m_id.idName;
-        item_ctx.axis_index = coord.index().front().value;
-        auto maybe_label = axis.label_for(coord.index().front());
-        if (!maybe_label) {
-            return maybe_label.error();
+        auto maybe_meta = assign_axis_metadata(item_ctx, axis, coord.index().front());
+        if (!maybe_meta) {
+            return maybe_meta.error();
         }
-        item_ctx.axis_label = maybe_label.value();
         auto maybe_value = x.at(coord);
         if (!maybe_value) {
             return maybe_value.error();

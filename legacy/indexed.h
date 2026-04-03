@@ -110,6 +110,29 @@ struct Axis{
     }
 };
 
+inline auto ensure_axis_compatible(const Axis& lhs, const Axis& rhs) -> Maybe_error<bool> {
+    auto valid_lhs = lhs.validate();
+    if (!valid_lhs) {
+        return valid_lhs.error();
+    }
+    auto valid_rhs = rhs.validate();
+    if (!valid_rhs) {
+        return valid_rhs.error();
+    }
+    if (lhs.m_id != rhs.m_id) {
+        return error_message("axis ids differ: ", lhs.m_id.idName, " vs ", rhs.m_id.idName);
+    }
+    if (lhs.m_size != rhs.m_size) {
+        return error_message("axis ", lhs.m_id.idName, " size mismatch: expected ",
+                             lhs.m_size.value, ", got ", rhs.m_size.value);
+    }
+    if (lhs.has_labels() && rhs.has_labels() && lhs.m_labels != rhs.m_labels) {
+        return error_message("axis ", lhs.m_id.idName,
+                             " has conflicting labels across indexed values");
+    }
+    return true;
+}
+
 
 
 
@@ -147,6 +170,10 @@ struct Coordinate {
             }
             for (std::size_t j = i + 1; j < axes.size(); ++j) {
                 if (axes[i].m_id == axes[j].m_id) {
+                    auto compatible = ensure_axis_compatible(axes[i], axes[j]);
+                    if (!compatible) {
+                        return compatible.error();
+                    }
                     return error_message("duplicate axis ", axes[i].m_id.idName,
                                          " in coordinate");
                 }
@@ -256,6 +283,10 @@ struct IndexSpace {
         for (std::size_t i = 0; i < m_axes.size(); ++i) {
             for (std::size_t j = i + 1; j < m_axes.size(); ++j) {
                 if (m_axes[i].m_id == m_axes[j].m_id) {
+                    auto compatible = ensure_axis_compatible(m_axes[i], m_axes[j]);
+                    if (!compatible) {
+                        return compatible.error();
+                    }
                     return error_message("duplicate axis ", m_axes[i].m_id.idName,
                                          " in index space");
                 }
@@ -285,10 +316,9 @@ struct IndexSpace {
             bool found = false;
             for (std::size_t j=0; j<coord.axes.size(); ++j) {
                 if (coord.axes[j].m_id == axis.m_id) {
-                    if (coord.axes[j].m_size != axis.m_size) {
-                        return error_message("axis ", axis.m_id.idName,
-                                             " size mismatch: expected ", axis.m_size.value,
-                                             ", got ", coord.axes[j].m_size.value);
+                    auto compatible = ensure_axis_compatible(axis, coord.axes[j]);
+                    if (!compatible) {
+                        return compatible.error();
                     }
                     my_indexes[i] = coord.indexes[j];
                     found = true;
@@ -502,15 +532,14 @@ auto merge_IndexSpaces(const IndexSpace& a, const IndexSpace& b) -> Maybe_error<
                                [&](const Axis& axis_a) { return axis_a.m_id == axis_b.m_id; });
         if (it == out_axes.end()) {
             out_axes.push_back(axis_b);
-        } else if (it->m_size != axis_b.m_size) {
-            return error_message("axis ", axis_b.m_id.idName,
-                                 " has conflicting sizes: ", it->m_size.value, " and ",
-                                 axis_b.m_size.value);
-        } else if (it->has_labels() && axis_b.has_labels() && it->m_labels != axis_b.m_labels) {
-            return error_message("axis ", axis_b.m_id.idName,
-                                 " has conflicting labels across indexed values");
-        } else if (!it->has_labels() && axis_b.has_labels()) {
+        } else {
+            auto compatible = ensure_axis_compatible(*it, axis_b);
+            if (!compatible) {
+                return compatible.error();
+            }
+            if (!it->has_labels() && axis_b.has_labels()) {
             it->m_labels = axis_b.m_labels;
+            }
         }
     }
     return IndexSpace{std::move(out_axes)};
