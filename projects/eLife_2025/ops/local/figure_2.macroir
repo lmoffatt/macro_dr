@@ -25,14 +25,17 @@ simulation_file = write_csv(experiment= experiment, simulations=simulations,
    path= "figures/data/figure_2_simulation")
 
 
-algorithm_axis = axis(name= "algorithm", labels= ["macro_MNRV", "macro_MRV", "macro_IRV"])
+algorithm_axis = axis(name= "algorithm", labels= ["macro_MNRV", "macro_MRV", "macro_IRV", "macro_IRTV"])
+
+algo_recursive_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,true,true,true])
+algo_taylor_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,false,false,true])
 
 algorithms = build_likelihood_function(model =model,
             adaptive_approximation = false,
-            recursive_approximation = indexed_bool_by(axis= algorithm_axis, values=[false,true,true]),
-            averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[1,1,2]),
+            recursive_approximation = algo_recursive_approximation,
+            averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[1,1,2,2]),
             variance_approximation = true,
-            taylor_variance_correction = false)
+            taylor_variance_correction = algo_taylor_approximation)
 
 
 

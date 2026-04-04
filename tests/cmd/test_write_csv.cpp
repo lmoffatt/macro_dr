@@ -5,6 +5,7 @@
 #include <macrodr/cmd/load_experiment.h>
 #include <macrodr/cmd/simulate.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -48,25 +49,58 @@ std::vector<std::string> read_lines(const std::filesystem::path& path) {
 
 std::vector<std::string> split_csv_row(const std::string& row) {
     std::vector<std::string> columns;
-    std::stringstream ss(row);
     std::string cell;
-    while (std::getline(ss, cell, ',')) {
-        columns.push_back(cell);
+    bool in_quotes = false;
+    for (std::size_t i = 0; i < row.size(); ++i) {
+        const char ch = row[i];
+        if (in_quotes) {
+            if (ch == '"') {
+                if (i + 1 < row.size() && row[i + 1] == '"') {
+                    cell.push_back('"');
+                    ++i;
+                } else {
+                    in_quotes = false;
+                }
+            } else {
+                cell.push_back(ch);
+            }
+        } else if (ch == ',') {
+            columns.push_back(cell);
+            cell.clear();
+        } else if (ch == '"') {
+            in_quotes = true;
+        } else {
+            cell.push_back(ch);
+        }
     }
-    if (!row.empty() && row.back() == ',') {
-        columns.emplace_back();
-    }
+    columns.push_back(cell);
     return columns;
 }
 
-constexpr std::string_view kUnifiedHeader =
+constexpr std::string_view kBaseHeader =
     "scope,simulation_index,sample_index,segment_index,sub_index,n_step,"
     "step_start,step_end,step_middle,agonist,patch_current,"
     "component_path,value_row,value_col,"
     "probit,calculus,statistic,quantile_level,"
-    "param_index,param_col,param_name,"
-    "axis_name,axis_index,axis_label,n_substeps,"
-    "value";
+    "param_index,param_col,param_name";
+
+std::string expected_header(std::initializer_list<std::string_view> axis_names = {}) {
+    std::string out(kBaseHeader);
+    for (const auto axis_name : axis_names) {
+        out += ",";
+        out += axis_name;
+    }
+    out += ",value";
+    return out;
+}
+
+std::size_t column_index(const std::vector<std::string>& header, std::string_view name) {
+    const auto it = std::find(header.begin(), header.end(), name);
+    if (it == header.end()) {
+        throw std::runtime_error("missing CSV column: " + std::string(name));
+    }
+    return static_cast<std::size_t>(std::distance(header.begin(), it));
+}
 
 SymPosDefMatrix<double> make_diag_spd(std::initializer_list<double> diag_vals) {
     const std::size_t n = diag_vals.size();
@@ -124,7 +158,7 @@ TEST_CASE("generic write_csv serializes moment and probit statistics", "[write_c
 
     const auto lines = read_lines(base.string() + ".csv");
     REQUIRE(lines.size() == 7);
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header());
 
     CHECK(lines[1].find("summary") == 0);
     CHECK(lines[1].find(",point,primitive,count,") != std::string::npos);
@@ -158,40 +192,40 @@ TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {
 
     const auto lines = read_lines(base.string() + ".csv");
     REQUIRE(lines.size() == 3);
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header());
+
+    const auto header = split_csv_row(lines.front());
 
     const auto first = split_csv_row(lines[1]);
     const auto second = split_csv_row(lines[2]);
-    REQUIRE(first.size() == 26);
-    REQUIRE(second.size() == 26);
+    REQUIRE(first.size() == header.size());
+    REQUIRE(second.size() == header.size());
 
-    CHECK(first[0] == "recording");
-    CHECK(first[1].empty());
-    CHECK(first[2] == "0");
-    CHECK(first[3] == "0");
-    CHECK(first[4].empty());
-    CHECK(first[5] == "0");
-    CHECK(first[9] == "5");
-    CHECK(first[10] == "0.1");
-    CHECK(first[11] == "patch_current");
-    CHECK(first[14] == "point");
-    CHECK(first[15] == "primitive");
-    CHECK(first[16] == "value");
-    CHECK(first[24].empty());
-    CHECK(first[25] == "0.1");
+    CHECK(first[column_index(header, "scope")] == "recording");
+    CHECK(first[column_index(header, "simulation_index")].empty());
+    CHECK(first[column_index(header, "sample_index")] == "0");
+    CHECK(first[column_index(header, "segment_index")] == "0");
+    CHECK(first[column_index(header, "sub_index")].empty());
+    CHECK(first[column_index(header, "n_step")] == "0");
+    CHECK(first[column_index(header, "agonist")] == "5");
+    CHECK(first[column_index(header, "patch_current")] == "0.1");
+    CHECK(first[column_index(header, "component_path")] == "patch_current");
+    CHECK(first[column_index(header, "probit")] == "point");
+    CHECK(first[column_index(header, "calculus")] == "primitive");
+    CHECK(first[column_index(header, "statistic")] == "value");
+    CHECK(first[column_index(header, "value")] == "0.1");
 
-    CHECK(second[0] == "recording");
-    CHECK(second[2] == "1");
-    CHECK(second[3] == "0");
-    CHECK(second[5] == "1");
-    CHECK(second[9] == "7");
-    CHECK(second[10] == "0.2");
-    CHECK(second[11] == "patch_current");
-    CHECK(second[14] == "point");
-    CHECK(second[15] == "primitive");
-    CHECK(second[16] == "value");
-    CHECK(second[24].empty());
-    CHECK(second[25] == "0.2");
+    CHECK(second[column_index(header, "scope")] == "recording");
+    CHECK(second[column_index(header, "sample_index")] == "1");
+    CHECK(second[column_index(header, "segment_index")] == "0");
+    CHECK(second[column_index(header, "n_step")] == "1");
+    CHECK(second[column_index(header, "agonist")] == "7");
+    CHECK(second[column_index(header, "patch_current")] == "0.2");
+    CHECK(second[column_index(header, "component_path")] == "patch_current");
+    CHECK(second[column_index(header, "probit")] == "point");
+    CHECK(second[column_index(header, "calculus")] == "primitive");
+    CHECK(second[column_index(header, "statistic")] == "value");
+    CHECK(second[column_index(header, "value")] == "0.2");
 }
 
 TEST_CASE("generic write_csv serializes one-dimensional indexed values with axis metadata",
@@ -209,26 +243,22 @@ TEST_CASE("generic write_csv serializes one-dimensional indexed values with axis
 
     const auto lines = read_lines(base.string() + ".csv");
     REQUIRE(lines.size() == 3);
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header({"models"}));
+
+    const auto header = split_csv_row(lines.front());
 
     const auto first = split_csv_row(lines[1]);
     const auto second = split_csv_row(lines[2]);
-    REQUIRE(first.size() == 26);
-    REQUIRE(second.size() == 26);
+    REQUIRE(first.size() == header.size());
+    REQUIRE(second.size() == header.size());
 
-    CHECK(first[0] == "summary");
-    CHECK(first[11].empty());
-    CHECK(first[21] == "models");
-    CHECK(first[22] == "0");
-    CHECK(first[23] == "scheme_CO");
-    CHECK(first[24].empty());
-    CHECK(first[25] == "1");
+    CHECK(first[column_index(header, "scope")] == "summary");
+    CHECK(first[column_index(header, "component_path")].empty());
+    CHECK(first[column_index(header, "models")] == "scheme_CO");
+    CHECK(first[column_index(header, "value")] == "1");
 
-    CHECK(second[21] == "models");
-    CHECK(second[22] == "1");
-    CHECK(second[23] == "scheme_CCO");
-    CHECK(second[24].empty());
-    CHECK(second[25] == "2");
+    CHECK(second[column_index(header, "models")] == "scheme_CCO");
+    CHECK(second[column_index(header, "value")] == "2");
 }
 
 TEST_CASE("simulation write_csv merges indexed simulation batches and emits n_substeps",
@@ -256,36 +286,29 @@ TEST_CASE("simulation write_csv merges indexed simulation batches and emits n_su
 
     const auto lines = read_lines(base.string() + ".csv");
     REQUIRE(lines.size() == 7);
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header({"n_substeps"}));
+
+    const auto header = split_csv_row(lines.front());
 
     const auto first = split_csv_row(lines[1]);
     const auto third = split_csv_row(lines[3]);
     const auto last = split_csv_row(lines[6]);
-    REQUIRE(first.size() == 26);
-    REQUIRE(third.size() == 26);
-    REQUIRE(last.size() == 26);
+    REQUIRE(first.size() == header.size());
+    REQUIRE(third.size() == header.size());
+    REQUIRE(last.size() == header.size());
 
-    CHECK(first[0] == "simulation");
-    CHECK(first[1] == "0");
-    CHECK(first[21] == "n_substeps");
-    CHECK(first[22] == "0");
-    CHECK(first[23] == "10");
-    CHECK(first[24] == "10");
-    CHECK(first[25] == "0.1");
+    CHECK(first[column_index(header, "scope")] == "simulation");
+    CHECK(first[column_index(header, "simulation_index")] == "0");
+    CHECK(first[column_index(header, "n_substeps")] == "10");
+    CHECK(first[column_index(header, "value")] == "0.1");
 
-    CHECK(third[1] == "0");
-    CHECK(third[21] == "n_substeps");
-    CHECK(third[22] == "1");
-    CHECK(third[23] == "30");
-    CHECK(third[24] == "30");
-    CHECK(third[25] == "0.3");
+    CHECK(third[column_index(header, "simulation_index")] == "0");
+    CHECK(third[column_index(header, "n_substeps")] == "30");
+    CHECK(third[column_index(header, "value")] == "0.3");
 
-    CHECK(last[1] == "1");
-    CHECK(last[21] == "n_substeps");
-    CHECK(last[22] == "1");
-    CHECK(last[23] == "30");
-    CHECK(last[24] == "30");
-    CHECK(last[25] == "0.6");
+    CHECK(last[column_index(header, "simulation_index")] == "1");
+    CHECK(last[column_index(header, "n_substeps")] == "30");
+    CHECK(last[column_index(header, "value")] == "0.6");
 }
 
 TEST_CASE("simulation write_csv supports indexed single simulations", "[write_csv]") {
@@ -310,51 +333,174 @@ TEST_CASE("simulation write_csv supports indexed single simulations", "[write_cs
 
     const auto lines = read_lines(base.string() + ".csv");
     REQUIRE(lines.size() == 5);
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header({"n_substeps"}));
+
+    const auto header = split_csv_row(lines.front());
 
     const auto first = split_csv_row(lines[1]);
     const auto last = split_csv_row(lines[4]);
-    REQUIRE(first.size() == 26);
-    REQUIRE(last.size() == 26);
+    REQUIRE(first.size() == header.size());
+    REQUIRE(last.size() == header.size());
 
-    CHECK(first[0] == "simulation");
-    CHECK(first[1].empty());
-    CHECK(first[21] == "n_substeps");
-    CHECK(first[22] == "0");
-    CHECK(first[23] == "10");
-    CHECK(first[24] == "10");
-    CHECK(first[25] == "0.1");
+    CHECK(first[column_index(header, "scope")] == "simulation");
+    CHECK(first[column_index(header, "simulation_index")].empty());
+    CHECK(first[column_index(header, "n_substeps")] == "10");
+    CHECK(first[column_index(header, "value")] == "0.1");
 
-    CHECK(last[1].empty());
-    CHECK(last[21] == "n_substeps");
-    CHECK(last[22] == "1");
-    CHECK(last[23] == "30");
-    CHECK(last[24] == "30");
-    CHECK(last[25] == "0.4");
+    CHECK(last[column_index(header, "simulation_index")].empty());
+    CHECK(last[column_index(header, "n_substeps")] == "30");
+    CHECK(last[column_index(header, "value")] == "0.4");
 }
 
-TEST_CASE("indexed write_csv helpers enforce exact one-dimensional spaces", "[write_csv]") {
+TEST_CASE("indexed write_csv helpers merge spaces for broadcast and cartesian product",
+          "[write_csv]") {
     using namespace macrodr;
     using namespace macrodr::cmd;
 
     var::Axis n_substeps_a{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
     var::Axis n_substeps_b{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
     var::Axis models{var::AxisId{"models"}, std::vector<std::string>{"scheme_CO", "scheme_CCO"}};
+    var::Axis conflicting_n_substeps{var::AxisId{"n_substeps"},
+                                     std::vector<std::string>{"10", "100"}};
 
-    auto same = macrodr::cmd::detail::require_matching_indexed_write_csv_spaces(
+    auto same = macrodr::cmd::detail::merge_indexed_write_csv_spaces(
         var::IndexSpace{{n_substeps_a}}, "simulation", var::IndexSpace{{n_substeps_b}},
         "likelihood");
     REQUIRE(same);
+    CHECK(same.value().m_axes.size() == 1);
+    CHECK(same.value().m_axes[0].m_id.idName == "n_substeps");
 
-    auto mismatch = macrodr::cmd::detail::require_matching_indexed_write_csv_spaces(
+    auto cartesian = macrodr::cmd::detail::merge_indexed_write_csv_spaces(
         var::IndexSpace{{n_substeps_a}}, "simulation", var::IndexSpace{{models}}, "likelihood");
-    REQUIRE_FALSE(mismatch);
-    CHECK(mismatch.error()().find("same index space") != std::string::npos);
+    REQUIRE(cartesian);
+    CHECK(cartesian.value().m_axes.size() == 2);
+    CHECK(cartesian.value().m_axes[0].m_id.idName == "n_substeps");
+    CHECK(cartesian.value().m_axes[1].m_id.idName == "models");
+
+    var::Axis algorithms{var::AxisId{"algorithm"}, std::vector<std::string>{"macro_MRV", "macro_IRV"}};
+    auto broadcast = macrodr::cmd::detail::merge_indexed_write_csv_spaces(
+        var::IndexSpace{{n_substeps_a, algorithms}}, "simulation",
+        var::IndexSpace{{n_substeps_b}}, "likelihood");
+    REQUIRE(broadcast);
+    CHECK(broadcast.value().m_axes.size() == 2);
+    CHECK(broadcast.value().m_axes[0].m_id.idName == "n_substeps");
+    CHECK(broadcast.value().m_axes[1].m_id.idName == "algorithm");
+
+    auto reordered = macrodr::cmd::detail::merge_indexed_write_csv_spaces(
+        var::IndexSpace{{n_substeps_a, algorithms}}, "simulation",
+        var::IndexSpace{{algorithms, n_substeps_b}}, "likelihood");
+    REQUIRE(reordered);
+    CHECK(reordered.value().m_axes.size() == 2);
+    CHECK(reordered.value().m_axes[0].m_id.idName == "n_substeps");
+    CHECK(reordered.value().m_axes[1].m_id.idName == "algorithm");
+
+    auto conflict = macrodr::cmd::detail::merge_indexed_write_csv_spaces(
+        var::IndexSpace{{n_substeps_a}}, "simulation",
+        var::IndexSpace{{conflicting_n_substeps}}, "likelihood");
+    REQUIRE_FALSE(conflict);
+    CHECK(conflict.error()().find("could not be merged") != std::string::npos);
 
     auto multi_axis = macrodr::cmd::detail::validate_indexed_write_csv_space(
         var::IndexSpace{{n_substeps_a, models}}, "simulation");
-    REQUIRE_FALSE(multi_axis);
-    CHECK(multi_axis.error()().find("one-dimensional") != std::string::npos);
+    REQUIRE(multi_axis);
+
+    var::Axis datasets{var::AxisId{"dataset"}, std::vector<std::string>{"A", "B"}};
+    auto three_axis = macrodr::cmd::detail::validate_indexed_write_csv_space(
+        var::IndexSpace{{n_substeps_a, models, datasets}}, "simulation");
+    REQUIRE(three_axis);
+}
+
+TEST_CASE("generic write_csv serializes two-dimensional indexed values with one column per axis",
+          "[write_csv]") {
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_indexed_2d");
+    const auto base = dir.path / "indexed_summary_2d";
+
+    var::Axis algorithm{var::AxisId{"algorithm"},
+                        std::vector<std::string>{"macro_MRV", "macro_IRV"}};
+    var::Axis n_substeps{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
+    var::Indexed<std::size_t> indexed(var::IndexSpace{{algorithm, n_substeps}}, {1, 2, 3, 4});
+
+    auto out = write_csv(indexed, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    REQUIRE(lines.size() == 5);
+    CHECK(lines.front() == expected_header({"algorithm", "n_substeps"}));
+
+    const auto header = split_csv_row(lines.front());
+
+    const auto first = split_csv_row(lines[1]);
+    const auto second = split_csv_row(lines[2]);
+    const auto third = split_csv_row(lines[3]);
+    const auto fourth = split_csv_row(lines[4]);
+    REQUIRE(first.size() == header.size());
+    REQUIRE(second.size() == header.size());
+    REQUIRE(third.size() == header.size());
+    REQUIRE(fourth.size() == header.size());
+
+    CHECK(first[column_index(header, "algorithm")] == "macro_MRV");
+    CHECK(first[column_index(header, "n_substeps")] == "10");
+    CHECK(first[column_index(header, "value")] == "1");
+
+    CHECK(second[column_index(header, "algorithm")] == "macro_IRV");
+    CHECK(second[column_index(header, "n_substeps")] == "10");
+    CHECK(second[column_index(header, "value")] == "2");
+
+    CHECK(third[column_index(header, "algorithm")] == "macro_MRV");
+    CHECK(third[column_index(header, "n_substeps")] == "30");
+    CHECK(third[column_index(header, "value")] == "3");
+
+    CHECK(fourth[column_index(header, "algorithm")] == "macro_IRV");
+    CHECK(fourth[column_index(header, "n_substeps")] == "30");
+    CHECK(fourth[column_index(header, "value")] == "4");
+}
+
+TEST_CASE("generic write_csv serializes three-dimensional indexed values with one column per axis",
+          "[write_csv]") {
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_indexed_3d");
+    const auto base = dir.path / "indexed_summary_3d";
+
+    var::Axis algorithm{var::AxisId{"algorithm"},
+                        std::vector<std::string>{"macro_MRV", "macro_IRV"}};
+    var::Axis n_substeps{var::AxisId{"n_substeps"}, std::vector<std::string>{"10", "30"}};
+    var::Axis dataset{var::AxisId{"dataset"}, std::vector<std::string>{"A", "B"}};
+    var::Indexed<std::size_t> indexed(
+        var::IndexSpace{{algorithm, n_substeps, dataset}}, {1, 2, 3, 4, 5, 6, 7, 8});
+
+    auto out = write_csv(indexed, base.string());
+    REQUIRE(out);
+
+    const auto lines = read_lines(base.string() + ".csv");
+    REQUIRE(lines.size() == 9);
+    CHECK(lines.front() == expected_header({"algorithm", "n_substeps", "dataset"}));
+
+    const auto header = split_csv_row(lines.front());
+
+    const auto first = split_csv_row(lines[1]);
+    const auto second = split_csv_row(lines[2]);
+    const auto last = split_csv_row(lines[8]);
+    REQUIRE(first.size() == header.size());
+    REQUIRE(second.size() == header.size());
+    REQUIRE(last.size() == header.size());
+
+    CHECK(first[column_index(header, "algorithm")] == "macro_MRV");
+    CHECK(first[column_index(header, "n_substeps")] == "10");
+    CHECK(first[column_index(header, "dataset")] == "A");
+    CHECK(first[column_index(header, "value")] == "1");
+
+    CHECK(second[column_index(header, "algorithm")] == "macro_IRV");
+    CHECK(second[column_index(header, "n_substeps")] == "10");
+    CHECK(second[column_index(header, "dataset")] == "A");
+    CHECK(second[column_index(header, "value")] == "2");
+
+    CHECK(last[column_index(header, "algorithm")] == "macro_IRV");
+    CHECK(last[column_index(header, "n_substeps")] == "30");
+    CHECK(last[column_index(header, "dataset")] == "B");
+    CHECK(last[column_index(header, "value")] == "8");
 }
 
 TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits and skips empty matrices",
@@ -379,7 +525,7 @@ TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits an
         REQUIRE(out);
 
         const auto lines = read_lines(base.string() + ".csv");
-        CHECK(lines.front() == kUnifiedHeader);
+        CHECK(lines.front() == expected_header());
         REQUIRE(lines.size() == 9);
     }
 
@@ -392,7 +538,7 @@ TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits an
 
         const auto lines = read_lines(base.string() + ".csv");
         REQUIRE(lines.size() == 1);
-        CHECK(lines.front() == kUnifiedHeader);
+        CHECK(lines.front() == expected_header());
     }
 }
 
@@ -419,16 +565,18 @@ TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empt
         REQUIRE(out);
 
         const auto lines = read_lines(base.string() + ".csv");
-        CHECK(lines.front() == kUnifiedHeader);
+        CHECK(lines.front() == expected_header());
         REQUIRE(lines.size() == 5);
 
+        const auto header = split_csv_row(lines.front());
         const auto first = split_csv_row(lines[1]);
         const auto second = split_csv_row(lines[2]);
-        REQUIRE(first.size() == 26);
-        REQUIRE(second.size() == 26);
-        CHECK(first[11] == "Probit_statistics_Distortion_Induced_Bias");
-        CHECK(first[20] == "kon");
-        CHECK(second[20] == "koff");
+        REQUIRE(first.size() == header.size());
+        REQUIRE(second.size() == header.size());
+        CHECK(first[column_index(header, "component_path")] ==
+              "Probit_statistics_Distortion_Induced_Bias");
+        CHECK(first[column_index(header, "param_name")] == "kon");
+        CHECK(second[column_index(header, "param_name")] == "koff");
     }
 
     {
@@ -440,7 +588,7 @@ TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empt
 
         const auto lines = read_lines(base.string() + ".csv");
         REQUIRE(lines.size() == 1);
-        CHECK(lines.front() == kUnifiedHeader);
+        CHECK(lines.front() == expected_header());
     }
 }
 
@@ -463,32 +611,34 @@ TEST_CASE("generic write_csv keeps Gaussian Fisher variance matrix-shaped", "[wr
     REQUIRE(out);
 
     const auto lines = read_lines(base.string() + ".csv");
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header());
     REQUIRE(lines.size() == 10);
 
+    const auto header = split_csv_row(lines.front());
     std::vector<std::vector<std::string>> variance_rows;
     for (std::size_t i = 1; i < lines.size(); ++i) {
         auto row = split_csv_row(lines[i]);
-        REQUIRE(row.size() == 26);
-        if (row[11] == "Moment_statistics_Gaussian_Fisher_Information_false" &&
-            row[16] == "variance") {
+        REQUIRE(row.size() == header.size());
+        if (row[column_index(header, "component_path")] ==
+                "Moment_statistics_Gaussian_Fisher_Information_false" &&
+            row[column_index(header, "statistic")] == "variance") {
             variance_rows.push_back(std::move(row));
         }
     }
 
     REQUIRE(variance_rows.size() == 4);
-    CHECK(variance_rows[0][18] == "0");
-    CHECK(variance_rows[0][19] == "0");
-    CHECK(variance_rows[0][20] == "kon_kon");
-    CHECK(variance_rows[1][18] == "0");
-    CHECK(variance_rows[1][19] == "1");
-    CHECK(variance_rows[1][20] == "kon_koff");
-    CHECK(variance_rows[2][18] == "1");
-    CHECK(variance_rows[2][19] == "0");
-    CHECK(variance_rows[2][20] == "koff_kon");
-    CHECK(variance_rows[3][18] == "1");
-    CHECK(variance_rows[3][19] == "1");
-    CHECK(variance_rows[3][20] == "koff_koff");
+    CHECK(variance_rows[0][column_index(header, "param_index")] == "0");
+    CHECK(variance_rows[0][column_index(header, "param_col")] == "0");
+    CHECK(variance_rows[0][column_index(header, "param_name")] == "kon_kon");
+    CHECK(variance_rows[1][column_index(header, "param_index")] == "0");
+    CHECK(variance_rows[1][column_index(header, "param_col")] == "1");
+    CHECK(variance_rows[1][column_index(header, "param_name")] == "kon_koff");
+    CHECK(variance_rows[2][column_index(header, "param_index")] == "1");
+    CHECK(variance_rows[2][column_index(header, "param_col")] == "0");
+    CHECK(variance_rows[2][column_index(header, "param_name")] == "koff_kon");
+    CHECK(variance_rows[3][column_index(header, "param_index")] == "1");
+    CHECK(variance_rows[3][column_index(header, "param_col")] == "1");
+    CHECK(variance_rows[3][column_index(header, "param_name")] == "koff_koff");
 }
 
 TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matrices", "[write_csv]") {
@@ -510,7 +660,9 @@ TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matri
 
     const auto lines = read_lines(base.string() + ".csv");
     REQUIRE(lines.size() == 7);
-    CHECK(lines.front() == kUnifiedHeader);
+    CHECK(lines.front() == expected_header());
+
+    const auto header = split_csv_row(lines.front());
 
     const auto dlogl0 = split_csv_row(lines[1]);
     const auto dlogl1 = split_csv_row(lines[2]);
@@ -519,25 +671,25 @@ TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matri
     const auto fim10 = split_csv_row(lines[5]);
     const auto fim11 = split_csv_row(lines[6]);
 
-    REQUIRE(dlogl0.size() == 26);
-    REQUIRE(fim00.size() == 26);
+    REQUIRE(dlogl0.size() == header.size());
+    REQUIRE(fim00.size() == header.size());
 
-    CHECK(dlogl0[11] == "dlogL");
-    CHECK(dlogl0[18] == "0");
-    CHECK(dlogl0[19].empty());
-    CHECK(dlogl0[20] == "kon");
+    CHECK(dlogl0[column_index(header, "component_path")] == "dlogL");
+    CHECK(dlogl0[column_index(header, "param_index")] == "0");
+    CHECK(dlogl0[column_index(header, "param_col")].empty());
+    CHECK(dlogl0[column_index(header, "param_name")] == "kon");
 
-    CHECK(dlogl1[11] == "dlogL");
-    CHECK(dlogl1[18] == "1");
-    CHECK(dlogl1[19].empty());
-    CHECK(dlogl1[20] == "koff");
+    CHECK(dlogl1[column_index(header, "component_path")] == "dlogL");
+    CHECK(dlogl1[column_index(header, "param_index")] == "1");
+    CHECK(dlogl1[column_index(header, "param_col")].empty());
+    CHECK(dlogl1[column_index(header, "param_name")] == "koff");
 
-    CHECK(fim00[11] == "FIM");
-    CHECK(fim00[18] == "0");
-    CHECK(fim00[19] == "0");
-    CHECK(fim00[20] == "kon_kon");
+    CHECK(fim00[column_index(header, "component_path")] == "FIM");
+    CHECK(fim00[column_index(header, "param_index")] == "0");
+    CHECK(fim00[column_index(header, "param_col")] == "0");
+    CHECK(fim00[column_index(header, "param_name")] == "kon_kon");
 
-    CHECK(fim01[20] == "kon_koff");
-    CHECK(fim10[20] == "koff_kon");
-    CHECK(fim11[20] == "koff_koff");
+    CHECK(fim01[column_index(header, "param_name")] == "kon_koff");
+    CHECK(fim10[column_index(header, "param_name")] == "koff_kon");
+    CHECK(fim11[column_index(header, "param_name")] == "koff_koff");
 }

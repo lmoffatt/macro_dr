@@ -171,7 +171,7 @@ auto calculate_likelihood(const ModelPtr& model0,
     auto nsub = Simulation_n_sub_dt(100);
 
     auto maybe_modelLikelihood =
-        Likelihood_Model_regular<
+        merge_Maybe_variant(Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
@@ -184,7 +184,21 @@ auto calculate_likelihood(const ModelPtr& model0,
                               uses_variance_aproximation_value(variance_approximation),
                               uses_taylor_variance_correction_aproximation_value(
                                   taylor_variance_correction_approximation))
-            .get_variant();
+            .get_variant(),
+        Likelihood_Model_regular<
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation,1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
+            decltype(model_ref)>(model_ref, nsub,
+                              uses_adaptive_aproximation_value(adaptive_approximation),
+                              uses_recursive_aproximation_value(recursive_approximation),
+                              uses_averaging_aproximation_value(averaging_approximation),
+                              uses_variance_aproximation_value(variance_approximation),
+                              uses_taylor_variance_correction_aproximation_value(
+                                  taylor_variance_correction_approximation))
+            .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
@@ -214,7 +228,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
         return dmodel.error();
     }
     auto model0_d = std::move(dmodel.value());
-    auto maybe_modelLikelihood =
+    auto maybe_modelLikelihood = merge_Maybe_variant(
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
@@ -228,7 +242,22 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                                  uses_variance_aproximation_value(variance_approximation),
                                  uses_taylor_variance_correction_aproximation_value(
                                      taylor_variance_correction_approximation))
-            .get_variant();
+            .get_variant(), 
+               Likelihood_Model_regular<
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
+            decltype(*model0_d)>(*model0_d, nsub,
+                                 uses_adaptive_aproximation_value(adaptive_approximation),
+                                 uses_recursive_aproximation_value(recursive_approximation),
+                                 uses_averaging_aproximation_value(averaging_approximation),
+                                 uses_variance_aproximation_value(variance_approximation),
+                                 uses_taylor_variance_correction_aproximation_value(
+                                     taylor_variance_correction_approximation))
+            .get_variant());
+    ;
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
@@ -257,13 +286,27 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
         return dmodel.error();
     }
     auto model0_d = std::move(dmodel.value());
-    auto maybe_modelLikelihood =
+    auto maybe_modelLikelihood =merge_Maybe_variant(
+         Likelihood_Model_regular<
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+             decltype(*model0_d)>(*model0_d, nsub,
+                                  uses_adaptive_aproximation_value(adaptive_approximation),
+                                  uses_recursive_aproximation_value(recursive_approximation),
+                                  uses_averaging_aproximation_value(averaging_approximation),
+                                  uses_variance_aproximation_value(variance_approximation),
+                                  uses_taylor_variance_correction_aproximation_value(
+                                      taylor_variance_correction_approximation))
+            .get_variant(),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation,  true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,  true>,
             decltype(*model0_d)>(*model0_d, nsub,
                                  uses_adaptive_aproximation_value(adaptive_approximation),
                                  uses_recursive_aproximation_value(recursive_approximation),
@@ -271,7 +314,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
                                  uses_variance_aproximation_value(variance_approximation),
                                  uses_taylor_variance_correction_aproximation_value(
                                      taylor_variance_correction_approximation))
-            .get_variant();
+            .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
@@ -296,7 +339,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto maybe_modelLikelihood =
+    auto maybe_modelLikelihood =merge_Maybe_variant(
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
@@ -310,7 +353,21 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                               uses_variance_aproximation_value(variance_approximation),
                               uses_taylor_variance_correction_aproximation_value(
                                   taylor_variance_correction_approximation))
-            .get_variant();
+            .get_variant(),
+            Likelihood_Model_regular<
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation,  1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
+            decltype(model_ref)>(model_ref, nsub,
+                              uses_adaptive_aproximation_value(adaptive_approximation),
+                              uses_recursive_aproximation_value(recursive_approximation),
+                              uses_averaging_aproximation_value(averaging_approximation),
+                              uses_variance_aproximation_value(variance_approximation),
+                              uses_taylor_variance_correction_aproximation_value(
+                                  taylor_variance_correction_approximation))
+            .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
@@ -336,13 +393,13 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto maybe_modelLikelihood =
+    auto maybe_modelLikelihood =merge_Maybe_variant(
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false >,
             decltype(model_ref)>(model_ref, nsub,
                               uses_adaptive_aproximation_value(adaptive_approximation),
                               uses_recursive_aproximation_value(recursive_approximation),
@@ -350,7 +407,21 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                               uses_variance_aproximation_value(variance_approximation),
                               uses_taylor_variance_correction_aproximation_value(
                                   taylor_variance_correction_approximation))
-            .get_variant();
+            .get_variant(),
+            Likelihood_Model_regular<
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation,  true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation,  1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
+            decltype(model_ref)>(model_ref, nsub,
+                              uses_adaptive_aproximation_value(adaptive_approximation),
+                              uses_recursive_aproximation_value(recursive_approximation),
+                              uses_averaging_aproximation_value(averaging_approximation),
+                              uses_variance_aproximation_value(variance_approximation),
+                              uses_taylor_variance_correction_aproximation_value(
+                                  taylor_variance_correction_approximation))
+            .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
@@ -380,13 +451,27 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
         return dmodel.error();
     }
     auto model0_d = std::move(dmodel.value());
-    auto maybe_modelLikelihood =
-        Likelihood_Model_regular<
+    auto maybe_modelLikelihood =merge_Maybe_variant(
+         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+             decltype(*model0_d)>(*model0_d, nsub,
+                                  uses_adaptive_aproximation_value(adaptive_approximation),
+                                  uses_recursive_aproximation_value(recursive_approximation),
+                                  uses_averaging_aproximation_value(averaging_approximation),
+                                  uses_variance_aproximation_value(variance_approximation),
+                                  uses_taylor_variance_correction_aproximation_value(
+                                      taylor_variance_correction_approximation))
+            .get_variant(), 
+               Likelihood_Model_regular<
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation,  true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
             decltype(*model0_d)>(*model0_d, nsub,
                                  uses_adaptive_aproximation_value(adaptive_approximation),
                                  uses_recursive_aproximation_value(recursive_approximation),
@@ -394,8 +479,8 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                                  uses_variance_aproximation_value(variance_approximation),
                                  uses_taylor_variance_correction_aproximation_value(
                                      taylor_variance_correction_approximation))
-            .get_variant();
-    if (!maybe_modelLikelihood) {
+            .get_variant());
+       if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
@@ -424,8 +509,7 @@ auto calculate_dlikelihood_predictions_model(
     return std::visit(
         [&](auto m_ptr) -> Maybe_error<dMacro_State_Ev_gradient_all> {
             auto& m = *m_ptr;
-            auto maybe_modelLikelihood =
-
+            auto maybe_modelLikelihood = merge_Maybe_variant(
                 Likelihood_Model_regular<
                     var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                     var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
@@ -439,7 +523,21 @@ auto calculate_dlikelihood_predictions_model(
                                  uses_variance_aproximation_value(variance_approximation),
                                  uses_taylor_variance_correction_aproximation_value(
                                      taylor_variance_correction_approximation))
-                    .get_variant();
+                    .get_variant(),
+                Likelihood_Model_regular<
+                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                    var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                    var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                    var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                              true>,
+                    decltype(m)>(m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
+                                 uses_recursive_aproximation_value(recursive_approximation),
+                                 uses_averaging_aproximation_value(averaging_approximation),
+                                 uses_variance_aproximation_value(variance_approximation),
+                                 uses_taylor_variance_correction_aproximation_value(
+                                     taylor_variance_correction_approximation))
+                    .get_variant());
             if (!maybe_modelLikelihood) {
                 return maybe_modelLikelihood.error();
             }
@@ -1017,10 +1115,10 @@ Maybe_error<std::string> write_csv(Experiment const& e,
     if (!lik_valid) {
         return lik_valid.error();
     }
-    auto spaces_match = detail::require_matching_indexed_write_csv_spaces(
+    auto maybe_space = detail::merge_indexed_write_csv_spaces(
         simulation.index_space(), "simulation", lik.index_space(), "likelihood");
-    if (!spaces_match) {
-        return spaces_match.error();
+    if (!maybe_space) {
+        return maybe_space.error();
     }
     auto maybe_first = indexed_front(lik);
     if (!maybe_first) {
@@ -1028,7 +1126,7 @@ Maybe_error<std::string> write_csv(Experiment const& e,
     }
 
     return detail::write_indexed_rows_csv(
-        simulation.index_space(), detail::get_param_names_if_any(maybe_first.value().get()),
+        maybe_space.value(), detail::get_param_names_if_any(maybe_first.value().get()),
         std::move(path),
         [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
             const var::Coordinate& coord) -> Maybe_error<bool> {
@@ -1164,10 +1262,10 @@ Maybe_error<std::string> write_csv(
     if (!lik_valid) {
         return lik_valid.error();
     }
-    auto spaces_match = detail::require_matching_indexed_write_csv_spaces(
+    auto maybe_space = detail::merge_indexed_write_csv_spaces(
         simulation.index_space(), "simulations", liks.index_space(), "likelihood");
-    if (!spaces_match) {
-        return spaces_match.error();
+    if (!maybe_space) {
+        return maybe_space.error();
     }
     auto maybe_first = indexed_front(liks);
     if (!maybe_first) {
@@ -1176,7 +1274,7 @@ Maybe_error<std::string> write_csv(
     auto param_names = first_non_empty_param_names(maybe_first.value().get());
 
     return detail::write_indexed_rows_csv(
-        simulation.index_space(), param_names, std::move(path),
+        maybe_space.value(), param_names, std::move(path),
         [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
             const var::Coordinate& coord) -> Maybe_error<bool> {
             auto maybe_sim = simulation.at(coord);

@@ -1,0 +1,59 @@
+model = load_model("scheme_1")
+parameter = load_parameters(model, "../data/scheme_1_PI_par.csv")
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+experiment = create_experiment(
+    experiment_structure=[{1,10,10.0}],
+    frequency_of_sampling=50e3,
+    initial_agonist=0.0,
+    initial_time=0.0)
+observations = set_observations(values_set=[0.0])
+
+n_substeps_axis = axis(
+    name="n_substeps",
+    labels=["10","30"])
+
+simulation_n_substeps = indexed_by(
+    axis=n_substeps_axis,
+    values=[1,3])
+
+simulations = simulate(
+    model=model,
+    parameter_transformed=par_tr,
+    n_simulations=2,
+    experiment=experiment,
+    observations=observations,
+    number_of_substeps=simulation_n_substeps,
+    seed=0)
+
+algorithm_axis = axis(
+    name="algorithm",
+    labels=["macro_MRV","macro_IRV"])
+
+algo_recursive_approximation = indexed_bool_by(
+    axis=algorithm_axis,
+    values=[true,true])
+
+algo_averaging_approximation = indexed_int_by(
+    axis=algorithm_axis,
+    values=[1,2])
+
+algorithms = build_likelihood_function(
+    model=model,
+    adaptive_approximation=false,
+    recursive_approximation=algo_recursive_approximation,
+    averaging_approximation=algo_averaging_approximation,
+    variance_approximation=true,
+    taylor_variance_correction=false)
+
+dlikelihood_predictions = calc_dlikelihood_predictions(
+    likelihood_algorithm=algorithms,
+    parameters=par_tr,
+    experiment=experiment,
+    data_series=simulations)
+
+predictions_file = write_csv(
+    experiment=experiment,
+    simulations=simulations,
+    likelihood=dlikelihood_predictions,
+    path="write_csv_likelihood_broadcast_smoke")

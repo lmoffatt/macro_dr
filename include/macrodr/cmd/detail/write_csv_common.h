@@ -3,6 +3,7 @@
 #include <derivative_operator.h>
 #include <macrodr/dsl/type_name.h>
 
+#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <iomanip>
@@ -145,21 +146,20 @@ struct CsvContext {
     std::optional<std::size_t> param_index;
     std::optional<std::size_t> param_col;
     std::optional<std::string> param_name;
-    std::optional<std::string> axis_name;
-    std::optional<std::size_t> axis_index;
-    std::optional<std::string> axis_label;
-    std::optional<std::size_t> n_substeps;
+    std::vector<std::optional<std::string>> axis_values;
 };
 
 class CsvWriter {
   public:
-    CsvWriter(std::ostream& out, const std::vector<std::string>& param_names)
-        : out_(out), param_names_(param_names) {
+    CsvWriter(std::ostream& out, const std::vector<std::string>& param_names,
+              std::vector<std::string> axis_names = {})
+        : out_(out), param_names_(param_names), axis_names_(std::move(axis_names)) {
         out_ << std::setprecision(std::numeric_limits<double>::digits10 + 1);
         write_header();
     }
 
     const std::vector<std::string>& param_names() const { return param_names_; }
+    const std::vector<std::string>& axis_names() const { return axis_names_; }
 
     void write_row(const CsvContext& ctx, std::string_view calculus, double value) {
         write_string(ctx.scope);
@@ -205,18 +205,12 @@ class CsvWriter {
         if (ctx.param_name.has_value()) {
             write_string(*ctx.param_name);
         }
-        out_ << ",";
-        if (ctx.axis_name.has_value()) {
-            write_string(*ctx.axis_name);
+        for (std::size_t i = 0; i < axis_names_.size(); ++i) {
+            out_ << ",";
+            if (i < ctx.axis_values.size() && ctx.axis_values[i].has_value()) {
+                write_string(*ctx.axis_values[i]);
+            }
         }
-        out_ << ",";
-        write_optional(ctx.axis_index);
-        out_ << ",";
-        if (ctx.axis_label.has_value()) {
-            write_string(*ctx.axis_label);
-        }
-        out_ << ",";
-        write_optional(ctx.n_substeps);
         out_ << "," << value << "\n";
     }
 
@@ -228,24 +222,62 @@ class CsvWriter {
         }
     }
 
-    void write_string(const std::string& v) { out_ << v; }
+    void write_string(const std::string& v) {
+        const bool needs_quotes =
+            v.find_first_of(",\"\n\r") != std::string::npos;
+        if (!needs_quotes) {
+            out_ << v;
+            return;
+        }
+        out_ << '"';
+        for (char ch : v) {
+            if (ch == '"') {
+                out_ << "\"\"";
+            } else {
+                out_ << ch;
+            }
+        }
+        out_ << '"';
+    }
 
     void write_header() {
         out_ << "scope,simulation_index,sample_index,segment_index,sub_index,n_step,"
                 "step_start,step_end,step_middle,agonist,patch_current,"
                 "component_path,value_row,value_col,"
                 "probit,calculus,statistic,quantile_level,"
-                "param_index,param_col,param_name,"
-                "axis_name,axis_index,axis_label,n_substeps,"
-                "value\n";
+                "param_index,param_col,param_name";
+        for (const auto& axis_name : axis_names_) {
+            out_ << ",";
+            write_string(axis_name);
+        }
+        out_ << ",value\n";
     }
 
     std::ostream& out_;
     const std::vector<std::string>& param_names_;
+    std::vector<std::string> axis_names_;
 };
 
 template <class T>
 std::optional<std::vector<std::string>> find_param_names(const T& x);
+
+inline Maybe_error<std::optional<var::IndexSpace>> merge_optional_index_spaces(
+    std::optional<var::IndexSpace> lhs, const std::optional<var::IndexSpace>& rhs) {
+    if (!rhs.has_value()) {
+        return lhs;
+    }
+    if (!lhs.has_value()) {
+        return rhs;
+    }
+    auto maybe_merged = var::merge_IndexSpaces(*lhs, *rhs);
+    if (!maybe_merged) {
+        return maybe_merged.error();
+    }
+    return std::optional<var::IndexSpace>{maybe_merged.value()};
+}
+
+template <class T>
+Maybe_error<std::optional<var::IndexSpace>> find_index_space_if_any(const T& x);
 
 inline void assign_vector_param_metadata(CsvContext& ctx, const std::vector<std::string>& names,
                                          std::size_t index) {
@@ -269,33 +301,43 @@ inline void assign_matrix_param_metadata(CsvContext& ctx, const std::vector<std:
     }
 }
 
-inline auto maybe_parse_n_substeps_label(const std::string& axis_name, const std::string& label)
-    -> std::optional<std::size_t> {
-    if (axis_name != "n_substeps" && axis_name != "number_of_substeps") {
-        return std::nullopt;
+inline std::vector<std::string> axis_column_names(const var::IndexSpace& space) {
+    std::vector<std::string> out;
+    out.reserve(space.m_axes.size());
+    for (const auto& axis : space.m_axes) {
+        out.push_back(axis.m_id.idName);
     }
-    try {
-        std::size_t pos = 0;
-        auto parsed = std::stoull(label, &pos);
-        if (pos != label.size()) {
-            return std::nullopt;
-        }
-        return static_cast<std::size_t>(parsed);
-    } catch (...) {
-        return std::nullopt;
-    }
+    return out;
 }
 
-inline Maybe_error<bool> assign_axis_metadata(CsvContext& ctx, const var::Axis& axis,
-                                              var::AxisIndex index) {
-    ctx.axis_name = axis.m_id.idName;
-    ctx.axis_index = index.value;
-    auto maybe_label = axis.label_for(index);
-    if (!maybe_label) {
-        return maybe_label.error();
+inline Maybe_error<bool> assign_coordinate_metadata(CsvContext& ctx,
+                                                    const std::vector<std::string>& axis_names,
+                                                    const var::Coordinate& coord) {
+    auto valid = coord.validate();
+    if (!valid) {
+        return valid.error();
     }
-    ctx.axis_label = maybe_label.value();
-    ctx.n_substeps = maybe_parse_n_substeps_label(axis.m_id.idName, maybe_label.value());
+    if (ctx.axis_values.size() != axis_names.size()) {
+        ctx.axis_values.resize(axis_names.size());
+    }
+    if (coord.axis().empty()) {
+        return true;
+    }
+
+    for (std::size_t i = 0; i < coord.axis().size(); ++i) {
+        const auto& axis = coord.axis()[i];
+        auto maybe_label = axis.label_for(coord.index()[i]);
+        if (!maybe_label) {
+            return maybe_label.error();
+        }
+        auto it = std::find(axis_names.begin(), axis_names.end(), axis.m_id.idName);
+        if (it == axis_names.end()) {
+            return error_message("coordinate axis ", axis.m_id.idName,
+                                 " is not present in CSV header axis columns");
+        }
+        ctx.axis_values[static_cast<std::size_t>(std::distance(axis_names.begin(), it))] =
+            maybe_label.value();
+    }
     return true;
 }
 
@@ -309,10 +351,7 @@ inline Maybe_error<bool> validate_indexed_write_csv_space(const var::IndexSpace&
     if (!valid) {
         return valid.error();
     }
-    if (space.m_axes.size() > 1) {
-        return error_message("write_csv for ", std::string(what),
-                             " currently supports one-dimensional indexed values only");
-    }
+    (void)what;
     return true;
 }
 
@@ -326,7 +365,7 @@ Maybe_error<bool> validate_indexed_write_csv_value(const var::Indexed<T>& indexe
     return validate_indexed_write_csv_space(indexed.index_space(), what);
 }
 
-inline Maybe_error<bool> require_matching_indexed_write_csv_spaces(
+inline Maybe_error<var::IndexSpace> merge_indexed_write_csv_spaces(
     const var::IndexSpace& lhs, std::string_view lhs_name, const var::IndexSpace& rhs,
     std::string_view rhs_name) {
     auto lhs_valid = validate_indexed_write_csv_space(lhs, lhs_name);
@@ -337,18 +376,13 @@ inline Maybe_error<bool> require_matching_indexed_write_csv_spaces(
     if (!rhs_valid) {
         return rhs_valid.error();
     }
-    if (lhs.m_axes.size() != rhs.m_axes.size()) {
+    auto maybe_merged = var::merge_IndexSpaces(lhs, rhs);
+    if (!maybe_merged) {
         return error_message("write_csv indexed arguments ", std::string(lhs_name), " and ",
-                             std::string(rhs_name), " must have the same index space");
+                             std::string(rhs_name), " could not be merged: ",
+                             maybe_merged.error()());
     }
-    if (lhs.m_axes.empty()) {
-        return true;
-    }
-    if (!same_axis_definition(lhs.m_axes.front(), rhs.m_axes.front())) {
-        return error_message("write_csv indexed arguments ", std::string(lhs_name), " and ",
-                             std::string(rhs_name), " must have the same index space");
-    }
-    return true;
+    return maybe_merged.value();
 }
 
 template <class EmitRows>
@@ -366,15 +400,15 @@ Maybe_error<std::string> write_indexed_rows_csv(const var::IndexSpace& space,
         return error_message("cannot open ", path_with_extension);
     }
 
-    CsvWriter writer(f, param_names);
+    const auto axis_names = axis_column_names(space);
+    CsvWriter writer(f, param_names, axis_names);
     auto coord = space.begin();
     while (true) {
         CsvContext base_ctx;
-        if (!space.m_axes.empty()) {
-            auto maybe_meta = assign_axis_metadata(base_ctx, space.m_axes.front(), coord.index().front());
-            if (!maybe_meta) {
-                return maybe_meta.error();
-            }
+        base_ctx.axis_values.resize(axis_names.size());
+        auto maybe_meta = assign_coordinate_metadata(base_ctx, axis_names, coord);
+        if (!maybe_meta) {
+            return maybe_meta.error();
         }
 
         auto ok = emit_rows(writer, base_ctx, coord);
@@ -491,6 +525,88 @@ std::vector<std::string> get_param_names_if_any(const T& x) {
     return {};
 }
 
+template <class T>
+Maybe_error<std::optional<var::IndexSpace>> find_index_space_in_vector_space(const T& x) {
+    using Tuple = typename vector_space_types<std::remove_cvref_t<T>>::types;
+    std::optional<var::IndexSpace> found;
+    Maybe_error<bool> ok = true;
+    []<std::size_t... Is>(const T& value, std::optional<var::IndexSpace>& out, Maybe_error<bool>& ok_ref,
+                          std::index_sequence<Is...>) {
+        (([&] {
+            if (!ok_ref || !ok_ref.value()) {
+                return;
+            }
+            using Comp = typename std::tuple_element_t<Is, Tuple>::type;
+            auto maybe_space = find_index_space_if_any(get<Comp>(value));
+            if (!maybe_space) {
+                ok_ref = maybe_space.error();
+                return;
+            }
+            auto maybe_merged = merge_optional_index_spaces(std::move(out), maybe_space.value());
+            if (!maybe_merged) {
+                ok_ref = maybe_merged.error();
+                return;
+            }
+            out = maybe_merged.value();
+        }()),
+         ...);
+    }(x, found, ok, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
+    if (!ok) {
+        return ok.error();
+    }
+    return found;
+}
+
+template <class T>
+Maybe_error<std::optional<var::IndexSpace>> find_index_space_if_any(const T& x) {
+    if constexpr (is_of_this_template_type_v<T, var::Indexed>) {
+        return std::optional<var::IndexSpace>{x.index_space()};
+    } else if constexpr (is_vector_space_v<T>) {
+        return find_index_space_in_vector_space(x);
+    } else if constexpr (requires { x(); }) {
+        return find_index_space_if_any(x());
+    } else if constexpr (requires {
+                             x.nrows();
+                             x.ncols();
+                             x(0ul, 0ul);
+                         }) {
+        std::optional<var::IndexSpace> found;
+        for (std::size_t r = 0; r < x.nrows(); ++r) {
+            for (std::size_t c = 0; c < x.ncols(); ++c) {
+                auto maybe_space = find_index_space_if_any(x(r, c));
+                if (!maybe_space) {
+                    return maybe_space.error();
+                }
+                auto maybe_merged = merge_optional_index_spaces(std::move(found), maybe_space.value());
+                if (!maybe_merged) {
+                    return maybe_merged.error();
+                }
+                found = maybe_merged.value();
+            }
+        }
+        return found;
+    } else if constexpr (requires {
+                             x.size();
+                             x[0];
+                         } && !std::same_as<std::remove_cvref_t<T>, std::string>) {
+        std::optional<var::IndexSpace> found;
+        for (std::size_t i = 0; i < x.size(); ++i) {
+            auto maybe_space = find_index_space_if_any(x[i]);
+            if (!maybe_space) {
+                return maybe_space.error();
+            }
+            auto maybe_merged = merge_optional_index_spaces(std::move(found), maybe_space.value());
+            if (!maybe_merged) {
+                return maybe_merged.error();
+            }
+            found = maybe_merged.value();
+        }
+        return found;
+    } else {
+        return std::optional<var::IndexSpace>{};
+    }
+}
+
 template <class Writer, class T>
 Maybe_error<bool> emit_vector_like(Writer& w, CsvContext ctx, const T& x) {
     const auto param_names = find_param_names(x);
@@ -516,14 +632,9 @@ Maybe_error<bool> emit_indexed(Writer& w, CsvContext ctx, const var::Indexed<T>&
         return valid.error();
     }
     const auto& space = x.index_space();
-    if (space.m_axes.size() > 1) {
-        return error_message("write_csv_rows: indexed CSV currently supports one-dimensional "
-                             "indexed values only");
-    }
     if (space.m_axes.empty()) {
         return true;
     }
-    const auto& axis = space.m_axes.front();
     auto maybe_coord = x.begin();
     if (!maybe_coord) {
         return maybe_coord.error();
@@ -531,7 +642,7 @@ Maybe_error<bool> emit_indexed(Writer& w, CsvContext ctx, const var::Indexed<T>&
     auto coord = maybe_coord.value();
     while (true) {
         auto item_ctx = ctx;
-        auto maybe_meta = assign_axis_metadata(item_ctx, axis, coord.index().front());
+        auto maybe_meta = assign_coordinate_metadata(item_ctx, w.axis_names(), coord);
         if (!maybe_meta) {
             return maybe_meta.error();
         }
@@ -873,9 +984,18 @@ Maybe_error<std::string> write_summary_csv(const T& x, std::string path,
     }
 
     const auto param_names = get_param_names_if_any(x);
-    CsvWriter writer(f, param_names);
+    std::vector<std::string> axis_names;
+    auto maybe_space = find_index_space_if_any(x);
+    if (!maybe_space) {
+        return maybe_space.error();
+    }
+    if (maybe_space.value().has_value()) {
+        axis_names = axis_column_names(*maybe_space.value());
+    }
+    CsvWriter writer(f, param_names, axis_names);
     CsvContext ctx;
     ctx.scope = std::move(scope);
+    ctx.axis_values.resize(axis_names.size());
 
     auto ok = emit_any(writer, std::move(ctx), x);
     if (!ok || !ok.value()) {

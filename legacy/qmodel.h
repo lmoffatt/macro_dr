@@ -5774,8 +5774,7 @@ class Macro_DMR {
                                     auto t_Qdt_no_stab = std::move(Maybe_t_Qdt_no_stab.value());
 
                                     auto test_no_stab = var::test_derivative_clarke<true>(
-                                        [this, &t_step, &fs, &f_no_memoi](auto const& l_m,
-                                                                          auto const& /*l_Qx*/) {
+                                        [this, &t_step, &fs, &f_no_memoi](auto const& l_m) {
                                             return calc_Qdt<StabilizerPolicyDisabled>(
                                                 f_no_memoi, l_m, t_step, fs);
                                         },
@@ -6292,6 +6291,26 @@ struct Likelihood_Model_regular {
             car.value());
     }
 };
+
+
+template<class ...Vs, class...Ws>
+auto merge_Maybe_variant( Maybe_error<std::variant<Vs...>>&& v1, Maybe_error<std::variant<Ws...>>&& v2)-> Maybe_error<std::variant<Vs...,Ws...>>   
+{
+    using merged_variant = std::variant<Vs..., Ws...>;
+    if (v1.valid())
+        return std::visit(
+            [](auto&& x) -> Maybe_error<merged_variant> {
+                return merged_variant{std::forward<decltype(x)>(x)};
+            },
+            std::move(v1).value());
+    if (v2.valid())
+        return std::visit(
+            [](auto&& x) -> Maybe_error<merged_variant> {
+                return merged_variant{std::forward<decltype(x)>(x)};
+            },
+            std::move(v2).value());
+    return {error_message(v1.error()(), " ", v2.error()())} ;
+}
 
 // struct Likelihood_Model_v_all {
 //     using v_uses_adaptive_aproximation =
