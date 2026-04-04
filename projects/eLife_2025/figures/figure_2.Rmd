@@ -13,30 +13,19 @@ library(patchwork)
 
 ```{r}
 
-filenames=c(
-  "data/figure_2_dlikelihood_analysis_MRV",
-  "data/figure_2_dlikelihood_analysis_IRV"
-)
+filename=
+  "data/figure_2_dlikelihood_analysis"
 
-algorithms=c("MRV"
-             ,"IRV"
-             )
 
-schemes=c("scheme_CO","scheme_CO")
 ```
 
 
 ```{r}
+d=read.csv(paste0(filename,".csv"))
+```
 
-d=data.frame()
-for (i in 1:length(filenames)){
-  
-  d0=read.csv(paste0(filenames[i],".csv"))
-  d0$algo=algorithms[i]
-  d0$scheme=schemes[i]
-  
-  d=rbind(d,d0)
-}
+
+```{r}
 d<- d %>%
   select(where(~ !all(is.na(.))))
 ```
@@ -63,7 +52,7 @@ d%>%select(component)%>%distinct()%>%pull()
 
 ```
 ```{r}
-d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(component,value_row,value_col,probit,calculus, quantile_level, param_name, value,algo,scheme)%>%arrange(component,value_row,value_col,algo,quantile_level)
+d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(algorithm,n_substeps,component,value_row,value_col,probit,calculus, quantile_level, param_name, value)%>%arrange(component,value_row,value_col,quantile_level,algorithm,n_substeps)
 ```
 
 ```{r}
@@ -83,21 +72,41 @@ df<-d%>%left_join(dc, by=join_by(sample_index==n_step))
 
 ```{r}
 d_DIB_evol<-
-  df%>%filter(component=="Evolution_Distortion_Induced_Bias")%>%select(param_name,algo,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  df%>%filter(component=="Evolution_Distortion_Induced_Bias")%>%select(param_name,algorithm,n_substeps,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 
 ```
 ```{r}
-d_DIB_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA))+geom_errorbar(aes(x=sample_index,ymin = quantile_0.025,ymax = quantile_0.975))+facet_wrap(param_name~algo, scales="free")
+d_DIB_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA, color=as.factor(n_substeps)))+facet_grid(param_name~algorithm, scales="free")
 
 ```
 
 ```{r}
 d_gradient_evol<-
-  df%>%filter(component=="Evolution_dlogL_true", statistic=="mean")%>%select(param_name,algo,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  df%>%filter(component=="Evolution_dlogL_true", statistic=="mean")%>%select(param_name,algorithm,n_substeps,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 
 ```
 ```{r}
-d_gradient_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA))+geom_errorbar(aes(x=sample_index,ymin = quantile_0.025,ymax = quantile_0.975))+facet_wrap(param_name~algo, scales="free")
+n_substpes<-d_gradient_evol$n_substeps%>%unique()
+algorithms<-d_gradient_evol$algorithm%>%unique()
+param_names<-d_gradient_evol$param_name%>%unique()
+
+
+for (ns in n_substpes){
+  for(al in algorithms){
+    d_tmp<-d_gradient_evol%>%filter(n_substeps==ns, algorithm==al)
+print(
+d_tmp%>%ggplot()+
+geom_line(aes(x=sample_index,y=mean_NA), color="black")+
+geom_line(aes(x=sample_index,y=quantile_0.975), color="darkgrey")+
+geom_line(aes(x=sample_index,y=quantile_0.025), color="darkgrey")+
+geom_point(data = d_tmp%>%filter(quantile_0.975<0),aes(x=sample_index,y=quantile_0.975), color="red")+
+geom_point(data = d_tmp%>%filter(quantile_0.025>0),aes(x=sample_index,y=quantile_0.025), color="blue")+
+  facet_wrap(~param_name, scales="free")+ ggtitle(paste0(al, " ", ns))
+)
+  }
+  }
+```
+```{r}
 
 ```
 

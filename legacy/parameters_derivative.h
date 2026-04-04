@@ -546,8 +546,18 @@ class Derivative<T_Matrix<double>,
         : m_x{std::forward<P>(t_x)}, m_d{std::forward<D>(t_d), x} {}
 
     template <class anotherCompatibleMatrix>
+        requires(
+            std::constructible_from<
+                primitive_type,
+                decltype(var::primitive(
+                    std::declval<const Derivative<anotherCompatibleMatrix, d_type>&>()))> &&
+            std::constructible_from<
+                derivative_type,
+                decltype(var::derivative(
+                             std::declval<const Derivative<anotherCompatibleMatrix, d_type>&>())()),
+                const Parameters_transformed&>)
     Derivative(Derivative<anotherCompatibleMatrix, d_type> const& t_x)
-        : m_x{t_x.primitive()}, m_d{t_x.derivative()(), t_x.dx()} {}
+        : m_x{var::primitive(t_x)}, m_d{var::derivative(t_x)(), t_x.dx()} {}
 
     template <class P>
         requires(std::constructible_from<primitive_type, P>)

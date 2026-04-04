@@ -20,7 +20,8 @@ inline auto build_likelihood_function(const ModelPtr& model0,
     auto nsub = Simulation_n_sub_dt(100);
     const interface::IModel<var::Parameters_values>& model_ref = *model0;
 
-    return Likelihood_Model_regular<
+    return merge_Maybe_variant(
+        Likelihood_Model_regular<
                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
                var::constexpr_Var_domain<int, uses_averaging_aproximation,0,1, 2>,
@@ -33,7 +34,22 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                                  uses_variance_aproximation_value(variance_approximation),
                                  uses_taylor_variance_correction_aproximation_value(
                                      taylor_variance_correction_approximation))
-        .get_variant();
+        .get_variant(),
+        Likelihood_Model_regular<
+               var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+               var::constexpr_Var_domain<bool, uses_recursive_aproximation,true>,
+               var::constexpr_Var_domain<int, uses_averaging_aproximation,1, 2>,
+               var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+               var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
+               decltype(model_ref)>(model_ref, nsub,
+                                 uses_adaptive_aproximation_value(adaptive_approximation),
+                                 uses_recursive_aproximation_value(recursive_approximation),
+                                 uses_averaging_aproximation_value(averaging_approximation),
+                                 uses_variance_aproximation_value(variance_approximation),
+                                 uses_taylor_variance_correction_aproximation_value(
+                                     taylor_variance_correction_approximation))
+        .get_variant());
+;
 }
 
 using likelihood_algorithm_type = var::untransformed_type_t<decltype(build_likelihood_function(

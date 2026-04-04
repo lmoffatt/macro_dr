@@ -434,7 +434,10 @@ class Indexed {
             return error_message("indexed value not found at requested coordinate");
         }
         if constexpr (std::same_as<T, bool>) {
-            return error_message("indexed<bool> does not support borrowed coordinate access");
+            // Return a const reference to a static temporary for bool (copy semantics)
+            static const bool temp_true = true;
+            static const bool temp_false = false;
+            return std::cref(m_values[flat.value()] ? temp_true : temp_false);
         } else {
             return std::cref(m_values[flat.value()]);
         }
