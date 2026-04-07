@@ -80,7 +80,28 @@ Ahora, que variables quiero analizar? (hago uno por parametro?)
 
 Idea hacer un paper con lo mas importante y luego otro mas detallado?
 
+En el primer paper exploro estas 3 cosas en el segundo analizo hasta el ultimo indicador ?
 
+
+
+veamos variable por variable que quiero: 
+
+ [1] "count_Sum_logL"  si                             "mean_Sum_logL"   si                            "variance_Sum_logL"   si                         "count_Sum_elogL"  si                           
+ [5] "mean_Sum_elogL"                              "variance_Sum_elogL"                          "count_Sum_r_std"       si                      "mean_Sum_r_std"                             
+ [9] "variance_Sum_r_std"                          "count_Sum_r2_std"        si                    "mean_Sum_r2_std"                             "variance_Sum_r2_std"                        
+[13] "count_Sum_trust_coefficient"       si          "mean_Sum_trust_coefficient"                  "variance_Sum_trust_coefficient"              "count_Sum_dlogL"    si                        
+[17] "mean_Sum_dlogL"                              "covariance_Sum_dlogL"                        "count_Sum_Gaussian_Fisher_Information"  si     "mean_Sum_Gaussian_Fisher_Information"       
+[21] "variance_Sum_Gaussian_Fisher_Information"    "Sum_count_r_std"     si                        "Sum_mean_r_std"                             "Sum_variance_r_std"  
+sum_count_r2_std ?
+
+[25] "Sum_count_dlogL"  si                            "Sum_mean_dlogL"                              "Sum_covariance_dlogL"                        
+"Sum_count_Gaussian_Fisher_Information"   si   
+[29] "Sum_mean_Gaussian_Fisher_Information"        "Sum_variance_Gaussian_Fisher_Information"   
+"Information_Distortion_Matrix"  si              "Information_Distortion_Reconstituted"       
+[33] "Sample_Distortion_Matrix"                    "Correlation_Distortion_Matrix"               "Distortion_Corrected_Covariance"             "Distortion_Induced_Bias"                    
+[37] "Evolution_logL_false"                        "Evolution_elogL_false"                       "Evolution_y_mean_false"                      "Evolution_y_var_false"                      
+[41] "Evolution_r_std_false"                       "Evolution_trust_coefficient_false"           "Evolution_dlogL_true"                        "Evolution_Gaussian_Fisher_Information_false"
+[45] "Evolution_Sample_Distortion_Matrix"          "Evolution_Distortion_Induced_Bias"          
 
 
 

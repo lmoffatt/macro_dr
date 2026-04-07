@@ -19,7 +19,13 @@ int execute_program(const std::string& script, const macrodr::cli::CliOptions& o
     auto parsed = dsl::extract_program(script);
     std::cerr << parsed;
     if (!parsed) {
-        std::cerr << parsed.error()();
+        std::cerr << "\n-------------------------------------------------\n"
+                  << "\t\tParsing failed!!!"
+                  << "\n-------------------------------------------------\n" 
+                  << "\tParsing error: \n" << parsed.error()() << "\n"
+                    << "\n-------------------------------------------------\n" 
+                  << "\t\tParsing failed!!!"
+                  << "\n-------------------------------------------------\n"    ;
         return 1;
     }
 
