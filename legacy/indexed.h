@@ -76,6 +76,7 @@ struct Axis{
     AxisId m_id;
     AxisSize m_size;
     std::vector<std::string> m_labels;
+    Axis() = default;
 
     Axis(AxisId&& id, AxisSize n): m_id(std::move(id)), m_size(n) {}
     Axis(AxisId const& id, AxisSize n): m_id(id), m_size(n) {}
@@ -300,6 +301,22 @@ struct IndexSpace {
     }
 
     
+    std::vector<Coordinate> all_coordinates() const {
+        std::vector<Coordinate> coords;
+        if (m_axes.empty()) {
+            coords.push_back(Coordinate({}, {}));
+            return coords;
+        }
+        Coordinate coord = begin();
+        while (true) {
+            coords.push_back(coord);
+            if (coord.last()) {
+                break;
+            }
+            coord.next();
+        }
+        return coords;
+    }
     
     auto  local_coordinate(const Coordinate& coord)const->Maybe_error<Coordinate>  {
           auto valid_space = validate();

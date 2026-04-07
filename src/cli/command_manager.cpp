@@ -30,10 +30,11 @@ using ModelPtr = macrodr::cmd::ModelPtr;
 
 namespace {
 
+template<bool include_evolution=true>
 auto calculate_likelihood_derivative_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed) {
-    return cmd::calculate_Likelihood_derivative_diagnostics(
+    return cmd::calculate_Likelihood_derivative_diagnostics<include_evolution>(
         dlikelihood_predictions, n_boostrap_samples, probits, seed);
 }
 
@@ -65,6 +66,20 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
     }
 
     {
+        using SimUniformFromValues = Maybe_error<Simulated_Recording<var::please_include<>>> (*)(
+            const ModelPtr&, const var::Parameters_values&, const Experiment&, const Recording&,
+            std::string, std::size_t, std::size_t);
+        cm.push_function(
+            "simulate",
+            dsl::to_typed_function<const ModelPtr&, const var::Parameters_values&,
+                                   const Experiment&, const Recording&, std::string,std::size_t, std::size_t>
+                                   (
+                static_cast<SimUniformFromValues>(&cmd::run_simulations), "model",
+                "parameter_values", "experiment", "observations", "simulation_algorithm","number_of_substeps",
+                "seed"));
+    }
+
+    {
         using SimFromTransformed = Maybe_error<Simulated_Recording<var::please_include<>>> (*)(
             const ModelPtr&, const var::Parameters_transformed&,
             const Experiment&, const Recording&, std::size_t, std::size_t);
@@ -76,6 +91,19 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
                 static_cast<SimFromTransformed>(&cmd::run_simulations), "model",
                 "parameter_values", "experiment", "observations", "number_of_substeps", "seed"));
     }
+
+    {
+        using SimUniformFromTransformed = Maybe_error<Simulated_Recording<var::please_include<>>> (*)(
+            const ModelPtr&, const var::Parameters_transformed&, const Experiment&,
+            const Recording&, std::string, std::size_t, std::size_t);
+        cm.push_function(
+            "simulate",
+            dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                                   const Experiment&, const Recording&, std::string,std::size_t, std::size_t>(
+                static_cast<SimUniformFromTransformed>(&cmd::run_simulations), "model",
+                "parameter_transformed", "experiment", "observations",
+                "simulation_algorithm", "number_of_substeps", "seed"));
+    }
     cm.push_function(
         "simulate",
         dsl::to_typed_return_function<
@@ -83,8 +111,25 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
             const ModelPtr&,
             const var::Parameters_transformed&, std::size_t,const Experiment&,
             const Recording&, std::size_t, std::size_t>(
-                cmd::run_n_simulations, "model",
+                static_cast<Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> (*)(
+                    const ModelPtr&, const var::Parameters_transformed&, std::size_t,
+                    const Experiment&, const Recording&, std::size_t, std::size_t)>(
+                    &cmd::run_n_simulations),
+                "model",
                 "parameter_transformed", "n_simulations", "experiment", "observations", "number_of_substeps", "seed"));
+
+    cm.push_function(
+        "simulate",
+        dsl::to_typed_return_function<
+            Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>>,
+            const ModelPtr&, const var::Parameters_transformed&, std::size_t,
+            const Experiment&, const Recording&, std::string, std::size_t, std::size_t>(
+            static_cast<Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> (*)(
+                const ModelPtr&, const var::Parameters_transformed&, std::size_t,
+                const Experiment&, const Recording&, std::string, std::size_t, std::size_t)>(
+                &cmd::run_n_simulations),
+            "model", "parameter_transformed", "n_simulations", "experiment", "observations",
+            "simulation_algorithm", "number_of_substeps", "seed"));
     
     cm.push_function(
         "simulate",
@@ -93,8 +138,25 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
             const ModelPtr&,
             const var::Parameters_values&, std::size_t,const Experiment&,
             const Recording&, std::size_t, std::size_t>(
-                cmd::run_n_simulations, "model",
+                static_cast<Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> (*)(
+                    const ModelPtr&, const var::Parameters_values&, std::size_t,
+                    const Experiment&, const Recording&, std::size_t, std::size_t)>(
+                    &cmd::run_n_simulations),
+                "model",
                 "parameter_values", "n_simulations", "experiment", "observations", "number_of_substeps", "seed"));
+
+    cm.push_function(
+        "simulate",
+        dsl::to_typed_return_function<
+            Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>>,
+            const ModelPtr&, const var::Parameters_values&, std::size_t,
+            const Experiment&, const Recording&, std::string, std::size_t, std::size_t>(
+            static_cast<Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> (*)(
+                const ModelPtr&, const var::Parameters_values&, std::size_t,
+                const Experiment&, const Recording&, std::string, std::size_t, std::size_t)>(
+                &cmd::run_n_simulations),
+            "model", "parameter_values", "n_simulations", "experiment", "observations",
+            "simulation_algorithm", "number_of_substeps", "seed"));
     
 
     {
@@ -112,6 +174,21 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
     }
 
     {
+        using SimSubUniformFromValues = Maybe_error<
+            Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> (*)(
+            const ModelPtr&, const var::Parameters_values&, const Experiment&, const Recording&,
+            std::string, std::size_t);
+        cm.push_function(
+            "simulate_with_sub_intervals",
+            dsl::to_typed_function<const ModelPtr&, const var::Parameters_values&,
+                                   const Experiment&, const Recording&, std::string,
+                                   std::size_t>(
+                static_cast<SimSubUniformFromValues>(&cmd::run_simulations_with_sub_intervals),
+                "model", "parameter_values", "experiment", "observations",
+                "simulation_algorithm", "seed"));
+    }
+
+    {
         using SimSubFromTransformed = Maybe_error<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> (*)(
             const ModelPtr&, const var::Parameters_transformed&,
@@ -124,6 +201,22 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
                 static_cast<SimSubFromTransformed>(&cmd::run_simulations_with_sub_intervals),
                 "model", "parameters", "experiment", "observations", "number_of_substeps",
                 "seed"));
+    }
+
+    {
+        using SimSubUniformFromTransformed = Maybe_error<
+            Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> (*)(
+            const ModelPtr&, const var::Parameters_transformed&, const Experiment&,
+            const Recording&, std::string, std::size_t);
+        cm.push_function(
+            "simulate_with_sub_intervals",
+            dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                                   const Experiment&, const Recording&, std::string,
+                                   std::size_t>(
+                static_cast<SimSubUniformFromTransformed>(
+                    &cmd::run_simulations_with_sub_intervals),
+                "model", "parameter_transformed", "experiment", "observations",
+                "simulation_algorithm", "seed"));
     }
 
     cm.push_function(
@@ -208,8 +301,10 @@ dsl::Compiler make_compiler_new() {
     using IndexedDiagnostics = var::Indexed<Macro_State_Ev_diagnostic>;
     using IndexedGradients = var::Indexed<dMacro_State_Ev_gradient_all>;
     using IndexedGradientBatch = var::Indexed<GradientBatch>;
-    using IndexedDerivativeDiagnostics =
-        var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic>;
+    using IndexedDerivativeDiagnosticsEvolution =
+        var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic<true>>;
+     using IndexedDerivativeDiagnostics =
+        var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic<false>>;
 
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
@@ -379,12 +474,22 @@ dsl::Compiler make_compiler_new() {
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<
-            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic const& ,
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_evolution const& ,
+                                          std::string >(
+            &macrodr::cmd::write_csv, "analysis",  "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_base const& ,
                                           std::string >(
             &macrodr::cmd::write_csv, "analysis",  "path"));
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<Maybe_error<std::string>, IndexedDerivativeDiagnostics const&,
+                                      std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, IndexedDerivativeDiagnosticsEvolution const&,
                                       std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
 
     cm.push_function(
@@ -411,7 +516,12 @@ dsl::Compiler make_compiler_new() {
                      dsl::to_typed_function<ModelPtr, std::string>(&macrodr::cmd::load_parameters,
                                                                    "model", "parameter_file"));
 
-    // load_parameter_values returns transformations (safer to persist)
+    cm.push_function("create_parameters",
+                     dsl::to_typed_function<ModelPtr,  std::vector<std::tuple<std::string, std::string, double>>>
+                     (&macrodr::cmd::create_parameters,"model", "parameters_info"));
+
+    
+                                                                   // load_parameter_values returns transformations (safer to persist)
     cm.push_function("get_standard_parameter_values",
                      dsl::to_typed_function<var::Parameters_Transformations const&>(
                          &macrodr::cmd::get_standard_parameter_values, "parameters"));
@@ -699,9 +809,14 @@ cm.push_function(
         "likelihood_derivative_diagnostics",
         dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& , 
     std::size_t, std::set<double>,  std::size_t>(
-            &calculate_likelihood_derivative_diagnostics_dsl, "dlikelihood_predictions", "n_boostrap_samples",
+            &calculate_likelihood_derivative_diagnostics_dsl<false>, "dlikelihood_predictions", "n_boostrap_samples",
             "probits", "seed"));
-     
+      cm.push_function(
+        "likelihood_derivative_evolution_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& , 
+    std::size_t, std::set<double>,  std::size_t>(
+            &calculate_likelihood_derivative_diagnostics_dsl<true>, "dlikelihood_predictions", "n_boostrap_samples",
+            "probits", "seed"));
 
 
     return cm;

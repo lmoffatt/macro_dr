@@ -7,8 +7,10 @@
 #include <cstddef>
 #include <fstream>
 #include <string>
+#include <utility>
 
 #include "experiment.h"
+#include "maybe_error.h"
 #include "mcmc.h"
 
 namespace macrodr::cmd {
@@ -85,12 +87,35 @@ inline auto get_function_Table_maker_value(std::string filename,
     return std::pair(filename, num_scouts_per_ensemble);
 }
 
+struct simulation_algo_type {
+    bool include_N_states = false;
+    std::string algorithm = "substeps";
+    std::size_t number_of_substeps = 0;
+
+    friend std::ostream& operator<<(std::ostream& os, simulation_algo_type const& value) {
+        os << "include_N_states=" << value.include_N_states << ", algorithm=" << value.algorithm
+           << ", number_of_substeps=" << value.number_of_substeps;
+        return os;
+    }
+};
+
 inline auto set_simulation_algorithm(bool includeN, std::size_t n_sub_dt) {
-    return std::pair(includeN, n_sub_dt);
+    return simulation_algo_type{includeN, "substeps", n_sub_dt};
 }
 
-using simulation_algo_type =
-    typename return_type<std::decay_t<decltype(&set_simulation_algorithm)>>::type;
+inline Maybe_error<simulation_algo_type> set_simulation_algorithm(bool includeN,
+                                                                  std::string algorithm) {
+    if (algorithm == "uniformization") {
+        return simulation_algo_type{includeN, std::move(algorithm), 0};
+    }
+    if (algorithm == "substeps") {
+        return error_message(
+            "simulation_algorithm(include_N_states, algorithm=\"substeps\") is not supported; "
+            "use number_of_substeps instead");
+    }
+    return error_message("unsupported simulation algorithm \"", algorithm,
+                         "\"; expected \"uniformization\"");
+}
 
 inline dsl::Compiler make_utilities_compiler() {
     dsl::Compiler cm;
@@ -158,7 +183,15 @@ inline dsl::Compiler make_model_compiler() {
 
     cm.push_function("simulation_algorithm",
                      dsl::to_typed_function<bool, std::size_t>(
-                         &set_simulation_algorithm, "include_N_states", "number_of_substeps"));
+                         static_cast<simulation_algo_type (*)(bool, std::size_t)>(
+                             &set_simulation_algorithm),
+                         "include_N_states", "number_of_substeps"));
+    cm.push_function(
+        "simulation_algorithm",
+        dsl::to_typed_return_function<Maybe_error<simulation_algo_type>, bool, std::string>(
+            static_cast<Maybe_error<simulation_algo_type> (*)(bool, std::string)>(
+                &set_simulation_algorithm),
+            "include_N_states", "algorithm"));
     return cm;
 }
 #ifdef ZOMBIE

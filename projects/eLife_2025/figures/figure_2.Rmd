@@ -52,7 +52,7 @@ d%>%select(component)%>%distinct()%>%pull()
 
 ```
 ```{r}
-d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(algorithm,n_substeps,component,value_row,value_col,probit,calculus, quantile_level, param_name, value)%>%arrange(component,value_row,value_col,quantile_level,algorithm,n_substeps)
+d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(algorithm,simulation_algorithm,component,value_row,value_col,probit,calculus, quantile_level, param_name, value)%>%arrange(component,value_row,value_col,quantile_level,algorithm,simulation_algorithm)
 ```
 
 ```{r}
@@ -70,30 +70,133 @@ df<-d%>%left_join(dc, by=join_by(sample_index==n_step))
 
 
 
+
+```{r}
+d_mean<-
+  df%>%filter(!str_starts(component,"Evolution"))%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+d_mean
+```
+```{r}
+mean_components<-d_mean$component%>%unique()
+n_substpes<-d_mean$simulation_algorithm%>%unique()
+for (c in mean_components)
+{
+  dtemp<-d_mean%>%filter(component==c, is.na(value_row) | is.na(value_col) | value_row==value_col)
+  params<-dtemp$param_name%>%unique()
+  for (p in params){
+  print(
+    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=simulation_algorithm, y=mean_NA ))+geom_errorbar(aes(x=simulation_algorithm, y= mean_NA,ymin = quantile_0.025,ymax = quantile_0.975 ))+ggtitle(paste0(c, " ",p))+
+      facet_grid(algorithm~., scale="free")
+    
+  )
+  }
+}
+```
+
+```{r}
+d_Dis<-
+  df%>%filter(!str_starts(component, "Evolution_"), str_detect(component,"Distortion"), !str_detect(component,"Covariance"))%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+d_Dis
+```
+```{r}
+dis_components<-d_Dis$component%>%unique()
+
+for (c in dis_components)
+{
+  dtemp<-d_Dis%>%filter(component==c, is.na(value_row) | is.na(value_col) | value_row==value_col)
+  params<-dtemp$param_name%>%unique()
+  for (p in params){
+  print(
+    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=algorithm, y=log10(mean_NA) ))+geom_errorbar(aes(x=algorithm, y= log10(mean_NA),ymin = log10(quantile_0.025),ymax = log10(quantile_0.975) ))+ggtitle(paste0(c, " ",p))+facet_grid(simulation_algorithm~.)
+    
+  )
+  }
+}
+```
+
+
+
+```{r}
+d_mean<-
+  df%>%filter(!str_starts(component,"Evolution"), param_name=="")%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+d_mean
+```
+
+
+```{r}
+d_evol<-
+  df%>%filter(str_starts(component,"Evolution_"))%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,value_row,value_col,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+d_evol              
+
+```
+
+
+
+```{r}
+nsubsteps<-d_evol$simulation_algorithm%>%unique()
+algorithms<-d_evol$algorithm%>%unique()
+evol_components<-d_evol$component%>%unique()
+
+
+for (c in evol_components){
+    d_tmp<-d_evol%>%filter(component==c,  statistic=="mean"|statistic=="value", is.na(value_row) | is.na(value_col) | value_row==value_col)
+  param_names<-d_tmp$param_name%>%unique()
+
+  for(p in param_names){
+    for (ns in nsubsteps){
+print(
+d_tmp%>%filter(simulation_algorithm==ns,param_name==p)%>%ggplot()+
+geom_point(aes(x=sample_index,y=mean_NA), color="black")+
+geom_line(aes(x=sample_index,y=mean_NA), color="black")+
+geom_line(aes(x=sample_index,y=quantile_0.975), color="darkgrey")+
+geom_line(aes(x=sample_index,y=quantile_0.025), color="darkgrey")+
+#geom_point(data = d_tmp%>%filter(quantile_0.975<0),aes(x=sample_index,y=quantile_0.975), color="red")+
+#geom_point(data = d_tmp%>%filter(quantile_0.025>0),aes(x=sample_index,y=quantile_0.025), color="blue")+
+  facet_wrap(~algorithm, scales="free")+ ggtitle(paste0(c," ",p, " ", ns))
+)
+  }
+}
+}
+```
+```{r}
+d_logL<-d_evol%>%filter(component%in%c("Evolution_logL_false","Evolution_elogL_false"), statistic=="mean")%>%pivot_wider(names_from = component,values_from = c(mean_NA,quantile_0.025,quantile_0.975))
+    for (ns in nsubsteps){
+print(
+  d_logL%>%filter(simulation_algorithm==ns)%>%
+ggplot()+
+geom_point(aes(x=sample_index,y=mean_NA_Evolution_logL_false-mean_NA_Evolution_elogL_false), color="black")+
+geom_line(aes(x=sample_index,y=mean_NA_Evolution_logL_false-mean_NA_Evolution_elogL_false), color="black")+
+geom_line(aes(x=sample_index,y=quantile_0.975_Evolution_logL_false-quantile_0.975_Evolution_elogL_false), color="darkgrey")+
+geom_line(aes(x=sample_index,y=quantile_0.025_Evolution_logL_false-quantile_0.025_Evolution_elogL_false), color="darkgrey")+  facet_wrap(~algorithm, scales="free")+ggtitle(paste0(ns))
+)
+      }
+```
+
+
 ```{r}
 d_DIB_evol<-
-  df%>%filter(component=="Evolution_Distortion_Induced_Bias")%>%select(param_name,algorithm,n_substeps,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  df%>%filter(component=="Evolution_Distortion_Induced_Bias")%>%select(param_name,algorithm,simulation_algorithm,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 
 ```
 ```{r}
-d_DIB_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA, color=as.factor(n_substeps)))+facet_grid(param_name~algorithm, scales="free")
+d_DIB_evol%>%ggplot()+geom_line(aes(x=sample_index,y=mean_NA, color=as.factor(simulation_algorithm)))+facet_grid(param_name~algorithm, scales="free")
 
 ```
 
 ```{r}
 d_gradient_evol<-
-  df%>%filter(component=="Evolution_dlogL_true", statistic=="mean")%>%select(param_name,algorithm,n_substeps,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  df%>%filter(component=="Evolution_dlogL_true", statistic=="mean")%>%select(param_name,algorithm,simulation_algorithm,sample_index,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 
 ```
 ```{r}
-n_substpes<-d_gradient_evol$n_substeps%>%unique()
+n_substpes<-d_gradient_evol$simulation_algorithm%>%unique()
 algorithms<-d_gradient_evol$algorithm%>%unique()
 param_names<-d_gradient_evol$param_name%>%unique()
 
 
 for (ns in n_substpes){
   for(al in algorithms){
-    d_tmp<-d_gradient_evol%>%filter(n_substeps==ns, algorithm==al)
+    d_tmp<-d_gradient_evol%>%filter(simulation_algorithm==ns, algorithm==al)
 print(
 d_tmp%>%ggplot()+
 geom_line(aes(x=sample_index,y=mean_NA), color="black")+

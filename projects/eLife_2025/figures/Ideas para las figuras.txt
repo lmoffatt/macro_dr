@@ -1,0 +1,95 @@
+pasamos de audio a texto
+
+que falta para MacroIR?
+
+1)qué preguntas me hago yo mismo?
+2)qué preguntas se pueden hacer los que lean el paper?
+
+1) las voy diciendo a medida que me las imagino, luego las ordeno: 
+
+a) es buena mi simulacion,
+b) cuales son los graficos que quiero mostrar?
+
+estuve pensando cuando me despertaba a la noche en que las x deben ser la duracion de los intervalos de medicion. 
+Si lo pensamos en terminos de unidades, tenemos los siguientes parametros: 
+
+1) intervalo de medicion en segundos (t)
+2) constante de tiempo en segundos (tau)
+3) corriente de canal unico en pA (g) (podemos fijarla en 1pA) 
+4) ruido instrumental en pA^2 segundo. (e) 
+5) numero de canales (N)
+6) numero de estados (k)
+7) probabilidad de equilibrio en probabilidad. (p) 
+8) varianza de gatillado en pA^2 segundo --> Nch * g^2 * p*(1-p)/tau 
+
+Una cosa es clara: hay dos variables en segundos: intervalo de medicion y tiempo de activacion, de modo que la primera se puede pensar en unidades de la segunda. 
+
+Luego, el ruido instrumental se puede pensar terminos de varianza de gatillado. 
+
+Ahora pensemos la varianza de gatillado: es el numero de aperturas y cierres en un intervalo de medicion o sea que es aprox proporcional a la prob de cambio de estado exp(-T/tau), o sea que es maxima cuando T~ tau y disminuye tanto a T>>tau como T<<tau y es multiplicada por el numero de canales. Ahora, lo interesante es que el ruido gausiano aumenta monotonamente con la frecuencia por lo que T mucho mas largos que tau igual 
+
+a ver pensemos como escala la varianza de gatillado con T. Supongamos que es un proceso poisoneano, entonces vos tenes que la varianza de la suma de corriente aumenta linealmente con el T, o sea que sigue la ley de la media, o sea disminuye paralelamente al ruido gausiano. 
+
+
+
+
+qué cosas puede manejar el experimentador?
+
+1) el intervalo de medicion, 100% discrecional (cuanta informacion pierdo tomando intervalos mas largos?). 
+2) el numero de canales: si hago estimulacion repetida,  se puede manejar sumando repeticiones. (cuanta informacion pierdo haciendolo?)
+3) el ruido instrumental, con esfuerzo se puede disminuir. 
+4) el numero de estados que considera. El numero considerado es discrecional pero puede ser que el numero sea insuficiente. 
+
+
+
+Tema algoritmos: cuando el No Recursivo es igual?
+
+el salto de Kalman se basa en el cociente entre la varianza de gating sobre la varianza de ruido instumental. Si la segunda es mayor a la primera el No Recursivo se veria beneficiado probablemente. 
+
+cuando el MR es igual al IR?
+yo creo que cuando el intervalo de medicion es mucho menor al tau. 
+
+
+
+La variables a manejar son el intervalo de medicion/(N*tau)
+
+
+Que tau uso? 
+10 ms? (100 s⁻1?)
+1 tau linea, 4 tau ida, 5 tau de regreso?
+
+que Nch uso? 1-10-100-1000-10000
+intervalo de medicion:   10-1-0.1 ? (6, 60 y 600 puntos?)
+             
+que ruido uso?  0.1 pA *ms  --> canal muy lento
+                1 pA*ms ? 
+                10 pA*ms  --> ruido equivalente a la cinetica de un canal. 
+                100 pA*ms
+                1000pA ms  --> canal muy rapido.  (ruido normal es ponele 1 pA por milisegundo, y una cinetica rapida es del orden de 50 mil, o sea que esto seria un canal muy rapido, si)
+
+
+Entonces, teniendo 3 variables, Numero de canales, ruido (que al mismo tiempo simula la cinetica) e intervalo de medicion podemos analizar el comportamiento de los 3 o cuatro algoritmos (MNRV, MRV, IRV y TRV)
+
+
+
+Ahora, que variables quiero analizar? (hago uno por parametro?)
+1) sensibilidad  --> matriz de error (maximo/minimo error, std dev? y determinante?)  --> informacion 
+2) precision   --> Dib  (maximo error/ minimo error? y norma?)  --> si/ no o informacion (quizas suficientes replicas como para determinar el bias)
+3) confiabilidad  --> Distortion_information_matrix (maximo/ minimo erro? determinante? ) (idem, suficientes replicas como para determinar la distorsion?)
+
+
+Idea hacer un paper con lo mas importante y luego otro mas detallado?
+
+
+
+
+
+
+
+
+
+
+
+
+
+

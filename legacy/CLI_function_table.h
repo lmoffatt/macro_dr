@@ -370,8 +370,21 @@ inline std::string run_simulation(std::string filename_prefix, recording_type re
                                   std::string modelName, parameters_value_type parameter_files,
                                   simulation_algo_type sim_algo_type) {
     using namespace macrodr;
-
-    auto [includeN, n_sub_dt] = sim_algo_type;
+    auto sim_params = [&sim_algo_type]() -> Maybe_error<Simulation_Parameters> {
+        if (sim_algo_type.algorithm == simulation_algorithm_uniformization_name) {
+            return make_uniformization_simulation_parameters();
+        }
+        if (sim_algo_type.algorithm == simulation_algorithm_substeps_name) {
+            if (sim_algo_type.number_of_substeps == 0) {
+                return error_message("number_of_substeps must be greater than zero");
+            }
+            return make_substep_simulation_parameters(sim_algo_type.number_of_substeps);
+        }
+        return error_message("unsupported simulation algorithm \"", sim_algo_type.algorithm,
+                             "\"");
+    }();
+    if (!sim_params)
+        return sim_params.error()();
     auto Maybe_recording = load_Recording(recording_file, std::string(","));
     if (!Maybe_recording)
         return Maybe_recording.error()();
@@ -384,8 +397,9 @@ inline std::string run_simulation(std::string filename_prefix, recording_type re
             auto model_v = std::move(Maybe_model_v.value());
 
             return std::visit(
-                [&filename_prefix, &experiment, &recording, &myseed, &parameter_files, n_sub_dt,
-                 includeN](auto model0ptr) -> std::string {
+                [&filename_prefix, &experiment, &recording, &myseed, &parameter_files,
+                 includeN = sim_algo_type.include_N_states,
+                 sim_params = sim_params.value()](auto model0ptr) -> std::string {
                     auto& model0 = *model0ptr;
                     myseed = calc_seed(myseed);
                     mt_64i mt(myseed);
@@ -404,20 +418,18 @@ inline std::string run_simulation(std::string filename_prefix, recording_type re
                         auto param1 = Maybe_parameter_values.value().standard_parameter();
                         save_Parameter<var::Parameters_transformed> s(filename, 1ul, 200ul);
                         if (!includeN) {
-                            auto sim = Macro_DMR{}.sample(
-                                mt, model0, param1, experiment,
-                                Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+                            auto sim = Macro_DMR{}.sample(mt, model0, param1, experiment,
+                                                          sim_params, recording);
                             if (!sim)
-                                return "";
+                                return sim.error()();
                             else {
                                 save_Recording(filename + "_simulation.csv", ",",
                                                get<Recording>(sim.value()()));
                                 return filename + "_simulation.csv";
                             }
                         } else {
-                            auto sim = Macro_DMR{}.sample_N(
-                                mt, model0, param1, experiment,
-                                Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+                            auto sim = Macro_DMR{}.sample_N(mt, model0, param1, experiment,
+                                                            sim_params, recording);
                             if (!sim)
                                 return sim.error()();
                             else {

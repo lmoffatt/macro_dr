@@ -1,5 +1,6 @@
 set(TEST_SOURCES
     cmd/test_write_csv.cpp
+    cmd/test_simulate_uniformization.cpp
     cli/test_cli_helpers.cpp
     cli/test_dsl_core_refactor.cpp
     cli/test_env_persistence.cpp
@@ -75,6 +76,18 @@ set_tests_properties(macrodr_cli_likelihood_smoke PROPERTIES
 add_test(NAME macrodr_cli_write_csv_vector_smoke
          COMMAND $<TARGET_FILE:macrodr_cli> ../data/write_csv_vector_smoke.macroir)
 set_tests_properties(macrodr_cli_write_csv_vector_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")
+
+add_test(NAME macrodr_cli_simulate_uniformization_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/simulate_uniformization_smoke.macroir)
+set_tests_properties(macrodr_cli_simulate_uniformization_smoke PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    ENVIRONMENT "OMP_NUM_THREADS=1")
+
+add_test(NAME macrodr_cli_simulate_uniformization_batch_smoke
+         COMMAND $<TARGET_FILE:macrodr_cli> ../data/simulate_uniformization_batch_smoke.macroir)
+set_tests_properties(macrodr_cli_simulate_uniformization_batch_smoke PROPERTIES
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     ENVIRONMENT "OMP_NUM_THREADS=1")
 

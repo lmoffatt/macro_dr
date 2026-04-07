@@ -57,7 +57,10 @@ inline std::vector<std::size_t> generate_bootstrap_indices(std::size_t n, mt_64i
 template<class...Vs>
 auto apply_Probit_statistics(const std::vector<var::Vector_Space<Vs...>>& samples, const std::set<double>& cis) {
      return var::Vector_Space<Probit_statistics<Vs>...>(
-        Probit_statistics<Vs>(samples,[](auto& v){return get<Vs>(v)();}, cis)...
+        Probit_statistics<Vs>(
+            samples,
+            [](const auto& v) -> decltype(auto) { return get<Vs>(v)(); },
+            cis)...
     );  
 }
    
@@ -86,7 +89,6 @@ auto bootstrap_it_to_Probit(F&& f,const std::vector<vectorSpace>& vs,  std::size
     auto samples=bootstrap_it(f, vs, n_replicates, gen);
     return apply_Probit_statistics(samples, cis);
  }
-
 
 
 

@@ -6,6 +6,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <numeric>
 #include <type_traits>
@@ -259,8 +260,8 @@ struct Sum : public var::Var<Sum<Va>, value_type_t<Va>>{
     Sum(std::vector<VectorSpace>const& x,  F&& f)
         : var::Var<Sum<Va>, sum_type>{value_type_t<Va>{}} {
         for (const auto& v : x) {
-             (*this)() = (*this)() + sum_type(std::forward<F>(f)(v));
-        }
+         (*this)() = (*this)() + sum_type(std::invoke(f, v));
+    }
        }
    
 
@@ -532,200 +533,158 @@ struct Moment_statistics<var::Vector_Space<Ids...>, include_covariance>
 };
 
 
-template <typename T>
-requires std::is_arithmetic_v<T>
-auto get_mean_Probits(std::vector<T> bootstrap_estimates, const std::set<double>& cis) {
+
+
+
+
+
+
+
+template <typename T, class F = std::identity>
+requires (std::is_arithmetic_v<std::decay_t<std::invoke_result_t<F, T>>>)
+auto get_mean_Probits(std::vector<T> const& bootstrap_estimates, const std::set<double>& cis, F f = {}) {
     assert(!bootstrap_estimates.empty());
-   double mean = std::accumulate(bootstrap_estimates.begin(), bootstrap_estimates.end(), 0.0) / static_cast<double>(bootstrap_estimates.size());
-    std::sort(bootstrap_estimates.begin(), bootstrap_estimates.end());
 
+    // We use a local copy of 'f' to ensure it's available for all steps.
+    // Projections are usually cheap to copy.
+    
+    // 1. Calculate Mean
+    double sum = std::accumulate(bootstrap_estimates.begin(), bootstrap_estimates.end(), 0.0, 
+        [&f](double acc, const T& x) {
+            return acc + static_cast<double>(std::invoke(f, x));
+        });
+    double mean = sum / static_cast<double>(bootstrap_estimates.size());
+
+    // 2. Indirect Sort
+    std::vector<std::size_t> i_index(bootstrap_estimates.size());
+    std::iota(i_index.begin(), i_index.end(), 0);
+
+    std::sort(i_index.begin(), i_index.end(), [&](std::size_t i1, std::size_t i2) {
+        return std::invoke(f, bootstrap_estimates[i1]) < std::invoke(f, bootstrap_estimates[i2]);
+    });
+
+    // 3. Map Percentiles
     std::size_t n = bootstrap_estimates.size();
-    std::map<double,double> out;
+    std::map<double, double> out;
 
-    std::transform(cis.begin(), cis.end(), std::inserter(out, out.end()), 
-    [n, &bootstrap_estimates](double ci) {
-        
-        // Laplace mapping calculation
+    for (double ci : cis) {
         double real_idx = std::clamp(ci * (n + 1) - 1.0, 0.0, static_cast<double>(n - 1));
         
         std::size_t low = static_cast<std::size_t>(std::floor(real_idx));
         std::size_t high = static_cast<std::size_t>(std::ceil(real_idx));
         
-        double value = (bootstrap_estimates[low] + bootstrap_estimates[high]) / 2.0;
+        double weight = real_idx - static_cast<double>(low);
+        
+        double v_low  = static_cast<double>(std::invoke(f, bootstrap_estimates[i_index[low]]));
+        double v_high = static_cast<double>(std::invoke(f, bootstrap_estimates[i_index[high]]));
 
-        // CRITICAL: We must return a pair (Key, Value) to insert into a map
-        return std::make_pair(ci, value);
-    });;
+        out[ci] = (1.0 - weight) * v_low + weight * v_high;
+    }
 
     return std::make_pair(mean, std::move(out)); 
 }
 
 
-
-
-
-
-template<template <class> class MatrixType>
-requires (is_Matrix_v<MatrixType<double>>)
-inline auto get_mean_Probits(
-    std::vector<MatrixType<double>>& bootstrap_estimates, 
-    const std::set<double>& cis) 
-{
+template <typename T, class F = std::identity>
+requires requires(T x, F f) { { std::invoke(f, x)() }; }
+auto get_mean_Probits(std::vector<T> const& bootstrap_estimates, const std::set<double>& cis, F f = {}) {
     assert(!bootstrap_estimates.empty());
 
-    MatrixType<double>* shape_sample = nullptr;
-    std::vector<MatrixType<double>*> valid_matrices;
-    valid_matrices.reserve(bootstrap_estimates.size());
+    // Recursive call: Dispatch to scalar, Matrix, or Vector overloads 
+    // by unwrapping the Var/Functor layer.
+    auto result = get_mean_Probits(bootstrap_estimates, cis, 
+        [&f](const auto& x) -> decltype(auto) { 
+            return std::invoke(f, x)(); 
+        });
 
-    for (auto& matrix : bootstrap_estimates) {
-        if (matrix.size() == 0) {
-            assert(matrix.nrows() == 0);
-            assert(matrix.ncols() == 0);
-            continue;
-        }
+    // We can return the pair directly because the inner call already
+    // produced the unwrapped value types (double, Matrix, etc.)
+    return result; 
+}
 
-        if (shape_sample == nullptr) {
-            shape_sample = &matrix;
-        } else {
-            assert(matrix.nrows() == shape_sample->nrows());
-            assert(matrix.ncols() == shape_sample->ncols());
-            assert(matrix.size() == shape_sample->size());
-        }
-        valid_matrices.push_back(&matrix);
-    }
+template<class M, class F>
+requires (is_Matrix_v<std::decay_t<std::invoke_result_t<F, M>>>)
+ auto get_mean_Probits(
+    std::vector<M> const& bootstrap_estimates, 
+    const std::set<double>& cis, F f=std::identity{}) 
+{
+    assert(!bootstrap_estimates.empty());
+    assert( std::all_of(bootstrap_estimates.begin(), bootstrap_estimates.end(), [&bootstrap_estimates, &f](const auto& matrix) {
+        return std::invoke(f, matrix).size() == std::invoke(f, bootstrap_estimates.front()).size();
+    }));
 
-    if (shape_sample == nullptr) {
-        std::map<double, MatrixType<double>> probits_map;
-        for (double ci : cis) {
-            probits_map.emplace(ci, MatrixType<double>{});
-        }
-        return std::make_pair(MatrixType<double>{}, std::move(probits_map));
-    }
-
-    const auto rows = shape_sample->nrows();
-    const auto cols = shape_sample->ncols();
-    const auto total_elements = shape_sample->size();
-    const auto num_samples = valid_matrices.size();
-
-    // 1. Memory Optimization: Pre-allocate the pivot structure
-    std::vector<std::vector<double>> cell_series(total_elements);
-    for (std::size_t i = 0; i < total_elements; ++i) {
-        cell_series[i].reserve(num_samples);
-    }
-
-    // Pivot: Matrices -> Cell-wise vectors
-    for (const auto* matrix : valid_matrices) {
-        for (std::size_t i = 0; i < total_elements; ++i) {
-            cell_series[i].push_back((*matrix)[i]);
-        }
-    }
-
-    // 2. Prepare Results
-    MatrixType<double> mean_matrix(rows, cols);
-    std::map<double, MatrixType<double>> probits_map;
-    
-    // We store pointers to the matrices in the map to avoid map lookups in the loop
-    std::vector<MatrixType<double>*> matrix_ptr_cache;
-    matrix_ptr_cache.reserve(cis.size());
-
+    decltype (auto) first_matrix = std::invoke(f, bootstrap_estimates.front());
+    using MatrixType= std::decay_t<decltype(std::invoke(f, bootstrap_estimates.front()))>;
+    MatrixType mean_matrix(first_matrix.nrows(), first_matrix.ncols());
+    std::map<double, MatrixType> probits_map;
     for (double ci : cis) {
-        // Emplace returns an iterator to the newly inserted (or existing) element
-        auto [it, inserted] = probits_map.emplace(ci, MatrixType<double>(rows, cols));
-        matrix_ptr_cache.push_back(&(it->second));
+        probits_map.emplace(ci, MatrixType(first_matrix.nrows(), first_matrix.ncols()));
     }
 
-    // 3. Process Cells
-    for (std::size_t i = 0; i < total_elements; ++i) {
-        // This calls the vector<double> version of get_mean_Probits
-        auto result = get_mean_Probits(cell_series[i], cis);
-        
-        mean_matrix[i] = result.first;
+    for (std::size_t i = 0; i < mean_matrix.size(); ++i) {
+            auto prob=get_mean_Probits( bootstrap_estimates, cis,[i, &f](const M& matrix) { return std::invoke(f, matrix)[i]; });
+            mean_matrix[i] = prob.first;
+            for (const auto& [ci, value] : prob.second) {
+                probits_map[ci][i] = value;  
+            }
 
-        // 4. Fill CI Matrices using the cache
-        // Since std::map is sorted, 'result.second' (the map from the sub-function) 
-        // and 'matrix_ptr_cache' are in the same order.
-        std::size_t ci_idx = 0;
-        for (auto const& [ci_level, value] : result.second) {
-            (*matrix_ptr_cache[ci_idx])[i] = value;
-            ci_idx++;
         }
-    }
-
     return std::make_pair(std::move(mean_matrix), std::move(probits_map));
 }
 
-template<class T>
-inline auto get_mean_Probits(
-    std::vector<std::vector<T>>& bootstrap_estimates, 
-    const std::set<double>& cis) 
+template<class V, class F>
+requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, V>>, std::vector>) 
+auto get_mean_Probits(
+    std::vector<V>const & bootstrap_estimates, 
+    const std::set<double>& cis, F f=std::identity{}) 
 {
     assert(!bootstrap_estimates.empty());
-    auto total_elements = bootstrap_estimates.front().size();
-auto num_samples = bootstrap_estimates.size();
-    // 1. Memory Optimization: Pre-allocate the pivot structure
-    std::vector<std::vector<T>> cell_series(total_elements);
-    for (std::size_t i = 0; i < total_elements; ++i) {
-        cell_series[i].reserve(num_samples);
-    }
-
-    // Pivot: Matrices -> Cell-wise vectors
-    for (const auto& elem : bootstrap_estimates) {
-        for (std::size_t i = 0; i < total_elements; ++i) {
-            cell_series[i].push_back(elem[i]);
-        }
-    }
-
-    // 2. Prepare Results
-    std::vector<T> mean_vector(total_elements);
-    std::map<double, std::vector<T>> probits_map;
-    
-    // We store pointers to the matrices in the map to avoid map lookups in the loop
-    std::vector< std::vector<T>*> vector_ptr_cache;
-    vector_ptr_cache.reserve(cis.size());
-
+    assert(std::all_of(bootstrap_estimates.begin(), bootstrap_estimates.end(), [&](const auto& v) {
+    return std::invoke(f, v).size() == std::invoke(f, bootstrap_estimates.front()).size();}));
+    using VectorType= std::decay_t<std::invoke_result_t<F, V>>;
+    decltype (auto) first_vector = std::invoke(f, bootstrap_estimates.front());
+    VectorType mean_vector(first_vector.size());
+    std::map<double, VectorType> probits_map;
     for (double ci : cis) {
-        // Emplace returns an iterator to the newly inserted (or existing) element
-        auto [it, inserted] = probits_map.emplace(ci, std::vector<T>(total_elements));
-        vector_ptr_cache.push_back(&(it->second));
+        probits_map.emplace(ci, VectorType(first_vector.size()));
     }
 
-    // 3. Process Cells
-    for (std::size_t i = 0; i < total_elements; ++i) {
-        // This calls the vector<double> version of get_mean_Probits
-        auto result = get_mean_Probits(cell_series[i], cis);
-        
-        mean_vector[i] = result.first;
-
-        // 4. Fill CI Matrices using the cache
-        // Since std::map is sorted, 'result.second' (the map from the sub-function) 
-        // and 'matrix_ptr_cache' are in the same order.
-        std::size_t ci_idx = 0;
-        for (auto const& [ci_level, value] : result.second) {
-            (*vector_ptr_cache[ci_idx])[i] = value;
-            ci_idx++;
+    for (std::size_t i = 0; i < mean_vector.size(); ++i) {
+        auto prob=get_mean_Probits( bootstrap_estimates, cis,[i, &f](const V& vec) { return std::invoke(f, vec)[i]; });
+        mean_vector[i] = prob.first;
+        for (const auto& [ci, value] : prob.second) {
+            probits_map[ci][i] = value;
         }
+
     }
+    
 
     return std::make_pair(std::move(mean_vector), std::move(probits_map));
 }
 
-template <class ValueT, class Params>
-    requires var::ParameterMetadataLike<Params>
-inline auto get_mean_Probits(std::vector<var::ParameterIndexed<ValueT, Params>>& bootstrap_estimates,
-                             const std::set<double>& cis) {
+template <class ParamIndexed, class F>
+requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, ParamIndexed>>, var::ParameterIndexed>)
+auto get_mean_Probits(std::vector<ParamIndexed> const& bootstrap_estimates,
+                             const std::set<double>& cis, F f=std::identity{}) {
     assert(!bootstrap_estimates.empty());
+
+    using Projected = std::decay_t<std::invoke_result_t<F, ParamIndexed>>;
+    using ValueT = typename Projected::value_type;
+    using Params = typename Projected::params_type;
 
     std::vector<ValueT> values;
     values.reserve(bootstrap_estimates.size());
+
     const Params* metadata = nullptr;
-    for (auto& estimate : bootstrap_estimates) {
-        values.push_back(estimate.value());
-        if (metadata == nullptr && estimate.has_parameters()) {
-            metadata = estimate.parameters_ptr();
+    for (const auto& estimate : bootstrap_estimates) {
+        const auto& projected = std::invoke(f, estimate);
+        values.push_back(projected.value());
+        if (metadata == nullptr && projected.has_parameters()) {
+            metadata = projected.parameters_ptr();
         }
     }
 
-    auto [mean_value, probits] = get_mean_Probits(values, cis);
+    auto [mean_value, probits] = get_mean_Probits(values, cis, std::identity{});
 
     var::ParameterIndexed<ValueT, Params> mean_out(std::move(mean_value), metadata);
     std::map<double, var::ParameterIndexed<ValueT, Params>> probits_out;
@@ -738,8 +697,9 @@ inline auto get_mean_Probits(std::vector<var::ParameterIndexed<ValueT, Params>>&
 }
 
 
-template<class ...Vs>
-inline auto get_mean_Probits(std::vector<var::Vector_Space<Vs...>>& bootstrap_estimates, const std::set<double>& cis);
+template<class F, class VS>
+requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, VS>>, var::Vector_Space>)
+auto get_mean_Probits(std::vector<VS> const& bootstrap_estimates, const std::set<double>& cis, F=std::identity{});
 
 
 namespace old{
@@ -805,14 +765,29 @@ class Probit_statistics
     ;
 
     using value_type= value_type_t<mean<Id>>;
+    using raw_value_type = value_type_t<Id>;
     
     Probit_statistics()
         : base_type{var::Vector_Space{mean<Id>{}, Probits<Id>{}}} {}
     
     Probit_statistics(value_type&& m, std::map<double,value_type>&& pbits):
          base_type{var::Vector_Space{mean<Id>(std::move( m)), Probits<Id>(std::move(pbits))}} {}
+
+    template <class Dummy = void>
+    requires (!std::is_same_v<raw_value_type, value_type> &&
+              std::constructible_from<Id, raw_value_type>)
+    Probit_statistics(raw_value_type&& m, std::map<double, raw_value_type>&& pbits)
+        : base_type{var::Vector_Space{
+              mean<Id>(Id(std::move(m))),
+              Probits<Id>([&pbits]() {
+                  std::map<double, value_type> wrapped;
+                  for (auto& [ci, value] : pbits) {
+                      wrapped.emplace(ci, value_type(Id(std::move(value))));
+                  }
+                  return wrapped;
+              }())}} {}
       
-    Probit_statistics(std::vector<value_type>& values, const std::set<double>& cis) {
+    Probit_statistics(std::vector<value_type> const& values, const std::set<double>& cis) {
         auto [mean_probit, probits] = get_mean_Probits(values, cis);
         *this = Probit_statistics(std::move(mean_probit), std::move(probits));
    } 
@@ -820,12 +795,12 @@ class Probit_statistics
     requires requires (VectorSpace v, F f) { {f(v)} -> std::convertible_to<value_type_t<Id>>; }
     Probit_statistics(std::vector<VectorSpace>const& xs,  F&& f, const std::set<double>& cis)
     {
-        std::vector<value_type > values;
+        std::vector<value_type> values;
         values.reserve(xs.size());
         for (const auto& x : xs) {
-            values.push_back(std::forward<F>(f)(x));
+            values.push_back(std::invoke(f, x));
         }
-        auto [mean_probit, probbits] = get_mean_Probits(values, cis);
+        auto [mean_probit, probbits] = get_mean_Probits(values, cis, std::identity{});
         *this = Probit_statistics(std::move(mean_probit), std::move(probbits));
     }
 
@@ -840,9 +815,15 @@ class Probit_statistics
 };
 
 
-template<class ...Vs>
-inline auto get_mean_Probits(std::vector<var::Vector_Space<Vs...>>& bootstrap_estimates, const std::set<double>& cis){
-     auto probit=var::Vector_Space<Probit_statistics<Vs>...>(Probit_statistics<Vs>(bootstrap_estimates,[](auto& v){return get<Vs>(v)();}, cis)...);
+template<class F, class VecSpace, class...Vs>
+requires (std::is_same_v<std::decay_t<std::invoke_result_t<F, VecSpace>>, var::Vector_Space<Vs...>>)
+auto get_mean_Probits_impl(std::vector<VecSpace> const& bootstrap_estimates, const std::set<double>& cis, F f, 
+    std::type_identity<var::Vector_Space<Vs...>>/**/){
+     auto probit = var::Vector_Space<Probit_statistics<Vs>...>(
+         Probit_statistics<Vs>(
+             bootstrap_estimates,
+             [&f](const auto& v) -> decltype(auto) { return get<Vs>(std::invoke(f, v))(); },
+             cis)...);
 
      auto meanout=var::Vector_Space<Vs...>(Vs(std::move(get<mean<Vs>>(get<Probit_statistics<Vs>>(probit)())()))...);
      std::map<double,var::Vector_Space<Vs...>> probitsout;
@@ -856,7 +837,12 @@ inline auto get_mean_Probits(std::vector<var::Vector_Space<Vs...>>& bootstrap_es
      return std::make_pair(std::move(meanout), std::move(probitsout));
 }
 
-
+template<class F, class VecSpace>
+requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, VecSpace>>, var::Vector_Space>)
+auto get_mean_Probits(std::vector<VecSpace> const& bootstrap_estimates, const std::set<double>& cis, F f){
+   using RVecSp=std::decay_t<std::invoke_result_t<F, VecSpace>>;
+   return get_mean_Probits_impl(bootstrap_estimates, cis, f, std::type_identity<RVecSp>{});
+}
 
 
 
