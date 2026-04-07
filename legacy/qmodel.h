@@ -416,6 +416,14 @@ auto to_Transition_Probability_Eigenvalues(C_Matrix&& lambda) {
 }
 
 struct StabilizerPolicyEnabled {
+    static constexpr bool clamp_variance = false;
+    static constexpr bool mask_probability = false;
+    static constexpr bool enforce_gmean_bounds = false;
+    static constexpr bool project_transition_probability = false;
+    static constexpr bool sanitize_eigenvalues = false;
+};
+
+struct StabilizerPolicyEnabled_ {
     static constexpr bool clamp_variance = true;
     static constexpr bool mask_probability = true;
     static constexpr bool enforce_gmean_bounds = true;
@@ -901,8 +909,10 @@ class Evolution_of : public Var<Evolution_of<T>, std::vector<T>> {
     using value_type = std::vector<T>;
 };
 
+/*
+
 template <class T>
-inline auto get_mean_Probits(std::vector<Evolution_of<T>>& bootstrap_estimates,
+inline auto get_mean_Probits(std::vector<Evolution_of<T>>const & bootstrap_estimates,
                              const std::set<double>& cis) {
     assert(!bootstrap_estimates.empty());
 
@@ -920,7 +930,7 @@ inline auto get_mean_Probits(std::vector<Evolution_of<T>>& bootstrap_estimates,
 
     return std::make_pair(std::move(mean_out), std::move(probits_out));
 }
-
+*/
 template <class V, class Id>
 concept has_var_c = requires(V&& v) {
     std::forward<V>(v)[var::Var<Id>{}];
@@ -1158,6 +1168,10 @@ std::pair<C_Patch_Model, double> remove_Patch_inactivation(C_Patch_Model const& 
 }
 
 class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
+class Simulation_Mode : public Var<Simulation_Mode, std::string> {};
+
+inline constexpr auto simulation_algorithm_substeps_name = "substeps";
+inline constexpr auto simulation_algorithm_uniformization_name = "uniformization";
 
 class N_Ch_State_Evolution : public Var<N_Ch_State_Evolution, std::vector<N_channel_state>> {};
 
@@ -1205,7 +1219,17 @@ Simulated_Sub_Step_t<Simulate_tag> Simulated_Sub_Step_build(N_channel_state N) {
     return out;
 }
 
-using Simulation_Parameters = Vector_Space<Simulation_n_sub_dt>;
+using Simulation_Parameters = Vector_Space<Simulation_Mode, Simulation_n_sub_dt>;
+
+inline auto make_substep_simulation_parameters(std::size_t n_sub_dt) {
+    return Simulation_Parameters(Simulation_Mode(simulation_algorithm_substeps_name),
+                                 Simulation_n_sub_dt(n_sub_dt));
+}
+
+inline auto make_uniformization_simulation_parameters() {
+    return Simulation_Parameters(Simulation_Mode(simulation_algorithm_uniformization_name),
+                                 Simulation_n_sub_dt(0));
+}
 
 template <typename Simulate_tag>
 void save_simulation(std::string const& filename, const std::string& separator,
@@ -1991,8 +2015,11 @@ class Macro_DMR {
         std::size_t i = 0;
         while (N_remaining > 0 && i + 1 < k)  // in case of numerical errors
         {
-            auto n = std::binomial_distribution<std::size_t>(
-                N_remaining, cumP[i] > 0 ? t_P_mean()[i] / cumP[i] : 0)(mt);
+            const auto denominator = primitive(cumP[i]);
+            const auto probability =
+                denominator > 0.0 ? std::clamp(primitive(t_P_mean()[i]) / denominator, 0.0, 1.0)
+                                  : 0.0;
+            auto n = std::binomial_distribution<std::size_t>(N_remaining, probability)(mt);
             N_remaining -= n;
             out()[i] = static_cast<double>(n);
             i = i + 1;
@@ -2020,8 +2047,10 @@ class Macro_DMR {
             auto N_remaining = static_cast<std::size_t>(std::round(N()[i]));
             for (std::size_t j = 0; j + 1 < k; ++j) {
                 if (N_remaining > 0) {
-                    auto n = std::binomial_distribution<std::size_t>(N_remaining,
-                                                                     t_P()(i, j) / cumP(i, j))(mt);
+                    const auto denominator = cumP(i, j);
+                    const auto probability =
+                        denominator > 0.0 ? std::clamp(t_P()(i, j) / denominator, 0.0, 1.0) : 0.0;
+                    auto n = std::binomial_distribution<std::size_t>(N_remaining, probability)(mt);
                     N_remaining -= n;
                     out()[j] += static_cast<double>(n);
                 }
@@ -5984,6 +6013,138 @@ class Macro_DMR {
         return r_sim_step;
     }
 
+    struct Uniformization_Segment {
+        Matrix<double> embedded_transition;
+        double lambda = 0.0;
+        std::size_t n_samples = 0;
+    };
+
+    template <class Patch_Model>
+    static std::vector<std::size_t> expand_channel_states(const Patch_Model& m,
+                                                          const N_channel_state& counts) {
+        auto n_states = get<g>(m)().size();
+        std::vector<std::size_t> channel_states;
+        std::size_t n_channels = 0;
+        for (std::size_t i = 0; i < n_states; ++i) {
+            n_channels += static_cast<std::size_t>(std::llround(counts()[i]));
+        }
+        channel_states.reserve(n_channels);
+        for (std::size_t i = 0; i < n_states; ++i) {
+            auto n_i = static_cast<std::size_t>(std::llround(counts()[i]));
+            channel_states.insert(channel_states.end(), n_i, i);
+        }
+        return channel_states;
+    }
+
+    template <class Patch_Model>
+    static N_channel_state collapse_channel_states(const Patch_Model& m,
+                                                   const std::vector<std::size_t>& channel_states) {
+        auto n_states = get<g>(m)().size();
+        N_channel_state out(Matrix<double>(1, n_states, 0.0));
+        for (auto state : channel_states) {
+            assert(state < n_states);
+            out()[state] += 1.0;
+        }
+        return out;
+    }
+
+    template <class Patch_Model>
+    static std::vector<double> state_conductances(const Patch_Model& m) {
+        auto n_states = get<g>(m)().size();
+        std::vector<double> conductances(n_states, 0.0);
+        for (std::size_t i = 0; i < n_states; ++i) {
+            conductances[i] = primitive(get<g>(m)()[i]);
+        }
+        return conductances;
+    }
+
+    template <class Qx>
+    static Uniformization_Segment make_uniformization_segment(const Qx& t_Qx,
+                                                              std::size_t n_samples) {
+        auto n_states = t_Qx().nrows();
+        Uniformization_Segment segment{Matrix<double>(n_states, n_states, 0.0), 0.0, n_samples};
+
+        for (std::size_t i = 0; i < n_states; ++i) {
+            segment.lambda = std::max(segment.lambda, -primitive(t_Qx()(i, i)));
+        }
+
+        if (segment.lambda <= 0.0) {
+            return segment;
+        }
+
+        for (std::size_t i = 0; i < n_states; ++i) {
+            double row_sum = 0.0;
+            for (std::size_t j = 0; j < n_states; ++j) {
+                if (i == j) {
+                    continue;
+                }
+                auto p = std::max(0.0, primitive(t_Qx()(i, j)) / segment.lambda);
+                segment.embedded_transition(i, j) = p;
+                row_sum += p;
+            }
+
+            auto diagonal = std::max(0.0, 1.0 + primitive(t_Qx()(i, i)) / segment.lambda);
+            segment.embedded_transition(i, i) = diagonal;
+            row_sum += diagonal;
+
+            if (row_sum > 0.0 && std::abs(row_sum - 1.0) > 1e-12) {
+                for (std::size_t j = 0; j < n_states; ++j) {
+                    segment.embedded_transition(i, j) /= row_sum;
+                }
+            }
+        }
+
+        return segment;
+    }
+
+    static std::size_t sample_embedded_transition(mt_64i& mt, const Matrix<double>& transition,
+                                                  std::size_t state) {
+        std::uniform_real_distribution<double> uniform(0.0, 1.0);
+        const auto u = uniform(mt);
+        double cumulative = 0.0;
+        auto fallback = state;
+        for (std::size_t j = 0; j < transition.ncols(); ++j) {
+            cumulative += transition(state, j);
+            if (u <= cumulative || j + 1 == transition.ncols()) {
+                return j;
+            }
+        }
+        return fallback;
+    }
+
+    static double sample_uniformization_segment(mt_64i& mt, std::size_t& channel_state,
+                                                const std::vector<double>& conductances,
+                                                const Uniformization_Segment& segment, double fs) {
+        if (segment.n_samples == 0) {
+            return 0.0;
+        }
+
+        const auto duration = segment.n_samples / fs;
+        if (segment.lambda <= 0.0) {
+            return conductances[channel_state] * segment.n_samples;
+        }
+
+        std::exponential_distribution<double> waiting_time(segment.lambda);
+        double elapsed = 0.0;
+        double integrated_current = 0.0;
+
+        while (elapsed < duration) {
+            auto wait = waiting_time(mt);
+            auto next_elapsed = elapsed + wait;
+            if (next_elapsed >= duration) {
+                integrated_current += conductances[channel_state] * (duration - elapsed) * fs;
+                break;
+            }
+
+            integrated_current += conductances[channel_state] * wait * fs;
+            elapsed = next_elapsed;
+            channel_state =
+                sample_embedded_transition(mt, segment.embedded_transition, channel_state);
+        }
+
+        return integrated_current;
+    }
+
     template <typename Simulate_tag, class Patch_Model>
     Maybe_error<Simulated_Sub_Step_t<Simulate_tag>> sub_sub_sample(
         mt_64i& mt, Simulated_Sub_Step_t<Simulate_tag>&& t_sim_step, const Patch_Model& m,
@@ -5996,6 +6157,57 @@ class Macro_DMR {
             else
                 t_sim_step = std::move(Maybe_sub_step.value());
         }
+        return t_sim_step;
+    }
+
+    template <typename Simulate_tag, class Patch_Model>
+    Maybe_error<Simulated_Step<Simulate_tag>> uniformization_sample(
+        mt_64i& mt, Simulated_Step<Simulate_tag>&& t_sim_step, const Patch_Model& m,
+        const Agonist_evolution& t_s, double fs) {
+        auto channel_states = expand_channel_states(m, get<N_channel_state>(t_sim_step()));
+        auto conductances = state_conductances(m);
+        double ysum = 0.0;
+        std::size_t total_samples = 0;
+
+        for (auto const& segment_step : t_s()) {
+            const auto segment_samples = get<number_of_samples>(segment_step)();
+            const auto tQx = calc_Qx(m, get<Agonist_concentration>(segment_step));
+            const auto segment = make_uniformization_segment(tQx, segment_samples);
+            total_samples += segment_samples;
+            for (auto& channel_state : channel_states) {
+                ysum +=
+                    sample_uniformization_segment(mt, channel_state, conductances, segment, fs);
+            }
+        }
+
+        if (total_samples == 0) {
+            return error_message("uniformization simulation requires positive samples per step");
+        }
+
+        auto y_mean = ysum / total_samples;
+        get<N_channel_state>(t_sim_step()) = collapse_channel_states(m, channel_states);
+
+        auto& t_e_step = get<Recording>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())());
+        double e =
+            get<Current_Noise>(m)() * fs / total_samples + get<Pink_Noise>(m).value();
+
+        auto y_baseline = get<Current_Baseline>(m);
+        auto y = y_mean + y_baseline() + std::normal_distribution<double>()(mt) * std::sqrt(e);
+        auto ey = get<Proportional_Noise>(m).value() * std::abs(y);
+        if (ey > 0) {
+            y = y + std::normal_distribution<double>()(mt) * std::sqrt(ey);
+        }
+
+        t_e_step().emplace_back(Patch_current(y));
+        if constexpr (var::has_it_v<Simulate_tag, Only_Ch_Curent_Evolution>) {
+            get<Only_Ch_Curent_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())()
+                .emplace_back(y_mean);
+        }
+        if constexpr (var::has_it_v<Simulate_tag, N_Ch_State_Evolution>) {
+            get<N_Ch_State_Evolution>(get<Simulated_Recording<Simulate_tag>>(t_sim_step())())()
+                .push_back(get<N_channel_state>(t_sim_step()));
+        }
+
         return t_sim_step;
     }
 
@@ -6063,12 +6275,11 @@ class Macro_DMR {
         auto initial_x = get<initial_agonist_concentration>(e);
         auto v_Qx = calc_Qx(m, initial_x());
         auto r_P_mean = P_mean(get<P_initial>(m)());
-        auto N = get<N_Ch_mean>(m)()[0];
+        auto N = static_cast<std::size_t>(std::llround(get<N_Ch_mean>(m)()[0]));
         auto sim = Simulated_Recording<Simulate_tag>{};
         get<SeedNumber>(sim())() = mt.initial_seed();
         auto N_state = sample_Multinomial(mt, r_P_mean, N);
-        return Simulated_Step<Simulate_tag>(
-            Vector_Space(std::move(N_state), Simulated_Recording<Simulate_tag>{}));
+        return Simulated_Step<Simulate_tag>(Vector_Space(std::move(N_state), std::move(sim)));
     }
 
     template <typename Simulate_tag>
@@ -6095,16 +6306,44 @@ class Macro_DMR {
             auto m = std::move(Maybe_m.value());
 
             auto n_sub_dt = get<Simulation_n_sub_dt>(sim);
+            auto simulation_mode = get<Simulation_Mode>(sim).value();
             auto fs = get<Frequency_of_Sampling>(e).value();
-            auto sim_recording = Recording{};
 
             auto ini = init_sim<Simulate_tag>(mt, m, e);
-            auto run = fold(get<Recording_conditions>(e)(), ini,
-                            [this, &m, fs, n_sub_dt, &mt](Simulated_Step<Simulate_tag>&& t_sim_step,
-                                                          Experiment_step const& t_step) {
-                                return Maybe_error<Simulated_Step<Simulate_tag>>(sub_sample(
-                                    mt, std::move(t_sim_step), m, t_step, n_sub_dt(), fs));
-                            });
+            Maybe_error<Simulated_Step<Simulate_tag>> run =
+                error_message("unknown simulation mode ", simulation_mode);
+
+            if (simulation_mode == simulation_algorithm_substeps_name) {
+                if (n_sub_dt() == 0) {
+                    return error_message(
+                        "number_of_substeps must be greater than zero for substep simulation");
+                }
+
+                run = fold(get<Recording_conditions>(e)(), ini,
+                           [this, &m, fs, n_sub_dt,
+                            &mt](Simulated_Step<Simulate_tag>&& t_sim_step,
+                                 Experiment_step const& t_step) {
+                               return Maybe_error<Simulated_Step<Simulate_tag>>(sub_sample(
+                                   mt, std::move(t_sim_step), m, t_step, n_sub_dt(), fs));
+                           });
+            } else if (simulation_mode == simulation_algorithm_uniformization_name) {
+                if constexpr (var::has_it_v<Simulate_tag, Only_Ch_Curent_Sub_Evolution> ||
+                              var::has_it_v<Simulate_tag, N_Ch_State_Sub_Evolution>) {
+                    return error_message(
+                        "simulate_with_sub_intervals does not support "
+                        "simulation_algorithm=\"uniformization\"; use "
+                        "number_of_substeps instead");
+                } else {
+                    run = fold(get<Recording_conditions>(e)(), ini,
+                               [this, &m, fs,
+                                &mt](Simulated_Step<Simulate_tag>&& t_sim_step,
+                                     Experiment_step const& t_step) {
+                                   return Maybe_error<Simulated_Step<Simulate_tag>>(
+                                       uniformization_sample(mt, std::move(t_sim_step), m, t_step,
+                                                             fs));
+                               });
+                }
+            }
             if (!run)
                 return run.error();
             else {
@@ -6568,7 +6807,7 @@ Maybe_error<diff_Macro_State_Gradient_Hessian> diff_logLikelihood(
         auto r_ymean = get<y_mean>(r_Ev()[i])();
         if (std::isfinite(r_yvar) && std::isfinite(r_ymean) && (r_yvar > 0)) {
             t_yvar[i] = 1.0 / r_yvar;
-            t_yvar_2[i] = 2.0 /( t_yvar[i] * t_yvar[i]);
+            t_yvar_2[i] = 1.0 / (2.0 * r_yvar * r_yvar);
         } else {
             t_yvar[i] = 0;
             t_yvar_2[i] = 0;
@@ -6771,7 +7010,9 @@ auto simulate(mt_64i& mt,
               const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
                                                variance_correction, Model>& lik,
               Parameters const& p, const Variables& var) {
-    return Macro_DMR{}.sample(mt, lik.m, p, var, lik.n_sub_dt).value()();
+    return Macro_DMR{}
+        .sample(mt, lik.m, p, var, make_substep_simulation_parameters(lik.n_sub_dt()))
+        .value()();
 }
 
 template <class adaptive, class recursive, class averaging, class variance,

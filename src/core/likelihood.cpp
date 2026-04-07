@@ -1363,6 +1363,7 @@ auto calculate_Likelihood_diagnostics_evolution_impl(
     return out;
 }
 
+template<bool include_evolution=true>
 auto calculate_Likelihood_diagnostics_evolution_f(
     const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices) {
     auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
@@ -1482,20 +1483,37 @@ auto calculate_Likelihood_diagnostics_evolution_f(
         distortion_induced_bias_subspace(H().value(), score_mean().value()).value_or(Matrix<double>{}),
         H().parameters_ptr());
 
-    return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
+    if constexpr (include_evolution) {
+        return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
                          std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),
                          std::move(cdm), std::move(dcc), std::move(dib), std::move(evol_moments));
+    } else {
+        return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
+                         std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),
+                         std::move(cdm), std::move(dcc), std::move(dib)); 
+    }  
 }
 
+template <bool include_evolution>
 auto calculate_Likelihood_derivative_diagnostics(
     const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed)
-    -> Analisis_derivative_diagnostic {
+    -> Analisis_derivative_diagnostic<include_evolution> {
 
     auto mt = mt_64i(seed);            
-    return bootstrap_it_to_Probit(&calculate_Likelihood_diagnostics_evolution_f, dy,
+    return bootstrap_it_to_Probit(&calculate_Likelihood_diagnostics_evolution_f<include_evolution>, dy,
                                   n_boostrap_samples, cis, mt);
 }
+
+template auto calculate_Likelihood_derivative_diagnostics<false>(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed)
+    -> Analisis_derivative_diagnostic<false>;
+
+template auto calculate_Likelihood_derivative_diagnostics<true>(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed)
+    -> Analisis_derivative_diagnostic<true>;
 
 // Explicit instantiations for the CLI-registered overloads to avoid link errors.
 template Maybe_error<std::string>

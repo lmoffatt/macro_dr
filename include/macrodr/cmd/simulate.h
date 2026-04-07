@@ -23,6 +23,16 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const ModelPtr& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
 
+Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
+    const ModelPtr& model, const var::Parameters_values& par,
+    const Experiment& e, const Recording& r, std::string simulation_algorithm, std::size_t number_of_substeps,
+    std::size_t myseed);
+
+Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
+    const ModelPtr& model, const var::Parameters_transformed& par,
+    const Experiment& e, const Recording& r, std::string simulation_algorithm, std::size_t number_of_substeps,
+    std::size_t myseed);
+
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
     const ModelPtr& model, const var::Parameters_values& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
@@ -30,6 +40,18 @@ Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> run_simulations_with_sub_intervals(
     const ModelPtr& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed);
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
+run_simulations_with_sub_intervals(const ModelPtr& model, const var::Parameters_values& par,
+                                   const Experiment& e, const Recording& r,
+                                   std::string simulation_algorithm,
+                                   std::size_t myseed);
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
+run_simulations_with_sub_intervals(const ModelPtr& model,
+                                   const var::Parameters_transformed& par, const Experiment& e,
+                                   const Recording& r, std::string simulation_algorithm,
+                                   std::size_t myseed);
 
 inline Simulated_Recording<var::please_include<>> remove_intervals(
     const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>& simulation){
@@ -45,6 +67,16 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
     const ModelPtr& model, const var::Parameters_transformed& par, std::size_t n_simulations,
     const Experiment& e, const Recording& r, std::size_t number_of_substeps, std::size_t myseed);
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const ModelPtr& model, const var::Parameters_values& par, std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::string simulation_algorithm,std::size_t number_of_substeps, 
+    std::size_t myseed);
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const ModelPtr& model, const var::Parameters_transformed& par, std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::string simulation_algorithm,std::size_t number_of_substeps, 
+    std::size_t myseed);
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>> run_n_simulations_with_sub_intervals(
     const ModelPtr& model, const var::Parameters_values& par,  std::size_t n_simulations,

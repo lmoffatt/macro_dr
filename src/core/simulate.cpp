@@ -31,6 +31,38 @@ namespace {
 namespace csv_detail = macrodr::cmd::detail;
 using namespace macrodr;
 
+Maybe_error<Simulation_Parameters> simulation_parameters_from_algorithm(
+    const std::string& simulation_algorithm) {
+    if (simulation_algorithm == simulation_algorithm_uniformization_name) {
+        return make_uniformization_simulation_parameters();
+    }
+    if (simulation_algorithm == simulation_algorithm_substeps_name) {
+        return error_message(
+            "simulation_algorithm=\"substeps\" is not supported by this overload; use "
+            "number_of_substeps instead");
+    }
+    return error_message("unsupported simulation_algorithm \"", simulation_algorithm,
+                         "\"; expected \"", simulation_algorithm_uniformization_name, "\"");
+}
+
+Maybe_error<Simulation_Parameters> simulation_parameters_for_substeps(std::size_t n_sub) {
+    if (n_sub == 0) {
+        return error_message("number_of_substeps must be greater than zero");
+    }
+    return make_substep_simulation_parameters(n_sub);
+}
+
+Maybe_error<Simulation_Parameters> simulation_parameters_from_legacy(
+    const macrodr::cmd::simulation_algo_type& sim_algo_type) {
+    if (sim_algo_type.algorithm == simulation_algorithm_uniformization_name) {
+        return make_uniformization_simulation_parameters();
+    }
+    if (sim_algo_type.algorithm == simulation_algorithm_substeps_name) {
+        return simulation_parameters_for_substeps(sim_algo_type.number_of_substeps);
+    }
+    return error_message("unsupported simulation algorithm \"", sim_algo_type.algorithm, "\"");
+}
+
 Maybe_error<bool> emit_simulation_rows(csv_detail::CsvWriter& writer, const Experiment& e,
                                        const Recording& recording,
                                        std::optional<std::size_t> simulation_index,
@@ -196,7 +228,11 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     myseed = calc_seed(myseed);
 
     mt_64i mt(myseed);
-    Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
+    auto maybe_sim = simulation_parameters_for_substeps(n_sub);
+    if (!maybe_sim) {
+        return maybe_sim.error();
+    }
+    auto sim = maybe_sim.value();
     return Macro_DMR{}.sample(mt, *model, par, e, sim, r);
    }
 
@@ -204,6 +240,30 @@ Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
     const ModelPtr& model, const var::Parameters_transformed& par,
     const Experiment& e, const Recording& r, std::size_t n_sub, std::size_t myseed) {
     return run_simulations(model, par.to_value(), e, r, n_sub, myseed);
+}
+
+Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
+    const ModelPtr& model, const var::Parameters_values& par, const Experiment& e,
+    const Recording& r, std::string simulation_algorithm, std::size_t number_of_substeps, std::size_t myseed) {
+    myseed = calc_seed(myseed);
+    if (simulation_algorithm == simulation_algorithm_substeps_name) {
+        return run_simulations(model, par, e, r, number_of_substeps, myseed);
+    }
+
+
+    auto maybe_sim = simulation_parameters_from_algorithm(simulation_algorithm);
+    if (!maybe_sim) {
+        return maybe_sim.error();
+    }
+
+    mt_64i mt(myseed);
+    return Macro_DMR{}.sample(mt, *model, par, e, maybe_sim.value(), r);
+}
+
+Maybe_error<Simulated_Recording<var::please_include<>>> run_simulations(
+    const ModelPtr& model, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r, std::string simulation_algorithm, std::size_t number_of_substeps, std::size_t myseed) {
+    return run_simulations(model, par.to_value(), e, r, simulation_algorithm, number_of_substeps,  myseed);
 }
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
@@ -216,12 +276,16 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
     std::vector<Simulated_Recording<var::please_include<>>> result;
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
-        Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-        auto maybe_sim = Macro_DMR{}.sample(mt, *model, par, e, sim, r);
-        if (!maybe_sim) {
-            return maybe_sim.error();
+        auto maybe_params = simulation_parameters_for_substeps(n_sub);
+        if (!maybe_params) {
+            return maybe_params.error();
         }
-        result.push_back(maybe_sim.value());
+        auto sim = maybe_params.value();
+        auto maybe_recording = Macro_DMR{}.sample(mt, *model, par, e, sim, r);
+        if (!maybe_recording) {
+            return maybe_recording.error();
+        }
+        result.push_back(maybe_recording.value());
     }
     return result;
 }
@@ -233,6 +297,41 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
     return run_n_simulations(model, par.to_value(), n_simulations, e, r, n_sub, myseed);
 }
 
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const ModelPtr& model, const var::Parameters_values& par, std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::string simulation_algorithm,std::size_t number_of_substeps, 
+    std::size_t myseed) {
+    if (simulation_algorithm == simulation_algorithm_substeps_name) {
+      return run_n_simulations(model, par, n_simulations, e, r, number_of_substeps, myseed);
+    }
+        
+    myseed = calc_seed(myseed);
+
+    auto maybe_sim_params = simulation_parameters_from_algorithm(simulation_algorithm);
+    if (!maybe_sim_params) {
+        return maybe_sim_params.error();
+    }
+
+    mt_64i mt(myseed);
+    std::vector<Simulated_Recording<var::please_include<>>> result;
+    result.reserve(n_simulations);
+    for (std::size_t i = 0; i < n_simulations; ++i) {
+        auto maybe_sim = Macro_DMR{}.sample(mt, *model, par, e, maybe_sim_params.value(), r);
+        if (!maybe_sim) {
+            return maybe_sim.error();
+        }
+        result.push_back(maybe_sim.value());
+    }
+    return result;
+}
+
+Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
+    const ModelPtr& model, const var::Parameters_transformed& par, std::size_t n_simulations,
+    const Experiment& e, const Recording& r, std::string simulation_algorithm, std::size_t number_of_substeps, std::size_t myseed) {
+    return run_n_simulations(model, par.to_value(), n_simulations, e, r, simulation_algorithm, number_of_substeps, myseed);
+}
+ 
+
 Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
     run_simulations_with_sub_intervals(const ModelPtr& model,
                                          const var::Parameters_values& par,const Experiment& e,
@@ -240,7 +339,11 @@ Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution
                                          std::size_t myseed) {
     myseed = calc_seed(myseed);
     mt_64i mt(myseed);
-     Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
+    auto maybe_sim = simulation_parameters_for_substeps(n_sub);
+    if (!maybe_sim) {
+        return maybe_sim.error();
+    }
+    auto sim = maybe_sim.value();
       return  Macro_DMR{}.sample_sub_y(mt, *model, par, e, sim, r);
   }
 
@@ -251,6 +354,33 @@ Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution
                                          std::size_t myseed) {
     return run_simulations_with_sub_intervals(model, par.to_value(), e, r, n_sub,
                                                 myseed);
+}
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
+run_simulations_with_sub_intervals(const ModelPtr&, const var::Parameters_values&,
+                                   const Experiment&, const Recording&,
+                                   std::string simulation_algorithm, std::size_t) {
+    if (simulation_algorithm == simulation_algorithm_uniformization_name) {
+        return error_message(
+            "simulate_with_sub_intervals does not support "
+            "simulation_algorithm=\"uniformization\"; use number_of_substeps instead");
+    }
+    if (simulation_algorithm == simulation_algorithm_substeps_name) {
+        return error_message(
+            "simulation_algorithm=\"substeps\" is not supported by this overload; use "
+            "number_of_substeps instead");
+    }
+    return error_message("unsupported simulation_algorithm \"", simulation_algorithm,
+                         "\" for simulate_with_sub_intervals");
+}
+
+Maybe_error<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>
+run_simulations_with_sub_intervals(const ModelPtr& model, const var::Parameters_transformed& par,
+                                   const Experiment& e, const Recording& r,
+                                   std::string simulation_algorithm,
+                                   std::size_t myseed) {
+    return run_simulations_with_sub_intervals(model, par.to_value(), e, r, simulation_algorithm,
+                                              myseed);
 }
 
 
@@ -265,12 +395,16 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_S
     std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> result;
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
-        Simulation_Parameters sim = Simulation_Parameters(Simulation_n_sub_dt(n_sub));
-        auto maybe_sim = Macro_DMR{}.sample_sub_y(mt, *model, par, e, sim, r);
-        if (!maybe_sim) {
-            return maybe_sim.error();
+        auto maybe_params = simulation_parameters_for_substeps(n_sub);
+        if (!maybe_params) {
+            return maybe_params.error();
         }
-        result.push_back(maybe_sim.value());
+        auto sim = maybe_params.value();
+        auto maybe_recording = Macro_DMR{}.sample_sub_y(mt, *model, par, e, sim, r);
+        if (!maybe_recording) {
+            return maybe_recording.error();
+        }
+        result.push_back(maybe_recording.value());
     }
     return result;
 }
@@ -290,7 +424,10 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
                                        const std::string& modelName,
                                        parameters_value_type parameter_files,
                                        simulation_algo_type sim_algo_type) {
-    auto [includeN, n_sub_dt] = sim_algo_type;
+    auto maybe_sim_params = simulation_parameters_from_legacy(sim_algo_type);
+    if (!maybe_sim_params) {
+        return maybe_sim_params.error();
+    }
     auto Maybe_recording = load_Recording(std::move(recording_file), std::string(","));
     if (!Maybe_recording) {
         return Maybe_recording.error()();
@@ -303,8 +440,9 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
         auto model_v = std::move(Maybe_model_v.value());
 
         return std::visit(
-            [&filename_prefix, &experiment, &recording, &myseed, &parameter_files, n_sub_dt,
-             includeN](auto model0ptr) -> std::string {
+            [&filename_prefix, &experiment, &recording, &myseed, &parameter_files,
+             includeN = sim_algo_type.include_N_states,
+             sim_params = maybe_sim_params.value()](auto model0ptr) -> std::string {
                 auto& model0 = *model0ptr;
                 myseed = calc_seed(myseed);
                 mt_64i mt(myseed);
@@ -322,20 +460,19 @@ Maybe_error<std::string> runsimulation(std::string filename_prefix, recording_ty
                     auto param1 = Maybe_parameter_values.value().standard_parameter();
                     save_Parameter<var::Parameters_transformed> s(filename, 1ul, 200ul);
                     if (!includeN) {
-                        auto sim = Macro_DMR{}.sample(
-                            mt, model0, param1, experiment,
-                            Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+                        auto sim = Macro_DMR{}.sample(mt, model0, param1, experiment, sim_params,
+                                                      recording);
                         if (!sim)
-                            return "";
+                            return sim.error()();
                         else {
                             save_Recording(filename + "_simulation.csv", ",",
                                            get<Recording>(sim.value()()));
                             return filename + "_simulation.csv";
                         }
                     } else {
-                        auto sim = Macro_DMR{}.sample_N(
-                            mt, model0, param1, experiment,
-                            Simulation_Parameters(Simulation_n_sub_dt(n_sub_dt)), recording);
+                        auto sim =
+                            Macro_DMR{}.sample_N(mt, model0, param1, experiment, sim_params,
+                                                 recording);
                         if (!sim)
                             return sim.error()();
                         else {

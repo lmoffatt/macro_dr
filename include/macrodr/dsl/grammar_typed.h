@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -770,24 +771,42 @@ class typed_lifted_function_evaluation
         }
         auto space = std::move(maybe_space.value());
         if (space.size() == 0) {
-            return var::Indexed<scalar_type>(std::move(space), {});
+            return var::Indexed<scalar_type>(std::move(space), std::vector<scalar_type>{});
         }
-        std::vector<scalar_type> values;
-        values.reserve(space.size());
-        auto coord = space.begin();
-        while (true) {
-            auto maybe_value = run_at(env, coord);
-            if (!maybe_value) {
-                return error_message(std::string("\nIn expression at coordinate ") + coord.str() +
-                                     ": " + maybe_value.error()());
+        auto all_coords = space.all_coordinates();
+        std::vector<std::optional<scalar_type>> values(all_coords.size());
+        std::vector<std::string> errors(all_coords.size());
+    #pragma omp parallel for
+        for(std::size_t i=0; i<all_coords.size(); ++i) {
+            const auto& coord = all_coords[i];
+            auto maybe_run = run_at(env, coord);
+            if (maybe_run) {
+                values[i].emplace(std::move(maybe_run.value()));
+            } else {
+                errors[i] = maybe_run.error()();
             }
-            values.push_back(std::move(maybe_value.value()));
-            if (coord.last()) {
-                break;
-            }
-            coord.next();
         }
-        return var::Indexed<scalar_type>(std::move(space), std::move(values));
+
+        std::string combined_errors;
+        for (const auto& error : errors) {
+            if (!error.empty()) {
+                if (!combined_errors.empty()) {
+                    combined_errors += '\n';
+                }
+                combined_errors += error;
+            }
+        }
+        if (!combined_errors.empty()) {
+            return error_message(std::string("errors in evaluating lifted function at coordinates:\n") +
+                                 combined_errors);
+        }
+
+        std::vector<scalar_type> resolved_values;
+        resolved_values.reserve(values.size());
+        for (auto& value : values) {
+            resolved_values.push_back(std::move(*value));
+        }
+        return var::Indexed<scalar_type>(std::move(space), std::move(resolved_values));
     }
 };
 

@@ -1,0 +1,24 @@
+model = load_model("scheme_1")
+parameter = load_parameters(model, "../data/scheme_1_PI_par.csv")
+par_values = get_standard_parameter_values(parameter)
+
+experiment = create_experiment(
+    experiment_structure=[{1,10,10.0},{1,8,0.0}],
+    frequency_of_sampling=50e3,
+    initial_agonist=0.0,
+    initial_time=0.0)
+observations = set_observations(values_set=[0.0,0.0])
+
+simulation = simulate(
+    model=model,
+    parameter_values=par_values,
+    experiment=experiment,
+    observations=observations,
+    simulation_algorithm="uniformization",
+    number_of_substeps=0,
+    seed=0)
+
+simulation_file = write_csv(
+    experiment=experiment,
+    simulation=simulation,
+    path="simulate_uniformization_smoke")

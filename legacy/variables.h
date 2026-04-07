@@ -629,8 +629,28 @@ class Vector_Space : public Vars... {
 };
 
 
+namespace impl {
+    // 1. Primary template
+    template<class V1, class V2>
+    struct concatenate_impl;
 
+    // 2. Case: Joining two Vector_Spaces
+    template<class... Vars1, class... Vars2>
+    struct concatenate_impl<Vector_Space<Vars1...>, Vector_Space<Vars2...>> {
+        using type = Vector_Space<Vars1..., Vars2...>;
+    };
 
+    // 3. Case: Appending a single non-Vector_Space type (V2) to a Vector_Space
+    template<class... Vars1, class V2>
+    requires (!is_of_this_template_type_v<V2, Vector_Space>)
+    struct concatenate_impl<Vector_Space<Vars1...>, V2> {
+        using type = Vector_Space<Vars1..., V2>;
+    };
+}
+
+// Public Alias
+template<class V1, class V2>
+using concatenate_t = typename impl::concatenate_impl<V1, V2>::type;
 
 
 template <class... Vars>

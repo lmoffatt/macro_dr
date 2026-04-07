@@ -697,6 +697,40 @@ inline Maybe_error<Parameters_Transformations> load_Parameters(
     return Parameters_Transformations(ModelName, ParamNames, trs, v);
 }
 
+//create_parameters(const ModelPtr& model,
+//    std::vector<std::tuple<std::string, std::size_t, std::string, std::string, double>>  parameters_info){
+
+
+inline Maybe_error<Parameters_Transformations> create_parameters( std::string const& ModelName,     
+    const std::vector<std::string>& ParamNames, 
+    std::vector<std::tuple<std::string, std::string, double>>  parameters_info) {
+    
+    std::vector<double> v;
+    transformations_vector trs;
+     if (parameters_info.size() != ParamNames.size()) {
+        return error_message("only ", parameters_info.size(), " parameters. Expected: ", ParamNames.size());
+    }
+    for (std::size_t i = 0; i < parameters_info.size(); ++i) {
+         auto parameter_info = std::move(parameters_info[i]);
+        auto [ParamName_candidate, transformation, value] = std::move(parameter_info);
+        if (ParamName_candidate != ParamNames[i]) {
+            return error_message("Parameter name candidate wrong at i_par=", i, "  :",
+                                     ParamName_candidate, " expected: ", ParamNames[i]);
+            }
+            auto Maybe_tr = MyTranformations::from_string(transformation);
+            if (!Maybe_tr) {
+                return Maybe_tr.error();
+            }
+            auto tr=std::move(Maybe_tr.value());
+            v.push_back(value);
+            trs.push_back(std::move(tr));
+        }
+    return Parameters_Transformations(ModelName, ParamNames, trs, v);
+}
+
+
+
+
 inline std::vector<std::string> const& Parameters_values::names() const {
     return parameters().names();
 }
