@@ -43,7 +43,7 @@ TEST_CASE("matrix get_mean_Probits drops empty samples", "[probit][matrix]") {
         make_matrix({1.0, 2.0, 3.0, 4.0}),
         make_matrix({5.0, 6.0, 7.0, 8.0})};
 
-    auto [mean_matrix, probits] = get_mean_Probits(samples, std::set<double>{0.5});
+    auto [mean_matrix, probits] = get_mean_Probits(samples, std::set<double>{0.5}, std::identity{});
 
     REQUIRE(mean_matrix.nrows() == 2);
     REQUIRE(mean_matrix.ncols() == 2);
@@ -65,7 +65,7 @@ TEST_CASE("matrix get_mean_Probits uses first non-empty shape", "[probit][matrix
         Matrix<double>{},
         make_matrix({2.0, 4.0, 6.0, 8.0})};
 
-    auto [mean_matrix, probits] = get_mean_Probits(samples, std::set<double>{0.5});
+    auto [mean_matrix, probits] = get_mean_Probits(samples, std::set<double>{0.5}, std::identity{});
 
     REQUIRE(mean_matrix.nrows() == 2);
     REQUIRE(mean_matrix.ncols() == 2);
@@ -86,7 +86,7 @@ TEST_CASE("matrix get_mean_Probits returns empty matrices when all samples are e
           "[probit][matrix]") {
     std::vector<Matrix<double>> samples{Matrix<double>{}, Matrix<double>{}};
 
-    auto [mean_matrix, probits] = get_mean_Probits(samples, std::set<double>{0.25, 0.75});
+    auto [mean_matrix, probits] = get_mean_Probits(samples, std::set<double>{0.25, 0.75}, std::identity{});
 
     CHECK(mean_matrix.size() == 0);
     CHECK(mean_matrix.nrows() == 0);

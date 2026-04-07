@@ -1,28 +1,32 @@
 model = load_model("scheme_CO")
 
-parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
+axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.3","0.1","0.03","0.01"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
+axis_Nchanels =axis(name= "Num_ch", labels= ["1", "10","100","1000","10000"])
 
-
+current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
+Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1, 10,100,1000,10000])
 parameter = create_parameters(
    model = model, 
-   parameters_info= [
+   parameters_info= [   
       {"on","Log10",10},
 {"off","Log10",100},
 {"unitary_current","Log10",1},
-{"Current_Noise","Log10",0.001},
+{"Current_Noise","Log10",current_noise},
 {"Current_Baseline","Log10",1},
-{"Num_ch_mean","Log10", 500}]
+{"Num_ch_mean","Log10", Num_ch}]
 )
 
 
 
+
+
 experiment = create_experiment(
-   experiment_structure=[{10,50,0.0},
-   {2,1,10.0},{2,2,10.0},{2,5,10.0},{2,10,10.0},{2,20,10.0},{2,50,10.0},
-   {2,100,10.0},{2,200,10.0},{2,500,10.0},{2,1000,10.0},{2,2000,10.0},
-   {2,5000,10.0},{2,10000,10.0},{2,20000,10.0},
-   {2,1,0.0},{2,2,0.0},{2,5,0.0},{2,10,0.0},{2,20,0.0},{2,50,0.0},
-   {2,100,0.0},{2,200,0.0},{2,500,0.0},{2,1000,0.0},{2,2000,0.0}], 
+   experiment_structure=[
+      {indexed_size_by(axis= axis_interval,values=[1,10,100]),indexed_double_by(axis= axis_interval,values=[500,150,5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[2,20,200]),indexed_double_by(axis= axis_interval,values=[500,150,5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[3,30,300]),indexed_double_by(axis= axis_interval,values=[500,150,5]),0.0}
+      ], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
 initial_time = 0.0)
@@ -33,13 +37,13 @@ par_tr = get_standard_parameter_transformed_values(parameter)
  
 model_str="scheme_CO"
 
-simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_100","substeps_1000", "uniformization"])
+simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 256, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 16, experiment = experiment,
                          observations = observations, 
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps","substeps", "uniformization"]),
-                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [100,1000,1000]),
+                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
                  seed = 0)
 
 
@@ -71,7 +75,7 @@ dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, 
 
 
 likelihood_analysis = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=1000,
-            probits = [ 0.025 , 0.975 ] , seed=42)
+            probits = [ 0.025 , 0.975 ] , seed=0)
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
