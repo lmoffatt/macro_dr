@@ -55,13 +55,13 @@
                     | <expression>
 # Accepts either named or positional argument
 
-<expression>      ::= <literal>
-                    | <string_literal>
-                    | <identifier>
-                    | <function_call>
-                    | <argument_list>
-                    | <vector_literal>
-                    | <tuple_literal>
+  <expression>      ::= <literal>
+                      | <string_literal>
+                      | <identifier>
+                      | <function_call>
+                      | <argument_list>
+                      | <vector_literal>
+                      | <tuple_literal>
 # General expression node (used in RHS). Now includes vector and
 # tuple literals as first-class expressions.
 

@@ -3,6 +3,8 @@
 #include <macrodr/dsl/grammar_untyped.h>
 #include <macrodr/dsl/lexer_typed.h>
 #include <macrodr/dsl/lexer_untyped.h>
+#include <macrodr/dsl/Lexer.h>
+#include <macrodr/dsl/Compiler.h>
 
 #include <memory>
 #include <string>
@@ -16,8 +18,8 @@ template <class... Args, class F, class... String>
              (std::is_void_v<std::invoke_result_t<F, Args...>> ||
               std::is_object_v<std::invoke_result_t<F, Args...>>))
 auto to_typed_function(F t_f, String&&... args) {
-    return std::make_unique<function_compiler<Lexer, Compiler, F, Args...>>(
-        t_f, field_compiler<Lexer, Compiler, detail::function_argument_storage_t<Args>>(
+    return std::make_unique<function_compiler<Lexer, Compiler<Lexer>, F, Args...>>(
+        t_f, field_compiler<Lexer, Compiler<Lexer>, detail::function_argument_storage_t<Args>>(
                  to_Identifier<Lexer>(std::forward<String>(args)).value())...);
 }
 
@@ -26,16 +28,16 @@ template <class R,class... Args,  class... String>
              (std::is_constructible_v<std::string, String> && ...) )
 auto to_typed_return_function(R (*t_f)(Args...), String&&... args) {
     using F=R(*)(Args...);
-    return std::make_unique<function_compiler<Lexer, Compiler, F, Args...>>(
-        t_f, field_compiler<Lexer, Compiler, detail::function_argument_storage_t<Args>>(
+    return std::make_unique<function_compiler<Lexer, Compiler<Lexer>, F, Args...>>(
+        t_f, field_compiler<Lexer, Compiler<Lexer>  , detail::function_argument_storage_t<Args>>(
                  to_Identifier<Lexer>(std::forward<String>(args)).value())...);
 }
 
 template <class T, class P>
     requires(std::is_same_v<Maybe_error<T>, std::invoke_result_t<P, T>>)
 auto to_typed_predicate(P t_f, std::string arg) {
-    return std::make_unique<predicate_compiler<Lexer, Compiler, P, T>>(
-        t_f, field_compiler<Lexer, Compiler, T>(to_Identifier<Lexer>(std::move(arg)).value()));
+    return std::make_unique<predicate_compiler<Lexer, Compiler<Lexer>, P, T>>(
+        t_f, field_compiler<Lexer, Compiler<Lexer>, T>(to_Identifier<Lexer>(std::move(arg)).value()));
 }
 
 }  // namespace macrodr::dsl

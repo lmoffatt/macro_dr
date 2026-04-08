@@ -40,8 +40,8 @@ auto calculate_likelihood_derivative_diagnostics_dsl(
 
 }
 
-inline macrodr::dsl::Compiler make_simulations_compiler() {
-    dsl::Compiler cm;
+inline macrodr::dsl::Compiler<macrodr::dsl::Lexer> make_simulations_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function("get_num_parameters",
                      dsl::to_typed_function<std::string>(&get_num_parameters, "model"));
 
@@ -228,8 +228,8 @@ inline macrodr::dsl::Compiler make_simulations_compiler() {
     return cm;
 }
 
-dsl::Compiler make_compiler_new() {
-    dsl::Compiler cm;
+dsl::Compiler<dsl::Lexer> make_compiler_new() {
+    dsl::Compiler<dsl::Lexer> cm;
     // Meta commands (help/version) available everywhere
     cm.merge(macrodr::cmd::make_cli_meta_compiler());
     cm.merge(macrodr::cmd::make_utilities_compiler());

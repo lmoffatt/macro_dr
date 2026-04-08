@@ -271,8 +271,8 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
             model_v);
     }
 }
-inline dsl::Compiler make_likelihood_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_likelihood_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function("likelihood",
                      dsl::to_typed_function<std::string, std::string, parameters_value_type,
                                             likelihood_algo_type, std::string, experiment_type>(

@@ -117,8 +117,8 @@ inline Maybe_error<simulation_algo_type> set_simulation_algorithm(bool includeN,
                          "\"; expected \"uniformization\"");
 }
 
-inline dsl::Compiler make_utilities_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_utilities_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function("get_random_Id",
                      dsl::to_typed_function<std::string>(&get_random_id, "prefix"));
     cm.push_function("get_number", dsl::to_typed_function<std::size_t>(&get_number, "n"));
@@ -126,7 +126,7 @@ inline dsl::Compiler make_utilities_compiler() {
 }
 
 inline auto make_io_compiler() {
-    auto cm = dsl::Compiler{};
+    auto cm = dsl::Compiler<dsl::Lexer>{};
     using namespace cmd;
     cm.push_function("write_text", dsl::to_typed_function<std::string, std::string>(
                                        &write_text, "filename", "text"));
@@ -145,12 +145,12 @@ inline auto make_io_compiler() {
     return cm;
 }
 
-inline dsl::Compiler make_experiment_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_experiment_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function("get_Observations",
-                     dsl::to_typed_function<std::string>(&get_Observations, "filename"));
+                     dsl::to_typed_function<   std::string>(&get_Observations, "filename"));
     cm.push_function("idealize_Experiment",
-                     dsl::to_typed_function<std::string, std::string, std::string>(
+                     dsl::to_typed_function< std::string, std::string, std::string>(
                          &idealize_Experiment, "experiment_filename", "sep", "idealized_filename"));
     cm.push_function("get_function_Table_maker",
                      dsl::to_typed_function<std::string, std::size_t>(
@@ -164,8 +164,9 @@ inline dsl::Compiler make_experiment_compiler() {
     return cm;
 }
 
-inline dsl::Compiler make_model_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_model_compiler() {
+
+    dsl::Compiler<dsl::Lexer> cm;
     // cm.push_function("load_model", dsl::to_typed_function<std::string>(&load_model, "model_name"));
 
     cm.push_function("get_Prior", dsl::to_typed_function<double, std::string>(
@@ -173,7 +174,7 @@ inline dsl::Compiler make_model_compiler() {
 
     cm.push_function(
         "set_Likelihood_algorithm",
-        dsl::to_typed_function<bool, bool, int, bool, bool, std::size_t>(
+        dsl::to_typed_function<    bool, bool, int, bool, bool, std::size_t>(
             &set_Likelihood_algorithm, "adaptive_aproximation", "recursive_approximation",
             "averaging_approximation", "variance_correction_approximation",
             "variance_approximation", "n_sub_dt"));
@@ -196,8 +197,8 @@ inline dsl::Compiler make_model_compiler() {
 }
 #ifdef ZOMBIE
 namespace zombie {
-inline dsl::Compiler make_frac_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_frac_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function(
         "fraction_experiment",
         dsl::to_typed_function<std::string, std::string, experiment_type, fraction_algo_type,

@@ -284,8 +284,8 @@ inline void calc_thermo_levenberg_evidence_continuation(std::string id, std::siz
             model_v);
     }
 }
-inline dsl::Compiler make_levenberg_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_levenberg_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     // cm.push_function("set_ThermoLevenAlgorithm", ...);
     // cm.push_function("thermo_levenberg_evidence", ...);
     return cm;

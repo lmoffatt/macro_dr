@@ -10,9 +10,8 @@
 
 #include "fold.h"
 #include "grammar_Identifier.h"
-#include "grammar_typed.h"
-#include "lexer_typed.h"
 #include "maybe_error.h"
+#include "dsl_forward.h"
 namespace macrodr::dsl {
 
 template <class Abstract>
@@ -35,10 +34,6 @@ std::tuple<std::unique_ptr<Abstract>...> clone_tuple(
         x);
 }
 
-template <class Lexer, class Compiler>
-class base_typed_statement;
-template <class Lexer, class Compiler>
-class base_typed_expression;
 
 template <class Lexer, class Compiler>
 class untyped_statement {

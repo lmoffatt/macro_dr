@@ -1,0 +1,34 @@
+como organice mi dsl
+
+
+quienes derivan de typed_expression?
+
+typed_identifier
+typed_identifier<Indexed<T>>
+typed_identifier_ref
+typed_identifier_ref_const
+typed_literal
+typed_liter<Indexed<T>>
+
+typed_literal<unique_ptr<T>>
+typed_literal<Maybe_erro<unique_ptr<T>>>
+
+
+typed_scalar_function_evaluation
+typed_lifter_function_evaluation
+
+typed_exact_indexed_function_evaluation
+
+
+
+
+typed_tuple_construction
+typed_homogeneous_container_construction
+     typed_set_construction
+     typed_vector_construction
+
+
+     
+typed_predicate_evaluation
+typed_convertion
+    not completely integrated yet

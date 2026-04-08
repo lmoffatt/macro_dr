@@ -2,6 +2,7 @@
 #define GRAMMAR_TYPED_H
 #include "grammar_Identifier.h"
 //#include "grammar_untyped.h"
+#include <algorithm>
 #include <concepts>
 #include <functional>
 #include <map>
@@ -14,37 +15,20 @@
 #include <utility>
 #include <vector>
 
-#include "deprecation.h"
-#include "lexer_typed.h"
 #include "maybe_error.h"
 #include "type_name.h"
 // Schemas
 #include "parameters.h"
 #include "indexed.h"
-
+#include "json_spec.h"
+#include "dsl_argument_traits.h"
+#include "dsl_forward.h"
 namespace macrodr::dsl {
 // Forward declarations to break subtle include ordering issues
-template <class Lexer, class Compiler>
-class base_function_compiler;
-template <class Lexer, class Compiler, class T>
-class Identifier_compiler; // defined in lexer_typed.h
-template <class Lexer, class Compiler, class T>
-class parameter_compiler;
-template <class Lexer, class Compiler>
-class base_typed_statement;
-template <class Lexer, class Compiler>
-class base_typed_expression;
 struct SerializedExpression {
     std::string type;
     macrodr::io::json::Json value;
 };
-template <class Lexer, class Compiler>
-class base_Identifier_compiler;
-template <class Lexer, class Compiler, class T>
-class typed_expression;
-// Forward declare typed_literal for earlier use in identifier_ref helpers
-template <class Lexer, class Compiler, class T>
-class typed_literal;
 
 template <class... Abstract>
 std::tuple<std::unique_ptr<Abstract>...> clone_tuple_unique(
@@ -161,8 +145,6 @@ class Environment {
     void clear_identifiers() { m_id.clear(); }
 };
 
-template <class Lexer, class Compiler>
-class base_Identifier_compiler;
 
 template <class Lexer, class Compiler>
 class base_typed_statement {
@@ -565,7 +547,7 @@ class typed_identifier<Lexer, Compiler, var::Indexed<T>>
             dynamic_cast<typed_expression<Lexer, Compiler, var::Indexed<T>> const*>(
                 maybe_x.value());
         if (!exp) {
-            return error_message(std::string("type mismatch for identifier ") + m_id());
+            return error_message(std::string("type mismatch for and Indexed identifier of type ")+ typeid(T).name() + " for identifier " + m_id());
         }
         return exp->run_at(env, coord);
     }
@@ -646,6 +628,47 @@ auto collect_index_space(const Tuple& args, const Env& env) -> Maybe_error<var::
     }
     return std::move(*merged);
 }
+
+template <class T, class Env>
+auto collect_index_space(const std::vector<std::unique_ptr<T>> & args, const Env& env) -> Maybe_error<var::IndexSpace> {
+    std::optional<var::IndexSpace> merged;
+    std::string err;
+    for (auto& arg : args) {
+        if (!arg->has_index_space(env)) {
+            continue;
+        }
+        auto maybe_space = arg->index_space(env);
+        if (!maybe_space) {
+            if (!err.empty()) {
+                err += "\n";
+            }
+            err += maybe_space.error()();
+            continue;
+        }
+        if (!merged.has_value()) {
+            merged = maybe_space.value();
+            continue;
+        }
+        auto maybe_merged = var::merge_IndexSpaces(*merged, maybe_space.value());
+        if (!maybe_merged) {
+            if (!err.empty()) {
+                err += "\n";
+            }
+            err += maybe_merged.error()();
+            continue;
+        }
+        merged = std::move(maybe_merged.value());
+    }
+    
+    if (!err.empty()) {
+        return error_message(err);
+    }
+    if (!merged.has_value()) {
+        return error_message("lifted indexed evaluation requires at least one indexed argument");
+    }
+    return std::move(*merged);
+}
+
 
 }  // namespace detail
 
@@ -1016,7 +1039,7 @@ class typed_homogeneous_container_construction
     using storage_t = function_argument_storage_t<U>;
 
     using storage_args =
-        std::vector<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<T>>>>;
+        std::vector<std::unique_ptr<typed_argument<Lexer, Compiler, storage_t<T>>>>;
 
     explicit typed_homogeneous_container_construction(storage_args&& args)
         : m_args{std::move(args)} {}
@@ -1069,6 +1092,124 @@ class typed_homogeneous_container_construction
     storage_args m_args;
 };
 
+
+
+template <class Lexer, class Compiler, class Container, class expressedType,class T>
+class typed_lifted_homogeneous_container_construction
+    : public typed_expression<Lexer, Compiler, var::Indexed<expressedType>> {
+   public:
+    template <class U>
+    using storage_t = function_argument_storage_t<U>;
+    using scalar_type = expressedType;
+
+    using storage_args =
+        std::vector<std::unique_ptr<typed_argument<Lexer, Compiler, storage_t<T>>>>;
+
+    explicit typed_lifted_homogeneous_container_construction(storage_args&& args)
+        : m_args{std::move(args)} {}
+
+    explicit typed_lifted_homogeneous_container_construction(const storage_args& args)
+        : m_args{clone_vector(args)} {}
+
+    ~typed_lifted_homogeneous_container_construction() override = default;
+
+    typed_lifted_homogeneous_container_construction(
+        const typed_lifted_homogeneous_container_construction& other)
+        : m_args{clone_vector(other.m_args)} {}
+
+    typed_lifted_homogeneous_container_construction(
+        typed_lifted_homogeneous_container_construction&&) noexcept = default;
+    typed_lifted_homogeneous_container_construction& operator=(
+        typed_lifted_homogeneous_container_construction&&) noexcept = default;
+
+    typed_lifted_homogeneous_container_construction& operator=(
+        const typed_lifted_homogeneous_container_construction& other) {
+        if (this != &other) {
+            m_args = clone_vector(other.m_args);
+        }
+        return *this;
+    }
+
+
+    [[nodiscard]] Maybe_error<var::IndexSpace> index_space(
+        Environment<Lexer, Compiler> const& env) const override {
+        return detail::collect_index_space(m_args, env);
+    }
+
+    [[nodiscard]] Maybe_error<scalar_type> run_at(Environment<Lexer, Compiler> const& env,
+                                                  var::Coordinate const& coord) const override{
+       Container out;
+        homogeneous_container_ops<Container>::prepare(out, m_args.size());
+        std::string err;
+
+        for (std::size_t i = 0; i < m_args.size(); ++i) {
+            auto maybe_elem = m_args[i]->run_at(env, coord);
+            if (!maybe_elem) {
+                err += std::to_string(i) + ": " + maybe_elem.error()();
+            } else {
+                homogeneous_container_ops<Container>::insert(
+                    out, adapt_argument_like<T>(maybe_elem.value()));
+            }
+        }
+
+        if (!err.empty()) {
+            return error_message(err);
+        }
+        return out;
+        }
+    
+
+    [[nodiscard]] Maybe_error<var::Indexed<scalar_type>> run(
+        Environment<Lexer, Compiler> const& env) const override {
+        auto maybe_space = index_space(env);
+        if (!maybe_space) {
+            return maybe_space.error();
+        }
+        auto space = std::move(maybe_space.value());
+        if (space.size() == 0) {
+            return var::Indexed<scalar_type>(std::move(space), std::vector<scalar_type>{});
+        }
+        auto all_coords = space.all_coordinates();
+        std::vector<std::optional<scalar_type>> values(all_coords.size());
+        std::vector<std::string> errors(all_coords.size());
+    #pragma omp parallel for
+        for(std::size_t i=0; i<all_coords.size(); ++i) {
+            const auto& coord = all_coords[i];
+            auto maybe_run = run_at(env, coord);
+            if (maybe_run) {
+                values[i].emplace(std::move(maybe_run.value()));
+            } else {
+                errors[i] = maybe_run.error()();
+            }
+        }
+
+        std::string combined_errors;
+        for (const auto& error : errors) {
+            if (!error.empty()) {
+                if (!combined_errors.empty()) {
+                    combined_errors += '\n';
+                }
+                combined_errors += error;
+            }
+        }
+        if (!combined_errors.empty()) {
+            return error_message(std::string("errors in evaluating lifted function at coordinates:\n") +
+                                 combined_errors);
+        }
+
+        std::vector<scalar_type> resolved_values;
+        resolved_values.reserve(values.size());
+        for (auto& value : values) {
+            resolved_values.push_back(std::move(*value));
+        }
+        return var::Indexed<scalar_type>(std::move(space), std::move(resolved_values));
+    }
+   protected:
+    storage_args m_args;
+};
+
+
+
 }  // namespace detail
 
 template <class Lexer, class Compiler, class T>
@@ -1091,6 +1232,28 @@ class typed_vector_construction
     [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
         const override {
         return std::make_unique<typed_vector_construction>(*this);
+    }
+};
+template <class Lexer, class Compiler, class T>
+class typed_lifted_vector_construction
+    : public detail::typed_lifted_homogeneous_container_construction<Lexer, Compiler, std::vector<T>, std::vector<T>, T> {
+    using base_type =
+        detail::typed_lifted_homogeneous_container_construction<Lexer, Compiler, std::vector<T>,    std::vector<T>, T>;
+
+   public:
+    using storage_args = typename base_type::storage_args;
+    using base_type::base_type;
+    
+    ~typed_lifted_vector_construction() override = default;
+
+    typed_lifted_vector_construction(const typed_lifted_vector_construction&) = default;
+    typed_lifted_vector_construction(typed_lifted_vector_construction&&) noexcept = default;
+    typed_lifted_vector_construction& operator=(const typed_lifted_vector_construction&) = default;
+    typed_lifted_vector_construction& operator=(typed_lifted_vector_construction&&) noexcept = default;
+
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override {
+        return std::make_unique<typed_lifted_vector_construction>(*this);
     }
 };
 
@@ -1117,6 +1280,28 @@ class typed_set_construction
     }
 };
 
+template <class Lexer, class Compiler, class T>
+class typed_lifted_set_construction
+    : public detail::typed_lifted_homogeneous_container_construction<Lexer, Compiler, std::set<T>,std::set<T>, T> {
+    using base_type =
+        detail::typed_lifted_homogeneous_container_construction<Lexer, Compiler, std::set<T>,    std::set<T>,T>;
+
+   public:
+    using storage_args = typename base_type::storage_args;
+    using base_type::base_type;
+
+    ~typed_lifted_set_construction() override = default;
+
+    typed_lifted_set_construction(const typed_lifted_set_construction&) = default;
+    typed_lifted_set_construction(typed_lifted_set_construction&&) noexcept = default;
+    typed_lifted_set_construction& operator=(const typed_lifted_set_construction&) = default;
+    typed_lifted_set_construction& operator=(typed_lifted_set_construction&&) noexcept = default;
+
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override {
+        return std::make_unique<typed_lifted_set_construction>(*this);
+    }
+};
 
 template <class Lexer, class Compiler, class... Ts>
 class typed_tuple_construction
@@ -1127,11 +1312,11 @@ class typed_tuple_construction
     using storage_t = detail::function_argument_storage_t<U>;
 
     // Store expressions producing storage_t<Ts>...
-    std::tuple<std::unique_ptr<typed_expression<Lexer, Compiler, storage_t<Ts>>>...> m_args;
+    std::tuple<std::unique_ptr<typed_argument<Lexer, Compiler, storage_t<Ts>>>...> m_args;
 
    public:
     using tuple_type   = std::tuple<Ts...>;
-    using storage_args = std::tuple<std::unique_ptr<typed_expression<Lexer,Compiler,storage_t<Ts>>>...>;
+    using storage_args = std::tuple<std::unique_ptr<typed_argument<Lexer,Compiler,storage_t<Ts>>>...>;
 
     explicit typed_tuple_construction(storage_args&& t)
         : m_args{std::move(t)} {}
@@ -1177,6 +1362,131 @@ class typed_tuple_construction
 
         return std::apply(builder, maybe_storage);
     }
+};
+
+
+
+template <class Lexer, class Compiler, class... Ts>
+class typed_lifted_tuple_construction
+    : public typed_expression<Lexer, Compiler, var::Indexed<std::tuple<Ts...>>> {
+
+
+    // Internal holder type (same rule as function_compiler)
+    template <class U>
+    using storage_t = detail::function_argument_storage_t<U>;
+
+    // Store expressions producing storage_t<Ts>...
+    std::tuple<std::unique_ptr<typed_argument<Lexer, Compiler, storage_t<Ts>>>...> m_args;
+
+    static constexpr auto m_f = [](auto&&... args) {
+        return std::tuple<Ts...>( detail::adapt_argument_like<Ts>(std::forward<decltype(args)>(args))... );
+    };
+
+   public:
+    using scalar_type =std::tuple<Ts...>;
+    using tuple_type   = std::tuple<Ts...>;
+    using storage_args = std::tuple<std::unique_ptr<typed_argument<Lexer,Compiler,storage_t<Ts>>>...>;
+
+    explicit typed_lifted_tuple_construction(storage_args&& t)
+        : m_args{std::move(t)} {}
+
+    ~typed_lifted_tuple_construction() override = default;
+
+    typed_lifted_tuple_construction(const typed_lifted_tuple_construction& other)
+        : m_args{clone_tuple_unique(other.m_args)} {}
+
+    [[nodiscard]] std::unique_ptr<base_typed_statement<Lexer, Compiler>> clone_unique()
+        const override {
+        return std::make_unique<typed_lifted_tuple_construction>(*this);
+    }
+
+
+    [[nodiscard]] Maybe_error<var::IndexSpace> index_space(
+        Environment<Lexer, Compiler> const& env) const override {
+        return detail::collect_index_space(m_args, env);
+    }
+
+
+    [[nodiscard]] Maybe_error<scalar_type> run_at(Environment<Lexer, Compiler> const& env,
+                                                  var::Coordinate const& coord) const override {
+        if constexpr (sizeof...(Ts) == 0) {
+            return detail::invoke_typed(m_f);
+        } else {
+            auto maybe_storage = std::apply(
+                [&env, &coord](auto const&... args) {
+                    return std::tuple(args->run_at(env, coord)...);
+                },
+                m_args);
+        bool ok = true;
+        std::string msg;
+
+        // Aggregate errors
+        std::apply([&](auto&... me) {
+            (([&]{
+                if (!me.valid()) {
+                    ok = false;
+                    msg += me.error()();
+                }
+            }()), ...);
+        }, maybe_storage);
+
+        if (!ok) {return error_message(msg);}
+
+        // Build the real tuple<Ts...>
+        auto builder = [&](auto&... me) {
+            return std::tuple<Ts...>( detail::adapt_argument_like<Ts>(me.value())... );
+        };
+
+        return std::apply(builder, maybe_storage);
+        }
+    }
+
+        [[nodiscard]] Maybe_error<var::Indexed<scalar_type>> run(
+        Environment<Lexer, Compiler> const& env) const override {
+        auto maybe_space = index_space(env);
+        if (!maybe_space) {
+            return maybe_space.error();
+        }
+        auto space = std::move(maybe_space.value());
+        if (space.size() == 0) {
+            return var::Indexed<scalar_type>(std::move(space), std::vector<scalar_type>{});
+        }
+        auto all_coords = space.all_coordinates();
+        std::vector<std::optional<scalar_type>> values(all_coords.size());
+        std::vector<std::string> errors(all_coords.size());
+    #pragma omp parallel for
+        for(std::size_t i=0; i<all_coords.size(); ++i) {
+            const auto& coord = all_coords[i];
+            auto maybe_run = run_at(env, coord);
+            if (maybe_run) {
+                values[i].emplace(std::move(maybe_run.value()));
+            } else {
+                errors[i] = maybe_run.error()();
+            }
+        }
+
+        std::string combined_errors;
+        for (const auto& error : errors) {
+            if (!error.empty()) {
+                if (!combined_errors.empty()) {
+                    combined_errors += '\n';
+                }
+                combined_errors += error;
+            }
+        }
+        if (!combined_errors.empty()) {
+            return error_message(std::string("errors in evaluating lifted function at coordinates:\n") +
+                                 combined_errors);
+        }
+
+        std::vector<scalar_type> resolved_values;
+        resolved_values.reserve(values.size());
+        for (auto& value : values) {
+            resolved_values.push_back(std::move(*value));
+        }
+        return var::Indexed<scalar_type>(std::move(space), std::move(resolved_values));
+    }
+
 };
 
 
