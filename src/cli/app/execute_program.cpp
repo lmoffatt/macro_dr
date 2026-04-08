@@ -2,6 +2,8 @@
 #include <macrodr/dsl/grammar_typed.h>
 #include <macrodr/dsl/grammar_untyped.h>
 #include <macrodr/dsl/lexer_untyped.h>
+#include <macrodr/dsl/Compiler.h>
+#include <macrodr/dsl/Lexer.h>  
 
 #include <iostream>
 
@@ -12,11 +14,11 @@
 namespace macrodr::cli::app {
 
 int execute_program(const std::string& script, const macrodr::cli::CliOptions& opts,
-                    macrodr::dsl::Compiler& compiler,
+                    macrodr::dsl::Compiler<macrodr::dsl::Lexer>& compiler,
                     const std::filesystem::path& run_dir) {
     cmd::write_text(cmd::temp_script_file, script);
 
-    auto parsed = dsl::extract_program(script);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(script);
     std::cerr << parsed;
     if (!parsed) {
         std::cerr << "\n-------------------------------------------------\n"
@@ -29,14 +31,14 @@ int execute_program(const std::string& script, const macrodr::cli::CliOptions& o
         return 1;
     }
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
 
     // Optional: load environment before executing
     if (opts.has_env_load) {
         std::string mode = (opts.env_load_mode == macrodr::cli::CliOptions::EnvLoadMode::Append)
                                ? std::string("append")
                                : std::string("replace");
-        auto loaded = macrodr::io::json::envio::load_environment_json<dsl::Lexer, dsl::Compiler>(
+        auto loaded = macrodr::io::json::envio::load_environment_json<dsl::Lexer, dsl::Compiler<dsl::Lexer>>(
             opts.env_load, env, mode);
         if (!loaded) {
             std::cerr << "[env] load failed: " << loaded.error()() << "\n";
@@ -85,7 +87,7 @@ int execute_program(const std::string& script, const macrodr::cli::CliOptions& o
             }
             // Save snapshot after each step
             auto snap_path = snap_dir / (std::string("step_") + std::to_string(step++) + ".json");
-            auto saved = macrodr::io::json::envio::save_environment_json<dsl::Lexer, dsl::Compiler>(
+            auto saved = macrodr::io::json::envio::save_environment_json<dsl::Lexer, dsl::Compiler<dsl::Lexer>>(
                 snap_path, env, compiler, /*functions*/ false, /*identifiers*/ true, "step");
             if (!saved && opts.verbosity > 0) {
                 std::cerr << "[env] snapshot failed: " << saved.error()() << "\n";
@@ -95,7 +97,7 @@ int execute_program(const std::string& script, const macrodr::cli::CliOptions& o
         auto final_path = (opts.has_env_save_path ? std::filesystem::path(opts.env_save_path)
                                                   : run_dir) /
                           "environment.json";
-        auto saved = macrodr::io::json::envio::save_environment_json<dsl::Lexer, dsl::Compiler>(
+        auto saved = macrodr::io::json::envio::save_environment_json<dsl::Lexer, dsl::Compiler<dsl::Lexer>>(
             final_path, env, compiler, /*functions*/ true, /*identifiers*/ true, "end");
         if (!saved && opts.verbosity > 0) {
             std::cerr << "[env] save failed: " << saved.error()() << "\n";
@@ -116,7 +118,7 @@ int execute_program(const std::string& script, const macrodr::cli::CliOptions& o
             auto out_dir = opts.has_env_save_path ? std::filesystem::path(opts.env_save_path)
                                                   : run_dir;
             auto final_path = out_dir / "environment.json";
-            auto saved = macrodr::io::json::envio::save_environment_json<dsl::Lexer, dsl::Compiler>(
+            auto saved = macrodr::io::json::envio::save_environment_json<dsl::Lexer, dsl::Compiler<dsl::Lexer>>(
                 final_path, env, compiler, /*functions*/ true, /*identifiers*/ true, "end");
             if (!saved && opts.verbosity > 0) {
                 std::cerr << "[env] save failed: " << saved.error()() << "\n";

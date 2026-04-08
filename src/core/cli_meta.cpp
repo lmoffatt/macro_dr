@@ -49,8 +49,8 @@ std::string cli_version() {
     return v;
 }
 
-dsl::Compiler make_cli_meta_compiler() {
-    dsl::Compiler cm;
+dsl::Compiler<dsl::Lexer> make_cli_meta_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function("help", dsl::to_typed_function<>(&cli_help));
     cm.push_function("version", dsl::to_typed_function<>(&cli_version));
     return cm;

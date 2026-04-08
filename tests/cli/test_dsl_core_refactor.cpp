@@ -24,12 +24,12 @@ auto make_identifier(std::string name) {
 
 template <class T>
 auto* as_typed(
-    const dsl::base_typed_expression<dsl::Lexer, dsl::Compiler>* expr) {
-    return dynamic_cast<const dsl::typed_expression<dsl::Lexer, dsl::Compiler, T>*>(expr);
+    const dsl::base_typed_expression<dsl::Lexer, dsl::Compiler<dsl::Lexer>>* expr) {
+    return dynamic_cast<const dsl::typed_expression<dsl::Lexer, dsl::Compiler<dsl::Lexer>, T>*>(expr);
 }
 
 template <class T>
-T read_value(const dsl::Environment<dsl::Lexer, dsl::Compiler>& env,
+T read_value(const dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>>& env,
              const std::string& name) {
     auto maybe_expr = env.get_RunValue(make_identifier(name));
     REQUIRE(maybe_expr);
@@ -41,12 +41,12 @@ T read_value(const dsl::Environment<dsl::Lexer, dsl::Compiler>& env,
 }
 
 template <class T>
-void bind_literal(dsl::Environment<dsl::Lexer, dsl::Compiler>& env, const std::string& name,
+void bind_literal(dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>>& env, const std::string& name,
                   T value) {
     auto id = make_identifier(name);
-    env.insert(id, new dsl::typed_literal<dsl::Lexer, dsl::Compiler, T>(value));
-    env.push_back(id, new dsl::Identifier_compiler<dsl::Lexer, dsl::Compiler, T>(
-                          new dsl::typed_literal<dsl::Lexer, dsl::Compiler, T>(std::move(value))));
+    env.insert(id, new dsl::typed_literal<dsl::Lexer, dsl::Compiler<dsl::Lexer>, T>(value));
+    env.push_back(id, new dsl::Identifier_compiler<dsl::Lexer, dsl::Compiler<dsl::Lexer>, T>(
+                          new dsl::typed_literal<dsl::Lexer, dsl::Compiler<dsl::Lexer>, T>(std::move(value))));
 }
 
 int echo_int(int x) { return x; }
@@ -62,7 +62,7 @@ std::size_t indexed_size(const var::Indexed<std::size_t>& xs) { return xs.size()
 }  // namespace
 
 TEST_CASE("DSL shared argument adaptation and homogeneous containers remain behavior-preserving") {
-    dsl::Compiler compiler;
+    dsl::Compiler<dsl::Lexer> compiler;
     REQUIRE(compiler.push_function("echo_int", dsl::to_typed_function<int>(&echo_int, "x")));
     REQUIRE(compiler.push_function("echo_bool", dsl::to_typed_function<bool>(&echo_bool, "x")));
     REQUIRE(compiler.push_function("read_const",
@@ -76,7 +76,7 @@ TEST_CASE("DSL shared argument adaptation and homogeneous containers remain beha
                                    dsl::to_typed_function<std::tuple<int, int>>(&echo_tuple,
                                                                                 "xs")));
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
     bind_literal(env, "source", 9);
     bind_literal(env, "counter", 4);
 
@@ -91,7 +91,7 @@ TEST_CASE("DSL shared argument adaptation and homogeneous containers remain beha
         "set_result = echo_set(xs=[3,1,3])\n"
         "tuple_result = echo_tuple(xs={2,5})\n";
 
-    auto parsed = dsl::extract_program(program_text);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(program_text);
     REQUIRE(parsed);
 
     auto compiled = dsl::compile_program(env, parsed.value());
@@ -113,10 +113,10 @@ TEST_CASE("DSL shared argument adaptation and homogeneous containers remain beha
 }
 
 TEST_CASE("DSL keeps identifiers beginning with true or false distinct from boolean literals") {
-    dsl::Compiler compiler;
+    dsl::Compiler<dsl::Lexer> compiler;
     REQUIRE(compiler.push_function("echo_bool", dsl::to_typed_function<bool>(&echo_bool, "x")));
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
     bind_literal(env, "true_value", true);
     bind_literal(env, "false_value", false);
 
@@ -126,7 +126,7 @@ TEST_CASE("DSL keeps identifiers beginning with true or false distinct from bool
         "from_false_identifier = echo_bool(x=false_value)\n"
         "from_false_literal = echo_bool(x=false)\n";
 
-    auto parsed = dsl::extract_program(program_text);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(program_text);
     REQUIRE(parsed);
 
     auto compiled = dsl::compile_program(env, parsed.value());
@@ -142,7 +142,7 @@ TEST_CASE("DSL keeps identifiers beginning with true or false distinct from bool
 }
 
 TEST_CASE("DSL lifts scalar functions over indexed arguments and prefers exact indexed overloads") {
-    dsl::Compiler compiler;
+    dsl::Compiler<dsl::Lexer> compiler;
     REQUIRE(compiler.push_function(
         "axis", dsl::to_typed_function<std::string, std::vector<std::string>>(
                     &macrodr::cmd::axis, "name", "labels")));
@@ -155,7 +155,7 @@ TEST_CASE("DSL lifts scalar functions over indexed arguments and prefers exact i
     REQUIRE(compiler.push_function(
         "shape", dsl::to_typed_function<const var::Indexed<std::size_t>&>(&indexed_size, "x")));
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
 
     const std::string program_text =
         "model_axis = axis(name=\"models\", labels=[\"scheme_CO\",\"scheme_CCO\"])\n"
@@ -166,7 +166,7 @@ TEST_CASE("DSL lifts scalar functions over indexed arguments and prefers exact i
         "lifted = identity_size(x=weights)\n"
         "shape_result = shape(x=weights)\n";
 
-    auto parsed = dsl::extract_program(program_text);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(program_text);
     REQUIRE(parsed);
 
     auto compiled = dsl::compile_program(env, parsed.value());
@@ -205,7 +205,7 @@ TEST_CASE("DSL lifts scalar functions over indexed arguments and prefers exact i
 }
 
 TEST_CASE("DSL typed indexed constructors force bool and int payloads") {
-    dsl::Compiler compiler;
+    dsl::Compiler<dsl::Lexer> compiler;
     REQUIRE(compiler.push_function(
         "axis", dsl::to_typed_function<std::string, std::vector<std::string>>(
                     &macrodr::cmd::axis, "name", "labels")));
@@ -218,7 +218,7 @@ TEST_CASE("DSL typed indexed constructors force bool and int payloads") {
     REQUIRE(compiler.push_function("echo_bool", dsl::to_typed_function<bool>(&echo_bool, "x")));
     REQUIRE(compiler.push_function("echo_int", dsl::to_typed_function<int>(&echo_int, "x")));
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
 
     const std::string program_text =
         "algorithm_axis = axis(name=\"algorithm\", labels=[\"macro_MRV\",\"macro_IRV\",\"macro_RV\"])\n"
@@ -227,7 +227,7 @@ TEST_CASE("DSL typed indexed constructors force bool and int payloads") {
         "recursive_echo = echo_bool(x=recursive)\n"
         "averaging_echo = echo_int(x=averaging)\n";
 
-    auto parsed = dsl::extract_program(program_text);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(program_text);
     REQUIRE(parsed);
 
     auto compiled = dsl::compile_program(env, parsed.value());
@@ -254,7 +254,7 @@ TEST_CASE("DSL typed indexed constructors force bool and int payloads") {
 }
 
 TEST_CASE("DSL indexed_by rejects string axis lookup") {
-    dsl::Compiler compiler;
+    dsl::Compiler<dsl::Lexer> compiler;
     REQUIRE(compiler.push_function(
         "axis", dsl::to_typed_function<std::string, std::vector<std::string>>(
                     &macrodr::cmd::axis, "name", "labels")));
@@ -262,12 +262,12 @@ TEST_CASE("DSL indexed_by rejects string axis lookup") {
         "indexed_by", dsl::to_typed_function<var::Axis, std::vector<std::size_t>>(
                           &macrodr::cmd::indexed_by<std::size_t>, "axis", "values")));
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
 
     const std::string program_text =
         "weights = indexed_by(axis=\"models\", values=[1,2])\n";
 
-    auto parsed = dsl::extract_program(program_text);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(program_text);
     REQUIRE(parsed);
 
     auto compiled = dsl::compile_program(env, parsed.value());
@@ -276,7 +276,7 @@ TEST_CASE("DSL indexed_by rejects string axis lookup") {
 }
 
 TEST_CASE("DSL no longer exposes indexed(name, labels, values)") {
-    dsl::Compiler compiler;
+    dsl::Compiler<dsl::Lexer> compiler;
     REQUIRE(compiler.push_function(
         "axis", dsl::to_typed_function<std::string, std::vector<std::string>>(
                     &macrodr::cmd::axis, "name", "labels")));
@@ -284,12 +284,12 @@ TEST_CASE("DSL no longer exposes indexed(name, labels, values)") {
         "indexed_by", dsl::to_typed_function<var::Axis, std::vector<std::size_t>>(
                           &macrodr::cmd::indexed_by<std::size_t>, "axis", "values")));
 
-    dsl::Environment<dsl::Lexer, dsl::Compiler> env(compiler);
+    dsl::Environment<dsl::Lexer, dsl::Compiler<dsl::Lexer>> env(compiler);
 
     const std::string program_text =
         "weights = indexed(name=\"models\", labels=[\"scheme_CO\",\"scheme_CCO\"], values=[1,2])\n";
 
-    auto parsed = dsl::extract_program(program_text);
+    auto parsed = dsl::Lexer_extractor<dsl::Lexer, dsl::Compiler<dsl::Lexer>>().extract_program(program_text);
     REQUIRE(parsed);
 
     auto compiled = dsl::compile_program(env, parsed.value());

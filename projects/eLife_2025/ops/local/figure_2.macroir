@@ -1,6 +1,6 @@
 model = load_model("scheme_CO")
 
-axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.3","0.1","0.03","0.01"])
+axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1","0.01"])
 axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
 axis_Nchanels =axis(name= "Num_ch", labels= ["1", "10","100","1000","10000"])
 
@@ -23,9 +23,9 @@ parameter = create_parameters(
 
 experiment = create_experiment(
    experiment_structure=[
-      {indexed_size_by(axis= axis_interval,values=[1,10,100]),indexed_double_by(axis= axis_interval,values=[500,150,5]),0.0},
-      {indexed_size_by(axis= axis_interval,values=[2,20,200]),indexed_double_by(axis= axis_interval,values=[500,150,5]),10.0},
-      {indexed_size_by(axis= axis_interval,values=[3,30,300]),indexed_double_by(axis= axis_interval,values=[500,150,5]),0.0}
+      {indexed_size_by(axis= axis_interval,values=[1,10,100]),indexed_size_by(axis= axis_interval,values=[500,150,5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[2,20,200]),indexed_size_by(axis= axis_interval,values=[500,150,5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[3,30,300]),indexed_size_by(axis= axis_interval,values=[500,150,5]),0.0}
       ], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
@@ -42,7 +42,7 @@ simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 16, experiment = experiment,
                          observations = observations, 
-                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps","substeps", "uniformization"]),
+                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
                  seed = 0)
 

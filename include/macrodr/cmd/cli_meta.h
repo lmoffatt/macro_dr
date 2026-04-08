@@ -6,6 +6,8 @@
 
 #include <string>
 #include <macrodr/dsl/lexer_typed.h>
+#include <macrodr/dsl/Lexer.h>
+#include <macrodr/dsl/Compiler.h>
 
 namespace macrodr::cmd {
 
@@ -16,9 +18,9 @@ void cli_help();
 std::string cli_version();
 
 // Registry builder that registers help() and version() as DSL functions.
-// This returns a dsl::Compiler containing only these commands; aggregate it
+// This returns a dsl::Compiler<dsl::Lexer> containing only these commands; aggregate it
 // via merge(...) in the CLI command manager.
-dsl::Compiler make_cli_meta_compiler();
+dsl::Compiler<dsl::Lexer> make_cli_meta_compiler();
 
 }  // namespace macrodr::cmd
 

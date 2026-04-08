@@ -546,8 +546,8 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
             model_v);
     }
 }
-inline dsl::Compiler make_dts_compiler() {
-    dsl::Compiler cm;
+inline dsl::Compiler<dsl::Lexer> make_dts_compiler() {
+    dsl::Compiler<dsl::Lexer> cm;
     cm.push_function(
         "set_ThermoAlgorithm_dts",
         dsl::to_typed_function<std::size_t, std::size_t, std::size_t, std::size_t, std::size_t,

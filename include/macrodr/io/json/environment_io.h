@@ -25,7 +25,7 @@ template <class Lexer, class Compiler>
 inline Maybe_error<std::string> save_environment_json(
     const std::filesystem::path& path,
     const macrodr::dsl::Environment<Lexer, Compiler>& env,
-    const macrodr::dsl::Compiler& compiler,
+    const Compiler& compiler,
     bool include_functions = true,
     bool include_identifiers = true,
     std::string mode = "end") {

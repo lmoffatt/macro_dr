@@ -53,8 +53,8 @@ auto make_identifier(std::string name) {
 }
 
 template <class T>
-auto* as_typed(const macrodr::dsl::base_typed_expression<macrodr::dsl::Lexer, macrodr::dsl::Compiler>* expr) {
-    return dynamic_cast<const macrodr::dsl::typed_expression<macrodr::dsl::Lexer, macrodr::dsl::Compiler, T>*>(expr);
+auto* as_typed(const macrodr::dsl::base_typed_expression<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>* expr) {
+    return dynamic_cast<const macrodr::dsl::typed_expression<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, T>*>(expr);
 }
 
 struct FooVar : public var::Var<FooVar, double> {
@@ -82,25 +82,25 @@ static Matrix<double> make_matrix(std::size_t rows, std::size_t cols) {
 }  // namespace
 
 TEST_CASE("environment IO round-trips supported primitives") {
-    macrodr::dsl::Compiler compiler;
-    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> env(compiler);
+    macrodr::dsl::Compiler<macrodr::dsl::Lexer> compiler;
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>> env(compiler);
 
     env.insert(make_identifier("d"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, double>(1.5));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, double>(1.5));
     env.insert(make_identifier("i"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, int64_t>(-2));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, int64_t>(-2));
     env.insert(make_identifier("b"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, bool>(true));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, bool>(true));
     env.insert(make_identifier("s"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, std::string>("hi"));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, std::string>("hi"));
 
     TempDirGuard guard;
     auto output = std::filesystem::current_path() / "env.json";
-    auto saved = macrodr::io::json::envio::save_environment_json(output, env, compiler);
+    auto saved = macrodr::io::json::envio::save_environment_json<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>(output, env, compiler);
     REQUIRE(saved);
 
-    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> loaded_env(compiler);
-    auto loaded = macrodr::io::json::envio::load_environment_json(output, loaded_env);
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>  > loaded_env(compiler);
+    auto loaded = macrodr::io::json::envio::load_environment_json<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>(output, loaded_env);
     REQUIRE(loaded);
 
     auto check_value = [&](const char* name, auto expected) {
@@ -126,12 +126,12 @@ TEST_CASE("load replace clears prior environment") {
     std::ofstream(json_path)
         << R"({"variables":{"z":{"type":"double","value":3.0}}})";
 
-    macrodr::dsl::Compiler compiler;
-    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> env(compiler);
+    macrodr::dsl::Compiler<macrodr::dsl::Lexer> compiler;
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>> env(compiler);
     env.insert(make_identifier("x"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, double>(1.0));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, double>(1.0));
 
-    auto result = macrodr::io::json::envio::load_environment_json(json_path, env, "replace");
+    auto result = macrodr::io::json::envio::load_environment_json<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>(json_path, env, "replace");
     REQUIRE(result);
 
     auto missing = env.get_RunValue(make_identifier("x"));
@@ -152,9 +152,9 @@ TEST_CASE("load reports skipped unsupported types") {
     std::ofstream(json_path)
         << R"({"variables":{"u":{"type":"custom","value":42}}})";
 
-    macrodr::dsl::Compiler compiler;
-    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> env(compiler);
-    auto loaded = macrodr::io::json::envio::load_environment_json(json_path, env);
+    macrodr::dsl::Compiler<macrodr::dsl::Lexer> compiler;
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>> env(compiler);
+    auto loaded = macrodr::io::json::envio::load_environment_json<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>(json_path, env);
     REQUIRE(loaded);
     CHECK(loaded.value().find("skipped 1 unsupported variable") != std::string::npos);
     auto maybe = env.get_RunValue(make_identifier("u"));
@@ -164,27 +164,27 @@ TEST_CASE("load reports skipped unsupported types") {
 TEST_CASE("environment IO preserves matrix and vector space literals") {
     TempDirGuard guard;
 
-    macrodr::dsl::Compiler compiler;
+    macrodr::dsl::Compiler<macrodr::dsl::Lexer> compiler;
     compiler.ensure_type_registered<Matrix<double>>();
     compiler.ensure_type_registered<FooVar>();
     compiler.ensure_type_registered<BarVar>();
     compiler.ensure_type_registered<SpaceVar>();
 
-    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> env(compiler);
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>> env(compiler);
 
     Matrix<double> mat = make_matrix(2, 2);
     env.insert(make_identifier("matrix"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, Matrix<double>>(mat));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, Matrix<double>>(mat));
 
     SpaceVar space;
     static_cast<FooVar&>(space)() = 3.5;
     static_cast<BarVar&>(space)() = mat;
     env.insert(make_identifier("space"),
-               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler, SpaceVar>(space));
+               new macrodr::dsl::typed_literal<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>, SpaceVar>(space));
 
     const auto json_path = std::filesystem::current_path() / "complex_env.json";
-    auto saved = macrodr::io::json::envio::save_environment_json(json_path, env, compiler);
-    REQUIRE(saved);
+    auto saved = macrodr::io::json::envio::save_environment_json<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>      (json_path, env, compiler);
+    REQUIRE(saved); 
 
     std::ifstream json_stream(json_path);
     REQUIRE(json_stream.is_open());
@@ -204,8 +204,8 @@ TEST_CASE("environment IO preserves matrix and vector space literals") {
     CHECK(space_it->second.obj.find("value") != space_it->second.obj.end());
     CHECK(space_it->second.obj.at("value").type == macrodr::io::json::Json::Type::Object);
 
-    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler> loaded_env(compiler);
-    auto loaded = macrodr::io::json::envio::load_environment_json(json_path, loaded_env);
+    macrodr::dsl::Environment<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>> loaded_env(compiler);
+    auto loaded = macrodr::io::json::envio::load_environment_json<macrodr::dsl::Lexer, macrodr::dsl::Compiler<macrodr::dsl::Lexer>>(json_path, loaded_env);
     REQUIRE(loaded);
 
     auto loaded_matrix_expr = loaded_env.get_RunValue(make_identifier("matrix"));
@@ -249,7 +249,7 @@ TEST_CASE("CLI env-save end writes environment.json") {
     std::vector<std::string> argv{"macro_dr"};
 
     auto run_dir = cli::app::persist_run_workspace(script, opts, argv);
-    macrodr::dsl::Compiler compiler;
+    macrodr::dsl::Compiler<macrodr::dsl::Lexer>  compiler;
     auto exit_code = cli::app::execute_program(script, opts, compiler, run_dir);
     REQUIRE(exit_code == 0);
 
@@ -287,7 +287,7 @@ TEST_CASE("CLI env-save step writes snapshots") {
     std::vector<std::string> argv{"macro_dr"};
 
     auto run_dir = cli::app::persist_run_workspace(script, opts, argv);
-    macrodr::dsl::Compiler compiler;
+    macrodr::dsl::Compiler<macrodr::dsl::Lexer> compiler;
     auto exit_code = cli::app::execute_program(script, opts, compiler, run_dir);
     REQUIRE(exit_code == 0);
 
