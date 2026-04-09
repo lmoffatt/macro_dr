@@ -1,0 +1,121 @@
+---
+title: "Figure 2"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r}
+
+filename=
+  "data/figure_2_dlikelihood_analysis_dd"
+
+
+```
+
+
+```{r}
+d=read.csv(paste0(filename,".csv"))
+```
+
+
+```{r}
+d<- d %>%
+  select(where(~ !all(is.na(.))))
+```
+
+```{r}
+d%>%select(component_path)%>%distinct()%>%pull()
+
+```
+
+
+```{r}
+d<-d%>%mutate(component= component_path %>%
+           str_replace("^Probit_statistics_Moment_statistics.*\\.", "") %>%
+           str_replace("^Probit_statistics_Sum_Moment_statistics.*\\.", "Sum_")%>%
+           str_replace("^Probit_statistics_", "")%>%
+           str_replace("^Evolution.*\\.Moment_statistics_", "Evolution_")%>%
+          str_replace("^Evolution.*\\.", "Evolution_"))
+   
+     
+```
+
+```{r}
+d%>%select(component)%>%distinct()%>%pull()
+
+```
+```{r}
+d%>%filter(component%in%c("covariance_Sum_dlogL", "Sum_covariance_dlogL"))%>%select(algorithm,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,component,value_row,value_col,probit,calculus, statistic,quantile_level, param_name, value)%>%arrange(component,value_row,value_col,quantile_level,algorithm,simulation_algorithm)
+```
+
+
+
+```{r}
+d_mean<-
+  d%>%filter(!str_starts(component,"Evolution"))%>%select(component,param_name,algorithm,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level, statistic), values_from = value)
+d_mean
+```
+```{r, fig.width=10,fig.height=10}
+make_figure<-function(d_mean,select, type="linear"){
+mean_components<-d_mean$component%>%unique()
+n_substpes<-d_mean$simulation_algorithm%>%unique()
+
+intercept =c("linear"=0, "log"=1)
+for (c in select)
+{
+  dtemp<-d_mean%>%filter(component==c, is.na(value_row) | is.na(value_col) | value_row==value_col)
+  params<-dtemp$param_name%>%unique()
+  for (p in params){
+  print(
+    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=algorithm, y=mean_NA, color=factor(algorithm) ))+geom_errorbar(aes(x=algorithm, y= mean_NA,ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = intercept[type], color="darkgreen")+ggtitle(paste0(c, " ",p))+(if (type != "linear") scale_y_log10() else NULL) +
+      facet_grid(Num_ch~noise_in_conductance_tau+interval_in_tau, scale="free")
+    
+  )
+  }
+}
+}
+```
+
+
+```{r, fig.width=10,fig.height=10}
+make_figure(d_mean,c("Distortion_Induced_Bias"))
+```
+
+```{r, fig.width=10,fig.height=10}
+make_figure(d_mean,c("Information_Distortion_Matrix"), type="log")
+
+
+
+
+```
+
+
+
+
+```{r, fig.width=20,fig.height=10}
+make_figure(d_mean,c("Distortion_Corrected_Covariance"), "logarti")
+
+```
+
+```{r, fig.width=20,fig.height=10}
+make_figure(d_mean%>%filter(algorithm!="macro_MNRV"),c("mean_Sum_r_std","Sum_mean_r_std","mean_Sum_logL"))
+
+```
+
+
+```{r}
+make_figure(d_mean,c("mean_Sum_r2_std"),"ogg")
+
+```
+
+
+
+
+

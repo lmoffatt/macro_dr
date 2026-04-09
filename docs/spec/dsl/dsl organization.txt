@@ -15,7 +15,7 @@ typed_literal<Maybe_erro<unique_ptr<T>>>
 
 
 typed_scalar_function_evaluation
-typed_lifter_function_evaluation
+typed_lifted_function_evaluation
 
 typed_exact_indexed_function_evaluation
 
@@ -28,7 +28,12 @@ typed_homogeneous_container_construction
      typed_vector_construction
 
 
-     
 typed_predicate_evaluation
 typed_convertion
     not completely integrated yet
+    
+    
+    
+Estoy viendo como hacer que las tuples, vectores y sets funcionen como funciones en el sentido de auto-indexarse cuando reciben elementos indexados. 
+
+La idea es     

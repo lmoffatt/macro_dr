@@ -1,0 +1,13 @@
+the beauty of get_mean_Probits: 
+
+Whithout altering the original collection of objects that we are calculating the probits (the values corresponding to the input probits), 
+we send a const reference to the original collection and a Functor on how to access the next level down. And get_mean_Probits has a functor to 
+access its inner elements and it just concatenate the outer functor to the inner functor and in this way it can recursively construct a final functor 
+that allows for the innermost structure to access the reference to the collection and then without copying it sort it and calculate the probits. 
+
+get_mean_Probits uses recursive projection composition with concept-based overload dispatch and indirect sorting. 
+
+Now, the problem I have is that sometimes some data are invalid, so I need to update the algorithm to record the number of excluded entities. 
+
+That could be: empty matrices or vectors or NaN values.
+

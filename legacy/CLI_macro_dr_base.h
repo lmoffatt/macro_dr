@@ -122,6 +122,16 @@ inline dsl::Compiler<dsl::Lexer> make_utilities_compiler() {
     cm.push_function("get_random_Id",
                      dsl::to_typed_function<std::string>(&get_random_id, "prefix"));
     cm.push_function("get_number", dsl::to_typed_function<std::size_t>(&get_number, "n"));
+
+    cm.push_function("mult", dsl::to_typed_function<std::size_t,std::size_t>([](std::size_t n, std::size_t m) { return n * m; }, "n", "m"));
+    cm.push_function("mult", dsl::to_typed_function<double,double>([](double n, double m) { return n * m; }, "n", "m"));
+    cm.push_function("sum", dsl::to_typed_function<std::size_t,std::size_t>([](std::size_t n, std::size_t m) { return n + m; }, "n", "m"));
+    cm.push_function("sum", dsl::to_typed_function<double,double>([](double n, double m) { return n + m; }, "n", "m"));
+    cm.push_function("max", dsl::to_typed_function<double,double>([](double n, double m) { return (n > m) ? n : m; }, "n", "m"));
+    cm.push_function("max", dsl::to_typed_function<std::size_t,std::size_t>([](std::size_t n, std::size_t m) { return (n > m) ? n : m; }, "n", "m"));
+    cm.push_function("min", dsl::to_typed_function<double,double>([](double n, double m) { return (n < m) ? n : m; }, "n", "m"));
+    cm.push_function("min", dsl::to_typed_function<std::size_t,std::size_t>([](std::size_t n, std::size_t m) { return (n < m) ? n : m; }, "n", "m"));
+
     return cm;
 }
 

@@ -885,10 +885,18 @@ template <class Writer, class T>
 Maybe_error<bool> emit_any(Writer& w, CsvContext ctx, const T& x) {
     if constexpr (is_probit_statistics_v<T>) {
         using Id = typename probit_statistics_traits<std::remove_cvref_t<T>>::id;
+        auto count_ctx = ctx;
+        count_ctx.probit = "mean";
+        count_ctx.statistic = "bootstrap_count";
+        count_ctx.quantile_level.reset();
+        auto ok = emit_any(w, std::move(count_ctx), get<count<Id>>(x()));
+        if (!ok || !ok.value()) {
+            return ok;
+        }
         auto mean_ctx = ctx;
         mean_ctx.probit = "mean";
         mean_ctx.quantile_level.reset();
-        auto ok = emit_any(w, std::move(mean_ctx), get<mean<Id>>(x()));
+        ok = emit_any(w, std::move(mean_ctx), get<mean<Id>>(x()));
         if (!ok || !ok.value()) {
             return ok;
         }

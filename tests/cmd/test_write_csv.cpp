@@ -151,20 +151,21 @@ TEST_CASE("generic write_csv serializes moment and probit statistics", "[write_c
 
     auto summary = var::Vector_Space{
         Moment_statistics<logL>(std::vector<logL>{logL(-2.0), logL(-1.0)}),
-        Probit_statistics<logL>(-1.5, std::map<double, double>{{0.025, -2.5}, {0.975, -0.5}})};
+        Probit_statistics<logL>(-1.5, std::map<double, double>{{0.025, -2.5}, {0.975, -0.5}}, 5)};
 
     auto out = write_csv(summary, base.string());
     REQUIRE(out);
 
     const auto lines = read_lines(base.string() + ".csv");
-    REQUIRE(lines.size() == 7);
+    REQUIRE(lines.size() == 8);
     CHECK(lines.front() == expected_header());
 
     CHECK(lines[1].find("summary") == 0);
     CHECK(lines[1].find(",point,primitive,count,") != std::string::npos);
     CHECK(lines[2].find(",point,primitive,mean,") != std::string::npos);
     CHECK(lines[3].find(",point,primitive,variance,") != std::string::npos);
-    CHECK(lines[4].find(",mean,primitive,value,") != std::string::npos);
+    CHECK(lines[4].find(",mean,primitive,bootstrap_count,") != std::string::npos);
+    CHECK(lines[5].find(",mean,primitive,value,") != std::string::npos);
 
     bool saw_low_quantile = false;
     bool saw_high_quantile = false;
