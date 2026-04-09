@@ -61,19 +61,10 @@ ds<-read.csv("data/figure_2_simulation.csv")%>%
 ```
 
 
-```{r}
-dc<-ds%>%group_by(n_step,step_start,step_middle,step_end,agonist)%>%summarise(y_observed=mean(patch_current))
-```
-```{r}
-df<-d%>%left_join(dc, by=join_by(sample_index==n_step))
-```
-
-
-
 
 ```{r}
 d_mean<-
-  df%>%filter(!str_starts(component,"Evolution"))%>%select(component,param_name,algorithm,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,sample_index,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  d%>%filter(!str_starts(component,"Evolution"))%>%select(component,param_name,algorithm,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 d_mean
 ```
 ```{r}
@@ -85,8 +76,8 @@ for (c in mean_components)
   params<-dtemp$param_name%>%unique()
   for (p in params){
   print(
-    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=simulation_algorithm, y=mean_NA ))+geom_errorbar(aes(x=simulation_algorithm, y= mean_NA,ymin = quantile_0.025,ymax = quantile_0.975 ))+ggtitle(paste0(c, " ",p))+
-      facet_grid(algorithm~., scale="free")
+    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=interval_in_tau, y=mean_NA, color=algorithm ))+geom_errorbar(aes(x=interval_in_tau, y= mean_NA,ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+ggtitle(paste0(c, " ",p))+scale_x_log10()+
+      facet_grid(noise_in_conductance_tau~Num_ch, scale="free")
     
   )
   }
@@ -95,7 +86,7 @@ for (c in mean_components)
 
 ```{r}
 d_Dis<-
-  df%>%filter(!str_starts(component, "Evolution_"), str_detect(component,"Distortion"), !str_detect(component,"Covariance"))%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  d%>%filter(!str_starts(component, "Evolution_"), str_detect(component,"Distortion"), !str_detect(component,"Covariance"))%>%select(component,param_name,algorithm,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 d_Dis
 ```
 ```{r}
@@ -107,7 +98,8 @@ for (c in dis_components)
   params<-dtemp$param_name%>%unique()
   for (p in params){
   print(
-    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=algorithm, y=log10(mean_NA) ))+geom_errorbar(aes(x=algorithm, y= log10(mean_NA),ymin = log10(quantile_0.025),ymax = log10(quantile_0.975) ))+ggtitle(paste0(c, " ",p))+facet_grid(simulation_algorithm~.)
+    dtemp%>%filter(param_name==p)%>%ggplot()+geom_point(aes(x=interval_in_tau, y=log10(mean_NA), color= algorithm ))+geom_errorbar(aes(x=interval_in_tau, y= log10(mean_NA),ymin = log10(quantile_0.025),ymax = log10(quantile_0.975), color= algorithm ))+ggtitle(paste0(c, " ",p))+scale_x_log10()+
+      facet_grid(noise_in_conductance_tau~Num_ch, scale="free")
     
   )
   }
@@ -118,14 +110,14 @@ for (c in dis_components)
 
 ```{r}
 d_mean<-
-  df%>%filter(!str_starts(component,"Evolution"), param_name=="")%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  d%>%filter(!str_starts(component,"Evolution"), param_name=="")%>%select(component,param_name,algorithm,simulation_algorithm,statistic,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 d_mean
 ```
 
 
 ```{r}
 d_evol<-
-  df%>%filter(str_starts(component,"Evolution_"))%>%select(component,param_name,algorithm,simulation_algorithm,sample_index,statistic,value_row,value_col,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+  df%>%filter(str_starts(component,"Evolution_"))%>%select(component,param_name,algorithm,simulation_algorithm,statistic,value_row,value_col,probit,quantile_level,value)%>%pivot_wider(names_from = c(probit,quantile_level), values_from = value)
 d_evol              
 
 ```

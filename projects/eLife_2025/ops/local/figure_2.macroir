@@ -5,7 +5,18 @@ axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","10
 axis_Nchanels =axis(name= "Num_ch", labels= ["1", "10","100","1000","10000"])
 
 current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
+
+n_sim_noise= indexed_size_by(axis= axis_noise,values=[1,1,10,100])
+
 Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1, 10,100,1000,10000])
+
+n_sim_Num_ch = indexed_size_by(axis= axis_Nchanels,values=[100, 10,1,1,1])
+
+n_interval = indexed_size_by(axis= axis_interval,values=[100,10,1])
+
+n_simulations = mult(16, mult(n_interval , min(100,mult(n_sim_Num_ch,n_sim_noise))))
+
+
 parameter = create_parameters(
    model = model, 
    parameters_info= [   
@@ -40,7 +51,7 @@ model_str="scheme_CO"
 simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 16, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 1024, experiment = experiment,
                          observations = observations, 
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
@@ -71,12 +82,12 @@ dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =alg
 data_series = simulations)
 
 dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
-   path= "figures/data/figure_2_dlikelihood_predictions")
+   path= "figures/data/figure_2_dlikelihood_predictions_dd")
 
 
-likelihood_analysis = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=1000,
+likelihood_analysis = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
             probits = [ 0.025 , 0.975 ] , seed=0)
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_dlikelihood_analysis")
+   path= "figures/data/figure_2_dlikelihood_analysis_dd")

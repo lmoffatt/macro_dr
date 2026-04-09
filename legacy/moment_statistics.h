@@ -4,6 +4,7 @@
 #include <maybe_error.h>
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <functional>
@@ -540,31 +541,48 @@ struct Moment_statistics<var::Vector_Space<Ids...>, include_covariance>
 
 
 
+#include <vector>
+#include <set>
+#include <map>
+#include <cmath>
+#include <tuple>
+#include <algorithm>
+#include <numeric>
+#include <cassert>
+#include <limits>
+
 template <typename T, class F = std::identity>
-requires (std::is_arithmetic_v<std::decay_t<std::invoke_result_t<F, T>>>)
+requires (std::is_arithmetic_v<std::decay_t<std::invoke_result_t<F, const T&>>>)
 auto get_mean_Probits(std::vector<T> const& bootstrap_estimates, const std::set<double>& cis, F f = {}) {
     assert(!bootstrap_estimates.empty());
 
-    // We use a local copy of 'f' to ensure it's available for all steps.
-    // Projections are usually cheap to copy.
+    std::vector<double> valid_estimates;
+    valid_estimates.reserve(bootstrap_estimates.size()); // Prevent reallocations
     
-    // 1. Calculate Mean
-    double sum = std::accumulate(bootstrap_estimates.begin(), bootstrap_estimates.end(), 0.0, 
-        [&f](double acc, const T& x) {
-            return acc + static_cast<double>(std::invoke(f, x));
-        });
-    double mean = sum / static_cast<double>(bootstrap_estimates.size());
-
-    // 2. Indirect Sort
-    std::vector<std::size_t> i_index(bootstrap_estimates.size());
-    std::iota(i_index.begin(), i_index.end(), 0);
-
-    std::sort(i_index.begin(), i_index.end(), [&](std::size_t i1, std::size_t i2) {
-        return std::invoke(f, bootstrap_estimates[i1]) < std::invoke(f, bootstrap_estimates[i2]);
-    });
-
+    double sum = 0.0;
+    
+    // 1. Evaluate, filter NaNs, and Accumulate (O(N))
+    for (const auto& x : bootstrap_estimates) {
+        double value = static_cast<double>(std::invoke(f, x));
+        if (!std::isnan(value)) {
+            valid_estimates.push_back(value);
+            sum += value;
+        }
+    }
+    
+    std::size_t n = valid_estimates.size();
+    
+    // Guard against an array entirely filled with NaNs
+    if (n == 0) {
+        return std::make_tuple(std::numeric_limits<double>::quiet_NaN(), std::map<double, double>{}, 0UL);
+    }
+    
+    double mean = sum / static_cast<double>(n);
+    
+    // 2. Direct Sort (Cache-friendly, no NaN-logic required)
+    std::sort(valid_estimates.begin(), valid_estimates.end());
+    
     // 3. Map Percentiles
-    std::size_t n = bootstrap_estimates.size();
     std::map<double, double> out;
 
     for (double ci : cis) {
@@ -575,15 +593,14 @@ auto get_mean_Probits(std::vector<T> const& bootstrap_estimates, const std::set<
         
         double weight = real_idx - static_cast<double>(low);
         
-        double v_low  = static_cast<double>(std::invoke(f, bootstrap_estimates[i_index[low]]));
-        double v_high = static_cast<double>(std::invoke(f, bootstrap_estimates[i_index[high]]));
+        double v_low  = valid_estimates[low];
+        double v_high = valid_estimates[high];
 
         out[ci] = (1.0 - weight) * v_low + weight * v_high;
     }
 
-    return std::make_pair(mean, std::move(out)); 
+    return std::make_tuple(mean, std::move(out), n); 
 }
-
 
 template <typename T, class F = std::identity>
 requires requires(T x, F f) { { std::invoke(f, x)() }; }
@@ -602,104 +619,243 @@ auto get_mean_Probits(std::vector<T> const& bootstrap_estimates, const std::set<
     return result; 
 }
 
-template<class M, class F>
-requires (is_Matrix_v<std::decay_t<std::invoke_result_t<F, M>>>)
- auto get_mean_Probits(
+template<class M, class F = std::identity>
+ requires (is_Matrix_v<std::decay_t<std::invoke_result_t<F, const M&>>>)
+auto get_mean_Probits(
     std::vector<M> const& bootstrap_estimates, 
-    const std::set<double>& cis, F f=std::identity{}) 
+    const std::set<double>& cis, F f = {}) 
 {
     assert(!bootstrap_estimates.empty());
-    assert( std::all_of(bootstrap_estimates.begin(), bootstrap_estimates.end(), [&bootstrap_estimates, &f](const auto& matrix) {
-        return std::invoke(f, matrix).size() == std::invoke(f, bootstrap_estimates.front()).size();
-    }));
+    
+    // Determine exactly what f returns
+    using ProjResult = std::invoke_result_t<F, const M&>;
+    using RawMatrix  = std::decay_t<ProjResult>;
+    
+    // 1. The Safe Storage Type: 
+    // If f returns an lvalue reference, store a reference_wrapper. 
+    // If f returns a value, store the raw matrix.
+    using StorageType = std::conditional_t<
+        std::is_lvalue_reference_v<ProjResult>,
+        std::reference_wrapper<std::remove_reference_t<ProjResult>>,
+        RawMatrix
+    >;
 
-    decltype (auto) first_matrix = std::invoke(f, bootstrap_estimates.front());
-    using MatrixType= std::decay_t<decltype(std::invoke(f, bootstrap_estimates.front()))>;
-    MatrixType mean_matrix(first_matrix.nrows(), first_matrix.ncols());
-    std::map<double, MatrixType> probits_map;
+    std::vector<StorageType> valid_estimates;
+    valid_estimates.reserve(bootstrap_estimates.size()); // Prevent reallocations   
+    
+    // 2. Populate the valid estimates
+    for (const auto& x : bootstrap_estimates) {
+        decltype(auto) value = std::invoke(f, x);
+        if (value.size() > 0) {
+            if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+                valid_estimates.emplace_back(std::ref(value));
+            } else {
+                valid_estimates.emplace_back(std::move(value));
+            }
+        }
+    }
+    
+    if (valid_estimates.empty()) {
+        return std::make_tuple(RawMatrix{}, std::map<double, RawMatrix>{}, 0UL);
+    }
+    
+    // 3. Extract the first matrix safely
+    const RawMatrix& first_matrix = [] (const StorageType& item) -> const RawMatrix& {
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) return item.get();
+        else return item;
+    }(valid_estimates.front());
+
+    RawMatrix mean_matrix(first_matrix.nrows(), first_matrix.ncols());
+    std::map<double, RawMatrix> probits_map;
     for (double ci : cis) {
-        probits_map.emplace(ci, MatrixType(first_matrix.nrows(), first_matrix.ncols()));
+        probits_map.emplace(ci, RawMatrix(first_matrix.nrows(), first_matrix.ncols()));
     }
 
+    std::size_t n = std::numeric_limits<std::size_t>::max();
+    
+    // 4. Delegate to the scalar 1D version
     for (std::size_t i = 0; i < mean_matrix.size(); ++i) {
-            auto prob=get_mean_Probits( bootstrap_estimates, cis,[i, &f](const M& matrix) { return std::invoke(f, matrix)[i]; });
-            mean_matrix[i] = prob.first;
-            for (const auto& [ci, value] : prob.second) {
-                probits_map[ci][i] = value;  
+        
+        // Notice: `valid_estimates` already holds the matrices. 
+        // We just need a lambda that extracts the i-th element.
+        auto prob = get_mean_Probits(valid_estimates, cis, [i](const StorageType& mat_ref) { 
+            if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+                return mat_ref.get()[i]; 
+            } else {
+                return mat_ref[i];
             }
-
+        });
+        
+        mean_matrix[i] = std::get<0>(prob);
+        for (const auto& [ci, value] : std::get<1>(prob)) {
+            probits_map[ci][i] = value;  
         }
-    return std::make_pair(std::move(mean_matrix), std::move(probits_map));
+        
+        if (std::get<2>(prob) < n) {
+            n = std::get<2>(prob);
+        }
+    }
+    
+    if (n == std::numeric_limits<std::size_t>::max()) n = 0;
+
+    return std::make_tuple(std::move(mean_matrix), std::move(probits_map), n);
 }
 
-template<class V, class F>
-requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, V>>, std::vector>) 
+template<class V, class F = std::identity> requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, const V&>>, std::vector>) 
 auto get_mean_Probits(
-    std::vector<V>const & bootstrap_estimates, 
-    const std::set<double>& cis, F f=std::identity{}) 
+    std::vector<V> const& bootstrap_estimates, 
+    const std::set<double>& cis, F f = {}) 
 {
     assert(!bootstrap_estimates.empty());
-    assert(std::all_of(bootstrap_estimates.begin(), bootstrap_estimates.end(), [&](const auto& v) {
-    return std::invoke(f, v).size() == std::invoke(f, bootstrap_estimates.front()).size();}));
-    using VectorType= std::decay_t<std::invoke_result_t<F, V>>;
-    decltype (auto) first_vector = std::invoke(f, bootstrap_estimates.front());
-    VectorType mean_vector(first_vector.size());
-    std::map<double, VectorType> probits_map;
-    for (double ci : cis) {
-        probits_map.emplace(ci, VectorType(first_vector.size()));
+    
+    // Determine exactly what f returns
+    using ProjResult = std::invoke_result_t<F, const V&>;
+    using RawVector  = std::decay_t<ProjResult>;
+    
+    // Fallback: reference_wrapper for lvalues, raw vector for prvalues
+    using StorageType = std::conditional_t<
+        std::is_lvalue_reference_v<ProjResult>,
+        std::reference_wrapper<std::remove_reference_t<ProjResult>>,
+        RawVector
+    >;
+
+    std::vector<StorageType> valid_estimates;
+    valid_estimates.reserve(bootstrap_estimates.size()); // Prevent reallocations   
+
+    // 1. Evaluate, filter empty vectors, and store safely
+    for (const auto& x : bootstrap_estimates) {
+        decltype(auto) value = std::invoke(f, x);
+        if (!value.empty()) {
+            if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+                valid_estimates.emplace_back(std::ref(value));
+            } else {
+                valid_estimates.emplace_back(std::move(value));
+            }
+        }
     }
 
+    // Guard against an array entirely filled with empty vectors
+    if (valid_estimates.empty()) {
+        return std::make_tuple(RawVector{}, std::map<double, RawVector>{}, 0UL);
+    }
+
+    // 2. Extract the first vector safely to get sizes
+    const RawVector& first_vector = [] (const StorageType& item) -> const RawVector& {
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) return item.get();
+        else return item;
+    }(valid_estimates.front());
+
+    // Check size consistency only on the valid vectors
+    assert(std::all_of(valid_estimates.begin(), valid_estimates.end(), [&](const auto& item) {
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) return item.get().size() == first_vector.size();
+        else return item.size() == first_vector.size();
+    }));
+
+    RawVector mean_vector(first_vector.size());
+    std::map<double, RawVector> probits_map;
+    for (double ci : cis) {
+        probits_map.emplace(ci, RawVector(first_vector.size()));
+    }
+
+    std::size_t n = std::numeric_limits<std::size_t>::max();
+
+    // 3. Delegate to the scalar 1D version
     for (std::size_t i = 0; i < mean_vector.size(); ++i) {
-        auto prob=get_mean_Probits( bootstrap_estimates, cis,[i, &f](const V& vec) { return std::invoke(f, vec)[i]; });
-        mean_vector[i] = prob.first;
-        for (const auto& [ci, value] : prob.second) {
+        
+        auto prob = get_mean_Probits(valid_estimates, cis, [i](const StorageType& vec_ref) { 
+            if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+                return vec_ref.get()[i]; 
+            } else {
+                return vec_ref[i];
+            }
+        });
+        
+        mean_vector[i] = std::get<0>(prob);
+        for (const auto& [ci, value] : std::get<1>(prob)) {
             probits_map[ci][i] = value;
         }
 
+        if (std::get<2>(prob) < n) {
+            n = std::get<2>(prob);
+        }
     }
     
+    if (n == std::numeric_limits<std::size_t>::max()) n = 0;
 
-    return std::make_pair(std::move(mean_vector), std::move(probits_map));
+    return std::make_tuple(std::move(mean_vector), std::move(probits_map), n);
 }
 
-template <class ParamIndexed, class F>
-requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, ParamIndexed>>, var::ParameterIndexed>)
+template <class ParamIndexed, class F = std::identity>
+ requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, const ParamIndexed&>>, var::ParameterIndexed>)
 auto get_mean_Probits(std::vector<ParamIndexed> const& bootstrap_estimates,
-                             const std::set<double>& cis, F f=std::identity{}) {
+                      const std::set<double>& cis, F f = {}) 
+{
     assert(!bootstrap_estimates.empty());
 
-    using Projected = std::decay_t<std::invoke_result_t<F, ParamIndexed>>;
-    using ValueT = typename Projected::value_type;
-    using Params = typename Projected::params_type;
+    using ProjResult = std::invoke_result_t<F, const ParamIndexed&>;
+    using RawParamIdx = std::decay_t<ProjResult>;
+    using ValueT = typename RawParamIdx::value_type;
+    using Params = typename RawParamIdx::params_type;
 
-    std::vector<ValueT> values;
-    values.reserve(bootstrap_estimates.size());
+    // Fallback: reference_wrapper for lvalues, raw object for prvalues
+    using StorageType = std::conditional_t<
+        std::is_lvalue_reference_v<ProjResult>,
+        std::reference_wrapper<std::remove_reference_t<ProjResult>>,
+        RawParamIdx
+    >;
+
+    std::vector<StorageType> valid_estimates;
+    valid_estimates.reserve(bootstrap_estimates.size());
 
     const Params* metadata = nullptr;
+
+    // 1. Evaluate and store safely (Zero-Copy)
     for (const auto& estimate : bootstrap_estimates) {
-        const auto& projected = std::invoke(f, estimate);
-        values.push_back(projected.value());
-        if (metadata == nullptr && projected.has_parameters()) {
-            metadata = projected.parameters_ptr();
+        decltype(auto) projected = std::invoke(f, estimate);
+        
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+            valid_estimates.emplace_back(std::ref(projected));
+        } else {
+            valid_estimates.emplace_back(std::move(projected));
+        }
+
+        // Grab metadata from the first item that has it
+        if (metadata == nullptr) {
+            const RawParamIdx& raw_item = [&]() -> const RawParamIdx& {
+                if constexpr (std::is_lvalue_reference_v<ProjResult>) return valid_estimates.back().get();
+                else return valid_estimates.back();
+            }();
+            
+            if (raw_item.has_parameters()) {
+                metadata = raw_item.parameters_ptr();
+            }
         }
     }
 
-    auto [mean_value, probits] = get_mean_Probits(values, cis, std::identity{});
+    // 2. Delegate to the underlying ValueT implementation.
+    // Instead of copying the values, we project them on the fly!
+    auto prob = get_mean_Probits(valid_estimates, cis, [](const StorageType& item) -> const ValueT& {
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+            return item.get().value();
+        } else {
+            return item.value();
+        }
+    });
 
-    var::ParameterIndexed<ValueT, Params> mean_out(std::move(mean_value), metadata);
+    // 3. Re-wrap the results with the metadata
+    var::ParameterIndexed<ValueT, Params> mean_out(std::move(std::get<0>(prob)), metadata);
+    
     std::map<double, var::ParameterIndexed<ValueT, Params>> probits_out;
-    for (auto& [level, value] : probits) {
-        probits_out.emplace(level,
-                            var::ParameterIndexed<ValueT, Params>(std::move(value), metadata));
+    for (auto& [level, val] : std::get<1>(prob)) {
+        probits_out.emplace(level, var::ParameterIndexed<ValueT, Params>(std::move(val), metadata));
     }
 
-    return std::make_pair(std::move(mean_out), std::move(probits_out));
+    return std::make_tuple(std::move(mean_out), std::move(probits_out), std::get<2>(prob));
 }
 
-
-template<class F, class VS>
-requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, VS>>, var::Vector_Space>)
-auto get_mean_Probits(std::vector<VS> const& bootstrap_estimates, const std::set<double>& cis, F=std::identity{});
+template<class F=std::identity, class VecSpace>
+requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, const VecSpace&>>, var::Vector_Space>)
+auto get_mean_Probits(std::vector<VecSpace> const& bootstrap_estimates, const std::set<double>& cis, F f = {}) ;
 
 
 namespace old{
@@ -757,26 +913,34 @@ class Probit_statistics
 template <class Id>
 class Probit_statistics
     : public var::Var<Probit_statistics<Id>, 
-    var::Vector_Space<mean<Id>,Probits<Id>>>
-     {
+                      var::Vector_Space<mean<Id>, Probits<Id>, count<Id>>> 
+{
    public:
-    using base_type =var::Var<Probit_statistics<Id>, 
-    var::Vector_Space<mean<Id>,Probits<Id>>>
-    ;
+    using base_type = var::Var<Probit_statistics<Id>, 
+                               var::Vector_Space<mean<Id>, Probits<Id>, count<Id>>>;
 
-    using value_type= value_type_t<mean<Id>>;
+    using value_type = value_type_t<mean<Id>>;
     using raw_value_type = value_type_t<Id>;
     
+private:
+    // Helper constructor to unpack the tuple directly into the main constructor
+    template <typename TTuple>
+    Probit_statistics(TTuple&& data)
+        : Probit_statistics(std::move(std::get<0>(data)), 
+                            std::move(std::get<1>(data)), 
+                            std::get<2>(data)) {}
+
+public:
     Probit_statistics()
-        : base_type{var::Vector_Space{mean<Id>{}, Probits<Id>{}}} {}
+        : base_type{var::Vector_Space{mean<Id>{}, Probits<Id>{}, count<Id>{}}} {}
     
-    Probit_statistics(value_type&& m, std::map<double,value_type>&& pbits):
-         base_type{var::Vector_Space{mean<Id>(std::move( m)), Probits<Id>(std::move(pbits))}} {}
+    Probit_statistics(value_type&& m, std::map<double,value_type>&& pbits, std::size_t n)
+        : base_type{var::Vector_Space{mean<Id>(std::move(m)), Probits<Id>(std::move(pbits)), count<Id>(n)}} {}
 
     template <class Dummy = void>
     requires (!std::is_same_v<raw_value_type, value_type> &&
               std::constructible_from<Id, raw_value_type>)
-    Probit_statistics(raw_value_type&& m, std::map<double, raw_value_type>&& pbits)
+    Probit_statistics(raw_value_type&& m, std::map<double, raw_value_type>&& pbits, std::size_t n)
         : base_type{var::Vector_Space{
               mean<Id>(Id(std::move(m))),
               Probits<Id>([&pbits]() {
@@ -785,28 +949,20 @@ class Probit_statistics
                       wrapped.emplace(ci, value_type(Id(std::move(value))));
                   }
                   return wrapped;
-              }())}} {}
+              }()),
+              count<Id>(n)}} {}
       
-    Probit_statistics(std::vector<value_type> const& values, const std::set<double>& cis) {
-        auto [mean_probit, probits] = get_mean_Probits(values, cis);
-        *this = Probit_statistics(std::move(mean_probit), std::move(probits));
-   } 
+    // Zero-copy delegation directly to the tuple constructor
+    Probit_statistics(std::vector<value_type> const& values, const std::set<double>& cis) 
+        : Probit_statistics(get_mean_Probits(values, cis)) {} 
+
+    // Zero-copy functional pipeline! No intermediate vector allocations.
     template<class VectorSpace, class F>
-    requires requires (VectorSpace v, F f) { {f(v)} -> std::convertible_to<value_type_t<Id>>; }
-    Probit_statistics(std::vector<VectorSpace>const& xs,  F&& f, const std::set<double>& cis)
-    {
-        std::vector<value_type> values;
-        values.reserve(xs.size());
-        for (const auto& x : xs) {
-            values.push_back(std::invoke(f, x));
-        }
-        auto [mean_probit, probbits] = get_mean_Probits(values, cis, std::identity{});
-        *this = Probit_statistics(std::move(mean_probit), std::move(probbits));
-    }
+    requires requires (VectorSpace v, F f) { { std::invoke(f, v) } -> std::convertible_to<value_type_t<Id>>; }
+    Probit_statistics(std::vector<VectorSpace> const& xs, F f, const std::set<double>& cis)
+        : Probit_statistics(get_mean_Probits(xs, cis, std::move(f))) {}
 
-
-    
-    constexpr auto& operator[](var::Var<Id> ) {
+    constexpr auto& operator[](var::Var<Id>) {
         return *this;
     }
     constexpr auto& operator[](var::Var<Id>) const {
@@ -814,36 +970,88 @@ class Probit_statistics
     }
 };
 
+template<class F, class VecSpace, class... Vs>
+requires (std::is_same_v<std::decay_t<std::invoke_result_t<F, const VecSpace&>>, var::Vector_Space<Vs...>>)
+auto get_mean_Probits_impl(std::vector<VecSpace> const& bootstrap_estimates, 
+                           const std::set<double>& cis, F f, 
+                           std::type_identity<var::Vector_Space<Vs...>>) 
+{
+    using ProjResult = std::invoke_result_t<F, const VecSpace&>;
+    using RawVecSpace = std::decay_t<ProjResult>;
+    
+    using StorageType = std::conditional_t<
+        std::is_lvalue_reference_v<ProjResult>,
+        std::reference_wrapper<std::remove_reference_t<ProjResult>>,
+        RawVecSpace
+    >;
 
-template<class F, class VecSpace, class...Vs>
-requires (std::is_same_v<std::decay_t<std::invoke_result_t<F, VecSpace>>, var::Vector_Space<Vs...>>)
-auto get_mean_Probits_impl(std::vector<VecSpace> const& bootstrap_estimates, const std::set<double>& cis, F f, 
-    std::type_identity<var::Vector_Space<Vs...>>/**/){
-     auto probit = var::Vector_Space<Probit_statistics<Vs>...>(
-         Probit_statistics<Vs>(
-             bootstrap_estimates,
-             [&f](const auto& v) -> decltype(auto) { return get<Vs>(std::invoke(f, v))(); },
-             cis)...);
+    std::vector<StorageType> valid_estimates;
+    valid_estimates.reserve(bootstrap_estimates.size());
+    
+    // Evaluate 'f' EXACTLY ONCE per estimate
+    for (const auto& v : bootstrap_estimates) {
+        decltype(auto) val = std::invoke(f, v);
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+            valid_estimates.emplace_back(std::ref(val));
+        } else {
+            valid_estimates.emplace_back(std::move(val));
+        }
+    }
 
-     auto meanout=var::Vector_Space<Vs...>(Vs(std::move(get<mean<Vs>>(get<Probit_statistics<Vs>>(probit)())()))...);
-     std::map<double,var::Vector_Space<Vs...>> probitsout;
-     for (double ci : cis) {
-         probitsout.emplace(
-             ci,
-             var::Vector_Space<Vs...>(Vs(
-                 std::move(get<Probits<Vs>>(get<Probit_statistics<Vs>>(probit)())().at(ci)))...));
-     }
+    auto probit = var::Vector_Space<Probit_statistics<Vs>...>(
+        Probit_statistics<Vs>(
+            valid_estimates,
+            [](const StorageType& st) -> decltype(auto) { 
+                if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+                    return get<Vs>(st.get())();
+                } else {
+                    return get<Vs>(st)();
+                }
+            },
+            cis)...
+    );
+
+    auto meanout = var::Vector_Space<Vs...>(
+        Vs(std::move(get<mean<Vs>>(get<Probit_statistics<Vs>>(probit)())()))...
+    );
+    
+    // FIX: Extract the minimum count as a std::size_t instead of a Vector_Space
+    std::size_t min_n = valid_estimates.size();
+    (([&]{
+        std::size_t current_n = get<count<Vs>>(get<Probit_statistics<Vs>>(probit)())();
+        if (current_n < min_n) {
+            min_n = current_n;
+        }
+    }()), ...);
+    
+    std::map<double, var::Vector_Space<Vs...>> probitsout;
+    for (double ci : cis) {
+        probitsout.emplace(
+            ci,
+            var::Vector_Space<Vs...>(
+                Vs([&]() {
+                    const auto& component = get<Probit_statistics<Vs>>(probit)();
+                    const auto& probits_map = get<Probits<Vs>>(component)();
+                    if (auto it = probits_map.find(ci); it != probits_map.end()) {
+                        return it->second;
+                    }
+                    return get<mean<Vs>>(component)();
+                }())...
+            )
+        );
+    }
      
-     return std::make_pair(std::move(meanout), std::move(probitsout));
+    // Return min_n so it perfectly matches the Probit_statistics tuple constructor
+    return std::make_tuple(std::move(meanout), std::move(probitsout), min_n);
 }
+
+
 
 template<class F, class VecSpace>
-requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, VecSpace>>, var::Vector_Space>)
-auto get_mean_Probits(std::vector<VecSpace> const& bootstrap_estimates, const std::set<double>& cis, F f){
-   using RVecSp=std::decay_t<std::invoke_result_t<F, VecSpace>>;
-   return get_mean_Probits_impl(bootstrap_estimates, cis, f, std::type_identity<RVecSp>{});
+requires (is_of_this_template_type_v<std::decay_t<std::invoke_result_t<F, const VecSpace&>>, var::Vector_Space>)
+auto get_mean_Probits(std::vector<VecSpace> const& bootstrap_estimates, const std::set<double>& cis, F f) {
+   using RVecSp = std::decay_t<std::invoke_result_t<F, const VecSpace&>>;
+   return get_mean_Probits_impl(bootstrap_estimates, cis, std::move(f), std::type_identity<RVecSp>{});
 }
-
-
 
 #endif  // MOMENT_STATISTICS_H
