@@ -1,12 +1,36 @@
 model = load_model("scheme_CO")
 
-parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
+axis_interval = axis(name= "interval_in_tau", labels= ["0.01"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
+axis_Nchanels =axis(name= "Num_ch", labels= ["1"])
+current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
 
-model2 = load_model("scheme_CCO")
 
-parameter2 = load_parameters(model2, "data/models/scheme_CCO_par.csv")
+Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1])
 
-experiment = create_experiment(experiment_structure=[{5,50,0.0},{4,25,10.0},{4,50,10.0},{4,50,10.0}], 
+
+
+parameter = create_parameters(
+   model = model, 
+   parameters_info= [   
+      {"on","Log10",10},
+{"off","Log10",100},
+{"unitary_current","Log10",1},
+{"Current_Noise","Log10",current_noise},
+{"Current_Baseline","Log10",1},
+{"Num_ch_mean","Log10", Num_ch}]
+)
+
+
+
+
+
+experiment = create_experiment(
+   experiment_structure=[
+      {indexed_size_by(axis= axis_interval,values=[100]),indexed_size_by(axis= axis_interval,values=[5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[200]),indexed_size_by(axis= axis_interval,values=[5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[300]),indexed_size_by(axis= axis_interval,values=[5]),0.0}
+      ], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
 initial_time = 0.0)
@@ -14,37 +38,49 @@ initial_time = 0.0)
 observations = set_observations(values_set= [0,0,0,0])
 
 par_tr = get_standard_parameter_transformed_values(parameter)
-
  
 model_str="scheme_CO"
 
+simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations  = simulate(model= model, parameter_transformed = par_tr, n_simulations= 10, experiment = experiment,
-                         observations = observations, number_of_substeps = 250, seed = 0)
-
-
-simulation_file = write_csv(experiment= experiment, simulations=simulations, 
-   path= "figure_2_simulation_test_test")
-
-
-
-macro_MRV = build_likelihood_function(model =model, 
-            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
-            variance_approximation = 1, taylor_variance_correction = 0)
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 64, experiment = experiment,
+                         observations = observations, 
+                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
+                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
+                 seed = 42)
 
 
 
+simulation_file = write_csv(experiment= experiment, simulations=simulations,
+   path= "figures/data/figure_2_simulation_error_")
 
 
-dlikelihood_predictions_MRV = calc_dlikelihood_predictions(likelihood_algorithm =macro_MRV, parameters=par_tr, experiment =experiment, 
+algorithm_axis = axis(name= "algorithm", labels= ["macro_IRV"])
+
+algo_recursive_approximation=indexed_bool_by(axis= algorithm_axis, values=[true])
+algo_taylor_approximation=indexed_bool_by(axis= algorithm_axis, values=[false])
+
+algorithms = build_likelihood_function(model =model,
+            adaptive_approximation = false,
+            recursive_approximation = algo_recursive_approximation,
+            averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[2]),
+            variance_approximation = true,
+            taylor_variance_correction = algo_taylor_approximation)
+
+
+
+
+dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =algorithms, parameters=par_tr, experiment =experiment,
 data_series = simulations)
 
-dlikelihood_file_MRV = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions_MRV, 
-   path= "figure_2_dlikelihood_predictions_MRV_test")
+dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
+   path= "figures/data/figure_2_dlikelihood_predictions_error_")
 
-likelihood_analysis_MRV = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions_MRV , n_boostrap_samples=1000,
-            probits = [ 0.025 , 0.975 ] , seed=42)
 
-likelihood_analysis_MRV_res = write_csv(analysis = likelihood_analysis_MRV,  
-   path= "figure_2_dlikelihood_analysis_MRV_test")
+likelihood_analysis = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
+            probits = [ 0.025 , 0.975 ] , seed=0)
+
+
+likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
+   path= "figures/data/figure_2_dlikelihood_analysis_error_")

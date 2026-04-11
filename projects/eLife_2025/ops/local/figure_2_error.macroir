@@ -44,11 +44,11 @@ model_str="scheme_CO"
 simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 64, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 16, experiment = experiment,
                          observations = observations, 
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
-                 seed = 42)
+                 seed = 0)
 
 
 

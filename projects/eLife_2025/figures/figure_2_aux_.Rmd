@@ -1,0 +1,64 @@
+---
+title: "Untitled"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+d<-read.csv("data/figure_2_dlikelihood_predictions_error_.csv")%>%
+  select(where(~ !all(is.na(.))))
+d
+```
+
+```{r}
+d%>%select(component_path)%>%distinct()%>%pull()
+```
+```{r}
+
+d_logL<-d%>%filter(component_path=="logL")%>%
+  select(where(~ !all(is.na(.))))
+d_logL  
+
+```
+
+```{r}
+d_logL%>%filter(calculus=="primitive")%>%select(value)%>%pull()
+```
+
+```{r}
+d_logL%>%filter(calculus=="derivative")%>%select(value)%>%pull()
+```
+
+
+```{r}
+d_logL%>%filter(calculus=="primitive", value>0)
+```
+
+```{r}
+d_logL%>%filter(calculus=="primitive", simulation_index==32,calculus=="primitive" )%>%  ggplot()+geom_line(aes(x=sample_index,y=value, color=param_index))
+```
+
+```{r}
+d_logL%>%filter(calculus=="primitive", simulation_index==32,calculus=="primitive" )%>%select(value)%>%pull()
+```
+
+```{r}
+d%>%filter(component_path=="trust_coefficient")%>%filter(value==0)
+```
+
+
+```{r}
+d%>%filter(simulation_index==32, sample_index==553)
+```
+
+
+```{r}
+d_logL%>%filter(calculus=="primitive", simulation_index==32)
+```
+

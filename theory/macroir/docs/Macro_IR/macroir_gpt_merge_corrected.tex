@@ -613,10 +613,18 @@ The update
   =
   \boldsymbol{\Sigma}^{\text{prop}}
   -
-  \frac{\mathbf{g}\mathbf{g}^{\top}}{\sigma^2_{\overline{y}^{\text{pred}}}},
+  \frac{N_{\text{ch}}\,\mathbf{g}\mathbf{g}^{\top}}
+       {\sigma^2_{\overline{y}^{\text{pred}}}},
 \]
-is precisely the Gaussian conditioning formula for a joint Gaussian variable
-\((\boldsymbol{N}_{\text{ch}}(t),\overline{y}_{0\to t})\).
+is precisely the Gaussian conditioning formula once one remembers that
+\(
+\boldsymbol{\Sigma}^{\text{prop}}=\Cov(\boldsymbol{N}(t))/N_{\text{ch}}
+\)
+and
+\(
+\mathbf{g}=\Cov(\boldsymbol{N}(t),\overline{y}_{0\to t})/N_{\text{ch}}
+\)
+are stored in per-channel normalisation.
 
 MacroIR's distinctive feature is not the Kalman structure itself, but that \(\mathbf{g}\) and \(\sigma^2_{\overline{y}^{\text{pred}}}\) are computed from \emph{interval physics} via boundary matrices and the unified tilde operator, rather than from a naive instant-state observation model.
 

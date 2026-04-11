@@ -4,8 +4,7 @@
 \usepackage{geometry}
 \geometry{margin=1in}
 
-\title{Trust-Region Kalman Mean Update for MacroIR\\[4pt]
-(Variance Inflation to Enforce Probability Constraints)}
+\title{Trust-Region Kalman Mean Update for MacroIR}
 \author{}
 \date{}
 
@@ -83,7 +82,7 @@ We want a minimal distortion of the Gaussian update that:
         with \(0 < p_{\min} \ll 1\);
   \item preserves the standard Gaussian conditioning structure for the
         covariance (up to mild numerical regularisation);
-  \item has a clear interpretation at the log-likelihood level, since MacroIR
+  \item keeps the likelihood calculation numerically stable, since MacroIR
         fundamentally cares about the per-interval evidence.
 \end{enumerate}
 
@@ -99,9 +98,18 @@ trust region on the mean update.
 
 We introduce a shrink factor \(\alpha\in[0,1]\) on the Kalman update and
 compute the maximal \(\alpha\) that keeps the mean inside the safe region.
-This is exactly equivalent to an inflation of the predictive variance in the
-likelihood.  The covariance update is scaled by the same \(\alpha\) to preserve
-the usual Kalman algebra and the log-likelihood interpretation.
+The covariance update is scaled by the same \(\alpha\) so that the posterior
+mean and covariance remain consistent with the same trust-region correction.
+
+\paragraph{Implementation note.}
+An earlier variant interpreted this shrink factor as an effective variance
+inflation in the per-interval likelihood. In practice this turned out to be a
+bad choice: when the admissible trust coefficient reaches \(\alpha=0\), the
+naive substitution of \(\alpha\) into the likelihood variance produces a
+singular log term and unstable likelihood values. The current implementation
+therefore uses \(\alpha\) only to scale the state correction
+\((\boldsymbol{\mu},\boldsymbol{\Sigma})\), while \(\log L\) and \(E[\log L]\)
+continue to use the unmodified predictive variance \(\sigma^2_{\text{pred}}\).
 
 \subsection{Parameters}
 
@@ -236,13 +244,13 @@ with
 
 If no component moves (\(\Delta\boldsymbol{\mu}=\mathbf{0}\)), we define
 \(\alpha_{\text{mean}}:=1\); in that case the mean is already consistent with
-the observation and no variance inflation is needed.
+the observation and no shrink is needed.
 
 If \(\alpha_{\text{mean}}\le 0\) (which can happen if the unconstrained
 direction immediately leaves the safe box), we interpret this as a signal to
 strongly down-weight or ignore this observation (see below).
 
-\subsection{Step 4: Final shrink factor and variance inflation}
+\subsection{Step 4: Final shrink factor}
 
 We now define the actual shrink factor
 \[
@@ -254,7 +262,7 @@ We now define the actual shrink factor
 Two limiting cases are useful:
 \begin{itemize}
   \item If \(\alpha^\star=1\), we recover the standard Gaussian update with
-        no variance inflation.
+        no shrink.
   \item If \(\alpha^\star=0\), we perform \emph{no} Kalman correction:
         \(\boldsymbol{\mu}^{\text{post}}=\boldsymbol{\mu}^{\text{prop}}\) and
         \(\boldsymbol{\Sigma}^{\text{post}}=\boldsymbol{\Sigma}^{\text{prop}}\).
@@ -270,28 +278,6 @@ In implementation, it is often convenient to introduce a small threshold
 \end{itemize}
 This makes the “outlier” behaviour explicit: a sufficiently incompatible
 observation leaves the mean and covariance unchanged.
-
-Define the (per-interval) variance inflation factor
-\[
-  \phi := \begin{cases}
-    \dfrac{1}{\alpha^\star}, & \alpha^\star>0,\\[6pt]
-    1, & \alpha^\star=0
-  \end{cases}
-  \quad\text{so that}\quad
-  \phi\ge 1.
-\]
-The effective predictive variance used in the update and in the
-log-likelihood is
-\[
-  \sigma^2_{\text{eff}} := \phi\,\sigma^2_{\text{pred}}
-  =
-  \begin{cases}
-    \dfrac{\sigma^2_{\text{pred}}}{\alpha^\star}, & \alpha^\star>0,\\[6pt]
-    \sigma^2_{\text{pred}}, & \alpha^\star=0.
-  \end{cases}
-\]
-In the outlier case \(\alpha^\star=0\) we do not actually use
-\(\sigma^2_{\text{eff}}\) for an update, since the step is suppressed.
 
 The implemented update is therefore
 \begin{align}
@@ -309,15 +295,12 @@ The implemented update is therefore
   \alpha^\star\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}},
   \label{eq:final-cov-update}
 \end{align}
-or, equivalently, as a standard Kalman update with inflated variance
-\(\sigma^2_{\text{eff}} = \sigma^2_{\text{pred}}/\alpha^\star\) whenever
-\(\alpha^\star>0\).
 
 \subsection{Step 5: Log-likelihood contribution for this interval}
 
-When we treat the update as a Kalman step with effective variance
-\(\sigma^2_{\text{eff}} = \phi\,\sigma^2_{\text{pred}}\) (\(\alpha^\star>0\)),
-the per-interval Gaussian log-likelihood is
+In the current implementation, the trust coefficient does not alter the
+per-interval likelihood variance. The Gaussian log-likelihood therefore
+remains
 \[
   \ell
   =
@@ -325,29 +308,17 @@ the per-interval Gaussian log-likelihood is
   =
   -\frac{1}{2}
   \left[
-    \log\bigl(2\pi\sigma^2_{\text{eff}}\bigr)
+    \log\bigl(2\pi\sigma^2_{\text{pred}}\bigr)
     +
-    \frac{\delta^2}{\sigma^2_{\text{eff}}}
-  \right]
-  =
-  -\frac{1}{2}
-  \left[
-    \log\bigl(2\pi\phi\sigma^2_{\text{pred}}\bigr)
-    +
-    \frac{\delta^2}{\phi\,\sigma^2_{\text{pred}}}
+    \frac{\delta^2}{\sigma^2_{\text{pred}}}
   \right].
 \]
 
-If the interval is classified as a hard outlier
-(\(\alpha^\star=0\), update skipped), there are two consistent choices:
-\begin{itemize}
-  \item either do not add any contribution to the evidence from this interval;
-  \item or add the likelihood with the original predictive variance
-        \(\sigma^2_{\text{pred}}\), documenting that the observation has no
-        effect on the state but still contributes to the evidence.
-\end{itemize}
-This choice is a modelling decision rather than part of the trust-region
-mechanism itself.
+This choice is deliberate. We tried the variance-inflation alternative, but
+it can blow up when \(\alpha^\star=0\) because the likelihood normalisation
+becomes singular. The adopted policy is to use \(\alpha^\star\) only as a
+trust-region parameter for the posterior state update and to record it as a
+diagnostic quantity (`trust\_coefficient`).
 
 % ============================================================
 % 3. Why the covariance stays positive semidefinite
@@ -451,7 +422,7 @@ These steps are separate from the trust-region logic and do not influence
 For completeness, we summarise the algebraic steps that justify the formulas
 above.
 
-\subsection{Scaled update and its equivalence to variance inflation}
+\subsection{Scaled update and a discarded variance-inflation interpretation}
 \label{subsec:scaled-update-equivalence}
 
 Starting from the standard update:
@@ -501,9 +472,15 @@ Then
   \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{eff}}}.
 \end{align*}
 This is exactly the standard Kalman update with predictive variance
-\(\sigma^2_{\text{eff}}\).
+\(\sigma^2_{\text{eff}}\) at the algebraic level.
 Writing \(\phi = \sigma^2_{\text{eff}}/\sigma^2_{\text{pred}} = 1/\alpha\),
 we can also say that we inflated the predictive variance by a factor \(\phi\).
+
+This remains a useful formal interpretation of the scaled update, but it is
+not the current likelihood implementation. Once \(\alpha\) is allowed to reach
+zero, substituting it directly into the likelihood variance can make the log
+term singular, so the code keeps the raw \(\sigma^2_{\text{pred}}\) in
+\(\log L\) and \(E[\log L]\).
 
 \subsection{Probability constraints}
 
@@ -547,30 +524,31 @@ Taking the minimum over all moving components gives \(\alpha_{\text{mean}}\),
 and hence \(\alpha^\star = \max(0,\min(1,\alpha_{\text{mean}}))\), as used in
 the implementation.
 
-\subsection{Log-likelihood with inflated variance}
+\subsection{Current log-likelihood choice}
 
-With effective variance \(\sigma^2_{\text{eff}} = \phi\sigma^2_{\text{pred}}\),
-the per-interval Gaussian log-likelihood is
+The current implementation does not feed the trust coefficient back into the
+likelihood variance. The per-interval Gaussian log-likelihood is therefore
 \[
   \ell
   =
   -\frac{1}{2}
   \left[
-    \log\bigl(2\pi\sigma^2_{\text{eff}}\bigr)
+    \log\bigl(2\pi\sigma^2_{\text{pred}}\bigr)
     +
-    \frac{\delta^2}{\sigma^2_{\text{eff}}}
-  \right]
-  =
-  -\frac{1}{2}
-  \left[
-    \log\bigl(2\pi\phi\sigma^2_{\text{pred}}\bigr)
-    +
-    \frac{\delta^2}{\phi\sigma^2_{\text{pred}}}
+    \frac{\delta^2}{\sigma^2_{\text{pred}}}
   \right].
 \]
-As \(\phi\) increases, the quadratic term decreases like \(1/\phi\), while the
-normalisation term grows like \(\log\phi\).  Each time we inflate the variance
-to protect the state, we automatically pay a corresponding “price’’ in
-likelihood.
+
+We previously explored the variance-inflation alternative suggested by the
+algebra above. In practice that route was abandoned because the trust
+coefficient can legitimately reach \(\alpha=0\) when the unconstrained update
+would leave the admissible probability region, and the corresponding
+likelihood normalisation blows up. The adopted policy is therefore:
+\begin{itemize}
+  \item use \(\alpha\) to limit the posterior state correction;
+  \item record \(\alpha\) as a diagnostic (`trust\_coefficient`);
+  \item compute \(\log L\) and \(E[\log L]\) from the original predictive
+        variance.
+\end{itemize}
 
 \end{document}

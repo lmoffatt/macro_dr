@@ -1,5 +1,9 @@
 # MacroIR Interval Update: Boundary-State Formulation and Implementation Guide
 
+> Historical draft note: this file mixes raw-count and per-channel normalizations
+> and contains sign/weighting inconsistencies. For the corrected derivation, use
+> `macroir_derivation.tex` and `macroir_gpt_merge_corrected.tex`.
+
 This document explains how to implement the MacroIR interval update using the boundary-state representation. It has three parts: (1) explicit problem formulation and equations, (2) a short “how it was solved” sketch, and (3) a tutorial-style derivation.
 
 ## 1. Problem formulation and core equations
