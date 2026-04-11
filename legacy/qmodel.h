@@ -4331,7 +4331,7 @@ class Macro_DMR {
 
     template <class C_y_var>
     auto calculate_logL(bool y_is_nan, C_y_var const& r_y_var, auto const& chi2,
-                        auto const& alfa, auto& m) const -> Transfer_Op_to<C_y_var, logL> {
+                         auto& m) const -> Transfer_Op_to<C_y_var, logL> {
         using DX = var::dx_of_dfdx_t<C_y_var>;
         auto const& dx = var::get_dx_of_dfdx(r_y_var);
 
@@ -4340,17 +4340,17 @@ class Macro_DMR {
             return build<logL>(std::move(base));
         }
         if (get<Proportional_Noise>(m).value() == 0) {
-            return build<logL>(-0.5 * log(2 * std::numbers::pi * r_y_var() * alfa()) -
+            return build<logL>(-0.5 * log(2 * std::numbers::pi * r_y_var()) -
                                0.5 * chi2());
         } else {
             return build<logL>(0.5 * chi2() - log(var::Poisson_noise_normalization(
-                                                  primitive(r_y_var() * alfa()),
+                                                  primitive(r_y_var()),
                                                   primitive(get<Proportional_Noise>(m).value()))));
         }
     }
 
 	    template <class C_y_var>
-	    auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, auto const& alfa, auto& m) const {
+	    auto calculate_elogL(bool y_is_nan, C_y_var const& r_y_var, auto& m) const {
 	        using DX = var::dx_of_dfdx_t<C_y_var>;
 	        auto const& dx = var::get_dx_of_dfdx(r_y_var);
 
@@ -4359,16 +4359,16 @@ class Macro_DMR {
             return build<elogL>(std::move(base));
         }
 	        if (get<Proportional_Noise>(m).value() == 0) {
-	            return build<elogL>(-0.5 * log(2 * std::numbers::pi * r_y_var()*alfa()) - 0.5);
+	            return build<elogL>(-0.5 * log(2 * std::numbers::pi * r_y_var()) - 0.5);
 	        } else {
 	            const auto pn_value = get<Proportional_Noise>(m).value();
 	            if constexpr (var::is_derivative_v<std::decay_t<decltype(pn_value)>>) {
-	                return build<elogL>(var::Poisson_noise_expected_logL(r_y_var() * alfa(),
+	                return build<elogL>(var::Poisson_noise_expected_logL(r_y_var() ,
 	                                                                    pn_value));
 	            } else {
 	                auto pn = var::init_with_dx<DX>(pn_value, dx);
 	                return build<elogL>(
-	                    var::Poisson_noise_expected_logL(r_y_var() * alfa(), pn));
+	                    var::Poisson_noise_expected_logL(r_y_var() , pn));
 	            }
 	        }
 	    }
@@ -4612,9 +4612,9 @@ class Macro_DMR {
             !all_Covariance_elements(primitive(r_P_cov()))) {
             return error_message("error in P_mean or P_cov");
         }
-        auto r_logL = calculate_logL(false, r_y_var, chi2, alfa, m);
+        auto r_logL = calculate_logL(false, r_y_var, chi2,  m);
 
-        auto r_elogL = calculate_elogL(false, r_y_var, alfa,  m);
+        auto r_elogL = calculate_elogL(false, r_y_var,  m);
 
         if constexpr (!dynamic) {
             Transfer_Op_to<C_Patch_State, Algo_State> out;
@@ -5237,11 +5237,10 @@ class Macro_DMR {
         auto r_r_std = get<r_std>(r_Algo_state());
         
         auto r_chi2 = get<Chi2>(r_Algo_state());
-        auto r_trust_coefficient = get<trust_coefficient>(r_Algo_state());
         auto y = p_y.value();
         bool y_is_nan = std::isnan(y);
-        auto r_logL = calculate_logL(y_is_nan, r_y_var, r_chi2, r_trust_coefficient, m);
-        auto r_elogL = calculate_elogL(y_is_nan, r_y_var, r_trust_coefficient, m);
+        auto r_logL = calculate_logL(y_is_nan, r_y_var, r_chi2, m);
+        auto r_elogL = calculate_elogL(y_is_nan, r_y_var, m);
         
        
         auto r_prior_all =

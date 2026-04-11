@@ -1,0 +1,26 @@
+---
+title: "Untitled" 
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+d_logL<-read.csv("data/figure_2_dlikelihood_predictions_error.csv")%>%filter( calculus=="primitive",component_path=="logL")%>%
+  select(where(~ !all(is.na(.))))
+d_logL
+```
+
+
+```{r}
+d_logL%>%filter(calculus=="primitive")%>%select(value)%>%pull()
+```
+
+```{r}
+d_logL%>%filter(calculus=="derivative")%>%select(value)%>%pull()
+```

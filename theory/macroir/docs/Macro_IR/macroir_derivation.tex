@@ -1181,20 +1181,40 @@ Once we have
 the Gaussian update is exactly the standard scalar Kalman filter in a
 \(K\)-dimensional state space.
 
-The joint (approximate) Gaussian of
-\((\mathbf{N}(t)/N_{\text{ch}}, \overline{y}^{\text{tot}}_{0\to t})\) has mean
-\(\bigl(\boldsymbol{\mu}^{\text{prop}}(t), \overline{y}^{\text{pred}}_{0\to t}\bigr)\)
-and covariance
+At this stage one must keep the normalisation straight:
 \[
-  \begin{pmatrix}
-    \boldsymbol{\Sigma}^{\text{prop}}(t)
-    & \mathbf{g} \\
-    \mathbf{g}^\top
-    & \sigma^2_{\overline{y}^{\text{pred}}}
-  \end{pmatrix}.
+  \boldsymbol{\Sigma}^{\text{prop}}(t)
+  =
+  \frac{1}{N_{\text{ch}}}\Cov(\mathbf{N}(t)),
+  \qquad
+  \mathbf{g}
+  =
+  \frac{1}{N_{\text{ch}}}
+  \Cov\bigl(\mathbf{N}(t),\overline{y}^{\text{tot}}_{0\to t}\bigr).
 \]
+Therefore the fraction state
+\(
+  \mathbf{x}(t)=\mathbf{N}(t)/N_{\text{ch}}
+\)
+has covariance
+\(
+  \Cov(\mathbf{x}(t))=\boldsymbol{\Sigma}^{\text{prop}}(t)/N_{\text{ch}}
+\),
+while
+\(
+  \Cov(\mathbf{x}(t),\overline{y}^{\text{tot}}_{0\to t})=\mathbf{g}
+\).
+Equivalently, the raw count state \(\mathbf{N}(t)\) has covariance
+\(
+  N_{\text{ch}}\boldsymbol{\Sigma}^{\text{prop}}(t)
+\)
+and cross-covariance
+\(
+  N_{\text{ch}}\mathbf{g}
+\).
+
 Conditioning on the observed value
-\(\overline{y}^{\text{obs}}_{0\to t}\) yields
+\(\overline{y}^{\text{obs}}_{0\to t}\) therefore yields
 \begin{align*}
   \boldsymbol{\mu}^{\text{post}}(t)
   &=
@@ -1207,7 +1227,8 @@ Conditioning on the observed value
   &=
   \boldsymbol{\Sigma}^{\text{prop}}(t)
   -
-  \frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\overline{y}^{\text{pred}}}},
+  \frac{N_{\text{ch}}\,\mathbf{g}\mathbf{g}^\top}
+       {\sigma^2_{\overline{y}^{\text{pred}}}},
 \end{align*}
 where
 \(
@@ -1216,7 +1237,21 @@ where
   \overline{y}^{\text{obs}}_{0\to t}
   -\overline{y}^{\text{pred}}_{0\to t}.
 \)
-These are the update formulas in the spec.
+These are the update formulas in the per-channel normalisation used by the
+implementation.
+
+\paragraph{Conceptual caveat for recursion.}
+The derivation above is a \emph{single-interval} moment calculation. Reusing the
+posterior pair
+\(
+  (\boldsymbol{\mu}^{\text{post}}(t),\boldsymbol{\Sigma}^{\text{post}}(t))
+\)
+as the complete prior for the next interval is an additional closure
+assumption. It is exact for the exact latent Markov chain when the full
+posterior over the boundary state is retained, but once MacroIR projects the
+update back to a Gaussian occupancy description (and, in the implementation,
+may further damp the correction by a trust coefficient), sufficiency of the end
+marginal is no longer guaranteed by the derivation itself.
 
 %------------------------------------------------------------
 % 9. How to generalise and extend the theory

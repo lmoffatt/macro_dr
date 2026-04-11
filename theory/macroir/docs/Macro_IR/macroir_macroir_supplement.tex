@@ -72,7 +72,7 @@ T_1 = \overline{\gamma}_0^T(\Sigma^{\text{prior}}_0 - \mathrm{diag}(\mu^{\text{p
 \]
 \[
 T_2 = \sum_{i_0}\mu^{\text{prior}}_{0,i_0}\sum_{i_t}
-(\overline{\Gamma}_{i_0\to i_t}P_{i_0\to i_t}(t))^2.
+\overline{\Gamma}_{i_0\to i_t}^2 P_{i_0\to i_t}(t).
 \]
 
 Thus,
@@ -116,13 +116,25 @@ P(t)^T(\Sigma^{\text{prior}}_0 - \mathrm{diag}(\mu^{\text{prior}}_0))P(t)
 
 The posterior covariance (scalar Gaussian update) is
 \[
-\Sigma^{\text{prior}}(t)
+\Sigma^{\text{post}}(t)
 =
 \Sigma^{\text{prop}}(t)
 -
-\frac{1}{\sigma^2_{\overline{y}^{\mathrm{pred}}_{0\to t}}}
+\frac{N_{\mathrm{ch}}}{\sigma^2_{\overline{y}^{\mathrm{pred}}_{0\to t}}}
 \widetilde{\gamma^{T}\Sigma}^T
 \widetilde{\gamma^{T}\Sigma}.
 \]
+
+Here the factor \(N_{\mathrm{ch}}\) is required because
+\(
+\Sigma^{\text{prop}}(t)=\Cov(N(t))/N_{\mathrm{ch}}
+\)
+and
+\(
+\widetilde{\gamma^{T}\Sigma}
+=
+\Cov(N(t),\overline{y}_{0\to t})/N_{\mathrm{ch}}
+\)
+are both stored in the per-channel normalisation used by MacroIR.
 
 \end{document}

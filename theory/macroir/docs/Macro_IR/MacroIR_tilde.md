@@ -1,5 +1,9 @@
 # MacroIR: Interval-Based Bayesian Updating Using Boundary-State Lifting
 
+> Historical draft note: this note predates the corrected normalization used by
+> the implementation and should not be treated as the canonical derivation. Use
+> `macroir_derivation.tex` for the primary reference.
+
 MacroIR performs Bayesian updating of a macroscopic state-occupancy distribution for an ensemble of Markov channels based on **interval-averaged** observations.  
 The key difficulty is that an interval-averaged current depends on the entire hidden *trajectory* of each channel over \([0,t]\). MacroIR resolves this through:
 

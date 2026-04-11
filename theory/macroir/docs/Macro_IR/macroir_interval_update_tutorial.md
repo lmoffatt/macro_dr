@@ -18,7 +18,7 @@ Instead of tracking all possible boundary states \((i_0 → i_t)\), MacroIR uses
 Key quantities:
 
 - `mu_0` — prior mean state distribution at interval start  
-- `Sigma_0` — prior covariance  
+- `Sigma_0` — prior per-channel covariance, i.e. `Cov(counts)/N_ch`  
 - `P_t` — transition matrix \(e^{Qt}\)  
 - `Gamma_bar(i0, it)` — mean interval current conditional on start/end states  
 - `Var_Gamma_bar(i0, it)` — conditional variance  
@@ -78,7 +78,7 @@ $$
 
 $$
 \widetilde{\gamma^{T}\Sigma\gamma}
-= \overline{\gamma}_0^T(\Sigma_0 - \mathrm{diag}(\mu_0))\overline{\gamma}_0 + \sum_{i_0}\mu_0[i_0]\sum_{i_t}(\Gamma\_bar(i_0,i_t)P\_t(i_0,i_t))^2.
+= \overline{\gamma}_0^T(\Sigma_0 - \mathrm{diag}(\mu_0))\overline{\gamma}_0 + \sum_{i_0}\mu_0[i_0]\sum_{i_t}\Gamma\_bar(i_0,i_t)^2 P\_t(i_0,i_t).
 $$
 
 
@@ -134,7 +134,7 @@ for (int it = 0; it < K; ++it) {
 
 \[
 \Sigma(t)
-= \Sigma^{\mathrm{prop}}(t)- \frac{1}{\sigma^2_{\overline{y}^{\mathrm{pred}}_{0\to t}}}
+= \Sigma^{\mathrm{prop}}(t)- \frac{N_{\mathrm{ch}}}{\sigma^2_{\overline{y}^{\mathrm{pred}}_{0\to t}}}
 \widetilde{\gamma^{T}\Sigma}^T\widetilde{\gamma^{T}\Sigma}.
 \]
 
