@@ -191,6 +191,14 @@ Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
     const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double rtol, double atol);
 Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
     const SymPosDefMatrix<double>& H, const Matrix<double>& g, double rtol, double atol);
+Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(
+    const SymPosDefMatrix<double>& A, const Matrix<double>& M, const SymPosDefMatrix<double>& D,
+    const std::string& left_name, const std::string& middle_name, const std::string& right_name,
+    double rtol, double atol);
+Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(
+    const Matrix<double>& A, const Matrix<double>& M, const Matrix<double>& D,
+    const std::string& left_name, const std::string& middle_name, const std::string& right_name,
+    double rtol, double atol);
 
 }  // namespace lapack
 
@@ -926,6 +934,18 @@ inline auto elemMult(const Matrix<double>& x, const Matrix<double>& y) {
     for (std::size_t i = 0; i < x.size(); ++i) out[i] = x[i] * y[i];
     return out;
 }
+
+inline auto xxt(const Matrix<double>& x, const Matrix<double>& y) {
+    auto out = Matrix<double>(x.size(), y.size(), false);
+    for (std::size_t i = 0; i < x.size(); ++i) {
+    for (std::size_t j = 0; j < y.size(); ++j) {
+        out(i, j) = x[i] * y[j];
+    }
+}
+    return out;
+}
+
+
 
 inline auto elemMult(const SymmetricMatrix<double>& x, const SymmetricMatrix<double>& y) {
     assert(x.size()==y.size());
@@ -1853,16 +1873,16 @@ inline auto idm_matrix(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<d
 
 return lapack::Lapack_IDM_Matrix(
         SymPosDefMatrix<double>::I_sware_it_is_possitive(
-            H+DiagonalMatrix<double>(H.nrows(), H.ncols(), e)), 
+            H+DiagonalMatrix<double>(H.nrows(), H.ncols(), e)),
             J);
-        
+
 }
 
 
 inline auto c_h_r_c_h_matrix(const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double e=0) {
     if (C.size()==0) {return C;}
     if (R.size()==0) {return R;}
-    
+
     if (e==0)
        { return lapack::Lapack_C_h_R_C_h(C, R);}
     else
@@ -1915,6 +1935,27 @@ inline auto distortion_induced_bias_subspace(const SymPosDefMatrix<double>& H,
                                              const Matrix<double>& g,
                                              double rtol = 1e-10, double atol = 0.0) {
     return lapack::Lapack_Distortion_Induced_Bias_Subspace(H, g, rtol, atol);
+}
+
+inline auto psd_whitened_cross_matrix_subspace(const SymPosDefMatrix<double>& A,
+                                               const Matrix<double>& M,
+                                               const SymPosDefMatrix<double>& D,
+                                               const std::string& left_name = "left PSD block",
+                                               const std::string& middle_name = "cross block",
+                                               const std::string& right_name = "right PSD block",
+                                               double rtol = 1e-10, double atol = 0.0) {
+    return lapack::Lapack_PSD_Whitened_Cross_Matrix(A, M, D, left_name, middle_name, right_name,
+                                                    rtol, atol);
+}
+
+inline auto psd_whitened_cross_matrix_subspace(const Matrix<double>& A, const Matrix<double>& M,
+                                               const Matrix<double>& D,
+                                               const std::string& left_name = "left PSD block",
+                                               const std::string& middle_name = "cross block",
+                                               const std::string& right_name = "right PSD block",
+                                               double rtol = 1e-10, double atol = 0.0) {
+    return lapack::Lapack_PSD_Whitened_Cross_Matrix(A, M, D, left_name, middle_name, right_name,
+                                                    rtol, atol);
 }
 
 // Enforce CTMC-generator conventions on eigendecomposition (primitive):
@@ -2076,6 +2117,9 @@ inline auto XTX(const Matrix<std::size_t>& a) {
     }
 }
 
+
+
+
 template<bool include_covariance>
 inline auto sqr_X(const Matrix<double>& a) {
     if constexpr (include_covariance) {
@@ -2084,6 +2128,19 @@ inline auto sqr_X(const Matrix<double>& a) {
      return elemMult(a, a);
     }
 }
+
+
+template<bool include_covariance>
+inline auto prod_XY(const Matrix<double>& a,const Matrix<double>& b) {
+    if constexpr (include_covariance) {
+        return xxt(a,b);
+    } else {
+     return elemMult(a, b);
+    }
+}
+
+
+
 
 template<bool include_covariance>
 inline auto sqr_X(const SymmetricMatrix<double>& a) {
@@ -2099,10 +2156,30 @@ inline auto sqr_X(const SymmetricMatrix<double>& a) {
 
 
 template<bool include_covariance>
+inline auto prod_XY(const SymmetricMatrix<double>& a,const SymmetricMatrix<double>& b) {
+    if constexpr (include_covariance) {
+        // Covariances of symmetric matrices live in packed-entry space.
+        // If we export them directly, CSV labeling will need names for those packed coordinates.
+        auto vecta = to_vector_half(a);
+        auto vectb = to_vector_half(b);
+        return xxt(vecta, vectb);
+    } else {
+        return elemMult(a, b);
+    }
+}
+
+
+
+
+template<bool include_covariance>
 inline auto sqr_X(double a) {
     return a * a;
 }
 
+template<bool include_covariance>
+inline auto prod_XY(double a, double b) {
+    return a * b;
+}
 
 
 

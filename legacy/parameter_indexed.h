@@ -166,6 +166,15 @@ auto sqr_X(const ParameterIndexed<ValueT, Params>& x) {
         ::sqr_X<include_covariance>(x.value()), x.parameters_ptr());
 }
 
+
+template <bool include_covariance, class ValueT, class Params>
+    requires ParameterMetadataLike<Params>
+auto prod_XY(const ParameterIndexed<ValueT, Params>& x, const ParameterIndexed<ValueT, Params>& y) {
+    return ParameterIndexed<std::decay_t<decltype(::prod_XY<include_covariance>(x.value(), y.value()))>, Params>(
+        ::prod_XY<include_covariance>(x.value(), y.value()), x.parameters_ptr());
+}
+
+
 template <class ValueT, class Params>
     requires ParameterMetadataLike<Params>
 Maybe_error<bool> compare_contents(const ParameterIndexed<ValueT, Params>& s0,
