@@ -63,6 +63,25 @@ auto apply_Probit_statistics(const std::vector<var::Vector_Space<Vs...>>& sample
             cis)...
     );  
 }
+
+template <class WrappedVecSpace, class... Vs>
+auto apply_Probit_statistics_impl(const std::vector<WrappedVecSpace>& samples,
+                                  const std::set<double>& cis,
+                                  std::type_identity<var::Vector_Space<Vs...>>) {
+    return var::Vector_Space<Probit_statistics<Vs>...>(
+        Probit_statistics<Vs>(
+            samples,
+            [](const WrappedVecSpace& v) -> decltype(auto) { return get<Vs>(v())(); },
+            cis)...);
+}
+
+template <class WrappedVecSpace>
+    requires(is_of_this_template_type_v<value_type_t<WrappedVecSpace>, var::Vector_Space> &&
+             !is_of_this_template_type_v<WrappedVecSpace, var::Vector_Space>)
+auto apply_Probit_statistics(const std::vector<WrappedVecSpace>& samples, const std::set<double>& cis) {
+    using raw_space_type = value_type_t<WrappedVecSpace>;
+    return apply_Probit_statistics_impl(samples, cis, std::type_identity<raw_space_type>{});
+}
    
 
 
@@ -89,8 +108,6 @@ auto bootstrap_it_to_Probit(F&& f,const std::vector<vectorSpace>& vs,  std::size
     auto samples=bootstrap_it(f, vs, n_replicates, gen);
     return apply_Probit_statistics(samples, cis);
  }
-
-
 
 
 

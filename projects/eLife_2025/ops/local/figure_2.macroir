@@ -85,7 +85,7 @@ dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, 
    path= "figures/data/figure_2_dlikelihood_predictions_dd")
 
 
-likelihood_analysis = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
+likelihood_analysis = likelihood_derivative_cross_correlation_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
             probits = [ 0.025 , 0.975 ] , seed=0)
 
 

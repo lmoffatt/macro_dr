@@ -2461,10 +2461,22 @@ inline auto project_to_basis(const Matrix<double>& basis, const SymPosDefMatrix<
     return tr(basis) * to_dense(x) * basis;
 }
 
+inline auto project_between_bases(const Matrix<double>& left_basis, const Matrix<double>& x,
+                                  const Matrix<double>& right_basis) {
+    return tr(left_basis) * x * right_basis;
+}
+
 inline auto embed_from_basis(const Matrix<double>& basis, const Matrix<double>& x_reduced) {
     if (basis.ncols() == 0)
         return Matrix<double>(basis.nrows(), basis.nrows(), 0.0);
     return basis * x_reduced * tr(basis);
+}
+
+inline auto embed_from_bases(const Matrix<double>& left_basis, const Matrix<double>& x_reduced,
+                             const Matrix<double>& right_basis) {
+    if (left_basis.ncols() == 0 || right_basis.ncols() == 0)
+        return Matrix<double>(left_basis.nrows(), right_basis.nrows(), 0.0);
+    return left_basis * x_reduced * tr(right_basis);
 }
 
 inline Maybe_error<Matrix<double>> validate_psd_dense(const Matrix<double>& x,
@@ -2672,6 +2684,78 @@ inline Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
 
     auto projected = g * basis;
     return (projected * inv_diag) * tr(basis);
+}
+
+inline Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(
+    const SymPosDefMatrix<double>& A, const Matrix<double>& M, const SymPosDefMatrix<double>& D,
+    const std::string& left_name, const std::string& middle_name, const std::string& right_name,
+    double rtol, double atol) {
+    return_error<Matrix<double>> Error{"Lapack_PSD_Whitened_Cross_Matrix: "};
+
+    if (A.nrows() != A.ncols())
+        return Error(left_name + ": left PSD block is not square");
+    if (D.nrows() != D.ncols())
+        return Error(right_name + ": right PSD block is not square");
+    if (M.nrows() != A.nrows())
+        return Error(middle_name + ": row dimension incompatible with left PSD block");
+    if (M.ncols() != D.nrows())
+        return Error(middle_name + ": column dimension incompatible with right PSD block");
+    if (!matrix_has_only_finite(A))
+        return Error(left_name + ": non-finite entries");
+    if (!matrix_has_only_finite(D))
+        return Error(right_name + ": non-finite entries");
+    if (!matrix_has_only_finite(M))
+        return Error(middle_name + ": non-finite entries");
+
+    auto maybe_left = retained_psd_eigensystem(A, left_name, rtol, atol, true);
+    if (!maybe_left)
+        return Error(maybe_left.error()());
+    auto maybe_right = retained_psd_eigensystem(D, right_name, rtol, atol, true);
+    if (!maybe_right)
+        return Error(maybe_right.error()());
+
+    const auto& left_eigs = maybe_left.value();
+    const auto& right_eigs = maybe_right.value();
+    auto left_basis = retained_basis(left_eigs);
+    auto right_basis = retained_basis(right_eigs);
+    auto left_values = retained_eigenvalues(left_eigs);
+    auto right_values = retained_eigenvalues(right_eigs);
+
+    if (left_basis.ncols() == 0 || right_basis.ncols() == 0)
+        return Matrix<double>(A.nrows(), D.nrows(), 0.0);
+
+    auto projected = project_between_bases(left_basis, M, right_basis);
+    DiagonalMatrix<double> left_inv_sqrt(left_values.nrows(), left_values.ncols(), false);
+    for (std::size_t i = 0; i < left_inv_sqrt.size(); ++i)
+        left_inv_sqrt[i] = 1.0 / std::sqrt(left_values[i]);
+    DiagonalMatrix<double> right_inv_sqrt(right_values.nrows(), right_values.ncols(), false);
+    for (std::size_t i = 0; i < right_inv_sqrt.size(); ++i)
+        right_inv_sqrt[i] = 1.0 / std::sqrt(right_values[i]);
+
+    auto reduced = left_inv_sqrt * projected * right_inv_sqrt;
+    if (!matrix_has_only_finite(reduced))
+        return Error(middle_name + ": normalized cross block has non-finite entries");
+
+    return embed_from_bases(left_basis, reduced, right_basis);
+}
+
+inline Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(
+    const Matrix<double>& A, const Matrix<double>& M, const Matrix<double>& D,
+    const std::string& left_name, const std::string& middle_name, const std::string& right_name,
+    double rtol, double atol) {
+    return_error<Matrix<double>> Error{"Lapack_PSD_Whitened_Cross_Matrix(dense): "};
+
+    auto maybe_left_dense = validate_psd_dense(A, left_name, rtol, atol);
+    if (!maybe_left_dense)
+        return Error(maybe_left_dense.error()());
+    auto maybe_right_dense = validate_psd_dense(D, right_name, rtol, atol);
+    if (!maybe_right_dense)
+        return Error(maybe_right_dense.error()());
+
+    return Lapack_PSD_Whitened_Cross_Matrix(
+        dense_to_semidefinite(maybe_left_dense.value()), M,
+        dense_to_semidefinite(maybe_right_dense.value()), left_name, middle_name, right_name, rtol,
+        atol);
 }
 
 template <class T>

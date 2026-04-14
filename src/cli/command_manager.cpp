@@ -30,11 +30,12 @@ using ModelPtr = macrodr::cmd::ModelPtr;
 
 namespace {
 
-template<bool include_evolution=true>
+template<bool include_evolution=true, bool include_series_cross_correlation=false>
 auto calculate_likelihood_derivative_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed) {
-    return cmd::calculate_Likelihood_derivative_diagnostics<include_evolution>(
+    return cmd::calculate_Likelihood_derivative_diagnostics<include_evolution,
+                                                            include_series_cross_correlation>(
         dlikelihood_predictions, n_boostrap_samples, probits, seed);
 }
 
@@ -480,6 +481,12 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<
+            Maybe_error<std::string>,
+            macrodr::cmd::Analisis_derivative_diagnostic_evolution_cross_correlation const&,
+            std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
             Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_base const& ,
                                           std::string >(
             &macrodr::cmd::write_csv, "analysis",  "path"));
@@ -813,10 +820,16 @@ cm.push_function(
             "probits", "seed"));
       cm.push_function(
         "likelihood_derivative_evolution_diagnostics",
-        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& , 
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& ,
     std::size_t, std::set<double>,  std::size_t>(
             &calculate_likelihood_derivative_diagnostics_dsl<true>, "dlikelihood_predictions", "n_boostrap_samples",
             "probits", "seed"));
+      cm.push_function(
+        "likelihood_derivative_cross_correlation_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& ,
+    std::size_t, std::set<double>,  std::size_t>(
+            &calculate_likelihood_derivative_diagnostics_dsl<false, true>,
+            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed"));
 
 
     return cm;

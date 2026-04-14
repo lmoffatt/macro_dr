@@ -374,20 +374,31 @@ using Analisis_derivative_diagnostic_evolution = var::concatenate_t<
             Moment_statistics<macrodr::r_std, false>,
             Moment_statistics<macrodr::trust_coefficient, false>, Moment_statistics<dlogL, true>,
             Moment_statistics<Gaussian_Fisher_Information, false>, Sample_Distortion_Matrix,
-            Distortion_Induced_Bias>>>>;  
+            Distortion_Induced_Bias>>>>;
 
-template<bool include_evolution=true>
-using Analisis_derivative_diagnostic = 
-std::conditional_t<!include_evolution, 
-Analisis_derivative_diagnostic_base, 
-Analisis_derivative_diagnostic_evolution>;
+using Analisis_derivative_diagnostic_evolution_cross_correlation = var::concatenate_t<
+        Analisis_derivative_diagnostic_evolution,
+        var::Vector_Space<
+            Probit_statistics<Series_Moment_report<logL>>,
+            Probit_statistics<Series_Moment_report<macrodr::y_mean>>,
+            Probit_statistics<Series_Moment_report<macrodr::y_var>>,
+            Probit_statistics<Series_Moment_report<macrodr::r_std>>,
+            Probit_statistics<Series_Moment_report<dlogL>>>>;
 
-   
+template<bool include_evolution=true, bool include_series_cross_correlation=false>
+using Analisis_derivative_diagnostic =
+std::conditional_t<include_series_cross_correlation,
+    Analisis_derivative_diagnostic_evolution_cross_correlation,
+    std::conditional_t<include_evolution,
+        Analisis_derivative_diagnostic_evolution,
+        Analisis_derivative_diagnostic_base>>;
 
-template<bool include_evolution=true>
-auto calculate_Likelihood_derivative_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 
-    std::size_t n_boostrap_samples, const std::set<double>&cis,  std::size_t seed)-> 
-   Analisis_derivative_diagnostic<include_evolution>; 
+
+
+template<bool include_evolution=true, bool include_series_cross_correlation=false>
+auto calculate_Likelihood_derivative_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    std::size_t n_boostrap_samples, const std::set<double>&cis,  std::size_t seed)->
+   Analisis_derivative_diagnostic<include_evolution, include_series_cross_correlation>;
 
 
 inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_base const& lik,
@@ -396,6 +407,10 @@ inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_base co
 }
 inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_evolution const& lik,
                                           std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+inline Maybe_error<std::string> write_csv(
+    Analisis_derivative_diagnostic_evolution_cross_correlation const& lik, std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }
 
