@@ -1344,20 +1344,77 @@ auto calculate_Likelihood_diagnostics_evolution_correlation_impl(
 
 template <class... Ids, bool... include_covariance, class... Fs>
 auto calculate_Likelihood_diagnostics_evolution_cross_correlation_impl(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t max_lag,std::vector<std::size_t> const& indices,
     std::type_identity<
         Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>...>>> /*tag*/,
     Fs&&... fs) {
     auto make_one = [&](auto id_tag, auto& g) {
         using Id = typename decltype(id_tag)::type;
         auto stats = Series_Moment_statistics<Id, true>(
-            dy, indices,
+            dy, max_lag,indices,
             [](const dMacro_State_Ev_gradient_all& d) { return get<Evolution>(d)(); },
             g);
-        auto maybe = series_moment_report(stats);
-        return maybe ? std::move(maybe.value()) : Series_Moment_report<Id>{};
+        auto maybe = make_report_cross(stats);
+        return maybe ? std::move(maybe.value()) : Report_cross<Id>{};
     };
-    return Vector_Space<Series_Moment_report<Ids>...>(
+    return Vector_Space<Report_cross<Ids>...>(
+        make_one(std::type_identity<Ids>{}, fs)...);
+}
+
+template <class... Ids, bool... include_covariance, class... Fs>
+auto build_series_reports_integral_impl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t max_lag,
+    std::vector<std::size_t> const& indices,
+    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>...>>>
+    /*tag*/,
+    Fs&&... fs) {
+    auto make_one = [&](auto id_tag, auto& g) {
+        using Id = typename decltype(id_tag)::type;
+        auto stats = Series_Moment_statistics<Id, true>(
+            dy, max_lag, indices,
+            [](const dMacro_State_Ev_gradient_all& d) { return get<Evolution>(d)(); }, g);
+        auto maybe = make_report_integral(stats);
+        return maybe ? std::move(maybe.value()) : Report_integral<Id>{};
+    };
+    return Vector_Space<Report_integral<Ids>...>(
+        make_one(std::type_identity<Ids>{}, fs)...);
+}
+
+template <class... Ids, bool... include_covariance, class... Fs>
+auto build_series_reports_local_var_impl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t max_lag,
+    std::vector<std::size_t> const& indices,
+    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>...>>>
+    /*tag*/,
+    Fs&&... fs) {
+    auto make_one = [&](auto id_tag, auto& g) {
+        using Id = typename decltype(id_tag)::type;
+        auto stats = Series_Moment_statistics<Id, true>(
+            dy, max_lag, indices,
+            [](const dMacro_State_Ev_gradient_all& d) { return get<Evolution>(d)(); }, g);
+        auto maybe = make_report_local_var(stats);
+        return maybe ? std::move(maybe.value()) : Report_local_var<Id>{};
+    };
+    return Vector_Space<Report_local_var<Ids>...>(
+        make_one(std::type_identity<Ids>{}, fs)...);
+}
+
+template <class... Ids, bool... include_covariance, class... Fs>
+auto build_series_reports_local_cov_impl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t max_lag,
+    std::vector<std::size_t> const& indices,
+    std::type_identity<Evolution_of<Vector_Space<Moment_statistics<Ids, include_covariance>...>>>
+    /*tag*/,
+    Fs&&... fs) {
+    auto make_one = [&](auto id_tag, auto& g) {
+        using Id = typename decltype(id_tag)::type;
+        auto stats = Series_Moment_statistics<Id, true>(
+            dy, max_lag, indices,
+            [](const dMacro_State_Ev_gradient_all& d) { return get<Evolution>(d)(); }, g);
+        auto maybe = make_report_local_cov(stats);
+        return maybe ? std::move(maybe.value()) : Report_local_cov<Id>{};
+    };
+    return Vector_Space<Report_local_cov<Ids>...>(
         make_one(std::type_identity<Ids>{}, fs)...);
 }
 
@@ -1385,10 +1442,17 @@ auto calculate_Likelihood_diagnostics_evolution_impl(
     return out;
 }
 
-template<bool include_evolution=true, 
-         bool include_series_cross_correlation=false>
-auto calculate_Likelihood_diagnostics_evolution_f(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices) {
+enum class Diagnostic_preset {
+    basic,               // base + Report_integral for 5 headline V's
+    series_var,          // base + Report_local_var for 7 V's + Per_sample_derived
+    series_cov,          // base + Report_local_cov for 7 V's + GFI@local_var + Per_sample_derived
+    series_kernel,       // base + Report_cross for 5 V's, no Per_sample_derived
+    series_kernel_full   // base + Report_cross for 7 V's + GFI@local_var + Per_sample_derived
+};
+
+template <Diagnostic_preset preset>
+auto calculate_Likelihood_diagnostics_preset_f(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices, std::size_t max_lag) {
     auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
         dy, indices,
         std::type_identity<Evolution_of<
@@ -1443,20 +1507,29 @@ auto calculate_Likelihood_diagnostics_evolution_f(
                 var::get_dx_of_dfdx(get<y_mean>(evo_i)));
         });
 
+    constexpr double k_psd_rtol = 1e-10;
+    constexpr double k_psd_atol = 0.0;
     for (auto& m : evol_moments()) {
         auto H_t = get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())();
         auto g_t = get<mean<dlogL>>(get<dlogL>(m)())();
 
+        // One eigendecomp of H_t reused by both SDM_t and DIB_t.
+        auto maybe_decomp_H_t = lapack::compute_psd_decomp(H_t.value(), "H_t", k_psd_rtol, k_psd_atol);
+        lapack::PSDDecomposition W_H_t;
+        if (maybe_decomp_H_t) W_H_t = std::move(maybe_decomp_H_t.value());
+
         get<Sample_Distortion_Matrix>(m)() =
             parameter_spd_payload(
-                sample_distortion_matrix_subspace(
-                    H_t.value(), get<covariance<dlogL>>(get<dlogL>(m)())().value())
+                lapack::apply_normalized_congruence(
+                    W_H_t, get<covariance<dlogL>>(get<dlogL>(m)())().value(),
+                    "sample distortion subspace matrix", k_psd_rtol, k_psd_atol)
                     .value_or(SymPosDefMatrix<double>{}),
                 H_t.parameters_ptr());
 
         get<Distortion_Induced_Bias>(m)() =
             parameter_vector_payload(
-                distortion_induced_bias_subspace(H_t.value(), g_t.value())
+                lapack::apply_inverse_vector(W_H_t, g_t.value(),
+                                             "Distortion-induced bias")
                     .value_or(Matrix<double>{}),
                 H_t.parameters_ptr());
     }
@@ -1480,62 +1553,163 @@ auto calculate_Likelihood_diagnostics_evolution_f(
     auto score_mean = get<mean<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
 
     // Distortion quantities are evaluated on the retained informative subspace.
+    // Eigendecompose each anchor once and reuse across all derived matrices
+    // (IDM, SDM, DCC, FC, DIB all share H; CDM uses J_sample; IDM2 uses SDM).
+    auto maybe_W_H = lapack::compute_psd_decomp(H().value(), "H", k_psd_rtol, k_psd_atol);
+    lapack::PSDDecomposition W_H;
+    if (maybe_W_H) W_H = std::move(maybe_W_H.value());
+
     auto idm = Information_Distortion_Matrix(
-        idm_matrix_subspace(H().value(), J().value()).value_or(SymPosDefMatrix<double>{}),
+        lapack::apply_normalized_congruence(W_H, J().value(), "IDM subspace matrix", k_psd_rtol,
+                                            k_psd_atol)
+            .value_or(SymPosDefMatrix<double>{}),
         H().parameters_ptr());
+    auto log_det_idm = log_Det<Information_Distortion_Matrix>(idm);
 
     auto sdm = Sample_Distortion_Matrix(
-        sample_distortion_matrix_subspace(H().value(), J_sample().value())
+        lapack::apply_normalized_congruence(W_H, J_sample().value(),
+                                            "sample distortion subspace matrix", k_psd_rtol,
+                                            k_psd_atol)
             .value_or(SymPosDefMatrix<double>{}),
         H().parameters_ptr());
+    auto log_det_sdm = log_Det<Sample_Distortion_Matrix>(sdm);
+
+    auto maybe_W_Js = lapack::compute_psd_decomp(J_sample().value(), "J_sample", k_psd_rtol,
+                                                  k_psd_atol);
+    lapack::PSDDecomposition W_Js;
+    if (maybe_W_Js) W_Js = std::move(maybe_W_Js.value());
 
     auto cdm = Correlation_Distortion_Matrix(
-        correlation_distortion_matrix_subspace(J_sample().value(), J().value())
+        lapack::apply_normalized_congruence(W_Js, J().value(),
+                                            "correlation distortion subspace matrix", k_psd_rtol,
+                                            k_psd_atol)
             .value_or(SymPosDefMatrix<double>{}),
         J_sample().parameters_ptr());
+    auto log_det_cdm = log_Det<Correlation_Distortion_Matrix>(cdm);
+
+    auto maybe_W_SDM = lapack::compute_psd_decomp(sdm().value(), "SDM", k_psd_rtol, k_psd_atol);
+    lapack::PSDDecomposition W_SDM;
+    if (maybe_W_SDM) W_SDM = std::move(maybe_W_SDM.value());
 
     auto idm2 = Information_Distortion_Reconstituted(
-        c_h_r_c_h_matrix_subspace(sdm().value(), cdm().value()).value_or(SymPosDefMatrix<double>{}),
+        lapack::apply_sqrt_congruence(W_SDM, cdm().value(),
+                                      "reconstituted distortion matrix", k_psd_rtol, k_psd_atol)
+            .value_or(SymPosDefMatrix<double>{}),
         sdm().parameters_ptr());
-    
+
+    auto fc = Fisher_Covariance(lapack::apply_inverse_as_matrix(W_H), H().parameters_ptr());
+    auto log_det_fc = log_Det<Fisher_Covariance>(fc);
+
     auto dcc = Distortion_Corrected_Covariance(
-        dcc_matrix_subspace(H().value(), J().value()).value_or(SymPosDefMatrix<double>{}),
+        lapack::apply_inverse_congruence(W_H, J().value(), "DCC subspace matrix", k_psd_rtol,
+                                         k_psd_atol)
+            .value_or(SymPosDefMatrix<double>{}),
         H().parameters_ptr());
+    auto log_det_dcc = log_Det<Distortion_Corrected_Covariance>(dcc);
 
     auto dib = Distortion_Induced_Bias(
-        distortion_induced_bias_subspace(H().value(), score_mean().value()).value_or(Matrix<double>{}),
+        lapack::apply_inverse_vector(W_H, score_mean().value(), "Distortion-induced bias")
+            .value_or(Matrix<double>{}),
         H().parameters_ptr());
 
-    if constexpr (include_series_cross_correlation) {
-        auto series_reports = calculate_Likelihood_diagnostics_evolution_cross_correlation_impl(
-            dy, indices,
-            std::type_identity<Evolution_of<Vector_Space<
-                Moment_statistics<logL>, 
-                Moment_statistics<y_mean>, Moment_statistics<y_var>,
-                Moment_statistics<r_std>,
-                Moment_statistics<dlogL, true>>>>{},
-            [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
-            [](const auto& evo_i) { return primitive(get<y_mean>(evo_i))(); },
-            [](const auto& evo_i) { return primitive(get<y_var>(evo_i))(); },
-            [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
-            [](const auto& evo_i) {
-                return parameter_vector_payload(derivative(get<logL>(evo_i))(),
-                                                var::get_dx_of_dfdx(get<logL>(evo_i)));
-            });
-        return concatenate(
-            push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
-                          std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2),
-                          std::move(sdm), std::move(cdm), std::move(dcc), std::move(dib),
-                          std::move(evol_moments)),
-            std::move(series_reports));
-    } else if constexpr (include_evolution) {
-        return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
-                         std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),
-                         std::move(cdm), std::move(dcc), std::move(dib), std::move(evol_moments));
-    } else {
-        return push_back_var(std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
-                         std::move(sum_Gaussian_Fisher_Information), std::move(idm), std::move(idm2), std::move(sdm),
-                         std::move(cdm), std::move(dcc), std::move(dib));
+    // Extract Per_sample_derived (SDM, DIB only) from the full evol_moments.
+    // Built lazily below when the preset needs it.
+    auto build_per_sample_derived = [&]() {
+        using derived_vs = var::Vector_Space<Sample_Distortion_Matrix, Distortion_Induced_Bias>;
+        Evolution_of<derived_vs> out;
+        out().reserve(evol_moments().size());
+        for (auto& m : evol_moments()) {
+            out().emplace_back(derived_vs(get<Sample_Distortion_Matrix>(m),
+                                          get<Distortion_Induced_Bias>(m)));
+        }
+        return out;
+    };
+
+    // Base-tier pack (same across all presets).
+    auto base_pack = push_back_var(
+        std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
+        std::move(sum_Gaussian_Fisher_Information),
+        std::move(idm), std::move(log_det_idm), std::move(idm2),
+        std::move(sdm), std::move(log_det_sdm),
+        std::move(cdm), std::move(log_det_cdm),
+        std::move(fc), std::move(log_det_fc),
+        std::move(dcc), std::move(log_det_dcc),
+        std::move(dib));
+
+    // Lambda list for scalar series observables: logL / elogL / y_mean / y_var
+    // / r_std / trust / dlogL. Used by series_var, series_cov,
+    // series_kernel_full.
+    auto tag_seven = std::type_identity<Evolution_of<Vector_Space<
+        Moment_statistics<logL>, Moment_statistics<elogL>,
+        Moment_statistics<macrodr::y_mean>, Moment_statistics<macrodr::y_var>,
+        Moment_statistics<macrodr::r_std>,
+        Moment_statistics<macrodr::trust_coefficient>,
+        Moment_statistics<dlogL, true>>>>{};
+
+    auto lam_logL = [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); };
+    auto lam_elogL = [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); };
+    auto lam_ymean = [](const auto& evo_i) { return primitive(get<y_mean>(evo_i))(); };
+    auto lam_yvar = [](const auto& evo_i) { return primitive(get<y_var>(evo_i))(); };
+    auto lam_rstd = [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); };
+    auto lam_trust = [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); };
+    auto lam_dlogL = [](const auto& evo_i) {
+        return parameter_vector_payload(derivative(get<logL>(evo_i))(),
+                                        var::get_dx_of_dfdx(get<logL>(evo_i)));
+    };
+    auto lam_gfi = [](const auto& evo_i) {
+        return parameter_spd_payload(sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                                             (1.0 / primitive(get<y_var>(evo_i))()) +
+                                         sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                                             (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))())),
+                                     var::get_dx_of_dfdx(get<y_mean>(evo_i)));
+    };
+
+    // Core-five tag (logL / y_mean / y_var / r_std / dlogL) — used by basic
+    // and series_kernel presets that don't include elogL/trust auxiliaries.
+    auto tag_five = std::type_identity<Evolution_of<Vector_Space<
+        Moment_statistics<logL>, Moment_statistics<macrodr::y_mean>,
+        Moment_statistics<macrodr::y_var>, Moment_statistics<macrodr::r_std>,
+        Moment_statistics<dlogL, true>>>>{};
+
+    // GFI tag for the standalone local_var emission in series_cov and
+    // series_kernel_full.
+    auto tag_gfi = std::type_identity<Evolution_of<Vector_Space<
+        Moment_statistics<Gaussian_Fisher_Information, false>>>>{};
+
+    if constexpr (preset == Diagnostic_preset::basic) {
+        auto series = build_series_reports_integral_impl(dy, max_lag, indices, tag_five,
+                                                         lam_logL, lam_ymean, lam_yvar, lam_rstd,
+                                                         lam_dlogL);
+        return concatenate(std::move(base_pack), std::move(series));
+    } else if constexpr (preset == Diagnostic_preset::series_var) {
+        auto series = build_series_reports_local_var_impl(dy, max_lag, indices, tag_seven,
+                                                          lam_logL, lam_elogL, lam_ymean, lam_yvar,
+                                                          lam_rstd, lam_trust, lam_dlogL);
+        auto per_sample = build_per_sample_derived();
+        auto combined = concatenate(std::move(base_pack), std::move(series));
+        return push_back_var(std::move(combined), std::move(per_sample));
+    } else if constexpr (preset == Diagnostic_preset::series_cov) {
+        auto series = build_series_reports_local_cov_impl(dy, max_lag, indices, tag_seven,
+                                                          lam_logL, lam_elogL, lam_ymean, lam_yvar,
+                                                          lam_rstd, lam_trust, lam_dlogL);
+        auto gfi = build_series_reports_local_var_impl(dy, max_lag, indices, tag_gfi, lam_gfi);
+        auto per_sample = build_per_sample_derived();
+        auto combined = concatenate(concatenate(std::move(base_pack), std::move(series)),
+                                    std::move(gfi));
+        return push_back_var(std::move(combined), std::move(per_sample));
+    } else if constexpr (preset == Diagnostic_preset::series_kernel) {
+        auto series = calculate_Likelihood_diagnostics_evolution_cross_correlation_impl(
+            dy, max_lag, indices, tag_five, lam_logL, lam_ymean, lam_yvar, lam_rstd, lam_dlogL);
+        return concatenate(std::move(base_pack), std::move(series));
+    } else {  // series_kernel_full
+        auto series = calculate_Likelihood_diagnostics_evolution_cross_correlation_impl(
+            dy, max_lag, indices, tag_seven, lam_logL, lam_elogL, lam_ymean, lam_yvar, lam_rstd,
+            lam_trust, lam_dlogL);
+        auto gfi = build_series_reports_local_var_impl(dy, max_lag, indices, tag_gfi, lam_gfi);
+        auto per_sample = build_per_sample_derived();
+        auto combined = concatenate(concatenate(std::move(base_pack), std::move(series)),
+                                    std::move(gfi));
+        return push_back_var(std::move(combined), std::move(per_sample));
     }
 }
 
@@ -1546,34 +1720,55 @@ auto calculate_Likelihood_diagnostics_evolution_f(
 
 
 
-template <bool include_evolution, bool include_series_cross_correlation>
-auto calculate_Likelihood_derivative_diagnostics(
+auto calculate_Likelihood_derivative_basic_diagnostics(
     const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
-    const std::set<double>& cis, std::size_t seed)
-    -> Analisis_derivative_diagnostic<include_evolution, include_series_cross_correlation> {
-
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_basic {
     auto mt = mt_64i(seed);
     return bootstrap_it_to_Probit(
-        &calculate_Likelihood_diagnostics_evolution_f<include_evolution,
-                                                      include_series_cross_correlation>,
-        dy, n_boostrap_samples, cis, mt);
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::basic>, dy,
+        n_boostrap_samples, cis, mt, max_lag);
 }
 
-template auto calculate_Likelihood_derivative_diagnostics<false, false>(
+auto calculate_Likelihood_derivative_series_var_diagnostics(
     const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
-    const std::set<double>& cis, std::size_t seed)
-    -> Analisis_derivative_diagnostic<false, false>;
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_var {
+    auto mt = mt_64i(seed);
+    return bootstrap_it_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_var>, dy,
+        n_boostrap_samples, cis, mt, max_lag);
+}
 
-template auto calculate_Likelihood_derivative_diagnostics<true, false>(
+auto calculate_Likelihood_derivative_series_cov_diagnostics(
     const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
-    const std::set<double>& cis, std::size_t seed)
-    -> Analisis_derivative_diagnostic<true, false>;
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_cov {
+    auto mt = mt_64i(seed);
+    return bootstrap_it_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_cov>, dy,
+        n_boostrap_samples, cis, mt, max_lag);
+}
 
-
-template auto calculate_Likelihood_derivative_diagnostics<false, true>(
+auto calculate_Likelihood_derivative_series_kernel_diagnostics(
     const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
-    const std::set<double>& cis, std::size_t seed)
-    -> Analisis_derivative_diagnostic<false, true>;
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_kernel {
+    auto mt = mt_64i(seed);
+    return bootstrap_it_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel>, dy,
+        n_boostrap_samples, cis, mt, max_lag);
+}
+
+auto calculate_Likelihood_derivative_series_kernel_full_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_kernel_full {
+    auto mt = mt_64i(seed);
+    return bootstrap_it_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel_full>, dy,
+        n_boostrap_samples, cis, mt, max_lag);
+}
 
 // Explicit instantiations for the CLI-registered overloads to avoid link errors.
 template Maybe_error<std::string>

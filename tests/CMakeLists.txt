@@ -6,6 +6,7 @@ set(TEST_SOURCES
     cli/test_env_persistence.cpp
     cli/test_indexed.cpp
     io/json/test_convert.cpp
+    io/test_fingerprint.cpp
     math/test_eigs.cpp
     math/test_eigensystem_contract.cpp
     math/test_c_h_r_c_h.cpp

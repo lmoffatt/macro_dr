@@ -455,6 +455,24 @@ class Information_Distortion_Reconstituted
     }
 };  
 
+class Fisher_Covariance
+    : public var::Constant<Fisher_Covariance, parameter_spd_payload> {
+    using base_type = var::Constant<Fisher_Covariance, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Fisher_Covariance() = default;
+    Fisher_Covariance(SymPosDefMatrix<double> value,
+                      var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Fisher_Covariance(SymPosDefMatrix<double> value,
+                      var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Fisher_Covariance) {
+        return "Fisher_Covariance";
+    }
+};  
 
 
 class Distortion_Corrected_Covariance
@@ -506,7 +524,8 @@ class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, pa
         }
         return true;
     }
-};  
+};
+
 
 
 class Sample_Distortion_Matrix
