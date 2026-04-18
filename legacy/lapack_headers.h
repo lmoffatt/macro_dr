@@ -2686,6 +2686,188 @@ inline Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
     return (projected * inv_diag) * tr(basis);
 }
 
+// Precomputed retained PSD eigendecomposition, plus the three diagonal
+// scalings that the distortion / whitening pipeline needs.
+//
+// basis       : n × k retained eigenvectors
+// eigenvalues : k × k diagonal, retained λ_i
+// inv_sqrt    : k × k diagonal, 1/sqrt(λ_i)  — used by whitening / normalized congruence
+// inv         : k × k diagonal, 1/λ_i         — used by inverse congruence / inverse matrices / bias
+// sqrt_vals   : k × k diagonal, sqrt(λ_i)     — used by positive congruence (c_h R c_h form)
+// original_dim: n
+// empty       : true iff no modes were retained
+//
+// Amortizes one eigendecomp across many operations that share the same
+// endpoint matrix — e.g. in calculate_Likelihood_diagnostics_preset_f, H
+// anchors IDM, SDM, DCC, FC and DIB; in series_cross_correlation, the
+// lag-0 block for sample i anchors max_lag forward and max_lag backward
+// normalizations.
+struct PSDDecomposition {
+    Matrix<double> basis;
+    DiagonalMatrix<double> eigenvalues;
+    DiagonalMatrix<double> inv_sqrt;
+    DiagonalMatrix<double> inv;
+    DiagonalMatrix<double> sqrt_vals;
+    std::size_t original_dim = 0;
+    bool empty = true;
+};
+
+inline Maybe_error<PSDDecomposition> compute_psd_decomp(const SymPosDefMatrix<double>& A,
+                                                        const std::string& name, double rtol,
+                                                        double atol) {
+    return_error<PSDDecomposition> Error{"compute_psd_decomp: "};
+    auto maybe_eigs = retained_psd_eigensystem(A, name, rtol, atol, true);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+    const auto& eigs = maybe_eigs.value();
+
+    PSDDecomposition W;
+    W.original_dim = A.nrows();
+    W.basis = retained_basis(eigs);
+    W.eigenvalues = retained_eigenvalues(eigs);
+    const std::size_t k = W.eigenvalues.size();
+    W.inv_sqrt = DiagonalMatrix<double>(W.eigenvalues.nrows(), W.eigenvalues.ncols(), false);
+    W.inv = DiagonalMatrix<double>(W.eigenvalues.nrows(), W.eigenvalues.ncols(), false);
+    W.sqrt_vals = DiagonalMatrix<double>(W.eigenvalues.nrows(), W.eigenvalues.ncols(), false);
+    for (std::size_t i = 0; i < k; ++i) {
+        const double lam = W.eigenvalues[i];
+        const double sq = std::sqrt(lam);
+        W.sqrt_vals[i] = sq;
+        W.inv_sqrt[i] = 1.0 / sq;
+        W.inv[i] = 1.0 / lam;
+    }
+    W.empty = (W.basis.ncols() == 0);
+    return W;
+}
+
+inline Maybe_error<PSDDecomposition> compute_psd_decomp(const Matrix<double>& A,
+                                                        const std::string& name, double rtol,
+                                                        double atol) {
+    return_error<PSDDecomposition> Error{"compute_psd_decomp(dense): "};
+    auto maybe_dense = validate_psd_dense(A, name, rtol, atol);
+    if (!maybe_dense)
+        return Error(maybe_dense.error()());
+    return compute_psd_decomp(dense_to_semidefinite(maybe_dense.value()), name, rtol, atol);
+}
+
+// result = L_basis * (L_inv_sqrt * Lᵀ · M · R · R_inv_sqrt) * Rᵀ.
+// The whitening form C(i)^{-1/2} · M · C(j)^{-1/2} used by
+// series_cross_correlation. No decomposition — only matmuls + diag scales.
+inline Maybe_error<Matrix<double>> apply_psd_whitening(
+    const PSDDecomposition& W_left, const Matrix<double>& M, const PSDDecomposition& W_right,
+    const std::string& middle_name = "cross block") {
+    return_error<Matrix<double>> Error{"apply_psd_whitening: "};
+    if (M.nrows() != W_left.original_dim)
+        return Error(middle_name + ": row dimension incompatible with left decomposition");
+    if (M.ncols() != W_right.original_dim)
+        return Error(middle_name + ": column dimension incompatible with right decomposition");
+    if (!matrix_has_only_finite(M))
+        return Error(middle_name + ": non-finite entries");
+    if (W_left.empty || W_right.empty)
+        return Matrix<double>(W_left.original_dim, W_right.original_dim, 0.0);
+
+    auto projected = project_between_bases(W_left.basis, M, W_right.basis);
+    auto reduced = W_left.inv_sqrt * projected * W_right.inv_sqrt;
+    if (!matrix_has_only_finite(reduced))
+        return Error(middle_name + ": normalized block has non-finite entries");
+    return embed_from_bases(W_left.basis, reduced, W_right.basis);
+}
+
+// result = basis * (inv_sqrt * basisᵀ · B · basis · inv_sqrt) * basisᵀ
+// Congruence with A^{-1/2}: the normalized form used by IDM, SDM, CDM.
+// Mirrors Lapack_PSD_Normalized_Congruence_Matrix but skips the eigendecomp.
+inline Maybe_error<SymPosDefMatrix<double>> apply_normalized_congruence(
+    const PSDDecomposition& W, const SymPosDefMatrix<double>& B, const std::string& result_name,
+    double rtol, double atol) {
+    return_error<SymPosDefMatrix<double>> Error{"apply_normalized_congruence: "};
+    if (B.nrows() != W.original_dim || B.ncols() != W.original_dim)
+        return Error(result_name + ": B dimension incompatible with decomposition");
+    if (!matrix_has_only_finite(B))
+        return Error(result_name + ": B has non-finite entries");
+    if (W.empty)
+        return SymPosDefMatrix<double>(W.original_dim, W.original_dim, 0.0);
+
+    auto projected = project_to_basis(W.basis, B);
+    auto reduced = W.inv_sqrt * projected * W.inv_sqrt;
+    auto maybe_validated = validate_psd_dense(reduced, result_name, rtol, atol);
+    if (!maybe_validated)
+        return Error(maybe_validated.error()());
+    return dense_to_semidefinite(embed_from_basis(W.basis, maybe_validated.value()));
+}
+
+// result = basis * (inv * basisᵀ · B · basis · inv) * basisᵀ
+// Congruence with A^{-1}: used by DCC (Distortion-Corrected Covariance).
+inline Maybe_error<SymPosDefMatrix<double>> apply_inverse_congruence(
+    const PSDDecomposition& W, const SymPosDefMatrix<double>& B, const std::string& result_name,
+    double rtol, double atol) {
+    return_error<SymPosDefMatrix<double>> Error{"apply_inverse_congruence: "};
+    if (B.nrows() != W.original_dim || B.ncols() != W.original_dim)
+        return Error(result_name + ": B dimension incompatible with decomposition");
+    if (!matrix_has_only_finite(B))
+        return Error(result_name + ": B has non-finite entries");
+    if (W.empty)
+        return SymPosDefMatrix<double>(W.original_dim, W.original_dim, 0.0);
+
+    auto projected = project_to_basis(W.basis, B);
+    auto reduced = W.inv * projected * W.inv;
+    auto maybe_validated = validate_psd_dense(reduced, result_name, rtol, atol);
+    if (!maybe_validated)
+        return Error(maybe_validated.error()());
+    return dense_to_semidefinite(embed_from_basis(W.basis, maybe_validated.value()));
+}
+
+// result = basis * (sqrt_vals * basisᵀ · B · basis · sqrt_vals) * basisᵀ
+// Congruence with A^{1/2}: used by the c_h R c_h subspace (Information_Distortion_Reconstituted).
+inline Maybe_error<SymPosDefMatrix<double>> apply_sqrt_congruence(
+    const PSDDecomposition& W, const SymPosDefMatrix<double>& B, const std::string& result_name,
+    double rtol, double atol) {
+    return_error<SymPosDefMatrix<double>> Error{"apply_sqrt_congruence: "};
+    if (B.nrows() != W.original_dim || B.ncols() != W.original_dim)
+        return Error(result_name + ": B dimension incompatible with decomposition");
+    if (!matrix_has_only_finite(B))
+        return Error(result_name + ": B has non-finite entries");
+    if (W.empty)
+        return SymPosDefMatrix<double>(W.original_dim, W.original_dim, 0.0);
+
+    auto projected = project_to_basis(W.basis, B);
+    auto reduced = W.sqrt_vals * projected * W.sqrt_vals;
+    auto maybe_validated = validate_psd_dense(reduced, result_name, rtol, atol);
+    if (!maybe_validated)
+        return Error(maybe_validated.error()());
+    return dense_to_semidefinite(embed_from_basis(W.basis, maybe_validated.value()));
+}
+
+// result = basis * inv * basisᵀ · g   (column vector) or g · basis · inv · basisᵀ (row vector).
+// A^{-1} · g reduced to the informative subspace. Used by DIB.
+inline Maybe_error<Matrix<double>> apply_inverse_vector(const PSDDecomposition& W,
+                                                        const Matrix<double>& g,
+                                                        const std::string& result_name) {
+    return_error<Matrix<double>> Error{"apply_inverse_vector: "};
+    if (!matrix_has_only_finite(g))
+        return Error(result_name + ": vector has non-finite entries");
+    const bool is_column_vector = g.nrows() == W.original_dim && g.ncols() == 1;
+    const bool is_row_vector = g.nrows() == 1 && g.ncols() == W.original_dim;
+    if (!is_column_vector && !is_row_vector)
+        return Error(result_name + ": incompatible vector dimensions");
+    if (W.empty)
+        return Matrix<double>(g.nrows(), g.ncols(), 0.0);
+
+    if (is_column_vector) {
+        auto projected = tr(W.basis) * g;
+        return W.basis * (W.inv * projected);
+    }
+    auto projected = g * W.basis;
+    return (projected * W.inv) * tr(W.basis);
+}
+
+// result = basis * inv * basisᵀ. The pseudo-inverse of the original PSD matrix.
+// Used by Fisher_Covariance (FC = H^{-1}).
+inline SymPosDefMatrix<double> apply_inverse_as_matrix(const PSDDecomposition& W) {
+    if (W.empty)
+        return SymPosDefMatrix<double>(W.original_dim, W.original_dim, 0.0);
+    return dense_to_semidefinite(W.basis * W.inv * tr(W.basis));
+}
+
 inline Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(
     const SymPosDefMatrix<double>& A, const Matrix<double>& M, const SymPosDefMatrix<double>& D,
     const std::string& left_name, const std::string& middle_name, const std::string& right_name,

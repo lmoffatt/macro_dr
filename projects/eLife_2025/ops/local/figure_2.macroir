@@ -1,20 +1,12 @@
 model = load_model("scheme_CO")
 
-axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1","0.01"])
+axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
 axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
-axis_Nchanels =axis(name= "Num_ch", labels= ["1", "10","100","1000","10000"])
+axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
 
 current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
 
-n_sim_noise= indexed_size_by(axis= axis_noise,values=[1,1,10,100])
-
 Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1, 10,100,1000,10000])
-
-n_sim_Num_ch = indexed_size_by(axis= axis_Nchanels,values=[100, 10,1,1,1])
-
-n_interval = indexed_size_by(axis= axis_interval,values=[100,10,1])
-
-n_simulations = mult(16, mult(n_interval , min(100,mult(n_sim_Num_ch,n_sim_noise))))
 
 
 parameter = create_parameters(
@@ -34,9 +26,9 @@ parameter = create_parameters(
 
 experiment = create_experiment(
    experiment_structure=[
-      {indexed_size_by(axis= axis_interval,values=[1,10,100]),indexed_size_by(axis= axis_interval,values=[500,150,5]),0.0},
-      {indexed_size_by(axis= axis_interval,values=[2,20,200]),indexed_size_by(axis= axis_interval,values=[500,150,5]),10.0},
-      {indexed_size_by(axis= axis_interval,values=[3,30,300]),indexed_size_by(axis= axis_interval,values=[500,150,5]),0.0}
+      {indexed_size_by(axis= axis_interval,values=[1,2,5,10,20,50,100]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[2,4,10,20,40,100,200]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[3,6,15,30,60,150,300]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0}
       ], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
@@ -51,7 +43,7 @@ model_str="scheme_CO"
 simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 1024, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 64, experiment = experiment,
                          observations = observations, 
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
@@ -60,18 +52,18 @@ simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulati
 
 
 simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation")
+   path= "figures/data/figure_2_simulation_16")
 
 
-algorithm_axis = axis(name= "algorithm", labels= ["macro_MNRV", "macro_MRV", "macro_IRV", "macro_IRTV"])
+algorithm_axis = axis(name= "algorithm", labels= ["macro_NR", "macro_R","macro_MNR", "macro_MR", "macro_IR", "macro_IRT"])
 
-algo_recursive_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,true,true,true])
-algo_taylor_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,false,false,true])
+algo_recursive_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,true,false,true,true,true])
+algo_taylor_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,false,false,false,false,true])
 
 algorithms = build_likelihood_function(model =model,
             adaptive_approximation = false,
             recursive_approximation = algo_recursive_approximation,
-            averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[1,1,2,2]),
+            averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[0,0,1,1,2,2]),
             variance_approximation = true,
             taylor_variance_correction = algo_taylor_approximation)
 
@@ -82,12 +74,12 @@ dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =alg
 data_series = simulations)
 
 dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
-   path= "figures/data/figure_2_dlikelihood_predictions_dd")
+   path= "figures/data/figure_2_dlikelihood_predictions_all")
 
 
-likelihood_analysis = likelihood_derivative_cross_correlation_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
-            probits = [ 0.025 , 0.975 ] , seed=0)
+likelihood_analysis = likelihood_derivative_basic_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
+            probits = [ 0.025 , 0.975 ] , seed=0, max_lag=10)
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_dlikelihood_analysis_dd")
+   path= "figures/data/figure_2_dlikelihood_analysis_16")

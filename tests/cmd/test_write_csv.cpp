@@ -80,7 +80,7 @@ std::vector<std::string> split_csv_row(const std::string& row) {
 constexpr std::string_view kBaseHeader =
     "scope,simulation_index,sample_index,segment_index,sub_index,n_step,"
     "step_start,step_end,step_middle,agonist,patch_current,"
-    "component_path,value_row,value_col,"
+    "component_path,variable,operation,value_row,value_col,"
     "probit,calculus,statistic,quantile_level,"
     "param_index,param_col,param_name";
 

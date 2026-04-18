@@ -30,13 +30,46 @@ using ModelPtr = macrodr::cmd::ModelPtr;
 
 namespace {
 
-template<bool include_evolution=true, bool include_series_cross_correlation=false>
-auto calculate_likelihood_derivative_diagnostics_dsl(
+// DSL wrappers for the five diagnostic presets. Each takes max_lag since
+// all presets now depend on the kernel-based integral_correlation_lag.
+auto calculate_likelihood_derivative_basic_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
-    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed) {
-    return cmd::calculate_Likelihood_derivative_diagnostics<include_evolution,
-                                                            include_series_cross_correlation>(
-        dlikelihood_predictions, n_boostrap_samples, probits, seed);
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_basic_diagnostics(
+        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_var_diagnostics_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_var_diagnostics(
+        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_cov_diagnostics_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_cov_diagnostics(
+        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_kernel_diagnostics_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_kernel_diagnostics(
+        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_kernel_full_diagnostics(
+        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
 }
 
 }
@@ -302,10 +335,6 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     using IndexedDiagnostics = var::Indexed<Macro_State_Ev_diagnostic>;
     using IndexedGradients = var::Indexed<dMacro_State_Ev_gradient_all>;
     using IndexedGradientBatch = var::Indexed<GradientBatch>;
-    using IndexedDerivativeDiagnosticsEvolution =
-        var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic<true>>;
-     using IndexedDerivativeDiagnostics =
-        var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic<false>>;
 
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
@@ -475,29 +504,87 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<
-            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_evolution const& ,
-                                          std::string >(
-            &macrodr::cmd::write_csv, "analysis",  "path"));
-    cm.push_function(
-        "write_csv",
-        dsl::to_typed_return_function<
-            Maybe_error<std::string>,
-            macrodr::cmd::Analisis_derivative_diagnostic_evolution_cross_correlation const&,
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_base const&,
             std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<
-            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_base const& ,
-                                          std::string >(
-            &macrodr::cmd::write_csv, "analysis",  "path"));
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_basic const&,
+            std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
     cm.push_function(
         "write_csv",
-        dsl::to_typed_return_function<Maybe_error<std::string>, IndexedDerivativeDiagnostics const&,
-                                      std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
-cm.push_function(
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_series_var const&,
+            std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+    cm.push_function(
         "write_csv",
-        dsl::to_typed_return_function<Maybe_error<std::string>, IndexedDerivativeDiagnosticsEvolution const&,
-                                      std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>, macrodr::cmd::Analisis_derivative_diagnostic_series_cov const&,
+            std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>,
+            macrodr::cmd::Analisis_derivative_diagnostic_series_kernel const&,
+            std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>,
+            macrodr::cmd::Analisis_derivative_diagnostic_series_kernel_full const&,
+            std::string>(&macrodr::cmd::write_csv, "analysis", "path"));
+
+    // Indexed variants for each preset type. The DSL needs a concrete function
+    // pointer at each type — the generic write_csv(Indexed<T>, …) template at
+    // include/macrodr/cmd/likelihood.h:314 supplies the instantiation.
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const var::Indexed<
+                                          macrodr::cmd::Analisis_derivative_diagnostic_base>&,
+                                      std::string>(
+            &macrodr::cmd::write_csv<macrodr::cmd::Analisis_derivative_diagnostic_base>,
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const var::Indexed<
+                                          macrodr::cmd::Analisis_derivative_diagnostic_basic>&,
+                                      std::string>(
+            &macrodr::cmd::write_csv<macrodr::cmd::Analisis_derivative_diagnostic_basic>,
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const var::Indexed<
+                                          macrodr::cmd::Analisis_derivative_diagnostic_series_var>&,
+                                      std::string>(
+            &macrodr::cmd::write_csv<macrodr::cmd::Analisis_derivative_diagnostic_series_var>,
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const var::Indexed<
+                                          macrodr::cmd::Analisis_derivative_diagnostic_series_cov>&,
+                                      std::string>(
+            &macrodr::cmd::write_csv<macrodr::cmd::Analisis_derivative_diagnostic_series_cov>,
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>,
+            const var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic_series_kernel>&,
+            std::string>(
+            &macrodr::cmd::write_csv<macrodr::cmd::Analisis_derivative_diagnostic_series_kernel>,
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>,
+            const var::Indexed<macrodr::cmd::Analisis_derivative_diagnostic_series_kernel_full>&,
+            std::string>(&macrodr::cmd::write_csv<
+                             macrodr::cmd::Analisis_derivative_diagnostic_series_kernel_full>,
+                         "analysis", "path"));
 
     cm.push_function(
         "write_csv",
@@ -812,24 +899,40 @@ cm.push_function(
             "averaging_approximation", "variance_approximation", "taylor_variance_correction"));
 
       
-            cm.push_function(
-        "likelihood_derivative_diagnostics",
-        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& , 
-    std::size_t, std::set<double>,  std::size_t>(
-            &calculate_likelihood_derivative_diagnostics_dsl<false>, "dlikelihood_predictions", "n_boostrap_samples",
-            "probits", "seed"));
-      cm.push_function(
-        "likelihood_derivative_evolution_diagnostics",
-        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& ,
-    std::size_t, std::set<double>,  std::size_t>(
-            &calculate_likelihood_derivative_diagnostics_dsl<true>, "dlikelihood_predictions", "n_boostrap_samples",
-            "probits", "seed"));
-      cm.push_function(
-        "likelihood_derivative_cross_correlation_diagnostics",
-        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>& ,
-    std::size_t, std::set<double>,  std::size_t>(
-            &calculate_likelihood_derivative_diagnostics_dsl<false, true>,
-            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed"));
+    cm.push_function(
+        "likelihood_derivative_basic_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_basic_diagnostics_dsl,
+            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_var_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_var_diagnostics_dsl,
+            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_cov_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_cov_diagnostics_dsl,
+            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_kernel_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_kernel_diagnostics_dsl,
+            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_kernel_full_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl,
+            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
 
 
     return cm;

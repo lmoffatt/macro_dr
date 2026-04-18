@@ -2,6 +2,7 @@
 
 #include <random_samplers.h>
 #include <cstddef>
+#include <format>
 #include <type_traits>
 #include <utility>
 #include <vector> // IWYU pragma: keep
@@ -87,25 +88,25 @@ auto apply_Probit_statistics(const std::vector<WrappedVecSpace>& samples, const 
 
 
 
-template<class vectorSpace, class F>
-requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std::size_t> indices) 
-{ { f(x, indices) }; }
-auto bootstrap_it(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_replicates, mt_64i& gen) {
-    using R=std::decay_t<decltype(f(vs,generate_bootstrap_indices(vs.size(), gen)))>;
+template<class vectorSpace, class F, class ...T>
+requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std::size_t> indices, T&&...args ) 
+{ { f(x, indices, std::forward<T>(args)...) }; }
+auto bootstrap_it(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_replicates, mt_64i& gen, T&& ...args) {
+    using R=std::decay_t<decltype(f(vs,generate_bootstrap_indices(vs.size(), gen), std::forward<T>(args)...))>;
     bootstrap<R> out;
     out.reserve(n_replicates);
     for (std::size_t i = 0; i < n_replicates; ++i) {
-        out.push_back(std::forward<F>(f)(vs, generate_bootstrap_indices(vs.size(), gen)));
+        out.push_back(std::forward<F>(f)(vs, generate_bootstrap_indices(vs.size(), gen), std::forward<T>(args)...));
     }
-    return out;
+    return out; 
  }
 
  
-template<class vectorSpace, class F>
-requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std::size_t> indices) 
-{ { f(x, indices) }; }
-auto bootstrap_it_to_Probit(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_replicates, std::set<double>const & cis, mt_64i& gen) {
-    auto samples=bootstrap_it(f, vs, n_replicates, gen);
+template<class vectorSpace, class F, class ...T>
+requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std::size_t> indices, T&&...args ) 
+{ { f(x, indices, std::forward<T>(args)...) }; }
+auto bootstrap_it_to_Probit(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_replicates, std::set<double>const & cis, mt_64i& gen, T&& ...args) {
+    auto samples=bootstrap_it(f, vs, n_replicates, gen, std::forward<T>(args)...);
     return apply_Probit_statistics(samples, cis);
  }
 

@@ -1,0 +1,285 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\title{Supplementary Information:\\
+Bayesian Evidence Correction via the Information Distortion Matrix,\\
+and the Logarithmic Nature of Variance Inflation}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent We derive the correction to the log-evidence that follows from replacing the Gaussian Fisher Information $\mathbf H$ with the distortion-corrected covariance $\boldsymbol\Sigma_{\mathrm{DCC}} = \mathbf H^{-1}\mathbf J_{\mathrm{total}}\mathbf H^{-1}$ in the Laplace approximation. The result is remarkably compact: the shift in log-evidence equals $\tfrac{1}{2}\log\det(\mathbf C)$, where $\mathbf C$ is the Information Distortion Matrix (IDM). This places the IDM at the centre of Bayesian model-comparison corrections. We then discuss why this correction \emph{feels} like it should be huge (variance inflation corresponds to fewer effective samples) yet is an $O(1)$ additive shift to the log-evidence, owing to the logarithmic scale on which evidence is accumulated. The resolution clarifies the roles of the peak term and the volume term in the Laplace approximation.
+\end{abstract}
+
+\section{Setup}
+
+Following the notation of the main supplement, denote the Gaussian Fisher Information $\mathbf H$, the total score covariance $\mathbf J_{\mathrm{total}}$ (including cross-interval terms), the sandwich-corrected parameter covariance
+\begin{equation}
+\boldsymbol\Sigma_{\mathrm{DCC}}
+\;=\;
+\mathbf H^{-1}
+\mathbf J_{\mathrm{total}}
+\mathbf H^{-1},
+\end{equation}
+and the Information Distortion Matrix
+\begin{equation}
+\mathbf C
+\;=\;
+\mathbf H^{-1/2}
+\mathbf J_{\mathrm{total}}
+\mathbf H^{-1/2}.
+\end{equation}
+
+Under a correctly specified likelihood, $\mathbf J_{\mathrm{total}} = \mathbf H$ and $\mathbf C = \mathbf I$. Deviations of $\mathbf C$ from the identity quantify the distortion of the information geometry induced by approximate likelihood evaluation.
+
+\section{Laplace Approximation to the Log-Evidence}
+
+Let $L(\theta)$ be the likelihood, $\pi(\theta)$ the prior, and
+\begin{equation}
+Z
+\;=\;
+\int L(\theta)\,\pi(\theta)\,\mathrm{d}\theta
+\end{equation}
+the Bayesian evidence. The Laplace approximation expands $\log L(\theta)\,\pi(\theta)$ as a quadratic around its mode $\hat\theta$,
+\begin{equation}
+\log L(\theta) + \log\pi(\theta)
+\;\approx\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;-\;
+\tfrac{1}{2}(\theta - \hat\theta)^\top \boldsymbol\Lambda (\theta - \hat\theta),
+\end{equation}
+where $\boldsymbol\Lambda$ is the precision matrix of the local Gaussian approximation to the posterior at $\hat\theta$. Gaussian integration then yields
+\begin{equation}
+\log Z
+\;\approx\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\tfrac{1}{2}\log\det(\boldsymbol\Lambda),
+\label{eq:laplace-precision}
+\end{equation}
+where $p = \dim(\theta)$. Equivalently, in terms of the posterior covariance $\boldsymbol\Sigma = \boldsymbol\Lambda^{-1}$:
+\begin{equation}
+\log Z
+\;\approx\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;+\;
+\tfrac{1}{2}\log\det(\boldsymbol\Sigma).
+\label{eq:laplace-cov}
+\end{equation}
+
+\section{Naive versus Corrected Laplace}
+
+\subsection{Naive Laplace}
+
+The naive analysis identifies the posterior precision with the Gaussian Fisher Information,
+\begin{equation}
+\boldsymbol\Lambda_{\mathrm{naive}}
+\;=\;
+\mathbf H,
+\qquad
+\boldsymbol\Sigma_{\mathrm{naive}}
+\;=\;
+\mathbf H^{-1},
+\end{equation}
+giving
+\begin{equation}
+\log Z_{\mathrm{naive}}
+\;=\;
+\log L(\hat\theta)
++ \log\pi(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
+- \tfrac{1}{2}\log\det(\mathbf H).
+\label{eq:naive-Z}
+\end{equation}
+
+\subsection{Corrected Laplace}
+
+When the likelihood is approximate, the MLE has asymptotic covariance $\boldsymbol\Sigma_{\mathrm{DCC}} = \mathbf H^{-1}\mathbf J_{\mathrm{total}}\mathbf H^{-1}$, not $\mathbf H^{-1}$. Replacing $\boldsymbol\Sigma_{\mathrm{naive}}$ with $\boldsymbol\Sigma_{\mathrm{DCC}}$ in Eq.~(\ref{eq:laplace-cov}):
+\begin{equation}
+\log Z_{\mathrm{corrected}}
+\;=\;
+\log L(\hat\theta)
++ \log\pi(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
++ \tfrac{1}{2}\log\det\!\left(\mathbf H^{-1}\mathbf J_{\mathrm{total}}\mathbf H^{-1}\right).
+\label{eq:corrected-Z}
+\end{equation}
+
+Using $\det(\mathbf A\mathbf B\mathbf A) = \det(\mathbf A)^2 \det(\mathbf B)$ for symmetric $\mathbf A,\mathbf B$:
+\begin{equation}
+\log\det\!\left(\mathbf H^{-1}\mathbf J_{\mathrm{total}}\mathbf H^{-1}\right)
+\;=\;
+\log\det(\mathbf J_{\mathrm{total}})
+\;-\;
+2\log\det(\mathbf H).
+\end{equation}
+
+\section{The Shift in Log-Evidence}
+
+Subtracting (\ref{eq:naive-Z}) from (\ref{eq:corrected-Z}):
+\begin{align}
+\Delta \log Z
+\;&\equiv\;
+\log Z_{\mathrm{corrected}} - \log Z_{\mathrm{naive}}
+\\[4pt]
+&=\;
+\tfrac{1}{2}\bigl[\log\det(\mathbf J_{\mathrm{total}}) - 2\log\det(\mathbf H)\bigr]
+\;-\;
+\bigl[-\tfrac{1}{2}\log\det(\mathbf H)\bigr]
+\\[4pt]
+&=\;
+\tfrac{1}{2}\log\det(\mathbf J_{\mathrm{total}})
+\;-\;
+\tfrac{1}{2}\log\det(\mathbf H)
+\\[4pt]
+&=\;
+\tfrac{1}{2}\log\frac{\det(\mathbf J_{\mathrm{total}})}{\det(\mathbf H)}.
+\end{align}
+
+Recognising the right-hand side as the log-determinant of the Information Distortion Matrix,
+\begin{equation}
+\det(\mathbf C)
+\;=\;
+\det\!\left(\mathbf H^{-1/2}\mathbf J_{\mathrm{total}}\mathbf H^{-1/2}\right)
+\;=\;
+\frac{\det(\mathbf J_{\mathrm{total}})}{\det(\mathbf H)},
+\end{equation}
+we obtain the compact result:
+\begin{equation}
+\boxed{\;
+\Delta \log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C).
+\;}
+\label{eq:main-result}
+\end{equation}
+
+\section{Interpretation}
+
+\subsection{Sign}
+
+$\det(\mathbf C) > 1$ (variance inflation in some or all directions) implies $\Delta\log Z > 0$: the corrected log-evidence is \emph{higher} than the naive log-evidence. Intuitively, inflated posterior variance corresponds to a larger volume in parameter space consistent with the data, and the Laplace approximation rewards larger posterior volume with more evidence.
+
+Conversely, $\det(\mathbf C) < 1$ (variance deflation) gives $\Delta\log Z < 0$: the corrected log-evidence is lower, because the posterior is artificially concentrated and the Laplace volume shrinks.
+
+\subsection{Scaling with sample size}
+
+Under stationarity, both $\mathbf H$ and $\mathbf J_{\mathrm{total}}$ scale linearly with $T$, the number of samples:
+\begin{equation}
+\mathbf H_T \;\approx\; T\,\mathbf h_1,
+\qquad
+\mathbf J_{\mathrm{total},T} \;\approx\; T\,\boldsymbol\omega_1,
+\end{equation}
+where $\mathbf h_1$ is the per-sample expected Fisher and $\boldsymbol\omega_1$ is the per-sample long-run covariance. Substituting:
+\begin{equation}
+\mathbf C_T
+\;=\;
+\mathbf H_T^{-1/2}\mathbf J_{\mathrm{total},T}\mathbf H_T^{-1/2}
+\;=\;
+(T\mathbf h_1)^{-1/2}\,(T\boldsymbol\omega_1)\,(T\mathbf h_1)^{-1/2}
+\;=\;
+\mathbf h_1^{-1/2}\boldsymbol\omega_1\mathbf h_1^{-1/2}.
+\end{equation}
+
+The $T$ factors cancel: $\mathbf C$ is an intensive quantity independent of $T$ in the large-sample limit. Consequently, the evidence shift $\Delta\log Z = \tfrac{1}{2}\log\det(\mathbf C)$ is an $O(1)$ constant that does not vanish as $T\to\infty$.
+
+\subsection{Consequence for model comparison}
+
+Bayes factors between two models $M_A, M_B$ take the form
+\begin{equation}
+\log\mathrm{BF}_{AB}
+\;=\;
+\log Z_A - \log Z_B.
+\end{equation}
+If both models use approximate likelihoods of comparable structure, the uncorrected Bayes factor suffers a bias
+\begin{equation}
+\Delta \log\mathrm{BF}_{AB}
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_A)
+-
+\tfrac{1}{2}\log\det(\mathbf C_B),
+\end{equation}
+independent of $T$. The approximation whose IDM has the larger determinant is spuriously favoured by an amount that does not diminish with more data. Reporting corrected Bayes factors therefore requires the IDM correction; the CDM (Correlation Distortion Matrix, normalised by the per-sample score covariance rather than by $\mathbf H$) does not directly enter this formula because $\mathbf J_{\mathrm{sample}}$ is not the Hessian of the log-likelihood and plays no role in the Laplace expansion.
+
+\section{The Apparent Paradox of Logarithmic Variance Inflation}
+
+A tension is worth articulating explicitly, because the compactness of Eq.~(\ref{eq:main-result}) can be deceptive.
+
+\subsection{Variance inflation as effective sample loss}
+
+The IDM acts as a variance inflation factor for the parameter estimator: CI widths scale as $\sqrt{C_{ii}}$, so $\mathbf C = 2\mathbf I$ doubles the variance and widens intervals by $\sqrt{2}$. By the usual association between variance and information, this is equivalent to a halved \emph{effective} sample size,
+\begin{equation}
+N_{\mathrm{eff}} \;=\; N / \det(\mathbf C)^{1/p}
+\end{equation}
+(for a scalar inflation factor, $\det(\mathbf C)^{1/p} = $ inflation factor). Intuitively, variance doubled means half the data carries the same information --- a big deal.
+
+\subsection{Yet the log-evidence shift is tiny}
+
+Despite this, the log-evidence shift is $\tfrac{1}{2}\log\det(\mathbf C)$, an $O(1)$ quantity that does not scale with $T$. For $\mathbf C = 2\mathbf I$ with $p = 6$ parameters:
+\begin{equation}
+\Delta \log Z
+\;=\;
+\tfrac{p}{2}\log 2
+\;\approx\;
+2.08\ \text{nats}
+\;\approx\;
+3.0\ \text{bits}.
+\end{equation}
+This corresponds to a Bayes factor of roughly $8$, notable for model comparison but negligible in absolute terms compared to typical log-evidence values of $O(T)$ for large datasets.
+
+\subsection{Resolution: the peak versus the volume}
+
+The Laplace decomposition of log-evidence separates two contributions of strikingly different magnitude:
+\begin{equation}
+\log Z
+\;\approx\;
+\underbrace{\log L(\hat\theta)}_{\text{peak} \;=\; O(T)}
+\;+\;
+\underbrace{\tfrac{1}{2}\log\det(\boldsymbol\Sigma)}_{\text{volume} \;=\; O(\log T) + O(1)}
+\;+\;
+\text{const}.
+\end{equation}
+
+\begin{itemize}
+\item The \textbf{peak} term $\log L(\hat\theta)$ depends only on how well the model fits at its best parameters, and grows as $O(T)$. It is unaffected by how accurately $\hat\theta$ is known; the MLE value of the likelihood is the same whether the posterior is tight or diffuse.
+\item The \textbf{volume} term splits further. The naive Hessian contribution $-\tfrac{1}{2}\log\det(\mathbf H)$ is $O(\log T)$ (since $\det(\mathbf H) \sim T^p$), giving the familiar BIC-like penalty. The IDM correction $\tfrac{1}{2}\log\det(\mathbf C)$ is $O(1)$ because, as shown in Section 5.2, the $T$-dependence cancels.
+\end{itemize}
+
+Variance inflation is a \emph{second-order} effect on the evidence: it affects the shape of the posterior around the peak, not the height of the peak itself. The evidence is primarily a statement about \emph{data fit} (peak), and only secondarily about \emph{parameter precision} (volume).
+
+\subsection{Multiplicative in probability, additive in log-probability}
+
+The resolution becomes clearer if one remembers that evidence is a probability-like quantity accumulated multiplicatively over independent samples:
+\begin{equation}
+Z_T \;\approx\; \prod_{t=1}^T p(y_t \mid \text{history}),
+\qquad
+\log Z_T \;=\; \sum_{t=1}^T \log p(y_t \mid \text{history}).
+\end{equation}
+Doubling the amount of data \emph{doubles} the log-evidence (it adds a second sum of the same magnitude). Doubling the posterior variance \emph{adds a constant} to the log-evidence (it multiplies the evidence by a fixed factor, $2^{p/2}$). These are fundamentally different scalings, and Bayesian model comparison is sensitive to the difference: the log-evidence is the natural scale on which "additional data" is additive, and on which "variance inflation" is additive-but-constant.
+
+The per-sample contribution to $\log Z$ is therefore bounded: no finite amount of variance inflation can compensate even a modest log-likelihood improvement that scales with $T$. For large $T$, the IDM correction is a fine-tuning of the evidence, not a dominant term --- except in the model-comparison regime where the $O(T)$ parts nearly cancel and the $O(1)$ IDM difference becomes the leading discriminator.
+
+\section{Summary}
+
+\begin{itemize}
+\item The Laplace-approximated log-evidence using the sandwich-corrected covariance differs from the naive Laplace by $\tfrac{1}{2}\log\det(\mathbf C)$, where $\mathbf C$ is the Information Distortion Matrix.
+\item This correction is an intensive, $O(1)$ quantity: it does not vanish as $T \to \infty$, and it does not grow with $T$ either. It characterises the intrinsic distortion of the approximate likelihood at the tested parameter values.
+\item The correction is small compared to the $O(T)$ log-likelihood --- but decisive for Bayes-factor comparisons between approximations, where the $O(T)$ contributions cancel.
+\item The apparent paradox --- "variance inflation means effective sample loss, which should be a huge effect" --- resolves by recognising that the evidence is split between a peak term (data fit, $O(T)$) and a volume term (parameter precision, $O(\log T) + O(1)$), and the IDM correction affects only the latter.
+\item Evidence is additive in log-probability per independent sample; variance inflation is a fixed multiplicative factor in probability, hence a fixed additive shift in log-evidence. These two modes of "additivity" operate on different scales, and confusing them produces the sense of paradox.
+\item The IDM $\mathbf C$ is therefore the natural Bayesian-correction object: the CDM (correlation distortion matrix, normalised by $\mathbf J_{\mathrm{sample}}$) remains the appropriate \emph{diagnostic} for temporal whiteness of the score, but does not enter the evidence formula directly.
+\end{itemize}
+
+\end{document}

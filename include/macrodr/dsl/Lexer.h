@@ -63,14 +63,16 @@ class Lexer {
 
     constexpr static const std::string_view label_delimiters = "'\"";
 
-    constexpr static const std::string_view comment_start = "//";
+    constexpr static const std::string_view comment_start = "#";
 
-    constexpr static const std::string_view comment_end = "/n";
+    constexpr static const std::string_view comment_end = "\n";
 
     static auto skip_comment(const std::string& s, std::size_t pos) {
         if (s.substr(pos, comment_start.size()) == comment_start) {
-            return s.find_first_of('\n', pos);
-        }             return pos;
+            auto nl = s.find_first_of('\n', pos);
+            return nl == std::string::npos ? s.size() : nl;
+        }
+        return pos;
     }
     static bool is_end_of_statement(const std::string& s, std::size_t pos) {
         return (s.size() == pos + 1) || (s.substr(pos, statement_sep.size()) == statement_sep);
@@ -119,7 +121,15 @@ class Lexer {
         return s.find_first_not_of(whitespace, pos);
     }
     static auto skip_whitespaceline(const std::string& s, std::size_t pos) {
-        return s.find_first_not_of(whitespaceline, pos);
+        auto last = s.find_first_not_of(whitespaceline, pos);
+        while (last != std::string::npos && is_start_of_comment(s, last)) {
+            auto nl = s.find('\n', last);
+            if (nl == std::string::npos) {
+                return std::string::npos;
+            }
+            last = s.find_first_not_of(whitespaceline, nl);
+        }
+        return last;
     }
 
     static auto skip_whiteline(const std::string& s, std::size_t pos) {

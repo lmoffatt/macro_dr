@@ -19,6 +19,7 @@
 #include <limits>
 
 #include "matrix.h"
+#include "lapack_headers.h"
 #include "parameter_indexed.h"
 #include "variables.h"
 
@@ -58,13 +59,13 @@ struct mean_value_type_impl<T> {
 
 
 template<bool include_covariance, class T>
-auto sqr_X( const std::vector<T>& x) {
+auto sqr_X( const std::vector<T>& x, std::size_t max_lag) {
 using R= typename std::decay_t<decltype(prod_XY<include_covariance>(std::declval<T>(), std::declval<T>()))>;
     std::vector<std::vector<R>> out;
     out.resize(x.size());
     for (std::size_t i = 0; i < x.size(); ++i) {
-        out[i].reserve(x.size() - i);
-        for (std::size_t j = i; j < x.size(); ++j) {
+        out[i].reserve(std::min(x.size() - i, max_lag));
+        for (std::size_t j = i; j < x.size() && j < i + max_lag ; ++j) {
             out[i].push_back(prod_XY<include_covariance>(x[i], x[j]));
         }
     }
@@ -134,44 +135,56 @@ auto nested_div(const std::vector<T>& a, double s) {
 }
 
 
-template< bool include_covariance,class R,class T>
-requires requires (T const& v) { {prod_XY<include_covariance>(v,v)}->std::convertible_to<R>; }
-auto sum_series_sqr_X(std::vector<std::vector<R>>&& sum, const std::vector<T>& x) {
-    if (sum.empty()){
+template <bool include_covariance, class R, class T>
+    requires requires(T const& v) {
+        { prod_XY<include_covariance>(v, v) } -> std::convertible_to<R>;
+    }
+auto sum_series_sqr_X(std::vector<std::vector<R>>&& sum, const std::vector<T>& x,
+                      std::size_t max_lag) {
+    if (sum.empty()) {
         sum.resize(x.size());
         for (std::size_t i = 0; i < x.size(); ++i) {
-            sum[i].reserve(x.size() - i);
-            for (std::size_t j = i; j < x.size(); ++j) {
+            const std::size_t end = std::min(x.size(), i + max_lag);
+            sum[i].reserve(end - i);
+            for (std::size_t j = i; j < end; ++j) {
                 sum[i].push_back(prod_XY<include_covariance>(x[i], x[j]));
             }
         }
     } else {
         for (std::size_t i = 0; i < x.size(); ++i) {
-            for (std::size_t j = i; j < x.size(); ++j) {
-                sum[i][j-i] = nested_add(sum[i][j-i], prod_XY<include_covariance>(x[i], x[j]));
+            const std::size_t end = std::min(x.size(), i + max_lag);
+            for (std::size_t j = i; j < end; ++j) {
+                sum[i][j - i] = nested_add(sum[i][j - i], prod_XY<include_covariance>(x[i], x[j]));
             }
         }
     }
-
     return sum;
 }
 
-template< bool include_covariance,typename R, class V, class G>
-requires requires (G&& g, V const& v) { {prod_XY<include_covariance>(std::forward<G>(g)(v), std::forward<G>(g)(v))} -> std::convertible_to<R>; }
-auto sum_series_sqr_X(std::vector<std::vector<R>>&& sum,const std::vector<V>& x, G&& g) {
-    if (sum.empty()){
+template <bool include_covariance, typename R, class V, class G>
+    requires requires(G&& g, V const& v) {
+        {
+            prod_XY<include_covariance>(std::forward<G>(g)(v), std::forward<G>(g)(v))
+        } -> std::convertible_to<R>;
+    }
+auto sum_series_sqr_X(std::vector<std::vector<R>>&& sum, const std::vector<V>& x,
+                      std::size_t max_lag, G&& g) {
+    if (sum.empty()) {
         sum.resize(x.size());
         for (std::size_t i = 0; i < x.size(); ++i) {
-            sum[i].reserve(x.size() - i);
-            for (std::size_t j = i; j < x.size(); ++j) {
-                sum[i].push_back(prod_XY<include_covariance>(std::forward<G>(g)(x[i]), std::forward<G>(g)(x[j])));
+            const std::size_t end = std::min(x.size(), i + max_lag);
+            sum[i].reserve(end - i);
+            for (std::size_t j = i; j < end; ++j) {
+                sum[i].push_back(
+                    prod_XY<include_covariance>(std::forward<G>(g)(x[i]), std::forward<G>(g)(x[j])));
             }
         }
     } else {
         for (std::size_t i = 0; i < x.size(); ++i) {
-            for (std::size_t j = i; j < x.size(); ++j) {
-                sum[i][j-i] = nested_add(
-                    sum[i][j-i],
+            const std::size_t end = std::min(x.size(), i + max_lag);
+            for (std::size_t j = i; j < end; ++j) {
+                sum[i][j - i] = nested_add(
+                    sum[i][j - i],
                     prod_XY<include_covariance>(std::forward<G>(g)(x[i]), std::forward<G>(g)(x[j])));
             }
         }
@@ -459,6 +472,34 @@ struct variance : public var::Var<variance<Va>, std::decay_t<decltype(sqr_X<fals
 
 
 
+template <class Va>
+struct log_Det : public var::Var<log_Det<Va>, double> {
+    using log_Det_type = double;
+
+    log_Det() : var::Var<log_Det<Va>, log_Det_type>{log_Det_type{}} {}
+    log_Det(log_Det_type&& x) : var::Var<log_Det<Va>, log_Det_type>{std::move(x)} {}
+    log_Det(log_Det_type const& x) : var::Var<log_Det<Va>, log_Det_type>{x} {}
+
+    // Va whose stored value is directly logdet-able (bare matrix wrapper).
+    log_Det(Va const& x)
+        requires requires(Va const& v) {
+            { logdet(v()) } -> std::convertible_to<Maybe_error<double>>;
+        }
+        : var::Var<log_Det<Va>, log_Det_type>{
+              logdet(x()).value_or(std::numeric_limits<double>::quiet_NaN())} {}
+
+    // Va whose stored value is an Indexed/Parameters wrapper exposing the
+    // matrix via .value() (e.g. Sample_Distortion_Matrix).
+    log_Det(Va const& x)
+        requires requires(Va const& v) {
+            { logdet(v().value()) } -> std::convertible_to<Maybe_error<double>>;
+        }
+        : var::Var<log_Det<Va>, log_Det_type>{
+              logdet(x().value()).value_or(std::numeric_limits<double>::quiet_NaN())} {}
+};
+
+
+
 
 template <class Va>
 struct covariance : public var::Var<covariance<Va>, std::decay_t<decltype(sqr_X<true>(std::declval<value_type_t<Va>>()))>> {
@@ -475,16 +516,18 @@ struct covariance : public var::Var<covariance<Va>, std::decay_t<decltype(sqr_X<
 template <class Va>
 struct series_covariance_kernel :
 public var::Var<series_covariance_kernel<Va>, std::decay_t<decltype(sqr_X<true>(
-    std::vector<value_type_t<Va>>{}))>> {
+    std::vector<value_type_t<Va>>{}, std::size_t{}))>> {
      using variance_type= decltype(prod_XY<true>(std::declval<value_type_t<Va>>(),std::declval<value_type_t<Va>>()));
-    using series_covariance_kernel_type= std::decay_t<decltype(sqr_X<true>(std::vector<value_type_t<Va>>{}))>;
+    using series_covariance_kernel_type= std::decay_t<decltype(sqr_X<true>(std::vector<value_type_t<Va>>{}, std::size_t{}))>;
     using kernel_type = series_covariance_kernel_type;
 
     series_covariance_kernel() : var::Var<series_covariance_kernel<Va>, series_covariance_kernel_type>{series_covariance_kernel_type{}} {
     }
-    series_covariance_kernel(series_covariance_kernel_type&& x) : var::Var<series_covariance_kernel<Va>, series_covariance_kernel_type>{std::move(x)} {
+    series_covariance_kernel(series_covariance_kernel_type&& x) : 
+    var::Var<series_covariance_kernel<Va>, series_covariance_kernel_type>{std::move(x)} {
     }
-    series_covariance_kernel(series_covariance_kernel_type const& x) : var::Var<series_covariance_kernel<Va>, series_covariance_kernel_type>{x} {
+    series_covariance_kernel(series_covariance_kernel_type const& x) :
+     var::Var<series_covariance_kernel<Va>, series_covariance_kernel_type>{x} {
     }
 
 };
@@ -493,9 +536,9 @@ public var::Var<series_covariance_kernel<Va>, std::decay_t<decltype(sqr_X<true>(
 template <class Va>
 struct series_variance_kernel :
 public var::Var<series_variance_kernel<Va>, std::decay_t<decltype(sqr_X<false>(
-    std::vector<value_type_t<Va>>{}))>> {
+    std::vector<value_type_t<Va>>{}, std::size_t{}))>> {
      using variance_type= decltype(prod_XY<false>(std::declval<value_type_t<Va>>(),std::declval<value_type_t<Va>>()));
-    using series_variance_kernel_type= std::decay_t<decltype(sqr_X<false>(std::vector<value_type_t<Va>>{}))>;
+    using series_variance_kernel_type= std::decay_t<decltype(sqr_X<false>(std::vector<value_type_t<Va>>{}, std::size_t{}))>;
     using kernel_type = series_variance_kernel_type;
 
     series_variance_kernel() : var::Var<series_variance_kernel<Va>, series_variance_kernel_type>{series_variance_kernel_type{}} {
@@ -520,6 +563,9 @@ struct cross_covariance : public var::Var<cross_covariance<Va, Vb>, std::decay_t
     }
 
 };
+
+
+
 
 
 
@@ -578,13 +624,33 @@ struct series_diagonal_covariance_blocks
         : var::Var<series_diagonal_covariance_blocks<Va>, diagonal_type>{x} {}
 };
 
+// Per-sample variance entries (just the diagonal elements, not the full block
+// per sample). For scalar V this is the same data as
+// series_diagonal_covariance_blocks; for vector V it stores only the p diagonal
+// entries per sample, shrinking the storage by a factor of p compared to full
+// per-sample blocks. Used by local_var-level reports where per-parameter
+// correlation cross-terms per sample aren't required.
+template <class Va>
+struct series_diagonal_variance
+    : public var::Var<series_diagonal_variance<Va>, std::vector<mean_value_type_t<Va>>> {
+    using entry_type = mean_value_type_t<Va>;
+    using diagonal_type = std::vector<entry_type>;
+
+    series_diagonal_variance()
+        : var::Var<series_diagonal_variance<Va>, diagonal_type>{diagonal_type{}} {}
+    series_diagonal_variance(diagonal_type&& x)
+        : var::Var<series_diagonal_variance<Va>, diagonal_type>{std::move(x)} {}
+    series_diagonal_variance(diagonal_type const& x)
+        : var::Var<series_diagonal_variance<Va>, diagonal_type>{x} {}
+};
+
 template <class Va>
 struct series_cross_correlation_kernel
     : public var::Var<
           series_cross_correlation_kernel<Va>,
-          std::decay_t<decltype(sqr_X<true>(std::vector<value_type_t<Va>>{}))>> {
+          std::decay_t<decltype(sqr_X<true>(std::vector<value_type_t<Va>>{}, std::size_t{}))>> {
     using entry_type = series_kernel_entry_t<Va>;
-    using kernel_type = std::decay_t<decltype(sqr_X<true>(std::vector<value_type_t<Va>>{}))>;
+    using kernel_type = std::decay_t<decltype(sqr_X<true>(std::vector<value_type_t<Va>>{}, std::size_t{}))>;
 
     series_cross_correlation_kernel()
         : var::Var<series_cross_correlation_kernel<Va>, kernel_type>{kernel_type{}} {}
@@ -594,31 +660,180 @@ struct series_cross_correlation_kernel
         : var::Var<series_cross_correlation_kernel<Va>, kernel_type>{x} {}
 };
 
-template <class Id>
-class Series_Moment_report
-    : public var::Var<Series_Moment_report<Id>,
-                      var::Vector_Space<count<Id>, series_mean<Id>,
-                                        series_diagonal_covariance_blocks<Id>,
-                                        series_cross_correlation_kernel<Id>>> {
-   public:
-    using base_space_type = var::Vector_Space<count<Id>, series_mean<Id>,
-                                              series_diagonal_covariance_blocks<Id>,
-                                              series_cross_correlation_kernel<Id>>;
-    using base_type = var::Var<Series_Moment_report<Id>, base_space_type>;
+// Per-sample forward sum of the normalized cross-correlation kernel:
+//     cross_correlation_lag_forward[i] = sum_{offset=0..max_lag-1} kernel[i][offset]
+// One matrix per sample, recording cumulative forward-lag correlation from that
+// starting point. "Forward" because the kernel is stored only for non-negative
+// lags (backward lags would require samples before i and are not representable
+// at a fixed starting index).
+template <class Va>
+struct cross_correlation_lag_forward
+    : public var::Var<cross_correlation_lag_forward<Va>,
+                      std::vector<series_kernel_entry_t<Va>>> {
+    using entry_type = series_kernel_entry_t<Va>;
+    using forward_type = std::vector<entry_type>;
 
-    Series_Moment_report()
-        : base_type{base_space_type{count<Id>{}, series_mean<Id>{},
-                                    series_diagonal_covariance_blocks<Id>{},
-                                    series_cross_correlation_kernel<Id>{}}} {}
-    Series_Moment_report(base_space_type&& x) : base_type{std::move(x)} {}
-    Series_Moment_report(base_space_type const& x) : base_type{x} {}
-    Series_Moment_report(count<Id> n, series_mean<Id> m, series_diagonal_covariance_blocks<Id> d,
-                         series_cross_correlation_kernel<Id> r)
-        : base_type{base_space_type{std::move(n), std::move(m), std::move(d), std::move(r)}} {}
+    cross_correlation_lag_forward()
+        : var::Var<cross_correlation_lag_forward<Va>, forward_type>{forward_type{}} {}
+    cross_correlation_lag_forward(forward_type&& x)
+        : var::Var<cross_correlation_lag_forward<Va>, forward_type>{std::move(x)} {}
+    cross_correlation_lag_forward(forward_type const& x)
+        : var::Var<cross_correlation_lag_forward<Va>, forward_type>{x} {}
+};
+
+// Trace-global integral correlation lag:
+//     integral_correlation_lag = C(0)^{-1/2} * Omega * C(0)^{-1/2}
+// where
+//     C(0) = sum_i kernel_raw[i][0]           (per-sample variance summed across samples)
+//     Omega = sum_i sum_{offset} kernel_raw[i][offset]   (summed unnormalized kernel)
+// Scalar for scalar Va (V / V²); matrix for vector Va (the truncated-kernel
+// analog of the Correlation_Distortion_Matrix). Kish/Sokal integral
+// autocorrelation time in a unified form.
+template <class Va>
+struct integral_correlation_lag
+    : public var::Var<integral_correlation_lag<Va>, series_kernel_entry_t<Va>> {
+    using entry_type = series_kernel_entry_t<Va>;
+
+    integral_correlation_lag()
+        : var::Var<integral_correlation_lag<Va>, entry_type>{entry_type{}} {}
+    integral_correlation_lag(entry_type&& x)
+        : var::Var<integral_correlation_lag<Va>, entry_type>{std::move(x)} {}
+    integral_correlation_lag(entry_type const& x)
+        : var::Var<integral_correlation_lag<Va>, entry_type>{x} {}
+};
+
+// Report family — four levels of per-variable series analysis, each a strict
+// superset of the previous except for the local_var / local_cov pair which
+// differ in storage of the per-sample diagonal (variance only vs full
+// covariance block).
+//
+//   Report_integral<V>   : count + integral_correlation_lag
+//   Report_local_var<V>  : integral + series_mean + series_diagonal_variance
+//                          + cross_correlation_lag_forward
+//   Report_local_cov<V>  : integral + series_mean + series_diagonal_covariance_blocks
+//                          + cross_correlation_lag_forward
+//   Report_cross<V>      : local_cov + series_cross_correlation_kernel
+//
+// For scalar V, local_var == local_cov (same storage).
+
+template <class Id>
+class Report_integral
+    : public var::Var<Report_integral<Id>,
+                      var::Vector_Space<count<Id>, integral_correlation_lag<Id>>> {
+   public:
+    using base_space_type = var::Vector_Space<count<Id>, integral_correlation_lag<Id>>;
+    using base_type = var::Var<Report_integral<Id>, base_space_type>;
+
+    Report_integral()
+        : base_type{base_space_type{count<Id>{}, integral_correlation_lag<Id>{}}} {}
+    Report_integral(base_space_type&& x) : base_type{std::move(x)} {}
+    Report_integral(base_space_type const& x) : base_type{x} {}
+    Report_integral(count<Id> n, integral_correlation_lag<Id> g)
+        : base_type{base_space_type{std::move(n), std::move(g)}} {}
 
     constexpr auto& operator[](var::Var<Id>) { return *this; }
     constexpr auto& operator[](var::Var<Id>) const { return *this; }
 };
+
+template <class Id>
+class Report_local_var
+    : public var::Var<Report_local_var<Id>,
+                      var::Vector_Space<count<Id>, series_mean<Id>,
+                                        series_diagonal_variance<Id>,
+                                        cross_correlation_lag_forward<Id>,
+                                        integral_correlation_lag<Id>>> {
+   public:
+    using base_space_type = var::Vector_Space<count<Id>, series_mean<Id>,
+                                              series_diagonal_variance<Id>,
+                                              cross_correlation_lag_forward<Id>,
+                                              integral_correlation_lag<Id>>;
+    using base_type = var::Var<Report_local_var<Id>, base_space_type>;
+
+    Report_local_var()
+        : base_type{base_space_type{count<Id>{}, series_mean<Id>{},
+                                    series_diagonal_variance<Id>{},
+                                    cross_correlation_lag_forward<Id>{},
+                                    integral_correlation_lag<Id>{}}} {}
+    Report_local_var(base_space_type&& x) : base_type{std::move(x)} {}
+    Report_local_var(base_space_type const& x) : base_type{x} {}
+    Report_local_var(count<Id> n, series_mean<Id> m, series_diagonal_variance<Id> d,
+                     cross_correlation_lag_forward<Id> f, integral_correlation_lag<Id> g)
+        : base_type{base_space_type{std::move(n), std::move(m), std::move(d), std::move(f),
+                                    std::move(g)}} {}
+
+    constexpr auto& operator[](var::Var<Id>) { return *this; }
+    constexpr auto& operator[](var::Var<Id>) const { return *this; }
+};
+
+template <class Id>
+class Report_local_cov
+    : public var::Var<Report_local_cov<Id>,
+                      var::Vector_Space<count<Id>, series_mean<Id>,
+                                        series_diagonal_covariance_blocks<Id>,
+                                        cross_correlation_lag_forward<Id>,
+                                        integral_correlation_lag<Id>>> {
+   public:
+    using base_space_type = var::Vector_Space<count<Id>, series_mean<Id>,
+                                              series_diagonal_covariance_blocks<Id>,
+                                              cross_correlation_lag_forward<Id>,
+                                              integral_correlation_lag<Id>>;
+    using base_type = var::Var<Report_local_cov<Id>, base_space_type>;
+
+    Report_local_cov()
+        : base_type{base_space_type{count<Id>{}, series_mean<Id>{},
+                                    series_diagonal_covariance_blocks<Id>{},
+                                    cross_correlation_lag_forward<Id>{},
+                                    integral_correlation_lag<Id>{}}} {}
+    Report_local_cov(base_space_type&& x) : base_type{std::move(x)} {}
+    Report_local_cov(base_space_type const& x) : base_type{x} {}
+    Report_local_cov(count<Id> n, series_mean<Id> m, series_diagonal_covariance_blocks<Id> d,
+                     cross_correlation_lag_forward<Id> f, integral_correlation_lag<Id> g)
+        : base_type{base_space_type{std::move(n), std::move(m), std::move(d), std::move(f),
+                                    std::move(g)}} {}
+
+    constexpr auto& operator[](var::Var<Id>) { return *this; }
+    constexpr auto& operator[](var::Var<Id>) const { return *this; }
+};
+
+template <class Id>
+class Report_cross
+    : public var::Var<Report_cross<Id>,
+                      var::Vector_Space<count<Id>, series_mean<Id>,
+                                        series_diagonal_covariance_blocks<Id>,
+                                        series_cross_correlation_kernel<Id>,
+                                        cross_correlation_lag_forward<Id>,
+                                        integral_correlation_lag<Id>>> {
+   public:
+    using base_space_type = var::Vector_Space<count<Id>, series_mean<Id>,
+                                              series_diagonal_covariance_blocks<Id>,
+                                              series_cross_correlation_kernel<Id>,
+                                              cross_correlation_lag_forward<Id>,
+                                              integral_correlation_lag<Id>>;
+    using base_type = var::Var<Report_cross<Id>, base_space_type>;
+
+    Report_cross()
+        : base_type{base_space_type{count<Id>{}, series_mean<Id>{},
+                                    series_diagonal_covariance_blocks<Id>{},
+                                    series_cross_correlation_kernel<Id>{},
+                                    cross_correlation_lag_forward<Id>{},
+                                    integral_correlation_lag<Id>{}}} {}
+    Report_cross(base_space_type&& x) : base_type{std::move(x)} {}
+    Report_cross(base_space_type const& x) : base_type{x} {}
+    Report_cross(count<Id> n, series_mean<Id> m, series_diagonal_covariance_blocks<Id> d,
+                 series_cross_correlation_kernel<Id> r, cross_correlation_lag_forward<Id> f,
+                 integral_correlation_lag<Id> g)
+        : base_type{base_space_type{std::move(n), std::move(m), std::move(d), std::move(r),
+                                    std::move(f), std::move(g)}} {}
+
+    constexpr auto& operator[](var::Var<Id>) { return *this; }
+    constexpr auto& operator[](var::Var<Id>) const { return *this; }
+};
+
+// Backward-compatibility alias. Existing write_csv specializations and traits
+// that reference Series_Moment_report continue to work. Prefer Report_cross in
+// new code; this alias can be removed once all callers are migrated.
+template <class Id>
+using Series_Moment_report = Report_cross<Id>;
 
 
 template <class Id, bool include_covariance=false>
@@ -858,31 +1073,38 @@ class Series_Moment_statistics
               var::Vector_Space{count<Id>{ 0UL},series_mean<Id>{},
                                 series_variance_type{}}} {
     }
-    Series_Moment_statistics(std::vector<value_type_t<Id>> x)
-        : base_type{var::Vector_Space{count<Id>{1}, series_mean<Id>(x), series_variance_type(sqr_X<include_covariance>(nested_sub(x, x)))}} {
+    Series_Moment_statistics(std::vector<value_type_t<Id>> x, std::size_t max_lag)
+        : base_type{var::Vector_Space{
+              count<Id>{1}, series_mean<Id>(x),
+              series_variance_type(sqr_X<include_covariance>(nested_sub(x, x), max_lag))}} {
     }
 
 
 
-    Series_Moment_statistics(std::vector<std::vector<value_type_t<Id>>>const& x)
+    Series_Moment_statistics(std::vector<std::vector<value_type_t<Id>>> const& x,
+                             std::size_t max_lag)
         : base_type{
               var::Vector_Space{count<Id>{x.size()}, series_mean<Id>{},
                                 series_variance_type{}}} {
         if (x.empty()) {
             return;
         }
-        auto sum=x[0];
-        auto sum2=sqr_X<include_covariance>(x[0]);
-        for (std::size_t i=1;i<x.size();++i) {
+        auto sum = x[0];
+        auto sum2 = sqr_X<include_covariance>(x[0], max_lag);
+        for (std::size_t i = 1; i < x.size(); ++i) {
             sum = nested_add(sum, x[i]);
-            sum2 = nested_add(sum2, sqr_X<include_covariance>(x[i]));
+            sum2 = nested_add(sum2, sqr_X<include_covariance>(x[i], max_lag));
         }
         get<series_mean<Id>>((*this)())() = nested_div(sum, x.size());
-        auto var= x.size()>1 ? nested_div(
-                                nested_sub(sum2, nested_scale(sqr_X<include_covariance>(get<series_mean<Id>>((*this)())()), x.size())),
-                                x.size()-1)
-                             : kernel_value_type{};
-        get<series_variance_type>((*this)())()= var;
+        auto var = x.size() > 1
+                       ? nested_div(nested_sub(sum2,
+                                               nested_scale(sqr_X<include_covariance>(
+                                                                get<series_mean<Id>>((*this)())(),
+                                                                max_lag),
+                                                            x.size())),
+                                    x.size() - 1)
+                       : kernel_value_type{};
+        get<series_variance_type>((*this)())() = var;
     }
 
     template<class VectorSpace, class F, class G>
@@ -898,7 +1120,7 @@ requires
         )),
         value_type_t<Id>
     >
-    Series_Moment_statistics(std::vector<VectorSpace>const& x, const std::vector<std::size_t>& indices, F&& f, G&& g)
+    Series_Moment_statistics(std::vector<VectorSpace>const& x, std::size_t max_lag,const std::vector<std::size_t>& indices, F&& f, G&& g)
         : base_type{
               var::Vector_Space{count<Id>{indices.size()}, series_mean<Id>{},
                                 variance_kernel_t<Id,include_covariance>{}}} {
@@ -910,11 +1132,12 @@ requires
         for (auto idx : indices) {
             auto xi =std::forward<F>(f)(x[idx]);
             sum = sum_series_X(std::move(sum),xi, std::forward<G>(g));
-            sum2 = sum_series_sqr_X<include_covariance>(std::move(sum2),xi, std::forward<G>(g));
+            sum2 = sum_series_sqr_X<include_covariance>(std::move(sum2), xi, max_lag,
+                                                       std::forward<G>(g));
         }
         get<series_mean<Id>>((*this)())() = nested_div(sum, indices.size());
         auto var= indices.size()>1 ? nested_div(
-                                    nested_sub(sum2, nested_scale(sqr_X<include_covariance>(get<series_mean<Id>>((*this)())()), indices.size())),
+                                    nested_sub(sum2, nested_scale(sqr_X<include_covariance>(get<series_mean<Id>>((*this)())(), max_lag), indices.size())),
                                     indices.size()-1)
                              : kernel_value_type{};
         get<series_variance_type>((*this)())()= var;
@@ -977,8 +1200,9 @@ requires
         return *this;
     }
 
-    Series_Moment_statistics& operator&=(const std::vector<value_type_t<Id>>& x) {
-        *this &= Series_Moment_statistics(x);
+    Series_Moment_statistics& accumulate(const std::vector<value_type_t<Id>>& x,
+                                         std::size_t max_lag) {
+        *this &= Series_Moment_statistics(x, max_lag);
         return *this;
     }
     void reset() {
@@ -1095,23 +1319,190 @@ Maybe_error<series_cross_correlation_kernel<Id>> series_cross_correlation(
     const auto& kernel = get<variance_kernel_t<Id, true>>(stats())();
 
     out.resize(kernel.size());
-    for (std::size_t i = 0; i < kernel.size(); ++i) {
-        out[i].reserve(kernel[i].size());
-        for (std::size_t offset = 0; offset < kernel[i].size(); ++offset) {
-            const std::size_t j = i + offset;
-            auto maybe_block = normalize_series_cross_correlation_block(
-                diagonal_blocks[i], kernel[i][offset], diagonal_blocks[j], rtol, atol,
-                "series diagonal covariance[" + std::to_string(i) + "]",
-                "series covariance kernel[" + std::to_string(i) + "," + std::to_string(j) + "]",
-                "series diagonal covariance[" + std::to_string(j) + "]");
-            if (!maybe_block)
-                return Error(maybe_block.error()());
-            out[i].push_back(std::move(maybe_block.value()));
+    if (kernel.empty())
+        return Maybe_error<series_cross_correlation_kernel<Id>>(
+            series_cross_correlation_kernel<Id>(std::move(out)));
+
+    using block_entry_t = std::decay_t<decltype(diagonal_blocks.front())>;
+
+    if constexpr (std::is_arithmetic_v<block_entry_t>) {
+        // Scalar Id: amortize 1/sqrt(sigma_i) across all offsets. Halves the
+        // sqrt count but the cost was always O(1) per block — minor win.
+        std::vector<double> inv_sqrt_sigma(diagonal_blocks.size(), 0.0);
+        for (std::size_t i = 0; i < diagonal_blocks.size(); ++i) {
+            if (!std::isfinite(diagonal_blocks[i]))
+                return Error("diagonal[" + std::to_string(i) + "]: non-finite");
+            inv_sqrt_sigma[i] =
+                (diagonal_blocks[i] > 0.0) ? 1.0 / std::sqrt(diagonal_blocks[i]) : 0.0;
+        }
+        for (std::size_t i = 0; i < kernel.size(); ++i) {
+            out[i].reserve(kernel[i].size());
+            for (std::size_t offset = 0; offset < kernel[i].size(); ++offset) {
+                const std::size_t j = i + offset;
+                const double v = kernel[i][offset];
+                if (!std::isfinite(v))
+                    return Error("kernel[" + std::to_string(i) + "][" + std::to_string(offset) +
+                                 "]: non-finite");
+                out[i].push_back(v * inv_sqrt_sigma[i] * inv_sqrt_sigma[j]);
+            }
+        }
+    } else {
+        // Matrix / ParameterIndexed: one eigendecomp per sample, reused across
+        // all (i, i+offset) pairs for offset ∈ [0, max_lag). Dominant win when
+        // max_lag is comparable to the number of parameters — typical figure-2
+        // runs spend >90% of per-bootstrap-sample time in this loop's
+        // eigendecompositions, which this refactor amortizes ~max_lag×.
+        // Return the underlying matrix *preserving its static type* so that
+        // SymPosDefMatrix inputs dispatch to the SymPosDefMatrix overload of
+        // compute_psd_decomp (single retained eigendecomp) rather than the
+        // dense Matrix<double> overload (which first validates via a full
+        // eigendecomp, then calls the SymPosDef path — doubling the cost).
+        auto get_matrix = [](const auto& x) -> decltype(auto) {
+            if constexpr (requires { x.value(); })
+                return (x.value());
+            else
+                return (x);
+        };
+        std::vector<lapack::PSDDecomposition> whitenings;
+        whitenings.reserve(diagonal_blocks.size());
+        for (std::size_t i = 0; i < diagonal_blocks.size(); ++i) {
+            auto maybe_W = lapack::compute_psd_decomp(
+                get_matrix(diagonal_blocks[i]),
+                "series diagonal covariance[" + std::to_string(i) + "]", rtol, atol);
+            if (!maybe_W)
+                return Error(maybe_W.error()());
+            whitenings.push_back(std::move(maybe_W.value()));
+        }
+
+        for (std::size_t i = 0; i < kernel.size(); ++i) {
+            out[i].reserve(kernel[i].size());
+            for (std::size_t offset = 0; offset < kernel[i].size(); ++offset) {
+                const std::size_t j = i + offset;
+                auto maybe_block = lapack::apply_psd_whitening(
+                    whitenings[i], get_matrix(kernel[i][offset]), whitenings[j],
+                    "series covariance kernel[" + std::to_string(i) + "," + std::to_string(j) +
+                        "]");
+                if (!maybe_block)
+                    return Error(maybe_block.error()());
+                if constexpr (requires { diagonal_blocks[i].parameters_ptr(); }) {
+                    const auto* params = diagonal_blocks[i].has_parameters()
+                                             ? diagonal_blocks[i].parameters_ptr()
+                                             : (diagonal_blocks[j].has_parameters()
+                                                    ? diagonal_blocks[j].parameters_ptr()
+                                                    : nullptr);
+                    out[i].push_back(
+                        block_entry_t(std::move(maybe_block.value()), params));
+                } else {
+                    out[i].push_back(std::move(maybe_block.value()));
+                }
+            }
         }
     }
 
     return Maybe_error<series_cross_correlation_kernel<Id>>(
         series_cross_correlation_kernel<Id>(std::move(out)));
+}
+
+// Per-sample forward sum of the normalized cross-correlation kernel.
+// For each starting sample i, sums kernel[i][offset] over offset = 0..max_lag-1.
+// Result: one entry per sample, same shape as series_diagonal_covariance_blocks.
+template <class Id>
+cross_correlation_lag_forward<Id> series_cross_correlation_lag_forward(
+    const series_cross_correlation_kernel<Id>& kernel) {
+    using forward_type = typename cross_correlation_lag_forward<Id>::forward_type;
+    using entry_type = typename cross_correlation_lag_forward<Id>::entry_type;
+    forward_type forward;
+    const auto& rows = kernel();
+    forward.reserve(rows.size());
+    for (const auto& row : rows) {
+        if (row.empty()) {
+            forward.emplace_back();
+            continue;
+        }
+        entry_type acc = row.front();
+        for (std::size_t offset = 1; offset < row.size(); ++offset) {
+            acc = acc + row[offset];
+        }
+        forward.push_back(std::move(acc));
+    }
+    return cross_correlation_lag_forward<Id>(std::move(forward));
+}
+
+// Trace-global integral correlation lag via the unified sandwich formula.
+// Inputs: the unnormalized kernel (from Series_Moment_statistics) — entries are
+// raw per-sample cross-products of the quantity V at (start, start+offset).
+//
+//     Omega = sum_i sum_{offset>=0} [ kernel[i][offset] + kernel[i][offset]^T ]
+//             - sum_i kernel[i][0]    (avoid double-counting the lag-0 diagonal)
+//     C(0)  = sum_i kernel[i][0]
+//
+// Then:
+//     integral_correlation_lag = C(0)^{-1/2} * Omega * C(0)^{-1/2}
+//
+// For scalar V this reduces to Omega / C(0), i.e. the Kish/Sokal integral
+// autocorrelation time (bidirectional: positive and negative lags counted
+// symmetrically).
+template <class Id>
+Maybe_error<integral_correlation_lag<Id>> series_integral_correlation_lag(
+    const Series_Moment_statistics<Id, true>& stats, double rtol = 1e-10,
+    double atol = 0.0) {
+    return_error<integral_correlation_lag<Id>> Error{"series_integral_correlation_lag: "};
+
+    using entry_type = typename integral_correlation_lag<Id>::entry_type;
+    const auto& kernel = get<variance_kernel_t<Id, true>>(stats())();
+
+    if (kernel.empty()) {
+        return integral_correlation_lag<Id>(entry_type{});
+    }
+
+    // C(0) = sum_i kernel[i][0]   (sum of per-sample variances / lag-0 blocks)
+    bool c0_initialised = false;
+    entry_type c0{};
+    for (std::size_t i = 0; i < kernel.size(); ++i) {
+        if (kernel[i].empty()) continue;
+        if (!c0_initialised) {
+            c0 = kernel[i][0];
+            c0_initialised = true;
+        } else {
+            c0 = nested_add(c0, kernel[i][0]);
+        }
+    }
+    if (!c0_initialised) {
+        return integral_correlation_lag<Id>(entry_type{});
+    }
+
+    // Omega = sum_i [ kernel[i][0] + 2 * sum_{offset>0} kernel[i][offset] ]
+    // Accounts for positive AND negative lags via symmetry of the stationary
+    // process: kernel[i][-offset] = kernel[i-offset][offset]^T, and summing over
+    // all i folds the two directions into a factor of 2 on the positive side.
+    bool omega_initialised = false;
+    entry_type omega{};
+    auto accumulate = [&](const entry_type& e) {
+        if (!omega_initialised) {
+            omega = e;
+            omega_initialised = true;
+        } else {
+            omega = nested_add(omega, e);
+        }
+    };
+    for (std::size_t i = 0; i < kernel.size(); ++i) {
+        if (kernel[i].empty()) continue;
+        accumulate(kernel[i][0]);
+        for (std::size_t offset = 1; offset < kernel[i].size(); ++offset) {
+            accumulate(kernel[i][offset]);
+            accumulate(kernel[i][offset]);  // symmetric contribution from negative lag
+        }
+    }
+
+    // Sandwich via the existing normalize_series_cross_correlation_block helper,
+    // which dispatches on scalar/matrix/ParameterIndexed entry types.
+    auto maybe_sandwich =
+        normalize_series_cross_correlation_block(c0, omega, c0, rtol, atol,
+                                                 "integral_correlation_lag C(0) left",
+                                                 "integral_correlation_lag Omega",
+                                                 "integral_correlation_lag C(0) right");
+    if (!maybe_sandwich) return Error(maybe_sandwich.error()());
+    return integral_correlation_lag<Id>(std::move(maybe_sandwich.value()));
 }
 
 template <class Id>
@@ -1123,9 +1514,168 @@ Maybe_error<Series_Moment_report<Id>> series_moment_report(
     if (!maybe_corr)
         return Error(maybe_corr.error()());
 
+    auto forward = series_cross_correlation_lag_forward<Id>(maybe_corr.value());
+
+    auto maybe_integral = series_integral_correlation_lag<Id>(stats, rtol, atol);
+    if (!maybe_integral) {
+        return Error(maybe_integral.error()());
+    }
+
     return Maybe_error<Series_Moment_report<Id>>(Series_Moment_report<Id>(
-        get<count<Id>>(stats())(), get<series_mean<Id>>(stats())(), series_diagonal_covariance(stats),
-        std::move(maybe_corr.value())));
+        get<count<Id>>(stats())(), get<series_mean<Id>>(stats())(),
+        series_diagonal_covariance(stats), std::move(maybe_corr.value()), std::move(forward),
+        std::move(maybe_integral.value())));
+}
+
+// Extract just the diagonal entries from the per-sample covariance blocks.
+// For scalar Id, each block is a scalar and the diagonal IS the full block.
+// For vector Id, each block is a p x p matrix and we extract the p diagonal
+// entries, storing them as a p-vector per sample (type = mean_value_type_t<Id>).
+template <class Id>
+series_diagonal_variance<Id> extract_series_diagonal_variance(
+    const Series_Moment_statistics<Id, true>& stats) {
+    using out_entry = typename series_diagonal_variance<Id>::entry_type;
+    using out_vec = typename series_diagonal_variance<Id>::diagonal_type;
+
+    const auto& kernel = get<variance_kernel_t<Id, true>>(stats())();
+    out_vec diag_out;
+    diag_out.reserve(kernel.size());
+    for (const auto& row : kernel) {
+        if (row.empty()) {
+            diag_out.emplace_back();
+            continue;
+        }
+        const auto& block = row.front();  // lag-0 entry = per-sample covariance block
+        if constexpr (std::is_arithmetic_v<std::decay_t<decltype(block)>>) {
+            // Scalar Id: block is scalar, already the full "diagonal".
+            diag_out.push_back(static_cast<out_entry>(block));
+        } else if constexpr (requires { block.value(); block.parameters_ptr(); }) {
+            // ParameterIndexed wrapper.
+            if constexpr (std::is_constructible_v<out_entry, Matrix<double>&&,
+                                                  decltype(block.parameters_ptr())>) {
+                // entry_type's inner value is a plain Matrix<double> — extract
+                // the covariance diagonal into a p-vector.
+                const auto& mat = block.value();
+                const std::size_t n = mat.nrows();
+                Matrix<double> diag_vec(n, 1, false);
+                for (std::size_t i = 0; i < n; ++i) {
+                    diag_vec(i, 0) = mat(i, i);
+                }
+                diag_out.push_back(out_entry(std::move(diag_vec), block.parameters_ptr()));
+            } else if constexpr (requires {
+                                     typename out_entry::value_type(std::size_t{}, std::size_t{},
+                                                                    double{});
+                                     std::declval<typename out_entry::value_type&>().set(
+                                         std::size_t{}, std::size_t{}, double{});
+                                 }) {
+                // Matrix-valued Id (e.g. GFI as SymPosDefMatrix<double>).
+                // prod_XY<true>(Sym, Sym) packs via to_vector_half into an
+                // m-vector (m = p(p+1)/2) then xxt → m×m block. Its diagonal
+                // holds Var(GFI[i,j]) for each unique (i,j). Scatter those
+                // back into a p×p symmetric matrix of per-entry variances —
+                // compact (stores p(p+1)/2 values, matches entry_type shape).
+                using Inner = typename out_entry::value_type;
+                const auto& mat = block.value();
+                const std::size_t m = mat.nrows();
+                const std::size_t p =
+                    (static_cast<std::size_t>(std::sqrt(8.0 * static_cast<double>(m) + 1.0)) - 1) /
+                    2;
+                Inner diag_mat(p, p, 0.0);
+                std::size_t k = 0;
+                for (std::size_t i = 0; i < p; ++i) {
+                    for (std::size_t j = i; j < p; ++j) {
+                        diag_mat.set(i, j, mat(k, k));
+                        ++k;
+                    }
+                }
+                diag_out.push_back(out_entry(std::move(diag_mat), block.parameters_ptr()));
+            } else {
+                diag_out.emplace_back();
+            }
+        } else if constexpr (requires { block.nrows(); block.ncols(); block(std::size_t{0}, std::size_t{0}); }) {
+            if constexpr (std::is_constructible_v<out_entry, Matrix<double>&&>) {
+                // Plain matrix: extract diagonal as a column vector.
+                const std::size_t n = block.nrows();
+                Matrix<double> diag_vec(n, 1, false);
+                for (std::size_t i = 0; i < n; ++i) {
+                    diag_vec(i, 0) = block(i, i);
+                }
+                diag_out.push_back(out_entry(std::move(diag_vec)));
+            } else {
+                // Matrix-valued Id whose entry_type isn't Matrix<double>
+                // (e.g. SymPosDefMatrix): keep the block as-is.
+                diag_out.push_back(out_entry(block));
+            }
+        } else {
+            // Fallback: copy the block as-is. Safe for exotic entry types but
+            // silently wrong if the block has non-trivial off-diagonals.
+            diag_out.push_back(out_entry(block));
+        }
+    }
+    return series_diagonal_variance<Id>(std::move(diag_out));
+}
+
+// Report builders — one per level.
+
+template <class Id>
+Maybe_error<Report_integral<Id>> make_report_integral(
+    const Series_Moment_statistics<Id, true>& stats, double rtol = 1e-10, double atol = 0.0) {
+    return_error<Report_integral<Id>> Error{"make_report_integral: "};
+
+    auto maybe_integral = series_integral_correlation_lag<Id>(stats, rtol, atol);
+    if (!maybe_integral) {
+        return Error(maybe_integral.error()());
+    }
+    return Maybe_error<Report_integral<Id>>(
+        Report_integral<Id>(get<count<Id>>(stats())(), std::move(maybe_integral.value())));
+}
+
+template <class Id>
+Maybe_error<Report_local_var<Id>> make_report_local_var(
+    const Series_Moment_statistics<Id, true>& stats, double rtol = 1e-10, double atol = 0.0) {
+    return_error<Report_local_var<Id>> Error{"make_report_local_var: "};
+
+    auto maybe_corr = series_cross_correlation(stats, rtol, atol);
+    if (!maybe_corr) {
+        return Error(maybe_corr.error()());
+    }
+    auto forward = series_cross_correlation_lag_forward<Id>(maybe_corr.value());
+    auto maybe_integral = series_integral_correlation_lag<Id>(stats, rtol, atol);
+    if (!maybe_integral) {
+        return Error(maybe_integral.error()());
+    }
+    auto diag = extract_series_diagonal_variance<Id>(stats);
+
+    return Maybe_error<Report_local_var<Id>>(Report_local_var<Id>(
+        get<count<Id>>(stats())(), get<series_mean<Id>>(stats())(), std::move(diag),
+        std::move(forward), std::move(maybe_integral.value())));
+}
+
+template <class Id>
+Maybe_error<Report_local_cov<Id>> make_report_local_cov(
+    const Series_Moment_statistics<Id, true>& stats, double rtol = 1e-10, double atol = 0.0) {
+    return_error<Report_local_cov<Id>> Error{"make_report_local_cov: "};
+
+    auto maybe_corr = series_cross_correlation(stats, rtol, atol);
+    if (!maybe_corr) {
+        return Error(maybe_corr.error()());
+    }
+    auto forward = series_cross_correlation_lag_forward<Id>(maybe_corr.value());
+    auto maybe_integral = series_integral_correlation_lag<Id>(stats, rtol, atol);
+    if (!maybe_integral) {
+        return Error(maybe_integral.error()());
+    }
+
+    return Maybe_error<Report_local_cov<Id>>(Report_local_cov<Id>(
+        get<count<Id>>(stats())(), get<series_mean<Id>>(stats())(),
+        series_diagonal_covariance(stats), std::move(forward),
+        std::move(maybe_integral.value())));
+}
+
+template <class Id>
+Maybe_error<Report_cross<Id>> make_report_cross(
+    const Series_Moment_statistics<Id, true>& stats, double rtol = 1e-10, double atol = 0.0) {
+    return series_moment_report<Id>(stats, rtol, atol);
 }
 
 

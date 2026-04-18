@@ -360,57 +360,145 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Sum<Moment_statistics<dlogL, true>>>,
         Probit_statistics<Sum<Moment_statistics<Gaussian_Fisher_Information, false>>>,
         Probit_statistics<Information_Distortion_Matrix>,
+        Probit_statistics<log_Det<Information_Distortion_Matrix>>,
         Probit_statistics<Information_Distortion_Reconstituted>,
         Probit_statistics<Sample_Distortion_Matrix>,
+        Probit_statistics<log_Det<Sample_Distortion_Matrix>>,
         Probit_statistics<Correlation_Distortion_Matrix>,
+        Probit_statistics<log_Det<Correlation_Distortion_Matrix>>,
+        Probit_statistics<Fisher_Covariance>,
+        Probit_statistics<log_Det<Fisher_Covariance>>,
         Probit_statistics<Distortion_Corrected_Covariance>,
+        Probit_statistics<log_Det<Distortion_Corrected_Covariance>>,
         Probit_statistics<Distortion_Induced_Bias>>;
 
-using Analisis_derivative_diagnostic_evolution = var::concatenate_t<
+// Per-sample derived diagnostics: Sample_Distortion_Matrix and
+// Distortion_Induced_Bias evaluated at each sample. Included by presets that
+// ask for trace-local detail (series_var, series_cov, series_kernel_full).
+using Per_sample_derived_diagnostics =
+    Probit_statistics<macrodr::Evolution_of<var::Vector_Space<
+        Sample_Distortion_Matrix, Distortion_Induced_Bias>>>;
+
+// Preset 1: basic — one integral correlation lag per headline observable.
+// Used for lattice-scale runs; keeps output at megabyte scale.
+using Analisis_derivative_diagnostic_basic = var::concatenate_t<
+    Analisis_derivative_diagnostic_base,
+    var::Vector_Space<
+        Probit_statistics<Report_integral<logL>>,
+        Probit_statistics<Report_integral<macrodr::y_mean>>,
+        Probit_statistics<Report_integral<macrodr::y_var>>,
+        Probit_statistics<Report_integral<macrodr::r_std>>,
+        Probit_statistics<Report_integral<dlogL>>>>;
+
+// Preset 2: series_var — per-sample moments (diagonal variance only), plus
+// forward and integral lags, for 7 leaf observables + Per_sample_derived.
+using Analisis_derivative_diagnostic_series_var = var::concatenate_t<
+    var::concatenate_t<
         Analisis_derivative_diagnostic_base,
-        Probit_statistics<macrodr::Evolution_of<var::Vector_Space<
-            Moment_statistics<logL, false>, Moment_statistics<elogL, false>,
-            Moment_statistics<macrodr::y_mean, false>, Moment_statistics<macrodr::y_var, false>,
-            Moment_statistics<macrodr::r_std, false>,
-            Moment_statistics<macrodr::trust_coefficient, false>, Moment_statistics<dlogL, true>,
-            Moment_statistics<Gaussian_Fisher_Information, false>, Sample_Distortion_Matrix,
-            Distortion_Induced_Bias>>>>;
-
-using Analisis_derivative_diagnostic_evolution_cross_correlation = var::concatenate_t<
-        Analisis_derivative_diagnostic_evolution,
         var::Vector_Space<
-            Probit_statistics<Series_Moment_report<logL>>,
-            Probit_statistics<Series_Moment_report<macrodr::y_mean>>,
-            Probit_statistics<Series_Moment_report<macrodr::y_var>>,
-            Probit_statistics<Series_Moment_report<macrodr::r_std>>,
-            Probit_statistics<Series_Moment_report<dlogL>>>>;
+            Probit_statistics<Report_local_var<logL>>,
+            Probit_statistics<Report_local_var<elogL>>,
+            Probit_statistics<Report_local_var<macrodr::y_mean>>,
+            Probit_statistics<Report_local_var<macrodr::y_var>>,
+            Probit_statistics<Report_local_var<macrodr::r_std>>,
+            Probit_statistics<Report_local_var<macrodr::trust_coefficient>>,
+            Probit_statistics<Report_local_var<dlogL>>>>,
+    var::Vector_Space<Per_sample_derived_diagnostics>>;
 
-template<bool include_evolution=true, bool include_series_cross_correlation=false>
-using Analisis_derivative_diagnostic =
-std::conditional_t<include_series_cross_correlation,
-    Analisis_derivative_diagnostic_evolution_cross_correlation,
-    std::conditional_t<include_evolution,
-        Analisis_derivative_diagnostic_evolution,
-        Analisis_derivative_diagnostic_base>>;
+// Preset 3: series_cov — same as series_var but with full per-sample
+// covariance blocks for vector V's; adds GFI at local_var level
+// (matrix-of-matrix covariance is impractical for GFI).
+using Analisis_derivative_diagnostic_series_cov = var::concatenate_t<
+    var::concatenate_t<
+        Analisis_derivative_diagnostic_base,
+        var::Vector_Space<
+            Probit_statistics<Report_local_cov<logL>>,
+            Probit_statistics<Report_local_cov<elogL>>,
+            Probit_statistics<Report_local_cov<macrodr::y_mean>>,
+            Probit_statistics<Report_local_cov<macrodr::y_var>>,
+            Probit_statistics<Report_local_cov<macrodr::r_std>>,
+            Probit_statistics<Report_local_cov<macrodr::trust_coefficient>>,
+            Probit_statistics<Report_local_cov<dlogL>>,
+            Probit_statistics<Report_local_var<Gaussian_Fisher_Information>>>>,
+    var::Vector_Space<Per_sample_derived_diagnostics>>;
+
+// Preset 4: series_kernel — full cross-correlation kernel for the 5 core
+// observables. No auxiliaries (elogL, trust, GFI), no Per_sample_derived.
+// Focused single-condition mechanism view.
+using Analisis_derivative_diagnostic_series_kernel = var::concatenate_t<
+    Analisis_derivative_diagnostic_base,
+    var::Vector_Space<
+        Probit_statistics<Report_cross<logL>>,
+        Probit_statistics<Report_cross<macrodr::y_mean>>,
+        Probit_statistics<Report_cross<macrodr::y_var>>,
+        Probit_statistics<Report_cross<macrodr::r_std>>,
+        Probit_statistics<Report_cross<dlogL>>>>;
+
+// Preset 5: series_kernel_full — exhaustive single-condition: kernel for 7
+// leaf observables, GFI at local_var, and Per_sample_derived included.
+using Analisis_derivative_diagnostic_series_kernel_full = var::concatenate_t<
+    var::concatenate_t<
+        Analisis_derivative_diagnostic_base,
+        var::Vector_Space<
+            Probit_statistics<Report_cross<logL>>,
+            Probit_statistics<Report_cross<elogL>>,
+            Probit_statistics<Report_cross<macrodr::y_mean>>,
+            Probit_statistics<Report_cross<macrodr::y_var>>,
+            Probit_statistics<Report_cross<macrodr::r_std>>,
+            Probit_statistics<Report_cross<macrodr::trust_coefficient>>,
+            Probit_statistics<Report_cross<dlogL>>,
+            Probit_statistics<Report_local_var<Gaussian_Fisher_Information>>>>,
+    var::Vector_Space<Per_sample_derived_diagnostics>>;
 
 
+auto calculate_Likelihood_derivative_basic_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_basic;
 
-template<bool include_evolution=true, bool include_series_cross_correlation=false>
-auto calculate_Likelihood_derivative_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy,
-    std::size_t n_boostrap_samples, const std::set<double>&cis,  std::size_t seed)->
-   Analisis_derivative_diagnostic<include_evolution, include_series_cross_correlation>;
+auto calculate_Likelihood_derivative_series_var_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_var;
+
+auto calculate_Likelihood_derivative_series_cov_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_cov;
+
+auto calculate_Likelihood_derivative_series_kernel_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_kernel;
+
+auto calculate_Likelihood_derivative_series_kernel_full_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_series_kernel_full;
 
 
 inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_base const& lik,
                                           std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }
-inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_evolution const& lik,
+inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_basic const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_series_var const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_series_cov const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_series_kernel const& lik,
                                           std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }
 inline Maybe_error<std::string> write_csv(
-    Analisis_derivative_diagnostic_evolution_cross_correlation const& lik, std::string path) {
+    Analisis_derivative_diagnostic_series_kernel_full const& lik, std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }
 

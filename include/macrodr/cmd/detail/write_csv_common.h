@@ -74,6 +74,214 @@ template <class T>
 inline constexpr bool is_probit_statistics_v =
     is_probit_statistics<std::remove_cvref_t<T>>::value;
 
+// Traits for the moment-statistic wrappers (count / mean / variance / covariance).
+// When these appear as members of a Vector_Space (e.g. the body of a
+// Moment_statistics after bootstrap unwrapping), they should populate the
+// dedicated `statistic` CSV column rather than leaving that column empty and
+// stuffing the moment name into component_path.
+template <class T>
+struct stat_member_traits {
+    static constexpr bool is_stat = false;
+};
+template <class Va>
+struct stat_member_traits<::count<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "count";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::mean<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "mean";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::variance<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "variance";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::covariance<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "covariance";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::series_count<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "count";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::series_mean<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "series_mean";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::series_diagonal_covariance_blocks<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "series_diagonal_covariance_blocks";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::series_cross_correlation_kernel<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "series_cross_correlation_kernel";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::cross_correlation_lag_forward<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "cross_correlation_lag_forward";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::integral_correlation_lag<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "integral_correlation_lag";
+    using inner = Va;
+};
+template <class Va>
+struct stat_member_traits<::series_diagonal_variance<Va>> {
+    static constexpr bool is_stat = true;
+    static constexpr const char* statistic = "series_diagonal_variance";
+    using inner = Va;
+};
+
+template <class T>
+inline constexpr bool is_stat_member_v = stat_member_traits<std::remove_cvref_t<T>>::is_stat;
+
+// leaf_variable<T> strips all known stat/aggregation/bootstrap wrappers and
+// returns the innermost non-wrapper type — the "variable" that everything else
+// is a functor over. Vector_Space/Evolution_of stop the peel (because their
+// children are themselves variables, not a single one).
+template <class T>
+struct leaf_variable {
+    using type = T;
+};
+template <class V>
+struct leaf_variable<::Sum<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<Probit_statistics<V>> : leaf_variable<V> {};
+template <class V, bool IC>
+struct leaf_variable<Moment_statistics<V, IC>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<Series_Moment_report<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::count<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::mean<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::variance<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::covariance<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::series_count<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::series_mean<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::series_diagonal_covariance_blocks<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::series_cross_correlation_kernel<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::cross_correlation_lag_forward<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::integral_correlation_lag<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::series_diagonal_variance<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::log_Det<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<var::Indexed<V>> : leaf_variable<V> {};
+template <class V, class P>
+struct leaf_variable<var::Derivative<V, P>> : leaf_variable<V> {};
+
+template <class T>
+using leaf_variable_t =
+    var::untransformed_type_t<typename leaf_variable<std::remove_cvref_t<T>>::type>;
+
+// operation_chain<T> returns a dotted string of the functor names in the
+// wrapper chain, outer-to-inner. Non-commuting: "probit.moment.sum" and
+// "probit.sum.moment" are distinct and denote different computations.
+// count / mean / variance / covariance / series_* are NOT separate functors;
+// they are per-row discriminators of their parent (Moment_statistics or
+// Series_Moment_report), populating the `statistic` column instead.
+namespace op_chain_detail {
+inline std::string join(const char* head, const std::string& tail) {
+    return tail.empty() ? std::string{head} : std::string{head} + "." + tail;
+}
+}  // namespace op_chain_detail
+
+template <class T>
+struct operation_chain {
+    static std::string value() {
+        return {};
+    }
+};
+template <class V>
+struct operation_chain<::Sum<V>> {
+    static std::string value() {
+        return op_chain_detail::join("sum", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<Probit_statistics<V>> {
+    static std::string value() {
+        return op_chain_detail::join("probit", operation_chain<V>::value());
+    }
+};
+template <class V, bool IC>
+struct operation_chain<Moment_statistics<V, IC>> {
+    static std::string value() {
+        return op_chain_detail::join("moment", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<Series_Moment_report<V>> {
+    static std::string value() {
+        return op_chain_detail::join("series_moment_report", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<Evolution_of<V>> {
+    static std::string value() {
+        return op_chain_detail::join("evolution", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::log_Det<V>> {
+    static std::string value() {
+        return op_chain_detail::join("log_det", operation_chain<V>::value());
+    }
+};
+// count / mean / variance / covariance / series_* unwrap transparently —
+// they inherit the chain of their inner type but add nothing of their own
+// (they are discriminators of their parent functor, not functors themselves).
+template <class V>
+struct operation_chain<::count<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::mean<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::variance<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::covariance<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::series_count<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::series_mean<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::series_diagonal_covariance_blocks<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::series_cross_correlation_kernel<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::cross_correlation_lag_forward<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::integral_correlation_lag<V>> : operation_chain<V> {};
+template <class V>
+struct operation_chain<::series_diagonal_variance<V>> : operation_chain<V> {};
+
 template <class T>
 struct probit_statistics_traits;
 
@@ -115,14 +323,45 @@ std::string sanitize_component_segment(T&& raw) {
     return out.empty() ? std::string("value") : out;
 }
 
+// Build a label for a component type. Aggregate wrappers that would otherwise
+// enumerate sibling types (Vector_Space, Evolution_of<Vector_Space>) collapse to
+// empty or "Evolution" — the children already carry their own names via
+// emit_vector_space. Probit_statistics / Moment_statistics prefix their payload
+// without leaking their include_covariance template flag into the path.
 template <class T>
 std::string component_label() {
-    return sanitize_component_segment(
-        macrodr::dsl::type_name_no_namespace<var::untransformed_type_t<std::remove_cvref_t<T>>>());
+    using U = var::untransformed_type_t<std::remove_cvref_t<T>>;
+    if constexpr (is_vector_space_v<U>) {
+        return {};
+    } else if constexpr (is_evolution_of_v<U>) {
+        using Inner = typename U::element_type;
+        using InnerU = var::untransformed_type_t<std::remove_cvref_t<Inner>>;
+        if constexpr (is_vector_space_v<InnerU>) {
+            return "Evolution";
+        } else {
+            auto inner = component_label<Inner>();
+            return inner.empty() ? std::string{"Evolution"}
+                                 : std::string{"Evolution_of_"} + inner;
+        }
+    } else if constexpr (is_probit_statistics_v<U>) {
+        using Id = typename probit_statistics_traits<U>::id;
+        auto inner = component_label<Id>();
+        return inner.empty() ? std::string{"Probit_statistics"}
+                             : std::string{"Probit_statistics_"} + inner;
+    } else if constexpr (is_moment_statistics_v<U>) {
+        using Id = typename moment_statistics_traits<U>::id;
+        auto inner = component_label<Id>();
+        return inner.empty() ? std::string{"Moment_statistics"}
+                             : std::string{"Moment_statistics_"} + inner;
+    } else {
+        return sanitize_component_segment(macrodr::dsl::type_name_no_namespace<U>());
+    }
 }
 
 inline std::string append_component_path(const std::string& base, const std::string& segment) {
-    return base.empty() ? segment : base + "." + segment;
+    if (segment.empty()) return base;
+    if (base.empty()) return segment;
+    return base + "." + segment;
 }
 
 struct CsvContext {
@@ -138,6 +377,8 @@ struct CsvContext {
     std::optional<double> agonist;
     std::optional<double> patch_current;
     std::string component_path;
+    std::string variable;
+    std::string operation;
     std::optional<std::size_t> value_row;
     std::optional<std::size_t> value_col;
     std::string probit = "point";
@@ -185,6 +426,10 @@ class CsvWriter {
         write_optional(ctx.patch_current);
         out_ << ",";
         write_string(ctx.component_path);
+        out_ << ",";
+        write_string(ctx.variable);
+        out_ << ",";
+        write_string(ctx.operation);
         out_ << ",";
         write_optional(ctx.value_row);
         out_ << ",";
@@ -243,7 +488,7 @@ class CsvWriter {
     void write_header() {
         out_ << "scope,simulation_index,sample_index,segment_index,sub_index,n_step,"
                 "step_start,step_end,step_middle,agonist,patch_current,"
-                "component_path,value_row,value_col,"
+                "component_path,variable,operation,value_row,value_col,"
                 "probit,calculus,statistic,quantile_level,"
                 "param_index,param_col,param_name";
         for (const auto& axis_name : axis_names_) {
@@ -610,10 +855,15 @@ Maybe_error<std::optional<var::IndexSpace>> find_index_space_if_any(const T& x) 
 template <class Writer, class T>
 Maybe_error<bool> emit_vector_like(Writer& w, CsvContext ctx, const T& x) {
     const auto param_names = find_param_names(x);
+    const bool nested = ctx.value_row.has_value();
     for (std::size_t i = 0; i < x.size(); ++i) {
         auto item_ctx = ctx;
-        item_ctx.value_row = i;
-        item_ctx.value_col.reset();
+        if (nested) {
+            item_ctx.value_col = i;
+        } else {
+            item_ctx.value_row = i;
+            item_ctx.value_col.reset();
+        }
         if (param_names.has_value()) {
             assign_vector_param_metadata(item_ctx, *param_names, i);
         }
@@ -666,10 +916,15 @@ template <class Writer, class T>
 Maybe_error<bool> emit_matrix_like(Writer& w, CsvContext ctx, const T& x) {
     const auto param_names = find_param_names(x);
     if (x.nrows() == 1 || x.ncols() == 1) {
+        const bool nested = ctx.value_row.has_value();
         for (std::size_t i = 0; i < x.size(); ++i) {
             auto item_ctx = ctx;
-            item_ctx.value_row = i;
-            item_ctx.value_col.reset();
+            if (nested) {
+                item_ctx.value_col = i;
+            } else {
+                item_ctx.value_row = i;
+                item_ctx.value_col.reset();
+            }
             if (param_names.has_value()) {
                 assign_vector_param_metadata(item_ctx, *param_names, i);
             }
@@ -680,11 +935,14 @@ Maybe_error<bool> emit_matrix_like(Writer& w, CsvContext ctx, const T& x) {
         }
         return true;
     }
+    const bool nested_matrix = ctx.value_row.has_value();
     for (std::size_t r = 0; r < x.nrows(); ++r) {
         for (std::size_t c = 0; c < x.ncols(); ++c) {
             auto item_ctx = ctx;
-            item_ctx.value_row = r;
-            item_ctx.value_col = c;
+            if (!nested_matrix) {
+                item_ctx.value_row = r;
+                item_ctx.value_col = c;
+            }
             if (param_names.has_value()) {
                 assign_matrix_param_metadata(item_ctx, *param_names, r, c);
             }
@@ -697,19 +955,54 @@ Maybe_error<bool> emit_matrix_like(Writer& w, CsvContext ctx, const T& x) {
     return true;
 }
 
+// If this Member has a single well-defined leaf variable (i.e. the wrappers
+// peel down to a non-Vector_Space), populate ctx.variable and ctx.operation
+// once. Inner recursions don't overwrite these — they're shared down the
+// subtree and preserve the non-commutative functor order.
+template <class Member>
+void populate_variable_and_operation(CsvContext& ctx) {
+    using Leaf = leaf_variable_t<Member>;
+    if constexpr (!is_vector_space_v<Leaf>) {
+        if (ctx.variable.empty()) {
+            ctx.variable = sanitize_component_segment(
+                macrodr::dsl::type_name_no_namespace<Leaf>());
+        }
+        if (ctx.operation.empty()) {
+            ctx.operation = operation_chain<std::remove_cvref_t<Member>>::value();
+        }
+    }
+}
+
+// Emit one Vector_Space member. If the member is one of the moment-statistic
+// wrappers (count<T> / mean<T> / variance<T> / covariance<T> / series_*), the
+// statistic name goes to the dedicated CSV column and the path is left untouched
+// — the parent already identifies the quantity (in Moment_statistics /
+// Probit_statistics unwrappings the inner T equals the parent's Id). Otherwise
+// default to labelled recursion.
+template <class Member, class Writer, class T>
+Maybe_error<bool> emit_vector_space_member(Writer& w, CsvContext ctx, const T& value) {
+    populate_variable_and_operation<Member>(ctx);
+    if constexpr (is_stat_member_v<Member>) {
+        using Traits = stat_member_traits<Member>;
+        ctx.statistic = Traits::statistic;
+        return emit_any(w, std::move(ctx), get<Member>(value));
+    } else {
+        return emit_named_component(w, std::move(ctx), component_label<Member>(),
+                                    get<Member>(value));
+    }
+}
+
 template <class Writer, class T>
 Maybe_error<bool> emit_vector_space(Writer& w, CsvContext ctx, const T& x) {
     using Tuple = typename vector_space_types<std::remove_cvref_t<T>>::types;
     Maybe_error<bool> ok = true;
     []<std::size_t... Is>(Writer& writer, CsvContext base_ctx, const T& value,
                           Maybe_error<bool>& ok_ref, std::index_sequence<Is...>) {
-        ((ok_ref =
-              ok_ref
-                  ? emit_named_component(
-                        writer, base_ctx,
-                        component_label<typename std::tuple_element_t<Is, Tuple>::type>(),
-                        get<typename std::tuple_element_t<Is, Tuple>::type>(value))
-                  : ok_ref),
+        ((ok_ref = ok_ref
+                       ? emit_vector_space_member<
+                             typename std::tuple_element_t<Is, Tuple>::type>(writer, base_ctx,
+                                                                             value)
+                       : ok_ref),
          ...);
     }(w, std::move(ctx), x, ok, std::make_index_sequence<std::tuple_size_v<Tuple>>{});
     return ok;

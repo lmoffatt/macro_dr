@@ -32,11 +32,12 @@ dlikelihood_predictions = calc_dlikelihood_predictions(
     experiment=experiment,
     data_series=simulations)
 
-diagnostics = likelihood_derivative_diagnostics(
+diagnostics = likelihood_derivative_basic_diagnostics(
     dlikelihood_predictions=dlikelihood_predictions,
     n_boostrap_samples=2,
     probits=[0.025,0.975],
-    seed=42)
+    seed=42,
+    max_lag=20)
 
 diagnostics_file = write_csv(
     analysis=diagnostics,
