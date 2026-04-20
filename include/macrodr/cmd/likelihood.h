@@ -368,8 +368,20 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<log_Det<Correlation_Distortion_Matrix>>,
         Probit_statistics<Fisher_Covariance>,
         Probit_statistics<log_Det<Fisher_Covariance>>,
+        Probit_statistics<Correlation_Of<Fisher_Covariance>>,
+        Probit_statistics<Eigenvalue_Spectrum<Fisher_Covariance>>,
+        Probit_statistics<Effective_Rank<Fisher_Covariance>>,
+        Probit_statistics<Spectrum_Condition_Number<Fisher_Covariance>>,
+        Probit_statistics<Null_Space_Projector<Fisher_Covariance>>,
+        Probit_statistics<Worst_Subspace_Projector<Fisher_Covariance>>,
         Probit_statistics<Distortion_Corrected_Covariance>,
         Probit_statistics<log_Det<Distortion_Corrected_Covariance>>,
+        Probit_statistics<Correlation_Of<Distortion_Corrected_Covariance>>,
+        Probit_statistics<Eigenvalue_Spectrum<Distortion_Corrected_Covariance>>,
+        Probit_statistics<Effective_Rank<Distortion_Corrected_Covariance>>,
+        Probit_statistics<Spectrum_Condition_Number<Distortion_Corrected_Covariance>>,
+        Probit_statistics<Null_Space_Projector<Distortion_Corrected_Covariance>>,
+        Probit_statistics<Worst_Subspace_Projector<Distortion_Corrected_Covariance>>,
         Probit_statistics<Distortion_Induced_Bias>>;
 
 // Per-sample derived diagnostics: Sample_Distortion_Matrix and

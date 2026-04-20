@@ -6,7 +6,9 @@
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
+#include <numeric>
 #include <sstream>
+#include <vector>
 
 #include "derivative_operator.h"
 #include "matrix.h"
@@ -2703,23 +2705,76 @@ inline Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
 // lag-0 block for sample i anchors max_lag forward and max_lag backward
 // normalizations.
 struct PSDDecomposition {
-    Matrix<double> basis;
-    DiagonalMatrix<double> eigenvalues;
-    DiagonalMatrix<double> inv_sqrt;
-    DiagonalMatrix<double> inv;
-    DiagonalMatrix<double> sqrt_vals;
+    // Retained-subspace representation (used by whitening / congruence helpers).
+    Matrix<double> basis;              // n × K (retained eigenvectors)
+    DiagonalMatrix<double> eigenvalues;// K (retained)
+    DiagonalMatrix<double> inv_sqrt;   // K
+    DiagonalMatrix<double> inv;        // K
+    DiagonalMatrix<double> sqrt_vals;  // K
+    // Full spectrum (used by identifiability diagnostics: spectrum, effective
+    // rank, null-space projector). Populated alongside the retained-only view.
+    PSDRetainedEigensystem spectrum;
     std::size_t original_dim = 0;
     bool empty = true;
 };
+
+// Lenient eigendecomposition for identifiability diagnostics. Returns a
+// PSDRetainedEigensystem with full eigenvalues/eigenvectors always populated.
+// Retained indices are best-effort — empty if every eigenvalue is below tol or
+// if some are too negative for strict PSD. This ensures spectral diagnostics
+// (eigenvalue_spectrum, null_space_projector, etc.) always have data, even
+// when the matrix is numerically degenerate on some directions.
+inline Maybe_error<PSDRetainedEigensystem> lenient_psd_eigensystem(
+    const SymPosDefMatrix<double>& x, const std::string& name) {
+    return_error<PSDRetainedEigensystem> Error{"lenient_psd_eigensystem: "};
+    if (x.size() == 0)
+        return Error(name + ": empty matrix");
+    if (x.nrows() != x.ncols())
+        return Error(name + ": matrix is not square");
+    if (!matrix_has_only_finite(x))
+        return Error(name + ": matrix has non-finite entries");
+
+    auto maybe_eigs = symmetric_eigensystem_copy(x, name);
+    if (!maybe_eigs)
+        return Error(maybe_eigs.error()());
+    const auto& [L, VR, VL] = maybe_eigs.value();
+    (void)VL;
+
+    double lambda_max = 0.0;
+    for (std::size_t i = 0; i < L.size(); ++i)
+        lambda_max = std::max(lambda_max, L[i]);
+
+    // Best-effort retention: everything strictly positive (no PSD strictness).
+    std::vector<std::size_t> retained;
+    retained.reserve(L.size());
+    for (std::size_t i = 0; i < L.size(); ++i)
+        if (L[i] > 0.0) retained.push_back(i);
+
+    return PSDRetainedEigensystem{std::move(L), std::move(VR), std::move(retained), lambda_max};
+}
 
 inline Maybe_error<PSDDecomposition> compute_psd_decomp(const SymPosDefMatrix<double>& A,
                                                         const std::string& name, double rtol,
                                                         double atol) {
     return_error<PSDDecomposition> Error{"compute_psd_decomp: "};
     auto maybe_eigs = retained_psd_eigensystem(A, name, rtol, atol, true);
-    if (!maybe_eigs)
-        return Error(maybe_eigs.error()());
-    const auto& eigs = maybe_eigs.value();
+    if (!maybe_eigs) {
+        // Fall back to a spectrum-only decomposition: congruence operations
+        // will short-circuit on W.empty, but spectral diagnostics (eigenvalue
+        // spectrum, null projector, effective rank, condition number) still
+        // have data. Critical for the bootstrap pipeline — without this,
+        // degenerate samples drop out of Probit_statistics and nothing is
+        // emitted to CSV beyond the bootstrap_count.
+        auto maybe_lenient = lenient_psd_eigensystem(A, name);
+        if (!maybe_lenient)
+            return Error(maybe_eigs.error()());
+        PSDDecomposition W;
+        W.original_dim = A.nrows();
+        W.spectrum = std::move(maybe_lenient.value());
+        W.empty = true;  // no retained subspace → congruence helpers return zeros
+        return W;
+    }
+    auto eigs = std::move(maybe_eigs.value());
 
     PSDDecomposition W;
     W.original_dim = A.nrows();
@@ -2737,6 +2792,7 @@ inline Maybe_error<PSDDecomposition> compute_psd_decomp(const SymPosDefMatrix<do
         W.inv[i] = 1.0 / lam;
     }
     W.empty = (W.basis.ncols() == 0);
+    W.spectrum = std::move(eigs);
     return W;
 }
 
@@ -2866,6 +2922,250 @@ inline SymPosDefMatrix<double> apply_inverse_as_matrix(const PSDDecomposition& W
     if (W.empty)
         return SymPosDefMatrix<double>(W.original_dim, W.original_dim, 0.0);
     return dense_to_semidefinite(W.basis * W.inv * tr(W.basis));
+}
+
+// Spectral-form correlation of FC = H^{-1} = V Λ^{-1} Vᵀ, computed directly
+// from (V retained, λ retained) without reconstructing the p×p covariance.
+// Using u_i = V[i,:] / √λ  restricted to retained modes, FC[i,j] = ⟨u_i, u_j⟩
+// so |ρ[i,j]| = |⟨u_i, u_j⟩| / (‖u_i‖·‖u_j‖) ≤ 1 by Cauchy–Schwarz by construction.
+inline SymPosDefMatrix<double> fc_correlation_from_decomp(const PSDDecomposition& W) {
+    const std::size_t n = W.original_dim;
+    SymPosDefMatrix<double> rho(n, n, 0.0);
+    if (W.empty || n == 0)
+        return rho;
+    const std::size_t K = W.basis.ncols();
+
+    std::vector<double> fc_diag(n, 0.0);
+    for (std::size_t i = 0; i < n; ++i) {
+        double s = 0.0;
+        for (std::size_t k = 0; k < K; ++k) {
+            const double v = W.basis(i, k);
+            s += v * v * W.inv[k];
+        }
+        fc_diag[i] = s;
+    }
+    for (std::size_t i = 0; i < n; ++i) {
+        rho.set(i, i, (fc_diag[i] > 0.0) ? 1.0 : 0.0);
+        for (std::size_t j = i + 1; j < n; ++j) {
+            if (fc_diag[i] <= 0.0 || fc_diag[j] <= 0.0) {
+                rho.set(i, j, 0.0);
+                continue;
+            }
+            double s = 0.0;
+            for (std::size_t k = 0; k < K; ++k)
+                s += W.basis(i, k) * W.basis(j, k) * W.inv[k];
+            rho.set(i, j, s / std::sqrt(fc_diag[i] * fc_diag[j]));
+        }
+    }
+    return rho;
+}
+
+// Spectral-form correlation of DCC = H^{-1} J H^{-1}, computed directly from
+// the eigendecomposition of H and the projection of J into H's retained
+// subspace. DCC[i,j] = x_iᵀ G x_j with x_i = V[i,:]ᵀ (retained) and
+// G = Λ^{-1} (Vᵀ J V) Λ^{-1}. G is PSD (congruence of PSD Vᵀ J V by a
+// diagonal), so |ρ[i,j]| ≤ 1 in exact arithmetic. A final clamp to [-1, 1]
+// absorbs residual floating-point drift.
+inline SymPosDefMatrix<double> dcc_correlation_from_decomp(const PSDDecomposition& W,
+                                                            const SymPosDefMatrix<double>& J) {
+    const std::size_t n = W.original_dim;
+    SymPosDefMatrix<double> rho(n, n, 0.0);
+    if (W.empty || n == 0)
+        return rho;
+    const std::size_t K = W.basis.ncols();
+
+    // G = Λ^{-1} (Vᵀ J V) Λ^{-1}  (K × K)
+    auto VtJV = project_to_basis(W.basis, J);
+    Matrix<double> G(K, K, 0.0);
+    for (std::size_t a = 0; a < K; ++a)
+        for (std::size_t b = 0; b < K; ++b)
+            G(a, b) = W.inv[a] * VtJV(a, b) * W.inv[b];
+
+    // DCC[i,j] = V[i,:] · G · V[j,:]ᵀ. Diagonal is ≥ 0 by construction (G PSD).
+    std::vector<double> dcc_diag(n, 0.0);
+    for (std::size_t i = 0; i < n; ++i) {
+        double s = 0.0;
+        for (std::size_t a = 0; a < K; ++a) {
+            double acc = 0.0;
+            for (std::size_t b = 0; b < K; ++b) acc += G(a, b) * W.basis(i, b);
+            s += W.basis(i, a) * acc;
+        }
+        dcc_diag[i] = std::max(0.0, s);
+    }
+
+    for (std::size_t i = 0; i < n; ++i) {
+        rho.set(i, i, (dcc_diag[i] > 0.0) ? 1.0 : 0.0);
+        for (std::size_t j = i + 1; j < n; ++j) {
+            if (dcc_diag[i] <= 0.0 || dcc_diag[j] <= 0.0) {
+                rho.set(i, j, 0.0);
+                continue;
+            }
+            double s = 0.0;
+            for (std::size_t a = 0; a < K; ++a) {
+                double acc = 0.0;
+                for (std::size_t b = 0; b < K; ++b) acc += G(a, b) * W.basis(j, b);
+                s += W.basis(i, a) * acc;
+            }
+            double r = s / std::sqrt(dcc_diag[i] * dcc_diag[j]);
+            // Clamp residual floating-point Cauchy–Schwarz drift.
+            if (r > 1.0) r = 1.0;
+            if (r < -1.0) r = -1.0;
+            rho.set(i, j, r);
+        }
+    }
+    return rho;
+}
+
+// Eigenvalue spectrum of H as a p×1 column vector, sorted descending.
+inline Matrix<double> eigenvalue_spectrum(const PSDDecomposition& W) {
+    const auto& eigs = W.spectrum;
+    const std::size_t p = eigs.eigenvalues.size();
+    std::vector<double> vals;
+    vals.reserve(p);
+    for (std::size_t k = 0; k < p; ++k) vals.push_back(eigs.eigenvalues[k]);
+    std::sort(vals.begin(), vals.end(), std::greater<double>{});
+    Matrix<double> out(p, 1, false);
+    for (std::size_t k = 0; k < p; ++k) out(k, 0) = vals[k];
+    return out;
+}
+
+// Number of eigenvalues above the retention tolerance — the count of
+// informative directions. Null defect = p − effective_rank.
+inline std::size_t effective_rank(const PSDDecomposition& W, double rtol, double atol) {
+    const auto& eigs = W.spectrum;
+    const double tol = subspace_tol(eigs.lambda_max, rtol, atol);
+    std::size_t r = 0;
+    for (std::size_t k = 0; k < eigs.eigenvalues.size(); ++k)
+        if (eigs.eigenvalues[k] > tol) ++r;
+    return r;
+}
+
+// Dynamic-range scalar: κ = λ_max / λ_min over the *full* spectrum.
+// Distinguishes sloppy-but-identified (κ ~ 10⁶–10¹⁰) from formally degenerate
+// (κ → ∞). Complements effective_rank: the latter counts the formal rank
+// (null vs not), the former measures how far from null even informative
+// modes are. Returns +∞ if λ_min = 0 (truly singular) and NaN if the matrix
+// has no modes at all.
+inline double spectrum_condition_number(const PSDDecomposition& W) {
+    const auto& eigs = W.spectrum;
+    const std::size_t p = eigs.eigenvalues.size();
+    if (p == 0)
+        return std::numeric_limits<double>::quiet_NaN();
+    double lam_min = std::numeric_limits<double>::infinity();
+    double lam_max = 0.0;
+    for (std::size_t k = 0; k < p; ++k) {
+        const double v = eigs.eigenvalues[k];
+        if (v < lam_min) lam_min = v;
+        if (v > lam_max) lam_max = v;
+    }
+    if (lam_min <= 0.0)
+        return std::numeric_limits<double>::infinity();
+    return lam_max / lam_min;
+}
+
+// Orthogonal projector onto the non-identifiable subspace:
+//   Π = Σ_{k : λ_k ≤ tol} v_k v_kᵀ.
+// Rotation-invariant within the null subspace. Π_{ii} ∈ [0,1] is the fraction
+// of parameter i's variance living in the non-identifiable subspace;
+// off-diagonals reveal entanglement structure.
+inline SymPosDefMatrix<double> null_space_projector(const PSDDecomposition& W, double rtol,
+                                                     double atol) {
+    const std::size_t n = W.original_dim;
+    SymPosDefMatrix<double> Pi(n, n, 0.0);
+    const auto& eigs = W.spectrum;
+    const double tol = subspace_tol(eigs.lambda_max, rtol, atol);
+
+    for (std::size_t k = 0; k < eigs.eigenvalues.size(); ++k) {
+        if (eigs.eigenvalues[k] > tol) continue;
+        for (std::size_t i = 0; i < n; ++i) {
+            for (std::size_t j = i; j < n; ++j) {
+                const double d = eigs.eigenvectors(i, k) * eigs.eigenvectors(j, k);
+                Pi.set(i, j, Pi(i, j) + d);
+            }
+        }
+    }
+    return Pi;
+}
+
+// Orthogonal projector onto the least-identified subspace — always non-empty
+// when the matrix is meaningfully sloppy, even if no direction is *formally*
+// null. Complements `null_space_projector`, which uses a strict threshold
+// (`rtol · λ_max`) and therefore reports an empty projector whenever all
+// eigenvalues are above that floor — including cases with κ = λ_max/λ_min in
+// the 10⁶–10¹² range that are non-identifiable *in practice*.
+//
+// Algorithm:
+//   1. If κ = λ_max/λ_min < `activation_kappa`, return the zero matrix —
+//      the spectrum is tight enough that no direction is worth flagging.
+//   2. Otherwise, include the smallest-eigenvalue mode, then grow the
+//      subspace upward as long as the next mode's eigenvalue is within
+//      `cluster_gap_factor` × λ_min. Stops at the first gap wider than
+//      that factor. Handles near-degenerate low clusters without the
+//      rotation ambiguity of naming a single "smallest eigenvector".
+//
+// Defaults:
+//   activation_kappa = 1e4 — below this, spectrum is "healthy" per the
+//   threshold ladder in docs/math/non-identifiability-diagnosis.md.
+//   cluster_gap_factor = 10 — a 10× eigenvalue jump is the canonical
+//   "gap" in sloppy-model analyses (Transtrum et al.).
+inline SymPosDefMatrix<double> worst_subspace_projector(
+    const PSDDecomposition& W, double activation_kappa = 1e4,
+    double cluster_gap_factor = 10.0) {
+    const std::size_t n = W.original_dim;
+    SymPosDefMatrix<double> Pi(n, n, 0.0);
+    const auto& eigs = W.spectrum;
+    const std::size_t p = eigs.eigenvalues.size();
+    if (p == 0 || n == 0)
+        return Pi;
+
+    double lam_min = std::numeric_limits<double>::infinity();
+    double lam_max = 0.0;
+    for (std::size_t k = 0; k < p; ++k) {
+        const double v = eigs.eigenvalues[k];
+        if (v < lam_min) lam_min = v;
+        if (v > lam_max) lam_max = v;
+    }
+
+    // Healthy spectrum: no worst direction to report.
+    if (lam_min > 0.0 && lam_max / lam_min < activation_kappa)
+        return Pi;
+
+    std::vector<std::size_t> order(p);
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(),
+              [&eigs](std::size_t a, std::size_t b) {
+                  return eigs.eigenvalues[a] < eigs.eigenvalues[b];
+              });
+
+    std::vector<std::size_t> cluster;
+    cluster.push_back(order[0]);
+    if (lam_min > 0.0) {
+        const double cutoff = cluster_gap_factor * lam_min;
+        for (std::size_t i = 1; i < p; ++i) {
+            if (eigs.eigenvalues[order[i]] <= cutoff)
+                cluster.push_back(order[i]);
+            else
+                break;
+        }
+    } else {
+        // Strict null already present — include all strictly-null modes.
+        for (std::size_t i = 1; i < p; ++i) {
+            if (eigs.eigenvalues[order[i]] <= 0.0)
+                cluster.push_back(order[i]);
+            else
+                break;
+        }
+    }
+
+    for (std::size_t k : cluster) {
+        for (std::size_t i = 0; i < n; ++i) {
+            for (std::size_t j = i; j < n; ++j) {
+                const double d = eigs.eigenvectors(i, k) * eigs.eigenvectors(j, k);
+                Pi.set(i, j, Pi(i, j) + d);
+            }
+        }
+    }
+    return Pi;
 }
 
 inline Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(

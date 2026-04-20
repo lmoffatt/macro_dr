@@ -1867,6 +1867,49 @@ inline auto eigs_idm(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<dou
     return lapack::Lapack_IDM_EigenSystem(H, J);
 }
 
+// Pearson correlation matrix of an SPD covariance C:
+//   R[i,j] = C[i,j] / sqrt(C[i,i] * C[j,j])
+// with R[i,i] = 1. Entries near ±1 (off-diagonal) flag collinear parameters.
+// A zero diagonal entry (uninformative direction) leaves its row/column at 0
+// except for the diagonal, which stays at 1.
+inline auto correlation_matrix(const SymPosDefMatrix<double>& C) {
+    const std::size_t p = C.nrows();
+    SymPosDefMatrix<double> R(p, p, 0.0);
+    if (p == 0)
+        return R;
+    std::vector<double> inv_sd(p, 0.0);
+    for (std::size_t i = 0; i < p; ++i) {
+        const double v = C(i, i);
+        inv_sd[i] = (v > 0.0) ? 1.0 / std::sqrt(v) : 0.0;
+    }
+    for (std::size_t i = 0; i < p; ++i) {
+        R.set(i, i, (inv_sd[i] > 0.0) ? 1.0 : 0.0);
+        for (std::size_t j = i + 1; j < p; ++j) {
+            R.set(i, j, inv_sd[i] * C(i, j) * inv_sd[j]);
+        }
+    }
+    return R;
+}
+
+// Argmax of |R[i,j]| over i < j. Returns {max_abs, i, j}; if p < 2 or all zero,
+// returns {0, 0, 0}. Used by the identifiability summary diagnostic.
+inline std::tuple<double, std::size_t, std::size_t> max_abs_off_diagonal_pair(
+    const SymPosDefMatrix<double>& R) {
+    const std::size_t p = R.nrows();
+    double best = 0.0;
+    std::size_t best_i = 0, best_j = 0;
+    for (std::size_t i = 0; i + 1 < p; ++i)
+        for (std::size_t j = i + 1; j < p; ++j) {
+            const double v = std::abs(R(i, j));
+            if (v > best) {
+                best = v;
+                best_i = i;
+                best_j = j;
+            }
+        }
+    return {best, best_i, best_j};
+}
+
 inline auto idm_matrix(const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double e=0) {
     if (e==0)
     {return lapack::Lapack_IDM_Matrix(H, J);}

@@ -1,12 +1,14 @@
 model = load_model("scheme_CO")
 
 axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
-axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
+#axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
 axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
 
-current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
+#current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
+current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
 
-Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1, 10,100,1000,10000])
+Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,200,500,1000,10000])
 
 
 parameter = create_parameters(
@@ -43,7 +45,7 @@ model_str="scheme_CO"
 simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 64, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 1024, experiment = experiment,
                          observations = observations, 
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
@@ -52,7 +54,7 @@ simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulati
 
 
 simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation_16")
+   path= "figures/data/figure_2_simulation_0420_1")
 
 
 algorithm_axis = axis(name= "algorithm", labels= ["macro_NR", "macro_R","macro_MNR", "macro_MR", "macro_IR", "macro_IRT"])
@@ -73,8 +75,8 @@ algorithms = build_likelihood_function(model =model,
 dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =algorithms, parameters=par_tr, experiment =experiment,
 data_series = simulations)
 
-dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
-   path= "figures/data/figure_2_dlikelihood_predictions_all")
+#dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
+#   path= "figures/data/figure_2_dlikelihood_predictions_all")
 
 
 likelihood_analysis = likelihood_derivative_basic_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
@@ -82,4 +84,4 @@ likelihood_analysis = likelihood_derivative_basic_diagnostics(dlikelihood_predic
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_dlikelihood_analysis_16")
+   path= "figures/data/figure_2_basic_diagnostics__0420_1")
