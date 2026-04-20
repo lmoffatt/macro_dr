@@ -38,8 +38,22 @@ The shared `Analisis_derivative_diagnostic_base` always carries:
 `Information_Distortion_Matrix`, `Sample_Distortion_Matrix`,
 `Correlation_Distortion_Matrix`, `Fisher_Covariance`,
 `Distortion_Corrected_Covariance`, their `log_Det<…>` (for Laplace-approximated
-Bayes-factor corrections), `Distortion_Induced_Bias`, and Σ moments for the
-seven observables.
+Bayes-factor corrections), `Distortion_Induced_Bias`, Σ moments for the seven
+observables, plus an **identifiability diagnostic bundle** on `Fisher_Covariance`
+and `Distortion_Corrected_Covariance`:
+
+- `Correlation_Of<V>` — p×p Pearson correlation matrix, computed via the
+  spectral form so `|ρ| ≤ 1` is guaranteed by construction.
+- `Eigenvalue_Spectrum<V>` — H's eigenvalues sorted descending (κ and gap
+  readable from the plot).
+- `Effective_Rank<V>` — count of eigenvalues above `rtol·λ_max`; null defect
+  = p − effective rank.
+- `Null_Space_Projector<V>` — rotation-invariant p×p projector onto the
+  non-identifiable subspace; `Π_{ii}` gives per-parameter non-identifiability
+  fraction.
+
+See [docs/math/non-identifiability-diagnosis.md](../math/non-identifiability-diagnosis.md)
+for interpretation and workflow.
 
 ### Report families (defined in `legacy/moment_statistics.h`)
 
@@ -100,6 +114,21 @@ The generic `write_csv(var::Indexed<T> const&, std::string)` template at
 [include/macrodr/cmd/likelihood.h:314](../../include/macrodr/cmd/likelihood.h#L314)
 covers indexed variants automatically — no per-preset `Indexed<…>` write_csv
 overloads needed.
+
+### Shared PSD decomposition
+
+Every distortion computation (`IDM`, `SDM`, `DCC`, `FC`, `DIB`) and every
+kernel normalization pass share one eigendecomposition of the anchor matrix
+(`H`, `J_sample`, `SDM`, or lag-0 covariance blocks) via `lapack::PSDDecomposition`
+in [legacy/lapack_headers.h](../../legacy/lapack_headers.h). A single
+`compute_psd_decomp` per anchor produces basis + retained/full spectrum +
+diagonal inverse/inv-sqrt/sqrt scalings; downstream helpers (`apply_normalized_congruence`,
+`apply_inverse_congruence`, `apply_inverse_vector`, `apply_inverse_as_matrix`,
+`apply_psd_whitening`, `fc_correlation_from_decomp`, `dcc_correlation_from_decomp`,
+`null_space_projector`) consume it without re-decomposing. This replaces what
+was previously 5 eigendecompositions of H per bootstrap sample (and T × max_lag
+eigendecompositions in the kernel loop) with one per anchor, and gives all
+identifiability outputs for free from the same data.
 
 ## Why not alternatives
 

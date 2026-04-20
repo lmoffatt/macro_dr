@@ -194,6 +194,18 @@ struct leaf_variable<::series_diagonal_variance<V>> : leaf_variable<V> {};
 template <class V>
 struct leaf_variable<::log_Det<V>> : leaf_variable<V> {};
 template <class V>
+struct leaf_variable<::Correlation_Of<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Eigenvalue_Spectrum<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Effective_Rank<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Spectrum_Condition_Number<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Null_Space_Projector<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Worst_Subspace_Projector<V>> : leaf_variable<V> {};
+template <class V>
 struct leaf_variable<var::Indexed<V>> : leaf_variable<V> {};
 template <class V, class P>
 struct leaf_variable<var::Derivative<V, P>> : leaf_variable<V> {};
@@ -254,6 +266,42 @@ template <class V>
 struct operation_chain<::log_Det<V>> {
     static std::string value() {
         return op_chain_detail::join("log_det", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Correlation_Of<V>> {
+    static std::string value() {
+        return op_chain_detail::join("correlation_of", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Eigenvalue_Spectrum<V>> {
+    static std::string value() {
+        return op_chain_detail::join("spectrum", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Effective_Rank<V>> {
+    static std::string value() {
+        return op_chain_detail::join("effective_rank", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Spectrum_Condition_Number<V>> {
+    static std::string value() {
+        return op_chain_detail::join("spectrum_condition_number", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Null_Space_Projector<V>> {
+    static std::string value() {
+        return op_chain_detail::join("null_space_projector", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Worst_Subspace_Projector<V>> {
+    static std::string value() {
+        return op_chain_detail::join("worst_subspace_projector", operation_chain<V>::value());
     }
 };
 // count / mean / variance / covariance / series_* unwrap transparently —

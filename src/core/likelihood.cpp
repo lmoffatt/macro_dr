@@ -1460,22 +1460,50 @@ auto calculate_Likelihood_diagnostics_preset_f(
                          Moment_statistics<r_std>, Moment_statistics<r2_std>,
                          Moment_statistics<trust_coefficient>, Moment_statistics<dlogL, true>,
                          Moment_statistics<Gaussian_Fisher_Information, false>>>>{},
+        // macroIR guards logL / elogL / dlogL in calculate_logL at source (y_is_nan
+        // early-return → hard zero). But r_std, r2_std, trust_coefficient are
+        // computed independently and inherit NaN from NaN-observation samples.
+        // Wrap each scalar read with an isnan check so NaN samples contribute
+        // zero to Σ_t and its moments — physically "no measurement → no signal".
         [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
-        [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
-        [](const auto& evo_i) { return sqr(primitive(get<r_std>(evo_i))()); },
-        [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
+        [](const auto& evo_i) {
+            const double v = primitive(get<r_std>(evo_i))();
+            return std::isnan(v) ? 0.0 : v;
+        },
+        [](const auto& evo_i) {
+            const double v = primitive(get<r_std>(evo_i))();
+            return std::isnan(v) ? 0.0 : sqr(v);
+        },
+        [](const auto& evo_i) {
+            const double v = get<trust_coefficient>(evo_i)();
+            return std::isnan(v) ? 0.0 : v;
+        },
         [](const auto& evo_i) {
             return parameter_vector_payload(derivative(get<logL>(evo_i))(),
                                             var::get_dx_of_dfdx(get<logL>(evo_i)));
         },
         [](const auto& evo_i) {
-            return parameter_spd_payload(
-                sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
-                        (1.0 / primitive(get<y_var>(evo_i))()) +
-                    sqr_X<true>(derivative(get<y_var>(evo_i))()) *
-                        (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))())),
-                var::get_dx_of_dfdx(get<y_mean>(evo_i)));
+            // Gaussian Fisher information per sample. We read prediction
+            // derivatives (dy_mean/dθ, dy_var/dθ) rather than logL's derivative,
+            // so the NaN-observation guard that zeros logL & dlogL in
+            // calculate_logL does NOT propagate here. For samples over long
+            // integration intervals (e.g. 2000-s equilibration steps), the
+            // prediction derivatives can contain secular-growth terms that
+            // produce non-finite entries — if we pass those into Σ_t GFI_t we
+            // poison H and compute_psd_decomp rejects every bootstrap sample.
+            // Guard: if the computed per-sample GFI contains any non-finite
+            // entry, return a zero SPD. Physically correct — a sample whose
+            // derivatives are not numerically usable (or whose observation was
+            // NaN-masked) contributes zero Fisher information.
+            auto gfi = sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                           (1.0 / primitive(get<y_var>(evo_i))()) +
+                       sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                           (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+            if (!lapack::matrix_has_only_finite(gfi))
+                gfi = SymPosDefMatrix<double>(gfi.nrows(), gfi.ncols(), 0.0);
+            return parameter_spd_payload(std::move(gfi),
+                                         var::get_dx_of_dfdx(get<y_mean>(evo_i)));
         });
 
     auto evol_moments = calculate_Likelihood_diagnostics_evolution_impl(
@@ -1488,23 +1516,47 @@ auto calculate_Likelihood_diagnostics_preset_f(
         std::type_identity<
             Evolution_of<Vector_Space<Sample_Distortion_Matrix, Distortion_Induced_Bias>>>{},
 
+        // Same NaN guards as in sum_moments: r_std and trust_coefficient inherit
+        // NaN from NaN-observation samples (unlike logL/elogL/dlogL which are
+        // hard-zeroed in calculate_logL). y_mean / y_var are predictions and
+        // stay finite, so they don't need guarding.
         [](const auto& evo_i) { return primitive(get<logL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<elogL>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<y_mean>(evo_i))(); },
         [](const auto& evo_i) { return primitive(get<y_var>(evo_i))(); },
-        [](const auto& evo_i) { return primitive(get<r_std>(evo_i))(); },
-        [](const auto& evo_i) { return get<trust_coefficient>(evo_i)(); },
+        [](const auto& evo_i) {
+            const double v = primitive(get<r_std>(evo_i))();
+            return std::isnan(v) ? 0.0 : v;
+        },
+        [](const auto& evo_i) {
+            const double v = get<trust_coefficient>(evo_i)();
+            return std::isnan(v) ? 0.0 : v;
+        },
         [](const auto& evo_i) {
             return parameter_vector_payload(derivative(get<logL>(evo_i))(),
                                             var::get_dx_of_dfdx(get<logL>(evo_i)));
         },
         [](const auto& evo_i) {
-            return parameter_spd_payload(
-                sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
-                        (1.0 / primitive(get<y_var>(evo_i))()) +
-                    sqr_X<true>(derivative(get<y_var>(evo_i))()) *
-                        (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))())),
-                var::get_dx_of_dfdx(get<y_mean>(evo_i)));
+            // Gaussian Fisher information per sample. We read prediction
+            // derivatives (dy_mean/dθ, dy_var/dθ) rather than logL's derivative,
+            // so the NaN-observation guard that zeros logL & dlogL in
+            // calculate_logL does NOT propagate here. For samples over long
+            // integration intervals (e.g. 2000-s equilibration steps), the
+            // prediction derivatives can contain secular-growth terms that
+            // produce non-finite entries — if we pass those into Σ_t GFI_t we
+            // poison H and compute_psd_decomp rejects every bootstrap sample.
+            // Guard: if the computed per-sample GFI contains any non-finite
+            // entry, return a zero SPD. Physically correct — a sample whose
+            // derivatives are not numerically usable (or whose observation was
+            // NaN-masked) contributes zero Fisher information.
+            auto gfi = sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                           (1.0 / primitive(get<y_var>(evo_i))()) +
+                       sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                           (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+            if (!lapack::matrix_has_only_finite(gfi))
+                gfi = SymPosDefMatrix<double>(gfi.nrows(), gfi.ncols(), 0.0);
+            return parameter_spd_payload(std::move(gfi),
+                                         var::get_dx_of_dfdx(get<y_mean>(evo_i)));
         });
 
     constexpr double k_psd_rtol = 1e-10;
@@ -1597,8 +1649,33 @@ auto calculate_Likelihood_diagnostics_preset_f(
             .value_or(SymPosDefMatrix<double>{}),
         sdm().parameters_ptr());
 
+    // Spectral-form identifiability diagnostics rooted in H's decomposition.
+    // DCC = H⁻¹ J H⁻¹ inherits H's null subspace (Hv=0 ⇒ vᵀ·DCC·v = 0), so the
+    // null projector and effective rank are identical for FC and DCC. The FC
+    // and H eigenspectra differ only by reciprocation; we emit H's sorted
+    // spectrum for both, and downstream analysis recovers FC spectrum via 1/λ.
+    auto spectrum_H_mat = lapack::eigenvalue_spectrum(W_H);
+    auto eff_rank_H = lapack::effective_rank(W_H, k_psd_rtol, k_psd_atol);
+    auto cond_H = lapack::spectrum_condition_number(W_H);
+    auto null_proj_matrix = lapack::null_space_projector(W_H, k_psd_rtol, k_psd_atol);
+    auto worst_proj_matrix = lapack::worst_subspace_projector(W_H);
+
     auto fc = Fisher_Covariance(lapack::apply_inverse_as_matrix(W_H), H().parameters_ptr());
     auto log_det_fc = log_Det<Fisher_Covariance>(fc);
+    // Spectral-form correlations: bounded in [-1, 1] by construction, computed
+    // directly from (V, λ) without reconstructing a p×p covariance.
+    using fc_corr_payload = typename Correlation_Of<Fisher_Covariance>::payload_type;
+    auto corr_fc = Correlation_Of<Fisher_Covariance>(
+        fc_corr_payload(lapack::fc_correlation_from_decomp(W_H), H().parameters_ptr()));
+    auto spectrum_fc = Eigenvalue_Spectrum<Fisher_Covariance>(spectrum_H_mat);
+    auto eff_rank_fc = Effective_Rank<Fisher_Covariance>(eff_rank_H);
+    auto cond_fc = Spectrum_Condition_Number<Fisher_Covariance>(cond_H);
+    using fc_null_payload = typename Null_Space_Projector<Fisher_Covariance>::payload_type;
+    auto null_proj_fc = Null_Space_Projector<Fisher_Covariance>(
+        fc_null_payload(null_proj_matrix, H().parameters_ptr()));
+    using fc_worst_payload = typename Worst_Subspace_Projector<Fisher_Covariance>::payload_type;
+    auto worst_proj_fc = Worst_Subspace_Projector<Fisher_Covariance>(
+        fc_worst_payload(worst_proj_matrix, H().parameters_ptr()));
 
     auto dcc = Distortion_Corrected_Covariance(
         lapack::apply_inverse_congruence(W_H, J().value(), "DCC subspace matrix", k_psd_rtol,
@@ -1606,6 +1683,22 @@ auto calculate_Likelihood_diagnostics_preset_f(
             .value_or(SymPosDefMatrix<double>{}),
         H().parameters_ptr());
     auto log_det_dcc = log_Det<Distortion_Corrected_Covariance>(dcc);
+    using dcc_corr_payload =
+        typename Correlation_Of<Distortion_Corrected_Covariance>::payload_type;
+    auto corr_dcc = Correlation_Of<Distortion_Corrected_Covariance>(
+        dcc_corr_payload(lapack::dcc_correlation_from_decomp(W_H, J().value()),
+                         H().parameters_ptr()));
+    auto spectrum_dcc = Eigenvalue_Spectrum<Distortion_Corrected_Covariance>(spectrum_H_mat);
+    auto eff_rank_dcc = Effective_Rank<Distortion_Corrected_Covariance>(eff_rank_H);
+    auto cond_dcc = Spectrum_Condition_Number<Distortion_Corrected_Covariance>(cond_H);
+    using dcc_null_payload =
+        typename Null_Space_Projector<Distortion_Corrected_Covariance>::payload_type;
+    auto null_proj_dcc = Null_Space_Projector<Distortion_Corrected_Covariance>(
+        dcc_null_payload(null_proj_matrix, H().parameters_ptr()));
+    using dcc_worst_payload =
+        typename Worst_Subspace_Projector<Distortion_Corrected_Covariance>::payload_type;
+    auto worst_proj_dcc = Worst_Subspace_Projector<Distortion_Corrected_Covariance>(
+        dcc_worst_payload(worst_proj_matrix, H().parameters_ptr()));
 
     auto dib = Distortion_Induced_Bias(
         lapack::apply_inverse_vector(W_H, score_mean().value(), "Distortion-induced bias")
@@ -1633,7 +1726,13 @@ auto calculate_Likelihood_diagnostics_preset_f(
         std::move(sdm), std::move(log_det_sdm),
         std::move(cdm), std::move(log_det_cdm),
         std::move(fc), std::move(log_det_fc),
+        std::move(corr_fc), std::move(spectrum_fc),
+        std::move(eff_rank_fc), std::move(cond_fc), std::move(null_proj_fc),
+        std::move(worst_proj_fc),
         std::move(dcc), std::move(log_det_dcc),
+        std::move(corr_dcc), std::move(spectrum_dcc),
+        std::move(eff_rank_dcc), std::move(cond_dcc), std::move(null_proj_dcc),
+        std::move(worst_proj_dcc),
         std::move(dib));
 
     // Lambda list for scalar series observables: logL / elogL / y_mean / y_var

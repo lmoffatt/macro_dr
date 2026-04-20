@@ -64,6 +64,39 @@ Experiment create_experiment(std::vector<std::tuple<std::size_t,std::size_t,doub
     return r;
 
  }
+
+ Recording define_recording_with_gaps(std::size_t n_samples, double fill_value,
+                                      std::vector<std::size_t> missing_indices) {
+    Recording r;
+    r().reserve(n_samples);
+    for (std::size_t i = 0; i < n_samples; ++i) {
+        r().emplace_back(fill_value);
+    }
+    const double nan_value = std::numeric_limits<double>::quiet_NaN();
+    for (std::size_t idx : missing_indices) {
+        if (idx < n_samples) {
+            r()[idx]() = nan_value;
+        }
+    }
+    return r;
+ }
+
+ Recording define_recording_with_missing_range(std::size_t n_samples, double fill_value,
+                                               std::size_t missing_start,
+                                               std::size_t missing_end) {
+    Recording r;
+    r().reserve(n_samples);
+    for (std::size_t i = 0; i < n_samples; ++i) {
+        r().emplace_back(fill_value);
+    }
+    const double nan_value = std::numeric_limits<double>::quiet_NaN();
+    const std::size_t lo = std::min(missing_start, n_samples);
+    const std::size_t hi = std::min(missing_end, n_samples);
+    for (std::size_t i = lo; i < hi; ++i) {
+        r()[i]() = nan_value;
+    }
+    return r;
+ }
  Maybe_error<std::string> write_csv(Experiment const& e, Recording const& r, std::string  path)
  {
     auto path_ = path + ".csv";

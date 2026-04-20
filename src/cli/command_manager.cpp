@@ -293,6 +293,23 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     cm.push_function("set_observations", dsl::to_typed_function<std::vector<double>>(
                                               &macrodr::cmd::define_recording, "values_set"));
 
+    // Build a Recording with explicit missing-measurement flags. Indices in
+    // `missing_indices` are set to NaN; the likelihood path treats NaN samples
+    // as "predict, don't update" — the posterior propagates forward without a
+    // Bayes update and the log-likelihood contribution at that step is zero.
+    cm.push_function("set_observations_with_gaps",
+                     dsl::to_typed_function<std::size_t, double, std::vector<std::size_t>>(
+                         &macrodr::cmd::define_recording_with_gaps, "n_samples", "fill_value",
+                         "missing_indices"));
+
+    // Convenience for a contiguous gap (e.g. a long pre-equilibration lead-in):
+    // marks [missing_start, missing_end) as NaN.
+    cm.push_function(
+        "set_observations_with_missing_range",
+        dsl::to_typed_function<std::size_t, double, std::size_t, std::size_t>(
+            &macrodr::cmd::define_recording_with_missing_range, "n_samples", "fill_value",
+            "missing_start", "missing_end"));
+
     cm.push_function("axis",
                      dsl::to_typed_function<std::string, std::vector<std::string>>(
                          &cmd::axis, "name", "labels"));

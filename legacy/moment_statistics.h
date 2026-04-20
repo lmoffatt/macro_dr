@@ -499,6 +499,113 @@ struct log_Det : public var::Var<log_Det<Va>, double> {
 };
 
 
+// Pearson correlation matrix derived from an SPD covariance Va. Same payload
+// shape as the source — a p×p SPD wrapped with parameter metadata — but with
+// unit diagonal. Parameter pairs with |R[i,j]| near 1 flag collinear /
+// non-identifiable directions.
+template <class Va>
+struct Correlation_Of
+    : public var::Var<Correlation_Of<Va>,
+                      var::ParameterIndexed<SymPosDefMatrix<double>,
+                                            var::Parameters_transformed>> {
+    using payload_type = var::ParameterIndexed<SymPosDefMatrix<double>,
+                                               var::Parameters_transformed>;
+
+    Correlation_Of() : var::Var<Correlation_Of<Va>, payload_type>{payload_type{}} {}
+    Correlation_Of(payload_type&& x)
+        : var::Var<Correlation_Of<Va>, payload_type>{std::move(x)} {}
+    Correlation_Of(payload_type const& x) : var::Var<Correlation_Of<Va>, payload_type>{x} {}
+
+    // From a Va whose stored payload exposes .value() / .parameters_ptr()
+    // (e.g. Fisher_Covariance, Distortion_Corrected_Covariance).
+    Correlation_Of(Va const& x)
+        requires requires(Va const& v) {
+            { v().value() } -> std::convertible_to<SymPosDefMatrix<double>>;
+            { v().parameters_ptr() };
+        }
+        : var::Var<Correlation_Of<Va>, payload_type>{
+              payload_type(correlation_matrix(x().value()), x().parameters_ptr())} {}
+};
+
+// Spectrum of the SPD source Va as a p×1 column vector, sorted descending.
+// Dynamic range (κ = λ_max / λ_min) + location of any gap reveal sloppiness
+// and effective rank.
+template <class Va>
+struct Eigenvalue_Spectrum : public var::Var<Eigenvalue_Spectrum<Va>, Matrix<double>> {
+    Eigenvalue_Spectrum()
+        : var::Var<Eigenvalue_Spectrum<Va>, Matrix<double>>{Matrix<double>{}} {}
+    Eigenvalue_Spectrum(Matrix<double>&& x)
+        : var::Var<Eigenvalue_Spectrum<Va>, Matrix<double>>{std::move(x)} {}
+    Eigenvalue_Spectrum(Matrix<double> const& x)
+        : var::Var<Eigenvalue_Spectrum<Va>, Matrix<double>>{x} {}
+};
+
+// Count of eigenvalues above the retention tolerance — the number of
+// identifiable directions. Null defect = p − Effective_Rank.
+template <class Va>
+struct Effective_Rank : public var::Var<Effective_Rank<Va>, std::size_t> {
+    Effective_Rank() : var::Var<Effective_Rank<Va>, std::size_t>{0} {}
+    Effective_Rank(std::size_t x) : var::Var<Effective_Rank<Va>, std::size_t>{x} {}
+};
+
+// Condition number κ = λ_max / λ_min of the source Va. Complements
+// Effective_Rank: large κ without rank deficit = sloppy-but-identified; κ = ∞
+// = formally degenerate. Actionable thresholds: < 10⁴ healthy, 10⁴–10⁸ sloppy,
+// 10⁸–10¹² practically non-identifiable, > 10¹² formally degenerate.
+template <class Va>
+struct Spectrum_Condition_Number
+    : public var::Var<Spectrum_Condition_Number<Va>, double> {
+    Spectrum_Condition_Number()
+        : var::Var<Spectrum_Condition_Number<Va>, double>{1.0} {}
+    Spectrum_Condition_Number(double x)
+        : var::Var<Spectrum_Condition_Number<Va>, double>{x} {}
+};
+
+// Orthogonal projector onto the non-identifiable (null) subspace of the
+// source Va. Π_{ii} ∈ [0,1] is parameter i's fraction of variance living in
+// the null subspace; off-diagonals reveal entanglement. Unlike individual
+// null eigenvectors, the projector is rotation-invariant within the null
+// subspace — unambiguous when null defect ≥ 2.
+template <class Va>
+struct Null_Space_Projector
+    : public var::Var<Null_Space_Projector<Va>,
+                      var::ParameterIndexed<SymPosDefMatrix<double>,
+                                            var::Parameters_transformed>> {
+    using payload_type = var::ParameterIndexed<SymPosDefMatrix<double>,
+                                               var::Parameters_transformed>;
+
+    Null_Space_Projector()
+        : var::Var<Null_Space_Projector<Va>, payload_type>{payload_type{}} {}
+    Null_Space_Projector(payload_type&& x)
+        : var::Var<Null_Space_Projector<Va>, payload_type>{std::move(x)} {}
+    Null_Space_Projector(payload_type const& x)
+        : var::Var<Null_Space_Projector<Va>, payload_type>{x} {}
+};
+
+// Orthogonal projector onto the *least-identified* subspace — always
+// populated when the spectrum is sloppy (κ ≥ activation threshold), not
+// only when a mode is formally null. Complements Null_Space_Projector:
+// the latter asks "are any directions truly null?"; this one asks "where
+// is my sloppiness?". For the sloppy-not-null case (κ ≫ 1 but λ_min still
+// above machine noise), Null_Space_Projector is empty while this one
+// correctly localizes the worst direction. See
+// `lapack::worst_subspace_projector` for the activation and gap-growth
+// algorithm.
+template <class Va>
+struct Worst_Subspace_Projector
+    : public var::Var<Worst_Subspace_Projector<Va>,
+                      var::ParameterIndexed<SymPosDefMatrix<double>,
+                                            var::Parameters_transformed>> {
+    using payload_type = var::ParameterIndexed<SymPosDefMatrix<double>,
+                                               var::Parameters_transformed>;
+
+    Worst_Subspace_Projector()
+        : var::Var<Worst_Subspace_Projector<Va>, payload_type>{payload_type{}} {}
+    Worst_Subspace_Projector(payload_type&& x)
+        : var::Var<Worst_Subspace_Projector<Va>, payload_type>{std::move(x)} {}
+    Worst_Subspace_Projector(payload_type const& x)
+        : var::Var<Worst_Subspace_Projector<Va>, payload_type>{x} {}
+};
 
 
 template <class Va>

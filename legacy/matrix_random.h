@@ -42,12 +42,7 @@ inline auto random_covariance(mt_64i& mt, std::size_t ndim, const Matrix<double>
     return cov;
 }
 
-inline auto correlation_matrix(const SymPosDefMatrix<double>& x) {
-    auto out = SymPosDefMatrix<double>(x.nrows(), x.ncols(), false);
-    for (std::size_t i = 0; i < out.nrows(); ++i)
-        for (std::size_t j = 0; j < out.ncols(); ++j)
-            out.set(i, j, x(i, j) / std::sqrt(x(i, i)) / std::sqrt(x(j, j)));
-    return out;
-}
+// correlation_matrix lives in matrix.h next to idm_matrix / congruence helpers
+// (guards against zero diagonals; matrix_random.h had an older unguarded copy).
 
 #endif  // MATRIX_RANDOM_H
