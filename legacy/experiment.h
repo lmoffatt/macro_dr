@@ -703,8 +703,8 @@ maxagonist from there until t_stop
     static auto find_t_50(const Recording_conditions& x, pulse_pos p, double max) {
         bool found = false;
         double cum_samples = 0;
-        double t_50_up;
-        double t_50_down;
+        double t_50_up = 0.0;
+        double t_50_down = 0.0;
         auto i_run = p.i_start;
         double A0 = 0;
         double A1;

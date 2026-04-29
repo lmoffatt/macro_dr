@@ -31,45 +31,52 @@ using ModelPtr = macrodr::cmd::ModelPtr;
 namespace {
 
 // DSL wrappers for the five diagnostic presets. Each takes max_lag since
-// all presets now depend on the kernel-based integral_correlation_lag.
+// all presets now depend on the kernel-based integral_correlation_lag. F is
+// the per-recording numerical Fisher information vector (parallel to dy);
+// it must be computed upstream via calculate_numerical_fisher_information.
 auto calculate_likelihood_derivative_basic_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    const std::vector<parameter_spd_payload>& F_per_recording,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
     std::size_t max_lag) {
     return cmd::calculate_Likelihood_derivative_basic_diagnostics(
-        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+        dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
 auto calculate_likelihood_derivative_series_var_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    const std::vector<parameter_spd_payload>& F_per_recording,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
     std::size_t max_lag) {
     return cmd::calculate_Likelihood_derivative_series_var_diagnostics(
-        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+        dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
 auto calculate_likelihood_derivative_series_cov_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    const std::vector<parameter_spd_payload>& F_per_recording,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
     std::size_t max_lag) {
     return cmd::calculate_Likelihood_derivative_series_cov_diagnostics(
-        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+        dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
 auto calculate_likelihood_derivative_series_kernel_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    const std::vector<parameter_spd_payload>& F_per_recording,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
     std::size_t max_lag) {
     return cmd::calculate_Likelihood_derivative_series_kernel_diagnostics(
-        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+        dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
 auto calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    const std::vector<parameter_spd_payload>& F_per_recording,
     std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
     std::size_t max_lag) {
     return cmd::calculate_Likelihood_derivative_series_kernel_full_diagnostics(
-        dlikelihood_predictions, n_boostrap_samples, probits, seed, max_lag);
+        dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
 }
@@ -701,11 +708,12 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
 
     cm.push_function("build_likelihood_function",
                      dsl::to_typed_function<
-                         ModelPtr const&, bool, bool, int, bool, bool>(
+                         ModelPtr const&, bool, bool, int, bool, bool, bool, bool>(
                          &macrodr::cmd::build_likelihood_function, "model",
                                 "adaptive_approximation", "recursive_approximation",
                                 "averaging_approximation", "variance_approximation",
-                                "taylor_variance_correction")
+                                "taylor_variance_correction", "micro_approximation",
+                                "taylor_qdt_approximation")
                             );
 
     cm.push_function(
@@ -713,6 +721,14 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
         dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&>(
             &cmd::calculate_mlikelihood, "likelihood_algorithm", "parameters", "experiment", "data"));
+
+    cm.push_function(
+        "calc_likelihood",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const Simulated_Recording<var::please_include<>>&>(
+            &cmd::calculate_simulation_mlikelihood, "likelihood_algorithm", "parameters",
+            "experiment", "data"));
 
     cm.push_function(
         "calc_dlikelihood",
@@ -785,104 +801,171 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
         "calc_likelihood",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
-                               bool, bool, int, bool, bool>(
+                               bool, bool, int, bool, bool, bool>(
             &cmd::calculate_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
     cm.push_function(
         "calc_likelihood",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
-                               bool, int, bool, bool>(
+                               bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
     cm.push_function(
         "calc_dlikelihood",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
-                               bool, bool, int, bool, bool>(
+                               bool, bool, int, bool, bool, bool>(
             &cmd::calculate_dlikelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
     cm.push_function(
         "calc_dlikelihood",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
-                               bool, int, bool, bool>(
+                               bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_dlikelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
     cm.push_function(
         "calc_diff_likelihood",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
-                               bool, bool, int, bool, bool, double>(
+                               bool, bool, int, bool, bool, bool, double>(
             &cmd::calculate_diff_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction", "delta_param"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation",
+            "delta_param"));
 
     cm.push_function(
         "calc_diff_likelihood",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
-                               bool, int, bool, bool, double>(
+                               bool, int, bool, bool, bool, double>(
             &cmd::calculate_simulation_diff_likelihood, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction", "delta_param"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation",
+            "delta_param"));
 
     cm.push_function(
         "calc_likelihood_predictions",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
-                               bool, bool, int, bool, bool>(
+                               bool, bool, int, bool, bool, bool>(
             &cmd::calculate_likelihood_predictions, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
     cm.push_function(
         "calc_likelihood_predictions",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
-                               bool, int, bool, bool>(
+                               bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_likelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
     cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
-                               bool, bool, int, bool, bool>(
+                               bool, bool, int, bool, bool, bool>(
             &cmd::calculate_dlikelihood_predictions, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
+
+    // Numerical (observed) Fisher information per recording. 2·n_params extra
+    // dlikelihood evaluations at θ ± h_rel·max(|θ_i|, 1) per coordinate.
+    // Variant via likelihood_algorithm_type (matches calc_dlikelihood_predictions
+    // script-level usage). Three overloads: Recording, Simulated_Recording,
+    // vector<Simulated_Recording>.
+    cm.push_function(
+        "calc_numerical_fisher_information",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const Recording&, double>(
+            &cmd::calculate_mnumerical_fisher_information, "likelihood_algorithm", "parameters",
+            "experiment", "data", "h_rel"));
+
+    cm.push_function(
+        "calc_numerical_fisher_information",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const Simulated_Recording<var::please_include<>>&, double>(
+            &cmd::calculate_simulation_mnumerical_fisher_information, "likelihood_algorithm",
+            "parameters", "experiment", "data", "h_rel"));
+
+    cm.push_function(
+        "calc_numerical_fisher_information",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const std::vector<Simulated_Recording<var::please_include<>>>&,
+                               double, std::size_t>(
+            &cmd::calculate_n_simulation_mnumerical_fisher_information, "likelihood_algorithm",
+            "parameters", "experiment", "data_series", "h_rel", "decimate"));
+
+    // Raw-model variants (matches calc_likelihood / calc_dlikelihood pattern):
+    // takes ModelPtr and individual approximation flags rather than the
+    // pre-built likelihood_algorithm_type.
+    cm.push_function(
+        "calc_numerical_fisher_information",
+        dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                               const Experiment&, const Recording&, bool, bool, int, bool, bool,
+                               bool, double>(
+            &cmd::calculate_numerical_fisher_information, "model", "parameters", "experiment",
+            "data", "adaptive_approximation", "recursive_approximation",
+            "averaging_approximation", "variance_approximation", "taylor_variance_correction",
+            "micro_approximation", "h_rel"));
+
+    cm.push_function(
+        "calc_numerical_fisher_information",
+        dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                               const Experiment&,
+                               const Simulated_Recording<var::please_include<>>&,
+                               bool, bool, int, bool, bool, bool, double>(
+            &cmd::calculate_simulation_numerical_fisher_information, "model", "parameters",
+            "experiment", "data", "adaptive_approximation", "recursive_approximation",
+            "averaging_approximation", "variance_approximation", "taylor_variance_correction",
+            "micro_approximation", "h_rel"));
+
+    cm.push_function(
+        "calc_numerical_fisher_information",
+        dsl::to_typed_function<const ModelPtr&, const var::Parameters_transformed&,
+                               const Experiment&,
+                               const std::vector<Simulated_Recording<var::please_include<>>>&,
+                               bool, bool, int, bool, bool, bool, double, std::size_t>(
+            &cmd::calculate_n_simulation_numerical_fisher_information, "model", "parameters",
+            "experiment", "data_series", "adaptive_approximation", "recursive_approximation",
+            "averaging_approximation", "variance_approximation", "taylor_variance_correction",
+            "micro_approximation", "h_rel", "decimate"));
 
 cm.push_function(
         "calc_likelihood_diagnostic",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&, const Recording&,
-                               bool, bool, int, bool, bool>(
+                               bool, bool, int, bool, bool, bool>(
             &cmd::calculate_likelihood_diagnostics, "model", "parameters", "experiment", "data",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
 cm.push_function(
         "calc_likelihood_diagnostic",
         dsl::to_typed_function<const ModelPtr&,
-                               const var::Parameters_transformed&, const Experiment&, 
+                               const var::Parameters_transformed&, const Experiment&,
                                const  Simulated_Recording<var::please_include<>>&&,
-                               bool, bool, int, bool, bool>(
+                               bool, bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_likelihood_diagnostics, "model", "parameters", "experiment", "simulation",
             "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
 
     cm.push_function(
@@ -890,66 +973,77 @@ cm.push_function(
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
-                               bool, int, bool, bool>(
+                               bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_dlikelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
     cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const ModelPtr&,
                                const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>&, bool,
-                               bool, int, bool, bool>(
+                               bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_sub_dlikelihood_predictions, "model", "parameters", "experiment",
             "data", "adaptive_approximation", "recursive_approximation", "averaging_approximation",
-            "variance_approximation", "taylor_variance_correction"));
+            "variance_approximation", "taylor_variance_correction", "micro_approximation"));
 
-   
+
             cm.push_function(
         "calc_dlikelihood_predictions",
         dsl::to_typed_function<const std::string&, const var::Parameters_transformed&, const Experiment&,
                                const Simulated_Recording<var::please_include<>>&, bool,
-                               bool, int, bool, bool>(
+                               bool, int, bool, bool, bool>(
             &cmd::calculate_simulation_dlikelihood_predictions_model, "model", "parameters",
             "experiment", "data", "adaptive_approximation", "recursive_approximation",
-            "averaging_approximation", "variance_approximation", "taylor_variance_correction"));
+            "averaging_approximation", "variance_approximation", "taylor_variance_correction",
+            "micro_approximation"));
 
       
     cm.push_function(
         "likelihood_derivative_basic_diagnostics",
         dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               const std::vector<parameter_spd_payload>&,
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_basic_diagnostics_dsl,
-            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+            "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
 
     cm.push_function(
         "likelihood_derivative_series_var_diagnostics",
         dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               const std::vector<parameter_spd_payload>&,
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_series_var_diagnostics_dsl,
-            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+            "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
 
     cm.push_function(
         "likelihood_derivative_series_cov_diagnostics",
         dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               const std::vector<parameter_spd_payload>&,
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_series_cov_diagnostics_dsl,
-            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+            "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
 
     cm.push_function(
         "likelihood_derivative_series_kernel_diagnostics",
         dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               const std::vector<parameter_spd_payload>&,
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_series_kernel_diagnostics_dsl,
-            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+            "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
 
     cm.push_function(
         "likelihood_derivative_series_kernel_full_diagnostics",
         dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               const std::vector<parameter_spd_payload>&,
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl,
-            "dlikelihood_predictions", "n_boostrap_samples", "probits", "seed", "max_lag"));
+            "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
 
 
     return cm;

@@ -1050,6 +1050,33 @@ auto elemMult(const Derivative<aMatrix<double>, Parameters_transformed>& a,
     return zip([](auto& x, auto& y) { return x * y; }, a, b);
 }
 
+// Mixed elemMult overloads — Derivative on one side, plain Matrix on the other.
+// Needed e.g. by micro_full_step_avg2 where a derivative-typed gmean_ij is
+// combined element-wise with a plain Nij count matrix.
+template <template <class> class aMatrix, template <class> class bMatrix>
+    requires(aMatrix<double>::is_Matrix && bMatrix<double>::is_Matrix)
+auto elemMult(const Derivative<aMatrix<double>, Parameters_transformed>& a,
+              const bMatrix<double>& b) {
+    using S = std::decay_t<decltype(elemMult(aMatrix<double>{}, bMatrix<double>{}))>;
+    auto& fa = primitive(a);
+    auto& fb = b;
+    return Derivative<S, Parameters_transformed>(
+        elemMult(fa, fb),
+        apply_par([&fb](auto const& da) { return elemMult(da, fb); }, derivative(a)));
+}
+
+template <template <class> class aMatrix, template <class> class bMatrix>
+    requires(aMatrix<double>::is_Matrix && bMatrix<double>::is_Matrix)
+auto elemMult(const aMatrix<double>& a,
+              const Derivative<bMatrix<double>, Parameters_transformed>& b) {
+    using S = std::decay_t<decltype(elemMult(aMatrix<double>{}, bMatrix<double>{}))>;
+    auto& fa = a;
+    auto& fb = primitive(b);
+    return Derivative<S, Parameters_transformed>(
+        elemMult(fa, fb),
+        apply_par([&fa](auto const& db) { return elemMult(fa, db); }, derivative(b)));
+}
+
 template <template <class> class aMatrix, template <class> class bMatrix>
     requires aMatrix<double>::is_Matrix
 auto TranspMult(const Derivative<aMatrix<double>, Parameters_transformed>& a,

@@ -41,7 +41,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(
         -fmax-errors=5
-        -ftime-report
+        # -ftime-report  # enable locally if you want per-pass timing breakdown
         -Wno-ctad-maybe-unsupported
     )
 

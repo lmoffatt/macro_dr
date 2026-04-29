@@ -16,48 +16,97 @@ namespace macrodr::cmd {
 inline auto build_likelihood_function(const ModelPtr& model0,
                                       bool adaptive_approximation, bool recursive_approximation,
                                       int averaging_approximation, bool variance_approximation,
-                                      bool taylor_variance_correction_approximation) {
+                                      bool taylor_variance_correction_approximation,
+                                      bool micro_approximation,
+                                      bool taylor_qdt_approximation = false) {
     auto nsub = Simulation_n_sub_dt(100);
     const interface::IModel<var::Parameters_values>& model_ref = *model0;
 
     return merge_Maybe_variant(
+        merge_Maybe_variant(
+            // Macro non-taylor-variance-correction branch: taylor_qdt fixed
+            // to false (eigen path is well-conditioned for k×k macro Q).
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref),
+                var::constexpr_Var_domain<bool, uses_taylor_qdt, false>>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation),
+                uses_taylor_qdt_value(false))
+                .get_variant(),
+            // Macro taylor-variance-correction branch: taylor_qdt fixed false.
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref),
+                var::constexpr_Var_domain<bool, uses_taylor_qdt, false>>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation),
+                uses_taylor_qdt_value(false))
+                .get_variant()),
+        // Micro branch: recursive=true, taylor_variance_correction=false,
+        // averaging ∈ {0, 1, 2}, taylor_qdt ∈ {false, true} — the eigen vs
+        // Taylor-expm flag for Q's matrix exponential. Only the micro branch
+        // exposes both taylor_qdt values; macro paths fix it false to keep
+        // the variant count manageable.
         Likelihood_Model_regular<
-               var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-               var::constexpr_Var_domain<bool, uses_recursive_aproximation, false,true>,
-               var::constexpr_Var_domain<int, uses_averaging_aproximation,0,1, 2>,
-               var::constexpr_Var_domain<bool, uses_variance_aproximation, false,true>,
-               var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-               decltype(model_ref)>(model_ref, nsub,
-                                 uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
-        .get_variant(),
-        Likelihood_Model_regular<
-               var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-               var::constexpr_Var_domain<bool, uses_recursive_aproximation,true>,
-               var::constexpr_Var_domain<int, uses_averaging_aproximation,1, 2>,
-               var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-               var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
-               decltype(model_ref)>(model_ref, nsub,
-                                 uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
-        .get_variant());
-;
+            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(model_ref),
+            var::constexpr_Var_domain<bool, uses_taylor_qdt, false, true>>(
+            model_ref, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation),
+            uses_taylor_qdt_value(taylor_qdt_approximation))
+            .get_variant());
 }
 
 using likelihood_algorithm_type = var::untransformed_type_t<decltype(build_likelihood_function(
-    std::declval<const ModelPtr&>(), false, false, 2, true, false))>;
+    std::declval<const ModelPtr&>(), false, false, 2, true, false, false, false))>;
 
 auto calculate_mlikelihood(const likelihood_algorithm_type& likelihood_algorithm,
                            const var::Parameters_transformed& par, const Experiment& e,
                            const Recording& r) -> Maybe_error<Vector_Space<logL, elogL, vlogL>>;
+
+inline auto calculate_simulation_mlikelihood(
+    const likelihood_algorithm_type& likelihood_algorithm,
+    const var::Parameters_transformed& par, const Experiment& e,
+    const Simulated_Recording<var::please_include<>>& r)
+    -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
+    return calculate_mlikelihood(likelihood_algorithm, par, e, get<Recording>(r()));
+}
 
 auto calculate_mdlikelihood(const likelihood_algorithm_type& likelihood_algorithm,
                             const var::Parameters_transformed& par, const Experiment& e,
@@ -115,7 +164,7 @@ inline auto calculate_n_simulation_mdlikelihood_predictions(
     const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
     const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
     -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>> {
-    
+
     std::vector<dMacro_State_Ev_gradient_all> results;
     results.reserve(simulation.size());
     for (const  auto& sim : simulation){
@@ -124,7 +173,39 @@ inline auto calculate_n_simulation_mdlikelihood_predictions(
         if (!res){
             return res.error();
         }
-        results.push_back(std::move(res.value()));        
+        results.push_back(std::move(res.value()));
+    }
+    return results;
+}
+
+// Numerical Fisher information via the likelihood_algorithm_type variant —
+// matches the script-level usage pattern of calc_dlikelihood_predictions.
+auto calculate_mnumerical_fisher_information(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const Recording& r,
+    double h_rel) -> Maybe_error<parameter_spd_payload>;
+
+inline auto calculate_simulation_mnumerical_fisher_information(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
+    double h_rel) -> Maybe_error<parameter_spd_payload> {
+    return calculate_mnumerical_fisher_information(likelihood_algorithm, par, e,
+                                                    get<Recording>(simulation()), h_rel);
+}
+
+inline auto calculate_n_simulation_mnumerical_fisher_information(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation,
+    double h_rel,
+    std::size_t decimate) -> Maybe_error<std::vector<parameter_spd_payload>> {
+    std::size_t step = decimate == 0 ? 1 : decimate;
+    std::vector<parameter_spd_payload> results;
+    results.reserve((simulation.size() + step - 1) / step);
+    for (std::size_t i = 0; i < simulation.size(); i += step) {
+        auto res = calculate_mnumerical_fisher_information(likelihood_algorithm, par, e,
+                                                            get<Recording>(simulation[i]()), h_rel);
+        if (!res) return res.error();
+        results.push_back(std::move(res.value()));
     }
     return results;
 }
@@ -135,19 +216,21 @@ auto calculate_likelihood(const ModelPtr& model0,
                           const Recording& r, bool adaptive_approximation,
                           bool recursive_approximation, int averaging_approximation,
                           bool variance_approximation,
-                          bool taylor_variance_correction_approximation)
+                          bool taylor_variance_correction_approximation,
+                          bool micro_approximation)
     -> Maybe_error<Vector_Space<logL, elogL, vlogL>>;
 
 inline auto calculate_simulation_likelihood(
     const ModelPtr& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation)
     -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
     return calculate_likelihood(model0, par, e, get<Recording>(simulation()),
                                 adaptive_approximation, recursive_approximation,
                                 averaging_approximation, variance_approximation,
-                                taylor_variance_correction_approximation);
+                                taylor_variance_correction_approximation, micro_approximation);
 }
 
 auto calculate_dlikelihood(const ModelPtr& model0,
@@ -155,38 +238,42 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                            const Recording& r, bool adaptive_approximation,
                            bool recursive_approximation, int averaging_approximation,
                            bool variance_approximation,
-                           bool taylor_variance_correction_approximation)
+                           bool taylor_variance_correction_approximation,
+                           bool micro_approximation)
     -> Maybe_error<dMacro_State_Hessian_minimal>;
 
 inline auto calculate_simulation_dlikelihood(
     const ModelPtr& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation)
     -> Maybe_error<dMacro_State_Hessian_minimal> {
     return calculate_dlikelihood(model0, par, e, get<Recording>(simulation()),
                                  adaptive_approximation, recursive_approximation,
                                  averaging_approximation, variance_approximation,
-                                 taylor_variance_correction_approximation);
+                                 taylor_variance_correction_approximation, micro_approximation);
 }
 auto calculate_diff_likelihood(const ModelPtr& model0,
                                const var::Parameters_transformed& par, const Experiment& e,
                                const Recording& r, bool adaptive_approximation,
                                bool recursive_approximation, int averaging_approximation,
                                bool variance_approximation,
-                               bool taylor_variance_correction_approximation, double delta_param)
+                               bool taylor_variance_correction_approximation,
+                               bool micro_approximation, double delta_param)
     -> Maybe_error<diff_Macro_State_Gradient_Hessian>;
 
 inline auto calculate_simulation_diff_likelihood(
     const ModelPtr& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation, double delta_param)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation, double delta_param)
     -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
-    return calculate_diff_likelihood(model0, par, e, get<Recording>(simulation()),
-                                     adaptive_approximation, recursive_approximation,
-                                     averaging_approximation, variance_approximation,
-                                     taylor_variance_correction_approximation, delta_param);
+    return calculate_diff_likelihood(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation, delta_param);
 }
 
 auto calculate_likelihood_predictions(const ModelPtr& model0,
@@ -194,19 +281,21 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
-                                      bool taylor_variance_correction_approximation)
+                                      bool taylor_variance_correction_approximation,
+                                      bool micro_approximation)
     -> Maybe_error<Macro_State_Ev_predictions>;
 
 inline auto calculate_simulation_likelihood_predictions(
     const ModelPtr& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation)
     -> Maybe_error<Macro_State_Ev_predictions> {
-    return calculate_likelihood_predictions(model0, par, e, get<Recording>(simulation()),
-                                            adaptive_approximation, recursive_approximation,
-                                            averaging_approximation, variance_approximation,
-                                            taylor_variance_correction_approximation);
+    return calculate_likelihood_predictions(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation);
 }
 
 auto calculate_likelihood_diagnostics(const ModelPtr& model0,
@@ -214,19 +303,21 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
-                                      bool taylor_variance_correction_approximation)
+                                      bool taylor_variance_correction_approximation,
+                                      bool micro_approximation)
     -> Maybe_error<Macro_State_Ev_diagnostic>;
 
 inline auto calculate_simulation_likelihood_diagnostics(
     const ModelPtr& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation)
     -> Maybe_error<Macro_State_Ev_diagnostic> {
-    return calculate_likelihood_diagnostics(model0, par, e, get<Recording>(simulation()),
-                                            adaptive_approximation, recursive_approximation,
-                                            averaging_approximation, variance_approximation,
-                                            taylor_variance_correction_approximation);
+    return calculate_likelihood_diagnostics(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation);
 }
 
 auto calculate_dlikelihood_predictions(const ModelPtr& model0,
@@ -234,19 +325,21 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                                        const Recording& r, bool adaptive_approximation,
                                        bool recursive_approximation, int averaging_approximation,
                                        bool variance_approximation,
-                                       bool taylor_variance_correction_approximation)
+                                       bool taylor_variance_correction_approximation,
+                                       bool micro_approximation)
     -> Maybe_error<dMacro_State_Ev_gradient_all>;
 
 inline auto calculate_simulation_dlikelihood_predictions(
     const ModelPtr& model0, const var::Parameters_transformed& par,
     const Experiment& e, const Simulated_Recording<var::please_include<>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation)
     -> Maybe_error<dMacro_State_Ev_gradient_all> {
-    return calculate_dlikelihood_predictions(model0, par, e, get<Recording>(simulation()),
-                                             adaptive_approximation, recursive_approximation,
-                                             averaging_approximation, variance_approximation,
-                                             taylor_variance_correction_approximation);
+    return calculate_dlikelihood_predictions(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation);
 }
 
 inline auto calculate_simulation_sub_dlikelihood_predictions(
@@ -254,29 +347,83 @@ inline auto calculate_simulation_sub_dlikelihood_predictions(
     const Experiment& e,
     const Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>& simulation,
     bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
-    bool variance_approximation, bool taylor_variance_correction_approximation)
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation)
     -> Maybe_error<dMacro_State_Ev_gradient_all> {
-    return calculate_dlikelihood_predictions(model0, par, e, get<Recording>(simulation()),
-                                             adaptive_approximation, recursive_approximation,
-                                             averaging_approximation, variance_approximation,
-                                             taylor_variance_correction_approximation);
+    return calculate_dlikelihood_predictions(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation);
 }
 
 auto calculate_dlikelihood_predictions_model(
     const std::string& model0, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r, bool adaptive_approximation, bool recursive_approximation,
     int averaging_approximation, bool variance_approximation,
-    bool taylor_variance_correction_approximation) -> Maybe_error<dMacro_State_Ev_gradient_all>;
+    bool taylor_variance_correction_approximation,
+    bool micro_approximation) -> Maybe_error<dMacro_State_Ev_gradient_all>;
 
 inline auto calculate_simulation_dlikelihood_predictions_model(
     const std::string& model0, const var::Parameters_transformed& par, const Experiment& e,
     const Simulated_Recording<var::please_include<>>& simulation, bool adaptive_approximation,
     bool recursive_approximation, int averaging_approximation, bool variance_approximation,
-    bool taylor_variance_correction_approximation) -> Maybe_error<dMacro_State_Ev_gradient_all> {
-    return calculate_dlikelihood_predictions_model(model0, par, e, get<Recording>(simulation()),
-                                                   adaptive_approximation, recursive_approximation,
-                                                   averaging_approximation, variance_approximation,
-                                                   taylor_variance_correction_approximation);
+    bool taylor_variance_correction_approximation,
+    bool micro_approximation) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    return calculate_dlikelihood_predictions_model(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation);
+}
+
+// Numerical (observed) Fisher information for one recording. Returns the
+// positive-definite F = -∂²(logL)/∂θ² as a parameter_spd_payload. Cost:
+// 2·n_params calls to the dlikelihood path at θ ± h_i·e_i. See the
+// implementation comment in src/core/likelihood.cpp for the central-difference
+// derivation. h_rel defaults to 1e-5 (textbook double-precision). Decimation,
+// if desired, is the caller's job — pass a subsetted Recording.
+auto calculate_numerical_fisher_information(
+    const ModelPtr& model0, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r, bool adaptive_approximation, bool recursive_approximation,
+    int averaging_approximation, bool variance_approximation,
+    bool taylor_variance_correction_approximation, bool micro_approximation,
+    double h_rel) -> Maybe_error<parameter_spd_payload>;
+
+inline auto calculate_simulation_numerical_fisher_information(
+    const ModelPtr& model0, const var::Parameters_transformed& par, const Experiment& e,
+    const Simulated_Recording<var::please_include<>>& simulation, bool adaptive_approximation,
+    bool recursive_approximation, int averaging_approximation, bool variance_approximation,
+    bool taylor_variance_correction_approximation, bool micro_approximation,
+    double h_rel) -> Maybe_error<parameter_spd_payload> {
+    return calculate_numerical_fisher_information(
+        model0, par, e, get<Recording>(simulation()), adaptive_approximation,
+        recursive_approximation, averaging_approximation, variance_approximation,
+        taylor_variance_correction_approximation, micro_approximation, h_rel);
+}
+
+// Multi-recording form: one F matrix per simulation, parallel to the dy vector
+// produced by calculate_n_simulation_mdlikelihood_predictions. Bootstrap
+// consumes this independently from dy (independent index draws). `decimate`
+// selects every K-th simulation for the F computation — the bootstrap then
+// resamples a vector of length ⌈n_sims / decimate⌉. decimate=1 → all sims.
+inline auto calculate_n_simulation_numerical_fisher_information(
+    const ModelPtr& model0, const var::Parameters_transformed& par, const Experiment& e,
+    const std::vector<Simulated_Recording<var::please_include<>>>& simulation,
+    bool adaptive_approximation, bool recursive_approximation, int averaging_approximation,
+    bool variance_approximation, bool taylor_variance_correction_approximation,
+    bool micro_approximation, double h_rel,
+    std::size_t decimate) -> Maybe_error<std::vector<parameter_spd_payload>> {
+    std::size_t step = decimate == 0 ? 1 : decimate;
+    std::vector<parameter_spd_payload> out;
+    out.reserve((simulation.size() + step - 1) / step);
+    for (std::size_t i = 0; i < simulation.size(); i += step) {
+        auto res = calculate_simulation_numerical_fisher_information(
+            model0, par, e, simulation[i], adaptive_approximation, recursive_approximation,
+            averaging_approximation, variance_approximation,
+            taylor_variance_correction_approximation, micro_approximation, h_rel);
+        if (!res) return res.error();
+        out.push_back(std::move(res.value()));
+    }
+    return out;
 }
 
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
@@ -359,8 +506,11 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Sum<Moment_statistics<macrodr::r_std, false>>>,
         Probit_statistics<Sum<Moment_statistics<dlogL, true>>>,
         Probit_statistics<Sum<Moment_statistics<Gaussian_Fisher_Information, false>>>,
+        Probit_statistics<Numerical_Fisher_Information>,
         Probit_statistics<Information_Distortion_Matrix>,
         Probit_statistics<log_Det<Information_Distortion_Matrix>>,
+        Probit_statistics<Gaussian_Fisher_Distortion>,
+        Probit_statistics<log_Det<Gaussian_Fisher_Distortion>>,
         Probit_statistics<Information_Distortion_Reconstituted>,
         Probit_statistics<Sample_Distortion_Matrix>,
         Probit_statistics<log_Det<Sample_Distortion_Matrix>>,
@@ -464,27 +614,32 @@ using Analisis_derivative_diagnostic_series_kernel_full = var::concatenate_t<
 
 
 auto calculate_Likelihood_derivative_basic_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_basic;
 
 auto calculate_Likelihood_derivative_series_var_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_var;
 
 auto calculate_Likelihood_derivative_series_cov_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_cov;
 
 auto calculate_Likelihood_derivative_series_kernel_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_kernel;
 
 auto calculate_Likelihood_derivative_series_kernel_full_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_kernel_full;
 

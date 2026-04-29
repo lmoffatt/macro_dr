@@ -11,6 +11,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "lapack_headers.h"
 #include "matrix.h"
 #include "maybe_error.h"
 #include "parameter_indexed.h"
@@ -250,6 +251,71 @@ using parameter_spd_payload =
     var::ParameterIndexed<SymPosDefMatrix<double>, var::Parameters_transformed>;
 using parameter_symmetric_payload =
     var::ParameterIndexed<SymmetricMatrix<double>, var::Parameters_transformed>;
+
+// Default relative tolerance for treating a parameter direction as
+// structurally inactive (zero diagonal of an SPD payload). Matches the rtol
+// used by lapack::compute_psd_decomp on the bigger picture (1e-10) but is set
+// a couple of orders of magnitude tighter so we only drop parameters that are
+// truly outside the gradient chain (e.g. Num_ch_mean under the lifted micro
+// path), not ill-conditioned ones the PSD machinery should still handle.
+inline constexpr double k_active_subspace_rtol = 1e-12;
+inline constexpr double k_logdet_subspace_rtol = 1e-10;
+inline constexpr double k_logdet_subspace_atol = 0.0;
+
+// Indices of parameters with zero diagonal of M — i.e. structurally inactive
+// directions in a Fisher-information / score-covariance / IDM payload. A
+// parameter shows up here when *no* derivative chain in the model touches it
+// (e.g. Num_ch_mean under the lifted micro path, where it sets the dimension
+// of the microstate space rather than entering the gradient continuously).
+inline std::vector<std::size_t> inactive_parameter_indices(
+    parameter_spd_payload const& M, double rtol = k_active_subspace_rtol) {
+    auto const& mat = M.value();
+    std::size_t p = mat.nrows();
+    double max_diag = 0.0;
+    for (std::size_t i = 0; i < p; ++i) {
+        max_diag = std::max(max_diag, mat(i, i));
+    }
+    double thr = rtol * std::max(max_diag, 1.0);
+    std::vector<std::size_t> out;
+    for (std::size_t i = 0; i < p; ++i) {
+        if (mat(i, i) <= thr) {
+            out.push_back(i);
+        }
+    }
+    return out;
+}
+
+// Names of the inactive parameters detected by inactive_parameter_indices.
+// Uses the payload's Parameters_transformed for the name lookup.
+inline std::vector<std::string> inactive_parameter_names(
+    parameter_spd_payload const& M, double rtol = k_active_subspace_rtol) {
+    auto idx = inactive_parameter_indices(M, rtol);
+    std::vector<std::string> names;
+    names.reserve(idx.size());
+    if (M.has_parameters()) {
+        auto const& full = M.parameters().parameters().names();
+        for (auto i : idx) {
+            if (i < full.size()) {
+                names.push_back(full[i]);
+            }
+        }
+    }
+    return names;
+}
+
+// log-determinant of the parameter-indexed SPD matrix restricted to its
+// non-null eigenspace — i.e. excluding the zero-diagonal (structurally
+// inactive) parameter directions. For full-rank payloads this is the regular
+// log_det; for rank-deficient ones it returns a finite pseudo-log-determinant
+// instead of −∞ / NaN. Use this in diagnostic chains where one or more model
+// parameters are categorically absent from the gradient (e.g. Num_ch_mean for
+// micro algorithms).
+inline double logdet_active_subspace(parameter_spd_payload const& M,
+                                      double rtol = k_logdet_subspace_rtol,
+                                      double atol = k_logdet_subspace_atol,
+                                      std::string const& name = "logdet_active_subspace") {
+    return lapack::logdet_subspace(M.value(), name, rtol, atol);
+}
 class elogL : public var::Var<elogL, double> {
    public:
     friend std::string className(elogL) {
@@ -374,7 +440,35 @@ class Gaussian_Fisher_Information
     friend std::string className(Gaussian_Fisher_Information) {
         return "Gaussian_Fisher_Information";
     }
-};  
+};
+
+// Numerical (observed) Fisher information for the *whole* recording, computed
+// by finite-differencing the analytic score:
+//   F = -∂(score)/∂θ = -∂²logL/∂θ²    (stored as the positive-definite FIM-form)
+// Built once per recording from 2·n_active extra calls to the score-producing
+// likelihood pass at θ₀ ± h·e_i for each active parameter coordinate i, then
+// symmetrized and negated. Truth for both macro and micro paths by construction
+// — used as the H reference in Information_Distortion_Matrix instead of the
+// per-step Gaussian_Fisher_Information sum (which is exact for macro but only
+// an approximation for the micro mixture likelihood).
+class Numerical_Fisher_Information
+    : public var::Constant<Numerical_Fisher_Information, parameter_spd_payload> {
+    using base_type = var::Constant<Numerical_Fisher_Information, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Numerical_Fisher_Information() = default;
+    Numerical_Fisher_Information(SymPosDefMatrix<double> value,
+                                 var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Numerical_Fisher_Information(SymPosDefMatrix<double> value,
+                                 var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Numerical_Fisher_Information) {
+        return "Numerical_Fisher_Information";
+    }
+};
 
 class Score_Covariance_Matrix
     : public var::Constant<Score_Covariance_Matrix, parameter_spd_payload> {
@@ -453,7 +547,33 @@ class Information_Distortion_Reconstituted
     friend std::string className(Information_Distortion_Reconstituted) {
         return "Information_Distortion_Reconstituted";
     }
-};  
+};
+
+// Quantifies how far the cheap analytic Gaussian_Fisher_Information G is from
+// the numerical truth F = Numerical_Fisher_Information, in the same frame as
+// the IDM:
+//   Gaussian_Fisher_Distortion = inv(√G) · F · inv(√G)
+// Equals the identity when the Gaussian-formula FIM matches the truth, so its
+// eigenvalues' departure from 1 (and log-det) measures how misleading the
+// single-Gaussian moment-match approximation is for the algorithm under test.
+class Gaussian_Fisher_Distortion
+    : public var::Constant<Gaussian_Fisher_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Gaussian_Fisher_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Gaussian_Fisher_Distortion() = default;
+    Gaussian_Fisher_Distortion(SymPosDefMatrix<double> value,
+                               var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Gaussian_Fisher_Distortion(SymPosDefMatrix<double> value,
+                               var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Gaussian_Fisher_Distortion) {
+        return "Gaussian_Fisher_Distortion";
+    }
+};
 
 class Fisher_Covariance
     : public var::Constant<Fisher_Covariance, parameter_spd_payload> {

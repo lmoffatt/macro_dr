@@ -2924,6 +2924,24 @@ inline SymPosDefMatrix<double> apply_inverse_as_matrix(const PSDDecomposition& W
     return dense_to_semidefinite(W.basis * W.inv * tr(W.basis));
 }
 
+// log det of an SPD matrix restricted to its non-null eigenspace — i.e. the
+// pseudo-log-determinant. For full-rank matrices this is the regular log_det;
+// for rank-deficient matrices (e.g. an FIM with a zero column from a structural
+// no-derivative parameter like Num_ch under the lifted micro path) it returns
+// the sum of log of the retained eigenvalues, which is the log determinant of
+// the matrix viewed on its column-space. Cleanly avoids the −∞/NaN that a
+// regular log_det produces on a rank-deficient SPD.
+inline double logdet_subspace(const SymPosDefMatrix<double>& M, const std::string& name,
+                               double rtol, double atol) {
+    auto W = compute_psd_decomp(M, name, rtol, atol);
+    if (!W) return std::numeric_limits<double>::quiet_NaN();
+    if (W.value().empty) return 0.0;  // empty subspace → log det of empty product is 0
+    double s = 0.0;
+    auto const& evals = W.value().eigenvalues;
+    for (std::size_t i = 0; i < evals.size(); ++i) s += std::log(evals[i]);
+    return s;
+}
+
 // Spectral-form correlation of FC = H^{-1} = V Λ^{-1} Vᵀ, computed directly
 // from (V retained, λ retained) without reconstructing the p×p covariance.
 // Using u_i = V[i,:] / √λ  restricted to retained modes, FC[i,j] = ⟨u_i, u_j⟩

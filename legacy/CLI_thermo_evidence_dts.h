@@ -127,6 +127,7 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false>,
                                 var::constexpr_Var_domain<
                                     bool, uses_taylor_variance_correction_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -134,7 +135,8 @@ inline void calc_thermo_evidence_dts(std::string id, std::string model, std::str
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
                                 uses_taylor_variance_correction_aproximation_value(
-                                    taylor_variance_correction_approximation))
+                                    taylor_variance_correction_approximation),
+                                uses_micro_aproximation_value(false))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
@@ -248,6 +250,7 @@ inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::s
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
                                     bool, uses_taylor_variance_correction_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -255,7 +258,8 @@ inline void calc_thermo_evidence_dts_2(std::string id, std::string model, std::s
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
                                 uses_taylor_variance_correction_aproximation_value(
-                                    taylor_variance_correction_approximation))
+                                    taylor_variance_correction_approximation),
+                                uses_micro_aproximation_value(false))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
@@ -381,6 +385,7 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
                                     bool, uses_taylor_variance_correction_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -388,7 +393,8 @@ inline void calc_thermo_evidence_dts_continuation(std::string id, std::size_t it
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
                                 uses_taylor_variance_correction_aproximation_value(
-                                    taylor_variance_correction_approximation))
+                                    taylor_variance_correction_approximation),
+                                uses_micro_aproximation_value(false))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();
@@ -515,6 +521,7 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
                                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                                 var::constexpr_Var_domain<
                                     bool, uses_taylor_variance_correction_aproximation, true>,
+                                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
                                 decltype(model0)>(
                                 model0, Simulation_n_sub_dt(n_sub_dt),
                                 uses_adaptive_aproximation_value(adaptive_aproximation),
@@ -522,7 +529,8 @@ inline void calc_thermo_evidence_dts_continuation_2(std::string id, std::size_t 
                                 uses_averaging_aproximation_value(averaging_approximation),
                                 uses_variance_aproximation_value(variance_correction),
                                 uses_taylor_variance_correction_aproximation_value(
-                                    taylor_variance_correction_approximation))
+                                    taylor_variance_correction_approximation),
+                                uses_micro_aproximation_value(false))
                                 .get_variant();
                         if (!maybe_modelLikelihood) {
                             std::cerr << maybe_modelLikelihood.error()();

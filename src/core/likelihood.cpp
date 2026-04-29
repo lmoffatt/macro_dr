@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "macrodr/cmd/load_model.h"
+#include "micro_full.h"
 #include "qmodel.h"
 
 namespace macrodr::cmd {
@@ -27,9 +28,10 @@ namespace macrodr::cmd {
 namespace {
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class Model, class FuncTable>
+          class micro, class Model, class FuncTable>
 auto calculate_mdlikelihood_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, Model>& lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
+        lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Hessian_minimal> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -38,14 +40,16 @@ auto calculate_mdlikelihood_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  decltype(*model0_d)>(*model0_d, lik.n_sub_dt);
+                                                  micro, decltype(*model0_d)>(*model0_d,
+                                                                              lik.n_sub_dt);
     return dlogLikelihood(ftbl3, dlikelihood, par, r, e);
 }
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class Model, class FuncTable>
+          class micro, class Model, class FuncTable>
 auto calculate_mdiff_likelihood_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, Model>& lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
+        lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r, double delta_param) -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -54,14 +58,16 @@ auto calculate_mdiff_likelihood_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  decltype(*model0_d)>(*model0_d, lik.n_sub_dt);
+                                                  micro, decltype(*model0_d)>(*model0_d,
+                                                                              lik.n_sub_dt);
     return diff_logLikelihood(ftbl3, dlikelihood, par, r, e, delta_param);
 }
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class Model, class FuncTable>
+          class micro, class Model, class FuncTable>
 auto calculate_mdlikelihood_predictions_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, Model>& lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
+        lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -70,7 +76,8 @@ auto calculate_mdlikelihood_predictions_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  decltype(*model0_d)>(*model0_d, lik.n_sub_dt);
+                                                  micro, decltype(*model0_d)>(*model0_d,
+                                                                              lik.n_sub_dt);
     return dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
 }
 
@@ -84,8 +91,23 @@ auto calculate_mlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
     auto par_values = par.to_value();
 
     return std::visit(
-        [&](const auto& modelLikelihood) {
-            return logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
+        [&](const auto& modelLikelihood) -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                auto result = log_Likelihood_micro<
+                    typename ModelL::recursive_type, typename ModelL::averaging_type,
+                    typename ModelL::variance_type, typename ModelL::variance_correction_type,
+                    typename ModelL::taylor_qdt_type, Macro_State<>>(
+                    ftbl3, modelLikelihood.m, par_values, r, e);
+                if (!result) {
+                    return result.error();
+                }
+                auto const& ms = result.value();
+                Vector_Space<logL, elogL, vlogL> out(get<logL>(ms), elogL(0.0), vlogL(0.0));
+                return out;
+            } else {
+                return logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -97,7 +119,12 @@ auto calculate_mdlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
 
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Hessian_minimal> {
-            return calculate_mdlikelihood_impl(modelLikelihood, ftbl3, par, e, r);
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message("micro path does not yet support dlogLikelihood");
+            } else {
+                return calculate_mdlikelihood_impl(modelLikelihood, ftbl3, par, e, r);
+            }
         },
         modelLikelihood_v);
 }
@@ -110,7 +137,13 @@ auto calculate_mdiff_likelihood(const likelihood_algorithm_type& modelLikelihood
 
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
-            return calculate_mdiff_likelihood_impl(modelLikelihood, ftbl3, par, e, r, delta_param);
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message("micro path does not yet support diff_logLikelihood");
+            } else {
+                return calculate_mdiff_likelihood_impl(modelLikelihood, ftbl3, par, e, r,
+                                                       delta_param);
+            }
         },
         modelLikelihood_v);
 }
@@ -124,8 +157,13 @@ auto calculate_mlikelihood_predictions(const likelihood_algorithm_type& modelLik
     auto par_values = par.to_value();
 
     return std::visit(
-        [&](const auto& modelLikelihood) {
-            return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
+        [&](const auto& modelLikelihood) -> Maybe_error<Macro_State_Ev_predictions> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message("micro path does not yet support logLikelihoodPredictions");
+            } else {
+                return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -139,8 +177,13 @@ auto calculate_mlikelihood_diagnostics(const likelihood_algorithm_type& modelLik
     auto par_values = par.to_value();
 
     return std::visit(
-        [&](const auto& modelLikelihood) {
-            return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
+        [&](const auto& modelLikelihood) -> Maybe_error<Macro_State_Ev_diagnostic> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message("micro path does not yet support logLikelihoodDiagnostic");
+            } else {
+                return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -153,9 +196,83 @@ auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLi
 
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
-            return calculate_mdlikelihood_predictions_impl(modelLikelihood, ftbl3, par, e, r);
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                auto dmodel = load_dmodel(modelLikelihood.m.model_name());
+                if (!dmodel) return dmodel.error();
+                auto model0_d = std::move(dmodel.value());
+                return dlog_Likelihood_micro<
+                    typename ModelL::recursive_type, typename ModelL::averaging_type,
+                    typename ModelL::variance_type, typename ModelL::variance_correction_type,
+                    typename ModelL::taylor_qdt_type, dMacro_State_Ev_gradient_all>(
+                    ftbl3, *model0_d, par, r, e);
+            } else {
+                return calculate_mdlikelihood_predictions_impl(modelLikelihood, ftbl3, par, e, r);
+            }
         },
         modelLikelihood_v);
+}
+
+// Numerical Fisher information via the likelihood_algorithm_type variant.
+// Calls calculate_mdlikelihood_predictions 2·n_params times at θ ± h_i·e_i,
+// reads the recording-level score derivative(get<logL>(...)), and finite-
+// differences column-by-column. See calculate_numerical_fisher_information
+// for the central-difference derivation.
+auto calculate_mnumerical_fisher_information(
+    const likelihood_algorithm_type& modelLikelihood_v,
+    const var::Parameters_transformed& par, const Experiment& e, const Recording& r,
+    double h_rel) -> Maybe_error<parameter_spd_payload> {
+    auto const n = par.size();
+    if (n == 0)
+        return parameter_spd_payload(SymPosDefMatrix<double>(0, 0, 0.0), &par);
+
+    Matrix<double> F_raw(n, n, 0.0);
+
+    for (std::size_t i = 0; i < n; ++i) {
+        double h_i = h_rel * std::max(std::abs(par[i]), 1.0);
+
+        auto par_plus = par;
+        par_plus[i] += h_i;
+        auto par_minus = par;
+        par_minus[i] -= h_i;
+
+        auto dy_plus =
+            calculate_mdlikelihood_predictions(modelLikelihood_v, par_plus, e, r);
+        if (!dy_plus)
+            return error_message("numerical FIM at +h, param " + std::to_string(i) + ": " +
+                                 dy_plus.error()());
+        auto dy_minus =
+            calculate_mdlikelihood_predictions(modelLikelihood_v, par_minus, e, r);
+        if (!dy_minus)
+            return error_message("numerical FIM at -h, param " + std::to_string(i) + ": " +
+                                 dy_minus.error()());
+
+        auto const& s_plus = derivative(get<logL>(dy_plus.value()))();
+        auto const& s_minus = derivative(get<logL>(dy_minus.value()))();
+
+        bool col_finite = true;
+        for (std::size_t j = 0; j < n; ++j) {
+            double Hji = (s_plus[j] - s_minus[j]) / (2.0 * h_i);
+            double Fji = -Hji;
+            if (!std::isfinite(Fji)) {
+                col_finite = false;
+                break;
+            }
+            F_raw(j, i) = Fji;
+        }
+        if (!col_finite) {
+            for (std::size_t j = 0; j < n; ++j) F_raw(j, i) = 0.0;
+        }
+    }
+
+    SymPosDefMatrix<double> F(n, n, 0.0);
+    for (std::size_t i = 0; i < n; ++i) {
+        for (std::size_t j = i; j < n; ++j) {
+            double avg = 0.5 * (F_raw(i, j) + F_raw(j, i));
+            F.set(i, j, avg);
+        }
+    }
+    return parameter_spd_payload(std::move(F), &par);
 }
 
 auto calculate_likelihood(const ModelPtr& model0,
@@ -163,41 +280,71 @@ auto calculate_likelihood(const ModelPtr& model0,
                           const Recording& r, bool adaptive_approximation,
                           bool recursive_approximation, int averaging_approximation,
                           bool variance_approximation,
-                          bool taylor_variance_correction_approximation)
+                          bool taylor_variance_correction_approximation,
+                          bool micro_approximation)
     -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
     const auto& model_ref = *model0;
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto maybe_modelLikelihood =
-        merge_Maybe_variant(Likelihood_Model_regular<
-            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            decltype(model_ref)>(model_ref, nsub,
-                              uses_adaptive_aproximation_value(adaptive_approximation),
-                              uses_recursive_aproximation_value(recursive_approximation),
-                              uses_averaging_aproximation_value(averaging_approximation),
-                              uses_variance_aproximation_value(variance_approximation),
-                              uses_taylor_variance_correction_aproximation_value(
-                                  taylor_variance_correction_approximation))
-            .get_variant(),
+    auto maybe_modelLikelihood = merge_Maybe_variant(
+        merge_Maybe_variant(
+            // Branch 1: macro, non-taylor (existing 6-variant family)
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref)>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant(),
+            // Branch 2: macro, taylor correction (existing narrower family)
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref)>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant()),
+        // Branch 3: micro (recursive=true, taylor=false, averaging ∈ {0, 1, 2})
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation,1, 2>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
-            decltype(model_ref)>(model_ref, nsub,
-                              uses_adaptive_aproximation_value(adaptive_approximation),
-                              uses_recursive_aproximation_value(recursive_approximation),
-                              uses_averaging_aproximation_value(averaging_approximation),
-                              uses_variance_aproximation_value(variance_approximation),
-                              uses_taylor_variance_correction_aproximation_value(
-                                  taylor_variance_correction_approximation))
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(model_ref)>(
+            model_ref, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -206,8 +353,26 @@ auto calculate_likelihood(const ModelPtr& model0,
 
     auto par_values = par.to_value();
     return std::visit(
-        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood) {
-            return logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
+        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood)
+            -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                auto result = log_Likelihood_micro<
+                    typename ModelL::recursive_type, typename ModelL::averaging_type,
+                    typename ModelL::variance_type, typename ModelL::variance_correction_type,
+                    typename ModelL::taylor_qdt_type, Macro_State<>>(
+                    ftbl3, modelLikelihood.m, par_values, r, e);
+                if (!result) {
+                    return result.error();
+                }
+                // Extract (logL, elogL, vlogL) from the MacroState — elogL and vlogL are
+                // not tracked by the micro path, so we return logL and zeros.
+                auto const& ms = result.value();
+                Vector_Space<logL, elogL, vlogL> out(get<logL>(ms), elogL(0.0), vlogL(0.0));
+                return out;
+            } else {
+                return logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -217,7 +382,8 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                            const Recording& r, bool adaptive_approximation,
                            bool recursive_approximation, int averaging_approximation,
                            bool variance_approximation,
-                           bool taylor_variance_correction_approximation)
+                           bool taylor_variance_correction_approximation,
+                           bool micro_approximation)
     -> Maybe_error<dMacro_State_Hessian_minimal> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
@@ -229,35 +395,60 @@ auto calculate_dlikelihood(const ModelPtr& model0,
     }
     auto model0_d = std::move(dmodel.value());
     auto maybe_modelLikelihood = merge_Maybe_variant(
+        merge_Maybe_variant(
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(*model0_d)>(
+                *model0_d, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant(),
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(*model0_d)>(
+                *model0_d, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            decltype(*model0_d)>(*model0_d, nsub,
-                                 uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
-            .get_variant(), 
-               Likelihood_Model_regular<
-            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
-            decltype(*model0_d)>(*model0_d, nsub,
-                                 uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(*model0_d)>(
+            *model0_d, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation))
             .get_variant());
-    ;
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
@@ -265,7 +456,13 @@ auto calculate_dlikelihood(const ModelPtr& model0,
 
     return std::visit(
         [&ftbl3, &par, &e, &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Hessian_minimal> {
-            return dlogLikelihood(ftbl3, modelLikelihood, par, r, e);
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message(
+                    "micro path does not yet support dlogLikelihood (analytical derivatives)");
+            } else {
+                return dlogLikelihood(ftbl3, modelLikelihood, par, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -275,7 +472,8 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
                                const Recording& r, bool adaptive_approximation,
                                bool recursive_approximation, int averaging_approximation,
                                bool variance_approximation,
-                               bool taylor_variance_correction_approximation, double delta_param)
+                               bool taylor_variance_correction_approximation,
+                               bool micro_approximation, double delta_param)
     -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
@@ -286,34 +484,60 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
         return dmodel.error();
     }
     auto model0_d = std::move(dmodel.value());
-    auto maybe_modelLikelihood =merge_Maybe_variant(
-         Likelihood_Model_regular<
-            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-             decltype(*model0_d)>(*model0_d, nsub,
-                                  uses_adaptive_aproximation_value(adaptive_approximation),
-                                  uses_recursive_aproximation_value(recursive_approximation),
-                                  uses_averaging_aproximation_value(averaging_approximation),
-                                  uses_variance_aproximation_value(variance_approximation),
-                                  uses_taylor_variance_correction_aproximation_value(
-                                      taylor_variance_correction_approximation))
-            .get_variant(),
+    auto maybe_modelLikelihood = merge_Maybe_variant(
+        merge_Maybe_variant(
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(*model0_d)>(
+                *model0_d, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant(),
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(*model0_d)>(
+                *model0_d, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation,  true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,  true>,
-            decltype(*model0_d)>(*model0_d, nsub,
-                                 uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(*model0_d)>(
+            *model0_d, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -321,8 +545,15 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
     return std::visit(
-        [&ftbl3, &par, &e, &r, delta_param](auto& modelLikelihood) {
-            return diff_logLikelihood(ftbl3, modelLikelihood, par, r, e, delta_param);
+        [&ftbl3, &par, &e, &r, delta_param](auto& modelLikelihood)
+            -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message(
+                    "micro path does not yet support diff_logLikelihood (finite differences)");
+            } else {
+                return diff_logLikelihood(ftbl3, modelLikelihood, par, r, e, delta_param);
+            }
         },
         modelLikelihood_v);
 }
@@ -332,41 +563,68 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
-                                      bool taylor_variance_correction_approximation)
+                                      bool taylor_variance_correction_approximation,
+                                      bool micro_approximation)
     -> Maybe_error<Macro_State_Ev_predictions> {
     const auto& model_ref = *model0;
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto maybe_modelLikelihood =merge_Maybe_variant(
+    auto maybe_modelLikelihood = merge_Maybe_variant(
+        merge_Maybe_variant(
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref)>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant(),
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref)>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            decltype(model_ref)>(model_ref, nsub,
-                              uses_adaptive_aproximation_value(adaptive_approximation),
-                              uses_recursive_aproximation_value(recursive_approximation),
-                              uses_averaging_aproximation_value(averaging_approximation),
-                              uses_variance_aproximation_value(variance_approximation),
-                              uses_taylor_variance_correction_aproximation_value(
-                                  taylor_variance_correction_approximation))
-            .get_variant(),
-            Likelihood_Model_regular<
-            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation,  1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
-            decltype(model_ref)>(model_ref, nsub,
-                              uses_adaptive_aproximation_value(adaptive_approximation),
-                              uses_recursive_aproximation_value(recursive_approximation),
-                              uses_averaging_aproximation_value(averaging_approximation),
-                              uses_variance_aproximation_value(variance_approximation),
-                              uses_taylor_variance_correction_aproximation_value(
-                                  taylor_variance_correction_approximation))
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(model_ref)>(
+            model_ref, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -375,8 +633,15 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
 
     auto par_values = par.to_value();
     return std::visit(
-        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood) {
-            return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
+        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood)
+            -> Maybe_error<Macro_State_Ev_predictions> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message(
+                    "micro path does not yet support logLikelihoodPredictions");
+            } else {
+                return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -386,41 +651,68 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                                       const Recording& r, bool adaptive_approximation,
                                       bool recursive_approximation, int averaging_approximation,
                                       bool variance_approximation,
-                                      bool taylor_variance_correction_approximation)
+                                      bool taylor_variance_correction_approximation,
+                                      bool micro_approximation)
     -> Maybe_error<Macro_State_Ev_diagnostic> {
     const auto& model_ref = *model0;
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
 
-    auto maybe_modelLikelihood =merge_Maybe_variant(
+    auto maybe_modelLikelihood = merge_Maybe_variant(
+        merge_Maybe_variant(
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref)>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant(),
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(model_ref)>(
+                model_ref, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false >,
-            decltype(model_ref)>(model_ref, nsub,
-                              uses_adaptive_aproximation_value(adaptive_approximation),
-                              uses_recursive_aproximation_value(recursive_approximation),
-                              uses_averaging_aproximation_value(averaging_approximation),
-                              uses_variance_aproximation_value(variance_approximation),
-                              uses_taylor_variance_correction_aproximation_value(
-                                  taylor_variance_correction_approximation))
-            .get_variant(),
-            Likelihood_Model_regular<
-            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation,  true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation,  1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
-            decltype(model_ref)>(model_ref, nsub,
-                              uses_adaptive_aproximation_value(adaptive_approximation),
-                              uses_recursive_aproximation_value(recursive_approximation),
-                              uses_averaging_aproximation_value(averaging_approximation),
-                              uses_variance_aproximation_value(variance_approximation),
-                              uses_taylor_variance_correction_aproximation_value(
-                                  taylor_variance_correction_approximation))
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(model_ref)>(
+            model_ref, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -429,8 +721,14 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
 
     auto par_values = par.to_value();
     return std::visit(
-        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood) {
-            return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
+        [&ftbl3, &par_values, &e, &r](auto& modelLikelihood)
+            -> Maybe_error<Macro_State_Ev_diagnostic> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message("micro path does not yet support logLikelihoodDiagnostic");
+            } else {
+                return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -440,7 +738,8 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                                        const Recording& r, bool adaptive_approximation,
                                        bool recursive_approximation, int averaging_approximation,
                                        bool variance_approximation,
-                                       bool taylor_variance_correction_approximation)
+                                       bool taylor_variance_correction_approximation,
+                                       bool micro_approximation)
     -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
@@ -451,43 +750,78 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
         return dmodel.error();
     }
     auto model0_d = std::move(dmodel.value());
-    auto maybe_modelLikelihood =merge_Maybe_variant(
-         Likelihood_Model_regular<
+    auto maybe_modelLikelihood = merge_Maybe_variant(
+        merge_Maybe_variant(
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          false>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(*model0_d)>(
+                *model0_d, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant(),
+            Likelihood_Model_regular<
+                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                          true>,
+                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                decltype(*model0_d)>(
+                *model0_d, nsub,
+                uses_adaptive_aproximation_value(adaptive_approximation),
+                uses_recursive_aproximation_value(recursive_approximation),
+                uses_averaging_aproximation_value(averaging_approximation),
+                uses_variance_aproximation_value(variance_approximation),
+                uses_taylor_variance_correction_aproximation_value(
+                    taylor_variance_correction_approximation),
+                uses_micro_aproximation_value(micro_approximation))
+                .get_variant()),
+        Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-             var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-             var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-             decltype(*model0_d)>(*model0_d, nsub,
-                                  uses_adaptive_aproximation_value(adaptive_approximation),
-                                  uses_recursive_aproximation_value(recursive_approximation),
-                                  uses_averaging_aproximation_value(averaging_approximation),
-                                  uses_variance_aproximation_value(variance_approximation),
-                                  uses_taylor_variance_correction_aproximation_value(
-                                      taylor_variance_correction_approximation))
-            .get_variant(), 
-               Likelihood_Model_regular<
-            var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation,  true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation,  true>,
-            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, true>,
-            decltype(*model0_d)>(*model0_d, nsub,
-                                 uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            decltype(*model0_d)>(
+            *model0_d, nsub,
+            uses_adaptive_aproximation_value(adaptive_approximation),
+            uses_recursive_aproximation_value(recursive_approximation),
+            uses_averaging_aproximation_value(averaging_approximation),
+            uses_variance_aproximation_value(variance_approximation),
+            uses_taylor_variance_correction_aproximation_value(
+                taylor_variance_correction_approximation),
+            uses_micro_aproximation_value(micro_approximation))
             .get_variant());
-       if (!maybe_modelLikelihood) {
+    if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
     }
     auto modelLikelihood_v = std::move(maybe_modelLikelihood.value());
 
     return std::visit(
         [&ftbl3, &par, &e, &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
-            return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return dlog_Likelihood_micro<
+                    typename ModelL::recursive_type, typename ModelL::averaging_type,
+                    typename ModelL::variance_type, typename ModelL::variance_correction_type,
+                    typename ModelL::taylor_qdt_type, dMacro_State_Ev_gradient_all>(
+                    ftbl3, modelLikelihood.m, par, r, e);
+            } else {
+                return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+            }
         },
         modelLikelihood_v);
 }
@@ -496,7 +830,8 @@ auto calculate_dlikelihood_predictions_model(
     const std::string& model_name, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r, bool adaptive_approximation, bool recursive_approximation,
     int averaging_approximation, bool variance_approximation,
-    bool taylor_variance_correction_approximation) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    bool taylor_variance_correction_approximation,
+    bool micro_approximation) -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
 
     auto nsub = Simulation_n_sub_dt(100);
@@ -510,33 +845,57 @@ auto calculate_dlikelihood_predictions_model(
         [&](auto m_ptr) -> Maybe_error<dMacro_State_Ev_gradient_all> {
             auto& m = *m_ptr;
             auto maybe_modelLikelihood = merge_Maybe_variant(
-                Likelihood_Model_regular<
-                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-                    var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-                    var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-                    var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
-                                              false>,
-                    decltype(m)>(m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
-                    .get_variant(),
+                merge_Maybe_variant(
+                    Likelihood_Model_regular<
+                        var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                        var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                        var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                        var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                        var::constexpr_Var_domain<
+                            bool, uses_taylor_variance_correction_aproximation, false>,
+                        var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                        decltype(m)>(
+                        m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
+                        uses_recursive_aproximation_value(recursive_approximation),
+                        uses_averaging_aproximation_value(averaging_approximation),
+                        uses_variance_aproximation_value(variance_approximation),
+                        uses_taylor_variance_correction_aproximation_value(
+                            taylor_variance_correction_approximation),
+                        uses_micro_aproximation_value(micro_approximation))
+                        .get_variant(),
+                    Likelihood_Model_regular<
+                        var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                        var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                        var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                        var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                        var::constexpr_Var_domain<
+                            bool, uses_taylor_variance_correction_aproximation, true>,
+                        var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                        decltype(m)>(
+                        m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
+                        uses_recursive_aproximation_value(recursive_approximation),
+                        uses_averaging_aproximation_value(averaging_approximation),
+                        uses_variance_aproximation_value(variance_approximation),
+                        uses_taylor_variance_correction_aproximation_value(
+                            taylor_variance_correction_approximation),
+                        uses_micro_aproximation_value(micro_approximation))
+                        .get_variant()),
                 Likelihood_Model_regular<
                     var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                     var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
                     var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                     var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
-                                              true>,
-                    decltype(m)>(m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
-                                 uses_recursive_aproximation_value(recursive_approximation),
-                                 uses_averaging_aproximation_value(averaging_approximation),
-                                 uses_variance_aproximation_value(variance_approximation),
-                                 uses_taylor_variance_correction_aproximation_value(
-                                     taylor_variance_correction_approximation))
+                                              false>,
+                    var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+                    decltype(m)>(
+                    m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
+                    uses_recursive_aproximation_value(recursive_approximation),
+                    uses_averaging_aproximation_value(averaging_approximation),
+                    uses_variance_aproximation_value(variance_approximation),
+                    uses_taylor_variance_correction_aproximation_value(
+                        taylor_variance_correction_approximation),
+                    uses_micro_aproximation_value(micro_approximation))
                     .get_variant());
             if (!maybe_modelLikelihood) {
                 return maybe_modelLikelihood.error();
@@ -546,12 +905,103 @@ auto calculate_dlikelihood_predictions_model(
             return std::visit(
                 [&ftbl3, &par, &e,
                  &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
-                    return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+                    using ModelL = std::decay_t<decltype(modelLikelihood)>;
+                    if constexpr (ModelL::micro_type::value) {
+                        return dlog_Likelihood_micro<
+                            typename ModelL::recursive_type, typename ModelL::averaging_type,
+                            typename ModelL::variance_type,
+                            typename ModelL::variance_correction_type,
+                            typename ModelL::taylor_qdt_type,
+                            dMacro_State_Ev_gradient_all>(ftbl3, modelLikelihood.m, par, r, e);
+                    } else {
+                        return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+                    }
                 },
                 modelLikelihood_v);
         },
         model0_d);
 };
+
+// Numerical (observed) Fisher information for one recording, computed by
+// finite-differencing the analytic score:
+//   F = -∂²(logL)/∂θ²    (stored as the positive-definite FIM-form, F = -H)
+// Cost: 2·n_params calls to calculate_dlikelihood_predictions at θ ± h_i·e_i,
+// each yielding the recording-level summed score derivative(get<logL>(...)).
+// Each column F[:,i] = -(score(θ+h_i·e_i) - score(θ-h_i·e_i)) / (2 h_i),
+// with h_i = h_rel · max(|θ_i|, 1) (parameter-relative central differences,
+// standard cookbook for double-precision). Final result is symmetrized via
+// (F + Fᵀ)/2 — finite-difference asymmetry is at O(h²) and does not preserve
+// strict symmetry. Non-finite columns (inactive parameters / NaN-observation
+// recordings) are zeroed; the downstream logdet_active_subspace machinery
+// already handles structurally rank-deficient F.
+//
+// Decimation, if desired, is the caller's job: pass a subsetted Recording so F
+// is computed on every K-th sample for cheaper evaluation.
+auto calculate_numerical_fisher_information(
+    const ModelPtr& model0, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r, bool adaptive_approximation, bool recursive_approximation,
+    int averaging_approximation, bool variance_approximation,
+    bool taylor_variance_correction_approximation, bool micro_approximation,
+    double h_rel) -> Maybe_error<parameter_spd_payload> {
+    auto const n = par.size();
+    if (n == 0)
+        return parameter_spd_payload(SymPosDefMatrix<double>(0, 0, 0.0), &par);
+
+    Matrix<double> F_raw(n, n, 0.0);
+
+    for (std::size_t i = 0; i < n; ++i) {
+        double h_i = h_rel * std::max(std::abs(par[i]), 1.0);
+
+        auto par_plus = par;
+        par_plus[i] += h_i;
+        auto par_minus = par;
+        par_minus[i] -= h_i;
+
+        auto dy_plus = calculate_dlikelihood_predictions(
+            model0, par_plus, e, r, adaptive_approximation, recursive_approximation,
+            averaging_approximation, variance_approximation,
+            taylor_variance_correction_approximation, micro_approximation);
+        if (!dy_plus)
+            return error_message("numerical FIM at +h, param " + std::to_string(i) + ": " +
+                                 dy_plus.error()());
+        auto dy_minus = calculate_dlikelihood_predictions(
+            model0, par_minus, e, r, adaptive_approximation, recursive_approximation,
+            averaging_approximation, variance_approximation,
+            taylor_variance_correction_approximation, micro_approximation);
+        if (!dy_minus)
+            return error_message("numerical FIM at -h, param " + std::to_string(i) + ": " +
+                                 dy_minus.error()());
+
+        // Recording-level summed score = ∂(Σ_t logL_t)/∂θ at perturbed θ.
+        auto const& s_plus = derivative(get<logL>(dy_plus.value()))();
+        auto const& s_minus = derivative(get<logL>(dy_minus.value()))();
+
+        // F[:,i] = -(s_plus - s_minus) / (2·h_i)  (negate the Hessian of logL)
+        bool col_finite = true;
+        for (std::size_t j = 0; j < n; ++j) {
+            double Hji = (s_plus[j] - s_minus[j]) / (2.0 * h_i);
+            double Fji = -Hji;
+            if (!std::isfinite(Fji)) {
+                col_finite = false;
+                break;
+            }
+            F_raw(j, i) = Fji;
+        }
+        if (!col_finite) {
+            for (std::size_t j = 0; j < n; ++j) F_raw(j, i) = 0.0;
+        }
+    }
+
+    // Symmetrize: (F + Fᵀ)/2.
+    SymPosDefMatrix<double> F(n, n, 0.0);
+    for (std::size_t i = 0; i < n; ++i) {
+        for (std::size_t j = i; j < n; ++j) {
+            double avg = 0.5 * (F_raw(i, j) + F_raw(j, i));
+            F.set(i, j, avg);
+        }
+    }
+    return parameter_spd_payload(std::move(F), &par);
+}
 
 template <class VS>
 struct vector_space_types;
@@ -1452,7 +1902,9 @@ enum class Diagnostic_preset {
 
 template <Diagnostic_preset preset>
 auto calculate_Likelihood_diagnostics_preset_f(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices, std::size_t max_lag) {
+    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::vector<std::size_t> const& indices,
+    const std::vector<parameter_spd_payload>& F_per_recording,
+    std::vector<std::size_t> const& F_indices, std::size_t max_lag) {
     auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
         dy, indices,
         std::type_identity<Evolution_of<
@@ -1484,18 +1936,18 @@ auto calculate_Likelihood_diagnostics_preset_f(
                                             var::get_dx_of_dfdx(get<logL>(evo_i)));
         },
         [](const auto& evo_i) {
-            // Gaussian Fisher information per sample. We read prediction
-            // derivatives (dy_mean/dθ, dy_var/dθ) rather than logL's derivative,
-            // so the NaN-observation guard that zeros logL & dlogL in
-            // calculate_logL does NOT propagate here. For samples over long
-            // integration intervals (e.g. 2000-s equilibration steps), the
-            // prediction derivatives can contain secular-growth terms that
-            // produce non-finite entries — if we pass those into Σ_t GFI_t we
-            // poison H and compute_psd_decomp rejects every bootstrap sample.
-            // Guard: if the computed per-sample GFI contains any non-finite
-            // entry, return a zero SPD. Physically correct — a sample whose
-            // derivatives are not numerically usable (or whose observation was
-            // NaN-masked) contributes zero Fisher information.
+            // Per-sample cheap Gaussian-formula FIM = the FIM of the single
+            // Gaussian moment-matched to the predictive (mean = y_mean,
+            // variance = y_var). For macro paths the predictive IS Gaussian
+            // by construction so this is the exact FIM. For micro paths the
+            // predictive is a finite mixture and y_mean / y_var carry its
+            // first two moments (with the within-cell variance term included
+            // in run_step), so this is the moment-match approximation —
+            // exactly the quantity Gaussian_Fisher_Distortion measures
+            // against the numerical truth.
+            //
+            // NaN-observation samples / secular-growth derivatives produce
+            // non-finite GFI entries that would poison H; guard.
             auto gfi = sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
                            (1.0 / primitive(get<y_var>(evo_i))()) +
                        sqr_X<true>(derivative(get<y_var>(evo_i))()) *
@@ -1537,18 +1989,8 @@ auto calculate_Likelihood_diagnostics_preset_f(
                                             var::get_dx_of_dfdx(get<logL>(evo_i)));
         },
         [](const auto& evo_i) {
-            // Gaussian Fisher information per sample. We read prediction
-            // derivatives (dy_mean/dθ, dy_var/dθ) rather than logL's derivative,
-            // so the NaN-observation guard that zeros logL & dlogL in
-            // calculate_logL does NOT propagate here. For samples over long
-            // integration intervals (e.g. 2000-s equilibration steps), the
-            // prediction derivatives can contain secular-growth terms that
-            // produce non-finite entries — if we pass those into Σ_t GFI_t we
-            // poison H and compute_psd_decomp rejects every bootstrap sample.
-            // Guard: if the computed per-sample GFI contains any non-finite
-            // entry, return a zero SPD. Physically correct — a sample whose
-            // derivatives are not numerically usable (or whose observation was
-            // NaN-masked) contributes zero Fisher information.
+            // Per-sample cheap Gaussian-formula FIM (see comment in the
+            // sum_moments lambda above). NaN-observation guard.
             auto gfi = sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
                            (1.0 / primitive(get<y_var>(evo_i))()) +
                        sqr_X<true>(derivative(get<y_var>(evo_i))()) *
@@ -1561,29 +2003,62 @@ auto calculate_Likelihood_diagnostics_preset_f(
 
     constexpr double k_psd_rtol = 1e-10;
     constexpr double k_psd_atol = 0.0;
-    for (auto& m : evol_moments()) {
-        auto H_t = get<mean<Gaussian_Fisher_Information>>(get<Gaussian_Fisher_Information>(m)())();
-        auto g_t = get<mean<dlogL>>(get<dlogL>(m)())();
 
-        // One eigendecomp of H_t reused by both SDM_t and DIB_t.
-        auto maybe_decomp_H_t = lapack::compute_psd_decomp(H_t.value(), "H_t", k_psd_rtol, k_psd_atol);
-        lapack::PSDDecomposition W_H_t;
-        if (maybe_decomp_H_t) W_H_t = std::move(maybe_decomp_H_t.value());
+    // Recording-level numerical Fisher information F_b: bootstrap-mean of the
+    // per-recording F_per_recording[F_indices[k]] selection. F_indices was
+    // drawn independently from `indices` (independent two-vector bootstrap).
+    // F_b serves as the H reference for ALL recording-level distortion
+    // diagnostics (IDM, SDM, FC, DCC, DIB, spectrum) AND as the constant
+    // frame for per-sample SDM_t / DIB_t — keeping a single H frame across
+    // samples is what makes Σ_t SDM_t ≈ IDM and Σ_t DIB_t = DIB hold by
+    // linearity.
+    auto compute_F_b = [&]() -> parameter_spd_payload {
+        if (F_per_recording.empty() || F_indices.empty())
+            return parameter_spd_payload{};
+        auto const& F0 = F_per_recording[F_indices[0]];
+        std::size_t n = F0.value().nrows();
+        if (n == 0) return parameter_spd_payload{};
+        SymPosDefMatrix<double> acc(n, n, 0.0);
+        for (auto idx : F_indices) {
+            auto const& Fi = F_per_recording[idx];
+            for (std::size_t i = 0; i < n; ++i)
+                for (std::size_t j = i; j < n; ++j)
+                    acc.set(i, j, acc(i, j) + Fi.value()(i, j));
+        }
+        double scale = 1.0 / static_cast<double>(F_indices.size());
+        for (std::size_t i = 0; i < n; ++i)
+            for (std::size_t j = i; j < n; ++j) acc.set(i, j, acc(i, j) * scale);
+        return parameter_spd_payload(std::move(acc), F0.parameters_ptr());
+    };
+    auto F_b = compute_F_b();
+
+    auto numerical_fim = Numerical_Fisher_Information(F_b.value(), F_b.parameters_ptr());
+
+    auto maybe_W_F_b = lapack::compute_psd_decomp(F_b.value(), "F_b", k_psd_rtol, k_psd_atol);
+    lapack::PSDDecomposition W_F_b;
+    if (maybe_W_F_b) W_F_b = std::move(maybe_W_F_b.value());
+
+    // Per-sample SDM_t and DIB_t use W_F_b as a CONSTANT frame across all
+    // samples t — no per-sample F is computed; the global F_b is used for
+    // every t. This preserves the reconstruction identities Σ_t SDM_t ≈ IDM
+    // and Σ_t DIB_t = DIB by linearity.
+    for (auto& m : evol_moments()) {
+        auto g_t = get<mean<dlogL>>(get<dlogL>(m)())();
 
         get<Sample_Distortion_Matrix>(m)() =
             parameter_spd_payload(
                 lapack::apply_normalized_congruence(
-                    W_H_t, get<covariance<dlogL>>(get<dlogL>(m)())().value(),
+                    W_F_b, get<covariance<dlogL>>(get<dlogL>(m)())().value(),
                     "sample distortion subspace matrix", k_psd_rtol, k_psd_atol)
                     .value_or(SymPosDefMatrix<double>{}),
-                H_t.parameters_ptr());
+                F_b.parameters_ptr());
 
         get<Distortion_Induced_Bias>(m)() =
             parameter_vector_payload(
-                lapack::apply_inverse_vector(W_H_t, g_t.value(),
+                lapack::apply_inverse_vector(W_F_b, g_t.value(),
                                              "Distortion-induced bias")
                     .value_or(Matrix<double>{}),
-                H_t.parameters_ptr());
+                F_b.parameters_ptr());
     }
 
     auto sum_r_std = Sum<Moment_statistics<r_std>>(evol_moments(),
@@ -1596,7 +2071,10 @@ auto calculate_Likelihood_diagnostics_preset_f(
         Sum<Moment_statistics<Gaussian_Fisher_Information, false>>(
             evol_moments(), [](const auto& m) { return get<Gaussian_Fisher_Information>(m)(); });
 
-    auto H = get<mean<Sum<Gaussian_Fisher_Information>>>(
+    // G_b: cheap analytic Gaussian FIM (Σ_t GFI_t aggregated and bootstrap-meaned).
+    // Used only as the normalization frame for the new Gaussian_Fisher_Distortion
+    // diagnostic — no longer drives any other diagnostic.
+    auto G_b = get<mean<Sum<Gaussian_Fisher_Information>>>(
         get<Sum<Gaussian_Fisher_Information>>(sum_moments)());
 
     auto J = get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
@@ -1604,27 +2082,42 @@ auto calculate_Likelihood_diagnostics_preset_f(
     auto J_sample = get<covariance<dlogL>>(sum_dlogL());
     auto score_mean = get<mean<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
 
-    // Distortion quantities are evaluated on the retained informative subspace.
-    // Eigendecompose each anchor once and reuse across all derived matrices
-    // (IDM, SDM, DCC, FC, DIB all share H; CDM uses J_sample; IDM2 uses SDM).
-    auto maybe_W_H = lapack::compute_psd_decomp(H().value(), "H", k_psd_rtol, k_psd_atol);
-    lapack::PSDDecomposition W_H;
-    if (maybe_W_H) W_H = std::move(maybe_W_H.value());
-
+    // Information_Distortion_Matrix uses F_b as the H reference (numerical
+    // truth, not the cheap Gaussian-formula approximation).
     auto idm = Information_Distortion_Matrix(
-        lapack::apply_normalized_congruence(W_H, J().value(), "IDM subspace matrix", k_psd_rtol,
+        lapack::apply_normalized_congruence(W_F_b, J().value(), "IDM subspace matrix", k_psd_rtol,
                                             k_psd_atol)
             .value_or(SymPosDefMatrix<double>{}),
-        H().parameters_ptr());
-    auto log_det_idm = log_Det<Information_Distortion_Matrix>(idm);
+        F_b.parameters_ptr());
+    // log_det on the *active* (non-null) subspace — drops zero-diagonal
+    // parameter directions (e.g. Num_ch_mean for the lifted micro path) before
+    // computing the determinant, so a structurally rank-deficient FIM yields a
+    // finite pseudo-log-det instead of −∞ / NaN that poisons the bootstrap.
+    auto log_det_idm = log_Det<Information_Distortion_Matrix>(
+        logdet_active_subspace(idm()));
+
+    // Gaussian_Fisher_Distortion = inv(√G_b) · F_b · inv(√G_b) — measures how
+    // far the cheap analytic Gaussian-formula FIM is from the numerical truth,
+    // using the IDM-frame convention (identity ⇔ no distortion).
+    auto maybe_W_G_b = lapack::compute_psd_decomp(G_b().value(), "G_b", k_psd_rtol, k_psd_atol);
+    lapack::PSDDecomposition W_G_b;
+    if (maybe_W_G_b) W_G_b = std::move(maybe_W_G_b.value());
+    auto gfd = Gaussian_Fisher_Distortion(
+        lapack::apply_normalized_congruence(W_G_b, F_b.value(), "GFD subspace matrix", k_psd_rtol,
+                                            k_psd_atol)
+            .value_or(SymPosDefMatrix<double>{}),
+        F_b.parameters_ptr());
+    auto log_det_gfd = log_Det<Gaussian_Fisher_Distortion>(
+        logdet_active_subspace(gfd()));
 
     auto sdm = Sample_Distortion_Matrix(
-        lapack::apply_normalized_congruence(W_H, J_sample().value(),
+        lapack::apply_normalized_congruence(W_F_b, J_sample().value(),
                                             "sample distortion subspace matrix", k_psd_rtol,
                                             k_psd_atol)
             .value_or(SymPosDefMatrix<double>{}),
-        H().parameters_ptr());
-    auto log_det_sdm = log_Det<Sample_Distortion_Matrix>(sdm);
+        F_b.parameters_ptr());
+    auto log_det_sdm = log_Det<Sample_Distortion_Matrix>(
+        logdet_active_subspace(sdm()));
 
     auto maybe_W_Js = lapack::compute_psd_decomp(J_sample().value(), "J_sample", k_psd_rtol,
                                                   k_psd_atol);
@@ -1637,7 +2130,8 @@ auto calculate_Likelihood_diagnostics_preset_f(
                                             k_psd_atol)
             .value_or(SymPosDefMatrix<double>{}),
         J_sample().parameters_ptr());
-    auto log_det_cdm = log_Det<Correlation_Distortion_Matrix>(cdm);
+    auto log_det_cdm = log_Det<Correlation_Distortion_Matrix>(
+        logdet_active_subspace(cdm()));
 
     auto maybe_W_SDM = lapack::compute_psd_decomp(sdm().value(), "SDM", k_psd_rtol, k_psd_atol);
     lapack::PSDDecomposition W_SDM;
@@ -1649,61 +2143,62 @@ auto calculate_Likelihood_diagnostics_preset_f(
             .value_or(SymPosDefMatrix<double>{}),
         sdm().parameters_ptr());
 
-    // Spectral-form identifiability diagnostics rooted in H's decomposition.
-    // DCC = H⁻¹ J H⁻¹ inherits H's null subspace (Hv=0 ⇒ vᵀ·DCC·v = 0), so the
-    // null projector and effective rank are identical for FC and DCC. The FC
-    // and H eigenspectra differ only by reciprocation; we emit H's sorted
-    // spectrum for both, and downstream analysis recovers FC spectrum via 1/λ.
-    auto spectrum_H_mat = lapack::eigenvalue_spectrum(W_H);
-    auto eff_rank_H = lapack::effective_rank(W_H, k_psd_rtol, k_psd_atol);
-    auto cond_H = lapack::spectrum_condition_number(W_H);
-    auto null_proj_matrix = lapack::null_space_projector(W_H, k_psd_rtol, k_psd_atol);
-    auto worst_proj_matrix = lapack::worst_subspace_projector(W_H);
+    // Spectral-form identifiability diagnostics rooted in F_b's decomposition.
+    // DCC = F⁻¹ J F⁻¹ inherits F_b's null subspace (Fv=0 ⇒ vᵀ·DCC·v = 0), so
+    // the null projector and effective rank are identical for FC and DCC. The
+    // FC and F_b eigenspectra differ only by reciprocation; we emit F_b's
+    // sorted spectrum for both, and downstream analysis recovers FC spectrum
+    // via 1/λ.
+    auto spectrum_F_mat = lapack::eigenvalue_spectrum(W_F_b);
+    auto eff_rank_F = lapack::effective_rank(W_F_b, k_psd_rtol, k_psd_atol);
+    auto cond_F = lapack::spectrum_condition_number(W_F_b);
+    auto null_proj_matrix = lapack::null_space_projector(W_F_b, k_psd_rtol, k_psd_atol);
+    auto worst_proj_matrix = lapack::worst_subspace_projector(W_F_b);
 
-    auto fc = Fisher_Covariance(lapack::apply_inverse_as_matrix(W_H), H().parameters_ptr());
-    auto log_det_fc = log_Det<Fisher_Covariance>(fc);
+    auto fc = Fisher_Covariance(lapack::apply_inverse_as_matrix(W_F_b), F_b.parameters_ptr());
+    auto log_det_fc = log_Det<Fisher_Covariance>(logdet_active_subspace(fc()));
     // Spectral-form correlations: bounded in [-1, 1] by construction, computed
     // directly from (V, λ) without reconstructing a p×p covariance.
     using fc_corr_payload = typename Correlation_Of<Fisher_Covariance>::payload_type;
     auto corr_fc = Correlation_Of<Fisher_Covariance>(
-        fc_corr_payload(lapack::fc_correlation_from_decomp(W_H), H().parameters_ptr()));
-    auto spectrum_fc = Eigenvalue_Spectrum<Fisher_Covariance>(spectrum_H_mat);
-    auto eff_rank_fc = Effective_Rank<Fisher_Covariance>(eff_rank_H);
-    auto cond_fc = Spectrum_Condition_Number<Fisher_Covariance>(cond_H);
+        fc_corr_payload(lapack::fc_correlation_from_decomp(W_F_b), F_b.parameters_ptr()));
+    auto spectrum_fc = Eigenvalue_Spectrum<Fisher_Covariance>(spectrum_F_mat);
+    auto eff_rank_fc = Effective_Rank<Fisher_Covariance>(eff_rank_F);
+    auto cond_fc = Spectrum_Condition_Number<Fisher_Covariance>(cond_F);
     using fc_null_payload = typename Null_Space_Projector<Fisher_Covariance>::payload_type;
     auto null_proj_fc = Null_Space_Projector<Fisher_Covariance>(
-        fc_null_payload(null_proj_matrix, H().parameters_ptr()));
+        fc_null_payload(null_proj_matrix, F_b.parameters_ptr()));
     using fc_worst_payload = typename Worst_Subspace_Projector<Fisher_Covariance>::payload_type;
     auto worst_proj_fc = Worst_Subspace_Projector<Fisher_Covariance>(
-        fc_worst_payload(worst_proj_matrix, H().parameters_ptr()));
+        fc_worst_payload(worst_proj_matrix, F_b.parameters_ptr()));
 
     auto dcc = Distortion_Corrected_Covariance(
-        lapack::apply_inverse_congruence(W_H, J().value(), "DCC subspace matrix", k_psd_rtol,
+        lapack::apply_inverse_congruence(W_F_b, J().value(), "DCC subspace matrix", k_psd_rtol,
                                          k_psd_atol)
             .value_or(SymPosDefMatrix<double>{}),
-        H().parameters_ptr());
-    auto log_det_dcc = log_Det<Distortion_Corrected_Covariance>(dcc);
+        F_b.parameters_ptr());
+    auto log_det_dcc = log_Det<Distortion_Corrected_Covariance>(logdet_active_subspace(dcc()));
     using dcc_corr_payload =
         typename Correlation_Of<Distortion_Corrected_Covariance>::payload_type;
     auto corr_dcc = Correlation_Of<Distortion_Corrected_Covariance>(
-        dcc_corr_payload(lapack::dcc_correlation_from_decomp(W_H, J().value()),
-                         H().parameters_ptr()));
-    auto spectrum_dcc = Eigenvalue_Spectrum<Distortion_Corrected_Covariance>(spectrum_H_mat);
-    auto eff_rank_dcc = Effective_Rank<Distortion_Corrected_Covariance>(eff_rank_H);
-    auto cond_dcc = Spectrum_Condition_Number<Distortion_Corrected_Covariance>(cond_H);
+        dcc_corr_payload(lapack::dcc_correlation_from_decomp(W_F_b, J().value()),
+                         F_b.parameters_ptr()));
+    auto spectrum_dcc = Eigenvalue_Spectrum<Distortion_Corrected_Covariance>(spectrum_F_mat);
+    auto eff_rank_dcc = Effective_Rank<Distortion_Corrected_Covariance>(eff_rank_F);
+    auto cond_dcc = Spectrum_Condition_Number<Distortion_Corrected_Covariance>(cond_F);
     using dcc_null_payload =
         typename Null_Space_Projector<Distortion_Corrected_Covariance>::payload_type;
     auto null_proj_dcc = Null_Space_Projector<Distortion_Corrected_Covariance>(
-        dcc_null_payload(null_proj_matrix, H().parameters_ptr()));
+        dcc_null_payload(null_proj_matrix, F_b.parameters_ptr()));
     using dcc_worst_payload =
         typename Worst_Subspace_Projector<Distortion_Corrected_Covariance>::payload_type;
     auto worst_proj_dcc = Worst_Subspace_Projector<Distortion_Corrected_Covariance>(
-        dcc_worst_payload(worst_proj_matrix, H().parameters_ptr()));
+        dcc_worst_payload(worst_proj_matrix, F_b.parameters_ptr()));
 
     auto dib = Distortion_Induced_Bias(
-        lapack::apply_inverse_vector(W_H, score_mean().value(), "Distortion-induced bias")
+        lapack::apply_inverse_vector(W_F_b, score_mean().value(), "Distortion-induced bias")
             .value_or(Matrix<double>{}),
-        H().parameters_ptr());
+        F_b.parameters_ptr());
 
     // Extract Per_sample_derived (SDM, DIB only) from the full evol_moments.
     // Built lazily below when the preset needs it.
@@ -1718,11 +2213,15 @@ auto calculate_Likelihood_diagnostics_preset_f(
         return out;
     };
 
-    // Base-tier pack (same across all presets).
+    // Base-tier pack (same across all presets). Field order MUST match
+    // Analisis_derivative_diagnostic_base typedef in include/macrodr/cmd/likelihood.h.
     auto base_pack = push_back_var(
         std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
         std::move(sum_Gaussian_Fisher_Information),
-        std::move(idm), std::move(log_det_idm), std::move(idm2),
+        std::move(numerical_fim),
+        std::move(idm), std::move(log_det_idm),
+        std::move(gfd), std::move(log_det_gfd),
+        std::move(idm2),
         std::move(sdm), std::move(log_det_sdm),
         std::move(cdm), std::move(log_det_cdm),
         std::move(fc), std::move(log_det_fc),
@@ -1820,52 +2319,57 @@ auto calculate_Likelihood_diagnostics_preset_f(
 
 
 auto calculate_Likelihood_derivative_basic_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_basic {
     auto mt = mt_64i(seed);
-    return bootstrap_it_to_Probit(
-        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::basic>, dy,
+    return bootstrap_it_two_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::basic>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }
 
 auto calculate_Likelihood_derivative_series_var_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_var {
     auto mt = mt_64i(seed);
-    return bootstrap_it_to_Probit(
-        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_var>, dy,
+    return bootstrap_it_two_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_var>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }
 
 auto calculate_Likelihood_derivative_series_cov_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_cov {
     auto mt = mt_64i(seed);
-    return bootstrap_it_to_Probit(
-        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_cov>, dy,
+    return bootstrap_it_two_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_cov>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }
 
 auto calculate_Likelihood_derivative_series_kernel_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_kernel {
     auto mt = mt_64i(seed);
-    return bootstrap_it_to_Probit(
-        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel>, dy,
+    return bootstrap_it_two_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }
 
 auto calculate_Likelihood_derivative_series_kernel_full_diagnostics(
-    const std::vector<dMacro_State_Ev_gradient_all>& dy, std::size_t n_boostrap_samples,
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
     -> Analisis_derivative_diagnostic_series_kernel_full {
     auto mt = mt_64i(seed);
-    return bootstrap_it_to_Probit(
-        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel_full>, dy,
+    return bootstrap_it_two_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel_full>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }
 

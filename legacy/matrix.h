@@ -2230,9 +2230,10 @@ template <template <class> class Matrix>
     requires(!Matrix<double>::is_Symmetric)
 auto X_plus_XT(const Matrix<double>& x) {
     assert(x.ncols() == x.nrows());
-    SymmetricMatrix<double> out(x.nrows());
-    for (std::size_t i = 0; i < x.nrows(); i++)
-        for (std::size_t j = 0; j < i + 1; ++j) out.set(j, i, x(i, j) + x(j, i));
+    const std::size_t n = x.nrows();
+    SymmetricMatrix<double> out(n);
+    for (std::size_t i = 0; i < n; i++)
+        for (std::size_t j = 0; j <= i; ++j) out.set(j, i, x(i, j) + x(j, i));
     return out;
 }
 
