@@ -103,12 +103,51 @@ auto bootstrap_it(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_repli
 
  
 template<class vectorSpace, class F, class ...T>
-requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std::size_t> indices, T&&...args ) 
+requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std::size_t> indices, T&&...args )
 { { f(x, indices, std::forward<T>(args)...) }; }
 auto bootstrap_it_to_Probit(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_replicates, std::set<double>const & cis, mt_64i& gen, T&& ...args) {
     auto samples=bootstrap_it(f, vs, n_replicates, gen, std::forward<T>(args)...);
     return apply_Probit_statistics(samples, cis);
  }
+
+
+// Two-input variant: draws independent bootstrap index sets for two parallel
+// vectors per replicate. Used by the IDM diagnostic where dy (per-sample
+// derivative evolution, size N) and F (per-decimated-sample numerical Fisher
+// contributions, size N/decimate) are both bootstrap-resampled but with no
+// pairing between their indices — IDM is a global property so the bootstrap
+// is a comparison-of-estimators tool, not a re-recording-variance estimator
+// (see derivation in eLife 2025 supplementary).
+template<class V1, class V2, class F, class ...T>
+requires requires(F&& f, const std::vector<V1> x1, const std::vector<std::size_t> i1,
+                  const std::vector<V2> x2, const std::vector<std::size_t> i2, T&&...args)
+{ { f(x1, i1, x2, i2, std::forward<T>(args)...) }; }
+auto bootstrap_it_two(F&& f, const std::vector<V1>& vs1, const std::vector<V2>& vs2,
+                       std::size_t n_replicates, mt_64i& gen, T&& ...args) {
+    using R = std::decay_t<decltype(f(vs1, generate_bootstrap_indices(vs1.size(), gen),
+                                       vs2, generate_bootstrap_indices(vs2.size(), gen),
+                                       std::forward<T>(args)...))>;
+    bootstrap<R> out;
+    out.reserve(n_replicates);
+    for (std::size_t i = 0; i < n_replicates; ++i) {
+        auto idx1 = generate_bootstrap_indices(vs1.size(), gen);
+        auto idx2 = generate_bootstrap_indices(vs2.size(), gen);
+        out.push_back(std::forward<F>(f)(vs1, idx1, vs2, idx2, std::forward<T>(args)...));
+    }
+    return out;
+}
+
+template<class V1, class V2, class F, class ...T>
+requires requires(F&& f, const std::vector<V1> x1, const std::vector<std::size_t> i1,
+                  const std::vector<V2> x2, const std::vector<std::size_t> i2, T&&...args)
+{ { f(x1, i1, x2, i2, std::forward<T>(args)...) }; }
+auto bootstrap_it_two_to_Probit(F&& f, const std::vector<V1>& vs1, const std::vector<V2>& vs2,
+                                 std::size_t n_replicates, std::set<double> const& cis,
+                                 mt_64i& gen, T&& ...args) {
+    auto samples = bootstrap_it_two(std::forward<F>(f), vs1, vs2, n_replicates, gen,
+                                     std::forward<T>(args)...);
+    return apply_Probit_statistics(samples, cis);
+}
 
 
 

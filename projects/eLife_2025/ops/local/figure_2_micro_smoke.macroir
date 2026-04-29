@@ -1,0 +1,57 @@
+model = load_model("scheme_CO")
+
+axis_interval = axis(name= "interval_in_tau", labels= ["1"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["1"])
+axis_Nchanels = axis(name= "Num_ch", labels= ["20"])
+
+current_noise = indexed_double_by(axis= axis_noise, values=[0.001])
+Num_ch = indexed_double_by(axis= axis_Nchanels, values=[20])
+
+parameter = create_parameters(
+   model = model,
+   parameters_info= [
+      {"on","Log10",10},
+{"off","Log10",100},
+{"unitary_current","Log10",1},
+{"Current_Noise","Log10",current_noise},
+{"Current_Baseline","Log10",1},
+{"Num_ch_mean","Log10", Num_ch}]
+)
+
+experiment = create_experiment(
+   experiment_structure=[
+      {indexed_size_by(axis= axis_interval,values=[1]),indexed_size_by(axis= axis_interval,values=[500]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[2]),indexed_size_by(axis= axis_interval,values=[500]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[3]),indexed_size_by(axis= axis_interval,values=[500]),0.0}
+      ],
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0,
+initial_time = 0.0)
+
+observations = set_observations(values_set= [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulations = simulate(model= model, parameter_transformed = par_tr, experiment = experiment,
+                         observations = observations,
+                         simulation_algorithm= "substeps",
+                         number_of_substeps = 1000,
+                 seed = 0)
+
+# Two algorithms: macro_IR (reference, averaging=2, recursive, no taylor) and micro_IR (same flags + micro=true)
+algorithm_axis = axis(name= "algorithm", labels= ["macro_IR", "micro_IR"])
+
+algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis, values=[true, true])
+algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis, values=[false, false])
+algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis, values=[false, true])
+
+algorithms = build_likelihood_function(model = model,
+            adaptive_approximation     = false,
+            recursive_approximation    = algo_recursive_approximation,
+            averaging_approximation    = indexed_int_by(axis= algorithm_axis, values=[2, 2]),
+            variance_approximation     = true,
+            taylor_variance_correction = algo_taylor_approximation,
+            micro_approximation        = algo_micro_approximation)
+
+likelihood_value = calc_likelihood(likelihood_algorithm = algorithms, parameters = par_tr,
+                                   experiment = experiment, data = simulations)

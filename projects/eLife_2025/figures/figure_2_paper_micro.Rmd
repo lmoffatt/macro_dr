@@ -18,7 +18,7 @@ filename=c(
   #"data/figure_2_basic_diagnostics__0420_2_001", 
   #"data/figure_2_basic_diagnostics__0421_3_001",
   #"data/figure_2_basic_diagnostics__0422_4_001", 
-  "data/figure_2_basic_diagnostics__0426_6_004"
+  "data/figure_2_basic_diagnostics_numeric_0428_8_002"
   
   
   )
@@ -78,8 +78,19 @@ d_algo
 Report_integral_r_std
 
 
-```{r, fig.width=16, fig.height=16}
-d_mean%>%filter(component=="Report_integral_r_std", statistic=="integral_correlation_lag", algorithm=="macro_IR")%>%ggplot()+geom_line(aes(x =interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(Num_ch)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~algorithm+noise_in_conductance_tau, scales="free")+ggtitle("Report_integral_r_std")+scale_x_log10()
+```{r,fig.width=20,fig.height=4}
+
+for (nch in unique(d_mean$Num_ch))
+{print(
+d_mean%>%filter(component=="Moment_statistics_Sum_logL", statistic=="mean", Num_ch==nch,interval_in_tau>0.01)%>%ggplot()+geom_point(aes(x = algorithm, y = mean_NA, color=algorithm))+geom_errorbar(aes(x=algorithm, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+facet_wrap(.~interval_in_tau,nrow = 2, scales="free", )+ggtitle(paste0("Moment_statistics_Sum_logL for Nch=",nch)) 
+)
+}
+```
+
+
+
+```{r, fig.width=8, fig.height=8}
+d_mean%>%filter(component=="Report_integral_r_std", statistic=="integral_correlation_lag", algorithm%in%c("macro_IR", "micro_IR"))%>%ggplot()+geom_line(aes(x =interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(Num_ch)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~algorithm+noise_in_conductance_tau, scales="free")+ggtitle("Report_integral_r_std")+scale_x_log10()
 
 ```
 
@@ -87,75 +98,125 @@ d_mean%>%filter(component=="Report_integral_r_std", statistic=="integral_correla
 
 
 ```{r, fig.width=8, fig.height=8}
-param=d_mean%>%filter(component=="Distortion_Induced_Bias", algorithm=="macro_IR", param_name!="")%>%select(param_name)%>%distinct()%>%pull()
 algo=d_mean%>%filter(component=="Distortion_Induced_Bias")%>%select(algorithm)%>%distinct()%>%pull()
 for (a in algo){
   print(
-
-d_mean%>%filter(component=="Distortion_Induced_Bias",algorithm==a, param_name!="")%>%ggplot()+geom_line(aes(x = 1/interval_in_tau/Num_ch, y = 10^mean_NA, color=factor(Num_ch)))+geom_point(aes(x = 1/interval_in_tau/Num_ch, y = 10^mean_NA, color=factor(Num_ch)))+geom_errorbar(aes(x=1/interval_in_tau/Num_ch, y= 10^(mean_NA),ymin = 10^quantile_0.025,ymax = 10^quantile_0.975 ,color=factor(Num_ch)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_wrap(param_name~., scales="free")+ggtitle(a)+scale_x_log10()
+  d_mean%>%filter(component=="Distortion_Induced_Bias",algorithm==a, param_name!="")%>%
+  ggplot()+geom_line(aes(x =interval_in_tau, y = 10^mean_NA, color=factor(Num_ch)))+
+  geom_point(aes(x = interval_in_tau, y = 10^mean_NA, color=factor(Num_ch)))+
+  geom_errorbar(aes(x=interval_in_tau, y= 10^(mean_NA),ymin = 10^quantile_0.025,ymax = 10^quantile_0.975 ,color=factor(Num_ch))) + 
+    geom_hline(yintercept = 1, color="darkgreen")+facet_wrap(param_name~Num_ch, scales="free")+ggtitle(a)+scale_x_log10()
   )
   }
 
 ```
 
+```{r, fig.width=8, fig.height=8}
+param=d_mean%>%filter(component=="Distortion_Induced_Bias", algorithm=="micro_IR", param_name!="")%>%select(param_name)%>%distinct()%>%pull()
+algo=d_mean%>%filter(component=="Distortion_Induced_Bias")%>%select(param_name)%>%distinct()%>%pull()
+for (pa in param){
+  print(
 
-```{r, fig.width=16, fig.height=8}
+d_mean%>%filter(component=="Distortion_Induced_Bias",algorithm=="micro_IR", param_name==pa)%>%ggplot()+
+  geom_line(aes(x =interval_in_tau, y = 10^mean_NA, color=factor(Num_ch)))+
+  geom_point(aes(x = interval_in_tau, y = 10^mean_NA, color=factor(Num_ch)))+
+  geom_errorbar(aes(x=interval_in_tau, y= 10^(mean_NA),ymin = 10^quantile_0.025,ymax = 10^quantile_0.975 ,color=factor(Num_ch)))+ 
+  geom_hline(yintercept = 1, color="darkgreen")+
+  facet_wrap(Num_ch~., scales="free")+ggtitle(pa)+scale_x_log10()
+  )
+  }
 
-  d_algo%>%filter(noise_in_conductance_tau==0.1,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==10,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==100,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()+plot_layout(guides="collect")
+```
+```{r}
+print(d_mean%>%filter(component=="Information_Distortion_Matrix",algorithm%in%c("micro_IR"),  !param_name%in%c("Num_ch_mean_Num_ch_mean"),            param_name!="", param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()
+)
 
 ```
 
-```{r, fig.width=16, fig.height=8}
 
-  d_algo%>%filter(noise_in_conductance_tau==0.1,component%in%c("Report_integral_dlogL"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==10,component%in%c("Report_integral_dlogL"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==100,component%in%c("Report_integral_dlogL"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()+plot_layout(guides="collect")
+
+```{r, fig.width=8, fig.height=8}
+print(d_mean%>%filter(component=="Information_Distortion_Matrix",algorithm%in%c("macro_IR","micro_IR"),  !param_name%in%c("Current_Baseline_Current_Baseline", "Current_Noise_Current_Noise"),            param_name!="", Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()
+)
+
+print(d_mean%>%filter(component=="Information_Distortion_Matrix",algorithm%in%c("macro_IR","micro_IR"),  !param_name%in%c("Current_Baseline_Current_Baseline", "Current_Noise_Current_Noise"),            param_name!="", Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()
+)
+
+
+print(d_mean%>%filter(component=="Information_Distortion_Matrix",algorithm%in%c("macro_IR","micro_IR"),  !param_name%in%c("Current_Baseline_Current_Baseline", "Current_Noise_Current_Noise"),            param_name!="", Num_ch*interval_in_tau<=10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau,scales="free")+ggtitle(a)+scale_x_log10()
+)
+#  }
 
 ```
-
-
-```{r, fig.width=16, fig.height=8}
-
-  d_algo%>%filter(noise_in_conductance_tau==0.1,component%in%c("Distortion_Induced_Bias"),  param_name%in%c("on", "off"),Num_ch*interval_in_tau>10)%>%ggplot()+geom_line(aes(x = interval_in_tau, y =  abs(macro_MNR_mean_NA)-abs(macro_IR_mean_NA), color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 0, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()| d_algo%>%filter(noise_in_conductance_tau==10,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==100,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()+plot_layout(guides="collect")
-
+Numerical_Fisher_Information
+```{r, fig.width=8, fig.height=8}
+ d_mean%>%filter(component%in%c("Numerical_Fisher_Information"),
+                 algorithm=="micro_IR",  param_name%in%c("on_on", "off_off"),       
+                 param_index==param_col)%>%ggplot()+
+  geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+
+  geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+
+  geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,
+                    ymax = quantile_0.975 ,color=factor(component)))+
+  facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle("a")+scale_x_log10()+scale_y_log10()
 ```
 
-
-
-```{r, fig.width=16, fig.height=8}
-
-  d_mean%>%filter(component%in%c("Fisher_Covariance"),algorithm=="macro_MNR",  param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+```{r, fig.width=8, fig.height=8}
+ d_mean%>%filter(component%in%c("Numerical_Fisher_Information", "Moment_statistics_Sum_dlogL"),
+                 algorithm=="micro_IR",  param_name%in%c("on_on", "off_off"),(component=="Moment_statistics_Sum_dlogL" & statistic=="covariance") | component!=  "Moment_statistics_Sum_dlogL",    
+                 param_index==param_col)%>%ggplot()+
+  geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+
+  geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+
+  geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,
+                    ymax = quantile_0.975 ,color=factor(component)))+
+  facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle("a")+scale_x_log10()+scale_y_log10()
 ```
+
 
 
 ```{r, fig.width=16, fig.height=8}
 print(
-  d_mean%>%filter(component%in%c("Fisher_Covariance"),algorithm=="macro_MNR",  param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+  d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance", ),algorithm=="micro_IR",  param_name%in%c("on_on", "off_off"),       param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
   |
-d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance2","Fisher_Covariance"),algorithm=="macro_MNR",  param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="micro_IR",  param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"),  param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
   |
-  d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance2","Fisher_Covariance"),algorithm=="macro_MNR",  param_name%in%c("Current_Noise_Current_Noise"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+  d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="micro_IR",  param_name%in%c("Current_Noise_Current_Noise"),  param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
   )+plot_layout(guides = "collect")
 ```
 
 
 ```{r, fig.width=20, fig.height=8}
 print(
-  (d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="macro_IR",  param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
+  (d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="macro_IR",  param_name%in%c("on_on", "off_off"),  #    Num_ch*interval_in_tau>10,
+                   param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
 
-d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="macro_IR",  param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
+d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="macro_IR",  param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"), #Num_ch*interval_in_tau>10, 
+                param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
 
-d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="macro_IR",  param_name%in%c("Current_Noise_Current_Noise"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle("macro_NR")+scale_x_log10()+scale_y_log10()
+d_mean%>%filter(component%in%c("Distortion_Corrected_Covariance","Fisher_Covariance"),algorithm=="macro_IR",  param_name%in%c("Current_Noise_Current_Noise"), #Num_ch*interval_in_tau>10,
+                param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle("micro_IR")+scale_x_log10()+scale_y_log10()
   )+plot_layout(guides = "collect"))
+```
+```{r, fig.width=16, fig.height=8}
+print(
+  d_mean%>%filter(component%in%c("Gaussian_Fisher_Distortion"),algorithm%in%c("micro_IR","macro_IR"),  param_name%in%c("on_on", "off_off"),       param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+  |
+d_mean%>%filter(component%in%c("Gaussian_Fisher_Distortion"),algorithm%in%c("micro_IR","macro_IR"), param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"),  param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+  |
+  d_mean%>%filter(component%in%c("Gaussian_Fisher_Distortion"),algorithm%in%c("micro_IR","macro_IR"),  param_name%in%c("Current_Noise_Current_Noise"),  param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
+  )+plot_layout(guides = "collect")
 ```
 
 
 
 ```{r, fig.width=20, fig.height=8}
+
+a="micro_IR"
 print(
-  (d_mean%>%filter(component%in%c("Report_integral_dlogL","Correlation_Distortion_Matrix"),algorithm=="macro_IR",  param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
+  (d_mean%>%filter(component%in%c("Report_integral_dlogL","Correlation_Distortion_Matrix"),algorithm==a,  param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
 
-d_mean%>%filter(component%in%c("Report_integral_dlogL","Correlation_Distortion_Matrix"),algorithm=="macro_IR",  param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
+d_mean%>%filter(component%in%c("Report_integral_dlogL","Correlation_Distortion_Matrix"),algorithm==a,  param_name%in%c("Num_ch_mean_Num_ch_mean", "unitary_current_unitary_current"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()|
 
-d_mean%>%filter(component%in%c("Report_integral_dlogL","Correlation_Distortion_Matrix"),algorithm=="macro_IR",  param_name%in%c("Current_Noise_Current_Noise"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle("macro_NR")+scale_x_log10()+scale_y_log10()
+d_mean%>%filter(component%in%c("Report_integral_dlogL","Correlation_Distortion_Matrix"),algorithm==a,  param_name%in%c("Current_Noise_Current_Noise"), Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(component)))+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()
   )+plot_layout(guides = "collect"))
 ```
 
@@ -191,10 +252,12 @@ print(d_mean%>%filter(noise_in_conductance_tau==n,component=="Distortion_Induced
 ```
 
 ```{r, fig.width=8, fig.height=8}
-
-print(d_mean%>%filter(component=="Information_Distortion_Matrix",!algorithm%in%c("macro_NR","macro_MNR", "macro_MR", "macro_R"),  !param_name%in%c("Current_Baseline_Current_Baseline", "Current_Noise_Current_Noise"),            param_name!="", Num_ch*interval_in_tau>100, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()
+print(d_mean%>%filter(component=="Information_Distortion_Matrix",algorithm%in%c("macro_IR","micro_IR"),  !param_name%in%c("Current_Baseline_Current_Baseline", "Current_Noise_Current_Noise"),            param_name!="", Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle("a")+scale_x_log10()
 )
+```
 
+
+```{r, fig.width=8, fig.height=8}
 print(d_mean%>%filter(component=="Information_Distortion_Matrix",!algorithm%in%c("macro_NR","macro_MNR", "macro_IRT", "macro_R"),  !param_name%in%c("Current_Baseline_Current_Baseline", "Current_Noise_Current_Noise"),            param_name!="", Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(algorithm)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(algorithm)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()
 )
 
