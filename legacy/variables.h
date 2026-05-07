@@ -629,28 +629,18 @@ class Vector_Space : public Vars... {
 };
 
 
-namespace impl {
-    // 1. Primary template
-    template<class V1, class V2>
-    struct concatenate_impl;
+// Type-level mirrors of the runtime concatenate / push_back_var friend
+// functions on Vector_Space. Defining them via decltype ties the type
+// alias to the runtime return type, so the flatten-vs-nest distinction
+// is the same at compile time and runtime: concatenate_t flattens every
+// Vector_Space argument; push_back_var_t treats trailing arguments as
+// individual elements (a Vector_Space arg is nested, not flattened).
+template <class... Ts>
+using concatenate_t = decltype(concatenate(std::declval<Ts&&>()...));
 
-    // 2. Case: Joining two Vector_Spaces
-    template<class... Vars1, class... Vars2>
-    struct concatenate_impl<Vector_Space<Vars1...>, Vector_Space<Vars2...>> {
-        using type = Vector_Space<Vars1..., Vars2...>;
-    };
-
-    // 3. Case: Appending a single non-Vector_Space type (V2) to a Vector_Space
-    template<class... Vars1, class V2>
-    requires (!is_of_this_template_type_v<V2, Vector_Space>)
-    struct concatenate_impl<Vector_Space<Vars1...>, V2> {
-        using type = Vector_Space<Vars1..., V2>;
-    };
-}
-
-// Public Alias
-template<class V1, class V2>
-using concatenate_t = typename impl::concatenate_impl<V1, V2>::type;
+template <class V, class... Ts>
+using push_back_var_t =
+    decltype(push_back_var(std::declval<V&&>(), std::declval<Ts&&>()...));
 
 
 template <class... Vars>

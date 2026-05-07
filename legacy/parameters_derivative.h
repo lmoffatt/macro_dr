@@ -412,6 +412,23 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
             return Derivative(fx * fy, x.derivative()() * fy, x.dx());
     }
 
+    // (x + y)' = x' + y'. Chain rule trivial; only need to pick the dx from
+    // whichever side carries one (default-constructed Derivatives have empty d).
+    friend auto operator+(const Derivative& x, const Derivative& y) {
+        if ((x.derivative()().size() > 0) && (y.derivative()().size() > 0))
+            return Derivative(x.primitive() + y.primitive(),
+                              x.derivative()() + y.derivative()(), x.dx());
+        else if (x.derivative()().size() == 0)
+            return Derivative(x.primitive() + y.primitive(), y.derivative()(), y.dx());
+        else
+            return Derivative(x.primitive() + y.primitive(), x.derivative()(), x.dx());
+    }
+
+    Derivative& operator+=(const Derivative& y) {
+        *this = *this + y;
+        return *this;
+    }
+
     friend auto exp(const Derivative& x) {
         auto f = exp(x.primitive());
         return Derivative(f, f * x.derivative()(), x.dx());
@@ -493,6 +510,20 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
         return Derivative(root, x.derivative()() * scale, x.dx());
     }
 
+    friend auto normal_pdf(const Derivative& x) {
+        auto p = x.primitive();
+        auto f = ::normal_pdf(p);
+        return Derivative(f, (-p * f) * x.derivative()(), x.dx());
+    }
+    friend auto normal_cdf(const Derivative& x) {
+        auto f = ::normal_cdf(x.primitive());
+        return Derivative(f, ::normal_pdf(x.primitive()) * x.derivative()(), x.dx());
+    }
+    friend auto normal_quantile(const Derivative& p) {
+        auto z = ::normal_quantile(p.primitive());
+        return Derivative(z, p.derivative()() * (1.0 / ::normal_pdf(z)), p.dx());
+    }
+
     friend bool operator==(Derivative const& one, double val) { return one.primitive() == val; }
 };
 
@@ -526,13 +557,29 @@ class Derivative<T_Matrix<double>,
         return outside_in(apply(std::forward<F>(f), inside_out(x)), x.dx());
     }
 
-    template <class F>
-    friend auto zip(F&& f, const Derivative& x, const Derivative& y) {
+    template <class F, class...Derivatives>
+        requires((is_derivative_v<Derivatives> && ...))
+    friend auto zip(F&& f, const Derivative& x, const Derivatives&... y) {
         if (x.has_dx() && x.dx().size() > 0) {
-            return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)), x.dx());
+            return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)...), x.dx());
         }
-        return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)), y.dx());
+        if constexpr (sizeof...(Derivatives) > 0) {
+            return outside_in(zip(std::forward<F>(f), inside_out(x), inside_out(y)...), y...);
+        } else {
+            // Empty pack: fall back to x.dx() even if it's the unset/empty form.
+            return outside_in(zip(std::forward<F>(f), inside_out(x)), x.dx());
+        }
     }
+
+    template <class F>
+    friend auto reduce(F&& f, const Derivative& x) {
+            return outside_in(reduce(std::forward<F>(f), inside_out(x)), x.dx());
+    }
+
+    friend auto sum(const Derivative& x) {
+            return Derivative<double, var::Parameters_transformed>(sum(x.primitive()), sum(x.derivative()()), x.dx());
+    }
+
 
     template <class P, class D>
         requires(std::constructible_from<primitive_type, P> &&
@@ -799,6 +846,10 @@ auto outside_in(const notSymmetricMatrix<Derivative<double, Parameters_transform
                                                                           std::move(der), dx);
 }
 
+
+
+
+
 template <template <class> class aSymmetricMatrix>
     requires(std::is_same_v<SymmetricMatrix<double>, aSymmetricMatrix<double>> ||
              std::is_same_v<SymPosDefMatrix<double>, aSymmetricMatrix<double>>)
@@ -821,6 +872,22 @@ auto outside_in(const aSymmetricMatrix<Derivative<double, Parameters_transformed
     return Derivative<aSymmetricMatrix<double>, Parameters_transformed>(std::move(prim),
                                                                         std::move(der), dx);
 }
+
+
+template <template <class> class Matrix, class Dx, class...Dxs>
+auto outside_in(const Matrix<Derivative<double, Parameters_transformed>>& x,
+                const Dx& dx, const Dxs&... dxs) {
+                    if (dx.has_dx() && dx.dx().size() > 0) {
+                        return outside_in(x, dx.dx());
+                    }
+                    if constexpr (sizeof...(Dxs) > 0) {
+                        return outside_in(x, dxs...);
+                    } else {
+                        return outside_in(x, dx.dx());
+                    }
+                }
+
+
 
 template <template <class> class aSymmetricMatrix>
     requires(std::is_same_v<SymmetricMatrix<double>, aSymmetricMatrix<double>> ||
@@ -1248,6 +1315,90 @@ inline Derivative<SymPosDefMatrix<double>, Parameters_transformed> AT_B_A(
     return Derivative<SymPosDefMatrix<double>, Parameters_transformed>(
         AT_B_A(fa, fb),
         apply_par([&fa, &fb](auto const& da) { return X_plus_XT(TranspMult(da, fb * fa)); },
+                  derivative(a)));
+}
+
+// AT_D_A derivative overloads: f(A, D) = Aᵀ D A.
+//   d f = (dA)ᵀ D A + Aᵀ D (dA) + Aᵀ (dD) A
+//       = X_plus_XT(TranspMult(dA, D · A)) + Aᵀ (dD) A
+// The Aᵀ dD A term is symmetric (dD is diagonal); built directly into a
+// SymmetricMatrix via the upper triangle (no DiagPosDet ctor needed since dD/dx
+// can have negative entries — derivatives of probabilities aren't sign-constrained).
+inline Derivative<SymPosDefMatrix<double>, Parameters_transformed> AT_D_A(
+    const Derivative<Matrix<double>, Parameters_transformed>& a,
+    const Derivative<DiagPosDetMatrix<double>, Parameters_transformed>& D) {
+    auto& fa = primitive(a);
+    auto& fD = primitive(D);
+
+    return Derivative<SymPosDefMatrix<double>, Parameters_transformed>(
+        AT_D_A(fa, fD),
+        zip_par(
+            [&fa, &fD](auto const& da, auto const& dD) {
+                auto k = fa.ncols();
+                SymmetricMatrix<double> A_dD_A(k);
+                for (std::size_t i = 0; i < k; ++i)
+                    for (std::size_t j = i; j < k; ++j) {
+                        double s = 0.0;
+                        for (std::size_t p = 0; p < dD.ncols(); ++p)
+                            s += fa(p, i) * dD(p, p) * fa(p, j);
+                        A_dD_A.set(i, j, s);
+                    }
+                return A_dD_A + X_plus_XT(TranspMult(da, fD * fa));
+            },
+            derivative(a), derivative(D)));
+}
+
+inline Derivative<SymPosDefMatrix<double>, Parameters_transformed> AT_D_A(
+    const Derivative<Matrix<double>, Parameters_transformed>& a,
+    const DiagPosDetMatrix<double>& D) {
+    auto& fa = primitive(a);
+    auto& fD = D;
+
+    return Derivative<SymPosDefMatrix<double>, Parameters_transformed>(
+        AT_D_A(fa, fD),
+        apply_par([&fa, &fD](auto const& da) { return X_plus_XT(TranspMult(da, fD * fa)); },
+                  derivative(a)));
+}
+
+// AT_D_A_Safe derivative overloads: same as AT_D_A but skip non-finite contributions
+// in the primitive sum (mirrors matrix.h:2272 NaN-guard).  Derivative entries are
+// computed normally — caller is responsible for guarding upstream NaNs there.
+inline Derivative<SymPosDefMatrix<double>, Parameters_transformed> AT_D_A_Safe(
+    const Derivative<Matrix<double>, Parameters_transformed>& a,
+    const Derivative<DiagPosDetMatrix<double>, Parameters_transformed>& D) {
+    auto& fa = primitive(a);
+    auto& fD = primitive(D);
+
+    return Derivative<SymPosDefMatrix<double>, Parameters_transformed>(
+        AT_D_A_Safe(fa, fD),
+        zip_par(
+            [&fa, &fD](auto const& da, auto const& dD) {
+                auto k = fa.ncols();
+                SymmetricMatrix<double> A_dD_A(k);
+                for (std::size_t i = 0; i < k; ++i)
+                    for (std::size_t j = i; j < k; ++j) {
+                        double s = 0.0;
+                        for (std::size_t p = 0; p < dD.ncols(); ++p) {
+                            double term = fa(p, i) * dD(p, p) * fa(p, j);
+                            if (std::isfinite(term))
+                                s += term;
+                        }
+                        A_dD_A.set(i, j, s);
+                    }
+                return A_dD_A + X_plus_XT(TranspMult(da, fD * fa));
+            },
+            derivative(a), derivative(D)));
+}
+
+inline Derivative<SymPosDefMatrix<double>, Parameters_transformed> AT_D_A_Safe(
+    const Derivative<Matrix<double>, Parameters_transformed>& a,
+    const DiagPosDetMatrix<double>& D) {
+    auto& fa = primitive(a);
+    auto& fD = D;
+
+    return Derivative<SymPosDefMatrix<double>, Parameters_transformed>(
+        AT_D_A_Safe(fa, fD),
+        apply_par([&fa, &fD](auto const& da) { return X_plus_XT(TranspMult(da, fD * fa)); },
                   derivative(a)));
 }
 

@@ -14,6 +14,11 @@
 #include "parameters_derivative.h"
 // Ensure LAPACK-backed helpers are available to Macro_DMR and friends
 #include "lapack_headers.h"
+// Schur+Parlett path for Qdt — stable at clustered eigenvalues where the eig
+// path's eigenvector inverse becomes ill-conditioned (lifted micro Q at
+// Nch ≥ ~50, k=2). Provides expm_schur_parlett, frechet_integral_schur,
+// frechet_double_integral_schur as the building blocks of calc_Qdt_schur.
+#include "schur_parlett.h"
 // #include "models_MoffattHume_linear.h"
 #include <macrodr/dsl/type_name.h>
 #include <moment_statistics.h>
@@ -52,34 +57,8 @@
 #include "parameters_distribution.h"
 #include "type_algebra.h"
 #include "variables.h"
+#include "qmodel_types.h"
 namespace macrodr {
-using dsl::type_name;
-using var::Parameters_Transformations;
-using var::Power;
-using var::Product;
-using var::Var;
-using var::Vector_Space;
-
-using var::build;
-using var::Constant;
-using var::Fun;
-using var::Op_t;
-using var::primitive;
-using var::Transfer_Op_to;
-using var::transformation_type_t;
-
-using var::U;
-
-using std::abs;
-using std::exp;
-using std::log10;
-using std::max;
-
-using var::F;
-using var::FuncMap_St;
-using var::Time_it_st;
-
-using dsl::type_name;
 /*
 class State_Model;
 
@@ -186,488 +165,6 @@ t_agonist_transition_rates, t_conductances);
 };
 */
 
-class Q0 : public var::Var<Q0, Matrix<double>> {};
-
-inline std::size_t get_max_state(
-    std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::string>> const& new_formulas) {
-    std::size_t out = 0;
-    for (auto& e : new_formulas) {
-        if (e.first.first > out)
-            out = e.first.first;
-        if (e.first.second > out)
-            out = e.first.second;
-    }
-    return out;
-}
-class Q0_formula : public var::Var<Q0_formula, std::vector<std::vector<std::string>>> {
-   public:
-    using var::Var<Q0_formula, std::vector<std::vector<std::string>>>::Var;
-
-    Q0_formula(std::size_t N)
-        : var::Var<Q0_formula, std::vector<std::vector<std::string>>>{
-              std::vector<std::vector<std::string>>{N, std::vector<std::string>{N, ""}}} {}
-
-    friend std::ostream& operator<<(std::ostream& os, Q0_formula const& x) {
-        os << "Q0 formula"
-           << "\n";
-        for (std::size_t i = 0; i < x().size(); ++i) {
-            for (std::size_t j = 0; j < x()[i].size(); ++j) {
-                if (x()[i][j].size() > 0)
-                    os << "Q(" << i << "," << j << ")->" << x()[i][j] << "\t";
-            }
-            os << "\n";
-        }
-        return os;
-    }
-};
-
-class Qa : public var::Var<Qa, Matrix<double>> {};
-class Qa_formula : public var::Var<Qa_formula, std::vector<std::vector<std::string>>> {
-   public:
-    using base_type = var::Var<Qa_formula, std::vector<std::vector<std::string>>>;
-    using base_type::Var;
-    Qa_formula(std::size_t N)
-        : var::Var<Qa_formula, std::vector<std::vector<std::string>>>{
-              std::vector<std::vector<std::string>>{N, std::vector<std::string>{N, ""}}} {}
-    friend std::ostream& operator<<(std::ostream& os, Qa_formula const& x) {
-        os << "Q0 formula"
-           << "\n";
-        for (std::size_t i = 0; i < x().size(); ++i) {
-            for (std::size_t j = 0; j < x()[i].size(); ++j) {
-                if (x()[i][j].size() > 0)
-                    os << "Q(" << i << "," << j << ")->" << x()[i][j] << "\t";
-            }
-            os << "\n";
-        }
-        return os;
-    }
-};
-template <class Q_formula>
-    requires(std::is_same_v<Q_formula, Q0_formula> || std::is_same_v<Q_formula, Qa_formula>)
-auto change_states_number(const Q_formula& f, std::size_t N) {
-    Q_formula out(N);
-    for (std::size_t i = 0; i < f().size(); ++i)
-        for (std::size_t j = 0; j < f().size(); ++j) out()[i][j] = f()[i][j];
-
-    return out;
-}
-
-template <class Q_formula>
-    requires(std::is_same_v<Q_formula, Q0_formula> || std::is_same_v<Q_formula, Qa_formula>)
-auto insert_new_formula(const Q_formula& f, std::size_t i_ini, std::size_t i_end,
-                        std::string&& formula) {
-    auto N = std::max(i_ini, i_end) + 1;
-    auto out = change_states_number(f, N);
-    out()[i_ini][i_end] = std::move(formula);
-
-    return out;
-}
-
-class Qx : public var::Var<Qx, Matrix<double>> {};
-class P_initial : public var::Var<P_initial, Matrix<double>> {};
-
-class g : public var::Var<g, Matrix<double>> {};
-class g_formula : public var::Var<g_formula, std::vector<std::string>> {};
-
-inline auto change_states_number(const g_formula& f, std::size_t N) {
-    g_formula out(std::vector<std::string>{N, ""});
-    for (std::size_t i = 0; i < f().size(); ++i) out()[i] = f()[i];
-    return out;
-}
-
-class N_St : public var::Constant<N_St, std::size_t> {};
-
-class N_Ch_mean : public var::Var<N_Ch_mean, Matrix<double>> {};
-class N_Ch_mean_value : public var::Var<N_Ch_mean, double> {};
-
-class N_Ch_mean_time_segment_duration
-    : public var::Constant<N_Ch_mean_time_segment_duration, double> {};
-
-class N_Ch_init : public var::Var<N_Ch_init, double> {};
-class N_Ch_eq : public var::Var<N_Ch_eq, double> {};
-class N_Ch_tau : public var::Var<N_Ch_tau, double> {};
-
-class Binomial_magical_number : public var::Constant<Binomial_magical_number, double> {};
-
-class min_P : public var::Constant<min_P, double> {};
-
-class N_Ch_std : public var::Var<N_Ch_std, double> {};
-
-class SeedNumber : public var::Constant<SeedNumber, std::size_t> {};
-
-
-class Current_Noise : public var::Var<Current_Noise, double> {};
-
-class Pink_Noise : public var::Var<Pink_Noise, double> {};
-
-class Proportional_Noise : public var::Var<Proportional_Noise, double> {};
-
-class Current_Baseline : public var::Var<Current_Baseline, double> {};
-
-template <class C_Matrix>
-auto to_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    using std::max;
-    using std::min;
-    if (!isfinite(var::fullsum(x)))
-        return error_message("error in Probability");
-
-    for (std::size_t i = 0; i < x.size(); ++i)
-        if (std::isnan(primitive(x[i])))
-
-            if constexpr (var::is_derivative_v<C_Matrix>)
-                for (std::size_t i = 0; i < x.size(); ++i)
-                    if (std::isnan(derivative(x)()[i][0]))
-                        return error_message("error in derivative");
-
-    constexpr double smooth_eps = 0;
-    auto out = apply(
-        [smooth_eps](auto const& value) {
-            using ValueType = std::decay_t<decltype(value)>;
-            using std::sqrt;
-            auto half = 0.5;
-            auto eps_like = smooth_eps*smooth_eps;
-            auto term = value * value + eps_like;
-            auto sqrt_term = sqrt(term);
-            return half * (value + sqrt_term);
-        },
-        x);
-    if (var::min(primitive(out)) < 0)
-        return error_message("how did negative Probability arise?");
-
-    auto s = var::sum(out);
-    if (s == 0)
-        return error_message(" cero probability");
-    return out * (1.0 / s);
-}
-
-template <class C_Matrix>
-auto to_Covariance_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    using std::max;
-    using std::min;
-    if (!isfinite(var::fullsum(x)))
-        return error_message("nan Cov");
-    auto out = x;
-    for (auto i = 0ul; i < x.nrows(); ++i) {
-        if (primitive(out(i, i)) <= 0.0) {
-            for (auto j = 0ul; j < x.ncols(); ++j) {
-                set(out, i, j, 0.0);
-            }
-        }
-    }
-
-    return out;
-}
-
-inline bool all_Probability_elements(Matrix<double> const& x) {
-    for (std::size_t i = 0; i < x.size(); ++i) {
-        if (!std::isfinite(primitive(x[i])))
-            return false;
-        else if (x[i] > 1.0)
-            return false;
-        else if (x[i] < 0.0)
-            return false;
-    }
-    return true;
-}
-
-template <class C_Matrix>
-inline bool all_Covariance_elements(C_Matrix const& x) {
-    if (x.ncols() != x.nrows())
-        return false;
-    for (std::size_t i = 0; i < x.nrows(); ++i) {
-        if (!std::isfinite(primitive(x(i, i))) || x(i, i) < 0)
-            return false;
-        // for (std::size_t j = 0; j < i; ++j)
-        //  if (std::isfinite(primitive(x(i, j))) && (x(i, i) > 0) && (x(j, j) > 0))
-        //  {
-        //      auto r=x(i, j) * x(i, j) / x(i, i) / x(j, j);
-        //      if ( r> 1.0)
-        //      return false;
-        //  } else
-        //{
-        //   if (x(i, j) != 0)
-        //     return false;
-        // }
-    }
-    return true;
-}
-
-inline bool crude_lambda_violations(DiagonalMatrix<double> const& l) {
-    if (var::max(l) > 1e-2)
-        return true;
-    else
-        return false;
-}
-
-template <class C_Matrix>
-auto to_Transition_Probability_Eigenvalues(C_Matrix&& lambda) {
-    // if (crude_lambda_violations(primitive(lambda)))
-    //     std::cerr<<"crude lambda violations\n";
-
-    auto i_max = var::i_max(primitive(lambda));
-    lambda.set(i_max, 0.0);
-    auto j_max = var::i_max(primitive(lambda));
-    while (primitive(lambda[j_max]) > 0.0) {
-        lambda.set(j_max, 0.0);
-        j_max = var::i_max(primitive(lambda));
-    }
-
-    return lambda;
-}
-
-struct StabilizerPolicyEnabled {
-    static constexpr bool clamp_variance = false;
-    static constexpr bool mask_probability = false;
-    static constexpr bool enforce_gmean_bounds = false;
-    static constexpr bool project_transition_probability = false;
-    static constexpr bool sanitize_eigenvalues = false;
-};
-
-struct StabilizerPolicyEnabled_ {
-    static constexpr bool clamp_variance = true;
-    static constexpr bool mask_probability = true;
-    static constexpr bool enforce_gmean_bounds = true;
-    static constexpr bool project_transition_probability = true;
-    static constexpr bool sanitize_eigenvalues = true;
-};
-
-struct StabilizerPolicyDisabled {
-    static constexpr bool clamp_variance = false;
-    static constexpr bool mask_probability = false;
-    static constexpr bool enforce_gmean_bounds = false;
-    static constexpr bool project_transition_probability = false;
-    static constexpr bool sanitize_eigenvalues = false;
-};
-
-class N_channel_state : public var::Var<N_channel_state, Matrix<double>> {
-    using var::Var<N_channel_state, Matrix<double>>::Var;
-};
-
-class y_sum : public var::Var<y_sum, double> {};
-
-class t_sum : public var::Var<t_sum, double> {};
-class P_mean : public var::Var<P_mean, Matrix<double>> {
-   public:
-    friend std::string className(P_mean) { return "P_mean"; }
-};
-
-class P_mean_t2_y0 : public var::Var<P_mean_t2_y0, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t2_y0) { return "P_mean_t2_y0"; }
-};
-
-class P_mean_t2_y1 : public var::Var<P_mean_t2_y1, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t2_y1) { return "P_mean_t2_y1"; }
-};
-
-class P_mean_t15_y0 : public var::Var<P_mean_t15_y0, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t15_y0) { return "P_mean_t15_y0"; }
-};
-
-class P_mean_t15_y1 : public var::Var<P_mean_t15_y1, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t15_y1) { return "P_mean_t15_y1"; }
-};
-
-
-class P_mean_t1_y1 : public var::Var<P_mean_t1_y1, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t1_y1) { return "P_mean_t1_y1"; }
-};
-
-class P_mean_t20_y1 : public var::Var<P_mean_t20_y1, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t20_y1) { return "P_mean_t20_y1"; }
-};
-
-class P_mean_t11_y0 : public var::Var<P_mean_t11_y0, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t11_y0) { return "P_mean_t11_y0"; }
-};
-
-class P_mean_t10_y1 : public var::Var<P_mean_t10_y1, Matrix<double>> {
-   public:
-    friend std::string className(P_mean_t10_y1) { return "P_mean_t10_y1"; }
-};
-
-class P_mean_0t_y0 : public var::Var<P_mean_0t_y0, Matrix<double>> {
-   public:
-    // Boundary-state prior mean over the interval: (i0,it) -> P(X0=i0, Xt=it).
-    friend std::string className(P_mean_0t_y0) { return "P_mean_0t_y0"; }
-};
-
-class P_mean_0t_y1 : public var::Var<P_mean_0t_y1, Matrix<double>> {
-   public:
-    // Boundary-state posterior mean over the interval after conditioning on y_{0->t}.
-    friend std::string className(P_mean_0t_y1) { return "P_mean_0t_y1"; }
-};
-
-
-class P_Cov : public var::Var<P_Cov, SymmetricMatrix<double>> {
-    friend std::string className(P_Cov) { return "P_Cov"; }
-};
-
-class P_cross_cov_0t_y0 : public var::Var<P_cross_cov_0t_y0, Matrix<double>> {
-    // Reduced cross-time covariance Cov(x_0, x_t) before conditioning on y_{0->t}.
-    friend std::string className(P_cross_cov_0t_y0) { return "P_cross_cov_0t_y0"; }
-};
-
-
-class P_cross_cov_0t_y1 : public var::Var<P_cross_cov_0t_y1, Matrix<double>> {
-    // Reduced cross-time covariance Cov(x_0, x_t) after conditioning on y_{0->t}.
-    friend std::string className(P_cross_cov_0t_y1) { return "P_cross_cov_0t_y1"; }
-};
-
-
-class d_gS: public var::Var<d_gS, Matrix<double>> {
-    friend std::string className(d_gS) { return "d_gS"; }
-};  
-
-class d_GS: public var::Var<d_GS, Matrix<double>> {
-    friend std::string className(d_GS) { return "d_GS"; }
-};  
-
-
-
-
-class P_Cov_t2_y0 : public var::Var<P_Cov_t2_y0, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t2_y0) { return "P_Cov_t2_y0"; }
-};
-
-class P_Cov_t2_y1 : public var::Var<P_Cov_t2_y1, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t2_y1) { return "P_Cov_t2_y1"; }
-};
-
-class P_Cov_t15_y0 : public var::Var<P_Cov_t15_y0, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t15_y0) { return "P_Cov_t15_y0"; }
-};
-
-class P_Cov_t15_y1 : public var::Var<P_Cov_t15_y1, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t15_y1) { return "P_Cov_t15_y1"; }
-};
-
-
-
-class P_Cov_t1_y1 : public var::Var<P_Cov_t1_y1, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t1_y1) { return "P_Cov_t1_y1"; }
-};
-
-class P_Cov_t20_y1 : public var::Var<P_Cov_t20_y1, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t20_y1) { return "P_Cov_t20_y1"; }
-};
-
-class P_Cov_t11_y0 : public var::Var<P_Cov_t11_y0, SymmetricMatrix<double>> {
-   public:
-    // One-time prior covariance at the end of the interval, before conditioning on y_{0->t}.
-    friend std::string className(P_Cov_t11_y0) { return "P_Cov_t11_y0"; }
-};
-
-class P_Cov_t10_y1 : public var::Var<P_Cov_t10_y1, SymmetricMatrix<double>> {
-   public:
-    friend std::string className(P_Cov_t10_y1) { return "P_Cov_t10_y1"; }
-};
-
-class lambda : public var::Var<lambda, DiagonalMatrix<double>> {};
-
-class V : public var::Var<V, Matrix<double>> {};
-class W : public var::Var<W, Matrix<double>> {};
-// Block partition of the spectrum: rows [begin, end) per block
-class Blocks : public var::Constant<Blocks, Matrix<std::size_t>> {};
-
-template <bool b>
-class uses_variance_aproximation : public var::constexpr_Var<bool, uses_variance_aproximation, b> {
-};
-class uses_variance_aproximation_value
-    : public var::constexpr_Var_value<bool, uses_variance_aproximation> {};
-
-template <bool b>
-class uses_taylor_variance_correction_aproximation
-    : public var::constexpr_Var<bool, uses_taylor_variance_correction_aproximation, b> {};
-class uses_taylor_variance_correction_aproximation_value
-    : public var::constexpr_Var_value<bool, uses_taylor_variance_correction_aproximation> {};
-
-template <bool b>
-class uses_adaptive_aproximation : public var::constexpr_Var<bool, uses_adaptive_aproximation, b> {
-};
-
-class uses_adaptive_aproximation_value
-    : public var::constexpr_Var_value<bool, uses_adaptive_aproximation> {};
-
-template <bool b>
-class uses_recursive_aproximation
-    : public var::constexpr_Var<bool, uses_recursive_aproximation, b> {};
-class uses_recursive_aproximation_value
-    : public var::constexpr_Var_value<bool, uses_recursive_aproximation> {};
-
-template <int b>
-class uses_averaging_aproximation : public var::constexpr_Var<int, uses_averaging_aproximation, b> {
-};
-class uses_averaging_aproximation_value
-    : public var::constexpr_Var_value<int, uses_averaging_aproximation> {};
-
-template <bool b>
-class uses_micro_aproximation : public var::constexpr_Var<bool, uses_micro_aproximation, b> {};
-class uses_micro_aproximation_value
-    : public var::constexpr_Var_value<bool, uses_micro_aproximation> {};
-
-// Compile-time flag selecting the Qdt computation method:
-//   false → eigendecomposition path (calc_Qdt_eig). Default. Fast for small
-//           Q. Suffers from eigenvector-derivative ill-conditioning when
-//           eigenvalues cluster (e.g. lifted Q_micro at Nch ≥ ~10 in k=2),
-//           which produces score noise floors at ~1e-14.
-//   true  → Taylor + scaling/squaring path (calc_Qdt_taylor). No
-//           eigendecomposition; derivative chain is matrix-only and stable
-//           across clustered/degenerate eigenvalues.
-// Independent of `uses_taylor_variance_correction_aproximation` (which is
-// about the moment-matched variance correction in the macro Kalman path,
-// not Q's matrix exponential).
-template <bool b>
-class uses_taylor_qdt : public var::constexpr_Var<bool, uses_taylor_qdt, b> {};
-class uses_taylor_qdt_value : public var::constexpr_Var_value<bool, uses_taylor_qdt> {};
-
-template <int b>
-class return_predictions : public var::constexpr_Var<int, return_predictions, b> {};
-class return_predictions_value : public var::constexpr_Var_value<int, return_predictions> {};
-
-template <class T>
-concept uses_averaging_aproximation_c =
-    var::is_this_constexpr_Var_c<T, int, uses_averaging_aproximation>;
-
-template <class T>
-concept uses_adaptive_aproximation_c =
-    var::is_this_constexpr_Var_c<T, bool, uses_adaptive_aproximation>;
-
-template <class T>
-concept uses_recursive_aproximation_c =
-    var::is_this_constexpr_Var_c<T, bool, uses_recursive_aproximation>;
-
-template <class T>
-concept what_to_include_c = is_of_this_template_type_v<T, var::please_include>;
-
-template <class T>
-concept uses_variance_aproximation_c =
-    var::is_this_constexpr_Var_c<T, bool, uses_variance_aproximation>;
-
-template <class T>
-concept uses_taylor_variance_correction_aproximation_c =
-    var::is_this_constexpr_Var_c<T, bool, uses_taylor_variance_correction_aproximation>;
-
-template <class T>
-concept uses_micro_aproximation_c =
-    var::is_this_constexpr_Var_c<T, bool, uses_micro_aproximation>;
-
-class Probability_error_tolerance : public var::Constant<Probability_error_tolerance, double> {};
-
-class Conductance_variance_error_tolerance
-    : public var::Constant<Conductance_variance_error_tolerance, double> {};
 
 /*
 class Transition_rate_resting
@@ -713,103 +210,6 @@ class Transition_rate_W
 : public var::Var<Transition_rate_W, Matrix<double>, var::dimensionless> {};
 */
 
-class P : public Var<P, Matrix<double>> {
-    friend std::string className(const P&) { return "P_ij"; }
-};
-
-class P_half : public Var<P_half, Matrix<double>> {
-    friend std::string className(const P_half&) { return "Ph_ij"; }
-};
-
-template <class Policy = StabilizerPolicyEnabled, class C_Matrix>
-Maybe_error<Transfer_Op_to<C_Matrix, P>> to_Transition_Probability(C_Matrix const& x) {
-    if constexpr (!Policy::project_transition_probability) {
-        return build<P>(x);
-    }
-    auto out = apply(
-        [](auto const& value) {
-            using std::abs;
-            return abs(value);
-        },
-        x);
-    auto sumP = out * Matrix<double>(out.ncols(), 1ul, 1.0);
-    auto s = inv(diag(sumP));
-
-    for (std::size_t i = 0; i < sumP.size(); ++i)
-        if (std::isnan(primitive(sumP[i]))) {
-            //  std::cerr << "rro";
-            return error_message("not transition prob");
-        }
-    if (s){
-        // auto test=s*out*Matrix<double>(out.ncols(),1ul, 1.0);
-        return build<P>(s.value() * out);}
-    else{
-        return s.error();}
-}
-
-class Ptotal_ij : public Var<Ptotal_ij, Matrix<double>> {
-    friend std::string className(Ptotal_ij) { return "Ptotal_ij"; }
-
-   public:
-};
-inline Maybe_error<Ptotal_ij> make_Ptotal_ij(Matrix<double>&& x, double max_dt) {
-    for (std::size_t i = 0; i < x.size(); ++i) {
-        if ((x[i] < -max_dt) || (x[i] > max_dt + 1))
-            return error_message(std::to_string(i) + "= " + std::to_string(x[i]) +
-                                 " istoo big or small ");
-        else
-            x[i] = std::min(1.0, std::max(0.0, x[i]));
-    }
-    return Ptotal_ij(x / var::sum(x));
-}
-
-class gmean_i : public Var<gmean_i, Matrix<double>> {
-    friend std::string className(gmean_i) { return "gmean_i"; }
-};
-class gtotal_ij : public Var<gtotal_ij, Matrix<double>> {
-    friend std::string className(gtotal_ij) { return "gtotal_ij"; }
-};
-class gmean_ij : public Var<gmean_ij, Matrix<double>> {
-    friend std::string className(gmean_ij) { return "gmean_ij"; }
-};
-class gtotal_sqr_ij : public Var<gtotal_sqr_ij, Matrix<double>> {
-    friend std::string className(gtotal_sqr_ij) { return "gtotal_sqr_ij"; }
-};
-class gsqr_i : public Var<gsqr_i, Matrix<double>> {
-    friend std::string className(gsqr_i) { return "gsqr_i"; }
-};
-class gvar_i : public Var<gvar_i, Matrix<double>> {
-    friend std::string className(gvar_i) { return "gvar_i"; }
-};
-class gtotal_var_ij : public Var<gtotal_var_ij, Matrix<double>> {
-    friend std::string className(gtotal_var_ij) { return "gtotal_var_ij"; }
-};
-class gvar_ij : public Var<gvar_ij, Matrix<double>> {
-    friend std::string className(gvar_ij) { return "gvar_ij"; }
-};
-
-class y_mean : public var::Var<y_mean, double> {
-    friend std::string className(y_mean) { return "y_mean"; }
-};
-class y_var : public var::Var<y_var, double> {
-    friend std::string className(y_var) { return "y_var"; }
-};
-
-class r_std : public var::Var<r_std, double> {
-    friend std::string className(r_std) { return "r_std"; }
-};
-class r2_std : public var::Var<r2_std, double> {
-    friend std::string className(r2_std) { return "r2_std"; }
-};
-
-
-class trust_coefficient : public var::Var<trust_coefficient, double> {
-    friend std::string className(trust_coefficient) { return "trust_coefficient"; }
-};
-
-class Chi2 : public var::Var<Chi2, double> {
-    friend std::string className(Chi2) { return "Chi2"; }
-};
 
 // class plogL : public var::Var<plogL, double> {
 //     friend std::string className(plogL) { return "plogL"; }
@@ -821,117 +221,6 @@ class Chi2 : public var::Var<Chi2, double> {
 //     friend std::string className(vplogL) { return "vplogL"; }
 // };
 
-class macror_algorithm : public var::Constant<macror_algorithm, std::string> {
-    using var::Constant<macror_algorithm, std::string>::Constant;
-    friend std::string className(macror_algorithm) { return "macror_algorithm"; }
-};
-
-class PGn : public var::Var<PGn, Matrix<double>> {};
-class PGG_n : public var::Var<PGG_n, Matrix<double>> {};
-class PG_n : public var::Var<PG_n, Matrix<double>> {};
-// class PPn : public var::Var<PPn, Matrix<double>> {};
-
-using Qn = Vector_Space<number_of_samples, min_P, P, PG_n, PGG_n>;
-
-using Eigs = Vector_Space<lambda, V, W>;
-
-using Qdtg = Vector_Space<number_of_samples, min_P, P_half, g>;
-
-using Qdtm =
-    Vector_Space<number_of_samples, min_P, P, gmean_i, gtotal_ij, gmean_ij, gsqr_i, gvar_i>;
-
-using Qdt = Vector_Space<number_of_samples, min_P, P, gmean_i, gtotal_ij, gmean_ij, gtotal_sqr_ij,
-                         gsqr_i, gvar_i, gtotal_var_ij, gvar_ij>;
-
-template <class recursive, class averaging, class variance, class variance_correction>
-
-    requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
-             uses_variance_aproximation_c<variance> &&
-             uses_taylor_variance_correction_aproximation_c<variance_correction>)
-struct Qdt_u {
-    using type = double;
-};
-
-using Patch_Model = Vector_Space<N_St, Q0, Qa, P_initial, g, N_Ch_mean, Current_Noise, Pink_Noise,
-                                 Proportional_Noise, Current_Baseline,
-                                 N_Ch_mean_time_segment_duration, Binomial_magical_number, min_P,
-                                 Probability_error_tolerance, Conductance_variance_error_tolerance>;
-
-inline void save(const std::string name, const Patch_Model& m) {
-    std::ofstream f_Q0(name + "_Q0.txt");
-    f_Q0 << std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<Q0>(m) << "\n";
-    std::ofstream f_Qa(name + "_Qa.txt");
-    f_Qa << std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<Qa>(m) << "\n";
-    std::ofstream f_g(name + "_g.txt");
-    f_g << std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<g>(m) << "\n";
-}
-
- 
-
-class Algo_State_Dynamic
-    : public var::Var<
-          Algo_State_Dynamic,
-          Vector_Space<y_mean, y_var, trust_coefficient, r_std,
-          Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
-                       P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, 
-                       P_mean_0t_y0,P_mean_0t_y1,P_cross_cov_0t_y0,P_cross_cov_0t_y1,
-                       P_Cov_t2_y0,
-                       P_Cov_t2_y1,P_Cov_t15_y0,
-                       P_Cov_t15_y1, P_Cov_t1_y1, P_Cov_t20_y1, P_Cov_t11_y0, P_Cov_t10_y1>> {
-   public:
-    Matrix<double> const& get_P_mean() const {
-        if (get<P_mean_t2_y1>((*this)())().size() > 0) {
-            return get<P_mean_t2_y1>((*this)())();
-        }
-        if (get<P_mean_t2_y0>((*this)())().size() > 0) {
-            return get<P_mean_t2_y0>((*this)())();
-        }
-        
-        return get<P_mean_t20_y1>((*this)())();
-    }
-    SymmetricMatrix<double> const& get_P_Cov() const {
-        if (get<P_Cov_t2_y1>((*this)())().size() > 0) {
-            return get<P_Cov_t2_y1>((*this)())();
-        }if (get<P_Cov_t2_y0>((*this)())().size() > 0) {
-            return get<P_Cov_t2_y0>((*this)())();
-        }
-        
-        return get<P_Cov_t20_y1>((*this)())();
-    }
-};
-
-class Algo_State
-    : public var::Var<Algo_State,
-                      Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P_mean, P_Cov>> {
-   public:
-    using base_type =
-        var::Var<Algo_State, Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P_mean,
-                                          P_Cov>>;
-    Algo_State(const Algo_State_Dynamic& p)
-        : base_type{Vector_Space(get<y_mean>(p()), get<y_var>(p()), get<trust_coefficient>(p()),
-                                 get<r_std>(p()), get<Chi2>(p()),
-                                 P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()))} {}
-
-    using base_type::Var;
-};
-
-struct Patch_State : public var::Var<Patch_State, Vector_Space<P_mean, P_Cov>> {};
-
-struct Evolution {};
-
-template <class T>
-class Evolution_of : public Var<Evolution_of<T>, std::vector<T>> {
-   public:
-    using base_type = Var<Evolution_of<T>, std::vector<T>>;
-    using base_type::base_type;
-    using element_type = T;
-    auto& operator[](var::Var<Evolution>) { return *this; }
-
-    auto const& operator[](var::Var<Evolution>) const { return *this; }
-
-    friend std::string className(Evolution_of) { return "Macro_State_Evolution"; }
-    using value_type = std::vector<T>;
-};
 
 /*
 
@@ -955,176 +244,8 @@ inline auto get_mean_Probits(std::vector<Evolution_of<T>>const & bootstrap_estim
     return std::make_pair(std::move(mean_out), std::move(probits_out));
 }
 */
-template <class V, class Id>
-concept has_var_c = requires(V&& v) {
-    std::forward<V>(v)[var::Var<Id>{}];
-};
+// has_var_c moved to qmodel_types.h.
 
-template <typename... Vars>
-struct Macro_State : public Vector_Space<logL, Patch_State, Vars...> {
-    Macro_State() = default;
-    Macro_State(Patch_State&& ps) { get<Patch_State>((*this)) = std::move(ps); }
-    Macro_State(logL&& l, Patch_State&& ps, Vars&&... vars)
-        : Vector_Space<logL, Patch_State, Vars...>(std::move(l), std::move(ps),
-                                                   std::forward<Vars>(vars)...) {}
-};
-
-template <typename... Vars>struct dMacro_State
-    : public Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
-                          var::Derivative<Patch_State, var::Parameters_transformed>, 
-                          Vars...> {
-    dMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
-        auto const& dx = var::get_dx_of_dfdx(dps);
-
-        // Seed the prior patch state (carries dx).
-        get<var::Derivative<Patch_State, var::Parameters_transformed>>(*this) = std::move(dps);
-        // Accumulators start at zero/empty but share the same dx.
-        auto seed_with_dx = [&](auto& component) {
-            using Comp = std::decay_t<decltype(component)>;
-            if constexpr (std::constructible_from<Comp, decltype(dx) const&>) {
-                component = Comp(dx);
-            } else {
-                component = Comp{};
-                if constexpr (requires { component.derivative().set_dx(dx); }) {
-                    component.derivative().set_dx(dx);
-                }
-            }
-        };
-        seed_with_dx(get<var::Derivative<logL, var::Parameters_transformed>>(*this));
-        if constexpr (sizeof...(Vars) > 0)
-            ((seed_with_dx(get<Vars>(*this))), ...);
-    }
-    dMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
-                 var::Derivative<Patch_State, var::Parameters_transformed>&& dps,
-                 Vars&&... vars)
-        : Vector_Space<var::Derivative<logL, var::Parameters_transformed>,
-                       var::Derivative<Patch_State, var::Parameters_transformed>,
-                          Vars...>(
-              std::move(dl), std::move(dps),
-              std::forward<Vars>(vars)...) {}
-    dMacro_State() = default;       
-                    
-};
-
-template <typename... Vars>
-struct ddMacro_State
-    : public var::Derivative<Vector_Space<logL, Patch_State, Vars...>, var::Parameters_transformed> {
-    ddMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
-        auto const& dx = var::get_dx_of_dfdx(dps);
-        get<Patch_State>(*this) = std::move(dps);
-
-        auto seed_with_dx = [&](auto& component) {
-            using Comp = std::decay_t<decltype(component)>;
-            if constexpr (std::constructible_from<Comp, decltype(dx) const&>) {
-                component = Comp(dx);
-            } else {
-                component = Comp{};
-                if constexpr (requires { component.derivative().set_dx(dx); }) {
-                    component.derivative().set_dx(dx);
-                }
-            }
-        };
-        seed_with_dx(get<logL>(*this));
-        if constexpr (sizeof...(Vars) > 0)
-            ((seed_with_dx(get<Vars>(*this))), ...);
-    }
-    ddMacro_State(var::Derivative<logL, var::Parameters_transformed>&& dl,
-                  var::Derivative<Patch_State, var::Parameters_transformed>&& dps,
-                  var::Derivative_t<Vars, var::Parameters_transformed>&&... vars)
-        : var::Derivative<Vector_Space<logL, Patch_State, Vars...>, var::Parameters_transformed>(
-              std::move(dl), std::move(dps), std::forward<Vars>(vars)...) {}
-};
-
-}  // namespace macrodr
-
-template <class T>
-struct mean_value_type_impl<macrodr::Evolution_of<T>> {
-    using type = macrodr::Evolution_of<T>;
-};
-
-// Teach the generic derivative machinery that ddMacro_State lives in the
-// Parameters_transformed derivative universe, so that Transfer_Op_to and
-// related helpers propagate derivatives correctly.
-namespace var {
-template <class... Vars>
-struct transformation_type<macrodr::ddMacro_State<Vars...>> {
-    using type = Derivative_Op<Parameters_transformed>;
-};
-
-template <class... Vars>
-struct is_derivative<macrodr::ddMacro_State<Vars...>> : std::true_type {};
-
-template <class... Vars, class... Ds>
-struct dx_of_dfdx<macrodr::ddMacro_State<Vars...>, Ds...> {
-    using type = Parameters_transformed;
-};
-
-template <class G, class... Vars, class... Ds>
-    requires(!is_derivative_v<G>)
-struct dx_of_dfdx<G, macrodr::ddMacro_State<Vars...>, Ds...> {
-    using type = Parameters_transformed;
-};
-
-template <class F, class... Vars, class... Ds>
-struct dx_of_dfdx<Derivative<F, Parameters_transformed>, macrodr::ddMacro_State<Vars...>, Ds...> {
-    using type = Parameters_transformed;
-};
-}  // namespace var
-
-namespace macrodr {
-
-using predictions_element =
-    var::please_include<logL, elogL, vlogL, y_mean, y_var, r_std,P_mean, P_Cov, trust_coefficient>;
-
-using diagnostic_element = var::please_include<logL, elogL, vlogL, Algo_State_Dynamic>;
-
-using gradient_minimal_element =
-    var::please_include<var::Derivative<logL, var::Parameters_transformed>, elogL, y_mean, y_var, r_std,
-                        trust_coefficient>;
-
-using gradient_all_element =
-    var::please_include<var::Derivative<logL, var::Parameters_transformed>,
-                        var::Derivative<elogL, var::Parameters_transformed>,
-                        var::Derivative<y_mean, var::Parameters_transformed>,
-                        var::Derivative<y_var, var::Parameters_transformed>,
-                        var::Derivative<r_std, var::Parameters_transformed>, trust_coefficient>;
-
-using Macro_State_minimal = Macro_State<>;
-
-using Macro_State_reg = add_t<Macro_State_minimal, var::please_include<elogL, vlogL>>;
-
-using dMacro_State_Hessian_minimal =
-    add_t<dMacro_State<>, var::please_include<FIM>>;
-
-using diff_Macro_State_Gradient_Hessian =
-    add_t<Macro_State<>, var::please_include<elogL, vlogL, Grad, FIM>>;
-
-using Macro_State_Ev_predictions =
-    add_t<Macro_State_reg,
-          var::please_include<Evolution_of<add_t<Vector_Space<>, predictions_element>>>>;
-
-using Macro_State_Ev_diagnostic =
-    add_t<Macro_State_reg,
-          var::please_include<Evolution_of<add_t<Vector_Space<>, diagnostic_element>>>>;
-
-using dMacro_State_Ev_gradient_minimal =
-    add_t<dMacro_State<>,
-          var::please_include<Evolution_of<add_t<Vector_Space<>, gradient_minimal_element>>>>;
-
-using dMacro_State_Ev_gradient_all =
-    add_t<dMacro_State<>,
-          var::please_include<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>>;
-
-template <class VS>
-constexpr bool is_Algo_dynamic() {
-    if constexpr (has_var_c<VS const&, Evolution>) {
-        using Evo = std::decay_t<decltype(std::declval<VS const&>()[var::Var<Evolution>{}])>;
-        using El = typename Evo::element_type;
-        return has_var_c<El const&, Algo_State_Dynamic>;
-    } else {
-        return false;
-    }
-}
 
 template <class C_Patch_Model, class C_double>
 C_Patch_Model add_Patch_inactivation(C_Patch_Model&& m, C_double const& deactivation_rate) {
@@ -1191,69 +312,6 @@ std::pair<C_Patch_Model, double> remove_Patch_inactivation(C_Patch_Model const& 
     return std::pair(std::move(m), deactivation_rate);
 }
 
-class Simulation_n_sub_dt : public Var<Simulation_n_sub_dt, std::size_t> {};
-class Simulation_Mode : public Var<Simulation_Mode, std::string> {};
-
-inline constexpr auto simulation_algorithm_substeps_name = "substeps";
-inline constexpr auto simulation_algorithm_uniformization_name = "uniformization";
-
-class N_Ch_State_Evolution : public Var<N_Ch_State_Evolution, std::vector<N_channel_state>> {};
-
-class Only_Ch_Curent_Evolution : public Var<Only_Ch_Curent_Evolution, std::vector<Patch_current>> {
-};
-
-class N_Ch_State_Sub_Evolution
-    : public Var<N_Ch_State_Sub_Evolution, std::vector<N_channel_state>> {};
-
-class Only_Ch_Curent_Sub_Evolution
-    : public Var<Only_Ch_Curent_Sub_Evolution, std::vector<Patch_current>> {};
-
-template <typename Simulate_tag>
-class Simulated_Recording
-    : public Var<Simulated_Recording<Simulate_tag>, add_t<Vector_Space<SeedNumber,Recording>, Simulate_tag>> {
-   public:
-    constexpr static const bool includes_N = var::has_it_v<Simulate_tag, N_Ch_State_Evolution>;
-    using Var<Simulated_Recording<Simulate_tag>, add_t<Vector_Space<SeedNumber,Recording>, Simulate_tag>>::Var;
-};
-
-using Simulated_recording = Simulated_Recording<var::please_include<>>;
-
-using v_Simulated_Recording =
-    std::variant<Simulated_Recording<var::please_include<>>,
-                 Simulated_Recording<var::please_include<Only_Ch_Curent_Evolution>>,
-                 Simulated_Recording<var::please_include<N_Ch_State_Evolution>>>;
-
-template <typename Simulate_tag>
-class Simulated_Step
-    : public Var<Simulated_Step<Simulate_tag>,
-                 Vector_Space<N_channel_state, Simulated_Recording<Simulate_tag>>> {
-    // using Vector_Space<N_channel_state,
-    // Simulated_Recording<Simulate_tag>>::Vector_Space;
-};
-
-template <typename Simulate_tag>
-using Simulated_Sub_Step_t =
-    add_if_present_t<Vector_Space<N_channel_state, number_of_samples, y_sum>, Simulate_tag,
-                     N_Ch_State_Sub_Evolution, Only_Ch_Curent_Sub_Evolution>;
-
-template <typename Simulate_tag>
-Simulated_Sub_Step_t<Simulate_tag> Simulated_Sub_Step_build(N_channel_state N) {
-    Simulated_Sub_Step_t<Simulate_tag> out;
-    get<N_channel_state>(out) = N;
-    return out;
-}
-
-using Simulation_Parameters = Vector_Space<Simulation_Mode, Simulation_n_sub_dt>;
-
-inline auto make_substep_simulation_parameters(std::size_t n_sub_dt) {
-    return Simulation_Parameters(Simulation_Mode(simulation_algorithm_substeps_name),
-                                 Simulation_n_sub_dt(n_sub_dt));
-}
-
-inline auto make_uniformization_simulation_parameters() {
-    return Simulation_Parameters(Simulation_Mode(simulation_algorithm_uniformization_name),
-                                 Simulation_n_sub_dt(0));
-}
 
 template <typename Simulate_tag>
 void save_simulation(std::string const& filename, const std::string& separator,
@@ -3101,7 +2159,8 @@ class Macro_DMR {
         } else {
             auto sub_ns = number_of_samples(ns() * scale);
             auto P_sub = std::move(Maybe_P_sub.value());
-            auto r_Qn = get_Qn(P_sub, get<g>(m), sub_ns, get<min_P>(m));
+            auto r_Qn = get_Qn_via_taylor_integrals<Policy>(t_Qrun_sub, P_sub, get<g>(m),
+                                                             sub_ns, get<min_P>(m), order);
             for (std::size_t i = 0; i < n; ++i) {
                 auto Maybe_r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
                 if (!Maybe_r_Qn)
@@ -3135,9 +2194,19 @@ class Macro_DMR {
         auto Maybe_P_sub = to_Transition_Probability<Policy>(expm_taylor(t_Qrun_sub, order));
         if (!Maybe_P_sub) {
             return Maybe_P_sub.error();
-        } else {
-            return build<Qdtg>(ns, get<min_P>(m), build<P_half>(std::move(Maybe_P_sub.value()())), get<g>(m));
         }
+        // Square n times to recover P_half = expm(Q·dt/2) from the scaled
+        // sub-step P_sub = expm(Q·dt/2 · 2⁻ⁿ). Same scaling-and-squaring
+        // recipe used by expm_sure (line ~1665). Without these squarings the
+        // returned P_half is (P_half)^(1/2ⁿ), wrong whenever n>0 — which
+        // turns the lifted micro_R likelihood completely wrong.
+        auto P_half_mat = std::move(Maybe_P_sub.value());
+        for (int i = 0; i < n; ++i) {
+            auto Maybe_P2 = to_Transition_Probability<Policy>(P_half_mat() * P_half_mat());
+            if (!Maybe_P2) return Maybe_P2.error();
+            P_half_mat = std::move(Maybe_P2.value());
+        }
+        return build<Qdtg>(ns, get<min_P>(m), build<P_half>(std::move(P_half_mat())), get<g>(m));
     }
 
     template <class Policy = StabilizerPolicyEnabled, class C_Patch_Model, class C_Qx>
@@ -3164,7 +2233,8 @@ class Macro_DMR {
         } else {
             auto sub_ns = number_of_samples(ns() * scale);
             auto P_sub = std::move(Maybe_P_sub.value());
-            auto r_Qn = get_Qn(P_sub, get<g>(m), sub_ns, get<min_P>(m));
+            auto r_Qn = get_Qn_via_taylor_integrals<Policy>(t_Qrun_sub, P_sub, get<g>(m),
+                                                             sub_ns, get<min_P>(m), order);
             for (std::size_t i = 0; i < n; ++i) {
                 auto Maybe_r_Qn = sum_Qn(std::move(r_Qn), r_Qn);
                 if (!Maybe_r_Qn)
@@ -3174,6 +2244,168 @@ class Macro_DMR {
             assert(get<number_of_samples>(r_Qn) == ns);
             return Qn_to_Qdtm(r_Qn, m);
         }
+    }
+
+    // -------------------------------------------------------------------
+    // Schur+Parlett path. Plain-double only at step 7; Derivative-aware
+    // overload lives further below (step 8). Mirrors the (m, t_Qx, ns, dt)
+    // signature of calc_Qdt_eig / calc_Qdt_taylor so dispatch can swap
+    // implementations transparently.
+    // -------------------------------------------------------------------
+    template <class Policy = StabilizerPolicyEnabled, class C_Patch_Model, class C_Qx>
+        requires(U<C_Qx, Qx>)
+    Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> calc_Qdtg_schur(const C_Patch_Model& m,
+                                                                      const C_Qx& t_Qx,
+                                                                      number_of_samples ns,
+                                                                      double dt) {
+        using GType = std::decay_t<decltype(get<g>(m))>;
+        if constexpr (var::is_derivative_v<GType>) {
+            // Derivative path: delegate to calc_Qdtg_taylor. With the
+            // squaring fix in calc_Qdtg_taylor (qmodel.h:3146-3151), Taylor
+            // produces correct Derivative<Qdtg> using N×N Derivative<Matrix>
+            // arithmetic — much cheaper than Pade scaling-and-squaring.
+            return calc_Qdtg_taylor<Policy>(m, t_Qx, ns, dt);
+        } else {
+            auto Maybe_P_half = lapack::expm_schur_parlett(t_Qx() * (dt * 0.5));
+            if (!Maybe_P_half) return Maybe_P_half.error();
+            auto Maybe_r_P = to_Transition_Probability<Policy>(Maybe_P_half.value());
+            if (!Maybe_r_P) return Maybe_r_P.error();
+            auto r_P = build<P_half>(std::move(Maybe_r_P.value())());
+            return build<Qdtg>(ns, get<min_P>(m), std::move(r_P), get<g>(m));
+        }
+    }
+
+    // Helper: assemble the full Qdt struct from P, gtotal_ij, gtotal_sqr_ij
+    // already computed via Schur+VanLoan. Mirrors the post-spectral algebra
+    // in calc_Qdt_eig (lines 2576-2621): gmean_ij = gtotal_ij / P,
+    // gtotal_var_ij = gtotal_sqr_ij - gtotal_ij·gmean_ij, gvar_ij = .../P,
+    // and the row-sum {gmean_i, gsqr_i, gvar_i}. Templated on the matrix
+    // type so plain double and Derivative<Matrix<double>> share the same
+    // post-expm algebra — the codebase's overloaded operators
+    // (elemDivSafe, elemMult, *) propagate derivatives transparently.
+    template <class Policy, class C_Patch_Model, class C_Mat>
+    auto assemble_Qdt_from_moments(const C_Patch_Model& m, number_of_samples ns,
+                                    C_Mat r_P_mat, C_Mat r_gtotal_ij_mat,
+                                    C_Mat r_gtotal_sqr_ij_mat) {
+        auto t_g = get<g>(m);
+        auto t_min_P = get<min_P>(m);
+
+        auto Maybe_r_P = to_Transition_Probability<Policy>(std::move(r_P_mat));
+        if (!Maybe_r_P)
+            return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(Maybe_r_P.error());
+        auto r_P = std::move(Maybe_r_P.value());
+
+        auto r_gtotal_ij =
+            force_gtotal_in_range<Policy>(build<gtotal_ij>(std::move(r_gtotal_ij_mat)), t_g, r_P);
+
+        auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(std::move(r_gtotal_sqr_ij_mat));
+
+        auto r_gmean_ij = build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), eps));
+
+        auto r_gtotal_var_ij = force_gtotal_var_in_range<Policy>(
+            build<gtotal_var_ij>(r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij())), t_g,
+            r_P);
+
+        auto r_gvar_ij = build<gvar_ij>(elemDivSafe(r_gtotal_var_ij(), r_P(), eps));
+
+        Matrix<double> u(r_P().nrows(), 1, 1.0);
+        auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+        auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
+        auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
+
+        return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(
+            build<Qdt>(ns, min_P(t_min_P), std::move(r_P), std::move(r_gmean_i),
+                        std::move(r_gtotal_ij), std::move(r_gmean_ij),
+                        std::move(r_gtotal_sqr_ij), std::move(r_gsqr_i), std::move(r_gvar_i),
+                        std::move(r_gtotal_var_ij), std::move(r_gvar_ij)));
+    }
+
+    // Build diag(g_vec) as a full N×N matrix, templated on the inner matrix
+    // type. Pass the *unwrapped* matrix (g_vec is Matrix<double> or
+    // Derivative<Matrix<double>>, not the g/Derivative<g> wrapper). For
+    // Derivative inputs it uses inside_out / outside_in to repack — keeps
+    // the Frechet integral builder agnostic to plain vs Derivative.
+    template <class C_Mat>
+        requires(var::U<C_Mat, Matrix<double>>)
+    auto build_g_as_diag_matrix(C_Mat const& g_vec) {
+        auto g_inner = var::inside_out(g_vec);
+        using scalar_t = std::decay_t<decltype(g_inner(std::size_t{0}, std::size_t{0}))>;
+        const std::size_t N = g_inner.nrows();
+        scalar_t zero = g_inner(std::size_t{0}, std::size_t{0}) -
+                         g_inner(std::size_t{0}, std::size_t{0});
+        Matrix<scalar_t> D(N, N, zero);
+        for (std::size_t i = 0; i < N; ++i) D(i, i) = g_inner(i, std::size_t{0});
+
+        if constexpr (var::is_derivative_v<C_Mat>) {
+            return var::outside_in(D, g_vec.dx());
+        } else {
+            return D;
+        }
+    }
+
+    template <class Policy = StabilizerPolicyEnabled, class C_Patch_Model, class C_Qx>
+        requires(U<C_Qx, Qx>)
+    Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> calc_Qdt_schur(const C_Patch_Model& m,
+                                                                    const C_Qx& t_Qx,
+                                                                    number_of_samples ns,
+                                                                    double dt) {
+        using GType = std::decay_t<decltype(get<g>(m))>;
+        if constexpr (var::is_derivative_v<GType>) {
+            // Derivative path: delegate to calc_Qdt_taylor. With the seed
+            // fix in get_Qn_via_taylor_integrals (qmodel.h:3215+), Taylor
+            // produces correct Derivative<Qdt> — validated by
+            // [macroir][parity][derivative]. Critically, Taylor does its
+            // moment-integral arithmetic on N×N Derivative<Matrix> rather
+            // than on the 3N×3N Van Loan augmented matrix that Pade-VanLoan
+            // requires. For N=51 (Nch=50, k=2), p=6 parameters, that's a
+            // ~10× speedup with zero accuracy loss — every Derivative
+            // matmul on the 3N×3N augmented matrix is 27× more expensive
+            // than the same operation on N×N (cost scales as N³ × (1+2p)).
+            return calc_Qdt_taylor<Policy>(m, t_Qx, ns, dt);
+        } else {
+            // Plain double path. ONE 3N×3N Pade scaling-and-squaring on the
+            // Van Loan augmented matrix [[Q,G,0],[0,Q,G],[0,0,Q]]·dt yields
+            // P, A and B simultaneously (the (0,0), (0,1), (0,2) blocks of
+            // the resulting expm). Replaces the three separate expm calls
+            // (N×N for P, 2N×2N for A, 3N×3N for B) with one — saves the
+            // N×N and 2N×2N expm work entirely (~25%).
+            const auto& t_g = get<g>(m);
+            auto G_diag = build_g_as_diag_matrix(t_g());
+
+            auto Maybe_PAB = lapack::frechet_p_a_b_combined(t_Qx(), G_diag, dt);
+            if (!Maybe_PAB)
+                return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(Maybe_PAB.error());
+            auto& [P_mat, A_mat, B_mat] = Maybe_PAB.value();
+
+            // gtotal_ij = A / dt; gtotal_sqr_ij = 2·B / dt². The "·2.0"
+            // matches the symmetrization factor calc_Qdt_eig applies at
+            // qmodel.h:2591, since our B is a single-ordering triangle
+            // integral.
+            auto r_gtotal_ij_mat = A_mat * (1.0 / dt);
+            auto r_gtotal_sqr_ij_mat = B_mat * (2.0 / (dt * dt));
+
+            return assemble_Qdt_from_moments<Policy>(m, ns, std::move(P_mat),
+                                                      std::move(r_gtotal_ij_mat),
+                                                      std::move(r_gtotal_sqr_ij_mat));
+        }
+    }
+
+    template <class Policy = StabilizerPolicyEnabled, class C_Patch_Model, class C_Qx>
+        requires(U<C_Qx, Qx>)
+    Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> calc_Qdtm_schur(const C_Patch_Model& m,
+                                                                      const C_Qx& t_Qx,
+                                                                      number_of_samples ns,
+                                                                      double dt) {
+        // Compute the full Qdt then project to Qdtm (= Qdt minus the *_ij
+        // variance fields). Cheaper to share the full computation than to
+        // reimplement; the dropped fields are post-extraction so the cost
+        // delta is negligible.
+        auto Maybe_full = calc_Qdt_schur<Policy>(m, t_Qx, ns, dt);
+        if (!Maybe_full) return Maybe_full.error();
+        auto& full = Maybe_full.value();
+        return build<Qdtm>(get<number_of_samples>(full), get<min_P>(full), get<P>(full),
+                            get<gmean_i>(full), get<gtotal_ij>(full), get<gmean_ij>(full),
+                            get<gsqr_i>(full), get<gvar_i>(full));
     }
 
     template <class C_Qdt>
@@ -3198,6 +2430,81 @@ class Macro_DMR {
 
         return build<Qn>(n, t_minP, t_P, build<PG_n>(elemMult(t_P(), Gmean) * n()),
                          build<PGG_n>(elemMult(t_P(), Gvar) * (n() * n() * 0.5)));
+    }
+
+    // Seed Qn for the Taylor scaling-and-squaring path with the *correct*
+    // small-step time-integrals — replacement for the placeholder
+    // endpoint-average get_Qn(P_sub, g, …) which produced wrong gmean*/gvar*
+    // (see project_qdt_taylor_seed_bug). Computes
+    //
+    //   A(dt) = ∫₀^dt P(t) · diag(g) · P(dt − t) dt
+    //   B(dt) = ∫₀^dt ∫₀^t1 P(s) · diag(g) · P(t1 − s) · diag(g) · P(dt − t1) ds dt1
+    //
+    // via Taylor series in Q_sub = Q · dt_sub. The recurrences
+    //   M₀ = G,   M_m = Q_sub · M_{m−1} + G · Q_sub^m
+    //   N₀ = G², N_p = Q_sub · N_{p−1} + G · M_p
+    // give A/dt_sub = Σ M_m / (m+1)!  and  B/dt_sub² = Σ N_p / (p+2)!.
+    // Then PG_n = sub_ns · A/dt_sub and PGG_n = sub_ns² · B/dt_sub², which
+    // composes correctly under sum_Qn (the same composition rule as for the
+    // eig-derived seed, with PG_n and PGG_n carrying the per-time scaling).
+    template <class Policy = StabilizerPolicyEnabled, class C_Q_sub, class C_P, class C_g>
+        requires(U<C_P, P> && U<C_g, g>)
+    auto get_Qn_via_taylor_integrals(const C_Q_sub& Q_sub, const C_P& t_P,
+                                      C_g const& t_g, number_of_samples sub_ns,
+                                      min_P t_minP, std::size_t order = 6ul) {
+        auto N_sz = t_P().nrows();
+        auto u = Matrix<double>(1, N_sz, 1.0);
+        auto G_row = t_g() * u;  // [i,j] = g[i]
+
+        Matrix<double> I_NxN(N_sz, N_sz, 0.0);
+        for (std::size_t i = 0; i < N_sz; ++i) I_NxN(i, i) = 1.0;
+
+        // M₀ = diag(g) as a full N×N matrix: row-scale identity by g[i].
+        auto M_prev = elemMult(G_row, I_NxN);
+
+        // PG accumulator = Σ M_m / (m+1)!  (m=0 term is M₀ / 1!).
+        auto PG_acc = M_prev;
+
+        using M_t = std::decay_t<decltype(M_prev)>;
+        std::vector<M_t> M_store;
+        M_store.reserve(order);
+        M_store.push_back(M_prev);
+
+        // Q_sub^1 = Q_sub.
+        auto Q_pow = Q_sub;
+
+        double inv_fact = 1.0;
+        for (std::size_t m = 1; m < order; ++m) {
+            auto M_cur = Q_sub * M_prev + elemMult(G_row, Q_pow);
+            inv_fact /= static_cast<double>(m + 1);
+            PG_acc = PG_acc + M_cur * inv_fact;
+            M_store.push_back(M_cur);
+            M_prev = std::move(M_cur);
+            if (m + 1 < order)
+                Q_pow = Q_sub * Q_pow;  // advance to Q_sub^(m+1)
+        }
+
+        auto PG_n_val = PG_acc * static_cast<double>(sub_ns());
+
+        // PGG accumulator = Σ N_p / (p+2)!.  N₀ = G·G = diag(g²) materialized
+        // via row-scaling M₀ by g.
+        auto N_cur = elemMult(G_row, M_store[0]);
+
+        double inv_fact2 = 0.5;  // 1 / 2! for p=0
+        auto PGG_acc = N_cur * inv_fact2;
+
+        for (std::size_t p = 1; p + 1 < order; ++p) {
+            N_cur = Q_sub * N_cur + elemMult(G_row, M_store[p]);
+            inv_fact2 /= static_cast<double>(p + 2);
+            PGG_acc = PGG_acc + N_cur * inv_fact2;
+        }
+
+        auto PGG_n_val =
+            PGG_acc * (static_cast<double>(sub_ns()) * static_cast<double>(sub_ns()));
+
+        return build<Qn>(sub_ns, t_minP, t_P,
+                         build<PG_n>(std::move(PG_n_val)),
+                         build<PGG_n>(std::move(PGG_n_val)));
     }
 
     template <class Policy = StabilizerPolicyEnabled, class C_Qn>
@@ -4868,7 +4175,7 @@ class Macro_DMR {
 
     template <class... vVars, class C_Algo_State>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
-    Maybe_error<Macro_State<vVars...>> update(Macro_State<vVars...>&& t_prior_all,
+    Maybe_error<Macro_State<vVars...>> update_macro_state(Macro_State<vVars...>&& t_prior_all,
                                               C_Algo_State&& algo, logL const& t_logL, elogL const& t_elogL,... ) const 
                                               {
         // Update patch state for recursion.
@@ -4947,7 +4254,7 @@ class Macro_DMR {
     
     template <class... vVars, class C_Algo_State, class C_logL, class C_elogL>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
-    Maybe_error<Vector_Space<vVars...>> update(Vector_Space<vVars...>&& t_prior_all,
+    Maybe_error<Vector_Space<vVars...>> update_macro_state(Vector_Space<vVars...>&& t_prior_all,
                                               C_Algo_State&& algo, C_logL const& t_logL,C_elogL const& t_elogL,...) const {
         // If this Vector_Space carries a Patch_State, keep recursion semantics consistent with
         // Macro_State/dMacro_State/ddMacro_State updates.
@@ -5000,7 +4307,7 @@ class Macro_DMR {
 
     template <class... vVars, class C_Algo_State, class C_elogL>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
-    Maybe_error<dMacro_State<vVars...>> update(
+    Maybe_error<dMacro_State<vVars...>> update_macro_state(
         dMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
         var::Derivative<logL, var::Parameters_transformed> const& t_logL ,
         C_elogL const& t_elogL, 
@@ -5089,7 +4396,7 @@ class Macro_DMR {
 
     template <class... vVars, class C_Algo_State>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
-    Maybe_error<ddMacro_State<vVars...>> update(
+    Maybe_error<ddMacro_State<vVars...>> update_macro_state(
         ddMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
         var::Derivative<logL, var::Parameters_transformed> const& t_logL,...) const {
         // Update patch state (including derivatives) for recursion.
@@ -5158,7 +4465,7 @@ class Macro_DMR {
 
     template <class... vVars, class C_Algo_State, class C_elogL>
         requires(U<C_Algo_State, Algo_State> || U<C_Algo_State, Algo_State_Dynamic>)
-    Maybe_error<ddMacro_State<vVars...>> update(
+    Maybe_error<ddMacro_State<vVars...>> update_macro_state(
         ddMacro_State<vVars...>&& t_prior_all, C_Algo_State&& algo,
         var::Derivative<logL, var::Parameters_transformed> const& t_logL,
         C_elogL const& t_elogL,...) const {
@@ -5246,10 +4553,10 @@ class Macro_DMR {
                                                    &&*/
                  U<C_double, double> && (U<C_Qdt, Qdt> || U<C_Qdt, Qdtm> || U<C_Qdt, Qdtg>))
 
-    Maybe_error<C_Macro_State> Macror(FunctionTable&, C_Macro_State&& t_prior_all,
-                                      C_Qdt const& t_Qdt, C_Patch_Model const& m,
-                                      C_double const& Nch, const Patch_current& p_y,
-                                      double fs) const {
+        Maybe_error<C_Macro_State> Macror(FunctionTable&, C_Macro_State&& t_prior_all,
+                                        C_Qdt const& t_Qdt, C_Patch_Model const& m,
+                                        C_double const& Nch, const Patch_current& p_y,
+                                        double fs) const {
         using Transf = transformation_type_t<C_Qdt>;
 
         auto& t_prior = get<Patch_State>(t_prior_all);
@@ -5273,7 +4580,7 @@ class Macro_DMR {
         
        
         auto r_prior_all =
-            update(std::move(t_prior_all), std::move(r_Algo_state), std::move(r_logL), std::move(r_elogL), r_y_mean, r_y_var);
+            update_macro_state(std::move(t_prior_all), std::move(r_Algo_state), std::move(r_logL), std::move(r_elogL), r_y_mean, r_y_var);
         return {std::move(r_prior_all)};
     }
 
@@ -5659,7 +4966,7 @@ class Macro_DMR {
         }
 
         auto Maybe_run = fold(
-            0ul, y().size(), std::move(t_macro),
+            0UL, y().size(), std::move(t_macro),
             [this, &f_local, &m, fs, &e, &y](MacroState&& t_prior, std::size_t i_step) {
                 Agonist_evolution const& t_step =
                     get<Agonist_evolution>(get<Recording_conditions>(e)()[i_step]);
@@ -6404,6 +5711,14 @@ class Macro_DMR {
     }
 };
 
+// Pull in the unified dMacro_State_Ev_gradient_* aliases now that Macro_DMR is
+// fully defined. micro_types.h transitively includes the (deprecated)
+// micro_full.h which references Macro_DMR, so the include must come *after*
+// Macro_DMR's closing brace above.
+}  // namespace macrodr (briefly, so the include re-enters at file scope)
+#include "micro_types.h"
+namespace macrodr {
+
 template <class recursive, class averaging, class variance, class variance_correction>
 
     requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
@@ -6444,13 +5759,13 @@ struct MacroR2 {
 
 template <class adaptive, class recursive, class averaging, class variance,
           class variance_correction, class micro, class Model,
-          class taylor_qdt = uses_taylor_qdt<false>>
+          class qdt_method = uses_qdt_method<0>>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
              uses_micro_aproximation_c<micro> &&
-             var::is_this_constexpr_Var_v<taylor_qdt, bool, uses_taylor_qdt>)
+             var::is_this_constexpr_Var_v<qdt_method, int, uses_qdt_method>)
 struct Likelihood_Model_constexpr {
     // Expose the template parameters as nested aliases so std::visit lambdas
     // can reach them via typename decltype(modelLikelihood)::micro_type, etc.
@@ -6460,7 +5775,7 @@ struct Likelihood_Model_constexpr {
     using variance_type = variance;
     using variance_correction_type = variance_correction;
     using micro_type = micro;
-    using taylor_qdt_type = taylor_qdt;
+    using qdt_method_type = qdt_method;
 
     Model m;
     Simulation_n_sub_dt n_sub_dt;
@@ -6468,7 +5783,7 @@ struct Likelihood_Model_constexpr {
         : m{model}, n_sub_dt{n_sub_dt} {}
     Likelihood_Model_constexpr(adaptive, recursive, averaging, variance, variance_correction, micro,
                                const Model& model, Simulation_n_sub_dt n_sub_dt,
-                               taylor_qdt = taylor_qdt{})
+                               qdt_method = qdt_method{})
         : m{model}, n_sub_dt{n_sub_dt} {}
 
     template <class Parameter>
@@ -6481,7 +5796,7 @@ struct Likelihood_Model_constexpr {
         f << "variance: " << variance::value << "\n";
         f << "variance_correction: " << variance_correction::value << "\n";
         f << "micro: " << micro::value << "\n";
-        f << "taylor_qdt: " << taylor_qdt::value << "\n";
+        f << "taylor_qdt: " << qdt_method::value << "\n";
         f << "Simulation_n_sub_dt: " << d.n_sub_dt << "\n";
         report_model(s, d.m);
     }
@@ -6489,8 +5804,8 @@ struct Likelihood_Model_constexpr {
 
 template <class adaptive_range, class recursive_range, class averaging_range, class variance_range,
           class taylor_variance_correction_range, class micro_range, class Model,
-          class taylor_qdt_range =
-              var::constexpr_Var_domain<bool, uses_taylor_qdt, false>>
+          class qdt_method_range =
+              var::constexpr_Var_domain<int, uses_qdt_method, 0>>
     requires(
         var::is_this_constexpr_Var_domain_c<adaptive_range, bool, uses_adaptive_aproximation> &&
         var::is_this_constexpr_Var_domain_c<recursive_range, bool, uses_recursive_aproximation> &&
@@ -6499,7 +5814,7 @@ template <class adaptive_range, class recursive_range, class averaging_range, cl
         var::is_this_constexpr_Var_domain_c<taylor_variance_correction_range, bool,
                                             uses_taylor_variance_correction_aproximation> &&
         var::is_this_constexpr_Var_domain_c<micro_range, bool, uses_micro_aproximation> &&
-        var::is_this_constexpr_Var_domain_c<taylor_qdt_range, bool, uses_taylor_qdt>)
+        var::is_this_constexpr_Var_domain_c<qdt_method_range, int, uses_qdt_method>)
 struct Likelihood_Model_regular {
     Model m;
     Simulation_n_sub_dt n_sub_dt;
@@ -6509,7 +5824,7 @@ struct Likelihood_Model_regular {
     uses_variance_aproximation_value variance;
     uses_taylor_variance_correction_aproximation_value taylor_variance_correction;
     uses_micro_aproximation_value micro;
-    uses_taylor_qdt_value taylor_qdt;
+    uses_qdt_method_value qdt_method;
 
     static constexpr adaptive_range range_adaptive = {};
     static constexpr recursive_range range_recursive = {};
@@ -6517,7 +5832,7 @@ struct Likelihood_Model_regular {
     static constexpr variance_range range_variance = {};
     static constexpr taylor_variance_correction_range range_variance_correction = {};
     static constexpr micro_range range_micro = {};
-    static constexpr taylor_qdt_range range_taylor_qdt = {};
+    static constexpr qdt_method_range range_qdt_method = {};
 
     Likelihood_Model_regular(
         const Model& model, Simulation_n_sub_dt n_sub_dt, uses_adaptive_aproximation_value adaptive,
@@ -6525,7 +5840,7 @@ struct Likelihood_Model_regular {
         uses_variance_aproximation_value variance,
         uses_taylor_variance_correction_aproximation_value taylor_variance_correction,
         uses_micro_aproximation_value micro,
-        uses_taylor_qdt_value taylor_qdt = uses_taylor_qdt_value{})
+        uses_qdt_method_value qdt_method = uses_qdt_method_value{})
         : m{model},
           n_sub_dt{n_sub_dt},
           adaptive{adaptive},
@@ -6534,31 +5849,31 @@ struct Likelihood_Model_regular {
           variance{variance},
           taylor_variance_correction{taylor_variance_correction},
           micro{micro},
-          taylor_qdt{taylor_qdt} {}
+          qdt_method{qdt_method} {}
 
     using cartesian = algebra_2<std::tuple, std::variant>::P_constexpr<
         typename adaptive_range::variant_type, typename recursive_range::variant_type,
         typename averaging_range::variant_type, typename variance_range::variant_type,
         typename taylor_variance_correction_range::variant_type,
         typename micro_range::variant_type,
-        typename taylor_qdt_range::variant_type>;
+        typename qdt_method_range::variant_type>;
 
     template <class, class>
     struct Likelihood_Model_variant_impl;
     template <class... adaptive, class... recursive, class... averaging, class... variance,
-              class... taylor_variance_correction, class... micro, class... taylor_qdt, class M>
+              class... taylor_variance_correction, class... micro, class... qdt_method, class M>
 
         requires(
             (uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<taylor_variance_correction> &&
              uses_micro_aproximation_c<micro> &&
-             var::is_this_constexpr_Var_v<taylor_qdt, bool, uses_taylor_qdt>) &&
+             var::is_this_constexpr_Var_v<qdt_method, int, uses_qdt_method>) &&
             ...)
     struct Likelihood_Model_variant_impl<
         std::variant<
             std::tuple<adaptive, recursive, averaging, variance, taylor_variance_correction,
-                       micro, taylor_qdt>...>,
+                       micro, qdt_method>...>,
         M> {
         // Likelihood_Model_constexpr template arg order is
         // (adaptive, recursive, averaging, variance, variance_correction, micro,
@@ -6567,7 +5882,7 @@ struct Likelihood_Model_regular {
         using type =
             std::variant<Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
                                                     taylor_variance_correction, micro, M,
-                                                    taylor_qdt>...>;
+                                                    qdt_method>...>;
     };
 
     using Likelihood_Model_variant = typename Likelihood_Model_variant_impl<cartesian, Model>::type;
@@ -6580,7 +5895,7 @@ struct Likelihood_Model_regular {
             variance_range::to_variant(variance.value),
             taylor_variance_correction_range::to_variant(taylor_variance_correction.value),
             micro_range::to_variant(micro.value),
-            taylor_qdt_range::to_variant(taylor_qdt.value)));
+            qdt_method_range::to_variant(qdt_method.value)));
 
         if (!car) {
             return car.error();
@@ -7173,242 +6488,6 @@ static Agonist_evolution add_agonist_step_i(Agonist_step&& x, Agonist_step&& e) 
 static Agonist_evolution add_agonist_step(Agonist_evolution&& x, Agonist_evolution&& e) {
     return add_agonist_step_i(std::move(x()), std::move(e()));
 }
-#ifdef ZOMBIE
-namespace zombie {
-
-class experiment_fractioner {
-    std::vector<std::size_t> segments = {73, 33, 22, 22, 4};
-    bool average_agonist_evolution = 10;
-
-   public:
-    experiment_fractioner(const std::vector<std::size_t>& t_segments,
-                          bool average_the_agonist_evolution)
-        : segments{t_segments}, average_agonist_evolution{average_the_agonist_evolution} {}
-
-    static auto average_Recording(const Recording_conditions& e, const Recording& y,
-                                  const std::vector<std::size_t>& indexes0,
-                                  const std::vector<std::size_t>& indexes1,
-                                  bool average_the_evolution) {
-        assert(size(y()) == size(indexes0));
-        assert(size(e()) == size(y()));
-        auto out_size = indexes1.size();
-        std::vector<Patch_current> out_y(out_size);
-        std::vector<Experiment_step> out_x(out_size);
-        double sum_y = 0;
-        std::size_t sum_samples = 0;
-        std::size_t ii = 0;
-
-        Agonist_evolution v_agonist = std::vector<Agonist_step>{};
-
-        for (std::size_t i = 0; i < size(y()); ++i) {
-            if (indexes0[i] == indexes1[ii]) {
-                if (sum_samples == 0) {
-                    out_y[ii] = y()[i];
-                    out_x[ii] = average_Experimental_step(e()[i], average_the_evolution);
-                } else {
-                    auto n_samples = get_num_samples(e()[i]);
-                    sum_y += y()[i]() * n_samples;
-                    sum_samples += n_samples;
-                    v_agonist = add_agonist_step(
-                        std::move(v_agonist), average_agonist_step(e()[i], average_the_evolution));
-
-                    out_y[ii] = Patch_current(sum_y / sum_samples);
-                    out_x[ii] = Experiment_step(get<Time>(e()[i]), v_agonist);
-                    sum_y = 0;
-                    sum_samples = 0;
-                    v_agonist = std::vector<Agonist_step>{};
-                }
-                ++ii;
-            } else {
-                assert(indexes0[i] < indexes1[ii] && "indexes fails");
-                auto n_samples = get_num_samples(e()[i]);
-                sum_y += y()[i]() * n_samples;
-                sum_samples += n_samples;
-                v_agonist = add_agonist_step(std::move(v_agonist),
-                                             average_agonist_step(e()[i], average_the_evolution));
-            }
-        }
-
-        return std::tuple(Recording_conditions(out_x), Recording(out_y));
-    }
-
-    template <typename Simulate_tag>
-
-    static auto average_Recording(const Recording_conditions& e,
-                                  const Simulated_Recording<Simulate_tag>& sim,
-                                  const std::vector<std::size_t>& indexes0,
-                                  const std::vector<std::size_t>& indexes1,
-                                  bool average_the_evolution) {
-        auto& yr = get<Recording>(sim());
-        assert(size(yr()) == size(indexes0));
-        assert(size(e()) == size(yr()));
-        auto out_size = indexes1.size();
-        std::vector<Patch_current> out_y(out_size);
-        std::vector<N_channel_state> out_N(out_size);
-
-        std::vector<Experiment_step> out_x(out_size);
-        double sum_y = 0;
-        std::size_t sum_samples = 0;
-        std::size_t ii = 0;
-
-        Agonist_evolution v_agonist = std::vector<Agonist_step>{};
-
-        for (std::size_t i = 0; i < size(yr()); ++i) {
-            if (indexes0[i] == indexes1[ii]) {
-                if (sum_samples == 0) {
-                    out_y[ii] = yr()[i];
-                    if constexpr (var::has_it_v<Simulate_tag, N_Ch_State_Evolution>)
-                        out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
-                    out_x[ii] = average_Experimental_step(e()[i], average_the_evolution);
-                } else {
-                    auto n_samples = get_num_samples(e()[i]);
-                    sum_y += yr()[i]() * n_samples;
-                    sum_samples += n_samples;
-                    v_agonist = add_agonist_step(
-                        std::move(v_agonist), average_agonist_step(e()[i], average_the_evolution));
-
-                    out_y[ii] = Patch_current(sum_y / sum_samples);
-
-                    out_x[ii] = Experiment_step(get<Time>(e()[i]), v_agonist);
-                    if constexpr (var::has_it_v<Simulate_tag, N_Ch_State_Evolution>)
-                        out_N[ii] = get<N_Ch_State_Evolution>(sim())()[i];
-
-                    sum_y = 0;
-                    sum_samples = 0;
-                    v_agonist = std::vector<Agonist_step>{};
-                }
-                ++ii;
-            } else {
-                assert(indexes0[i] < indexes1[ii] && "indexes fails");
-                auto n_samples = get_num_samples(e()[i]);
-                sum_y += yr()[i]() * n_samples;
-                sum_samples += n_samples;
-                v_agonist = add_agonist_step(std::move(v_agonist),
-                                             average_agonist_step(e()[i], average_the_evolution));
-            }
-        }
-        Simulated_Recording<Simulate_tag> out_sim;
-        get<Recording>(out_sim())() = std::move(out_y);
-        if constexpr (var::has_it_v<Simulate_tag, N_Ch_State_Evolution>)
-            get<N_Ch_State_Evolution>(out_sim())() = std::move(out_N);
-
-        return std::tuple(Recording_conditions(out_x), std::move(out_sim));
-    }
-
-    auto operator()(const Recording& y, const Experiment& x, mt_64i& mt, std::size_t num_parameters,
-                    double n_points_per_decade_beta, double n_points_per_decade_fraction,
-                    double stops_at, bool includes_zero) const {
-        assert(size(y()) == size(get<Recording_conditions>(x)()));
-        assert(size(y()) == var::sum(segments));
-
-        std::size_t num_samples = size(y());
-        std::size_t max_num_samples_per_segment = var::max(segments);
-
-        auto cum_segments = var::cumsum(segments);
-
-        auto indexes =
-            generate_random_Indexes(mt, num_samples, 1, n_points_per_decade_fraction, cum_segments);
-        // std::cerr <<
-        // "\nindexes\n**************************************************"
-        //              "*************************\n";
-        // std::cerr << indexes;
-        //  std::abort();
-        auto n_frac = size(indexes);
-        cuevi::by_fraction<Recording> y_out(n_frac);
-        cuevi::by_fraction<Experiment> x_out(
-            n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                               get<initial_agonist_concentration>(x)));
-        y_out[n_frac - 1] = y;
-        x_out[n_frac - 1] = x;
-
-        for (std::size_t i = n_frac - 1; i > 0; --i) {
-            std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
-                average_Recording(get<Recording_conditions>(x_out[i]), y_out[i], indexes[i],
-                                  indexes[i - 1], average_agonist_evolution);
-        }
-
-        // std::abort();
-        auto beta0 = get_beta_list(n_points_per_decade_beta,
-                                   stops_at * num_samples / (n_frac > 1 ? size(indexes[0]) : 1),
-                                   includes_zero);
-        by_beta<double> betan = {0, 1};
-        cuevi::by_fraction<by_beta<double>> beta(n_frac, betan);
-        beta[0] = std::move(beta0);
-
-        return std::tuple(std::move(y_out), std::move(x_out), std::move(beta));
-    }
-
-    auto operator()(const Recording& y, const Experiment& x, mt_64i& mt, std::size_t num_parameters,
-                    double n_points_per_decade_fraction) const {
-        assert(size(y()) == size(get<Recording_conditions>(x)()));
-        assert(size(y()) == var::sum(segments));
-
-        std::size_t num_samples = size(y());
-        //  std::size_t max_num_samples_per_segment = var::max(segments);
-
-        auto cum_segments = var::cumsum(segments);
-
-        auto indexes = generate_random_Indexes(mt, num_samples, num_parameters,
-                                               n_points_per_decade_fraction, cum_segments);
-        // std::cerr <<
-        // "\nindexes\n**************************************************"
-        //              "*************************\n";
-        // std::cerr << indexes;
-        // std::abort();
-        auto n_frac = size(indexes);
-        cuevi::by_fraction<Recording> y_out(n_frac);
-        cuevi::by_fraction<Experiment> x_out(
-            n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                               get<initial_agonist_concentration>(x)));
-        y_out[n_frac - 1] = y;
-        x_out[n_frac - 1] = x;
-
-        for (std::size_t i = n_frac - 1; i > 0; --i) {
-            std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
-                average_Recording(get<Recording_conditions>(x_out[i]), y_out[i], indexes[i],
-                                  indexes[i - 1], average_agonist_evolution);
-        }
-        return std::tuple(std::move(y_out), std::move(x_out));
-    }
-
-    template <typename Simulate_tag>
-
-    auto operator()(const Simulated_Recording<Simulate_tag>& sim, const Experiment& x, mt_64i& mt,
-                    std::size_t num_parameters, double n_points_per_decade_fraction) const {
-        auto& yr = get<Recording>(sim());
-        assert(size(yr()) == size(get<Recording_conditions>(x)()));
-        assert(size(segments) == 0 || size(yr()) == var::sum(segments));
-
-        std::size_t num_samples = size(yr());
-        //  std::size_t max_num_samples_per_segment = var::max(segments);
-
-        auto cum_segments = var::cumsum(segments);
-
-        auto indexes = generate_random_Indexes(mt, num_samples, num_parameters,
-                                               n_points_per_decade_fraction, cum_segments);
-        // std::cerr <<
-        // "\nindexes\n**************************************************"
-        //              "*************************\n";
-        // std::cerr << indexes;
-        // std::abort();
-        auto n_frac = size(indexes);
-        cuevi::by_fraction<Simulated_Recording<Simulate_tag>> y_out(n_frac);
-        cuevi::by_fraction<Experiment> x_out(
-            n_frac, Experiment(Recording_conditions{}, get<Frequency_of_Sampling>(x),
-                               get<initial_agonist_concentration>(x)));
-        y_out[n_frac - 1] = sim;
-        x_out[n_frac - 1] = x;
-
-        for (std::size_t i = n_frac - 1; i > 0; --i) {
-            std::tie(get<Recording_conditions>(x_out[i - 1]), y_out[i - 1]) =
-                average_Recording(get<Recording_conditions>(x_out[i]), y_out[i], indexes[i],
-                                  indexes[i - 1], average_agonist_evolution);
-        }
-        return std::tuple(std::move(y_out), std::move(x_out));
-    }
-};
-}  // namespace zombie
-#endif
 
 inline void report_title(save_Predictions<var::Parameters_transformed>& s,
                          thermo_mcmc<var::Parameters_transformed> const&, ...) {
