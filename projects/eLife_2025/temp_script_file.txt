@@ -51,8 +51,8 @@ model_str="scheme_CO"
 simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 64, experiment = experiment,
-                         observations = observations, 
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 4, experiment = experiment,
+                         observations = observations,
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
                  seed = 0)
@@ -60,7 +60,7 @@ simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulati
 
 
 simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation_numeric_0428_8_003")
+   path= "figures/data/figure_2_simulation_numeric_micro_0507_001")
 
 
 algorithm_axis = axis(name= "algorithm",
@@ -76,6 +76,10 @@ algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
 # Force Taylor + scaling/squaring expm for micro Q (avoids eigen path's
 # eigenvector-derivative ill-conditioning at Nch ≥ ~10 in k=2). Macro paths
 # stay on eigen since their Q is k×k and well-conditioned.
+# DIAGNOSTIC: temporarily flipped to all-false to compare against the eig path
+# at Nch ≤ 10 — the user reports eig works fine in that range while Taylor
+# (post-seed-fix) still produces wrong micro_MR/IR. Should be reverted to the
+# original [..., true, true, true] for the high-Nch run.
 algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
     values=[false, false, false, false, false, false,   true, true, true])
 
@@ -108,15 +112,15 @@ data_series = simulations)
 # (IDM is a global property, not a per-trace quantity).
 numerical_fisher_information = calc_numerical_fisher_information(
     likelihood_algorithm = algorithms, parameters = par_tr, experiment = experiment,
-    data_series = simulations, h_rel = 1e-4, decimate = 4)
+    data_series = simulations, h_rel = 1e-4, decimate = 1)
 
 
 likelihood_analysis = likelihood_derivative_basic_diagnostics(
     dlikelihood_predictions = dlikelihood_predictions,
     numerical_fisher_information = numerical_fisher_information,
-    n_boostrap_samples = 100,
+    n_boostrap_samples = 50,
     probits = [ 0.025 , 0.975 ] , seed=0, max_lag=10)
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_basic_diagnostics_numeric_0428_8_003")
+   path= "figures/data/figure_2_basic_diagnostics_numeric_micro_0507_001")

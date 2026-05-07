@@ -33,6 +33,12 @@ class Micro_P_mean : public var::Var<Micro_P_mean, Matrix<double>> {
     friend std::string className(Micro_P_mean) { return "Micro_P_mean"; }
 };
 
+using Patch_Model = Vector_Space<N_St, Q0, Qa, P_initial, g, N_Ch_mean, Current_Noise, Pink_Noise,
+                                 Proportional_Noise, Current_Baseline,
+                                 N_Ch_mean_time_segment_duration, Binomial_magical_number, min_P,
+                                 Probability_error_tolerance, Conductance_variance_error_tolerance>;
+
+
 inline std::size_t num_full_states_of(std::size_t N_channels, std::size_t k_states) {
     if (k_states == 0) {
         return 0;
@@ -1612,7 +1618,7 @@ auto compute_cell_weighted_gfi_avg0(C_Mid_probs const& mid_prob, C_g_micro const
 // derivative variant lives below.
 // -----------------------------------------------------------------------------
 template <class recursive, class averaging, class variance, class variance_correction,
-          class taylor_qdt, class MacroState, class FuncTable, class C_Parameters, class Model>
+          class qdt_method, class MacroState, class FuncTable, class C_Parameters, class Model>
 auto log_Likelihood_micro(FuncTable& f, Model const& model, C_Parameters const& par,
                           Recording const& y, Experiment const& e) -> Maybe_error<MacroState> {
     auto Maybe_m = model(par);
@@ -1667,19 +1673,26 @@ auto log_Likelihood_micro(FuncTable& f, Model const& model, C_Parameters const& 
                 y()[i_step].value() - get<Current_Baseline>(m_micro).value();
 
             // Helper: select Qdtg / Qdt computation method based on the
-            // taylor_qdt flag. taylor_qdt::value == true forces the Taylor +
-            // scaling/squaring path which avoids eigendecomposition (and its
-            // ill-conditioned eigenvector derivatives at clustered eigenvalues
-            // — common in the lifted Q_micro at Nch ≥ ~10 for k=2).
+            // qdt_method flag (int): 0=eig, 1=taylor, 2=schur.
+            // For Nch ≥ ~10 with k=2 the lifted Q_micro has clustered
+            // eigenvalues, so 0 (eig) is ill-conditioned and 2 (schur) is
+            // the recommended path. 1 (taylor) is kept for benchmarking.
             if constexpr (averaging::value == 0) {
                 auto Maybe_Qdtg = [&] {
-                    if constexpr (taylor_qdt::value) {
+                    if constexpr (qdt_method::value == 1) {
                         auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
                             m_micro, get<Agonist_concentration>(sub_step)));
                         double dt_sub = get<number_of_samples>(sub_step)() / fs;
                         return macro_dmr.calc_Qdtg_taylor(m_micro, t_Qx,
                                                            get<number_of_samples>(sub_step),
                                                            dt_sub);
+                    } else if constexpr (qdt_method::value == 2) {
+                        auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
+                            m_micro, get<Agonist_concentration>(sub_step)));
+                        double dt_sub = get<number_of_samples>(sub_step)() / fs;
+                        return macro_dmr.calc_Qdtg_schur(m_micro, t_Qx,
+                                                          get<number_of_samples>(sub_step),
+                                                          dt_sub);
                     } else {
                         return macro_dmr.calc_Qdtg(f_local, m_micro, sub_step, fs);
                     }
@@ -1699,11 +1712,22 @@ auto log_Likelihood_micro(FuncTable& f, Model const& model, C_Parameters const& 
                                         prior.logL_acc + step.logL_contribution};
             } else {
                 auto Maybe_Qdt = [&] {
-                    if constexpr (taylor_qdt::value) {
+                    if constexpr (qdt_method::value == 1) {
                         auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
                             m_micro, get<Agonist_concentration>(sub_step)));
                         double dt_sub = get<number_of_samples>(sub_step)() / fs;
                         return macro_dmr.calc_Qdt_taylor(m_micro, t_Qx,
+                                                         get<number_of_samples>(sub_step),
+                                                         dt_sub);
+                    } else if constexpr (qdt_method::value == 2) {
+                        auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
+                            m_micro, get<Agonist_concentration>(sub_step)));
+                        double dt_sub = get<number_of_samples>(sub_step)() / fs;
+                        // Plain double uses Schur+Parlett + Pade-VanLoan;
+                        // Derivative uses Pade scaling-and-squaring through
+                        // the templated Frechet integrals (native Phase 1
+                        // path — no Taylor delegation).
+                        return macro_dmr.calc_Qdt_schur(m_micro, t_Qx,
                                                          get<number_of_samples>(sub_step),
                                                          dt_sub);
                     } else {
@@ -1764,7 +1788,7 @@ auto log_Likelihood_micro(FuncTable& f, Model const& model, C_Parameters const& 
 // directly (V = g_micro for avg=0, V = gmean_i_micro for avg≥1).
 // -----------------------------------------------------------------------------
 template <class recursive, class averaging, class variance, class variance_correction,
-          class taylor_qdt, class MacroState, class FuncTable, class Model>
+          class qdt_method, class MacroState, class FuncTable, class Model>
 auto dlog_Likelihood_micro(FuncTable& f, Model const& model,
                            var::Parameters_transformed const& par,
                            Recording const& y, Experiment const& e) -> Maybe_error<MacroState> {
@@ -1884,20 +1908,27 @@ auto dlog_Likelihood_micro(FuncTable& f, Model const& model,
                 }
             };
 
-            // Qdtg / Qdt method: eigen by default, Taylor + scaling/squaring
-            // when taylor_qdt::value == true. Taylor is selected for the
-            // lifted micro path at high Nch where Q_micro's eigenvalues
-            // cluster and eigenvector-derivative ill-conditioning produces
-            // the score-noise floor that breaks the diagnostic at Nch≥10.
+            // Qdtg / Qdt method: 0=eig (eigen dispatcher), 1=taylor (Taylor
+            // scaling+squaring), 2=schur (Schur+Parlett+Pade-VanLoan). 2 is
+            // the recommended path at high Nch where Q_micro's eigenvalues
+            // cluster and the eigenvector-derivative inverse becomes
+            // ill-conditioned.
             if constexpr (averaging::value == 0) {
                 auto Maybe_Qdtg = [&] {
-                    if constexpr (taylor_qdt::value) {
+                    if constexpr (qdt_method::value == 1) {
                         auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
                             m_micro, get<Agonist_concentration>(sub_step)));
                         double dt_sub = get<number_of_samples>(sub_step)() / fs;
                         return macro_dmr.calc_Qdtg_taylor(m_micro, t_Qx,
                                                            get<number_of_samples>(sub_step),
                                                            dt_sub);
+                    } else if constexpr (qdt_method::value == 2) {
+                        auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
+                            m_micro, get<Agonist_concentration>(sub_step)));
+                        double dt_sub = get<number_of_samples>(sub_step)() / fs;
+                        return macro_dmr.calc_Qdtg_schur(m_micro, t_Qx,
+                                                          get<number_of_samples>(sub_step),
+                                                          dt_sub);
                     } else {
                         return macro_dmr.calc_Qdtg(f_local, m_micro, sub_step, fs);
                     }
@@ -1920,11 +1951,18 @@ auto dlog_Likelihood_micro(FuncTable& f, Model const& model,
                                 std::move(Maybe_step.value()));
             } else {
                 auto Maybe_Qdt = [&] {
-                    if constexpr (taylor_qdt::value) {
+                    if constexpr (qdt_method::value == 1) {
                         auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
                             m_micro, get<Agonist_concentration>(sub_step)));
                         double dt_sub = get<number_of_samples>(sub_step)() / fs;
                         return macro_dmr.calc_Qdt_taylor(m_micro, t_Qx,
+                                                         get<number_of_samples>(sub_step),
+                                                         dt_sub);
+                    } else if constexpr (qdt_method::value == 2) {
+                        auto t_Qx = build<Qx>(macro_dmr.calc_Qx(
+                            m_micro, get<Agonist_concentration>(sub_step)));
+                        double dt_sub = get<number_of_samples>(sub_step)() / fs;
+                        return macro_dmr.calc_Qdt_schur(m_micro, t_Qx,
                                                          get<number_of_samples>(sub_step),
                                                          dt_sub);
                     } else {

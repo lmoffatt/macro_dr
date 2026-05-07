@@ -24,6 +24,9 @@
     #define MACRODR_DX_ASSERT(cond) assert(cond)
   #endif
 #endif
+
+#include "normal_distribution.h"
+
 namespace var {
 
 /**
@@ -229,6 +232,20 @@ class Derivative<double, double> {
             ((x.primitive() > 0.0) ? 1.0 : ((x.primitive() < 0) ? -1.0 : 0.0)) * x.derivative()(),
             x.dx());
     }
+
+    friend auto normal_pdf(const Derivative& x) {
+        auto p = x.primitive();
+        auto f = ::normal_pdf(p);
+        return Derivative(f, (-p * f) * x.derivative()(), x.dx());
+    }
+    friend auto normal_cdf(const Derivative& x) {
+        auto f = ::normal_cdf(x.primitive());
+        return Derivative(f, ::normal_pdf(x.primitive()) * x.derivative()(), x.dx());
+    }
+    friend auto normal_quantile(const Derivative& p) {
+        auto z = ::normal_quantile(p.primitive());
+        return Derivative(z, p.derivative()() * (1.0 / ::normal_pdf(z)), p.dx());
+    }
 };
 
 template <>
@@ -317,6 +334,20 @@ class Derivative<double, Matrix<double>> {
             f,
             ((x.primitive() > 0.0) ? 1.0 : ((x.primitive() < 0) ? -1.0 : 0.0)) * x.derivative()(),
             x.dx());
+    }
+
+    friend auto normal_pdf(const Derivative& x) {
+        auto p = x.primitive();
+        auto f = ::normal_pdf(p);
+        return Derivative(f, (-p * f) * x.derivative()(), x.dx());
+    }
+    friend auto normal_cdf(const Derivative& x) {
+        auto f = ::normal_cdf(x.primitive());
+        return Derivative(f, ::normal_pdf(x.primitive()) * x.derivative()(), x.dx());
+    }
+    friend auto normal_quantile(const Derivative& p) {
+        auto z = ::normal_quantile(p.primitive());
+        return Derivative(z, p.derivative()() * (1.0 / ::normal_pdf(z)), p.dx());
     }
 };
 

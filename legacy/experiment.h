@@ -212,7 +212,7 @@ inline Maybe_error<Recording> load_Recording(std::string filename, const std::st
     Recording out;
     std::size_t i_step;
     auto sep = septr(separator);
-    double current;
+    double current = 0.0;
     std::string line;
     std::getline(f, line);
     std::stringstream ss(line);

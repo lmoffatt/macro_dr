@@ -11,6 +11,7 @@
 #include <random_samplers.h>
 #include <variables.h>
 
+#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <string_view>
@@ -21,11 +22,25 @@
 
 #include "macrodr/cmd/load_model.h"
 #include "micro_full.h"
+#include "micro_monoid.h"
 #include "qmodel.h"
 
 namespace macrodr::cmd {
 
 namespace {
+
+// RAII timer for likelihood evaluation. Capture wall time on construction;
+// stamp_into() writes it into the result's evaluation_time field. Used inline
+// at dispatch sites instead of a wrapping callable — keeps the if-constexpr
+// branches shallow and avoids return-type deduction issues across the variant.
+struct evaluation_timer {
+    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+    template <class StateLike>
+    void stamp_into(StateLike& s) const {
+        auto dt = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+        get<evaluation_time>(s)() = dt;
+    }
+};
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
           class micro, class Model, class FuncTable>
@@ -81,6 +96,34 @@ auto calculate_mdlikelihood_predictions_impl(
     return dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
 }
 
+// Micro analog: same load_dmodel + Likelihood_Model_constexpr re-wrap as the
+// macro impl, but routes through Micro_DMR::log_Likelihood<…, dMicro_State_Ev_gradient_all>
+// and adapts the result to dMacro_State_Ev_gradient_all so the dispatcher
+// signature stays uniform across macro and micro algorithms.
+template <class adaptive, class recursive, class averaging, class variance, class taylor,
+          class micro, class Model, class qdt_method, class FuncTable>
+auto calculate_mdlikelihood_predictions_micro_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model,
+                                     qdt_method>& lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dp = var::selfDerivative(par);
+    auto dpp = dp.to_value();
+    auto micro_result =
+        Micro_DMR{}.template log_Likelihood<recursive, averaging, variance, taylor,
+                                            dMicro_State_Ev_gradient_all>(
+            ftbl3, *model0_d, dpp, r, e);
+    if (!micro_result) {
+        return micro_result.error();
+    }
+    return widen_to_dMacro_Ev_gradient_all(std::move(micro_result.value()));
+}
+
 }  // namespace
 
 auto calculate_mlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
@@ -94,11 +137,10 @@ auto calculate_mlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
         [&](const auto& modelLikelihood) -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
             if constexpr (ModelL::micro_type::value) {
-                auto result = log_Likelihood_micro<
+                auto result = Micro_DMR{}.template log_Likelihood<
                     typename ModelL::recursive_type, typename ModelL::averaging_type,
                     typename ModelL::variance_type, typename ModelL::variance_correction_type,
-                    typename ModelL::taylor_qdt_type, Macro_State<>>(
-                    ftbl3, modelLikelihood.m, par_values, r, e);
+                    MMicro_State<>>(ftbl3, modelLikelihood.m, par_values, r, e);
                 if (!result) {
                     return result.error();
                 }
@@ -197,18 +239,16 @@ auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLi
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            evaluation_timer timer;
+            Maybe_error<dMacro_State_Ev_gradient_all> result;
             if constexpr (ModelL::micro_type::value) {
-                auto dmodel = load_dmodel(modelLikelihood.m.model_name());
-                if (!dmodel) return dmodel.error();
-                auto model0_d = std::move(dmodel.value());
-                return dlog_Likelihood_micro<
-                    typename ModelL::recursive_type, typename ModelL::averaging_type,
-                    typename ModelL::variance_type, typename ModelL::variance_correction_type,
-                    typename ModelL::taylor_qdt_type, dMacro_State_Ev_gradient_all>(
-                    ftbl3, *model0_d, par, r, e);
+                result = calculate_mdlikelihood_predictions_micro_impl(modelLikelihood, ftbl3, par,
+                                                                       e, r);
             } else {
-                return calculate_mdlikelihood_predictions_impl(modelLikelihood, ftbl3, par, e, r);
+                result = calculate_mdlikelihood_predictions_impl(modelLikelihood, ftbl3, par, e, r);
             }
+            if (result) timer.stamp_into(result.value());
+            return result;
         },
         modelLikelihood_v);
 }
@@ -357,16 +397,13 @@ auto calculate_likelihood(const ModelPtr& model0,
             -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
             if constexpr (ModelL::micro_type::value) {
-                auto result = log_Likelihood_micro<
+                auto result = Micro_DMR{}.template log_Likelihood<
                     typename ModelL::recursive_type, typename ModelL::averaging_type,
                     typename ModelL::variance_type, typename ModelL::variance_correction_type,
-                    typename ModelL::taylor_qdt_type, Macro_State<>>(
-                    ftbl3, modelLikelihood.m, par_values, r, e);
+                    MMicro_State<>>(ftbl3, modelLikelihood.m, par_values, r, e);
                 if (!result) {
                     return result.error();
                 }
-                // Extract (logL, elogL, vlogL) from the MacroState — elogL and vlogL are
-                // not tracked by the micro path, so we return logL and zeros.
                 auto const& ms = result.value();
                 Vector_Space<logL, elogL, vlogL> out(get<logL>(ms), elogL(0.0), vlogL(0.0));
                 return out;
@@ -813,15 +850,16 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
     return std::visit(
         [&ftbl3, &par, &e, &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            evaluation_timer timer;
+            Maybe_error<dMacro_State_Ev_gradient_all> result;
             if constexpr (ModelL::micro_type::value) {
-                return dlog_Likelihood_micro<
-                    typename ModelL::recursive_type, typename ModelL::averaging_type,
-                    typename ModelL::variance_type, typename ModelL::variance_correction_type,
-                    typename ModelL::taylor_qdt_type, dMacro_State_Ev_gradient_all>(
-                    ftbl3, modelLikelihood.m, par, r, e);
+                result = calculate_mdlikelihood_predictions_micro_impl(modelLikelihood, ftbl3, par,
+                                                                       e, r);
             } else {
-                return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+                result = dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
             }
+            if (result) timer.stamp_into(result.value());
+            return result;
         },
         modelLikelihood_v);
 }
@@ -906,16 +944,16 @@ auto calculate_dlikelihood_predictions_model(
                 [&ftbl3, &par, &e,
                  &r](auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
                     using ModelL = std::decay_t<decltype(modelLikelihood)>;
+                    evaluation_timer timer;
+                    Maybe_error<dMacro_State_Ev_gradient_all> result;
                     if constexpr (ModelL::micro_type::value) {
-                        return dlog_Likelihood_micro<
-                            typename ModelL::recursive_type, typename ModelL::averaging_type,
-                            typename ModelL::variance_type,
-                            typename ModelL::variance_correction_type,
-                            typename ModelL::taylor_qdt_type,
-                            dMacro_State_Ev_gradient_all>(ftbl3, modelLikelihood.m, par, r, e);
+                        result = calculate_mdlikelihood_predictions_micro_impl(modelLikelihood,
+                                                                               ftbl3, par, e, r);
                     } else {
-                        return dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
+                        result = dlogLikelihoodPredictions(ftbl3, modelLikelihood, par, r, e);
                     }
+                    if (result) timer.stamp_into(result.value());
+                    return result;
                 },
                 modelLikelihood_v);
         },
@@ -2001,6 +2039,16 @@ auto calculate_Likelihood_diagnostics_preset_f(
                                          var::get_dx_of_dfdx(get<y_mean>(evo_i)));
         });
 
+    // Per-recording wall-clock evaluation time (one number per simulation,
+    // top-level on dMacro_State_Ev_gradient_all). Aggregate as moment
+    // statistics across the bootstrap-selected recordings — gives mean ± std
+    // cost per algorithm in the figure_2 output, comparable side-by-side
+    // with IDM and other diagnostics.
+    auto evaluation_time_moments = Moment_statistics<evaluation_time, false>(
+        dy, indices, [](const dMacro_State_Ev_gradient_all& d) {
+            return get<evaluation_time>(d)();
+        });
+
     constexpr double k_psd_rtol = 1e-10;
     constexpr double k_psd_atol = 0.0;
 
@@ -2218,6 +2266,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
     auto base_pack = push_back_var(
         std::move(sum_moments), std::move(sum_r_std), std::move(sum_dlogL),
         std::move(sum_Gaussian_Fisher_Information),
+        std::move(evaluation_time_moments),
         std::move(numerical_fim),
         std::move(idm), std::move(log_det_idm),
         std::move(gfd), std::move(log_det_gfd),
@@ -2435,85 +2484,85 @@ template Maybe_error<std::string>
         std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, Simulated_Recording<var::please_include<>> const&,
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&, std::string);
+    dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&, std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&, std::string);
+    dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&, std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, Simulated_Recording<var::please_include<>> const&,
-    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
-    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
-    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
-    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
     var::Indexed<
-        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>>> const&,
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
     Experiment const&, var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
     var::Indexed<
-        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>>> const&,
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>>> const&,
     std::string);
 
 template Maybe_error<std::string>
     write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
-              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+              Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>>(
         Experiment const&,
         Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
-        dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&,
         std::string);
 
 template Maybe_error<std::string>
     write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
-              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+              Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>>(
         Experiment const&,
         var::Indexed<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&,
-        dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&,
         std::string);
 
 template Maybe_error<std::string>
     write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
-              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+              Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>>(
         Experiment const&,
         Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
-        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
         std::string);
 
 template Maybe_error<std::string>
     write_csv<var::please_include<Only_Ch_Curent_Sub_Evolution>, dMacro_State,
-              Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
+              Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>>(
         Experiment const&,
         var::Indexed<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&,
-        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>> const&,
+        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
         std::string);
 
 template Maybe_error<std::string>
@@ -2527,8 +2576,8 @@ template Maybe_error<std::string>
         std::string);
 
 template Maybe_error<std::string>
-    write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, gradient_all_element>>>(
-        dMacro_State<Evolution_of<add_t<Vector_Space<>, gradient_all_element>>> const&,
+    write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&,
         std::string);
 
 }  // namespace macrodr::cmd

@@ -194,8 +194,8 @@ class base_typed_expression : public base_typed_statement<Lexer, Compiler> {
         compile_identifier_unique() const override = 0;
 
     virtual Maybe_error<SerializedExpression> serialize_json(
-        const Environment<Lexer, Compiler>& env,
-        typename json_spec<Lexer>::TagPolicy policy) const {
+        const Environment<Lexer, Compiler>& /*env*/,
+        typename json_spec<Lexer>::TagPolicy /*policy*/) const {
         return error_message(std::string{"serialization unavailable for type "} +
                              this->type_name());
     }

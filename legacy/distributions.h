@@ -14,6 +14,7 @@
 #include "lapack_headers.h"
 #include "matrix.h"
 #include "maybe_error.h"
+#include "normal_distribution.h"
 #include "parameter_indexed.h"
 #include "random_samplers.h"
 #include "variables.h"
@@ -340,6 +341,17 @@ class vlogL : public var::Constant<vlogL, double> {
 
         return true;
     }
+};
+
+// Wall-clock time (seconds) of one top-level likelihood evaluation. Captured
+// at the dispatch sites in src/core/likelihood.cpp around dlog_Likelihood_micro
+// / dlogLikelihoodPredictions / log_Likelihood_micro / logLikelihood. Stored
+// per-recording in the returned MacroState so the diagnostic preset can
+// aggregate Sum<evaluation_time> like any other scalar — gives per-algorithm
+// mean ± std cost across the bootstrap of simulations.
+class evaluation_time : public var::Var<evaluation_time, double> {
+   public:
+    friend std::string className(evaluation_time) { return "evaluation_time"; }
 };
 
 class dlogL : public var::Constant<dlogL, parameter_vector_payload> {

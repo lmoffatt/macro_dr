@@ -10,6 +10,12 @@
 
 #include "patch_model.h"
 #include "qmodel.h"
+// micro_types.h defines the unified per-step Evolution element shape (a
+// superset of the macro one) and re-exports dMacro_State_Ev_gradient_* with
+// that wider element list. Must come AFTER qmodel.h because micro_types.h
+// transitively pulls in micro_full.h, which references Macro_DMR (defined in
+// qmodel.h).
+#include <micro_types.h>
 
 namespace macrodr::cmd {
 
@@ -19,6 +25,12 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                                       bool taylor_variance_correction_approximation,
                                       bool micro_approximation,
                                       bool taylor_qdt_approximation = false) {
+    // Map deprecated bool taylor_qdt_approximation to the new int qdt_method:
+    //   false → 0 (eig), true → 2 (schur). Phase 9 wired the previous "true"
+    //   semantics through calc_Qdt_schur, so this preserves user behavior.
+    //   New code should call build_likelihood_function_with_method() directly
+    //   with int qdt_method ∈ {0, 1, 2} (overload below).
+    int qdt_method_int = taylor_qdt_approximation ? 2 : 0;
     auto nsub = Simulation_n_sub_dt(100);
     const interface::IModel<var::Parameters_values>& model_ref = *model0;
 
@@ -35,7 +47,7 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                                           false>,
                 var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
                 decltype(model_ref),
-                var::constexpr_Var_domain<bool, uses_taylor_qdt, false>>(
+                var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
                 uses_recursive_aproximation_value(recursive_approximation),
@@ -44,7 +56,7 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
                 uses_micro_aproximation_value(micro_approximation),
-                uses_taylor_qdt_value(false))
+                uses_qdt_method_value(0))
                 .get_variant(),
             // Macro taylor-variance-correction branch: taylor_qdt fixed false.
             Likelihood_Model_regular<
@@ -56,7 +68,7 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                                           true>,
                 var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
                 decltype(model_ref),
-                var::constexpr_Var_domain<bool, uses_taylor_qdt, false>>(
+                var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
                 uses_recursive_aproximation_value(recursive_approximation),
@@ -65,7 +77,7 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
                 uses_micro_aproximation_value(micro_approximation),
-                uses_taylor_qdt_value(false))
+                uses_qdt_method_value(0))
                 .get_variant()),
         // Micro branch: recursive=true, taylor_variance_correction=false,
         // averaging ∈ {0, 1, 2}, taylor_qdt ∈ {false, true} — the eigen vs
@@ -80,7 +92,7 @@ inline auto build_likelihood_function(const ModelPtr& model0,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
             decltype(model_ref),
-            var::constexpr_Var_domain<bool, uses_taylor_qdt, false, true>>(
+            var::constexpr_Var_domain<int, uses_qdt_method, 0, 1, 2>>(
             model_ref, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
             uses_recursive_aproximation_value(recursive_approximation),
@@ -89,7 +101,7 @@ inline auto build_likelihood_function(const ModelPtr& model0,
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
             uses_micro_aproximation_value(micro_approximation),
-            uses_taylor_qdt_value(taylor_qdt_approximation))
+            uses_qdt_method_value(qdt_method_int))
             .get_variant());
 }
 
@@ -506,6 +518,7 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Sum<Moment_statistics<macrodr::r_std, false>>>,
         Probit_statistics<Sum<Moment_statistics<dlogL, true>>>,
         Probit_statistics<Sum<Moment_statistics<Gaussian_Fisher_Information, false>>>,
+        Probit_statistics<Moment_statistics<evaluation_time, false>>,
         Probit_statistics<Numerical_Fisher_Information>,
         Probit_statistics<Information_Distortion_Matrix>,
         Probit_statistics<log_Det<Information_Distortion_Matrix>>,

@@ -2,6 +2,7 @@
 #define GENERAL_ALGORITHM_ON_CONTAINERS_H
 
 //#include "derivative_operator.h"
+#include <cassert>
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -210,5 +211,16 @@ Maybe_error<bool> compare_contents(V const& s0, V const& s1,
 }
 
 }  // namespace var
+
+// Element-wise vector addition. In global namespace so unqualified lookup from
+// any caller (e.g. callers in macrodr namespace combining std::vector<size_t>
+// microstate-occupancy vectors via i_states + j_states) finds it.
+template <class T>
+std::vector<T> operator+(std::vector<T> const& a, std::vector<T> const& b) {
+    assert(a.size() == b.size());
+    std::vector<T> out(a.size());
+    for (std::size_t i = 0; i < a.size(); ++i) out[i] = a[i] + b[i];
+    return out;
+}
 
 #endif  // GENERAL_ALGORITHM_ON_CONTAINERS_H

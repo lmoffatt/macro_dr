@@ -19,7 +19,11 @@ set(TEST_SOURCES
     math/test_probit_statistics.cpp
     math/test_taylor_convergence.cpp
     math/test_micro_full.cpp
+    math/test_micro_monoid.cpp
+    math/test_schur.cpp
+    math/test_parlett.cpp
     macroir/test_qdt_derivatives.cpp
+    macroir/test_qdt_eig_vs_taylor.cpp
     macroir/test_macroir_derivatives.cpp
     microir/test_micro_derivatives.cpp
     ${PROJECT_SOURCE_DIR}/third_party/catch2/catch_amalgamated.cpp

@@ -532,9 +532,19 @@ class Matrix {
             return zip([](auto x, auto y) { return x - y; }, a, b);
     }
 
+    template <class F, class... Matrixs>
+    requires((!Matrixs::is_Symmetric && ...))
+    friend auto zip(F&& f, const Matrix& x, const Matrixs&... y) {
+        assert((same_dimensions(x, y) &&...&& "same size"));
+        Matrix out(x.nrows(), x.ncols(), false);
+        for (std::size_t i = 0; i < x.size(); ++i) {out[i] = std::forward<F>(f)(x[i], y[i]...);}
+        return out;
+    }
+    
+    
     template <class F>
-    friend auto zip(F&& f, const Matrix& x, const Matrix& y) {
-        assert(same_dimensions(x, y) && "same size");
+    friend auto zip_transpose(F&& f, const Matrix& x, const Matrix& y) {
+        assert(same_dimensions(x, transpose(y)) && "same size");
         Matrix out(x.nrows(), x.ncols(), false);
         for (std::size_t i = 0; i < x.size(); ++i) out[i] = f(x[i], y[i]);
         return out;
@@ -627,6 +637,7 @@ class Matrix {
     friend bool same_dimensions(const Matrix& x, const Matrix& y) {
         return x.size() == y.size() && x.nrows() == y.nrows() && x.ncols() == y.ncols();
     }
+    
     template <class S>
         requires S::is_Matrix
     friend bool same_dimensions(const Matrix& x, const Matrix<S>& y) {
@@ -649,9 +660,11 @@ class Matrix {
 
     template <class F, class X>
     friend auto reduce(F&& f, X init, const Matrix& x) {
-        for (std::size_t i = 0; i < x.size(); ++i) init = f(init, x[i]);
+        for (std::size_t i = 0; i < x.size(); ++i) {init = std::forward<F>(f)(init, x[i]);}
         return init;
     }
+
+    
 
     template <class F>
     friend auto reduce_ij(F&& f, const Matrix& x, T init) {
@@ -1271,7 +1284,9 @@ class SymPosDefMatrix : public SymmetricMatrix<T> {
         else if (b.size() == 0)
             return a;
         else
-            return SymPosDefMatrix(zip([](auto x, auto y) { return x + y; }, a, b));
+            return SymPosDefMatrix(zip([](auto x, auto y) { return x + y; },
+                                       static_cast<const SymmetricMatrix<T>&>(a),
+                                       static_cast<const SymmetricMatrix<S>&>(b)));
     }
 
     template <class S>
