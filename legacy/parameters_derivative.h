@@ -577,7 +577,7 @@ class Derivative<T_Matrix<double>,
     }
 
     friend auto sum(const Derivative& x) {
-            return Derivative<double, var::Parameters_transformed>(sum(x.primitive()), sum(x.derivative()()), x.dx());
+            return  reduce([](auto a, auto b) { return a + b; }, x);
     }
 
 
@@ -818,6 +818,18 @@ auto inside_out(const Derivative<aSymmetricMatrix<double>, Parameters_transforme
 
 template <template <class> class Matrix>
 auto& outside_in(const Matrix<double>& x, ...) {
+    return x;
+}
+
+// Scalar leaf: when reduce/zip on Matrix<Derivative<double, P>> collapses to a
+// single Derivative<double, P>, the friend reduce in Derivative<Matrix<double>, P>
+// still wraps the result in `outside_in(..., x.dx())` to keep the inside_out
+// ↔ outside_in pairing symmetric. The scalar form is already the "outside"
+// representation — return it as-is. The dx argument is the source-side dx;
+// it's unused here because the scalar Derivative carries its own dx through
+// the underlying arithmetic operators.
+inline auto const& outside_in(const Derivative<double, Parameters_transformed>& x,
+                              const Parameters_transformed& /*dx*/) {
     return x;
 }
 

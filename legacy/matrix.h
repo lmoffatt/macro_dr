@@ -535,25 +535,18 @@ class Matrix {
     template <class F, class... Matrixs>
     requires((!Matrixs::is_Symmetric && ...))
     friend auto zip(F&& f, const Matrix& x, const Matrixs&... y) {
-        assert((same_dimensions(x, y) &&...&& "same size"));
+        assert((same_size(x, y) &&...&& "same size"));
         Matrix out(x.nrows(), x.ncols(), false);
         for (std::size_t i = 0; i < x.size(); ++i) {out[i] = std::forward<F>(f)(x[i], y[i]...);}
         return out;
     }
     
     
-    template <class F>
-    friend auto zip_transpose(F&& f, const Matrix& x, const Matrix& y) {
-        assert(same_dimensions(x, transpose(y)) && "same size");
-        Matrix out(x.nrows(), x.ncols(), false);
-        for (std::size_t i = 0; i < x.size(); ++i) out[i] = f(x[i], y[i]);
-        return out;
-    }
-
+   
     template <class F, class S>
         requires S::is_Matrix
     friend auto zip(F&& f, const Matrix& x, const Matrix<S>& y) {
-        // assert(same_dimensions(x, y) && "same size");
+         assert(same_size(x, y) && "same size");
         using R = std::invoke_result_t<F, T, S>;
 
         Matrix<R> out(x.nrows(), x.ncols(), false);
@@ -635,7 +628,9 @@ class Matrix {
     }
 
     friend bool same_dimensions(const Matrix& x, const Matrix& y) {
-        return x.size() == y.size() && x.nrows() == y.nrows() && x.ncols() == y.ncols();
+    if ( x.size() == y.size() && x.nrows() == y.nrows() && x.ncols() == y.ncols())
+        {return true;} 
+    return false;
     }
     
     template <class S>
@@ -643,6 +638,19 @@ class Matrix {
     friend bool same_dimensions(const Matrix& x, const Matrix<S>& y) {
         return x.size() == y.size() && x.nrows() == y.nrows() && x.ncols() == y.ncols();
     }
+
+friend bool same_size(const Matrix& x, const Matrix& y) {
+    if ( x.size() == y.size() )
+        {return true;} 
+    return false;
+    }
+    
+    template <class S>
+        requires S::is_Matrix
+    friend bool same_size(const Matrix& x, const Matrix<S>& y) {
+        return x.size() == y.size() ;
+    }
+
 
     friend T xtx(const Matrix& x) {
         assert(x.ncols() == 1);
@@ -744,6 +752,13 @@ class SymmetricMatrix : public Matrix<T> {
                 std::swap(i, j);
         }
         base_type::operator()(i, j) = x;
+        // Mirror to the other triangle so the underlying storage is fully
+        // populated. This keeps SymmetricMatrix safe under any access path —
+        // mirrored `(i,j)`, raw `[i]`, Lapack_Full_Product, zip, reduce, etc.
+        // The Sym-aware overloads (operator*, TranspMult, MultTransp via DSYMM)
+        // remain as performance optimizations, not correctness fixes.
+        if (i != j)
+            base_type::operator()(j, i) = x;
     }
 
     auto operator()(std::size_t i, std::size_t j) const {
@@ -789,6 +804,38 @@ class SymmetricMatrix : public Matrix<T> {
 
     friend SymmetricMatrix operator*(T b, const SymmetricMatrix& a) {
         return apply([&b](auto x) { return x * b; }, a);
+    }
+
+    // TranspMult / MultTransp overloads for SymmetricMatrix.
+    //
+    // The base Matrix versions (matrix.h:568, 577) call Lapack_Full_Product, which
+    // reads BOTH triangles of its arguments. SymmetricMatrix only stores ONE
+    // triangle (set() writes one side; the other holds the construction value, i.e.
+    // zero). Without these overloads, TranspMult(M, Σ) returns a product where half
+    // of Σ is treated as zero — silently wrong, no compile error. Same hazard for
+    // MultTransp on SymmetricMatrix arguments.
+    //
+    // Fix: route through Lapack_Sym_Product (DSYMM), which references only the
+    // populated triangle. Use the symmetry of Σ to absorb transposes:
+    //   TranspMult(a, Σ) = aᵀ·Σ = aᵀ·Σᵀ = (Σ·a)ᵀ
+    //   TranspMult(Σ, a) = Σᵀ·a = Σ·a
+    //   MultTransp(a, Σ) = a·Σᵀ = a·Σ
+    //   MultTransp(Σ, a) = Σ·aᵀ = (a·Σᵀ)ᵀ = (a·Σ)ᵀ
+    friend auto TranspMult(const Matrix<T>& a, const SymmetricMatrix& b) {
+        assert(a.nrows() == b.nrows());
+        return tr(b * a);
+    }
+    friend auto TranspMult(const SymmetricMatrix& a, const Matrix<T>& b) {
+        assert(a.ncols() == b.nrows());
+        return a * b;
+    }
+    friend auto MultTransp(const Matrix<T>& a, const SymmetricMatrix& b) {
+        assert(a.ncols() == b.ncols());
+        return a * b;
+    }
+    friend auto MultTransp(const SymmetricMatrix& a, const Matrix<T>& b) {
+        assert(a.ncols() == b.ncols());
+        return tr(b * a);
     }
 
     template <class S>
@@ -1315,10 +1362,21 @@ class SymPosDefMatrix : public SymmetricMatrix<T> {
     template <class S>
         requires(std::is_same_v<T, std::decay_t<decltype(T{}, S{})>>)
     friend auto operator-(const SymPosDefMatrix& a, const SymPosDefMatrix<S>& b) {
-        auto out = a;
-        for (std::size_t i = 0; i < b.nrows(); ++i)
-            for (std::size_t j = 0; j < b.ncols(); ++j) out.set(i, j, out(i, j) - b(i, j));
-        return out;
+        // Delegate to the SymmetricMatrix zip (upper-triangle iteration only), to
+        // mirror the pattern of operator+ above. The previous full-square loop
+        // double-wrote each off-diagonal cell — once at (i,j) and again at (j,i) —
+        // and after the SymmetricMatrix::set mirror fix (2026-05-08) the second
+        // pass read the already-modified value, producing a − 2b on off-diagonals.
+        // Pre-fix it accidentally worked because LAPACK left b's un-DSYRK'd
+        // triangle at raw zero and the old non-mirroring operator() read that zero.
+        if (a.size() == 0)
+            return b * (-1.0);
+        else if (b.size() == 0)
+            return a;
+        else
+            return SymPosDefMatrix(zip([](auto x, auto y) { return x - y; },
+                                       static_cast<const SymmetricMatrix<T>&>(a),
+                                       static_cast<const SymmetricMatrix<S>&>(b)));
     }
 
     template <class S>

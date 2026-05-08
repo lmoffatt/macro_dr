@@ -51,7 +51,7 @@ inline std::vector<std::size_t> index_to_microstate(std::size_t idx, std::size_t
     return out;
 }
 
-inline std::size_t index_of_microstate(std::vector<std::size_t> const& n, 
+inline std::size_t microstate_to_index(std::vector<std::size_t> const& n, 
                                         std::size_t N,
                                        std::size_t k) {
     std::size_t idx = 0;
@@ -95,7 +95,7 @@ class Micro_DMR {
                  for (std::size_t j = 0; j < P1.ncols(); ++j) {
                     auto j_states= index_to_microstate(j,  N1,  k);
                     auto ij_states = i_states + j_states;
-                    auto ij_index= index_of_microstate(ij_states, N0+N1, k);
+                    auto ij_index= microstate_to_index(ij_states, N0+N1, k);
                     P_out[ij_index] += P0[i] * P1[j];
                 }
             }
@@ -125,13 +125,17 @@ template <class C_g>
 
                     auto num_states = num_full_states_of_new(N0 + N1, k);
                     Matr P_out(1, num_states);
-                    for (std::size_t i = 0; i < P0.ncols(); ++i) {
+                    // g/gmean_i/gvar_i seeds are column vectors (k,1); after
+                    // the first squaring P0/P1 become row vectors
+                    // (1, num_states_so_far). Iterate by .size() so the
+                    // microstate enumeration is independent of layout.
+                    for (std::size_t i = 0; i < P0.size(); ++i) {
                         auto i_states = index_to_microstate(i, N0, k);
-                        for (std::size_t j = 0; j < P1.ncols(); ++j) {
+                        for (std::size_t j = 0; j < P1.size(); ++j) {
                             auto j_states = index_to_microstate(j, N1, k);
                             auto ij_states = i_states + j_states;
                             auto ij_index =
-                                index_of_microstate(ij_states, N0 + N1, k);
+                                microstate_to_index(ij_states, N0 + N1, k);
                             // Sum over all decomposition paths (i, j) that
                             // map to ij_index — each contributes g(i)+g(j).
                             P_out[ij_index] += P0[i] + P1[j];
@@ -182,9 +186,9 @@ template <class C_g>
                                         index_to_microstate(j2, N1, k);
                                     auto i_states = i1_states + i2_states;
                                     auto j_states = j1_states + j2_states;
-                                    auto i_index = index_of_microstate(
+                                    auto i_index = microstate_to_index(
                                         i_states, N0 + N1, k);
-                                    auto j_index = index_of_microstate(
+                                    auto j_index = microstate_to_index(
                                         j_states, N0 + N1, k);
                                     // Joint transition probability convolves
                                     // over decompositions: += is correct.
@@ -248,9 +252,9 @@ template <class C_g>
                                         index_to_microstate(j2, N1, k);
                                     auto i_states = i1_states + i2_states;
                                     auto j_states = j1_states + j2_states;
-                                    auto i_index = index_of_microstate(
+                                    auto i_index = microstate_to_index(
                                         i_states, N0 + N1, k);
-                                    auto j_index = index_of_microstate(
+                                    auto j_index = microstate_to_index(
                                         j_states, N0 + N1, k);
                                     // Sum over all decomposition paths
                                     // (i1, j1, i2, j2) that reach
@@ -1032,10 +1036,12 @@ template <class C_g>
         //   E[X]   = probs · Π                              →  P_mean   (1, k_states)
         //   E[XXᵀ] = Πᵀ · diag(probs) · Π   = AT_D_A(Π, DiagPosDet(probs))
         //   Cov(X) = E[XXᵀ] − E[X]ᵀE[X]     = AT_D_A(...) − XTX(P_mean)
-        // P_Cov is then validated via the macro-path "+ diag(P_mean) → to_Covariance_Probability"
-        // pattern (mirrors qmodel.h:3785 storage convention).  Micro uses AT_D_A (exact second
-        // moment from the full microstate distribution) where macro uses AT_B_A on a moment-closed
-        // SmD (approximation) — same structural shape, exact in the micro universe.
+        // P_Cov is stored as bare centered covariance (rows sum to 0), matching the macro
+        // convention. Micro uses AT_D_A (exact second moment from the full microstate
+        // distribution) where macro uses AT_B_A on a moment-closed SmD (approximation) — same
+        // structural shape, exact in the micro universe.  Validation goes through
+        // to_Covariance_Probability directly; no "+ diag(P_mean)" correction is needed because
+        // AT_D_A − XTX already produces bare cov.
         auto Maybe_r_micro_P_state = to_Probability(p_micro_P_state() * t_micro_P());
         if (!Maybe_r_micro_P_state.valid())
             return Maybe_r_micro_P_state.error();
@@ -1049,9 +1055,13 @@ template <class C_g>
             return Maybe_r_P_mean.error();
         auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
 
+        // AT_D_A(Π, diag(probs)) = Πᵀ·diag(probs)·Π = E[YYᵀ] (M-form, rows sum to μ).
+        // Subtracting XTX(μ) = μμᵀ gives bare centered covariance directly (rows sum to 0).
+        // No `+ diag(μ)` — that's the macro-path correction needed when r_P_cov was constructed
+        // *without* the diag(μ) term; here the construction already produces full bare_cov.
         auto r_P_cov = build<P_Cov>(
             AT_D_A(Pi, diagpos(probs)) - XTX(r_P_mean()));
-        auto Maybe_r_P_cov = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
+        auto Maybe_r_P_cov = to_Covariance_Probability(r_P_cov());
         if (!Maybe_r_P_cov.valid())
             return Maybe_r_P_cov.error();
         r_P_cov() = std::move(Maybe_r_P_cov.value());
@@ -1196,20 +1206,39 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
         auto r_micro_chi2  = build<micro_Chi2>(r_micro_r_std() * r_micro_r_std());
 
         // === Bayesian update: per-microstate likelihood-weighted posterior ===
-        // Unnormalized posterior over the same index as t_P_state:
-        //   avg<2: per-microstate i ; avg=2: per-pair (start, end).
-        // posteriorᵢ ∝ priorᵢ · (1/√(2π σ²ᵢ)) · exp(-½ (y − μᵢ)²/σ²ᵢ).
-        auto t_posterior_y = zip(
-            [&y_corr, &e](auto const& prior, auto const& g_mean, auto const& g_var) {
+        // Build the pure Gaussian likelihood (no prior factor); Bayes_Rule
+        // handles the prior multiplication, normalization and evidence.
+        //   avg<2: 1D — per-microstate i.
+        //   avg=2: 2D — per-pair (start, end).
+        auto t_likelihood = zip(
+            [&y_corr, &e](auto const& g_mean, auto const& g_var) {
                 using std::sqrt;
                 using std::exp;
-                return prior * exp(-0.5 * (y_corr - g_mean) * (y_corr - g_mean) / (g_var + e)) /
+                return exp(-0.5 * (y_corr - g_mean) * (y_corr - g_mean) / (g_var + e)) /
                        sqrt(2 * std::numbers::pi * (g_var + e));
             },
-            t_P_state(), t_g_st(), t_gvar_st());
+            t_g_st(), t_gvar_st());
+
+        // Bayes_Rule returns (posterior, evidence) where evidence is the
+        // marginal likelihood Σ priorᵢ · Lᵢ. In channel-kinetics terms,
+        // log(evidence) is the per-step contribution to the parameter
+        // log-likelihood — that's where the Bayesian → channel-kinetics
+        // renaming happens (the `build<logL>(log(evidence))` line below).
+        // Variant tag for breadcrumbs: encodes the compile-time choice of this
+        // recursive-Bayes specialization. Single string reused across the
+        // Maybe-returning sites in this function.
+        std::string const variant_tag =
+            std::string("[recursive,avg=") + std::to_string(averaging::value) + "]";
+
+        auto Maybe_bayes = Bayes_Rule(t_P_state(), t_likelihood);
+        if (!Maybe_bayes)
+            return error_message(variant_tag + " | Bayes_Rule | " + Maybe_bayes.error()());
+        auto bayes_pair  = std::move(Maybe_bayes.value());  // own posterior + evidence
+        auto& bayes_post = bayes_pair.first;
+        auto& evidence   = bayes_pair.second;
 
         // === Per-step logL / elogL — mixture form, stored in the algo state ===
-        //   logL  : log Σ_n π(n) · L_n          (Bayesian sum of per-state contribs)
+        //   logL  : log evidence  =  log Σ_n π(n) · L_n
         //   elogL : Σ_n π(n) · (-½ - ½ log(2π σ²_n))  =  -½ - ½ E_π[log(2π σ²_n)]
         //           (per-state Gaussian-entropy averaged by prior — the natural
         //           mixture analog of the macro `-½log(2π σ²) - ½`).
@@ -1219,7 +1248,7 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
         // y is non-NaN here (recursive function returns to non_recursive on NaN at
         // line 1052); no NaN guard needed in this branch.
         using std::log;
-        auto r_logL = build<logL>(log(sum(t_posterior_y)));
+        auto r_logL = build<logL>(log(evidence));
         auto log_2pi_sigma2_per_micro = zip(
             [&e](auto const& g_var) {
                 using std::log;
@@ -1231,23 +1260,32 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
         auto r_gaussian_logL = calculate_logL(false, r_y_var, chi2, m);
 
         // Posterior microstate distribution at the END of the interval:
-        //   avg<2: normalize(unnormalized_posterior) · t_micro_P  (Bayes then Markov)
-        //   avg=2: marginalize the joint over start state — uᵀ · t_posterior_y
-        //          (the IR pair already encodes the integration).
-        auto Maybe_r_micro_P_state = [&t_posterior_y, &t_micro_P]() {
+        //   avg<2: posterior · t_micro_P                 (Bayes then Markov)
+        //   avg=2: uᵀ · posterior                        (marginalize joint over start)
+        // Both inputs to to_Probability now genuinely sum to 1 by construction
+        // (posterior is normalized, t_micro_P is row-stochastic, Π is row-
+        // stochastic), so to_Probability acts as a pure canary here.
+        auto Maybe_r_micro_P_state = [&bayes_post, &t_micro_P]() {
             if constexpr (averaging::value == 2) {
-                Matrix<double> uT(1ul, t_posterior_y.ncols(), 1.0);
-                return to_Probability(uT * t_posterior_y);
+                Matrix<double> uT(1ul, bayes_post.ncols(), 1.0);
+                return to_Probability(uT * bayes_post);
             } else {
-                return to_Probability(t_posterior_y * t_micro_P());
+                return to_Probability(bayes_post * t_micro_P());
             }
         }();
-        if (!Maybe_r_micro_P_state)
-            return Maybe_r_micro_P_state.error();
+        if (!Maybe_r_micro_P_state) {
+            // Two distinct call sites collapse here; label which.
+            std::string const site = (averaging::value == 2)
+                ? "marginalize-joint"
+                : "Markov-step-on-posterior";
+            return error_message(variant_tag + " | " + site + " | " +
+                                  Maybe_r_micro_P_state.error()());
+        }
         auto r_micro_P_state = build<micro_P_state>(std::move(Maybe_r_micro_P_state.value()));
 
         if (!all_Probability_elements(primitive(r_micro_P_state())))
-            return error_message("error in micro_P_state after Bayes+Markov update");
+            return error_message(variant_tag + " | micro_P_state-post-update-elements-check | "
+                                  "non-Probability cell after Bayes+Markov update");
 
         // === Project to macro shape (same pattern as non-recursive, but using the
         // post-observation r_micro_P_state) ===
@@ -1256,14 +1294,17 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
 
         auto Maybe_r_P_mean = to_Probability(probs * Pi);
         if (!Maybe_r_P_mean.valid())
-            return Maybe_r_P_mean.error();
+            return error_message(variant_tag + " | macro-shape:P_mean projection (probs·Π) | " +
+                                  Maybe_r_P_mean.error()());
         auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
 
+        // AT_D_A − XTX = bare centered covariance directly (rows sum to 0). No `+ diag(μ)`.
         auto r_P_cov = build<P_Cov>(
             AT_D_A(Pi, diagpos(probs)) - XTX(r_P_mean()));
-        auto Maybe_r_P_cov = to_Covariance_Probability(r_P_cov() + diag(r_P_mean()));
+        auto Maybe_r_P_cov = to_Covariance_Probability(r_P_cov());
         if (!Maybe_r_P_cov.valid())
-            return Maybe_r_P_cov.error();
+            return error_message(variant_tag + " | macro-shape:P_Cov(bare) | " +
+                                  Maybe_r_P_cov.error()());
         r_P_cov() = std::move(Maybe_r_P_cov.value());
 
         auto alfa = trust_coefficient(1.0);
@@ -1304,14 +1345,19 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
             // === Helpers: project a microstate distribution / joint to macro shape ===
             // Single distribution q (1, M_micro) → (P_mean (1, k), P_Cov (k, k) in stored form).
             auto project_to_macro =
-                [&Pi](Matrix<double> const& q)
+                [&Pi, &variant_tag](Matrix<double> const& q)
                 -> Maybe_error<std::pair<Matrix<double>, SymmetricMatrix<double>>> {
                 auto Maybe_pm = to_Probability(q * Pi);
-                if (!Maybe_pm.valid()) return Maybe_pm.error();
+                if (!Maybe_pm.valid())
+                    return error_message(variant_tag + " | project_to_macro:P_mean (q·Π) | " +
+                                          Maybe_pm.error()());
                 auto pm = std::move(Maybe_pm.value());
+                // AT_D_A − XTX = bare centered covariance directly (rows sum to 0).
                 auto raw = AT_D_A(Pi, diagpos(q)) - XTX(pm);
-                auto Maybe_pc = to_Covariance_Probability(raw + diag(pm));
-                if (!Maybe_pc.valid()) return Maybe_pc.error();
+                auto Maybe_pc = to_Covariance_Probability(raw);
+                if (!Maybe_pc.valid())
+                    return error_message(variant_tag + " | project_to_macro:P_Cov(bare) | " +
+                                          Maybe_pc.error()());
                 return std::make_pair(std::move(pm), std::move(Maybe_pc.value()));
             };
             // Joint (M, M) → cross-second-moment Πᵀ J Π (k, k).
@@ -1322,16 +1368,20 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
 
             // === Predictive (no Bayes) microstate distribution at end of interval ===
             auto Maybe_pred = to_Probability(p_micro_P_state() * t_micro_P());
-            if (!Maybe_pred) return Maybe_pred.error();
+            if (!Maybe_pred)
+                return error_message(variant_tag + " | dynamic:predictive Markov | " +
+                                      Maybe_pred.error()());
             auto pred_micro_P_state = std::move(Maybe_pred.value());
             auto Maybe_pred_macro = project_to_macro(pred_micro_P_state);
-            if (!Maybe_pred_macro) return Maybe_pred_macro.error();
+            if (!Maybe_pred_macro)
+                return error_message("dynamic:predictive macro-projection | " +
+                                      Maybe_pred_macro.error()());
             auto& [pred_P_mean, pred_P_cov] = Maybe_pred_macro.value();
 
             if constexpr (averaging::value == 2) {
                 // === IR mode: integrated current over interval [0, t] ===
                 // Joint prior  P(start=i, end=j) = p_micro_P_state(i)·P_micro(i,j)  = t_P_state.
-                // Joint posterior ∝ joint_prior · L(y; i, j)                       = t_posterior_y.
+                // Joint posterior P(start, end | y) = bayes_post                     (from Bayes_Rule).
                 // _t11_y0: full-step Markov-stepped predictive (= end-state marginal of joint prior)
                 // _t10_y1: start-state posterior marginal (instant Bayes, no Markov)
                 // _t20_y1: end-state posterior marginal = r_micro_P_state (already projected)
@@ -1339,15 +1389,17 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
                 Matrix<double> uT(1ul, p_micro_P_state().size(), 1.0);
 
                 Matrix<double> joint_prior = t_P_state();   // copy: used for assertions and projection
-                auto Maybe_joint_post = to_Probability(t_posterior_y);
-                if (!Maybe_joint_post) return Maybe_joint_post.error();
-                auto joint_posterior = std::move(Maybe_joint_post.value());
+                auto& joint_posterior = bayes_post;          // already normalized
 
                 auto Maybe_start_post = to_Probability(MultTransp(uT, joint_posterior));
-                if (!Maybe_start_post) return Maybe_start_post.error();
+                if (!Maybe_start_post)
+                    return error_message(variant_tag + " | dynamic:start-state-marginal-of-joint | " +
+                                          Maybe_start_post.error()());
                 auto start_micro_P_state_post = std::move(Maybe_start_post.value());
                 auto Maybe_start_macro = project_to_macro(start_micro_P_state_post);
-                if (!Maybe_start_macro) return Maybe_start_macro.error();
+                if (!Maybe_start_macro)
+                    return error_message("dynamic:start-state macro-projection | " +
+                                          Maybe_start_macro.error()());
 
                 // _t11_y0 (end-state Markov-stepped predictive)
                 get<micro_P_state_t11_y0>(out())() = pred_micro_P_state;
@@ -1382,13 +1434,13 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
                 // === MR mode ===
                 // _t2_y0: full-step Markov-stepped predictive
                 // _t2_y1: full-step Bayes+Markov posterior  (= r_micro_P_state, already projected)
-                // _t1_y1: instant Bayes-only posterior (no Markov) = normalize(t_posterior_y)
+                // _t1_y1: instant Bayes-only posterior (no Markov) = bayes_post
                 // _0t_y0/y1: joint (start, end) distributions in micro / macro space.
-                auto Maybe_inst = to_Probability(t_posterior_y);
-                if (!Maybe_inst) return Maybe_inst.error();
-                auto inst_micro_P_state_post = std::move(Maybe_inst.value());
+                auto inst_micro_P_state_post = bayes_post;   // copy — used downstream by joint-builders
                 auto Maybe_inst_macro = project_to_macro(inst_micro_P_state_post);
-                if (!Maybe_inst_macro) return Maybe_inst_macro.error();
+                if (!Maybe_inst_macro)
+                    return error_message("dynamic:instant-Bayes macro-projection | " +
+                                          Maybe_inst_macro.error()());
 
                 // _t2_y0
                 get<micro_P_state_t2_y0>(out())() = pred_micro_P_state;
@@ -1418,16 +1470,20 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
             } else {  // averaging::value == 0
                 // === R mode: single instant at midpoint ===
                 // _t15_y0: midpoint prior (= p_micro_P_state, already half-advanced at line 893)
-                // _t15_y1: midpoint Bayes-only posterior = normalize(t_posterior_y)
+                // _t15_y1: midpoint Bayes-only posterior = bayes_post
                 // _t2_y0:  full-step Markov-stepped predictive
                 // _t2_y1:  full-step Bayes+Markov posterior (= r_micro_P_state)
                 auto Maybe_mid_pri_macro = project_to_macro(p_micro_P_state());
-                if (!Maybe_mid_pri_macro) return Maybe_mid_pri_macro.error();
-                auto Maybe_mid_post = to_Probability(t_posterior_y);
-                if (!Maybe_mid_post) return Maybe_mid_post.error();
-                auto mid_post_micro = std::move(Maybe_mid_post.value());
+                if (!Maybe_mid_pri_macro) {
+                    return error_message("dynamic:midpoint-prior macro-projection | " +
+                                          Maybe_mid_pri_macro.error()());
+                }
+                auto mid_post_micro = bayes_post;            // copy — used by storage and projection below
                 auto Maybe_mid_post_macro = project_to_macro(mid_post_micro);
-                if (!Maybe_mid_post_macro) return Maybe_mid_post_macro.error();
+                if (!Maybe_mid_post_macro) {
+                    return error_message("dynamic:midpoint-posterior macro-projection | " +
+                                          Maybe_mid_post_macro.error()());
+                }
 
                 // _t15_y0 (midpoint prior)
                 get<micro_P_state_t15_y0>(out())() = p_micro_P_state();
@@ -2397,11 +2453,18 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
                             return calc_micro_Qdt(f_local, m, t_step, fs, Nchannels);
                     }();
                 if (!Maybe_t_Qdt)
-                    return Maybe_error<MicroState>(Maybe_t_Qdt.error());
+                    return Maybe_error<MicroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | calc_micro_Qdt | " +
+                        Maybe_t_Qdt.error()()));
                 auto t_Qdt = std::move(Maybe_t_Qdt.value());
 
-                return Micror<recursive, averaging, variance, variance_correction>(
+                auto Maybe_micror = Micror<recursive, averaging, variance, variance_correction>(
                     f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                if (!Maybe_micror)
+                    return Maybe_error<MicroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | Micror | " +
+                        Maybe_micror.error()()));
+                return Maybe_error<MicroState>(std::move(Maybe_micror.value()));
             });
         f += f_local;
         if (!Maybe_run)

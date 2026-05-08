@@ -806,7 +806,7 @@ class typed_lifted_function_evaluation
             if (maybe_run) {
                 values[i].emplace(std::move(maybe_run.value()));
             } else {
-                errors[i] = maybe_run.error()();
+                errors[i] = coord.str() + " | " + maybe_run.error()();
             }
         }
 
@@ -1179,7 +1179,7 @@ class typed_lifted_homogeneous_container_construction
             if (maybe_run) {
                 values[i].emplace(std::move(maybe_run.value()));
             } else {
-                errors[i] = maybe_run.error()();
+                errors[i] = coord.str() + " | " + maybe_run.error()();
             }
         }
 
@@ -1461,7 +1461,7 @@ class typed_lifted_tuple_construction
             if (maybe_run) {
                 values[i].emplace(std::move(maybe_run.value()));
             } else {
-                errors[i] = maybe_run.error()();
+                errors[i] = coord.str() + " | " + maybe_run.error()();
             }
         }
 

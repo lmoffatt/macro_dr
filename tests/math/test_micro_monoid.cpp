@@ -25,7 +25,7 @@ void exhaustive_round_trip(std::size_t N, std::size_t k) {
         for (auto x : n) s += x;
         CHECK(s == N);
 
-        CHECK(index_of_microstate(n, N, k) == idx);
+        CHECK(microstate_to_index(n, N, k) == idx);
 
         CHECK(seen.insert(n).second);
 
@@ -81,14 +81,14 @@ TEST_CASE("micro_monoid: edge cases", "[micro_monoid]") {
     SECTION("k=0 yields empty vector") {
         CHECK(index_to_microstate(0, 0, 0).empty());
         CHECK(index_to_microstate(0, 7, 0).empty());
-        CHECK(index_of_microstate({}, 0, 0) == 0);
+        CHECK(microstate_to_index({}, 0, 0) == 0);
     }
     SECTION("k=1 yields (N) at idx=0") {
         for (std::size_t N : {std::size_t{0}, std::size_t{1}, std::size_t{42}}) {
             auto v = index_to_microstate(0, N, 1);
             REQUIRE(v.size() == 1);
             CHECK(v[0] == N);
-            CHECK(index_of_microstate(v, N, 1) == 0);
+            CHECK(microstate_to_index(v, N, 1) == 0);
         }
     }
     SECTION("N=0 yields the all-zero tuple of length k at idx=0") {
@@ -96,7 +96,7 @@ TEST_CASE("micro_monoid: edge cases", "[micro_monoid]") {
             auto v = index_to_microstate(0, 0, k);
             REQUIRE(v.size() == k);
             for (auto x : v) CHECK(x == 0);
-            CHECK(index_of_microstate(v, 0, k) == 0);
+            CHECK(microstate_to_index(v, 0, k) == 0);
         }
     }
 }
@@ -120,6 +120,6 @@ TEST_CASE("micro_monoid: spot-check vs. hand-computed enumeration (N=4, k=3)",
     REQUIRE(num_full_states_of(4, 3) == expected.size());
     for (std::size_t idx = 0; idx < expected.size(); ++idx) {
         CHECK(index_to_microstate(idx, 4, 3) == expected[idx]);
-        CHECK(index_of_microstate(expected[idx], 4, 3) == idx);
+        CHECK(microstate_to_index(expected[idx], 4, 3) == idx);
     }
 }
