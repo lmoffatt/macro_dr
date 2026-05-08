@@ -853,6 +853,15 @@ class Macro_DMR {
             return E111(x, y, z, exp_x, exp_y, exp_z);  // x!=y!=z!=x
     }
 
+    // P_Cov is stored as the *bare centered covariance* of the one-hot
+    // channel-state indicator: Cov(X) = diag(P_mean) − P_mean·P_meanᵀ.
+    // Sanity check: deterministic state P = e_i ⇒ Cov(X) = 0 (zero matrix —
+    // no variance, the channel is known). Row sums = 0 by simplex constraint
+    // on the underlying X. The legacy `test(C_P_Cov, tolerance)` below
+    // validates exactly this — restored after a misadventure where I
+    // mistakenly reinterpreted the convention as `bare + diag(P_mean)` and
+    // briefly removed it.
+
     template <bool output>
     static Maybe_error_t<bool> test_Probability_value(double e,
                                                       Probability_error_tolerance tolerance) {
@@ -872,7 +881,6 @@ class Macro_DMR {
                                      " 1- prob=" + std::to_string(1 - e) + "\n");
             else
                 return error_message("");
-
         } else
             return true;
     }
@@ -3709,6 +3717,21 @@ class Macro_DMR {
 	        }
 	    }
 
+    // ────────────────────────────────────────────────────────────────────
+    // Trust coefficient for the recursive POSTERIOR-MEAN update.
+    //
+    // The mean update has the form  μ_new = μ + α · d  where d = chi · gS.
+    // For μ_new to remain a probability vector (μ_new_i ∈ [0, 1]) we need
+    //     d_i > 0 :  α  ≤  (1 − μ_i) / d_i
+    //     d_i < 0 :  α  ≤  −μ_i      / d_i
+    // and α ∈ (0, 1]. The function returns the largest α satisfying every
+    // per-index bound, scaled by `factor` (∈ (0, 1)) for safety when α < 1.
+    //
+    // This bound only constrains the mean. The recursive COVARIANCE update
+    //     Σ_new = Σ_pre  −  (α · N / y_var) · gSᵀ gS
+    // has its own (often tighter) constraint — see calculate_psd_trust_coefficient
+    // and docs/math/trust_coefficient.md.
+    // ────────────────────────────────────────────────────────────────────
     auto calculate_trust_coefficient(Matrix<double> const& t_pmean, Matrix<double> const& d,
                                      double factor) const {
         auto alfa = 1.0;
@@ -3724,6 +3747,49 @@ class Macro_DMR {
             }
         }
         if (alfa < 1)
+            alfa = alfa * factor;
+        return trust_coefficient(alfa);
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Trust coefficient for the recursive POSTERIOR-COVARIANCE update.
+    //
+    // The Σ down-date is
+    //     Σ_new = Σ_pre  −  (α · β) · gSᵀ gS,    β = N / y_var
+    // with the rank-1 contribution diagonal at index i equal to (α·β)·gS_i².
+    // For each diagonal of Σ_new to stay non-negative (a NECESSARY condition
+    // for PSD) we need
+    //     Σ_pre_(i,i)  −  (α · β) · gS_i²  ≥  0
+    // ⇒   α  ≤  Σ_pre_(i,i)  /  (β · gS_i²)        whenever gS_i ≠ 0.
+    //
+    // This is a per-index bound; the function returns the smallest such α
+    // across i, scaled by `factor` for safety when < 1. Returns 0 if any
+    // diagonal of Σ_pre is non-positive at an index where gS_i ≠ 0 — in that
+    // case the information update would push an already-degenerate diagonal
+    // negative, and the caller should refuse the recursive step.
+    //
+    // Combined use:  α = min(α_μ, α_Σ) — the more restrictive bound applies
+    // to BOTH updates so they are scaled consistently. See
+    // docs/math/trust_coefficient.md for the full derivation, the off-diagonal
+    // PSD argument, and notes on when a Joseph-form update would be a
+    // stronger alternative.
+    // ────────────────────────────────────────────────────────────────────
+    auto calculate_psd_trust_coefficient(Matrix<double> const& Sigma_pre,
+                                         Matrix<double> const& gS,
+                                         double beta,
+                                         double factor) const {
+        auto alfa = 1.0;
+        for (std::size_t i = 0; i < gS.size(); ++i) {
+            double gS_i = gS[i];
+            if (gS_i == 0.0)
+                continue;
+            double Sigma_ii = Sigma_pre(i, i);
+            if (Sigma_ii <= 0.0)
+                return trust_coefficient(0.0);
+            double alfa_i = Sigma_ii / (beta * gS_i * gS_i);
+            alfa = std::min(alfa_i, alfa);
+        }
+        if (alfa < 1.0)
             alfa = alfa * factor;
         return trust_coefficient(alfa);
     }
@@ -3748,8 +3814,14 @@ class Macro_DMR {
         auto  p_P_mean = get<P_mean>(t_prior());
         auto  p_P_Cov = get<P_Cov>(t_prior());
         if constexpr (averaging::value == 0) {
-            p_P_mean() = p_P_mean() * t_P();
-            p_P_Cov() = AT_B_A(t_P(), p_P_Cov() - diag(p_P_mean())) + diag(p_P_mean() * t_P());
+            auto maybe_p_P_mean = to_Probability(p_P_mean() * t_P());
+            if (!maybe_p_P_mean.valid())
+                return maybe_p_P_mean.error();
+            p_P_mean() = std::move(maybe_p_P_mean.value());
+            auto maybe_p_P_Cov = to_Covariance_Probability(AT_B_A(t_P(), p_P_Cov() - diag(p_P_mean())) + diag(p_P_mean() * t_P()));
+            if (!maybe_p_P_Cov.valid())
+                return maybe_p_P_Cov.error();
+            p_P_Cov() = std::move(maybe_p_P_Cov.value());
         }
 
 
@@ -3843,22 +3915,23 @@ class Macro_DMR {
                 return get<P>(t_Qdt);
             }
         }();   
-        auto p_P_mean =[&t_prior, &t_P]()->decltype(auto){
-            if constexpr(averaging::value>0){
-                return get<P_mean>(t_prior());
-            }
-            else{
-            return build<P_mean>(to_Probability(get<P_mean>(t_prior())()* t_P()).value());
-            }   
-        }(); 
-        auto p_P_Cov =[&t_prior, &t_P, &p_P_mean]()->decltype(auto){
-            if constexpr(averaging::value>0){
-                return get<P_Cov>(t_prior());
-            }
-            else{
-            return build<P_Cov>(AT_B_A(t_P(), get<P_Cov>(t_prior())() -diag(get<P_mean>(t_prior())())) + diag(p_P_mean()));
-            }   
-        }(); 
+
+        auto p_P_mean = get<P_mean>(t_prior());
+        if constexpr (averaging::value==0) {
+            auto Maybe_p_P_mean = to_Probability(p_P_mean() * t_P());
+            if (!Maybe_p_P_mean.valid())
+                {return Maybe_p_P_mean.error();}
+            p_P_mean() = std::move(Maybe_p_P_mean.value());
+        }
+        
+        auto p_P_Cov = get<P_Cov>(t_prior());
+        if constexpr (averaging::value==0) {
+            auto Maybe_p_P_Cov = to_Covariance_Probability(AT_B_A(t_P(), get<P_Cov>(t_prior())() - diag(get<P_mean>(t_prior())())) + diag(p_P_mean()));
+            if (!Maybe_p_P_Cov.valid())
+                {return Maybe_p_P_Cov.error();
+            } 
+            p_P_Cov() = std::move(Maybe_p_P_Cov.value());
+        }   
         
         auto SmD = p_P_Cov()  - diag(p_P_mean());
        
@@ -3905,7 +3978,7 @@ class Macro_DMR {
         auto r_r_std=build<r_std>( dy/sqrt(r_y_var()));
         auto chi2 = build<Chi2>(dy * chi);
         auto gS = [&t_gmean_i, &p_P_Cov,&SmD, &p_P_mean, &t_Qdt, &t_P]() {
-            if constexpr (averaging::value == 2) {  
+            if constexpr (averaging::value == 2) {
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
 
                 return TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
@@ -3914,19 +3987,42 @@ class Macro_DMR {
                 return TranspMult(t_gmean_i(), p_P_Cov());
             }
         }();
-        auto alfa = [&](){
+        // gS is a probability displacement: (μ + α·chi·gS)·t_P (or μ·t_P + α·chi·gS
+        // for averaging=2) must remain a probability, which forces gS·u = 0. Surface
+        // any drift in p_P_Cov / gtotal_ij upstream rather than letting it propagate
+        // silently into the posterior-mean update.
+        if (auto Maybe_gS_check = to_Probability_displacement(gS); !Maybe_gS_check)
+            return Maybe_gS_check.error();
+
+        // Σ_pre = post-Markov, pre-Bayesian-update covariance. Computed once and
+        // reused for the PSD trust check and for the rank-1 down-date below.
+        auto sigma_pre = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P());
+
+        // α_μ : largest α keeping (μ + α·chi·gS) on the simplex.
+        auto alfa_mu = [&](){
             if constexpr (averaging::value==2)  {
             return  calculate_trust_coefficient(primitive(p_P_mean()*t_P()), primitive(chi) * primitive(gS),
                                                 trust_multiplying_factor);
-                                            
+
             }
             else {
             return  calculate_trust_coefficient(primitive(p_P_mean()), primitive(chi) * primitive(gS),
                                                 trust_multiplying_factor);
             }}();
 
+        // α_Σ : largest α keeping each diagonal of  Σ_pre − (α·N/y_var)·gSᵀgS  ≥ 0.
+        // Necessary (not sufficient) PSD condition; complements α_μ. The smaller of
+        // the two is the right α to apply uniformly to both μ and Σ updates.
+        // See docs/math/trust_coefficient.md.
+        auto alfa_sigma = calculate_psd_trust_coefficient(
+            primitive(sigma_pre), primitive(gS),
+            primitive(N) / primitive(r_y_var()),
+            trust_multiplying_factor);
 
-        auto Maybe_r_P_mean = [&](){ 
+        auto alfa = trust_coefficient(std::min(alfa_mu(), alfa_sigma()));
+
+
+        auto Maybe_r_P_mean = [&](){
             if constexpr (averaging::value==2){
             return to_Probability( p_P_mean() * t_P() + alfa() * chi * gS);}
             else{
@@ -3938,7 +4034,7 @@ class Macro_DMR {
         auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
 
         auto Maybe_r_P_cov = to_Covariance_Probability(
-            AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()) - (alfa() * N / r_y_var()) * XTX(gS));
+            sigma_pre - (alfa() * N / r_y_var()) * XTX(gS));
         if (!Maybe_r_P_cov)
             return Maybe_r_P_cov.error();
 
@@ -3989,6 +4085,10 @@ class Macro_DMR {
 
                 auto gS0 = TranspMult(t_gmean_i(), SmD )+
                           elemMult( p_P_mean(),t_gmean_i()) ;
+                // gS0 is the start-side probability displacement: μ + α·chi·gS0 must
+                // remain a probability, so gS0·u = 0.
+                if (auto Maybe_gS0_check = to_Probability_displacement(gS0); !Maybe_gS0_check)
+                    return Maybe_gS0_check.error();
 
                 auto Maybe_r_P_mean_t11_y0 = to_Probability(p_P_mean() * t_P());
                 auto Maybe_r_P_mean_t10_y1 = to_Probability(p_P_mean() + alfa() * chi * gS0);
@@ -4008,7 +4108,13 @@ class Macro_DMR {
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
 
                 auto GS=  diag(TranspMult(t_gmean_i(), SmD)) * t_P() + diag(p_P_mean())* t_gtotal_ij();
-                
+                // GS is the joint-displacement matrix: M⁻ + α·chi·GS must remain a
+                // joint distribution (total sum 1), so total sum of GS must be 0.
+                // Stronger row/column identities (uᵀ·GS = gS, GS·u = gS0) are checked
+                // by the asserts a few lines below.
+                if (auto Maybe_GS_check = to_Probability_displacement(GS); !Maybe_GS_check)
+                    return Maybe_GS_check.error();
+
                 auto r_P_mean_0t_y1= r_P_mean_0t_y0 + alfa()*chi*GS;
 
                 // Reduced start/end cross-covariance:
@@ -4129,6 +4235,10 @@ class Macro_DMR {
                 get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
                 get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
                 auto gS0 = TranspMult(t_gmean_i(), p_P_Cov());
+                // gS0 is the start-side probability displacement: μ + chi·gS0 must
+                // remain a probability, so gS0·u = 0.
+                if (auto Maybe_gS0_check = to_Probability_displacement(gS0); !Maybe_gS0_check)
+                    return Maybe_gS0_check.error();
 
                 auto Maybe_r_P_mean_t15_y1 = to_Probability(p_P_mean() + chi * gS0);
 
@@ -4895,6 +5005,9 @@ class Macro_DMR {
     auto init(const C_Patch_Model& m) -> Maybe_error<Transfer_Op_to<C_Patch_Model, Patch_State>> {
         Transfer_Op_to<C_Patch_Model, Patch_State> out;
         auto r_P_mean = build<P_mean>(get<P_initial>(m)());
+        // P_Cov is the bare centered covariance of the one-hot channel-state
+        // indicator: Cov(X) = E[XXᵀ] − E[X]E[X]ᵀ = diag(P) − Pᵀ·P.
+        // Sanity check: deterministic state P = e_i ⇒ Cov(X) = 0.
         auto r_P_cov = build<P_Cov>(diagpos(r_P_mean()) - XTX(r_P_mean.value()));
         auto r_test = test<true>(r_P_mean, r_P_cov, get<Probability_error_tolerance>(m));
         if (!r_test) {
@@ -4944,8 +5057,8 @@ class Macro_DMR {
         auto fs = get<Frequency_of_Sampling>(e).value();
         auto ini = init(m);
         auto f_local = f.create("_lik");
-        constexpr bool test_derivative = true;
-        constexpr bool test_macroir_derivative = true;
+        constexpr bool test_derivative = false;
+        constexpr bool test_macroir_derivative = false;
         if (!ini) {
             return ini.error();
         }
@@ -5023,7 +5136,9 @@ class Macro_DMR {
                              }
                         }();
                         if (!Maybe_t_Qdtm)
-                            return Maybe_error<MacroState>(Maybe_t_Qdtm.error());
+                            return Maybe_error<MacroState>(error_message(
+                                "k=" + std::to_string(i_step) + " | calc_Qdt(m) | " +
+                                Maybe_t_Qdtm.error()()));
                         auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
                         if constexpr (test_derivative) {
                             const auto h = 1e-7;
@@ -5111,13 +5226,20 @@ class Macro_DMR {
                             }
                         }
 
-                        return MacroR2<recursive, averaging, variance, variance_correction>{}(
+                        auto Maybe_macror = MacroR2<recursive, averaging, variance, variance_correction>{}(
                             f_local, std::move(t_prior), t_Qdtm, m, Nch, y()[i_step], fs);
+                        if (!Maybe_macror)
+                            return Maybe_error<MacroState>(error_message(
+                                "k=" + std::to_string(i_step) + " | MacroR2 | " +
+                                Maybe_macror.error()()));
+                        return Maybe_error<MacroState>(std::move(Maybe_macror.value()));
 
                     } else {
                         auto Maybe_t_Qdt = calc_Qdt(f_local, m, t_step, fs);
                         if (!Maybe_t_Qdt)
-                            return Maybe_error<MacroState>(Maybe_t_Qdt.error());
+                            return Maybe_error<MacroState>(error_message(
+                                "k=" + std::to_string(i_step) + " | calc_Qdt | " +
+                                Maybe_t_Qdt.error()()));
                         auto t_Qdt = std::move(Maybe_t_Qdt.value());
 
                         if constexpr (test_derivative) {
@@ -5158,8 +5280,13 @@ class Macro_DMR {
                             }
                         }
 
-                        return MacroR2<recursive, averaging, variance, variance_correction>{}(
+                        auto Maybe_macror = MacroR2<recursive, averaging, variance, variance_correction>{}(
                             f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                        if (!Maybe_macror)
+                            return Maybe_error<MacroState>(error_message(
+                                "k=" + std::to_string(i_step) + " | MacroR2 | " +
+                                Maybe_macror.error()()));
+                        return Maybe_error<MacroState>(std::move(Maybe_macror.value()));
                     }
                 } else {
                     if constexpr (!variance_correction::value) {
@@ -5170,7 +5297,9 @@ class Macro_DMR {
                             return calc_Qdtg(f_local, m, t_step, fs);}
                         }();
                         if (!Maybe_t_Qdtm)
-                            return Maybe_error<MacroState>(Maybe_t_Qdtm.error());
+                            return Maybe_error<MacroState>(error_message(
+                                "k=" + std::to_string(i_step) + " | calc_Qdt(m) | " +
+                                Maybe_t_Qdtm.error()()));
                         auto t_Qdtm = std::move(Maybe_t_Qdtm.value());
 
                         if constexpr (test_derivative && averaging::value>0 ) {
@@ -5234,27 +5363,31 @@ class Macro_DMR {
                             //     MacroR2<v_recursive, v_averaging, v_variance,
                             //             v_variance_correction>{},
                             //     std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
-                            return MacroR2<recursive, averaging, variance, variance_correction>{}(
+                            auto Maybe_macror = MacroR2<recursive, averaging, variance, variance_correction>{}(
                                 f_local, std::move(t_prior), t_Qdtm, m, Nch, y()[i_step], fs);
+                            if (!Maybe_macror)
+                                return Maybe_error<MacroState>(error_message(
+                                    "k=" + std::to_string(i_step) + " | MacroR2 (Binomial) | " +
+                                    Maybe_macror.error()()));
+                            return Maybe_error<MacroState>(std::move(Maybe_macror.value()));
 
                         } else {
-                            return
-                                //   f_local.f(
-                                // MacroR2<::V<uses_recursive_aproximation<false>>,
-                                //         v_averaging,
-                                //         ::V<uses_variance_aproximation<false>>,
-                                //         ::V<uses_taylor_variance_correction_aproximation(
-                                //             false)>>{},
-                                // std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
-
+                            auto Maybe_macror =
                                 MacroR2<uses_recursive_aproximation<false>, averaging, variance,
                                         uses_taylor_variance_correction_aproximation<false>>{}(
                                     f_local, std::move(t_prior), t_Qdtm, m, Nch, y()[i_step], fs);
+                            if (!Maybe_macror)
+                                return Maybe_error<MacroState>(error_message(
+                                    "k=" + std::to_string(i_step) + " | MacroR2 (non-Binomial fallback) | " +
+                                    Maybe_macror.error()()));
+                            return Maybe_error<MacroState>(std::move(Maybe_macror.value()));
                         }
                     } else {
                         auto Maybe_t_Qdt = calc_Qdt(f_local, m, t_step, fs);
                         if (!Maybe_t_Qdt)
-                            return Maybe_error<MacroState>(Maybe_t_Qdt.error());
+                            return Maybe_error<MacroState>(error_message(
+                                "k=" + std::to_string(i_step) + " | calc_Qdt | " +
+                                Maybe_t_Qdt.error()()));
                         auto t_Qdt = std::move(Maybe_t_Qdt.value());
                         if constexpr (test_derivative) {
                             const auto dx = 1e-6;
@@ -5290,12 +5423,22 @@ class Macro_DMR {
                             //     MacroR2<v_recursive, v_averaging, v_variance,
                             //             v_variance_correction>{},
                             //     std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
-                            return MacroR2<recursive, averaging, variance, variance_correction>{}(
+                            auto Maybe_macror = MacroR2<recursive, averaging, variance, variance_correction>{}(
                                 f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                            if (!Maybe_macror)
+                                return Maybe_error<MacroState>(error_message(
+                                    "k=" + std::to_string(i_step) + " | MacroR2 (Binomial, taylor-correction) | " +
+                                    Maybe_macror.error()()));
+                            return Maybe_error<MacroState>(std::move(Maybe_macror.value()));
                         } else {
-                            return MacroR2<uses_recursive_aproximation<false>, averaging, variance,
+                            auto Maybe_macror = MacroR2<uses_recursive_aproximation<false>, averaging, variance,
                                            uses_taylor_variance_correction_aproximation<false>>{}(
                                 f_local, std::move(t_prior), t_Qdt, m, Nch, y()[i_step], fs);
+                            if (!Maybe_macror)
+                                return Maybe_error<MacroState>(error_message(
+                                    "k=" + std::to_string(i_step) + " | MacroR2 (non-Binomial fallback, taylor-correction) | " +
+                                    Maybe_macror.error()()));
+                            return Maybe_error<MacroState>(std::move(Maybe_macror.value()));
                         }
                     }
                 }

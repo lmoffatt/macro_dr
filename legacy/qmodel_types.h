@@ -279,58 +279,381 @@ class Proportional_Noise : public var::Var<Proportional_Noise, double> {};
 
 class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
+// ---------------------------------------------------------------------------
+// to_Probability — canary + drift correction for almost-probability vectors.
+//
+// PURPOSE
+//   Validate that x is a probability vector to within FP-noise tolerance,
+//   then renormalize so primitives sum to exactly 1. The validation is the
+//   *canary*: structural bugs upstream surface here as Maybe_error, so they
+//   don't get silently averaged into invisibility by the renormalize.
+//
+// INPUT INVARIANT (must hold up to FP noise)
+//   - All primitive entries are finite and ≥ 0 (within eps_neg of 0).
+//   - Σᵢ primitive(xᵢ) ≈ 1 (within eps_sum).
+//   - For Derivative inputs, ∂Σ/∂θ ≈ 0 (within eps_dsum) — direct consequence
+//     of Σx = 1 being constant in θ.
+//   - All derivative entries are finite (negative gradients are legitimate).
+//
+// OUTPUT (on success)
+//   - x · (1/s) where s = var::sum(x). Primitives sum to exactly 1.
+//   - Derivative-aware throughout: 1/s carries chain rule, and Derivative *
+//     Derivative<double> applies the product rule.
+//
+// FAILURE MODES
+//   - "non-finite primitive"     — any xᵢ primitive is NaN/Inf.
+//   - "non-finite derivative"    — any derivative cell is NaN/Inf.
+//   - "negative entry"           — min primitive < -eps_neg (real negativity,
+//                                  not FP cancellation noise).
+//   - "|Σ − 1| out of tolerance" — primitive sum drifted past eps_sum.
+//   - "∂Σ/∂θ violates invariant" — derivative-of-sum exceeds eps_dsum at some
+//                                  parameter, signalling a probability-
+//                                  non-preserving operation upstream.
+//
+// DESIGN NOTE — why no clamp
+//   The previous version clamped negatives to zero before renormalizing. With
+//   the trust-coefficient innovation in the macro_R update and stochastic
+//   Markov steps in the micro_R update, no operation should *produce* real
+//   negatives; tiny FP-noise negatives are within eps_neg and renormalize
+//   harmlessly. A real negative is a bug, and we want to know about it.
+//
+// DESIGN NOTE — derivative canary (3b)
+//   The renormalize step `x * (1/s)` applies the quotient rule to the
+//   derivatives: ∂(xᵢ/s)/∂θ = ∂xᵢ/∂θ / s − xᵢ · ∂s/∂θ / s². If ∂s/∂θ ≠ 0
+//   (a bug), the second term silently corrects the offending derivative. We
+//   reject upstream rather than absorb the correction.
+// ---------------------------------------------------------------------------
 template <class C_Matrix>
 auto to_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    using std::max;
-    using std::min;
-    if (!isfinite(var::fullsum(x)))
-        return error_message("error in Probability");
+    constexpr double eps_neg  = 1e-10;
+    constexpr double eps_sum  = 1e-8;
+    constexpr double eps_dsum = 1e-8;
 
+    // (1) finiteness — primitive
     for (std::size_t i = 0; i < x.size(); ++i)
-        if (std::isnan(primitive(x[i])))
+        if (!std::isfinite(primitive(x[i])))
+            return error_message("to_Probability: non-finite primitive at i=" +
+                                  std::to_string(i));
 
-            if constexpr (var::is_derivative_v<C_Matrix>)
-                for (std::size_t i = 0; i < x.size(); ++i)
-                    if (std::isnan(derivative(x)()[i][0]))
-                        return error_message("error in derivative");
+    // (1') finiteness — derivative payload
+    if constexpr (var::is_derivative_v<C_Matrix>) {
+        auto const& d = derivative(x)();
+        for (std::size_t p = 0; p < d.size(); ++p)
+            for (std::size_t k = 0; k < d[p].size(); ++k)
+                if (!std::isfinite(d[p][k]))
+                    return error_message("to_Probability: non-finite derivative");
+    }
 
-    constexpr double smooth_eps = 0;
-    auto out = apply(
-        [smooth_eps](auto const& value) {
-            using ValueType = std::decay_t<decltype(value)>;
-            using std::sqrt;
-            auto half = 0.5;
-            auto eps_like = smooth_eps*smooth_eps;
-            auto term = value * value + eps_like;
-            auto sqrt_term = sqrt(term);
-            return half * (value + sqrt_term);
-        },
-        x);
-    if (var::min(primitive(out)) < 0)
-        return error_message("how did negative Probability arise?");
+    // (2) negativity canary (primitive only; derivatives may be negative)
+    double minv = std::numeric_limits<double>::infinity();
+    for (std::size_t i = 0; i < x.size(); ++i)
+        minv = std::min(minv, primitive(x[i]));
+    if (minv < -eps_neg)
+        return error_message("to_Probability: negative entry " +
+                              std::to_string(minv));
 
-    auto s = var::sum(out);
-    if (s == 0)
-        return error_message(" cero probability");
-    return out * (1.0 / s);
+    // (3) sum canary — derivative-aware var::sum returns Derivative<double, P>
+    //     (or plain double for non-Derivative inputs). primitive(s) is Σ;
+    //     derivative(s)()[p, k] is ∂Σ/∂θ_pk.
+    auto s = var::sum(x);
+
+    // (3a) Σ within tolerance of 1
+    if (std::abs(primitive(s) - 1.0) > eps_sum)
+        return error_message("to_Probability: |Σ − 1| = " +
+                              std::to_string(std::abs(primitive(s) - 1.0)));
+
+    // (3b) ∂Σ/∂θ ≈ 0 — structural invariant
+    if constexpr (var::is_derivative_v<C_Matrix>) {
+        auto const& ds = derivative(s)();
+        for (std::size_t i = 0; i < ds.size(); ++i)
+            if (std::abs(ds[i]) > eps_dsum)
+                return error_message("to_Probability: ∂Σ/∂θ violates invariant at param " +
+                                      std::to_string(i) + ": " +
+                                      std::to_string(ds[i]));
+    }
+
+    // (4) drift correction — derivative-aware via operator/(double, Derivative)
+    //     and operator*(Derivative<aMatrix>, Derivative<double>).
+    return x * (1.0 / s);
 }
 
+// ---------------------------------------------------------------------------
+// to_Covariance_Probability — canary for the bare centered covariance of the
+// channel-state indicator (the codebase's stored P_Cov).
+//
+// SEMANTIC OF x
+//   x is the bare covariance Cov(X) where X is the one-hot indicator of the
+//   channel state (or the macrostate-fraction Y = n/N for N channels). X
+//   lies on the simplex (Σᵢ Xᵢ = 1), so by bilinearity:
+//
+//     Σⱼ Cov(Xᵢ, Xⱼ) = Cov(Xᵢ, ΣX) = Cov(Xᵢ, 1) = 0    ∀ i
+//
+//   Hence every row sums to 0, hence the total sum is 0. Diagonals are
+//   variances Var(Xᵢ) = Pᵢ(1−Pᵢ) for one-hot — *can be 0* when the state is
+//   deterministic (Pᵢ ∈ {0, 1}).
+//
+//   Sanity check: P_mean = e_i ⇒ Cov(X) = diag(P) − Pᵀ·P = 0 (zero matrix).
+//
+// CANARY (returns error if violated beyond FP noise)
+//   - finiteness, primitive and derivative
+//   - symmetry within eps_sym
+//   - diagonal ≥ -eps_neg (PSD necessary; variances ≥ 0)
+//   - per-row primitive sum ≈ 0 (within eps_sum)
+//   - max |∂(row sum)/∂θ| ≈ 0 (within eps_dsum) — the row-sum identity is
+//     constant in θ, hence so is its derivative
+//
+// NO DRIFT CORRECTION
+//   With Σ = 0 there is nothing to renormalize *to*. Pass through on success;
+//   reject with named error otherwise. Restoring the bare-Cov convention
+//   makes this function a pure validator (no side effects).
+//
+// DESIGN NOTES vs. the previous version:
+//   * Previous canary targeted Σ M = 1 / row sums = P_mean — based on a
+//     mistaken interpretation of the convention as M = bare_Cov + diag(P_mean).
+//     The actual stored convention is bare_Cov, so the targets are 0 / 0.
+//   * No "zero the row when diag ≤ 0" mutation: the old loose validator did
+//     that as cleanup, but with the strict canary in place real bugs surface
+//     instead of being masked. FP-noise negatives below eps_neg pass.
+//   * PSD is *not* fully checked here (O(n³) eigendecomp). The diagonal +
+//     symmetry + finite + row-sum checks are the cheap necessary conditions.
+// ---------------------------------------------------------------------------
 template <class C_Matrix>
 auto to_Covariance_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    using std::max;
-    using std::min;
-    if (!isfinite(var::fullsum(x)))
-        return error_message("nan Cov");
-    auto out = x;
-    for (auto i = 0ul; i < x.nrows(); ++i) {
-        if (primitive(out(i, i)) <= 0.0) {
-            for (auto j = 0ul; j < x.ncols(); ++j) {
-                set(out, i, j, 0.0);
+    constexpr double eps_neg  = 1e-10;
+    constexpr double eps_sym  = 1e-10;
+    constexpr double eps_sum  = 1e-8;
+    constexpr double eps_dsum = 1e-8;
+
+    if (x.nrows() != x.ncols())
+        return error_message("to_Covariance_Probability: not square (" +
+                              std::to_string(x.nrows()) + "x" +
+                              std::to_string(x.ncols()) + ")");
+
+    // (1) finiteness — primitive, per cell
+    for (std::size_t i = 0; i < x.size(); ++i)
+        if (!std::isfinite(primitive(x[i])))
+            return error_message("to_Covariance_Probability: non-finite primitive");
+
+    // (1') finiteness — derivative payload
+    if constexpr (var::is_derivative_v<C_Matrix>) {
+        auto const& d = derivative(x)();
+        for (std::size_t p = 0; p < d.size(); ++p)
+            for (std::size_t k = 0; k < d[p].size(); ++k)
+                if (!std::isfinite(d[p][k]))
+                    return error_message("to_Covariance_Probability: non-finite derivative");
+    }
+
+    // (2) symmetry of primitive (lower triangle vs upper triangle)
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        for (std::size_t j = 0; j < i; ++j) {
+            double diff = std::abs(primitive(x(i, j)) - primitive(x(j, i)));
+            if (diff > eps_sym)
+                return error_message("to_Covariance_Probability: asymmetric at (" +
+                                      std::to_string(i) + "," + std::to_string(j) +
+                                      "): " + std::to_string(diff));
+        }
+
+    // (3) diagonal ≥ -eps_neg (PSD necessary condition)
+    for (std::size_t i = 0; i < x.nrows(); ++i)
+        if (primitive(x(i, i)) < -eps_neg)
+            return error_message("to_Covariance_Probability: negative diagonal at " +
+                                  std::to_string(i) + ": " +
+                                  std::to_string(primitive(x(i, i))));
+
+    // (4) per-row sum canary. By bilinearity on a simplex-constrained X:
+    //         Σⱼ Cov(Xᵢ, Xⱼ) = Cov(Xᵢ, ΣX) = Cov(Xᵢ, 1) = 0    ∀ i
+    //     So every row of bare Cov sums to 0 (within FP noise).
+    for (std::size_t i = 0; i < x.nrows(); ++i) {
+        double row_sum = 0.0;
+        for (std::size_t j = 0; j < x.ncols(); ++j) row_sum += primitive(x(i, j));
+        if (std::abs(row_sum) > eps_sum)
+            return error_message("to_Covariance_Probability: row " +
+                                  std::to_string(i) + " sums to " +
+                                  std::to_string(row_sum) +
+                                  " (expected 0 by simplex constraint on Cov rows)");
+    }
+
+    // (5) ∂(row sum)/∂θ ≈ 0 — the row-sum identity is constant in θ, so its
+    //     derivative is identically zero. Catches gradient-side violations of
+    //     the simplex invariant.
+    if constexpr (var::is_derivative_v<C_Matrix>) {
+        auto const& d = derivative(x)();
+        // d is shape (P_nrows, P_ncols), each cell a Matrix<double> of shape
+        // (x.nrows, x.ncols). For each parameter (each cell of d), check that
+        // every row sums to 0.
+        for (std::size_t p = 0; p < d.size(); ++p) {
+            auto const& dp = d[p];
+            for (std::size_t i = 0; i < x.nrows(); ++i) {
+                double drow_sum = 0.0;
+                for (std::size_t j = 0; j < x.ncols(); ++j) drow_sum += dp(i, j);
+                if (std::abs(drow_sum) > eps_dsum)
+                    return error_message("to_Covariance_Probability: ∂(row " +
+                                          std::to_string(i) + ")/∂θ_" +
+                                          std::to_string(p) + " = " +
+                                          std::to_string(drow_sum) +
+                                          " (expected 0)");
             }
         }
     }
 
-    return out;
+    // (6) Pass through on success — Cov sums to 0, no renormalization target.
+    return x;
+}
+
+// ---------------------------------------------------------------------------
+// to_Probability_displacement — canary for tangent vectors to the simplex.
+//
+// SEMANTIC OF x
+//   x is a "probability displacement": a row/column vector (or matrix whose
+//   rows are such) intended to be added to a probability vector p to yield
+//   another probability vector p + x. For p + x to remain on the simplex,
+//
+//       Σᵢ xᵢ = 0    (and Σᵢ ∂xᵢ/∂θ = 0 for Derivative inputs)
+//
+//   The recursive macro/IR posterior-mean updates rely on exactly this
+//   property — gS, gS0, and the row blocks of GS are the codebase's canonical
+//   probability displacements. The invariant is identical whether the
+//   displacement comes from a Bayesian innovation (chi · gS) or from a
+//   Markov-propagation residual.
+//
+// CANARY (returns error if violated beyond FP noise)
+//   - finiteness, primitive and derivative
+//   - Σᵢ xᵢ ≈ 0 within eps_sum
+//   - Σᵢ ∂xᵢ/∂θ_p ≈ 0 within eps_dsum (derivative of the identity)
+//
+// NO DRIFT CORRECTION
+//   The target is 0; there's nothing to renormalize *to*. Pass through on
+//   success; reject with named error otherwise.
+//
+// SIGNS ARE FREE
+//   Unlike to_Probability there is no negativity check. Tangent vectors carry
+//   any sign; only their sum is constrained.
+//
+// MATRIX INPUTS
+//   For a matrix x whose rows are each a probability displacement (e.g. GS),
+//   pass each row separately, or use the dedicated row-by-row overload below.
+// ---------------------------------------------------------------------------
+template <class C_Matrix>
+auto to_Probability_displacement(C_Matrix const& x) -> Maybe_error<C_Matrix> {
+    constexpr double eps_sum  = 1e-8;
+    constexpr double eps_dsum = 1e-8;
+
+    // (1) finiteness — primitive
+    for (std::size_t i = 0; i < x.size(); ++i)
+        if (!std::isfinite(primitive(x[i])))
+            return error_message("to_Probability_displacement: non-finite primitive at i=" +
+                                  std::to_string(i));
+
+    // (1') finiteness — derivative payload
+    if constexpr (var::is_derivative_v<C_Matrix>) {
+        auto const& d = derivative(x)();
+        for (std::size_t p = 0; p < d.size(); ++p)
+            for (std::size_t k = 0; k < d[p].size(); ++k)
+                if (!std::isfinite(d[p][k]))
+                    return error_message("to_Probability_displacement: non-finite derivative");
+    }
+
+    // (2) Σ ≈ 0 — primitive sum-to-zero invariant
+    auto s = var::sum(x);
+    if (std::abs(primitive(s)) > eps_sum)
+        return error_message("to_Probability_displacement: |Σ| = " +
+                              std::to_string(std::abs(primitive(s))) +
+                              " (expected 0 by simplex-tangent constraint)");
+
+    // (3) ∂Σ/∂θ ≈ 0 — derivative of the identity is zero
+    if constexpr (var::is_derivative_v<C_Matrix>) {
+        auto const& ds = derivative(s)();
+        for (std::size_t i = 0; i < ds.size(); ++i)
+            if (std::abs(ds[i]) > eps_dsum)
+                return error_message("to_Probability_displacement: ∂Σ/∂θ violates invariant at param " +
+                                      std::to_string(i) + ": " +
+                                      std::to_string(ds[i]));
+    }
+
+    // (4) Pass through on success.
+    return x;
+}
+
+// ---------------------------------------------------------------------------
+// Bayes_Rule — apply Bayes' theorem in one step.
+//
+//   posteriorᵢ = priorᵢ · likelihoodᵢ / evidence
+//   evidence   = Σᵢ priorᵢ · likelihoodᵢ
+//
+// The returned `evidence` is the *marginal likelihood* of the observation
+// over the latent state. In the per-step Bayesian update it's "model
+// evidence"; in the channel-kinetics filter it's the per-step contribution
+// to the parameter log-likelihood, accumulated via log(evidence) → logL.
+// Same scalar, two names — the caller wraps it whichever way fits the
+// surrounding inference stage.
+//
+// INPUT INVARIANTS (assumed)
+//   - prior is a probability (sum=1, non-neg). Should have come through
+//     to_Probability beforehand; we don't re-canary it here.
+//   - likelihood is finite and non-negative (within FP-noise tolerance).
+//   - prior and likelihood share shape (1D vector or 2D matrix). The
+//     function works uniformly on both — for 2D inputs (e.g. averaging=2
+//     per-pair posteriors) elemMult and var::sum already operate cell-wise.
+//
+// OUTPUT INVARIANTS (on success)
+//   - posterior is a probability: sum=1 (exactly, by construction), non-neg,
+//     and ∂Σ/∂θ = 0 (for Derivative inputs — quotient rule on Σ x / Σ x).
+//   - evidence is positive (and finite).
+//   - Derivative threading: elemMult, var::sum, operator/(double, Derivative)
+//     and operator*(Derivative<aMatrix>, Derivative<double>) all carry the
+//     chain/product rule, so derivative(posterior) and derivative(evidence)
+//     are the correct gradients of the corresponding scalars.
+//
+// FAILURES (each returns a distinct error_message)
+//   - "non-finite likelihood"  — any cell NaN/Inf.
+//   - "negative likelihood"    — any cell < -eps_neg (real, not FP noise).
+//   - "zero evidence"          — Σ prior·L underflowed to ≤ 0; posterior
+//                                undefined. THIS is the diagnostic for
+//                                "all per-microstate likelihoods underflowed",
+//                                which is the failure mode the figure-2 run
+//                                surfaced as the original `to_Probability`'s
+//                                "cero probability" error.
+// ---------------------------------------------------------------------------
+template <class C_Prior, class C_Likelihood>
+auto Bayes_Rule(C_Prior const& prior, C_Likelihood const& likelihood) {
+    constexpr double eps_neg = 1e-10;
+
+    auto unnormalized = elemMult(prior, likelihood);
+    auto evidence     = var::sum(unnormalized);
+    using Posterior_T = std::decay_t<decltype(unnormalized * (1.0 / evidence))>;
+    using Evidence_T  = std::decay_t<decltype(evidence)>;
+    using Result_T    = Maybe_error<std::pair<Posterior_T, Evidence_T>>;
+
+    if (prior.size() != likelihood.size())
+        return Result_T(error_message("Bayes_Rule: shape mismatch (prior.size=" +
+                                       std::to_string(prior.size()) +
+                                       ", likelihood.size=" +
+                                       std::to_string(likelihood.size()) + ")"));
+
+    // (1) likelihood validity — primitive only; gradients of L may be negative.
+    for (std::size_t i = 0; i < likelihood.size(); ++i) {
+        if (!std::isfinite(primitive(likelihood[i])))
+            return Result_T(error_message("Bayes_Rule: non-finite likelihood at i=" +
+                                           std::to_string(i)));
+        if (primitive(likelihood[i]) < -eps_neg)
+            return Result_T(error_message("Bayes_Rule: negative likelihood at i=" +
+                                           std::to_string(i) + ": " +
+                                           std::to_string(primitive(likelihood[i]))));
+    }
+
+    // (2) evidence — must be positive for the posterior to be defined.
+    if (!(primitive(evidence) > 0))
+        return Result_T(error_message("Bayes_Rule: zero evidence (posterior underflow) — " +
+                                       std::string("all per-state likelihoods produced ≤ 0 mass; ") +
+                                       "check upstream that the predicted means / variances make sense"));
+    if (!std::isfinite(primitive(evidence)))
+        return Result_T(error_message("Bayes_Rule: non-finite evidence"));
+
+    // (3) posterior — derivative-aware via operator*(Derivative<aMatrix>,
+    //     Derivative<double>) and operator/(double, Derivative).
+    auto posterior = unnormalized * (1.0 / evidence);
+
+    return Result_T(std::make_pair(std::move(posterior), std::move(evidence)));
 }
 
 inline bool all_Probability_elements(Matrix<double> const& x) {
