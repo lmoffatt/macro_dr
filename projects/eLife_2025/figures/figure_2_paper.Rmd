@@ -18,7 +18,7 @@ filename=c(
   #"data/figure_2_basic_diagnostics__0420_2_001", 
   #"data/figure_2_basic_diagnostics__0421_3_001",
   #"data/figure_2_basic_diagnostics__0422_4_001", 
-  "data/figure_2_basic_diagnostics_numeric_micro_0507_002"
+  "data/figure_2_basic_diagnostics__0509_004"
   
   
   )
@@ -79,7 +79,7 @@ Report_integral_r_std
 
 
 ```{r, fig.width=16, fig.height=16}
-d_mean%>%filter(component=="Report_integral_r_std", statistic=="integral_correlation_lag", algorithm=="macro_IR")%>%ggplot()+geom_line(aes(x =interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=factor(Num_ch)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~algorithm+noise_in_conductance_tau, scales="free")+ggtitle("Report_integral_r_std")+scale_x_log10()
+d_mean%>%filter(component=="Report_integral_r_std", statistic=="integral_correlation_lag", algorithm%in%c("macro_IR","macro_IRT","macro_MR","macro_R"))%>%ggplot()+geom_line(aes(x =interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_point(aes(x = interval_in_tau, y = mean_NA, color=factor(Num_ch)))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975,color=factor(Num_ch)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~algorithm+noise_in_conductance_tau, scales="free")+ggtitle("Report_integral_r_std")+scale_x_log10()
 
 ```
 
@@ -95,13 +95,6 @@ for (a in algo){
 d_mean%>%filter(component=="Distortion_Induced_Bias",algorithm==a, param_name!="")%>%ggplot()+geom_line(aes(x = 1/interval_in_tau/Num_ch, y = 10^mean_NA, color=factor(Num_ch)))+geom_point(aes(x = 1/interval_in_tau/Num_ch, y = 10^mean_NA, color=factor(Num_ch)))+geom_errorbar(aes(x=1/interval_in_tau/Num_ch, y= 10^(mean_NA),ymin = 10^quantile_0.025,ymax = 10^quantile_0.975 ,color=factor(Num_ch)))+ geom_hline(yintercept = 1, color="darkgreen")+facet_wrap(param_name~., scales="free")+ggtitle(a)+scale_x_log10()
   )
   }
-
-```
-
-
-```{r, fig.width=16, fig.height=8}
-
-  d_algo%>%filter(noise_in_conductance_tau==0.1,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==10,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()| d_algo%>%filter(noise_in_conductance_tau==100,component%in%c("Distortion_Corrected_Covariance"), param_name%in%c("on_on", "off_off"),      Num_ch*interval_in_tau>10, param_index==param_col)%>%ggplot()+geom_line(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_point(aes(x = interval_in_tau, y = macro_MNR_mean_NA/macro_IR_mean_NA, color=factor(component)))+geom_errorbar(aes(x=interval_in_tau, y= (macro_MNR_mean_NA/macro_IR_mean_NA),ymin = macro_MNR_quantile_0.025/macro_IR_mean_NA,ymax = macro_MNR_quantile_0.975/macro_IR_mean_NA ,color=factor(component)))+geom_hline(yintercept = 1, color="darkgreen")+facet_grid(Num_ch~param_name+noise_in_conductance_tau, scales="free")+ggtitle(a)+scale_x_log10()+scale_y_log10()+plot_layout(guides="collect")
 
 ```
 

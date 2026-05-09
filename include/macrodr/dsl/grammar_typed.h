@@ -799,7 +799,7 @@ class typed_lifted_function_evaluation
         auto all_coords = space.all_coordinates();
         std::vector<std::optional<scalar_type>> values(all_coords.size());
         std::vector<std::string> errors(all_coords.size());
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic, 1)
         for(std::size_t i=0; i<all_coords.size(); ++i) {
             const auto& coord = all_coords[i];
             auto maybe_run = run_at(env, coord);
@@ -1172,7 +1172,7 @@ class typed_lifted_homogeneous_container_construction
         auto all_coords = space.all_coordinates();
         std::vector<std::optional<scalar_type>> values(all_coords.size());
         std::vector<std::string> errors(all_coords.size());
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic, 1)
         for(std::size_t i=0; i<all_coords.size(); ++i) {
             const auto& coord = all_coords[i];
             auto maybe_run = run_at(env, coord);
@@ -1454,7 +1454,7 @@ class typed_lifted_tuple_construction
         auto all_coords = space.all_coordinates();
         std::vector<std::optional<scalar_type>> values(all_coords.size());
         std::vector<std::string> errors(all_coords.size());
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(dynamic, 1)
         for(std::size_t i=0; i<all_coords.size(); ++i) {
             const auto& coord = all_coords[i];
             auto maybe_run = run_at(env, coord);
