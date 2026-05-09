@@ -18,7 +18,7 @@ filename=c(
   #"data/figure_2_basic_diagnostics__0420_2_001", 
   #"data/figure_2_basic_diagnostics__0421_3_001",
   #"data/figure_2_basic_diagnostics__0422_4_001", 
-  "data/figure_2_basic_diagnostics_numeric_0428_8_007"
+  "data/figure_2_basic_diagnostics_numeric_micro_0507_002"
   
   
   )
@@ -74,7 +74,7 @@ d_algo
 
 for (nch in unique(d_mean$Num_ch))
 {print(
-d_mean%>%filter(component=="Moment_statistics_Sum_logL", statistic=="mean", Num_ch==nch,interval_in_tau>0.01)%>%ggplot()+geom_point(aes(x = algorithm, y = mean_NA, color=algorithm))+geom_errorbar(aes(x=algorithm, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+facet_wrap(.~interval_in_tau,nrow = 2, scales="free", )+ggtitle(paste0("Moment_statistics_Sum_logL for Nch=",nch)) 
+d_mean%>%filter(component=="Moment_statistics_Sum_logL", statistic=="mean", Num_ch==nch,interval_in_tau>0.01, !algorithm%in%c("macro_MNR", "macro_NR"))%>%ggplot()+geom_point(aes(x = algorithm, y = mean_NA, color=algorithm))+geom_errorbar(aes(x=algorithm, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+facet_wrap(.~interval_in_tau,nrow = 2, scales="free", )+ggtitle(paste0("Moment_statistics_Sum_logL for Nch=",nch)) 
 )
 }
 ```

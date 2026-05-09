@@ -18,7 +18,7 @@ filename=c(
   #"data/figure_2_basic_diagnostics__0420_2_001", 
   #"data/figure_2_basic_diagnostics__0421_3_001",
   #"data/figure_2_basic_diagnostics__0422_4_001", 
-  "data/figure_2_basic_diagnostics__0426_6_004"
+  "data/figure_2_basic_diagnostics_numeric_micro_0507_002"
   
   
   )

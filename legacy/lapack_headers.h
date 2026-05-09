@@ -1232,7 +1232,16 @@ inline auto sort_by_eigenvalue(std::tuple<C_DiagonalMatrix, C_Matrix, C_Matrix> 
 
     assert((
         [&VRs, &Ls, &VLs, &x, &VR, &L, &VL]() {
-            if (!(norm_1(VRs * Ls * tr(VLs) - x) / norm_1(x) < std::sqrt(eps) * 1000)) {
+            // Use relative tolerance when x is non-trivially non-zero, else absolute.
+            // The zero-norm case arises legitimately for derivative slices where the
+            // parameter doesn't enter the block being decomposed; without this
+            // guard, norm_1(x) = 0 makes the ratio NaN and the assert reports
+            // false, flooding stderr with matrix dumps under OpenMP.
+            auto const err  = norm_1(VRs * Ls * tr(VLs) - x);
+            auto const xabs = norm_1(x);
+            double const tol = std::sqrt(eps) * 1000;
+            bool const ok   = xabs > 0 ? (err / xabs < tol) : (err < tol);
+            if (!ok) {
                 std::cerr << "\nL\n" << L;
                 std::cerr << "\nLs\n" << Ls;
                 std::cerr << "\nVR\n" << VR;

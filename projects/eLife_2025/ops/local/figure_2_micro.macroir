@@ -60,7 +60,7 @@ simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulati
 
 
 simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation_numeric_micro_0507_001")
+   path= "figures/data/figure_2_simulation_numeric_micro_0509_003")
 
 
 algorithm_axis = axis(name= "algorithm",
@@ -123,4 +123,4 @@ likelihood_analysis = likelihood_derivative_basic_diagnostics(
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_basic_diagnostics_numeric_micro_0507_001")
+   path= "figures/data/figure_2_basic_diagnostics_numeric_micro_0509_003")

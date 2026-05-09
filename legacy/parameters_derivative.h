@@ -356,6 +356,15 @@ class Derivative<double, Parameters_transformed>  //: public Primitive<double>, 
         return Derivative(x / fy, -x / fy / fy * y.derivative()(), y.dx());
     }
 
+    // Division by a scalar constant: linear in both primitive and derivative,
+    // no chain rule cross-term because dy/dθ = 0. Mirror of operator*(Derivative, double)
+    // below, completes the per-Derivative scalar arithmetic surface so generic
+    // routines (e.g. elemDiv, scalar-row scaling) can use Derivative/double directly.
+    friend auto operator/(const Derivative& x, double y) {
+        double inv_y = 1.0 / y;
+        return Derivative(x.primitive() * inv_y, x.derivative()() * inv_y, x.dx());
+    }
+
     friend auto elemDivSafe(const Derivative& x, const Derivative& y, double eps) {
         auto fx = x.primitive();
         auto fy = y.primitive();
