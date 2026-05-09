@@ -1030,6 +1030,24 @@ inline auto elemDiv(const Matrix<double>& x, const Matrix<double>& y) {
     return out;
 }
 
+// Mixed-cell-type elemDiv. Needed when one matrix carries Derivative<double>
+// cells and the other plain double — e.g. per-merge multinomial correction
+// in micro_monoid.h where g_out / gij_out have Derivative<double> cells but
+// state_count is always Matrix<double>.
+//
+// The non-templated double/double overload above is more specific and wins
+// for the homogeneous case; this template kicks in only when T != S.
+// Requires `T / S` to be a valid operation — for the
+// (Derivative<double, Parameters_transformed>, double) case, the corresponding
+// operator/ is added in parameters_derivative.h.
+template <class T, class S>
+inline auto elemDiv(const Matrix<T>& x, const Matrix<S>& y) {
+    using R = std::decay_t<decltype(std::declval<T>() / std::declval<S>())>;
+    Matrix<R> out(x.nrows(), x.ncols(), false);
+    for (std::size_t i = 0; i < x.size(); ++i) out[i] = x[i] / y[i];
+    return out;
+}
+
 inline auto elemDivSafe(const Matrix<double>& x, const Matrix<double>& y, double eps) {
     auto out = x;
     for (std::size_t i = 0; i < x.size(); ++i) out[i] = elemDivSafe(x[i], y[i], eps);

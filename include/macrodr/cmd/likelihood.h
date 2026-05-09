@@ -159,6 +159,9 @@ inline auto calculate_simulated_mlikelihood_diagnostics(const likelihood_algorit
                                              get<Recording>(simulation()));
 }
 
+// Memoization is on by default (per-call cache shared across intervals at the
+// same θ) but can be disabled at runtime by setting MACRODR_MEMOIZE=0 — useful
+// for correctness cross-checks against the cached path.
 auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& likelihood_algorithm,
                                         const var::Parameters_transformed& par, const Experiment& e,
                                         const Recording& r)
@@ -172,22 +175,22 @@ inline auto calculate_simulation_mdlikelihood_predictions(
                                               get<Recording>(simulation()));
 }
 
+// Multi-simulation analytic dlogL evaluation. All n simulations share the same
+// θ; the implementation in the cpp constructs a single FuncMap_St and reuses
+// it across the loop, so the macro and micro Qdt caches stay populated across
+// simulations. Set MACRODR_MEMOIZE=0 in the environment to disable memoization
+// for correctness cross-checks.
+auto calculate_n_simulation_mdlikelihood_predictions_impl(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
+    -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>>;
+
 inline auto calculate_n_simulation_mdlikelihood_predictions(
     const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
     const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
     -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>> {
-
-    std::vector<dMacro_State_Ev_gradient_all> results;
-    results.reserve(simulation.size());
-    for (const  auto& sim : simulation){
-        auto res = calculate_mdlikelihood_predictions(likelihood_algorithm, par, e,
-                                              get<Recording>(sim()));
-        if (!res){
-            return res.error();
-        }
-        results.push_back(std::move(res.value()));
-    }
-    return results;
+    return calculate_n_simulation_mdlikelihood_predictions_impl(likelihood_algorithm, par, e,
+                                                                 simulation);
 }
 
 // Numerical Fisher information via the likelihood_algorithm_type variant —

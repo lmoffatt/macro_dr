@@ -9,11 +9,32 @@
 #include "function_memoization.h"
 #include "maybe_error.h"
 #include "micro_full.h"
+#include "micro_types.h"  // Calc_micro_Qdt*_step tags + micro_Qdt* output types
 #include "models_used.h"
 #include "parallel_tempering.h"
 #include "parameters.h"
 //#include "parameters_derivative.h"
 #include "qmodel.h"
+
+namespace macrodr {
+
+// Forward declarations for the Micro_Qdt-family lambda bodies. Definitions live
+// in micro_monoid.h (which sits below qmodel.h in the include order, so it
+// can't be included here without breaking the cycle qmodel ↔ micro_monoid).
+// The function templates are instantiated only when the function-table lambdas
+// are actually called, by which time any TU using them has already included
+// micro_monoid.h and the definitions are visible.
+template <class FT, class M>
+auto micro_Qdtg_step_call(FT& f, const M& m, const Agonist_step& t_step, double fs,
+                          std::size_t Nchannels);
+template <class FT, class M>
+auto micro_Qdtm_step_call(FT& f, const M& m, const Agonist_step& t_step, double fs,
+                          std::size_t Nchannels);
+template <class FT, class M>
+auto micro_Qdt_step_call(FT& f, const M& m, const Agonist_step& t_step, double fs,
+                         std::size_t Nchannels);
+
+}  // namespace macrodr
 
 namespace macrodr::cmd {
 
@@ -127,6 +148,45 @@ inline auto get_function_Table_maker_St(std::string filename, std::size_t sampli
                     var::Memoiza_all_values<
                         Maybe_error<var::Derivative<Qdtm, var::Parameters_transformed>>, Agonist_step,
                         double>>{}),
+            // Micro_Qdt-family memoizers — same key shape as Calc_Qdt_step plus
+            // Nchannels (the convolution targets the (k+N-1 choose k-1)-dim
+            // unordered microstate space, so output depends on Nchannels).
+            var::Single_Thread_Memoizer(
+                var::F(Calc_micro_Qdtg_step{},
+                       [](auto& f, auto& m, auto& t_step, double fs, std::size_t Nchannels) {
+                           return micro_Qdtg_step_call(
+                               std::forward<decltype(f)>(f), m, t_step, fs, Nchannels);
+                       }),
+                var::Memoiza_overload<
+                    var::Memoiza_all_values<Maybe_error<micro_Qdtg>,
+                                            Agonist_step, double, std::size_t>,
+                    var::Memoiza_all_values<
+                        Maybe_error<var::Derivative<micro_Qdtg, var::Parameters_transformed>>,
+                        Agonist_step, double, std::size_t>>{}),
+            var::Single_Thread_Memoizer(
+                var::F(Calc_micro_Qdtm_step{},
+                       [](auto& f, auto& m, auto& t_step, double fs, std::size_t Nchannels) {
+                           return micro_Qdtm_step_call(
+                               std::forward<decltype(f)>(f), m, t_step, fs, Nchannels);
+                       }),
+                var::Memoiza_overload<
+                    var::Memoiza_all_values<Maybe_error<micro_Qdtm>,
+                                            Agonist_step, double, std::size_t>,
+                    var::Memoiza_all_values<
+                        Maybe_error<var::Derivative<micro_Qdtm, var::Parameters_transformed>>,
+                        Agonist_step, double, std::size_t>>{}),
+            var::Single_Thread_Memoizer(
+                var::F(Calc_micro_Qdt_step{},
+                       [](auto& f, auto& m, auto& t_step, double fs, std::size_t Nchannels) {
+                           return micro_Qdt_step_call(
+                               std::forward<decltype(f)>(f), m, t_step, fs, Nchannels);
+                       }),
+                var::Memoiza_overload<
+                    var::Memoiza_all_values<Maybe_error<micro_Qdt>,
+                                            Agonist_step, double, std::size_t>,
+                    var::Memoiza_all_values<
+                        Maybe_error<var::Derivative<micro_Qdt, var::Parameters_transformed>>,
+                        Agonist_step, double, std::size_t>>{}),
             // var::Time_it(
             //     var::F(Calc_Qdt_step{},
             //            [](auto &&...x) {
@@ -291,6 +351,24 @@ inline auto get_function_Table_maker_St_no_Qdt_memoization(
                        auto ma = Macro_DMR{};
 
                        return ma.calc_Qdtm_agonist_step(std::forward<decltype(f)>(f), m, t_step, fs);
+                   }),
+            // Micro_Qdt-family — direct (no memoization). Mirrors the macro
+            // entries above so the dispatch in micro_monoid.h finds these tags
+            // via f.f(...) with the same single-evaluation semantics.
+            var::F(Calc_micro_Qdtg_step{},
+                   [](auto& f, auto& m, auto& t_step, double fs, std::size_t Nchannels) {
+                       return micro_Qdtg_step_call(
+                           std::forward<decltype(f)>(f), m, t_step, fs, Nchannels);
+                   }),
+            var::F(Calc_micro_Qdtm_step{},
+                   [](auto& f, auto& m, auto& t_step, double fs, std::size_t Nchannels) {
+                       return micro_Qdtm_step_call(
+                           std::forward<decltype(f)>(f), m, t_step, fs, Nchannels);
+                   }),
+            var::F(Calc_micro_Qdt_step{},
+                   [](auto& f, auto& m, auto& t_step, double fs, std::size_t Nchannels) {
+                       return micro_Qdt_step_call(
+                           std::forward<decltype(f)>(f), m, t_step, fs, Nchannels);
                    }),
 
             var::F(Calc_Qdt{},

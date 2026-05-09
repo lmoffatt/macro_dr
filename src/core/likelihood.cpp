@@ -14,6 +14,7 @@
 #include <chrono>
 #include <concepts>
 #include <cstddef>
+#include <cstdlib>  // std::getenv
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -230,12 +231,28 @@ auto calculate_mlikelihood_diagnostics(const likelihood_algorithm_type& modelLik
         modelLikelihood_v);
 }
 
-auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLikelihood_v,
-                                        const var::Parameters_transformed& par, const Experiment& e,
-                                        const Recording& r)
-    -> Maybe_error<dMacro_State_Ev_gradient_all> {
-    auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+namespace {
 
+// Runtime memoization toggle via env var. Default is on; set MACRODR_MEMOIZE=0
+// to disable for correctness cross-checks against the cached path. Examples:
+//   MACRODR_MEMOIZE=0    → disable
+//   (anything else)      → enable
+inline bool resolve_memoize_flag(bool /*ignored — kept for future explicit overrides*/) {
+    auto const* env = std::getenv("MACRODR_MEMOIZE");
+    if (env != nullptr && env[0] == '0' && env[1] == '\0') return false;
+    return true;
+}
+
+// Single-simulation visit dispatch shared by both the public single-call entry
+// point and the multi-simulation loop. Takes ftbl3 by reference so that the
+// caller can hoist its construction across many calls at the same θ — that's
+// the cache-sharing win for the simulation loop.
+template <class FuncTable>
+auto calculate_mdlikelihood_predictions_visit(const likelihood_algorithm_type& modelLikelihood_v,
+                                              FuncTable& ftbl3,
+                                              const var::Parameters_transformed& par,
+                                              const Experiment& e, const Recording& r)
+    -> Maybe_error<dMacro_State_Ev_gradient_all> {
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_gradient_all> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
@@ -251,6 +268,58 @@ auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLi
             return result;
         },
         modelLikelihood_v);
+}
+
+}  // namespace
+
+auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLikelihood_v,
+                                        const var::Parameters_transformed& par, const Experiment& e,
+                                        const Recording& r)
+    -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    bool memoize = resolve_memoize_flag(true);
+    if (memoize) {
+        auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+        return calculate_mdlikelihood_predictions_visit(modelLikelihood_v, ftbl3, par, e, r);
+    } else {
+        auto ftbl3 = get_function_Table_maker_St_no_Qdt_memoization("dummy", 100, 100)();
+        return calculate_mdlikelihood_predictions_visit(modelLikelihood_v, ftbl3, par, e, r);
+    }
+}
+
+// Multi-simulation loop. All simulations are at the same θ, so the FuncMap_St
+// cache is shareable across them — the macro Qdt and the (now memoized) micro
+// Qdt convolutions get computed once per (Agonist_step, fs[, Nchannels]) instead
+// of once per simulation. For n_simulations = 4 this is a 4× reduction on the
+// hot path. Numerical FIM is left untouched (different θ per call there).
+//
+// `memoize=false` swaps to the no-memoization function table, useful for
+// correctness cross-checks. The two table makers return different types, so
+// the dispatch is at construction; the visit helper is templated on FuncTable.
+auto calculate_n_simulation_mdlikelihood_predictions_impl(
+    const likelihood_algorithm_type& modelLikelihood_v, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulations)
+    -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>> {
+    bool memoize = resolve_memoize_flag(true);
+
+    auto run_loop = [&](auto& ftbl3) -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>> {
+        std::vector<dMacro_State_Ev_gradient_all> results;
+        results.reserve(simulations.size());
+        for (auto const& sim : simulations) {
+            auto res = calculate_mdlikelihood_predictions_visit(modelLikelihood_v, ftbl3, par, e,
+                                                                get<Recording>(sim()));
+            if (!res) return res.error();
+            results.push_back(std::move(res.value()));
+        }
+        return results;
+    };
+
+    if (memoize) {
+        auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+        return run_loop(ftbl3);
+    } else {
+        auto ftbl3 = get_function_Table_maker_St_no_Qdt_memoization("dummy", 100, 100)();
+        return run_loop(ftbl3);
+    }
 }
 
 // Numerical Fisher information via the likelihood_algorithm_type variant.

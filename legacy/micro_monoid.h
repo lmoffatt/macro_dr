@@ -51,7 +51,7 @@ inline std::vector<std::size_t> index_to_microstate(std::size_t idx, std::size_t
     return out;
 }
 
-inline std::size_t microstate_to_index(std::vector<std::size_t> const& n, 
+inline std::size_t microstate_to_index(std::vector<std::size_t> const& n,
                                         std::size_t N,
                                        std::size_t k) {
     std::size_t idx = 0;
@@ -64,7 +64,42 @@ inline std::size_t microstate_to_index(std::vector<std::size_t> const& n,
         remaining -= ni;
     }
     return idx;
-                                       
+
+}
+
+// Multinomial coefficient  N! / (n_0! · n_1! · … · n_{k-1}!)  for an unordered
+// channel-count vector n with total = N.  Computed multiplicatively to avoid
+// overflowing factorials for moderate N.
+//
+// Used in P_to_micro_P (and downstream) to undo the multinomial over-counting
+// that arises when projecting an ordered N-channel transition matrix to the
+// unordered count space: the codebase's convolution
+//     P_out(i,j) += P0(i1,j1) · P1(i2,j2)        (line 195)
+// sums over BOTH start orderings (the M(i) decompositions of i_states) and
+// end orderings (the M(j) decompositions of j_states). Summing over end
+// orderings is correct (gives the unordered transition probability — the
+// multinomial weighting of the end is required); summing over start orderings
+// over-counts each row by M(i). The final out.first thus has row i sum = M(i).
+// Dividing each row by M(i) yields the proper row-stochastic ensemble
+// transition matrix that  unordered_probs · P  consumers expect.
+//
+// Apply ONLY at the final level (after power_semigroup completes). Dividing
+// at intermediate levels would feed row-stochastic matrices into the next
+// squaring, where the convolution would then yield row sums equal to the
+// number of unordered decompositions of the next-level state — strictly
+// less than M(parent) when the parent has nested multinomial structure.
+// One division at the end recovers the correct M(i_at_Nchannels) compensation.
+inline double multinomial_count(std::vector<std::size_t> const& n) {
+    std::size_t total = 0;
+    for (auto x : n) total += x;
+    double result = 1.0;
+    std::size_t remaining = total;
+    for (auto x : n) {
+        for (std::size_t k = 0; k < x; ++k)
+            result *= static_cast<double>(remaining - k) / static_cast<double>(k + 1);
+        remaining -= x;
+    }
+    return result;
 }
 
 
@@ -116,34 +151,44 @@ template <class C_g>
             using Matr = Matrix<Transfer_Op_to<C_g, double>>;
 
             auto out = power_semigroup(
-                [k](std::pair<Matr, std::size_t> PN0,
-                    std::pair<Matr, std::size_t> PN1) {
-                    auto N0 = PN0.second;
-                    auto N1 = PN1.second;
-                    auto& P0 = PN0.first;
-                    auto& P1 = PN1.first;
+                [k](std::pair<Matr, std::size_t> gN0,
+                    std::pair<Matr, std::size_t> gN1) {
+                    auto N0 = gN0.second;
+                    auto N1 = gN1.second;
+                    auto& g0 = gN0.first;
+                    auto& g1 = gN1.first;
 
                     auto num_states = num_full_states_of_new(N0 + N1, k);
-                    Matr P_out(1, num_states);
+                    Matr g_out(1, num_states);
+                    Matrix<double> state_count(num_states, 1UL, 0.0);
                     // g/gmean_i/gvar_i seeds are column vectors (k,1); after
-                    // the first squaring P0/P1 become row vectors
+                    // the first squaring g0/g1 become row vectors
                     // (1, num_states_so_far). Iterate by .size() so the
                     // microstate enumeration is independent of layout.
-                    for (std::size_t i = 0; i < P0.size(); ++i) {
+                    for (std::size_t i = 0; i < g0.size(); ++i) {
                         auto i_states = index_to_microstate(i, N0, k);
-                        for (std::size_t j = 0; j < P1.size(); ++j) {
+                        for (std::size_t j = 0; j < g1.size(); ++j) {
                             auto j_states = index_to_microstate(j, N1, k);
                             auto ij_states = i_states + j_states;
                             auto ij_index =
                                 microstate_to_index(ij_states, N0 + N1, k);
                             // Sum over all decomposition paths (i, j) that
                             // map to ij_index — each contributes g(i)+g(j).
-                            P_out[ij_index] += P0[i] + P1[j];
+                            g_out[ij_index] += g0[i] + g1[j];
+                            state_count(ij_index, 0) += 1;
                         }
                     }
-                    return std::make_pair(P_out, N0 + N1);
+                    // Per-merge: divide each cell by the number of (i, j) decompositions
+                    // that landed there. For 1D additive (g, gmean_i, gvar_i) the cell
+                    // already sums g_total over orderings; dividing by ordering count
+                    // recovers the per-state total conductance. The mixed-cell elemDiv
+                    // overload (matrix.h) handles g_out: Matrix<Derivative<double>>
+                    // vs state_count: Matrix<double> in the derivative path.
+                    g_out = elemDiv(g_out, state_count);
+                    return std::make_pair(g_out, N0 + N1);
                 },
                 std::make_pair(var::inside_out(t_g()), std::size_t{1}), Nchannels);
+
             if constexpr (U<C_g, g>) {
                 return build<micro_g>(var::outside_in(std::move(out.first), t_g));
             } else if constexpr (U<C_g, gmean_i>) {
@@ -171,23 +216,25 @@ template <class C_g>
 
                     auto num_states = num_full_states_of_new(N0 + N1, k);
                     Matr P_out(num_states, num_states);
+                    Matrix<double> state_count(num_states, 1UL, 0.0);
                     // i1, j1 index N0-microstates (rows/cols of P0).
                     // i2, j2 index N1-microstates (rows/cols of P1).
                     for (std::size_t i1 = 0; i1 < P0.nrows(); ++i1) {
                         auto i1_states = index_to_microstate(i1, N0, k);
-                        for (std::size_t j1 = 0; j1 < P0.ncols(); ++j1) {
-                            auto j1_states = index_to_microstate(j1, N0, k);
-                            for (std::size_t i2 = 0; i2 < P1.nrows(); ++i2) {
+                        for (std::size_t i2 = 0; i2 < P1.nrows(); ++i2) {
                                 auto i2_states =
                                     index_to_microstate(i2, N1, k);
+                                    auto i_states = i1_states + i2_states;
+                                    auto i_index = microstate_to_index(
+                                        i_states, N0 + N1, k);
+                                    state_count(i_index, 0) += 1;  
+                            for (std::size_t j1 = 0; j1 < P0.ncols(); ++j1) {
+                            auto j1_states = index_to_microstate(j1, N0, k);
                                 for (std::size_t j2 = 0; j2 < P1.ncols();
                                      ++j2) {
                                     auto j2_states =
                                         index_to_microstate(j2, N1, k);
-                                    auto i_states = i1_states + i2_states;
                                     auto j_states = j1_states + j2_states;
-                                    auto i_index = microstate_to_index(
-                                        i_states, N0 + N1, k);
                                     auto j_index = microstate_to_index(
                                         j_states, N0 + N1, k);
                                     // Joint transition probability convolves
@@ -198,16 +245,29 @@ template <class C_g>
                             }
                         }
                     }
+                    // state_count(i, 0) counts the number of (i1, i2) decompositions
+                    // of i_states. Divide row i of P_out by state_count(i, 0) so each
+                    // row sums to 1 (row-stochastic ensemble transition).
+                    for (std::size_t i = 0; i < P_out.nrows(); ++i) {
+                        double n = state_count(i, 0);
+                        if (n > 1.0) {
+                            double inv_n = 1.0 / n;
+                            for (std::size_t j = 0; j < P_out.ncols(); ++j) {
+                                P_out(i, j) = P_out(i, j) * inv_n;
+                            }
+                        }
+                    }
                     return std::make_pair(P_out, N0 + N1);
                 },
                 std::make_pair(var::inside_out(t_P()), std::size_t{1}), Nchannels);
-                if constexpr (U<C_P, P>) {
-                    return build<micro_P>(var::outside_in(std::move(out.first), t_P));
-                } else if constexpr (U<C_P, P_half>) {
-                    return build<micro_P_half>(var::outside_in(std::move(out.first), t_P));
-                } else {
-                    static_assert(always_false_v<C_P>, "unhandled P type");
-                }
+
+            if constexpr (U<C_P, P>) {
+                return build<micro_P>(var::outside_in(std::move(out.first), t_P));
+            } else if constexpr (U<C_P, P_half>) {
+                return build<micro_P_half>(var::outside_in(std::move(out.first), t_P));
+            } else {
+                static_assert(always_false_v<C_P>, "unhandled P type");
+            }
      }
     
     static auto calc_micro_P_to_P_mean(std::size_t k, std::size_t Nchannels) {
@@ -238,6 +298,7 @@ template <class C_g>
 
                     auto num_states = num_full_states_of_new(N0 + N1, k);
                     Matr gij_out(num_states, num_states);
+                    Matrix<double> state_count(num_states, num_states, 0.0);
                     for (std::size_t i1 = 0; i1 < gij_0.nrows(); ++i1) {
                         auto i1_states = index_to_microstate(i1, N0, k);
                         for (std::size_t j1 = 0; j1 < gij_0.ncols(); ++j1) {
@@ -262,13 +323,20 @@ template <class C_g>
                                     // gij_0(i1,j1) + gij_1(i2,j2).
                                     gij_out(i_index, j_index) +=
                                         gij_0(i1, j1) + gij_1(i2, j2);
+                                    state_count(i_index, j_index) += 1;    
                                 }
                             }
                         }
                     }
+                    // Per-merge: state_count(i, j) counts (i1, j1, i2, j2) tuples that
+                    // landed in (i_index, j_index). For 2D additive, divide each cell by
+                    // its tuple count to recover the per-(start, end) joint conductance.
+                    gij_out = elemDiv(gij_out, state_count);
                     return std::make_pair(gij_out, N0 + N1);
                 },
                 std::make_pair(var::inside_out(t_gij()), std::size_t{1}), Nchannels);
+
+
             if constexpr (U<C_gij, gmean_ij>) {
                 return build<micro_gmean_ij>(var::outside_in(std::move(out.first), t_gij));
             } else if constexpr (U<C_gij, gvar_ij>) {
@@ -284,7 +352,7 @@ template <class C_g>
      template <class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
     auto calc_micro_Qdtg(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs, std::size_t Num_channels)
-        -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtg>> {
+        -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtg>> {
         if constexpr (std::is_same_v<Nothing, decltype(f[Calc_micro_Qdtg_step{}])>)
             return calc_micro_Qdtg_agonist_step(f, m, t_step, fs, Num_channels);
         else
@@ -299,7 +367,7 @@ template <class C_g>
                                 const Agonist_step& t_step, double fs, std::size_t Num_chanels)
         -> Maybe_error<Transfer_Op_to<C_micro_Patch_Model, micro_Qdtg>> {
         
-        auto Maybe_Qdt= Macro_DMR{}.calc_Qdtg<Policy>(f, m, t_step, fs);
+        auto Maybe_Qdt= Macro_DMR{}.calc_Qdtg(f, m, t_step, fs);
         if (!Maybe_Qdt) return Maybe_Qdt.error();
         auto const& t_Qdt = Maybe_Qdt.value();
         auto  P_half_m = P_to_micro_P(get<P_half>(t_Qdt), Num_chanels);
@@ -335,7 +403,7 @@ template <class C_g>
     auto calc_micro_Qdtm_agonist_step(FunctionTable& f, const C_Patch_Model& m,
                                 const Agonist_step& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtm>> {
-        auto maybe_Qdt = Macro_DMR{}.calc_Qdtm_agonist_step(f, m, t_step, fs, Nchannels);
+        auto maybe_Qdt = Macro_DMR{}.calc_Qdtm_agonist_step(f, m, t_step, fs);
         if (!maybe_Qdt)
             return maybe_Qdt.error();
         auto& Qdt = maybe_Qdt.value();
@@ -345,6 +413,27 @@ template <class C_g>
         auto t_gvar_i    = g_to_micro_g(get<gvar_i>(Qdt), Nchannels);
         return build<micro_Qdtm>(get<number_of_samples>(Qdt), get<min_P>(Qdt), std::move(t_micro_P), std::move(t_P_to_Pmean),
                                  std::move(t_gmean_i), std::move(t_gvar_i));
+    }
+
+    // Per-Agonist_step micro_Qdt builder for the averaging=2 (joint) algorithms.
+    // Mirrors calc_micro_Qdtm_agonist_step but consumes the joint-moment Qdt
+    // (gmean_ij / gvar_ij) and produces the joint-moment micro_Qdt.
+    template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
+        requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
+    auto calc_micro_Qdt_agonist_step(FunctionTable& f, const C_Patch_Model& m,
+                                      const Agonist_step& t_step, double fs, std::size_t Nchannels)
+        -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdt>> {
+        auto maybe_Qdt = Macro_DMR{}.calc_Qdt_agonist_step(f, m, t_step, fs);
+        if (!maybe_Qdt)
+            return maybe_Qdt.error();
+        auto& Qdt = maybe_Qdt.value();
+        auto t_micro_P    = P_to_micro_P(get<P>(Qdt), Nchannels);
+        auto t_P_to_Pmean = calc_micro_P_to_P_mean(get<P>(Qdt)().ncols(), Nchannels);
+        auto t_gmean_ij   = gij_to_micro_gij(get<gmean_ij>(Qdt), Nchannels);
+        auto t_gvar_ij    = gij_to_micro_gij(get<gvar_ij>(Qdt), Nchannels);
+        return build<micro_Qdt>(get<number_of_samples>(Qdt), get<min_P>(Qdt),
+                                std::move(t_micro_P), std::move(t_P_to_Pmean),
+                                std::move(t_gmean_ij), std::move(t_gvar_ij));
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
@@ -363,15 +452,15 @@ template <class C_g>
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
     // requires(U<C_Patch_Model, Patch_Model>)
-    auto calc_micro_Qdtm(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs)
+    auto calc_micro_Qdtm(FunctionTable& f, const C_Patch_Model& m, const Agonist_step& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtm>> {
         if constexpr (std::is_same_v<Policy, StabilizerPolicyEnabled>) {
             if constexpr (std::is_same_v<Nothing, decltype(f[Calc_micro_Qdtm_step{}])>)
-                return calc_micro_Qdtm_agonist_step<Policy>(f, m, t_step, fs);
+                return calc_micro_Qdtm_agonist_step<Policy>(f, m, t_step, fs, Nchannels);
             else
-                return f.f(Calc_micro_Qdtm_step{}, m, t_step, fs);
+                return f.f(Calc_micro_Qdtm_step{}, m, t_step, fs, Nchannels);
         } else {
-            return calc_micro_Qdtm_agonist_step<Policy>(f, m, t_step, fs);
+            return calc_micro_Qdtm_agonist_step<Policy>(f, m, t_step, fs, Nchannels);
         }
     }
 
@@ -380,6 +469,12 @@ template <class C_g>
     // requires(U<C_Patch_Model, Patch_Model> )
     auto calc_micro_Qdt(FunctionTable& f, const C_Patch_Model& m, const std::vector<Agonist_step>& t_step,
                   double fs, std::size_t Nchannels) -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdt>> {
+        // Single-step short-circuit hits the memoizable single-Agonist_step overload
+        // (mirrors Macro_DMR::calc_Qdt at qmodel.h:2890-2891). Multi-step recordings
+        // still take the recompute path below; handling those with caching requires
+        // a per-Nchannels micro-Qdt composition that doesn't exist yet.
+        if (t_step.size() == 1)
+            return calc_micro_Qdt<Policy>(f, m, t_step[0], fs, Nchannels);
 
         auto maybe_Qdt = Macro_DMR{}.calc_Qdt(f, m, t_step, fs);
         if (!maybe_Qdt)
@@ -397,6 +492,9 @@ template <class C_g>
     auto calc_micro_Qdtg(FunctionTable& f, const C_Patch_Model& m,
                    const std::vector<Agonist_step>& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtg>> {
+        // Single-step short-circuit; see notes on calc_micro_Qdt above.
+        if (t_step.size() == 1)
+            return calc_micro_Qdtg(f, m, t_step[0], fs, Nchannels);
 
         auto maybe_Qdt = Macro_DMR{}.calc_Qdtg(f, m, t_step, fs);
         if (!maybe_Qdt)
@@ -413,6 +511,10 @@ template <class C_g>
     auto calc_micro_Qdtm(FunctionTable& f, const C_Patch_Model& m,
                    const std::vector<Agonist_step>& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtm>> {
+        // Single-step short-circuit; see notes on calc_micro_Qdt above.
+        if (t_step.size() == 1)
+            return calc_micro_Qdtm<Policy>(f, m, t_step[0], fs, Nchannels);
+
          auto maybe_Qdt = Macro_DMR{}.calc_Qdtm(f, m, t_step, fs);
         if (!maybe_Qdt) 
             return maybe_Qdt.error();
@@ -929,8 +1031,13 @@ template <class C_g>
        // For avg=2, build a new micro_P_state by-value from diag(prior)·micro_P.
        // Use auto&& to bind to both the lvalue ref (avg<2) and the rvalue (avg=2),
        // while keeping the consumer call shape `t_P_state()` uniform.
-       auto&& t_P_state = [&t_micro_Qdt, &t_micro_prior]() -> decltype(auto) {
-            if constexpr (averaging::value < 2)
+       // avg=0 evaluates evidence at the interval midpoint, so use the half-stepped
+       // p_micro_P_state (start→middle). avg=1 uses the start-of-interval prior with
+       // gmean_i/gvar_i (full-interval averages). avg=2 builds the joint (start,end).
+       auto&& t_P_state = [&t_micro_Qdt, &t_micro_prior, &p_micro_P_state]() -> decltype(auto) {
+            if constexpr (averaging::value == 0)
+                return (p_micro_P_state);
+            else if constexpr (averaging::value == 1)
                 return get<micro_P_state>(t_micro_prior());
             else if constexpr (averaging::value == 2)
                 return build<micro_P_state>(diag(get<micro_P_state>(t_micro_prior())()) * get<micro_P>(t_micro_Qdt)());
@@ -1163,11 +1270,13 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
             else if constexpr (averaging::value == 2) return get<micro_gvar_ij>(t_micro_Qdt);
             else static_assert("invalid averaging");
         }();
-        // See sister non-recursive version: avg<2 returns a ref, avg=2 builds a new
-        // micro_P_state from diag(prior)·micro_P. auto&& accepts both kinds; the
-        // micro_P_state wrapper keeps `t_P_state()` callable downstream.
-        auto&& t_P_state = [&t_micro_Qdt, &t_micro_prior]() -> decltype(auto) {
-            if constexpr (averaging::value < 2)
+        // avg=0 evaluates evidence at the interval midpoint, so use the half-stepped
+        // p_micro_P_state (start→middle). avg=1 uses the start-of-interval prior with
+        // gmean_i/gvar_i (full-interval averages). avg=2 builds the joint (start,end).
+        auto&& t_P_state = [&t_micro_Qdt, &t_micro_prior, &p_micro_P_state]() -> decltype(auto) {
+            if constexpr (averaging::value == 0)
+                return (p_micro_P_state);
+            else if constexpr (averaging::value == 1)
                 return get<micro_P_state>(t_micro_prior());
             else
                 return build<micro_P_state>(diag(get<micro_P_state>(t_micro_prior())()) * get<micro_P>(t_micro_Qdt)());
@@ -2472,8 +2581,28 @@ template <bool dynamic, class averaging,  class C_micro_Patch_State, class C_mic
         return std::move(Maybe_run.value());
     }
 
-    
+
 };
+
+// Definitions for the function-table lambda wrappers forward-declared in
+// CLI_function_table.h. We can't include micro_monoid.h there (circular with
+// qmodel.h), so the wrappers live here, after Micro_DMR is fully defined, and
+// are instantiated only when the function-table memoizer lambdas actually fire.
+template <class FT, class M>
+auto micro_Qdtg_step_call(FT& f, const M& m, const Agonist_step& t_step, double fs,
+                          std::size_t Nchannels) {
+    return Micro_DMR{}.calc_micro_Qdtg_agonist_step(f, m, t_step, fs, Nchannels);
+}
+template <class FT, class M>
+auto micro_Qdtm_step_call(FT& f, const M& m, const Agonist_step& t_step, double fs,
+                          std::size_t Nchannels) {
+    return Micro_DMR{}.calc_micro_Qdtm_agonist_step(f, m, t_step, fs, Nchannels);
+}
+template <class FT, class M>
+auto micro_Qdt_step_call(FT& f, const M& m, const Agonist_step& t_step, double fs,
+                         std::size_t Nchannels) {
+    return Micro_DMR{}.calc_micro_Qdt_agonist_step(f, m, t_step, fs, Nchannels);
+}
 
 
 
