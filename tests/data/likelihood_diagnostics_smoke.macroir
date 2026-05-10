@@ -24,7 +24,9 @@ macro_IRV = build_likelihood_function(
     recursive_approximation=1,
     averaging_approximation=2,
     variance_approximation=1,
-    taylor_variance_correction=0)
+    taylor_variance_correction=0,
+    micro_approximation=0,
+    taylor_qdt_approximation=0)
 
 dlikelihood_predictions = calc_dlikelihood_predictions(
     likelihood_algorithm=macro_IRV,
@@ -32,8 +34,17 @@ dlikelihood_predictions = calc_dlikelihood_predictions(
     experiment=experiment,
     data_series=simulations)
 
+numerical_fisher_information = calc_numerical_fisher_information(
+    likelihood_algorithm=macro_IRV,
+    parameters=par_tr,
+    experiment=experiment,
+    data_series=simulations,
+    h_rel=1e-5,
+    decimate=1)
+
 diagnostics = likelihood_derivative_basic_diagnostics(
     dlikelihood_predictions=dlikelihood_predictions,
+    numerical_fisher_information=numerical_fisher_information,
     n_boostrap_samples=2,
     probits=[0.025,0.975],
     seed=42,
