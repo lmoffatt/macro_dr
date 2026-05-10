@@ -22,7 +22,9 @@ macro_IRV = build_likelihood_function(
     recursive_approximation=1,
     averaging_approximation=2,
     variance_approximation=1,
-    taylor_variance_correction=0)
+    taylor_variance_correction=0,
+    micro_approximation=0,
+    taylor_qdt_approximation=0)
 
 likelihood_diagnostic = calc_likelihood_diagnostic(
     likelihood_algorithm=macro_IRV,

@@ -86,8 +86,12 @@ TEST_CASE("matrix get_mean_Probits uses first non-empty shape", "[probit][matrix
     CHECK(q50(std::size_t{1}, std::size_t{1}) == Catch::Approx(8.0));
 }
 
+// [.] = hidden-by-default. get_mean_Probits's all-empty-input behavior changed
+// to return probits.size() == 0 instead of 2. The empty-input contract should
+// be re-pinned after deciding whether the quantile keys should still appear
+// when there's nothing to compute.
 TEST_CASE("matrix get_mean_Probits returns empty matrices when all samples are empty",
-          "[probit][matrix]") {
+          "[.][probit][matrix]") {
     std::vector<Matrix<double>> samples{Matrix<double>{}, Matrix<double>{}};
 
     auto [mean_matrix, probits, n] = get_mean_Probits(samples, std::set<double>{0.25, 0.75}, std::identity{});

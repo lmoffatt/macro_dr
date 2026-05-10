@@ -7,6 +7,7 @@
 #include <qmodel.h>
 #include <qmodel_types.h>
 #include <cstddef>
+#include <tuple>
 #include <utility>
 #include "abstract_algebra.h"
 
@@ -28,9 +29,19 @@ inline std::size_t num_full_states_of_new(std::size_t N_channels, std::size_t k_
     return r;
 }
 
-// Inverse of micro_full_detail::index_of_microstate: given a lex-order index
-// into the enumeration produced by create_Micro_state_Num_ch(N, k), return the
+// Inverse of micro_full_detail::index_of_microstate: given an index into the
+// enumeration produced by create_Micro_state_Num_ch(N, k), return the
 // occupation vector of length k whose entries sum to N.
+//
+// Convention: index 0 = (N, 0, …, 0) (= "all channels in macro state 0"), and
+// index M-1 = (0, …, 0, N) (= "all in macro state k-1"). At N=1, microstate
+// enum index equals macro state index (e_i = unit vector at position i).
+//
+// Implementation note: the algorithm body still enumerates with column k-1
+// cycling fastest (lex on a reversed column order). The internal computation
+// is identical to the standard lex-on-column-0-first algorithm — we just
+// swap which physical column the result is written to, so the natural
+// alignment is "macro state j ↔ microstate column j" instead of reversed.
 inline std::vector<std::size_t> index_to_microstate(std::size_t idx, std::size_t N,
                                                     std::size_t k) {
     if (k == 0) {
@@ -44,10 +55,10 @@ inline std::vector<std::size_t> index_to_microstate(std::size_t idx, std::size_t
             idx -= num_full_states_of_new(remaining - ni, k - 1 - i);
             ++ni;
         }
-        out[i] = ni;
+        out[k - 1 - i] = ni;
         remaining -= ni;
     }
-    out[k - 1] = remaining;
+    out[0] = remaining;
     return out;
 }
 
@@ -57,7 +68,7 @@ inline std::size_t microstate_to_index(std::vector<std::size_t> const& n,
     std::size_t idx = 0;
     std::size_t remaining = N;
     for (std::size_t i = 0; i + 1 < k; ++i) {
-        std::size_t ni = n[i];
+        std::size_t ni = n[k - 1 - i];
         for (std::size_t j = 0; j < ni; ++j) {
             idx += num_full_states_of_new(remaining - j, k - 1 - i);
         }
@@ -346,7 +357,183 @@ template <class C_g>
             }
      }
     
+// =============================================================================
+// Why these functions exist (microQdt construction strategy)
+// =============================================================================
+// For N independent channels with k macro states, the microstate space has
+// M = C(N+k-1, k-1) entries. Earlier code (micro_full.h's lifted-Q path) built
+// micro_Qdt by lifting the macro Q to an M × M matrix and computing
+// expm(Q_micro · dt) directly. That approach fails on three counts at the
+// scales we care about:
+//
+//   1. Eigendecomposition of the lifted Q is ill-conditioned at large N. The
+//      lifted Q has clustered eigenvalues (each macro decay rate appears n
+//      times for n channels), and macro_dmr.calc_Qdt_eig's eigenvector-
+//      derivative formulas blow up — score noise floors at ~1e-5 for Nch ≥ 10
+//      with k = 2. See project memory `project_qdt_taylor_seed_bug` for the
+//      original surface of this issue.
+//
+//   2. The Taylor (scaling-and-squaring) fallback was added precisely to
+//      sidestep (1), but it scales poorly: expm of an M × M dense matrix at
+//      sufficient precision is O(M³) per step, and M grows combinatorially.
+//      For Nch = 100, k = 2, M ≈ 5000 — too slow for parameter-scan workloads.
+//      Plus the seed bug above corrupted its moment outputs.
+//
+//   3. Schur+Parlett+Pade-Van Loan was added as a numerically robust fallback
+//      to (1). It works but is even slower than Taylor — the Schur reduction
+//      itself is O(M³) on top of everything else.
+//
+// New strategy: compute Qdt at the **macro** level (k × k, where eig is
+// well-conditioned and cheap), then **combinatorially lift** the resulting
+// (P, gtotal_ij, gtotal_sqr_ij) triple to microstate granularity via
+// Qdt_to_micro_Qdt below. The lift is the multinomial composition that's
+// exact for i.i.d. channels, with the LTV chain-rule + cross term carrying
+// the joint moments correctly. The expensive expm is done once on a small
+// matrix; the lift is O(M² · log N) and contains no expm.
+//
+// Qdtg_to_micro_Qdtg / Qdtm_to_micro_Qdtm / Qdt_to_micro_Qdt cover avg=0/1/2
+// respectively. All three are wired into the corresponding
+// calc_micro_Qdt*_agonist_step entry points.
+// =============================================================================
 
+template <class C_Qdtg>
+     requires (U<C_Qdtg, Qdtg>)
+     static auto Qdtg_to_micro_Qdtg(const C_Qdtg t_Qdtg, micro_Nchannels Nchannels) {
+            auto t_micro_P_half = P_to_micro_P(get<P_half>(t_Qdtg), Nchannels());
+            auto t_P_to_Pmean   = calc_micro_P_to_P_mean(get<P_half>(t_Qdtg)().ncols(),
+                                                          Nchannels());
+            auto t_micro_g      = g_to_micro_g(get<g>(t_Qdtg), Nchannels());
+            return build<micro_Qdtg>(get<number_of_samples>(t_Qdtg), get<min_P>(t_Qdtg),
+                                     Nchannels,
+                                     std::move(t_micro_P_half), std::move(t_P_to_Pmean),
+                                     std::move(t_micro_g));
+     }
+
+template <class C_Qdtm>
+     requires (U<C_Qdtm, Qdtm>)
+     static auto Qdtm_to_micro_Qdtm(const C_Qdtm t_Qdtm, micro_Nchannels Nchannels) {
+            // Start-only-conditioned (gmean_i, gvar_i) quantities lift via
+            // exchangeable additivity: every decomposition of unordered start
+            // I yields the same (gmean_i_0[i_0] + gmean_i_1[i_1]) sum, so the
+            // unweighted-decomp average that g_to_micro_g implements is exact.
+            // No P-weighting and no LTV between-decomp variance term — those
+            // only appear when conditioning on (start, end) pairs, as in
+            // Qdt_to_micro_Qdt's gmean_ij / gvar_ij path.
+            auto t_micro_P     = P_to_micro_P(get<P>(t_Qdtm), Nchannels());
+            auto t_P_to_Pmean  = calc_micro_P_to_P_mean(get<P>(t_Qdtm)().ncols(),
+                                                         Nchannels());
+            auto t_micro_gmean = g_to_micro_g(get<gmean_i>(t_Qdtm), Nchannels());
+            auto t_micro_gvar  = g_to_micro_g(get<gvar_i>(t_Qdtm), Nchannels());
+            return build<micro_Qdtm>(get<number_of_samples>(t_Qdtm), get<min_P>(t_Qdtm),
+                                     Nchannels,
+                                     std::move(t_micro_P), std::move(t_P_to_Pmean),
+                                     std::move(t_micro_gmean), std::move(t_micro_gvar));
+     }
+
+template <class C_Qdt>
+     requires (U<C_Qdt, Qdt> )
+     static auto Qdt_to_micro_Qdt(const C_Qdt t_Qdt, micro_Nchannels Nchannels) {
+            auto k = get<P>(t_Qdt)().ncols();
+            using Matr = Matrix<Transfer_Op_to<C_Qdt, double>>;
+
+            // Joint lift: propagate (P, gtotal_ij, gtotal_sqr_ij) together so
+            // the gtotal/gsqr merges can use the partner's P at each cell
+            // (chain rule under independent channels). Per-row state_count
+            // matches P_to_micro_P's normalization scheme.
+            auto [N, micro_P_out, micro_gtotal_out, micro_gsqr_out, micro_state_count] =
+            power_semigroup(
+                [k](std::tuple<micro_Nchannels,Matr,Matr,Matr,Matrix<double>> mQdt0,
+                    std::tuple<micro_Nchannels,Matr,Matr,Matr,Matrix<double>> mQdt1)
+                {
+                    auto& [N0, P_0, gtotal_0, gsqr_0, sc_0] = mQdt0;
+                    auto& [N1, P_1, gtotal_1, gsqr_1, sc_1] = mQdt1;
+                    auto num_states = num_full_states_of_new(N0() + N1(), k);
+                    Matr P_out   (num_states, num_states);
+                    Matr gtot_out(num_states, num_states);
+                    Matr gsqr_out(num_states, num_states);
+                    Matrix<double> state_count(num_states, 1UL, 0.0);
+
+                    for (std::size_t i1 = 0; i1 < P_0.nrows(); ++i1) {
+                        auto i1_states = index_to_microstate(i1, N0(), k);
+                        for (std::size_t i2 = 0; i2 < P_1.nrows(); ++i2) {
+                            auto i2_states = index_to_microstate(i2, N1(), k);
+                            auto i_index = microstate_to_index(
+                                i1_states + i2_states, N0() + N1(), k);
+                            state_count(i_index, 0UL) += 1;
+                            for (std::size_t j1 = 0; j1 < P_0.ncols(); ++j1) {
+                                auto j1_states = index_to_microstate(j1, N0(), k);
+                                for (std::size_t j2 = 0; j2 < P_1.ncols(); ++j2) {
+                                    auto j2_states = index_to_microstate(j2, N1(), k);
+                                    auto j_index = microstate_to_index(
+                                        j1_states + j2_states, N0() + N1(), k);
+                                    P_out(i_index, j_index) +=
+                                        P_0(i1, j1) * P_1(i2, j2);
+                                    gtot_out(i_index, j_index) +=
+                                        gtotal_0(i1, j1) * P_1(i2, j2)
+                                        + P_0(i1, j1) * gtotal_1(i2, j2);
+                                    // gtotal_sqr lift: the +2·gtotal_0·gtotal_1
+                                    // term is the channel-axis analog of the
+                                    // sequential-step Qn cross term — it
+                                    // captures E[2·g_0·g_1·dt²·1{j_0,j_1}],
+                                    // which factors into 2·gtotal_0·gtotal_1
+                                    // under independence given labels. Without
+                                    // it gsqr would only carry the within-
+                                    // decomposition second moment and the
+                                    // final gvar = gsqr/P − gmean² would miss
+                                    // the LTV between-decomposition term that
+                                    // calc_Qdtm_eig on the lifted Q includes.
+                                    gsqr_out(i_index, j_index) +=
+                                        gsqr_0(i1, j1) * P_1(i2, j2)
+                                        + P_0(i1, j1) * gsqr_1(i2, j2)
+                                        + 2.0 * gtotal_0(i1, j1) * gtotal_1(i2, j2);
+                                }
+                            }
+                        }
+                    }
+                    // Row-normalize all three matrices by start-decomposition
+                    // count. This must happen INSIDE the merge so the P that
+                    // feeds the next squaring is proper row-stochastic
+                    // transition probability — otherwise the next convolution
+                    // amplifies the un-normalized row sums (matches the
+                    // existing P_to_micro_P pattern at line 251-258).
+                    for (std::size_t i = 0; i < num_states; ++i) {
+                        double n = state_count(i, 0UL);
+                        if (n > 1.0) {
+                            double inv = 1.0 / n;
+                            for (std::size_t j = 0; j < num_states; ++j) {
+                                P_out   (i, j) = P_out   (i, j) * inv;
+                                gtot_out(i, j) = gtot_out(i, j) * inv;
+                                gsqr_out(i, j) = gsqr_out(i, j) * inv;
+                            }
+                        }
+                    }
+                    return std::make_tuple(micro_Nchannels(N0() + N1()),
+                                            std::move(P_out), std::move(gtot_out),
+                                            std::move(gsqr_out), std::move(state_count));
+                },
+                std::make_tuple(micro_Nchannels(1),
+                                var::inside_out(get<P>(t_Qdt)()),
+                                var::inside_out(get<gtotal_ij>(t_Qdt)()),
+                                var::inside_out(get<gtotal_sqr_ij>(t_Qdt)()),
+                                Matrix<double>(1UL, 1UL, 1.0)),
+                Nchannels());
+
+            // P, gtotal, gsqr are now in unordered-microstate normalization.
+            // gmean = gtotal/P, gvar = gsqr/P - gmean².
+            auto micro_gmean_ij_mat = elemDiv(micro_gtotal_out, micro_P_out);
+            auto micro_gvar_ij_mat  = elemDiv(micro_gsqr_out, micro_P_out)
+                                    - elemMult(micro_gmean_ij_mat, micro_gmean_ij_mat);
+            return build<micro_Qdt>(
+                get<number_of_samples>(t_Qdt), get<min_P>(t_Qdt),
+                Nchannels,
+                build<micro_P>(var::outside_in(std::move(micro_P_out), get<P>(t_Qdt))),
+                calc_micro_P_to_P_mean(k, Nchannels()),
+                build<micro_gmean_ij>(
+                    var::outside_in(std::move(micro_gmean_ij_mat), get<gmean_ij>(t_Qdt))),
+                build<micro_gvar_ij>(
+                    var::outside_in(std::move(micro_gvar_ij_mat), get<gvar_ij>(t_Qdt))));
+     }
+    
 
 
      template <class FunctionTable, class C_Patch_Model>
@@ -366,15 +553,9 @@ template <class C_g>
     auto calc_micro_Qdtg_agonist_step(FunctionTable& f, const C_micro_Patch_Model& m,
                                 const Agonist_step& t_step, double fs, std::size_t Num_chanels)
         -> Maybe_error<Transfer_Op_to<C_micro_Patch_Model, micro_Qdtg>> {
-        
-        auto Maybe_Qdt= Macro_DMR{}.calc_Qdtg(f, m, t_step, fs);
+        auto Maybe_Qdt = Macro_DMR{}.calc_Qdtg(f, m, t_step, fs);
         if (!Maybe_Qdt) return Maybe_Qdt.error();
-        auto const& t_Qdt = Maybe_Qdt.value();
-        auto  P_half_m = P_to_micro_P(get<P_half>(t_Qdt), Num_chanels);
-        auto  t_P_to_Pmean = calc_micro_P_to_P_mean(get<P_half>(t_Qdt)().ncols(), Num_chanels);
-        auto  g_micro_v = g_to_micro_g(get<g>(m), Num_chanels);
-        return build<micro_Qdtg>(get<number_of_samples>(t_Qdt), get<min_P>(t_Qdt), std::move(P_half_m),
-                                 std::move(t_P_to_Pmean), std::move(g_micro_v));
+        return Qdtg_to_micro_Qdtg(Maybe_Qdt.value(), micro_Nchannels(Num_chanels));
     }
 
 
@@ -404,15 +585,10 @@ template <class C_g>
                                 const Agonist_step& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtm>> {
         auto maybe_Qdt = Macro_DMR{}.calc_Qdtm_agonist_step(f, m, t_step, fs);
-        if (!maybe_Qdt)
+        if (!maybe_Qdt) {
             return maybe_Qdt.error();
-        auto& Qdt = maybe_Qdt.value();
-        auto t_micro_P = P_to_micro_P(get<P>(Qdt), Nchannels);
-        auto t_P_to_Pmean = calc_micro_P_to_P_mean(get<P>(Qdt)().ncols(), Nchannels);
-        auto t_gmean_i   = g_to_micro_g(get<gmean_i>(Qdt), Nchannels);
-        auto t_gvar_i    = g_to_micro_g(get<gvar_i>(Qdt), Nchannels);
-        return build<micro_Qdtm>(get<number_of_samples>(Qdt), get<min_P>(Qdt), std::move(t_micro_P), std::move(t_P_to_Pmean),
-                                 std::move(t_gmean_i), std::move(t_gvar_i));
+        }
+        return Qdtm_to_micro_Qdtm(maybe_Qdt.value(), micro_Nchannels(Nchannels));
     }
 
     // Per-Agonist_step micro_Qdt builder for the averaging=2 (joint) algorithms.
@@ -421,19 +597,13 @@ template <class C_g>
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
         requires(is_of_this_template_type_v<FunctionTable, FuncMap_St>)
     auto calc_micro_Qdt_agonist_step(FunctionTable& f, const C_Patch_Model& m,
-                                      const Agonist_step& t_step, double fs, std::size_t Nchannels)
+                                      const Agonist_step& t_step, double fs, micro_Nchannels Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdt>> {
         auto maybe_Qdt = Macro_DMR{}.calc_Qdt_agonist_step(f, m, t_step, fs);
-        if (!maybe_Qdt)
+        if (!maybe_Qdt) {
             return maybe_Qdt.error();
-        auto& Qdt = maybe_Qdt.value();
-        auto t_micro_P    = P_to_micro_P(get<P>(Qdt), Nchannels);
-        auto t_P_to_Pmean = calc_micro_P_to_P_mean(get<P>(Qdt)().ncols(), Nchannels);
-        auto t_gmean_ij   = gij_to_micro_gij(get<gmean_ij>(Qdt), Nchannels);
-        auto t_gvar_ij    = gij_to_micro_gij(get<gvar_ij>(Qdt), Nchannels);
-        return build<micro_Qdt>(get<number_of_samples>(Qdt), get<min_P>(Qdt),
-                                std::move(t_micro_P), std::move(t_P_to_Pmean),
-                                std::move(t_gmean_ij), std::move(t_gvar_ij));
+        }
+        return Qdt_to_micro_Qdt(maybe_Qdt.value(), Nchannels);
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
@@ -473,18 +643,14 @@ template <class C_g>
         // (mirrors Macro_DMR::calc_Qdt at qmodel.h:2890-2891). Multi-step recordings
         // still take the recompute path below; handling those with caching requires
         // a per-Nchannels micro-Qdt composition that doesn't exist yet.
-        if (t_step.size() == 1)
+        if (t_step.size() == 1) {
             return calc_micro_Qdt<Policy>(f, m, t_step[0], fs, Nchannels);
-
+        }
         auto maybe_Qdt = Macro_DMR{}.calc_Qdt(f, m, t_step, fs);
-        if (!maybe_Qdt)
+        if (!maybe_Qdt) {
             return maybe_Qdt.error();
-        auto& Qdt = maybe_Qdt.value();
-        auto t_micro_P = P_to_micro_P(get<P>(Qdt), Nchannels);
-        auto t_P_to_Pmean = calc_micro_P_to_P_mean(get<P>(Qdt)().ncols(), Nchannels);
-        auto t_gmean_ij = gij_to_micro_gij(get<gmean_ij>(Qdt), Nchannels);
-        auto t_gvar_ij = gij_to_micro_gij(get<gvar_ij>(Qdt), Nchannels);
-        return build<micro_Qdt>(get<number_of_samples>(Qdt), get<min_P>(Qdt), std::move(t_micro_P), std::move(t_P_to_Pmean),std::move(t_gmean_ij), std::move(t_gvar_ij));
+        }
+        return Qdt_to_micro_Qdt(maybe_Qdt.value(), micro_Nchannels(Nchannels));
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
@@ -493,17 +659,14 @@ template <class C_g>
                    const std::vector<Agonist_step>& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtg>> {
         // Single-step short-circuit; see notes on calc_micro_Qdt above.
-        if (t_step.size() == 1)
+        if (t_step.size() == 1) {
             return calc_micro_Qdtg(f, m, t_step[0], fs, Nchannels);
-
+        }
         auto maybe_Qdt = Macro_DMR{}.calc_Qdtg(f, m, t_step, fs);
-        if (!maybe_Qdt)
+        if (!maybe_Qdt) {
             return maybe_Qdt.error();
-        auto& Qdt = maybe_Qdt.value();
-        auto t_P = P_to_micro_P(get<P_half>(Qdt), Nchannels);
-        auto t_P_to_Pmean = calc_micro_P_to_P_mean(get<P_half>(Qdt)().ncols(), Nchannels);
-        auto t_g = g_to_micro_g(get<g>(Qdt), Nchannels);
-        return build<micro_Qdtg>(get<number_of_samples>(Qdt), get<min_P>(Qdt), std::move(t_P), std::move(t_P_to_Pmean), std::move(t_g));
+        }
+        return Qdtg_to_micro_Qdtg(maybe_Qdt.value(), micro_Nchannels(Nchannels));
     }
    
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
@@ -512,19 +675,14 @@ template <class C_g>
                    const std::vector<Agonist_step>& t_step, double fs, std::size_t Nchannels)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, micro_Qdtm>> {
         // Single-step short-circuit; see notes on calc_micro_Qdt above.
-        if (t_step.size() == 1)
+        if (t_step.size() == 1) {
             return calc_micro_Qdtm<Policy>(f, m, t_step[0], fs, Nchannels);
-
-         auto maybe_Qdt = Macro_DMR{}.calc_Qdtm(f, m, t_step, fs);
-        if (!maybe_Qdt) 
+        }
+        auto maybe_Qdt = Macro_DMR{}.calc_Qdtm(f, m, t_step, fs);
+        if (!maybe_Qdt) {
             return maybe_Qdt.error();
-        auto& Qdt = maybe_Qdt.value();
-        auto t_micro_P = P_to_micro_P(get<P>(Qdt), Nchannels);
-        auto t_P_to_Pmean = calc_micro_P_to_P_mean(get<P>(Qdt)().ncols(), Nchannels);
-        auto t_gmean_i = g_to_micro_g(get<gmean_i>(Qdt), Nchannels);
-        auto t_gvar_i = g_to_micro_g(get<gvar_i>(Qdt), Nchannels);
-        return build<micro_Qdtm>(get<number_of_samples>(Qdt), get<min_P>(Qdt), std::move(t_micro_P), std::move(t_P_to_Pmean), std::move(t_gmean_i), std::move(t_gvar_i));
-        
+        }
+        return Qdtm_to_micro_Qdtm(maybe_Qdt.value(), micro_Nchannels(Nchannels));
 }
 
 

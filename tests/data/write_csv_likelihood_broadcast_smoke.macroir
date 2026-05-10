@@ -44,7 +44,9 @@ algorithms = build_likelihood_function(
     recursive_approximation=algo_recursive_approximation,
     averaging_approximation=algo_averaging_approximation,
     variance_approximation=true,
-    taylor_variance_correction=false)
+    taylor_variance_correction=false,
+    micro_approximation=false,
+    taylor_qdt_approximation=false)
 
 dlikelihood_predictions = calc_dlikelihood_predictions(
     likelihood_algorithm=algorithms,

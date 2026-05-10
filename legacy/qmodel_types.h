@@ -1100,7 +1100,7 @@ template <typename... Vars>struct dMacro_State
     dMacro_State(var::Derivative<Patch_State, var::Parameters_transformed>&& dps) {
         auto const& dx = var::get_dx_of_dfdx(dps);
 
-        // Seed the prior patch state (carries dx).
+        // Seed the prior patch state (carries dx).     
         get<var::Derivative<Patch_State, var::Parameters_transformed>>(*this) = std::move(dps);
         // Accumulators start at zero/empty but share the same dx.
         auto seed_with_dx = [&](auto& component) {
@@ -1126,7 +1126,9 @@ template <typename... Vars>struct dMacro_State
                           Vars...>(
               std::move(dl), std::move(dps),
               std::forward<Vars>(vars)...) {}
-    dMacro_State() = default;       
+    dMacro_State() = default;
+    
+    
                     
 };
 

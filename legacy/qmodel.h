@@ -23,6 +23,7 @@
 #include <macrodr/dsl/type_name.h>
 #include <moment_statistics.h>
 
+#include <atomic>
 #include <cmath>
 #include <concepts>
 #include <cstddef>
@@ -3718,6 +3719,36 @@ class Macro_DMR {
 	    }
 
     // ────────────────────────────────────────────────────────────────────
+    // Smooth (C∞) lower-bound of two values.
+    //
+    //     softmin(a, b; ε) = (a + b − √((a − b)² + ε²)) / 2
+    //
+    // Properties:
+    //   - softmin(a, b; 0) = min(a, b)                   (recovers hard min)
+    //   - softmin(a, b; ε) ≤ min(a, b)                   (always ≤ true min)
+    //   - smooth in (a, b): no kink, no Heaviside in ∂/∂(a, b)
+    //   - softmin(1, x; ε) = x          when  x ≪ 1 − ε
+    //                     ≈ 1 − ε / 2  when  x ≈ 1
+    //                     = 1          when  x ≫ 1 + ε
+    //
+    // The trust coefficient uses softmin instead of `min(1, factor·alfa_p)` to
+    // eliminate the kink at `factor·alfa_p = 1`. Each kink in α(θ) introduces a
+    // step in ∂α/∂θ that randomizes across realizations and pumps variance into
+    // the score; softmin removes the step. ε controls the smoothing band — too
+    // small recovers the kink, too large biases α below `min(1, factor·alfa_p)`
+    // by ε / 2 even far from the boundary. ε = 1e-4 is a reasonable default;
+    // the residual bias 5e-5 is tiny vs. the `(1 − factor) = 0.1` margin.
+    // ────────────────────────────────────────────────────────────────────
+    template <class A, class B>
+    auto softmin(A const& a, B const& b, double eps) const {
+        using std::sqrt;
+        auto diff = a - b;
+        auto sum  = a + b;
+        auto root = sqrt(diff * diff + eps * eps);
+        return (sum - root) * 0.5;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
     // Trust coefficient for the recursive POSTERIOR-MEAN update.
     //
     // The mean update has the form  μ_new = μ + α · d  where d = chi · gS.
@@ -3732,23 +3763,61 @@ class Macro_DMR {
     // has its own (often tighter) constraint — see calculate_psd_trust_coefficient
     // and docs/math/trust_coefficient.md.
     // ────────────────────────────────────────────────────────────────────
-    auto calculate_trust_coefficient(Matrix<double> const& t_pmean, Matrix<double> const& d,
+    // Derivative-aware. The argmin `binding_i` over i is locally constant in θ
+    // (changes only at ties), so we find it via primitives (cheap, plain
+    // doubles) and then evaluate the binding expression `(1 − p_b)/d_b` (or
+    // `−p_b/d_b`) at that single index. Indexing `t_pmean[binding_i]` /
+    // `d[binding_i]` returns the AD element via Derivative<Matrix>::operator[]
+    // (matrix_derivative.h), so chain rule through the SINGLE binding component
+    // is exact away from ties — no `inside_out` repacking needed.
+    //
+    // SMOOTH (C∞) form:    α = softmin(1, factor · alfa_b; ε)
+    //   factor·alfa_b ≪ 1 :  α ≈ factor·alfa_b   (binding)
+    //   factor·alfa_b ≫ 1 :  α ≈ 1               (no constraint)
+    //   no kink at the crossover — ∂α/∂θ is continuous everywhere.
+    //
+    // ε = trust_softmin_eps (1e-4) controls the smoothing band; residual bias
+    // ε/2 = 5e-5, tiny vs the (1 − factor) = 0.1 safety margin.
+    //
+    // The no-binding branch (no nonzero d_i — degenerate case) returns α = 1
+    // with derivatives propagated (zero) from the inputs.
+    template <class C_Matrix1, class C_Matrix2>
+    auto calculate_trust_coefficient(C_Matrix1 const& t_pmean, C_Matrix2 const& d,
                                      double factor) const {
-        auto alfa = 1.0;
-        for (std::size_t i = 0; i < d.size(); ++i) {
-            double d_i = d[i];
-            double p_i = t_pmean[i];
+        constexpr double trust_softmin_eps = 1e-4;
+        auto const& t_pmean_p = primitive(t_pmean);
+        auto const& d_p = primitive(d);
+
+        // Find the smallest alfa_i across i (no clamp at 1/factor; we want the
+        // primitive argmin of the binding expression so softmin can smooth across
+        // its boundary with 1).
+        double alfa_p = std::numeric_limits<double>::infinity();
+        std::size_t binding_i = 0;
+        int binding_sign = 0;  // +1 : (1−p)/d (d > 0)
+                               // −1 : −p/d   (d < 0)
+                               //  0 : no nonzero d_i in scan — degenerate
+        for (std::size_t i = 0; i < d_p.size(); ++i) {
+            const double d_i = d_p[i];
+            const double p_i = t_pmean_p[i];
             if (d_i > 0) {
-                double alfa_i = (1.0 - p_i) / d_i;
-                alfa = std::min(alfa_i, alfa);
+                const double alfa_i = (1.0 - p_i) / d_i;
+                if (alfa_i < alfa_p) { alfa_p = alfa_i; binding_i = i; binding_sign = +1; }
             } else if (d_i < 0) {
-                double alfa_i = -(p_i) / d_i;
-                alfa = std::min(alfa_i, alfa);
+                const double alfa_i = -p_i / d_i;
+                if (alfa_i < alfa_p) { alfa_p = alfa_i; binding_i = i; binding_sign = -1; }
             }
         }
-        if (alfa < 1)
-            alfa = alfa * factor;
-        return trust_coefficient(alfa);
+
+        if (binding_sign == 0)
+            return build<trust_coefficient>(1.0 + 0.0 * d[0]);
+
+        // alfa_b at the binding index, with derivatives intact.
+        auto alfa_b = (binding_sign > 0)
+                          ? (1.0 - t_pmean[binding_i]) / d[binding_i]
+                          : (0.0 - t_pmean[binding_i]) / d[binding_i];
+
+        // α = softmin(1, factor · alfa_b; ε) — smooth at the binding boundary.
+        return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -3774,24 +3843,52 @@ class Macro_DMR {
     // PSD argument, and notes on when a Joseph-form update would be a
     // stronger alternative.
     // ────────────────────────────────────────────────────────────────────
-    auto calculate_psd_trust_coefficient(Matrix<double> const& Sigma_pre,
-                                         Matrix<double> const& gS,
-                                         double beta,
+    // Derivative-aware. Same pattern as calculate_trust_coefficient: argmin
+    // via primitives, then evaluate the binding expression at the single
+    // binding index with derivatives intact. beta = N / y_var carries
+    // derivatives in AD context.
+    //
+    // SMOOTH (C∞) form:    α = softmin(1, factor · alfa_b; ε)
+    //
+    // The trust coefficient's role is to REDUCE gS so the rank-1 down-date
+    // preserves diagonal positivity — never to abort the step with α = 0.
+    // Indices where Σ_pre(i,i) ≤ 0 are SKIPPED in the argmin: those diagonals
+    // are already degenerate and no α > 0 fixes them, so the constraint at i
+    // contributes no information to α. Other indices set the bound.
+    template <class C_Sigma, class C_gS, class C_beta>
+    auto calculate_psd_trust_coefficient(C_Sigma const& Sigma_pre,
+                                         C_gS const& gS,
+                                         C_beta const& beta,
                                          double factor) const {
-        auto alfa = 1.0;
-        for (std::size_t i = 0; i < gS.size(); ++i) {
-            double gS_i = gS[i];
+        constexpr double trust_softmin_eps = 1e-4;
+        auto const& Sigma_p = primitive(Sigma_pre);
+        auto const& gS_p = primitive(gS);
+        const double beta_p = primitive(beta);
+
+        double alfa_p = std::numeric_limits<double>::infinity();
+        std::size_t binding_i = 0;
+        int binding_sign = 0;  // 0 if no constraint binds — α = 1
+        for (std::size_t i = 0; i < gS_p.size(); ++i) {
+            const double gS_i = gS_p[i];
             if (gS_i == 0.0)
                 continue;
-            double Sigma_ii = Sigma_pre(i, i);
+            const double Sigma_ii = Sigma_p(i, i);
             if (Sigma_ii <= 0.0)
-                return trust_coefficient(0.0);
-            double alfa_i = Sigma_ii / (beta * gS_i * gS_i);
-            alfa = std::min(alfa_i, alfa);
+                continue;  // already-degenerate diagonal — trust coeff can't fix it; skip.
+            const double alfa_i = Sigma_ii / (beta_p * gS_i * gS_i);
+            if (alfa_i < alfa_p) { alfa_p = alfa_i; binding_i = i; binding_sign = 1; }
         }
-        if (alfa < 1.0)
-            alfa = alfa * factor;
-        return trust_coefficient(alfa);
+
+        if (binding_sign == 0)
+            return build<trust_coefficient>(1.0 + 0.0 * gS[0]);
+
+        // alfa_b at the binding index with derivatives intact:
+        //   alfa_b = Σ_pre(b,b) / (β · gS_bˆ2)
+        auto gS_b = gS[binding_i];
+        auto alfa_b = Sigma_pre(binding_i, binding_i) / (beta * gS_b * gS_b);
+
+        // α = softmin(1, factor · alfa_b; ε)
+        return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
     }
 
     template <bool dynamic, class averaging, class variance, class C_Patch_State, class C_Qdt,
@@ -3977,20 +4074,30 @@ class Macro_DMR {
         using std::sqrt; 
         auto r_r_std=build<r_std>( dy/sqrt(r_y_var()));
         auto chi2 = build<Chi2>(dy * chi);
+        // gS is the endpoint-frame Bayes gain row vector: gS = Cov(X_end, y).
+        // For all averaging values the rank-1 down-date and α_Σ check live at
+        // the endpoint frame (sigma_pre), so gS must be there too.
+        //   avg=0:  obs at midpoint via instantaneous g.   gS = gᵀ · Σ_mid · P_half
+        //   avg=1:  obs depends on start state via gmean_i. gS = gmean_iᵀ · Σ_start · P
+        //   avg=2:  obs integrated over interval.          gS = gmean_iᵀ·SmD·P + p·gtotal_ij
+        // For avg=0/1 the trailing  · t_P()  propagates the start/mid-frame
+        // gain through the remaining Markov dynamics so that XTX(gS) lives in
+        // the same frame as sigma_pre. (Pre-fix the trailing · t_P was missing,
+        // making the down-date frame-mismatched; manifested as a Distortion-
+        // Induced-Bias spike in macro_R at long intervals / large Num_ch.)
         auto gS = [&t_gmean_i, &p_P_Cov,&SmD, &p_P_mean, &t_Qdt, &t_P]() {
             if constexpr (averaging::value == 2) {
                 auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
 
                 return TranspMult(t_gmean_i(), SmD) * t_P() + p_P_mean() * t_gtotal_ij();
-                ;
             } else {
-                return TranspMult(t_gmean_i(), p_P_Cov());
+                return TranspMult(t_gmean_i(), p_P_Cov()) * t_P();
             }
         }();
-        // gS is a probability displacement: (μ + α·chi·gS)·t_P (or μ·t_P + α·chi·gS
-        // for averaging=2) must remain a probability, which forces gS·u = 0. Surface
-        // any drift in p_P_Cov / gtotal_ij upstream rather than letting it propagate
-        // silently into the posterior-mean update.
+        // gS is a probability displacement: μ·t_P + α·chi·gS must remain a
+        // probability, which forces gS·u = 0. Surface any drift in p_P_Cov /
+        // gtotal_ij upstream rather than letting it propagate silently into
+        // the posterior-mean update.
         if (auto Maybe_gS_check = to_Probability_displacement(gS); !Maybe_gS_check)
             return Maybe_gS_check.error();
 
@@ -3998,37 +4105,33 @@ class Macro_DMR {
         // reused for the PSD trust check and for the rank-1 down-date below.
         auto sigma_pre = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P());
 
-        // α_μ : largest α keeping (μ + α·chi·gS) on the simplex.
-        auto alfa_mu = [&](){
-            if constexpr (averaging::value==2)  {
-            return  calculate_trust_coefficient(primitive(p_P_mean()*t_P()), primitive(chi) * primitive(gS),
-                                                trust_multiplying_factor);
-
-            }
-            else {
-            return  calculate_trust_coefficient(primitive(p_P_mean()), primitive(chi) * primitive(gS),
-                                                trust_multiplying_factor);
-            }}();
+        // α_μ : largest α keeping (μ·t_P + α·chi·gS) on the simplex. Endpoint
+        // frame for all averaging values, since gS is now endpoint-frame too.
+        // Pass derivative-aware inputs — the AD-aware overload of
+        // calculate_trust_coefficient finds the binding index via primitives
+        // (cheap) and evaluates the binding expression with derivatives intact.
+        auto alfa_mu = calculate_trust_coefficient(
+            p_P_mean() * t_P(), chi * gS, trust_multiplying_factor);
 
         // α_Σ : largest α keeping each diagonal of  Σ_pre − (α·N/y_var)·gSᵀgS  ≥ 0.
         // Necessary (not sufficient) PSD condition; complements α_μ. The smaller of
         // the two is the right α to apply uniformly to both μ and Σ updates.
         // See docs/math/trust_coefficient.md.
         auto alfa_sigma = calculate_psd_trust_coefficient(
-            primitive(sigma_pre), primitive(gS),
-            primitive(N) / primitive(r_y_var()),
-            trust_multiplying_factor);
+            sigma_pre, gS, N / r_y_var(), trust_multiplying_factor);
 
-        auto alfa = trust_coefficient(std::min(alfa_mu(), alfa_sigma()));
+        // Smoothly combine α_μ and α_Σ via softmin — eliminates the kink at
+        // α_μ = α_Σ in ∂α/∂θ. ε matches the inner softmin scale.
+        constexpr double trust_softmin_eps = 1e-4;
+        auto alfa = build<trust_coefficient>(softmin(alfa_mu(), alfa_sigma(),
+                                                     trust_softmin_eps));
 
 
-        auto Maybe_r_P_mean = [&](){
-            if constexpr (averaging::value==2){
-            return to_Probability( p_P_mean() * t_P() + alfa() * chi * gS);}
-            else{
-            return to_Probability((p_P_mean() + alfa() * chi * gS) * t_P());
-        }
-        }();
+        // Mean update at endpoint frame, unified across all averaging values.
+        // Mathematically equivalent to the prior  (μ + α·chi·gS_obs) · t_P
+        // formulation for avg=0/1, since  gS = gS_obs · t_P  by construction.
+        auto Maybe_r_P_mean =
+            to_Probability(p_P_mean() * t_P() + alfa() * chi * gS);
         if (!Maybe_r_P_mean)
             return Maybe_r_P_mean.error();
         auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
@@ -5058,7 +5161,14 @@ class Macro_DMR {
         auto ini = init(m);
         auto f_local = f.create("_lik");
         constexpr bool test_derivative = false;
-        constexpr bool test_macroir_derivative = false;
+        // Flip to true to run a Clarke FD vs. analytic derivative check on
+        // MacroR2 at each step. The test lifts t_prior's Derivative<logL,Pt>
+        // and Derivative<Patch_State,Pt> components into a
+        // Derivative<Vector_Space<logL,Patch_State>,Pt>, so test_derivative_clarke
+        // can perturb all four MacroR2 inputs (c_prior, Qdtm, m, Nch) uniformly.
+        // Off by default since FD calls are expensive on figure_2 sweeps;
+        // each block also has a static counter capping firings at max_tests.
+        constexpr bool test_macroir_derivative = true;
         if (!ini) {
             return ini.error();
         }
@@ -5192,37 +5302,135 @@ class Macro_DMR {
                             }
                         }
 
+                        // Clarke derivative test on MacroR2's logL/Patch_State gradients.
+                        //
+                        // Lifting (Option A): t_prior is a dMacro_State<...> (a
+                        // Vector_Space whose components are Derivative<logL,Pt> /
+                        // Derivative<Patch_State,Pt>), which is *not* itself a
+                        // Derivative<>. test_derivative_clarke needs primitive() and
+                        // Taylor_first() over each input; both are missing for
+                        // dMacro_State. We rebuild a minimal
+                        // Derivative<Vector_Space<logL,Patch_State>,Pt> from t_prior's
+                        // two derivative-bearing components — that lifted type already
+                        // has the framework's primitive()/Taylor_first() overloads
+                        // (variables_derivative.h:179, derivative_fwd.h:200), so all
+                        // four args (c_prior, Qdtm, m, Nch) get perturbed uniformly.
+                        //
+                        // The lambda then has to reshape on the way in and out:
+                        //   derivative pass → input is Derivative<...>: reconstruct
+                        //     dMacro_State<>(get<DLogL_t>, get<DPatch_t>) for
+                        //     MacroR2; back out the two Derivative components.
+                        //   primitive/Taylor pass → input is Vector_Space<logL,
+                        //     Patch_State>: reconstruct Macro_State<>(get<logL>,
+                        //     get<Patch_State>) for MacroR2; back out the two
+                        //     primitive components.
+                        // The two branches return different Maybe_error<> types — the
+                        // lambda is templated on auto inputs, so each instantiation
+                        // has its own return type. test_derivative_clarke stays
+                        // happy because Y/Yp/Yn are all Vector_Space<logL,Patch_State>
+                        // and dY is Derivative<Vector_Space<logL,Patch_State>,Pt>,
+                        // which test_clarke_brackets dispatches on
+                        // (derivative_test.h:799).
+                        //
+                        // Static atomic counter caps firings at max_tests since
+                        // calc_dlikelihood_predictions runs this on every (sim ×
+                        // algo × step).
                         if constexpr (test_macroir_derivative &&
-                                      var::has_it_v<MacroState, y_mean>) {
-                            const auto h = 1e-7;
-                            auto f_no_memoi = f_local.to_bare_functions();
-                            auto c_prior = t_prior;
+                                      !std::is_same_v<DX, var::NoDerivative>) {
+                            static std::atomic<int> test_macroir_count{0};
+                            constexpr int max_tests = 200;
+                            int prev_count = test_macroir_count.fetch_add(
+                                1, std::memory_order_relaxed);
+                            if (prev_count == 0) {
+                                std::cerr << "[test_macroir_derivative] FIRST FIRE algo="
+                                          << ToString(MacroR2<recursive, averaging,
+                                                              variance, variance_correction>{})
+                                          << " (R=" << recursive::value
+                                          << " av=" << averaging::value
+                                          << " V=" << variance::value
+                                          << " vc=" << variance_correction::value
+                                          << ", budget=" << max_tests << ")\n";
+                            }
+                            if (prev_count < max_tests) {
+                                const auto h = 1e-7;
+                                auto f_no_memoi = f_local.to_bare_functions();
 
-                            auto tt_prior =
-                                select<logL, Patch_State, y_mean, y_var>(std::move(c_prior));
+                                using DLogL_t =
+                                    var::Derivative<logL, var::Parameters_transformed>;
+                                using DPatch_t =
+                                    var::Derivative<Patch_State,
+                                                    var::Parameters_transformed>;
+                                using Combined_t =
+                                    var::Derivative<var::Vector_Space<logL, Patch_State>,
+                                                    var::Parameters_transformed>;
 
-                            auto test_der_macroir = test_derivative_clarke<false>(
-                                [this, &fs, &f_no_memoi, &y, i_step](
-                                    auto l_t_prior, auto const& l_Qdtm, auto const& l_m,
-                                    auto const& l_Nch)
-                                    -> Maybe_error<Transfer_Op_to<
-                                        std::decay_t<decltype(l_t_prior)>,
-                                        var::Vector_Space<logL, Patch_State, y_mean, y_var>>> {
-                                    auto Maybe_res = MacroR2<recursive, averaging, variance,
-                                                             variance_correction>{}(
-                                        f_no_memoi, std::move(l_t_prior), l_Qdtm, l_m, l_Nch,
-                                        y()[i_step], fs);
-                                    if (!Maybe_res)
-                                        return Maybe_res.error();
-                                    return select<logL, elogL, vlogL, P_mean, P_Cov, y_mean, y_var>(
-                                        std::move(Maybe_res.value()));
-                                },
-                                h, tt_prior, t_Qdtm, m, Nch);
-                            if (true && !test_der_macroir) {
-                                std::cerr << "\nError on i_step: " << i_step
-                                          << "\ty: " << y()[i_step] << " t_step: " << t_step
-                                          << "\n";
-                                std::cerr << test_der_macroir.error()();
+                                auto c_prior_lifted = Combined_t(
+                                    DLogL_t(get<DLogL_t>(t_prior)),
+                                    DPatch_t(get<DPatch_t>(t_prior)));
+
+                                auto test_der_macroir = test_derivative_clarke<false>(
+                                    [this, &fs, &f_no_memoi, &y, i_step](
+                                        auto&& l_t_prior, auto const& l_Qdtm,
+                                        auto const& l_m, auto const& l_Nch) {
+                                        using TPrior =
+                                            std::decay_t<decltype(l_t_prior)>;
+                                        if constexpr (var::is_derivative_v<TPrior>) {
+                                            using DL =
+                                                var::Derivative<logL,
+                                                                var::Parameters_transformed>;
+                                            using DP =
+                                                var::Derivative<Patch_State,
+                                                                var::Parameters_transformed>;
+                                            using Combined =
+                                                var::Derivative<var::Vector_Space<logL,
+                                                                                  Patch_State>,
+                                                                var::Parameters_transformed>;
+                                            dMacro_State<> dprior(
+                                                DL(get<logL>(l_t_prior)),
+                                                DP(get<Patch_State>(l_t_prior)));
+                                            auto Maybe_res =
+                                                MacroR2<recursive, averaging, variance,
+                                                        variance_correction>{}(
+                                                    f_no_memoi, std::move(dprior),
+                                                    l_Qdtm, l_m, l_Nch, y()[i_step], fs);
+                                            if (!Maybe_res)
+                                                return Maybe_error<Combined>(
+                                                    Maybe_res.error());
+                                            auto& res = Maybe_res.value();
+                                            return Maybe_error<Combined>(
+                                                Combined(DL(get<DL>(res)),
+                                                         DP(get<DP>(res))));
+                                        } else {
+                                            using Result =
+                                                var::Vector_Space<logL, Patch_State>;
+                                            Macro_State<> mprior(
+                                                logL(get<logL>(l_t_prior)),
+                                                Patch_State(
+                                                    get<Patch_State>(l_t_prior)));
+                                            auto Maybe_res =
+                                                MacroR2<recursive, averaging, variance,
+                                                        variance_correction>{}(
+                                                    f_no_memoi, std::move(mprior),
+                                                    l_Qdtm, l_m, l_Nch, y()[i_step], fs);
+                                            if (!Maybe_res)
+                                                return Maybe_error<Result>(
+                                                    Maybe_res.error());
+                                            auto& res = Maybe_res.value();
+                                            return Maybe_error<Result>(
+                                                Result(logL(get<logL>(res)),
+                                                       Patch_State(get<Patch_State>(res))));
+                                        }
+                                    },
+                                    h, c_prior_lifted, t_Qdtm, m, Nch);
+                                if (!test_der_macroir) {
+                                    std::cerr << "[test_macroir_derivative] FAIL"
+                                              << " algo=" << ToString(MacroR2<recursive,
+                                                  averaging, variance, variance_correction>{})
+                                              << " i_step=" << i_step
+                                              << " y=" << y()[i_step]
+                                              << " t_step=" << t_step << "\n"
+                                              << test_der_macroir.error()() << "\n";
+                                }
                             }
                         }
 
@@ -5277,6 +5485,109 @@ class Macro_DMR {
                                 }
                                 std::cerr << "\nt_step\n" << t_step;
                                 return Maybe_error<MacroState>(test_der_t_Qdt.error());
+                            }
+                        }
+
+                        // Clarke derivative test on the variance_correction=true path
+                        // (e.g. macro_IRT in figure_2). Same lift-and-reshape pattern
+                        // as the !variance_correction branch above — see that comment
+                        // for the rationale.
+                        if constexpr (test_macroir_derivative &&
+                                      !std::is_same_v<DX, var::NoDerivative>) {
+                            static std::atomic<int> test_macroir_count_vc{0};
+                            constexpr int max_tests = 200;
+                            int prev_count = test_macroir_count_vc.fetch_add(
+                                1, std::memory_order_relaxed);
+                            if (prev_count == 0) {
+                                std::cerr << "[test_macroir_derivative] FIRST FIRE algo="
+                                          << ToString(MacroR2<recursive, averaging,
+                                                              variance, variance_correction>{})
+                                          << " (R=" << recursive::value
+                                          << " av=" << averaging::value
+                                          << " V=" << variance::value
+                                          << " vc=" << variance_correction::value
+                                          << ", budget=" << max_tests << ")\n";
+                            }
+                            if (prev_count < max_tests) {
+                                const auto h = 1e-7;
+                                auto f_no_memoi = f_local.to_bare_functions();
+
+                                using DLogL_t =
+                                    var::Derivative<logL, var::Parameters_transformed>;
+                                using DPatch_t =
+                                    var::Derivative<Patch_State,
+                                                    var::Parameters_transformed>;
+                                using Combined_t =
+                                    var::Derivative<var::Vector_Space<logL, Patch_State>,
+                                                    var::Parameters_transformed>;
+
+                                auto c_prior_lifted = Combined_t(
+                                    DLogL_t(get<DLogL_t>(t_prior)),
+                                    DPatch_t(get<DPatch_t>(t_prior)));
+
+                                auto test_der_macroir = test_derivative_clarke<false>(
+                                    [this, &fs, &f_no_memoi, &y, i_step](
+                                        auto&& l_t_prior, auto const& l_Qdt,
+                                        auto const& l_m, auto const& l_Nch) {
+                                        using TPrior =
+                                            std::decay_t<decltype(l_t_prior)>;
+                                        if constexpr (var::is_derivative_v<TPrior>) {
+                                            using DL =
+                                                var::Derivative<logL,
+                                                                var::Parameters_transformed>;
+                                            using DP =
+                                                var::Derivative<Patch_State,
+                                                                var::Parameters_transformed>;
+                                            using Combined =
+                                                var::Derivative<var::Vector_Space<logL,
+                                                                                  Patch_State>,
+                                                                var::Parameters_transformed>;
+                                            dMacro_State<> dprior(
+                                                DL(get<logL>(l_t_prior)),
+                                                DP(get<Patch_State>(l_t_prior)));
+                                            auto Maybe_res =
+                                                MacroR2<recursive, averaging, variance,
+                                                        variance_correction>{}(
+                                                    f_no_memoi, std::move(dprior),
+                                                    l_Qdt, l_m, l_Nch, y()[i_step], fs);
+                                            if (!Maybe_res)
+                                                return Maybe_error<Combined>(
+                                                    Maybe_res.error());
+                                            auto& res = Maybe_res.value();
+                                            return Maybe_error<Combined>(
+                                                Combined(DL(get<DL>(res)),
+                                                         DP(get<DP>(res))));
+                                        } else {
+                                            using Result =
+                                                var::Vector_Space<logL, Patch_State>;
+                                            Macro_State<> mprior(
+                                                logL(get<logL>(l_t_prior)),
+                                                Patch_State(
+                                                    get<Patch_State>(l_t_prior)));
+                                            auto Maybe_res =
+                                                MacroR2<recursive, averaging, variance,
+                                                        variance_correction>{}(
+                                                    f_no_memoi, std::move(mprior),
+                                                    l_Qdt, l_m, l_Nch, y()[i_step], fs);
+                                            if (!Maybe_res)
+                                                return Maybe_error<Result>(
+                                                    Maybe_res.error());
+                                            auto& res = Maybe_res.value();
+                                            return Maybe_error<Result>(
+                                                Result(logL(get<logL>(res)),
+                                                       Patch_State(get<Patch_State>(res))));
+                                        }
+                                    },
+                                    h, c_prior_lifted, t_Qdt, m, Nch);
+                                if (!test_der_macroir) {
+                                    std::cerr << "[test_macroir_derivative] FAIL"
+                                              << " algo=" << ToString(MacroR2<recursive,
+                                                  averaging, variance, variance_correction>{})
+                                              << " i_step=" << i_step
+                                              << " y=" << y()[i_step]
+                                              << " t_step=" << t_step << "\n"
+                                              << test_der_macroir.error()() << "\n";
+                                }
                             }
                         }
 

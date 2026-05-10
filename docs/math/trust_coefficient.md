@@ -13,15 +13,61 @@ with
 
 ```
 chi   = (y − y_mean) / y_var                       (innovation, normalized)
-gS    = gᵀ · Σ_pre  (or the averaging=2 variant)   (gain block)
+gS    = Cov(X_end, y)  as row vector               (endpoint-frame gain)
 Σ_pre = Aᵀ · SmD · A + diag(μ · A)                 (Markov-propagated prior)
 ```
+
+`gS` lives at the *endpoint* frame for all averaging values, so that the rank-1
+down-date `XTX(gS)` is in the same frame as `Σ_pre`. The concrete form depends
+on when the observation enters:
+
+| averaging | observation depends on | `gS` formula                                       |
+| --------- | ---------------------- | -------------------------------------------------- |
+| 0         | X_mid via instantaneous g | `gᵀ · Σ_mid · P_half`                           |
+| 1         | X_start via gmean_i      | `gmean_iᵀ · Σ_start · P`                        |
+| 2         | full interval (integrated) | `gmean_iᵀ · SmD · P + p · gtotal_ij`           |
+
+For avg=0/1 the trailing `· P` (or `· P_half`) propagates the start/mid-frame
+gain through the remaining Markov dynamics. Without it the down-date is in the
+wrong frame — manifested historically as a Distortion-Induced-Bias spike in
+macro_R at long intervals / large Num_ch (fixed 2026-05-10).
 
 A naive (α = 1) Kalman update can drive the posterior off the simplex (negative
 or > 1 entries in μ) or off the PSD cone (negative diagonal in Σ). The
 algorithm therefore introduces a trust coefficient α ∈ (0, 1] that scales both
 updates by the same amount, picked as the largest α satisfying both the
 simplex and PSD constraints.
+
+α is computed in the **smooth (C∞) form**
+
+```
+α(alfa_p) = softmin(1, factor · alfa_p; ε)
+softmin(a, b; ε) = (a + b − √((a − b)² + ε²)) / 2
+```
+
+so that α is C∞ in θ everywhere — no kink at the boundary `factor·alfa_p = 1`,
+hence no Heaviside step in `∂α/∂θ`. Previous formulations had:
+- A **discontinuous form** (`α = 1` if `alfa_p ≥ 1`, else `α = factor · alfa_p`)
+  with a `1 − factor` jump at `alfa_p = 1` — δ-function in `∂α/∂θ`,
+  catastrophic score variance at high N.
+- A **C0-continuous form** `α = min(1, factor · alfa_p)` — no jump in α, but a
+  Heaviside step in `∂α/∂θ` at `factor·alfa_p = 1` — still pumped variance into
+  the score whenever the system hovered near the boundary.
+
+The softmin form removes the step entirely. `ε` controls the smoothing band:
+- `ε → 0` recovers the C0 form (and its kink).
+- `ε ≈ 1e-4` (current default) gives a smooth band of width ε around the
+  boundary; residual bias `α ≤ min(1, factor·alfa_p)` of at most `ε / 2` ≈ 5e-5,
+  small vs the `1 − factor = 0.1` safety margin.
+
+Three softmins are applied:
+1. `α_μ = softmin(1, factor · alfa_p_μ)` — inside `calculate_trust_coefficient`
+2. `α_Σ = softmin(1, factor · alfa_p_Σ)` — inside `calculate_psd_trust_coefficient`
+3. `α   = softmin(α_μ, α_Σ)`             — at the call site, kink at α_μ = α_Σ
+
+`factor ∈ (0, 1)` (typically 0.9) is the safety margin: when the constraint
+binds the result is ≈ `factor · alfa_p`, leaving a `1 − factor` margin off the
+simplex/PSD boundary.
 
 ## α_μ — simplex bound on the mean
 
@@ -34,7 +80,8 @@ d_i < 0 :   α  ≤  −μ_i      / d_i        (stay ≥ 0)
 d_i = 0 :   no constraint
 ```
 
-α_μ is the smallest such bound across i (clamped at 1). Implemented in
+α_μ is the smallest such bound `alfa_p` across i, post-processed via
+`α = min(1, factor · alfa_p)`. Implemented in
 `Macro_DMR::calculate_trust_coefficient` (legacy/qmodel.h).
 
 ## α_Σ — PSD bound on the covariance
@@ -48,14 +95,18 @@ non-negative — a *necessary* PSD condition — we need
 α  ≤  Σ_pre_(i,i) / ((N / y_var) · gS_i²)        whenever gS_i ≠ 0
 ```
 
-α_Σ is the smallest such bound across i (clamped at 1). Implemented in
-`Macro_DMR::calculate_psd_trust_coefficient` (legacy/qmodel.h, added 2026-05-08).
+α_Σ is the smallest such bound `alfa_p` across i, post-processed via
+`α = min(1, factor · alfa_p)`. Implemented in
+`Macro_DMR::calculate_psd_trust_coefficient` (legacy/qmodel.h, added 2026-05-08;
+made continuous and AD-aware 2026-05-09).
 
-If any pre-update diagonal `Σ_pre_(i,i)` is non-positive at an index where
-`gS_i ≠ 0`, the function returns 0 (the recursive step would push an
-already-degenerate diagonal further negative). The caller can choose to refuse
-the step (current behavior — `to_Covariance_Probability` rejects α = 0 outputs)
-or fall back to a non-recursive propagation for that interval.
+The trust coefficient's role is to *reduce* gS so the down-date preserves
+diagonal positivity — never to abort the step. Indices where `Σ_pre_(i,i) ≤ 0`
+are already degenerate and no α > 0 brings them positive, so they are
+**skipped** in the argmin: their constraint contributes no information to α,
+and other indices set the bound. If no index binds (or only degenerate ones
+exist), α = 1 and the full Bayesian step is taken; downstream PSD checks
+(`to_Covariance_Probability`) catch any residual problem.
 
 ## Combined α
 

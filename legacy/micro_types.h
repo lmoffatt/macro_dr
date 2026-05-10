@@ -32,6 +32,13 @@
 
 namespace macrodr {
 
+class micro_Nchannels: public var::Constant<micro_Nchannels, std::size_t> {
+   public:
+    using var::Constant<micro_Nchannels, std::size_t>::Constant;
+    friend std::string className(micro_Nchannels) { return "micro_Nchannels"; }
+};
+
+
 
 
 // Probability distribution over microstates.
@@ -173,12 +180,12 @@ class gaussian_logL : public var::Var<gaussian_logL, double> {
     friend std::string className(gaussian_logL) { return "gaussian_logL"; }
 };
 
-using micro_Qdtg = Vector_Space<number_of_samples, min_P, micro_P_half, micro_P_state_to_P_mean, micro_g>;
+using micro_Qdtg = Vector_Space<number_of_samples, min_P, micro_Nchannels, micro_P_half, micro_P_state_to_P_mean, micro_g>;
 
 using micro_Qdtm =
-    Vector_Space<number_of_samples, min_P, micro_P, micro_P_state_to_P_mean,micro_gmean_i, micro_gvar_i>;
+    Vector_Space<number_of_samples, min_P, micro_Nchannels,micro_P, micro_P_state_to_P_mean,micro_gmean_i, micro_gvar_i>;
 
-using micro_Qdt = Vector_Space<number_of_samples, min_P, micro_P, micro_P_state_to_P_mean, micro_gmean_ij, micro_gvar_ij>;
+using micro_Qdt = Vector_Space<number_of_samples, min_P, micro_Nchannels, micro_P, micro_P_state_to_P_mean, micro_gmean_ij, micro_gvar_ij>;
 
 
 struct Calc_micro_Qdt {

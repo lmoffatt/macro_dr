@@ -51,12 +51,18 @@ inline std::size_t num_full_states_of(std::size_t N_channels, std::size_t k_stat
 }
 
 namespace micro_full_detail {
+// Convention (must match index_to_microstate / microstate_to_index in
+// micro_monoid.h): row 0 = (N, 0, …, 0) (all channels in macro state 0),
+// last row = (0, …, 0, N). Internally the recursion still enumerates with
+// the algorithm's `pos` advancing in standard lex order; we write the
+// emitted buffer to the table with reversed column indices so macro state j
+// lands in microstate column j.
 inline void fill_rows(Matrix<std::size_t>& table, std::size_t& row, std::vector<std::size_t>& buf,
                       std::size_t pos, std::size_t k_states, std::size_t remaining) {
     if (pos + 1 == k_states) {
         buf[pos] = remaining;
         for (std::size_t j = 0; j < k_states; ++j) {
-            table(row, j) = buf[j];
+            table(row, j) = buf[k_states - 1 - j];
         }
         ++row;
         return;
@@ -430,12 +436,14 @@ inline double multinomial_log_prob(Matrix<std::size_t> const& row, std::size_t n
 
 // Lex-order index of microstate n in the enumeration produced by
 // create_Micro_state_Num_ch(N, k). Cost O(N · k).
+// Convention: index 0 = (N, 0, …, 0). Reads n's columns in reverse so the
+// algorithm stays identical to the standard lex enumeration.
 inline std::size_t index_of_microstate(Matrix<std::size_t> const& n, std::size_t N,
                                        std::size_t k) {
     std::size_t idx = 0;
     std::size_t remaining = N;
     for (std::size_t i = 0; i + 1 < k; ++i) {
-        std::size_t ni = n(std::size_t{0}, i);
+        std::size_t ni = n(std::size_t{0}, k - 1 - i);
         for (std::size_t j = 0; j < ni; ++j) {
             idx += num_full_states_of(remaining - j, k - 1 - i);
         }
