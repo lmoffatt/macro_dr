@@ -607,6 +607,79 @@ struct Worst_Subspace_Projector
         : var::Var<Worst_Subspace_Projector<Va>, payload_type>{x} {}
 };
 
+// Largest eigenvalue λ_max of the source Va over its active subspace. For
+// distortion-shaped Va (IDM, GFD) the operationally relevant readout: λ_max>1
+// = worst conservative direction (CIs too wide), λ_max≫1 = irreducible
+// inflation. For SPD-shaped Va (F, J), the top of the spectrum.
+template <class Va>
+struct Max_Eigenvalue : public var::Var<Max_Eigenvalue<Va>, double> {
+    Max_Eigenvalue() : var::Var<Max_Eigenvalue<Va>, double>{0.0} {}
+    Max_Eigenvalue(double x) : var::Var<Max_Eigenvalue<Va>, double>{x} {}
+};
+
+// Smallest eigenvalue λ_min of the source Va over its active subspace. For
+// distortion-shaped Va (IDM, GFD) the calibration-risk headline: λ_min<1 =
+// worst anti-conservative direction (CIs too narrow, undercoverage),
+// λ_min≪1 = severe undercoverage in that eigendirection.
+template <class Va>
+struct Min_Eigenvalue : public var::Var<Min_Eigenvalue<Va>, double> {
+    Min_Eigenvalue() : var::Var<Min_Eigenvalue<Va>, double>{0.0} {}
+    Min_Eigenvalue(double x) : var::Var<Min_Eigenvalue<Va>, double>{x} {}
+};
+
+// Mean log-eigenvalue ē = (1/d) Σᵢ log λᵢ = (1/d) log det(Va). Signed
+// magnitude of distortion on log scale: ē>0 ⇒ geometric inflation
+// (conservative on average), ē<0 ⇒ geometric deflation (anti-conservative on
+// average). For distortion-shaped Va, vanishes at C=I. Reparameterization-
+// invariant. Drives T_eff^geom = T·exp(−ē).
+template <class Va>
+struct Mean_Log_Eigenvalue : public var::Var<Mean_Log_Eigenvalue<Va>, double> {
+    Mean_Log_Eigenvalue() : var::Var<Mean_Log_Eigenvalue<Va>, double>{0.0} {}
+    Mean_Log_Eigenvalue(double x) : var::Var<Mean_Log_Eigenvalue<Va>, double>{x} {}
+};
+
+// Variance of log eigenvalues s² = Var(log λᵢ) over the active subspace.
+// Pure-anisotropy scalar: vanishes when the distortion is isotropic
+// (λᵢ ≡ const), grows with shape mismatch. Together with Mean_Log_Eigenvalue
+// gives the (magnitude, anisotropy) decomposition of total distortion.
+template <class Va>
+struct Log_Eigenvalue_Variance
+    : public var::Var<Log_Eigenvalue_Variance<Va>, double> {
+    Log_Eigenvalue_Variance() : var::Var<Log_Eigenvalue_Variance<Va>, double>{0.0} {}
+    Log_Eigenvalue_Variance(double x)
+        : var::Var<Log_Eigenvalue_Variance<Va>, double>{x} {}
+};
+
+// Affine-invariant Riemannian distance from identity on the SPD manifold:
+// D_AI = ‖log Va‖_F = √(Σᵢ (log λᵢ)²). Reparameterization-invariant, C↔C⁻¹
+// symmetric (inflation by κ and deflation by 1/κ register equal distortion),
+// vanishes iff Va = I. Headline scalar for distortion-shaped Va. Decomposes
+// as D_AI² = d · ē² + d · s² (Mean_Log_Eigenvalue² + Log_Eigenvalue_Variance,
+// scaled by active dimension).
+template <class Va>
+struct Affine_Invariant_Distance
+    : public var::Var<Affine_Invariant_Distance<Va>, double> {
+    Affine_Invariant_Distance()
+        : var::Var<Affine_Invariant_Distance<Va>, double>{0.0} {}
+    Affine_Invariant_Distance(double x)
+        : var::Var<Affine_Invariant_Distance<Va>, double>{x} {}
+};
+
+// Symmetrized KL (Jeffreys) distortion between N(0, J)-frame and N(0, H)-
+// frame Gaussians: D_J = ½ Σᵢ (√λᵢ − 1/√λᵢ)² = ½(tr(Va) + tr(Va⁻¹) − 2d).
+// Nats of inferential mismatch between the curvature- and fluctuation-
+// Gaussian; vanishes at Va = I; C↔C⁻¹ symmetric; both tails (λ→0, λ→∞)
+// blow up. Alternative to Affine_Invariant_Distance when an information-
+// theoretic scalar is preferred over a geometric one.
+template <class Va>
+struct Symmetrized_KL_Distortion
+    : public var::Var<Symmetrized_KL_Distortion<Va>, double> {
+    Symmetrized_KL_Distortion()
+        : var::Var<Symmetrized_KL_Distortion<Va>, double>{0.0} {}
+    Symmetrized_KL_Distortion(double x)
+        : var::Var<Symmetrized_KL_Distortion<Va>, double>{x} {}
+};
+
 
 template <class Va>
 struct covariance : public var::Var<covariance<Va>, std::decay_t<decltype(sqr_X<true>(std::declval<value_type_t<Va>>()))>> {

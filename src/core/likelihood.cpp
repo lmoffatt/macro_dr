@@ -43,6 +43,72 @@ struct evaluation_timer {
     }
 };
 
+// Spectral scalar summaries for distortion-shaped SPD matrices (IDM, GFD).
+// Computes the six invariants from the active-subspace eigenvalues of `m`:
+//   λ_max, λ_min                                  — worst conservative / anti-conservative direction
+//   ē = (1/d) Σ log λᵢ                            — signed magnitude of distortion on log scale
+//   s² = Var(log λᵢ)                              — anisotropy
+//   D_AI = √(d·(ē² + s²)) = √Σ (log λᵢ)²          — affine-invariant Riemannian distance from I
+//   D_J  = ½ Σ (√λᵢ − 1/√λᵢ)²                     — symmetrized KL (Jeffreys) distortion
+// Active subspace = eigenvalues above subspace_tol(λ_max, rtol, atol). If the
+// decomposition fails or the active subspace is empty, returns NaN in every
+// field so get_mean_Probits filters the replicate out instead of poisoning
+// the bootstrap statistics with a sentinel zero.
+struct distortion_scalars {
+    double lambda_max;
+    double lambda_min;
+    double mean_log_eigenvalue;
+    double log_eigenvalue_variance;
+    double affine_invariant_distance;
+    double symmetrized_kl_distortion;
+};
+
+inline distortion_scalars compute_distortion_scalars(const SymPosDefMatrix<double>& m,
+                                                      double rtol, double atol) {
+    const double nan = std::numeric_limits<double>::quiet_NaN();
+    distortion_scalars out{nan, nan, nan, nan, nan, nan};
+
+    auto maybe_W = lapack::compute_psd_decomp(m, "distortion_scalars", rtol, atol);
+    if (!maybe_W) return out;
+    const auto& eigs = maybe_W.value().spectrum;
+    const std::size_t p = eigs.eigenvalues.size();
+    if (p == 0) return out;
+    const double tol = lapack::subspace_tol(eigs.lambda_max, rtol, atol);
+
+    std::vector<double> active;
+    active.reserve(p);
+    for (std::size_t k = 0; k < p; ++k)
+        if (eigs.eigenvalues[k] > tol) active.push_back(eigs.eigenvalues[k]);
+    if (active.empty()) return out;
+
+    const std::size_t d = active.size();
+    double lam_max = active[0], lam_min = active[0], sum_log = 0.0;
+    for (double v : active) {
+        if (v > lam_max) lam_max = v;
+        if (v < lam_min) lam_min = v;
+        sum_log += std::log(v);
+    }
+    const double mean_log = sum_log / static_cast<double>(d);
+
+    double sum_sqr_dev = 0.0, dj = 0.0;
+    for (double v : active) {
+        const double dev = std::log(v) - mean_log;
+        sum_sqr_dev += dev * dev;
+        const double s = std::sqrt(v) - 1.0 / std::sqrt(v);
+        dj += s * s;
+    }
+    const double var_log = sum_sqr_dev / static_cast<double>(d);
+
+    out.lambda_max = lam_max;
+    out.lambda_min = lam_min;
+    out.mean_log_eigenvalue = mean_log;
+    out.log_eigenvalue_variance = var_log;
+    out.affine_invariant_distance =
+        std::sqrt(static_cast<double>(d) * (mean_log * mean_log + var_log));
+    out.symmetrized_kl_distortion = 0.5 * dj;
+    return out;
+}
+
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
           class micro, class Model, class FuncTable>
 auto calculate_mdlikelihood_impl(
@@ -2213,6 +2279,31 @@ auto calculate_Likelihood_diagnostics_preset_f(
     auto log_det_idm = log_Det<Information_Distortion_Matrix>(
         logdet_active_subspace(idm()));
 
+    // Spectral-scalar suite for IDM: λ_max/min, ē, s², D_AI, D_J — see
+    // compute_distortion_scalars docstring. Plus the existing Spectrum types
+    // wired generically (κ, effective rank, sorted spectrum) for IDM.
+    auto idm_scalars = compute_distortion_scalars(idm().value(), k_psd_rtol, k_psd_atol);
+    auto idm_lambda_max =
+        Max_Eigenvalue<Information_Distortion_Matrix>(idm_scalars.lambda_max);
+    auto idm_lambda_min =
+        Min_Eigenvalue<Information_Distortion_Matrix>(idm_scalars.lambda_min);
+    auto idm_mean_log =
+        Mean_Log_Eigenvalue<Information_Distortion_Matrix>(idm_scalars.mean_log_eigenvalue);
+    auto idm_log_var =
+        Log_Eigenvalue_Variance<Information_Distortion_Matrix>(idm_scalars.log_eigenvalue_variance);
+    auto idm_d_ai = Affine_Invariant_Distance<Information_Distortion_Matrix>(
+        idm_scalars.affine_invariant_distance);
+    auto idm_d_j = Symmetrized_KL_Distortion<Information_Distortion_Matrix>(
+        idm_scalars.symmetrized_kl_distortion);
+    auto maybe_W_idm =
+        lapack::compute_psd_decomp(idm().value(), "IDM", k_psd_rtol, k_psd_atol);
+    lapack::PSDDecomposition W_idm;
+    if (maybe_W_idm) W_idm = std::move(maybe_W_idm.value());
+    auto idm_spectrum =
+        Eigenvalue_Spectrum<Information_Distortion_Matrix>(lapack::eigenvalue_spectrum(W_idm));
+    auto idm_cond = Spectrum_Condition_Number<Information_Distortion_Matrix>(
+        lapack::spectrum_condition_number(W_idm));
+
     // Gaussian_Fisher_Distortion = inv(√G_b) · F_b · inv(√G_b) — measures how
     // far the cheap analytic Gaussian-formula FIM is from the numerical truth,
     // using the IDM-frame convention (identity ⇔ no distortion).
@@ -2226,6 +2317,31 @@ auto calculate_Likelihood_diagnostics_preset_f(
         F_b.parameters_ptr());
     auto log_det_gfd = log_Det<Gaussian_Fisher_Distortion>(
         logdet_active_subspace(gfd()));
+
+    // Same spectral-scalar suite for GFD — validates the calibration-shortcut
+    // assumption (G_b ≈ F_b ⇔ moment-matched Gaussian carries true Fisher
+    // information); see compute_distortion_scalars.
+    auto gfd_scalars = compute_distortion_scalars(gfd().value(), k_psd_rtol, k_psd_atol);
+    auto gfd_lambda_max =
+        Max_Eigenvalue<Gaussian_Fisher_Distortion>(gfd_scalars.lambda_max);
+    auto gfd_lambda_min =
+        Min_Eigenvalue<Gaussian_Fisher_Distortion>(gfd_scalars.lambda_min);
+    auto gfd_mean_log =
+        Mean_Log_Eigenvalue<Gaussian_Fisher_Distortion>(gfd_scalars.mean_log_eigenvalue);
+    auto gfd_log_var =
+        Log_Eigenvalue_Variance<Gaussian_Fisher_Distortion>(gfd_scalars.log_eigenvalue_variance);
+    auto gfd_d_ai = Affine_Invariant_Distance<Gaussian_Fisher_Distortion>(
+        gfd_scalars.affine_invariant_distance);
+    auto gfd_d_j = Symmetrized_KL_Distortion<Gaussian_Fisher_Distortion>(
+        gfd_scalars.symmetrized_kl_distortion);
+    auto maybe_W_gfd =
+        lapack::compute_psd_decomp(gfd().value(), "GFD", k_psd_rtol, k_psd_atol);
+    lapack::PSDDecomposition W_gfd;
+    if (maybe_W_gfd) W_gfd = std::move(maybe_W_gfd.value());
+    auto gfd_spectrum =
+        Eigenvalue_Spectrum<Gaussian_Fisher_Distortion>(lapack::eigenvalue_spectrum(W_gfd));
+    auto gfd_cond = Spectrum_Condition_Number<Gaussian_Fisher_Distortion>(
+        lapack::spectrum_condition_number(W_gfd));
 
     auto sdm = Sample_Distortion_Matrix(
         lapack::apply_normalized_congruence(W_F_b, J_sample().value(),
@@ -2338,7 +2454,15 @@ auto calculate_Likelihood_diagnostics_preset_f(
         std::move(evaluation_time_moments),
         std::move(numerical_fim),
         std::move(idm), std::move(log_det_idm),
+        std::move(idm_spectrum), std::move(idm_cond),
+        std::move(idm_lambda_max), std::move(idm_lambda_min),
+        std::move(idm_mean_log), std::move(idm_log_var),
+        std::move(idm_d_ai), std::move(idm_d_j),
         std::move(gfd), std::move(log_det_gfd),
+        std::move(gfd_spectrum), std::move(gfd_cond),
+        std::move(gfd_lambda_max), std::move(gfd_lambda_min),
+        std::move(gfd_mean_log), std::move(gfd_log_var),
+        std::move(gfd_d_ai), std::move(gfd_d_j),
         std::move(idm2),
         std::move(sdm), std::move(log_det_sdm),
         std::move(cdm), std::move(log_det_cdm),
@@ -2443,6 +2567,20 @@ auto calculate_Likelihood_derivative_basic_diagnostics(
     -> Analisis_derivative_diagnostic_basic {
     auto mt = mt_64i(seed);
     return bootstrap_it_two_to_Probit(
+        &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::basic>, dy, F_per_recording,
+        n_boostrap_samples, cis, mt, max_lag);
+}
+
+// Paired-bootstrap variant — see header for rationale. Caller must provide
+// F_per_recording at every dy entry (no decimation); sizes are asserted equal
+// inside bootstrap_it_two_paired.
+auto calculate_Likelihood_derivative_basic_diagnostics_paired(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_basic {
+    auto mt = mt_64i(seed);
+    return bootstrap_it_two_paired_to_Probit(
         &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::basic>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }

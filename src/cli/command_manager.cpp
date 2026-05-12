@@ -43,6 +43,15 @@ auto calculate_likelihood_derivative_basic_diagnostics_dsl(
         dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
+auto calculate_likelihood_derivative_basic_diagnostics_paired_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    const std::vector<parameter_spd_payload>& F_per_recording,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_basic_diagnostics_paired(
+        dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
+}
+
 auto calculate_likelihood_derivative_series_var_diagnostics_dsl(
     const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
     const std::vector<parameter_spd_payload>& F_per_recording,
@@ -1006,6 +1015,15 @@ cm.push_function(
                                const std::vector<parameter_spd_payload>&,
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_basic_diagnostics_dsl,
+            "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_basic_diagnostics_paired",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               const std::vector<parameter_spd_payload>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_basic_diagnostics_paired_dsl,
             "dlikelihood_predictions", "numerical_fisher_information",
             "n_boostrap_samples", "probits", "seed", "max_lag"));
 
