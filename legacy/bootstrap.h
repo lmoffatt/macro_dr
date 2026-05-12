@@ -150,6 +150,49 @@ auto bootstrap_it_two_to_Probit(F&& f, const std::vector<V1>& vs1, const std::ve
 }
 
 
+// Paired variant of bootstrap_it_two: vs1 and vs2 must have the same length;
+// each replicate uses a SINGLE shared index vector applied to both. Removes the
+// independent-bootstrap noise inflation that hurts ratio-of-quadratic-forms
+// diagnostics (IDM, GFD) when J and F are correlated at the recording level
+// under the information identity. Requires upstream F_per_recording to be
+// computed without decimation (size == dy.size()).
+template<class V1, class V2, class F, class ...T>
+requires requires(F&& f, const std::vector<V1> x1, const std::vector<std::size_t> i1,
+                  const std::vector<V2> x2, const std::vector<std::size_t> i2, T&&...args)
+{ { f(x1, i1, x2, i2, std::forward<T>(args)...) }; }
+auto bootstrap_it_two_paired(F&& f, const std::vector<V1>& vs1, const std::vector<V2>& vs2,
+                              std::size_t n_replicates, mt_64i& gen, T&& ...args) {
+    assert(vs1.size() == vs2.size() &&
+           "bootstrap_it_two_paired requires matching sizes (use decimate=1)");
+    auto seed_idx = generate_bootstrap_indices(vs1.size(), gen);
+    using R = std::decay_t<decltype(f(vs1, seed_idx, vs2, seed_idx,
+                                       std::forward<T>(args)...))>;
+    bootstrap<R> out;
+    out.reserve(n_replicates);
+    out.push_back(std::forward<F>(f)(vs1, seed_idx, vs2, seed_idx,
+                                      std::forward<T>(args)...));
+    for (std::size_t i = 1; i < n_replicates; ++i) {
+        auto idx = generate_bootstrap_indices(vs1.size(), gen);
+        out.push_back(std::forward<F>(f)(vs1, idx, vs2, idx, std::forward<T>(args)...));
+    }
+    return out;
+}
+
+template<class V1, class V2, class F, class ...T>
+requires requires(F&& f, const std::vector<V1> x1, const std::vector<std::size_t> i1,
+                  const std::vector<V2> x2, const std::vector<std::size_t> i2, T&&...args)
+{ { f(x1, i1, x2, i2, std::forward<T>(args)...) }; }
+auto bootstrap_it_two_paired_to_Probit(F&& f, const std::vector<V1>& vs1,
+                                        const std::vector<V2>& vs2,
+                                        std::size_t n_replicates,
+                                        std::set<double> const& cis, mt_64i& gen,
+                                        T&& ...args) {
+    auto samples = bootstrap_it_two_paired(std::forward<F>(f), vs1, vs2, n_replicates, gen,
+                                            std::forward<T>(args)...);
+    return apply_Probit_statistics(samples, cis);
+}
+
+
 
 
 

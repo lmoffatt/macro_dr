@@ -525,8 +525,24 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Numerical_Fisher_Information>,
         Probit_statistics<Information_Distortion_Matrix>,
         Probit_statistics<log_Det<Information_Distortion_Matrix>>,
+        Probit_statistics<Eigenvalue_Spectrum<Information_Distortion_Matrix>>,
+        Probit_statistics<Spectrum_Condition_Number<Information_Distortion_Matrix>>,
+        Probit_statistics<Max_Eigenvalue<Information_Distortion_Matrix>>,
+        Probit_statistics<Min_Eigenvalue<Information_Distortion_Matrix>>,
+        Probit_statistics<Mean_Log_Eigenvalue<Information_Distortion_Matrix>>,
+        Probit_statistics<Log_Eigenvalue_Variance<Information_Distortion_Matrix>>,
+        Probit_statistics<Affine_Invariant_Distance<Information_Distortion_Matrix>>,
+        Probit_statistics<Symmetrized_KL_Distortion<Information_Distortion_Matrix>>,
         Probit_statistics<Gaussian_Fisher_Distortion>,
         Probit_statistics<log_Det<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Eigenvalue_Spectrum<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Spectrum_Condition_Number<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Max_Eigenvalue<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Min_Eigenvalue<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Mean_Log_Eigenvalue<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Log_Eigenvalue_Variance<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Affine_Invariant_Distance<Gaussian_Fisher_Distortion>>,
+        Probit_statistics<Symmetrized_KL_Distortion<Gaussian_Fisher_Distortion>>,
         Probit_statistics<Information_Distortion_Reconstituted>,
         Probit_statistics<Sample_Distortion_Matrix>,
         Probit_statistics<log_Det<Sample_Distortion_Matrix>>,
@@ -630,6 +646,18 @@ using Analisis_derivative_diagnostic_series_kernel_full = var::concatenate_t<
 
 
 auto calculate_Likelihood_derivative_basic_diagnostics(
+    const std::vector<dMacro_State_Ev_gradient_all>& dy,
+    const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    -> Analisis_derivative_diagnostic_basic;
+
+// Paired-bootstrap variant: requires F_per_recording.size() == dy.size()
+// (i.e. caller must use decimate=1 when building F_per_recording). Uses one
+// shared index vector per bootstrap replicate, removing the independent-draw
+// variance inflation that makes IDM = F⁻¹ᐟ²·J·F⁻¹ᐟ² blow up in the worst
+// eigendirection. Yields tighter ratio-of-quadratic-forms diagnostics under
+// the information identity J ≈ F at the recording level.
+auto calculate_Likelihood_derivative_basic_diagnostics_paired(
     const std::vector<dMacro_State_Ev_gradient_all>& dy,
     const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
     const std::set<double>& cis, std::size_t seed, std::size_t max_lag)

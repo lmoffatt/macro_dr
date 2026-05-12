@@ -206,6 +206,18 @@ struct leaf_variable<::Null_Space_Projector<V>> : leaf_variable<V> {};
 template <class V>
 struct leaf_variable<::Worst_Subspace_Projector<V>> : leaf_variable<V> {};
 template <class V>
+struct leaf_variable<::Max_Eigenvalue<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Min_Eigenvalue<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Mean_Log_Eigenvalue<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Log_Eigenvalue_Variance<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Affine_Invariant_Distance<V>> : leaf_variable<V> {};
+template <class V>
+struct leaf_variable<::Symmetrized_KL_Distortion<V>> : leaf_variable<V> {};
+template <class V>
 struct leaf_variable<var::Indexed<V>> : leaf_variable<V> {};
 template <class V, class P>
 struct leaf_variable<var::Derivative<V, P>> : leaf_variable<V> {};
@@ -302,6 +314,42 @@ template <class V>
 struct operation_chain<::Worst_Subspace_Projector<V>> {
     static std::string value() {
         return op_chain_detail::join("worst_subspace_projector", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Max_Eigenvalue<V>> {
+    static std::string value() {
+        return op_chain_detail::join("max_eigenvalue", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Min_Eigenvalue<V>> {
+    static std::string value() {
+        return op_chain_detail::join("min_eigenvalue", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Mean_Log_Eigenvalue<V>> {
+    static std::string value() {
+        return op_chain_detail::join("mean_log_eigenvalue", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Log_Eigenvalue_Variance<V>> {
+    static std::string value() {
+        return op_chain_detail::join("log_eigenvalue_variance", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Affine_Invariant_Distance<V>> {
+    static std::string value() {
+        return op_chain_detail::join("affine_invariant_distance", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Symmetrized_KL_Distortion<V>> {
+    static std::string value() {
+        return op_chain_detail::join("symmetrized_kl_distortion", operation_chain<V>::value());
     }
 };
 // count / mean / variance / covariance / series_* unwrap transparently —
