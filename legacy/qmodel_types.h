@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <limits>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -280,6 +281,40 @@ class Proportional_Noise : public var::Var<Proportional_Noise, double> {};
 class Current_Baseline : public var::Var<Current_Baseline, double> {};
 
 // ---------------------------------------------------------------------------
+// Simplex-canary thresholds (shared by to_Probability, to_Probability_displacement,
+// to_Covariance_Probability).
+//
+// Two roots and a safety multiplier, everything else derived:
+//   - canary_primitive_warn — warn level for primitive departures
+//                             (|Σ−target|/√N, RMS row-sum). Set to the typical
+//                             FP-noise floor used in well-engineered scientific
+//                             code for invariant checks (≈ BLAS orthogonality
+//                             tolerance, ODE conservation laws, MCMC invariants).
+//   - canary_dcos_warn_sq   — warn level for cos²(∂x/∂θ, 𝟙). Geometric measure
+//                             of how much of the derivative aligns with the
+//                             constraint-violating direction; pure FP gives
+//                             cos² ≈ ε², a real bug gives cos² ≈ 1.
+//   - canary_safety         — multiplier: error threshold = warn × canary_safety.
+//
+// Single-row max threshold for covariance is 10× the aggregate-RMS threshold —
+// captures that one row can stick out by up to ~√N × RMS before averaging hides
+// it.
+//
+// See theory/scientific-software/notes/with_warning_abstraction.md for the
+// structured replacement of the std::cerr warn channel.
+// ---------------------------------------------------------------------------
+inline constexpr double canary_primitive_warn   = 1e-10;
+inline constexpr double canary_dcos_warn_sq     = 1e-8;
+inline constexpr double canary_safety           = 100.0;
+inline constexpr double canary_primitive_error  = canary_primitive_warn * canary_safety;
+inline constexpr double canary_dcos_error_sq    = canary_dcos_warn_sq   * canary_safety;
+inline constexpr double canary_row_max_warn     = canary_primitive_warn * 10.0;
+inline constexpr double canary_row_max_error    = canary_primitive_error * 10.0;
+// Floor on ‖∂x/∂θ_p‖₂² below which the parameter is treated as having no
+// effect on x — avoids noise/noise = O(1) false signals.
+inline constexpr double canary_norm_floor_sq    = 1e-24;  // ‖·‖₂ ≲ 1e-12
+
+// ---------------------------------------------------------------------------
 // to_Probability — canary + drift correction for almost-probability vectors.
 //
 // PURPOSE
@@ -325,9 +360,13 @@ class Current_Baseline : public var::Var<Current_Baseline, double> {};
 // ---------------------------------------------------------------------------
 template <class C_Matrix>
 auto to_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    constexpr double eps_neg  = 1e-10;
-    constexpr double eps_sum  = 1e-8;
-    constexpr double eps_dsum = 1e-8;
+    constexpr double eps_neg = 1e-10;
+    // Thresholds: see canary_* constants above.
+    constexpr double eps_sum_warn      = canary_primitive_warn;
+    constexpr double eps_sum_error     = canary_primitive_error;
+    constexpr double eps_dcos_warn_sq  = canary_dcos_warn_sq;
+    constexpr double eps_dcos_error_sq = canary_dcos_error_sq;
+    constexpr double eps_norm_floor_sq = canary_norm_floor_sq;
 
     // (1) finiteness — primitive
     for (std::size_t i = 0; i < x.size(); ++i)
@@ -352,24 +391,57 @@ auto to_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
         return error_message("to_Probability: negative entry " +
                               std::to_string(minv));
 
-    // (3) sum canary — derivative-aware var::sum returns Derivative<double, P>
-    //     (or plain double for non-Derivative inputs). primitive(s) is Σ;
-    //     derivative(s)()[p, k] is ∂Σ/∂θ_pk.
+    // (3) sum canary — derivative-aware var::sum returns Derivative<double, P>.
     auto s = var::sum(x);
+    const double inv_sqrtN = 1.0 / std::sqrt(static_cast<double>(x.size()));
 
-    // (3a) Σ within tolerance of 1
-    if (std::abs(primitive(s) - 1.0) > eps_sum)
-        return error_message("to_Probability: |Σ − 1| = " +
-                              std::to_string(std::abs(primitive(s) - 1.0)));
+    // (3a) primitive |Σ − 1|/√N
+    {
+        double dep = std::abs(primitive(s) - 1.0) * inv_sqrtN;
+        if (dep > eps_sum_error) {
+            return error_message("to_Probability: |Σ−1|/√N = " +
+                                  std::to_string(dep));
+        }
+        if (dep > eps_sum_warn) {
+            std::cerr << "[warn] to_Probability: |Σ−1|/√N = "
+                      << std::scientific << std::setprecision(3) << dep
+                      << " (warn=" << eps_sum_warn
+                      << ", err=" << eps_sum_error << ")\n";
+        }
+    }
 
-    // (3b) ∂Σ/∂θ ≈ 0 — structural invariant
+    // (3b) derivative cosine ratio² per parameter
     if constexpr (var::is_derivative_v<C_Matrix>) {
-        auto const& ds = derivative(s)();
-        for (std::size_t i = 0; i < ds.size(); ++i)
-            if (std::abs(ds[i]) > eps_dsum)
+        auto const& d = derivative(x)();
+        const double N = static_cast<double>(x.size());
+        for (std::size_t p = 0; p < d.size(); ++p) {
+            auto const& dp = d[p];
+            double s_signed = 0.0;
+            double s_sq     = 0.0;
+            for (std::size_t k = 0; k < dp.size(); ++k) {
+                s_signed += dp[k];
+                s_sq     += dp[k] * dp[k];
+            }
+            if (s_sq < eps_norm_floor_sq) {
+                continue;  // parameter has no effect on x
+            }
+            double ratio_sq = (s_signed * s_signed) / (s_sq * N);
+            if (ratio_sq > eps_dcos_error_sq) {
+                std::ostringstream ss;
+                ss << std::scientific << std::setprecision(3)
+                   << "cos²=" << ratio_sq
+                   << ", Σ=" << s_signed << ", ‖·‖²=" << s_sq << ", N=" << N
+                   << " (err²=" << eps_dcos_error_sq << ")";
                 return error_message("to_Probability: ∂Σ/∂θ violates invariant at param " +
-                                      std::to_string(i) + ": " +
-                                      std::to_string(ds[i]));
+                                      std::to_string(p) + ": " + ss.str());
+            }
+            if (ratio_sq > eps_dcos_warn_sq) {
+                std::cerr << "[warn] to_Probability: ∂Σ/∂θ at param " << p
+                          << " cos²=" << std::scientific << std::setprecision(3)
+                          << ratio_sq << " (warn²=" << eps_dcos_warn_sq
+                          << ", err²=" << eps_dcos_error_sq << ")\n";
+            }
+        }
     }
 
     // (4) drift correction — derivative-aware via operator/(double, Derivative)
@@ -419,10 +491,22 @@ auto to_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
 // ---------------------------------------------------------------------------
 template <class C_Matrix>
 auto to_Covariance_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    constexpr double eps_neg  = 1e-10;
-    constexpr double eps_sym  = 1e-10;
-    constexpr double eps_sum  = 1e-8;
-    constexpr double eps_dsum = 1e-8;
+    // See to_Probability for the design notes. Two tiers (warn/error) for
+    // both primitive row-sums and derivative row-sums.
+    //   - Primitive row-sums: aggregate RMS √(Σᵢ row_sum_i²)/√N AND per-row
+    //     max |row_sum_i|. RMS catches accumulation across rows, max catches
+    //     a single deeply-broken row.
+    //   - Derivative row-sums: per-(row, parameter) cosine ratio²
+    //     |Σⱼ ∂x[i,j]/∂θ_p|² / (‖∂x[i,·]/∂θ_p‖₂² · N).
+    constexpr double eps_neg = 1e-10;
+    constexpr double eps_sym = 1e-10;
+    constexpr double eps_sum_warn      = canary_primitive_warn;
+    constexpr double eps_sum_error     = canary_primitive_error;
+    constexpr double eps_max_warn      = canary_row_max_warn;
+    constexpr double eps_max_error     = canary_row_max_error;
+    constexpr double eps_dcos_warn_sq  = canary_dcos_warn_sq;
+    constexpr double eps_dcos_error_sq = canary_dcos_error_sq;
+    constexpr double eps_norm_floor_sq = canary_norm_floor_sq;
 
     if (x.nrows() != x.ncols())
         return error_message("to_Covariance_Probability: not square (" +
@@ -460,38 +544,85 @@ auto to_Covariance_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
                                   std::to_string(i) + ": " +
                                   std::to_string(primitive(x(i, i))));
 
-    // (4) per-row sum canary. By bilinearity on a simplex-constrained X:
+    // (4) per-row sum canary (primitive). By bilinearity on a simplex-constrained X:
     //         Σⱼ Cov(Xᵢ, Xⱼ) = Cov(Xᵢ, ΣX) = Cov(Xᵢ, 1) = 0    ∀ i
-    //     So every row of bare Cov sums to 0 (within FP noise).
-    for (std::size_t i = 0; i < x.nrows(); ++i) {
-        double row_sum = 0.0;
-        for (std::size_t j = 0; j < x.ncols(); ++j) row_sum += primitive(x(i, j));
-        if (std::abs(row_sum) > eps_sum)
-            return error_message("to_Covariance_Probability: row " +
-                                  std::to_string(i) + " sums to " +
-                                  std::to_string(row_sum) +
+    //     Aggregate RMS + worst-row check, each two-tier.
+    {
+        const double N = static_cast<double>(x.nrows());
+        const double inv_sqrtN = 1.0 / std::sqrt(N);
+        double sum_sq = 0.0;
+        double max_abs = 0.0;
+        std::size_t max_i = 0;
+        for (std::size_t i = 0; i < x.nrows(); ++i) {
+            double row_sum = 0.0;
+            for (std::size_t j = 0; j < x.ncols(); ++j) {
+                row_sum += primitive(x(i, j));
+            }
+            sum_sq += row_sum * row_sum;
+            if (std::abs(row_sum) > max_abs) {
+                max_abs = std::abs(row_sum);
+                max_i = i;
+            }
+        }
+        double rms = std::sqrt(sum_sq) * inv_sqrtN;
+        if (rms > eps_sum_error) {
+            return error_message("to_Covariance_Probability: RMS row-sum = " +
+                                  std::to_string(rms) +
                                   " (expected 0 by simplex constraint on Cov rows)");
+        }
+        if (max_abs > eps_max_error) {
+            return error_message("to_Covariance_Probability: max |row " +
+                                  std::to_string(max_i) + " sum| = " +
+                                  std::to_string(max_abs));
+        }
+        if (rms > eps_sum_warn) {
+            std::cerr << "[warn] to_Covariance_Probability: RMS row-sum = "
+                      << std::scientific << std::setprecision(3) << rms
+                      << " (warn=" << eps_sum_warn
+                      << ", err=" << eps_sum_error << ")\n";
+        }
+        if (max_abs > eps_max_warn) {
+            std::cerr << "[warn] to_Covariance_Probability: max |row " << max_i
+                      << " sum| = " << std::scientific << std::setprecision(3)
+                      << max_abs << " (warn=" << eps_max_warn
+                      << ", err=" << eps_max_error << ")\n";
+        }
     }
 
-    // (5) ∂(row sum)/∂θ ≈ 0 — the row-sum identity is constant in θ, so its
-    //     derivative is identically zero. Catches gradient-side violations of
-    //     the simplex invariant.
+    // (5) ∂(row sum)/∂θ ≈ 0 — per (row, parameter) cosine ratio²
     if constexpr (var::is_derivative_v<C_Matrix>) {
         auto const& d = derivative(x)();
-        // d is shape (P_nrows, P_ncols), each cell a Matrix<double> of shape
-        // (x.nrows, x.ncols). For each parameter (each cell of d), check that
-        // every row sums to 0.
+        const double N = static_cast<double>(x.ncols());
         for (std::size_t p = 0; p < d.size(); ++p) {
             auto const& dp = d[p];
             for (std::size_t i = 0; i < x.nrows(); ++i) {
-                double drow_sum = 0.0;
-                for (std::size_t j = 0; j < x.ncols(); ++j) drow_sum += dp(i, j);
-                if (std::abs(drow_sum) > eps_dsum)
+                double drow_signed = 0.0;
+                double drow_sq     = 0.0;
+                for (std::size_t j = 0; j < x.ncols(); ++j) {
+                    drow_signed += dp(i, j);
+                    drow_sq     += dp(i, j) * dp(i, j);
+                }
+                if (drow_sq < eps_norm_floor_sq) {
+                    continue;
+                }
+                double ratio_sq = (drow_signed * drow_signed) / (drow_sq * N);
+                if (ratio_sq > eps_dcos_error_sq) {
+                    std::ostringstream ss;
+                    ss << std::scientific << std::setprecision(3)
+                       << "cos²=" << ratio_sq
+                       << ", Σ=" << drow_signed << ", ‖·‖²=" << drow_sq << ", N=" << N
+                       << " (err²=" << eps_dcos_error_sq << ")";
                     return error_message("to_Covariance_Probability: ∂(row " +
                                           std::to_string(i) + ")/∂θ_" +
-                                          std::to_string(p) + " = " +
-                                          std::to_string(drow_sum) +
-                                          " (expected 0)");
+                                          std::to_string(p) + " = " + ss.str());
+                }
+                if (ratio_sq > eps_dcos_warn_sq) {
+                    std::cerr << "[warn] to_Covariance_Probability: ∂(row " << i
+                              << ")/∂θ_" << p << " cos²="
+                              << std::scientific << std::setprecision(3) << ratio_sq
+                              << " (warn²=" << eps_dcos_warn_sq
+                              << ", err²=" << eps_dcos_error_sq << ")\n";
+                }
             }
         }
     }
@@ -535,8 +666,12 @@ auto to_Covariance_Probability(C_Matrix const& x) -> Maybe_error<C_Matrix> {
 // ---------------------------------------------------------------------------
 template <class C_Matrix>
 auto to_Probability_displacement(C_Matrix const& x) -> Maybe_error<C_Matrix> {
-    constexpr double eps_sum  = 1e-8;
-    constexpr double eps_dsum = 1e-8;
+    // See to_Probability / canary_* constants above. Target = 0 instead of 1.
+    constexpr double eps_sum_warn      = canary_primitive_warn;
+    constexpr double eps_sum_error     = canary_primitive_error;
+    constexpr double eps_dcos_warn_sq  = canary_dcos_warn_sq;
+    constexpr double eps_dcos_error_sq = canary_dcos_error_sq;
+    constexpr double eps_norm_floor_sq = canary_norm_floor_sq;
 
     // (1) finiteness — primitive
     for (std::size_t i = 0; i < x.size(); ++i)
@@ -553,21 +688,56 @@ auto to_Probability_displacement(C_Matrix const& x) -> Maybe_error<C_Matrix> {
                     return error_message("to_Probability_displacement: non-finite derivative");
     }
 
-    // (2) Σ ≈ 0 — primitive sum-to-zero invariant
+    // (2) primitive |Σ|/√N (target = 0)
     auto s = var::sum(x);
-    if (std::abs(primitive(s)) > eps_sum)
-        return error_message("to_Probability_displacement: |Σ| = " +
-                              std::to_string(std::abs(primitive(s))) +
-                              " (expected 0 by simplex-tangent constraint)");
+    const double inv_sqrtN = 1.0 / std::sqrt(static_cast<double>(x.size()));
+    {
+        double dep = std::abs(primitive(s)) * inv_sqrtN;
+        if (dep > eps_sum_error) {
+            return error_message("to_Probability_displacement: |Σ|/√N = " +
+                                  std::to_string(dep) +
+                                  " (expected 0 by simplex-tangent constraint)");
+        }
+        if (dep > eps_sum_warn) {
+            std::cerr << "[warn] to_Probability_displacement: |Σ|/√N = "
+                      << std::scientific << std::setprecision(3) << dep
+                      << " (warn=" << eps_sum_warn
+                      << ", err=" << eps_sum_error << ")\n";
+        }
+    }
 
-    // (3) ∂Σ/∂θ ≈ 0 — derivative of the identity is zero
+    // (3) derivative cosine ratio² per parameter
     if constexpr (var::is_derivative_v<C_Matrix>) {
-        auto const& ds = derivative(s)();
-        for (std::size_t i = 0; i < ds.size(); ++i)
-            if (std::abs(ds[i]) > eps_dsum)
+        auto const& d = derivative(x)();
+        const double N = static_cast<double>(x.size());
+        for (std::size_t p = 0; p < d.size(); ++p) {
+            auto const& dp = d[p];
+            double s_signed = 0.0;
+            double s_sq     = 0.0;
+            for (std::size_t k = 0; k < dp.size(); ++k) {
+                s_signed += dp[k];
+                s_sq     += dp[k] * dp[k];
+            }
+            if (s_sq < eps_norm_floor_sq) {
+                continue;
+            }
+            double ratio_sq = (s_signed * s_signed) / (s_sq * N);
+            if (ratio_sq > eps_dcos_error_sq) {
+                std::ostringstream ss;
+                ss << std::scientific << std::setprecision(3)
+                   << "cos²=" << ratio_sq
+                   << ", Σ=" << s_signed << ", ‖·‖²=" << s_sq << ", N=" << N
+                   << " (err²=" << eps_dcos_error_sq << ")";
                 return error_message("to_Probability_displacement: ∂Σ/∂θ violates invariant at param " +
-                                      std::to_string(i) + ": " +
-                                      std::to_string(ds[i]));
+                                      std::to_string(p) + ": " + ss.str());
+            }
+            if (ratio_sq > eps_dcos_warn_sq) {
+                std::cerr << "[warn] to_Probability_displacement: ∂Σ/∂θ at param " << p
+                          << " cos²=" << std::scientific << std::setprecision(3)
+                          << ratio_sq << " (warn²=" << eps_dcos_warn_sq
+                          << ", err²=" << eps_dcos_error_sq << ")\n";
+            }
+        }
     }
 
     // (4) Pass through on success.
@@ -713,10 +883,11 @@ auto to_Transition_Probability_Eigenvalues(C_Matrix&& lambda) {
     return lambda;
 }
 
+// enforce_gmean_bounds removed: source-level canaries (check_gtotal_ij_in_range,
+// check_gtotal_sqr_ij_in_range) replace the post-construction clamp.
 struct StabilizerPolicyEnabled {
     static constexpr bool clamp_variance = false;
     static constexpr bool mask_probability = false;
-    static constexpr bool enforce_gmean_bounds = false;
     static constexpr bool project_transition_probability = false;
     static constexpr bool sanitize_eigenvalues = false;
 };
@@ -724,7 +895,6 @@ struct StabilizerPolicyEnabled {
 struct StabilizerPolicyEnabled_ {
     static constexpr bool clamp_variance = true;
     static constexpr bool mask_probability = true;
-    static constexpr bool enforce_gmean_bounds = true;
     static constexpr bool project_transition_probability = true;
     static constexpr bool sanitize_eigenvalues = true;
 };
@@ -732,7 +902,6 @@ struct StabilizerPolicyEnabled_ {
 struct StabilizerPolicyDisabled {
     static constexpr bool clamp_variance = false;
     static constexpr bool mask_probability = false;
-    static constexpr bool enforce_gmean_bounds = false;
     static constexpr bool project_transition_probability = false;
     static constexpr bool sanitize_eigenvalues = false;
 };
@@ -877,6 +1046,13 @@ class lambda : public var::Var<lambda, DiagonalMatrix<double>> {};
 
 class V : public var::Var<V, Matrix<double>> {};
 class W : public var::Var<W, Matrix<double>> {};
+// Frobenius condition number κ_F(V) = ‖V‖_F · ‖W‖_F of the eigenvector
+// matrix. Stored as a plain double (no derivative payload): κ is treated as
+// a hyperparameter of the regularization (it sets the FP-noise floor of P_ij
+// after V·diag(exp(λdt))·W reconstruction), not a free model parameter.
+// See theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md
+// for the role in choosing min_P_prior.
+class kappa_V : public var::Constant<kappa_V, double> {};
 // Block partition of the spectrum: rows [begin, end) per block
 class Blocks : public var::Constant<Blocks, Matrix<std::size_t>> {};
 
@@ -928,6 +1104,11 @@ Maybe_error<Transfer_Op_to<C_Matrix, P>> to_Transition_Probability(C_Matrix cons
 class gmean_i : public Var<gmean_i, Matrix<double>> {
     friend std::string className(gmean_i) { return "gmean_i"; }
 };
+class gmean_end_i : public Var<gmean_end_i, Matrix<double>> {
+    friend std::string className(gmean_end_i) { return "gmean_end_i"; }
+};
+
+
 class gtotal_ij : public Var<gtotal_ij, Matrix<double>> {
     friend std::string className(gtotal_ij) { return "gtotal_ij"; }
 };
@@ -969,6 +1150,32 @@ class trust_coefficient : public var::Var<trust_coefficient, double> {
     friend std::string className(trust_coefficient) { return "trust_coefficient"; }
 };
 
+// IRT/MRT (variance_correction=true) diagnostics. All three are 1.0/0.0
+// defaults in the standard Kalman branch (no Taylor active); computed in
+// the IRT/MRT branch of safely_calculate_Algo_State_recursive.
+//   taylor_trust_coefficient : α_vSv ∈ [0,1] — Taylor σ² shrink factor
+//                              (1 = full IRT applied; <1 = numerical
+//                              cancellation forced back-off, equivalent
+//                              to inflating V → V/α_vSv on the σ² piece).
+//   taylor_vSv               : the effective scalar ṽᵀΣv after α_vSv shrink
+//                              (the Sherman-Morrison denominator's
+//                              variable part).
+//   taylor_strength          : α_vSv · |β| · ‖σ̄²‖ / ‖γ̄‖ where β = δ/V —
+//                              relative magnitude of the σ² perturbation
+//                              into v vs. the baseline γ̄ direction.
+class taylor_trust_coefficient
+    : public var::Var<taylor_trust_coefficient, double> {
+    friend std::string className(taylor_trust_coefficient) {
+        return "taylor_trust_coefficient";
+    }
+};
+class taylor_vSv : public var::Var<taylor_vSv, double> {
+    friend std::string className(taylor_vSv) { return "taylor_vSv"; }
+};
+class taylor_strength : public var::Var<taylor_strength, double> {
+    friend std::string className(taylor_strength) { return "taylor_strength"; }
+};
+
 class Chi2 : public var::Var<Chi2, double> {
     friend std::string className(Chi2) { return "Chi2"; }
 };
@@ -984,7 +1191,7 @@ class PG_n : public var::Var<PG_n, Matrix<double>> {};
 
 using Qn = Vector_Space<number_of_samples, min_P, P, PG_n, PGG_n>;
 
-using Eigs = Vector_Space<lambda, V, W>;
+using Eigs = Vector_Space<lambda, V, W, kappa_V>;
 
 using Qdtg = Vector_Space<number_of_samples, min_P, P_half, g>;
 
@@ -1017,12 +1224,14 @@ inline void save(const std::string name, const Patch_Model& m) {
     f_g << std::setprecision(std::numeric_limits<double>::digits10 + 1) << get<g>(m) << "\n";
 }
 
-using Algo_State_Dynamic_Space = Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
-                       P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1, 
+using Algo_State_Dynamic_Space = Vector_Space<y_mean, y_var, trust_coefficient,
+                       taylor_trust_coefficient, taylor_vSv, taylor_strength,
+                       r_std, Chi2, P,P_half,gmean_i,gvar_i,gmean_ij,gtotal_ij,d_gS,d_GS,P_mean_t2_y0, P_mean_t2_y1,P_mean_t15_y0, P_mean_t15_y1,
+                       P_mean_t1_y1, P_mean_t20_y1, P_mean_t11_y0, P_mean_t10_y1,
                        P_mean_0t_y0,P_mean_0t_y1,P_cross_cov_0t_y0,P_cross_cov_0t_y1,
                        P_Cov_t2_y0,
                        P_Cov_t2_y1,P_Cov_t15_y0,
-                       P_Cov_t15_y1, P_Cov_t1_y1, P_Cov_t20_y1, P_Cov_t11_y0, P_Cov_t10_y1>; 
+                       P_Cov_t15_y1, P_Cov_t1_y1, P_Cov_t20_y1, P_Cov_t11_y0, P_Cov_t10_y1>;
 
 class Algo_State_Dynamic
     : public var::Var<
@@ -1049,17 +1258,23 @@ class Algo_State_Dynamic
     }
 };
 
-using Algo_State_space=Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P_mean, P_Cov>;
+using Algo_State_space=Vector_Space<y_mean, y_var, trust_coefficient,
+                                    taylor_trust_coefficient, taylor_vSv, taylor_strength,
+                                    r_std, Chi2, P_mean, P_Cov>;
 
 
 class Algo_State
     : public var::Var<Algo_State,Algo_State_space> {
    public:
     using base_type =
-        var::Var<Algo_State, Vector_Space<y_mean, y_var, trust_coefficient, r_std, Chi2, P_mean,
+        var::Var<Algo_State, Vector_Space<y_mean, y_var, trust_coefficient,
+                                          taylor_trust_coefficient, taylor_vSv, taylor_strength,
+                                          r_std, Chi2, P_mean,
                                           P_Cov>>;
     Algo_State(const Algo_State_Dynamic& p)
         : base_type{Vector_Space(get<y_mean>(p()), get<y_var>(p()), get<trust_coefficient>(p()),
+                                 get<taylor_trust_coefficient>(p()), get<taylor_vSv>(p()),
+                                 get<taylor_strength>(p()),
                                  get<r_std>(p()), get<Chi2>(p()),
                                  P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()))} {}
 
@@ -1200,20 +1415,22 @@ struct dx_of_dfdx<Derivative<F, Parameters_transformed>, macrodr::ddMacro_State<
 namespace macrodr {
 
 using predictions_element =
-    var::please_include<logL, elogL, vlogL, y_mean, y_var, r_std,P_mean, P_Cov, trust_coefficient>;
+    var::please_include<logL, elogL, vlogL, y_mean, y_var, r_std,P_mean, P_Cov, trust_coefficient,
+                        taylor_trust_coefficient, taylor_vSv, taylor_strength>;
 
 using diagnostic_element = var::please_include<logL, elogL, vlogL, Algo_State_Dynamic>;
 
 using gradient_minimal_element =
     var::please_include<var::Derivative<logL, var::Parameters_transformed>, elogL, y_mean, y_var, r_std,
-                        trust_coefficient>;
+                        trust_coefficient, taylor_trust_coefficient, taylor_vSv, taylor_strength>;
 
 using gradient_all_element =
     var::please_include<var::Derivative<logL, var::Parameters_transformed>,
                         var::Derivative<elogL, var::Parameters_transformed>,
                         var::Derivative<y_mean, var::Parameters_transformed>,
                         var::Derivative<y_var, var::Parameters_transformed>,
-                        var::Derivative<r_std, var::Parameters_transformed>, trust_coefficient>;
+                        var::Derivative<r_std, var::Parameters_transformed>, trust_coefficient,
+                        taylor_trust_coefficient, taylor_vSv, taylor_strength>;
 
 using Macro_State_minimal = Macro_State<>;
 

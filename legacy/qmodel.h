@@ -1062,8 +1062,24 @@ class Macro_DMR {
 
         auto [r_lambda, r_V, r_VL] = std::move(maybe_eig.value());
         auto r_W = tr(std::move(r_VL));
+
+        // Frobenius condition number κ_F(V) = ‖V‖_F · ‖W‖_F. Primitive only
+        // (no derivative payload). Sets the FP-noise floor of P_ij after the
+        // V·diag(exp(λdt))·W reconstruction; consumed downstream as the
+        // pseudo-count strength for the Bayesian-shrinkage regularizer. See
+        // theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md
+        const auto& V_p = primitive(r_V);
+        const auto& W_p = primitive(r_W);
+        double V_norm_sq = 0.0;
+        double W_norm_sq = 0.0;
+        for (std::size_t i = 0; i < V_p.size(); ++i)
+            V_norm_sq += V_p[i] * V_p[i];
+        for (std::size_t i = 0; i < W_p.size(); ++i)
+            W_norm_sq += W_p[i] * W_p[i];
+        double r_kappa = std::sqrt(V_norm_sq) * std::sqrt(W_norm_sq);
+
         return build<Eigs>(build<lambda>(std::move(r_lambda)), build<V>(std::move(r_V)),
-                           build<W>(std::move(r_W)));
+                           build<W>(std::move(r_W)), kappa_V(r_kappa));
     }
 
     template <class C_Patch_Model>
@@ -1071,6 +1087,108 @@ class Macro_DMR {
     auto calc_eigen(const C_Patch_Model& m, Agonist_concentration x)
         -> Maybe_error<Transfer_Op_to<C_Patch_Model, Eigs>> {
         return calc_eigen(calc_Qx(m, x));
+    }
+
+    // ---------------------------------------------------------------------
+    // Bayesian shrinkage of conditional conductance moments with v_g
+    // (per-state, "Poisson endpoint") priors.
+    //
+    // Full derivation:
+    //   theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md
+    //
+    // The raw conditional estimators
+    //     gmean_ij = gtotal_ij     / P_ij,
+    //     gsqr_ij  = gtotal_sqr_ij / P_ij
+    // are well-posed when P_ij is well above the FP noise floor but become
+    // dominated by rounding noise for rare (small-Q_ij·dt, multi-hop)
+    // transitions where both numerator and denominator approach zero.
+    //
+    // v_g prior: in the no-data limit, the rare i→j transit averages the
+    // two endpoint conductances. For a moment matrix M:
+    //     prior_gmean_ij[i,j] = (g[i]  + g[j])  / 2
+    //     prior_gsqr_ij[i,j]  = (g[i]² + g[j]²) / 2.
+    // (The gvar prior emerges algebraically as ((g[i] − g[j])/2)².)
+    //
+    // Chosen over EB-from-marginals because the marginals are themselves
+    // sums of the eigendecomposition-reconstructed gtotal_ij. When V is
+    // ill-conditioned (large κ(V)), gtotal_ij is FP-contaminated exactly
+    // when the prior is supposed to dominate — EB marginals would then
+    // feed contaminated data back into the shrinkage target, defeating the
+    // regularization. v_g priors depend only on per-state model parameters
+    // and stay clean regardless of κ(V).
+    //
+    // The shrunken conditional moment is the conjugate-prior posterior:
+    //     gmean_ij_shrunk = (gtotal_ij     + prior_gmean · ε) / (P + ε),
+    //     gsqr_ij_shrunk  = (gtotal_sqr_ij + prior_gsqr  · ε) / (P + ε),
+    // where ε = min_P_prior is the pseudo-count:
+    //   - eig paths:          ε = ε_mach · κ_F(V)   (FP-noise floor of P)
+    //   - taylor/schur paths: ε = 10·√N·ε_mach
+    //
+    // P_ij ≫ ε: identical to the raw quotient.
+    // P_ij ≪ ε: shrinks smoothly to the marginal average.
+    // Continuous, monotonic, derivative-clean throughout.
+    //
+    // Conditional variance follows from the second-moment identity
+    //     gvar_ij = gsqr_ij_shrunk − gmean_ij_shrunk²
+    // applied to the shrunken moments. No explicit gvar prior needed.
+    // ---------------------------------------------------------------------
+
+    // v_g-based ("endpoint") prior on gmean_ij and gsqr_ij. In the Poisson
+    // limit a rare transit i→j averages the bracketing endpoint
+    // conductances:
+    //     prior_gmean_ij[i,j] = (g[i] + g[j]) / 2
+    //     prior_gsqr_ij[i,j]  = (g[i]² + g[j]²) / 2
+    // The gvar prior emerges algebraically:
+    //     prior_gvar = prior_gsqr − prior_gmean² = ((g[i] − g[j])/2)²
+    //
+    // Chosen over EB-from-marginals because it does not depend on the
+    // eigendecomposition's reconstruction of gtotal_ij: when V is
+    // ill-conditioned (large κ(V)) the marginals of gtotal_ij are
+    // FP-contaminated exactly when the prior is supposed to dominate,
+    // which defeats the regularization. v_g priors stay clean regardless of
+    // κ(V) — they depend only on per-state model parameters.
+    template <class C_g>
+        requires U<C_g, g>
+    static auto gmean_ij_prior(const C_g& t_g) {
+        const std::size_t N = t_g().size();
+        Matrix<double> uT(1, N, 1.0);
+        auto g_outer = t_g() * uT;                       // (i,j) = g[i]
+        return build<gmean_ij>((g_outer + tr(g_outer)) * 0.5);
+    }
+
+    // Typed gvar_ij to fit calc_g_ij_bayes's (gtotal_sqr_ij, gvar_ij)
+    // overload; semantically a prior on the second moment, not on the variance.
+    template <class C_g>
+        requires U<C_g, g>
+    static auto gsqr_ij_prior(const C_g& t_g) {
+        const std::size_t N = t_g().size();
+        Matrix<double> uT(1, N, 1.0);
+        auto g_sq = elemMult(t_g(), t_g());              // N×1, entries g[i]²
+        auto gsq_outer = g_sq * uT;                       // (i,j) = g[i]²
+        return build<gvar_ij>((gsq_outer + tr(gsq_outer)) * 0.5);
+    }
+
+    // Conjugate-prior posterior under pseudo-count form
+    //     posterior = (data + prior · ε) / (P + ε).
+    // Overloads:  (gtotal_ij,     gmean_ij)  →  gmean_ij_shrunk,
+    //             (gtotal_sqr_ij, gvar_ij)   →  gsqr_ij_shrunk.
+    template <class C_gtotal_ij, class C_P, class C_prior>
+        requires (((U<C_gtotal_ij, gtotal_ij>     && U<C_prior, gmean_ij>) ||
+                   (U<C_gtotal_ij, gtotal_sqr_ij> && U<C_prior, gvar_ij>))
+                  && U<C_P, P>)
+    static auto calc_g_ij_bayes(const C_gtotal_ij& t_gtotal_ij,
+                                   const C_P& t_P,
+                                   const C_prior& t_prior, double min_P_prior) {
+        const std::size_t N = t_P().nrows();
+        Matrix<double> UU(N, N, 1.0);
+        auto num = t_gtotal_ij() + t_prior() * min_P_prior;
+        auto den = t_P() + UU * min_P_prior;
+        auto ratio = zip([](auto const& x, auto const& y) { return x / y; }, num, den);
+        // build<T> needs a concrete tag type; dispatch on the prior's role.
+        if constexpr (U<C_prior, gmean_ij>)
+            return build<gmean_ij>(std::move(ratio));
+        else
+            return build<gvar_ij>(std::move(ratio));
     }
 
     template <class C_P_mean>
@@ -1460,25 +1578,15 @@ class Macro_DMR {
                                                                    number_of_samples ns,
                                                                    double dt) {
         using Trans = transformation_type_t<C_Patch_Model>;
-        // const double eps=std::numeric_limits<double>::epsilon();
         auto& t_V = get<V>(t_Qx);
         auto& t_landa = get<lambda>(t_Qx);
         auto& t_W = get<W>(t_Qx);
         auto& t_g = get<g>(m);
-        using GType = std::decay_t<decltype(t_g)>;
-        using DX = var::dx_of_dfdx_t<GType>;
-        auto const& dx = [&]() -> const DX& {
-            if constexpr (var::is_derivative_v<GType>) {
-                return var::get_dx_of_dfdx(t_g);
-            } else {
-                static const DX no{};
-                return no;
-            }
-        }();
         auto t_min_P = get<min_P>(m);
-        if constexpr (!Policy::enforce_gmean_bounds) {
-            t_min_P() = eps;
-        }
+        // Pseudo-count for source-level Bayesian shrinkage. ε_mach · κ_F(V) is
+        // the FP noise floor of P_ij after V·diag(exp(λdt))·W reconstruction.
+        const double min_P_prior = std::numeric_limits<double>::epsilon() * get<kappa_V>(t_Qx)();
+
         auto v_ladt = t_landa() * dt;
         auto v_exp_ladt = apply(
             [](auto const& x) {
@@ -1490,107 +1598,71 @@ class Macro_DMR {
         auto Maybe_r_P = to_Transition_Probability<Policy>(t_V() * v_exp_ladt * t_W());
         if (!Maybe_r_P)
             return Maybe_r_P.error();
-        else {
-            auto r_P = std::move(Maybe_r_P.value());
+        auto r_P = std::move(Maybe_r_P.value());
+        std::size_t N = r_P().ncols();
 
-            std::size_t N = r_P().ncols();
-
-            SymmetricMatrix<Op_t<Trans, double>> E2m(N, N);
-            for (std::size_t i = 0; i < N; ++i) {
-                for (std::size_t j = 0; j < i + 1; ++j) {
-                    set(E2m, i, j,
-                        Ee(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j], t_min_P()));
-                }
+        // Padé divided-difference Ee/E3 take a near-equality threshold; default
+        // (ε_mach) is fine. The future Opitz/expm1 rewrite (Task 6) drops it.
+        SymmetricMatrix<Op_t<Trans, double>> E2m(N, N);
+        for (std::size_t i = 0; i < N; ++i) {
+            for (std::size_t j = 0; j < i + 1; ++j) {
+                set(E2m, i, j, Ee(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j]));
             }
-
-            SymmetricMatrix<Op_t<Trans, double>> E2_sqr(N, N);
-            for (std::size_t i = 0; i < N; ++i) {
-                for (std::size_t j = 0; j < i + 1; ++j) {
-                    set(E2_sqr, i, j, E2(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j]));
-                }
-            }
-
-            Matrix<Op_t<Trans, double>> WgV_E2(N, N);
-
-            auto v_WgV = var::inside_out(t_W() * diag(t_g()) * t_V());
-
-            for (std::size_t i = 0; i < N; ++i) {
-                for (std::size_t j = 0; j < N; ++j) {
-                    WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
-                }
-            }
-
-            auto t_WgV_E2 = var::outside_in(std::move(WgV_E2), dx);
-            auto r_gtotal_ij =
-                force_gtotal_in_range<Policy>(build<gtotal_ij>(t_V() * t_WgV_E2 * t_W()), t_g, r_P);
-
-            auto r_gmean_ij = build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), t_min_P()));
-            /* truncate is not derivative safe yet*/
-
-            Matrix<double> u(N, 1, 1.0);
-            auto r_gmean_i = force_gmean_in_range(build<gmean_i>(r_gtotal_ij() * u), t_g);
-            if (crude_gmean_violation(primitive(r_gmean_i), primitive(get<g>(m))))
-                return error_message("gmean_violation");
-
-            /**
- M_Matrix<double> WgV_Wg_E2(k_u,k_u);
-    for (std::size_t k0=0; k0<k_u; k0++)
-    {
-	double rladt=Qx_v.landa[k0]*xdt.dt();
-	if (tol.isEqual(rladt*rladt,0.0))
-	{
-	    for (std::size_t k2=0; k2<k_u; k2++)
-	    {
-		double rla2dt=Qx_v.landa[k2]*xdt.dt();
-		if (tol.isEqual(rla2dt*rla2dt,0.0))
-		    WgV_Wg_E2(k0,k2)=Qx_v.WgV(k0,k2)*
-				     Qx_v.Wg[k2]*0.5;
-		else
-		    WgV_Wg_E2(k0,k2)=Qx_v.WgV(k0,k2)*Qx_v.Wg[k2]*
-				     (exp(rla2dt)-rla2dt-1.0)/rla2dt/rla2dt;
-	    }
-	}   */
-
-            Matrix<Op_t<Trans, double>> WgV_Wg_E2(N, 1, 0.0);
-
-            auto v_Wg = t_W() * t_g();
-
-            auto v_eps = eps;
-            for (std::size_t i = 0; i < N; ++i)
-                for (std::size_t j = 0; j < N; ++j)
-                    WgV_Wg_E2(i, 0) = WgV_Wg_E2(i, 0) + v_WgV(i, j) * E2_sqr(i, j) * v_Wg[j];
-
-            Matrix<Op_t<Trans, double>> rgsqr_i(N, 1, 0.0);
-
-            for (std::size_t i = 0; i < N; i++) {
-                for (std::size_t k0 = 0; k0 < N; k0++)
-                    rgsqr_i[i] = rgsqr_i[i] + 2 * t_V()(i, k0) * WgV_Wg_E2[k0];
-            }
-
-            auto r_gsqr_i = build<gsqr_i>(var::outside_in(rgsqr_i, dx));
-
-            auto r_gvar_i = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
-
-            /* truncate is not derivative safe yet*/
-
-            if constexpr (StabilizerPolicyEnabled::clamp_variance) {
-                r_gvar_i() = truncate_negative_variance(std::move(r_gvar_i()));
-            }
-            //   auto test_g_var = test_conductance_variance(primitive(r_gvar_i()),
-            //   primitive(t_g())); auto test_g_mean =
-            //   test_conductance_mean(primitive(r_gmean_i()), primitive(t_g()));
-            // if (!test_g_mean || !test_g_var)
-            //     return error_message(test_g_var.error()()+test_g_mean.error()());
-            // else {
-
-            if (std::isnan(primitive(var::max(r_P()))))
-                return error_message("nan P");
-
-            return build<Qdtm>(ns, min_P(t_min_P), std::move(r_P), std::move(r_gmean_i),
-                               std::move(r_gtotal_ij), std::move(r_gmean_ij), std::move(r_gsqr_i),
-                               std::move(r_gvar_i));
-            // }
         }
+
+        Matrix<Op_t<Trans, double>> WgV_E2(N, N);
+        auto v_WgV = t_W() * diag(t_g()) * t_V();
+        for (std::size_t i = 0; i < N; ++i)
+            for (std::size_t j = 0; j < N; ++j) WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
+
+        auto r_gtotal_ij_raw = build<gtotal_ij>(t_V() * WgV_E2 * t_W());
+
+        Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
+        for (std::size_t n1 = 0; n1 < N; n1++)
+            for (std::size_t n3 = 0; n3 < N; n3++)
+                for (std::size_t n2 = 0; n2 < N; n2++) {
+                    WgV_E3(n1, n3) = WgV_E3(n1, n3) + v_WgV(n1, n2) * v_WgV(n2, n3) *
+                                                          E3(v_ladt[n1], v_ladt[n2], v_ladt[n3],
+                                                             v_exp_ladt[n1], v_exp_ladt[n2],
+                                                             v_exp_ladt[n3]);
+                }
+
+        auto r_gtotal_sqr_ij_raw = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
+
+        // v_g-based priors (Poisson endpoint, robust against ill-conditioned V).
+        auto r_gmean_ij_prior = gmean_ij_prior(t_g);
+        auto r_gsqr_ij_prior  = gsqr_ij_prior (t_g);
+
+        auto r_gmean_ij = calc_g_ij_bayes(r_gtotal_ij_raw,     r_P, r_gmean_ij_prior, min_P_prior);
+        auto r_gsqr_ij  = calc_g_ij_bayes(r_gtotal_sqr_ij_raw, r_P, r_gsqr_ij_prior,  min_P_prior);
+
+        // Back-convert gtotal_ij so identity gtotal_ij = P · gmean_ij holds
+        // exactly. Qdtm does not store gtotal_sqr_ij / gtotal_var_ij / gvar_ij,
+        // but we materialize gtotal_sqr_ij transiently to (a) feed the canary
+        // and (b) sum into gsqr_i.
+        auto r_gtotal_ij     = build<gtotal_ij>    (elemMult(r_gmean_ij(), r_P()));
+        auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(elemMult(r_gsqr_ij(),  r_P()));
+
+        // Source-level canaries.
+        if (auto chk = require_gtotal_ij_in_range(r_gtotal_ij, r_P, t_g); !chk)
+            return chk.error();
+        if (auto chk = require_gtotal_sqr_ij_in_range(r_gtotal_sqr_ij, r_P, t_g); !chk)
+            return chk.error();
+
+        // Row-sum marginals. r_gsqr_i is the P-weighted sum of the shrunken
+        // gsqr_ij; together with the back-converted gmean_i it gives the full
+        // LTV gvar_i = gsqr_i − gmean_i² expected by micro_* consumers.
+        Matrix<double> u(N, 1, 1.0);
+        auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+        auto r_gsqr_i  = build<gsqr_i> (r_gtotal_sqr_ij() * u);
+        auto r_gvar_i  = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
+
+        if (std::isnan(primitive(var::max(r_P()))))
+            return error_message("nan P");
+
+        return build<Qdtm>(ns, t_min_P, std::move(r_P), std::move(r_gmean_i),
+                           std::move(r_gtotal_ij), std::move(r_gmean_ij),
+                           std::move(r_gsqr_i), std::move(r_gvar_i));
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model,
@@ -1601,12 +1673,16 @@ class Macro_DMR {
                                                                  const C_Qx_eig& t_Qx,
                                                                  number_of_samples ns, double dt) {
         using Trans = transformation_type_t<C_Patch_Model>;
-        // const double eps=std::numeric_limits<double>::epsilon();
         auto& t_V = get<V>(t_Qx);
         auto& t_landa = get<lambda>(t_Qx);
         auto& t_W = get<W>(t_Qx);
         auto& t_g = get<g>(m);
         auto t_min_P = get<min_P>(m);
+        // Pseudo-count for source-level Bayesian shrinkage. ε_mach · κ_F(V) is
+        // the FP noise floor of P_ij after V·diag(exp(λdt))·W reconstruction.
+        // See theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md.
+        const double min_P_prior = std::numeric_limits<double>::epsilon() * get<kappa_V>(t_Qx)();
+
         auto v_ladt = t_landa() * dt;
         auto v_exp_ladt = apply(
             [](auto const& x) {
@@ -1618,76 +1694,84 @@ class Macro_DMR {
         auto Maybe_r_P = to_Transition_Probability<Policy>(t_V() * v_exp_ladt * t_W());
         if (!Maybe_r_P)
             return Maybe_r_P.error();
-        else {
-            auto r_P = std::move(Maybe_r_P.value());
+        auto r_P = std::move(Maybe_r_P.value());
 
-            std::size_t N = r_P().ncols();
+        std::size_t N = r_P().ncols();
 
-            SymmetricMatrix<Op_t<Trans, double>> E2m(N, N);
-            for (std::size_t i = 0; i < N; ++i) {
-                for (std::size_t j = 0; j < i + 1; ++j) {
-                    set(E2m, i, j,
-                        Ee(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j], t_min_P()));
-                }
+        // Ee / E3 fall back to their default eps = ε_mach for the
+        // near-equality branch. min_P is not a dimensionally meaningful
+        // threshold here; future Opitz/expm1 rewrite (Task 6) drops the
+        // argument entirely.
+        SymmetricMatrix<Op_t<Trans, double>> E2m(N, N);
+        for (std::size_t i = 0; i < N; ++i) {
+            for (std::size_t j = 0; j < i + 1; ++j) {
+                set(E2m, i, j,
+                    Ee(v_ladt[i], v_ladt[j], v_exp_ladt[i], v_exp_ladt[j]));
             }
-
-            Matrix<Op_t<Trans, double>> WgV_E2(N, N);
-
-            auto v_WgV = t_W() * diag(t_g()) * t_V();
-
-            for (std::size_t i = 0; i < N; ++i)
-                for (std::size_t j = 0; j < N; ++j) WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
-
-            auto r_gtotal_ij =
-                force_gtotal_in_range<Policy>(build<gtotal_ij>(t_V() * WgV_E2 * t_W()), t_g, r_P);
-
-            Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
-            for (std::size_t n1 = 0; n1 < N; n1++)
-                for (std::size_t n3 = 0; n3 < N; n3++)
-                    for (std::size_t n2 = 0; n2 < N; n2++) {
-                        //      std::cerr<<"\t"<<WgV_E3(n1, n3);
-
-                        WgV_E3(n1, n3) = WgV_E3(n1, n3) + v_WgV(n1, n2) * v_WgV(n2, n3) *
-                                                              E3(v_ladt[n1], v_ladt[n2], v_ladt[n3],
-                                                                 v_exp_ladt[n1], v_exp_ladt[n2],
-                                                                 v_exp_ladt[n3], t_min_P());
-                    }
-
-            auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
-
-            auto r_gmean_ij = build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), eps));
-
-            auto r_gtotal_var_ij = force_gtotal_var_in_range<Policy>(
-                build<gtotal_var_ij>(r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij())),
-                t_g, r_P);
-
-            /* truncate is not derivative safe yet*/
-
-            auto r_gvar_ij = build<gvar_ij>(elemDivSafe(r_gtotal_var_ij(), r_P(), eps));
-
-            Matrix<double> u(N, 1, 1.0);
-            auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
-            if (crude_gmean_violation(primitive(r_gmean_i), primitive(get<g>(m))))
-                return error_message("gmean_violation");
-
-            auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
-            auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
-
-            //   auto test_g_var = test_conductance_variance(primitive(r_gvar_i()),
-            //   primitive(t_g())); auto test_g_mean =
-            //   test_conductance_mean(primitive(r_gmean_i()), primitive(t_g()));
-            // if (!test_g_mean || !test_g_var)
-            //     return error_message(test_g_var.error()()+test_g_mean.error()());
-            // else {
-
-            return build<Qdt>(ns, min_P(t_min_P), std::move(r_P), std::move(r_gmean_i),
-                              std::move(r_gtotal_ij), std::move(r_gmean_ij),
-                              std::move(r_gtotal_sqr_ij), std::move(r_gsqr_i), std::move(r_gvar_i),
-                              std::move(r_gtotal_var_ij), std::move(r_gvar_ij));
-            // }
         }
+
+        Matrix<Op_t<Trans, double>> WgV_E2(N, N);
+        auto v_WgV = t_W() * diag(t_g()) * t_V();
+        for (std::size_t i = 0; i < N; ++i)
+            for (std::size_t j = 0; j < N; ++j) WgV_E2(i, j) = v_WgV(i, j) * E2m(i, j);
+
+        auto r_gtotal_ij_raw = build<gtotal_ij>(t_V() * WgV_E2 * t_W());
+
+        Matrix<Op_t<Trans, double>> WgV_E3(N, N, Op_t<Trans, double>(0.0));
+        for (std::size_t n1 = 0; n1 < N; n1++)
+            for (std::size_t n3 = 0; n3 < N; n3++)
+                for (std::size_t n2 = 0; n2 < N; n2++) {
+                    WgV_E3(n1, n3) = WgV_E3(n1, n3) + v_WgV(n1, n2) * v_WgV(n2, n3) *
+                                                          E3(v_ladt[n1], v_ladt[n2], v_ladt[n3],
+                                                             v_exp_ladt[n1], v_exp_ladt[n2],
+                                                             v_exp_ladt[n3]);
+                }
+
+        auto r_gtotal_sqr_ij_raw = build<gtotal_sqr_ij>(t_V() * WgV_E3 * t_W() * 2.0);
+
+        // v_g-based priors (Poisson endpoint, robust against ill-conditioned V).
+        auto r_gmean_ij_prior = gmean_ij_prior(t_g);
+        auto r_gsqr_ij_prior  = gsqr_ij_prior (t_g);
+
+        auto r_gmean_ij = calc_g_ij_bayes(r_gtotal_ij_raw,     r_P, r_gmean_ij_prior, min_P_prior);
+        auto r_gsqr_ij  = calc_g_ij_bayes(r_gtotal_sqr_ij_raw, r_P, r_gsqr_ij_prior,  min_P_prior);
+
+        // Conditional variance from the second-moment identity.
+        auto r_gvar_ij = build<gvar_ij>(r_gsqr_ij() - elemMult(r_gmean_ij(), r_gmean_ij()));
+
+        // Back-convert gtotal_* fields so identity gtotal = P · gmoment holds
+        // exactly. Downstream IRT/MRT depends on this for
+        //     sigma2_i = Σ_j P_ij · gvar_ij    (= gsqr_i − Σ_j P_ij · gmean_ij²).
+        auto r_gtotal_ij     = build<gtotal_ij>    (elemMult(r_gmean_ij(), r_P()));
+        auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(elemMult(r_gsqr_ij(),  r_P()));
+        auto r_gtotal_var_ij = build<gtotal_var_ij>(elemMult(r_gvar_ij(),  r_P()));
+
+        // Source-level canaries: gtotal_ij ∈ [gmin·P, gmax·P],
+        // gtotal_sqr_ij ∈ [gmin²·P, gmax²·P]. Warn-band logs to stderr;
+        // error-band aborts the Qdt construction.
+        if (auto chk = require_gtotal_ij_in_range(r_gtotal_ij, r_P, t_g); !chk)
+            return chk.error();
+        if (auto chk = require_gtotal_sqr_ij_in_range(r_gtotal_sqr_ij, r_P, t_g); !chk)
+            return chk.error();
+
+        // Row-sum marginals over j (P-weighted, since gtotal_* carries P).
+        Matrix<double> u(N, 1, 1.0);
+        auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+        auto r_gsqr_i  = build<gsqr_i> (r_gtotal_sqr_ij() * u);
+        // Full law-of-total-variance: Var(Ā|i) = E[Ā²|i] − E[Ā|i]² = gsqr_i − gmean_i².
+        // This is what micro_full and micro_monoid expect when they read
+        // get<gvar_i>(t_Qdt) / get<gvar_i>(t_Qdtm).
+        auto r_gvar_i  = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
+
+        return build<Qdt>(ns, t_min_P, std::move(r_P), std::move(r_gmean_i),
+                          std::move(r_gtotal_ij), std::move(r_gmean_ij),
+                          std::move(r_gtotal_sqr_ij), std::move(r_gsqr_i), std::move(r_gvar_i),
+                          std::move(r_gtotal_var_ij), std::move(r_gvar_ij));
     }
 
+#if 0  // calc_Qdtm_eig_codex / calc_Qdt_eig_codex parked: alternative codex-
+       // generated paths superseded by calc_Qdtm_eig / calc_Qdt_eig with v_g
+       // priors and back-converted gtotal_*.
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model,
               class C_Eigs>
         requires(U<C_Patch_Model, Patch_Model> && U<C_Eigs, Eigs>)
@@ -1703,6 +1787,9 @@ class Macro_DMR {
         auto& Wmat = get<W>(t_Eigs);
         auto& Ldiag = get<lambda>(t_Eigs);
         auto& t_g = get<g>(m);
+        // Bayesian-shrinkage pseudo-count for gmean_ij regularization.
+        // See theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md.
+        const double min_P_prior = std::numeric_limits<double>::epsilon() * get<kappa_V>(t_Eigs)();
         using GType = std::decay_t<decltype(t_g)>;
         using DX = var::dx_of_dfdx_t<GType>;
         auto const& dx = [&]() -> const DX& {
@@ -1806,8 +1893,14 @@ class Macro_DMR {
             r_gtotal_ij() = elemMult(r_gtotal_ij(), probability_mask);
         }
 
+        // Source-level Bayesian shrinkage at gtotal_ij.
+        // theory/macroir/notes/Gmean_ij_gvarij/handoff_state.md
+        auto gtotal_ij_prior_mat = gtotal_ij_endpoint_prior(t_g);
+        r_gtotal_ij() = r_gtotal_ij() + gtotal_ij_prior_mat * min_P_prior;
+
         auto r_gmean_ij = [&]() {
-            auto base = build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), t_min_P()));
+            auto base = build<gmean_ij>(
+                divide_by_P_plus_eps(r_gtotal_ij(), r_P(), min_P_prior));
             if constexpr (Policy::enforce_gmean_bounds)
                 return force_gmean_in_range(std::move(base), t_g);
             else
@@ -1924,6 +2017,9 @@ class Macro_DMR {
         auto& Ldiag = get<lambda>(t_Eigs);
         auto& Wmat = get<W>(t_Eigs);
         auto& t_g = get<g>(m);
+        // Bayesian-shrinkage pseudo-count for gmean_ij / gvar_ij.
+        // See theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md.
+        const double min_P_prior = std::numeric_limits<double>::epsilon() * get<kappa_V>(t_Eigs)();
         using GType = std::decay_t<decltype(t_g)>;
         using DX = var::dx_of_dfdx_t<GType>;
         auto const& dx = [&]() -> const DX& {
@@ -2102,8 +2198,17 @@ class Macro_DMR {
             apply_probability_mask(r_gtotal_sqr_ij());
         }
 
+        // Source-level Bayesian shrinkage at gtotal_ij and gtotal_sqr_ij.
+        // gvar_ij prior emerges algebraically. See
+        // theory/macroir/notes/Gmean_ij_gvarij/handoff_state.md
+        auto gtotal_ij_prior_mat = gtotal_ij_endpoint_prior(t_g);
+        r_gtotal_ij() = r_gtotal_ij() + gtotal_ij_prior_mat * min_P_prior;
+        auto gtotal_sqr_ij_prior_mat = gtotal_sqr_ij_endpoint_prior(t_g);
+        r_gtotal_sqr_ij() = r_gtotal_sqr_ij() + gtotal_sqr_ij_prior_mat * min_P_prior;
+
         auto r_gmean_ij = [&]() {
-            auto base = build<gmean_ij>(elemDivSoftAbs(r_gtotal_ij(), r_P(), t_min_P()));
+            auto base = build<gmean_ij>(
+                divide_by_P_plus_eps(r_gtotal_ij(), r_P(), min_P_prior));
             if constexpr (Policy::enforce_gmean_bounds)
                 return force_gmean_in_range(std::move(base), t_g);
             else
@@ -2117,7 +2222,8 @@ class Macro_DMR {
             r_gtotal_var_ij() = truncate_negative_variance(std::move(r_gtotal_var_ij()));
         }
 
-        auto r_gvar_ij = build<gvar_ij>(elemDivSoftAbs(r_gtotal_var_ij(), r_P(), t_min_P()));
+        auto r_gvar_ij = build<gvar_ij>(
+            divide_by_P_plus_eps(r_gtotal_var_ij(), r_P(), min_P_prior));
 
         Matrix<double> u(N, 1, 1.0);
         auto r_gmean_i = [&]() {
@@ -2148,6 +2254,7 @@ class Macro_DMR {
                           std::move(r_gvar_ij));
         // }
     }
+#endif // calc_Qdtm_eig_codex / calc_Qdt_eig_codex parked
 
     template <class Policy = StabilizerPolicyEnabled, class C_Patch_Model, class C_Qx>
         requires(/*U<C_Patch_Model, Patch_Model> && */ U<C_Qx, Qx>)
@@ -2304,23 +2411,45 @@ class Macro_DMR {
             return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(Maybe_r_P.error());
         auto r_P = std::move(Maybe_r_P.value());
 
-        auto r_gtotal_ij =
-            force_gtotal_in_range<Policy>(build<gtotal_ij>(std::move(r_gtotal_ij_mat)), t_g, r_P);
-
+        auto r_gtotal_ij     = build<gtotal_ij>    (std::move(r_gtotal_ij_mat));
         auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(std::move(r_gtotal_sqr_ij_mat));
 
-        auto r_gmean_ij = build<gmean_ij>(elemDivSafe(r_gtotal_ij(), r_P(), eps));
+        // Bayesian-shrinkage pseudo-count for gmean_ij / gvar_ij. Schur+Padé
+        // path is backward-stable on its own orthogonal basis (no κ(V)
+        // amplification); the noise floor is the random-walk FP accumulation
+        // 10·√N·ε_mach across the N×N matmul chain. Parameter-free.
+        // See theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md.
+        const std::size_t N = r_P().nrows();
+        const double min_P_prior = 10.0 * std::sqrt(static_cast<double>(N)) *
+                                   std::numeric_limits<double>::epsilon();
 
-        auto r_gtotal_var_ij = force_gtotal_var_in_range<Policy>(
-            build<gtotal_var_ij>(r_gtotal_sqr_ij() - elemMult(r_gtotal_ij(), r_gmean_ij())), t_g,
-            r_P);
+        // v_g-based Bayesian shrinkage on both conditional moments via
+        // calc_g_ij_bayes, then back-convert gtotal_* = gmoment · P so
+        // downstream identities hold. Matches calc_Qdt_eig.
+        // See theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md.
+        auto r_gmean_ij_prior = gmean_ij_prior(t_g);
+        auto r_gsqr_ij_prior  = gsqr_ij_prior (t_g);
 
-        auto r_gvar_ij = build<gvar_ij>(elemDivSafe(r_gtotal_var_ij(), r_P(), eps));
+        auto r_gmean_ij = calc_g_ij_bayes(r_gtotal_ij,     r_P, r_gmean_ij_prior, min_P_prior);
+        auto r_gsqr_ij  = calc_g_ij_bayes(r_gtotal_sqr_ij, r_P, r_gsqr_ij_prior,  min_P_prior);
+
+        auto r_gvar_ij = build<gvar_ij>(r_gsqr_ij() - elemMult(r_gmean_ij(), r_gmean_ij()));
+
+        r_gtotal_ij()     = elemMult(r_gmean_ij(), r_P());
+        r_gtotal_sqr_ij() = elemMult(r_gsqr_ij(),  r_P());
+        auto r_gtotal_var_ij = build<gtotal_var_ij>(elemMult(r_gvar_ij(), r_P()));
+
+        // Source-level canaries.
+        if (auto chk = require_gtotal_ij_in_range(r_gtotal_ij, r_P, t_g); !chk)
+            return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(chk.error());
+        if (auto chk = require_gtotal_sqr_ij_in_range(r_gtotal_sqr_ij, r_P, t_g); !chk)
+            return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(chk.error());
 
         Matrix<double> u(r_P().nrows(), 1, 1.0);
         auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
-        auto r_gsqr_i = build<gsqr_i>(r_gtotal_sqr_ij() * u);
-        auto r_gvar_i = build<gvar_i>(r_gtotal_var_ij() * u);
+        auto r_gsqr_i  = build<gsqr_i> (r_gtotal_sqr_ij() * u);
+        // Full law-of-total-variance: Var(Ā|i) = gsqr_i − gmean_i².
+        auto r_gvar_i  = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
 
         return Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>>(
             build<Qdt>(ns, min_P(t_min_P), std::move(r_P), std::move(r_gmean_i),
@@ -2587,124 +2716,373 @@ class Macro_DMR {
             return false;
     }
 
-    template <class Policy = StabilizerPolicyEnabled, class C_gmean, class C_g>
-        requires((U<C_gmean, gmean_i> || U<C_gmean, gtotal_ij> || U<C_gmean, gmean_ij>) &&
-                 U<C_g, g>)
-    static auto force_gmean_in_range(C_gmean&& g_mean, const C_g& v_g) {
-        if constexpr (StabilizerPolicyEnabled::enforce_gmean_bounds) {
-            auto gmax = var::max(v_g());
+    // ---------------------------------------------------------------------
+    // In-range canaries for the conductance-derived quantities.
+    //
+    // With Bayesian shrinkage on gmean_ij and the row-stochastic invariant
+    // on P, the values are in their physical ranges by construction. These
+    // canaries verify the construction held — they don't clamp.
+    //
+    //   check_*_in_range    returns Maybe_error<bool>: true=clean,
+    //                       false=warn-band excursion (stderr-logged),
+    //                       error_message=hard out-of-range.
+    //
+    //   require_*_in_range  thin wrapper, returns Maybe_error<void>: hard
+    //                       failure on error, silent on warn-band.
+    //
+    // Physical ranges:
+    //   gmean_ij  ∈ [gmin, gmax]              (conditional mean conductance)
+    //   gmean_i   ∈ [gmin, gmax]              (marginal mean conductance)
+    //   gtotal_ij ∈ [gmin·P_ij, gmax·P_ij]    (per-entry, P-aware)
+    //
+    // Replaces the old force_*_in_range clamping helpers.
+    // ---------------------------------------------------------------------
+    template <class C_gmean_ij, class C_g>
+        requires(U<C_gmean_ij, gmean_ij> && U<C_g, g>)
+    static Maybe_error<bool> check_gmean_ij_in_range(const C_gmean_ij& q, const C_g& v_g) {
+        const double gmax = primitive(var::max(v_g()));
+        const double gmin = primitive(var::min(v_g()));
+        const double range = std::max(std::abs(gmax - gmin), 1.0);
+        constexpr double warn_band_rel  = 1e-9;
+        constexpr double error_band_rel = 1e-3;
+        const double warn_band  = range * warn_band_rel;
+        const double error_band = range * error_band_rel;
 
-            auto gmin = var::min(v_g());
-            g_mean() = apply(
-                [&gmax, &gmin](auto const& value) {
-                    using std::max;
-                    using var::max;
-                    using std::min;
-                    using var::min;
-                    return max(min(value, gmax), gmin);
-                },
-                std::forward<C_gmean>(g_mean)());
+        auto const& m = primitive(q());
+        double max_exc = 0.0;
+        std::size_t worst_i = 0, worst_j = 0;
+        double worst_val = 0.0;
+        bool worst_over_max = false;
+        for (std::size_t i = 0; i < m.nrows(); ++i) {
+            for (std::size_t j = 0; j < m.ncols(); ++j) {
+                const double v = m(i, j);
+                const double over  = v - gmax;
+                const double under = gmin - v;
+                const double exc = std::max(0.0, std::max(over, under));
+                if (exc > max_exc) {
+                    max_exc = exc;
+                    worst_i = i;
+                    worst_j = j;
+                    worst_val = v;
+                    worst_over_max = (over >= under);
+                }
+            }
         }
-        return std::forward<C_gmean>(g_mean);
+        if (max_exc > error_band) {
+            std::ostringstream ss;
+            ss << "check_gmean_ij_in_range: [" << worst_i << "," << worst_j << "] = "
+               << std::scientific << std::setprecision(3) << worst_val
+               << (worst_over_max ? " > gmax = " : " < gmin = ")
+               << (worst_over_max ? gmax : gmin)
+               << " (excursion " << max_exc << ", band " << error_band << ")";
+            return error_message(ss.str());
+        }
+        if (max_exc > warn_band) {
+            std::cerr << "[warn] check_gmean_ij_in_range: [" << worst_i << "," << worst_j << "] = "
+                      << std::scientific << std::setprecision(3) << worst_val
+                      << (worst_over_max ? " > gmax = " : " < gmin = ")
+                      << (worst_over_max ? gmax : gmin) << "\n";
+            return Maybe_error<bool>(false);
+        }
+        return Maybe_error<bool>(true);
     }
 
-    template <class Policy = StabilizerPolicyEnabled, class C_gtotal, class C_g, class C_P>
-        requires((U<C_gtotal, gtotal_ij>) && (U<C_P, P>) && U<C_g, g>)
-    static auto force_gtotal_in_range(C_gtotal&& g_total, const C_g& v_g, const C_P& v_P) {
-        if constexpr (StabilizerPolicyEnabled::enforce_gmean_bounds) {
-            using std::max;
-            using std::min;
-            using var::max;
-            using var::min;
-            auto gmax = var::max(v_g());
-
-            auto gmin = var::min(v_g());
-            g_total() = zip(
-                [&gmax, &gmin](auto const& value, auto const& Pij) {
-                    return max(min(value, gmax * Pij), gmin * Pij);
-                },
-                g_total(), v_P());
-        }
-        return std::forward<C_gtotal>(g_total);
+    template <class C_gmean_ij, class C_g>
+        requires(U<C_gmean_ij, gmean_ij> && U<C_g, g>)
+    static Maybe_error<void> require_gmean_ij_in_range(const C_gmean_ij& q, const C_g& v_g) {
+        auto r = check_gmean_ij_in_range(q, v_g);
+        if (!r) return r.error();
+        return Maybe_error<void>{};
     }
 
-    template <class Policy = StabilizerPolicyEnabled, class C_gtotal_var_ij, class C_g, class C_P>
-        requires((U<C_gtotal_var_ij, gtotal_var_ij>) && (U<C_P, P>) && U<C_g, g>)
-    static auto force_gtotal_var_in_range(C_gtotal_var_ij&& g_totalvar, const C_g& v_g,
-                                          const C_P& v_P) {
-        if constexpr (StabilizerPolicyEnabled::enforce_gmean_bounds) {
-            using std::max;
-            using std::min;
-            using var::max;
-            using var::min;
-            auto gmax = var::max(v_g());
-            auto gmin = var::min(v_g());
-            auto gmaxvar = (gmax - gmin) / 2;
-            auto gminvar = gmin - gmin;
-            g_totalvar() = zip(
-                [&gmaxvar, &gminvar](auto const& value, auto const& Pij) {
-                    return max(min(value, gmaxvar * Pij), gminvar * Pij);
-                },
-                g_totalvar(), v_P());
+    template <class C_gmean_i, class C_g>
+        requires(U<C_gmean_i, gmean_i> && U<C_g, g>)
+    static Maybe_error<bool> check_gmean_i_in_range(const C_gmean_i& q, const C_g& v_g) {
+        const double gmax = primitive(var::max(v_g()));
+        const double gmin = primitive(var::min(v_g()));
+        const double range = std::max(std::abs(gmax - gmin), 1.0);
+        constexpr double warn_band_rel  = 1e-9;
+        constexpr double error_band_rel = 1e-3;
+        const double warn_band  = range * warn_band_rel;
+        const double error_band = range * error_band_rel;
+
+        auto const& v = primitive(q());
+        double max_exc = 0.0;
+        std::size_t worst_i = 0;
+        double worst_val = 0.0;
+        bool worst_over_max = false;
+        for (std::size_t i = 0; i < v.size(); ++i) {
+            const double x = v[i];
+            const double over  = x - gmax;
+            const double under = gmin - x;
+            const double exc = std::max(0.0, std::max(over, under));
+            if (exc > max_exc) {
+                max_exc = exc;
+                worst_i = i;
+                worst_val = x;
+                worst_over_max = (over >= under);
+            }
         }
-        return std::forward<C_gtotal_var_ij>(g_totalvar);
+        if (max_exc > error_band) {
+            std::ostringstream ss;
+            ss << "check_gmean_i_in_range: [" << worst_i << "] = "
+               << std::scientific << std::setprecision(3) << worst_val
+               << (worst_over_max ? " > gmax = " : " < gmin = ")
+               << (worst_over_max ? gmax : gmin)
+               << " (excursion " << max_exc << ", band " << error_band << ")";
+            return error_message(ss.str());
+        }
+        if (max_exc > warn_band) {
+            std::cerr << "[warn] check_gmean_i_in_range: [" << worst_i << "] = "
+                      << std::scientific << std::setprecision(3) << worst_val
+                      << (worst_over_max ? " > gmax = " : " < gmin = ")
+                      << (worst_over_max ? gmax : gmin) << "\n";
+            return Maybe_error<bool>(false);
+        }
+        return Maybe_error<bool>(true);
+    }
+
+    template <class C_gmean_i, class C_g>
+        requires(U<C_gmean_i, gmean_i> && U<C_g, g>)
+    static Maybe_error<void> require_gmean_i_in_range(const C_gmean_i& q, const C_g& v_g) {
+        auto r = check_gmean_i_in_range(q, v_g);
+        if (!r) return r.error();
+        return Maybe_error<void>{};
+    }
+
+    template <class C_gtotal_ij, class C_P, class C_g>
+        requires(U<C_gtotal_ij, gtotal_ij> && U<C_P, P> && U<C_g, g>)
+    static Maybe_error<bool> check_gtotal_ij_in_range(const C_gtotal_ij& q,
+                                                     const C_P& v_P,
+                                                     const C_g& v_g) {
+        const double gmax = primitive(var::max(v_g()));
+        const double gmin = primitive(var::min(v_g()));
+        const double range = std::max(std::abs(gmax - gmin), 1.0);
+        constexpr double warn_band_rel  = 1e-9;
+        constexpr double error_band_rel = 1e-3;
+
+        auto const& m = primitive(q());
+        auto const& p = primitive(v_P());
+        double max_exc = 0.0;
+        std::size_t worst_i = 0, worst_j = 0;
+        double worst_val = 0.0;
+        bool worst_over_max = false;
+        for (std::size_t i = 0; i < m.nrows(); ++i) {
+            for (std::size_t j = 0; j < m.ncols(); ++j) {
+                const double v = m(i, j);
+                const double Pij = p(i, j);
+                const double upper = gmax * Pij;
+                const double lower = gmin * Pij;
+                const double over  = v - upper;
+                const double under = lower - v;
+                const double exc = std::max(0.0, std::max(over, under));
+                if (exc > max_exc) {
+                    max_exc = exc;
+                    worst_i = i;
+                    worst_j = j;
+                    worst_val = v;
+                    worst_over_max = (over >= under);
+                }
+            }
+        }
+        if (max_exc > range * error_band_rel) {
+            std::ostringstream ss;
+            ss << "check_gtotal_ij_in_range: [" << worst_i << "," << worst_j << "] = "
+               << std::scientific << std::setprecision(3) << worst_val
+               << (worst_over_max ? " > gmax·P_ij " : " < gmin·P_ij ")
+               << " (excursion " << max_exc << ")";
+            return error_message(ss.str());
+        }
+        if (max_exc > range * warn_band_rel) {
+            std::cerr << "[warn] check_gtotal_ij_in_range: [" << worst_i << "," << worst_j << "] = "
+                      << std::scientific << std::setprecision(3) << worst_val
+                      << (worst_over_max ? " > gmax·P_ij" : " < gmin·P_ij")
+                      << " (excursion " << max_exc << ")\n";
+            return Maybe_error<bool>(false);
+        }
+        return Maybe_error<bool>(true);
+    }
+
+    template <class C_gtotal_ij, class C_P, class C_g>
+        requires(U<C_gtotal_ij, gtotal_ij> && U<C_P, P> && U<C_g, g>)
+    static Maybe_error<void> require_gtotal_ij_in_range(const C_gtotal_ij& q,
+                                                       const C_P& v_P,
+                                                       const C_g& v_g) {
+        auto r = check_gtotal_ij_in_range(q, v_P, v_g);
+        if (!r) return r.error();
+        return Maybe_error<void>{};
+    }
+
+    // Per-entry bound for the back-converted second moment:
+    //     gsqr_min · P_ij  ≤  gtotal_sqr_ij[i,j]  ≤  gsqr_max · P_ij,
+    // where gsqr_min / gsqr_max are the **min / max of g[k]² over states k**
+    // (not gmin² / gmax² — the conductance vector may span zero, e.g. after
+    // baseline subtraction, in which case gmin² is the *upper* end of g²
+    // and the natural lower bound on E[g²|i→j] is 0).
+    // Same two-tier scheme as check_gtotal_ij_in_range.
+    template <class C_gtotal_sqr_ij, class C_P, class C_g>
+        requires(U<C_gtotal_sqr_ij, gtotal_sqr_ij> && U<C_P, P> && U<C_g, g>)
+    static Maybe_error<bool> check_gtotal_sqr_ij_in_range(const C_gtotal_sqr_ij& q,
+                                                          const C_P& v_P,
+                                                          const C_g& v_g) {
+        auto const& g_prim = primitive(v_g());
+        double gsqr_max = 0.0;
+        double gsqr_min = std::numeric_limits<double>::infinity();
+        for (std::size_t k = 0; k < g_prim.size(); ++k) {
+            const double g2 = g_prim[k] * g_prim[k];
+            if (g2 > gsqr_max) gsqr_max = g2;
+            if (g2 < gsqr_min) gsqr_min = g2;
+        }
+        if (!std::isfinite(gsqr_min)) gsqr_min = 0.0;
+        const double range = std::max(std::abs(gsqr_max - gsqr_min), 1.0);
+        constexpr double warn_band_rel  = 1e-9;
+        constexpr double error_band_rel = 1e-3;
+
+        auto const& m = primitive(q());
+        auto const& p = primitive(v_P());
+        double max_exc = 0.0;
+        std::size_t worst_i = 0, worst_j = 0;
+        double worst_val = 0.0;
+        bool worst_over_max = false;
+        for (std::size_t i = 0; i < m.nrows(); ++i) {
+            for (std::size_t j = 0; j < m.ncols(); ++j) {
+                const double v = m(i, j);
+                const double Pij = p(i, j);
+                const double upper = gsqr_max * Pij;
+                const double lower = gsqr_min * Pij;
+                const double over  = v - upper;
+                const double under = lower - v;
+                const double exc = std::max(0.0, std::max(over, under));
+                if (exc > max_exc) {
+                    max_exc = exc;
+                    worst_i = i;
+                    worst_j = j;
+                    worst_val = v;
+                    worst_over_max = (over >= under);
+                }
+            }
+        }
+        if (max_exc > range * error_band_rel) {
+            std::ostringstream ss;
+            ss << "check_gtotal_sqr_ij_in_range: [" << worst_i << "," << worst_j << "] = "
+               << std::scientific << std::setprecision(3) << worst_val
+               << (worst_over_max ? " > gsqr_max·P_ij " : " < gsqr_min·P_ij ")
+               << " (excursion " << max_exc << ")";
+            return error_message(ss.str());
+        }
+        if (max_exc > range * warn_band_rel) {
+            std::cerr << "[warn] check_gtotal_sqr_ij_in_range: [" << worst_i << "," << worst_j
+                      << "] = " << std::scientific << std::setprecision(3) << worst_val
+                      << (worst_over_max ? " > gsqr_max·P_ij" : " < gsqr_min·P_ij")
+                      << " (excursion " << max_exc << ")\n";
+            return Maybe_error<bool>(false);
+        }
+        return Maybe_error<bool>(true);
+    }
+
+    template <class C_gtotal_sqr_ij, class C_P, class C_g>
+        requires(U<C_gtotal_sqr_ij, gtotal_sqr_ij> && U<C_P, P> && U<C_g, g>)
+    static Maybe_error<void> require_gtotal_sqr_ij_in_range(const C_gtotal_sqr_ij& q,
+                                                            const C_P& v_P,
+                                                            const C_g& v_g) {
+        auto r = check_gtotal_sqr_ij_in_range(q, v_P, v_g);
+        if (!r) return r.error();
+        return Maybe_error<void>{};
     }
 
     template <class C_Qn, class C_Patch_Model>
         requires(U<C_Qn, Qn>)
-    static auto Qn_to_Qdt(const C_Qn& x, const C_Patch_Model& m) {
-        auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
-        auto r_P = get<P>(x)();
+    static auto Qn_to_Qdt(const C_Qn& x, const C_Patch_Model& m)
+        -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdt>> {
+        auto& t_P = get<P>(x);
+        auto& t_g = get<g>(m);
         auto n = get<number_of_samples>(x)();
-        auto r_gtotal_sqr_ij = get<PGG_n>(x)() * (2.0 / (n * n));
-        auto r_gtotal_ij = get<PG_n>(x)() * (1.0 / n);
-        auto b_gtotal_ij = force_gmean_in_range(build<gtotal_ij>(r_gtotal_ij), get<g>(m));
+        const std::size_t N = t_P().nrows();
+        Matrix<double> u(N, 1, 1.0);
 
-        auto r_gmean_ij = elemDivSoftAbs(b_gtotal_ij(), get<P>(x)(), get<min_P>(x)());
-        auto b_gmean_ij = force_gmean_in_range(build<gmean_ij>(r_gmean_ij), get<g>(m));
+        // Taylor / uniformization path: no eigendecomposition, no κ(V).
+        // Pseudo-count = 10·√N·ε_mach (random-walk FP accumulation across the
+        // N×N matmul chain). See
+        // theory/macroir/notes/Gmean_ij_gvarij/bayesian_prior_regularization_of_Qdt.md.
+        const double min_P_prior = 10.0 * std::sqrt(static_cast<double>(N)) *
+                                   std::numeric_limits<double>::epsilon();
 
-        auto r_gtotal_var_ij = r_gtotal_sqr_ij - elemMult(b_gtotal_ij(), b_gmean_ij());
-        auto r_gmean_i = r_gtotal_ij * u;
-        auto b_gmean_i = force_gmean_in_range(build<gmean_i>(r_gmean_i), get<g>(m));
-        auto r_gsqr_i = r_gtotal_sqr_ij * u;
-        auto r_gvar_ij = elemDivSoftAbs(r_gtotal_var_ij, r_P, get<min_P>(x)());
-        auto r_gvar_i = r_gtotal_var_ij * u;
+        auto r_gtotal_ij_raw     = build<gtotal_ij>    (get<PG_n>(x)() * (1.0 / n));
+        auto r_gtotal_sqr_ij_raw = build<gtotal_sqr_ij>(get<PGG_n>(x)() * (2.0 / (n * n)));
 
-        return build<Qdt>(get<number_of_samples>(x), get<min_P>(x), get<P>(x), std::move(b_gmean_i),
-                          std::move(b_gtotal_ij), std::move(b_gmean_ij),
-                          build<gtotal_sqr_ij>(r_gtotal_sqr_ij), build<gsqr_i>(r_gsqr_i),
-                          build<gvar_i>(r_gvar_i), build<gtotal_var_ij>(r_gtotal_var_ij),
-                          build<gvar_ij>(r_gvar_ij));
+        // v_g-based priors (Poisson endpoint, robust against ill-conditioned V).
+        auto r_gmean_ij_prior = gmean_ij_prior(t_g);
+        auto r_gsqr_ij_prior  = gsqr_ij_prior (t_g);
+
+        auto r_gmean_ij = calc_g_ij_bayes(r_gtotal_ij_raw,     t_P, r_gmean_ij_prior, min_P_prior);
+        auto r_gsqr_ij  = calc_g_ij_bayes(r_gtotal_sqr_ij_raw, t_P, r_gsqr_ij_prior,  min_P_prior);
+
+        auto r_gvar_ij = build<gvar_ij>(r_gsqr_ij() - elemMult(r_gmean_ij(), r_gmean_ij()));
+
+        auto r_gtotal_ij     = build<gtotal_ij>    (elemMult(r_gmean_ij(), t_P()));
+        auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(elemMult(r_gsqr_ij(),  t_P()));
+        auto r_gtotal_var_ij = build<gtotal_var_ij>(elemMult(r_gvar_ij(),  t_P()));
+
+        // Source-level canaries.
+        if (auto chk = require_gtotal_ij_in_range(r_gtotal_ij, t_P, t_g); !chk)
+            return chk.error();
+        if (auto chk = require_gtotal_sqr_ij_in_range(r_gtotal_sqr_ij, t_P, t_g); !chk)
+            return chk.error();
+
+        auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+        auto r_gsqr_i  = build<gsqr_i> (r_gtotal_sqr_ij() * u);
+        // Full LTV: Var(Ā|i) = gsqr_i − gmean_i².
+        auto r_gvar_i  = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
+
+        return build<Qdt>(get<number_of_samples>(x), get<min_P>(x), get<P>(x),
+                          std::move(r_gmean_i), std::move(r_gtotal_ij), std::move(r_gmean_ij),
+                          std::move(r_gtotal_sqr_ij), std::move(r_gsqr_i), std::move(r_gvar_i),
+                          std::move(r_gtotal_var_ij), std::move(r_gvar_ij));
     }
 
     template <class C_Qn, class C_Patch_Model>
         requires(U<C_Qn, Qn>)
-    static auto Qn_to_Qdtm(const C_Qn& x, const C_Patch_Model& m) {
-        auto u = Matrix<double>(get<P>(x)().ncols(), 1ul, 1.0);
-        auto r_P = get<P>(x)();
+    static auto Qn_to_Qdtm(const C_Qn& x, const C_Patch_Model& m)
+        -> Maybe_error<Transfer_Op_to<C_Patch_Model, Qdtm>> {
+        auto& t_P = get<P>(x);
+        auto& t_g = get<g>(m);
         auto n = get<number_of_samples>(x)();
         if (n <= 0)
             std::cerr << " nana here";
+        const std::size_t N = t_P().nrows();
+        Matrix<double> u(N, 1, 1.0);
 
-        auto r_gtotal_sqr_ij = get<PGG_n>(x)() * (2.0 / (n * n));
-        auto r_gtotal_ij = get<PG_n>(x)() * (1.0 / n);
-        auto b_gtotal_ij = force_gmean_in_range(build<gtotal_ij>(r_gtotal_ij), get<g>(m));
+        // Taylor / uniformization path: no eigendecomposition, no κ(V).
+        const double min_P_prior = 10.0 * std::sqrt(static_cast<double>(N)) *
+                                   std::numeric_limits<double>::epsilon();
 
-        auto r_gmean_ij = elemDivSoftAbs(b_gtotal_ij(), get<P>(x)(), get<min_P>(x)());
-        auto b_gmean_ij = force_gmean_in_range(build<gmean_ij>(r_gmean_ij), get<g>(m));
-        auto r_gtotal_var_ij = r_gtotal_sqr_ij - elemMult(b_gtotal_ij(), b_gmean_ij());
-        auto r_gmean_i = r_gtotal_ij * u;
-        auto b_gmean_i = force_gmean_in_range(build<gmean_i>(r_gmean_i), get<g>(m));
+        auto r_gtotal_ij_raw     = build<gtotal_ij>    (get<PG_n>(x)() * (1.0 / n));
+        auto r_gtotal_sqr_ij_raw = build<gtotal_sqr_ij>(get<PGG_n>(x)() * (2.0 / (n * n)));
 
-        auto r_gsqr_i = r_gtotal_sqr_ij * u;
-        auto r_gvar_i = r_gtotal_var_ij * u;
+        auto r_gmean_ij_prior = gmean_ij_prior(t_g);
+        auto r_gsqr_ij_prior  = gsqr_ij_prior (t_g);
 
-        auto out = build<Qdtm>(get<number_of_samples>(x), get<min_P>(x), get<P>(x),
-                               std::move(b_gmean_i), std::move(b_gtotal_ij), std::move(b_gmean_ij),
-                               build<gsqr_i>(r_gsqr_i), build<gvar_i>(r_gvar_i));
-        // if (!is_finite(out))
-        //   std::cerr<<" nana here";
-        return out;
+        auto r_gmean_ij = calc_g_ij_bayes(r_gtotal_ij_raw,     t_P, r_gmean_ij_prior, min_P_prior);
+        auto r_gsqr_ij  = calc_g_ij_bayes(r_gtotal_sqr_ij_raw, t_P, r_gsqr_ij_prior,  min_P_prior);
+
+        // gvar_ij not stored in Qdtm; gtotal_sqr_ij materialized transiently
+        // for the canary check and the gsqr_i row-sum.
+        auto r_gtotal_ij     = build<gtotal_ij>    (elemMult(r_gmean_ij(), t_P()));
+        auto r_gtotal_sqr_ij = build<gtotal_sqr_ij>(elemMult(r_gsqr_ij(),  t_P()));
+
+        // Source-level canaries.
+        if (auto chk = require_gtotal_ij_in_range(r_gtotal_ij, t_P, t_g); !chk)
+            return chk.error();
+        if (auto chk = require_gtotal_sqr_ij_in_range(r_gtotal_sqr_ij, t_P, t_g); !chk)
+            return chk.error();
+
+        auto r_gmean_i = build<gmean_i>(r_gtotal_ij() * u);
+        auto r_gsqr_i  = build<gsqr_i> (r_gtotal_sqr_ij() * u);
+        auto r_gvar_i  = build<gvar_i>(r_gsqr_i() - elemMult(r_gmean_i(), r_gmean_i()));
+
+        return build<Qdtm>(get<number_of_samples>(x), get<min_P>(x), get<P>(x),
+                           std::move(r_gmean_i), std::move(r_gtotal_ij), std::move(r_gmean_ij),
+                           std::move(r_gsqr_i), std::move(r_gvar_i));
     }
 
     template <class Policy = StabilizerPolicyEnabled, class FunctionTable, class C_Patch_Model>
@@ -3316,6 +3694,20 @@ class Macro_DMR {
         }
     }
 
+// =============================================================================
+// DEAD CODE — kept for reference only.
+// safely_calculate_y_mean_yvar_Pmean_PCov (and its sister overload below) is
+// the previous deepseek-style closed-form Taylor block (sSg / sSs / e_mu /
+// zeta). Both overloads are unreachable: only their own internal recursive
+// fallbacks call them, no external caller exists. Their helper
+// safely_calculate_Algo_Pmean_Pcov has 12 call sites in this dead family but
+// NO definition anywhere in the codebase — confirming the family is never
+// instantiated. The current IRT/MRT path lives in
+// safely_calculate_Algo_State_recursive (line ~4143). Kept inside #if 0 to
+// preserve the earlier algebra for reference, while removing the noise from
+// grep / IDE navigation.
+// =============================================================================
+#if 0
     template <class recursive, class averaging, class variance, class variance_correction,
               class C_Patch_State, class C_Qdt, class C_Patch_Model, class C_double>
 
@@ -3673,6 +4065,8 @@ class Macro_DMR {
                 SmD);
         }
     }
+#endif // dead safely_calculate_y_mean_yvar_Pmean_PCov family
+    // =========================================================================
 
     template <class C_y_var>
     auto calculate_logL(bool y_is_nan, C_y_var const& r_y_var, auto const& chi2,
@@ -3891,6 +4285,39 @@ class Macro_DMR {
         return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
     }
 
+    template <class C_Sigma, class C_Downdate>
+    auto calculate_psd_trust_coefficient(C_Sigma const& Sigma_pre,
+                                         C_Downdate const& downdate,
+                                         double factor) const {
+        constexpr double trust_softmin_eps = 1e-4;
+        auto const& Sigma_p = primitive(Sigma_pre);
+        auto const& down_p = primitive(downdate);
+
+        double alfa_p = std::numeric_limits<double>::infinity();
+        std::size_t binding_i = 0;
+        bool binding = false;
+        for (std::size_t i = 0; i < Sigma_p.nrows(); ++i) {
+            const double d_ii = down_p(i, i);
+            if (d_ii <= 0.0)
+                continue;
+            const double Sigma_ii = Sigma_p(i, i);
+            if (Sigma_ii <= 0.0)
+                continue;
+            const double alfa_i = Sigma_ii / d_ii;
+            if (alfa_i < alfa_p) {
+                alfa_p = alfa_i;
+                binding_i = i;
+                binding = true;
+            }
+        }
+
+        if (!binding)
+            return build<trust_coefficient>(1.0 + 0.0 * downdate(0, 0));
+
+        auto alfa_b = Sigma_pre(binding_i, binding_i) / downdate(binding_i, binding_i);
+        return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
+    }
+
     template <bool dynamic, class averaging, class variance, class C_Patch_State, class C_Qdt,
               class C_Patch_Model, class C_double>
         requires(uses_averaging_aproximation_c<averaging> &&
@@ -3967,6 +4394,9 @@ class Macro_DMR {
             get<y_var>(out()) = std::move(r_y_var);
             get<r_std>(out())= std::move(r_r_std);
             get<trust_coefficient>(out()) = alfa;
+            get<taylor_trust_coefficient>(out()) = taylor_trust_coefficient(1.0);
+            get<taylor_vSv>(out()) = taylor_vSv(0.0);
+            get<taylor_strength>(out()) = taylor_strength(0.0);
 
             get<Chi2>(out()) = std::move(chi2);
             get<P_mean>(out())() = std::move(r_P_mean());
@@ -3979,6 +4409,9 @@ class Macro_DMR {
             get<y_var>(out()) = std::move(r_y_var);
             get<r_std>(out())= std::move(r_r_std);
             get<trust_coefficient>(out()) = alfa;
+            get<taylor_trust_coefficient>(out()) = taylor_trust_coefficient(1.0);
+            get<taylor_vSv>(out()) = taylor_vSv(0.0);
+            get<taylor_strength>(out()) = taylor_strength(0.0);
 
             get<Chi2>(out()) = std::move(chi2);
             get<P_mean_t2_y0>(out())() = std::move(r_P_mean());
@@ -3987,11 +4420,14 @@ class Macro_DMR {
         }
     }
 
-    template <bool dynamic, class averaging, class variance, class C_Patch_State, class C_Qdt,
+    template <bool dynamic, class averaging, class variance, class variance_correction,
+              class C_Patch_State, class C_Qdt,
               class C_Patch_Model, class C_double>
 
         requires(uses_averaging_aproximation_c<averaging> &&
-                 uses_variance_aproximation_c<variance> && U<C_Patch_State, Patch_State>)
+                 uses_variance_aproximation_c<variance> &&
+                 uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+                 U<C_Patch_State, Patch_State>)
     auto safely_calculate_Algo_State_recursive(C_Patch_State const& t_prior, C_Qdt const& t_Qdt,
                                                C_Patch_Model const& m, C_double const& N,
                                                const Patch_current& p_y, double fs) const
@@ -4061,7 +4497,32 @@ class Macro_DMR {
                  get<Proportional_Noise>(m).value() * abs(y - r_y_mean());
         auto r_y_var = build<y_var>(e + N * gSg);
         if constexpr (variance::value&& averaging::value>0) {
-            auto ms = getvalue(p_P_mean() * get<gvar_i>(t_Qdt)());
+            // Compute the gvar_i flavor that matches the gSg above, on the fly,
+            // so the result is independent of which Qdt(m)-flavor t_Qdt provides
+            // (their `gvar_i` fields carry different mathematical objects):
+            //   av=2 (I family): residual = gsqr_i − (gtotal_ij ∘ gmean_ij)·𝟏
+            //                    = E_j[Var(Ā|i,j)|i]. The variance-of-conditional
+            //                    -mean piece is already inside gSg's second term,
+            //                    so the residual avoids double-counting.
+            //   av=1 (M family): total = gsqr_i − gmean_i² = Var(Ā|X₀=i). gSg has
+            //                    no boundary cross-cov term, so the full variance
+            //                    per starting state is what's needed.
+            // See theory/macroir/notes/gvar_i_overcount_audit.md.
+            auto ms = [&]() {
+                auto& t_gsqr_i = get<gsqr_i>(t_Qdt);
+                if constexpr (averaging::value == 2) {
+                    auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
+                    auto& t_gmean_ij = get<gmean_ij>(t_Qdt);
+                    Matrix<double> u(p_P_mean().size(), 1, 1.0);
+                    auto gvar_i_residual =
+                        t_gsqr_i() - elemMult(t_gtotal_ij(), t_gmean_ij()) * u;
+                    return getvalue(p_P_mean() * gvar_i_residual);
+                } else {
+                    auto gvar_i_total =
+                        t_gsqr_i() - elemMult(t_gmean_i(), t_gmean_i());
+                    return getvalue(p_P_mean() * gvar_i_total);
+                }
+            }();
             if (std::isfinite(primitive(ms)) && primitive(ms) >= 0) {
                 r_y_var() = r_y_var() + N * ms;
             } else {
@@ -4104,6 +4565,1003 @@ class Macro_DMR {
         // Σ_pre = post-Markov, pre-Bayesian-update covariance. Computed once and
         // reused for the PSD trust check and for the rank-1 down-date below.
         auto sigma_pre = AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P());
+
+        // ===========================================================
+        // IRT (av=2) / MRT (av=1) rank-1 quasi-Laplace branch.
+        // -----------------------------------------------------------
+        // Per theory/macroir/docs/Macro_IRT/macroirt_supplement.tex.
+        // Drops the standard Kalman update in favour of a Newton step in
+        // direction (γ̃ᵀΣ + ṽᵀΣ), where v = γ̄₀ + (δ/V)·σ̄²₀ absorbs the
+        // heteroscedastic open-channel noise contribution.
+        //
+        // Self-contained: builds and returns its own Algo_State /
+        // Algo_State_Dynamic. The standard Kalman block below runs only
+        // when this branch is not selected.
+        //
+        // TODO (dynamic outputs): the derivative-path extras (d_GS,
+        // P_mean_t11_y0, P_mean_t10_y1, etc.) below use the standard
+        // Kalman intermediates (chi, gS) with the IRT-derived `alfa`.
+        // For accurate derivative tracking under vc=true, derive
+        // IRT-specific versions of these extras.
+        // ===========================================================
+        if constexpr (variance_correction::value && averaging::value > 0) {
+            constexpr double trust_softmin_eps_irt = 1e-4;
+
+            if constexpr (averaging::value == 1) {
+                // Exact rank-2 MacroMRT update.  The observation model is
+                // start-state based, so Newton iterations live in the start
+                // frame and the final posterior is propagated through P.
+                constexpr std::size_t max_newton_steps_mrt = 5;
+
+                auto sigma2_i =
+                    get<gsqr_i>(t_Qdt)() - elemMult(t_gmean_i(), t_gmean_i());
+                auto gammaS0 = TranspMult(t_gmean_i(), p_P_Cov());
+                auto sigmaS0 = TranspMult(sigma2_i, p_P_Cov());
+                if (auto Maybe_gammaS0_check = to_Probability_displacement(gammaS0);
+                    !Maybe_gammaS0_check)
+                    return Maybe_gammaS0_check.error();
+                if (auto Maybe_sigmaS0_check = to_Probability_displacement(sigmaS0);
+                    !Maybe_sigmaS0_check)
+                    return Maybe_sigmaS0_check.error();
+
+                auto p_iter = p_P_mean();
+                auto alfa_mu_exact = build<trust_coefficient>(1.0 + 0.0 * p_iter[0]);
+                auto final_delta = dy;
+                auto final_V = r_y_var() - N * gSg;
+                auto final_vSv = gSg;
+
+                for (std::size_t iter = 0; iter < max_newton_steps_mrt; ++iter) {
+                    auto y_mean_iter =
+                        N * getvalue(p_iter * t_gmean_i()) + y_baseline();
+                    auto delta_iter = y - y_mean_iter;
+                    auto V_iter = e + N * getvalue(p_iter * sigma2_i);
+                    if (!(std::isfinite(primitive(V_iter))) || primitive(V_iter) <= 0.0)
+                        return error_message("invalid MacroMRT rank-2 V", V_iter);
+
+                    auto v_iter = t_gmean_i() + (delta_iter / V_iter) * sigma2_i;
+                    auto vS0 = TranspMult(v_iter, p_P_Cov());
+                    auto vSv = getvalue(vS0 * v_iter);
+                    auto b = getvalue(vS0 * sigma2_i);
+                    auto c = getvalue(sigmaS0 * sigma2_i);
+
+                    auto m11 = V_iter / N + vSv;
+                    auto m12 = b;
+                    auto m22 = c - 2.0 * V_iter * V_iter / N;
+                    auto det = m11 * m22 - m12 * m12;
+                    if (!(std::isfinite(primitive(det))) ||
+                        std::abs(primitive(det)) <= 1e-30)
+                        return error_message("singular MacroMRT rank-2 Woodbury matrix", det);
+
+                    auto k11 = m22 / det;
+                    auto k12 = (0.0 - m12) / det;
+                    auto k22 = m11 / det;
+
+                    auto delta_p = p_iter - p_P_mean();
+                    auto delta_v = getvalue(delta_p * v_iter);
+                    auto delta_s = getvalue(delta_p * sigma2_i);
+
+                    auto q_gamma = 2.0 * delta_iter / V_iter;
+                    auto q_sigma = delta_iter * delta_iter / (V_iter * V_iter) -
+                                   1.0 / V_iter;
+                    auto qS0 = q_gamma * gammaS0 + q_sigma * sigmaS0;
+                    auto qv = getvalue(qS0 * v_iter);
+                    auto qs = getvalue(qS0 * sigma2_i);
+
+                    auto delta_term =
+                        (delta_v * k11 + delta_s * k12) * vS0 +
+                        (delta_v * k12 + delta_s * k22) * sigmaS0;
+                    auto qS_post =
+                        qS0 - (qv * k11 + qs * k12) * vS0 -
+                        (qv * k12 + qs * k22) * sigmaS0;
+                    auto p_candidate = p_P_mean() + delta_term + 0.5 * qS_post;
+                    auto mean_step = p_candidate - p_iter;
+                    alfa_mu_exact = calculate_trust_coefficient(
+                        p_iter, mean_step, trust_multiplying_factor);
+
+                    auto Maybe_next_p =
+                        to_Probability(p_iter + alfa_mu_exact() * mean_step);
+                    if (!Maybe_next_p)
+                        return Maybe_next_p.error();
+                    p_iter = std::move(Maybe_next_p.value());
+                    final_delta = delta_iter;
+                    final_V = V_iter;
+                    final_vSv = vSv;
+                }
+
+                auto y_mean_final =
+                    N * getvalue(p_iter * t_gmean_i()) + y_baseline();
+                final_delta = y - y_mean_final;
+                final_V = e + N * getvalue(p_iter * sigma2_i);
+                if (!(std::isfinite(primitive(final_V))) || primitive(final_V) <= 0.0)
+                    return error_message("invalid final MacroMRT rank-2 V", final_V);
+
+                auto v_final = t_gmean_i() + (final_delta / final_V) * sigma2_i;
+                auto vS0_final = TranspMult(v_final, p_P_Cov());
+                auto vSv_final = getvalue(vS0_final * v_final);
+                auto b_final = getvalue(vS0_final * sigma2_i);
+                auto c_final = getvalue(sigmaS0 * sigma2_i);
+
+                auto m11_final = final_V / N + vSv_final;
+                auto m12_final = b_final;
+                auto m22_final = c_final - 2.0 * final_V * final_V / N;
+                auto det_final =
+                    m11_final * m22_final - m12_final * m12_final;
+                if (!(std::isfinite(primitive(det_final))) ||
+                    std::abs(primitive(det_final)) <= 1e-30)
+                    return error_message("singular final MacroMRT rank-2 Woodbury matrix",
+                                         det_final);
+
+                auto k11_final = m22_final / det_final;
+                auto k12_final = (0.0 - m12_final) / det_final;
+                auto k22_final = m11_final / det_final;
+                final_vSv = vSv_final;
+
+                auto vS_end = vS0_final * t_P();
+                auto sigmaS_end = sigmaS0 * t_P();
+                auto cov_downdate_start =
+                    k11_final * XTX(vS0_final) +
+                    k12_final * X_plus_XT(TranspMult(vS0_final, sigmaS0)) +
+                    k22_final * XTX(sigmaS0);
+                auto cov_downdate_end =
+                    k11_final * XTX(vS_end) +
+                    k12_final * X_plus_XT(TranspMult(vS_end, sigmaS_end)) +
+                    k22_final * XTX(sigmaS_end);
+
+                auto alfa_sigma_exact = calculate_psd_trust_coefficient(
+                    sigma_pre, cov_downdate_end, trust_multiplying_factor);
+                // Start- and end-frame downdates have different diagonals, so
+                // each needs its own trust coefficient — same pattern as the
+                // IRT branch below. Re-using α_end on the start-frame downdate
+                // can over-shoot when sigma_pre[i,i] > p_P_Cov[i,i], pushing
+                // P_cov_t1_y1's diagonal substantially negative.
+                auto alfa_sigma_start = calculate_psd_trust_coefficient(
+                    p_P_Cov(), cov_downdate_start, trust_multiplying_factor);
+
+                auto Maybe_r_P_mean = to_Probability(p_iter * t_P());
+                if (!Maybe_r_P_mean)
+                    return Maybe_r_P_mean.error();
+                auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
+
+                auto Maybe_r_P_cov = to_Covariance_Probability(
+                    sigma_pre - alfa_sigma_exact() * cov_downdate_end);
+                if (!Maybe_r_P_cov)
+                    return Maybe_r_P_cov.error();
+                auto r_P_cov = build<P_Cov>(std::move(Maybe_r_P_cov.value()));
+
+                auto Maybe_P_cov_t1_y1 = to_Covariance_Probability(
+                    p_P_Cov() - alfa_sigma_start() * cov_downdate_start);
+                if (!Maybe_P_cov_t1_y1)
+                    return Maybe_P_cov_t1_y1.error();
+
+                if (!all_Probability_elements(primitive(r_P_mean())) ||
+                    !all_Covariance_elements(primitive(r_P_cov()))) {
+                    return error_message("error in P_mean or P_cov (rank-2 MRT)");
+                }
+
+                double taylor_strength_p = [&]() {
+                    double sigma_sq = std::abs(primitive(
+                        getvalue(TranspMult(sigma2_i, sigma2_i))));
+                    double gamma_sq = std::abs(primitive(
+                        getvalue(TranspMult(t_gmean_i(), t_gmean_i()))));
+                    return std::abs(primitive(final_delta / final_V)) *
+                           std::sqrt(sigma_sq) /
+                           std::max(std::sqrt(gamma_sq), 1e-30);
+                }();
+
+                if constexpr (!dynamic) {
+                    Transfer_Op_to<C_Patch_State, Algo_State> out;
+                    get<y_mean>(out()) = std::move(r_y_mean);
+                    get<y_var>(out()) = std::move(r_y_var);
+                    get<r_std>(out()) = std::move(r_r_std);
+                    get<Chi2>(out()) = std::move(chi2);
+                    get<P_mean>(out())() = std::move(r_P_mean());
+                    get<P_Cov>(out())() = std::move(r_P_cov());
+                    get<trust_coefficient>(out()) = alfa_mu_exact;
+                    get<taylor_trust_coefficient>(out()) =
+                        build<taylor_trust_coefficient>(alfa_sigma_exact());
+                    get<taylor_vSv>(out()) = build<taylor_vSv>(final_vSv);
+                    get<taylor_strength>(out()) =
+                        taylor_strength(taylor_strength_p);
+                    return out;
+                } else {
+                    Transfer_Op_to<C_Patch_State, Algo_State_Dynamic> out;
+                    get<y_mean>(out()) = std::move(r_y_mean);
+                    get<y_var>(out()) = std::move(r_y_var);
+                    get<Chi2>(out()) = std::move(chi2);
+                    get<r_std>(out()) = std::move(r_r_std);
+                    get<trust_coefficient>(out()) = alfa_mu_exact;
+                    get<taylor_trust_coefficient>(out()) =
+                        build<taylor_trust_coefficient>(alfa_sigma_exact());
+                    get<taylor_vSv>(out()) = build<taylor_vSv>(final_vSv);
+                    get<taylor_strength>(out()) =
+                        taylor_strength(taylor_strength_p);
+                    get<P>(out()) = get<P>(t_Qdt);
+                    get<gmean_i>(out()) = get<gmean_i>(t_Qdt);
+                    get<gvar_i>(out()) = get<gvar_i>(t_Qdt);
+
+                    auto Maybe_r_P_mean_t2_y0 = to_Probability(p_P_mean() * t_P());
+                    if (!Maybe_r_P_mean_t2_y0)
+                        return Maybe_r_P_mean_t2_y0.error();
+                    auto Maybe_r_P_cov_t2_y0 = to_Covariance_Probability(sigma_pre);
+                    if (!Maybe_r_P_cov_t2_y0)
+                        return Maybe_r_P_cov_t2_y0.error();
+
+                    auto r_P_mean_0t_y0 = diag(p_P_mean()) * t_P();
+                    auto r_P_mean_0t_y1 = diag(p_iter) * t_P();
+                    auto r_P_cross_cov_0t_y0 =
+                        SmD * t_P() + diag(p_P_mean()) * t_P();
+                    auto SmD1 = Maybe_P_cov_t1_y1.value() - diag(p_iter);
+                    auto r_P_cross_cov_0t_y1 =
+                        SmD1 * t_P() + diag(p_iter) * t_P();
+
+                    get<P_mean_0t_y0>(out())() = std::move(r_P_mean_0t_y0);
+                    get<P_mean_0t_y1>(out())() = std::move(r_P_mean_0t_y1);
+                    get<P_cross_cov_0t_y0>(out())() =
+                        std::move(r_P_cross_cov_0t_y0);
+                    get<P_cross_cov_0t_y1>(out())() =
+                        std::move(r_P_cross_cov_0t_y1);
+                    get<P_Cov_t2_y0>(out())() =
+                        std::move(Maybe_r_P_cov_t2_y0.value());
+                    get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
+                    get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
+                    get<P_mean_t2_y0>(out())() =
+                        std::move(Maybe_r_P_mean_t2_y0.value());
+                    get<P_mean_t1_y1>(out())() = std::move(p_iter);
+                    get<d_gS>(out())() = std::move(gS);
+                    get<P_Cov_t1_y1>(out())() =
+                        std::move(Maybe_P_cov_t1_y1.value());
+                    return out;
+                }
+            } else {
+                {
+                    // Exact rank-2 MacroIRT update.  Newton iterations keep the
+                    // observation state in the start frame, while the final
+                    // posterior mean/covariance are lifted to the endpoint frame
+                    // through the IR tilde contractions.
+                    constexpr std::size_t max_newton_steps_irt = 5;
+
+                    auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
+                    auto& t_gmean_ij = get<gmean_ij>(t_Qdt);
+                    auto& t_gtotal_var_ij = get<gtotal_var_ij>(t_Qdt);
+                    auto& t_gvar_ij = get<gvar_ij>(t_Qdt);
+                    Matrix<double> u_irt(p_P_mean().size(), 1, 1.0);
+
+                    auto sigma2_i =
+                        get<gsqr_i>(t_Qdt)() -
+                        elemMult(t_gtotal_ij(), t_gmean_ij()) * u_irt;
+
+                    auto gammaS0 = TranspMult(t_gmean_i(), p_P_Cov());
+                    auto sigmaS0 = TranspMult(sigma2_i, p_P_Cov());
+                    if (auto Maybe_gammaS0_check = to_Probability_displacement(gammaS0);
+                        !Maybe_gammaS0_check)
+                        return Maybe_gammaS0_check.error();
+                    if (auto Maybe_sigmaS0_check = to_Probability_displacement(sigmaS0);
+                        !Maybe_sigmaS0_check)
+                        return Maybe_sigmaS0_check.error();
+
+                    auto sigmaS =
+                        TranspMult(sigma2_i, SmD) * t_P() +
+                        p_P_mean() * t_gtotal_var_ij();
+                    if (auto Maybe_sigmaS_check = to_Probability_displacement(sigmaS);
+                        !Maybe_sigmaS_check)
+                        return Maybe_sigmaS_check.error();
+
+                    auto gamma_sigma0 = getvalue(gammaS0 * sigma2_i);
+                    auto sigma_sigma0 = getvalue(sigmaS0 * sigma2_i);
+                    auto gamma_gamma0 = getvalue(gammaS0 * t_gmean_i());
+
+                    auto gamma_sigma =
+                        getvalue(TranspMult(t_gmean_i(), SmD) * sigma2_i) +
+                        getvalue(p_P_mean() *
+                                 (elemMult(t_gtotal_ij(), t_gvar_ij()) * u_irt));
+                    auto sigma_sigma =
+                        getvalue(TranspMult(sigma2_i, SmD) * sigma2_i) +
+                        getvalue(p_P_mean() *
+                                 (elemMult(t_gtotal_var_ij(), t_gvar_ij()) * u_irt));
+
+                    auto p_iter = p_P_mean();
+                    auto alfa_mu_start = build<trust_coefficient>(1.0 + 0.0 * p_iter[0]);
+                    auto final_delta = dy;
+                    auto final_V = r_y_var() - N * gSg;
+                    auto final_beta = final_delta / final_V;
+                    auto final_vSv = gSg;
+                    auto final_start_k11 = final_V / N;
+                    auto final_start_k12 = 0.0 * final_start_k11;
+                    auto final_start_k22 = final_start_k11;
+
+                    for (std::size_t iter = 0; iter < max_newton_steps_irt; ++iter) {
+                        auto y_mean_iter =
+                            N * getvalue(p_iter * t_gmean_i()) + y_baseline();
+                        auto delta_iter = y - y_mean_iter;
+                        auto V_iter = e + N * getvalue(p_iter * sigma2_i);
+                        if (!(std::isfinite(primitive(V_iter))) ||
+                            primitive(V_iter) <= 0.0)
+                            return error_message("invalid MacroIRT rank-2 V", V_iter);
+
+                        auto beta_iter = delta_iter / V_iter;
+                        auto v_iter = t_gmean_i() + beta_iter * sigma2_i;
+                        auto vS0 = gammaS0 + beta_iter * sigmaS0;
+                        auto vSv0 = gamma_gamma0 + 2.0 * beta_iter * gamma_sigma0 +
+                                     beta_iter * beta_iter * sigma_sigma0;
+                        auto b0 = gamma_sigma0 + beta_iter * sigma_sigma0;
+                        auto c0 = sigma_sigma0;
+
+                        auto m11 = V_iter / N + vSv0;
+                        auto m12 = b0;
+                        auto m22 = c0 - 2.0 * V_iter * V_iter / N;
+                        auto det = m11 * m22 - m12 * m12;
+                        if (!(std::isfinite(primitive(det))) ||
+                            std::abs(primitive(det)) <= 1e-30)
+                            return error_message("singular MacroIRT rank-2 start Woodbury matrix",
+                                                 det);
+
+                        auto k11 = m22 / det;
+                        auto k12 = (0.0 - m12) / det;
+                        auto k22 = m11 / det;
+
+                        auto delta_p = p_iter - p_P_mean();
+                        auto delta_v = getvalue(delta_p * v_iter);
+                        auto delta_s = getvalue(delta_p * sigma2_i);
+
+                        auto q_gamma = 2.0 * delta_iter / V_iter;
+                        auto q_sigma = delta_iter * delta_iter / (V_iter * V_iter) -
+                                       1.0 / V_iter;
+                        auto qS0 = q_gamma * gammaS0 + q_sigma * sigmaS0;
+                        auto qv = getvalue(qS0 * v_iter);
+                        auto qs = getvalue(qS0 * sigma2_i);
+
+                        auto delta_term =
+                            (delta_v * k11 + delta_s * k12) * vS0 +
+                            (delta_v * k12 + delta_s * k22) * sigmaS0;
+                        auto qS_post =
+                            qS0 - (qv * k11 + qs * k12) * vS0 -
+                            (qv * k12 + qs * k22) * sigmaS0;
+                        auto p_candidate = p_P_mean() + delta_term + 0.5 * qS_post;
+                        auto mean_step = p_candidate - p_iter;
+                        alfa_mu_start = calculate_trust_coefficient(
+                            p_iter, mean_step, trust_multiplying_factor);
+
+                        auto Maybe_next_p =
+                            to_Probability(p_iter + alfa_mu_start() * mean_step);
+                        if (!Maybe_next_p)
+                            return Maybe_next_p.error();
+                        p_iter = std::move(Maybe_next_p.value());
+                        final_delta = delta_iter;
+                        final_V = V_iter;
+                        final_beta = beta_iter;
+                        final_vSv = vSv0;
+                        final_start_k11 = k11;
+                        final_start_k12 = k12;
+                        final_start_k22 = k22;
+                    }
+
+                    auto y_mean_final =
+                        N * getvalue(p_iter * t_gmean_i()) + y_baseline();
+                    final_delta = y - y_mean_final;
+                    final_V = e + N * getvalue(p_iter * sigma2_i);
+                    if (!(std::isfinite(primitive(final_V))) ||
+                        primitive(final_V) <= 0.0)
+                        return error_message("invalid final MacroIRT rank-2 V", final_V);
+
+                    final_beta = final_delta / final_V;
+                    auto v_final = t_gmean_i() + final_beta * sigma2_i;
+                    auto vS0_final = gammaS0 + final_beta * sigmaS0;
+                    auto vS_final = gS + final_beta * sigmaS;
+                    auto vSv0_final =
+                        gamma_gamma0 + 2.0 * final_beta * gamma_sigma0 +
+                        final_beta * final_beta * sigma_sigma0;
+                    auto b0_final = gamma_sigma0 + final_beta * sigma_sigma0;
+                    auto c0_final = sigma_sigma0;
+
+                    auto m11_start_final = final_V / N + vSv0_final;
+                    auto m12_start_final = b0_final;
+                    auto m22_start_final = c0_final - 2.0 * final_V * final_V / N;
+                    auto det_start_final =
+                        m11_start_final * m22_start_final -
+                        m12_start_final * m12_start_final;
+                    if (!(std::isfinite(primitive(det_start_final))) ||
+                        std::abs(primitive(det_start_final)) <= 1e-30)
+                        return error_message("singular final MacroIRT start Woodbury matrix",
+                                             det_start_final);
+                    final_start_k11 = m22_start_final / det_start_final;
+                    final_start_k12 = (0.0 - m12_start_final) / det_start_final;
+                    final_start_k22 = m11_start_final / det_start_final;
+
+                    auto vSv_final = gSg + 2.0 * final_beta * gamma_sigma +
+                                     final_beta * final_beta * sigma_sigma;
+                    auto b_final = gamma_sigma + final_beta * sigma_sigma;
+                    auto c_final = sigma_sigma;
+
+                    auto m11_final = final_V / N + vSv_final;
+                    auto m12_final = b_final;
+                    auto m22_final = c_final - 2.0 * final_V * final_V / N;
+                    auto det_final =
+                        m11_final * m22_final - m12_final * m12_final;
+                    if (!(std::isfinite(primitive(det_final))) ||
+                        std::abs(primitive(det_final)) <= 1e-30)
+                        return error_message("singular final MacroIRT rank-2 Woodbury matrix",
+                                             det_final);
+
+                    auto k11_final = m22_final / det_final;
+                    auto k12_final = (0.0 - m12_final) / det_final;
+                    auto k22_final = m11_final / det_final;
+                    final_vSv = vSv_final;
+
+                    auto delta_p = p_iter - p_P_mean();
+                    auto delta_v = getvalue(delta_p * v_final);
+                    auto delta_s = getvalue(delta_p * sigma2_i);
+
+                    auto q_gamma = 2.0 * final_delta / final_V;
+                    auto q_sigma = final_delta * final_delta / (final_V * final_V) -
+                                   1.0 / final_V;
+                    auto qS = q_gamma * gS + q_sigma * sigmaS;
+                    auto gamma_v = gSg + final_beta * gamma_sigma;
+                    auto sigma_v = gamma_sigma + final_beta * sigma_sigma;
+                    auto qv = q_gamma * gamma_v + q_sigma * sigma_v;
+                    auto qs = q_gamma * gamma_sigma + q_sigma * sigma_sigma;
+
+                    auto delta_term =
+                        (delta_v * k11_final + delta_s * k12_final) * vS_final +
+                        (delta_v * k12_final + delta_s * k22_final) * sigmaS;
+                    auto qS_post =
+                        qS - (qv * k11_final + qs * k12_final) * vS_final -
+                        (qv * k12_final + qs * k22_final) * sigmaS;
+                    auto mu_prior_end = p_P_mean() * t_P();
+                    auto p_candidate_end = mu_prior_end + delta_term + 0.5 * qS_post;
+                    auto mean_step_end = p_candidate_end - mu_prior_end;
+                    auto alfa_mu_exact = calculate_trust_coefficient(
+                        mu_prior_end, mean_step_end, trust_multiplying_factor);
+
+                    auto cov_downdate_end =
+                        k11_final * XTX(vS_final) +
+                        k12_final * X_plus_XT(TranspMult(vS_final, sigmaS)) +
+                        k22_final * XTX(sigmaS);
+                    auto cov_downdate_start =
+                        final_start_k11 * XTX(vS0_final) +
+                        final_start_k12 * X_plus_XT(TranspMult(vS0_final, sigmaS0)) +
+                        final_start_k22 * XTX(sigmaS0);
+
+                    auto alfa_sigma_exact = calculate_psd_trust_coefficient(
+                        sigma_pre, cov_downdate_end, trust_multiplying_factor);
+                    auto alfa_sigma_start = calculate_psd_trust_coefficient(
+                        p_P_Cov(), cov_downdate_start, trust_multiplying_factor);
+
+                    auto Maybe_r_P_mean =
+                        to_Probability(mu_prior_end + alfa_mu_exact() * mean_step_end);
+                    if (!Maybe_r_P_mean)
+                        return Maybe_r_P_mean.error();
+                    auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
+
+                    auto Maybe_r_P_cov = to_Covariance_Probability(
+                        sigma_pre - alfa_sigma_exact() * cov_downdate_end);
+                    if (!Maybe_r_P_cov)
+                        return Maybe_r_P_cov.error();
+                    auto r_P_cov = build<P_Cov>(std::move(Maybe_r_P_cov.value()));
+
+                    auto Maybe_P_cov_t10_y1 = to_Covariance_Probability(
+                        p_P_Cov() - alfa_sigma_start() * cov_downdate_start);
+                    if (!Maybe_P_cov_t10_y1)
+                        return Maybe_P_cov_t10_y1.error();
+
+                    if (!all_Probability_elements(primitive(r_P_mean())) ||
+                        !all_Covariance_elements(primitive(r_P_cov()))) {
+                        return error_message("error in P_mean or P_cov (rank-2 IRT)");
+                    }
+
+                    double taylor_strength_p = [&]() {
+                        double sigma_sq = std::abs(primitive(
+                            getvalue(TranspMult(sigma2_i, sigma2_i))));
+                        double gamma_sq = std::abs(primitive(
+                            getvalue(TranspMult(t_gmean_i(), t_gmean_i()))));
+                        return std::abs(primitive(final_beta)) *
+                               std::sqrt(sigma_sq) /
+                               std::max(std::sqrt(gamma_sq), 1e-30);
+                    }();
+
+                    if constexpr (!dynamic) {
+                        Transfer_Op_to<C_Patch_State, Algo_State> out;
+                        get<y_mean>(out()) = std::move(r_y_mean);
+                        get<y_var>(out()) = std::move(r_y_var);
+                        get<r_std>(out()) = std::move(r_r_std);
+                        get<Chi2>(out()) = std::move(chi2);
+                        get<P_mean>(out())() = std::move(r_P_mean());
+                        get<P_Cov>(out())() = std::move(r_P_cov());
+                        get<trust_coefficient>(out()) = alfa_mu_exact;
+                        get<taylor_trust_coefficient>(out()) =
+                            build<taylor_trust_coefficient>(alfa_sigma_exact());
+                        get<taylor_vSv>(out()) = build<taylor_vSv>(final_vSv);
+                        get<taylor_strength>(out()) =
+                            taylor_strength(taylor_strength_p);
+                        return out;
+                    } else {
+                        Transfer_Op_to<C_Patch_State, Algo_State_Dynamic> out;
+                        get<y_mean>(out()) = std::move(r_y_mean);
+                        get<y_var>(out()) = std::move(r_y_var);
+                        get<Chi2>(out()) = std::move(chi2);
+                        get<r_std>(out()) = std::move(r_r_std);
+                        get<trust_coefficient>(out()) = alfa_mu_exact;
+                        get<taylor_trust_coefficient>(out()) =
+                            build<taylor_trust_coefficient>(alfa_sigma_exact());
+                        get<taylor_vSv>(out()) = build<taylor_vSv>(final_vSv);
+                        get<taylor_strength>(out()) =
+                            taylor_strength(taylor_strength_p);
+                        get<P>(out()) = get<P>(t_Qdt);
+                        get<gmean_i>(out()) = get<gmean_i>(t_Qdt);
+                        get<gvar_i>(out()) = get<gvar_i>(t_Qdt);
+                        get<gtotal_ij>(out()) = get<gtotal_ij>(t_Qdt);
+                        get<gmean_ij>(out()) = get<gmean_ij>(t_Qdt);
+
+                        auto Maybe_r_P_mean_t11_y0 = to_Probability(mu_prior_end);
+                        if (!Maybe_r_P_mean_t11_y0)
+                            return Maybe_r_P_mean_t11_y0.error();
+                        auto Maybe_r_P_mean_t10_y1 = to_Probability(p_iter);
+                        if (!Maybe_r_P_mean_t10_y1)
+                            return Maybe_r_P_mean_t10_y1.error();
+                        auto Maybe_r_P_cov_t11_y0 =
+                            to_Covariance_Probability(sigma_pre);
+                        if (!Maybe_r_P_cov_t11_y0)
+                            return Maybe_r_P_cov_t11_y0.error();
+
+                        auto r_P_mean_0t_y0 = diag(p_P_mean()) * t_P();
+                        auto r_P_mean_0t_y1 = diag(p_iter) * t_P();
+                        auto r_P_cross_cov_0t_y0 =
+                            SmD * t_P() + diag(p_P_mean()) * t_P();
+                        auto SmD1 = Maybe_P_cov_t10_y1.value() - diag(p_iter);
+                        auto r_P_cross_cov_0t_y1 =
+                            SmD1 * t_P() + diag(p_iter) * t_P();
+
+                        auto GS =
+                            diag(TranspMult(t_gmean_i(), SmD)) * t_P() +
+                            diag(p_P_mean()) * t_gtotal_ij();
+                        if (auto Maybe_GS_check = to_Probability_displacement(GS);
+                            !Maybe_GS_check)
+                            return Maybe_GS_check.error();
+                        get<d_GS>(out())() = std::move(GS);
+
+                        get<P_mean_t11_y0>(out())() =
+                            std::move(Maybe_r_P_mean_t11_y0.value());
+                        get<P_mean_t10_y1>(out())() =
+                            std::move(Maybe_r_P_mean_t10_y1.value());
+                        get<P_mean_t20_y1>(out())() = std::move(r_P_mean());
+                        get<P_Cov_t20_y1>(out())() = std::move(r_P_cov());
+                        get<P_mean_0t_y0>(out())() = std::move(r_P_mean_0t_y0);
+                        get<P_mean_0t_y1>(out())() = std::move(r_P_mean_0t_y1);
+                        get<P_cross_cov_0t_y0>(out())() =
+                            std::move(r_P_cross_cov_0t_y0);
+                        get<P_cross_cov_0t_y1>(out())() =
+                            std::move(r_P_cross_cov_0t_y1);
+                        get<P_Cov_t11_y0>(out())() =
+                            std::move(Maybe_r_P_cov_t11_y0.value());
+                        get<P_Cov_t10_y1>(out())() =
+                            std::move(Maybe_P_cov_t10_y1.value());
+                        return out;
+                    }
+                }
+
+            // V_obs = ε² + N·μ·σ̄² (measurement-noise piece at r=μ_prior).
+            // This is the supplement's V in the energy / Hessian / Newton-step
+            // derivation. NOT the predictive variance r_y_var (= V_pred =
+            // V_obs + N·γ̃ᵀΣγ̃). All β = δ/V_obs scalings below derive from
+            // ∂E/∂r at r=μ; using δ/V_pred (as the supplement's pseudo-code
+            // does) under-counts the σ² Taylor correction by a factor
+            // V_obs/V_pred, which is small precisely in the high-N regime
+            // where channel noise dominates.
+            auto V_obs = r_y_var() - N * gSg;
+
+            // gvar_i flavor for v: residual for av=2, total for av=1.
+            // (Recomputed here as a vector; the +N·μ·gvar_i scalar above
+            //  uses its own local lambda — see the in-place fix block.)
+            auto gvar_i_for_v = [&]() {
+                auto& t_gsqr_i_loc = get<gsqr_i>(t_Qdt);
+                if constexpr (averaging::value == 2) {
+                    auto& t_gtotal_ij_loc = get<gtotal_ij>(t_Qdt);
+                    auto& t_gmean_ij_loc = get<gmean_ij>(t_Qdt);
+                    Matrix<double> u_loc(p_P_mean().size(), 1, 1.0);
+                    return t_gsqr_i_loc() -
+                           elemMult(t_gtotal_ij_loc(), t_gmean_ij_loc()) * u_loc;
+                } else {
+                    return t_gsqr_i_loc() - elemMult(t_gmean_i(), t_gmean_i());
+                }
+            }();
+
+            // -----------------------------------------------------------
+            // α_vSv (Taylor trust coefficient): largest α ∈ [0,1] keeping
+            //   vSv_eff(α) = a + 2·α·β·b + α²·β²·c  ≥ ε·a > 0
+            // where β = δ/V and the three tilde scalars are
+            //   a = γ̃ᵀΣγ      (= existing gSg)
+            //   b = γ̃ᵀΣσ      (cross tilde scalar, NEW)
+            //   c = σ̃ᵀΣσ      (σ²-direction tilde scalar, NEW)
+            // Cauchy-Schwarz gives b² ≤ a·c, so vSv_eff(α) ≥ 0 in exact
+            // arithmetic and α_vSv = 1. Numerical cancellation can produce
+            // b² > a·c slightly; in that case the closed-form quadratic
+            // root gives the largest α below the dip.
+            //
+            // α_vSv plays the role of variance inflation by 1/α_vSv on the
+            // σ² contribution to v: v_eff = γ̄₀ + α_vSv·(δ/V)·σ̄²₀.  Smoothly
+            // interpolates between full IRT (α_vSv=1) and pure MacroIR
+            // (α_vSv=0; σ² Taylor correction disabled).
+            // -----------------------------------------------------------
+            // X̃ᵀΣỸ closed form for tilde scalars on conditional quantities X_ij, Y_ij:
+            //   X̃ᵀΣỸ = −(p·X̄)·(p·Ȳ) + Σᵢⱼ pᵢ·P_ij·X_ij·Y_ij
+            //         = TranspMult(X̄,SmD)·Ȳ + p · (gtotal_X_ij ∘ Y_ij) · u
+            // Note the SECOND factor in elemMult is the CONDITIONAL Y_ij
+            // (gvar_ij here), not the joint gtotal_var_ij — using the joint
+            // would inject an extra P_ij and make the second term too small,
+            // letting the negative SmD piece dominate and violating
+            // Cauchy-Schwarz (b² ≤ a·c). Earlier draft had this bug; figure_2
+            // macro_IRT was producing negative vSv → invalid posterior.
+            auto b_tilde = [&]() {
+                if constexpr (averaging::value == 2) {
+                    auto& t_gtotal_ij_loc = get<gtotal_ij>(t_Qdt);
+                    auto& t_gvar_ij_loc = get<gvar_ij>(t_Qdt);
+                    Matrix<double> u_loc(p_P_mean().size(), 1, 1.0);
+                    return getvalue(TranspMult(t_gmean_i(), SmD) * gvar_i_for_v) +
+                           getvalue(p_P_mean() *
+                                    (elemMult(t_gtotal_ij_loc(),
+                                              t_gvar_ij_loc()) * u_loc));
+                } else {
+                    return getvalue(TranspMult(t_gmean_i(), p_P_Cov()) * gvar_i_for_v);
+                }
+            }();
+            auto c_tilde = [&]() {
+                if constexpr (averaging::value == 2) {
+                    auto& t_gtotal_var_ij_loc = get<gtotal_var_ij>(t_Qdt);
+                    auto& t_gvar_ij_loc = get<gvar_ij>(t_Qdt);
+                    Matrix<double> u_loc(p_P_mean().size(), 1, 1.0);
+                    return getvalue(TranspMult(gvar_i_for_v, SmD) * gvar_i_for_v) +
+                           getvalue(p_P_mean() *
+                                    (elemMult(t_gtotal_var_ij_loc(),
+                                              t_gvar_ij_loc()) * u_loc));
+                } else {
+                    return getvalue(TranspMult(gvar_i_for_v, p_P_Cov()) * gvar_i_for_v);
+                }
+            }();
+
+            // Closed-form α_vSv via the quadratic
+            //   c·β²·α² + 2·b·β·α + (a − ε·a) ≥ 0
+            // Cases on primitives (binding decision); evaluate the binding
+            // expression with derivatives intact. We use the
+            //   `value + 0.0 * (derivative-aware quantity)`
+            // pattern (cf. calculate_trust_coefficient) to construct
+            // derivative-aware constants of the right type.
+            constexpr double eps_vSv_relative = 1e-6;
+            auto beta_vSv = dy / V_obs;
+            using std::sqrt;
+            auto alfa_vSv = [&]() {
+                auto a_p = primitive(gSg);
+                auto b_p = primitive(b_tilde);
+                auto c_p = primitive(c_tilde);
+                auto beta_p = primitive(beta_vSv);
+                double eps_floor = eps_vSv_relative * std::max(a_p, 1e-30);
+                // Derivative-aware "constants" of the same type as beta_vSv:
+                //   make_alfa(1) → derivative-aware 1.0 with zero derivative
+                //   make_alfa(0) → derivative-aware 0.0 with zero derivative
+                auto zero_alfa = 0.0 * beta_vSv;
+                auto one_alfa  = 1.0 + zero_alfa;
+                if (!(c_p > 0) || !(beta_p * beta_p * c_p > 0)) {
+                    // No σ²-direction contribution → quadratic degenerates;
+                    // vSv_eff(α) ≡ a stays positive → full IRT.
+                    return one_alfa;
+                }
+                double disc_p = b_p * b_p * beta_p * beta_p
+                              - c_p * beta_p * beta_p * (a_p - eps_floor);
+                if (disc_p <= 0.0) {
+                    // Cauchy-Schwarz holds → quadratic stays ≥ ε·a → full IRT.
+                    return one_alfa;
+                }
+                // Quadratic dips below ε·a between two real roots.
+                // Roots: α± = (−β·b ± √disc) / (β²·c). We want the smaller
+                // positive root (largest α below the dip).
+                double sqrt_disc_p = std::sqrt(disc_p);
+                double inv_two_a_p = 1.0 / (beta_p * beta_p * c_p);
+                double r1_p = (-beta_p * b_p - sqrt_disc_p) * inv_two_a_p;
+                double r2_p = (-beta_p * b_p + sqrt_disc_p) * inv_two_a_p;
+                double root_low_p = std::min(r1_p, r2_p);
+                double root_high_p = std::max(r1_p, r2_p);
+                if (root_high_p <= 0.0) {
+                    // Dip is entirely at α < 0 → safe for all α ≥ 0.
+                    return one_alfa;
+                }
+                if (root_low_p <= 0.0) {
+                    // Dip extends from negative to root_high_p > 0 → no safe
+                    // α below the dip; fall back to no Taylor correction.
+                    return zero_alfa;
+                }
+                if (root_low_p >= 1.0) {
+                    return one_alfa;
+                }
+                // Evaluate the binding root derivative-aware: re-compute via
+                // the closed form on the derivative-tracked b, c, β.
+                auto disc = b_tilde * b_tilde * beta_vSv * beta_vSv
+                          - c_tilde * beta_vSv * beta_vSv * (gSg - eps_floor);
+                auto sqrt_disc = sqrt(disc);
+                auto inv_two_a = 1.0 / (beta_vSv * beta_vSv * c_tilde);
+                // Pick the same branch the primitive selected (smaller root).
+                auto neg_beta_b = (0.0 - beta_vSv) * b_tilde;
+                auto root_low_d  = (neg_beta_b - sqrt_disc) * inv_two_a;
+                auto root_high_d = (neg_beta_b + sqrt_disc) * inv_two_a;
+                if (primitive(root_low_d) > primitive(root_high_d))
+                    return root_high_d;
+                return root_low_d;
+            }();
+
+            // Effective direction v = γ̄₀ + α_vSv·(δ/V_obs)·σ̄²₀  (per-i₀, K-dim)
+            auto v = t_gmean_i() + alfa_vSv * (dy / V_obs) * gvar_i_for_v;
+
+            // Tilde scalar vSv = ṽᵀΣv  (mirrors gSg computation; with α_vSv-shrunk v)
+            // vSv = ṽᵀΣv tilde — same X̃ᵀΣỸ closed form as b_tilde/c_tilde:
+            //   −(p·v̄)² + Σᵢⱼ pᵢ·P_ij·v_ij²
+            //   = TranspMult(v̄,SmD)·v̄ + p · (gtotal_v_ij ∘ v_ij) · u
+            // Need v_ij = gmean_ij + α_vSv·β·gvar_ij at the (i,j) level so
+            // elemMult is joint × conditional, not joint × joint.
+            auto vSv = [&]() {
+                if constexpr (averaging::value == 2) {
+                    auto& t_gtotal_ij_loc = get<gtotal_ij>(t_Qdt);
+                    auto& t_gtotal_var_ij_loc = get<gtotal_var_ij>(t_Qdt);
+                    auto& t_gmean_ij_loc = get<gmean_ij>(t_Qdt);
+                    auto& t_gvar_ij_loc = get<gvar_ij>(t_Qdt);
+                    auto gtotal_v_ij = t_gtotal_ij_loc() +
+                                       alfa_vSv * (dy / V_obs) *
+                                           t_gtotal_var_ij_loc();
+                    auto v_ij = t_gmean_ij_loc() +
+                                alfa_vSv * (dy / V_obs) *
+                                    t_gvar_ij_loc();
+                    Matrix<double> u_loc(p_P_mean().size(), 1, 1.0);
+                    return getvalue(TranspMult(v, SmD) * v) +
+                           getvalue(p_P_mean() *
+                                    (elemMult(gtotal_v_ij, v_ij) * u_loc));
+                } else {
+                    return getvalue(TranspMult(v, p_P_Cov()) * v);
+                }
+            }();
+
+            // Tilde vector vS = ṽᵀΣ in endpoint frame  (mirrors gS computation; with α_vSv-shrunk v)
+            auto vS = [&]() {
+                if constexpr (averaging::value == 2) {
+                    auto& t_gtotal_ij_loc = get<gtotal_ij>(t_Qdt);
+                    auto& t_gtotal_var_ij_loc = get<gtotal_var_ij>(t_Qdt);
+                    auto gtotal_v_ij = t_gtotal_ij_loc() +
+                                       alfa_vSv * (dy / V_obs) *
+                                           t_gtotal_var_ij_loc();
+                    return TranspMult(v, SmD) * t_P() + p_P_mean() * gtotal_v_ij;
+                } else {
+                    return TranspMult(v, p_P_Cov()) * t_P();
+                }
+            }();
+
+            // Newton step from r₀ = μ_prior. Start-frame Newton step
+            // (eq mu_post_MRT, supplement section 4):
+            //     Δμ_start_col = (δ/(2V_obs))·Σ_p_post·(γ̄+v)
+            // Propagating to endpoint frame as a row vector and expanding
+            // the SM down-date in Σ_p_post:
+            //     Δμ_end = (δ/(2V_obs))·(γ̄+v)ᵀ·Σ_p_post·P
+            //            = (δ/(2V_obs))·[(γ̄+v)ᵀΣP − sm·(γ̄+v)ᵀΣv · vᵀΣP]
+            //            = (δ/(2V_obs))·[(gS+vS) − sm·(b' + vSv)·vS]
+            // where b' := γ̃ᵀΣv = gSg + α·β·b_tilde and β = δ/V_obs.
+            //
+            // V_obs is computed above (= ε² + N·μ·σ̄², the supplement's V
+            // in the energy/Hessian derivation, not the predictive r_y_var).
+            auto sm_factor = N / (V_obs + N * vSv);
+            auto cov_downdate = sm_factor * XTX(vS);
+
+            // b' = γ̃ᵀΣv tilde scalar. From γ̃ᵀΣv = γ̃ᵀΣγ̄ + α·β·γ̃ᵀΣσ̄²
+            //   b' = gSg + (α_vSv · δ / V_obs) · b_tilde
+            auto bv_tilde = gSg + alfa_vSv * (dy / V_obs) * b_tilde;
+            auto mean_dir = (dy / (2 * V_obs)) *
+                            ((gS + vS) - sm_factor * (bv_tilde + vSv) * vS);
+
+            // Trust region with the IRT/MRT directions
+            auto alfa_mu_irt = calculate_trust_coefficient(
+                p_P_mean() * t_P(), mean_dir, trust_multiplying_factor);
+            auto alfa_sigma_irt = calculate_psd_trust_coefficient(
+                sigma_pre, vS, sm_factor, trust_multiplying_factor);
+            auto alfa = build<trust_coefficient>(softmin(
+                alfa_mu_irt(), alfa_sigma_irt(), trust_softmin_eps_irt));
+
+            // Apply alfa to mean and covariance updates
+            auto Maybe_r_P_mean =
+                to_Probability(p_P_mean() * t_P() + alfa() * mean_dir);
+            if (!Maybe_r_P_mean) {
+                std::cerr << "[IRT-fail Pmean] av=" << averaging::value
+                          << " N=" << primitive(N)
+                          << " alpha_vSv=" << primitive(alfa_vSv)
+                          << " gSg=" << primitive(gSg)
+                          << " b_tilde=" << primitive(b_tilde)
+                          << " c_tilde=" << primitive(c_tilde)
+                          << " vSv=" << primitive(vSv)
+                          << " sm_factor=" << primitive(sm_factor)
+                          << " dy=" << primitive(dy)
+                          << " r_y_var=" << primitive(r_y_var())
+                          << " alfa_mu=" << primitive(alfa_mu_irt())
+                          << " alfa_sigma=" << primitive(alfa_sigma_irt())
+                          << " alfa_final=" << primitive(alfa())
+                          << " err=" << Maybe_r_P_mean.error()()
+                          << "\n";
+                return Maybe_r_P_mean.error();
+            }
+            auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
+
+            auto Maybe_r_P_cov =
+                to_Covariance_Probability(sigma_pre - alfa() * cov_downdate);
+            if (!Maybe_r_P_cov) {
+                std::cerr << "[IRT-fail Pcov] av=" << averaging::value
+                          << " N=" << primitive(N)
+                          << " alpha_vSv=" << primitive(alfa_vSv)
+                          << " gSg=" << primitive(gSg)
+                          << " b_tilde=" << primitive(b_tilde)
+                          << " c_tilde=" << primitive(c_tilde)
+                          << " vSv=" << primitive(vSv)
+                          << " sm_factor=" << primitive(sm_factor)
+                          << " dy=" << primitive(dy)
+                          << " r_y_var=" << primitive(r_y_var())
+                          << " alfa_mu=" << primitive(alfa_mu_irt())
+                          << " alfa_sigma=" << primitive(alfa_sigma_irt())
+                          << " alfa_final=" << primitive(alfa())
+                          << " err=" << Maybe_r_P_cov.error()()
+                          << "\n";
+                return Maybe_r_P_cov.error();
+            }
+            auto r_P_cov = build<P_Cov>(std::move(Maybe_r_P_cov.value()));
+
+            if (!all_Probability_elements(primitive(r_P_mean())) ||
+                !all_Covariance_elements(primitive(r_P_cov()))) {
+                return error_message("error in P_mean or P_cov (IRT/MRT)");
+            }
+            auto r_logL = calculate_logL(false, r_y_var, chi2, m);
+            auto r_elogL = calculate_elogL(false, r_y_var, m);
+
+            // Diagnostic: relative magnitude of the σ² perturbation in v vs.
+            // the baseline γ̄ direction.
+            //   taylor_strength = α_vSv · |β| · ‖σ̄²‖₂ / ‖γ̄‖₂      (β = δ/V)
+            // Computed primitive-only — it's a diagnostic, doesn't need to
+            // carry derivatives.
+            double taylor_strength_p = [&]() {
+                double sigma_sq = std::abs(primitive(
+                    getvalue(TranspMult(gvar_i_for_v, gvar_i_for_v))));
+                double gamma_sq = std::abs(primitive(
+                    getvalue(TranspMult(t_gmean_i(), t_gmean_i()))));
+                double beta_p = primitive(dy / r_y_var());
+                double alfa_p = primitive(alfa_vSv);
+                return std::abs(alfa_p * beta_p) *
+                       std::sqrt(sigma_sq) /
+                       std::max(std::sqrt(gamma_sq), 1e-30);
+            }();
+
+            if constexpr (!dynamic) {
+                Transfer_Op_to<C_Patch_State, Algo_State> out;
+                get<y_mean>(out()) = std::move(r_y_mean);
+                get<y_var>(out()) = std::move(r_y_var);
+                get<r_std>(out()) = std::move(r_r_std);
+                get<Chi2>(out()) = std::move(chi2);
+                get<P_mean>(out())() = std::move(r_P_mean());
+                get<P_Cov>(out())() = std::move(r_P_cov());
+                get<trust_coefficient>(out()) = alfa;
+                get<taylor_trust_coefficient>(out()) =
+                    build<taylor_trust_coefficient>(alfa_vSv);
+                get<taylor_vSv>(out()) = build<taylor_vSv>(vSv);
+                get<taylor_strength>(out()) = taylor_strength(taylor_strength_p);
+                return out;
+            } else {
+                // Dynamic case: main outputs are IRT/MRT-specific; derivative
+                // -path extras (d_GS, P_mean_t11_y0, etc.) reuse the standard
+                // Kalman intermediates (chi, gS) with the IRT alfa as
+                // placeholders. See TODO in the block header.
+                Transfer_Op_to<C_Patch_State, Algo_State_Dynamic> out;
+                get<y_mean>(out()) = std::move(r_y_mean);
+                get<y_var>(out()) = std::move(r_y_var);
+                get<Chi2>(out()) = std::move(chi2);
+                get<r_std>(out()) = std::move(r_r_std);
+                get<trust_coefficient>(out()) = alfa;
+                get<taylor_trust_coefficient>(out()) =
+                    build<taylor_trust_coefficient>(alfa_vSv);
+                get<taylor_vSv>(out()) = build<taylor_vSv>(vSv);
+                get<taylor_strength>(out()) = taylor_strength(taylor_strength_p);
+                get<P>(out()) = get<P>(t_Qdt);
+                get<gmean_i>(out()) = get<gmean_i>(t_Qdt);
+                get<gvar_i>(out()) = get<gvar_i>(t_Qdt);
+                if constexpr (averaging::value == 2) {
+                    auto& t_gmean_i_loc = get<gmean_i>(t_Qdt);
+                    auto gS0 = TranspMult(t_gmean_i_loc(), SmD) +
+                               elemMult(p_P_mean(), t_gmean_i_loc());
+                    if (auto Maybe_gS0_check = to_Probability_displacement(gS0);
+                        !Maybe_gS0_check)
+                        return Maybe_gS0_check.error();
+                    auto Maybe_r_P_mean_t11_y0 = to_Probability(p_P_mean() * t_P());
+                    auto Maybe_r_P_mean_t10_y1 =
+                        to_Probability(p_P_mean() + alfa() * chi * gS0);
+                    if (!Maybe_r_P_mean_t11_y0)
+                        return Maybe_r_P_mean_t11_y0.error();
+                    if (!Maybe_r_P_mean_t10_y1)
+                        return Maybe_r_P_mean_t10_y1.error();
+                    auto r_P_mean_0t_y0 = diag(p_P_mean()) * t_P();
+                    auto& t_gtotal_ij_loc = get<gtotal_ij>(t_Qdt);
+                    auto GS = diag(TranspMult(t_gmean_i_loc(), SmD)) * t_P() +
+                              diag(p_P_mean()) * t_gtotal_ij_loc();
+                    if (auto Maybe_GS_check = to_Probability_displacement(GS);
+                        !Maybe_GS_check)
+                        return Maybe_GS_check.error();
+                    auto r_P_mean_0t_y1 = r_P_mean_0t_y0 + alfa() * chi * GS;
+                    auto r_P_cross_cov_0t_y0 =
+                        SmD * t_P() + diag(p_P_mean()) * t_P();
+                    auto r_P_cross_cov_0t_y1 = r_P_cross_cov_0t_y0 -
+                        (alfa() * N / r_y_var()) * TranspMult(gS0, gS);
+                    get<d_GS>(out())() = std::move(GS);
+                    get<P_mean_t11_y0>(out())() =
+                        std::move(Maybe_r_P_mean_t11_y0.value());
+                    get<P_mean_t10_y1>(out())() =
+                        std::move(Maybe_r_P_mean_t10_y1.value());
+                    get<P_mean_t20_y1>(out())() = std::move(r_P_mean());
+                    get<P_Cov_t20_y1>(out())() = std::move(r_P_cov());
+                    get<gtotal_ij>(out()) = get<gtotal_ij>(t_Qdt);
+                    get<gmean_ij>(out()) = get<gmean_ij>(t_Qdt);
+                    get<P_mean_0t_y0>(out())() = std::move(r_P_mean_0t_y0);
+                    get<P_mean_0t_y1>(out())() = std::move(r_P_mean_0t_y1);
+                    get<P_cross_cov_0t_y0>(out())() = std::move(r_P_cross_cov_0t_y0);
+                    get<P_cross_cov_0t_y1>(out())() = std::move(r_P_cross_cov_0t_y1);
+                    auto Maybe_r_P_cov_t11_y0 = to_Covariance_Probability(
+                        AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()));
+                    auto Maybe_r_P_cov_t10_y1 = to_Covariance_Probability(
+                        get<P_Cov>(t_prior())() -
+                        (alfa() * N / r_y_var()) * XTX(gS0));
+                    if (!Maybe_r_P_cov_t11_y0)
+                        return Maybe_r_P_cov_t11_y0.error();
+                    if (!Maybe_r_P_cov_t10_y1)
+                        return Maybe_r_P_cov_t10_y1.error();
+                    get<P_Cov_t11_y0>(out())() =
+                        std::move(Maybe_r_P_cov_t11_y0.value());
+                    get<P_Cov_t10_y1>(out())() =
+                        std::move(Maybe_r_P_cov_t10_y1.value());
+                } else {  // averaging::value == 1
+                    auto Maybe_r_P_mean_t2_y0 = to_Probability(p_P_mean() * t_P());
+                    if (!Maybe_r_P_mean_t2_y0)
+                        return Maybe_r_P_mean_t2_y0.error();
+                    auto Maybe_r_P_mean_t1_y1 =
+                        to_Probability(p_P_mean() + alfa() * chi * gS);
+                    if (!Maybe_r_P_mean_t1_y1)
+                        return Maybe_r_P_mean_t1_y1.error();
+                    auto Maybe_r_P_cov_t2_y0 = to_Covariance_Probability(
+                        AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()));
+                    if (!Maybe_r_P_cov_t2_y0)
+                        return Maybe_r_P_cov_t2_y0.error();
+                    auto Maybe_r_P_cov_t1_y1 = to_Covariance_Probability(
+                        get<P_Cov>(t_prior())() -
+                        (alfa() * N / r_y_var()) * XTX(gS));
+                    if (!Maybe_r_P_cov_t1_y1)
+                        return Maybe_r_P_cov_t1_y1.error();
+                    auto r_P_mean_0t_y0 = diag(p_P_mean()) * t_P();
+                    auto r_P_mean_0t_y1 =
+                        diag(Maybe_r_P_mean_t1_y1.value()) * t_P();
+                    auto r_P_cross_cov_0t_y0 =
+                        SmD * t_P() + diag(p_P_mean()) * t_P();
+                    auto SmD1 = Maybe_r_P_cov_t1_y1.value() -
+                                diag(Maybe_r_P_mean_t1_y1.value());
+                    auto r_P_cross_cov_0t_y1 =
+                        SmD1 * t_P() +
+                        diag(Maybe_r_P_mean_t1_y1.value()) * t_P();
+                    get<P_mean_0t_y0>(out())() = std::move(r_P_mean_0t_y0);
+                    get<P_mean_0t_y1>(out())() = std::move(r_P_mean_0t_y1);
+                    get<P_cross_cov_0t_y0>(out())() = std::move(r_P_cross_cov_0t_y0);
+                    get<P_cross_cov_0t_y1>(out())() = std::move(r_P_cross_cov_0t_y1);
+                    get<P_Cov_t2_y0>(out())() =
+                        std::move(Maybe_r_P_cov_t2_y0.value());
+                    get<P_mean_t2_y1>(out())() = std::move(r_P_mean());
+                    get<P_Cov_t2_y1>(out())() = std::move(r_P_cov());
+                    get<P_mean_t2_y0>(out())() =
+                        std::move(Maybe_r_P_mean_t2_y0.value());
+                    get<P_mean_t1_y1>(out())() =
+                        std::move(Maybe_r_P_mean_t1_y1.value());
+                    get<d_gS>(out())() = std::move(gS);
+                    get<P_Cov_t1_y1>(out())() =
+                        std::move(Maybe_r_P_cov_t1_y1.value());
+                }
+                return out;
+            }
+            }
+        }
+
+        // ===========================================================
+        // Standard rank-1 Kalman branch (vc=false, or unhandled av=0).
+        // ===========================================================
 
         // α_μ : largest α keeping (μ·t_P + α·chi·gS) on the simplex. Endpoint
         // frame for all averaging values, since gS is now endpoint-frame too.
@@ -4156,13 +5614,17 @@ class Macro_DMR {
             get<y_mean>(out()) = std::move(r_y_mean);
             get<y_var>(out()) = std::move(r_y_var);
             get<r_std>(out())= std::move(r_r_std);
-            
+
             get<Chi2>(out())= std::move(chi2);
             get<P_mean>(out())() = std::move(r_P_mean());
             get<P_Cov>(out())() = std::move(r_P_cov());
             get<r_std>(out())= std::move(r_r_std);
 
             get<trust_coefficient>(out()) = alfa;
+            // Standard Kalman branch — Taylor not active.
+            get<taylor_trust_coefficient>(out()) = taylor_trust_coefficient(1.0);
+            get<taylor_vSv>(out()) = taylor_vSv(0.0);
+            get<taylor_strength>(out()) = taylor_strength(0.0);
             return out;
         } else {
             Transfer_Op_to<C_Patch_State, Algo_State_Dynamic> out;
@@ -4172,11 +5634,15 @@ class Macro_DMR {
             get<r_std>(out())= std::move(r_r_std);
             
             get<trust_coefficient>(out()) = alfa;
+            // Standard Kalman branch — Taylor not active.
+            get<taylor_trust_coefficient>(out()) = taylor_trust_coefficient(1.0);
+            get<taylor_vSv>(out()) = taylor_vSv(0.0);
+            get<taylor_strength>(out()) = taylor_strength(0.0);
             if constexpr (averaging::value == 0) {
                 get<P_half>(out())= get<P_half>(t_Qdt);
             } else{
                      get<P>(out())= get<P>(t_Qdt);
-            } 
+            }
             if constexpr (averaging::value>0) {
                 get<gmean_i>(out())=  get<gmean_i>(t_Qdt);
                 get<gvar_i>(out()) =  get<gvar_i>(t_Qdt);
@@ -4369,21 +5835,26 @@ class Macro_DMR {
         }
     }
 
-    template <bool dynamic, class recursive, class averaging, class variance, class C_Patch_State,
+    template <bool dynamic, class recursive, class averaging, class variance,
+              class variance_correction, class C_Patch_State,
               class C_Qdt, class C_Patch_Model, class C_double>
 
         requires(uses_recursive_aproximation_c<recursive> &&
                  uses_averaging_aproximation_c<averaging> &&
-                 uses_variance_aproximation_c<variance> && (U<C_Patch_State, Patch_State>))
+                 uses_variance_aproximation_c<variance> &&
+                 uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+                 (U<C_Patch_State, Patch_State>))
     auto safely_calculate_Algo_State(C_Patch_State const& t_prior, C_Qdt const& t_Qdt,
                                      C_Patch_Model const& m, C_double const& N,
                                      const Patch_current& p_y, double fs) const {
         if constexpr (!recursive::value) {
+            // Non-recursive (NaN/gap) path doesn't apply variance_correction.
             return safely_calculate_Algo_State_non_recursive<dynamic, averaging, variance>(
                 t_prior, t_Qdt, m, N, p_y, fs);
         }
-        return safely_calculate_Algo_State_recursive<dynamic, averaging, variance>(t_prior, t_Qdt,
-                                                                                   m, N, p_y, fs);
+        return safely_calculate_Algo_State_recursive<dynamic, averaging, variance,
+                                                     variance_correction>(
+            t_prior, t_Qdt, m, N, p_y, fs);
     }
 
     template <class... vVars, class C_Algo_State>
@@ -4776,7 +6247,8 @@ class Macro_DMR {
 
         auto Maybe_Algo =
             safely_calculate_Algo_State<is_Algo_dynamic<C_Macro_State>(), recursive, averaging,
-                                        variance>(t_prior, t_Qdt, m, Nch, p_y, fs);
+                                        variance, variance_correction>(
+                t_prior, t_Qdt, m, Nch, p_y, fs);
         if (!Maybe_Algo)
             return Maybe_Algo.error();
 
@@ -5237,6 +6709,12 @@ class Macro_DMR {
                 }
                 if constexpr (!adaptive::value) {
                     if constexpr (!variance_correction::value) {
+                        // Qdt-flavor by `vc` (vc=false → Qdtm/Qdtg, vc=true → Qdt below).
+                        // For av=2 + vc=false (macro_IR), the residual gvar_i is
+                        // recomputed in-place at line ~4084 from Qdtm's
+                        // gsqr_i/gtotal_ij/gmean_ij — these are algebraically the
+                        // same as Qdt's (E3(x,y,0) ≡ E2(x,y)), so we get the correct
+                        // residual without paying calc_Qdt's E3 cost.
                         auto Maybe_t_Qdtm = [this, &f_local,&m,&t_step,&fs]()
                         {
                             if constexpr( averaging::value>0){
@@ -5601,6 +7079,8 @@ class Macro_DMR {
                     }
                 } else {
                     if constexpr (!variance_correction::value) {
+                        // Same vc-branched Qdt-flavor rule as the !adaptive branch.
+                        // av=2 residual gvar_i is recomputed in-place from Qdtm.
                         auto Maybe_t_Qdtm = [this,& f_local, &m, &t_step, &fs]() {
                            if constexpr(averaging::value>0){
                             return calc_Qdtm(f_local, m, t_step, fs);}

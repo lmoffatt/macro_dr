@@ -51,12 +51,39 @@ macro_MRV = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
             variance_approximation = 1, taylor_variance_correction = 0)
 
-macro_IR = build_likelihood_function(model =model, 
+macro_IR = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
             variance_approximation = 0 , taylor_variance_correction = 0)
-macro_IRV = build_likelihood_function(model =model, 
+macro_IRV = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
             variance_approximation = 1, taylor_variance_correction = 0)
+
+# TODO (when macro_IRT / macro_MRT are added to figure_1): the intra-interval
+# diagnostics for the IRT/MRT branch need to be wired before they show
+# meaningful per-frame snapshots here.
+#
+# Status: the IRT/MRT branch in legacy/qmodel.h:safely_calculate_Algo_State_recursive
+# computes the main outputs (P_mean, P_Cov, trust_coefficient, taylor_*) per
+# the rank-1 quasi-Laplace formulas in
+# theory/macroir/docs/Macro_IRT/macroirt_supplement.tex. But the dynamic-state
+# extras (d_GS, P_mean_t11_y0, P_mean_t10_y1, P_mean_t1_y1, P_cross_cov_0t_y1,
+# etc.) currently use standard-Kalman intermediates (chi, gS, gS0, GS) with
+# the IRT-derived alfa as placeholders -- see the TODO note in the kernel
+# block header.
+#
+# Figure_1's purpose is per-algorithm description, so it is the place where
+# IRT/MRT-specific intra-interval diagnostics matter. Before adding
+# macro_IRT/macro_MRT here:
+#   1. Derive IRT-analogs of the start-frame gain (gS0_v), joint-state gain
+#      matrix (GS_v), and the rank-1 cross-covariance downdate using vS and
+#      sm_factor instead of gS and N/r_y_var.
+#   2. Replace the placeholders in the kernel's IRT/MRT branch with the
+#      derived expressions.
+#   3. Then add macro_IRT/macro_MRT here and rerun figure_1.
+#
+# The likelihood/Fisher path (figure_2 via calc_dlikelihood_predictions) is
+# correct as-is because it uses only the main outputs. The placeholders only
+# affect the diagnostic snapshots produced via calc_likelihood_diagnostic.
 
 likelihood_diagnostic_IRV = calc_likelihood_diagnostic(likelihood_algorithm =macro_IRV, parameters=par_tr, experiment =experiment, 
 simulation = simulation)
