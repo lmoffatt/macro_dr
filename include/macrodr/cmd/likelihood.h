@@ -516,6 +516,14 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Moment_statistics<Sum<macrodr::r_std>, false>>,
         Probit_statistics<Moment_statistics<Sum<macrodr::r2_std>, false>>,
         Probit_statistics<Moment_statistics<Sum<macrodr::trust_coefficient>, false>>,
+        // TODO: Probit aggregations for taylor_trust_coefficient / taylor_vSv /
+        // taylor_strength (added to Algo_State_Dynamic per Layer 1+2). Requires
+        // mirroring the addition into the internal sum_moments / evol_moments
+        // type_identity Vector_Spaces in
+        // src/core/likelihood.cpp:calculate_Likelihood_diagnostics_preset_f
+        // (~line 2521+) plus matching extractor lambdas. Per-interval values are
+        // already exposed via the dynamic-state framework; aggregations can be
+        // wired when figure_2 results call for per-trace aggregations of α_vSv.
         Probit_statistics<Moment_statistics<Sum<dlogL>, true>>,
         Probit_statistics<Moment_statistics<Sum<Gaussian_Fisher_Information>, false>>,
         Probit_statistics<Sum<Moment_statistics<macrodr::r_std, false>>>,
@@ -657,10 +665,20 @@ auto calculate_Likelihood_derivative_basic_diagnostics(
 // variance inflation that makes IDM = F⁻¹ᐟ²·J·F⁻¹ᐟ² blow up in the worst
 // eigendirection. Yields tighter ratio-of-quadratic-forms diagnostics under
 // the information identity J ≈ F at the recording level.
+//
+// samples_dir (default ""): when non-empty, the raw bootstrap samples are
+// also written as flat binary doubles inside this directory (one .bin per
+// observable: IDM, GFD, SDM, CDM, FC, DCC, IDR, F_b matrices; their
+// eigenvalue spectra; the new IDM/GFD scalar suite; log-dets; condition
+// numbers; effective ranks). Sidecar files in the same directory:
+// `manifest.csv` (observable shapes), `cells.csv` (one row per cell call),
+// `reader.R` (auto-generated R reader). User joins binary cells to the
+// analysis CSV by row order in R.
 auto calculate_Likelihood_derivative_basic_diagnostics_paired(
     const std::vector<dMacro_State_Ev_gradient_all>& dy,
     const std::vector<parameter_spd_payload>& F_per_recording, std::size_t n_boostrap_samples,
-    const std::set<double>& cis, std::size_t seed, std::size_t max_lag)
+    const std::set<double>& cis, std::size_t seed, std::size_t max_lag,
+    std::string samples_dir = "")
     -> Analisis_derivative_diagnostic_basic;
 
 auto calculate_Likelihood_derivative_series_var_diagnostics(

@@ -1951,15 +1951,31 @@ auto get_mean_Probits(
     std::vector<StorageType> valid_estimates;
     valid_estimates.reserve(bootstrap_estimates.size()); // Prevent reallocations
 
-    // 2. Populate the valid estimates
+    // 2. Populate the valid estimates — skip if EMPTY (legacy 0×0 sentinel for
+    // total failure) OR if ANY entry is NaN (current NaN-fill sentinel of a
+    // shape-correct p×p produced by `.value_or(SymPosDefMatrix(p,p,NaN))`
+    // upstream). NaN-fill is preferred so per-replicate matrix shape stays
+    // aligned across the bootstrap; this matrix-level filter then excludes
+    // the failed replicate from the count and from the element-wise mean.
+    // NaN check is guarded by `if constexpr` on element type because
+    // is_Matrix_v doesn't constrain the element type — Matrix<NonArithmetic>
+    // would fail std::isnan substitution.
+    using ElemT =
+        std::decay_t<decltype(std::declval<const RawMatrix&>()[std::size_t{0}])>;
     for (const auto& x : bootstrap_estimates) {
         decltype(auto) value = std::invoke(f, x);
-        if (value.size() > 0) {
-            if constexpr (std::is_lvalue_reference_v<ProjResult>) {
-                valid_estimates.emplace_back(std::ref(value));
-            } else {
-                valid_estimates.emplace_back(std::move(value));
+        if (value.size() == 0) continue;
+        if constexpr (std::is_arithmetic_v<ElemT>) {
+            bool any_nan = false;
+            for (std::size_t k = 0; k < value.size(); ++k) {
+                if (std::isnan(value[k])) { any_nan = true; break; }
             }
+            if (any_nan) continue;
+        }
+        if constexpr (std::is_lvalue_reference_v<ProjResult>) {
+            valid_estimates.emplace_back(std::ref(value));
+        } else {
+            valid_estimates.emplace_back(std::move(value));
         }
     }
 
@@ -2030,7 +2046,12 @@ auto get_mean_Probits(
     std::vector<StorageType> valid_estimates;
     valid_estimates.reserve(bootstrap_estimates.size()); // Prevent reallocations
 
-    // 1. Evaluate, filter empty vectors, and store safely
+    // 1. Evaluate, filter empty vectors, and store safely. This overload is
+    // invoked for std::vector<T> where T can be a non-arithmetic Vector_Space
+    // (per-sample evolution data) — std::isnan is undefined on those types.
+    // NaN filtering is therefore deferred to the inner per-element scalar
+    // recursion. Matrix/vector-of-doubles fallbacks go through the matrix
+    // overload above, which DOES do an explicit NaN check.
     for (const auto& x : bootstrap_estimates) {
         decltype(auto) value = std::invoke(f, x);
         if (!value.empty()) {

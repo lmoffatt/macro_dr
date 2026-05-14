@@ -806,7 +806,7 @@ class typed_lifted_function_evaluation
             if (maybe_run) {
                 values[i].emplace(std::move(maybe_run.value()));
             } else {
-                errors[i] = coord.str() + " | " + maybe_run.error()();
+                errors[i] = coord.str() + "\n" + maybe_run.error()();
             }
         }
 
@@ -814,7 +814,7 @@ class typed_lifted_function_evaluation
         for (const auto& error : errors) {
             if (!error.empty()) {
                 if (!combined_errors.empty()) {
-                    combined_errors += '\n';
+                    combined_errors += "\n\n";
                 }
                 combined_errors += error;
             }
@@ -1179,7 +1179,7 @@ class typed_lifted_homogeneous_container_construction
             if (maybe_run) {
                 values[i].emplace(std::move(maybe_run.value()));
             } else {
-                errors[i] = coord.str() + " | " + maybe_run.error()();
+                errors[i] = coord.str() + "\n" + maybe_run.error()();
             }
         }
 
@@ -1187,7 +1187,7 @@ class typed_lifted_homogeneous_container_construction
         for (const auto& error : errors) {
             if (!error.empty()) {
                 if (!combined_errors.empty()) {
-                    combined_errors += '\n';
+                    combined_errors += "\n\n";
                 }
                 combined_errors += error;
             }
@@ -1461,7 +1461,7 @@ class typed_lifted_tuple_construction
             if (maybe_run) {
                 values[i].emplace(std::move(maybe_run.value()));
             } else {
-                errors[i] = coord.str() + " | " + maybe_run.error()();
+                errors[i] = coord.str() + "\n" + maybe_run.error()();
             }
         }
 
@@ -1469,7 +1469,7 @@ class typed_lifted_tuple_construction
         for (const auto& error : errors) {
             if (!error.empty()) {
                 if (!combined_errors.empty()) {
-                    combined_errors += '\n';
+                    combined_errors += "\n\n";
                 }
                 combined_errors += error;
             }

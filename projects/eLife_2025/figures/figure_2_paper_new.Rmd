@@ -18,8 +18,8 @@ filename=c(
   #"data/figure_2_basic_diagnostics__0420_2_001", 
   #"data/figure_2_basic_diagnostics__0421_3_001",
   #"data/figure_2_basic_diagnostics__0422_4_001", 
-  "data/figure_2_basic_diagnostics__0510_001",
-  "data/figure_2_basic_diagnostics__0510_002"
+  #"data/figure_2_basic_diagnostics__0510_001",
+  "data/figure_2_basic_diagnostics__0513_006"
   
   
   
@@ -80,7 +80,7 @@ d_mean%>%filter(component=="Moment_statistics_Sum_logL", statistic=="variance", 
 )
 }
 ```
-```{r,fig.width=20,fig.height=20}
+```{r,fig.width=20,fig.height=10}
 
 {print(
 d_mean%>%filter(component=="Moment_statistics_Sum_logL", statistic=="mean", !algorithm%in%c("macro_MNR", "macro_NR"), simulation_algorithm=="uniformization")%>%ggplot()+geom_point(aes(x =algorithm , y = mean_NA, color=algorithm))+geom_errorbar(aes(x=algorithm, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+facet_wrap(Num_ch~interval_in_tau, ncol=4,scales="free", )+ggtitle(paste0("Moment_statistics_Sum_logL for Nch=",nch)) 
@@ -105,7 +105,7 @@ d_mean%>%filter(component=="Moment_statistics_Sum_logL", statistic=="mean", !alg
 ```{r,fig.width=20,fig.height=20}
 
 {print(
-d_mean%>%filter(component%in% c("Spectrum_Condition_Number_Fisher_Covariance","Spectrum_Condition_Number_Distortion_Corrected_Covariance"), statistic=="value", !algorithm%in%c("macro_MNR", "macro_NR"), simulation_algorithm=="uniformization")%>%ggplot()+geom_point(aes(x =algorithm , y = mean_NA, color=component))+geom_errorbar(aes(x=algorithm, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=component))+facet_wrap(Num_ch~interval_in_tau, ncol=4,scales="free", )+ggtitle(paste0("Spectrum_Condition_Number_Fisher_Covariance  )) 
+d_mean%>%filter(component%in% c("Spectrum_Condition_Number_Fisher_Covariance","Spectrum_Condition_Number_Distortion_Corrected_Covariance"), statistic=="value", !algorithm%in%c("macro_MNR", "macro_NR"), simulation_algorithm=="uniformization")%>%ggplot()+geom_point(aes(x =algorithm , y = mean_NA, color=component))+geom_errorbar(aes(x=algorithm, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=component))+facet_wrap(Num_ch~interval_in_tau, ncol=4,scales="free", )+ggtitle(paste0("Spectrum_Condition_Number_Fisher_Covariance"  ))
 )
 }
 ```
@@ -162,7 +162,7 @@ al=d_mean%>%filter(component=="Distortion_Induced_Bias", param_index!="")%>%sele
 for (p in pars )
 #  for (a in c("macro_IR","macro_MR"))
 {print(
-d_mean%>%filter(component%in%c("Information_Distortion_Matrix","Gaussian_Fisher_Distortion"), statistic=="value", param_name==p, algorithm%in%c("macro_IR","macro_IRT","macro_MR"), simulation_algorithm=="substeps_1000")%>%ggplot()+geom_point(aes(x = interval_in_tau, y = mean_NA, color=component))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=component))+geom_hline(yintercept = 1, color="green")+scale_y_log10()+facet_grid(Num_ch~algorithm, scales="free", )+ggtitle(paste0("Information_Distortion_Matrix for ",p)) 
+d_mean%>%filter(component%in%c("Information_Distortion_Matrix","Gaussian_Fisher_Distortion"), statistic=="value", param_name==p, algorithm%in%c("macro_IR","macro_IRT","macro_MR"))%>%ggplot()+geom_point(aes(x = interval_in_tau, y = mean_NA, color=component))+geom_errorbar(aes(x=interval_in_tau, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=component))+geom_hline(yintercept = 1, color="green")+scale_y_log10()+facet_grid(Num_ch~algorithm, scales="free", )+ggtitle(paste0("Information_Distortion_Matrix for ",p)) 
 )
 }
 ```

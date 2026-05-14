@@ -3,18 +3,20 @@ model = load_model("scheme_CO")
 
 axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1"])
 #axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
-axis_noise = axis(name= "noise_in_conductance_tau", labels= ["1"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
 
 #axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
 #axis_Nchanels =axis(name= "Num_ch", labels= ["10","20","100", "200","500","1000","10000"])
-axis_Nchanels =axis(name= "Num_ch", labels= ["50"])
+axis_Nchanels =axis(name= "Num_ch", labels= ["1","10", "100", "1000","10000"])
+#axis_Nchanels =axis(name= "Num_ch", labels= ["50"])
 
 #current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
-current_noise= indexed_double_by(axis= axis_noise,values=[0.001])
+current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
 
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,200,500,1000,10000])
+Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,10,100,1000,10000])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[10,20,100,200,500,1000,10000])
-Num_ch = indexed_double_by(axis= axis_Nchanels,values=[50])
+#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[50])
 
 
 parameter = create_parameters(
@@ -51,43 +53,61 @@ par_tr = get_standard_parameter_transformed_values(parameter)
  
 model_str="scheme_CO"
 
-simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_100","substeps_1000","uniformization"])
+simulation_axis = axis(name= "simulation_algorithm", labels= ["uniformization"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 64, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 256, experiment = experiment,
                          observations = observations, 
-                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps","substeps","uniformization"]),
-                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [100,10000,1]),
+                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["uniformization"]),
+                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
                  seed = 0)
 
 
 
 simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation_05_11_001")
+   path= "figures/data/figure_2_simulation_05_14_001")
+
 
 
 algorithm_axis = axis(name= "algorithm",
-    labels= ["macro_NR", "macro_R", "macro_MNR", "macro_MR", "macro_IR", "macro_IRT"])
+    labels= [ "macro_MR", "macro_MRT","macro_IR", "macro_IRT"])
+ 
+
+#algorithm_axis = axis(name= "algorithm",
+#    labels= ["macro_NR", "macro_R", "macro_MNR", "macro_MR", "macro_MRT", "macro_IR", "macro_IRT"])
     #,
     #         "micro_R", "micro_MR", "micro_IR"])
 
+
+#algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, true, false, true, true, true, true ])#,   true, true, true])
+#algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false, false, false, true, false, true])#,   false, false, false])
+#algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false, false, false, false, false, false])#,   true, true, true])
+#algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false, false, false, false, false, false])#,   true, true, true])
+
+
+
 algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
-    values=[false, true, false, true, true, true ])#,   true, true, true])
+    values=[true, true,true, true ])#,   true, true, true])
 algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis,
-    values=[false, false, false, false, false, true])#,   false, false, false])
+    values=[false, true,false, true])#,  false, true, false, false, false])
 algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
-    values=[false, false, false, false, false, false])#,   true, true, true])
+    values=[false, false,false, false])#,   true, true, true])
 # Force Taylor + scaling/squaring expm for micro Q (avoids eigen path's
 # eigenvector-derivative ill-conditioning at Nch ≥ ~10 in k=2). Macro paths
 # stay on eigen since their Q is k×k and well-conditioned.
 algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
-    values=[false, false, false, false, false, false])#,   true, true, true])
+    values=[ false, false,false, false])#,   true, true, true])
 
 algorithms = build_likelihood_function(model = model,
             adaptive_approximation     = false,
             recursive_approximation    = algo_recursive_approximation,
             averaging_approximation    = indexed_int_by(axis= algorithm_axis,
-                                           values=[0, 0, 1, 1, 2, 2]),#,   0, 1, 2]),
+                                           values=[ 1, 1,2, 2]),
+           #                               values=[0, 0, 1, 1, 1, 2, 2]),#,   0, 1, 2]),
             variance_approximation     = true,
             taylor_variance_correction = algo_taylor_approximation,
             micro_approximation        = algo_micro_approximation,
@@ -116,8 +136,9 @@ likelihood_analysis = likelihood_derivative_basic_diagnostics_paired(
     dlikelihood_predictions = dlikelihood_predictions,
     numerical_fisher_information = numerical_fisher_information,
     n_boostrap_samples = 100,
-    probits = [ 0.025 , 0.975 ] , seed=0, max_lag=10)
+    probits = [ 0.025 , 0.975 ] , seed=0, max_lag=10,
+    samples_dir = "figures/data/figure_2_samples__0514_001")
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_basic_diagnostics__0511_001")
+   path= "figures/data/figure_2_basic_diagnostics__0514_001")

@@ -271,6 +271,8 @@ class micro_Algo_State
         var::Var<micro_Algo_State, micro_Algo_State_space>;
     micro_Algo_State(const micro_Algo_State_Dynamic& p)
         : base_type{Vector_Space(get<y_mean>(p()), get<y_var>(p()), get<trust_coefficient>(p()),
+                                 get<taylor_trust_coefficient>(p()), get<taylor_vSv>(p()),
+                                 get<taylor_strength>(p()),
                                  get<r_std>(p()), get<Chi2>(p()),
                                  P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()),
                                  get<logL>(p()), get<elogL>(p()),
