@@ -8,7 +8,7 @@
 #
 # Required env (set in your interactive shell before sbatch; SLURM passes them
 # in via --export=ALL by default):
-#   CLUSTER   : cluster name (selects projects/p2x2/ops/clusters/<CLUSTER>.sh).
+#   CLUSTER   : cluster name (selects projects/eLife_2025/ops/clusters/<CLUSTER>.sh).
 #               Set by sourcing that profile in your shell first.
 #   PATH_MACRO: parent of the macro_dr repo (set by the cluster profile).
 #   BIN       : absolute path to the macrodr_cli to pin this job to,
@@ -17,8 +17,8 @@
 #               in-flight jobs (each holds its binary's inode open).
 #
 # Usage:
-#   source projects/p2x2/ops/clusters/dirac.sh
-#   projects/p2x2/ops/build_cluster.sh dirac     # produces build/dirac-<hash>/macrodr_cli
+#   source projects/eLife_2025/ops/clusters/dirac.sh
+#   projects/eLife_2025/ops/build_cluster.sh dirac     # produces build/dirac-<hash>/macrodr_cli
 #
 #   sbatch --export=ALL,BIN=$PWD/build/dirac-<hash>/macrodr_cli \
 #       [--cpus-per-task=N] [--time=…] [--partition=…] \
@@ -38,16 +38,18 @@ WORKDIR="${2:-$(pwd)}"
 INPUT_ABS="$(readlink -f "$INPUT")"
 WORKDIR_ABS="$(readlink -f "$WORKDIR")"
 
-: "${CLUSTER:?Set CLUSTER (source projects/p2x2/ops/clusters/<name>.sh in your shell first)}"
+: "${CLUSTER:?Set CLUSTER (source projects/eLife_2025/ops/clusters/<name>.sh in your shell first)}"
 : "${PATH_MACRO:?PATH_MACRO not set — cluster profile incomplete?}"
 : "${BIN:?Set BIN=<absolute path to macrodr_cli>, e.g. \$PWD/build/${CLUSTER}-<hash>/macrodr_cli}"
 
 # Compute-node shells may not have the module command initialised
 [ -f /etc/profile ] && source /etc/profile
 
-# Re-source the cluster profile so module loads happen in this shell too
+# Re-source the cluster profile so module loads happen in this shell too.
+# Resolved relative to this script so the wrapper survives future moves.
+WRAPPER_DIR="$(dirname "$(readlink -f "$0")")"
 # shellcheck source=/dev/null
-source "${PATH_MACRO}/macro_dr/projects/p2x2/ops/clusters/${CLUSTER}.sh"
+source "${WRAPPER_DIR}/../clusters/${CLUSTER}.sh"
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
