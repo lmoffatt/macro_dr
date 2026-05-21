@@ -40,11 +40,15 @@ BUILD_DIR="build/${CLUSTER}-${TAG}"
 
 cmake -S . -B "$BUILD_DIR" -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=gcc \
     -DCMAKE_CXX_COMPILER=g++ \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-cmake --build "$BUILD_DIR" -j
+# cc1plus needs several GB per legacy/qmodel.h-heavy TU. Cap parallelism so
+# login nodes don't OOM-kill: use SLURM's allocation when running inside one,
+# else fall back to -j 4 (still safe on most login nodes' memory budget).
+BUILD_JOBS="${SLURM_CPUS_PER_TASK:-4}"
+echo "[build_cluster] compiling with -j ${BUILD_JOBS}"
+cmake --build "$BUILD_DIR" -j "${BUILD_JOBS}"
 
 BIN="$(readlink -f "$BUILD_DIR/macrodr_cli")"
 mkdir -p build
