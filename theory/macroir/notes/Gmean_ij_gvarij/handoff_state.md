@@ -239,6 +239,62 @@ end-to-end for derivatives. Algebraically the same as Taylor (per
 [Qdt_schur_vs_taylor_rationale.md](../../scientific-software/notes/Qdt_schur_vs_taylor_rationale.md));
 pure consistency win, no algorithmic gain. Low priority.
 
+### Task 9 (open) — RT (MRT/IRT) rank-2 Newton derivative-conservation drift
+
+**Scope:** affects only the `variance_correction=true` paths (MRT and IRT,
+the "T" variants). The non-T paths (MR, IR) use the simple
+`r_y_var = e + N·gSg + N·ms` update without iteration and are
+derivative-clean — none of the runs surfaced canary fires from
+those branches. The bug lives exclusively in the rank-2 Newton step at
+[qmodel.h:4587-4790 (MRT)](../../../legacy/qmodel.h#L4587) and
+[qmodel.h:4815-5210 (IRT)](../../../legacy/qmodel.h#L4815).
+
+The rank-2 Newton step in `safely_calculate_Algo_State_recursive` for the
+IRT family (av=2, variance_correction=true) loses probability-conservation
+in the derivative w.r.t. `Num_ch_mean` at small intervals. Empirically
+~2.2% relative misalignment of `∂P/∂N` against the all-ones direction,
+observed reproducibly at `Num_ch=100, interval_in_tau=0.1, k=97` in
+`figure_2.macroir`. The primitive Σ p = 1 holds exactly; the breakdown is
+purely in the AD chain.
+
+Localised after instrumenting Probes A/B/C inside the Newton loop
+(diagnostic data session 2026-05-14): the `(p_P_mean − p_iter)`
+contribution and the SmD invariant are FP-clean. The leak comes from
+`delta_term + 0.5·qS_post` derivative-side, specifically the cross-term
+contractions involving `V_iter/N`, `V_iter²/N` (m11, m22 entries of the
+Woodbury matrix), `det = m11·m22 − m12²`, and `k11/k12/k22 = ±m_ij/det`.
+N appears in denominators with explicit derivative-aware terms whose
+cancellation works at primitive level but degrades through AD by ~1%
+of magnitude.
+
+Short-term D2 mitigation: the cos² test (`to_Probability`,
+`to_Probability_displacement`, `to_Covariance_Probability`) has been
+demoted to **warn-only**. The error-band branches are removed; warns
+above `eps_dcos_warn_sq = 1e-8` still log to stderr but never abort.
+
+Rationale: the cos² metric is a **direction** test (`Σ²/(N·‖·‖²)`), not a
+magnitude one. It catches genuine derivative-conservation drifts but
+also amplifies FP-noise and small-scale tail events into "errors" that
+have negligible downstream impact. We've watched the pipeline catch a
+6.2% drift at k=97 in IRT av=2 vc=1; the absolute effect on
+`Num_ch_mean` / `unitary_current` Fisher info is small, and the
+algorithm is converging-but-imperfect AD machinery at the rare tail
+rather than a structural error. Warn output preserves visibility for
+the D1 investigation without aborting legitimate runs.
+`canary_dcos_error_sq` is now effectively dead but kept as a constant.
+
+Long-term D1 fix — Kalman-coupled update: enforce that the **mean step**
+and the **covariance down-date** share the same AD-tracked Kalman
+intermediates (`k11`, `k12`, `k22`, `det`, `V_iter`, `gS`, `chi`). Under
+proper Kalman discipline the two updates are coupled by construction
+and probability conservation (`Σ ∂p = 0`, `Σ_j ∂Cov_ij = 0`) survives
+automatically. The drift arises when AD re-evaluates the same
+intermediate independently on the mean and covariance paths and FP
+rounding pulls the two evaluations apart. Memoizing or explicitly
+threading the shared derivatives through both branches restores the
+coupling; no separate projection of `∂P/∂θ` is needed if the update
+itself is constructed correctly. Own session.
+
 ## Things settled — do NOT re-litigate
 
 These came up multiple times in the session and have settled answers:

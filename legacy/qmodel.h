@@ -4467,7 +4467,6 @@ class Macro_DMR {
         }   
         
         auto SmD = p_P_Cov()  - diag(p_P_mean());
-       
 
         auto y_baseline = get<Current_Baseline>(m);
         constexpr bool PoissonDif = true;
@@ -4592,6 +4591,12 @@ class Macro_DMR {
                 // start-state based, so Newton iterations live in the start
                 // frame and the final posterior is propagated through P.
                 constexpr std::size_t max_newton_steps_mrt = 5;
+                // Exit when the applied step is below tolerance: at that point
+                // the iterate is stationary, so the final in-loop K coincides
+                // with the post-loop K_final (derivative included) and the
+                // mean/covariance derivative coupling is restored. See
+                // handoff_state.md Task 9.
+                constexpr double newton_tol_mrt = 1e-10;
 
                 auto sigma2_i =
                     get<gsqr_i>(t_Qdt)() - elemMult(t_gmean_i(), t_gmean_i());
@@ -4655,6 +4660,7 @@ class Macro_DMR {
                         (qv * k12 + qs * k22) * sigmaS0;
                     auto p_candidate = p_P_mean() + delta_term + 0.5 * qS_post;
                     auto mean_step = p_candidate - p_iter;
+
                     alfa_mu_exact = calculate_trust_coefficient(
                         p_iter, mean_step, trust_multiplying_factor);
 
@@ -4666,6 +4672,11 @@ class Macro_DMR {
                     final_delta = delta_iter;
                     final_V = V_iter;
                     final_vSv = vSv;
+                    const double step_inf = var::max(apply(
+                        [](auto const& v) { return std::abs(v); },
+                        primitive(alfa_mu_exact() * mean_step)));
+                    if (step_inf < newton_tol_mrt)
+                        break;
                 }
 
                 auto y_mean_final =
@@ -4819,6 +4830,7 @@ class Macro_DMR {
                     // posterior mean/covariance are lifted to the endpoint frame
                     // through the IR tilde contractions.
                     constexpr std::size_t max_newton_steps_irt = 5;
+                    constexpr double newton_tol_irt = 1e-10;
 
                     auto& t_gtotal_ij = get<gtotal_ij>(t_Qdt);
                     auto& t_gmean_ij = get<gmean_ij>(t_Qdt);
@@ -4918,6 +4930,7 @@ class Macro_DMR {
                             (qv * k12 + qs * k22) * sigmaS0;
                         auto p_candidate = p_P_mean() + delta_term + 0.5 * qS_post;
                         auto mean_step = p_candidate - p_iter;
+
                         alfa_mu_start = calculate_trust_coefficient(
                             p_iter, mean_step, trust_multiplying_factor);
 
@@ -4933,6 +4946,11 @@ class Macro_DMR {
                         final_start_k11 = k11;
                         final_start_k12 = k12;
                         final_start_k22 = k22;
+                        const double step_inf = var::max(apply(
+                            [](auto const& v) { return std::abs(v); },
+                            primitive(alfa_mu_start() * mean_step)));
+                        if (step_inf < newton_tol_irt)
+                            break;
                     }
 
                     auto y_mean_final =

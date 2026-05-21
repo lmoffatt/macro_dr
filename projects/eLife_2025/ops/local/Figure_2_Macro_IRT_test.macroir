@@ -1,0 +1,128 @@
+# Figure_2_Macro_IRT_test.macroir
+#
+# Purpose: settle whether the MacroIRT / MacroMRT Taylor variance correction
+# converges toward the EXACT per-channel likelihood (micro), and in
+# particular whether the current residual `sigma2_i` for IRT (the
+# gvar_i_overcount_audit.md fix) is correct vs the Gemini "use total
+# variance" proposal.
+#
+# The micro_* algorithms are the ground truth (exact channel-by-channel
+# likelihood, no Gaussian/Laplace approximation). The test compares, per
+# (Num_ch, interval_in_tau):
+#
+#   M family:  macro_MR   vs macro_MRT  vs micro_MR
+#   I family:  macro_IR   vs macro_IRT  vs micro_IR
+#
+# Interpretation:
+#   - macro_*R   = Gaussian base approximation
+#   - macro_*RT  = Gaussian + rank-2 Laplace (Taylor σ²) correction
+#   - micro_*    = exact reference
+#   If macro_*RT logL moves toward micro_* (relative to macro_*R) and does
+#   not overshoot past it, the Taylor correction (and the residual sigma2_i
+#   in IRT) is working as designed. If it overshoots, the correction is
+#   wrong.
+#
+# Num_ch restricted to {1, 10, 100}: micro is tractable there (k=2 → N+1
+# micro-states) and this is the regime where the Taylor correction is
+# physically largest (few channels). Larger Num_ch is where macro≈micro
+# trivially and adds only cost.
+
+model = load_model("scheme_CO")
+
+axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
+axis_Nchanels =axis(name= "Num_ch", labels= ["1","2","10"])
+
+current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
+Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,10])
+
+parameter = create_parameters(
+   model = model,
+   parameters_info= [
+      {"on","Log10",10},
+{"off","Log10",100},
+{"unitary_current","Log10",1},
+{"Current_Noise","Log10",current_noise},
+{"Current_Baseline","Log10",1},
+{"Num_ch_mean","Log10", Num_ch}]
+)
+
+experiment = create_experiment(
+   experiment_structure=[
+      {indexed_size_by(axis= axis_interval,values=[2,4,10,20]),indexed_size_by(axis= axis_interval,values=[500,250,100,50]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[4,8,20,40]),indexed_size_by(axis= axis_interval,values=[500,250,100,50]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[4,8,20,40]),indexed_size_by(axis= axis_interval,values=[500,250,100,50]),0.0}
+      ],
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0,
+initial_time = 0.0)
+
+observations = set_observations(values_set= [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+model_str="scheme_CO"
+
+simulation_axis = axis(name= "simulation_algorithm", labels= ["uniformization"])
+
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 512, experiment = experiment,
+                         observations = observations,
+                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["uniformization"]),
+                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
+                 seed = 0)
+
+simulation_file = write_csv(experiment= experiment, simulations=simulations,
+   path= "figures/data/figure_2_irt_test_simulation")
+
+# 6-way comparison: M family (av=1) and I family (av=2), each with
+# Gaussian base / Taylor-corrected / exact-micro.
+algorithm_axis = axis(name= "algorithm",
+    labels= [ "macro_MR", "macro_MRT", "micro_MR",
+              "macro_IR", "macro_IRT", "micro_IR"])
+
+algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
+    values=[true,  true,  true,   true,  true,  true ])
+
+# Taylor σ² (variance) correction: only the *RT macro variants.
+algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis,
+    values=[false, true,  false,  false, true,  false])
+
+# micro = exact per-channel likelihood (the reference).
+algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
+    values=[false, false, true,   false, false, true ])
+
+# Micro on the EIGEN path, not Taylor-Qdt: the micro Taylor-Qdt path has a
+# known moment-seed bug (project_qdt_taylor_seed_bug.md) that makes the
+# avg=2 pair moments micro_gvar_ij non-finite → micro_IR fails at k=0.
+# The eigen-path eigenvector-derivative ill-conditioning that motivated
+# taylor_qdt=true only bites at Nch ≥ ~10; this test caps at Nch=10, so
+# Nch ∈ {1,2} are safe on eigen and sidestep the seed bug entirely.
+algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
+    values=[false, false, false,  false, false, false])
+
+algorithms = build_likelihood_function(model = model,
+            adaptive_approximation     = false,
+            recursive_approximation    = algo_recursive_approximation,
+            averaging_approximation    = indexed_int_by(axis= algorithm_axis,
+                                           values=[ 1, 1, 1,   2, 2, 2]),
+            variance_approximation     = true,
+            taylor_variance_correction = algo_taylor_approximation,
+            micro_approximation        = algo_micro_approximation,
+            taylor_qdt_approximation   = algo_taylor_qdt_approximation)
+
+dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =algorithms, parameters=par_tr, experiment =experiment,
+data_series = simulations)
+
+numerical_fisher_information = calc_numerical_fisher_information(
+    likelihood_algorithm = algorithms, parameters = par_tr, experiment = experiment,
+    data_series = simulations, h_rel = 1e-5, decimate = 1)
+
+likelihood_analysis = likelihood_derivative_basic_diagnostics_paired(
+    dlikelihood_predictions = dlikelihood_predictions,
+    numerical_fisher_information = numerical_fisher_information,
+    n_boostrap_samples = 100,
+    probits = [ 0.025 , 0.975 ] , seed=0, max_lag=10,
+    samples_dir = "figures/data/figure_2_irt_test_samples")
+
+likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
+   path= "figures/data/figure_2_irt_test_basic_diagnostics")

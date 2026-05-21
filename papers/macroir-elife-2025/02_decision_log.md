@@ -7,10 +7,11 @@ Record decisions here so we can “rewind” using git history.
 - **Repo:** single repository (`macro_dr`), no secondary repo.
 - **Branch:** `main`.
 - **Paper identity:** “Paper 2” = MacroIR (active draft sources in `papers/macroir-elife-2025/docs/manuscript-drafts/`).
-- **Validity map axes:** Δ/τ_min vs N_ch.
-- **Algorithms to include in comparisons:** `NR`, `R`, `MNR`, `MR`, `MNRV`, `MRV`, `IR`, `IRV`.
+- **Validity map axes:**  main: N_ch, secondary:  Δ/τ_min  tertiary:  Noise level
+- **Algorithms to include in comparisons:** `NR`, `R`, `MNR`, `MR`,  `IR`.
 - **Keep MicroIR out of the main paper** to reduce scope/attack surface.
 - **Audio archiving:** keep both audio sources and transcripts (user preference: “both”).
+- **IDM ↔ Evidence (finding):** Laplace log-evidence correction collapses to `Δlog Z = ½ log det(C)`, C = IDM (derivation in `theory/macroir/docs/Information_Distortion_Matrix/supplement_evidence_correction.tex`). Intensive/O(1), sign tied to det(C)≷1. Corollary: distortion ~1.2/param ⇒ ~0.09 nats each, ~1 nat even at 10 params — decisive only for Bayes factors where O(T) peaks cancel.
 
 ## Open (needs explicit decision)
 
@@ -28,5 +29,5 @@ Record decisions here so we can “rewind” using git history.
 
 ### D-003 — Thresholds for “valid” on the regime map
 
-- **Question:** Which numeric cutoffs define “valid/invalid” for each metric?
+- **Question:** Which numeric cutoffs define “valid/invalid” for each metric? 
 - **Default:** start with rank-based comparisons (MacroIR best → green) + add absolute thresholds later.

@@ -1,0 +1,224 @@
+---
+title: "bouts"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Bootstrap samples — paired diagnostics analysis
+
+## 1. Load binary + analysis CSV
+
+```{r setup, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+
+```{r }
+SAMPLES_DIR <- "figure_2_samples__0511_001"
+CSV_PATH    <- "figure_2_basic_diagnostics__0511_001.csv"
+
+source(file.path(SAMPLES_DIR, "reader.R"))
+boot <- read_macrodr_bootstrap(SAMPLES_DIR)
+csv  <- read.csv(CSV_PATH)
+
+cat("Manifest:\n"); print(boot$manifest)
+n_cells <- dim(boot$samples$idm)[4]
+n_reps  <- boot$n_replicates
+cat("\nn_cells:", n_cells, "\n")
+cat("n_replicates:", n_reps, "\n")
+cat("dim(idm):", dim(boot$samples$idm), "\n")
+cat("dim(sum_logL):", dim(boot$samples$sum_logL), "\n")
+cat("dim(sum_dlogL_covariance):", dim(boot$samples$sum_dlogL_covariance), "\n")
+```
+
+## 2. Cell-id ↔ axis-values mapping via `sum_logL` fingerprint
+
+`sum_logL` is always finite (even for macro_NR) so it works as a unique fingerprint to map binary cell indices (assigned non-deterministically by OMP scheduling) to the analysis CSV's cell rows.
+
+```{r mapping}
+# CSV: bootstrap mean of Sum<logL> per cell — the post-probit aggregate.
+# Filter logic:
+#   variable=="logL"               — the leaf variable
+#   operation=="probit.moment.sum" — outer-to-inner functor chain
+#   probit=="mean"                 — bootstrap mean across the 100 replicates
+#   statistic=="mean"              — selects the mean-component of Moment_statistics
+#                                   (the Moment_statistics carries count/mean/variance;
+#                                    we want the mean)
+csv_sum_logL <- csv %>%
+  filter(probit == "mean", statistic == "mean",
+         variable == "logL",
+         operation == "probit.moment.sum") %>%
+  select(algorithm, simulation_algorithm, interval_in_tau, Num_ch,
+         noise_in_conductance_tau, value) %>%
+  rename(sum_logL = value)
+
+cat("CSV cells with sum_logL:", nrow(csv_sum_logL), "\n")
+
+# Binary: mean across the 100 raw bootstrap replicates per cell.
+n_cells <- dim(boot$samples$idm)[4]
+binary_sum_logL <- data.frame(
+  binary_cell_id = 0:(n_cells - 1),
+  sum_logL = sapply(seq_len(n_cells),
+                     function(i) mean(boot$samples$sum_logL[1, 1, , i], na.rm = TRUE))
+)
+
+# Match by rounded sum_logL value.
+cell_map <- binary_sum_logL %>%
+  mutate(k = round(sum_logL, 4)) %>%
+  inner_join(csv_sum_logL %>% mutate(k = round(sum_logL, 4)),
+             by = "k",
+             suffix = c("_bin", "_csv")) %>%
+  select(binary_cell_id, algorithm, simulation_algorithm,
+         interval_in_tau, Num_ch, noise_in_conductance_tau)
+
+cat("Mapped cells:", nrow(cell_map), "/", n_cells, "\n")
+print(cell_map)
+```
+
+## 3. Sanity check: binary D_AI mean matches CSV D_AI mean
+
+```{r verify-dai}
+verify <- function(cid) {
+  axes <- cell_map %>% filter(binary_cell_id == cid)
+  if (nrow(axes) != 1) return(NA)
+  bin_vals <- boot$samples$idm_affine_invariant_distance[1, 1, , cid + 1]
+  bin_mean <- mean(bin_vals, na.rm = TRUE)
+  csv_mean <- csv %>%
+    filter(probit == "mean", statistic == "value",
+           variable == "Information_Distortion_Matrix",
+           operation == "probit.affine_invariant_distance",
+           algorithm == axes$algorithm,
+           simulation_algorithm == axes$simulation_algorithm,
+           interval_in_tau == axes$interval_in_tau) %>%
+    pull(value)
+  c(binary = bin_mean, csv = csv_mean,
+    diff = bin_mean - csv_mean, n_valid = sum(!is.na(bin_vals)))
+}
+
+n_cells <- dim(boot$samples$idm)[4]
+verification <- t(sapply(0:(n_cells - 1), verify))
+verification <- as.data.frame(verification)
+verification$binary_cell_id <- 0:(n_cells - 1)
+cat("Max |diff| binary vs CSV (D_AI):", max(abs(verification$diff), na.rm = TRUE), "\n")
+print(head(verification, 10))
+```
+
+## 4. Per-algorithm D_AI summary across replicates
+
+```{r d-ai-summary}
+d_ai_per_algo <- lapply(seq_len(nrow(cell_map)), function(i) {
+  cid <- cell_map$binary_cell_id[i]
+  reps <- boot$samples$idm_affine_invariant_distance[1, 1, , cid + 1]
+  data.frame(
+    algorithm = cell_map$algorithm[i],
+    simulation_algorithm = cell_map$simulation_algorithm[i],
+    interval_in_tau = cell_map$interval_in_tau[i],
+    replicate = seq_along(reps),
+    d_ai = reps
+  )
+}) %>% bind_rows() %>% filter(!is.na(d_ai))
+
+ggplot(d_ai_per_algo,
+       aes(x = factor(interval_in_tau), y = d_ai, color = algorithm)) +
+  geom_boxplot(outlier.size = 0.5) +
+  scale_y_log10() +
+  facet_wrap(~ algorithm) +
+  labs(title = "D_AI (Information_Distortion_Matrix) per algorithm — raw 100 bootstrap replicates",
+       y = "D_AI (log)", x = "interval_in_tau")
+```
+
+## 5. Paired comparison IR vs MR (raw bootstrap pairs)
+
+Because we used `bootstrap_it_two_paired`, the same recording-resample indices were drawn for every algorithm in a given (sim_algo, interval, Nch, noise) cell. So for each bootstrap replicate k, the diff `IR[k] - MR[k]` is properly paired and most of the shared resample-noise cancels.
+
+```{r paired-ir-mr-d-ai}
+paired_diff <- function(alg_a, alg_b, sim_a = "uniformization") {
+  cells_a <- cell_map %>% filter(algorithm == alg_a, simulation_algorithm == sim_a)
+  cells_b <- cell_map %>% filter(algorithm == alg_b, simulation_algorithm == sim_a)
+  joined  <- inner_join(cells_a, cells_b,
+                         by = c("simulation_algorithm","interval_in_tau",
+                                "Num_ch","noise_in_conductance_tau"),
+                         suffix = c("_a","_b"))
+  bind_rows(lapply(seq_len(nrow(joined)), function(i) {
+    a <- boot$samples$idm_affine_invariant_distance[1, 1, , joined$binary_cell_id_a[i] + 1]
+    b <- boot$samples$idm_affine_invariant_distance[1, 1, , joined$binary_cell_id_b[i] + 1]
+    data.frame(interval_in_tau = joined$interval_in_tau[i],
+               replicate = seq_along(a),
+               d_ai_diff = a - b)
+  }))
+}
+
+diff_ir_mr <- paired_diff("macro_IR", "macro_MR") %>% filter(!is.na(d_ai_diff))
+
+diff_ir_mr %>%
+  group_by(interval_in_tau) %>%
+  summarise(
+    n_paired = n(),
+    q2.5     = quantile(d_ai_diff, 0.025),
+    median   = median(d_ai_diff),
+    mean     = mean(d_ai_diff),
+    q97.5    = quantile(d_ai_diff, 0.975)
+  ) %>% print()
+
+ggplot(diff_ir_mr, aes(x = factor(interval_in_tau), y = d_ai_diff)) +
+  geom_violin() +
+  geom_hline(yintercept = 0, color = "red", linetype = 2) +
+  labs(title = "Paired D_AI difference: macro_IR – macro_MR (per replicate)",
+       y = "D_AI_IR − D_AI_MR", x = "interval_in_tau")
+```
+
+## 6. Paired IDM matrix difference (element-wise bootstrap distribution)
+
+```{r paired-idm-matrix}
+get_idm_samples <- function(alg, sim_a, dt) {
+  cid <- cell_map %>%
+    filter(algorithm == alg, simulation_algorithm == sim_a, interval_in_tau == dt) %>%
+    pull(binary_cell_id)
+  if (length(cid) != 1) return(NULL)
+  boot$samples$idm[, , , cid + 1]   # [p, p, n_reps]
+}
+
+dt_focus <- 0.1
+ir_idm <- get_idm_samples("macro_IR", "uniformization", dt_focus)
+mr_idm <- get_idm_samples("macro_MR", "uniformization", dt_focus)
+
+if (!is.null(ir_idm) && !is.null(mr_idm)) {
+  idm_diff <- ir_idm - mr_idm   # [p, p, 100]
+  cat("dim(idm_diff):", dim(idm_diff), "\n")
+
+  # Median IDM diff matrix across replicates
+  median_diff <- apply(idm_diff, c(1, 2), median, na.rm = TRUE)
+  cat("\nMedian IDM_IR − IDM_MR (uniformization, dt=", dt_focus, "):\n", sep = "")
+  print(round(median_diff, 4))
+
+  # Bootstrap CI on the (1,1) entry (Num_ch_mean direction)
+  cat("\n(1,1) entry — 2.5% / median / 97.5% across 100 paired replicates:\n")
+  print(quantile(idm_diff[1, 1, ], c(0.025, 0.5, 0.975), na.rm = TRUE))
+}
+```
+
+## 7. Paired score covariance (J) difference
+
+J is the actual score covariance — the numerator of IDM. Paired comparison of J directly across algorithms (avoids the divide-by-F amplification):
+
+```{r paired-J}
+get_J <- function(alg, sim_a, dt) {
+  cid <- cell_map %>%
+    filter(algorithm == alg, simulation_algorithm == sim_a, interval_in_tau == dt) %>%
+    pull(binary_cell_id)
+  if (length(cid) != 1) return(NULL)
+  boot$samples$sum_dlogL_covariance[, , , cid + 1]   # [p, p, n_reps]
+}
+
+ir_J <- get_J("macro_IR", "uniformization", dt_focus)
+mr_J <- get_J("macro_MR", "uniformization", dt_focus)
+
+if (!is.null(ir_J) && !is.null(mr_J)) {
+  J_diff <- ir_J - mr_J
+  cat("Median J_IR − J_MR (dt=", dt_focus, "):\n", sep = "")
+  print(round(apply(J_diff, c(1, 2), median, na.rm = TRUE), 2))
+}
+```

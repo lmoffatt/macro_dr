@@ -3,7 +3,7 @@ model = load_model("scheme_CO")
 parameter = load_parameters(model, "data/models/scheme_CO_par.csv")
 
 
-experiment = create_experiment(experiment_structure=[{1,50,0.0},{1,50,100.0},{1,50,100.0},{1,50,100.0},{1,50,100.0}], 
+experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0}], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
 initial_time = 0.0)
@@ -29,34 +29,50 @@ simulation = remove_intervals(simulation_with_sub_intervals)
 
 macro_NR = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
-            variance_approximation = 0, taylor_variance_correction = 0)
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 macro_R = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 0,
-            variance_approximation = 0, taylor_variance_correction = 0)
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 macro_MNR = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
-            variance_approximation = 0, taylor_variance_correction = 0)
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 macro_MR = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
-            variance_approximation = 0, taylor_variance_correction = 0)
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 macro_MNRV = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
-            variance_approximation = 1, taylor_variance_correction = 0)
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 macro_MRV = build_likelihood_function(model =model, 
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
-            variance_approximation = 1, taylor_variance_correction = 0)
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 macro_IR = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 0 , taylor_variance_correction = 0)
+            variance_approximation = 0 , taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 macro_IRV = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
-            variance_approximation = 1, taylor_variance_correction = 0)
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false, 
+            taylor_qdt_approximation   = false )
 
 # TODO (when macro_IRT / macro_MRT are added to figure_1): the intra-interval
 # diagnostics for the IRT/MRT branch need to be wired before they show
@@ -94,7 +110,8 @@ diagnostic_file_IRV = write_csv(experiment= experiment, simulation = simulation,
 
 likelihood_diagnostic_NR = calc_likelihood_diagnostic(model =model, parameters=par_tr, experiment =experiment, 
 simulation = simulation,adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
-            variance_approximation = 0, taylor_variance_correction = 0)
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false)
 
 diagnostic_file_NR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_NR,
    path= "figures/data/figure_1_likelihood_diagnostic_NR")
