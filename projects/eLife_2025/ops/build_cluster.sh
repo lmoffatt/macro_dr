@@ -17,7 +17,10 @@
 #   build/<cluster>-<tag>/macrodr_cli
 #   build/macrodr_cli-<cluster>-current   (symlink to the latest build for that cluster)
 
-set -euo pipefail
+# -e: abort on first error; pipefail: pipelines too.
+# Intentionally no -u: OpenHPC's /etc/profile.d/*.sh references unset env vars
+# (e.g. COLORTERM) and we must source /etc/profile to get the module function.
+set -eo pipefail
 
 OPS_DIR="$(dirname "$(readlink -f "$0")")"
 
