@@ -1,0 +1,279 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Supplementary Material:\\
+MacroIRT --- Interval-Averaged Bayesian Inference\\
+with State-Dependent Open-Channel Noise}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\Nch}{N_{\mathrm{ch}}}
+\newcommand{\gbar}{\overline{\gamma}_0}
+\newcommand{\sbar}{\overline{\sigma^2}_0}
+\newcommand{\tildeg}{\widetilde{\gamma^{T}\Sigma}}
+\newcommand{\tildev}{\widetilde{v^{T}\Sigma}}
+\newcommand{\tildegg}{\widetilde{\gamma^{T}\Sigma\gamma}}
+\newcommand{\tildevv}{\widetilde{v^{T}\Sigma v}}
+
+% ============================================================
+\section{Setup and Notation}
+% ============================================================
+
+MacroIRT extends MacroIR by accounting for state-dependent open-channel
+noise via a Taylor/Laplace correction in boundary-state space. We
+adopt the MacroIR setup (boundary states $(i_0,i_t)$, conditional
+moments $\overline{\Gamma}_{i_0\to i_t}$ and
+$\overline{V}_{i_0\to i_t}$, transition matrix $P(t)=e^{Qt}$,
+prior $(\mu_0,\Sigma_0)$, $\Nch$ channels) and reuse the boundary
+contractions
+\begin{align}
+  (\gbar)_{i_0}
+  &= \sum_{i_t} P_{i_0\to i_t}(t)\,\overline{\Gamma}_{i_0\to i_t},
+  \label{eq:gbar}\\
+  (\sbar)_{i_0}
+  &= \sum_{i_t} P_{i_0\to i_t}(t)\,\overline{V}_{i_0\to i_t}.
+  \label{eq:sbar}
+\end{align}
+The instrument noise variance over the interval is
+$\epsilon^2_{0\to t}=\epsilon^2/t+\nu^2$.
+
+The unified tilde operator $\widetilde{(\cdot)}$ is the same
+lift--modulate--collapse transformation defined in the MacroIR
+supplement (\texttt{supplement\_macroir\_tilde.md}). We use without
+re-derivation the vector and scalar specialisations
+\begin{align}
+  \widetilde{u^{T}\Sigma}
+  &= \overline{u}_0^{T}(\Sigma_0-\diag\,\mu_0)
+   + (\overline{U}\circ P)^{T}\mu_0,\\
+  \widetilde{u^{T}\Sigma w}
+  &= \overline{u}_0^{T}(\Sigma_0-\diag\,\mu_0)\overline{w}_0
+   + \mu_0^{T}\big[(\overline{U}\circ P)\circ(\overline{W}\circ P)\big]\mathbf{1}.
+\end{align}
+
+% ============================================================
+\section{Predictive Mean and Variance}
+% ============================================================
+
+Predictive mean (unchanged from MacroIR):
+\begin{equation}
+  \overline{y}^{\mathrm{pred}}_{0\to t}
+  = \Nch\,\mu_0\cdot\gbar.
+  \label{eq:ypred}
+\end{equation}
+
+Predictive variance (three terms; the third $\sbar$ contribution
+matches MacroIR's intrinsic-channel-variability term):
+\begin{equation}
+  V
+  = \epsilon^2_{0\to t}
+  + \Nch\,\tildegg
+  + \Nch\sum_{i_0}\mu_{0,i_0}\,(\sbar)_{i_0}.
+  \label{eq:V}
+\end{equation}
+The IRT correction does \emph{not} modify $V$; it enters only the
+measurement update via the effective direction $v$ defined below.
+
+% ============================================================
+\section{Energy in the Boundary-Lifted Representation}
+% ============================================================
+
+The IRT energy is structurally identical to the MRT energy but with
+$\gbar\to$ tilde objects in the cross-covariance vector and the
+effective scalar. Define
+\begin{align}
+  \delta(p) &= \overline{y}^{\mathrm{obs}}_{0\to t} - \Nch(p\cdot\gbar),\\
+  V(p)      &= \epsilon^2_{0\to t} + \Nch\,\tildegg(p) + \Nch(p\cdot\sbar).
+\end{align}
+Note $V(p)$ depends on $p$ through both the $\sbar$ term and the
+$\tildegg$ tilde scalar (which involves the prior $\Sigma_0$ and is
+constant in $p$ as long as the boundary moments are evaluated at the
+prior, but becomes $p$-dependent if one re-evaluates the tilde at the
+candidate $p$; cf.\ MacroIR supplement for the standard convention).
+
+The negative log-posterior (energy) is
+\begin{equation}
+  E(p) = \log V(p) + \frac{\delta(p)^2}{V(p)}
+  + (p-\mu^{\mathrm{prior}})\Nch(\Sigma^{\mathrm{prop}})^{-1}(p-\mu^{\mathrm{prior}})^{T}.
+  \label{eq:E}
+\end{equation}
+
+\subsection{Tilted vector}
+
+\begin{equation}
+  v(p) = \gbar + \frac{\delta(p)}{V(p)}\,\sbar.
+  \label{eq:vdef}
+\end{equation}
+
+\subsection{Gradient and Hessian (boundary-lifted)}
+
+The pointwise gradient and Hessian formulas have the same algebraic
+form as MRT \eqref{eq:hess-shape-MRT-ref} but with each occurrence of
+$\Sigma^{\mathrm{prop}}\gbar$ replaced by the boundary tilde
+$\tildeg^{T}$ and the $vv^{T}$ outer-product replaced by
+$\tildev^{T}\tildev$ in the rank-1 reduction. Specifically, the rank-1
+Hessian is
+\begin{equation}
+  \mathbf{H}_{\mathrm{IRT}}(p)
+  = 2\Nch\bigl[(\Sigma^{\mathrm{prop}})^{-1}
+  + (\Nch/V)\,(\tildev)^{T}(\tildev)/(v^{T}\Sigma^{\mathrm{prop}}v)\,\dots\bigr]
+  \label{eq:hess-IRT-shape}
+\end{equation}
+and we work directly with the boundary-projected forms. The rigorous
+projection identity is the IR tilde lemma proved in the MacroIR
+supplement; we apply it to $v$ and $\sbar$ in addition to $\gbar$.
+
+% ============================================================
+\section{Rank-1 Quasi-Laplace Update (Main Implementation)}
+% ============================================================
+
+\paragraph{Effective scalar.}
+\begin{equation}
+  s = \tildevv.
+  \label{eq:s}
+\end{equation}
+
+\paragraph{Posterior covariance.}
+\begin{equation}
+  \boxed{
+    \Sigma^{\mathrm{post}}
+    = \Sigma^{\mathrm{prop}}
+    - \frac{\Nch}{V+\Nch s}\,
+      (\tildev)^{T}(\tildev).
+  }
+  \label{eq:Sigma_post}
+\end{equation}
+
+\paragraph{Posterior mean (from the prior expansion point $p_0=\mu^{\mathrm{prior}}$).}
+\begin{equation}
+  \boxed{
+    \mu^{\mathrm{post}}
+    = \mu^{\mathrm{prior}}
+    + \frac{\delta}{2V}\,\Sigma^{\mathrm{post}}\,(\tildeg + \tildev).
+  }
+  \label{eq:mu_post}
+\end{equation}
+
+These are the IRT counterparts of the MRT formulas
+\eqref{eq:Sigma_post}--\eqref{eq:mu_post} of the MRT supplement, with
+the tilde lift in the cross-covariance vector and the effective
+scalar.
+
+\paragraph{Working scheme.}
+For ensembles of $\Nch\sim 10^2$--$10^4$ the rank-1 quasi-Laplace
+form is operational; the rank-2 form including $\tfrac12\log V$ is
+analogous to the MRT rank-2 case.
+
+% ============================================================
+\section{Newton-MAP Iteration}
+% ============================================================
+
+The iteration is identical in structure to the MRT scheme, using
+\eqref{eq:Sigma_post}--\eqref{eq:mu_post} for the inner update and
+recomputing $\delta,V,v,s,\tildeg,\tildev$ at each iterate. As in
+the MRT scheme, one Newton step from $p^{(0)}=\mu^{\mathrm{prior}}$ is
+typically sufficient; the multi-step Newton form is needed only when
+$|\delta|/V$ is large or $\Nch$ small.
+
+% ============================================================
+\section{Reduction Lemmas}
+% ============================================================
+
+\subsection{$\sbar=0$ recovers MacroIR}
+
+Setting $\sbar\equiv 0$:
+$v=\gbar$, $\tildev=\tildeg$, $s=\tildegg$, and \eqref{eq:Sigma_post}
+becomes
+\[
+  \Sigma^{\mathrm{post}}_{\mathrm{IR}}
+  = \Sigma^{\mathrm{prop}} - \frac{1}{V}\,\tildeg^{T}\tildeg,
+\]
+\[
+  \mu^{\mathrm{post}}_{\mathrm{IR}}
+  = \mu^{\mathrm{prior}} + \frac{1}{V}\,\Sigma^{\mathrm{prop}}\tildeg\,\delta
+\]
+(the rank-1 Sherman--Morrison factor $1/(V+\Nch s)$ collapses to
+$1/V$ because the $\Nch s$ term is absorbed by the prior already
+encoded in the tilde). This is the standard MacroIR scalar Kalman
+update.
+
+\subsection{Tilde-collapse to MacroMRT}
+
+Replace each tilde with its per-$i_0$ scalar collapse:
+\[
+  \tildeg \to \Sigma^{\mathrm{prop}}\gbar,
+  \quad
+  \tildev \to \Sigma^{\mathrm{prop}}v,
+  \quad
+  \tildevv \to v^{T}\Sigma^{\mathrm{prop}}v,
+\]
+and drop the $\Nch\tildegg$ third predictive variance term. This
+substitution yields the MacroMRT formulas of the MRT supplement
+exactly. The IRT $\to$ MRT collapse is the algebraic statement of
+"drop the boundary-state lift, keep the σ² Taylor correction".
+
+\subsection{Diamond identity (the four-corner relationship)}
+
+\[
+  \begin{array}{c}
+    \text{MacroIRT} \\
+    {\scriptstyle \sbar=0}\downarrow \\
+    \text{MacroIR}
+  \end{array}
+  \quad
+  \begin{array}{c}
+    \xrightarrow{\;\text{tilde-collapse}\;} \\[1ex]
+    \xrightarrow{\;\text{tilde-collapse}\;}
+  \end{array}
+  \quad
+  \begin{array}{c}
+    \text{MacroMRT} \\
+    \downarrow{\scriptstyle \sbar=0} \\
+    \text{MacroMR (Moffatt 2007)}
+  \end{array}
+\]
+Both reductions commute. The four corners are pairwise incomparable
+along orthogonal axes:
+\begin{itemize}
+  \item Horizontal axis (tilde lift): captures the boundary
+        cross-correlation between channel state and current; this is
+        the structural innovation of the I family relative to the M
+        family.
+  \item Vertical axis (Taylor σ² correction): captures the influence
+        of state-dependent open-channel noise on the posterior mean
+        and covariance.
+\end{itemize}
+Pairwise contrasts on the diamond therefore decompose the IRT-vs-MR
+gain into its two contributions.
+
+% ============================================================
+\section{Trust-Region Simplex Shrink}
+% ============================================================
+
+Identical to MacroIR (cf.\ \texttt{macro\_ir\_variance\_inflation\_correction.tex})
+and MacroMRT supplement: a shrink factor $\alpha^\star\in[0,1]$ keeps
+$\mu^{\mathrm{post}}$ inside the simplex floor and is applied
+uniformly to both mean and covariance updates; $\log L$ uses the
+unmodified $V$.
+
+% ============================================================
+\section{Log-Likelihood Contribution}
+% ============================================================
+
+\begin{equation}
+  \log L
+  = -\tfrac{1}{2}\bigl[\log(2\pi V) + \delta^2/V\bigr],
+\end{equation}
+with $V$ from \eqref{eq:V}.
+
+\end{document}

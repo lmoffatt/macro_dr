@@ -1,0 +1,359 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts,bm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Supplementary Material:\\
+MacroMRT --- Instantaneous-Current Bayesian Inference\\
+with State-Dependent Open-Channel Noise}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\Nch}{N_{\mathrm{ch}}}
+\newcommand{\gbar}{\overline{\gamma}_0}
+\newcommand{\sbar}{\overline{\sigma^2}_0}
+
+% ============================================================
+\section{Setup and Notation}
+% ============================================================
+
+We consider $\Nch$ independent Markov ion channels with $K$ microscopic
+states. At the start of an interval $[0,t]$ the macroscopic occupancy
+distribution is summarised by a prior mean $\mu_0\in\mathbb{R}^{1\times K}$
+(row vector of state probabilities) and a per-channel covariance
+$\Sigma_0\in\mathbb{R}^{K\times K}$. Microscopic dynamics are governed
+by the rate matrix $Q$ with transition matrix $P(t)=e^{Qt}$.
+
+The recording produces an instantaneous-current measurement
+$\overline{y}^{\mathrm{obs}}$ at the end of the interval. Per
+boundary pair $(i_0,i_t)$ the model defines:
+\begin{itemize}
+  \item $\overline{\Gamma}_{i_0\to i_t}$: mean conductance over the
+        recording window conditional on $X(0)=i_0,X(t)=i_t$;
+  \item $\overline{V}_{i_0\to i_t}$: open-channel noise variance
+        contribution conditional on $(i_0,i_t)$.
+\end{itemize}
+
+These boundary-conditioned moments are the same objects that MacroIR
+uses; MacroMRT only requires their per-$i_0$ collapses
+\begin{align}
+  (\gbar)_{i_0}
+  &= \sum_{i_t} P_{i_0\to i_t}(t)\,\overline{\Gamma}_{i_0\to i_t},
+  \label{eq:gbar}\\
+  (\sbar)_{i_0}
+  &= \sum_{i_t} P_{i_0\to i_t}(t)\,\overline{V}_{i_0\to i_t}.
+  \label{eq:sbar}
+\end{align}
+These are computed once per interval by the moment routine
+(\texttt{Qdtm}). They reduce to the per-state constants
+$\gamma_i,\sigma^2_i$ when $Q$ is constant on $[0,t]$ and the recording
+window is short relative to kinetic timescales, but in general
+\eqref{eq:gbar}--\eqref{eq:sbar} are required even for the M-family
+because (i) within-window transitions modify the effective conductance
+even at the endpoint, and (ii) agonist concentration changes within an
+interval generate two distinct $Q$ matrices that must be folded through
+the boundary kernel.
+
+The instrument noise variance over the recording window is
+$\epsilon^2_{0\to t}=\epsilon^2/t+\nu^2$ as in MacroIR.
+
+\paragraph{Coordinates and singular covariance.}
+The macroscopic occupancy $p$ lives on the simplex
+$\{p\in\mathbb{R}^{1\times K}:p_i\ge 0,\sum_i p_i=1\}$; $\Sigma^{\mathrm{prop}}$ is
+singular as a $K\times K$ matrix in ambient coordinates. We use
+$(\Sigma^{\mathrm{prop}})^{-1}$ only as a formal device inside the
+Sherman--Morrison/Woodbury algebra; all implementable formulas contain
+only $\Sigma^{\mathrm{prop}}$.
+
+% ============================================================
+\section{Predictive Mean and Variance}
+% ============================================================
+
+The predictive mean is
+\begin{equation}
+  \overline{y}^{\mathrm{pred}}
+  = \Nch\,\mu_0\cdot\gbar.
+  \label{eq:ypred}
+\end{equation}
+
+The predictive variance is the sum of instrument noise and the
+ensemble-averaged open-channel contribution:
+\begin{equation}
+  V
+  = \epsilon^2_{0\to t}
+  + \Nch\sum_{i_0}\mu_{0,i_0}\,(\sbar)_{i_0}.
+  \label{eq:V}
+\end{equation}
+
+\paragraph{Comparison with MacroIR.}
+MacroIR adds a third term, $\Nch\widetilde{\gamma^{T}\Sigma\gamma}$,
+that captures the boundary cross-correlation between channel state and
+current. MacroMRT \emph{drops} this term --- it is the central structural
+difference between the M and I families. The MRT-vs-IRT comparison is
+designed precisely to attribute the IR gain (if any) to this term and
+the boundary-lifted cross-covariance, holding the σ² Taylor correction
+fixed.
+
+% ============================================================
+\section{Energy, Gradient, Hessian}
+% ============================================================
+
+Let $p$ denote a candidate posterior occupancy. Define
+\begin{align}
+  \delta(p) &= \overline{y}^{\mathrm{obs}} - \Nch(p\cdot\gbar),\\
+  V(p)      &= \epsilon^2_{0\to t} + \Nch(p\cdot\sbar).
+\end{align}
+The Gaussian negative log-likelihood is
+\[
+  F_{\mathrm{like}}(p)
+  = \tfrac12\log V(p) + \tfrac12\delta(p)^2/V(p)
+  \quad(+\,\text{const}).
+\]
+The Gaussian negative log-prior over $p$, with precision
+$\Lambda_p=\Nch(\Sigma^{\mathrm{prop}})^{-1}$, is
+\[
+  F_{\mathrm{prior}}(p)
+  = \tfrac12(p-\mu^{\mathrm{prior}})\Lambda_p(p-\mu^{\mathrm{prior}})^{T}.
+\]
+Define the energy $E(p):=2(F_{\mathrm{like}}+F_{\mathrm{prior}})$ to
+absorb the $\tfrac12$ factors. Up to additive constants
+\begin{equation}
+  E(p) = \log V(p) + \frac{\delta(p)^2}{V(p)}
+  + (p-\mu^{\mathrm{prior}})\Nch(\Sigma^{\mathrm{prop}})^{-1}(p-\mu^{\mathrm{prior}})^{T}.
+  \label{eq:E}
+\end{equation}
+
+The MAP and Laplace covariance satisfy
+$\Sigma_{\mathrm{Lap}}=2(\nabla^2 E)^{-1}$ at the MAP.
+
+\subsection{Tilted vector and gradient}
+
+Following MacroTaylor, define
+\begin{equation}
+  v(p) = \gbar + \frac{\delta(p)}{V(p)}\,\sbar.
+  \label{eq:vdef}
+\end{equation}
+With $\nabla\delta=-\Nch\gbar^{T}$, $\nabla V=\Nch\sbar^{T}$,
+\begin{equation}
+  \mathbf{g}(p) = \nabla E(p)
+  = 2\Nch(p-\mu^{\mathrm{prior}})(\Sigma^{\mathrm{prop}})^{-1}
+  - \Nch\!\left[\frac{2\delta}{V}\gbar^{T}
+                  +\Big(\frac{\delta^2}{V^2}-\frac{1}{V}\Big)\sbar^{T}\right].
+  \label{eq:grad}
+\end{equation}
+At $p=\mu^{\mathrm{prior}}$ the prior term vanishes and
+$\mathbf{g}=-\Nch\frac{\delta}{V}(\gbar^{T}+v^{T})$.
+
+\subsection{Hessian: rank-2 structure}
+
+Direct differentiation gives, with $\nabla^2\delta=\nabla^2 V=0$,
+\begin{align}
+  \nabla^2(\log V)
+  &= -\frac{\Nch^2}{V^2}\,\sbar\sbar^{T},\\
+  \nabla^2(\delta^2/V)
+  &= 2\Nch^2\!\left[\frac{1}{V}\gbar\gbar^{T}
+        + \frac{\delta}{V^2}(\gbar\sbar^{T}+\sbar\gbar^{T})
+        + \frac{\delta^2}{V^3}\sbar\sbar^{T}\right].
+\end{align}
+Adding the prior Hessian $2\Nch(\Sigma^{\mathrm{prop}})^{-1}$ and
+combining:
+\begin{equation}
+  \mathbf{H}(p)
+  = 2\Nch\,(\Sigma^{\mathrm{prop}})^{-1}
+  + 2\Nch^2\!\left[\frac{1}{V}\gbar\gbar^{T}
+       + \frac{\delta}{V^2}(\gbar\sbar^{T}+\sbar\gbar^{T})
+       + \Big(\frac{\delta^2}{V^3}-\frac{1}{2V^2}\Big)\sbar\sbar^{T}\right].
+  \label{eq:hess}
+\end{equation}
+Setting $u_1=v=\gbar+\frac{\delta}{V}\sbar$, $u_2=\sbar$ and using the
+identity $\frac{\Nch}{V}vv^{T}$ to absorb the cross terms,
+\eqref{eq:hess} becomes the rank-2 update of the prior precision
+\begin{equation}
+  \mathbf{H}(p)
+  = 2\Nch\bigl[(\Sigma^{\mathrm{prop}})^{-1} + UCU^{T}\bigr],
+  \quad
+  U=[v,\sbar],
+  \quad
+  C=\diag\!\left(\frac{\Nch}{V},\,-\frac{\Nch}{2V^2}\right).
+  \label{eq:rank2}
+\end{equation}
+
+% ============================================================
+\section{Rank-1 Quasi-Laplace Scheme (Main Implementation)}
+% ============================================================
+
+Dropping the $\log V$ likelihood term gives the quasi-likelihood energy
+$E_{\mathrm{quasi}}=\delta^2/V+P$ whose Hessian is the rank-1 update
+\begin{equation}
+  \mathbf{H}_{\mathrm{quasi}}(p)
+  = 2\Nch\bigl[(\Sigma^{\mathrm{prop}})^{-1} + (\Nch/V)\,vv^{T}\bigr].
+  \label{eq:rank1}
+\end{equation}
+Sherman--Morrison gives, with $s=v^{T}\Sigma^{\mathrm{prop}}v$,
+\begin{equation}
+  \boxed{
+    \Sigma^{\mathrm{post}}
+    = \Sigma^{\mathrm{prop}}
+    - \frac{\Nch}{V+\Nch s}\,
+      \Sigma^{\mathrm{prop}}vv^{T}\Sigma^{\mathrm{prop}}.
+  }
+  \label{eq:Sigma_post}
+\end{equation}
+The mean update at $p_0=\mu^{\mathrm{prior}}$ is
+\begin{equation}
+  \boxed{
+    \mu^{\mathrm{post}}
+    = \mu^{\mathrm{prior}}
+    + \frac{\delta}{2V}\,\Sigma^{\mathrm{post}}\,(\gbar+v),
+  }
+  \label{eq:mu_post}
+\end{equation}
+which is the Newton step from the prior mean using the rank-1
+Hessian. No $\Sigma_p^{-1}$ survives in the implementable expressions
+\eqref{eq:Sigma_post}--\eqref{eq:mu_post}.
+
+\paragraph{Working scheme.}
+For ensembles of $\Nch\sim 10^2$--$10^4$ channels the quasi-likelihood
+update is the operational form: the $\log V$ correction is $O(1/\Nch)$
+relative to the leading data term and is dominated by other modelling
+errors. The rank-2 form is retained for completeness in
+Section~\ref{sec:rank2-exact}.
+
+% ============================================================
+\section{Rank-2 Exact Laplace Scheme}\label{sec:rank2-exact}
+% ============================================================
+
+For small $\Nch$ or stress tests, the rank-2 update from
+\eqref{eq:rank2} requires the Woodbury identity. Set
+\begin{equation}
+  K = \bigl(C^{-1} + U^{T}\Sigma^{\mathrm{prop}}U\bigr)^{-1}
+  \in\mathbb{R}^{2\times 2},
+  \label{eq:Kdef}
+\end{equation}
+i.e.\ explicitly
+\[
+  K^{-1} =
+  \begin{pmatrix}
+    V/\Nch + s & b\\
+    b          & -2V^2/\Nch + c
+  \end{pmatrix},
+  \quad
+  s=v^{T}\Sigma^{\mathrm{prop}}v,
+  \quad
+  b=v^{T}\Sigma^{\mathrm{prop}}\sbar,
+  \quad
+  c=\sbar^{T}\Sigma^{\mathrm{prop}}\sbar.
+\]
+The Laplace covariance is
+\begin{equation}
+  \Sigma^{\mathrm{post}}_{\mathrm{exact}}(p_0)
+  = \Sigma^{\mathrm{prop}}
+  - \Sigma^{\mathrm{prop}}U(p_0)K(p_0)U(p_0)^{T}\Sigma^{\mathrm{prop}}.
+  \label{eq:Sigma_post_exact}
+\end{equation}
+Eliminating the formal $(\Sigma^{\mathrm{prop}})^{-1}$ in the Newton
+step (cf.\ MacroTaylor supplement, §3.2) yields the mean update
+\begin{equation}
+  \mu^{\mathrm{post}}_{\mathrm{exact}}
+  = \mu^{\mathrm{prior}}
+  + \Delta p\,U K U^{T}\Sigma^{\mathrm{prop}}
+  + \frac{\Nch}{2}\,q^{T}\Sigma^{\mathrm{post}}_{\mathrm{exact}}(p_0),
+  \label{eq:mu_post_exact}
+\end{equation}
+with $\Delta p=p_0-\mu^{\mathrm{prior}}$ and
+$q^{T}=(2\delta/V)\gbar^{T}+(\delta^2/V^2-1/V)\sbar^{T}$.
+
+% ============================================================
+\section{Newton-MAP Iteration}
+% ============================================================
+
+For the rank-1 scheme the standard recipe is:
+\begin{enumerate}
+  \item Initialise $p^{(0)}=\mu^{\mathrm{prior}}$.
+  \item For $k=0,1,\dots$ until convergence:
+  \begin{enumerate}
+    \item Compute $\delta^{(k)},V^{(k)},v^{(k)},s^{(k)}$ from $p^{(k)}$.
+    \item Form $\Sigma^{(k)}_{\mathrm{post}}$ via \eqref{eq:Sigma_post}.
+    \item Update via the general step
+    \[
+      p^{(k+1)} = \mu^{\mathrm{prior}}
+      + \frac{\Nch}{V^{(k)}+\Nch s^{(k)}}\,\Delta p^{(k)} v^{(k)}v^{(k)\,T}\Sigma^{\mathrm{prop}}
+      + \frac{\Nch\delta^{(k)}}{V^{(k)}}\,\gbar^{T}\Sigma^{(k)}_{\mathrm{post}}
+      + \frac{\Nch\delta^{(k)\,2}}{2V^{(k)\,2}}\,\sbar^{T}\Sigma^{(k)}_{\mathrm{post}}.
+    \]
+    \item Project $p^{(k+1)}$ to the simplex (probability floor, cf.\
+          MacroIR variance-inflation correction).
+  \end{enumerate}
+\end{enumerate}
+A single iteration from $p^{(0)}=\mu^{\mathrm{prior}}$ recovers
+\eqref{eq:mu_post}; in the M-family one iteration is typically used
+per measurement.
+
+% ============================================================
+\section{Reduction Lemmas}
+% ============================================================
+
+\subsection{$\sbar=0$ recovers MacroMR (Moffatt 2007)}
+
+Setting $\sbar\equiv 0$ gives $v=\gbar$, $s=\gbar^{T}\Sigma^{\mathrm{prop}}\gbar$,
+$V=\epsilon^2_{0\to t}$, and
+\begin{align}
+  \Sigma^{\mathrm{post}}_{\mathrm{MR}}
+  &= \Sigma^{\mathrm{prop}} - \frac{\Nch}{V+\Nch\,\gbar^{T}\Sigma^{\mathrm{prop}}\gbar}
+     \Sigma^{\mathrm{prop}}\gbar\gbar^{T}\Sigma^{\mathrm{prop}},\\
+  \mu^{\mathrm{post}}_{\mathrm{MR}}
+  &= \mu^{\mathrm{prior}} + \frac{\delta}{V}\,\Sigma^{\mathrm{post}}_{\mathrm{MR}}\gbar.
+\end{align}
+This is the Moffatt 2007 macroscopic recursive update written in the
+boundary-conditioned conventions used throughout MacroIR/MacroIRT.
+
+\subsection{Tilde-collapse to MacroIR / MacroIRT}
+
+The IR family lifts the cross-covariance $\Sigma^{\mathrm{prop}}\gbar$
+to the boundary tilde $\widetilde{\gamma^{T}\Sigma}$, the scalar
+$v^{T}\Sigma^{\mathrm{prop}}v$ to $\widetilde{v^{T}\Sigma v}$, and adds
+the third predictive variance term $\Nch\widetilde{\gamma^{T}\Sigma\gamma}$.
+Substituting these replacements in
+\eqref{eq:Sigma_post}--\eqref{eq:mu_post} gives the MacroIRT update
+exactly. MacroIR is recovered by additionally setting $\sbar=0$,
+$v=\gbar$, $s=\widetilde{\gamma^{T}\Sigma\gamma}$.
+
+% ============================================================
+\section{Trust-Region Simplex Shrink}
+% ============================================================
+
+The Kalman step \eqref{eq:mu_post} can push components of
+$\mu^{\mathrm{post}}$ outside $[p_{\min},p_{\max}]$. As in MacroIR
+(cf.\ \texttt{macro\_ir\_variance\_inflation\_correction.tex}), we
+introduce a shrink factor $\alpha^\star\in[0,1]$ chosen as the largest
+scalar that keeps every component inside the simplex floor, applied
+uniformly to both the mean and covariance updates. The likelihood
+$\log L$ is computed with the unmodified $V$; $\alpha^\star$ is
+recorded as a diagnostic (\texttt{trust\_coefficient}). The mechanism
+and rationale are identical to MacroIR's; see that document for the
+full derivation and discussion of the discarded variance-inflation
+interpretation.
+
+% ============================================================
+\section{Log-Likelihood Contribution}
+% ============================================================
+
+\begin{equation}
+  \log L = -\tfrac{1}{2}\bigl[\log(2\pi V) + \delta^2/V\bigr],
+  \label{eq:logL}
+\end{equation}
+identical in form to MacroIR's per-interval scalar Gaussian
+log-likelihood, with the MRT-specific $V$ from \eqref{eq:V}. The
+parameter expectation $\mathrm{E}[\log L]$ over the prior follows the
+same scalar-Gaussian derivation as MacroIR.
+
+\end{document}

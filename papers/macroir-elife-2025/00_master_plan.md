@@ -2,7 +2,12 @@
 
 ## 0) Goal in one sentence
 
-Write a clear, reproducible paper that answers: **when should a reader use MacroIR vs MacroMR vs simpler MacroR-like approximations**, and how can they *diagnose* when an approximation is failing, using **score/FIM and residual-based tests**.
+
+
+Write a clear, reproducible paper that answers: **How to solve macroscopic currents using MacroIR, a recursive boundary state bayesian algortihm. Estimations of its error rate , using **score/FIM and residual-based tests**.
+
+
+
 
 ## 1) Scope (what this paper is / is not)
 
@@ -10,7 +15,7 @@ Write a clear, reproducible paper that answers: **when should a reader use Macro
 
 - **Macroscopic** (many-channel) current traces observed as **interval averages**.
 - Likelihood approximations family currently used in this repo (naming used in scripts):
-  - `NR`, `R`, `MNR`, `MR`, `MNRV`, `MRV`, `IR`, `IRV`
+  - `NR`, `R`, `MNR`, `MR`,  `IR` 
 - **Correctness/validity characterization** using:
   - **Score (gradient) mean test** at true parameters.
   - **Fisher Information Matrix (FIM) consistency** tests (two estimators).
@@ -50,8 +55,8 @@ We keep the paper anchored to a simple narrative: **problem → mechanism → va
 
 Primary tests (must-pass):
 
-1. **Score mean**: at true parameters, the expected gradient is 0.
-2. **FIM equality (two estimators)**: for a well-specified likelihood, `Cov(score)` should match `-E[Hessian]` (up to sampling error).
+1. **Score mean**: at true parameters, the expected gradient is 0. --> replaced by bias distortion vector
+2. **FIM equality (two estimators)**: for a well-specified likelihood, `Cov(score)` should match `-E[Hessian]` (up to sampling error).  --> replaced by Information distortion matrix 
 
 Secondary but very diagnostic (strongly recommended):
 
@@ -63,8 +68,9 @@ Secondary but very diagnostic (strongly recommended):
 
 Main plot axes (already selected earlier):
 
-- **x-axis:** dimensionless interval length, **Δ / τ_min**
-- **y-axis:** ensemble size, **N_ch**
+- **y-axis:** dimensionless interval length, **Δ / τ_min**
+
+- **c-axis:** ensemble size, **N_ch**
 
 Each cell summarizes “quality” per algorithm using a small set of metrics (from Figure 3), producing a regime map that answers:
 

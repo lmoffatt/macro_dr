@@ -1,0 +1,1123 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+
+\title{MacroTaylor: Rank-2 Laplace Approximation for the Posterior over $p$}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+This note collects the derivations for a \emph{channel-aware} Laplace
+approximation of the posterior over the macroscopic occupancy vector
+$p$ of an ensemble of Markov channels, based on a single
+interval-averaged current measurement.
+
+The \textbf{main scheme} is the \emph{rank-2} Laplace approximation
+based on the \emph{exact} Gaussian likelihood (including the
+$\tfrac12\log V$ term).  As a \emph{pedagogical limit} and for
+connection to EKF-style approximations, we also present a
+\emph{rank-1} ``quasi-likelihood'' scheme in which the $\log V$ term is
+dropped.
+
+The goals are:
+\begin{itemize}
+  \item to define the exact Gaussian likelihood and prior in the
+        macroscopic coordinates $p$;
+  \item to derive the exact gradient and Hessian of the negative
+        log-posterior, and show that the Hessian is a rank-2 update
+        of the prior precision;
+  \item to obtain a closed-form expression for the \emph{Laplace
+        covariance} via a rank-2 Woodbury inversion;
+  \item to derive a mean-update (MAP) formula in which all explicit
+        $\Sigma_p^{-1}$ terms are eliminated;
+  \item to show how the rank-1 (no $\log V$) scheme appears as a
+        limiting case and how it connects to quasi-likelihood/EKF
+        practice.
+\end{itemize}
+
+\paragraph{Coordinates, simplex and singular covariance.}
+The macroscopic occupancy vector $p$ lives on the simplex
+\[
+  \mathcal{S} = \Bigl\{p \in \mathbb{R}^{1\times d} :
+    p_i \ge 0,\ \sum_i p_i = 1\Bigr\},
+\]
+a $(d-1)$-dimensional manifold embedded in $\mathbb{R}^{1\times d}$.
+The prior covariance $\Sigma_p$ is therefore singular as a
+$d\times d$ matrix in ambient coordinates.  Formally, one may view
+$\Sigma_p^{-1}$ as the inverse on the intrinsic $(d-1)$-dimensional
+subspace, or as a pseudo-inverse.  In what follows:
+\begin{itemize}
+  \item we freely use $\Sigma_p^{-1}$ \emph{algebraically}
+        when applying Sherman--Morrison--Woodbury;
+  \item all \emph{implementable} expressions for the mean and
+        covariance are written purely in terms of $\Sigma_p$ (no
+        explicit inverse);
+  \item the log-determinant of $\Sigma_p$ (or its pseudo-determinant)
+        is a constant in $p$ and does not affect the MAP.
+\end{itemize}
+
+\section*{0. Setup and Notation}
+
+We consider:
+\begin{itemize}
+  \item Macroscopic occupancy vector
+    \[
+      p \in \mathbb{R}^{1\times d}
+    \]
+    (row vector of state probabilities).
+  \item Per-state conductance (or current) vector
+    \[
+      \gamma \in \mathbb{R}^{d\times 1}
+    \]
+    (column vector).
+  \item Per-state intrinsic-variance vector
+    \[
+      \sigma^2 \in \mathbb{R}^{d\times 1}.
+    \]
+\end{itemize}
+
+The prior over $p$ (restricted to the simplex) is Gaussian:
+\[
+  p \sim \mathcal{N}(\mu, \Sigma_p),
+\]
+where $\mu \in \mathbb{R}^{1\times d}$ is the prior mean and
+$\Sigma_p \in \mathbb{R}^{d\times d}$ is the prior covariance.  We
+often use the prior precision
+\[
+  \Lambda_p = N_{\text{ch}}\Sigma_p^{-1},
+\]
+with $N_{\text{ch}}$ the number of channels.
+
+Over an interval we observe a scalar averaged current $y$ which, for a
+given $p$, we model as Gaussian:
+\[
+  y \mid p
+  \sim
+  \mathcal{N}\bigl(\mu_y(p), V(p)\bigr),
+\]
+with
+\[
+  \mu_y(p) = N_{\text{ch}}(p\cdot\gamma),
+  \qquad
+  V(p) = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2),
+\]
+where $\epsilon^2$ is the extrinsic (instrument) variance and
+$N_{\text{ch}}(p\cdot\sigma^2)$ is the intrinsic interval variance
+from channel stochasticity.
+
+Define the residual
+\[
+  \delta(p) = y - \mu_y(p) = y - N_{\text{ch}}(p\cdot\gamma).
+\]
+
+We will also use the \emph{tilted} vector
+\[
+  v(p)
+  =
+  \gamma + \frac{\delta(p)}{V(p)}\,\sigma^2
+  \in \mathbb{R}^{d\times 1},
+\]
+which will factor the Hessian.
+
+\section*{1. Exact Gaussian Likelihood and Prior}
+
+We start from the standard Gaussian forms and derive the exact
+negative log-posterior.  We then introduce an ``energy'' that is
+twice the negative log-posterior, which simplifies later algebra.
+
+\subsection*{1.1 Exact likelihood}
+
+Given $p$, the likelihood is
+\[
+  p(y\mid p)
+  =
+  \frac{1}{\sqrt{2\pi V(p)}}
+  \exp\!\left(
+    -\frac{1}{2}\frac{\delta(p)^2}{V(p)}
+  \right).
+\]
+
+The log-likelihood is
+\[
+  \log p(y\mid p)
+  =
+  -\frac{1}{2}\log(2\pi)
+  -\frac{1}{2}\log V(p)
+  -\frac{1}{2}\frac{\delta(p)^2}{V(p)}.
+\]
+
+Up to an additive constant $-\frac12\log(2\pi)$, the \emph{negative}
+log-likelihood is
+\[
+  F_{\text{like}}(p)
+  =
+  \frac{1}{2}\log V(p)
+  + \frac{1}{2}\frac{\delta(p)^2}{V(p)}
+  \quad(+\ \text{const}).
+\]
+
+\subsection*{1.2 Exact prior}
+
+The prior density is
+\[
+  p(p)
+  \propto
+  \exp\!\left(
+    -\frac{1}{2}(p-\mu)\,\Lambda_p\,(p-\mu)^\top
+  \right),
+\]
+with $\Lambda_p = N_{\text{ch}}\Sigma_p^{-1}$.  The corresponding
+negative log-prior (up to a constant) is
+\[
+  F_{\text{prior}}(p)
+  =
+  \frac{1}{2}(p-\mu)\,\Lambda_p\,(p-\mu)^\top
+  =
+  \frac{1}{2}(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top
+  \quad(+\ \text{const}).
+\]
+
+The log-determinant term $\frac12\log\det\Sigma_p$ is a constant in
+$p$ and therefore does not affect the MAP; we drop it throughout. 
+However, we should note that the posterior covariance does depend on $p$,
+so, this is actually a simplification to make the calculations maneagable. 
+
+\subsection*{1.3 Exact negative log-posterior and energy}
+
+The (unnormalised) posterior is
+\[
+  p(p\mid y) \propto p(y\mid p)\,p(p),
+\]
+so the exact negative log-posterior (up to a constant) is
+\[
+  F_{\text{exact}}(p)
+  =
+  F_{\text{like}}(p) + F_{\text{prior}}(p).
+\]
+
+Explicitly:
+\[
+  F_{\text{exact}}(p)
+  =
+  \frac{1}{2}\log V(p)
+  + \frac{1}{2}\frac{\delta(p)^2}{V(p)}
+  + \frac{1}{2}(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top
+  \quad(+\ \text{const}).
+\]
+
+We will minimise $F_{\text{exact}}(p)$ to obtain the exact MAP.  For
+algebraic convenience, define the associated ``energy''
+\[
+  E_{\text{exact}}(p)
+  := 2F_{\text{exact}}(p).
+\]
+
+Up to an additive constant,
+\[
+  E_{\text{exact}}(p)
+  =
+  \underbrace{\log V(p) + \frac{\delta(p)^2}{V(p)}}_{L(p) + M(p)}
+  +
+  \underbrace{(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top}_{P(p)}.
+\]
+
+Thus:
+\[
+  E_{\text{exact}}(p) = L(p) + M(p) + P(p).
+\]
+
+Multiplying by a positive constant does not change the MAP; moreover,
+if we write $\mathbf{H}(p) = \nabla^2 E_{\text{exact}}(p)$, then the
+Laplace covariance of the posterior is
+\[
+  \Sigma_{\text{Lap}} \approx
+  \bigl[\nabla^2 F_{\text{exact}}(p^\star)\bigr]^{-1}
+  =
+  2\,\mathbf{H}(p^\star)^{-1},
+\]
+where $p^\star$ is the MAP.
+
+\section*{2. Gradient and Hessian of the Exact Energy}
+
+We now derive the gradient and Hessian of $E_{\text{exact}}(p)$.  We
+keep track of three contributions:
+\[
+  L(p) = \log V(p),
+  \quad
+  M(p) = \frac{\delta(p)^2}{V(p)},
+  \quad
+  P(p) = (p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top.
+\]
+
+Here $p$ is a row vector, $\gamma$ and $\sigma^2$ are column vectors.
+
+Recall:
+\[
+  \delta(p) = y - N_{\text{ch}}(p\cdot\gamma),
+  \qquad
+  V(p) = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2).
+\]
+
+Then
+\[
+  \nabla\delta(p) = -N_{\text{ch}}\gamma^\top,
+  \qquad
+  \nabla V(p) = N_{\text{ch}}(\sigma^2)^\top,
+\]
+both row vectors, and $\nabla^2\delta = 0$, $\nabla^2 V = 0$.
+
+\subsection*{2.1 Prior gradient and Hessian}
+
+Write
+\[
+  P(p) = (p-\mu)\Lambda_p(p-\mu)^\top,
+  \qquad
+  \Lambda_p = N_{\text{ch}}\Sigma_p^{-1}.
+\]
+
+Since $\Lambda_p$ is symmetric,
+\[
+  \nabla P(p) = 2(p-\mu)\Lambda_p
+              = 2N_{\text{ch}}(p-\mu)\Sigma_p^{-1},
+\]
+and
+\[
+  \nabla^2 P(p) = 2\Lambda_p = 2N_{\text{ch}}\Sigma_p^{-1}.
+\]
+
+\subsection*{2.2 Likelihood gradient: $M(p)$ and $L(p)$}
+
+For
+\[
+  M(p) = \frac{\delta(p)^2}{V(p)},
+\]
+the gradient (using the quotient rule) is
+\[
+  \nabla M(p)
+  =
+  \frac{2\delta}{V}\,\nabla\delta
+  - \frac{\delta^2}{V^2}\,\nabla V,
+\]
+so
+\[
+  \nabla M(p)
+  =
+  \frac{2\delta}{V}(-N_{\text{ch}}\gamma^\top)
+  - \frac{\delta^2}{V^2}N_{\text{ch}}(\sigma^2)^\top
+  =
+  -N_{\text{ch}}
+  \left[
+    \frac{2\delta}{V}\,\gamma^\top
+    + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+  \right].
+\]
+
+For
+\[
+  L(p) = \log V(p),
+\]
+\[
+  \nabla L(p)
+  = \frac{1}{V}\,\nabla V
+  = \frac{N_{\text{ch}}}{V}\,(\sigma^2)^\top.
+\]
+
+Thus the \emph{exact} gradient of $E_{\text{exact}} = L + M + P$ is
+\[
+  \begin{aligned}
+    \mathbf{g}_{\text{exact}}(p)
+    &= \nabla E_{\text{exact}}(p)
+     = \nabla P(p) + \nabla M(p) + \nabla L(p)\\[3pt]
+    &=
+    2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+    - N_{\text{ch}}
+      \left[
+        \frac{2\delta}{V}\,\gamma^\top
+        + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+      \right]
+    + \frac{N_{\text{ch}}}{V}\,(\sigma^2)^\top.
+  \end{aligned}
+\]
+
+Grouping $(\sigma^2)^\top$ terms:
+\[
+  \boxed{
+  \mathbf{g}_{\text{exact}}(p)
+  =
+  2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+  -
+  N_{\text{ch}}
+  \left[
+    \frac{2\delta(p)}{V(p)}\,\gamma^\top
+    +
+    \left(\frac{\delta(p)^2}{V(p)^2} - \frac{1}{V(p)}\right)(\sigma^2)^\top
+  \right].
+  }
+\]
+
+\subsection*{2.3 Likelihood Hessian: $M(p)$ and $L(p)$}
+
+The Hessian of $M(p)$ was derived in detail in the rank-1 setting and
+does not change:
+\[
+  \nabla^2 M(p)
+  =
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V}\gamma\gamma^\top
+    + \frac{\delta}{V^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \frac{\delta^2}{V^3}\,\sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+For $L(p) = \log V(p)$,
+\[
+  \nabla^2 L(p)
+  = -\frac{1}{V^2}\,\bigl(\nabla V\bigr)^\top\nabla V
+  = -\frac{N_{\text{ch}}^2}{V^2}\,\sigma^2\sigma^2{}^\top.
+\]
+
+So
+\[
+  \nabla^2\bigl(M(p)+L(p)\bigr)
+  =
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V}\gamma\gamma^\top
+    + \frac{\delta}{V^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \left(\frac{\delta^2}{V^3} - \frac{1}{2V^2}\right)
+      \sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+\subsection*{2.4 Full exact Hessian and rank-2 structure}
+
+Adding the prior Hessian:
+\[
+  \nabla^2 P(p) = 2N_{\text{ch}}\Sigma_p^{-1},
+\]
+we obtain
+\[
+  \mathbf{H}_{\text{exact}}(p)
+  := \nabla^2 E_{\text{exact}}(p)
+  =
+  2N_{\text{ch}}\Sigma_p^{-1}
+  +
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V}\gamma\gamma^\top
+    + \frac{\delta}{V^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \left(\frac{\delta^2}{V^3} - \frac{1}{2V^2}\right)
+      \sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+It is convenient to express this as a rank-2 update of the prior
+precision.  Define
+\[
+  v(p) = \gamma + \frac{\delta(p)}{V(p)}\sigma^2.
+\]
+
+Set
+\[
+  u_1(p) = v(p),
+  \qquad
+  u_2(p) = \sigma^2.
+\]
+
+We seek a representation
+\[
+  \mathbf{H}_{\text{exact}}(p)
+  = 2N_{\text{ch}}\bigl[\Sigma_p^{-1} + U(p)C(p)U(p)^\top\bigr],
+\]
+with
+\[
+  U(p) = \bigl[u_1(p), u_2(p)\bigr] \in \mathbb{R}^{d\times 2},
+\]
+and $C(p)$ a diagonal $2\times 2$ matrix.
+
+From the rank-1 analysis without $\log V$ we know that
+\[
+  \frac{N_{\text{ch}}}{V}v v^\top
+  = \frac{N_{\text{ch}}}{V}u_1 u_1^\top
+\]
+reconstructs the $\gamma\gamma^\top$, $\gamma(\sigma^2)^\top$ and
+$\sigma^2\sigma^2{}^\top$ terms in $M$ alone.  The extra contribution
+from $L$ is
+\[
+  -\frac{N_{\text{ch}}^2}{V^2}\sigma^2\sigma^2{}^\top
+  = 2N_{\text{ch}}
+    \left(-\frac{N_{\text{ch}}}{2V^2}\right) u_2 u_2^\top.
+\]
+
+Thus we can take
+\[
+  C(p) =
+  \begin{pmatrix}
+    \alpha(p) & 0\\[3pt]
+    0         & \beta(p)
+  \end{pmatrix},
+  \qquad
+  \alpha(p) = \frac{N_{\text{ch}}}{V(p)},
+  \qquad
+  \beta(p)  = -\frac{N_{\text{ch}}}{2V(p)^2},
+\]
+so that
+\[
+  U(p)C(p)U(p)^\top
+  = \alpha(p)u_1 u_1^\top + \beta(p)u_2 u_2^\top.
+\]
+
+We have therefore:
+\[
+  \boxed{
+  \mathbf{H}_{\text{exact}}(p)
+  =
+  2N_{\text{ch}}
+  \bigl[\Sigma_p^{-1} + U(p)C(p)U(p)^\top\bigr],
+  }
+\]
+a rank-2 update of the prior precision.
+
+\section*{3. Rank-2 Woodbury, Exact Laplace Covariance and Mean}
+
+We now fix an expansion point $p_0$ and compute the Laplace covariance
+and mean using the rank-2 structure.  In practice $p_0$ will be taken
+as the current Newton iterate or the final MAP $p^\star$.
+
+\subsection*{3.1 Rank-2 Woodbury inversion}
+
+The Woodbury identity for a rank-$k$ update says:
+\[
+  (A + U C U^\top)^{-1}
+  =
+  A^{-1}
+  - A^{-1}U\bigl(C^{-1} + U^\top A^{-1}U\bigr)^{-1}U^\top A^{-1},
+\]
+with $A$ invertible, $U$ of shape $d\times k$, and $C$ of shape
+$k\times k$.
+
+Formally, on the intrinsic $(d-1)$-dimensional subspace we put
+\[
+  A = \Sigma_p^{-1},
+  \qquad
+  A^{-1} = \Sigma_p,
+  \qquad
+  U = U(p_0),
+  \qquad
+  C = C(p_0).
+\]
+
+Then
+\[
+  \bigl(\Sigma_p^{-1} + U C U^\top\bigr)^{-1}
+  =
+  \Sigma_p
+  - \Sigma_p U K U^\top \Sigma_p,
+\]
+where
+\[
+  K
+  =
+  \bigl(C^{-1} + U^\top\Sigma_p U\bigr)^{-1}
+  \in \mathbb{R}^{2\times 2}.
+\]
+
+At $p_0$ we have
+\[
+  \mathbf{H}_{\text{exact}}(p_0)
+  =
+  2N_{\text{ch}}
+  \bigl[\Sigma_p^{-1} + U(p_0)C(p_0)U(p_0)^\top\bigr],
+\]
+so
+\[
+  \mathbf{H}_{\text{exact}}(p_0)^{-1}
+  =
+  \frac{1}{2N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U(p_0)K(p_0)U(p_0)^\top \Sigma_p
+  \right].
+\]
+
+The exact Laplace covariance at $p_0$ is
+\[
+  \Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  2\,\mathbf{H}_{\text{exact}}(p_0)^{-1}
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U(p_0)K(p_0)U(p_0)^\top\Sigma_p
+  \right].
+\]
+
+Explicitly,
+\[
+  U(p_0) = \bigl[v(p_0),\ \sigma^2\bigr],
+  \qquad
+  C(p_0) =
+  \begin{pmatrix}
+    \alpha & 0\\[3pt]
+    0      & \beta
+  \end{pmatrix},
+\]
+with
+\[
+  \alpha = \frac{N_{\text{ch}}}{V(p_0)},
+  \qquad
+  \beta  = -\frac{N_{\text{ch}}}{2V(p_0)^2},
+\]
+and
+\[
+  K(p_0)
+  =
+  \Bigl(C(p_0)^{-1} + U(p_0)^\top\Sigma_p U(p_0)\Bigr)^{-1}
+  \in \mathbb{R}^{2\times 2}.
+\]
+
+The $2\times 2$ matrix
+\[
+  M = C^{-1} + U^\top\Sigma_p U
+\]
+can be written in terms of scalar contractions
+\[
+  s = v^\top\Sigma_p v,
+  \qquad
+  b = v^\top\Sigma_p\sigma^2,
+  \qquad
+  c = \sigma^2{}^\top\Sigma_p\sigma^2,
+\]
+as
+\[
+  M =
+  \begin{pmatrix}
+    \alpha^{-1} + s & b\\[3pt]
+    b & \beta^{-1} + c
+  \end{pmatrix}
+  =
+  \begin{pmatrix}
+    \dfrac{V(p_0)}{N_{\text{ch}}} + s & b\\[10pt]
+    b & -\dfrac{2V(p_0)^2}{N_{\text{ch}}} + c
+  \end{pmatrix}.
+\]
+
+Then $K(p_0) = M^{-1}$ is obtained with the usual $2\times 2$
+inverse, either analytically or numerically.
+
+\paragraph{Remark (singular prior).}
+Again, $\Sigma_p^{-1}$ appears only formally within the Woodbury
+identity.  The implementable covariance
+$\Sigma_{\text{post}}^{\text{exact}}(p_0)$ contains only $\Sigma_p$,
+$U(p_0)$ and the small $2\times 2$ inverse $K(p_0)$.
+
+\subsection*{3.2 Exact Laplace mean and elimination of $\Sigma_p^{-1}$}
+
+The Laplace mean at $p_0$ is
+\[
+  p_{\text{post}}^{\text{exact}}
+  =
+  p_0 - \mathbf{g}_{\text{exact}}(p_0)\,
+         \mathbf{H}_{\text{exact}}(p_0)^{-1}
+  =
+  p_0 - \frac{1}{2}\mathbf{g}_{\text{exact}}(p_0)\,
+         \Sigma_{\text{post}}^{\text{exact}}(p_0),
+\]
+with $\mathbf{g}_{\text{exact}}$ from Section~2.2.
+
+Introduce
+\[
+  \Delta p = p_0 - \mu
+\]
+and write
+\[
+  \mathbf{g}_{\text{exact}}(p_0)
+  =
+  2N_{\text{ch}}\Delta p\,\Sigma_p^{-1}
+  - N_{\text{ch}}\,q^\top,
+\]
+where
+\[
+  q^\top
+  =
+  \frac{2\delta}{V}\,\gamma^\top
+  +
+  \left(\frac{\delta^2}{V^2} - \frac{1}{V}\right)(\sigma^2)^\top,
+\]
+with $\delta = \delta(p_0)$ and $V = V(p_0)$.
+
+Then
+\[
+  \begin{aligned}
+    p_{\text{post}}^{\text{exact}}
+    &=
+    p_0
+    - N_{\text{ch}}\Delta p\,\Sigma_p^{-1}
+      \Sigma_{\text{post}}^{\text{exact}}(p_0)
+    + \frac{N_{\text{ch}}}{2}\,q^\top
+      \Sigma_{\text{post}}^{\text{exact}}(p_0).
+  \end{aligned}
+\]
+
+Using
+\[
+  \Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U K U^\top\Sigma_p
+  \right],
+\]
+we obtain
+\[
+  \begin{aligned}
+    \Sigma_p^{-1}\Sigma_{\text{post}}^{\text{exact}}(p_0)
+    &=
+    \Sigma_p^{-1}
+    \left[
+      \frac{1}{N_{\text{ch}}}
+      \bigl(\Sigma_p - \Sigma_p U K U^\top\Sigma_p\bigr)
+    \right]\\[3pt]
+    &=
+    \frac{1}{N_{\text{ch}}}
+    \bigl(I - U K U^\top\Sigma_p\bigr),
+  \end{aligned}
+\]
+so
+\[
+  N_{\text{ch}}\Delta p\,\Sigma_p^{-1}\Sigma_{\text{post}}^{\text{exact}}(p_0)
+  =
+  \Delta p - \Delta p\,U K U^\top\Sigma_p.
+\]
+
+Therefore
+\[
+  \begin{aligned}
+    p_{\text{post}}^{\text{exact}}
+    &=
+    p_0
+    - \Bigl[\Delta p - \Delta p\,U K U^\top\Sigma_p\Bigr]
+    + \frac{N_{\text{ch}}}{2}q^\top
+      \Sigma_{\text{post}}^{\text{exact}}(p_0)\\[3pt]
+    &=
+    (p_0 - \Delta p)
+    + \Delta p\,U K U^\top\Sigma_p
+    + \frac{N_{\text{ch}}}{2}q^\top
+      \Sigma_{\text{post}}^{\text{exact}}(p_0).
+  \end{aligned}
+\]
+
+Since $p_0 - \Delta p = \mu$, we arrive at the exact mean update with
+no explicit $\Sigma_p^{-1}$:
+\[
+  \boxed{
+  p_{\text{post}}^{\text{exact}}
+  =
+  \mu
+  + \Delta p\,U(p_0)K(p_0)U(p_0)^\top\Sigma_p
+  + \frac{N_{\text{ch}}}{2}\,q^\top
+    \Sigma_{\text{post}}^{\text{exact}}(p_0),
+  }
+\]
+with
+\[
+  \Delta p = p_0 - \mu,
+  \quad
+  q^\top
+  =
+  \frac{2\delta}{V}\,\gamma^\top
+  +
+  \left(\frac{\delta^2}{V^2} - \frac{1}{V}\right)(\sigma^2)^\top,
+\]
+and $\Sigma_{\text{post}}^{\text{exact}}(p_0)$ given above.
+
+\subsection*{3.3 Newton--MAP scheme and MAP--Laplace posterior}
+
+The exact MAP is defined as
+\[
+  p^\star = \arg\min_{p\in\mathcal{S}} F_{\text{exact}}(p)
+  = \arg\min_{p\in\mathcal{S}} E_{\text{exact}}(p),
+\]
+subject to the simplex constraints.  We locate $p^\star$ via Newton's
+method applied to $E_{\text{exact}}$.
+
+Let $p^{(k)}$ be the current iterate.  One Newton step is
+\[
+  p^{(k+1)} = p^{(k)} - \Delta p^{(k)},
+  \qquad
+  \mathbf{H}_{\text{exact}}(p^{(k)})\,\Delta p^{(k)\top}
+  = \mathbf{g}_{\text{exact}}(p^{(k)})^\top.
+\]
+
+Algorithmically:
+\begin{enumerate}
+  \item Initialise with a feasible point, typically $p^{(0)} = \mu$.
+  \item For $k=0,1,2,\dots$ until convergence:
+  \begin{enumerate}
+    \item Evaluate
+      $\delta^{(k)} = \delta(p^{(k)})$,
+      $V^{(k)} = V(p^{(k)})$,
+      $v^{(k)} = v(p^{(k)})$.
+    \item Form
+      $\mathbf{g}_{\text{exact}}(p^{(k)})$ and
+      $\mathbf{H}_{\text{exact}}(p^{(k)})$ using the formulas above.
+    \item Compute the exact Laplace covariance
+      $\Sigma_{\text{post}}^{\text{exact}}(p^{(k)})$
+      using the rank-2 Woodbury formula.
+    \item Update the mean using the exact mean formula with
+      $p_0 = p^{(k)}$ and
+      $\Sigma_{\text{post}}^{\text{exact}}(p_0)
+       = \Sigma_{\text{post}}^{\text{exact}}(p^{(k)})$:
+      \[
+        p^{(k+1)}
+        =
+        \mu
+        + \Delta p^{(k)} U^{(k)}K^{(k)}U^{(k)\top}\Sigma_p
+        + \frac{N_{\text{ch}}}{2}q^{(k)\top}
+          \Sigma_{\text{post}}^{\text{exact}}(p^{(k)}),
+      \]
+      where $\Delta p^{(k)} = p^{(k)} - \mu$,
+      $U^{(k)} = U(p^{(k)})$ and
+      $q^{(k)}$ is defined by $\delta^{(k)}$, $V^{(k)}$.
+    \item Optionally project $p^{(k+1)}$ back to the simplex
+      (enforce $p_i^{(k+1)}\ge 0$ and renormalise).
+  \end{enumerate}
+\end{enumerate}
+
+After convergence, $p^{(k)}\to p^\star$ and we define the
+MAP--Laplace posterior as
+\[
+  p\mid y
+  \approx
+  \mathcal{N}\bigl(p^\star, \Sigma_{\text{Lap}}\bigr),
+\]
+with
+\[
+  \Sigma_{\text{Lap}}
+  =
+  2\,\mathbf{H}_{\text{exact}}(p^\star)^{-1}
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \Sigma_p U(p^\star)K(p^\star)U(p^\star)^\top\Sigma_p
+  \right].
+\]
+
+\section*{4. Rank-1 Quasi-Laplace Scheme as a Special Case}
+
+We now present the \emph{quasi} (rank-1) scheme obtained by \emph{dropping}
+the $\log V(p)$ term from the likelihood.  This corresponds to a
+quasi-likelihood / weighted least-squares objective.  It is useful
+pedagogically and connects to EKF-like approximations.
+
+\subsection*{4.1 Quasi energy and Hessian}
+
+Define the quasi energy
+\[
+  E_{\text{quasi}}(p)
+  =
+  M(p) + P(p)
+  =
+  \frac{\delta(p)^2}{V(p)}
+  + (p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top.
+\]
+
+The gradient is
+\[
+  \mathbf{g}_{\text{quasi}}(p)
+  =
+  2N_{\text{ch}}(p-\mu)\Sigma_p^{-1}
+  -
+  N_{\text{ch}}
+  \left[
+    \frac{2\delta(p)}{V(p)}\,\gamma^\top
+    + \frac{\delta(p)^2}{V(p)^2}\,(\sigma^2)^\top
+  \right].
+\]
+
+The Hessian is
+\[
+  \mathbf{H}_{\text{quasi}}(p)
+  =
+  2N_{\text{ch}}\Sigma_p^{-1}
+  +
+  2N_{\text{ch}}^2
+  \left[
+    \frac{1}{V}\gamma\gamma^\top
+    + \frac{\delta}{V^2}\,
+      \bigl(\gamma(\sigma^2)^\top + \sigma^2\gamma^\top\bigr)
+    + \frac{\delta^2}{V^3}\,\sigma^2\sigma^2{}^\top
+  \right].
+\]
+
+Introduce
+\[
+  v(p) = \gamma + \frac{\delta(p)}{V(p)}\sigma^2,
+  \qquad
+  u(p) = \sqrt{\frac{N_{\text{ch}}}{V(p)}}\,v(p).
+\]
+
+Then
+\[
+  \mathbf{H}_{\text{quasi}}(p)
+  =
+  2N_{\text{ch}}
+  \left[
+    \Sigma_p^{-1}
+    + u(p)u(p)^\top
+  \right].
+\]
+
+This is a rank-1 update of the prior precision.
+
+\subsection*{4.2 Rank-1 covariance and mean}
+
+Applying Sherman--Morrison with $A=\Sigma_p^{-1}$ and
+$u = u(p_0)$ at an expansion point $p_0$:
+\[
+  \bigl(\Sigma_p^{-1} + u u^\top\bigr)^{-1}
+  =
+  \Sigma_p
+  - \frac{\Sigma_p u u^\top\Sigma_p}{1 + u^\top\Sigma_p u}.
+\]
+
+Therefore
+\[
+  \mathbf{H}_{\text{quasi}}(p_0)^{-1}
+  =
+  \frac{1}{2N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \frac{\Sigma_p u u^\top\Sigma_p}{1 + u^\top\Sigma_p u}
+  \right].
+\]
+
+The quasi Laplace covariance at $p_0$ is
+\[
+  \Sigma_{\text{post}}^{\text{quasi}}(p_0)
+  =
+  2\,\mathbf{H}_{\text{quasi}}(p_0)^{-1}
+  =
+  \frac{1}{N_{\text{ch}}}
+  \left[
+    \Sigma_p
+    - \frac{\Sigma_p u u^\top\Sigma_p}{1 + u^\top\Sigma_p u}
+  \right].
+\]
+
+Substituting $u = \sqrt{N_{\text{ch}}/V}\,v$ and defining
+$s = v^\top\Sigma_p v$, we obtain
+\[
+  \boxed{
+    \Sigma_{\text{post}}^{\text{quasi}}(p_0)
+    =
+    \frac{1}{N_{\text{ch}}}\,\Sigma_p
+    -
+    \frac{1}{V(p_0) + N_{\text{ch}} s(p_0)}\,
+    \Sigma_p v(p_0) v(p_0)^\top\Sigma_p.
+  }
+\]
+
+The quasi mean at $p_0$ is
+\[
+  p_{\text{post}}^{\text{quasi}}
+  =
+  p_0 - \frac{1}{2}\mathbf{g}_{\text{quasi}}(p_0)\,
+         \Sigma_{\text{post}}^{\text{quasi}}(p_0).
+\]
+
+Writing $\Delta p = p_0 - \mu$ and using the identity
+\[
+  \Sigma_p^{-1}\Sigma_{\text{post}}^{\text{quasi}}
+  =
+  \frac{1}{N_{\text{ch}}}I
+  - \frac{1}{V + N_{\text{ch}} s}\,v v^\top\Sigma_p,
+\]
+we obtain, after the same algebra as in the rank-1 derivation:
+\[
+  \boxed{
+  \begin{aligned}
+    p_{\text{post}}^{\text{quasi}}
+    &=
+    \mu
+    + \frac{N_{\text{ch}}}{V(p_0) + N_{\text{ch}} s(p_0)}\,
+      (p_0 - \mu)\,v(p_0)v(p_0)^\top\Sigma_p\\[4pt]
+    &\quad
+    + \frac{N_{\text{ch}}\delta(p_0)}{V(p_0)}\,\gamma^\top
+      \Sigma_{\text{post}}^{\text{quasi}}(p_0)
+    + \frac{N_{\text{ch}}\delta(p_0)^2}{2V(p_0)^2}\,(\sigma^2)^\top
+      \Sigma_{\text{post}}^{\text{quasi}}(p_0).
+  \end{aligned}
+  }
+\]
+
+\subsection*{4.3 Special case $p_0 = \mu$ and connection to EKF}
+
+If we choose $p_0 = \mu$, then $\Delta p = 0$ and the first line of
+the quasi mean vanishes.  In that case:
+\[
+  \mathbf{g}_{\text{quasi}}(\mu)
+  =
+  -N_{\text{ch}}
+  \left[
+    \frac{2\delta}{V}\,\gamma^\top
+    + \frac{\delta^2}{V^2}\,(\sigma^2)^\top
+  \right],
+\]
+and
+\[
+  p_{\text{post}}^{\text{quasi}}
+  =
+  \mu + \frac{N_{\text{ch}}\delta}{2V}\,(\gamma^\top + v^\top)
+        \Sigma_{\text{post}}^{\text{quasi}},
+\]
+where $v = \gamma + \frac{\delta}{V}\sigma^2$ and
+$\Sigma_{\text{post}}^{\text{quasi}}$ is evaluated at $p_0 = \mu$.
+
+This can be interpreted as a single quasi-Laplace (or EKF-like) update
+from the prior mean, using only the mean-matching part of the
+likelihood and ignoring the $\log V$ term.
+
+\section*{5. Summary and Interpretation}
+
+We now summarise the two schemes:
+
+\subsection*{5.1 Rank-2 (exact) scheme}
+
+\begin{itemize}
+  \item Likelihood:
+    \[
+      p(y\mid p) =
+      \mathcal{N}\bigl(N_{\text{ch}}(p\cdot\gamma), V(p)\bigr),
+      \qquad
+      V(p) = \epsilon^2 + N_{\text{ch}}(p\cdot\sigma^2).
+    \]
+  \item Negative log-posterior (up to const):
+    \[
+      F_{\text{exact}}(p)
+      =
+      \frac{1}{2}\log V(p)
+      + \frac{1}{2}\frac{\delta(p)^2}{V(p)}
+      + \frac{1}{2}(p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top.
+    \]
+  \item Energy:
+    \[
+      E_{\text{exact}}(p) = 2F_{\text{exact}}(p).
+    \]
+  \item Hessian:
+    \[
+      \mathbf{H}_{\text{exact}}(p)
+      =
+      2N_{\text{ch}}
+      \bigl[\Sigma_p^{-1} + U(p)C(p)U(p)^\top\bigr],
+    \]
+    with $U(p) = [v(p),\sigma^2]$ and diagonal $C(p)$.
+  \item Covariance:
+    \[
+      \Sigma_{\text{post}}^{\text{exact}}(p_0)
+      =
+      \frac{1}{N_{\text{ch}}}
+      \left[
+        \Sigma_p
+        - \Sigma_p U(p_0)K(p_0)U(p_0)^\top\Sigma_p
+      \right],
+    \]
+    with $K(p_0) = \bigl(C(p_0)^{-1} + U(p_0)^\top\Sigma_p U(p_0)\bigr)^{-1}$.
+  \item Mean:
+    \[
+      p_{\text{post}}^{\text{exact}}
+      =
+      \mu
+      + \Delta p\,U(p_0)K(p_0)U(p_0)^\top\Sigma_p
+      + \frac{N_{\text{ch}}}{2}q^\top
+        \Sigma_{\text{post}}^{\text{exact}}(p_0).
+    \]
+  \item Newton iteration uses $E_{\text{exact}}$, converges to the
+        true MAP $p^\star$, and the Laplace covariance at $p^\star$ is
+        $\Sigma_{\text{Lap}} = \Sigma_{\text{post}}^{\text{exact}}(p^\star)$.
+\end{itemize}
+
+This scheme fully incorporates the heteroscedastic variance $V(p)$ via
+both the $\delta^2/V$ term and the $\log V$ term of the Gaussian
+likelihood.  Even when $\delta=0$, the $\log V$ term can shift the MAP
+towards states with smaller predicted variance, in competition with
+the prior.
+
+\subsection*{5.2 Rank-1 (quasi) scheme}
+
+\begin{itemize}
+  \item Energy:
+    \[
+      E_{\text{quasi}}(p)
+      =
+      \frac{\delta(p)^2}{V(p)}
+      + (p-\mu)\bigl(N_{\text{ch}}\Sigma_p^{-1}\bigr)(p-\mu)^\top.
+    \]
+  \item Hessian:
+    \[
+      \mathbf{H}_{\text{quasi}}(p)
+      =
+      2N_{\text{ch}}
+      \left[
+        \Sigma_p^{-1}
+        + \frac{N_{\text{ch}}}{V(p)}\,v(p)v(p)^\top
+      \right],
+    \]
+    a rank-1 update.
+  \item Covariance:
+    \[
+      \Sigma_{\text{post}}^{\text{quasi}}(p_0)
+      =
+      \frac{1}{N_{\text{ch}}}\,\Sigma_p
+      -
+      \frac{1}{V(p_0) + N_{\text{ch}} s(p_0)}\,
+      \Sigma_p v(p_0)v(p_0)^\top\Sigma_p.
+    \]
+  \item Mean:
+    the quasi mean $p_{\text{post}}^{\text{quasi}}$ is given by the
+    rank-1 formula above, and in the special case $p_0=\mu$ reduces to
+    a single-step update proportional to
+    $(\gamma^\top + v^\top)\Sigma_{\text{post}}^{\text{quasi}}$.
+\end{itemize}
+
+This scheme ignores the $\log V(p)$ contribution to the likelihood and
+treats $V(p)$ only as a weight in the squared residual.  It is
+analogous to using a weighted least-squares / quasi-likelihood
+objective in GLMs, and connects to EKF practice where a
+state-dependent variance is plugged into an effective $R$ but not
+differentiated.
+
+\subsection*{5.3 Practical recommendation}
+
+In MacroTaylor we take the rank-2 scheme as the \emph{main method}:
+\begin{itemize}
+  \item it is the correct Gaussian MAP for the interval model;
+  \item the rank-2 Woodbury cost is negligible relative to the cost of
+        computing the MacroIR quantities;
+  \item the heteroscedastic variance $V(p)$ is physically meaningful
+        and carries information about $p$.
+\end{itemize}
+
+The rank-1 scheme is retained as a \emph{pedagogical device} and as a
+limiting case:
+\begin{itemize}
+  \item it illustrates how a simpler quasi-likelihood/EKF update
+        arises if one drops $\log V(p)$;
+  \item it provides a useful check in regimes where $V(p)$ changes
+        slowly with $p$ or $N_{\text{ch}}$ is large.
+\end{itemize}
+
+\end{document}

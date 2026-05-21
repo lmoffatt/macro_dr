@@ -137,7 +137,7 @@ This is the most defensible, highest-impact framing identified in the entire lit
 
 ## 3a. The immediate predecessor: Moffatt & Pierdominici-Sottile (2025) — MacroIR
 
-**Citation:** L. Moffatt and G. Pierdominici-Sottile, "Bayesian inference of functional asymmetry in a ligand-gated ion channel," *Communications Biology* 2025 (DOI 10.1038/s42003-025-09056-x — supplementary material in `42003_2025_9056_MOESM2_ESM.pdf`, peer review file in `42003_2025_9056_MOESM1_ESM.pdf`). **Author of this codebase.**
+**Citation:** L. Moffatt and G. Pierdominici-Sottile, "Bayesian inference of functional asymmetry in a ligand-gated ion channel," *Communications Biology* 2025 (DOI 10.1038/s42003-025-09056-x — article in `Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol.pdf`, supplementary material in `Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol_SI.pdf`, peer review file in `Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol_PeerReview.pdf`). **Author of this codebase.**
 
 This is the *immediate published predecessor* of the binary-doubling Qdt construction. It is also the paper whose limitations the new algorithm is designed to address, by the same author. The follow-up paper writes itself as a methodological extension of this one.
 
@@ -332,7 +332,7 @@ This sharpens the framing: the user's paper is positioned as the *bridge* betwee
 - **Hobolth & Jensen 2011** (three routes confirmed; single-CTMC scope confirmed; Theorem 1 uniformization framework documented).
 - **Minin & Suchard 2008** (G(r,t) = exp((Λ_R̄ + rΛ_R)t) generating-function trick confirmed; single-CTMC scope confirmed; reversibility/diagonalizability assumption noted).
 - **Carbonell, Jiménez & Pedroso 2008** (block-triangular trick generalized to arbitrary multiplicity; eq. 13 covariance integral formula confirmed; single-shot matrix exponential, no recursion). Connection to MacroIR (2025) eq. S1 made explicit: Carbonell's augmented matrix exponential is the eigen-free replacement for V Λ V⁻¹ + E_2 in the user's published method.
-- **Moffatt & Pierdominici-Sottile 2025** (`42003_2025_9056_MOESM2_ESM.pdf`, SI fully read): MacroIR algorithm equations S1–S6 verified; eigendecomposition route to single-channel γ̄_{i→j} confirmed in eq. S1; Gaussian moment closure on count vector confirmed in eqs. S2–S5. **The immediate predecessor of the new construction.**
+- **Moffatt & Pierdominici-Sottile 2025** (`Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol_SI.pdf`, SI fully read): MacroIR algorithm equations S1–S6 verified; eigendecomposition route to single-channel γ̄_{i→j} confirmed in eq. S1; Gaussian moment closure on count vector confirmed in eqs. S2–S5. **The immediate predecessor of the new construction.**
 
 ### Other PDFs in folder, not yet read in detail (do not change headline claims)
 - Ho, Crawford & Suchard 2018 — listed by Claude.ai report as next-closest competitor for HMC-on-stochastic-SIR. Continued-fraction route, no Kronecker. Worth verifying for completeness.
@@ -355,7 +355,7 @@ This sharpens the framing: the user's paper is positioned as the *bridge* betwee
 
 ### The author's own published lineage (in folder)
 - Moffatt L. (2007). Estimation of Ion Channel Kinetics from Fluctuations of Macroscopic Currents. *Biophys. J.* 93:74–91. doi:10.1529/biophysj.106.101212 — Kalman filter for ML estimation; foundation of the lineage.
-- Moffatt L., Pierdominici-Sottile G. (2025). Bayesian inference of functional asymmetry in a ligand-gated ion channel. *Communications Biology* (DOI 10.1038/s42003-025-09056-x; SI in `42003_2025_9056_MOESM2_ESM.pdf`) — **MacroIR algorithm**: recursive Bayesian likelihood for time-averaged currents, conformational models for P2X2. **The immediate predecessor of the new binary-doubling Qdt construction**, with eigendecomposition + Gaussian moment closure as the two specific limitations the new algorithm addresses.
+- Moffatt L., Pierdominici-Sottile G. (2025). Bayesian inference of functional asymmetry in a ligand-gated ion channel. *Communications Biology* (DOI 10.1038/s42003-025-09056-x; SI in `Moffatt_PierdominiciSottile_2025_Functional_Asymmetry_P2X2_CommBiol_SI.pdf`) — **MacroIR algorithm**: recursive Bayesian likelihood for time-averaged currents, conformational models for P2X2. **The immediate predecessor of the new binary-doubling Qdt construction**, with eigendecomposition + Gaussian moment closure as the two specific limitations the new algorithm addresses.
 
 ### Other PDFs in folder, cited but not yet read in detail
 - Milescu L.S., Akk G., Sachs F. (2005). Maximum Likelihood Estimation of Ion Channel Kinetics from Macroscopic Currents. *Biophys. J.* 88:2494–2515. doi:10.1529/biophysj.104.053256

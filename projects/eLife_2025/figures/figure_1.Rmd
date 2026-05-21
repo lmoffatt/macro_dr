@@ -65,18 +65,20 @@ d_s=read.csv("data/figure_1_simulation.csv")
 
 
 ```{r}
-d%>%filter(component%in%c("logL","elogL","y_mean","y_var", "Chi2"))%>%select(n_step,primitive,algo,component)%>%pivot_wider(names_from = component,values_from = primitive)->dd
+#d%>%filter(variable%in%c("logL","elogL","y_mean","y_var", "Chi2"))%>%select(n_step,primitive,algo,component)%>%pivot_wider(names_from = component,values_from = primitive)->dd
 ```
 
 
 
 ```{r}
-
 d<-d%>%filter(n_step>1)
 d_s<-d_s%>%filter(n_step>1)
 
 d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
+```
 
+
+```{r}
 d_IRV=d%>%filter(algo=="IRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
 
 common_theme = theme_classic()+ theme( legend.position = "right")

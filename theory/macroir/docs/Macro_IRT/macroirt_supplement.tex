@@ -1,0 +1,627 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts,bm,booktabs}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Supplementary Material:\\
+MacroIRT and MacroMRT --- Bayesian Updates with State-Dependent Noise}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\Nch}{N_{\mathrm{ch}}}
+\newcommand{\gbarz}{\overline{\boldsymbol{\gamma}}_0}
+\newcommand{\sbarz}{\overline{\boldsymbol{\sigma}^2}_0}
+\newcommand{\Gbarmat}{\overline{\boldsymbol{\Gamma}}}
+\newcommand{\Vbarmat}{\overline{\boldsymbol{V}}}
+\newcommand{\Vbarv}{\overline{\boldsymbol{V}}_{\!v}}
+\newcommand{\tildegg}{\widetilde{\gamma^{T}\Sigma\gamma}}
+\newcommand{\tildevv}{\widetilde{v^{T}\Sigma v}}
+\newcommand{\tildegvec}{\widetilde{\gamma^{T}\Sigma}}
+\newcommand{\tildevvec}{\widetilde{v^{T}\Sigma}}
+\newcommand{\Sprop}{\boldsymbol{\Sigma}^{\mathrm{prop}}}
+\newcommand{\Spost}{\boldsymbol{\Sigma}^{\mathrm{post}}}
+\newcommand{\mupost}{\boldsymbol{\mu}^{\mathrm{post}}}
+\newcommand{\muprior}{\boldsymbol{\mu}^{\mathrm{prior}}}
+\newcommand{\SmD}{\mathrm{SmD}}
+
+\begin{abstract}
+This supplement derives MacroIRT (interval-averaged Bayesian update with
+state-dependent open-channel noise) and its M-family counterpart MacroMRT,
+in the rank-1 quasi-Laplace formulation. The derivation follows the
+``deepseek'' presentation: expansion at $p=\muprior$, Sherman--Morrison
+inversion, boundary lift via the tilde operator. The full rank-2 exact
+Laplace (which keeps the $\tfrac12\log V$ term and gives a $2\times2$
+Woodbury inversion) is preserved in
+\texttt{theory/macroir/archive/Macro\_IRT/macroirt\_macroirt\_supplement.tex}
+for reference; for typical $\Nch\gtrsim 100$ it makes a negligible
+difference.
+\end{abstract}
+
+% ============================================================
+\section{Setup}
+% ============================================================
+
+We have $\Nch$ independent Markov ion channels with $K$ microscopic states.
+At the start of an interval $[0,t]$, the macroscopic occupancy distribution is
+$\mathbf{r} \sim \mathcal{N}\!\bigl(\boldsymbol{\mu}_0,\ \boldsymbol{\Sigma}_0/\Nch\bigr)$
+(Moffatt 2007 scaling: $\boldsymbol{\Sigma}_0$ is the per-channel covariance,
+$\Nch$-independent). The microscopic dynamics are governed by the rate
+matrix $\mathbf{Q}$ and transition matrix
+$\mathbf{P}(t) = \exp(\mathbf{Q}t)$.
+
+Per boundary pair $(i_0,i_t)$, the model defines two boundary-conditioned
+moments:
+\begin{itemize}
+  \item $\Gbarmat(i_0,i_t)$: boundary mean current
+        $= \E[\,\overline{I}_{0\to t}\,|\,X(0)=i_0, X(t)=i_t\,]$.
+        \quad[code: \texttt{gmean\_ij}]
+  \item $\Vbarmat(i_0,i_t)$: boundary residual variance
+        $= \Var[\,\overline{I}_{0\to t}\,|\,X(0)=i_0, X(t)=i_t\,]$.
+        \quad[code: \texttt{gvar\_ij}]
+\end{itemize}
+
+Their per-$i_0$ marginals (the M-family inputs):
+\begin{align}
+  \gbarz(i_0)
+  &= \sum_{i_t} P_{i_0\to i_t}(t)\,\Gbarmat(i_0,i_t)
+   \quad\text{[code: \texttt{gmean\_i}]}\\
+  \sbarz(i_0)
+  &= \sum_{i_t} P_{i_0\to i_t}(t)\,\Vbarmat(i_0,i_t)
+   \quad\text{[code: \texttt{gvar\_i\_residual} (computed on the fly per the in-place fix)]}
+\end{align}
+
+Centred prior covariance: $\SmD := \boldsymbol{\Sigma}_0 - \diag(\boldsymbol{\mu}_0)$.
+Instrument noise: $e := \epsilon^2/t + \nu^2$.
+
+\paragraph{Important: residual vs. total $\sbarz$.}
+$\sbarz$ above is the \emph{residual} per-$i_0$ variance: the part of
+$\Var(\overline{I}\,|\,X_0)$ that is NOT explained by where the trajectory
+ends ($X_t$). The variance-of-conditional-mean across end states is
+\emph{separately} captured by the boundary cross-correlation term inside
+$\tildegg$ (Section~\ref{sec:predictive}). Using the residual $\sbarz$
+here, with $\tildegg$ separately, avoids the double-count diagnosed in
+\texttt{theory/macroir/notes/gvar\_i\_overcount\_audit.md}.
+
+% ============================================================
+\section{Observation model and predictive moments}
+\label{sec:predictive}
+% ============================================================
+
+The interval-averaged observation $\overline{y}^{\mathrm{obs}}$, given the
+macroscopic occupancy $\mathbf{r}$, is heteroscedastic Gaussian:
+\begin{equation}
+  \overline{y}^{\mathrm{obs}}\,\big|\,\mathbf{r}
+  \,\sim\,
+  \mathcal{N}\bigl(\Nch\,\mathbf{r}\!\cdot\!\boldsymbol{\gamma},\
+                   e + \Nch\,\mathbf{r}\!\cdot\!\boldsymbol{\sigma}^2\bigr),
+\end{equation}
+where for now we treat $\boldsymbol{\gamma}$ and $\boldsymbol{\sigma}^2$ as
+abstract per-state vectors; the boundary lift in
+Section~\ref{sec:boundary-lift} replaces them with their boundary-conditioned
+analogues.
+
+At $\mathbf{r} = \boldsymbol{\mu}_0$ we obtain the \emph{predictive mean and
+variance} (the actual quantities the Kalman update consumes):
+\begin{align}
+  \overline{y}^{\mathrm{pred}}_{0\to t}
+  &= \Nch\,\boldsymbol{\mu}_0\cdot\gbarz,\\
+  V
+  &= e \,+\, \Nch\,\tildegg \,+\, \Nch\,\boldsymbol{\mu}_0\cdot\sbarz,
+  \label{eq:V}
+\end{align}
+where $\tildegg$ is the boundary cross-correlation term (defined in
+Section~\ref{sec:boundary-lift}); for the M-family (no boundary lift) it
+collapses to $\gbarz^{T}\,\boldsymbol{\Sigma}_0\,\gbarz$.
+
+Innovation:
+\begin{equation}
+  \delta := \overline{y}^{\mathrm{obs}} - \overline{y}^{\mathrm{pred}}_{0\to t}.
+\end{equation}
+
+% ============================================================
+\section{Energy, gradient, Hessian (rank-1 quasi-Laplace)}
+% ============================================================
+
+We work with the negative log-posterior \emph{quasi-energy} (dropping the
+$\tfrac12\log V$ term that gives the rank-2 correction):
+\begin{equation}
+  E(\mathbf{r})
+  \,=\,
+  \frac{(y - \Nch\,\mathbf{r}\!\cdot\!\boldsymbol{\gamma})^2}
+       {2(e + \Nch\,\mathbf{r}\!\cdot\!\boldsymbol{\sigma}^2)}
+  \,+\,
+  \tfrac{\Nch}{2}\,(\mathbf{r}-\muprior)\,\boldsymbol{\Sigma}_p^{-1}\,(\mathbf{r}-\muprior)^{T}.
+\end{equation}
+
+Differentiating at $\mathbf{r} = \muprior$ (so the prior gradient vanishes):
+\begin{equation}
+  \mathbf{g}
+  \,=\,
+  -\,\frac{\Nch\,\delta}{V}\,\boldsymbol{\gamma}
+  \,-\,
+  \frac{\Nch\,\delta^2}{2V^2}\,\boldsymbol{\sigma}^2.
+  \label{eq:grad_explicit}
+\end{equation}
+Define the \emph{tilted direction}
+\begin{equation}
+  \boxed{\
+  \mathbf{v} \,:=\, \boldsymbol{\gamma} + \frac{\delta}{V}\,\boldsymbol{\sigma}^2
+  \quad\text{[code: \texttt{v}]}
+  \ }
+  \label{eq:vdef}
+\end{equation}
+which factors the gradient into a single rank-1 direction:
+\begin{equation}
+  \mathbf{g}
+  \,=\,
+  -\,\frac{\Nch\,\delta}{2V}\bigl(\boldsymbol{\gamma} + \mathbf{v}\bigr).
+  \label{eq:grad_factored}
+\end{equation}
+
+The Hessian is rank-1 in the $\mathbf{v}$ direction (the second-derivative
+chain rule absorbs all four $(\boldsymbol{\gamma},\boldsymbol{\sigma}^2)$
+outer products into $\mathbf{v}\mathbf{v}^{T}$):
+\begin{equation}
+  \mathbf{H}
+  \,=\,
+  \Nch\,\boldsymbol{\Sigma}_p^{-1}
+  \,+\,
+  \frac{\Nch^2}{V}\,\mathbf{v}\mathbf{v}^{T}.
+  \label{eq:Hessian}
+\end{equation}
+
+\paragraph{Why the gradient is rank-2 in $(\boldsymbol{\gamma},\boldsymbol{\sigma}^2)$
+but the Hessian is rank-1 in $\mathbf{v}$.}
+The two terms in \eqref{eq:grad_explicit} use different powers of $\delta$
+($\delta^1$ vs $\delta^2$). The Hessian's mixed derivatives recombine these
+into a single $\mathbf{v}\mathbf{v}^{T}$ outer product because
+$\partial(\mathbf{v}\mathbf{v}^{T})/\partial\mathbf{r}$ at $\mathbf{r}=\muprior$
+generates exactly the cross-derivative terms. This is the structural reason
+the rank-1 form is so clean: \emph{the heteroscedasticity is fully absorbed
+into a single direction $\mathbf{v}$}.
+
+% ============================================================
+\section{Sherman--Morrison inversion}
+% ============================================================
+
+Define the scalar
+\begin{equation}
+  \boxed{\
+  s \,:=\, \mathbf{v}^{T}\,\boldsymbol{\Sigma}_p\,\mathbf{v}
+  \quad\text{[code: \texttt{s}]}
+  \ }
+\end{equation}
+(in the M-family this is just the quadratic form; in the I-family it
+becomes the tilde scalar $\tildevv$ of Section~\ref{sec:boundary-lift}).
+
+Sherman--Morrison applied to \eqref{eq:Hessian}:
+\begin{equation}
+  \mathbf{H}^{-1}
+  \,=\,
+  \frac{1}{\Nch}\,\boldsymbol{\Sigma}_p
+  \,-\,
+  \frac{1}{V + \Nch\,s}\,\boldsymbol{\Sigma}_p\,\mathbf{v}\mathbf{v}^{T}\,\boldsymbol{\Sigma}_p.
+\end{equation}
+
+The (Moffatt-scaled) posterior covariance is $\Spost := \Nch\,\mathbf{H}^{-1}$:
+\begin{equation}
+  \boxed{\
+  \Spost
+  \,=\,
+  \boldsymbol{\Sigma}_p
+  \,-\,
+  \frac{\Nch}{V + \Nch\,s}\,\boldsymbol{\Sigma}_p\,\mathbf{v}\mathbf{v}^{T}\,\boldsymbol{\Sigma}_p.
+  \ }
+  \label{eq:Sigma_post_MRT}
+\end{equation}
+
+Posterior mean via Newton step from $\mathbf{r}_0 = \muprior$:
+\begin{equation}
+  \mupost
+  \,=\,
+  \muprior \,-\, \mathbf{H}^{-1}\mathbf{g}
+  \,=\,
+  \muprior \,-\, (\Spost/\Nch)\,\mathbf{g}.
+\end{equation}
+With $\mathbf{g}$ from \eqref{eq:grad_factored}:
+\begin{equation}
+  \boxed{\
+  \mupost
+  \,=\,
+  \muprior \,+\, \frac{\delta}{2V}\,\Spost\,(\boldsymbol{\gamma} + \mathbf{v}).
+  \ }
+  \label{eq:mu_post_MRT}
+\end{equation}
+
+% ============================================================
+\section{Boundary-state lift via the tilde operator}
+\label{sec:boundary-lift}
+% ============================================================
+
+For the I-family (interval-averaged measurement), $\boldsymbol{\gamma}$ and
+$\boldsymbol{\sigma}^2$ in the formulas above are not per-state constants but
+boundary-conditioned moments $\Gbarmat$ and $\Vbarmat$. The tilde operator
+expresses each of the four bilinear forms appearing in
+\eqref{eq:Sigma_post_MRT}--\eqref{eq:mu_post_MRT} in terms of
+$\boldsymbol{\Sigma}_p$ ($K\!\times\! K$), $\mathbf{P}$ ($K\!\times\! K$), and
+$\Gbarmat,\Vbarmat$ ($K\!\times\! K$). \textbf{No $K^2\!\times\! K^2$ object is
+ever materialised.}
+
+\paragraph{Tilde scalar.}
+For boundary moment matrices $\overline{\mathbf{U}},\overline{\mathbf{W}}$ with
+per-$i_0$ marginals $\overline{\mathbf{u}}_0,\overline{\mathbf{w}}_0$:
+\begin{equation}
+  \widetilde{u^{T}\Sigma w}
+  \,:=\,
+  \overline{\mathbf{u}}_0^{T}\,\SmD\,\overline{\mathbf{w}}_0
+  \,+\,
+  \boldsymbol{\mu}_0^{T}\!\bigl[\,\mathbf{P}\circ\overline{\mathbf{U}}\circ\overline{\mathbf{W}}\,\bigr]\mathbf{1}.
+\end{equation}
+
+\paragraph{Tilde vector (endpoint frame).}
+\begin{equation}
+  \widetilde{u^{T}\Sigma}
+  \,:=\,
+  \overline{\mathbf{u}}_0^{T}\,\SmD\,\mathbf{P}
+  \,+\,
+  \boldsymbol{\mu}_0\,\bigl[\mathbf{P}\circ\overline{\mathbf{U}}\bigr].
+\end{equation}
+
+\paragraph{The two new tilde objects needed for IRT.}
+The $\mathbf{v}$-direction lift requires the boundary-lifted analog of
+$\mathbf{v}$ at the boundary level:
+\begin{equation}
+  \boxed{\
+  \Vbarv \,:=\, \Gbarmat \,+\, \frac{\delta}{V}\,\Vbarmat
+  \quad\text{[code: \texttt{gtotal\_v\_ij} (new), mirrors \texttt{gtotal\_ij} family]}
+  \ }
+\end{equation}
+(elementwise on the $K\!\times\! K$ boundary matrices). Then:
+\begin{align}
+  \tildevvec
+  &= \mathbf{v}^{T}\,\SmD\,\mathbf{P}
+   + \boldsymbol{\mu}_0\,(\mathbf{P}\circ\Vbarv),
+   &\text{[code: \texttt{vS} (new), mirrors \texttt{gS}]}
+   \label{eq:tilde_v_vec}\\
+  \tildevv
+  &= \mathbf{v}^{T}\,\SmD\,\mathbf{v}
+   + \boldsymbol{\mu}_0^{T}\!\bigl[\mathbf{P}\circ\Vbarv\circ\Vbarv\bigr]\mathbf{1}.
+   &\text{[code: \texttt{vSv} (new), mirrors \texttt{gSg}]}
+   \label{eq:tilde_v_v}
+\end{align}
+The $\boldsymbol{\gamma}$-direction lift (already in current MacroIR code):
+\begin{align}
+  \tildegvec
+  &= \gbarz^{T}\,\SmD\,\mathbf{P}
+   + \boldsymbol{\mu}_0\,(\mathbf{P}\circ\Gbarmat),
+   &\text{[code: \texttt{gS}]}\\
+  \tildegg
+  &= \gbarz^{T}\,\SmD\,\gbarz
+   + \boldsymbol{\mu}_0^{T}\!\bigl[\mathbf{P}\circ\Gbarmat\circ\Gbarmat\bigr]\mathbf{1}.
+   &\text{[code: \texttt{gSg}]}
+\end{align}
+
+% ============================================================
+\section{MacroIRT update equations}
+% ============================================================
+
+The IRT mean update is \emph{not} a direct ``substitute $(\boldsymbol{\gamma}+\mathbf{v}) \to (\tildegvec + \tildevvec)$ and keep $\Spost$ on the right'' of the M-family boxed equation. That naive substitution under-shoots by a factor $V/V_{\mathrm{pred}}$ at $\mathbf{v}=\boldsymbol{\gamma}$ and fails to reduce to MacroIR. The correct lift propagates the start-frame Newton step through $\mathbf{P}(t)$ and expands the Sherman--Morrison down-date \emph{before} applying the tilde substitution.
+
+\paragraph{Derivation.}
+The M-family Newton step at $p_0=\muprior$ in start frame is
+\(
+  \Delta p_{\text{start}}^{\text{col}}
+  = (\delta/(2V))\,\Sigma_p^{\text{post}}(\boldsymbol{\gamma}+\mathbf{v})
+\)
+with the rank-1 SM-derived
+\(
+  \Sigma_p^{\text{post}} = (1/\Nch)\Sigma_p - (1/(V+\Nch s))\Sigma_p\mathbf{v}\mathbf{v}^{T}\Sigma_p
+\),
+$s=\mathbf{v}^{T}\Sigma_p\mathbf{v}$, $V=\epsilon^2+\Nch\,\boldsymbol{\mu}\!\cdot\!\boldsymbol{\sigma}^2$
+(the energy-derivation value of $V$, equal to $V_{\mathrm{obs}}$ in code, \emph{not} the predictive $V_{\mathrm{pred}}=V+\Nch\tildegg$).
+Projecting to endpoint frame as a row, $\Delta p_{\text{end}} = (\Delta p_{\text{start}}^{\text{col}})^{T}\mathbf{P}$, and expanding $\Sigma_p^{\text{post}}$:
+\begin{align*}
+  \Delta p_{\text{end}}
+  &= (\delta/(2V))\,(\boldsymbol{\gamma}+\mathbf{v})^{T}\Sigma_p^{\text{post}}\,\mathbf{P}\\
+  &= (\delta/(2V))\Bigl[(\boldsymbol{\gamma}+\mathbf{v})^{T}\Sigma_p\mathbf{P}
+       \;-\; \frac{\Nch}{V+\Nch s}\,(\boldsymbol{\gamma}+\mathbf{v})^{T}\Sigma_p\mathbf{v}\;\mathbf{v}^{T}\Sigma_p\mathbf{P}\Bigr].
+\end{align*}
+The tilde lift then replaces each underlined-by-shape object by its boundary-conditioned analog --- as a single contracted unit, not as ``$\boldsymbol{\gamma}^{T}$ alone, with $\Sigma$ outside'':
+\begin{itemize}
+  \item $\boldsymbol{\gamma}^{T}\Sigma_p\mathbf{P} \;\to\; \tildegvec$
+  \item $\mathbf{v}^{T}\Sigma_p\mathbf{P} \;\to\; \tildevvec$
+  \item $\mathbf{v}^{T}\Sigma_p\mathbf{v} \;\to\; \tildevv$
+  \item $\boldsymbol{\gamma}^{T}\Sigma_p\mathbf{v} \;\to\; b' := \widetilde{\gamma^{T}\Sigma v} = \tildegg + \alpha\,(\delta/V)\,b_{\text{tilde}}$,
+        where $b_{\text{tilde}} := \widetilde{\gamma^{T}\Sigma\sigma^2}$ is the cross tilde scalar between the $\boldsymbol{\gamma}$ and $\boldsymbol{\sigma}^2$ directions.
+\end{itemize}
+
+\paragraph{Propagation.}
+\begin{align}
+  \muprior &= \boldsymbol{\mu}_0\,\mathbf{P}(t),
+   &\text{[code: \texttt{p\_P\_mean() * t\_P()}]}\\
+  \Sprop
+  &= \mathbf{P}(t)^{T}\,\SmD\,\mathbf{P}(t) + \diag(\muprior),
+   &\text{[code: \texttt{sigma\_pre}]}
+\end{align}
+
+\paragraph{Posterior covariance (rank-1 down-date, endpoint frame).}
+\begin{equation}
+  \boxed{\
+  \Spost
+  \,=\,
+  \Sprop
+  \,-\,
+  \frac{\Nch}{V + \Nch\,\tildevv}\,(\tildevvec)^{T}\,\tildevvec.
+  \ }
+  \label{eq:Sigma_post_IRT}
+\end{equation}
+This rank-1 down-date \emph{is} correct as stated --- only the mean update needed the SM expansion.
+
+\paragraph{Posterior mean (single Newton step from $\muprior$, corrected form).}
+With $\mathrm{sm} := \Nch / (V + \Nch\,\tildevv)$ the SM factor used in $\Spost$,
+\begin{equation}
+  \boxed{\
+  \mupost
+  \,=\,
+  \muprior
+  \,+\,
+  \frac{\delta}{2V}\,\Bigl[\,(\tildegvec + \tildevvec)\;-\;\mathrm{sm}\,(b' + \tildevv)\,\tildevvec\,\Bigr].
+  \ }
+  \label{eq:mu_post_IRT}
+\end{equation}
+This is the rigorous IRT mean update. The bracket can be read as ``ideal gradient direction $(\tildegvec+\tildevvec)$ minus the SM down-projection along the $\tildevvec$ direction''.
+
+\paragraph{Reduction to MacroIR at $\boldsymbol{\sigma}^2 = 0$.}
+With $\mathbf{v}=\boldsymbol{\gamma}$, $\tildevvec=\tildegvec$, $\tildevv=\tildegg$, $b'=\tildegg$, the bracket becomes
+\(
+  2\tildegvec - \mathrm{sm}\,(2\tildegg)\,\tildegvec = 2\tildegvec(1 - \Nch\tildegg/V_{\mathrm{pred}}) = 2\tildegvec\,V/V_{\mathrm{pred}}
+\)
+(using $V_{\mathrm{pred}}=V+\Nch\tildegg$), so $\mupost = \muprior + (\delta/V_{\mathrm{pred}})\,\tildegvec$ --- the canonical MacroIR endpoint Kalman update from \texttt{theory/macroir/docs/Macro\_IR/MacroIR\_tilde.md} \S4.2. \emph{Structural}, not coincidental. This was the test that the previous ``$(\tildegvec+\tildevvec)\Spost$'' form failed.
+
+% ============================================================
+\section{MacroMRT update equations}
+% ============================================================
+
+The M-family is the no-boundary-lift restriction. Replace each tilde
+scalar/vector with its per-$i_0$ ensemble counterpart (drop the
+$\boldsymbol{\mu}_0\,[\mathbf{P}\circ\dots]\mathbf{1}$ second term in
+each tilde):
+\begin{align}
+  \tildegg &\to \gbarz^{T}\,\SmD\,\gbarz,\\
+  \tildevv &\to \mathbf{v}^{T}\,\SmD\,\mathbf{v},\\
+  \tildegvec &\to \gbarz^{T}\,\SmD\,\mathbf{P},\\
+  \tildevvec &\to \mathbf{v}^{T}\,\SmD\,\mathbf{P}.
+\end{align}
+With these substitutions the same boxed update formulas apply. Importantly,
+in the M-family the $\sbarz$ entering $\mathbf{v}=\gbarz + (\delta/V)\sbarz$
+is the \emph{total} variance $\gbarz^{T}\!\diag\,\gbarz - \dots$ (or
+equivalently $\mathtt{gsqr\_i} - \mathtt{gmean\_i}^2$), not the residual:
+the M-family has no boundary cross-correlation in $\tildegg$, so the
+total-variance form is what's needed (no double-count concern).
+
+% ============================================================
+\section{Reductions (the diamond)}
+% ============================================================
+
+\begin{center}
+\begin{tabular}{l c c}
+\toprule
+& Boundary lift? & $\boldsymbol{\sigma}^2$ Taylor (i.e. $\mathbf{v}$ direction)? \\
+\midrule
+MacroMR  & no  & no \\
+MacroMRT & no  & yes \\
+MacroIR  & yes & no \\
+MacroIRT & yes & yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{IRT $\to$ IR (set $\sbarz = \mathbf{0}$).}
+$\mathbf{v}=\gbarz$, $\Vbarv=\Gbarmat$, $\tildevvec=\tildegvec$,
+$\tildevv=\tildegg$. The mean update collapses to
+$\mupost = \muprior + (\delta/V)\,\tildegvec\,\Spost / 2 \cdot 2 = \muprior + (\delta/V)\,\tildegvec\,\Spost / \dots$
+Actually more carefully: with $\boldsymbol{\gamma} + \mathbf{v} = 2\gbarz$ at
+$\sbarz=0$, the factor $\delta/(2V) \cdot 2 = \delta/V$, recovering the
+standard MacroIR update.
+
+\paragraph{IRT $\to$ MRT (drop boundary lift).}
+Per-$i_0$ substitutions of Section~7.
+
+\paragraph{MRT $\to$ MR (set $\sbarz = \mathbf{0}$).}
+Recovers Moffatt 2007.
+
+% ============================================================
+\section{Implementation map (math $\leftrightarrow$ code)}
+% ============================================================
+
+Naming policy: \textbf{keep all existing code names; introduce new names
+only where no existing analog exists}. The four genuinely new objects
+(rank-1 quasi-Laplace) are \texttt{v}, \texttt{gtotal\_v\_ij}, \texttt{vS},
+\texttt{vSv}, named to mirror the existing \texttt{gtotal\_ij}/\texttt{gS}/\texttt{gSg}
+patterns.
+
+\begin{center}
+\begin{tabular}{l l l}
+\toprule
+Math & Code name & Status \\
+\midrule
+$\boldsymbol{\mu}_0$ & \texttt{p\_P\_mean} & existing \\
+$\boldsymbol{\Sigma}_0$ & \texttt{p\_P\_Cov} & existing \\
+$\boldsymbol{\Sigma}_0 - \diag\boldsymbol{\mu}_0$ & \texttt{SmD} & existing \\
+$\mathbf{P}(t)$ & \texttt{t\_P} & existing \\
+$\Gbarmat$ (boundary mean current) & \texttt{gmean\_ij} & existing \\
+$\Vbarmat$ (boundary residual var) & \texttt{gvar\_ij} & existing in \texttt{Qdt} \\
+$\gbarz$ (per-$i_0$ mean) & \texttt{gmean\_i} & existing (also \texttt{t\_gmean\_i} in scope) \\
+$\sbarz$ (per-$i_0$ residual var) & \texttt{gvar\_i\_residual} & added at \texttt{qmodel.h:4063} \\
+$P_{ij}\,\Gbarmat$ & \texttt{gtotal\_ij} & existing \\
+$P_{ij}\,\Vbarmat$ & \texttt{gtotal\_var\_ij} & existing in \texttt{Qdt} \\
+$\delta$ (innovation) & \texttt{dy} & existing \\
+$V$ (predictive variance) & \texttt{r\_y\_var} & existing \\
+$\tildegvec$ (\(\boldsymbol{\gamma}\)-direction tilde vector) & \texttt{gS} & existing \\
+$\tildegg$ (\(\boldsymbol{\gamma}\)-direction tilde scalar) & \texttt{gSg} & existing \\
+$\muprior$ & \texttt{mu\_prior} (= \texttt{p\_P\_mean * t\_P}) & existing \\
+$\Sprop$ & \texttt{sigma\_pre} & existing \\
+\midrule
+\multicolumn{3}{l}{\textit{New objects (rank-1 quasi-Laplace IRT/MRT):}}\\
+$\mathbf{v} = \gbarz + (\delta/V)\sbarz$ & \texttt{v} & new \\
+$\Vbarv = \Gbarmat + (\delta/V)\Vbarmat$ & \texttt{gtotal\_v\_ij} & new (mirrors \texttt{gtotal\_ij} family) \\
+$\tildevvec$ & \texttt{vS} & new (mirrors \texttt{gS}) \\
+$\tildevv$ & \texttt{vSv} & new (mirrors \texttt{gSg}) \\
+$\mupost$ & \texttt{r\_P\_mean} & existing (replaces standard Kalman) \\
+$\Spost$ & \texttt{r\_P\_cov} & existing (replaces standard Kalman) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Note on alternative naming.}
+The deepseek doc proposed math-faithful names (\texttt{gamma0\_bar},
+\texttt{sigma2\_gamma0}, \texttt{Gamma\_bar}, \texttt{V\_bar}, \texttt{tilde\_v\_Sigma\_vec},
+etc.). We do \emph{not} adopt these because they would parallel rather than
+reuse the existing kernel naming. The existing names
+(\texttt{gmean\_i}, \texttt{gmean\_ij}, \texttt{gvar\_ij}, \texttt{gS}, \texttt{gSg})
+already follow a consistent pattern; the new objects (\texttt{v},
+\texttt{gtotal\_v\_ij}, \texttt{vS}, \texttt{vSv}) extend that pattern naturally.
+
+\paragraph{Already-dead names available for rank-2 reuse.}
+The submission's orphaned Taylor block at \texttt{qmodel.h:3362} uses
+\texttt{sS} (\(\sigma\)-direction tilde vector \(\widetilde{\sigma^{T}\Sigma}\)),
+\texttt{sSs} (\(\widetilde{\sigma^{T}\Sigma\sigma}\)), \texttt{sSg}
+(\(\widetilde{\sigma^{T}\Sigma\gamma}\)) for the \(\sigma^2\)-direction tilde
+quantities. Rank-1 IRT/MRT does not need these; they are reserved for any
+future rank-2 implementation.
+
+\paragraph{Computational cost over MacroIR.}
+For IRT, the new objects to compute per interval are: \texttt{v} ($O(K)$),
+\texttt{gtotal\_v\_ij} ($O(K^2)$), \texttt{vS} ($O(K^2)$, mirrors existing
+\texttt{gS} computation), \texttt{vSv} ($O(K^2)$, mirrors \texttt{gSg}),
+the Sherman-Morrison factor ($O(1)$). Total overhead is roughly twice the
+existing tilde computations, no new asymptotic complexity. For MRT, even
+simpler: drop the boundary cross-correlation second term in each tilde
+(\texttt{vSv} reduces to \texttt{TranspMult(v,sigma\_pre)*v}, etc.).
+
+% ============================================================
+\section{Pseudo-code}
+% ============================================================
+
+Throughout, \texttt{V\_obs = r\_y\_var - N*gSg} is the measurement-noise piece at $r=\muprior$ (the supplement's $V$ in the energy/Hessian derivation), \emph{not} the predictive \texttt{r\_y\_var = V\_obs + N*gSg}. Using \texttt{r\_y\_var} for $\beta = \delta/V$ in $\mathbf{v}$, and using \texttt{r\_y\_var} in the SM denominator of the mean step, were two of the original bugs.
+
+\paragraph{IRT measurement update (av=2 + vc=true).}
+\begin{verbatim}
+// Inputs in scope from MacroIR setup:
+//   p_P_mean, p_P_Cov, SmD, t_P, t_gmean_i (=gmean_i), gmean_ij, gvar_ij,
+//   gtotal_ij, gtotal_var_ij, gSg, gS, mu_prior, sigma_pre, dy, r_y_var,
+//   N (=N_ch), gvar_i_residual.
+
+// 0. V_obs (the V in the energy/Hessian derivation; NOT r_y_var)
+auto V_obs = r_y_var - N * gSg;
+
+// 1. Effective direction (per-i_0 K-dim), β = δ/V_obs
+auto v = t_gmean_i() + (dy / V_obs) * gvar_i_residual;
+
+// 2. Boundary-lifted v_ij and gtotal_v_ij (used inside vSv and vS)
+auto gtotal_v_ij = gtotal_ij + (dy / V_obs) * gtotal_var_ij;
+auto v_ij        = gmean_ij  + (dy / V_obs) * gvar_ij;
+
+// 3. Tilde scalars (mirrors gSg using the X̃ᵀΣỸ closed form
+//    = TranspMult(X̄,SmD)·Ȳ + p·(gtotal_X_ij ∘ Y_ij)·u)
+Matrix<double> u(p_P_mean().size(), 1, 1.0);
+auto vSv     = getvalue(TranspMult(v, SmD) * v)
+             + getvalue(p_P_mean() * (elemMult(gtotal_v_ij, v_ij) * u));
+auto b_tilde = getvalue(TranspMult(t_gmean_i(), SmD) * gvar_i_residual)
+             + getvalue(p_P_mean() * (elemMult(gtotal_ij, gvar_ij) * u));
+auto b_prime = gSg + (dy / V_obs) * b_tilde;        // γ̃ᵀΣv
+
+// 4. Tilde vector for v in endpoint frame
+auto vS = TranspMult(v, SmD) * t_P() + p_P_mean() * gtotal_v_ij;
+
+// 5. Sherman-Morrison rank-1 down-date (V_obs in denominator!)
+double sm_factor = N / (V_obs + N * vSv);
+auto Sigma_post  = sigma_pre - sm_factor * XTX(vS);
+
+// 6. Mean update (single Newton step from mu_prior; row-vector convention;
+//    the SM expansion is explicit, NOT (gS+vS)·Sigma_post)
+auto mean_dir = (dy / (2 * V_obs)) *
+                ((gS + vS) - sm_factor * (b_prime + vSv) * vS);
+auto mu_post = mu_prior + mean_dir;
+
+// 7. log L unchanged (uses predictive r_y_var, not V_obs)
+double logL = -0.5 * (std::log(2 * M_PI * r_y_var) + dy * dy / r_y_var);
+\end{verbatim}
+
+\paragraph{MRT measurement update (av=1 + vc=true).}
+Same skeleton as IRT but each tilde object collapses to its per-$i_0$
+ensemble counterpart (drop the second $\boldsymbol{\mu}\,[\mathbf{P}\!\circ\!\dots]\mathbf{1}$ term).
+The M-family uses the \emph{total} per-$i_0$ variance
+\texttt{gvar\_i\_total = gsqr\_i - gmean\_i\(^2\)} (no double-count concern,
+since the M-family has no boundary cross-cov in $\tildegg$):
+\begin{verbatim}
+auto V_obs = r_y_var - N * gSg;
+
+// 1. Effective direction (M-family uses gvar_i_total, not residual)
+auto v = t_gmean_i() + (dy / V_obs) * gvar_i_total;
+
+// 3'. Scalar (M-family vSv collapses to start-frame quadratic)
+double vSv     = getvalue(TranspMult(v, p_P_Cov) * v);
+double b_tilde = getvalue(TranspMult(t_gmean_i(), p_P_Cov) * gvar_i_total);
+double b_prime = gSg + (dy / V_obs) * b_tilde;       // γᵀΣ_p v
+
+// 4'. Cross-cov vector vS = vᵀ·Σ_p·P (endpoint frame)
+auto vS = TranspMult(v, p_P_Cov) * t_P;
+
+// 5'. Sherman-Morrison rank-1 down-date
+double sm_factor = N / (V_obs + N * vSv);
+auto Sigma_post  = sigma_pre - sm_factor * XTX(vS);
+
+// 6'. Mean update (same SM-expanded form)
+auto mean_dir = (dy / (2 * V_obs)) *
+                ((gS + vS) - sm_factor * (b_prime + vSv) * vS);
+auto mu_post = mu_prior + mean_dir;
+\end{verbatim}
+
+% ============================================================
+\section{Trust-region simplex shrink (preserved from MacroIR)}
+% ============================================================
+
+The existing trust-region machinery in
+\texttt{safely\_calculate\_Algo\_State\_recursive} (lines 4108-4144 of
+\texttt{legacy/qmodel.h}) ensures $\mupost$ stays inside the simplex floor
+$[p_{\min},p_{\max}]$ and $\Spost$ stays PSD. The same machinery applies to
+the IRT/MRT updates: treat the bracketed direction inside
+\eqref{eq:mu_post_IRT} as the effective \texttt{chi}\,$\cdot$\,\texttt{gS} of the
+standard rank-1 update, and the rank-1 outer product
+$(\tildevvec)^{T}\tildevvec$ as the standard down-date direction. The
+$\alpha_\mu$ and $\alpha_\sigma$ scalar minimisations apply unchanged.
+
+% ============================================================
+\section{Note on the rank-2 exact Laplace}
+% ============================================================
+
+The rank-1 quasi-Laplace formulation above drops the $\tfrac12\log V(\mathbf{r})$
+term from the energy. The rank-2 \emph{exact} Laplace keeps it, which:
+\begin{itemize}
+  \item adds a second score component
+        $\mathrm{score}_V = \delta^2/V - 1$ to the gradient,
+  \item makes the Hessian rank-2 (with an additional
+        $\boldsymbol{\sigma}^2\boldsymbol{\sigma}^{2T}$ outer product, negative-weighted),
+  \item requires a $2\!\times\! 2$ Woodbury inversion instead of the scalar
+        Sherman-Morrison,
+  \item shifts $\mupost$ even when $\delta=0$ (toward states with smaller
+        predicted variance).
+\end{itemize}
+For typical $\Nch\gtrsim 100$ this correction is $O(1/\Nch)$ relative to
+the leading term; the rank-1 formulation is the operational form. The full
+rank-2 derivation, written in the same canonical naming, is preserved in
+\texttt{theory/macroir/archive/Macro\_IRT/macroirt\_macroirt\_supplement.tex}.
+Adopt rank-2 only if small-$\Nch$ stress tests show the rank-1 form
+breaking down.
+
+\end{document}

@@ -519,10 +519,34 @@ template <class C_Qdt>
                 Nchannels());
 
             // P, gtotal, gsqr are now in unordered-microstate normalization.
-            // gmean = gtotal/P, gvar = gsqr/P - gmean².
-            auto micro_gmean_ij_mat = elemDiv(micro_gtotal_out, micro_P_out);
-            auto micro_gvar_ij_mat  = elemDiv(micro_gsqr_out, micro_P_out)
-                                    - elemMult(micro_gmean_ij_mat, micro_gmean_ij_mat);
+            // gmean = gtotal/(P+ε), gvar = gsqr/(P+ε) - gmean².
+            //
+            // The (P+ε) denominator floor is the micro analog of the macro
+            // Bayesian-shrinkage regularization (calc_g_ij_bayes). A re-
+            // aggregated micro (start,end) pair can have micro_P_out ≈ 0
+            // (combinatorially negligible pair); raw elemDiv then gives
+            // 0/0 → nan and Bayes_Rule reports a non-finite likelihood at
+            // k=0. Flooring the denominator by ε = min_P keeps the moments
+            // finite; for a negligible-P pair gmean→~0 but that pair also
+            // carries ~0 mixture weight, so the exact-reference likelihood
+            // is unaffected for pairs that matter. Only the *division* uses
+            // the floored denominator — the stored micro_P (line below)
+            // remains the true un-floored probability.
+            // zip-based floor: p + ε per element, type-generic over plain
+            // double and Derivative<double> (scalar+Derivative is core AD).
+            const double micro_min_P = get<min_P>(t_Qdt)();
+            auto micro_gmean_ij_mat = zip(
+                [micro_min_P](auto const& g, auto const& p) {
+                    return g / (p + micro_min_P);
+                },
+                micro_gtotal_out, micro_P_out);
+            auto micro_gsqr_over_P = zip(
+                [micro_min_P](auto const& s, auto const& p) {
+                    return s / (p + micro_min_P);
+                },
+                micro_gsqr_out, micro_P_out);
+            auto micro_gvar_ij_mat = micro_gsqr_over_P
+                                   - elemMult(micro_gmean_ij_mat, micro_gmean_ij_mat);
             return build<micro_Qdt>(
                 get<number_of_samples>(t_Qdt), get<min_P>(t_Qdt),
                 Nchannels,

@@ -117,12 +117,12 @@
   geom_segment( aes(x=step_start,xend=step_end, elogL+sqrt(vlogL)), linetype = "dotted")+
   geom_segment( aes(x=step_start,xend=step_end, elogL-sqrt(vlogL)), linetype = "dotted")
   )
-  ```
+```
   
   
   
   
-  ```{r}
+```{r}
   d_NR=d%>%filter(algo=="NR")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -141,13 +141,13 @@
                 xend= lead(step_start)+ 0.05*(lead(step_end)-lead(step_start)), yend= P_mean_t2_y0_1))   
   )
   
-  ```
+```
   
   
   
   
   
-  ```{r}
+```{r}
   d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -167,14 +167,14 @@
                 xend= lead(step_start)+ 0.05*(lead(step_end)-lead(step_start)), yend= lead(P_mean_t15_y0_1)))   
   )
   
-  ```
+```
   
   
   
   
   
   
-  ```{r}
+```{r}
   d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -194,14 +194,14 @@
                 xend= lead(step_start)+ 0.05*(lead(step_end)-lead(step_start)), yend= P_mean_t2_y1_1))   
   )
   
-  ```
+```
   
   
   
   
   
   
-  ```{r}
+```{r}
   d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -313,13 +313,12 @@
     
   )
   )
-  ```
+```
   
   
   
   
-  
-  ```{r}
+```{r}
   
   d_MRV=d%>%filter(algo=="MRV")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
@@ -403,12 +402,12 @@
     common_theme+no_y_axis
   
   )+ plot_layout(guides = "collect")
-  ```
+```
   
   
   
   
-  ```{r}
+```{r}
   d_R=d%>%filter(algo=="R")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -497,11 +496,11 @@
     common_theme+no_y_axis
   
   )+ plot_layout(guides = "collect")
-  ```
+```
   
   
   
-  ```{r}
+```{r}
   d_IR=d%>%filter(algo=="IR")%>%select(-row_kind,-param_index, -param_name,-param_col,-derivative_value)%>%pivot_wider(names_from = component, values_from = primitive)
   
   
@@ -540,5 +539,5 @@
   d%>%filter(component=="P_mean_t2_y0_1")%>%ggplot()+geom_point(aes(x=step_start,y=primitive, color=algo))
   d%>%filter(component=="P_mean_t2_y1_1")%>%ggplot()+geom_point(aes(x=step_end,y=primitive, color=algo))+geom_point(data=d%>%filter(component=="P_mean_t1_y1_1"),aes(x=step_start,y=primitive, color=algo))
   
-  ```
+```
   

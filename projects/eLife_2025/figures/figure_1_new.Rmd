@@ -389,6 +389,7 @@ geom_path(data=IRV_prior,aes(x = x, y = y, color = "prior", group = sample_index
 
 ```{r}
 # A. The Ellipses (95% Confidence Regions)
+  ggplot(plot_data_IRV, aes(x = x, y = y, color = Type, fill = Type)) +
   geom_polygon(alpha = 0.2) + # Filled region
   geom_path(linewidth = 1) +  # Outline
   
@@ -403,9 +404,8 @@ geom_path(data=IRV_prior,aes(x = x, y = y, color = "prior", group = sample_index
   labs(title = "MacroMR Update: Prior vs. Posterior",
        subtitle = "95% Probability Regions",
        x = "start probability state",
-       y = "end probability state")
+       y = "end probability state"
   )+
-  (ggplot(plot_data_IRV, aes(x = x, y = y, color = Type, fill = Type)) +
   
   # A. The Ellipses (95% Confidence Regions)
   geom_polygon(alpha = 0.2) + # Filled region
