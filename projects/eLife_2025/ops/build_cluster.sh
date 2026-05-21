@@ -43,10 +43,12 @@ cmake -S . -B "$BUILD_DIR" -GNinja \
     -DCMAKE_CXX_COMPILER=g++ \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-# cc1plus needs several GB per legacy/qmodel.h-heavy TU. Cap parallelism so
-# login nodes don't OOM-kill: use SLURM's allocation when running inside one,
-# else fall back to -j 4 (still safe on most login nodes' memory budget).
-BUILD_JOBS="${SLURM_CPUS_PER_TASK:-4}"
+# cc1plus needs up to ~10+ GB per legacy/qmodel.h-heavy TU (qmodel.h's template
+# instantiations are very wide). Recommended allocation: --cpus-per-task=4
+# --mem=64G  (16 GB per parallel job). Cap parallelism here: inside SLURM use
+# the allocated CPU count; outside, fall back to -j 1 (sequential) — a login
+# node will get OOM-killed at -j 4 on the heavy files.
+BUILD_JOBS="${SLURM_CPUS_PER_TASK:-1}"
 echo "[build_cluster] compiling with -j ${BUILD_JOBS}"
 cmake --build "$BUILD_DIR" -j "${BUILD_JOBS}"
 
