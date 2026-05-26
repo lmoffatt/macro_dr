@@ -9,21 +9,32 @@
 # Required env (set in your interactive shell before sbatch; SLURM passes them
 # in via --export=ALL by default):
 #   CLUSTER   : cluster name (selects projects/eLife_2025/ops/clusters/<CLUSTER>.sh).
-#               Set by sourcing that profile in your shell first.
-#   PATH_MACRO: parent of the macro_dr repo (set by the cluster profile).
 #   BIN       : absolute path to the macrodr_cli to pin this job to,
 #               typically $PWD/build/<cluster>-<git-tag>/macrodr_cli.
 #               Pinning lets later rebuilds proceed without disturbing
 #               in-flight jobs (each holds its binary's inode open).
+# Optional env:
+#   WORKDIR   : directory to cd into before running (default: cwd). The binary
+#               writes its relative output paths (figures/data/...) from here,
+#               so point it at scratch.
+#
+# Positional args = the binary's argv, in order. Each is either:
+#   - a script file (any arg NOT starting with --): resolved to an absolute
+#     path before the cd, so relative paths work; or
+#   - an inline DSL injection (starts with --): forwarded verbatim. The binary
+#     strips the -- and concatenates it into the program at THIS position, so
+#     an injection placed between a head and body file overrides a value before
+#     its consumer runs (a trailing injection lands too late — see the split-
+#     template pattern in the ops docs).
 #
 # Usage:
 #   source projects/eLife_2025/ops/clusters/dirac.sh
 #   projects/eLife_2025/ops/build_cluster.sh dirac     # produces build/dirac-<hash>/macrodr_cli
 #
-#   sbatch --export=ALL,BIN=$PWD/build/dirac-<hash>/macrodr_cli \
+#   sbatch --export=ALL,CLUSTER=dirac,BIN=$PWD/build/dirac-<hash>/macrodr_cli,WORKDIR=/scratch/$USER/macro_dr/eLife_2025 \
 #       [--cpus-per-task=N] [--time=…] [--partition=…] \
 #       projects/eLife_2025/ops/slurm/run_macroir.sh \
-#       <input.macroir> [workdir]
+#       fig2_head.macroir "--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[100])" fig2_body.macroir
 
 #SBATCH --job-name=macroir
 #SBATCH --ntasks=1
@@ -36,14 +47,28 @@
 # (e.g. COLORTERM) and we must source /etc/profile to get the module function.
 set -eo pipefail
 
-INPUT="${1:?Usage: sbatch $0 <input.macroir> [workdir]}"
-WORKDIR="${2:-$(pwd)}"
-INPUT_ABS="$(readlink -f "$INPUT")"
+# CLUSTER selects the profile; BIN pins the binary. PATH_MACRO is NOT required
+# up front — the cluster profile sets it when sourced below.
+: "${CLUSTER:?Set CLUSTER=<name> (must match a profile in ../clusters/)}"
+: "${BIN:?Set BIN=<absolute path to macrodr_cli>, e.g. \$PWD/build/${CLUSTER}-<hash>/macrodr_cli}"
+
+[ "$#" -ge 1 ] || {
+    echo "usage: [WORKDIR=dir] $0 <file.macroir | --key=value> ..." >&2
+    exit 1
+}
+
+WORKDIR="${WORKDIR:-$(pwd)}"
 WORKDIR_ABS="$(readlink -f "$WORKDIR")"
 
-: "${CLUSTER:?Set CLUSTER (source projects/eLife_2025/ops/clusters/<name>.sh in your shell first)}"
-: "${PATH_MACRO:?PATH_MACRO not set — cluster profile incomplete?}"
-: "${BIN:?Set BIN=<absolute path to macrodr_cli>, e.g. \$PWD/build/${CLUSTER}-<hash>/macrodr_cli}"
+# Build the binary's argv: absolutize file args (before the cd below makes
+# relative paths stale); forward --key=value injections verbatim, in order.
+prog_args=()
+for a in "$@"; do
+    case "$a" in
+        --*) prog_args+=("$a") ;;
+        *)   prog_args+=("$(readlink -f "$a")") ;;
+    esac
+done
 
 # Compute-node shells may not have the module command initialised
 [ -f /etc/profile ] && source /etc/profile
@@ -63,7 +88,8 @@ cd "$WORKDIR_ABS"
 echo "[run_macroir] cluster=${CLUSTER}"
 echo "[run_macroir] cwd=${PWD}"
 echo "[run_macroir] bin=${BIN}"
-echo "[run_macroir] input=${INPUT_ABS}"
 echo "[run_macroir] threads=${OMP_NUM_THREADS}"
+echo "[run_macroir] argv:"
+for a in "${prog_args[@]}"; do echo "    ${a}"; done
 
-srun "$BIN" "$INPUT_ABS"
+srun "$BIN" "${prog_args[@]}"

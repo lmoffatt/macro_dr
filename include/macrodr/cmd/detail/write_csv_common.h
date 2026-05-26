@@ -740,6 +740,9 @@ Maybe_error<std::string> write_indexed_rows_csv(const var::IndexSpace& space,
     if (!f.is_open()) {
         return error_message("cannot open ", path_with_extension);
     }
+    // Provenance: leading comment with the building commit. Readers must skip
+    // it (read.csv comment.char="#", readr::read_csv comment="#").
+    f << "# binary=" << GIT_COMMIT_HASH << "\n";
 
     const auto axis_names = axis_column_names(space);
     CsvWriter writer(f, param_names, axis_names);
@@ -1379,6 +1382,9 @@ Maybe_error<std::string> write_summary_csv(const T& x, std::string path,
     if (!f.is_open()) {
         return error_message("cannot open ", path_with_extension);
     }
+    // Provenance: leading comment with the building commit. Readers must skip
+    // it (read.csv comment.char="#", readr::read_csv comment="#").
+    f << "# binary=" << GIT_COMMIT_HASH << "\n";
 
     const auto param_names = get_param_names_if_any(x);
     std::vector<std::string> axis_names;

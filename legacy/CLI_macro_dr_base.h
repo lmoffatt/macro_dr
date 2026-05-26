@@ -132,6 +132,12 @@ inline dsl::Compiler<dsl::Lexer> make_utilities_compiler() {
     cm.push_function("min", dsl::to_typed_function<double,double>([](double n, double m) { return (n < m) ? n : m; }, "n", "m"));
     cm.push_function("min", dsl::to_typed_function<std::size_t,std::size_t>([](std::size_t n, std::size_t m) { return (n < m) ? n : m; }, "n", "m"));
 
+    // String concatenation — lets .macroir scripts derive output paths/run ids
+    // from injected string parameters (e.g. write_csv path = concat(prefix, suffix)),
+    // so dispatched jobs each write to a distinct path. Binary; nest for 3+ pieces.
+    cm.push_function("concat", dsl::to_typed_function<std::string, std::string>(
+                                   [](std::string a, std::string b) { return a + b; }, "a", "b"));
+
     return cm;
 }
 
