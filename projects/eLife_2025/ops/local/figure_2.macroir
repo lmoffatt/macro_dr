@@ -1,3 +1,9 @@
+
+#axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
+#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,200,500,1000,10000])
+# filepath= "figures/data/figure_2_0519_002"
+
+
 model = load_model("scheme_CO")
 #axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
 #axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
@@ -6,9 +12,7 @@ axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1"])
 #axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
 axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
 
-#axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
 
-axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100","1000"])
 
 #axis_Nchanels =axis(name= "Num_ch", labels= ["10","20","100", "200","500","1000","10000"])
 #axis_Nchanels =axis(name= "Num_ch", labels= ["1","10", "100", "1000","10000"])
@@ -17,11 +21,9 @@ axis_Nchanels =axis(name= "Num_ch", labels= ["100"])
 #current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
 current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
 
-#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,200,500,1000,10000])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,1000])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,10,100,1000,10000])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[10,20,100,200,500,1000,10000])
-Num_ch = indexed_double_by(axis= axis_Nchanels,values=[100])
 
 
 parameter = create_parameters(
@@ -73,7 +75,7 @@ simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulati
 
 
 simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation_05_19_002")
+   path= concat(filepath,"_simulation"))
 
 
 
@@ -134,7 +136,7 @@ dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =alg
 data_series = simulations)
 
 #dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
-#   path= "figures/data/figure_2_dlikelihood_predictions_all")
+#   path= concat(filepath,"_dlikelihoods"))
 
 # Numerical (observed) Fisher information per simulation: F_b is the H reference
 # for the IDM and feeds the new Gaussian_Fisher_Distortion diagnostic. Cost:
@@ -155,4 +157,4 @@ likelihood_analysis = likelihood_derivative_basic_diagnostics_paired(
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_basic_diagnostics__0519_002")
+   path= concat(filepath,"_analysis"))

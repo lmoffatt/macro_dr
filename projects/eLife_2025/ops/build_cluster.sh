@@ -43,12 +43,13 @@ cmake -S . -B "$BUILD_DIR" -GNinja \
     -DCMAKE_CXX_COMPILER=g++ \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-# cc1plus needs up to ~10+ GB per legacy/qmodel.h-heavy TU (qmodel.h's template
-# instantiations are very wide). Recommended allocation: --cpus-per-task=4
-# --mem=64G  (16 GB per parallel job). Cap parallelism here: inside SLURM use
-# the allocated CPU count; outside, fall back to -j 1 (sequential) — a login
-# node will get OOM-killed at -j 4 on the heavy files.
-BUILD_JOBS="${SLURM_CPUS_PER_TASK:-1}"
+# cc1plus needs up to ~16 GB on the heaviest TUs (command_manager.cpp,
+# legacy/qmodel.h users — their template instantiations are very wide).
+# Recommended allocation: --cpus-per-task=2 --mem=64G  (32 GB per parallel
+# job). -j defaults to the SLURM allocation; outside SLURM falls back to -j 1
+# to avoid login-node OOM. Override with BUILD_JOBS=N to retune without
+# re-allocating, e.g. BUILD_JOBS=1 projects/.../build_cluster.sh dirac.
+BUILD_JOBS="${BUILD_JOBS:-${SLURM_CPUS_PER_TASK:-1}}"
 echo "[build_cluster] compiling with -j ${BUILD_JOBS}"
 cmake --build "$BUILD_DIR" -j "${BUILD_JOBS}"
 
@@ -62,7 +63,9 @@ echo "[build_cluster] binary:  ${BIN}"
 echo "[build_cluster] current: build/macrodr_cli-${CLUSTER}-current"
 echo
 echo "Submit example:"
-echo "  sbatch --export=ALL,BIN=${BIN} \\"
+echo "  sbatch --export=ALL,CLUSTER=${CLUSTER},BIN=${BIN},WORKDIR=/scratch/\$USER/macro_dr/eLife_2025 \\"
 echo "         projects/eLife_2025/ops/slurm/run_macroir.sh \\"
-echo "         projects/eLife_2025/ops/local/figure_2.macroir \\"
-echo "         projects/eLife_2025"
+echo "         projects/eLife_2025/ops/local/figure_2.macroir"
+echo
+echo "  # with overrides (head + injection + body):"
+echo "  #   ... run_macroir.sh fig2_head.macroir \"--Num_ch = ...\" fig2_body.macroir"
