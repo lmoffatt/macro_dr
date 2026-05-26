@@ -2,6 +2,8 @@
 #axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,200,500,1000,10000])
 # filepath= "figures/data/figure_2_0519_002"
+# n_simulations= 16384
+
 
 
 model = load_model("scheme_CO")
@@ -16,7 +18,9 @@ axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
 
 #axis_Nchanels =axis(name= "Num_ch", labels= ["10","20","100", "200","500","1000","10000"])
 #axis_Nchanels =axis(name= "Num_ch", labels= ["1","10", "100", "1000","10000"])
-axis_Nchanels =axis(name= "Num_ch", labels= ["100"])
+# axis_Nchanels injected by the dispatcher (--axis_Nchanels=...); keep commented
+# so the in-file definition does not clobber the injection.
+#axis_Nchanels =axis(name= "Num_ch", labels= ["100"])
 
 #current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
 current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
@@ -66,7 +70,7 @@ model_str="scheme_CO"
 simulation_axis = axis(name= "simulation_algorithm", labels= ["uniformization"])
 
 
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 16384, experiment = experiment,
+simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= n_simulations, experiment = experiment,
                          observations = observations, 
                          simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["uniformization"]),
                          number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
@@ -153,7 +157,7 @@ likelihood_analysis = likelihood_derivative_basic_diagnostics_paired(
     numerical_fisher_information = numerical_fisher_information,
     n_boostrap_samples = 100,
     probits = [ 0.025 , 0.975 ] , seed=0, max_lag=10,
-    samples_dir = "figures/data/figure_2_samples__0519_002")
+    samples_dir = filepath )
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
