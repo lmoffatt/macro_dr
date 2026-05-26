@@ -30,6 +30,20 @@ TAG="${2:-$(git rev-parse --short HEAD)}"
 PROFILE="${OPS_DIR}/clusters/${CLUSTER}.sh"
 [ -f "$PROFILE" ] || { echo "[build_cluster] No such cluster profile: $PROFILE" >&2; exit 1; }
 
+# Heavy build (~16 GB/TU) — must run on a compute node, never the login node.
+# If not already inside an allocation, resubmit ourselves as a *batch* job
+# (detached → survives disconnects, unlike interactive salloc) and exit. The
+# resubmitted run has SLURM_JOB_ID set, so it falls through and builds.
+# TAG is frozen here so the job builds the commit you submitted at.
+if [ -z "${SLURM_JOB_ID:-}" ]; then
+    echo "[build_cluster] no allocation — submitting build to ${PARTITION:-batch} (watch: tail -f build-${CLUSTER}-<jobid>.out)"
+    exec sbatch --partition="${PARTITION:-batch}" \
+                --cpus-per-task="${BUILD_CPUS:-2}" --mem="${BUILD_MEM:-64G}" \
+                --time="${BUILD_TIME:-08:00:00}" \
+                --job-name="build_${CLUSTER}" --output="build-${CLUSTER}-%j.out" \
+                "$(readlink -f "$0")" "$CLUSTER" "$TAG"
+fi
+
 # Load module command (compute/login nodes that don't auto-init it)
 [ -f /etc/profile ] && source /etc/profile
 
