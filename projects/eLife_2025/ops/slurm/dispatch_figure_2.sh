@@ -46,7 +46,7 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 # This run's grid. NCHS and N_SIMS are parallel arrays paired by index:
 # job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
-N_SIMS=(${N_SIMS:-1024 1024 2048 2048})
+N_SIMS=(${N_SIMS:-1024 1024 1024 1024})
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
     echo "[dispatch] NCHS (${#NCHS[@]} values) and N_SIMS (${#N_SIMS[@]} values) must be the same length" >&2
@@ -64,7 +64,7 @@ for i in "${!NCHS[@]}"; do
     axis_arg=$(printf -- '--axis_Nchanels = axis(name= "Num_ch", labels= ["%s"])' "$nch")
     num_arg=$( printf -- '--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[%s])' "$nch")
     nsim_arg=$(printf -- '--n_simulations = %s' "$nsim")
-    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s"' "$nch")
+    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s_nsim_%s"' "$nch" "$nsim")
 
     jobid=$(sbatch --parsable \
         --partition="${PARTITION:-batch}" \
@@ -78,7 +78,7 @@ for i in "${!NCHS[@]}"; do
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$SCRIPT")
 
-    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_*"
+    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"
 done
 
 echo
