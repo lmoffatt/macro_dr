@@ -7,11 +7,12 @@
 
 
 model = load_model("scheme_CO")
-#axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
+axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
 #axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
 
-axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1"])
+#axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1"])
 #axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
+
 axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
 
 
@@ -47,15 +48,15 @@ parameter = create_parameters(
 
 experiment = create_experiment(
    experiment_structure=[
-     # {indexed_size_by(axis= axis_interval,values=[2,4,10,20,40,100,200]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0},
-     # {indexed_size_by(axis= axis_interval,values=[4,8,20,40,80,200,400]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),10.0},
-     # {indexed_size_by(axis= axis_interval,values=[4,8,20,40,80,200,400]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0}
+      {indexed_size_by(axis= axis_interval,values=[2,4,10,20,40,100,200]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[4,8,20,40,80,200,400]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[4,8,20,40,80,200,400]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0}
      # {indexed_size_by(axis= axis_interval,values=[2,4,10,20]),indexed_size_by(axis= axis_interval,values=[500,250,100,50]),0.0},
      # {indexed_size_by(axis= axis_interval,values=[4,8,20,40]),indexed_size_by(axis= axis_interval,values=[500,250,100,50]),10.0},
      # {indexed_size_by(axis= axis_interval,values=[4,8,20,40]),indexed_size_by(axis= axis_interval,values=[500,250,100,50]),0.0}
-       {indexed_size_by(axis= axis_interval,values=[2,20]),indexed_size_by(axis= axis_interval,values=[500,50]),0.0},
-     {indexed_size_by(axis= axis_interval,values=[4,40]),indexed_size_by(axis= axis_interval,values=[500,50]),10.0},
-      {indexed_size_by(axis= axis_interval,values=[4,40]),indexed_size_by(axis= axis_interval,values=[500,50]),0.0}
+     #  {indexed_size_by(axis= axis_interval,values=[2,20]),indexed_size_by(axis= axis_interval,values=[500,50]),0.0},
+     #  {indexed_size_by(axis= axis_interval,values=[4,40]),indexed_size_by(axis= axis_interval,values=[500,50]),10.0},
+     #  {indexed_size_by(axis= axis_interval,values=[4,40]),indexed_size_by(axis= axis_interval,values=[500,50]),0.0}
       ], 
 frequency_of_sampling = 50e3,
 initial_agonist = 0.0, 
