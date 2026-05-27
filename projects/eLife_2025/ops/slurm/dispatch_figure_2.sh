@@ -49,7 +49,7 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 # This run's grid. NCHS and N_SIMS are parallel arrays paired by index:
 # job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
-N_SIMS=(${N_SIMS:-512 512 512 512})
+N_SIMS=(${N_SIMS:-4096 4096 4096 4096})
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
     echo "[dispatch] NCHS (${#NCHS[@]} values) and N_SIMS (${#N_SIMS[@]} values) must be the same length" >&2
