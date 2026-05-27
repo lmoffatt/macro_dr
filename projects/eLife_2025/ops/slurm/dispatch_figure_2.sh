@@ -57,7 +57,7 @@ N_SIMS=(${N_SIMS:-1024 1024 1024 1024})
 }
 
 # Shared output dir on scratch; jobs write nch-distinct filenames into it.
-WORKDIR="${SCRATCH_MACRO:-/scratch/$USER/macro_dr}/eLife_2025"
+WORKDIR="${SCRATCH_MACRO:-/scratch/$(whoami)/macro_dr}/eLife_2025"
 mkdir -p "$WORKDIR/figures/data" "$WORKDIR/logs"
 
 for i in "${!NCHS[@]}"; do
@@ -85,4 +85,4 @@ for i in "${!NCHS[@]}"; do
 done
 
 echo
-echo "watch: squeue -u \$USER   logs: tail -f ${WORKDIR}/logs/slurm-<jobid>.out"
+echo "watch: squeue -u \$(whoami)   logs: tail -f ${WORKDIR}/logs/slurm-<jobid>.out"

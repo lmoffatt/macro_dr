@@ -26,7 +26,7 @@ export BLA_VENDOR=Intel10_64lp_seq
 
 # Scratch root for SLURM outputs (home quota is 160 GB; scratch is 4 TB BeeGFS,
 # files >30 days auto-deleted). Submit lines should point WORKDIR here.
-export SCRATCH_MACRO=/scratch/${USER}/macro_dr
+export SCRATCH_MACRO=/scratch/$(whoami)/macro_dr   # $(whoami): $USER is not always set
 
 if [ -z "${PARTITION}" ]; then
     export PARTITION=batch
