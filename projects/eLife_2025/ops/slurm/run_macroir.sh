@@ -97,4 +97,10 @@ echo "[run_macroir] threads=${OMP_NUM_THREADS}"
 echo "[run_macroir] argv:"
 for a in "${prog_args[@]}"; do echo "    ${a}"; done
 
-srun "$BIN" "${prog_args[@]}"
+# Run the binary directly — NO srun. This is a single-node, single-process
+# OpenMP job: the batch allocation already owns all $SLURM_CPUS_PER_TASK cores,
+# so the binary inherits them and OMP spreads across all of them. Wrapping in
+# `srun` pins the step to 1 CPU on SLURM >=22.05 (it no longer propagates
+# --cpus-per-task to the step), which crams all OMP threads onto one core
+# (observed: 1 core busy, 31 idle). Direct exec avoids that.
+"$BIN" "${prog_args[@]}"
