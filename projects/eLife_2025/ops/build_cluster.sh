@@ -41,6 +41,7 @@ PROFILE="${OPS_DIR}/clusters/${CLUSTER}.sh"
 if [ -z "${SLURM_JOB_ID:-}" ]; then
     echo "[build_cluster] no allocation — submitting build to ${PARTITION:-batch} (watch: tail -f build-${CLUSTER}-<jobid>.out)"
     exec sbatch --partition="${PARTITION:-batch}" \
+                ${ACCOUNT:+--account="$ACCOUNT"} \
                 --cpus-per-task="${BUILD_CPUS:-2}" --mem="${BUILD_MEM:-64G}" \
                 --time="${BUILD_TIME:-08:00:00}" \
                 --job-name="build_${CLUSTER}" --output="build-${CLUSTER}-%j.out" \
@@ -62,7 +63,7 @@ BUILD_DIR="build/${CLUSTER}-${TAG}"
 # bridges that: unchanged TUs are cache hits even in a fresh dir. Use it if
 # available; harmless no-op otherwise.
 CCACHE="$(command -v ccache || true)"
-cmake -S . -B "$BUILD_DIR" -GNinja \
+cmake -S . -B "$BUILD_DIR" -G "${MACRODR_GENERATOR:-Ninja}" \
     ${CCACHE:+-DCMAKE_CXX_COMPILER_LAUNCHER="$CCACHE"} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=g++ \
