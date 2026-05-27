@@ -85,9 +85,15 @@ PROFILE="${MACRODR_PROFILE:-$(dirname "$(readlink -f "$0")")/../clusters/${CLUST
 source "$PROFILE"
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
-export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
-export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
-export BLIS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
+# BLAS must stay single-threaded: parallelism lives at the per-simulation /
+# bootstrap OpenMP level (combos serialized via MACRODR_AXIS_SERIAL), so a
+# threaded BLAS would oversubscribe — OMP_NUM_THREADS × BLAS threads per call.
+# Sequential BLAS lets the per-sim loop own all the cores. Required on
+# Clementina (threaded OpenBLAS); harmless on dirac (sequential-MKL build
+# ignores these). Override with BLAS_THREADS=N if a run wants BLAS-level parallelism.
+export OPENBLAS_NUM_THREADS="${BLAS_THREADS:-1}"
+export MKL_NUM_THREADS="${BLAS_THREADS:-1}"
+export BLIS_NUM_THREADS="${BLAS_THREADS:-1}"
 
 cd "$WORKDIR_ABS"
 echo "[run_macroir] cluster=${CLUSTER}"
