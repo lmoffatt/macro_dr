@@ -187,7 +187,8 @@ target_include_directories(macrodr_core PUBLIC
     $<INSTALL_INTERFACE:include>)
 target_include_directories(macrodr_core SYSTEM PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/legacy>
-    $<INSTALL_INTERFACE:legacy>)
+    $<INSTALL_INTERFACE:legacy>
+    ${gsl_dir})   # GSL headers — don't rely on the module's CPATH being inherited
 
 target_compile_definitions(macrodr_core
     PUBLIC GIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
