@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector> // IWYU pragma: keep
+#include <optional>
 #include <random>
 #include <algorithm>
 #include <cmath>
@@ -127,13 +128,23 @@ auto bootstrap_it_two(F&& f, const std::vector<V1>& vs1, const std::vector<V2>& 
     using R = std::decay_t<decltype(f(vs1, generate_bootstrap_indices(vs1.size(), gen),
                                        vs2, generate_bootstrap_indices(vs2.size(), gen),
                                        std::forward<T>(args)...))>;
+    // 1) Serial RNG pass: pre-draw all replicate index vectors, in the same
+    //    (idx1 then idx2, per replicate) order as the original loop, so results
+    //    stay seed-reproducible independent of the parallel thread count below.
+    std::vector<std::vector<std::size_t>> idx1s(n_replicates), idx2s(n_replicates);
+    for (std::size_t i = 0; i < n_replicates; ++i) {
+        idx1s[i] = generate_bootstrap_indices(vs1.size(), gen);
+        idx2s[i] = generate_bootstrap_indices(vs2.size(), gen);
+    }
+    // 2) Parallel pass: replicates are independent; f must be pure. f/args are
+    //    invoked n_replicates times, so pass as lvalues (no std::forward here).
+    std::vector<std::optional<R>> slots(n_replicates);
+#pragma omp parallel for schedule(dynamic)
+    for (std::size_t i = 0; i < n_replicates; ++i)
+        slots[i].emplace(f(vs1, idx1s[i], vs2, idx2s[i], args...));
     bootstrap<R> out;
     out.reserve(n_replicates);
-    for (std::size_t i = 0; i < n_replicates; ++i) {
-        auto idx1 = generate_bootstrap_indices(vs1.size(), gen);
-        auto idx2 = generate_bootstrap_indices(vs2.size(), gen);
-        out.push_back(std::forward<F>(f)(vs1, idx1, vs2, idx2, std::forward<T>(args)...));
-    }
+    for (auto& s : slots) out.push_back(std::move(*s));
     return out;
 }
 
@@ -164,17 +175,23 @@ auto bootstrap_it_two_paired(F&& f, const std::vector<V1>& vs1, const std::vecto
                               std::size_t n_replicates, mt_64i& gen, T&& ...args) {
     assert(vs1.size() == vs2.size() &&
            "bootstrap_it_two_paired requires matching sizes (use decimate=1)");
-    auto seed_idx = generate_bootstrap_indices(vs1.size(), gen);
-    using R = std::decay_t<decltype(f(vs1, seed_idx, vs2, seed_idx,
+    // 1) Serial RNG pass: pre-draw one shared index vector per replicate, in the
+    //    same order/count as the original (replicate 0 first), so results stay
+    //    seed-reproducible regardless of the parallel thread count below.
+    std::vector<std::vector<std::size_t>> idxs(n_replicates);
+    for (std::size_t i = 0; i < n_replicates; ++i)
+        idxs[i] = generate_bootstrap_indices(vs1.size(), gen);
+    using R = std::decay_t<decltype(f(vs1, idxs[0], vs2, idxs[0],
                                        std::forward<T>(args)...))>;
+    // 2) Parallel pass: replicates independent; f must be pure. f/args invoked
+    //    n_replicates times → pass as lvalues (no std::forward here).
+    std::vector<std::optional<R>> slots(n_replicates);
+#pragma omp parallel for schedule(dynamic)
+    for (std::size_t i = 0; i < n_replicates; ++i)
+        slots[i].emplace(f(vs1, idxs[i], vs2, idxs[i], args...));
     bootstrap<R> out;
     out.reserve(n_replicates);
-    out.push_back(std::forward<F>(f)(vs1, seed_idx, vs2, seed_idx,
-                                      std::forward<T>(args)...));
-    for (std::size_t i = 1; i < n_replicates; ++i) {
-        auto idx = generate_bootstrap_indices(vs1.size(), gen);
-        out.push_back(std::forward<F>(f)(vs1, idx, vs2, idx, std::forward<T>(args)...));
-    }
+    for (auto& s : slots) out.push_back(std::move(*s));
     return out;
 }
 

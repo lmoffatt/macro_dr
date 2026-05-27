@@ -4,6 +4,7 @@
 //#include "grammar_untyped.h"
 #include <algorithm>
 #include <concepts>
+#include <cstdlib>
 #include <functional>
 #include <map>
 #include <memory>
@@ -799,7 +800,15 @@ class typed_lifted_function_evaluation
         auto all_coords = space.all_coordinates();
         std::vector<std::optional<scalar_type>> values(all_coords.size());
         std::vector<std::string> errors(all_coords.size());
-    #pragma omp parallel for schedule(dynamic, 1)
+        // Serialize this combo loop when MACRODR_AXIS_SERIAL=1, so an inner
+        // per-simulation parallel-for (likelihood path) becomes the active
+        // OpenMP level instead of nesting under (and being serialized by) this
+        // one. Default off → combo-parallel as before.
+        static const bool serial_axis = [] {
+            const char* e = std::getenv("MACRODR_AXIS_SERIAL");
+            return e && std::string(e) != "0";
+        }();
+    #pragma omp parallel for schedule(dynamic, 1) if(!serial_axis)
         for(std::size_t i=0; i<all_coords.size(); ++i) {
             const auto& coord = all_coords[i];
             auto maybe_run = run_at(env, coord);
@@ -1172,7 +1181,15 @@ class typed_lifted_homogeneous_container_construction
         auto all_coords = space.all_coordinates();
         std::vector<std::optional<scalar_type>> values(all_coords.size());
         std::vector<std::string> errors(all_coords.size());
-    #pragma omp parallel for schedule(dynamic, 1)
+        // Serialize this combo loop when MACRODR_AXIS_SERIAL=1, so an inner
+        // per-simulation parallel-for (likelihood path) becomes the active
+        // OpenMP level instead of nesting under (and being serialized by) this
+        // one. Default off → combo-parallel as before.
+        static const bool serial_axis = [] {
+            const char* e = std::getenv("MACRODR_AXIS_SERIAL");
+            return e && std::string(e) != "0";
+        }();
+    #pragma omp parallel for schedule(dynamic, 1) if(!serial_axis)
         for(std::size_t i=0; i<all_coords.size(); ++i) {
             const auto& coord = all_coords[i];
             auto maybe_run = run_at(env, coord);
@@ -1454,7 +1471,15 @@ class typed_lifted_tuple_construction
         auto all_coords = space.all_coordinates();
         std::vector<std::optional<scalar_type>> values(all_coords.size());
         std::vector<std::string> errors(all_coords.size());
-    #pragma omp parallel for schedule(dynamic, 1)
+        // Serialize this combo loop when MACRODR_AXIS_SERIAL=1, so an inner
+        // per-simulation parallel-for (likelihood path) becomes the active
+        // OpenMP level instead of nesting under (and being serialized by) this
+        // one. Default off → combo-parallel as before.
+        static const bool serial_axis = [] {
+            const char* e = std::getenv("MACRODR_AXIS_SERIAL");
+            return e && std::string(e) != "0";
+        }();
+    #pragma omp parallel for schedule(dynamic, 1) if(!serial_axis)
         for(std::size_t i=0; i<all_coords.size(); ++i) {
             const auto& coord = all_coords[i];
             auto maybe_run = run_at(env, coord);
