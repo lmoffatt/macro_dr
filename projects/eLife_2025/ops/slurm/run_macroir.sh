@@ -73,11 +73,16 @@ done
 # Compute-node shells may not have the module command initialised
 [ -f /etc/profile ] && source /etc/profile
 
-# Re-source the cluster profile so module loads happen in this shell too.
-# Resolved relative to this script so the wrapper survives future moves.
-WRAPPER_DIR="$(dirname "$(readlink -f "$0")")"
+# Source the cluster profile for module loads. sbatch copies this script to a
+# spool dir, so $0 can't locate clusters/ — the dispatcher passes the real path
+# via MACRODR_PROFILE; fall back to $0-relative for direct (non-sbatch) runs.
+PROFILE="${MACRODR_PROFILE:-$(dirname "$(readlink -f "$0")")/../clusters/${CLUSTER}.sh}"
+[ -f "$PROFILE" ] || {
+    echo "[run_macroir] cluster profile not found: $PROFILE (set MACRODR_PROFILE)" >&2
+    exit 1
+}
 # shellcheck source=/dev/null
-source "${WRAPPER_DIR}/../clusters/${CLUSTER}.sh"
+source "$PROFILE"
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"

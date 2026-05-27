@@ -22,7 +22,10 @@
 # (e.g. COLORTERM) and we must source /etc/profile to get the module function.
 set -eo pipefail
 
-OPS_DIR="$(dirname "$(readlink -f "$0")")"
+# sbatch copies the script to a spool dir, so inside a resubmitted job $0 points
+# there, not at the repo. The login-side invocation passes the real OPS_DIR
+# through MACRODR_OPS_DIR so the job can still find clusters/<cluster>.sh.
+OPS_DIR="${MACRODR_OPS_DIR:-$(dirname "$(readlink -f "$0")")}"
 
 CLUSTER="${1:?Usage: $0 <cluster> [tag]    (cluster profile must exist at clusters/<cluster>.sh)}"
 TAG="${2:-$(git rev-parse --short HEAD)}"
@@ -41,6 +44,8 @@ if [ -z "${SLURM_JOB_ID:-}" ]; then
                 --cpus-per-task="${BUILD_CPUS:-2}" --mem="${BUILD_MEM:-64G}" \
                 --time="${BUILD_TIME:-08:00:00}" \
                 --job-name="build_${CLUSTER}" --output="build-${CLUSTER}-%j.out" \
+                --chdir="$PWD" \
+                --export=ALL,MACRODR_OPS_DIR="$OPS_DIR" \
                 "$(readlink -f "$0")" "$CLUSTER" "$TAG"
 fi
 
