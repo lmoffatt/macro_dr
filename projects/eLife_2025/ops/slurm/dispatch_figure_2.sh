@@ -15,7 +15,9 @@
 #
 # Usage (from the repo base):
 #   projects/eLife_2025/ops/slurm/dispatch_figure_2.sh <cluster>     # e.g. dirac
-# Tunables via env: NCHS, N_SIMULATIONS, CPUS, MEM, TIME, PARTITION, BIN.
+# Tunables via env: NCHS and N_SIMS (parallel arrays, same length), CPUS, MEM,
+# TIME, PARTITION, BIN. Example:
+#   NCHS="10 100" N_SIMS="2048 1024" projects/.../dispatch_figure_2.sh dirac
 
 set -eo pipefail
 
@@ -41,19 +43,27 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
     exit 1
 }
 
-# This run's grid
+# This run's grid. NCHS and N_SIMS are parallel arrays paired by index:
+# job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
-N_SIMULATIONS="${N_SIMULATIONS:-1024}"
+N_SIMS=(${N_SIMS:-1024 1024 2048 2048})
+
+[ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
+    echo "[dispatch] NCHS (${#NCHS[@]} values) and N_SIMS (${#N_SIMS[@]} values) must be the same length" >&2
+    exit 1
+}
 
 # Shared output dir on scratch; jobs write nch-distinct filenames into it.
 WORKDIR="${SCRATCH_MACRO:-/scratch/$USER/macro_dr}/eLife_2025"
 mkdir -p "$WORKDIR/figures/data" "$WORKDIR/logs"
 
-for nch in "${NCHS[@]}"; do
+for i in "${!NCHS[@]}"; do
+    nch="${NCHS[$i]}"
+    nsim="${N_SIMS[$i]}"
     # printf builds the injections so the DSL double-quotes need no shell escaping.
     axis_arg=$(printf -- '--axis_Nchanels = axis(name= "Num_ch", labels= ["%s"])' "$nch")
     num_arg=$( printf -- '--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[%s])' "$nch")
-    nsim_arg=$(printf -- '--n_simulations = %s' "$N_SIMULATIONS")
+    nsim_arg=$(printf -- '--n_simulations = %s' "$nsim")
     fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s"' "$nch")
 
     jobid=$(sbatch --parsable \
@@ -68,7 +78,7 @@ for nch in "${NCHS[@]}"; do
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$SCRIPT")
 
-    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${N_SIMULATIONS}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_*"
+    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_*"
 done
 
 echo
