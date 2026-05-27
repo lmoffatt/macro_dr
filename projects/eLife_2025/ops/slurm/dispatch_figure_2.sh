@@ -49,7 +49,7 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 # This run's grid. NCHS and N_SIMS are parallel arrays paired by index:
 # job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
-N_SIMS=(${N_SIMS:-1024 1024 1024 1024})
+N_SIMS=(${N_SIMS:-8192 8192 8192 8192})
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
     echo "[dispatch] NCHS (${#NCHS[@]} values) and N_SIMS (${#N_SIMS[@]} values) must be the same length" >&2
@@ -75,7 +75,7 @@ for i in "${!NCHS[@]}"; do
         --partition="${PARTITION:-batch}" \
         --cpus-per-task="${CPUS:-32}" \
         --mem="${MEM:-32G}" \
-        --time="${TIME:-1-00:00:00}" \
+        --time="${TIME:-2-00:00:00}" \
         --job-name="fig2_nch_${nch}" \
         --output="$WORKDIR/logs/slurm-%j.out" \
         --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE" \
