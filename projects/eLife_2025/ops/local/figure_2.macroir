@@ -6,7 +6,7 @@
 #filepath="figures/data/figure_2_0519_002"
 
 model_str = "scheme_CO"
-filepath_run= concat(filepath,  "_IR_10noise")
+filepath_run= concat(filepath,  "_10_noise_IR")
  
 
 model = load_model("scheme_CO")
