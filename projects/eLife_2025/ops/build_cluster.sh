@@ -57,7 +57,13 @@ source "$PROFILE"   # loads modules, sets PATH_MACRO + CLUSTER, cd's to repo roo
 
 BUILD_DIR="build/${CLUSTER}-${TAG}"
 
+# Per-hash build dirs defeat ninja's (per-dir) incrementality, so a new commit
+# rebuilds from scratch. ccache (keyed by source content, shared across dirs)
+# bridges that: unchanged TUs are cache hits even in a fresh dir. Use it if
+# available; harmless no-op otherwise.
+CCACHE="$(command -v ccache || true)"
 cmake -S . -B "$BUILD_DIR" -GNinja \
+    ${CCACHE:+-DCMAKE_CXX_COMPILER_LAUNCHER="$CCACHE"} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=g++ \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
