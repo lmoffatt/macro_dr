@@ -69,7 +69,7 @@ for i in "${!NCHS[@]}"; do
     # get_number(n=...) → size_t; a bare literal would be a double and
     # simulate's n_simulations expects unsigned long.
     nsim_arg=$(printf -- '--n_simulations = get_number(n=%s)' "$nsim")
-    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s_nsim_%s"' "$nch" "$nsim")
+    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2__nch_%s_nsim_%s"' "$nch" "$nsim")
 
     jobid=$(sbatch --parsable \
         --partition="${PARTITION:-batch}" \
@@ -83,7 +83,7 @@ for i in "${!NCHS[@]}"; do
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$SCRIPT")
 
-    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"
+    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2__nch_${nch}_nsim_${nsim}_*"
 done
 
 echo
