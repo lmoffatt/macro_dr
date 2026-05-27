@@ -49,7 +49,7 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 # This run's grid. NCHS and N_SIMS are parallel arrays paired by index:
 # job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
-N_SIMS=(${N_SIMS:-8192 8192 8192 8192})
+N_SIMS=(${N_SIMS:-512 512 512 512})
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
     echo "[dispatch] NCHS (${#NCHS[@]} values) and N_SIMS (${#N_SIMS[@]} values) must be the same length" >&2
@@ -69,21 +69,25 @@ for i in "${!NCHS[@]}"; do
     # get_number(n=...) → size_t; a bare literal would be a double and
     # simulate's n_simulations expects unsigned long.
     nsim_arg=$(printf -- '--n_simulations = get_number(n=%s)' "$nsim")
-    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2__nch_%s_nsim_%s"' "$nch" "$nsim")
+    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s_nsim_%s"' "$nch" "$nsim")
 
+    # MACRODR_AXIS_SERIAL=1 serializes the internal axis-combo loop so the
+    # per-simulation / bootstrap loops become the active OpenMP level. Without
+    # it the combo loop stays parallel and memory ∝ concurrent combos → OOM
+    # (cf. jobs 110042–110045, killed at ~129 GB). Load-bearing, not optional.
     jobid=$(sbatch --parsable \
         --partition="${PARTITION:-batch}" \
         --cpus-per-task="${CPUS:-32}" \
         --mem="${MEM:-96G}" \
         --time="${TIME:-2-00:00:00}" \
-        --job-name="fig2_${nch}c_${nsim}s" \
+        --job-name="f_${nch}c_${nsim}s" \
         --output="$WORKDIR/logs/slurm-%j.out" \
-        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE" \
+        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",MACRODR_AXIS_SERIAL=1 \
         "$WRAPPER" \
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$SCRIPT")
 
-    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2__nch_${nch}_nsim_${nsim}_*"
+    echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"
 done
 
 echo
