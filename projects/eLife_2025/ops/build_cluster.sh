@@ -50,6 +50,15 @@ if [ -z "${SLURM_JOB_ID:-}" ]; then
                 "$(readlink -f "$0")" "$CLUSTER" "$TAG"
 fi
 
+# A job submitted with --export=ALL inherits the submitting shell's loaded
+# modules. On clusters whose node /etc/profile auto-loads a default compiler
+# (Clementina loads gnu13/ohpc) under a one-compiler-at-a-time policy, that init
+# collides with an inherited compiler (e.g. gcc15 from a sourced profile) and
+# the build dies before printing anything. Drop the inherited Lmod tracking so
+# /etc/profile and the cluster profile below both start from a clean slate; the
+# profile's `module purge` + loads then set the real toolchain.
+unset LOADEDMODULES _LMFILES_ 2>/dev/null || true
+
 # Load module command (compute/login nodes that don't auto-init it)
 [ -f /etc/profile ] && source /etc/profile
 
