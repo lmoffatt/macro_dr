@@ -74,9 +74,9 @@ for i in "${!NCHS[@]}"; do
     jobid=$(sbatch --parsable \
         --partition="${PARTITION:-batch}" \
         --cpus-per-task="${CPUS:-32}" \
-        --mem="${MEM:-32G}" \
+        --mem="${MEM:-96G}" \
         --time="${TIME:-2-00:00:00}" \
-        --job-name="fig2_nch_${nch}" \
+        --job-name="fig2_${nch}c_${nsim}s" \
         --output="$WORKDIR/logs/slurm-%j.out" \
         --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE" \
         "$WRAPPER" \
