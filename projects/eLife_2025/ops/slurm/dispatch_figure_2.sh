@@ -77,6 +77,7 @@ for i in "${!NCHS[@]}"; do
     # (cf. jobs 110042–110045, killed at ~129 GB). Load-bearing, not optional.
     jobid=$(sbatch --parsable \
         --partition="${PARTITION:-batch}" \
+        ${ACCOUNT:+--account="$ACCOUNT"} \
         --cpus-per-task="${CPUS:-32}" \
         --mem="${MEM:-96G}" \
         --time="${TIME:-2-00:00:00}" \
