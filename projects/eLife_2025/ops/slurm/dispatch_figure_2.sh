@@ -30,10 +30,13 @@ CLUSTER="${1:?Usage: $0 <cluster>   (e.g. dirac)}"
 # Load the cluster profile for CLUSTER/PARTITION/SCRATCH_MACRO and the repo cd.
 # (module loads here are harmless — jobs get modules via run_macroir.sh on the node.)
 [ -f /etc/profile ] && source /etc/profile
-PROFILE="$HERE/../clusters/${CLUSTER}.sh"
+PROFILE="$(readlink -f "$HERE/../clusters/${CLUSTER}.sh")"
 [ -f "$PROFILE" ] || { echo "[dispatch] no such cluster profile: $PROFILE" >&2; exit 1; }
 # shellcheck source=/dev/null
 source "$PROFILE"
+# Passed to run_macroir.sh so it finds the profile from the sbatch spool copy
+# (where its own $0 no longer points at the repo).
+export MACRODR_PROFILE="$PROFILE"
 
 # Default BIN to this cluster's latest build; override (export BIN=…) to pin one.
 BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
@@ -73,7 +76,7 @@ for i in "${!NCHS[@]}"; do
         --time="${TIME:-1-00:00:00}" \
         --job-name="fig2_nch_${nch}" \
         --output="$WORKDIR/logs/slurm-%j.out" \
-        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR" \
+        --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE" \
         "$WRAPPER" \
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$SCRIPT")
