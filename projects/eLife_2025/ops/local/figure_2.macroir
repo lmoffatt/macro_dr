@@ -6,11 +6,7 @@
 #filepath="figures/data/figure_2_0519_002"
 
 model_str = "scheme_CO"
-# Output filename infixes: <injected filepath>_<model>_IR. Model and algorithm
-# are decided in-file (injecting the model would mean passing several coupled
-# parameters), so they live here as suffixes; the dispatcher's filename stays
-# model/algorithm-agnostic and its ..._nsim_<n>_* glob still matches.
-filepath_run= concat(filepath, concat(concat("_", model_str), "_IR"))
+filepath_run= concat(filepath,  "_IR_10noise")
  
 
 model = load_model("scheme_CO")
@@ -20,7 +16,7 @@ axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0
 #axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1"])
 #axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
 
-axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
+axis_noise = axis(name= "noise_in_conductance_tau", labels= ["10"])
 
 
 
@@ -31,7 +27,7 @@ axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
 #axis_Nchanels =axis(name= "Num_ch", labels= ["100"])
 
 #current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
-current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
+current_noise= indexed_double_by(axis= axis_noise,values=[0.01])
 
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,1000])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,10,100,1000,10000])
