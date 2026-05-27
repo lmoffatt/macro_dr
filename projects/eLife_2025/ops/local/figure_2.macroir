@@ -5,7 +5,12 @@
 # n_simulations= 16384
 #filepath="figures/data/figure_2_0519_002"
 
-filepath_run= concat(filepath,"_IR")
+model_str = "scheme_CO"
+# Output filename infixes: <injected filepath>_<model>_IR. Model and algorithm
+# are decided in-file (injecting the model would mean passing several coupled
+# parameters), so they live here as suffixes; the dispatcher's filename stays
+# model/algorithm-agnostic and its ..._nsim_<n>_* glob still matches.
+filepath_run= concat(filepath, concat(concat("_", model_str), "_IR"))
  
 
 model = load_model("scheme_CO")
@@ -68,7 +73,7 @@ observations = set_observations(values_set= [0,0,0,0])
 
 par_tr = get_standard_parameter_transformed_values(parameter)
  
-model_str="scheme_CO"
+# model_str defined at top (drives the filename infix)
 
 simulation_axis = axis(name= "simulation_algorithm", labels= ["uniformization"])
 
