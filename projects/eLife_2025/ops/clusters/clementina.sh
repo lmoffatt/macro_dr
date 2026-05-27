@@ -25,12 +25,26 @@ module purge
 module load stages/2026          # EasyBuild stack root — exposes the gcc15 toolchain
 module load gcc/15.1.0           # newer than dirac's gnu14 — full C++23
 module load openblas/0.3.29      # BLAS + LAPACK, GCC-built (MKL is gated behind icpx here)
-module load gsl/2.8              # GNU Scientific Library
 module load cmake/3.31.11        # stage default; > dirac's 3.30.8
 module load ninja/1.13.2         # present in the stage → keep Ninja generator (no Makefiles override)
 
 export PATH_MACRO=${HOME}/Code/macro_dr
 export CLUSTER=clementina
+
+# GSL: the cluster's gsl/2.8 module is Intel-built (its modulefile loads
+# intel/2024.0.0 and libgsl.so needs Intel runtime libs — __svml_*/libimf — so
+# it won't link with gcc15), and there is no gcc15-native GSL in the stack. So
+# we use a from-source GSL built with gcc15 into /data/contrib. Point the
+# compiler, linker and CMake at it directly (no module). NOTE: GSL only backs an
+# unused proportional-noise path in macro_dr, so it just needs to LINK; if the
+# Bessel milestone ever calls GSL's special functions, rebuild it under
+# -std=gnu17 (gcc15 defaults to C23, which miscompiles GSL 2.8 — values read 0).
+export GSL_ROOT=/data/contrib/pci_86/opt/gsl-2.8
+export GSL_ROOT_DIR="$GSL_ROOT"                            # CMake FindGSL
+export CPATH="$GSL_ROOT/include:$CPATH"
+export LIBRARY_PATH="$GSL_ROOT/lib:$LIBRARY_PATH"
+export LD_LIBRARY_PATH="$GSL_ROOT/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="$GSL_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH"
 
 # CMake FindBLAS/FindLAPACK: OpenBLAS. Runtime keeps BLAS single-threaded
 # (run_macroir.sh sets OPENBLAS_NUM_THREADS=1) because we parallelize at the

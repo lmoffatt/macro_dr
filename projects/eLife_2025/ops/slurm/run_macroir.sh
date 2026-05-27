@@ -70,6 +70,14 @@ for a in "$@"; do
     esac
 done
 
+# A job submitted with --export=ALL inherits the submitting shell's loaded
+# modules. On clusters whose node /etc/profile auto-loads a default compiler
+# (Clementina loads gnu13/ohpc) under a one-compiler-at-a-time policy, that init
+# collides with an inherited compiler (e.g. gcc15) and the job dies on startup.
+# Drop the inherited Lmod tracking so /etc/profile and the cluster profile both
+# start clean; the profile's `module purge` + loads set the real toolchain.
+unset LOADEDMODULES _LMFILES_ 2>/dev/null || true
+
 # Compute-node shells may not have the module command initialised
 [ -f /etc/profile ] && source /etc/profile
 
