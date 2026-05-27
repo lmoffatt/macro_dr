@@ -214,13 +214,29 @@ inline auto calculate_n_simulation_mnumerical_fisher_information(
     double h_rel,
     std::size_t decimate) -> Maybe_error<std::vector<parameter_spd_payload>> {
     std::size_t step = decimate == 0 ? 1 : decimate;
+    // Decimated simulation indices to evaluate F at.
+    std::vector<std::size_t> sel;
+    for (std::size_t i = 0; i < simulation.size(); i += step) sel.push_back(i);
+    // calculate_mnumerical_fisher_information builds its own function table per
+    // call (no shared state — see calculate_mdlikelihood_predictions), so this
+    // loop parallelizes with no fork needed. Active OpenMP level only when the
+    // combo loop is serial (MACRODR_AXIS_SERIAL=1); else it nests and serializes.
+    std::vector<std::optional<parameter_spd_payload>> slots(sel.size());
+    std::vector<std::string> errs(sel.size());
+#pragma omp parallel for schedule(dynamic)
+    for (std::size_t k = 0; k < sel.size(); ++k) {
+        auto res = calculate_mnumerical_fisher_information(
+            likelihood_algorithm, par, e, get<Recording>(simulation[sel[k]]()), h_rel);
+        if (res)
+            slots[k].emplace(std::move(res.value()));
+        else
+            errs[k] = res.error()();
+    }
     std::vector<parameter_spd_payload> results;
-    results.reserve((simulation.size() + step - 1) / step);
-    for (std::size_t i = 0; i < simulation.size(); i += step) {
-        auto res = calculate_mnumerical_fisher_information(likelihood_algorithm, par, e,
-                                                            get<Recording>(simulation[i]()), h_rel);
-        if (!res) return res.error();
-        results.push_back(std::move(res.value()));
+    results.reserve(sel.size());
+    for (std::size_t k = 0; k < sel.size(); ++k) {
+        if (!errs[k].empty()) return error_message(errs[k]);
+        results.push_back(std::move(*slots[k]));
     }
     return results;
 }

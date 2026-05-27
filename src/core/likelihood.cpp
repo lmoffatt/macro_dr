@@ -16,6 +16,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdlib>  // std::getenv
+#include <omp.h>    // omp_get_max_threads / omp_get_thread_num (per-simulation parallel loop)
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -808,13 +809,31 @@ auto calculate_n_simulation_mdlikelihood_predictions_impl(
     bool memoize = resolve_memoize_flag(true);
 
     auto run_loop = [&](auto& ftbl3) -> Maybe_error<std::vector<dMacro_State_Ev_gradient_all>> {
+        const std::size_t n = simulations.size();
+        // Per-thread function-table forks: each thread gets its own Qdt
+        // memoization cache, so the per-simulation loop parallelizes without a
+        // cache data race. (Same f.fork(omp_get_max_threads()) idiom as the
+        // sampling code in qmodel.h.) This is the active parallel level only
+        // when the combo loop is serial (MACRODR_AXIS_SERIAL=1); otherwise it
+        // nests and runs serially.
+        auto forks = ftbl3.fork(omp_get_max_threads());
+        std::vector<std::optional<dMacro_State_Ev_gradient_all>> slots(n);
+        std::vector<std::string> errs(n);
+#pragma omp parallel for schedule(static)
+        for (std::size_t i = 0; i < n; ++i) {
+            auto& ftbl = forks[static_cast<std::size_t>(omp_get_thread_num())];
+            auto res = calculate_mdlikelihood_predictions_visit(
+                modelLikelihood_v, ftbl, par, e, get<Recording>(simulations[i]()));
+            if (res)
+                slots[i].emplace(std::move(res.value()));
+            else
+                errs[i] = res.error()();
+        }
         std::vector<dMacro_State_Ev_gradient_all> results;
-        results.reserve(simulations.size());
-        for (auto const& sim : simulations) {
-            auto res = calculate_mdlikelihood_predictions_visit(modelLikelihood_v, ftbl3, par, e,
-                                                                get<Recording>(sim()));
-            if (!res) return res.error();
-            results.push_back(std::move(res.value()));
+        results.reserve(n);
+        for (std::size_t i = 0; i < n; ++i) {
+            if (!errs[i].empty()) return error_message(errs[i]);
+            results.push_back(std::move(*slots[i]));
         }
         return results;
     };
