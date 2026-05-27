@@ -51,7 +51,9 @@ for i in "${!NCHS[@]}"; do
     nsim="${N_SIMS[$i]}"
     axis_arg=$(printf -- '--axis_Nchanels = axis(name= "Num_ch", labels= ["%s"])' "$nch")
     num_arg=$( printf -- '--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[%s])' "$nch")
-    nsim_arg=$(printf -- '--n_simulations = %s' "$nsim")
+    # get_number(n=...) → size_t; a bare literal would be a double and
+    # simulate's n_simulations expects unsigned long.
+    nsim_arg=$(printf -- '--n_simulations = get_number(n=%s)' "$nsim")
     fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s_nsim_%s"' "$nch" "$nsim")
 
     echo
