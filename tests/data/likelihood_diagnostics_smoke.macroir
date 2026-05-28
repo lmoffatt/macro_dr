@@ -42,7 +42,11 @@ numerical_fisher_information = calc_numerical_fisher_information(
     h_rel=1e-5,
     decimate=1)
 
-diagnostics = likelihood_derivative_basic_diagnostics(
+# series_var (not basic): the contains_dib test asserts per-sample evolution DIB
+# rows (Distortion_Induced_Bias.Distortion_Induced_Bias), which only the
+# trace-local presets emit. basic carries the summary DIB only, so it can never
+# satisfy the EVOLUTION_COMPONENT assertion. Same signature as basic.
+diagnostics = likelihood_derivative_series_var_diagnostics(
     dlikelihood_predictions=dlikelihood_predictions,
     numerical_fisher_information=numerical_fisher_information,
     n_boostrap_samples=2,
