@@ -78,9 +78,6 @@ done
 # start clean; the profile's `module purge` + loads set the real toolchain.
 unset LOADEDMODULES _LMFILES_ 2>/dev/null || true
 
-# Compute-node shells may not have the module command initialised
-[ -f /etc/profile ] && source /etc/profile
-
 # Source the cluster profile for module loads. sbatch copies this script to a
 # spool dir, so $0 can't locate clusters/ — the dispatcher passes the real path
 # via MACRODR_PROFILE; fall back to $0-relative for direct (non-sbatch) runs.
@@ -89,8 +86,15 @@ PROFILE="${MACRODR_PROFILE:-$(dirname "$(readlink -f "$0")")/../clusters/${CLUST
     echo "[run_macroir] cluster profile not found: $PROFILE (set MACRODR_PROFILE)" >&2
     exit 1
 }
+# Lmod's `module` function and OpenHPC /etc/profile.d scripts can return non-zero
+# even on success; under `set -e` that silently aborts the job before any output
+# (Clementina's 2-second death). Disable abort-on-error just around environment
+# setup, then restore it so real failures downstream still stop the job.
+set +e
+[ -f /etc/profile ] && source /etc/profile   # module command on compute nodes
 # shellcheck source=/dev/null
 source "$PROFILE"
+set -e
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 # BLAS must stay single-threaded: parallelism lives at the per-simulation /

@@ -59,11 +59,15 @@ fi
 # profile's `module purge` + loads then set the real toolchain.
 unset LOADEDMODULES _LMFILES_ 2>/dev/null || true
 
-# Load module command (compute/login nodes that don't auto-init it)
-[ -f /etc/profile ] && source /etc/profile
-
+# Lmod's `module` function and OpenHPC /etc/profile.d scripts can return non-zero
+# even on success; under `set -e` that silently aborts the job before any output
+# (Clementina's 2-second death). Disable abort-on-error around environment setup,
+# then restore it so real build failures still stop the job.
+set +e
+[ -f /etc/profile ] && source /etc/profile   # module command on compute/login nodes
 # shellcheck source=/dev/null
 source "$PROFILE"   # loads modules, sets PATH_MACRO + CLUSTER, cd's to repo root
+set -e
 
 BUILD_DIR="build/${CLUSTER}-${TAG}"
 
