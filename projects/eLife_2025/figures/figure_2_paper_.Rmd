@@ -14,21 +14,18 @@ library(patchwork)
 ```{r}
 
 filename=c(
-  #"data/figure_2_basic_diagnostics__0420_1",
-  #"data/figure_2_basic_diagnostics__0420_2_001", 
-  #"data/figure_2_basic_diagnostics__0421_3_001",
-  #"data/figure_2_basic_diagnostics__0422_4_001", 
-  #"data/figure_2_basic_diagnostics__0513_004",
-  "data/figure_2_basic_diagnostics__0519_001",
-  "data/figure_2_basic_diagnostics__0519_002"
+  "data/figure_2__nch_10_nsim_1024_analysis",
+  "data/figure_2__nch_100_nsim_1024_analysis",
+  "data/figure_2__nch_1000_nsim_1024_analysis",
+  "data/figure_2__nch_10000_nsim_1024_analysis"
   
   
   
   
   )
-Num_ch_to_exclude=list(c(100),c())
+#Num_ch_to_exclude=list(c(100),c())
   
-algorithms_to_exclude=list(c("macro_rIRT","macro_rIR"))#,
+#algorithms_to_exclude=list(c("macro_rIRT","macro_rIR"))#,
                       #     c("macro_rIRT","macro_rIR"),
                       #     c("macro_rMR","macro_rIR")  )
 
@@ -36,12 +33,14 @@ algorithms_to_exclude=list(c("macro_rIRT","macro_rIR"))#,
 ```
 
 ```{r}
-d <- map2_dfr(filename, Num_ch_to_exclude, function(file, exclude) {
+
+d <- map_dfr(filename, Num_ch_to_exclude, function(file, exclude) {
   
   read.csv(paste0(file, ".csv")) %>% 
     filter(!Num_ch %in% exclude)
     
 })%>%bind_rows()
+
 
 ```
 
