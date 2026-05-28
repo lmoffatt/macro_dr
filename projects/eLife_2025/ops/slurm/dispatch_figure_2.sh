@@ -122,7 +122,7 @@ for i in "${!NCHS[@]}"; do
         ${ACCOUNT:+--account="$ACCOUNT"} \
         --cpus-per-task="${CPUS:-32}" \
         --mem="${MEM:-96G}" \
-        --time="${TIME:-2-00:00:00}" \
+        --time="${TIME:-04:00:00}" \
         --job-name="f_${nch}c_${nsim}s" \
         --output="$WORKDIR/logs/slurm-%j.out" \
         --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",MACRODR_AXIS_SERIAL=1 \
