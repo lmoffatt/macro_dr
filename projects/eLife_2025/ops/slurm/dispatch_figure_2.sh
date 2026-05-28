@@ -50,6 +50,10 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 # job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
 N_SIMS=(${N_SIMS:-4096 4096 4096 4096})
+N_NOISE=(${N_NOISE:-0.1 0.1 0.1 0.1})
+N_ALGO=(${N_ALGO:-macro_R })
+#N_ALGO=(${N_ALGO:-macro_IR macro_R macro_MR macro_NR macro_NMR})
+
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
     echo "[dispatch] NCHS (${#NCHS[@]} values) and N_SIMS (${#N_SIMS[@]} values) must be the same length" >&2
@@ -63,13 +67,46 @@ mkdir -p "$WORKDIR/figures/data" "$WORKDIR/logs"
 for i in "${!NCHS[@]}"; do
     nch="${NCHS[$i]}"
     nsim="${N_SIMS[$i]}"
+    nnoise="${N_NOISE[$i]}"
+ for j in "${!N_ALGO[@]}"; do
+
+    algo="${N_ALGO[$j]}"
+    
+    # Map the algorithm label to its (recursive, averaging) settings. Mirrors the
+    # commented-out indexed_bool_by/indexed_int_by rows in figure_2.macroir.
+    case "$algo" in
+        macro_NR)  recursive=false; averaging=0 ;;
+        macro_R)   recursive=true;  averaging=0 ;;
+        macro_NMR) recursive=false; averaging=1 ;;
+        macro_MR)  recursive=true;  averaging=1 ;;
+        macro_IR)  recursive=true;  averaging=2 ;;
+        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR})" >&2; exit 1 ;;
+    esac
+
+   case "$nnoise" in
+        0.1)  vnoise=0.0001;;
+        1)  vnoise=0.001;;
+        10)  vnoise=0.01;;
+        100)  vnoise=0.1;;
+        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.1, 1, 10, 100)" >&2; exit 1 ;;
+    esac
+
     # printf builds the injections so the DSL double-quotes need no shell escaping.
     axis_arg=$(printf -- '--axis_Nchanels = axis(name= "Num_ch", labels= ["%s"])' "$nch")
     num_arg=$( printf -- '--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[%s])' "$nch")
     # get_number(n=...) → size_t; a bare literal would be a double and
     # simulate's n_simulations expects unsigned long.
     nsim_arg=$(printf -- '--n_simulations = get_number(n=%s)' "$nsim")
-    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s_nsim_%s"' "$nch" "$nsim")
+    fp_arg=$(  printf -- '--filepath = "figures/data/figure_2_nch_%s_nsim_%s_%s_noise_%s"' "$nch" "$nsim" "$algo" "$nnoise")
+    axis_noise_arg=$(printf -- '--axis_noise = axis(name= "noise_in_conductance_tau", labels= ["%s"])' "$nnoise")
+    current_noise_arg=$(printf -- '--current_noise = indexed_double_by(axis= axis_noise, values=[%s])' "$vnoise")
+    # algorithm — injected the same way as noise: the axis, plus the (recursive,
+    # averaging) settings the label maps to. algorithm_axis must come first; the
+    # other two reference it.
+    axis_algo_arg=$( printf -- '--algorithm_axis = axis(name= "algorithm", labels= ["%s"])' "$algo")
+    recursive_arg=$( printf -- '--algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$recursive")
+    averaging_arg=$( printf -- '--algo_averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$averaging")
+
 
     # MACRODR_AXIS_SERIAL=1 serializes the internal axis-combo loop so the
     # per-simulation / bootstrap loops become the active OpenMP level. Without
@@ -86,9 +123,12 @@ for i in "${!NCHS[@]}"; do
         --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",MACRODR_AXIS_SERIAL=1 \
         "$WRAPPER" \
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
+        "$axis_noise_arg" "$current_noise_arg" \
+        "$axis_algo_arg" "$recursive_arg" "$averaging_arg" \
         "$SCRIPT")
 
     echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"
+done
 done
 
 echo

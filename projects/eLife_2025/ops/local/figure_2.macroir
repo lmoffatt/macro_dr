@@ -6,7 +6,8 @@
 #filepath="figures/data/figure_2_0519_002"
 
 model_str = "scheme_CO"
-filepath_run= concat(filepath,  "_10_noise_IR")
+# Dispatcher already encodes nch/nsim/algorithm in `filepath`, so just use it.
+filepath_run = filepath
  
 
 model = load_model("scheme_CO")
@@ -16,7 +17,9 @@ axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0
 #axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1"])
 #axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
 
-axis_noise = axis(name= "noise_in_conductance_tau", labels= ["10"])
+# axis_noise injected by the dispatcher (--axis_noise=...); keep commented so
+# the in-file definition does not clobber the injection.
+#axis_noise = axis(name= "noise_in_conductance_tau", labels= ["10"])
 
 
 
@@ -27,7 +30,8 @@ axis_noise = axis(name= "noise_in_conductance_tau", labels= ["10"])
 #axis_Nchanels =axis(name= "Num_ch", labels= ["100"])
 
 #current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
-current_noise= indexed_double_by(axis= axis_noise,values=[0.01])
+# current_noise injected by the dispatcher (--current_noise=...); keep commented.
+#current_noise= indexed_double_by(axis= axis_noise,values=[0.01])
 
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,1000])
 #Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,10,100,1000,10000])
@@ -92,8 +96,9 @@ simulation_file = write_csv(experiment= experiment, simulations=simulations,
  
 #algorithm_axis = axis(name= "algorithm",
 #    labels= [ "macro_MR", "macro_IR"])
-algorithm_axis = axis(name= "algorithm",
-    labels= [ "macro_IR"])
+# algorithm_axis injected by the dispatcher (--algorithm_axis=...); keep commented.
+#algorithm_axis = axis(name= "algorithm",
+#    labels= [ "macro_IR"])
 
 
 #algorithm_axis = axis(name= "algorithm",
@@ -104,8 +109,9 @@ algorithm_axis = axis(name= "algorithm",
 
 #algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
 #    values=[false, true, false, true, true ])#,   true, true, true])
-algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
-    values=[ true ])
+# algo_recursive_approximation injected by the dispatcher; keep commented.
+#algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[ true ])
 
 
 #algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis,
@@ -132,8 +138,7 @@ algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
 algorithms = build_likelihood_function(model = model,
             adaptive_approximation     = false,
             recursive_approximation    = algo_recursive_approximation,
-            averaging_approximation    = indexed_int_by(axis= algorithm_axis,
-                                           values=[ 2]),
+            averaging_approximation    = algo_averaging_approximation,
            #                                values=[ 0 ,0, 1, 1, 2]),
            #                               values=[0, 0, 1, 1, 1, 2, 2]),#,   0, 1, 2]),
             variance_approximation     = true,
