@@ -55,9 +55,9 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 # job i runs NCHS[i] channels with N_SIMS[i] simulations.
 NCHS=(${NCHS:-10 100 1000 10000})
 N_SIMS=(${N_SIMS:-4096 4096 4096 4096})
-N_NOISE=(${N_NOISE:-0.1 0.1 0.1 0.1})
-#N_ALGO=(${N_ALGO:-macro_R })
-N_ALGO=(${N_ALGO:-macro_R macro_MR macro_NR macro_NMR})
+N_NOISE=(${N_NOISE:-1 1 1 1})
+N_ALGO=(${N_ALGO:-macro_R })
+#N_ALGO=(${N_ALGO:-macro_R macro_MR macro_NR macro_NMR})
 
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
