@@ -29,11 +29,16 @@ CLUSTER="${1:?Usage: $0 <cluster>   (e.g. dirac)}"
 
 # Load the cluster profile for CLUSTER/PARTITION/SCRATCH_MACRO and the repo cd.
 # (module loads here are harmless — jobs get modules via run_macroir.sh on the node.)
-[ -f /etc/profile ] && source /etc/profile
 PROFILE="$(readlink -f "$HERE/../clusters/${CLUSTER}.sh")"
 [ -f "$PROFILE" ] || { echo "[dispatch] no such cluster profile: $PROFILE" >&2; exit 1; }
+# /etc/profile.d scripts (e.g. debuginfod.sh runs `cat /dev/null /etc/debuginfod/*.urls`
+# on an empty glob → non-zero) and Lmod return non-zero; under `set -eo pipefail`
+# that silently aborts before any job is submitted. Guard the env setup, restore after.
+set +e
+[ -f /etc/profile ] && source /etc/profile
 # shellcheck source=/dev/null
 source "$PROFILE"
+set -e
 # Passed to run_macroir.sh so it finds the profile from the sbatch spool copy
 # (where its own $0 no longer points at the repo).
 export MACRODR_PROFILE="$PROFILE"
