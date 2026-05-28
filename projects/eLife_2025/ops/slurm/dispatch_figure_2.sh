@@ -56,7 +56,7 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 NCHS=(${NCHS:-10 100 1000 10000})
 N_SIMS=(${N_SIMS:-16384 16384 16384 16384})
 N_NOISE=(${N_NOISE:-0.1 0.1 0.1 0.1})
-N_ALGO=(${N_ALGO:-macro_IR })
+N_ALGO=(${N_ALGO:-macro_IRT })
 #N_ALGO=(${N_ALGO:-macro_R macro_MR macro_NR macro_NMR})
 
 
@@ -80,12 +80,17 @@ for i in "${!NCHS[@]}"; do
     # Map the algorithm label to its (recursive, averaging) settings. Mirrors the
     # commented-out indexed_bool_by/indexed_int_by rows in figure_2.macroir.
     case "$algo" in
-        macro_NR)  recursive=false; averaging=0 ;;
-        macro_R)   recursive=true;  averaging=0 ;;
-        macro_NMR) recursive=false; averaging=1 ;;
-        macro_MR)  recursive=true;  averaging=1 ;;
-        macro_IR)  recursive=true;  averaging=2 ;;
-        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR})" >&2; exit 1 ;;
+        macro_NR)  recursive=false; averaging=0 ;  taylor=false ; micro=false ;;
+        macro_R)   recursive=true;  averaging=0 ;taylor=false ; micro=false ;;
+        macro_NMR) recursive=false; averaging=1 ;taylor=false ; micro=false ;;
+        macro_MR)  recursive=true;  averaging=1 ;taylor=false ; micro=false ;;
+        macro_IR)  recursive=true;  averaging=2 ;taylor=false ; micro=false ;;
+        macro_IRT)  recursive=true;  averaging=2 ;taylor=true ; micro=false ;;
+        micro_R)   recursive=true;  averaging=0 ;taylor=false ; micro=true ;;
+        micro_MR)  recursive=true;  averaging=1 ;taylor=false ; micro=true ;;
+        micro_IR)  recursive=true;  averaging=2 ;taylor=false ; micro=true ;;
+        
+        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR, IRT})" >&2; exit 1 ;;
     esac
 
    case "$nnoise" in
@@ -111,7 +116,8 @@ for i in "${!NCHS[@]}"; do
     axis_algo_arg=$( printf -- '--algorithm_axis = axis(name= "algorithm", labels= ["%s"])' "$algo")
     recursive_arg=$( printf -- '--algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$recursive")
     averaging_arg=$( printf -- '--algo_averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$averaging")
-
+    taylor_arg=$( printf -- '--algo_taylor_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$taylor")
+    micro_arg=$( printf -- '--algo_micro_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$micro")
 
     # MACRODR_AXIS_SERIAL=1 serializes the internal axis-combo loop so the
     # per-simulation / bootstrap loops become the active OpenMP level. Without
@@ -129,7 +135,8 @@ for i in "${!NCHS[@]}"; do
         "$WRAPPER" \
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$axis_noise_arg" "$current_noise_arg" \
-        "$axis_algo_arg" "$recursive_arg" "$averaging_arg" \
+        "$axis_algo_arg" "$recursive_arg" "$averaging_arg" "$taylor_arg" \
+        "$micro_arg" \
         "$SCRIPT")
 
     echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"

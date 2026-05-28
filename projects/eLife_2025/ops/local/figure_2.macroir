@@ -129,9 +129,12 @@ simulation_file = write_csv(experiment= experiment, simulations=simulations,
 #    values=[false, true,false, true])#,  false, true, false, false, false])
 #algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
 #    values=[false, false,false, false])#,   true, true, true])
-# Force Taylor + scaling/squaring expm for micro Q (avoids eigen path's
-# eigenvector-derivative ill-conditioning at Nch ≥ ~10 in k=2). Macro paths
-# stay on eigen since their Q is k×k and well-conditioned.
+# taylor_qdt_approximation is a fossil: micro_* now builds micro Qdt via the
+# monoid-potentiation lift (legacy/micro_monoid.h) — macro Qdt is computed at the
+# well-conditioned k×k level and combinatorially lifted to microstate
+# granularity (no per-micro expm), superseding the old Taylor/Schur micro-Q
+# workarounds for the lifted-Q ill-conditioning. So it stays false for all
+# algorithms; micro is selected by micro_approximation, not by this flag.
 #algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
 #    values=[ false, false,false, false])#,   true, true, true])
 
@@ -142,8 +145,8 @@ algorithms = build_likelihood_function(model = model,
            #                                values=[ 0 ,0, 1, 1, 2]),
            #                               values=[0, 0, 1, 1, 1, 2, 2]),#,   0, 1, 2]),
             variance_approximation     = true,
-            taylor_variance_correction = false, #algo_taylor_approximation,
-            micro_approximation        = false, #algo_micro_approximation,
+            taylor_variance_correction = algo_taylor_approximation,
+            micro_approximation        = algo_micro_approximation,
             taylor_qdt_approximation   = false )#algo_taylor_qdt_approximation)
 
 
