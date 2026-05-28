@@ -50,6 +50,7 @@ projects/*/ops/runs/
 projects/*/scheme_*.txt
 projects/*/scheme_*.csv
 *.csv
+!tests/data/*.csv   # test fixtures must be committed (else CI can't load them)
 *.ogg
 
 # gz files
