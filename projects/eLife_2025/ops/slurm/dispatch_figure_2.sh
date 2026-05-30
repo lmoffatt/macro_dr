@@ -56,8 +56,8 @@ BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 NCHS=(${NCHS:-10 100 1000 10000})
 N_SIMS=(${N_SIMS:-16384 16384 16384 16384})
 N_NOISE=(${N_NOISE:-0.1 0.1 0.1 0.1})
-N_ALGO=(${N_ALGO:-macro_IR macro_IRT })
-#N_ALGO=(${N_ALGO:-macro_R macro_MR macro_NR macro_NMR})
+#N_ALGO=(${N_ALGO:-macro_IR macro_IRT })
+N_ALGO=(${N_ALGO:-macro_R macro_MR macro_NR macro_NMR})
 
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
