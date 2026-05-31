@@ -141,7 +141,7 @@ Let $\lambda_i$ denote the eigenvalues of $\mathbf C$. Then:
 
 The determinant $\det(\mathbf C)$ quantifies global information-volume distortion, while $\mathrm{tr}(\mathbf C)/d$ measures average directional distortion.
 
-\section*{6. Distortion-Corrected Covariance (DCC)}
+\section*{6. Likelihood Distortion-Corrected Covariance (DCC)}
 
 To derive the corrected covariance for parameter estimates $\hat{\theta}$, perform a first-order Taylor expansion of the score around the true parameters $\theta_0$:
 \begin{equation}
@@ -170,7 +170,7 @@ When $\mathbf H$ is singular, $\mathbf H^{-1}$ is understood as the inverse on t
 
 When $\mathbf C = \mathbf I$, $\Sigma_{\mathrm{DCC}} = \mathbf H^{-1}$.
 
-\section*{7. Distortion-Induced Bias (DIB)}
+\section*{7. Likelihood Distortion-Induced Bias (DIB)}
 
 If the expected total score is nonzero,
 \begin{equation}
@@ -207,7 +207,7 @@ be the spectral decomposition of $\mathbf H$, and retain only eigenvalues above 
 The corresponding columns of $\mathbf U_H$ define the identifiable subspace of the parameter space.
 All inverse powers of $\mathbf H$ are then taken only on this retained eigenspace.
 
-Accordingly, the total distortion and sample distortion are evaluated on $\mathrm{range}(\mathbf H)$:
+Accordingly, the total Likelihood Information Distortion and Likelihood Sample Distortion are evaluated on $\mathrm{range}(\mathbf H)$:
 \begin{equation}
 \mathbf C_H
 =
@@ -223,7 +223,7 @@ Accordingly, the total distortion and sample distortion are evaluated on $\mathr
 \mathbf \Lambda_H^{-1/2}.
 \end{equation}
 
-If $\mathbf J_{\mathrm{sample}}$ is singular, the correlation distortion is defined on the retained eigenspace of $\mathbf J_{\mathrm{sample}}$ instead:
+If $\mathbf J_{\mathrm{sample}}$ is singular, the Likelihood Correlation Distortion is defined on the retained eigenspace of $\mathbf J_{\mathrm{sample}}$ instead:
 \begin{equation}
 \mathbf R_{J_{\mathrm{sample}}}
 =
@@ -247,7 +247,7 @@ The corrected covariance is likewise evaluated on the retained eigenspace of $\m
 
 If the retained eigenspace is empty, the corresponding distortion quantity is non-informative and should be treated as undefined rather than as a finite full-space matrix.
 
-\section*{9. Effective Sample Size and Correlation Distortion}
+\section*{9. Effective Sample Size and Likelihood Correlation Distortion}
 
 \subsection*{8.1 Variance of Sum vs Sum of Variances}
 
@@ -294,7 +294,7 @@ define
 
 \subsection*{8.3 Score-Based Effective Sample Size}
 
-Define the correlation distortion matrix
+Define the Likelihood Correlation Distortion
 \begin{equation}
 \mathbf R
 =
@@ -313,9 +313,9 @@ Scalar effective sample size measures may be derived from invariants of $\mathbf
 
 If $\mathbf R \approx \kappa \mathbf I$, temporal dependence acts isotropically.
 
-\section*{10. Sample Distortion and Decomposition}
+\section*{10. Likelihood Sample Distortion and Decomposition}
 
-Define the sample distortion matrix
+Define the Likelihood Sample Distortion
 \begin{equation}
 \mathbf C_{\mathrm{sample}}
 =
@@ -362,10 +362,10 @@ However, if $\mathbf R$ is anisotropic or $\mathbf C_{\mathrm{sample}} \neq \mat
 \mathbf J_{\mathrm{total}} &\rightarrow \text{total score fluctuation geometry}, \\
 \mathbf J_{\mathrm{sample}} &\rightarrow \text{within-interval score fluctuation geometry}, \\
 \mathbf C &\rightarrow \text{total likelihood information distortion}, \\
-\mathbf C_{\mathrm{sample}} &\rightarrow \text{sample distortion}, \\
-\mathbf R &\rightarrow \text{correlation distortion}, \\
-\Sigma_{\mathrm{DCC}} &\rightarrow \text{distortion-corrected covariance}, \\
-\mathbf b_{\mathrm{DIB}} &\rightarrow \text{distortion-induced bias}.
+\mathbf C_{\mathrm{sample}} &\rightarrow \text{likelihood sample distortion}, \\
+\mathbf R &\rightarrow \text{likelihood correlation distortion}, \\
+\Sigma_{\mathrm{DCC}} &\rightarrow \text{likelihood distortion-corrected covariance}, \\
+\mathbf b_{\mathrm{DIB}} &\rightarrow \text{likelihood distortion-induced bias}.
 \end{align}
 
 Together these quantities distinguish temporal dependence, sample-level mismatch, variance inflation, and systematic bias.

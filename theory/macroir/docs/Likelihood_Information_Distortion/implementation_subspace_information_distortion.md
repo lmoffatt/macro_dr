@@ -37,7 +37,7 @@ The singular-capable helpers are:
 
 The matrix helpers return `Maybe_error<SymPosDefMatrix<double>>`.
 
-The DIB helper returns `Maybe_error<Matrix<double>>`.
+The Likelihood Distortion-Induced Bias helper returns `Maybe_error<Matrix<double>>`.
 
 These are semantic wrappers. Internally they use two numerical kernels:
 
@@ -91,22 +91,22 @@ This preserves current robustness while allowing singular but meaningful cases t
 In `calculate_Likelihood_diagnostics_evolution_f`:
 
 - total likelihood information distortion uses `idm_matrix_subspace(H, J_total)`
-- sample distortion uses `sample_distortion_matrix_subspace(H, J_sample)`
-- correlation distortion uses `correlation_distortion_matrix_subspace(J_sample, J_total)`
-- reconstituted distortion uses `c_h_r_c_h_matrix_subspace(C_sample, R)`
-- corrected covariance uses `dcc_matrix_subspace(H, J_total)`
-- distortion-induced bias uses `distortion_induced_bias_subspace(H, g)`
+- likelihood sample distortion uses `sample_distortion_matrix_subspace(H, J_sample)`
+- likelihood correlation distortion uses `correlation_distortion_matrix_subspace(J_sample, J_total)`
+- likelihood information distortion reconstituted uses `c_h_r_c_h_matrix_subspace(C_sample, R)`
+- likelihood distortion-corrected covariance uses `dcc_matrix_subspace(H, J_total)`
+- likelihood distortion-induced bias uses `distortion_induced_bias_subspace(H, g)`
 
 This matches the supplement notation:
 
 - `H`: Gaussian Fisher curvature
 - `J_total`: covariance of the total score
 - `J_sample`: sum of within-interval score covariances
-- `C_sample`: sample distortion on the retained `H`-subspace
-- `R`: correlation distortion on the retained `J_sample`-subspace
-- `Sigma_DCC`: corrected covariance on the retained `H`-subspace
+- `C_sample`: Likelihood Sample Distortion on the retained `H`-subspace
+- `R`: Likelihood Correlation Distortion on the retained `J_sample`-subspace
+- `Sigma_DCC`: Likelihood Distortion-Corrected Covariance on the retained `H`-subspace
 - `g`: expected score vector
-- `b_DIB`: distortion-induced bias on the retained `H`-subspace
+- `b_DIB`: Likelihood Distortion-Induced Bias on the retained `H`-subspace
 
 ## Interpretation
 
