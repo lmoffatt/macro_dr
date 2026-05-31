@@ -7,8 +7,8 @@ Current promoted material includes:
 - `Macro_IR/`
   - core MacroIR specification, derivations, tutorials, supplement drafts, and
     implementation-facing documents for the implemented MacroIR line
-- `Information_Distortion_Matrix/`
-  - core Information Distortion Matrix theory documents and the current
+- `Likelihood_Information_Distortion/`
+  - core Likelihood Information Distortion theory documents and the current
     implementation note for subspace handling
 
 This area should contain stable conceptual and mathematical baseline material,

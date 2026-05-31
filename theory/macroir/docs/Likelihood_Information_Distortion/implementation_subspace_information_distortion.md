@@ -1,8 +1,8 @@
-# Implementation Note: Subspace Information Distortion
+# Implementation Note: Subspace Likelihood Information Distortion
 
 ## Purpose
 
-This note describes how singular `H`, `J_sample`, and `J_total` are handled in the codebase for information distortion diagnostics.
+This note describes how singular `H`, `J_sample`, and `J_total` are handled in the codebase for Likelihood Information Distortion diagnostics.
 
 The scientific document uses an identifiable-subspace formulation. The implementation mirrors that directly: diagonalize the reference PSD matrix, retain only eigenmodes above a cutoff, and evaluate inverse powers only on that retained eigenspace.
 
@@ -90,7 +90,7 @@ This preserves current robustness while allowing singular but meaningful cases t
 
 In `calculate_Likelihood_diagnostics_evolution_f`:
 
-- total information distortion uses `idm_matrix_subspace(H, J_total)`
+- total likelihood information distortion uses `idm_matrix_subspace(H, J_total)`
 - sample distortion uses `sample_distortion_matrix_subspace(H, J_sample)`
 - correlation distortion uses `correlation_distortion_matrix_subspace(J_sample, J_total)`
 - reconstituted distortion uses `c_h_r_c_h_matrix_subspace(C_sample, R)`

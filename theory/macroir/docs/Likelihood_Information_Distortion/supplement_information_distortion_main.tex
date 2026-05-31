@@ -4,7 +4,7 @@
 \usepackage{geometry}
 \geometry{margin=1in}
 
-\title{Supplementary Information: Information Distortion, Effective Sample Size, Corrected Covariance, and Bias}
+\title{Supplementary Information: Likelihood Information Distortion, Effective Sample Size, Corrected Covariance, and Bias}
 \author{}
 \date{}
 
@@ -88,9 +88,9 @@ Here $\mathbf J_{\mathrm{sample}}$ is the sum of within-interval score covarianc
 \mathbf J_{\mathrm{sample}} + 2\sum_{i<j}\mathrm{Cov}(s_i,s_j).
 \end{equation}
 
-\section*{4. Information Distortion Matrix (IDM)}
+\section*{4. Likelihood Information Distortion (LID)}
 
-The total Information Distortion Matrix is
+The total Likelihood Information Distortion is
 \begin{equation}
 \mathbf C(\theta)
 =
@@ -327,7 +327,7 @@ Define the sample distortion matrix
 If $\mathbf J_{\mathrm{sample}} = \mathbf H$, then $\mathbf C_{\mathrm{sample}} = \mathbf I$.
 Thus $\mathbf C_{\mathrm{sample}}$ measures mismatch between within-interval score variance and Gaussian Fisher curvature.
 
-The total Information Distortion Matrix decomposes as
+The total Likelihood Information Distortion decomposes as
 \begin{equation}
 \mathbf C
 =
@@ -361,7 +361,7 @@ However, if $\mathbf R$ is anisotropic or $\mathbf C_{\mathrm{sample}} \neq \mat
 \mathbf H &\rightarrow \text{Gaussian Fisher curvature}, \\
 \mathbf J_{\mathrm{total}} &\rightarrow \text{total score fluctuation geometry}, \\
 \mathbf J_{\mathrm{sample}} &\rightarrow \text{within-interval score fluctuation geometry}, \\
-\mathbf C &\rightarrow \text{total information distortion}, \\
+\mathbf C &\rightarrow \text{total likelihood information distortion}, \\
 \mathbf C_{\mathrm{sample}} &\rightarrow \text{sample distortion}, \\
 \mathbf R &\rightarrow \text{correlation distortion}, \\
 \Sigma_{\mathrm{DCC}} &\rightarrow \text{distortion-corrected covariance}, \\
