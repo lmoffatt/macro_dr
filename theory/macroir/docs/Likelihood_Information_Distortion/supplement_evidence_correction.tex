@@ -16,7 +16,7 @@ and the Logarithmic Nature of Variance Inflation}
 \maketitle
 
 \begin{abstract}
-\noindent We derive the correction to the log-evidence that follows from replacing the Gaussian Fisher Information $\mathbf H$ with the distortion-corrected covariance $\boldsymbol\Sigma_{\mathrm{DCC}} = \mathbf H^{-1}\mathbf J_{\mathrm{total}}\mathbf H^{-1}$ in the Laplace approximation. The result is remarkably compact: the shift in log-evidence equals $\tfrac{1}{2}\log\det(\mathbf C)$, where $\mathbf C$ is the Likelihood Information Distortion (LID). This places the LID at the centre of Bayesian model-comparison corrections. We then discuss why this correction \emph{feels} like it should be huge (variance inflation corresponds to fewer effective samples) yet is an $O(1)$ additive shift to the log-evidence, owing to the logarithmic scale on which evidence is accumulated. The resolution clarifies the roles of the peak term and the volume term in the Laplace approximation.
+\noindent We derive the correction to the log-evidence that follows from replacing the Gaussian Fisher Information $\mathbf H$ with the Likelihood Distortion-Corrected Covariance $\boldsymbol\Sigma_{\mathrm{DCC}} = \mathbf H^{-1}\mathbf J_{\mathrm{total}}\mathbf H^{-1}$ in the Laplace approximation. The result is remarkably compact: the shift in log-evidence equals $\tfrac{1}{2}\log\det(\mathbf C)$, where $\mathbf C$ is the Likelihood Information Distortion (LID). This places the LID at the centre of Bayesian model-comparison corrections. We then discuss why this correction \emph{feels} like it should be huge (variance inflation corresponds to fewer effective samples) yet is an $O(1)$ additive shift to the log-evidence, owing to the logarithmic scale on which evidence is accumulated. The resolution clarifies the roles of the peak term and the volume term in the Laplace approximation.
 \end{abstract}
 
 \section{Setup}
@@ -211,7 +211,7 @@ If both models use approximate likelihoods of comparable structure, the uncorrec
 -
 \tfrac{1}{2}\log\det(\mathbf C_B),
 \end{equation}
-independent of $T$. The approximation whose LID has the larger determinant is spuriously favoured by an amount that does not diminish with more data. Reporting corrected Bayes factors therefore requires the LID correction; the CDM (Correlation Distortion Matrix, normalised by the per-sample score covariance rather than by $\mathbf H$) does not directly enter this formula because $\mathbf J_{\mathrm{sample}}$ is not the Hessian of the log-likelihood and plays no role in the Laplace expansion.
+independent of $T$. The approximation whose LID has the larger determinant is spuriously favoured by an amount that does not diminish with more data. Reporting corrected Bayes factors therefore requires the LID correction; the Likelihood Correlation Distortion (normalised by the per-sample score covariance rather than by $\mathbf H$) does not directly enter this formula because $\mathbf J_{\mathrm{sample}}$ is not the Hessian of the log-likelihood and plays no role in the Laplace expansion.
 
 \section{The Apparent Paradox of Logarithmic Variance Inflation}
 
@@ -279,7 +279,7 @@ The per-sample contribution to $\log Z$ is therefore bounded: no finite amount o
 \item The correction is small compared to the $O(T)$ log-likelihood --- but decisive for Bayes-factor comparisons between approximations, where the $O(T)$ contributions cancel.
 \item The apparent paradox --- "variance inflation means effective sample loss, which should be a huge effect" --- resolves by recognising that the evidence is split between a peak term (data fit, $O(T)$) and a volume term (parameter precision, $O(\log T) + O(1)$), and the LID correction affects only the latter.
 \item Evidence is additive in log-probability per independent sample; variance inflation is a fixed multiplicative factor in probability, hence a fixed additive shift in log-evidence. These two modes of "additivity" operate on different scales, and confusing them produces the sense of paradox.
-\item The LID $\mathbf C$ is therefore the natural Bayesian-correction object: the CDM (correlation distortion matrix, normalised by $\mathbf J_{\mathrm{sample}}$) remains the appropriate \emph{diagnostic} for temporal whiteness of the score, but does not enter the evidence formula directly.
+\item The LID $\mathbf C$ is therefore the natural Bayesian-correction object: the Likelihood Correlation Distortion (normalised by $\mathbf J_{\mathrm{sample}}$) remains the appropriate \emph{diagnostic} for temporal whiteness of the score, but does not enter the evidence formula directly.
 \end{itemize}
 
 \end{document}
