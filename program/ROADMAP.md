@@ -32,8 +32,8 @@ materials:
   `papers/macroir-elife-2025/docs/manuscript-drafts/`
 - curated MacroIR theory documents under
   `theory/macroir/docs/Macro_IR/`
-- validation-relevant Information Distortion Matrix documents under
-  `theory/macroir/docs/Information_Distortion_Matrix/`
+- validation-relevant Likelihood Information Distortion documents under
+  `theory/macroir/docs/Likelihood_Information_Distortion/`
 
 These sources take precedence over older informal notes when they disagree.
 

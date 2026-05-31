@@ -165,11 +165,12 @@ stationary protocol):
    distortion alters the informative-subspace posterior shape. If
    DCC correlations drop significantly versus FC's, the apparent ridge is
    partly distortion-driven and removable by correction.
-8. **Cross-reference with IDM and CDM.** `log_Det<Information_Distortion_Matrix>`
-   far from 0 signals information loss; `Correlation_Distortion_Matrix`
-   eigenvalues far from 1 flag per-sample vs total covariance disagreement.
-   A non-identifiable direction should show either a near-zero IDM
-   eigenvalue or a CDM eigenvalue far from 1.
+8. **Cross-reference with LID and Likelihood Correlation Distortion.**
+   `log_Det<Likelihood_Information_Distortion>` far from 0 signals
+   information loss; `Likelihood_Correlation_Distortion` eigenvalues far
+   from 1 flag per-sample vs total covariance disagreement. A
+   non-identifiable direction should show either a near-zero LID
+   eigenvalue or a Likelihood Correlation Distortion eigenvalue far from 1.
 
 ## 6. What to do with a confirmed ridge
 

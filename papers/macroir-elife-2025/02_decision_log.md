@@ -11,7 +11,7 @@ Record decisions here so we can “rewind” using git history.
 - **Algorithms to include in comparisons:** `NR`, `R`, `MNR`, `MR`,  `IR`.
 - **Keep MicroIR out of the main paper** to reduce scope/attack surface.
 - **Audio archiving:** keep both audio sources and transcripts (user preference: “both”).
-- **IDM ↔ Evidence (finding):** Laplace log-evidence correction collapses to `Δlog Z = ½ log det(C)`, C = IDM (derivation in `theory/macroir/docs/Information_Distortion_Matrix/supplement_evidence_correction.tex`). Intensive/O(1), sign tied to det(C)≷1. Corollary: distortion ~1.2/param ⇒ ~0.09 nats each, ~1 nat even at 10 params — decisive only for Bayes factors where O(T) peaks cancel.
+- **LID ↔ Evidence (finding):** Laplace log-evidence correction collapses to `Δlog Z = ½ log det(C)`, C = LID (formerly IDM) (derivation in `theory/macroir/docs/Likelihood_Information_Distortion/supplement_evidence_correction.tex`). Intensive/O(1), sign tied to det(C)≷1. Corollary: distortion ~1.2/param ⇒ ~0.09 nats each, ~1 nat even at 10 params — decisive only for Bayes factors where O(T) peaks cancel.
 
 ## Open (needs explicit decision)
 

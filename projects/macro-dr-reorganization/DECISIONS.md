@@ -129,21 +129,21 @@ Rationale:
 - they should remain clearly distinguished
 - each family needs its own curated baseline, active notes, and archive
 
-### D6. Information Distortion Matrix is theory
+### D6. Likelihood Information Distortion is theory
 
-The Information Distortion Matrix line of work belongs to `theory/`, not to
-`docs/`.
+The Likelihood Information Distortion (formerly Information Distortion Matrix)
+line of work belongs to `theory/`, not to `docs/`.
 
 Working implication:
 
-- theoretical IDM documents should be promoted under `theory/`
+- theoretical LID documents should be promoted under `theory/`
 - only implementation-facing documents that explain how the code realizes or
-  diagnoses IDM-related quantities belong in `docs/`
+  diagnoses LID-related quantities belong in `docs/`
 
 Rationale:
 
 - importance does not determine whether something belongs in `docs/`
-- IDM is part of the mathematical and conceptual framework of the program
+- LID is part of the mathematical and conceptual framework of the program
 - `docs/` should remain the software-facing interpretive layer rather than a
   container for all important writing
 
@@ -265,7 +265,7 @@ When a first promotion set is chosen, record it here explicitly.
 
 - the theory families currently under `docs/theoretical results/`, including:
   - `Macro_IR/`
-  - `Information_Distortion_Matrix/`
+  - `Likelihood_Information_Distortion/`
   - `Adaptive_MacroR/`
   - `Gmean_ij_gvarij/`
   - `Macro_Taylor/`

@@ -228,7 +228,7 @@ remain stable for now.
 Important clarification:
 
 - theory remains theory even when it is central or practically important
-- Information Distortion Matrix material belongs in `theory/`
+- Likelihood Information Distortion material belongs in `theory/`
 - only implementation-facing explanatory material about how the code realizes
   that theory belongs in `docs/`
 
