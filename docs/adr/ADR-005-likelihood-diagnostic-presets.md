@@ -35,10 +35,11 @@ alias, plus a shared base that every preset extends:
 | `series_kernel_full` | 7 observables as `Report_cross<V>`, GFI as `Report_local_var` + `Per_sample_derived_diagnostics` |
 
 The shared `Analisis_derivative_diagnostic_base` always carries:
-`Information_Distortion_Matrix`, `Sample_Distortion_Matrix`,
-`Correlation_Distortion_Matrix`, `Fisher_Covariance`,
-`Distortion_Corrected_Covariance`, their `log_Det<…>` (for Laplace-approximated
-Bayes-factor corrections), `Distortion_Induced_Bias`, Σ moments for the seven
+`Likelihood_Information_Distortion`, `Likelihood_Sample_Distortion`,
+`Likelihood_Correlation_Distortion`, `Likelihood_Fisher_Covariance`,
+`Likelihood_Distortion_Corrected_Covariance`, their `log_Det<…>`
+(for Laplace-approximated Bayes-factor corrections),
+`Likelihood_Distortion_Induced_Bias`, Σ moments for the seven
 observables, plus an **identifiability diagnostic bundle** on `Fisher_Covariance`
 and `Distortion_Corrected_Covariance`:
 
@@ -117,7 +118,9 @@ overloads needed.
 
 ### Shared PSD decomposition
 
-Every distortion computation (`IDM`, `SDM`, `DCC`, `FC`, `DIB`) and every
+Every distortion computation (`LID`, `Likelihood_Sample_Distortion`,
+`Likelihood_Distortion_Corrected_Covariance`, `Likelihood_Fisher_Covariance`,
+`Likelihood_Distortion_Induced_Bias`) and every
 kernel normalization pass share one eigendecomposition of the anchor matrix
 (`H`, `J_sample`, `SDM`, or lag-0 covariance blocks) via `lapack::PSDDecomposition`
 in [legacy/lapack_headers.h](../../legacy/lapack_headers.h). A single

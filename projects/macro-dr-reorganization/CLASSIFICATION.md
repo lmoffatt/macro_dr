@@ -132,7 +132,7 @@ Important refinement:
   - core baseline theory
   - active theory notes
   - archival draft variants
-- Information Distortion Matrix material there is theory, not code-facing docs
+- Likelihood Information Distortion material there is theory, not code-facing docs
 
 ### Papers
 

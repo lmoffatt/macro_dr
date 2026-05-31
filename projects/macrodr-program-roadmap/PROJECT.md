@@ -122,7 +122,7 @@ This project is successful if:
 - the roadmap source-of-truth inputs have been identified as:
   - `papers/macroir-elife-2025/docs/manuscript-drafts/`
   - `theory/macroir/docs/Macro_IR/`
-  - `theory/macroir/docs/Information_Distortion_Matrix/`
+  - `theory/macroir/docs/Likelihood_Information_Distortion/`
 
 ### In progress
 

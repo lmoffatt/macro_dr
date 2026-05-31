@@ -25,7 +25,7 @@ Representative findings:
   Information matrix.
 
 This note builds the theoretical framework, relates the kernel to the existing
-`Information_Distortion_Matrix`, and proposes correction strategies.
+`Likelihood_Information_Distortion`, and proposes correction strategies.
 
 ## 2. Theoretical framework
 
@@ -115,7 +115,7 @@ the Fisher-correlation coefficient between gradients w.r.t. parameters $i$ and $
 
 ## 3. Relation to the existing distortion matrix
 
-The `Information_Distortion_Matrix` in the codebase is the **zero-frequency (DC)
+The `Likelihood_Information_Distortion` in the codebase is the **zero-frequency (DC)
 component** of the kernel's Fourier transform, i.e. the sum over all lags:
 
 $$
@@ -266,7 +266,7 @@ What you have empirically:
 
 - Validated bootstrap kernel $\hat K(\tau)$ across a dense lattice of
   $(\text{algorithm}, \text{interval\_in\_tau}, \text{noise}, \text{N}_{\text{ch}})$.
-- The integrated distortion $\hat{\mathcal J}$ (as `Information_Distortion_Matrix`).
+- The integrated distortion $\hat{\mathcal J}$ (as `Likelihood_Information_Distortion`).
 - Clear algorithm-wise separation: IRTV ≳ IRV ≳ MNRV ≳ MRV at large $h$, with MRV
   failing specifically at agonist-concentration transitions.
 
@@ -279,7 +279,7 @@ What the theoretical framework adds:
   truncation; here is the next-order correction, and here is the empirical regime
   where each is valid".
 - **HAC-corrected confidence intervals** as the recommended reporting standard,
-  with the existing `Information_Distortion_Matrix` as a special case
+  with the existing `Likelihood_Information_Distortion` as a special case
   ($\Omega = \mathcal J$ would be the naive read).
 
 ## 7. Immediate practical steps

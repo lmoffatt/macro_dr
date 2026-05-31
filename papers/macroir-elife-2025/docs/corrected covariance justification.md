@@ -327,7 +327,7 @@ Every single term depends on dt only; ns cancels out. Therefore dlogL/dθ, d²lo
 
 gfi = sqr_X<true>(d y_mean/dθ) / y_var
     + sqr_X<true>(d y_var /dθ) / (2·y_var²);
-and its sum H, its inverse Fisher_Covariance, and Information_Distortion_Matrix = W_H^{-1} · J · W_H^{-1} (src/core/likelihood.cpp:1614-1619) are by construction independent of ns at fixed dt. This is exactly the behaviour you observed.
+and its sum H, its inverse Likelihood_Fisher_Covariance, and Likelihood_Information_Distortion = W_H^{-1} · J · W_H^{-1} (src/core/likelihood.cpp:1614-1619) are by construction independent of ns at fixed dt. This is exactly the behaviour you observed.
 
 Why this is the right physics (and the Poisson analogy)
 MacroIR models the observation as the time-average of the continuous current over [0, dt]. That average is a single random variable whose first two moments are fully determined by dt and the model — sub-sampling the same continuous signal more finely within [0,dt] and then averaging gives you the same sufficient statistic. There is literally no new information in more sub-samples per interval, any more than 10-minute counts give extra info over the 1-hour count in your Poisson example.
