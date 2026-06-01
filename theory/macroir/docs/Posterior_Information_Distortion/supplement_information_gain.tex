@@ -1,0 +1,515 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Supplementary Information: Posterior Information Gain Matrix, Effective Number of Parameters, and Volume Contraction}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We define a Posterior Information Gain Matrix $\mathbf G$ and its sandwich-corrected counterpart $\mathbf G_{\mathrm{corr}}$, which jointly quantify how much information the data add on top of the prior. Their spectra give the effective number of data-informed parameters $p_{\mathrm{eff}} = \mathrm{tr}(\mathbf I - \mathbf G_{\mathrm{corr}}^{-1})$ and the log volume contraction $\tfrac{1}{2}\log\det \mathbf G_{\mathrm{corr}}$ from prior to corrected posterior. The naive--corrected gap is exactly $\Delta_{\mathbf G} = -\log\det \mathbf C_{\mathrm{post}}$, tying the information-gain budget to the Posterior Information Distortion of the main supplement and, via an explicit sign-and-factor relation, to the Laplace evidence correction of the companion likelihood supplement.
+\end{abstract}
+
+% NOTE: This document is a companion to supplement_posterior_main.tex
+% (Posterior Information Distortion) in this directory. The main supplement
+% develops calibration diagnostics; this supplement develops the dual
+% information-gain diagnostics (effective parameters, volume contraction)
+% and shows that the naive--corrected gap equals -log det(C_post). All
+% notation follows the main supplement's bridge to the Likelihood
+% Information Distortion supplements in
+%   theory/macroir/docs/Likelihood_Information_Distortion/
+
+\section*{1. Setup}
+
+Following the conventions of \texttt{supplement\_posterior\_main.tex}, we work in the transformed coordinates in which the Gaussian prior $\pi(\theta) = \mathcal{N}(\mu_{\mathrm{prior}}, \Sigma_{\mathrm{prior}})$ is standard, so that no Jacobian corrections appear. All expectations and covariances are taken under the frequentist sampling distribution of the data $D = (y_1,\ldots,y_T)$ at a fixed true parameter $\theta_0$.
+
+\paragraph{Recap of the main supplement.}
+We recall the four objects that are the building blocks of this document, established in Sections~2--6 of \texttt{supplement\_posterior\_main.tex}:
+\begin{align}
+\mathbf H_{\mathrm{prior}}
+&= \Sigma_{\mathrm{prior}}^{-1},
+\qquad &&\text{(prior precision, Section~2)}
+\label{eq:recap-hprior}\\
+\mathbf H_{\mathrm{post}}
+&= \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}},
+\qquad &&\text{(negative log-posterior Hessian, Section~2)}
+\label{eq:recap-hpost}\\
+\mathbf{JT}_{\mathrm{post}}
+&= \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}},
+\qquad &&\text{(additive score-fluctuation budget, Section~3.1)}
+\label{eq:recap-jt}\\
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+&= \mathbf H_{\mathrm{post}}^{-1}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1},
+\qquad &&\text{(corrected posterior covariance, Section~6).}
+\label{eq:recap-dcc}
+\end{align}
+As emphasized in Section~3.1 of the main supplement, $\mathbf{JT}_{\mathrm{post}}$ is \emph{not} the literal covariance of $S_{\mathrm{post}}(\theta)$ but the augmented-observation bookkeeping convention that places the prior on the same footing as the data. We also recall the central diagnostic of the main supplement,
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+=
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2},
+\label{eq:recap-cpost}
+\end{equation}
+the Posterior Information Distortion (PID) of Section~4 of the main supplement, which equals $\mathbf I$ under correct likelihood specification regardless of prior strength.
+
+\paragraph{Fisher covariances (introduced here).}
+Beyond \eqref{eq:recap-hprior}--\eqref{eq:recap-cpost}, two naive covariance matrices anchor the comparison developed below. These two symbols are introduced in this supplement and do not appear in the glossary of the main supplement, which uses $\mathbf H_{\mathrm{lik}}^{-1}$ and $\mathbf H_{\mathrm{post}}^{-1}$ inline rather than as named covariances. We define the \emph{Likelihood Fisher Covariance}
+\begin{equation}
+\Sigma_{\mathrm{F},\mathrm{lik}} := \mathbf H_{\mathrm{lik}}^{-1},
+\label{eq:sigma-F-lik}
+\end{equation}
+the naive frequentist covariance from the likelihood Hessian alone (which requires the retained-subspace treatment of Section~8 of the Likelihood supplement when $\mathbf H_{\mathrm{lik}}$ is singular), and the \emph{Posterior Fisher Covariance}
+\begin{equation}
+\Sigma_{\mathrm{F},\mathrm{post}} := \mathbf H_{\mathrm{post}}^{-1},
+\label{eq:sigma-F-post}
+\end{equation}
+the standard Bayesian Laplace-approximation posterior covariance at the MAP. Both are ``Fisher-type'' in that they assume the curvature alone (rather than the score-fluctuation budget $\mathbf{JT}_{\mathrm{post}}$) correctly summarizes uncertainty. The sandwich-corrected covariance $\Sigma_{\mathrm{DCC},\mathrm{post}}$ of \eqref{eq:recap-dcc} is the honest replacement under misspecification and reduces to $\Sigma_{\mathrm{F},\mathrm{post}}$ under correct likelihood specification (Section~6.4 of the main supplement).
+
+\paragraph{Scope of this supplement.}
+The main supplement \texttt{supplement\_posterior\_main.tex} develops \emph{calibration} diagnostics: $\mathbf C_{\mathrm{post}}$, $\mathbf C_{\mathrm{sample},\mathrm{post}}$, $\mathbf R_{\mathrm{post}}$, $\Sigma_{\mathrm{DCC},\mathrm{post}}$, and $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ all answer ``how much do we under- or over-estimate posterior uncertainty?''. This supplement complements that view with \emph{information-gain} diagnostics: how much information has the data injected on top of the prior, and along which directions? The central objects are the Posterior Information Gain Matrix $\mathbf G$ (Section~2) and its sandwich-corrected version $\mathbf G_{\mathrm{corr}}$ (Section~3), whose spectra give the effective number of data-informed parameters (Section~4) and the log volume contraction from prior to posterior (Section~5).
+
+The parallel construction on the likelihood side is implicit in the Likelihood Information Distortion supplements (\texttt{supplement\_information\_distortion\_main.tex} and \texttt{supplement\_evidence\_correction.tex}), where the relevant determinant ratios appear inside the Laplace evidence correction; here we promote those determinants to first-class diagnostic objects whose individual eigenvalues are interpretable as direction-wise information-gain factors.
+
+\section*{2. Posterior Information Gain Matrix $\mathbf G$ (Naive)}
+
+The most direct measure of ``information added by the data'' is the ratio of posterior precision to prior precision. We define the \emph{Posterior Information Gain Matrix}
+\begin{equation}
+\mathbf G(\theta)
+:=
+\mathbf H_{\mathrm{prior}}^{-1/2}\,
+\bigl(\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\bigr)\,
+\mathbf H_{\mathrm{prior}}^{-1/2}
+=
+\mathbf H_{\mathrm{prior}}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{prior}}^{-1/2},
+\label{eq:G-def}
+\end{equation}
+using the additive convention \eqref{eq:recap-jt} for $\mathbf{JT}_{\mathrm{post}}$. The symmetric inverse square root $\mathbf H_{\mathrm{prior}}^{-1/2}$ is unambiguously defined because $\mathbf H_{\mathrm{prior}} \succ \mathbf 0$ for any proper Gaussian prior; in the transformed coordinates it is moreover diagonal with entries $\sigma_{\mathrm{prior},i}$.
+
+\subsection*{2.1 Spectral interpretation}
+
+In the joint eigenbasis of $\mathbf H_{\mathrm{prior}}$ and $\mathbf{JT}_{\mathrm{lik}}$, when one exists (e.g., when both are simultaneously diagonal in the transformed coordinates), the eigenvalues of $\mathbf G$ admit a transparent reading:
+\begin{equation}
+\lambda_i(\mathbf G)
+\;\sim\;
+1 + (\text{data information in direction } i) \times (\text{prior variance in direction } i),
+\label{eq:G-eigenvalue-interp}
+\end{equation}
+i.e., $\lambda_i(\mathbf G)$ counts ``how many units of prior precision the data have added in direction $i$.'' \emph{Caveat:} this per-direction product reading is exact only in such a joint eigenbasis; when $\mathbf H_{\mathrm{prior}}$ and $\mathbf{JT}_{\mathrm{lik}}$ do not commute, only the trace decomposes additively, while individual eigenvalues of $\mathbf G$ mix directions through the symmetric whitening (compare the non-local strong-prior caveat of Section~5.3 of the main supplement). In the large-$T$ regime where $\mathbf{JT}_{\mathrm{lik}}$ dominates, this is the leading-order reading in the eigenbasis of $\mathbf G$ itself, with off-diagonal mixing being $O(1/T)$. With this understanding, the bullet readings of $\lambda_i(\mathbf G)$ are:
+\begin{itemize}
+\item $\lambda_i(\mathbf G) \approx 1$: data adds nothing in the corresponding eigen-direction of $\mathbf G$; the posterior coincides with the prior there.
+\item $\lambda_i(\mathbf G) \gg 1$: data dominates the prior in that direction; the posterior is concentrated relative to the prior.
+\item $\lambda_i(\mathbf G) < 1$: an apparent ``information subtraction'' relative to the additive convention; this occurs only when the empirical $\mathbf{JT}_{\mathrm{lik}}$ has eigenvalues below zero, a sampling artifact, and never in the population limit where $\mathbf{JT}_{\mathrm{lik}} \succeq \mathbf 0$.
+\end{itemize}
+
+\paragraph{Decomposition.}
+Equation \eqref{eq:G-def} decomposes additively as
+\begin{equation}
+\mathbf G
+=
+\mathbf I + \mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf{JT}_{\mathrm{lik}}\, \mathbf H_{\mathrm{prior}}^{-1/2},
+\label{eq:G-decomp}
+\end{equation}
+explicitly displaying the ``unit'' baseline contributed by the prior and the data contribution as a whitened version of $\mathbf{JT}_{\mathrm{lik}}$ in prior-precision units. The eigenvalues of the second term report the direction-wise information surplus over the prior baseline.
+
+\subsection*{2.2 Volume reading of $\det \mathbf G$}
+
+From \eqref{eq:G-def},
+\begin{equation}
+\det \mathbf G
+=
+\frac{\det \mathbf{JT}_{\mathrm{post}}}{\det \mathbf H_{\mathrm{prior}}},
+\label{eq:detG-ratio}
+\end{equation}
+so that
+\begin{equation}
+\tfrac{1}{2} \log \det \mathbf G
+=
+\tfrac{1}{2} \log \det \mathbf{JT}_{\mathrm{post}}
+- \tfrac{1}{2} \log \det \mathbf H_{\mathrm{prior}}.
+\label{eq:logdetG}
+\end{equation}
+This is the volume-term part of the Gaussian-approximated Kullback--Leibler divergence between the prior $\mathcal{N}(\mu_{\mathrm{prior}}, \mathbf H_{\mathrm{prior}}^{-1})$ and an approximate posterior with covariance $\mathbf{JT}_{\mathrm{post}}^{-1}$ (mean-shift terms cancel by construction at the MAP up to the displacement bias quantified in Section~7 of the main supplement). In words, $\tfrac{1}{2} \log \det \mathbf G$ measures the volume contraction from the prior to this approximate posterior \emph{when its precision is taken to be $\mathbf{JT}_{\mathrm{post}}$}. Note that this is NOT the standard Bayesian Laplace covariance $\mathbf H_{\mathrm{post}}^{-1}$ (which is $\Sigma_{\mathrm{F},\mathrm{post}}$ of \eqref{eq:sigma-F-post}); the two coincide only under correct specification, where $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ (Section~3.1 of the main supplement).
+
+\subsection*{2.3 ``Naive'' caveat}
+
+The matrix $\mathbf G$ is naive in the following precise sense: it assumes that $\mathbf{JT}_{\mathrm{post}}$ is the correct posterior precision, which holds only under correct likelihood specification (Section~3.1 of the main supplement, where $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$). Under misspecification, the honest posterior precision is instead $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}$ (Section~6 of the main supplement, sandwich correction), and $\mathbf G$ misreports the information gain whenever the two disagree. Section~3 introduces the corrected version $\mathbf G_{\mathrm{corr}}$ that closes this gap; the signed misspecification penalty is computed in Section~7.
+
+Under correct specification ($\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$, hence $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$), $\mathbf G$ reduces to
+\begin{equation}
+\mathbf G \;=\; \mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf H_{\mathrm{post}}\, \mathbf H_{\mathrm{prior}}^{-1/2}
+\;=\;
+\mathbf I + \mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf H_{\mathrm{lik}}\, \mathbf H_{\mathrm{prior}}^{-1/2},
+\label{eq:G-correct-spec}
+\end{equation}
+the prior-whitened posterior precision: the canonical Bayesian object for direction-wise data informativeness.
+
+\section*{3. Sandwich-Corrected Information Gain Matrix $\mathbf G_{\mathrm{corr}}$}
+
+The Posterior Distortion-Corrected Covariance $\Sigma_{\mathrm{DCC},\mathrm{post}}$ of Section~6 of the main supplement is the sandwich-corrected replacement for $\mathbf H_{\mathrm{post}}^{-1}$ as the posterior covariance under likelihood misspecification. Its inverse is the corrected posterior precision:
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}
+=
+\mathbf H_{\mathrm{post}}\, \mathbf{JT}_{\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{post}}.
+\label{eq:dcc-inverse}
+\end{equation}
+Whitening this corrected precision against the prior gives the \emph{Sandwich-Corrected Information Gain Matrix}
+\begin{equation}
+\mathbf G_{\mathrm{corr}}(\theta)
+:=
+\mathbf H_{\mathrm{prior}}^{-1/2}\,
+\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}\,
+\mathbf H_{\mathrm{prior}}^{-1/2}
+=
+\mathbf H_{\mathrm{prior}}^{-1/2}\,
+\mathbf H_{\mathrm{post}}\,
+\mathbf{JT}_{\mathrm{post}}^{-1}\,
+\mathbf H_{\mathrm{post}}\,
+\mathbf H_{\mathrm{prior}}^{-1/2}.
+\label{eq:Gcorr-def}
+\end{equation}
+
+\subsection*{3.1 Reduction to $\mathbf G$ under correct specification}
+
+Under correct likelihood specification, $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ implies $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ (the propagation identity of Section~3.1 of the main supplement), so by \eqref{eq:recap-dcc} $\Sigma_{\mathrm{DCC},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1}$ and $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1} = \mathbf H_{\mathrm{post}}$. Substituting in \eqref{eq:Gcorr-def},
+\begin{equation}
+\mathbf G_{\mathrm{corr}}
+=
+\mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf H_{\mathrm{post}}\, \mathbf H_{\mathrm{prior}}^{-1/2}
+=
+\mathbf H_{\mathrm{prior}}^{-1/2}\, (\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}})\, \mathbf H_{\mathrm{prior}}^{-1/2}
+=
+\mathbf I + \mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf H_{\mathrm{lik}}\, \mathbf H_{\mathrm{prior}}^{-1/2}
+=
+\mathbf G,
+\label{eq:Gcorr-correct-spec}
+\end{equation}
+using \eqref{eq:G-decomp} with $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$. Thus $\mathbf G_{\mathrm{corr}} = \mathbf G$ under correct specification: the two information-gain matrices coincide whenever the Bartlett identity holds.
+
+\subsection*{3.2 Honest information gain under misspecification}
+
+Under misspecification, $\mathbf{JT}_{\mathrm{lik}} \neq \mathbf H_{\mathrm{lik}}$ and $\Sigma_{\mathrm{DCC},\mathrm{post}} \neq \mathbf H_{\mathrm{post}}^{-1}$; consequently $\mathbf G_{\mathrm{corr}} \neq \mathbf G$. The honest information gain is computed against $\Sigma_{\mathrm{DCC},\mathrm{post}}$ because that is the covariance with which posterior credible regions are correctly calibrated (Section~6.4 of the main supplement reduces it to $\mathbf H_{\mathrm{post}}^{-1}$ under correct specification, recovering the Laplace covariance, while preserving frequentist coverage under misspecification).
+
+\paragraph{Decomposition.}
+By the whitening identity of Section~6.3 of the main supplement, $\Sigma_{\mathrm{DCC},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1/2}\, \mathbf C_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1/2}$; inverting gives
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1} = \mathbf H_{\mathrm{post}}^{1/2}\, \mathbf C_{\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{post}}^{1/2}.
+\label{eq:dccinv-whitening}
+\end{equation}
+Substituting \eqref{eq:dccinv-whitening} into \eqref{eq:Gcorr-def},
+\begin{equation}
+\mathbf G_{\mathrm{corr}}
+=
+\mathbf A\, \mathbf C_{\mathrm{post}}^{-1}\, \mathbf A^{\top},
+\qquad
+\mathbf A := \mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf H_{\mathrm{post}}^{1/2}.
+\label{eq:Gcorr-via-Cpost}
+\end{equation}
+The intermediate factor $\mathbf C_{\mathrm{post}}^{-1}$ is the inverse of the Posterior Information Distortion: it is $\mathbf I$ under correct specification and departs from $\mathbf I$ exactly where the calibration diagnostics of the main supplement signal miscalibration. The outer factor $\mathbf A$ is a (non-orthogonal) \emph{congruence transform} from prior-whitened to posterior-whitened coordinates: it is symmetric only when $\mathbf H_{\mathrm{prior}}$ and $\mathbf H_{\mathrm{post}}$ commute, and is otherwise neither orthogonal nor symmetric, yet plays exactly the role of a basis change between the two whitenings. Equation \eqref{eq:Gcorr-via-Cpost} thus exhibits $\mathbf G_{\mathrm{corr}}$ as the naive prior-to-posterior gain congruence, twisted by the inverse PID.
+
+\subsection*{3.3 Well-posedness}
+
+$\mathbf G_{\mathrm{corr}}$ is well-defined whenever the matrices entering \eqref{eq:Gcorr-def} are. The factor $\mathbf H_{\mathrm{prior}}^{-1/2}$ exists for any proper Gaussian prior. The factor $\mathbf H_{\mathrm{post}}^{-1/2}$ exists under the conditions of Section~2.1 of the main supplement (automatic for analytic Gaussian Fisher $\mathbf H_{\mathrm{lik}} \succeq \mathbf 0$; otherwise the dominance condition $\mathbf H_{\mathrm{prior}} - \mathbf H_{\mathrm{lik}}^- \succ \mathbf 0$ is required). The remaining ingredient is $\mathbf{JT}_{\mathrm{post}}^{-1}$, which exists whenever $\mathbf{JT}_{\mathrm{post}} \succ \mathbf 0$. By \eqref{eq:recap-jt}, $\mathbf{JT}_{\mathrm{post}} = \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}} \succeq \mathbf H_{\mathrm{prior}} \succ \mathbf 0$ whenever $\mathbf{JT}_{\mathrm{lik}} \succeq \mathbf 0$, which holds in the population case (and for analytic Gaussian Fisher).
+
+\paragraph{A second dominance condition.}
+In finite samples $\mathbf{JT}_{\mathrm{lik}}$ may have small negative eigenvalues. Positive-definiteness of $\mathbf{JT}_{\mathrm{post}}$ is then ensured by an analogue of the dominance condition,
+\begin{equation}
+\mathbf H_{\mathrm{prior}} - \mathbf{JT}_{\mathrm{lik}}^{-}\, \succ\, \mathbf 0,
+\label{eq:JT-dominance}
+\end{equation}
+with sufficient scalar bound $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) > \lambda_{\max}(\mathbf{JT}_{\mathrm{lik}}^{-})$. This condition is stated only briefly in the main supplement (Section~9.1, in the context of $\mathbf R_{\mathrm{post}}$ well-posedness); here we adopt it as a separate operational requirement for $\mathbf G_{\mathrm{corr}}$ and elevate it to the same diagnostic status as the $\mathbf H_{\mathrm{post}}$ dominance condition of main Section~2.1. We report $\mathbf G_{\mathrm{corr}}$ only when both dominance conditions hold.
+
+\section*{4. Effective Number of Parameters $p_{\mathrm{eff}}$}
+
+The spectrum of $\mathbf G_{\mathrm{corr}}$ encodes a direction-by-direction accounting of how much of the posterior precision is supplied by the data versus the prior. We aggregate this accounting into a single scalar following the Deviance Information Criterion convention.
+
+\paragraph{Definition.}
+The effective number of data-informed parameters is
+\begin{equation}
+p_{\mathrm{eff}}
+:=
+\mathrm{tr}\bigl(\mathbf I - \mathbf G_{\mathrm{corr}}^{-1}\bigr)
+=
+p - \mathrm{tr}(\mathbf G_{\mathrm{corr}}^{-1}),
+\label{eq:peff-def}
+\end{equation}
+where $p$ is the parameter-space dimension.
+
+\paragraph{Spectral interpretation.}
+In the basis diagonalizing $\mathbf G_{\mathrm{corr}}$ (and hence $\mathbf G_{\mathrm{corr}}^{-1}$), \eqref{eq:peff-def} reads
+\begin{equation}
+p_{\mathrm{eff}}
+=
+\sum_{i=1}^{p} \left(1 - \frac{1}{\lambda_i(\mathbf G_{\mathrm{corr}})}\right).
+\label{eq:peff-spectral}
+\end{equation}
+Each per-direction summand $1 - 1/\lambda_i(\mathbf G_{\mathrm{corr}}) \in [0,1]$ when $\lambda_i(\mathbf G_{\mathrm{corr}}) \geq 1$ (the regular case), with the reading:
+\begin{itemize}
+\item Data dominates ($\lambda_i(\mathbf G_{\mathrm{corr}}) \gg 1$): summand $\to 1$. The corresponding eigen-direction of $\mathbf G_{\mathrm{corr}}$ counts as ``one fully data-informed parameter'' in the budget.
+\item Prior dominates ($\lambda_i(\mathbf G_{\mathrm{corr}}) \approx 1$): summand $\to 0$. The direction contributes nothing to $p_{\mathrm{eff}}$: it is prior-constrained.
+\item Mixed ($\lambda_i(\mathbf G_{\mathrm{corr}}) \in (1,\infty)$): the summand reports the fractional data informativeness of the direction.
+\end{itemize}
+The effective parameter count is therefore additive across orthogonal eigen-directions of $\mathbf G_{\mathrm{corr}}$ in the natural Bayesian sense: each direction independently contributes its data-informativeness fraction.
+
+\paragraph{Connection to DIC.}
+Equation \eqref{eq:peff-def} generalizes the local-Gaussian analogue of $p_D$ in the Deviance Information Criterion of Spiegelhalter et al., which uses the standard Bayesian Laplace precision $\mathbf H_{\mathrm{post}}$ to obtain $p_D \approx \mathrm{tr}(\mathbf I - \mathbf H_{\mathrm{prior}}^{1/2}\, \mathbf H_{\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{prior}}^{1/2})$. Our $p_{\mathrm{eff}}$ replaces $\mathbf H_{\mathrm{post}}$ in this expression by the sandwich-corrected precision $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}$ (i.e., $\mathbf G$ by $\mathbf G_{\mathrm{corr}}$). Under correct specification \eqref{eq:Gcorr-correct-spec}, $\Sigma_{\mathrm{DCC},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1}$ and $p_{\mathrm{eff}}$ reduces \emph{exactly} to the standard local-Gaussian $p_D$. Under misspecification, $p_{\mathrm{eff}}$ is the proposed sandwich-corrected effective parameter count, consistent with the calibration framework of the main supplement: it is the extension of DIC compatible with $\Sigma_{\mathrm{DCC},\mathrm{post}}$ as the operative posterior covariance.
+
+\paragraph{Limits.}
+\begin{itemize}
+\item Weak prior (any specification, data-dominance regime): in directions where $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}$ is bounded below away from zero, $\lambda_i(\mathbf G_{\mathrm{corr}}) \gg 1$ and the corresponding summand tends to $1$; if this holds in every direction then $p_{\mathrm{eff}} \to p$. The qualifier ``correct specification'' is unnecessary here: the limit relies on data dominance ($\mathbf H_{\mathrm{lik}}$ non-degenerate, prior weak), not on the Bartlett identity.
+\item Strong prior (defined by $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$ at fixed likelihood-side data): by the residual bound of Section~5.3 of the main supplement (specifically the strong-prior $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$ control of $\|\mathbf C_{\mathrm{post}} - \mathbf I\|$) and the reduction \eqref{eq:Gcorr-correct-spec}, $\mathbf G_{\mathrm{corr}} - \mathbf I = O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$ in operator norm. Equivalently, $\mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf H_{\mathrm{lik}}\, \mathbf H_{\mathrm{prior}}^{-1/2} \to \mathbf 0$, so every eigenvalue $\lambda_i(\mathbf G_{\mathrm{corr}}) \to 1$ and $p_{\mathrm{eff}} = O(p\, /\, \lambda_{\min}(\mathbf H_{\mathrm{prior}})) \to 0$.
+\item Mixed regime (informative prior plus informative data): $0 < p_{\mathrm{eff}} < p$, with the fractional value reporting the effective data share of the posterior.
+\end{itemize}
+
+\paragraph{Per-direction information gain in nats.}
+A finer-grained readout records the information gained per eigen-direction of $\mathbf G_{\mathrm{corr}}$:
+\begin{equation}
+\Delta I_i := \tfrac{1}{2} \log \lambda_i(\mathbf G_{\mathrm{corr}})
+\qquad
+(\text{nats, } i\text{-th eigen-direction}),
+\label{eq:per-direction-info}
+\end{equation}
+with $\sum_i \Delta I_i = \tfrac{1}{2} \log \det \mathbf G_{\mathrm{corr}}$, the total information gain (Section~5). Equation \eqref{eq:per-direction-info} provides a directional Bayesian information budget: large $\Delta I_i$ identifies the eigen-directions of $\mathbf G_{\mathrm{corr}}$ along which the data contribute most. These eigen-directions live in the prior-whitened coordinates $\mathbf H_{\mathrm{prior}}^{-1/2}(\cdot)\mathbf H_{\mathrm{prior}}^{-1/2}$ and generally do not align with the original parameter axes; per-parameter diagonals $[\mathbf G_{\mathrm{corr}}]_{ii}$ supply the complementary parameter-axis-aligned readout, in the sense of Section~5.1 of the main supplement. Summing across directions reproduces the global $(p/2)\log T$ asymptotic of Section~6 below: each individual $\Delta I_i$ is the $(1/2)\log T$ contribution of its respective direction.
+
+\section*{5. Log Volume Contraction}
+
+The scalar $\tfrac{1}{2} \log \det \mathbf G_{\mathrm{corr}}$ admits a clean geometric reading as the log volume ratio between the prior covariance ellipsoid and the corrected posterior covariance ellipsoid.
+
+\paragraph{Derivation.}
+By \eqref{eq:Gcorr-def} and the multiplicativity of $\det$,
+\begin{equation}
+\det \mathbf G_{\mathrm{corr}}
+=
+\det(\mathbf H_{\mathrm{prior}}^{-1})\,
+\det(\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1})
+=
+\frac{1}{\det \mathbf H_{\mathrm{prior}}\, \det \Sigma_{\mathrm{DCC},\mathrm{post}}}.
+\label{eq:detGcorr-ratio}
+\end{equation}
+Taking logs and dividing by two,
+\begin{equation}
+\tfrac{1}{2} \log \det \mathbf G_{\mathrm{corr}}
+=
+- \tfrac{1}{2} \log \det \mathbf H_{\mathrm{prior}}
+- \tfrac{1}{2} \log \det \Sigma_{\mathrm{DCC},\mathrm{post}}.
+\label{eq:logdetGcorr-decomp}
+\end{equation}
+Recognize $-\tfrac{1}{2} \log \det \mathbf H_{\mathrm{prior}} = \tfrac{1}{2} \log \det \Sigma_{\mathrm{prior}}$, the log of the prior covariance ``radius product,'' and analogously $-\tfrac{1}{2} \log \det \Sigma_{\mathrm{DCC},\mathrm{post}} = +\tfrac{1}{2} \log \det \Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}$. Equivalently, in terms of ellipsoidal volumes (proportional to $\sqrt{\det \Sigma}$):
+\begin{equation}
+\tfrac{1}{2} \log \det \mathbf G_{\mathrm{corr}}
+=
+\log \frac{\mathrm{Vol}_{\mathrm{prior}}}{\mathrm{Vol}_{\mathrm{corrected\ posterior}}},
+\label{eq:logdetGcorr-volume}
+\end{equation}
+where
+\begin{equation}
+\mathrm{Vol}_{\mathrm{prior}} \propto \sqrt{\det \Sigma_{\mathrm{prior}}}
+=
+\sqrt{\det \mathbf H_{\mathrm{prior}}^{-1}},
+\qquad
+\mathrm{Vol}_{\mathrm{corrected\ posterior}} \propto \sqrt{\det \Sigma_{\mathrm{DCC},\mathrm{post}}}.
+\label{eq:vol-defs}
+\end{equation}
+
+\paragraph{Sign of the contraction.}
+Under correct likelihood specification, $\Sigma_{\mathrm{DCC},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1} \preceq \mathbf H_{\mathrm{prior}}^{-1}$ (because $\mathbf H_{\mathrm{post}} = \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}} \succeq \mathbf H_{\mathrm{prior}}$ in Loewner order when $\mathbf H_{\mathrm{lik}} \succeq \mathbf 0$), so $\det \Sigma_{\mathrm{DCC},\mathrm{post}} \leq \det \mathbf H_{\mathrm{prior}}^{-1}$ and $\tfrac{1}{2}\log\det \mathbf G_{\mathrm{corr}} \geq 0$: the corrected posterior is volume-contained in the prior, and the log volume contraction is a genuine contraction. Under misspecification with severe variance inflation ($\det \mathbf C_{\mathrm{post}} \gg 1$), this inequality can reverse: $\Sigma_{\mathrm{DCC},\mathrm{post}}$ may have larger determinant than $\mathbf H_{\mathrm{prior}}^{-1}$, giving $\tfrac{1}{2}\log\det \mathbf G_{\mathrm{corr}} < 0$. A negative log volume contraction signals that the sandwich correction has revealed effective posterior uncertainty larger than the prior in volume terms; it is the volume-side counterpart of the inflation/deflation taxonomy of Section~4.2 of the main supplement.
+
+\paragraph{Reading.}
+Equation \eqref{eq:logdetGcorr-volume} is the Bayesian information gain in nats under a Gaussian approximation: the log of the volume contraction factor from prior to corrected posterior. Its expected sign is positive (a true contraction) under correct specification; under severe misspecification it can become negative, in which case the diagnostic is reporting effective volume expansion rather than contraction. In the regime of valid contraction, it grows with sample size at the standard $(p/2) \log T$ rate (Section~6).
+
+\paragraph{Naive analogue.}
+Repeating the derivation with $\mathbf G$ in place of $\mathbf G_{\mathrm{corr}}$ and \eqref{eq:detG-ratio},
+\begin{equation}
+\tfrac{1}{2} \log \det \mathbf G
+=
+\tfrac{1}{2} \log \det \mathbf{JT}_{\mathrm{post}}
+- \tfrac{1}{2} \log \det \mathbf H_{\mathrm{prior}}
+=
+\log \frac{\mathrm{Vol}_{\mathrm{prior}}}{\mathrm{Vol}_{\mathrm{naive\ posterior}}},
+\label{eq:logdetG-volume}
+\end{equation}
+with $\mathrm{Vol}_{\mathrm{naive\ posterior}} \propto \sqrt{\det \mathbf{JT}_{\mathrm{post}}^{-1}}$. Here ``naive posterior'' denotes the volume implied by treating $\mathbf{JT}_{\mathrm{post}}$ as the posterior precision (the precision $\mathbf G$ is built from), \emph{not} the standard Bayesian Laplace posterior covariance $\Sigma_{\mathrm{F},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1}$. The two coincide under correct specification (where $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$) and disagree otherwise; the corrected version \eqref{eq:logdetGcorr-volume} is the calibrated readout, and the gap between the two is the subject of Section~7.
+
+\section*{6. Scaling with Sample Size $T$}
+
+The scaling of $\mathbf G$ and $\mathbf G_{\mathrm{corr}}$ with the number of measurement intervals $T$ follows from the per-interval additivity of the likelihood-side objects.
+
+\paragraph{Likelihood asymptotics.}
+By definition, $\mathbf{JT}_{\mathrm{lik}} = \mathrm{Cov}(S_{\mathrm{lik}}(\theta)) = \mathrm{Cov}\bigl(\sum_t s_t\bigr)$. Under stationarity and ergodicity of the per-interval scores, $\mathbf{JT}_{\mathrm{lik}}$ grows linearly in $T$:
+\begin{equation}
+\mathbf{JT}_{\mathrm{lik}} = T\,\mathbf j_{\mathrm{lik}} + O(1),
+\qquad
+\mathbf j_{\mathrm{lik}} := \lim_{T\to\infty} T^{-1}\, \mathbf{JT}_{\mathrm{lik}},
+\label{eq:JT-scaling}
+\end{equation}
+where $\mathbf j_{\mathrm{lik}}$ is the per-interval information rate. Analogously $\mathbf H_{\mathrm{lik}} = T\, \mathbf h_{\mathrm{lik}} + O(1)$ for $\mathbf h_{\mathrm{lik}} := \lim_T T^{-1}\, \mathbf H_{\mathrm{lik}}$, with $\mathbf h_{\mathrm{lik}} = \mathbf j_{\mathrm{lik}}$ under correct specification.
+
+\paragraph{Information gain scaling.}
+The prior contributions are $T$-constants, so $\mathbf H_{\mathrm{post}} \sim T \mathbf h_{\mathrm{lik}}$ and $\mathbf{JT}_{\mathrm{post}} \sim T \mathbf j_{\mathrm{lik}}$ for large $T$. By \eqref{eq:G-def}, in the joint eigenbasis when one exists,
+\begin{equation}
+\lambda_i(\mathbf G)
+\;\sim\;
+T \cdot \lambda_i\bigl(\mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf j_{\mathrm{lik}}\, \mathbf H_{\mathrm{prior}}^{-1/2}\bigr) + O(1),
+\label{eq:G-eigenvalue-scaling}
+\end{equation}
+recovering the heuristic reading \eqref{eq:G-eigenvalue-interp} in the asymptotic regime. The same linear-in-$T$ scaling applies to $\mathbf G_{\mathrm{corr}}$: by \eqref{eq:dcc-inverse}, $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1} = \mathbf H_{\mathrm{post}}\, \mathbf{JT}_{\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{post}} \sim T\, \mathbf h_{\mathrm{lik}}\, \mathbf j_{\mathrm{lik}}^{-1}\, \mathbf h_{\mathrm{lik}}$.
+
+\paragraph{Determinant scaling.}
+Taking determinants of the linear-in-$T$ matrices,
+\begin{equation}
+\tfrac{1}{2} \log \det \mathbf G_{\mathrm{corr}}
+\;\sim\;
+\tfrac{p}{2}\,\log T \,+\, \mathrm{const},
+\qquad T \to \infty,
+\label{eq:logdetGcorr-scaling}
+\end{equation}
+the standard rate of Bayesian information accumulation: one half-log-$T$ per parameter dimension. The constant depends on the specification regime:
+\begin{itemize}
+\item Correct specification ($\mathbf h_{\mathrm{lik}} = \mathbf j_{\mathrm{lik}}$): the constant is $-\tfrac{1}{2}\log\det \mathbf H_{\mathrm{prior}} + \tfrac{1}{2}\log\det \mathbf h_{\mathrm{lik}}$.
+\item Misspecification ($\mathbf h_{\mathrm{lik}} \neq \mathbf j_{\mathrm{lik}}$): the rate $(p/2)\log T$ persists, but the constant absorbs the per-interval $\Sigma_{\mathrm{DCC}}$ limit: $-\tfrac{1}{2}\log\det \mathbf H_{\mathrm{prior}} + \tfrac{1}{2}\log\det\bigl(\mathbf h_{\mathrm{lik}}\, \mathbf j_{\mathrm{lik}}^{-1}\, \mathbf h_{\mathrm{lik}}\bigr)$. The calibration distortion enters only the constant offset; information continues to accumulate at the standard Bayesian rate.
+\end{itemize}
+
+\paragraph{Effective parameters scaling.}
+From \eqref{eq:peff-spectral}, $p_{\mathrm{eff}} = p - \sum_i 1/\lambda_i(\mathbf G_{\mathrm{corr}}) = p - O(1/T)$ as $T \to \infty$: every direction asymptotically becomes data-informed. To leading order, $p - p_{\mathrm{eff}} \sim \mathrm{tr}\bigl(\mathbf H_{\mathrm{prior}}\,(T\, \mathbf h_{\mathrm{lik}}\, \mathbf j_{\mathrm{lik}}^{-1}\, \mathbf h_{\mathrm{lik}})^{-1}\bigr) + O(1/T^2)$ under misspecification, reducing to $\mathrm{tr}\bigl(\mathbf H_{\mathrm{prior}}\,(T\, \mathbf h_{\mathrm{lik}})^{-1}\bigr)$ under correct specification (where $\mathbf h_{\mathrm{lik}} = \mathbf j_{\mathrm{lik}}$). The constant in the $O(1/T)$ rate is therefore set by the interplay of prior strength and the per-interval (sandwich-corrected) information rate.
+
+\section*{7. Diagnostic Decomposition: the Gap between $\mathbf G$ and $\mathbf G_{\mathrm{corr}}$}
+
+The naive and corrected log volume contractions disagree by an amount that exactly equals the log-determinant of the Posterior Information Distortion, providing a clean accounting of how likelihood miscalibration enters the information-gain budget.
+
+\paragraph{Definition of the gap.}
+Define
+\begin{equation}
+\Delta_{\mathbf G}
+:=
+\tfrac{1}{2} \log \det \mathbf G_{\mathrm{corr}}
+- \tfrac{1}{2} \log \det \mathbf G.
+\label{eq:DeltaG-def}
+\end{equation}
+This is the difference, in nats, between the corrected (honest) information gain and the naive information gain.
+
+\paragraph{Computation.}
+Using \eqref{eq:detGcorr-ratio} and \eqref{eq:detG-ratio},
+\begin{align}
+\Delta_{\mathbf G}
+&=
+\tfrac{1}{2}\log\!\left[ \frac{\det \Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}}{\det \mathbf H_{\mathrm{prior}}}\right]
+-
+\tfrac{1}{2}\log\!\left[ \frac{\det \mathbf{JT}_{\mathrm{post}}}{\det \mathbf H_{\mathrm{prior}}}\right]
+\notag\\
+&=
+\tfrac{1}{2}\log \det \Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}
+-
+\tfrac{1}{2}\log \det \mathbf{JT}_{\mathrm{post}},
+\label{eq:DeltaG-step1}
+\end{align}
+where $\det \mathbf H_{\mathrm{prior}}$ cancels. Substitute $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1} = \mathbf H_{\mathrm{post}}\, \mathbf{JT}_{\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{post}}$ from \eqref{eq:dcc-inverse}, so
+\begin{equation}
+\det \Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}
+=
+\det(\mathbf H_{\mathrm{post}})^2 \cdot \det(\mathbf{JT}_{\mathrm{post}})^{-1}
+=
+\frac{\det \mathbf H_{\mathrm{post}}^{2}}{\det \mathbf{JT}_{\mathrm{post}}}.
+\label{eq:detDCCinv}
+\end{equation}
+Inserting in \eqref{eq:DeltaG-step1},
+\begin{equation}
+\Delta_{\mathbf G}
+=
+\tfrac{1}{2}\log\!\left[ \frac{\det \mathbf H_{\mathrm{post}}^{2}}{\det \mathbf{JT}_{\mathrm{post}}}\right]
+-
+\tfrac{1}{2}\log \det \mathbf{JT}_{\mathrm{post}}
+=
+\tfrac{1}{2}\log\!\left[ \frac{\det \mathbf H_{\mathrm{post}}^{2}}{\det \mathbf{JT}_{\mathrm{post}}^{2}}\right]
+=
+\log\!\left[ \frac{\det \mathbf H_{\mathrm{post}}}{\det \mathbf{JT}_{\mathrm{post}}}\right].
+\label{eq:DeltaG-step2}
+\end{equation}
+By the definition of $\mathbf C_{\mathrm{post}}$ in \eqref{eq:recap-cpost},
+\begin{equation}
+\det \mathbf C_{\mathrm{post}}
+=
+\det\bigl(\mathbf H_{\mathrm{post}}^{-1/2}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1/2}\bigr)
+=
+\frac{\det \mathbf{JT}_{\mathrm{post}}}{\det \mathbf H_{\mathrm{post}}},
+\label{eq:detCpost}
+\end{equation}
+hence $\log[\det \mathbf H_{\mathrm{post}} / \det \mathbf{JT}_{\mathrm{post}}] = -\log \det \mathbf C_{\mathrm{post}}$, and finally
+\begin{equation}
+\boxed{\;
+\Delta_{\mathbf G}
+=
+-\log \det \mathbf C_{\mathrm{post}}.
+\;}
+\label{eq:DeltaG-identity}
+\end{equation}
+
+\paragraph{Reading.}
+Equation \eqref{eq:DeltaG-identity} is the central identity of this supplement. It states that the gap between the corrected and naive information gain equals the negative log-determinant of the Posterior Information Distortion. The interpretation is:
+\begin{itemize}
+\item Correct specification: $\mathbf C_{\mathrm{post}} = \mathbf I$ (Section~4.1 of the main supplement), so $\log \det \mathbf C_{\mathrm{post}} = 0$ and $\Delta_{\mathbf G} = 0$. Corrected and naive information gains agree, consistently with \eqref{eq:Gcorr-correct-spec}.
+\item Variance inflation ($\det \mathbf C_{\mathrm{post}} > 1$): $\log \det \mathbf C_{\mathrm{post}} > 0$ and $\Delta_{\mathbf G} < 0$. The corrected information gain is \emph{less} than the naive one: the misspecification has inflated effective posterior uncertainty, so less effective information was actually gained.
+\item Variance deflation ($\det \mathbf C_{\mathrm{post}} < 1$): $\log \det \mathbf C_{\mathrm{post}} < 0$ and $\Delta_{\mathbf G} > 0$. The corrected information gain exceeds the naive one: the naive precision $\mathbf{JT}_{\mathrm{post}}$ has understated the data's contribution, and the sandwich correction restores it.
+\end{itemize}
+
+\paragraph{Signed misspecification penalty.}
+The bookkeeping of \eqref{eq:DeltaG-identity} cleanly separates the prior contribution (cancelled in \eqref{eq:DeltaG-step1}) from the likelihood miscalibration contribution (encoded in $\det \mathbf C_{\mathrm{post}}$). $\Delta_{\mathbf G}$ is therefore a pure likelihood-side diagnostic in the same sense that $\mathbf C_{\mathrm{post}} - \mathbf I$ is in Section~4.2 of the main supplement, but aggregated to a single scalar with units of nats. Reporting $\Delta_{\mathbf G}$ alongside $\tfrac{1}{2} \log \det \mathbf G$ converts the abstract calibration penalty $\det \mathbf C_{\mathrm{post}} \neq 1$ into a concrete information-gain budget adjustment.
+
+\paragraph{Relation to the Likelihood evidence correction.}
+The companion supplement \texttt{supplement\_evidence\_correction.tex} derives the Laplace evidence shift from replacing $\mathbf H$ by $\boldsymbol\Sigma_{\mathrm{DCC}}$ in the volume term, with the result (Section~3 there)
+\begin{equation}
+\Delta \log Z = +\tfrac{1}{2}\log \det \mathbf C,
+\label{eq:DeltaZ}
+\end{equation}
+where $\mathbf C$ is the Likelihood Information Distortion. The Bayesian information-gain analogue derived here is
+\begin{equation}
+\Delta_{\mathbf G} = -\log \det \mathbf C_{\mathrm{post}}
+\qquad
+\text{(no $1/2$ prefactor),}
+\label{eq:DeltaG-restated}
+\end{equation}
+in posterior coordinates. The two scalars are related by
+\begin{equation}
+\Delta_{\mathbf G} = -2\, \Delta\log Z|_{\mathbf C \to \mathbf C_{\mathrm{post}}},
+\label{eq:DeltaG-vs-DeltaZ}
+\end{equation}
+so they differ by a factor $-2$: opposite signs and a magnitude ratio of two. The sign flip reflects that information-gain accounts for volume \emph{contraction} from prior to posterior (negative log of expansion), while evidence accounts for volume \emph{expansion} relative to the Laplace baseline (positive log of expansion); intuitively, variance inflation increases posterior volume hence raises the log-evidence ($\Delta\log Z > 0$) while simultaneously lowering the volume contraction from prior to corrected posterior ($\Delta_{\mathbf G} < 0$). The factor of two arises because $\Delta_{\mathbf G}$ is the difference of two full log-determinants of $\mathbf G$-type matrices (each weighted by $1/2$ in the volume formula), whereas $\Delta\log Z$ retains a single $1/2$ in front of one log-det. Evidence-side and information-gain-side corrections are thus the same calibration object viewed in complementary geometries, linked by the determinant of $\mathbf C_{\mathrm{post}}$.
+
+\section*{8. Summary}
+
+This supplement defines four diagnostic objects that complement the calibration diagnostics of the main supplement:
+\begin{itemize}
+\item $\mathbf G = \mathbf H_{\mathrm{prior}}^{-1/2}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf H_{\mathrm{prior}}^{-1/2}$ is the naive Bayesian information gain matrix. Its eigenvalues count units of prior precision added by the data in each eigen-direction (Section~2).
+\item $\mathbf G_{\mathrm{corr}} = \mathbf H_{\mathrm{prior}}^{-1/2}\, \Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{prior}}^{-1/2}$ is the sandwich-corrected information gain matrix, which uses the calibrated posterior precision $\Sigma_{\mathrm{DCC},\mathrm{post}}^{-1}$ in place of the score-fluctuation budget $\mathbf{JT}_{\mathrm{post}}$. It coincides with $\mathbf G$ under correct likelihood specification, and is the honest readout under misspecification (Section~3).
+\item $p_{\mathrm{eff}} = \mathrm{tr}(\mathbf I - \mathbf G_{\mathrm{corr}}^{-1})$ is the effective number of data-informed parameters, the local-Gaussian analogue of the DIC $p_D$ with the sandwich correction folded in. It interpolates between $0$ (fully prior-dominated) and $p$ (fully data-dominated), with each eigen-direction of $\mathbf G_{\mathrm{corr}}$ contributing its data-informativeness fraction (Section~4).
+\item $\tfrac{1}{2}\log\det \mathbf G_{\mathrm{corr}} = \log[\mathrm{Vol}_{\mathrm{prior}} / \mathrm{Vol}_{\mathrm{corrected\ posterior}}]$ is the log volume contraction from prior to corrected posterior, the Bayesian information gain in nats. It is non-negative under correct specification; it can become negative under severe variance inflation (signalling volume expansion rather than contraction). It scales as $(p/2)\log T$ asymptotically (Sections~5 and 6 of this supplement).
+\end{itemize}
+
+The central diagnostic identity is
+\begin{equation}
+\Delta_{\mathbf G}
+=
+\tfrac{1}{2}\log\det \mathbf G_{\mathrm{corr}}
+-
+\tfrac{1}{2}\log\det \mathbf G
+=
+-\log\det \mathbf C_{\mathrm{post}},
+\label{eq:summary-identity}
+\end{equation}
+linking the information-gain budget to the Posterior Information Distortion of the main supplement (Section~7 of this supplement). Under correct specification, $\mathbf C_{\mathrm{post}} = \mathbf I$ and $\Delta_{\mathbf G} = 0$: naive and corrected gain agree. Under misspecification, $\Delta_{\mathbf G}$ is the signed misspecification penalty in the information-gain budget, with sign matching the variance inflation/deflation direction of $\mathbf C_{\mathrm{post}}$. The companion likelihood-side shift is $\Delta\log Z = +\tfrac{1}{2}\log\det \mathbf C$ (Section~3 of \texttt{supplement\_evidence\_correction.tex}), related by $\Delta_{\mathbf G} = -2\, \Delta\log Z|_{\mathbf C\to\mathbf C_{\mathrm{post}}}$ (Section~7 above).
+
+\paragraph{Well-posedness.}
+All quantities of this supplement are well-defined whenever $\mathbf H_{\mathrm{post}}$ and $\mathbf{JT}_{\mathrm{post}}$ are positive definite. For any proper Gaussian prior and analytic Gaussian Fisher Information $\mathbf H_{\mathrm{lik}} \succeq \mathbf 0$, positive definiteness is structurally guaranteed (Section~2.1 of the main supplement). For finite-difference estimators that can develop small negative eigenvalues, well-posedness reduces to two dominance conditions: $\mathbf H_{\mathrm{prior}} - \mathbf H_{\mathrm{lik}}^- \succ \mathbf 0$ (Section~2.1 of the main supplement) and $\mathbf H_{\mathrm{prior}} - \mathbf{JT}_{\mathrm{lik}}^- \succ \mathbf 0$ (introduced in Section~9.1 of the main supplement and elevated in Section~3.3 above). In both regimes the spectral inverse-square-root construction of Section~4.5 of the main supplement is the computational route, applied analogously to $\mathbf H_{\mathrm{prior}}$ and the inner factors entering \eqref{eq:Gcorr-def}.
+
+\paragraph{Usage.}
+The information-gain diagnostics of this supplement are intended to be reported jointly with the calibration diagnostics of the main supplement. $\mathbf C_{\mathrm{post}}$ answers ``is the posterior covariance correctly calibrated?''. $\mathbf G$ and $\mathbf G_{\mathrm{corr}}$ answer ``how much has the data contributed beyond the prior, and along which directions?''. Together they provide a complete picture of Bayesian inference under potential likelihood misspecification: calibration on the variance side, information accounting on the precision side, and the explicit cross-link \eqref{eq:summary-identity} that ties the two budgets together (and, through \eqref{eq:DeltaG-vs-DeltaZ}, to the evidence-side correction of the likelihood supplements).
+
+\end{document}
