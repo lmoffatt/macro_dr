@@ -71,11 +71,11 @@ and the Distortion-Corrected posterior Covariance is
 \end{equation}
 At the population level under correctly specified likelihood, the information identity
 $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ propagates additively to
-$\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ (Section~3.1 of the main
+$\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ (Section~5.1 of the main
 supplement), so $\mathbf C_{\mathrm{post}} = \mathbf I$ for any proper Gaussian
-prior (Section~4.1 of the main supplement); see~\eqref{eq:Cpost-def}--\eqref{eq:SigmaDCCpost}.
+prior (Section~6.1 of the main supplement); see~\eqref{eq:Cpost-def}--\eqref{eq:SigmaDCCpost}.
 The DCC then reduces to the standard Bayesian Laplace covariance
-$\mathbf H_{\mathrm{post}}^{-1}$ (Section~6.4 of the main supplement).
+$\mathbf H_{\mathrm{post}}^{-1}$ (Section~9.4 of the main supplement).
 
 \paragraph{Preconditions.}
 All formulas below assume $\mathbf H_{\mathrm{post}} \succ 0$, which is automatic for
@@ -155,9 +155,657 @@ As in the main supplement, all derivatives are taken in the transformed coordina
 which the prior is Gaussian, so the integration in $Z$ is over the transformed parameter
 and no Jacobian corrections appear in \eqref{eq:laplace-precision}--\eqref{eq:laplace-covariance}.
 
-\section*{3. Naive versus Corrected Laplace}
 
-\subsection*{3.1 Naive Bayesian Laplace}
+\section*{3. The Two Corrections Under Misspecification: Overview}
+
+The Laplace approximation \eqref{eq:laplace-precision} decomposes the
+log-evidence as a sum of three contributions: the \emph{peak term}
+$\log L(\hat\theta) + \log\pi(\hat\theta)$, an additive constant
+$\tfrac{p}{2}\log(2\pi)$, and the \emph{volume term}
+$-\tfrac{1}{2}\log\det(\boldsymbol\Lambda) =
+\tfrac{1}{2}\log\det(\boldsymbol\Sigma)$. Under correct likelihood
+specification at the population level, all three are evaluated consistently:
+$\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ (the Fisher identity)
+propagates additively to $\mathbf C_{\mathrm{post}} = \mathbf I$
+(Section~4.1 of the main supplement), so the naive Bayesian Laplace evidence
+$\log Z_{\mathrm{F}}$ defined below is a valid asymptotic approximation.
+
+Under likelihood misspecification, by contrast,
+$\mathbf{JT}_{\mathrm{lik}} \neq \mathbf H_{\mathrm{lik}}$ and
+$\mathbf C_{\mathrm{post}} \neq \mathbf I$. \emph{Both} the peak and the
+volume term of the naive evidence are then biased, and each requires its
+own correction. The two corrections are algebraically independent and
+extract complementary scalar summaries of the same eigenvalue spectrum
+$\mathrm{eig}(\mathbf C_{\mathrm{post}})$:
+\begin{itemize}
+\item The \textbf{peak correction} (Section~4 below) re-weights the
+contribution $\log L(\hat\theta)$ via a learning rate
+$\alpha_\star^{\mathrm{post}} = p / \mathrm{tr}(\mathbf C_{\mathrm{post}})$,
+the \emph{arithmetic} mean of the eigenvalues of $\mathbf C_{\mathrm{post}}$.
+Its leading-order effect on $\log Z$ is the additive term
+$(\alpha_\star^{\mathrm{post}}-1)\log L(\hat\theta)$, which is $O(T)$ under
+any persistent misspecification.
+\item The \textbf{volume correction} (Sections~5--6 below) shifts the volume
+term by $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$, the \emph{geometric}
+mean of the eigenvalues. This shift is $O(1)$ in $T$ and survives even when
+the peak correction is null (e.g.\ anti-isotropic distortions with
+$\det \mathbf C_{\mathrm{post}} = 1$ but $\mathrm{tr}\mathbf C_{\mathrm{post}}
+\neq p$).
+\end{itemize}
+The combined evidence $\log Z_{\mathrm{comb}}$ of Section~7 below
+incorporates both corrections; the evidence-interval framework of
+Section~10 reports $\log Z_{\mathrm{F}}$, $\log Z_{\mathrm{J}}$,
+$\log Z_{\mathrm{DCC}}$, and $\log Z_{\mathrm{comb}}$ jointly as a
+calibration-uncertainty band.
+
+The reordering of this supplement relative to standard treatments
+(\texttt{supplement\_evidence\_correction.tex} in the Likelihood folder
+develops only the volume correction, and as a self-contained piece;
+Bissiri et~al.\ 2016 develop the peak correction without the
+sandwich-covariance reading) is deliberate: in our framework, the peak
+correction is the \emph{primary} misspecification adjustment because it
+acts on the likelihood value $L(\hat\theta)$ itself, while the volume
+correction is a secondary adjustment on the derived posterior covariance.
+Sections~4--7 develop the two corrections in this logical order; Sections
+8--12 then characterise the resulting evidence and its diagnostic
+properties.
+
+
+\section*{4. Peak-Term Correction via Generalized Bayes Calibration}
+
+Sections~5--6 (volume correction) and Section~7 (combined evidence) make sense only after the peak term has been calibrated, so we develop the peak correction first. Section~3 above gave a brief overview of the dual correction structure; this section derives the peak correction from the generalized-Bayes / power-posterior machinery of Bissiri, Holmes, and Walker (2016) and calibrates the tempering exponent $\alpha$ against $\mathbf C_{\mathrm{post}}$ via trace matching. The companion volume correction $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ developed in Sections~5--6 uses the geometric-mean summary of the eigenvalues of $\mathbf C_{\mathrm{post}}$; the peak correction here uses the arithmetic-mean summary. The two are algebraically independent readouts of the same spectrum (see Section~4.6 below).
+
+\subsection*{4.1 Motivation: peak vs.\ volume revisited}
+
+The peak--volume decomposition \eqref{eq:peak-volume-split} of Section~11.3
+makes the structural asymmetry of \eqref{eq:main-result} explicit: the IDM
+correction reshapes the volume term only, while the $O(T)$ peak term is
+unmodified. Under correct specification this is the right answer
+($\mathbf C_{\mathrm{post}} = \mathbf I$ by Section~4.1 of the main supplement;
+no volume correction needed either; see Section~8.3). Under misspecification with
+$\mathbf{JT}_{\mathrm{lik}} \succ \mathbf H_{\mathrm{lik}}$, however, the
+likelihood is effectively over-counted at $\hat\theta$: it acts as though it had
+fewer independent observations than $T$, and the peak's contribution to $\log Z$
+should be re-weighted accordingly. The volume correction alone cannot diagnose
+this---it reads zero on any spectrum of $\mathbf C_{\mathrm{post}}$ with
+$\det = 1$, including the anti-isotropic example $\mathbf C_{\mathrm{post}}
+= \mathrm{diag}(2,\tfrac{1}{2})$ already flagged in Section~8.1 as motivation
+for trace-based diagnostics, and revisited in \S10.6 below.
+
+\subsection*{4.2 Generalized Bayes posterior and the power-likelihood}
+
+The generalized-Bayes update of Bissiri, Holmes, and Walker (2016) replaces
+$L(\theta)$ in the posterior by $L(\theta)^\alpha$ with $\alpha > 0$ a learning
+rate / calibration scalar:
+\begin{equation}
+\pi_\alpha(\theta\mid D)
+\;\propto\;
+L(\theta)^\alpha\,\pi(\theta).
+\label{eq:power-posterior}
+\end{equation}
+Under their coherence axioms (and the additivity of the loss across data), this
+power-posterior is the unique coherent Bayesian update when the loss $-\log L$
+is believed only up to a known scale; classical Bayes is the $\alpha = 1$
+special case. The same calibrated-evidence object underlies the loss-likelihood
+bootstrap of Lyddon, Holmes, and Walker (2019) and, in the information-criterion
+literature, TIC (Takeuchi, 1976) and QAIC (Burnham and Anderson, 2002). See
+Varin, Reid, and Firth (2011) for the composite-likelihood ancestor.
+
+\subsection*{4.3 $\alpha$-tilted posterior Hessian, score, and Laplace evidence}
+
+Differentiating $-\log\pi_\alpha(\theta\mid D) = -\alpha\log L(\theta)
+- \log\pi(\theta)$ with respect to $\theta$, the prior score
+$s_{\pi} = \nabla\log\pi$ is unchanged while the likelihood score $s_{\mathrm{lik}}
+= \nabla\log L$ is multiplied by $\alpha$. The one-line variance calculation is
+\[
+\nabla(-\log\pi_\alpha) = -\alpha\, s_{\mathrm{lik}} - s_\pi,
+\qquad
+\mathrm{Var}_D\bigl(\nabla(-\log\pi_\alpha)\bigr) = \alpha^2\,\mathrm{Var}_D(s_{\mathrm{lik}})
+= \alpha^2\,\mathbf{JT}_{\mathrm{lik}},
+\]
+since the prior gradient is deterministic given $\theta$. Under the additive
+convention of \eqref{eq:setup-decomp}---which \emph{defines} $\mathbf{JT}_{\mathrm{post}}
+:= \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ (a definitional
+convention, not a derived variance, because $\mathbf H_{\mathrm{prior}}$
+contributes zero score variance)---the $\alpha$-tilted analogue is similarly
+\emph{defined} by
+\begin{align}
+\text{Hessian of } -\log\pi_\alpha
+&\;=\;
+\alpha\,\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}
+\;=:\;
+\mathbf H_{\mathrm{post},\alpha},
+\label{eq:Hpost-alpha}
+\\[2pt]
+\mathbf{JT}_{\mathrm{post},\alpha}
+&\;:=\;
+\alpha^2\,\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}},
+\label{eq:JTpost-alpha}
+\end{align}
+so that $\alpha = 1$ recovers $\mathbf H_{\mathrm{post}}$ and
+$\mathbf{JT}_{\mathrm{post}}$ of \eqref{eq:setup-decomp}. (We use the
+comma-separated subscript $M_{a,\alpha}$ throughout \S10 to denote the
+$\alpha$-tilted version of object $M_a$.) Setting
+$\hat\theta_\alpha := \arg\max_\theta [\alpha\log L(\theta) + \log\pi(\theta)]$
+and Laplace-expanding around it with the sandwich covariance
+$\Sigma_{\mathrm{DCC},\mathrm{post},\alpha}
+= \mathbf H_{\mathrm{post},\alpha}^{-1}\,\mathbf{JT}_{\mathrm{post},\alpha}\,
+\mathbf H_{\mathrm{post},\alpha}^{-1}$ in place of $\mathbf H_{\mathrm{post}}^{-1}$
+yields the $\alpha$-tilted DCC evidence
+\begin{equation}
+\log Z_\alpha
+\;=\;
+\alpha\,\log L(\hat\theta_\alpha)
+\;+\;
+\log\pi(\hat\theta_\alpha)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\log\det\!\bigl(\alpha\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\bigr)
+\;+\;
+\tfrac{1}{2}\log\det\!\bigl(\alpha^2\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\bigr).
+\label{eq:logZ-alpha}
+\end{equation}
+This is the \emph{sandwich} Laplace form (not the naive $-\tfrac{1}{2}\log\det
+\mathbf H_{\mathrm{post},\alpha}$): the half-power in front of the log-det of
+the sandwich, $\tfrac{1}{2}\log\det\Sigma_{\mathrm{DCC},\mathrm{post},\alpha}
+= -\log\det \mathbf H_{\mathrm{post},\alpha} + \tfrac{1}{2}\log\det
+\mathbf{JT}_{\mathrm{post},\alpha}$, accounts for the apparent factor-of-2
+discrepancy with the naive Laplace, exactly as in \eqref{eq:SigmaDCCpost} and
+\eqref{eq:DCC-recall} of Sections~1 and~3.2. At $\alpha = 1$,
+\eqref{eq:logZ-alpha} collapses to the DCC evidence $\log Z_{\mathrm{DCC}}$ of
+Sections~3.2 and~7.1.
+
+\subsection*{4.4 Posterior trace-matching calibration $\alpha_\star^{\mathrm{post}} = p / \mathrm{tr}(\mathbf C_{\mathrm{post}})$}
+
+We calibrate $\alpha$ by matching the $\alpha$-tilted effective parameter count
+against the nominal dimension $p$. The trace of the $\alpha$-tilted information
+distortion is the canonical TIC-style summary of the effective parameter count
+(Takeuchi, 1976; Burnham and Anderson, 2002; Lyddon, Holmes, and Walker, 2019,
+\S3): trace-matching is one of several conceivable calibrations (det-matching
+or bootstrap-based alternatives would yield different $\alpha_\star$), and we
+adopt it here for direct continuity with the established information-criterion
+literature.
+
+Define the $\alpha$-tilted posterior information distortion in direct analogy
+with \eqref{eq:Cpost-def},
+\begin{equation}
+\mathbf C_{\mathrm{post},\alpha}
+\;:=\;
+\mathbf H_{\mathrm{post},\alpha}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post},\alpha}\,
+\mathbf H_{\mathrm{post},\alpha}^{-1/2}
+\;=\;
+(\alpha\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}})^{-1/2}\,
+(\alpha^2\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}})\,
+(\alpha\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}})^{-1/2}.
+\label{eq:Cpost-alpha}
+\end{equation}
+The exact trace-matching condition is the implicit nonlinear equation
+\begin{equation}
+\mathrm{tr}\!\bigl(\mathbf C_{\mathrm{post},\alpha}\bigr) \;=\; p.
+\label{eq:trace-match-exact}
+\end{equation}
+Two simplifying observations:
+\begin{itemize}
+\item Under correct specification ($\mathbf{JT}_{\mathrm{lik}}
+= \mathbf H_{\mathrm{lik}}$ propagating additively to $\mathbf{JT}_{\mathrm{post}}
+= \mathbf H_{\mathrm{post}}$; Section~3.1 of the main supplement), substituting
+$\alpha = 1$ into \eqref{eq:Cpost-alpha} gives
+$\mathbf C_{\mathrm{post},1} = \mathbf H_{\mathrm{post}}^{-1/2}
+\mathbf H_{\mathrm{post}} \mathbf H_{\mathrm{post}}^{-1/2} = \mathbf I$
+and $\mathrm{tr}(\mathbf C_{\mathrm{post},1}) = p$, so $\alpha = 1$ is an
+\emph{exact} solution of \eqref{eq:trace-match-exact} for any proper Gaussian
+prior. This preserves the marquee correct-specification property cleanly.
+\item In the data-dominated limit
+$\mathbf H_{\mathrm{prior}} \ll \alpha\mathbf H_{\mathrm{lik}}$ (and
+$\mathbf H_{\mathrm{prior}} \ll \alpha^2\mathbf{JT}_{\mathrm{lik}}$),
+\eqref{eq:Cpost-alpha} reduces at leading order to
+\begin{equation}
+\mathbf C_{\mathrm{post},\alpha}
+\;\approx\;
+(\alpha\mathbf H_{\mathrm{lik}})^{-1/2}(\alpha^2\mathbf{JT}_{\mathrm{lik}})
+(\alpha\mathbf H_{\mathrm{lik}})^{-1/2}
+\;=\;
+\alpha\,\mathbf C_{\mathrm{lik}},
+\label{eq:Cpost-alpha-asymptote}
+\end{equation}
+i.e.\ the limit object is the \emph{likelihood-side} distortion
+$\mathbf C_{\mathrm{lik}}$, not $\mathbf C_{\mathrm{post}}$ (the two coincide
+in this limit, $\mathbf C_{\mathrm{post}} \to \mathbf C_{\mathrm{lik}}$).
+\end{itemize}
+The leading-order solution of \eqref{eq:trace-match-exact} in the data-dominated
+limit, using either $\mathrm{tr}(\mathbf C_{\mathrm{post},\alpha})
+\approx \alpha\,\mathrm{tr}(\mathbf C_{\mathrm{lik}}) \approx \alpha\,
+\mathrm{tr}(\mathbf C_{\mathrm{post}})$, is the boxed posterior calibration
+\begin{equation}
+\boxed{\;
+\alpha_\star^{\mathrm{post}}
+\;:=\;
+\frac{p}{\mathrm{tr}(\mathbf C_{\mathrm{post}})}.
+\;}
+\label{eq:alpha-star-post}
+\end{equation}
+We use the explicit ``post'' superscript to mark this as the
+posterior-supplement calibration; the likelihood-folder counterpart
+$\alpha_\star^{\mathrm{lik}} = p/\mathrm{tr}(\mathbf C_{\mathrm{lik}})$ (\S10.9)
+uses the same boxed identity with the prior set to zero. The defining
+properties of \eqref{eq:alpha-star-post} mirror those of
+$\log\det(\mathbf C_{\mathrm{post}})$ in Sections~5.1--5.4:
+\begin{itemize}
+\item \emph{Correct specification.} As noted above,
+$\mathbf C_{\mathrm{post},1} = \mathbf I$ \emph{exactly} at $\alpha = 1$ for
+any proper Gaussian prior; the leading-order formula
+\eqref{eq:alpha-star-post} also returns $\alpha_\star^{\mathrm{post}} = 1$
+since $\mathrm{tr}(\mathbf C_{\mathrm{post}}) = p$. This is the trace analogue
+of the prior-cancellation property of \S5.3.
+\item \emph{Variance inflation.} When
+$\mathbf{JT}_{\mathrm{lik}} \succ \mathbf H_{\mathrm{lik}}$,
+$\mathrm{tr}(\mathbf C_{\mathrm{post}}) > p$ and
+$\alpha_\star^{\mathrm{post}} < 1$: the power-likelihood weight is reduced, so
+each observation enters the calibrated evidence at less than its face value
+(an \emph{effective-sample-size} reduction, not necessarily a reduction of
+$\log Z$; see \S10.5 on sign-dependence).
+\item \emph{Deflation.} When
+$\mathbf{JT}_{\mathrm{lik}} \prec \mathbf H_{\mathrm{lik}}$,
+$\mathrm{tr}(\mathbf C_{\mathrm{post}}) < p$ and
+$\alpha_\star^{\mathrm{post}} > 1$: the power-likelihood weight is increased
+(observations are over-weighted relative to face value).
+\item \emph{Well-posedness, not informativity.}
+$\alpha_\star^{\mathrm{post}}$ is mathematically well-defined whenever
+$\mathrm{tr}(\mathbf C_{\mathrm{post}}) > 0$, i.e.\ whenever
+$\mathbf H_{\mathrm{post}} \succ 0$, i.e.\ under the dominance condition of
+Section~2.1 of the main supplement
+(label \texttt{eq:dominance-condition}). No subspace projection or
+retained-eigenspace machinery is required, in contrast to the likelihood-only
+version (see \S10.9). Well-posedness does not imply informativity: under a
+sufficiently strong prior, $\mathbf C_{\mathrm{post}} \to \mathbf I$ even
+under misspecification (\S10.4.1 below).
+\end{itemize}
+
+\subsubsection*{10.4.1 Strong-prior boundary: $\alpha_\star^{\mathrm{post}} \to 1$ does not imply correct spec}
+
+The same residual bound used in Section~8.4 to flag the strong-prior boundary
+of the volume correction applies verbatim to the trace summary. By Section~4.2
+of the main supplement (label
+\texttt{eq:posterior-c-residual-bound}),
+\[
+\|\mathbf C_{\mathrm{post}} - \mathbf I\|
+\;\le\;
+\lambda_{\min}(\mathbf H_{\mathrm{post}})^{-1}\,
+\|\Delta\mathbf{H}^{\mathrm{lik}}_{\mathrm{resid}}\|
+\;\xrightarrow[\lambda_{\min}(\mathbf H_{\mathrm{prior}})\to\infty]{}\;
+0,
+\]
+which drives both $\det(\mathbf C_{\mathrm{post}}) \to 1$ and
+$\mathrm{tr}(\mathbf C_{\mathrm{post}}) \to p$. Hence $\alpha_\star^{\mathrm{post}}
+\to 1$ in the strong-prior limit \emph{even under arbitrary misspecification},
+exactly paralleling the $\Delta\log Z \to 0$ ambiguity of \S5.4. The diagnostic
+$\alpha_\star^{\mathrm{post}} \approx 1$ alone is therefore insufficient to
+certify correct specification; resolving the ambiguity requires varying the
+prior strength or inspecting per-eigenvalue diagnostics of
+$\mathbf C_{\mathrm{lik}}$ on a retained subspace, exactly as in \S5.4 for the
+volume correction. See \S10.10 for operational guidance.
+
+\subsection*{4.5 The combined peak$+$volume evidence}
+
+Inserting $\alpha_\star^{\mathrm{post}}$ from \eqref{eq:alpha-star-post} into
+\eqref{eq:logZ-alpha} and using \eqref{eq:main-result} for the volume piece, we
+obtain the combined-corrected posterior evidence
+\begin{equation}
+\log Z_{\mathrm{comb}}
+\;=\;
+\alpha_\star^{\mathrm{post}}\log L(\hat\theta_{\alpha_\star^{\mathrm{post}}})
+\;+\;
+\log\pi(\hat\theta_{\alpha_\star^{\mathrm{post}}})
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\log\det\!\bigl(\alpha_\star^{\mathrm{post}}\mathbf H_{\mathrm{lik}}
++ \mathbf H_{\mathrm{prior}}\bigr)
+\;+\;
+\tfrac{1}{2}\log\det\!\bigl((\alpha_\star^{\mathrm{post}})^2
+\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\bigr).
+\label{eq:logZ-comb}
+\end{equation}
+Two reductions to leading order:
+\begin{itemize}
+\item \emph{MAP shift.} In the data-dominated limit, the gradient of
+$\alpha\log L + \log\pi$ at $\hat\theta_\alpha$ vanishes while that of
+$\log L + \log\pi$ at $\hat\theta$ vanishes; expanding,
+$\hat\theta_{\alpha_\star^{\mathrm{post}}} - \hat\theta
+= (\alpha_\star^{\mathrm{post}} - 1)\,
+\mathbf H_{\mathrm{post}}^{-1}\,s_\pi(\hat\theta) + \cdots$. Since
+$s_\pi(\hat\theta) = O(1)$ while $\mathbf H_{\mathrm{post}} = O(T)$, the MAP
+shift is $O((\alpha_\star^{\mathrm{post}}-1)/T)$; the induced peak shift
+$\log L(\hat\theta_{\alpha_\star^{\mathrm{post}}}) - \log L(\hat\theta)$ is
+$O((\alpha_\star^{\mathrm{post}}-1)/T) \cdot s_{\mathrm{lik}}(\hat\theta)
++ O((\alpha_\star^{\mathrm{post}}-1)^2/T)$, and $s_{\mathrm{lik}}(\hat\theta)
+= -s_\pi(\hat\theta) = O(1)$ at the classical MAP, so the peak shift is
+$O((\alpha_\star^{\mathrm{post}}-1)/T) = o(1)$. We may therefore substitute
+$\log L(\hat\theta_{\alpha_\star^{\mathrm{post}}}) \to \log L(\hat\theta)$ and
+$\log\pi(\hat\theta_{\alpha_\star^{\mathrm{post}}}) \to \log\pi(\hat\theta)$ in
+\eqref{eq:logZ-comb} with errors that are negligible against the leading
+$(\alpha_\star^{\mathrm{post}}-1)\log L(\hat\theta) = O(T)$ contribution.
+\item \emph{Prior-in-log-det cancellation.} In the same data-dominated limit
+the prior terms factor out of both log-dets,
+$\log\det(\alpha\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}})
+= p\log\alpha + \log\det\mathbf H_{\mathrm{lik}}
++ \mathrm{tr}\bigl[(\alpha\mathbf H_{\mathrm{lik}})^{-1}\mathbf H_{\mathrm{prior}}\bigr]
++ \cdots$ and similarly for the $\mathbf{JT}$ log-det, so the
+$\alpha_\star^{\mathrm{post}}$-dependent log-det contributions cancel at
+leading order:
+\begin{equation}
+-\,p\log\alpha_\star^{\mathrm{post}}
+\;+\;
+\tfrac{1}{2}\bigl(2p\log\alpha_\star^{\mathrm{post}}\bigr)
+\;=\;
+0.
+\label{eq:logdet-cancel}
+\end{equation}
+\end{itemize}
+Combining the two reductions, \eqref{eq:logZ-comb} reduces to
+\begin{equation}
+\log Z_{\mathrm{comb}}
+\;\approx\;
+\log Z_{\mathrm{DCC}}
+\;+\;
+(\alpha_\star^{\mathrm{post}} - 1)\,\log L(\hat\theta)
+\;+\;
+O\!\bigl(\mathrm{tr}[\mathbf H_{\mathrm{lik}}^{-1}\mathbf H_{\mathrm{prior}}]/
+\alpha_\star^{\mathrm{post}}\bigr).
+\label{eq:logZ-comb-leading}
+\end{equation}
+The combined correction is therefore the IDM volume shift of
+\eqref{eq:main-result} plus a peak re-weight of size
+$(\alpha_\star^{\mathrm{post}} - 1)\log L(\hat\theta)$. Because
+$\log L(\hat\theta) = O(T)$ while
+$\alpha_\star^{\mathrm{post}} - 1 = O(1)$ in $T$ (it is a function of
+intensive moments of $\mathbf C_{\mathrm{post}}$), the peak correction is
+$O(T)$ in general and dominates the $O(1)$ volume correction in the
+data-dominated misspecified regime. This is the structural reordering flagged
+in the chapeau: under stationary misspecification the spread
+$\log Z_{\mathrm{comb}} - \log Z_{\mathrm{DCC}}$ scales with $T$, in contrast
+with the $O(1)$ spread of $(\log Z_F, \log Z_J, \log Z_{\mathrm{DCC}})$
+analysed in \S7.2 (which is also $O(1)$ via \eqref{eq:correction-O1}). The
+$O(1)$ statements of \S\S8.3--8.4 thus apply to the volume-only correction;
+they are not contradicted by \eqref{eq:logZ-comb-leading} but supplemented by
+it.
+
+\subsubsection*{10.5.1 Sign of the peak shift on $\log Z$}
+
+The directional language \emph{discounted}/\emph{boosted} applies to the
+\emph{weight} placed on the log-likelihood by the power-posterior, not
+directly to the sign of the shift on $\log Z$. Whether
+$(\alpha_\star^{\mathrm{post}} - 1)\log L(\hat\theta)$ raises or lowers
+$\log Z_{\mathrm{comb}}$ relative to $\log Z_{\mathrm{DCC}}$ depends on the
+sign of $\log L(\hat\theta)$, which is parameterisation-dependent (densities
+above one give $\log L > 0$, probabilities below one give $\log L < 0$). The
+unambiguous reading is in effective-sample-size terms:
+$\alpha_\star^{\mathrm{post}} < 1$ means the data are treated as carrying
+fewer effective independent observations than $T$, regardless of how this
+translates to a $\log Z$ shift. For Bayes-factor comparisons the
+decision-relevant quantity is the \emph{difference}
+$(\alpha_\star^{\mathrm{post}, A} \log L_A(\hat\theta_A))
+- (\alpha_\star^{\mathrm{post}, B} \log L_B(\hat\theta_B))$, where the
+two calibrations are different and the parameterisation-dependent sign
+issue is partly absorbed.
+
+\subsection*{4.6 Two algebraically independent moments of the same spectrum}
+
+The volume correction of Sections~5--6 and~10 and the peak correction of \S10.4 use
+\emph{different scalar summaries of the same eigenvalue spectrum} of
+$\mathbf C_{\mathrm{post}}$. Section~8.1 already noted that the determinant
+readout is blind to anti-isotropic distortions such as
+$\mathrm{diag}(2,\tfrac{1}{2})$ and recommended trace-based diagnostics; the
+calibration \eqref{eq:alpha-star-post} is precisely such a diagnostic, making
+explicit which scalar summary of $\mathrm{eig}(\mathbf C_{\mathrm{post}})$ the
+peak correction probes. Let $\lambda_1,\ldots,\lambda_p > 0$ be those
+eigenvalues. Then
+\begin{align}
+\text{IDM volume correction}
+&\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})
+\;=\;
+\tfrac{p}{2}\,\log\overline\lambda_{\mathrm{geom}},
+&
+\overline\lambda_{\mathrm{geom}}
+&\;=\;
+\Bigl(\prod_i\lambda_i\Bigr)^{1/p},
+\\[2pt]
+\text{$\alpha$-calibration scalar}
+&\;=\;
+\alpha_\star^{\mathrm{post}}
+\;=\;
+\frac{1}{\overline\lambda_{\mathrm{arith}}},
+&
+\overline\lambda_{\mathrm{arith}}
+&\;=\;
+\frac{1}{p}\sum_i\lambda_i
+\;=\;
+\frac{\mathrm{tr}(\mathbf C_{\mathrm{post}})}{p}.
+\end{align}
+The IDM correction probes the geometric mean of the spectrum, the peak
+correction the arithmetic mean. By the AM--GM inequality
+$\overline\lambda_{\mathrm{arith}} \ge \overline\lambda_{\mathrm{geom}}$, with
+equality iff $\mathbf C_{\mathrm{post}} = c\mathbf I$. The two corrections are
+therefore not double-counting: they are algebraically independent symmetric
+functions of the spectrum (we avoid the word ``orthogonal,'' which has no
+Hilbert-space meaning here---the relation is the AM--GM inequality, not an
+inner-product orthogonality).
+
+\emph{Diagonal example.} Take $\mathbf C_{\mathrm{post}}
+= \mathrm{diag}(2,\tfrac{1}{2})$ with $p = 2$:
+\[
+\det(\mathbf C_{\mathrm{post}}) \;=\; 1
+\;\Rightarrow\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}) \;=\; 0
+\qquad\text{(IDM volume correction vanishes)},
+\]
+\[
+\mathrm{tr}(\mathbf C_{\mathrm{post}}) \;=\; 2.5
+\;\Rightarrow\;
+\alpha_\star^{\mathrm{post}} \;=\; \frac{2}{2.5} \;=\; 0.8
+\qquad\text{(peak weight reduced by 20\%)}.
+\]
+This anti-isotropic misspecification---one direction inflated, another
+deflated---is invisible to the determinant readout of \eqref{eq:main-result}
+and to the evidence-interval width
+$W_Z = |\log\det(\mathbf C_{\mathrm{post}})|$ of \S7, but is detected by the
+trace-based $\alpha_\star^{\mathrm{post}}$. Reporting both moments is strictly
+more informative than reporting either alone.
+
+\subsection*{4.7 Companion readout in the information-gain supplement}
+
+The peak--volume duality has a same-folder companion in
+\texttt{supplement\_information\_gain.tex}: the gap
+$\Delta_{\mathbf G} = -\log\det(\mathbf C_{\mathrm{post}})$ captured there
+(see Eq.~\eqref{eq:DeltaG-identity} of that supplement; sign convention as
+stated in the companion's Section~7) is the geometric-mean readout of the
+same spectrum, and the calibration scalar
+$\alpha_\star^{\mathrm{post}} = p/\mathrm{tr}(\mathbf C_{\mathrm{post}})$ is
+its arithmetic-mean companion. Together they form a two-axis diagnostic
+$(\overline\lambda_{\mathrm{arith}},\overline\lambda_{\mathrm{geom}})$ in
+which correct specification corresponds to $(1,1)$, isotropic inflation to a
+movement along the diagonal, and anti-isotropic distortion to a movement
+away from the diagonal. We recommend reporting both axes jointly whenever
+$\mathbf C_{\mathrm{post}}$ is computed.
+
+\subsection*{4.8 Composition with the evidence-interval framework}
+
+Section~7 introduced the evidence interval
+$(\log Z_F,\,\log Z_J,\,\log Z_{\mathrm{DCC}})$ summarising determinant-level
+calibration uncertainty. The combined estimator $\log Z_{\mathrm{comb}}$ of
+\eqref{eq:logZ-comb} augments this to a four-point set
+\begin{equation}
+(\log Z_F,\;\log Z_J,\;\log Z_{\mathrm{DCC}},\;\log Z_{\mathrm{comb}}),
+\label{eq:four-point-set}
+\end{equation}
+whose members partition the correction structure as follows:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lccc}
+\hline
+estimator & volume correction & peak correction & calibration scalar \\
+\hline
+$\log Z_F$           & none                                   & none & --- \\
+$\log Z_J$           & $\mathbf{JT}_{\mathrm{post}}$-only     & none & --- \\
+$\log Z_{\mathrm{DCC}}$ & $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ & none & geometric-mean only \\
+$\log Z_{\mathrm{comb}}$ & full sandwich, $\alpha$-tilted    & $(\alpha_\star^{\mathrm{post}}-1)\log L(\hat\theta)$ & geometric $+$ arithmetic \\
+\hline
+\end{tabular}
+\end{center}
+The pairwise differences among $(\log Z_F,\log Z_J,\log Z_{\mathrm{DCC}})$ are
+all $O(1)$ (\S7.2 and \eqref{eq:correction-O1}); the spread
+$\log Z_{\mathrm{comb}} - \log Z_{\mathrm{DCC}}$ is, by
+\eqref{eq:logZ-comb-leading}, the $O(T)$ peak shift
+$(\alpha_\star^{\mathrm{post}} - 1)\log L(\hat\theta)$. The expanded set
+\eqref{eq:four-point-set} is therefore not four members of a single $O(1)$
+interval but a two-tier structure: an $O(1)$ inner interval
+$(\log Z_F, \log Z_J, \log Z_{\mathrm{DCC}})$ summarising determinant-level
+calibration, plus an outer $\log Z_{\mathrm{comb}}$ that incorporates the
+$O(T)$ peak re-weight. For sensitivity analysis the four-point set carries
+strictly more information than any of its members; as a single headline
+quantity it should not be collapsed.
+
+A subsidiary remark on \emph{within-axis} effective sample sizes. The
+calibration uses $\mathbf{JT}_{\mathrm{post}}$ (the total score-fluctuation
+budget) and not $\mathbf{JS}_{\mathrm{post}}$ (the per-sample/diagonal block
+of Section~6.3 used to define $\mathbf R_{\mathrm{post}}$ and
+$T_{\mathrm{eff}}^{\mathrm{post}}$). The $\mathbf C_{\mathrm{post}}$-based
+$N_{\mathrm{eff}}^{Z}$ of \S6.3 governs the volume correction; the
+$\mathbf C_{\mathrm{post}}$-based $\alpha_\star^{\mathrm{post}}$ governs the
+peak correction; the $\mathbf R_{\mathrm{post}}$-based
+$T_{\mathrm{eff}}^{\mathrm{post}}$ governs score-vs-Fisher concentration. These
+are three distinct effective-sample-size objects with three distinct
+operational meanings and should not be conflated.
+
+\subsection*{4.9 Singular $\mathbf H_{\mathrm{lik}}$: why the posterior version is preferred}
+
+The likelihood-only counterpart of the calibration \eqref{eq:alpha-star-post} is
+$\alpha_\star^{\mathrm{lik}} = p / \mathrm{tr}(\mathbf C_{\mathrm{lik}})$ with
+$\mathbf C_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}^{-1/2}
+\mathbf{JT}_{\mathrm{lik}} \mathbf H_{\mathrm{lik}}^{-1/2}$ (the standard
+textbook TIC of Takeuchi (1976) / QAIC of Burnham and Anderson (2002)). The
+companion section in \texttt{supplement\_evidence\_correction.tex}
+(the likelihood-folder counterpart of this section) develops the
+likelihood-only version in its own notation.
+
+\emph{Notation bridge.} The likelihood-folder supplement
+\texttt{supplement\_evidence\_correction.tex} uses bare
+$\mathbf H, \mathbf C, \mathbf J_{\mathrm{total}}$ where this document writes
+$\mathbf H_{\mathrm{lik}}, \mathbf C_{\mathrm{lik}}, \mathbf{JT}_{\mathrm{lik}}$;
+the identifications are
+\[
+\mathbf H \equiv \mathbf H_{\mathrm{lik}},
+\quad
+\mathbf C \equiv \mathbf C_{\mathrm{lik}},
+\quad
+\mathbf J_{\mathrm{total}} \equiv \mathbf{JT}_{\mathrm{lik}},
+\]
+and the calibration scalar in that folder is written
+$\alpha_\star^{\mathrm{lik}}$ (with the explicit ``lik'' superscript when
+folder-disambiguation is needed).
+
+The likelihood form requires $\mathbf H_{\mathrm{lik}} \succ 0$, which fails
+generically near the boundary of $\Theta$, in finite-difference Hessian
+implementations with indefinite spectrum, and in any sloppy-model regime where
+some eigenvalues of $\mathbf H_{\mathrm{lik}}$ are vanishingly small. The
+singular-$\mathbf H_{\mathrm{lik}}$ subspace-projection machinery used by the
+likelihood-folder supplement (its Setup section and its singular-Fisher
+treatment) is therefore required there but \emph{not} here.
+
+The posterior calibration \eqref{eq:alpha-star-post} is regularised by the
+prior: it is well-defined whenever $\mathbf H_{\mathrm{post}} \succ 0$, i.e.\
+under the dominance condition of Section~2.1 of the main supplement
+(label \texttt{eq:dominance-condition}). In the data-dominated limit
+$\mathbf H_{\mathrm{prior}} \ll \mathbf H_{\mathrm{lik}}$ the two coincide
+($\mathbf C_{\mathrm{post}} \to \mathbf C_{\mathrm{lik}}$ and
+$\alpha_\star^{\mathrm{post}} \to \alpha_\star^{\mathrm{lik}}$), so the
+posterior form loses nothing in the well-behaved regime and remains operative
+in the singular-$\mathbf H_{\mathrm{lik}}$ regime where the likelihood form is
+undefined. The reader interested in the classical likelihood-only formulation
+and its TIC/QAIC roots is referred to the corresponding section of
+\texttt{supplement\_evidence\_correction.tex}.
+
+\subsection*{4.10 When to apply, when to skip, when to worry}
+
+Recommended practice:
+\begin{itemize}
+\item \emph{Apply} when $\alpha_\star^{\mathrm{post}} \lesssim 0.9$
+(equivalently $\mathrm{tr}(\mathbf C_{\mathrm{post}})/p \gtrsim 1.1$) or
+$\alpha_\star^{\mathrm{post}} \gtrsim 1.1$: the peak-term re-weight is then
+comparable to or larger than the volume correction and changes the
+leading-order $O(T)$ contribution to $\log Z$.
+\item \emph{Skip} when $\alpha_\star^{\mathrm{post}} \approx 1$ \emph{and}
+$|\log\det(\mathbf C_{\mathrm{post}})|$ small, \emph{and} the prior is not so
+strong that both readouts are suppressed by the strong-prior mechanism of
+\S10.4.1 (mirror of \S5.4). The disambiguation is the same as in \S5.4: vary
+the prior strength. Both moments of the spectrum confirm
+$\mathbf C_{\mathrm{post}} \approx \mathbf I$ only under a weak-prior reading;
+under a strong prior they confirm only that the prior is dominant.
+\item \emph{Worry} when the two moments disagree, e.g.\
+$\alpha_\star^{\mathrm{post}}$ substantially different from $1$ but
+$\log\det(\mathbf C_{\mathrm{post}}) \approx 0$ (the anti-isotropic case of
+\S10.6), or vice versa: a single scalar correction is then insufficient and
+per-eigenvalue diagnostics ($\mathrm{eig}(\mathbf C_{\mathrm{post}})$) should
+be inspected.
+\item \emph{Validity-band caveat for the alpha-Laplace.} The $\alpha$-tilted
+Laplace expansion underlying \eqref{eq:logZ-alpha} is reliable while
+$\alpha_\star^{\mathrm{post}}\mathbf H_{\mathrm{lik}}
++ \mathbf H_{\mathrm{prior}}$ is well-conditioned with respect to the
+$\alpha$-tilted posterior's concentration around
+$\hat\theta_{\alpha_\star^{\mathrm{post}}}$. Outside the band $0.5 \lesssim
+\alpha_\star^{\mathrm{post}} \lesssim 2$ the leading-order expansion degrades:
+$\alpha_\star^{\mathrm{post}} \to 0^+$ approaches the prior-only inference
+limit (data effectively ignored, $L^{\alpha} \to 1$), and
+$\alpha_\star^{\mathrm{post}} \gg 1$ amplifies any score--Fisher mismatch
+beyond the regime where a single quadratic expansion is faithful. In the
+extreme regimes, treat $\alpha_\star^{\mathrm{post}}$ as a flag rather than a
+usable correction: severely small or severely large values signal that the
+likelihood model itself should be revisited.
+\item \emph{Caveat for Bayes-factor comparisons.} Because
+$\alpha_\star^{\mathrm{post}}$ is data-driven, it can over-penalise complex
+models (Gr\"unwald and van Ommen, 2017; M\"uller, 2013): a more flexible
+model fits the noise, inflates $\mathbf{JT}_{\mathrm{lik}}$ relative to
+$\mathbf H_{\mathrm{lik}}$, depresses $\alpha_\star^{\mathrm{post}}$, and also
+raises $\log\det(\mathbf C_{\mathrm{post}})$. The two corrections then move
+$\log Z_{\mathrm{comb}}$ in \emph{opposite directions}---the volume term
+rewards the inflated determinant while the peak re-weight reduces the
+log-likelihood weight---and the net effect is parameterisation-dependent
+(it requires knowing the sign of $\log L(\hat\theta)$). The framing
+``doubly penalised'' is therefore misleading; report both corrections rather
+than a single net shift, and use $\log Z_{\mathrm{comb}}$ as a sensitivity
+check alongside $\log Z_{\mathrm{DCC}}$, not as the headline quantity. The
+full set \eqref{eq:four-point-set} carries strictly more information than any
+of its members.
+\item \emph{Joint diagnostic.} The minimal informative summary of the
+distortion is the pair
+$\bigl(\alpha_\star^{\mathrm{post}},\,
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})\bigr)$:
+arithmetic mean against geometric mean of the same spectrum, with the
+strong-prior caveat of \S10.4.1 attached to both.
+\end{itemize}
+
+\paragraph{References for this section.}
+Bissiri, P.~G., Holmes, C.~C., and Walker, S.~G.\ (2016) ``A general framework
+for updating belief distributions,'' \emph{J.~R.~Statist.~Soc.~B} 78(5):
+1103--1130.\;
+Lyddon, S.~P., Holmes, C.~C., and Walker, S.~G.\ (2019) ``General Bayesian
+updating and the loss-likelihood bootstrap,'' \emph{Biometrika} 106(2):
+465--478.\;
+Varin, C., Reid, N., and Firth, D.\ (2011) ``An overview of composite
+likelihood methods,'' \emph{Statistica Sinica} 21: 5--42.\;
+Gr\"unwald, P. and van Ommen, T.\ (2017) ``Inconsistency of Bayesian
+inference for misspecified linear models,'' \emph{Bayesian Analysis} 12(4).\;
+M\"uller, U.~K.\ (2013) ``Risk of Bayesian inference in misspecified
+models,'' \emph{Econometrica} 81: 1805--1849.\;
+Takeuchi, K.\ (1976) (TIC); Burnham, K.~P.\ and Anderson, D.~R.\ (2002)
+\emph{Model Selection and Multimodel Inference} (QAIC).
+
+\section*{5. Volume-Term Correction: Naive versus Corrected Laplace}
+
+\subsection*{5.1 Naive Bayesian Laplace}
 
 The standard Bayesian Laplace approximation identifies the local posterior precision
 with the negative posterior Hessian at the MAP,
@@ -185,7 +833,7 @@ giving the naive log-evidence
 This is the formula underlying BIC-style asymptotic approximations and the standard
 Bayesian Laplace evidence.
 
-\subsection*{3.2 Corrected Bayesian Laplace}
+\subsection*{5.2 Corrected Bayesian Laplace}
 
 Under possible likelihood misspecification, the asymptotic covariance of the MAP estimator
 is the sandwich (Section~6 of the main supplement)
@@ -227,7 +875,7 @@ By multiplicativity of the determinant, $\det(\mathbf A\mathbf B\mathbf A) = \de
 \label{eq:logdet-expansion}
 \end{equation}
 
-\section*{4. The Shift in Log-Evidence}
+\section*{6. Volume-Term Correction: The Shift in Log-Evidence}
 
 Subtract \eqref{eq:naive-Z} from \eqref{eq:corrected-Z} and use
 \eqref{eq:logdet-expansion}:
@@ -292,9 +940,107 @@ of \eqref{eq:setup-decomp}--\eqref{eq:Cpost-def}. The proof is identical at the 
 algebra; the substantive content lies in what changes upon promotion from likelihood to
 posterior, treated in the next section.
 
-\section*{5. Sign, Calibration, and Prior Cancellation}
 
-\subsection*{5.1 Sign and magnitude}
+\section*{7. The Combined Evidence $\log Z_{\mathrm{comb}}$}
+
+Sections~4 and 6 produced two independent corrections to the naive Bayesian
+Laplace evidence: the peak correction
+$(\alpha_\star^{\mathrm{post}}-1)\log L(\hat\theta) + O(p\log\alpha_\star^{\mathrm{post}})$
+of Section~4.5 (data-dominated leading order) and the volume correction
+$\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ of Section~6. The
+\emph{combined evidence} is obtained by composing the two corrections
+on the $\alpha$-tilted Laplace formula of Eq.~\eqref{eq:logZ-alpha}:
+\begin{equation}
+\boxed{\;
+\log Z_{\mathrm{comb}}
+\;:=\;
+\alpha_\star^{\mathrm{post}}\,\log L(\hat\theta)
+\;+\;
+\log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\log\det\!\bigl(\alpha_\star^{\mathrm{post}}\mathbf H_{\mathrm{lik}}
++ \mathbf H_{\mathrm{prior}}\bigr)
+\;+\;
+\tfrac{1}{2}\log\det\!\bigl(({\alpha_\star^{\mathrm{post}}})^2\,
+\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\bigr).
+\;}
+\label{eq:logZ-comb-def}
+\end{equation}
+This is the formula obtained by substituting
+$\alpha_\star^{\mathrm{post}} = p/\mathrm{tr}(\mathbf C_{\mathrm{post}})$
+(Section~4.4) into \eqref{eq:logZ-alpha}. At $\alpha_\star^{\mathrm{post}} = 1$
+(correct specification regime), $\log Z_{\mathrm{comb}}$ collapses to
+$\log Z_{\mathrm{DCC}}$ of Section~5.2, and both reduce to the naive
+$\log Z_{\mathrm{F}}$ when also $\mathbf C_{\mathrm{post}} = \mathbf I$.
+
+\paragraph{Data-dominated leading order.}
+In the regime $\mathbf H_{\mathrm{prior}} \ll \alpha_\star^{\mathrm{post}}
+\mathbf H_{\mathrm{lik}}$ and
+$\mathbf H_{\mathrm{prior}} \ll
+(\alpha_\star^{\mathrm{post}})^2 \mathbf{JT}_{\mathrm{lik}}$, the $\alpha$-factors
+inside the two log-determinants cancel and \eqref{eq:logZ-comb-def} reduces
+to the clean additive form
+\begin{equation}
+\log Z_{\mathrm{comb}}
+\;\approx\;
+\log Z_{\mathrm{DCC}}
+\;+\;
+(\alpha_\star^{\mathrm{post}}-1)\,\log L(\hat\theta)
+\;+\;
+O\bigl(p\,\log\alpha_\star^{\mathrm{post}}\cdot
+\|\mathbf H_{\mathrm{prior}}\|/\|\alpha_\star^{\mathrm{post}}
+\mathbf H_{\mathrm{lik}}\|\bigr).
+\label{eq:logZ-comb-leading}
+\end{equation}
+The leading-order net adjustment of $\log Z$ relative to the volume-corrected
+$\log Z_{\mathrm{DCC}}$ is the single scalar $(\alpha_\star^{\mathrm{post}}-1)
+\log L(\hat\theta)$, derived in Section~4.5.
+
+\paragraph{Two orders of magnitude, one composition.}
+The combined evidence couples corrections at two different orders in $T$:
+the peak correction scales as $O(T)$ (since $\log L(\hat\theta) = O(T)$ under
+stationarity and $(\alpha_\star^{\mathrm{post}}-1) = O(1)$), while the volume
+correction inside $\log Z_{\mathrm{DCC}}$ scales as $O(1)$ (Section~9.1
+intensive correction; Section~11.3 peak/volume resolution). The peak
+correction therefore dominates the volume correction by a factor of $T$
+in any persistent-misspecification regime. The intuition---``the peak
+correction is the primary misspecification adjustment, the volume
+correction is the secondary'' (introduced in Section~3)---is then a
+quantitative ordering, not just a logical one.
+
+\paragraph{When $\log Z_{\mathrm{comb}}$ matters for model comparison.}
+For Bayes-factor comparisons between two models $A$ and $B$, the
+combined-evidence Bayes-factor bias is
+\begin{equation}
+\Delta \log\mathrm{BF}_{AB}^{\mathrm{comb}}
+\;=\;
+\bigl(\alpha_\star^{A,\mathrm{post}}-1\bigr)\log L_A(\hat\theta_A)
+\;-\;
+\bigl(\alpha_\star^{B,\mathrm{post}}-1\bigr)\log L_B(\hat\theta_B)
+\;+\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}^{A})
+\;-\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}^{B}).
+\label{eq:logBF-comb}
+\end{equation}
+The first two terms are the peak contributions; the last two are the volume
+contributions of Sections~5--6. Section~9.2 discusses the practical
+recommendation: report both contributions separately so reviewers can see
+which one is driving model-comparison differences.
+
+\paragraph{Evidence-interval extension.}
+The evidence-interval framework of Section~10 below augments the triple
+$(\log Z_{\mathrm{F}}, \log Z_{\mathrm{J}}, \log Z_{\mathrm{DCC}})$ to the
+quadruple $(\log Z_{\mathrm{F}}, \log Z_{\mathrm{J}}, \log Z_{\mathrm{DCC}},
+\log Z_{\mathrm{comb}})$. Section~10.4 discusses the pairwise differences in
+the augmented framework.
+
+
+\section*{8. Sign, Calibration, and Prior Cancellation}
+
+\subsection*{8.1 Sign and magnitude}
 
 The sign and magnitude of the correction are read off the scalar $\det(\mathbf C_{\mathrm{post}})$,
 which is a multiplicative summary of the eigenvalues of $\mathbf C_{\mathrm{post}}$:
@@ -316,11 +1062,11 @@ diagnostics from the main supplement (Sections~5.1 and~9) complement it.
 For $\mathbf C_{\mathrm{post}} = c\,\mathbf I$ with $c > 0$, $\Delta\log Z = (p/2)\log c$,
 scaling with dimension $p$ but not with sample size $T$.
 
-\subsection*{5.2 Calibration under correct likelihood specification (population level)}
+\subsection*{8.2 Calibration under correct likelihood specification (population level)}
 
 The defining property of the posterior correction is its behaviour at the population
 level under correct likelihood specification, evaluated at the true parameter $\theta_0$.
-By Section~4.1 of the main supplement,
+By Section~6.1 of the main supplement,
 \begin{equation}
 \mathbf{JT}_{\mathrm{lik}}(\theta_0) = \mathbf H_{\mathrm{lik}}(\theta_0)
 \;\;\Longrightarrow\;\;
@@ -352,7 +1098,7 @@ under correct spec, and the finite-sample shift
 $\Delta\log Z = O_p(T^{-1})$ vanishes only asymptotically. The exact zero is a
 population-level statement, not a finite-sample one.
 
-\subsection*{5.3 Prior cancellation (population level under correct spec)}
+\subsection*{8.3 Prior cancellation (population level under correct spec)}
 
 The formula $\Delta\log Z = \tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ depends on
 $\mathbf H_{\mathrm{prior}}$ only implicitly through $\mathbf H_{\mathrm{post}}$ and
@@ -393,7 +1139,7 @@ is a pure likelihood-misspecification diagnostic. Outside this regime---finite s
 or misspecified models---the determinant readout is biased by the prior, as quantified
 below.}
 
-\subsection*{5.4 Strong-prior boundary: zero correction does not imply correct spec}
+\subsection*{8.4 Strong-prior boundary: zero correction does not imply correct spec}
 
 A second mechanism produces $\Delta\log Z \to 0$, independent of the population
 information identity: a strong prior. By main supp Sec~4.2 (Eq.~\texttt{eq:posterior-c-residual-bound}),
@@ -414,7 +1160,7 @@ limit cancels the residual uniformly across all data realisations) or inspecting
 diagnostics of $\mathbf C_{\mathrm{lik}}$ on a retained subspace (main supp Sec~6.5 records
 the same loss of absolute sensitivity).
 
-\subsection*{5.5 Contrast with the likelihood evidence correction}
+\subsection*{8.5 Contrast with the likelihood evidence correction}
 
 The likelihood evidence correction of \texttt{supplement\_evidence\_correction.tex} is
 $\tfrac{1}{2}\log\det(\mathbf C)$ with $\mathbf C = \mathbf H_{\mathrm{lik}}^{-1/2}
@@ -429,14 +1175,14 @@ a proper Gaussian prior makes $\mathbf H_{\mathrm{post}} \succ 0$ on the full pa
 space (Section~2.1 of the main supplement, label \texttt{eq:dominance-condition}),
 $\mathbf C_{\mathrm{post}}$ is well-defined as an SPD matrix without any subspace
 projection. Under correct specification at $\theta_0$ it further reduces to $\mathbf I$
-for any proper Gaussian prior (Section~4.1 of the main supplement). Identifiability is
+for any proper Gaussian prior (Section~6.1 of the main supplement). Identifiability is
 thus handled by the prior; \emph{calibration} (whether $\mathbf C_{\mathrm{post}} = \mathbf I$)
 is a separate question, answered by the diagnostic itself but---per \S5.4 above---only
 in regimes where the prior is not so strong that the residual is suppressed.
 
-\section*{6. Scaling with Sample Size and Bayes Factors}
+\section*{9. Scaling with Sample Size and Bayes Factors}
 
-\subsection*{6.1 Intensive correction}
+\subsection*{9.1 Intensive correction}
 
 Under stationarity and ergodicity of the per-interval scores with summable cross-interval
 covariances (cf.\ main supp Secs~6.5, 7.3), $\mathbf H_{\mathrm{lik}}$ and
@@ -489,7 +1235,7 @@ O(1),
 \end{equation}
 an $O(1)$ shift that neither vanishes nor grows with $T$.
 
-\subsection*{6.2 Bayes factors and decisive regime}
+\subsection*{9.2 Bayes factors and decisive regime}
 
 For two competing models $M_A$, $M_B$, the Bayes factor satisfies
 \begin{equation}
@@ -525,7 +1271,7 @@ so strong that the likelihood-side residual is suppressed by the boundary mechan
 in \texttt{supplement\_evidence\_correction.tex}~\S5.3, restricted by the additional
 prior-strength caveat.
 
-\subsection*{6.3 Connection to posterior effective sample size}
+\subsection*{9.3 Connection to posterior effective sample size}
 
 Main supp Sec~9.5 defines a posterior effective sample size $T_{\mathrm{eff}}^{\mathrm{post}} = T/\kappa^{\mathrm{post}}$
 via a spectral summary of $\mathbf R_{\mathrm{post}}$ (the distortion between $\mathbf{JT}_{\mathrm{post}}$
@@ -556,7 +1302,7 @@ rather than as the spectral summary $\kappa^{\mathrm{post}}$. When $\det(\mathbf
 $T_{\mathrm{eff}}^{\mathrm{post}}$ statistic track the same matrix $\mathbf R_{\mathrm{post}}$
 via different scalar reductions; in general they remain distinct statistics.
 
-\section*{7. The Evidence Interval Framework}
+\section*{10. The Evidence Interval Framework}
 
 A practical advantage of the posterior framework is that three concurrent Laplace
 estimators of $\log Z$ can be reported jointly, their relative spread being exactly
@@ -565,7 +1311,7 @@ the third is the DCC correction derived above, and the second is a heuristic com
 introduced explicitly to symmetrise the interval and to expose the calibration uncertainty
 as a scalar.
 
-\subsection*{7.1 Three Laplace-style estimators}
+\subsection*{10.1 Three Laplace-style estimators}
 
 We define
 \begin{align}
@@ -606,7 +1352,7 @@ the width of the interval $[\log Z_J, \log Z_{\mathrm{DCC}}]$ is then the algebr
 between this heuristic and the derived DCC estimate, not an error-theoretic confidence
 band.
 
-\subsection*{7.2 Pairwise differences}
+\subsection*{10.2 Pairwise differences}
 
 A direct subtraction using \eqref{eq:detCpost-identity} gives
 \begin{align}
@@ -643,7 +1389,7 @@ $\log\det(\mathbf C_{\mathrm{post}})$:
 and spread by $|\log\det(\mathbf C_{\mathrm{post}})|$ otherwise (the extreme pair is
 $\log Z_J$ vs $\log Z_{\mathrm{DCC}}$).
 
-\subsection*{7.3 Reporting the interval}
+\subsection*{10.3 Reporting the interval}
 
 We propose to report the triple
 \begin{equation}
@@ -682,7 +1428,7 @@ calibration uncertainty due to information distortion, complementing the usual M
 uncertainty of the Laplace approximation itself and the per-eigenvalue diagnostics of
 Sections~5 and~9 of the main supplement.
 
-\subsection*{7.4 Bayes factor under the interval framework}
+\subsection*{10.4 Bayes factor under the interval framework}
 
 For model comparison, applying \eqref{eq:BF-def} entry-wise gives three Bayes factor
 estimators $\log\mathrm{BF}_{AB,F}$, $\log\mathrm{BF}_{AB,J}$, $\log\mathrm{BF}_{AB,\mathrm{DCC}}$.
@@ -708,16 +1454,52 @@ robust to determinant-level calibration uncertainty; one inside the spread is no
 user should either explicitly model the misspecification or accept the Bayes factor as
 undetermined.
 
-\section*{8. The Apparent Paradox: Logarithmic Variance Inflation}
+\subsection*{10.5 Position of $\log Z_{\mathrm{comb}}$ relative to the interval}
+
+The combined evidence $\log Z_{\mathrm{comb}}$ of Section~7 is not a fourth member
+of the interval $[\log Z_J,\log Z_{\mathrm{DCC}}]$: the interval reflects only the
+volume-term ambiguity ($\mathbf H_{\mathrm{post}}$ vs.\ $\mathbf{JT}_{\mathrm{post}}$
+in the determinant), while $\log Z_{\mathrm{comb}}$ additionally re-weights the peak
+term by the trace-matched learning rate
+$\alpha_\star^{\mathrm{post}} = p/\mathrm{tr}(\mathbf C_{\mathrm{post}})$
+(Section~4). Decomposing \eqref{eq:logZ-comb-clean} in the obvious way,
+\begin{equation}
+\log Z_{\mathrm{comb}}
+\;=\;
+\underbrace{\log Z_{\mathrm{DCC}}}_{\text{volume-corrected, }O(1)\text{ in }T}
+\;+\;
+\underbrace{\bigl(\alpha_\star^{\mathrm{post}}-1\bigr)\log L(\hat\theta)}_{\text{peak correction, }O(T)\text{ under persistent misspec}},
+\label{eq:logZcomb-vs-interval}
+\end{equation}
+so $\log Z_{\mathrm{comb}}$ shifts the whole interval rigidly by the peak term while
+preserving its width $W_Z = |\log\det(\mathbf C_{\mathrm{post}})|$. The reported
+quadruple $(\log Z_F,\log Z_J,\log Z_{\mathrm{DCC}},\log Z_{\mathrm{comb}})$ then
+contains two operationally distinct readouts: the interval width measures volume
+calibration uncertainty (a function only of $\det(\mathbf C_{\mathrm{post}})$),
+while the gap
+$\log Z_{\mathrm{comb}} - \log Z_{\mathrm{DCC}} = (\alpha_\star^{\mathrm{post}}-1)\log L(\hat\theta)$
+measures the peak-term reweighting (a function of $\mathrm{tr}(\mathbf C_{\mathrm{post}})$).
+
+For Bayes factors, the combined-evidence version $\log B_{AB}^{\mathrm{comb}}$ inherits
+the volume-correction Bayes-factor spread of \eqref{eq:BF-interval} unchanged and adds
+the per-model peak-correction difference
+$(\alpha_{\star,A}^{\mathrm{post}}-1)\log L_A(\hat\theta_A) -
+ (\alpha_{\star,B}^{\mathrm{post}}-1)\log L_B(\hat\theta_B)$.
+Under persistent misspecification this peak-correction difference is $O(T)$ and
+typically dominates the $O(1)$ volume-correction spread; under
+correct specification both contributions are calibrated and the combined Bayes
+factor reduces to the naive Bayes factor up to $O_p(T^{-1/2})$ noise.
+
+\section*{11. The Apparent Paradox: Logarithmic Variance Inflation}
 
 The compactness of \eqref{eq:main-result} can be misleading. As in
 \texttt{supplement\_evidence\_correction.tex}~\S6, we make explicit why a correction that
 ``should'' be huge---a fold-doubling of posterior variance corresponds to a halved effective
 sample size---turns out to be merely an $O(1)$ shift in $\log Z$.
 
-\subsection*{8.1 Variance inflation as effective sample loss}
+\subsection*{11.1 Variance inflation as effective sample loss}
 
-The PID acts as a variance-inflation factor for the MAP estimator (Section~6 of the main
+The PID acts as a variance-inflation factor for the MAP estimator (Section~9 of the main
 supplement); CI widths scale as $\sqrt{[\mathbf C_{\mathrm{post}}]_{ii}}$, so
 $\mathbf C_{\mathrm{post}} = 2\mathbf I$ doubles posterior variance and widens intervals
 by $\sqrt{2}$. By the usual variance--information duality, this is equivalent to a halved
@@ -737,7 +1519,7 @@ when $\det(\mathbf C_{\mathrm{sample},\mathrm{post}}) = 1$ and the determinant o
 $\mathbf R_{\mathrm{post}}$ matches its $\kappa^{\mathrm{post}}$ summary (cf.\
 \eqref{eq:det-split}). Halving $N_{\mathrm{eff}}^{Z}$ feels like a major loss of information.
 
-\subsection*{8.2 Yet the log-evidence shift is small}
+\subsection*{11.2 Yet the log-evidence shift is small}
 
 Substituting $\mathbf C_{\mathrm{post}} = 2\mathbf I$ for $p = 6$ into \eqref{eq:main-result},
 \begin{equation}
@@ -753,7 +1535,7 @@ Substituting $\mathbf C_{\mathrm{post}} = 2\mathbf I$ for $p = 6$ into \eqref{eq
 corresponding to a Bayes factor of $\approx 8$. Notable for model comparison but
 negligible compared to typical $O(T)$ log-evidence values.
 
-\subsection*{8.3 Resolution: peak vs.\ volume}
+\subsection*{11.3 Resolution: peak vs.\ volume}
 
 Decompose the Laplace evidence into a peak and a volume contribution,
 \begin{equation}
@@ -806,7 +1588,7 @@ $O(1)$ distortion correction (from $\mathbf C_{\mathrm{post}}$). Doubling effect
 size halves $\det(\mathbf C_{\mathrm{post}})^{1/p}$ but adds only $\tfrac{p}{2}\log 2$ to
 $\log Z$.
 
-\subsection*{8.4 Multiplicative in probability, additive in log-probability}
+\subsection*{11.4 Multiplicative in probability, additive in log-probability}
 
 Evidence accumulates multiplicatively over independent samples,
 $Z_T \approx \prod_{t=1}^T p(y_t \mid \mathrm{history}_t)$, and so $\log Z_T$ is additive
@@ -824,11 +1606,20 @@ becomes the leading discriminator. As in the likelihood case
 (\texttt{supplement\_evidence\_correction.tex}~\S6.4), the same correction object is
 ``small'' or ``decisive'' depending entirely on what it is being compared against.
 
-\section*{9. Summary}
+\section*{12. Summary}
 
 \begin{itemize}
-\item \textbf{Central result.} Replacing the naive Bayesian Laplace covariance
-$\mathbf H_{\mathrm{post}}^{-1}$ with the sandwich $\Sigma_{\mathrm{DCC},\mathrm{post}}$
+\item \textbf{Two corrections, one diagnostic.} Likelihood misspecification distorts
+\emph{both} the peak and the volume term of the naive Laplace evidence; each requires
+its own correction, and both extract complementary scalar summaries of the same
+$\mathrm{eig}(\mathbf C_{\mathrm{post}})$ spectrum. The peak correction
+(Section~4) re-weights $\log L(\hat\theta)$ via
+$\alpha_\star^{\mathrm{post}} = p/\mathrm{tr}(\mathbf C_{\mathrm{post}})$ (arithmetic
+mean); the volume correction (Sections~5--6) shifts the volume term by
+$\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ (geometric mean). The combined
+evidence $\log Z_{\mathrm{comb}}$ of Section~7 incorporates both.
+\item \textbf{Volume-correction central result.} Replacing the naive Bayesian Laplace
+covariance $\mathbf H_{\mathrm{post}}^{-1}$ with the sandwich $\Sigma_{\mathrm{DCC},\mathrm{post}}$
 shifts the log-evidence by
 \[
 \Delta\log Z
@@ -837,6 +1628,11 @@ shifts the log-evidence by
 \]
 the direct posterior analogue of the likelihood evidence correction
 (\texttt{supplement\_evidence\_correction.tex}).
+\item \textbf{Peak-correction central result.} The combined evidence decomposes as
+$\log Z_{\mathrm{comb}} = \log Z_{\mathrm{DCC}} +
+(\alpha_\star^{\mathrm{post}}-1)\log L(\hat\theta)$. The peak term is $O(T)$ under
+persistent misspecification and dominates the $O(1)$ volume term; under correct
+specification $\alpha_\star^{\mathrm{post}} \to 1$ and the peak correction vanishes.
 \item \textbf{Prior cancellation (population level under correct spec).}
 At $\theta_0$ under the population information identity, $\mathbf C_{\mathrm{post}} = \mathbf I$
 for \emph{any} proper Gaussian prior covariance, so $\Delta\log Z = 0$ regardless of prior
