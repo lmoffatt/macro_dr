@@ -1,0 +1,881 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Supplementary Information:\\
+Bayesian Evidence Correction via the\\
+Posterior Information Distortion}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent We derive the correction to the log-evidence that follows from
+replacing the naive Bayesian Laplace covariance $\mathbf H_{\mathrm{post}}^{-1}$
+with the sandwich-corrected posterior covariance
+$\Sigma_{\mathrm{DCC},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1}\,
+\mathbf{JT}_{\mathrm{post}}\,\mathbf H_{\mathrm{post}}^{-1}$ in the Laplace
+approximation. The result is the direct posterior counterpart of the likelihood
+evidence correction of \texttt{supplement\_evidence\_correction.tex}: the shift
+in log-evidence equals $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$, where
+$\mathbf C_{\mathrm{post}}$ is the Posterior Information Distortion (PID). At
+the population level under correct likelihood specification, this shift vanishes
+\emph{for any proper Gaussian prior covariance}, so the correction is in that
+regime a pure likelihood-misspecification diagnostic. We further introduce an
+\emph{evidence interval} framework that reports the naive,
+$\mathbf{JT}_{\mathrm{post}}$-only, and DCC estimates of $\log Z$ jointly, their
+pairwise differences being determined by $\log\det(\mathbf C_{\mathrm{post}})$.
+\end{abstract}
+
+\section*{1. Setup}
+
+We adopt the notation of \texttt{supplement\_posterior\_main.tex}. Let $D = (y_1,\ldots,y_T)$
+be the data, $\pi(\theta) = \mathcal{N}(\mu_{\mathrm{prior}}, \Sigma_{\mathrm{prior}})$ a
+proper Gaussian prior with precision $\mathbf H_{\mathrm{prior}} = \Sigma_{\mathrm{prior}}^{-1}$,
+and $\ell(\theta) = \log L(\theta)$ the log-likelihood. The posterior Hessian and total
+posterior score fluctuation matrix decompose additively (Sections~2 and 3 of the main
+supplement),
+\begin{equation}
+\mathbf H_{\mathrm{post}} \;=\; \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}},
+\qquad
+\mathbf{JT}_{\mathrm{post}} \;:=\; \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}},
+\label{eq:setup-decomp}
+\end{equation}
+with $\mathbf{JT}_{\mathrm{lik}} = \mathrm{Cov}(S_{\mathrm{lik}})$ the total likelihood
+score covariance. The Posterior Information Distortion (PID) is
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2},
+\label{eq:Cpost-def}
+\end{equation}
+and the Distortion-Corrected posterior Covariance is
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf C_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2}.
+\label{eq:SigmaDCCpost}
+\end{equation}
+At the population level under correctly specified likelihood, the information identity
+$\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ propagates additively to
+$\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ (Section~3.1 of the main
+supplement), so $\mathbf C_{\mathrm{post}} = \mathbf I$ for any proper Gaussian
+prior (Section~4.1 of the main supplement); see~\eqref{eq:Cpost-def}--\eqref{eq:SigmaDCCpost}.
+The DCC then reduces to the standard Bayesian Laplace covariance
+$\mathbf H_{\mathrm{post}}^{-1}$ (Section~6.4 of the main supplement).
+
+\paragraph{Preconditions.}
+All formulas below assume $\mathbf H_{\mathrm{post}} \succ 0$, which is automatic for
+analytic $\mathbf H_{\mathrm{lik}} \succeq 0$ with any proper Gaussian prior, and otherwise
+requires the dominance condition $\mathbf H_{\mathrm{prior}} - \mathbf H_{\mathrm{lik}}^- \succ 0$
+of Section~2.1 of the main supplement (label \texttt{eq:dominance-condition} in that
+supplement). The evidence correction $\Delta\log Z$ is not defined as a real number outside
+this regime; in finite-difference Hessian implementations the dominance condition must be
+checked.
+
+\paragraph{Goal of this supplement.}
+This supplement derives the Bayesian model-evidence correction obtained by replacing
+the naive Bayesian Laplace covariance $\mathbf H_{\mathrm{post}}^{-1}$ with the
+sandwich-corrected $\Sigma_{\mathrm{DCC},\mathrm{post}}$ in the Laplace approximation
+to $\log Z = \log \int L(\theta)\,\pi(\theta)\,\mathrm{d}\theta$. The development
+parallels \texttt{supplement\_evidence\_correction.tex} (the likelihood-side counterpart),
+but the result has three distinctive features:
+\begin{itemize}
+\item the correction vanishes at the population level under correct likelihood
+specification \emph{for any proper Gaussian prior covariance}, exhibiting a
+prior-cancellation property absent from the likelihood-side correction in the
+singular-Fisher regime;
+\item the three natural Laplace estimators (naive, $\mathbf{JT}_{\mathrm{post}}$-only,
+and DCC) form an interval on $\log Z$ whose width is exactly $|\log\det(\mathbf C_{\mathrm{post}})|$
+and which we report as a calibration uncertainty;
+\item the correction is an $O(1)$ intensive quantity, decisive only in the regime where
+the $O(T)$ likelihood values cancel \emph{and} the prior is not strong enough to suppress
+the likelihood-side residual.
+\end{itemize}
+
+\section*{2. Laplace Approximation to the Bayesian Evidence}
+
+Let $Z := \int L(\theta)\,\pi(\theta)\,\mathrm{d}\theta$ be the Bayesian evidence. We expand
+the integrand around the maximum-a-posteriori (MAP) estimate
+$\hat\theta := \arg\max_\theta [\log L(\theta) + \log\pi(\theta)]$,
+\begin{equation}
+\log L(\theta) + \log\pi(\theta)
+\;\approx\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;-\;
+\tfrac{1}{2}\,(\theta - \hat\theta)^\top
+\boldsymbol\Lambda\,
+(\theta - \hat\theta),
+\label{eq:quadratic-expansion}
+\end{equation}
+where $\boldsymbol\Lambda$ is the precision matrix of the local Gaussian approximation
+to the posterior at $\hat\theta$. Gaussian integration yields
+\begin{equation}
+\log Z
+\;\approx\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\tfrac{1}{2}\log\det(\boldsymbol\Lambda),
+\label{eq:laplace-precision}
+\end{equation}
+with $p = \dim(\theta)$. Equivalently, in terms of the posterior covariance
+$\Sigma = \boldsymbol\Lambda^{-1}$:
+\begin{equation}
+\log Z
+\;\approx\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;+\;
+\tfrac{1}{2}\log\det(\Sigma).
+\label{eq:laplace-covariance}
+\end{equation}
+Equations \eqref{eq:laplace-precision} and \eqref{eq:laplace-covariance} are exact
+representations of the same approximation, written in precision and covariance form;
+the choice of which to instantiate determines which curvature object is identified with
+the posterior precision.
+
+\paragraph{Remark on Jacobians.}
+As in the main supplement, all derivatives are taken in the transformed coordinates in
+which the prior is Gaussian, so the integration in $Z$ is over the transformed parameter
+and no Jacobian corrections appear in \eqref{eq:laplace-precision}--\eqref{eq:laplace-covariance}.
+
+\section*{3. Naive versus Corrected Laplace}
+
+\subsection*{3.1 Naive Bayesian Laplace}
+
+The standard Bayesian Laplace approximation identifies the local posterior precision
+with the negative posterior Hessian at the MAP,
+\begin{equation}
+\boldsymbol\Lambda_{\mathrm{naive}}
+\;=\;
+\mathbf H_{\mathrm{post}},
+\qquad
+\Sigma_{\mathrm{naive}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1},
+\label{eq:naive-curvature}
+\end{equation}
+giving the naive log-evidence
+\begin{equation}
+\log Z_{\mathrm{naive}}
+\;=\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}}).
+\label{eq:naive-Z}
+\end{equation}
+This is the formula underlying BIC-style asymptotic approximations and the standard
+Bayesian Laplace evidence.
+
+\subsection*{3.2 Corrected Bayesian Laplace}
+
+Under possible likelihood misspecification, the asymptotic covariance of the MAP estimator
+is the sandwich (Section~6 of the main supplement)
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1},
+\label{eq:DCC-recall}
+\end{equation}
+not $\mathbf H_{\mathrm{post}}^{-1}$. Replacing $\Sigma_{\mathrm{naive}}$ with
+$\Sigma_{\mathrm{DCC},\mathrm{post}}$ in \eqref{eq:laplace-covariance} gives
+\begin{equation}
+\log Z_{\mathrm{corrected}}
+\;=\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;+\;
+\tfrac{1}{2}\log\det\!\left(
+\mathbf H_{\mathrm{post}}^{-1}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1}
+\right).
+\label{eq:corrected-Z}
+\end{equation}
+By multiplicativity of the determinant, $\det(\mathbf A\mathbf B\mathbf A) = \det(\mathbf A)^2 \det(\mathbf B)$ for any square $\mathbf A, \mathbf B$, hence
+\begin{equation}
+\log\det\!\left(
+\mathbf H_{\mathrm{post}}^{-1}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1}
+\right)
+\;=\;
+\log\det(\mathbf{JT}_{\mathrm{post}})
+\;-\;
+2\log\det(\mathbf H_{\mathrm{post}}).
+\label{eq:logdet-expansion}
+\end{equation}
+
+\section*{4. The Shift in Log-Evidence}
+
+Subtract \eqref{eq:naive-Z} from \eqref{eq:corrected-Z} and use
+\eqref{eq:logdet-expansion}:
+\begin{align}
+\Delta\log Z
+\;&:=\;
+\log Z_{\mathrm{corrected}} \;-\; \log Z_{\mathrm{naive}}
+\nonumber\\[4pt]
+&=\;
+\tfrac{1}{2}\bigl[
+\log\det(\mathbf{JT}_{\mathrm{post}})
+\;-\;
+2\log\det(\mathbf H_{\mathrm{post}})
+\bigr]
+\;-\;
+\bigl[
+-\tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}})
+\bigr]
+\nonumber\\[4pt]
+&=\;
+\tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{post}})
+\;-\;
+\tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}})
+\nonumber\\[4pt]
+&=\;
+\tfrac{1}{2}\log
+\frac{\det(\mathbf{JT}_{\mathrm{post}})}
+     {\det(\mathbf H_{\mathrm{post}})}.
+\label{eq:DeltaZ-ratio}
+\end{align}
+Recognising the right-hand side as the log-determinant of the Posterior Information
+Distortion,
+\begin{equation}
+\det(\mathbf C_{\mathrm{post}})
+\;=\;
+\det\!\left(
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2}
+\right)
+\;=\;
+\frac{\det(\mathbf{JT}_{\mathrm{post}})}
+     {\det(\mathbf H_{\mathrm{post}})},
+\label{eq:detCpost-identity}
+\end{equation}
+we obtain the central result of this supplement:
+\begin{equation}
+\boxed{\;
+\Delta\log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}).
+\;}
+\label{eq:main-result}
+\end{equation}
+
+\paragraph{Direct parallel to the likelihood case.}
+Result~\eqref{eq:main-result} is the direct posterior counterpart of the central result
+of \texttt{supplement\_evidence\_correction.tex}, with the likelihood-side objects
+$(\mathbf H, \mathbf J_{\mathrm{total}}, \mathbf C)$ replaced throughout by
+$(\mathbf H_{\mathrm{post}}, \mathbf{JT}_{\mathrm{post}}, \mathbf C_{\mathrm{post}})$
+of \eqref{eq:setup-decomp}--\eqref{eq:Cpost-def}. The proof is identical at the level of
+algebra; the substantive content lies in what changes upon promotion from likelihood to
+posterior, treated in the next section.
+
+\section*{5. Sign, Calibration, and Prior Cancellation}
+
+\subsection*{5.1 Sign and magnitude}
+
+The sign and magnitude of the correction are read off the scalar $\det(\mathbf C_{\mathrm{post}})$,
+which is a multiplicative summary of the eigenvalues of $\mathbf C_{\mathrm{post}}$:
+\begin{itemize}
+\item $\det(\mathbf C_{\mathrm{post}}) > 1$ means net (multiplicative) variance inflation
+across all eigen-directions of $\mathbf C_{\mathrm{post}}$, and implies $\Delta\log Z > 0$:
+the corrected log-evidence is higher than the naive log-evidence, reflecting a larger
+effective posterior volume.
+\item $\det(\mathbf C_{\mathrm{post}}) < 1$ means net deflation across eigen-directions,
+and implies $\Delta\log Z < 0$.
+\item $\det(\mathbf C_{\mathrm{post}}) = 1$ implies $\Delta\log Z = 0$: naive and
+DCC-corrected Laplace evidence coincide. This is a \emph{necessary but not sufficient}
+condition for $\mathbf C_{\mathrm{post}} = \mathbf I$: a diagonal example such as
+$\mathbf C_{\mathrm{post}} = \mathrm{diag}(2, 1/2)$ has unit determinant and zero
+$\Delta\log Z$ yet is plainly miscalibrated. The scalar $\Delta\log Z$ therefore detects
+miscalibration only up to per-direction cancellation; trace-based and per-eigenvalue
+diagnostics from the main supplement (Sections~5.1 and~9) complement it.
+\end{itemize}
+For $\mathbf C_{\mathrm{post}} = c\,\mathbf I$ with $c > 0$, $\Delta\log Z = (p/2)\log c$,
+scaling with dimension $p$ but not with sample size $T$.
+
+\subsection*{5.2 Calibration under correct likelihood specification (population level)}
+
+The defining property of the posterior correction is its behaviour at the population
+level under correct likelihood specification, evaluated at the true parameter $\theta_0$.
+By Section~4.1 of the main supplement,
+\begin{equation}
+\mathbf{JT}_{\mathrm{lik}}(\theta_0) = \mathbf H_{\mathrm{lik}}(\theta_0)
+\;\;\Longrightarrow\;\;
+\mathbf{JT}_{\mathrm{post}}(\theta_0) = \mathbf H_{\mathrm{post}}(\theta_0)
+\;\;\Longrightarrow\;\;
+\mathbf C_{\mathrm{post}}(\theta_0) = \mathbf I,
+\label{eq:calibration-chain}
+\end{equation}
+the third implication holding for \emph{any} proper Gaussian prior. Substituting into
+\eqref{eq:main-result},
+\begin{equation}
+\Delta\log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf I)
+\;=\;
+0
+\qquad\text{at the population level under correct likelihood specification.}
+\label{eq:DeltaZ-correct}
+\end{equation}
+The DCC and naive Bayesian Laplace evidences therefore agree at the population
+level whenever the information identity holds, regardless of how informative the prior is.
+
+\paragraph{Finite-sample caveat.}
+The identity $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ is a population
+identity at $\theta_0$ (main supp Sec~4.1); empirical plug-ins at $\hat\theta$ satisfy
+it only up to $O_p(T^{-1/2})$ sampling fluctuation. The plug-in
+$\mathbf C_{\mathrm{post}}(\hat\theta)$ therefore differs from $\mathbf I$ by $O_p(T^{-1/2})$
+under correct spec, and the finite-sample shift
+$\Delta\log Z = O_p(T^{-1})$ vanishes only asymptotically. The exact zero is a
+population-level statement, not a finite-sample one.
+
+\subsection*{5.3 Prior cancellation (population level under correct spec)}
+
+The formula $\Delta\log Z = \tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ depends on
+$\mathbf H_{\mathrm{prior}}$ only implicitly through $\mathbf H_{\mathrm{post}}$ and
+$\mathbf{JT}_{\mathrm{post}}$. At the population level under correct specification these
+two matrices change in lockstep as the prior is rescaled (main supp Sec~3.1, final
+paragraph), so $\mathbf C_{\mathrm{post}}$ remains identically $\mathbf I$ and the
+correction \emph{cancels exactly} along the prior-strength axis. Concretely, define the
+residual on the likelihood side
+\begin{equation}
+\Delta\mathbf{H}^{\mathrm{lik}}_{\mathrm{resid}}
+\;:=\;
+\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}.
+\label{eq:lik-residual}
+\end{equation}
+Then $\mathbf{JT}_{\mathrm{post}} - \mathbf H_{\mathrm{post}} = \Delta\mathbf{H}^{\mathrm{lik}}_{\mathrm{resid}}$
+exactly (the prior contribution $\mathbf H_{\mathrm{prior}}$ cancels in the unwhitened
+residual; main supp Sec~4.2), and
+\begin{equation}
+\mathbf C_{\mathrm{post}} - \mathbf I
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\Delta\mathbf{H}^{\mathrm{lik}}_{\mathrm{resid}}\,
+\mathbf H_{\mathrm{post}}^{-1/2}.
+\label{eq:Cpost-residual}
+\end{equation}
+The numerator $\Delta\mathbf{H}^{\mathrm{lik}}_{\mathrm{resid}}$ depends only on
+likelihood quantities; the whitening factors, however, do depend on the prior, so the
+determinant $\det(\mathbf C_{\mathrm{post}}) = \det(\mathbf{JT}_{\mathrm{post}})/\det(\mathbf H_{\mathrm{post}})$
+is itself a prior-dependent readout under misspecification. The clean prior cancellation
+in \eqref{eq:DeltaZ-correct} is a \emph{correct-spec phenomenon}, not a generic
+prior-independence of the determinant; the strong-prior boundary in \S5.4 makes this
+explicit.
+
+\paragraph{Prior cancellation principle (population level under correct spec).}
+\emph{Evaluated at $\theta_0$ under the population information identity, $\Delta\log Z = 0$
+regardless of Gaussian-prior covariance. In this regime the posterior evidence correction
+is a pure likelihood-misspecification diagnostic. Outside this regime---finite samples,
+or misspecified models---the determinant readout is biased by the prior, as quantified
+below.}
+
+\subsection*{5.4 Strong-prior boundary: zero correction does not imply correct spec}
+
+A second mechanism produces $\Delta\log Z \to 0$, independent of the population
+information identity: a strong prior. By main supp Sec~4.2 (Eq.~\texttt{eq:posterior-c-residual-bound}),
+\[
+\|\mathbf C_{\mathrm{post}} - \mathbf I\|
+\;\le\;
+\lambda_{\min}(\mathbf H_{\mathrm{post}})^{-1}\,
+\|\Delta\mathbf{H}^{\mathrm{lik}}_{\mathrm{resid}}\|,
+\]
+so as $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$ the right-hand side vanishes
+at rate $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$ \emph{even when the likelihood
+is misspecified}, driving $\det(\mathbf C_{\mathrm{post}}) \to 1$ and hence $\Delta\log Z \to 0$.
+Operationally, a near-zero $\Delta\log Z$ may indicate either (i) correct likelihood
+specification at any prior, or (ii) a sufficiently strong prior that washes out the
+likelihood-side residual. The scalar $\Delta\log Z$ alone cannot distinguish these two
+causes; resolving the ambiguity requires either varying the prior strength (the strong-prior
+limit cancels the residual uniformly across all data realisations) or inspecting per-eigenvalue
+diagnostics of $\mathbf C_{\mathrm{lik}}$ on a retained subspace (main supp Sec~6.5 records
+the same loss of absolute sensitivity).
+
+\subsection*{5.5 Contrast with the likelihood evidence correction}
+
+The likelihood evidence correction of \texttt{supplement\_evidence\_correction.tex} is
+$\tfrac{1}{2}\log\det(\mathbf C)$ with $\mathbf C = \mathbf H_{\mathrm{lik}}^{-1/2}
+\mathbf{JT}_{\mathrm{lik}} \mathbf H_{\mathrm{lik}}^{-1/2}$. When $\mathbf H_{\mathrm{lik}}$
+is singular or near-singular (Section~8 of the Likelihood supplement) the likelihood-side
+correction must be defined on a retained subspace, and finite-sample fluctuations along
+weakly identified directions can leave $\mathbf C \neq \mathbf I$ even under correct
+specification.
+
+The posterior correction is structurally cleaner with respect to identifiability. Because
+a proper Gaussian prior makes $\mathbf H_{\mathrm{post}} \succ 0$ on the full parameter
+space (Section~2.1 of the main supplement, label \texttt{eq:dominance-condition}),
+$\mathbf C_{\mathrm{post}}$ is well-defined as an SPD matrix without any subspace
+projection. Under correct specification at $\theta_0$ it further reduces to $\mathbf I$
+for any proper Gaussian prior (Section~4.1 of the main supplement). Identifiability is
+thus handled by the prior; \emph{calibration} (whether $\mathbf C_{\mathrm{post}} = \mathbf I$)
+is a separate question, answered by the diagnostic itself but---per \S5.4 above---only
+in regimes where the prior is not so strong that the residual is suppressed.
+
+\section*{6. Scaling with Sample Size and Bayes Factors}
+
+\subsection*{6.1 Intensive correction}
+
+Under stationarity and ergodicity of the per-interval scores with summable cross-interval
+covariances (cf.\ main supp Secs~6.5, 7.3), $\mathbf H_{\mathrm{lik}}$ and
+$\mathbf{JT}_{\mathrm{lik}}$ each scale linearly with $T$, the number of measurement intervals,
+\begin{equation}
+\mathbf H_{\mathrm{lik},T} \;\approx\; T\,\mathbf h_1,
+\qquad
+\mathbf{JT}_{\mathrm{lik},T} \;\approx\; T\,\boldsymbol\omega_1,
+\qquad
+\boldsymbol\omega_1 \;=\; \mathrm{Var}(s_1) + 2\sum_{k=1}^\infty \mathrm{Cov}(s_1, s_{1+k}),
+\label{eq:lik-scaling}
+\end{equation}
+where $\mathbf h_1$ is the per-interval expected Fisher and $\boldsymbol\omega_1$ the
+per-interval long-run score covariance; summability of the cross-interval covariances is
+what makes $\boldsymbol\omega_1$ finite. The prior precision $\mathbf H_{\mathrm{prior}}$
+is $O(1)$ in $T$. Hence
+\begin{equation}
+\mathbf H_{\mathrm{post},T}
+\;=\;
+T\,\mathbf h_1 + \mathbf H_{\mathrm{prior}}
+\;=\;
+T\bigl(\mathbf h_1 + T^{-1}\mathbf H_{\mathrm{prior}}\bigr),
+\qquad
+\mathbf{JT}_{\mathrm{post},T}
+\;=\;
+T\bigl(\boldsymbol\omega_1 + T^{-1}\mathbf H_{\mathrm{prior}}\bigr).
+\label{eq:post-scaling}
+\end{equation}
+In the leading-order large-$T$ limit, the prior contributes a $T^{-1}$-suppressed
+correction to both matrices on data-dominated directions, and
+\begin{equation}
+\mathbf C_{\mathrm{post},T}
+\;\xrightarrow[T\to\infty]{}\;
+\mathbf h_1^{-1/2}\,\boldsymbol\omega_1\,\mathbf h_1^{-1/2}
+\;=:\;
+\mathbf C_\infty,
+\label{eq:Cpost-asymptote}
+\end{equation}
+an intensive limit independent of $T$ and of $\mathbf H_{\mathrm{prior}}$, provided
+$\mathbf h_1 \succ 0$ (full data identifiability). Consequently
+\begin{equation}
+\Delta\log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post},T})
+\;\xrightarrow[T\to\infty]{}\;
+\tfrac{1}{2}\log\det(\mathbf C_\infty)
+\;=\;
+O(1),
+\label{eq:DeltaZ-O1}
+\end{equation}
+an $O(1)$ shift that neither vanishes nor grows with $T$.
+
+\subsection*{6.2 Bayes factors and decisive regime}
+
+For two competing models $M_A$, $M_B$, the Bayes factor satisfies
+\begin{equation}
+\log\mathrm{BF}_{AB}
+\;=\;
+\log Z_A \;-\; \log Z_B,
+\label{eq:BF-def}
+\end{equation}
+and the shift in the uncorrected (naive Bayesian Laplace) Bayes factor due to the DCC
+correction is
+\begin{equation}
+\Delta\log\mathrm{BF}_{AB}
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post},A})
+\;-\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post},B}),
+\label{eq:BF-bias}
+\end{equation}
+an $O(1)$ quantity independent of $T$. By the sign of \eqref{eq:BF-bias}, the model whose
+posterior distortion has the larger determinant gains relative weight under the DCC
+correction; equivalently, the naive Bayes factor \emph{spuriously disfavours} the
+more-distorted model by an amount that does not diminish with more data. The direction
+of the bias is the opposite of the intuitive ``larger variance penalises a model'' reading,
+because variance inflation enlarges the effective posterior volume entering $\log Z$.
+
+\paragraph{Decisive regime.}
+For most $T$, the $\log L(\hat\theta_A) - \log L(\hat\theta_B) = O(T)$ component of
+$\log\mathrm{BF}_{AB}$ dominates and a fixed $O(1)$ correction is negligible. The
+correction becomes decisive precisely in the regime where (i)~the $O(T)$ peak terms nearly
+cancel (close models, or approximations of nearly equal fit), and (ii)~the prior is not
+so strong that the likelihood-side residual is suppressed by the boundary mechanism of
+\S5.4. This is the same operational regime identified for the likelihood-side correction
+in \texttt{supplement\_evidence\_correction.tex}~\S5.3, restricted by the additional
+prior-strength caveat.
+
+\subsection*{6.3 Connection to posterior effective sample size}
+
+Main supp Sec~9.5 defines a posterior effective sample size $T_{\mathrm{eff}}^{\mathrm{post}} = T/\kappa^{\mathrm{post}}$
+via a spectral summary of $\mathbf R_{\mathrm{post}}$ (the distortion between $\mathbf{JT}_{\mathrm{post}}$
+and $\mathbf{JS}_{\mathrm{post}}$). The evidence correction \eqref{eq:main-result}, in
+contrast, is a scalar reduction of $\mathbf C_{\mathrm{post}}$ (the distortion between
+$\mathbf{JT}_{\mathrm{post}}$ and $\mathbf H_{\mathrm{post}}$); the two statistics differ
+in both their normaliser and their specific spectral summary. Using the multiplicative
+split of Section~10 of the main supplement,
+\begin{equation}
+\det(\mathbf C_{\mathrm{post}})
+\;=\;
+\det(\mathbf C_{\mathrm{sample},\mathrm{post}})\,\det(\mathbf R_{\mathrm{post}}),
+\label{eq:det-split}
+\end{equation}
+so the evidence correction decomposes as
+\begin{equation}
+\Delta\log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{sample},\mathrm{post}})
+\;+\;
+\tfrac{1}{2}\log\det(\mathbf R_{\mathrm{post}}).
+\label{eq:DeltaZ-split}
+\end{equation}
+The $\mathbf R_{\mathrm{post}}$ piece is the same matrix that drives
+$T_{\mathrm{eff}}^{\mathrm{post}}$, but enters \eqref{eq:DeltaZ-split} as a log-determinant
+rather than as the spectral summary $\kappa^{\mathrm{post}}$. When $\det(\mathbf C_{\mathrm{sample},\mathrm{post}}) = 1$
+(within-interval calibration in the determinant sense), the evidence correction and the
+$T_{\mathrm{eff}}^{\mathrm{post}}$ statistic track the same matrix $\mathbf R_{\mathrm{post}}$
+via different scalar reductions; in general they remain distinct statistics.
+
+\section*{7. The Evidence Interval Framework}
+
+A practical advantage of the posterior framework is that three concurrent Laplace
+estimators of $\log Z$ can be reported jointly, their relative spread being exactly
+$|\log\det(\mathbf C_{\mathrm{post}})|$. The first is a derived Laplace approximation,
+the third is the DCC correction derived above, and the second is a heuristic comparand
+introduced explicitly to symmetrise the interval and to expose the calibration uncertainty
+as a scalar.
+
+\subsection*{7.1 Three Laplace-style estimators}
+
+We define
+\begin{align}
+\log Z_F
+\;&:=\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
+- \tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}}),
+\label{eq:ZF-def}\\[4pt]
+\log Z_J
+\;&:=\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
+- \tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{post}}),
+\label{eq:ZJ-def}\\[4pt]
+\log Z_{\mathrm{DCC}}
+\;&:=\;
+\log L(\hat\theta) + \log\pi(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
+- \log\det(\mathbf H_{\mathrm{post}})
++ \tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{post}}).
+\label{eq:ZDCC-def}
+\end{align}
+$\log Z_F$ is the naive Bayesian Laplace evidence using the curvature
+$\mathbf H_{\mathrm{post}}$ ($\log Z_F \equiv \log Z_{\mathrm{naive}}$ of \eqref{eq:naive-Z}).
+$\log Z_{\mathrm{DCC}}$ is the DCC-corrected estimator obtained from \eqref{eq:corrected-Z}
+via \eqref{eq:logdet-expansion}; both are derived from Laplace quadratic expansions of
+$\log Z$ at $\hat\theta$.
+
+$\log Z_J$, by contrast, is \emph{not} a derived Laplace approximation: the quadratic
+expansion of \S2 identifies the local Gaussian precision with $\mathbf H_{\mathrm{post}}$,
+not with $\mathbf{JT}_{\mathrm{post}}$. It is the formal substitution
+$\mathbf H_{\mathrm{post}} \to \mathbf{JT}_{\mathrm{post}}$ in \eqref{eq:naive-Z}, included
+solely to make the algebraic interval below symmetric about $\log Z_F$ and to expose the
+calibration uncertainty $|\log\det(\mathbf C_{\mathrm{post}})|$ as a single scalar. We
+call $\log Z_J$ the \emph{total-fluctuation comparand} (a J-only Laplace-style estimator);
+the width of the interval $[\log Z_J, \log Z_{\mathrm{DCC}}]$ is then the algebraic gap
+between this heuristic and the derived DCC estimate, not an error-theoretic confidence
+band.
+
+\subsection*{7.2 Pairwise differences}
+
+A direct subtraction using \eqref{eq:detCpost-identity} gives
+\begin{align}
+\log Z_{\mathrm{DCC}} - \log Z_F
+\;&=\;
+-\tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}})
++ \tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{post}})
+\;=\;
++\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}),
+\label{eq:ZDCC-minus-ZF}\\[4pt]
+\log Z_J \;-\; \log Z_F
+\;&=\;
+-\tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{post}})
++ \tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}})
+\;=\;
+-\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}),
+\label{eq:ZJ-minus-ZF}\\[4pt]
+\log Z_{\mathrm{DCC}} - \log Z_J
+\;&=\;
+-\log\det(\mathbf H_{\mathrm{post}})
++ \log\det(\mathbf{JT}_{\mathrm{post}})
+\;=\;
++\log\det(\mathbf C_{\mathrm{post}}).
+\label{eq:ZDCC-minus-ZJ}
+\end{align}
+All three pairwise differences are linear in the single scalar
+$\log\det(\mathbf C_{\mathrm{post}})$:
+\begin{equation}
+\log Z_F,\;\log Z_J,\;\log Z_{\mathrm{DCC}}
+\;\text{collapse to one point iff}\;
+\log\det(\mathbf C_{\mathrm{post}}) = 0,
+\label{eq:collapse-iff}
+\end{equation}
+and spread by $|\log\det(\mathbf C_{\mathrm{post}})|$ otherwise (the extreme pair is
+$\log Z_J$ vs $\log Z_{\mathrm{DCC}}$).
+
+\subsection*{7.3 Reporting the interval}
+
+We propose to report the triple
+\begin{equation}
+\bigl(\log Z_F,\;\log Z_J,\;\log Z_{\mathrm{DCC}}\bigr)
+\label{eq:triple}
+\end{equation}
+together with the interval
+\begin{equation}
+\bigl[\,
+\min\{\log Z_F,\log Z_J,\log Z_{\mathrm{DCC}}\},
+\;
+\max\{\log Z_F,\log Z_J,\log Z_{\mathrm{DCC}}\}
+\,\bigr]
+\;=\;
+\begin{cases}
+[\log Z_J,\;\log Z_{\mathrm{DCC}}] & \text{if } \log\det(\mathbf C_{\mathrm{post}}) > 0,\\[4pt]
+[\log Z_{\mathrm{DCC}},\;\log Z_J] & \text{if } \log\det(\mathbf C_{\mathrm{post}}) < 0,\\[4pt]
+\{\log Z_F\} & \text{if } \log\det(\mathbf C_{\mathrm{post}}) = 0,
+\end{cases}
+\label{eq:Z-interval}
+\end{equation}
+with $\log Z_F$ always lying at the midpoint between $\log Z_J$ and $\log Z_{\mathrm{DCC}}$
+(from \eqref{eq:ZDCC-minus-ZF}--\eqref{eq:ZJ-minus-ZF}). The width
+\begin{equation}
+W_Z
+\;:=\;
+|\log\det(\mathbf C_{\mathrm{post}})|
+\label{eq:W-def}
+\end{equation}
+is a scalar calibration uncertainty: $W_Z = 0$ iff $\det(\mathbf C_{\mathrm{post}}) = 1$
+(a necessary but not sufficient condition for $\mathbf C_{\mathrm{post}} = \mathbf I$;
+per-eigenvalue cancellation can produce $W_Z = 0$ in genuinely miscalibrated cases), and
+grows monotonically in net log-determinant deviation from unity. The interval framework
+therefore provides a single report of $\log Z$ that exposes its determinant-level
+calibration uncertainty due to information distortion, complementing the usual Monte Carlo
+uncertainty of the Laplace approximation itself and the per-eigenvalue diagnostics of
+Sections~5 and~9 of the main supplement.
+
+\subsection*{7.4 Bayes factor under the interval framework}
+
+For model comparison, applying \eqref{eq:BF-def} entry-wise gives three Bayes factor
+estimators $\log\mathrm{BF}_{AB,F}$, $\log\mathrm{BF}_{AB,J}$, $\log\mathrm{BF}_{AB,\mathrm{DCC}}$.
+From \eqref{eq:ZDCC-minus-ZJ},
+\begin{equation}
+\log\mathrm{BF}_{AB,\mathrm{DCC}}
+\;-\;
+\log\mathrm{BF}_{AB,J}
+\;=\;
+\log\det(\mathbf C_{\mathrm{post},A})
+\;-\;
+\log\det(\mathbf C_{\mathrm{post},B})
+\;=\;
+2\,(\Delta\log Z_A - \Delta\log Z_B),
+\label{eq:BF-interval}
+\end{equation}
+so the spread between the DCC and J-only Bayes factors is twice the absolute difference
+of the per-model $\Delta\log Z$ corrections. Note that this spread can vanish even when
+both models are individually distorted (when $\det(\mathbf C_{\mathrm{post},A}) = \det(\mathbf C_{\mathrm{post},B})$)
+or substantially exceed twice the per-model $|\Delta\log Z|$ when the two corrections have
+opposite signs. A decisive Bayes factor that exceeds this spread in absolute value is
+robust to determinant-level calibration uncertainty; one inside the spread is not, and the
+user should either explicitly model the misspecification or accept the Bayes factor as
+undetermined.
+
+\section*{8. The Apparent Paradox: Logarithmic Variance Inflation}
+
+The compactness of \eqref{eq:main-result} can be misleading. As in
+\texttt{supplement\_evidence\_correction.tex}~\S6, we make explicit why a correction that
+``should'' be huge---a fold-doubling of posterior variance corresponds to a halved effective
+sample size---turns out to be merely an $O(1)$ shift in $\log Z$.
+
+\subsection*{8.1 Variance inflation as effective sample loss}
+
+The PID acts as a variance-inflation factor for the MAP estimator (Section~6 of the main
+supplement); CI widths scale as $\sqrt{[\mathbf C_{\mathrm{post}}]_{ii}}$, so
+$\mathbf C_{\mathrm{post}} = 2\mathbf I$ doubles posterior variance and widens intervals
+by $\sqrt{2}$. By the usual variance--information duality, this is equivalent to a halved
+\emph{evidence-equivalent effective sample size}, which we denote
+\begin{equation}
+N_{\mathrm{eff}}^{Z}
+\;:=\;
+T\,\det(\mathbf C_{\mathrm{post}})^{-1/p}
+\label{eq:Neff-from-Cpost}
+\end{equation}
+in the scalar-inflation case. We emphasise that $N_{\mathrm{eff}}^{Z}$ is a
+$\mathbf C_{\mathrm{post}}$-based scalar reduction relevant to the evidence shift
+$\Delta\log Z$; it is \emph{distinct} from the posterior effective sample size
+$T_{\mathrm{eff}}^{\mathrm{post}} = T/\kappa^{\mathrm{post}}$ defined in main supp
+Sec~9.5 via a spectral summary of $\mathbf R_{\mathrm{post}}$, and the two coincide only
+when $\det(\mathbf C_{\mathrm{sample},\mathrm{post}}) = 1$ and the determinant of
+$\mathbf R_{\mathrm{post}}$ matches its $\kappa^{\mathrm{post}}$ summary (cf.\
+\eqref{eq:det-split}). Halving $N_{\mathrm{eff}}^{Z}$ feels like a major loss of information.
+
+\subsection*{8.2 Yet the log-evidence shift is small}
+
+Substituting $\mathbf C_{\mathrm{post}} = 2\mathbf I$ for $p = 6$ into \eqref{eq:main-result},
+\begin{equation}
+\Delta\log Z
+\;=\;
+\tfrac{p}{2}\log 2
+\;\approx\;
+2.08\ \mathrm{nats}
+\;\approx\;
+3.0\ \mathrm{bits},
+\label{eq:numerical-shift}
+\end{equation}
+corresponding to a Bayes factor of $\approx 8$. Notable for model comparison but
+negligible compared to typical $O(T)$ log-evidence values.
+
+\subsection*{8.3 Resolution: peak vs.\ volume}
+
+Decompose the Laplace evidence into a peak and a volume contribution,
+\begin{equation}
+\log Z
+\;\approx\;
+\underbrace{\log L(\hat\theta)}_{\text{peak} \;=\; O(T)}
+\;+\;
+\underbrace{\log\pi(\hat\theta)}_{\text{prior peak} \;=\; O(1)}
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;+\;
+\underbrace{\tfrac{1}{2}\log\det(\Sigma)}_{\text{volume}}.
+\label{eq:peak-volume-split}
+\end{equation}
+The peak term $\log L(\hat\theta)$ depends on how well the model fits at its best
+parameters and grows linearly in $T$. The prior peak $\log\pi(\hat\theta)$ is fixed in $T$
+(once $\hat\theta$ stabilises) since the prior is a fixed observation. The volume term
+further splits.
+
+The naive volume contribution is $-\tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}})$. Let
+$p_{\mathrm{eff}} \le p$ be the number of data-dominated directions of $\mathbf H_{\mathrm{post}}$
+(those whose $\mathbf h_1$-eigenvalues are bounded away from zero); the remaining
+$p - p_{\mathrm{eff}}$ directions are prior-dominated with $\mathbf H_{\mathrm{post}}$-eigenvalues
+$O(1)$. Then
+\begin{equation}
+-\tfrac{1}{2}\log\det(\mathbf H_{\mathrm{post}})
+\;=\;
+-\tfrac{p_{\mathrm{eff}}}{2}\log T \;+\; O(1)
+\qquad \text{(BIC-like penalty on data-dominated directions)}.
+\label{eq:BIC-penalty}
+\end{equation}
+When $p_{\mathrm{eff}} = p$ this reduces to the textbook BIC penalty; when some directions
+are prior-dominated (main supp Sec~2.1 dominance condition; main supp Sec~6.5 retained
+eigenspace), the penalty contracts to $p_{\mathrm{eff}}$. The DCC correction adds
+$\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$, which by \eqref{eq:Cpost-asymptote} is
+$O(1)$ on data-dominated directions:
+\begin{equation}
+\Delta\log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})
+\;=\;
+O(1)
+\qquad \text{as } T\to\infty.
+\label{eq:correction-O1}
+\end{equation}
+Variance inflation is therefore a \emph{second-order} effect on $\log Z$: it modifies the
+shape of the posterior around the peak but not the peak itself, and the volume term
+contains both the BIC-like $O(\log T)$ penalty (from $\mathbf H_{\mathrm{post}}$) and the
+$O(1)$ distortion correction (from $\mathbf C_{\mathrm{post}}$). Doubling effective sample
+size halves $\det(\mathbf C_{\mathrm{post}})^{1/p}$ but adds only $\tfrac{p}{2}\log 2$ to
+$\log Z$.
+
+\subsection*{8.4 Multiplicative in probability, additive in log-probability}
+
+Evidence accumulates multiplicatively over independent samples,
+$Z_T \approx \prod_{t=1}^T p(y_t \mid \mathrm{history}_t)$, and so $\log Z_T$ is additive
+in $T$. Doubling the data approximately doubles the $O(T)$ peak contribution to $\log Z_T$;
+the volume term contributes only $-(p_{\mathrm{eff}}/2)\log T + O(1)$ and is subdominant.
+Doubling the posterior variance multiplies $Z_T$ by $2^{p/2}$ and adds the constant
+$(p/2)\log 2$ to $\log Z_T$. These are fundamentally different scalings:
+\begin{itemize}
+\item \emph{More data}: additive in $\log Z$, $O(T)$ leading contribution (peak term).
+\item \emph{Variance inflation}: additive in $\log Z$, $O(1)$ contribution (PID).
+\end{itemize}
+For large $T$ the data term dominates, and the DCC correction is a fine adjustment; for
+model comparison where the $O(T)$ peak terms approximately cancel, the $O(1)$ correction
+becomes the leading discriminator. As in the likelihood case
+(\texttt{supplement\_evidence\_correction.tex}~\S6.4), the same correction object is
+``small'' or ``decisive'' depending entirely on what it is being compared against.
+
+\section*{9. Summary}
+
+\begin{itemize}
+\item \textbf{Central result.} Replacing the naive Bayesian Laplace covariance
+$\mathbf H_{\mathrm{post}}^{-1}$ with the sandwich $\Sigma_{\mathrm{DCC},\mathrm{post}}$
+shifts the log-evidence by
+\[
+\Delta\log Z
+\;=\;
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}}),
+\]
+the direct posterior analogue of the likelihood evidence correction
+(\texttt{supplement\_evidence\_correction.tex}).
+\item \textbf{Prior cancellation (population level under correct spec).}
+At $\theta_0$ under the population information identity, $\mathbf C_{\mathrm{post}} = \mathbf I$
+for \emph{any} proper Gaussian prior covariance, so $\Delta\log Z = 0$ regardless of prior
+strength. In this regime the posterior correction is a pure likelihood-misspecification
+diagnostic. Finite-sample plug-ins satisfy this only up to $O_p(T^{-1/2})$ fluctuation,
+and the determinant readout is biased toward unity in the strong-prior limit even under
+misspecification ($\|\mathbf C_{\mathrm{post}}-\mathbf I\| \to 0$ at rate
+$O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$). A zero $\Delta\log Z$ therefore
+does not by itself imply correct specification.
+\item \textbf{Intensive scaling.} $\Delta\log Z$ is $O(1)$ in $T$ under stationarity,
+ergodicity, and summability of cross-interval score covariances. It neither grows nor
+vanishes with sample size and is decisive only in the regime where (i)~$O(T)$ peak terms
+nearly cancel and (ii)~the prior is sufficiently weak that the likelihood-side residual
+is not suppressed.
+\item \textbf{Evidence interval framework.} The three Laplace-style estimators
+$(\log Z_F,\,\log Z_J,\,\log Z_{\mathrm{DCC}})$---two derived, one ($\log Z_J$) included
+as a J-only comparand---collapse to a single point when $\log\det(\mathbf C_{\mathrm{post}}) = 0$
+and spread by $|\log\det(\mathbf C_{\mathrm{post}})|$ otherwise. The width
+$W_Z = |\log\det(\mathbf C_{\mathrm{post}})|$ is a determinant-level scalar calibration
+uncertainty (necessary but not sufficient for $\mathbf C_{\mathrm{post}} = \mathbf I$);
+per-eigenvalue diagnostics complement it.
+\item \textbf{Subspace projection avoided.} A proper Gaussian prior makes
+$\mathbf H_{\mathrm{post}} \succ 0$ on the full parameter space (Section~2.1 of the main
+supplement, label \texttt{eq:dominance-condition}), so $\mathbf C_{\mathrm{post}}$ is
+well-defined as an SPD matrix and $\Delta\log Z$ is real-valued without the
+retained-eigenspace machinery required for the singular-Fisher likelihood case
+(\texttt{supplement\_evidence\_correction.tex}~\S5). The dominance condition itself remains
+a precondition for finite-difference Hessians with indefinite spectrum.
+\item \textbf{Effective sample sizes are distinct.} The
+$\mathbf C_{\mathrm{post}}$-based $N_{\mathrm{eff}}^{Z} := T\det(\mathbf C_{\mathrm{post}})^{-1/p}$
+governs the evidence shift; the $\mathbf R_{\mathrm{post}}$-based
+$T_{\mathrm{eff}}^{\mathrm{post}} = T/\kappa^{\mathrm{post}}$ of main supp Sec~9.5 governs
+score-vs-Fisher concentration. They coincide only when within-interval calibration holds
+in the determinant sense.
+\item \textbf{Apparent paradox resolved.} Variance inflation, which feels like a major
+loss of effective sample size, contributes only an $O(1)$ additive shift to $\log Z$
+because it lives entirely in the volume term of the Laplace split, not in the $O(T)$ peak
+term. Bayesian model comparison senses this $O(1)$ shift only where the $O(T)$ contributions
+nearly cancel.
+\end{itemize}
+
+\end{document}
