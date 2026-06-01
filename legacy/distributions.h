@@ -460,25 +460,25 @@ class Gaussian_Fisher_Information
 // Built once per recording from 2·n_active extra calls to the score-producing
 // likelihood pass at θ₀ ± h·e_i for each active parameter coordinate i, then
 // symmetrized and negated. Truth for both macro and micro paths by construction
-// — used as the H reference in Information_Distortion_Matrix instead of the
+// — used as the H reference in Likelihood_Information_Distortion instead of the
 // per-step Gaussian_Fisher_Information sum (which is exact for macro but only
 // an approximation for the micro mixture likelihood).
-class Numerical_Fisher_Information
-    : public var::Constant<Numerical_Fisher_Information, parameter_spd_payload> {
-    using base_type = var::Constant<Numerical_Fisher_Information, parameter_spd_payload>;
+class Likelihood_Numerical_Fisher_Information
+    : public var::Constant<Likelihood_Numerical_Fisher_Information, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Numerical_Fisher_Information, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Numerical_Fisher_Information() = default;
-    Numerical_Fisher_Information(SymPosDefMatrix<double> value,
+    Likelihood_Numerical_Fisher_Information() = default;
+    Likelihood_Numerical_Fisher_Information(SymPosDefMatrix<double> value,
                                  var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Numerical_Fisher_Information(SymPosDefMatrix<double> value,
+    Likelihood_Numerical_Fisher_Information(SymPosDefMatrix<double> value,
                                  var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Numerical_Fisher_Information) {
-        return "Numerical_Fisher_Information";
+    friend std::string className(Likelihood_Numerical_Fisher_Information) {
+        return "Likelihood_Numerical_Fisher_Information";
     }
 };
 
@@ -522,107 +522,107 @@ class Score_Sample_Covariance_Matrix
 
 
 
-class Information_Distortion_Matrix
-    : public var::Constant<Information_Distortion_Matrix, parameter_spd_payload> {
-    using base_type = var::Constant<Information_Distortion_Matrix, parameter_spd_payload>;
+class Likelihood_Information_Distortion
+    : public var::Constant<Likelihood_Information_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Information_Distortion, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Information_Distortion_Matrix() = default;
-    Information_Distortion_Matrix(SymPosDefMatrix<double> value,
+    Likelihood_Information_Distortion() = default;
+    Likelihood_Information_Distortion(SymPosDefMatrix<double> value,
                                   var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Information_Distortion_Matrix(SymPosDefMatrix<double> value,
+    Likelihood_Information_Distortion(SymPosDefMatrix<double> value,
                                   var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Information_Distortion_Matrix) {
-        return "Information_Distortion_Matrix";
+    friend std::string className(Likelihood_Information_Distortion) {
+        return "Likelihood_Information_Distortion";
     }
 };  
 
-class Information_Distortion_Reconstituted
-    : public var::Constant<Information_Distortion_Reconstituted, parameter_spd_payload> {
+class Likelihood_Information_Distortion_Reconstituted
+    : public var::Constant<Likelihood_Information_Distortion_Reconstituted, parameter_spd_payload> {
     using base_type =
-        var::Constant<Information_Distortion_Reconstituted, parameter_spd_payload>;
+        var::Constant<Likelihood_Information_Distortion_Reconstituted, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Information_Distortion_Reconstituted() = default;
-    Information_Distortion_Reconstituted(SymPosDefMatrix<double> value,
+    Likelihood_Information_Distortion_Reconstituted() = default;
+    Likelihood_Information_Distortion_Reconstituted(SymPosDefMatrix<double> value,
                                          var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Information_Distortion_Reconstituted(SymPosDefMatrix<double> value,
+    Likelihood_Information_Distortion_Reconstituted(SymPosDefMatrix<double> value,
                                          var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Information_Distortion_Reconstituted) {
-        return "Information_Distortion_Reconstituted";
+    friend std::string className(Likelihood_Information_Distortion_Reconstituted) {
+        return "Likelihood_Information_Distortion_Reconstituted";
     }
 };
 
 // Quantifies how far the cheap analytic Gaussian_Fisher_Information G is from
-// the numerical truth F = Numerical_Fisher_Information, in the same frame as
+// the numerical truth F = Likelihood_Numerical_Fisher_Information, in the same frame as
 // the IDM:
-//   Gaussian_Fisher_Distortion = inv(√G) · F · inv(√G)
+//   Likelihood_Gaussian_Fisher_Distortion = inv(√G) · F · inv(√G)
 // Equals the identity when the Gaussian-formula FIM matches the truth, so its
 // eigenvalues' departure from 1 (and log-det) measures how misleading the
 // single-Gaussian moment-match approximation is for the algorithm under test.
-class Gaussian_Fisher_Distortion
-    : public var::Constant<Gaussian_Fisher_Distortion, parameter_spd_payload> {
-    using base_type = var::Constant<Gaussian_Fisher_Distortion, parameter_spd_payload>;
+class Likelihood_Gaussian_Fisher_Distortion
+    : public var::Constant<Likelihood_Gaussian_Fisher_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Gaussian_Fisher_Distortion, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Gaussian_Fisher_Distortion() = default;
-    Gaussian_Fisher_Distortion(SymPosDefMatrix<double> value,
+    Likelihood_Gaussian_Fisher_Distortion() = default;
+    Likelihood_Gaussian_Fisher_Distortion(SymPosDefMatrix<double> value,
                                var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Gaussian_Fisher_Distortion(SymPosDefMatrix<double> value,
+    Likelihood_Gaussian_Fisher_Distortion(SymPosDefMatrix<double> value,
                                var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Gaussian_Fisher_Distortion) {
-        return "Gaussian_Fisher_Distortion";
+    friend std::string className(Likelihood_Gaussian_Fisher_Distortion) {
+        return "Likelihood_Gaussian_Fisher_Distortion";
     }
 };
 
-class Fisher_Covariance
-    : public var::Constant<Fisher_Covariance, parameter_spd_payload> {
-    using base_type = var::Constant<Fisher_Covariance, parameter_spd_payload>;
+class Likelihood_Fisher_Covariance
+    : public var::Constant<Likelihood_Fisher_Covariance, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Fisher_Covariance, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Fisher_Covariance() = default;
-    Fisher_Covariance(SymPosDefMatrix<double> value,
+    Likelihood_Fisher_Covariance() = default;
+    Likelihood_Fisher_Covariance(SymPosDefMatrix<double> value,
                       var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Fisher_Covariance(SymPosDefMatrix<double> value,
+    Likelihood_Fisher_Covariance(SymPosDefMatrix<double> value,
                       var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Fisher_Covariance) {
-        return "Fisher_Covariance";
+    friend std::string className(Likelihood_Fisher_Covariance) {
+        return "Likelihood_Fisher_Covariance";
     }
 };  
 
 
-class Distortion_Corrected_Covariance
-    : public var::Constant<Distortion_Corrected_Covariance, parameter_spd_payload> {
-    using base_type = var::Constant<Distortion_Corrected_Covariance, parameter_spd_payload>;
+class Likelihood_Distortion_Corrected_Covariance
+    : public var::Constant<Likelihood_Distortion_Corrected_Covariance, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Distortion_Corrected_Covariance, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Distortion_Corrected_Covariance() = default;
-    Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
+    Likelihood_Distortion_Corrected_Covariance() = default;
+    Likelihood_Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
                                     var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
+    Likelihood_Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
                                     var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Distortion_Corrected_Covariance) {
-        return "Distortion_Corrected_Covariance";
+    friend std::string className(Likelihood_Distortion_Corrected_Covariance) {
+        return "Likelihood_Distortion_Corrected_Covariance";
     }
 };  
 
@@ -633,25 +633,25 @@ class Score_Mean : public var::Constant<Score_Mean, Matrix<double>> {
     }
 };  
 
-class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, parameter_vector_payload> {
-    using base_type = var::Constant<Distortion_Induced_Bias, parameter_vector_payload>;
+class Likelihood_Distortion_Induced_Bias : public var::Constant<Likelihood_Distortion_Induced_Bias, parameter_vector_payload> {
+    using base_type = var::Constant<Likelihood_Distortion_Induced_Bias, parameter_vector_payload>;
 
    public:
     using base_type::base_type;
-    Distortion_Induced_Bias() = default;
-    Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const& params)
+    Likelihood_Distortion_Induced_Bias() = default;
+    Likelihood_Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const& params)
         : base_type(parameter_vector_payload(std::move(value), params)) {}
-    Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const* params)
+    Likelihood_Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const* params)
         : base_type(parameter_vector_payload(std::move(value), params)) {}
 
-    friend std::string className(Distortion_Induced_Bias) {
-        return "Distortion_Induced_Bias";
+    friend std::string className(Likelihood_Distortion_Induced_Bias) {
+        return "Likelihood_Distortion_Induced_Bias";
     }
 
     Maybe_error<bool> is_good() const {
         if (!std::isfinite(var::fullsum((*this)()))) {
             std::stringstream ss;
-            ss << "Distortion_Induced_Bias not finite: " << (*this)();
+            ss << "Likelihood_Distortion_Induced_Bias not finite: " << (*this)();
             return error_message(ss.str());
         }
         return true;
@@ -660,41 +660,41 @@ class Distortion_Induced_Bias : public var::Constant<Distortion_Induced_Bias, pa
 
 
 
-class Sample_Distortion_Matrix
-    : public var::Constant<Sample_Distortion_Matrix, parameter_spd_payload> {
-    using base_type = var::Constant<Sample_Distortion_Matrix, parameter_spd_payload>;
+class Likelihood_Sample_Distortion
+    : public var::Constant<Likelihood_Sample_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Sample_Distortion, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Sample_Distortion_Matrix() = default;
-    Sample_Distortion_Matrix(SymPosDefMatrix<double> value,
+    Likelihood_Sample_Distortion() = default;
+    Likelihood_Sample_Distortion(SymPosDefMatrix<double> value,
                              var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Sample_Distortion_Matrix(SymPosDefMatrix<double> value,
+    Likelihood_Sample_Distortion(SymPosDefMatrix<double> value,
                              var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Sample_Distortion_Matrix) {
-        return "Sample_Distortion_Matrix";
+    friend std::string className(Likelihood_Sample_Distortion) {
+        return "Likelihood_Sample_Distortion";
     }
 };  
 
-class Correlation_Distortion_Matrix
-    : public var::Constant<Correlation_Distortion_Matrix, parameter_spd_payload> {
-    using base_type = var::Constant<Correlation_Distortion_Matrix, parameter_spd_payload>;
+class Likelihood_Correlation_Distortion
+    : public var::Constant<Likelihood_Correlation_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Likelihood_Correlation_Distortion, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Correlation_Distortion_Matrix() = default;
-    Correlation_Distortion_Matrix(SymPosDefMatrix<double> value,
+    Likelihood_Correlation_Distortion() = default;
+    Likelihood_Correlation_Distortion(SymPosDefMatrix<double> value,
                                   var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Correlation_Distortion_Matrix(SymPosDefMatrix<double> value,
+    Likelihood_Correlation_Distortion(SymPosDefMatrix<double> value,
                                   var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Correlation_Distortion_Matrix) {
-        return "Correlation_Distortion_Matrix";
+    friend std::string className(Likelihood_Correlation_Distortion) {
+        return "Likelihood_Correlation_Distortion";
     }
 };  
 

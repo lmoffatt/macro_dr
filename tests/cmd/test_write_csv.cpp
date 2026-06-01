@@ -515,13 +515,13 @@ TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits an
 
     {
         const auto base = dir.path / "filtered_matrix_probit";
-        std::vector<Information_Distortion_Matrix> samples{
-            Information_Distortion_Matrix(SymPosDefMatrix<double>{}),
-            Information_Distortion_Matrix(make_diag_spd({2.0, 6.0})),
-            Information_Distortion_Matrix(make_diag_spd({4.0, 10.0}))};
+        std::vector<Likelihood_Information_Distortion> samples{
+            Likelihood_Information_Distortion(SymPosDefMatrix<double>{}),
+            Likelihood_Information_Distortion(make_diag_spd({2.0, 6.0})),
+            Likelihood_Information_Distortion(make_diag_spd({4.0, 10.0}))};
 
         auto summary = var::Vector_Space{
-            Probit_statistics<Information_Distortion_Matrix>(
+            Probit_statistics<Likelihood_Information_Distortion>(
                 samples, [](const auto& x) { return x(); }, std::set<double>{0.5})};
 
         auto out = write_csv(summary, base.string());
@@ -534,7 +534,7 @@ TEST_CASE("generic write_csv emits rows for filtered non-empty matrix probits an
 
     {
         const auto base = dir.path / "empty_matrix";
-        auto summary = var::Vector_Space{Information_Distortion_Matrix(SymPosDefMatrix<double>{})};
+        auto summary = var::Vector_Space{Likelihood_Information_Distortion(SymPosDefMatrix<double>{})};
 
         auto out = write_csv(summary, base.string());
         REQUIRE(out);
@@ -556,13 +556,13 @@ TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empt
 
     {
         const auto base = dir.path / "dib_probit";
-        std::vector<Distortion_Induced_Bias> samples{
-            Distortion_Induced_Bias(Matrix<double>{}, params),
-            Distortion_Induced_Bias(make_col_vector({1.0, -2.0}), params),
-            Distortion_Induced_Bias(make_col_vector({3.0, -4.0}), params)};
+        std::vector<Likelihood_Distortion_Induced_Bias> samples{
+            Likelihood_Distortion_Induced_Bias(Matrix<double>{}, params),
+            Likelihood_Distortion_Induced_Bias(make_col_vector({1.0, -2.0}), params),
+            Likelihood_Distortion_Induced_Bias(make_col_vector({3.0, -4.0}), params)};
 
         auto summary = var::Vector_Space{
-            Probit_statistics<Distortion_Induced_Bias>(
+            Probit_statistics<Likelihood_Distortion_Induced_Bias>(
                 samples, [](const auto& x) { return x(); }, std::set<double>{0.5})};
 
         auto out = write_csv(summary, base.string());
@@ -578,14 +578,14 @@ TEST_CASE("generic write_csv emits parameter-indexed rows for DIB and skips empt
         REQUIRE(first.size() == header.size());
         REQUIRE(second.size() == header.size());
         CHECK(first[column_index(header, "component_path")] ==
-              "Probit_statistics_Distortion_Induced_Bias");
+              "Probit_statistics_Likelihood_Distortion_Induced_Bias");
         CHECK(first[column_index(header, "param_name")] == "kon");
         CHECK(second[column_index(header, "param_name")] == "koff");
     }
 
     {
         const auto base = dir.path / "empty_dib";
-        auto summary = var::Vector_Space{Distortion_Induced_Bias(Matrix<double>{}, params)};
+        auto summary = var::Vector_Space{Likelihood_Distortion_Induced_Bias(Matrix<double>{}, params)};
 
         auto out = write_csv(summary, base.string());
         REQUIRE(out);

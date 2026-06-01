@@ -179,17 +179,17 @@ Maybe_error<SymPosDefMatrix<double>> Lapack_IDM_Matrix_Subspace(
 Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix_Subspace(
     const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J, double rtol,
     double atol);
-Maybe_error<SymPosDefMatrix<double>> Lapack_Sample_Distortion_Matrix_Subspace(
+Maybe_error<SymPosDefMatrix<double>> Lapack_Likelihood_Sample_Distortion_Subspace(
     const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J_sample, double rtol,
     double atol);
-Maybe_error<SymPosDefMatrix<double>> Lapack_Correlation_Distortion_Matrix_Subspace(
+Maybe_error<SymPosDefMatrix<double>> Lapack_Likelihood_Correlation_Distortion_Subspace(
     const SymPosDefMatrix<double>& J_sample, const SymPosDefMatrix<double>& J_total, double rtol,
     double atol);
 SymPosDefMatrix<double> Lapack_C_h_R_C_h(const SymPosDefMatrix<double>& C,
                                          const SymPosDefMatrix<double>& R);
 Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
     const SymPosDefMatrix<double>& C, const SymPosDefMatrix<double>& R, double rtol, double atol);
-Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
+Maybe_error<Matrix<double>> Lapack_Likelihood_Distortion_Induced_Bias_Subspace(
     const SymPosDefMatrix<double>& H, const Matrix<double>& g, double rtol, double atol);
 Maybe_error<Matrix<double>> Lapack_PSD_Whitened_Cross_Matrix(
     const SymPosDefMatrix<double>& A, const Matrix<double>& M, const SymPosDefMatrix<double>& D,
@@ -2050,13 +2050,13 @@ inline auto dcc_matrix_subspace(const SymPosDefMatrix<double>& H,
 inline auto sample_distortion_matrix_subspace(const SymPosDefMatrix<double>& H,
                                               const SymPosDefMatrix<double>& J_sample,
                                               double rtol = 1e-10, double atol = 0.0) {
-    return lapack::Lapack_Sample_Distortion_Matrix_Subspace(H, J_sample, rtol, atol);
+    return lapack::Lapack_Likelihood_Sample_Distortion_Subspace(H, J_sample, rtol, atol);
 }
 
 inline auto correlation_distortion_matrix_subspace(
     const SymPosDefMatrix<double>& J_sample, const SymPosDefMatrix<double>& J_total,
     double rtol = 1e-10, double atol = 0.0) {
-    return lapack::Lapack_Correlation_Distortion_Matrix_Subspace(J_sample, J_total, rtol, atol);
+    return lapack::Lapack_Likelihood_Correlation_Distortion_Subspace(J_sample, J_total, rtol, atol);
 }
 
 inline auto c_h_r_c_h_matrix_subspace(const SymPosDefMatrix<double>& C,
@@ -2068,7 +2068,7 @@ inline auto c_h_r_c_h_matrix_subspace(const SymPosDefMatrix<double>& C,
 inline auto distortion_induced_bias_subspace(const SymPosDefMatrix<double>& H,
                                              const Matrix<double>& g,
                                              double rtol = 1e-10, double atol = 0.0) {
-    return lapack::Lapack_Distortion_Induced_Bias_Subspace(H, g, rtol, atol);
+    return lapack::Lapack_Likelihood_Distortion_Induced_Bias_Subspace(H, g, rtol, atol);
 }
 
 inline auto psd_whitened_cross_matrix_subspace(const SymPosDefMatrix<double>& A,

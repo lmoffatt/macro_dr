@@ -103,7 +103,7 @@ data_series = simulations)
 #   path= "figures/data/figure_2_dlikelihood_predictions_all")
 
 # Numerical (observed) Fisher information per simulation: F_b drives the IDM
-# and feeds Gaussian_Fisher_Distortion = inv(√G_b) · F_b · inv(√G_b) — the
+# and feeds Likelihood_Gaussian_Fisher_Distortion = inv(√G_b) · F_b · inv(√G_b) — the
 # new diagnostic that quantifies how far the cheap moment-match Gaussian FIM
 # (with the within-cell variance correction in y_var for micro_MR / micro_IR)
 # is from the numerical truth. Cost: 2·n_params extra dlikelihood passes per

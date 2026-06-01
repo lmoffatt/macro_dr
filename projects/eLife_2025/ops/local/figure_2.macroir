@@ -159,7 +159,7 @@ data_series = simulations)
 #   path= concat(filepath_run,"_dlikelihoods"))
 
 # Numerical (observed) Fisher information per simulation: F_b is the H reference
-# for the IDM and feeds the new Gaussian_Fisher_Distortion diagnostic. Cost:
+# for the IDM and feeds the new Likelihood_Gaussian_Fisher_Distortion diagnostic. Cost:
 # 2·n_params extra dlikelihood passes per selected simulation. `decimate=K`
 # evaluates F on every K-th simulation only — F's bootstrap is independent of
 # dy's, so a sparser F vector still gives a valid bootstrap.

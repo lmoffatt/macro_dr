@@ -489,7 +489,7 @@ struct log_Det : public var::Var<log_Det<Va>, double> {
               logdet(x()).value_or(std::numeric_limits<double>::quiet_NaN())} {}
 
     // Va whose stored value is an Indexed/Parameters wrapper exposing the
-    // matrix via .value() (e.g. Sample_Distortion_Matrix).
+    // matrix via .value() (e.g. Likelihood_Sample_Distortion).
     log_Det(Va const& x)
         requires requires(Va const& v) {
             { logdet(v().value()) } -> std::convertible_to<Maybe_error<double>>;
@@ -517,7 +517,7 @@ struct Correlation_Of
     Correlation_Of(payload_type const& x) : var::Var<Correlation_Of<Va>, payload_type>{x} {}
 
     // From a Va whose stored payload exposes .value() / .parameters_ptr()
-    // (e.g. Fisher_Covariance, Distortion_Corrected_Covariance).
+    // (e.g. Likelihood_Fisher_Covariance, Likelihood_Distortion_Corrected_Covariance).
     Correlation_Of(Va const& x)
         requires requires(Va const& v) {
             { v().value() } -> std::convertible_to<SymPosDefMatrix<double>>;
@@ -867,7 +867,7 @@ struct cross_correlation_lag_forward
 //     C(0) = sum_i kernel_raw[i][0]           (per-sample variance summed across samples)
 //     Omega = sum_i sum_{offset} kernel_raw[i][offset]   (summed unnormalized kernel)
 // Scalar for scalar Va (V / V²); matrix for vector Va (the truncated-kernel
-// analog of the Correlation_Distortion_Matrix). Kish/Sokal integral
+// analog of the Likelihood_Correlation_Distortion). Kish/Sokal integral
 // autocorrelation time in a unified form.
 template <class Va>
 struct integral_correlation_lag
