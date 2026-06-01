@@ -648,7 +648,13 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                      dsl::to_typed_function<ModelPtr,  std::vector<std::tuple<std::string, std::string, double>>>
                      (&macrodr::cmd::create_parameters,"model", "parameters_info"));
 
-    
+    // In-line Gaussian prior construction (counterpart to load_prior); each
+    // tuple is (name, transformation, value, transformed_variance).
+    cm.push_function("create_prior",
+                     dsl::to_typed_function<ModelPtr, std::vector<std::tuple<std::string, std::string, double, double>>>
+                     (&macrodr::cmd::create_prior, "model", "prior_info"));
+
+
                                                                    // load_parameter_values returns transformations (safer to persist)
     cm.push_function("get_standard_parameter_values",
                      dsl::to_typed_function<var::Parameters_Transformations const&>(

@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "parameters.h"
+#include "parameters_distribution.h"
 
 namespace macrodr::cmd {
 
@@ -18,13 +19,22 @@ Maybe_error<var::Parameters_Transformations> load_parameters(const ModelPtr& mod
 }
 
 //model_name,i_par,parameter_name,parameter_transformation,parameter_value
-Maybe_error<var::Parameters_Transformations> 
+Maybe_error<var::Parameters_Transformations>
 create_parameters(const ModelPtr& model,
     std::vector<std::tuple<std::string, std::string, double>>  parameters_info){
     if (!model) {
         return error_message("model is null");
         }
     return var::create_parameters(model->model_name(),model->names(), std::move(parameters_info));
+}
+
+Maybe_error<var::Parameters_Normal_Distribution>
+create_prior(const ModelPtr& model,
+    std::vector<std::tuple<std::string, std::string, double, double>> prior_info) {
+    if (!model) {
+        return error_message("model is null");
+    }
+    return var::create_prior(model->model_name(), model->names(), std::move(prior_info));
 }
 
 var::Parameters_values get_standard_parameter_values(var::Parameters_Transformations const& tr) {

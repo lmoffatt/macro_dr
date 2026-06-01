@@ -225,6 +225,51 @@ inline auto prior_around(const Parameters_Transformations& tr, double error) {
     return Parameters_Normal_Distribution(tr, std::move(Maybe_dist.value()));
 }
 
+// In-line construction of a Parameters_Normal_Distribution prior, mirroring
+// create_parameters() but with per-parameter transformed-space variance.
+// Each tuple is (parameter_name, transformation, value, transformed_variance):
+//   * parameter_name           - must match the model's i-th parameter name
+//   * transformation           - "Log10" / "Linear" / etc. (per MyTranformations::from_string)
+//   * value                    - central value in original space; the prior mean in
+//                                transformed space is derived as tr(value)
+//   * transformed_variance     - sigma^2 of the diagonal prior in transformed space
+//
+// Returns Maybe_error<Parameters_Normal_Distribution> with diagonal covariance.
+// Counterpart to load_Prior() (CSV-based); use this when constructing a prior
+// in-line from a .macroir script without an external file.
+inline Maybe_error<Parameters_Normal_Distribution> create_prior(
+    std::string const& ModelName, const std::vector<std::string>& ParamNames,
+    std::vector<std::tuple<std::string, std::string, double, double>> prior_info) {
+    if (prior_info.size() != ParamNames.size()) {
+        return error_message("create_prior: got ", prior_info.size(),
+                             " parameters, expected ", ParamNames.size());
+    }
+    std::vector<double> values;
+    std::vector<double> variances;
+    transformations_vector trs;
+    values.reserve(prior_info.size());
+    variances.reserve(prior_info.size());
+    trs.reserve(prior_info.size());
+    for (std::size_t i = 0; i < prior_info.size(); ++i) {
+        auto [ParamName_candidate, transformation, value, transformed_variance] =
+            std::move(prior_info[i]);
+        if (ParamName_candidate != ParamNames[i]) {
+            return error_message("create_prior: parameter name mismatch at i_par=", i,
+                                 " got '", ParamName_candidate, "' expected '", ParamNames[i],
+                                 "'");
+        }
+        auto Maybe_tr = MyTranformations::from_string(transformation);
+        if (!Maybe_tr) {
+            return Maybe_tr.error();
+        }
+        trs.push_back(std::move(Maybe_tr.value()));
+        values.push_back(value);
+        variances.push_back(transformed_variance);
+    }
+    return Parameters_Normal_Distribution::create(ModelName, ParamNames, std::move(trs),
+                                                  std::move(values), std::move(variances));
+}
+
 // auto prior_around(const Parameters_Transformations &tr,
 //                   std::vector<double> values) {
 //   assert(*std::min(values.begin(), values.end()) > 0);
