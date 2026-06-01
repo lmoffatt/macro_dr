@@ -20,6 +20,7 @@ and the Logarithmic Nature of Variance Inflation}
 \end{abstract}
 
 \section{Setup}
+\label{sec:setup}
 
 Following the notation of the main supplement, denote the Gaussian Fisher Information $\mathbf H$, the total score covariance $\mathbf J_{\mathrm{total}}$ (including cross-interval terms), the sandwich-corrected parameter covariance
 \begin{equation}
@@ -41,6 +42,7 @@ and the Likelihood Information Distortion
 Under a correctly specified likelihood, $\mathbf J_{\mathrm{total}} = \mathbf H$ and $\mathbf C = \mathbf I$. Deviations of $\mathbf C$ from the identity quantify the distortion of the information geometry induced by approximate likelihood evaluation.
 
 \section{Laplace Approximation to the Log-Evidence}
+\label{sec:laplace-approximation}
 
 Let $L(\theta)$ be the likelihood, $\pi(\theta)$ the prior, and
 \begin{equation}
@@ -79,7 +81,286 @@ where $p = \dim(\theta)$. Equivalently, in terms of the posterior covariance $\b
 \label{eq:laplace-cov}
 \end{equation}
 
-\section{Naive versus Corrected Laplace}
+
+\section{The Two Corrections Under Misspecification: Overview}
+\label{sec:two-corrections-overview-lik}
+
+The Laplace approximation of \S\ref{sec:laplace-approximation} decomposes the
+log-evidence as a sum of three contributions: the \emph{peak term}
+$\log L(\hat\theta) + \log\pi(\hat\theta)$, an additive constant
+$\tfrac{p}{2}\log(2\pi)$, and the \emph{volume term}
+$-\tfrac{1}{2}\log\det(\boldsymbol\Lambda) =
+\tfrac{1}{2}\log\det(\boldsymbol\Sigma)$. Under correct likelihood
+specification at the population level, all three are evaluated consistently:
+the Fisher identity $\mathbf J_{\mathrm{total}} = \mathbf H$ propagates to
+$\mathbf C = \mathbf I$ (Section~4 of \texttt{supplement\_information\_distortion\_main.tex}),
+so the naive Laplace evidence $\log Z_{\mathrm{naive}}$ is a valid asymptotic
+approximation.
+
+Under likelihood misspecification, by contrast,
+$\mathbf J_{\mathrm{total}} \neq \mathbf H$ and $\mathbf C \neq \mathbf I$.
+\emph{Both} the peak and the volume term of the naive evidence are then
+biased, and each requires its own correction. The two corrections are
+algebraically independent and extract complementary scalar summaries of the
+same eigenvalue spectrum $\mathrm{eig}(\mathbf C)$:
+\begin{itemize}
+\item The \textbf{peak correction} (\S\ref{sec:peak-correction-lik}) re-weights
+the contribution $\log L(\hat\theta)$ via a learning rate
+$\alpha_\star^{\mathrm{lik}} = p/\mathrm{tr}(\mathbf C)$, the \emph{arithmetic}
+mean of the eigenvalues of $\mathbf C$. Its leading-order effect on $\log Z$
+is the additive term $(\alpha_\star^{\mathrm{lik}}-1)\log L(\hat\theta)$,
+which is $O(T)$ under any persistent misspecification.
+\item The \textbf{volume correction} (Sections~\ref{sec:naive-vs-corrected}--\ref{sec:shift-in-logZ}
+below) shifts the volume term by $\tfrac{1}{2}\log\det(\mathbf C)$, the
+\emph{geometric} mean of the eigenvalues. This shift is $O(1)$ in $T$ and
+survives even when the peak correction is null (e.g.\ anti-isotropic
+distortions with $\det\mathbf C = 1$ but $\mathrm{tr}\mathbf C \neq p$).
+\end{itemize}
+The combined evidence $\log Z_{\mathrm{comb}}$ of
+\S\ref{sec:combined-evidence-lik} below incorporates both corrections.
+
+\paragraph{Why the Likelihood-only formulation is fragile.}
+This supplement develops the corrections in the Likelihood-only framework,
+where $\mathbf H = \mathbf H_{\mathrm{lik}}$ and $\mathbf C = \mathbf C_{\mathrm{lik}}$.
+Both the peak and the volume correction \emph{require $\mathbf H$ to be
+invertible}: $\alpha_\star^{\mathrm{lik}}$ involves $\mathbf H^{-1}\mathbf J_{\mathrm{total}}$
+via $\mathrm{tr}(\mathbf C)$, and $\log\det(\mathbf C)$ involves
+$\det(\mathbf H)$. When $\mathbf H$ is singular or finite-difference
+indefinite, the corrections become subspace-restricted or undefined; see
+Section~8 of \texttt{supplement\_information\_distortion\_main.tex} for the
+retained-eigenspace treatment.
+
+For data regimes where $\mathbf H$ is well-conditioned, the formulas of
+this supplement are operationally complete. For data regimes where
+$\mathbf H$ is singular or finite-difference indefinite (e.g.\ the
+macro\_R~@~$\Delta t = 1\tau$ and macro\_IR~@~$\Delta t = 0.01$ cases of
+the validation paper), the Posterior framework of
+\texttt{theory/macroir/docs/Posterior\_Information\_Distortion/} provides a
+regularized counterpart whose peak and volume corrections are defined
+globally and reduce to the present formulas in the well-conditioned limit.
+Sections~\ref{sec:peak-correction-lik} and~\ref{sec:combined-evidence-lik}
+flag the Posterior-version cross-references where they matter.
+
+
+\section{Peak-Term Correction via Generalized Bayes Calibration}
+\label{sec:peak-correction-lik}
+
+\subsection{Motivation}
+\label{sec:peak-motivation-lik}
+
+The correction $\tfrac{1}{2}\log\det(\mathbf C)$ of Eq.~(\ref{eq:main-result}), derived in Sections~3--4 of this supplement, adjusts the \emph{volume} term of the Laplace expansion only: it rescales the Gaussian envelope around $\hat\theta$ from $\mathbf H^{-1}$ to $\boldsymbol\Sigma_{\mathrm{DCC}}$, leaving the \emph{peak} term $\log L(\hat\theta)$ untouched. The peak/volume decomposition exhibited in Section~6.3 makes the omission explicit: the peak contributes $O(T)$ and the LID volume correction contributes $O(1)$. When the likelihood is misspecified, however, the peak term itself is biased --- each observation effectively carries less (or more) information than its face value, and the maximised log-likelihood should be discounted (or boosted) accordingly. This section develops the standard remedy, the \emph{generalized-Bayes / power-likelihood} calibration.
+
+\paragraph{Notation bridge.} In this section we restore the explicit ``$\mathrm{lik}$'' subscript on the Hessian, score covariance, and LID of Sections~1--6, writing $\mathbf H_{\mathrm{lik}}$, $\mathbf{JT}_{\mathrm{lik}}$, $\mathbf C_{\mathrm{lik}}$ where the earlier sections wrote $\mathbf H$, $\mathbf J_{\mathrm{total}}$, $\mathbf C$. The rename is a dimension-explicit synonym: $\mathbf{JT}_{\mathrm{lik}} \equiv \mathbf J_{\mathrm{total}}$ of Sections~1--6. The subscript is required to distinguish the likelihood-anchored quantities from the posterior-anchored quantities $\mathbf H_{\mathrm{post}}$, $\mathbf{JT}_{\mathrm{post}}$, $\mathbf C_{\mathrm{post}}$ developed in the companion supplement \texttt{Posterior\_Information\_Distortion/sup\-ple\-ment\_pos\-ter\-i\-or\_ev\-i\-dence.tex}, whose ``Peak-Term Correction'' section is the dual of the present one.
+
+\subsection{Power-Likelihood and Alpha Calibration}
+\label{sec:power-lik}
+
+Following Bissiri, Holmes \& Walker (2016), replace the standard likelihood with the power-likelihood $L(\theta)^\alpha$, where $\alpha \in (0,1]$ is a temperature parameter. The generalized-Bayes power-posterior evidence is
+\begin{equation}
+Z_{\alpha,\mathrm{lik}}
+\;=\;
+\int L(\theta)^\alpha\,\pi(\theta)\,\mathrm{d}\theta,
+\label{eq:Z-alpha-lik-defn}
+\end{equation}
+with $\pi(\theta)$ a proper (possibly weakly informative) prior. We treat the flat-prior case used elsewhere in this supplement as a limit of weakly informative proper priors; the $\alpha$-Laplace integral remains well-defined whenever the unmodified Laplace integral does. The prior-evaluation constant $\log\pi(\hat\theta)$ is independent of $\alpha$ and cancels from every difference of interest; we suppress it from displays below but it can be reinstated for visual parity with Eq.~(\ref{eq:naive-Z}).
+
+Laplace expansion of the $\alpha$-tilted log-likelihood around $\hat\theta$ yields
+\begin{equation}
+\log Z_{\alpha,\mathrm{lik}}
+\;=\;
+\alpha\,\log L(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\tfrac{1}{2}\log\det\!\bigl(\alpha\,\mathbf H_{\mathrm{lik}}\bigr).
+\label{eq:Z-alpha-lik}
+\end{equation}
+
+The calibration of $\alpha$ follows the magnitude-matching / information-matching prescription (Holmes \& Walker 2017; Gr\"unwald 2012; cf.\ Lyddon, Holmes \& Walker 2019 for the loss-likelihood bootstrap alternative): demand that the $\alpha$-tilted effective parameter count equal the nominal dimension $p$. Equivalently, the $\alpha$-tilted DCC variant of Eq.~(\ref{eq:corrected-Z}) has effective parameter count
+\begin{equation}
+\mathrm{tr}\!\bigl((\alpha\mathbf H_{\mathrm{lik}})^{-1}\,(\alpha^2\mathbf{JT}_{\mathrm{lik}})\bigr)
+\;=\;
+\alpha\,\mathrm{tr}(\mathbf C_{\mathrm{lik}}),
+\label{eq:eff-param-count-lik}
+\end{equation}
+and matching this to $p$ gives the closed-form
+\begin{equation}
+\boxed{\;
+\alpha^\star_{\mathrm{lik}}
+\;=\;
+\frac{p}{\mathrm{tr}(\mathbf C_{\mathrm{lik}})}
+\;=\;
+\frac{p}{\mathrm{tr}\!\bigl(\mathbf H_{\mathrm{lik}}^{-1}\,\mathbf{JT}_{\mathrm{lik}}\bigr)}.
+\;}
+\label{eq:alpha-star-lik}
+\end{equation}
+The denominator $\mathrm{tr}(\mathbf C_{\mathrm{lik}}) = \mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\,\mathbf{JT}_{\mathrm{lik}})$ coincides with the TIC penalty (Takeuchi 1976) and with half the QAIC penalty (Burnham \& Anderson 2002, \S7.6); $\alpha^\star_{\mathrm{lik}}$ recasts this scalar as a multiplicative discount on $\log L(\hat\theta)$ rather than an additive penalty on $-2\log L(\hat\theta)$.
+
+\subsection{Combined Evidence (Peak + Volume) in the Likelihood Formulation}
+\label{sec:combined-evidence-lik}
+
+We now combine the peak correction with the LID volume correction of Sections~3--4. Under the $\alpha$-tilt, the score becomes $\alpha\,S_{\mathrm{lik}}$ with covariance $\alpha^2\,\mathbf{JT}_{\mathrm{lik}}$, and the negative Hessian becomes $\alpha\,\mathbf H_{\mathrm{lik}}$, so the DCC asymptotic covariance is
+\begin{equation}
+(\alpha\mathbf H_{\mathrm{lik}})^{-1}\,(\alpha^2\mathbf{JT}_{\mathrm{lik}})\,(\alpha\mathbf H_{\mathrm{lik}})^{-1}
+\;=\;
+\mathbf H_{\mathrm{lik}}^{-1}\,\mathbf{JT}_{\mathrm{lik}}\,\mathbf H_{\mathrm{lik}}^{-1}
+\;=\;
+\boldsymbol\Sigma_{\mathrm{DCC},\mathrm{lik}}.
+\label{eq:alpha-DCC-cov}
+\end{equation}
+The $\alpha$ factors cancel at the matrix level; we keep them in scalar form below to expose the $p\log\alpha$ bookkeeping. The DCC-sandwich variant of Eq.~(\ref{eq:corrected-Z}) with $\alpha$-tilted Hessian and score covariance is
+\begin{equation}
+\log Z_{\mathrm{comb},\mathrm{lik}}
+\;=\;
+\alpha\,\log L(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\log\det\!\bigl(\alpha\,\mathbf H_{\mathrm{lik}}\bigr)
+\;+\;
+\tfrac{1}{2}\log\det\!\bigl(\alpha^2\,\mathbf{JT}_{\mathrm{lik}}\bigr).
+\label{eq:Z-comb-lik-raw}
+\end{equation}
+Distributing the scalar factors,
+\begin{align}
+\log Z_{\mathrm{comb},\mathrm{lik}}
+&=\;
+\alpha\,\log L(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
+- p\log\alpha
+- \log\det(\mathbf H_{\mathrm{lik}})
+\notag\\
+&\quad\;
++ p\log\alpha
++ \tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{lik}})
+\\[2pt]
+&=\;
+\alpha\,\log L(\hat\theta)
++ \tfrac{p}{2}\log(2\pi)
++ \tfrac{1}{2}\log\det(\mathbf{JT}_{\mathrm{lik}})
+- \log\det(\mathbf H_{\mathrm{lik}}).
+\end{align}
+The $\log\alpha$ contributions cancel \emph{exactly} (this is an algebraic identity under the flat-prior derivation, not an asymptotic expansion), so the $\alpha$-dependence enters only through the peak. Using the determinant-ratio identity of Section~4, $\log\det(\mathbf{JT}_{\mathrm{lik}}) - \log\det(\mathbf H_{\mathrm{lik}}) = \log\det(\mathbf C_{\mathrm{lik}})$, we arrive at
+\begin{equation}
+\boxed{\;
+\log Z_{\mathrm{comb},\mathrm{lik}}
+\;=\;
+\log Z_{\mathrm{corrected},\mathrm{lik}}
+\;+\;
+\bigl(\alpha^\star_{\mathrm{lik}} - 1\bigr)\,\log L(\hat\theta),
+\;}
+\label{eq:Z-comb-lik-final}
+\end{equation}
+where $\log Z_{\mathrm{corrected},\mathrm{lik}}$ is the LID-corrected evidence of Eq.~(\ref{eq:corrected-Z}). The peak correction is therefore a multiplicative discount (or boost) of $\log L(\hat\theta)$ by the factor $\alpha^\star_{\mathrm{lik}} - 1$, added on top of the LID volume correction $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{lik}})$.
+
+\paragraph{Boundary regimes of validity.}
+For $\alpha^\star_{\mathrm{lik}}$ bounded away from $0$ and $\infty$, the Laplace expansion underlying Eq.~(\ref{eq:Z-comb-lik-raw}) is well-defined. For $\alpha^\star_{\mathrm{lik}} \to 0$ (extreme variance inflation) the power-likelihood approaches the uniform measure and the Gaussian envelope flattens; for $\alpha^\star_{\mathrm{lik}} \to \infty$ (extreme deflation) the envelope collapses; in both limits the Laplace approximation underlying Eq.~(\ref{eq:Z-comb-lik-raw}) breaks down before the algebraic cancellation can be invoked. The formula is reliable only in the moderate regime.
+
+\paragraph{Behaviour under correct specification.}
+Under correct likelihood specification, $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$, hence $\mathbf C_{\mathrm{lik}} = \mathbf I$, $\mathrm{tr}(\mathbf C_{\mathrm{lik}}) = p$, $\alpha^\star_{\mathrm{lik}} = 1$, and the peak correction vanishes identically. Variance inflation ($\mathrm{tr}(\mathbf C_{\mathrm{lik}}) > p$) yields $\alpha^\star_{\mathrm{lik}} < 1$, discounting the peak; deflation ($\mathrm{tr}(\mathbf C_{\mathrm{lik}}) < p$) yields $\alpha^\star_{\mathrm{lik}} > 1$, boosting it.
+
+\subsection{Equivalent Frameworks and Citations}
+\label{sec:equiv-frameworks-lik}
+
+The trace-matching calibration in Eq.~(\ref{eq:alpha-star-lik}) is the same scalar effective parameter count that surfaces under several names across statistical literatures. We tabulate the equivalences; the trace argument is $\mathbf H_{\mathrm{lik}}^{-1}\,\mathbf{JT}_{\mathrm{lik}}$ in every entry, with the historical literature's symbols renamed to the present notation.
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Framework & Scalar functional & Reference \\
+\hline
+Takeuchi Information Criterion (TIC) & $\mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\mathbf{JT}_{\mathrm{lik}})$ & Takeuchi (1976) \\
+Quasi-AIC (QAIC) penalty & $2\,\mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\mathbf{JT}_{\mathrm{lik}})$ & Burnham \& Anderson (2002) \\
+Composite-likelihood Godambe & $\mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\mathbf{JT}_{\mathrm{lik}})$ & Varin, Reid \& Firth (2011) \\
+Generalized-Bayes power $\alpha^\star_{\mathrm{lik}}$ & $p\,/\,\mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\mathbf{JT}_{\mathrm{lik}})$ & Bissiri, Holmes \& Walker (2016) \\
+Magnitude / information matching & $p\,/\,\mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\mathbf{JT}_{\mathrm{lik}})$ & Gr\"unwald (2012); Holmes \& Walker (2017) \\
+Loss-likelihood bootstrap & $\alpha^\star$ (numerical) & Lyddon, Holmes \& Walker (2019) \\
+Bayes inconsistency & --- & Gr\"unwald \& van Ommen (2017); M\"uller (2013) \\
+\hline
+\end{tabular}
+\end{center}
+The matrix-valued White (1982) sandwich $\mathbf H^{-1}\,\mathbf J\,\mathbf H^{-1}$ underlies the LID \emph{volume} correction of Sections~3--4; the scalar $\alpha^\star_{\mathrm{lik}}$ of the present section is its trace-normalised peak-correction companion. The two corrections are not duplicates: the volume correction reports a geometric-mean scalar summary of the LID spectrum, the peak correction reports its arithmetic-mean summary (Section~\ref{sec:connection-section-6}).
+
+\subsection{The Singularity Problem}
+\label{sec:singularity-lik}
+
+A central limitation of Eq.~(\ref{eq:alpha-star-lik}) in the present (likelihood-only) formulation is that the trace $\mathrm{tr}(\mathbf C_{\mathrm{lik}}) = \mathrm{tr}(\mathbf H_{\mathrm{lik}}^{-1}\mathbf{JT}_{\mathrm{lik}})$ is well-defined only when $\mathbf H_{\mathrm{lik}}$ is invertible. In the regimes flagged in Sections~6.3--6.4 of this supplement --- the model-comparison regime where the $O(T)$ peak contributions nearly cancel between competing approximations --- the same numerical conditions that make the volume correction decisive (finite-difference Hessians with small or negative eigenvalues, near-flat directions of $\mathbf H_{\mathrm{lik}}$) also degrade the trace estimate. Concretely:
+\begin{itemize}
+\item $\mathbf C_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}^{-1/2}\,\mathbf{JT}_{\mathrm{lik}}\,\mathbf H_{\mathrm{lik}}^{-1/2}$ is not defined on the full parameter space when $\mathbf H_{\mathrm{lik}}$ is rank-deficient.
+\item Restricted to the image of the truncated SVD of $\mathbf H_{\mathrm{lik}}$, both $\mathrm{tr}(\mathbf C_{\mathrm{lik}})$ and $\log\det(\mathbf C_{\mathrm{lik}})$ are computable on the retained subspace; the numerator $p$ of $\alpha^\star_{\mathrm{lik}} = p/\mathrm{tr}(\mathbf C_{\mathrm{lik}})$ is then ambiguous (full nominal dimension overstates the effective count; retained rank understates it). Directions outside the retained subspace are absent from $\mathrm{tr}(\mathbf C_{\mathrm{lik}})$ by projection, but contribute $\log\det(\mathbf C_{\mathrm{lik}}) \to \infty$ whenever $\mathbf{JT}_{\mathrm{lik}}$ has a non-zero component along them --- a structural asymmetry between the arithmetic and geometric moments.
+\item When $\mathbf H_{\mathrm{lik}}$ has negative eigenvalues (e.g., from finite-difference noise on near-flat directions), $\mathrm{tr}(\mathbf C_{\mathrm{lik}})$ can be negative or zero. The power exponent $\alpha^\star_{\mathrm{lik}} = p/\mathrm{tr}(\mathbf C_{\mathrm{lik}})$ then fails to lie in $(0,1]$ --- the power-likelihood $L^{\alpha^\star}$ is not even well-defined --- and the calibration is structurally inapplicable, not merely numerically unstable.
+\end{itemize}
+
+The companion supplement \texttt{Posterior\_Information\_Distortion/sup\-ple\-ment\_pos\-ter\-i\-or\_ev\-i\-dence.tex} develops the regularised analogue
+\begin{equation}
+\alpha^\star_{\mathrm{post}}
+\;=\;
+\frac{p}{\mathrm{tr}(\mathbf C_{\mathrm{post}})},
+\qquad
+\mathbf C_{\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,\mathbf{JT}_{\mathrm{post}}\,\mathbf H_{\mathrm{post}}^{-1/2},
+\end{equation}
+in its corresponding ``Peak-Term Correction'' section, where $\mathbf H_{\mathrm{post}} = \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ and $\mathbf{JT}_{\mathrm{post}} = \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$. The posterior Hessian is positive-definite whenever Section~2.1 of the Posterior main supplement's dominance condition (label \texttt{eq:dominance-condition}) holds --- automatic for analytic $\mathbf H_{\mathrm{lik}} \succeq 0$ with any proper Gaussian prior, and otherwise requiring $\mathbf H_{\mathrm{prior}}$ to dominate the indefinite part of $\mathbf H_{\mathrm{lik}}$ --- without any subspace projection.
+
+\paragraph{Population-level prior cancellation.}
+At the population level under correct likelihood specification, the information identity $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ propagates additively to $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$, hence $\mathbf C_{\mathrm{post}} = \mathbf I$ for \emph{any} proper Gaussian prior covariance (Section~4.1 of the Posterior main supplement; \S5.2 of the Posterior evidence supplement). Therefore $\alpha^\star_{\mathrm{post}} = 1$ under correct specification regardless of prior strength --- the same null-correction property that $\alpha^\star_{\mathrm{lik}}$ enjoys only in the well-conditioned likelihood regime. In the data-dominated limit $\mathbf H_{\mathrm{prior}} \to 0$ with $\mathbf H_{\mathrm{lik}}$ well-conditioned, $\alpha^\star_{\mathrm{post}} \to \alpha^\star_{\mathrm{lik}}$, so the two calibrations agree where both are defined. In singular-$\mathbf H_{\mathrm{lik}}$ regimes the likelihood version is undefined and the posterior version is the only consistent option.
+
+\paragraph{Strong-prior boundary.}
+A complementary boundary, mirroring \S5.4 of the Posterior evidence supplement, is the prior-dominated limit $\mathbf H_{\mathrm{prior}} \gg \mathbf H_{\mathrm{lik}}$. There $\mathbf H_{\mathrm{post}} \to \mathbf H_{\mathrm{prior}}$ and $\mathbf{JT}_{\mathrm{post}} \to \mathbf H_{\mathrm{prior}}$, so $\mathbf C_{\mathrm{post}} \to \mathbf I$ and $\alpha^\star_{\mathrm{post}} \to 1$ regardless of how misspecified the likelihood is. A vanishing peak correction in this regime carries no information about likelihood specification, exactly as a vanishing volume correction does not in \S5.4 of the Posterior evidence supplement; the calibration is dominated by the prior and the peak correction is undefined as a misspecification diagnostic.
+
+\subsection{Recommended Practice}
+\label{sec:practice-lik}
+
+We distinguish three operational regimes:
+\begin{enumerate}
+\item[(a)] \emph{Well-conditioned $\mathbf H_{\mathrm{lik}}$, no proper prior available.} Use $\alpha^\star_{\mathrm{lik}}$ from Eq.~(\ref{eq:alpha-star-lik}) and report both $\log Z_{\mathrm{corrected},\mathrm{lik}}$ of Eq.~(\ref{eq:corrected-Z}) and the peak-corrected $\log Z_{\mathrm{comb},\mathrm{lik}}$ of Eq.~(\ref{eq:Z-comb-lik-final}). Under any misspecification with $\alpha^\star_{\mathrm{lik}} \neq 1$, the shift $(\alpha^\star_{\mathrm{lik}}-1)\log L(\hat\theta)$ is $O(T)$ and dominates the $O(1)$ LID volume correction. Reporting both values exposes the magnitude of the peak penalty rather than treating its presence as a noise-level sensitivity check; \emph{disagreement is the expected outcome under any non-trivial misspecification}, not a flag of an unusual regime.
+\item[(b)] \emph{Singular or finite-difference indefinite $\mathbf H_{\mathrm{lik}}$.} Use the Posterior framework's ``Peak-Term Correction'' section, even when a uniform prior is the inferential intent. A weakly informative proper prior regularises the calculation; in well-identified directions $\alpha^\star_{\mathrm{post}}$ differs from $\alpha^\star_{\mathrm{lik}}$ only by terms of order $\|\mathbf H_{\mathrm{prior}}\,\mathbf H_{\mathrm{lik}}^{-1}\|$, vanishing as the prior becomes uninformative. The price for finite-prior regularisation is a controllable bias in well-identified directions and a finite, well-defined $\alpha^\star$ in ill-identified directions where $\alpha^\star_{\mathrm{lik}}$ is undefined.
+\item[(c)] \emph{Data-dominated regime with any proper prior available.} Either version is acceptable. The agreement is to leading order in $\|\mathbf H_{\mathrm{prior}}\,\mathbf H_{\mathrm{lik}}^{-1}\|$; verify numerically before treating the two as interchangeable, especially for large $T$ where $(\alpha^\star-1)\log L(\hat\theta) = O(T)$ and small prior-induced shifts in $\alpha^\star$ are amplified by the peak.
+\end{enumerate}
+
+\subsection{Connection to the Decisive-Regime Discussion of Section~6}
+\label{sec:connection-section-6}
+
+Sections~6.3--6.4 of this supplement establish that the LID volume correction $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{lik}})$ is decisive only in regimes where the $O(T)$ peak contributions nearly cancel between competing approximations. The peak correction $(\alpha^\star_{\mathrm{lik}}-1)\log L(\hat\theta)$ supplies a separate $O(T)$ contribution that can shift model comparisons even when the IDM volume correction is small.
+
+For a diagonal cartoon $\mathbf C_{\mathrm{lik}} = \mathrm{diag}(\lambda_1,\ldots,\lambda_p)$, the volume correction follows from
+\begin{align}
+\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{lik}})
+&=\;
+\tfrac{1}{2}\sum_{i=1}^p \log\lambda_i
+\;=\;
+\tfrac{p}{2}\cdot\tfrac{1}{p}\sum_{i=1}^p \log\lambda_i
+\notag\\
+&=\;
+\tfrac{p}{2}\log\!\Bigl(\!\prod_{i=1}^p \lambda_i\Bigr)^{1/p}
+\;=\;
+\tfrac{p}{2}\log\bigl(\bar\lambda_{\mathrm{geom}}\bigr),
+\label{eq:vol-geom}
+\end{align}
+and the peak correction follows from $\mathrm{tr}(\mathbf C_{\mathrm{lik}}) = \sum_i\lambda_i = p\,\bar\lambda_{\mathrm{arith}}$, giving
+\begin{equation}
+\alpha^\star_{\mathrm{lik}} - 1
+\;=\;
+\frac{p}{\mathrm{tr}(\mathbf C_{\mathrm{lik}})} - 1
+\;=\;
+\frac{1}{\bar\lambda_{\mathrm{arith}}} - 1,
+\label{eq:peak-arith}
+\end{equation}
+where $\bar\lambda_{\mathrm{geom}} = (\prod_i \lambda_i)^{1/p}$ and $\bar\lambda_{\mathrm{arith}} = p^{-1}\sum_i \lambda_i$. By Jensen's inequality $\bar\lambda_{\mathrm{geom}} \leq \bar\lambda_{\mathrm{arith}}$, with equality only when $\mathbf C_{\mathrm{lik}} = \lambda\mathbf I$. Consequently:
+\begin{itemize}
+\item For isotropic $\mathbf C_{\mathrm{lik}} = \lambda\mathbf I$, both corrections are determined by $\lambda$ alone; the volume correction equals $\tfrac{p}{2}\log\lambda$ ($O(1)$ in $T$ assuming $\lambda = O(1)$) and the peak correction equals $(1/\lambda - 1)\log L(\hat\theta)$ ($O(T)$). The peak correction dominates for large $T$. These order-of-magnitude statements assume that the LID spectrum is bounded in $T$; they can change if the spectrum itself grows with $T$.
+\item The orthogonality of the two corrections (geometric- versus arithmetic-mean summary) is informative only when the spectrum is non-flat; under isotropic $\mathbf C_{\mathrm{lik}} = \lambda\mathbf I$ they coincide functionally (both determined by $\lambda$) even though their leading-order scaling in $T$ differs.
+\item For anisotropic $\mathbf C_{\mathrm{lik}}$ with a few large eigenvalues, the volume correction is dominated by the geometric mean (and so is moderate) while the peak correction is dominated by the arithmetic mean (and so can be large). The two corrections probe orthogonal scalar moments of the LID spectrum and are not double-counting.
+\item In the correctly-specified limit $\bar\lambda_{\mathrm{geom}} = \bar\lambda_{\mathrm{arith}} = 1$, both corrections vanish.
+\end{itemize}
+
+\paragraph{Reconciliation with Section~6.}
+Section~6 of this supplement frames the LID volume correction as a fine-tuning of an $O(T)$-dominated peak. The peak correction $(\alpha^\star_{\mathrm{lik}}-1)\log L(\hat\theta)$ of the present section, in contrast, \emph{is} $O(T)$ whenever $\alpha^\star_{\mathrm{lik}} \neq 1$. The earlier framing therefore applies only when the user trusts the bare MLE log-likelihood as a calibration target --- that is, implicitly chooses $\alpha = 1$ a priori. The peak correction makes explicit that this trust is precisely the missing modelling assumption Section~6 left implicit: once misspecification is admitted at the level of $\mathbf C_{\mathrm{lik}} \neq \mathbf I$, the corrected evidence is shifted at $O(T)$ through the peak, not only at $O(1)$ through the volume.
+
+The volume and peak corrections together constitute the leading-order generalized-Bayes correction to the Laplace evidence under approximate likelihood evaluation, with the volume correction reporting the geometric-mean distortion of the LID spectrum and the peak correction reporting its arithmetic-mean distortion. The two summaries are independent in general; only in the correctly-specified or uniformly-isotropic limits do they coincide.
+
+\section{Volume-Term Correction: Naive versus Corrected Laplace}
+\label{sec:naive-vs-corrected}
 
 \subsection{Naive Laplace}
 
@@ -126,7 +407,8 @@ Using $\det(\mathbf A\mathbf B\mathbf A) = \det(\mathbf A)^2 \det(\mathbf B)$ fo
 2\log\det(\mathbf H).
 \end{equation}
 
-\section{The Shift in Log-Evidence}
+\section{Volume-Term Correction: The Shift in Log-Evidence}
+\label{sec:shift-in-logZ}
 
 Subtracting (\ref{eq:naive-Z}) from (\ref{eq:corrected-Z}):
 \begin{align}
@@ -166,7 +448,86 @@ we obtain the compact result:
 \label{eq:main-result}
 \end{equation}
 
+
+\section{The Combined Evidence $\log Z_{\mathrm{comb}}$}
+\label{sec:combined-evidence-lik}
+
+Sections~\ref{sec:peak-correction-lik} and~\ref{sec:shift-in-logZ} produced
+two independent corrections to the naive Laplace evidence: the peak
+correction $(\alpha_\star^{\mathrm{lik}}-1)\log L(\hat\theta)$ and the volume
+correction $\tfrac{1}{2}\log\det(\mathbf C)$. Composing the two on the
+$\alpha$-tilted Laplace formula of
+\S\ref{sec:peak-correction-lik}, with the calibrated
+$\alpha_\star^{\mathrm{lik}} = p/\mathrm{tr}(\mathbf C)$, gives
+\begin{equation}
+\boxed{\;
+\log Z_{\mathrm{comb}}^{\mathrm{lik}}
+\;:=\;
+\alpha_\star^{\mathrm{lik}}\,\log L(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\log\det\!\bigl(\alpha_\star^{\mathrm{lik}}\,\mathbf H\bigr)
+\;+\;
+\tfrac{1}{2}\log\det\!\bigl((\alpha_\star^{\mathrm{lik}})^2\mathbf J_{\mathrm{total}}\bigr).
+\;}
+\label{eq:logZ-comb-lik-def}
+\end{equation}
+The $\alpha_\star^{\mathrm{lik}}$ factors inside the two log-determinants
+collect: $\log\det(\alpha\mathbf H) = p\log\alpha + \log\det\mathbf H$, and
+$\log\det(\alpha^2\mathbf J_{\mathrm{total}}) = 2p\log\alpha
++ \log\det\mathbf J_{\mathrm{total}}$. Substituting:
+\begin{equation}
+\log Z_{\mathrm{comb}}^{\mathrm{lik}}
+\;=\;
+\alpha_\star^{\mathrm{lik}}\log L(\hat\theta)
+\;+\;
+\tfrac{p}{2}\log(2\pi)
+\;-\;
+\log\det\mathbf H
+\;+\;
+\tfrac{1}{2}\log\det\mathbf J_{\mathrm{total}}
+\;=\;
+\log Z_{\mathrm{DCC}}^{\mathrm{lik}}
+\;+\;
+\bigl(\alpha_\star^{\mathrm{lik}}-1\bigr)\log L(\hat\theta),
+\label{eq:logZ-comb-lik-clean}
+\end{equation}
+where $\log Z_{\mathrm{DCC}}^{\mathrm{lik}}$ is the volume-corrected Laplace
+evidence of \S\ref{sec:shift-in-logZ}. Equation~\eqref{eq:logZ-comb-lik-clean}
+is exact in the Likelihood-only formulation (no data-dominated approximation
+required, since there is no prior whose contribution would need to be
+neglected): the combined Bayes-factor relevant evidence in the Likelihood
+formulation is the DCC evidence plus the scalar peak adjustment
+$(\alpha_\star^{\mathrm{lik}}-1)\log L(\hat\theta)$.
+
+\paragraph{Order in $T$.}
+The peak correction is $O(T)$ (since $\log L(\hat\theta) = O(T)$ under
+stationarity and $\alpha_\star^{\mathrm{lik}}-1 = O(1)$ for persistent
+misspecification); the volume correction inside $\log Z_{\mathrm{DCC}}^{\mathrm{lik}}$
+is $O(1)$ in $T$ (\S\ref{sec:scaling}). The peak correction therefore
+dominates the volume correction by a factor of $T$ in any persistent
+misspecification regime---an ordering that the \S~\ref{sec:two-corrections-overview-lik}
+overview anticipated qualitatively, but only the algebraic
+expansion~\eqref{eq:logZ-comb-lik-clean} makes quantitative.
+
+\paragraph{When the Likelihood form fails.}
+Equation~\eqref{eq:logZ-comb-lik-def} requires $\mathbf H \succ \mathbf 0$
+and $\mathbf J_{\mathrm{total}} \succ \mathbf 0$. When $\mathbf H$ is singular
+or finite-difference indefinite, $\alpha_\star^{\mathrm{lik}}$ becomes
+subspace-restricted and $\log Z_{\mathrm{comb}}^{\mathrm{lik}}$ ambiguous.
+The Posterior framework's combined evidence
+$\log Z_{\mathrm{comb}}^{\mathrm{post}}$
+(\texttt{theory/macroir/docs/Posterior\_Information\_Distortion/supplement\_posterior\_evidence.tex},
+Section~7) is defined globally whenever a proper prior satisfies the dominance
+condition of Section~2.1 of the main posterior supplement, and reduces to
+\eqref{eq:logZ-comb-lik-clean} in the limit $\mathbf H_{\mathrm{prior}} \to
+\mathbf 0$. For the validation paper's macro\_R~@~$\Delta t = 1\tau$ and
+macro\_IR~@~$\Delta t = 0.01$ regimes, use the Posterior form.
+
+
 \section{Interpretation}
+\label{sec:interpretation}
 
 \subsection{Sign}
 
@@ -214,6 +575,7 @@ If both models use approximate likelihoods of comparable structure, the uncorrec
 independent of $T$. The approximation whose LID has the larger determinant is spuriously favoured by an amount that does not diminish with more data. Reporting corrected Bayes factors therefore requires the LID correction; the Likelihood Correlation Distortion (normalised by the per-sample score covariance rather than by $\mathbf H$) does not directly enter this formula because $\mathbf J_{\mathrm{sample}}$ is not the Hessian of the log-likelihood and plays no role in the Laplace expansion.
 
 \section{The Apparent Paradox of Logarithmic Variance Inflation}
+\label{sec:apparent-paradox}
 
 A tension is worth articulating explicitly, because the compactness of Eq.~(\ref{eq:main-result}) can be deceptive.
 
@@ -272,9 +634,13 @@ Doubling the amount of data \emph{doubles} the log-evidence (it adds a second su
 The per-sample contribution to $\log Z$ is therefore bounded: no finite amount of variance inflation can compensate even a modest log-likelihood improvement that scales with $T$. For large $T$, the LID correction is a fine-tuning of the evidence, not a dominant term --- except in the model-comparison regime where the $O(T)$ parts nearly cancel and the $O(1)$ LID difference becomes the leading discriminator.
 
 \section{Summary}
+\label{sec:summary}
 
 \begin{itemize}
-\item The Laplace-approximated log-evidence using the sandwich-corrected covariance differs from the naive Laplace by $\tfrac{1}{2}\log\det(\mathbf C)$, where $\mathbf C$ is the Likelihood Information Distortion.
+\item \textbf{Two corrections, one diagnostic.} Likelihood misspecification distorts both the peak and the volume term of the naive Laplace evidence; each requires its own correction, and both extract complementary scalar summaries of $\mathrm{eig}(\mathbf C)$. The peak correction (\S\ref{sec:peak-correction-lik}) re-weights $\log L(\hat\theta)$ via $\alpha_\star^{\mathrm{lik}} = p/\mathrm{tr}(\mathbf C)$ (arithmetic mean); the volume correction (Sections~\ref{sec:naive-vs-corrected}--\ref{sec:shift-in-logZ}) shifts the volume term by $\tfrac{1}{2}\log\det(\mathbf C)$ (geometric mean). The combined evidence $\log Z_{\mathrm{comb}}^{\mathrm{lik}}$ of \S\ref{sec:combined-evidence-lik} incorporates both.
+\item \textbf{Volume-correction central result.} The Laplace-approximated log-evidence using the sandwich-corrected covariance differs from the naive Laplace by $\tfrac{1}{2}\log\det(\mathbf C)$, where $\mathbf C$ is the Likelihood Information Distortion.
+\item \textbf{Peak-correction central result.} The combined evidence decomposes as $\log Z_{\mathrm{comb}}^{\mathrm{lik}} = \log Z_{\mathrm{DCC}}^{\mathrm{lik}} + (\alpha_\star^{\mathrm{lik}}-1)\log L(\hat\theta)$. The peak correction is $O(T)$ under persistent misspecification and dominates the $O(1)$ volume correction; under correct specification $\alpha_\star^{\mathrm{lik}} \to 1$ and the peak correction vanishes.
+\item \textbf{Likelihood-only fragility.} Both corrections require $\mathbf H \succ \mathbf 0$. When $\mathbf H$ is singular or finite-difference indefinite (e.g.\ macro\_R~@~$\Delta t = 1\tau$), the corrections become subspace-restricted or undefined; use the Posterior framework (\texttt{theory/macroir/docs/Posterior\_Information\_Distortion/}) for those regimes.
 \item This correction is an intensive, $O(1)$ quantity: it does not vanish as $T \to \infty$, and it does not grow with $T$ either. It characterises the intrinsic distortion of the approximate likelihood at the tested parameter values.
 \item The correction is small compared to the $O(T)$ log-likelihood --- but decisive for Bayes-factor comparisons between approximations, where the $O(T)$ contributions cancel.
 \item The apparent paradox --- "variance inflation means effective sample loss, which should be a huge effect" --- resolves by recognising that the evidence is split between a peak term (data fit, $O(T)$) and a volume term (parameter precision, $O(\log T) + O(1)$), and the LID correction affects only the latter.
