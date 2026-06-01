@@ -408,4 +408,375 @@ Because the symmetric inverse square root \eqref{eq:posterior-symm-sqrt} is used
 \end{itemize}
 
 
+
+\section*{5. Per-Parameter and Spectral Distortion}
+
+The Posterior Information Distortion $\mathbf C_{\mathrm{post}}$ of Section~4 admits two complementary readouts: a per-parameter diagonal in the original parameter basis and a spectral profile in its eigenbasis. Both are well-defined and basis-invariant under the symmetric whitening of Section~4.5, in the same sense as Section~5 of the Likelihood supplement, but with the likelihood curvature and total score covariance replaced by their posterior counterparts of Eq.~\eqref{eq:posterior-h-j}.
+
+\subsection*{5.1 Per-Parameter Distortion}
+
+In the original parameter basis, the diagonal entries of $\mathbf C_{\mathrm{post}}$ read as a per-parameter ratio of realized score fluctuation to Bayesian curvature-predicted variance:
+\begin{equation}
+[\mathbf C_{\mathrm{post}}]_{ii}
+\;\sim\;
+\frac{\text{real fluctuation variance in direction } i}
+     {\text{Gaussian-posterior predicted variance in direction } i},
+\label{eq:posterior-c-diag-interp}
+\end{equation}
+where the predicted variance is the direction-$i$ component of $\mathbf H_{\mathrm{post}}^{-1}$ and the fluctuation variance is the corresponding component of $\mathbf{JT}_{\mathrm{post}}$, both measured in the whitened metric of \eqref{eq:posterior-c-def}. Strictly, $[\mathbf C_{\mathrm{post}}]_{ii} = e_i^\top \mathbf H_{\mathrm{post}}^{-1/2}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1/2} e_i$, which coincides with the literal coordinate ratio $[\mathbf{JT}_{\mathrm{post}}]_{ii}/[\mathbf H_{\mathrm{post}}]_{ii}$ only when $\mathbf H_{\mathrm{post}}$ is diagonal in the parameter basis; in general \eqref{eq:posterior-c-diag-interp} is the corresponding quantity in the whitened metric. With this reading:
+\begin{itemize}
+\item $[\mathbf C_{\mathrm{post}}]_{ii} = 1$: posterior consistency for parameter $i$.
+\item $[\mathbf C_{\mathrm{post}}]_{ii} > 1$: under-estimation of posterior variance for parameter $i$ (over-confident Gaussian posterior).
+\item $[\mathbf C_{\mathrm{post}}]_{ii} < 1$: over-estimation of posterior variance for parameter $i$ (under-confident Gaussian posterior).
+\end{itemize}
+
+\paragraph{Basis invariance of the diagonal.}
+Because $\mathbf C_{\mathrm{post}}$ is built from the \emph{symmetric} inverse square root $\mathbf H_{\mathrm{post}}^{-1/2}$ of Eq.~\eqref{eq:posterior-symm-sqrt}, an orthogonal change of the original parameter basis $\mathbf Q$ acts congruently, $\mathbf H_{\mathrm{post}} \mapsto \mathbf Q\, \mathbf H_{\mathrm{post}}\, \mathbf Q^\top$ and $\mathbf{JT}_{\mathrm{post}} \mapsto \mathbf Q\, \mathbf{JT}_{\mathrm{post}}\, \mathbf Q^\top$, so $\mathbf C_{\mathrm{post}} \mapsto \mathbf Q\, \mathbf C_{\mathrm{post}}\, \mathbf Q^\top$. The diagonal $[\mathbf C_{\mathrm{post}}]_{ii}$ in any chosen parameter basis and the spectrum of $\mathbf C_{\mathrm{post}}$ are both invariant under this group action. A Cholesky whitening $\mathbf H_{\mathrm{post}} = \mathbf L_{\mathrm{post}}\mathbf L_{\mathrm{post}}^\top$ would instead yield a basis-dependent congruent matrix whose diagonal mixes parameter directions through the lower-triangular structure of $\mathbf L_{\mathrm{post}}$; the symmetric construction avoids this.
+
+\subsection*{5.2 Spectral Distortion}
+
+Let $\lambda_i = \lambda_i(\mathbf C_{\mathrm{post}})$ denote the eigenvalues of $\mathbf C_{\mathrm{post}}$, ordered $\lambda_1 \geq \cdots \geq \lambda_d > 0$. By construction $\mathbf C_{\mathrm{post}}$ is symmetric positive definite (because $\mathbf H_{\mathrm{post}} \succ \mathbf 0$ by Section~4.4 and $\mathbf{JT}_{\mathrm{post}} = \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}} \succ \mathbf 0$ as the sum of a PSD covariance and a positive prior precision; congruence preserves positive definiteness), so the spectrum is real and strictly positive. Each $\lambda_i$ admits the same inflation/deflation reading as in Section~5 of the Likelihood supplement, applied along the corresponding eigen-direction of $\mathbf C_{\mathrm{post}}$:
+\begin{itemize}
+\item $\lambda_i = 1$: perfect agreement between Bayesian curvature and posterior score fluctuation along eigen-direction $i$.
+\item $\lambda_i > 1$: variance inflation along eigen-direction $i$ (the Gaussian posterior under-estimates uncertainty there).
+\item $\lambda_i < 1$: deflation along eigen-direction $i$ (the Gaussian posterior over-estimates uncertainty there).
+\end{itemize}
+
+\paragraph{Global summaries.}
+The determinant and trace of $\mathbf C_{\mathrm{post}}$ collapse the spectrum to scalar diagnostics:
+\begin{equation}
+\det(\mathbf C_{\mathrm{post}})
+=
+\prod_{i=1}^d \lambda_i,
+\qquad
+\frac{1}{d}\,\mathrm{tr}(\mathbf C_{\mathrm{post}})
+=
+\frac{1}{d}\sum_{i=1}^d \lambda_i.
+\label{eq:posterior-c-global}
+\end{equation}
+The determinant quantifies the overall posterior information-volume distortion: $\det(\mathbf C_{\mathrm{post}}) = 1$ under the consistency identity \eqref{eq:posterior-c-identity}, $\det(\mathbf C_{\mathrm{post}}) > 1$ signals net volumetric under-estimation of posterior uncertainty, and $\det(\mathbf C_{\mathrm{post}}) < 1$ signals net volumetric over-estimation. The average directional distortion $\mathrm{tr}(\mathbf C_{\mathrm{post}})/d$ is the mean per-eigen-direction inflation, useful as a single lightweight summary when the spectrum is concentrated. The geometric-mean summary $\exp\bigl(\tfrac{1}{d}\log\det(\mathbf C_{\mathrm{post}})\bigr)$ is the more robust alternative when the spectrum is heavy-tailed.
+
+\paragraph{Correct-specification readout.}
+Under the population information identity $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ at $\theta_0$, Eq.~\eqref{eq:posterior-c-identity} gives $\mathbf C_{\mathrm{post}} = \mathbf I$, hence
+\begin{equation}
+[\mathbf C_{\mathrm{post}}]_{ii} = 1\ \forall i,
+\qquad
+\lambda_i(\mathbf C_{\mathrm{post}}) = 1\ \forall i,
+\qquad
+\det(\mathbf C_{\mathrm{post}}) = 1,
+\qquad
+\mathrm{tr}(\mathbf C_{\mathrm{post}})/d = 1,
+\label{eq:posterior-c-correct-spec}
+\end{equation}
+\emph{regardless of prior strength}: every per-parameter and spectral summary collapses to its consistency value.
+
+\subsection*{5.3 Limiting Regimes}
+
+\paragraph{Flat-prior limit.}
+As $\mathbf H_{\mathrm{prior}} \to \mathbf 0$, both whitening matrix and numerator in \eqref{eq:posterior-c-def} converge to their Likelihood IDM counterparts (Section~4.3 above), and the per-parameter and spectral diagnostics reduce termwise:
+\begin{equation}
+[\mathbf C_{\mathrm{post}}]_{ii} \to [\mathbf C]_{ii},
+\qquad
+\lambda_i(\mathbf C_{\mathrm{post}}) \to \lambda_i(\mathbf C),
+\qquad
+\det(\mathbf C_{\mathrm{post}}) \to \det(\mathbf C),
+\qquad
+\mathrm{tr}(\mathbf C_{\mathrm{post}})/d \to \mathrm{tr}(\mathbf C)/d,
+\label{eq:posterior-c-flat-limit}
+\end{equation}
+recovering Section~5 of the Likelihood supplement. Diagonal convergence is immediate from entrywise convergence of $\mathbf C_{\mathrm{post}}$; eigenvalue convergence follows from Weyl's inequality under operator-norm convergence of $\mathbf C_{\mathrm{post}}$ to $\mathbf C$. When $\mathbf H_{\mathrm{lik}}$ is rank-deficient the limit is on its retained eigenspace (Section~8 of the Likelihood supplement); a strictly positive $\mathbf H_{\mathrm{prior}}$ is exactly what makes the per-parameter and spectral diagnostics globally well-defined throughout.
+
+\paragraph{Strong-prior limit.}
+Loewner comparisons between $\mathbf H_{\mathrm{prior}}$ and $\mathbf H_{\mathrm{lik}}$ alone do not control $\mathbf C_{\mathrm{post}}$ per direction: the symmetric whitening $\mathbf H_{\mathrm{post}}^{-1/2} (\cdot)\, \mathbf H_{\mathrm{post}}^{-1/2}$ is a non-local operation, and the relevant magnitude is that of $\mathbf H_{\mathrm{post}}$ itself relative to the residual $\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}$. Quantitatively, the residual identity \eqref{eq:posterior-c-residual} gives
+\begin{equation}
+\|\mathbf C_{\mathrm{post}} - \mathbf I\|
+\;\leq\;
+\lambda_{\min}(\mathbf H_{\mathrm{post}})^{-1}\,
+\bigl\|\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}\bigr\|,
+\label{eq:posterior-c-residual-bound}
+\end{equation}
+so as $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$ (with $\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}$ bounded), $\mathbf C_{\mathrm{post}} \to \mathbf I$ uniformly, hence $[\mathbf C_{\mathrm{post}}]_{ii} \to 1$ and $\lambda_i(\mathbf C_{\mathrm{post}}) \to 1$ for every $i$. The diagnostic reports values close to one in the strong-prior regime, where the likelihood-side mismatch is whitened away by the large $\mathbf H_{\mathrm{post}}$, in agreement with Section~4.2.
+
+\paragraph{Large-data (data-dominated) limit.}
+Under $N$ independent trajectories at fixed proper $\mathbf H_{\mathrm{prior}}$, $\mathbf H_{\mathrm{lik}} = O(N)$ and $\mathbf{JT}_{\mathrm{lik}} = O(N)$ while $\mathbf H_{\mathrm{prior}} = O(1)$. Hence $\mathbf H_{\mathrm{post}}/N \to \mathbf H_{\mathrm{lik}}/N$ and $\mathbf{JT}_{\mathrm{post}}/N \to \mathbf{JT}_{\mathrm{lik}}/N$ (with the prior contributions $O(1/N)$), so
+\begin{equation}
+[\mathbf C_{\mathrm{post}}]_{ii} \to [\mathbf C]_{ii},
+\qquad
+\lambda_i(\mathbf C_{\mathrm{post}}) \to \lambda_i(\mathbf C),
+\qquad
+N \to \infty,
+\label{eq:posterior-c-large-n}
+\end{equation}
+the data-dominated counterpart of \eqref{eq:posterior-c-flat-limit}. Together with the correct-specification readout \eqref{eq:posterior-c-correct-spec} and the strong-prior limit \eqref{eq:posterior-c-residual-bound}, the per-parameter and spectral diagnostics behave coherently across all three boundary regimes: $\mathbf C_{\mathrm{post}} = \mathbf I$ under correct specification (any prior), $\mathbf C_{\mathrm{post}} \to \mathbf I$ under strong prior (any likelihood), $\mathbf C_{\mathrm{post}} \to \mathbf C$ under data-dominated or flat-prior asymptotics. The full-rank caveats of Sections~4.3 (analytic Gaussian Fisher) and 4.4 (dominance condition \eqref{eq:dominance-condition} for finite-difference $\mathbf H_{\mathrm{lik}}$) carry over without change.
+
+\section*{6. Posterior Distortion-Corrected Covariance (DCC)}
+
+The Bayesian counterpart of the Likelihood DCC of Section~6 of the Likelihood supplement is obtained by repeating the first-order Taylor expansion argument at the maximum a posteriori (MAP) estimate $\hat\theta_{\mathrm{MAP}}$ rather than at the MLE. As in Section~4, the prior contribution enters both the curvature ($\mathbf H_{\mathrm{post}}$) and the information budget ($\mathbf{JT}_{\mathrm{post}}$); the resulting sandwich form is the Posterior DCC, $\Sigma_{\mathrm{DCC},\mathrm{post}}$ (formally defined in \eqref{eq:posterior-sigma-dcc-def} below).
+
+\subsection*{6.1 Taylor Expansion of the Posterior Score at the MAP}
+
+Expand the posterior score $S_{\mathrm{post}}(\theta) = S_{\mathrm{lik}}(\theta) + s_\pi(\theta)$ of \eqref{eq:post-score-def} around the true parameter $\theta_0$:
+\begin{equation}
+S_{\mathrm{post}}(\hat\theta_{\mathrm{MAP}})
+\;\approx\;
+S_{\mathrm{post}}(\theta_0)
+\;+\;
+\nabla_\theta S_{\mathrm{post}}(\theta_0)\,(\hat\theta_{\mathrm{MAP}} - \theta_0).
+\label{eq:posterior-score-taylor}
+\end{equation}
+At the MAP, $S_{\mathrm{post}}(\hat\theta_{\mathrm{MAP}}) = 0$. Replacing the empirical likelihood Hessian by its expectation $-\mathbf H_{\mathrm{lik}}(\theta_0)$ and noting that $\nabla_\theta s_\pi = -\mathbf H_{\mathrm{prior}}$ is deterministic by the convention of Section~1 (so equals its own expectation), we obtain $\nabla_\theta S_{\mathrm{post}}(\theta_0) \approx -\mathbf H_{\mathrm{post}}(\theta_0)$ and
+\begin{equation}
+\hat\theta_{\mathrm{MAP}} - \theta_0
+\;\approx\;
+\mathbf H_{\mathrm{post}}^{-1}\, S_{\mathrm{post}}(\theta_0).
+\label{eq:posterior-displacement}
+\end{equation}
+This is the Bayesian analogue of $(\hat\theta - \theta_0) \approx \mathbf H^{-1} S(\theta_0)$ in Section~6 of the Likelihood supplement, with $\mathbf H_{\mathrm{post}}$ in place of $\mathbf H_{\mathrm{lik}}$ and the prior score $s_\pi(\theta_0)$ folded additively into $S_{\mathrm{post}}(\theta_0)$. The expansion assumes $\|\hat\theta_{\mathrm{MAP}} - \theta_0\|$ small; in the strong-prior regime examined below this displacement contracts toward $\mu_{\mathrm{prior}}$ rather than $\theta_0$, so beyond that regime $\Sigma_{\mathrm{DCC},\mathrm{post}}$ functions as a defined diagnostic (Section~6.2) rather than as the literal MAP-sampling covariance.
+
+\subsection*{6.2 Sandwich Form: Definition of $\Sigma_{\mathrm{DCC},\mathrm{post}}$}
+
+Taking sampling covariances on both sides of \eqref{eq:posterior-displacement} and using $\mathrm{Cov}(S_{\mathrm{post}}) = \mathbf{JT}_{\mathrm{lik}}$ from \eqref{eq:post-score-cov} (since $s_\pi$ is deterministic) would give the literal MAP sampling covariance $\mathbf H_{\mathrm{post}}^{-1}\, \mathbf{JT}_{\mathrm{lik}}\, \mathbf H_{\mathrm{post}}^{-1}$. Diagnostically, however, the prior must contribute to the information budget on the same footing as the data, exactly as in the construction of $\mathbf{JT}_{\mathrm{post}}$ in Section~3.1. We therefore adopt the augmented-observation convention and define
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;:=\;
+\mathbf H_{\mathrm{post}}^{-1}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1},
+\label{eq:posterior-sigma-dcc-def}
+\end{equation}
+the Posterior Distortion-Corrected Covariance. With $\mathbf{JT}_{\mathrm{post}} = \mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ from \eqref{eq:JT-post-def}, this is the direct counterpart of the Likelihood sandwich $\Sigma_{\mathrm{DCC}} = \mathbf H^{-1}\, \mathbf J_{\mathrm{total}}\, \mathbf H^{-1}$ of Section~6 of the Likelihood supplement, with both ends of the sandwich and the meat updated to their posterior counterparts.
+
+\paragraph{Defined diagnostic versus literal sampling covariance.}
+$\Sigma_{\mathrm{DCC},\mathrm{post}}$ is a defined diagnostic, not the literal MAP sampling covariance. The literal covariance derived from \eqref{eq:posterior-displacement} is $\mathbf H_{\mathrm{post}}^{-1}\, \mathbf{JT}_{\mathrm{lik}}\, \mathbf H_{\mathrm{post}}^{-1}$ and differs from \eqref{eq:posterior-sigma-dcc-def} by an additive prior-shrinkage term:
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;-\;
+\mathbf H_{\mathrm{post}}^{-1}\, \mathbf{JT}_{\mathrm{lik}}\, \mathbf H_{\mathrm{post}}^{-1}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1}\, \mathbf H_{\mathrm{prior}}\, \mathbf H_{\mathrm{post}}^{-1}.
+\label{eq:posterior-sigma-dcc-gap}
+\end{equation}
+The two coincide under correct specification (where both reduce to $\mathbf H_{\mathrm{post}}^{-1}$, Section~6.4) and in the flat-prior limit. The augmented-observation convention is what makes the consistency reduction \eqref{eq:posterior-sigma-dcc-laplace} below hold for any prior strength.
+
+\subsection*{6.3 Whitening Identity}
+
+Substituting the definition \eqref{eq:posterior-c-def} of $\mathbf C_{\mathrm{post}}$ into \eqref{eq:posterior-sigma-dcc-def} yields the same algebraic identity as in the likelihood case,
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf C_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2},
+\label{eq:posterior-sigma-dcc-whitening}
+\end{equation}
+the Posterior analogue of $\Sigma_{\mathrm{DCC}} = \mathbf H^{-1/2}\, \mathbf C\, \mathbf H^{-1/2}$. The Posterior DCC is therefore the symmetric inverse whitening of the PID by $\mathbf H_{\mathrm{post}}^{1/2}$: $\mathbf C_{\mathrm{post}}$ encodes the directional distortion and $\mathbf H_{\mathrm{post}}^{-1/2}$ rescales it back into parameter units.
+
+\subsection*{6.4 Consistency Reduction: Laplace Posterior Covariance}
+
+Under the population information identity $\mathbf{JT}_{\mathrm{lik}}(\theta_0) = \mathbf H_{\mathrm{lik}}(\theta_0)$ at the true parameter (Section~4.1), $\mathbf C_{\mathrm{post}} = \mathbf I$ by \eqref{eq:posterior-c-identity}, and \eqref{eq:posterior-sigma-dcc-whitening} collapses to
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1},
+\label{eq:posterior-sigma-dcc-laplace}
+\end{equation}
+the standard Laplace-approximation posterior covariance at the MAP. The Posterior DCC therefore reduces to the canonical Bayesian uncertainty quantification whenever the population likelihood-side information identity holds; departures from $\mathbf H_{\mathrm{post}}^{-1}$ measure precisely the posterior-relevant share of likelihood miscalibration (Section~4.2).
+
+\subsection*{6.5 Limiting Regimes}
+
+\paragraph{Flat-prior limit.}
+As $\mathbf H_{\mathrm{prior}} \to \mathbf 0$, the substitutions \eqref{eq:flat-prior-limit} apply termwise to \eqref{eq:posterior-sigma-dcc-def}, giving
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;\longrightarrow\;
+\mathbf H_{\mathrm{lik}}^{-1}\,
+\mathbf{JT}_{\mathrm{lik}}\,
+\mathbf H_{\mathrm{lik}}^{-1}
+\;=\;
+\Sigma_{\mathrm{DCC}},
+\label{eq:posterior-sigma-dcc-flat-limit}
+\end{equation}
+the Likelihood sandwich of Section~6 of the Likelihood supplement. When $\mathbf H_{\mathrm{lik}}$ is full rank this limit is literal. When $\mathbf H_{\mathrm{lik}}$ is rank-deficient, $\Sigma_{\mathrm{DCC},\mathrm{post}}$ diverges along null directions of $\mathbf H_{\mathrm{lik}}$ as $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$; on the retained eigenspace of $\mathbf H_{\mathrm{lik}}$ the limit recovers $\Sigma_{\mathrm{DCC}}$, and the Posterior DCC with a strictly positive $\mathbf H_{\mathrm{prior}}$ provides the regularized analogue of the subspace construction of Section~8 of the Likelihood supplement.
+
+\paragraph{Strong-prior limit.}
+In the opposite regime $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$, the residual bound \eqref{eq:posterior-c-residual-bound} forces $\mathbf C_{\mathrm{post}} \to \mathbf I$, so by \eqref{eq:posterior-sigma-dcc-whitening} $\Sigma_{\mathrm{DCC},\mathrm{post}} \to \mathbf H_{\mathrm{post}}^{-1}$. A direct Neumann expansion of \eqref{eq:posterior-sigma-dcc-def} sharpens this to
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{prior}}^{-1}
+\;+\;
+\mathbf H_{\mathrm{prior}}^{-1}\bigl(\mathbf{JT}_{\mathrm{lik}} - 2\mathbf H_{\mathrm{lik}}\bigr)\mathbf H_{\mathrm{prior}}^{-1}
+\;+\;
+O\!\bigl(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-3}\bigr),
+\label{eq:posterior-sigma-dcc-strong-limit}
+\end{equation}
+so the Posterior DCC contracts to $\mathbf H_{\mathrm{prior}}^{-1}$ at rate $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-2})$ with a signed correction set by $\mathbf{JT}_{\mathrm{lik}} - 2\mathbf H_{\mathrm{lik}}$. Note that the deviation from the Laplace covariance is the prior-rescaled likelihood mismatch, $\Sigma_{\mathrm{DCC},\mathrm{post}} - \mathbf H_{\mathrm{post}}^{-1} = \mathbf H_{\mathrm{prior}}^{-1}(\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}})\mathbf H_{\mathrm{prior}}^{-1} + O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-3})$, vanishing at the same absolute rate as the Laplace covariance itself; the diagnostic loses absolute sensitivity to likelihood miscalibration in this regime.
+
+\paragraph{Large-data (data-dominated) limit.}
+For $N$ independent trajectories at fixed proper $\mathbf H_{\mathrm{prior}}$, $\mathbf H_{\mathrm{lik}}, \mathbf{JT}_{\mathrm{lik}} = O(N)$ while $\mathbf H_{\mathrm{prior}} = O(1)$, so
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{lik}}^{-1}\, \mathbf{JT}_{\mathrm{lik}}\, \mathbf H_{\mathrm{lik}}^{-1}
+\;+\;
+O(N^{-2})
+\;=\;
+\Sigma_{\mathrm{DCC}} + O(N^{-2}),
+\label{eq:posterior-sigma-dcc-large-n}
+\end{equation}
+i.e.\ $\Sigma_{\mathrm{DCC},\mathrm{post}} \propto 1/N$, recovering the Likelihood DCC scaling of Section~7 of the Likelihood supplement (Bernstein--von Mises). The same conclusion transfers to the single-trajectory $T \to \infty$ limit under stationarity and ergodicity of the per-interval scores.
+
+\subsection*{6.6 Well-Posedness}
+
+The Posterior DCC is well-defined whenever $\mathbf H_{\mathrm{post}} \succ \mathbf 0$. For analytic Gaussian Fisher $\mathbf H_{\mathrm{lik}} \succeq 0$ and any proper Gaussian prior, this is automatic by \eqref{eq:posterior-hessian-pd}: no subspace projection is needed, in contrast with Section~8 of the Likelihood supplement. For finite-difference $\mathbf H_{\mathrm{lik}}$ with possibly negative eigenvalues, well-posedness reduces to the dominance condition \eqref{eq:dominance-condition} of Section~2.1. In both cases $\Sigma_{\mathrm{DCC},\mathrm{post}}$ is computed via the spectral whitening of \eqref{eq:posterior-symm-sqrt}, applied symmetrically on both sides of $\mathbf{JT}_{\mathrm{post}}$; explicit inversion of $\mathbf H_{\mathrm{post}}$ is never required.
+
+\subsection*{6.7 Role in the Bayesian Evidence Correction}
+
+The Posterior DCC defined here is the covariance matrix that enters the distortion correction to the Bayesian model evidence developed in the companion supplement \texttt{supplement\_posterior\_evidence.tex}. Specifically, $\Sigma_{\mathrm{DCC},\mathrm{post}}$ replaces $\mathbf H_{\mathrm{post}}^{-1}$ as the local posterior covariance entering the Laplace approximation determinant for $\log p(D)$, restoring calibration under likelihood miscalibration in the same way that $\Sigma_{\mathrm{DCC}}$ restores calibration of frequentist confidence regions in the Likelihood supplement. The explicit evidence-level formula and its consequences for Bayes factor comparison are deferred to that companion document; this section provides only the parameter-space object $\Sigma_{\mathrm{DCC},\mathrm{post}}$ on which the evidence-level correction is built.
+
+\section*{7. Posterior Distortion-Induced Bias (DIB)}
+
+The bias counterpart of the posterior corrected covariance of Section~6 above quantifies the systematic displacement of the MAP estimator induced jointly by likelihood misspecification and prior pull. It is the direct Bayesian analogue of the Likelihood Distortion-Induced Bias of Section~7 of the Likelihood supplement, augmented by an additive prior-pull term that the likelihood-only construction cannot see.
+
+\subsection*{7.1 Expected Posterior Score}
+
+Taking expectations in \eqref{eq:post-score-def}--\eqref{eq:prior-score-gaussian} under the data-sampling distribution at fixed $\theta$ gives
+\begin{equation}
+\mathbf g_{\mathrm{post}}(\theta)
+\;:=\;
+\mathbb{E}[S_{\mathrm{post}}(\theta)]
+\;=\;
+\mathbb{E}[S_{\mathrm{lik}}(\theta)] + s_\pi(\theta)
+\;=\;
+\mathbf g_{\mathrm{lik}}(\theta)
+- \mathbf H_{\mathrm{prior}}\bigl(\theta - \mu_{\mathrm{prior}}\bigr),
+\label{eq:posterior-gpost-def}
+\end{equation}
+where $\mathbf g_{\mathrm{lik}}(\theta) := \mathbb{E}[S_{\mathrm{lik}}(\theta)]$ is the Likelihood DIB precursor (the $\mathbf g$ of Section~7 of the Likelihood supplement, under the bridge \eqref{eq:notation-bridge} extended to score means in the obvious way). The decomposition \eqref{eq:posterior-gpost-def} is exact and separates the data-side score drift from the prior-pull term linearly.
+
+\paragraph{Behavior at the true parameter.}
+At the data-generating $\theta_0$, the data score has zero expectation under correct likelihood specification and standard regularity,
+\begin{equation}
+\mathbf g_{\mathrm{lik}}(\theta_0) = \mathbf 0,
+\label{eq:posterior-glik-true-zero}
+\end{equation}
+so $\mathbf g_{\mathrm{post}}(\theta_0) = s_\pi(\theta_0) = -\mathbf H_{\mathrm{prior}}(\theta_0 - \mu_{\mathrm{prior}})$ is generally nonzero: a correctly specified likelihood does not eliminate the prior pull, which vanishes only when the prior mean coincides with the truth ($\mu_{\mathrm{prior}} = \theta_0$). Under likelihood misspecification, $\mathbf g_{\mathrm{lik}}(\theta_0) \neq \mathbf 0$ and both contributions are present.
+
+\subsection*{7.2 Posterior Distortion-Induced Bias}
+
+Apply the first-order MAP expansion of Section~6.1 above to the posterior score, using the realized expansion $\hat\theta_{\mathrm{MAP}} - \theta_0 \approx \mathbf H_{\mathrm{post}}^{-1}\, S_{\mathrm{post}}(\theta_0)$ of \eqref{eq:posterior-displacement}. Taking expectations under the data-sampling distribution at $\theta_0$,
+\begin{equation}
+\mathbb{E}\!\left[\hat\theta_{\mathrm{MAP}} - \theta_0\right]
+\;\approx\;
+\mathbf H_{\mathrm{post}}^{-1}\, \mathbf g_{\mathrm{post}}(\theta_0).
+\label{eq:posterior-bdib-derivation}
+\end{equation}
+We accordingly define the posterior distortion-induced bias
+\begin{equation}
+\mathbf b_{\mathrm{DIB},\mathrm{post}}(\theta)
+\;:=\;
+\mathbf H_{\mathrm{post}}^{-1}\, \mathbf g_{\mathrm{post}}(\theta)
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1}\bigl(\mathbf g_{\mathrm{lik}}(\theta) + s_\pi(\theta)\bigr).
+\label{eq:posterior-bdib-def}
+\end{equation}
+The two summands isolate the two physical mechanisms: $\mathbf H_{\mathrm{post}}^{-1}\,\mathbf g_{\mathrm{lik}}(\theta)$ is the likelihood-misspecification contribution (a posterior-rescaled version of the Likelihood DIB), and $\mathbf H_{\mathrm{post}}^{-1}\, s_\pi(\theta)$ is the prior-pull contribution, present even under correct likelihood specification whenever $\mu_{\mathrm{prior}} \neq \theta_0$. Since $\theta_0$ is unknown, the reported diagnostic substitutes the plug-in estimate $\hat\theta_{\mathrm{MAP}}$ for $\theta$ in \eqref{eq:posterior-bdib-def}; under misspecification this corresponds to evaluating $\mathbf g_{\mathrm{lik}}$ at the pseudo-true value $\theta_\ast = \arg\min \mathbb{E}[-\ell(\theta)]$ to leading order.
+
+\paragraph{Well-posedness.}
+For any proper Gaussian prior, $\mathbf H_{\mathrm{post}}^{-1}$ is unconditionally defined (Section~2.1, Eq.~\eqref{eq:posterior-hessian-pd}); for finite-difference $\mathbf H_{\mathrm{lik}}$ it is defined whenever the dominance condition \eqref{eq:dominance-condition} holds. Thus $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ requires no subspace projection.
+
+\subsection*{7.3 Sample-Size Scaling}
+
+For $N$ independent trajectories of length $T$, the likelihood-side quantities scale with $N$ while the prior is fixed:
+\begin{equation}
+\mathbf H_{\mathrm{lik}} = O(N),
+\qquad
+\mathbf{JT}_{\mathrm{lik}} = O(N),
+\qquad
+\mathbf H_{\mathrm{prior}} = O(1),
+\qquad
+s_\pi(\theta) = O(1).
+\label{eq:posterior-N-scaling-inputs}
+\end{equation}
+Under correct likelihood specification at $\theta_0$, $\|S_{\mathrm{lik}}(\theta_0)\| = O_p(\sqrt{N})$ while $\mathbb{E}[S_{\mathrm{lik}}(\theta_0)] = \mathbf 0$; under misspecification, persistent drift gives $\|\mathbf g_{\mathrm{lik}}(\theta_0)\| = O(N)$. Substituting into \eqref{eq:posterior-bdib-def} and using $\mathbf H_{\mathrm{post}} = \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}} = O(N)$ in directions of positive $\mathbf H_{\mathrm{lik}}$ curvature,
+\begin{equation}
+\mathbf b_{\mathrm{DIB},\mathrm{post}}(\theta_0)
+\;=\;
+\underbrace{\mathbf H_{\mathrm{post}}^{-1}\,\mathbf g_{\mathrm{lik}}(\theta_0)}_{O(1)\ \text{(misspec)}}
+\;+\;
+\underbrace{\mathbf H_{\mathrm{post}}^{-1}\, s_\pi(\theta_0)}_{O(1/N)}.
+\label{eq:posterior-bdib-scaling}
+\end{equation}
+That is, the prior-pull component is suppressed as $1/N$, while the likelihood-misspecification component approaches the Likelihood DIB asymptote $\mathbf H_{\mathrm{lik}}^{-1}\,\mathbf g_{\mathrm{lik}}$ with an $O(1/N)$ correction from $\mathbf H_{\mathrm{prior}}$. When $\mathbf H_{\mathrm{lik}}$ is rank-deficient, this asymptote is on its retained eigenspace; on the null directions of $\mathbf H_{\mathrm{lik}}$ the prior precision continues to dominate $\mathbf H_{\mathrm{post}}$ at every $N$ and the corresponding components of $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ remain prior-controlled rather than approaching a Likelihood DIB limit. Comparison with the corrected variance, $\Sigma_{\mathrm{DCC},\mathrm{post}} = O(1/N)$ (\eqref{eq:posterior-sigma-dcc-large-n}), gives the familiar diagnostic: bias dominates variance as $N$ grows, exactly as in Section~7 of the Likelihood supplement, with the prior-pull contribution additionally vanishing. The same scaling transfers to the single-trajectory $T \to \infty$ regime under stationarity and ergodicity of the per-interval scores.
+
+\subsection*{7.4 Flat-Prior and Strong-Prior Limits}
+
+\paragraph{Flat-prior limit.}
+As $\mathbf H_{\mathrm{prior}} \to \mathbf 0$, $s_\pi(\theta) \to \mathbf 0$ from \eqref{eq:prior-score-gaussian} and $\mathbf H_{\mathrm{post}} \to \mathbf H_{\mathrm{lik}}$ from \eqref{eq:flat-prior-limit}, so
+\begin{equation}
+\mathbf b_{\mathrm{DIB},\mathrm{post}}
+\;\longrightarrow\;
+\mathbf H_{\mathrm{lik}}^{-1}\,\mathbf g_{\mathrm{lik}}
+\;=\;
+\mathbf b_{\mathrm{DIB}},
+\label{eq:posterior-bdib-flat-limit}
+\end{equation}
+the Likelihood DIB of Section~7 of the Likelihood supplement. When $\mathbf H_{\mathrm{lik}}$ is rank-deficient and $\mathbf g_{\mathrm{lik}}$ has nonzero projection onto its null space, $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ diverges as $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$ along those directions; on the retained eigenspace of $\mathbf H_{\mathrm{lik}}$ the limit recovers $\mathbf b_{\mathrm{DIB}}$. For strictly positive $\mathbf H_{\mathrm{prior}}$ the construction is global, as in Section~2.1.
+
+\paragraph{Strong-prior limit.}
+In the opposite regime $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$, the likelihood-misspecification term is dominated by the prior, $\mathbf H_{\mathrm{post}}^{-1}\,\mathbf g_{\mathrm{lik}}(\theta_0) = O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1}) \to \mathbf 0$, while the prior-pull term saturates: using $s_\pi(\theta_0) = -\mathbf H_{\mathrm{prior}}(\theta_0 - \mu_{\mathrm{prior}})$ and $\mathbf H_{\mathrm{post}}^{-1} \to \mathbf H_{\mathrm{prior}}^{-1}$,
+\begin{equation}
+\mathbf b_{\mathrm{DIB},\mathrm{post}}(\theta_0)
+\;\longrightarrow\;
+-(\theta_0 - \mu_{\mathrm{prior}}),
+\label{eq:posterior-bdib-strong-limit}
+\end{equation}
+i.e.\ the bias is the full shrinkage to the prior mean, independent of likelihood miscalibration. This is the boundary statement complementary to \eqref{eq:posterior-bdib-flat-limit}: weak priors recover the pure-likelihood diagnostic, strong priors collapse the MAP onto $\mu_{\mathrm{prior}}$.
+
+\subsection*{7.5 Interpretation}
+
+The decomposition \eqref{eq:posterior-bdib-def} makes the two physical sources of MAP displacement separately readable from the diagnostic, with $\theta = \hat\theta_{\mathrm{MAP}}$ used as the plug-in evaluation point (Section~7.2):
+\begin{itemize}
+\item $\mathbf H_{\mathrm{post}}^{-1}\, s_\pi(\hat\theta_{\mathrm{MAP}}) = -\mathbf H_{\mathrm{post}}^{-1}\mathbf H_{\mathrm{prior}}(\hat\theta_{\mathrm{MAP}} - \mu_{\mathrm{prior}})$ is the prior-pull contribution, a deterministic shrinkage toward $\mu_{\mathrm{prior}}$ exactly computable from the prior hyperparameters and $\mathbf H_{\mathrm{post}}$.
+\item $\mathbf H_{\mathrm{post}}^{-1}\,\mathbf g_{\mathrm{lik}}(\hat\theta_{\mathrm{MAP}})$ is the likelihood-misspecification contribution and inherits the diagnostic role of $\mathbf b_{\mathrm{DIB}}$: it vanishes under correct specification (cf.\ \eqref{eq:posterior-glik-true-zero}) and reports persistent score drift otherwise.
+\end{itemize}
+A nonzero $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ whose prior-pull component dominates is a benign feature of Bayesian shrinkage, vanishing with $N$; a nonzero misspecification component is the structural concern that does not vanish with sample size and is reported alongside $\Sigma_{\mathrm{DCC},\mathrm{post}}$ as the bias-variance trade-off at the relevant data scale.
+
+\section*{8. Comparison: Singular Likelihood Hessian vs. Proper Prior}
+
+Section~8 of the Likelihood supplement develops retained-eigenspace formulas for the Likelihood Information Distortion, DCC, DIB, and Correlation Distortion because $\mathbf H_{\mathrm{lik}}$ (the $\mathbf H$ of the Likelihood supplement, under the bridge \eqref{eq:notation-bridge}) can be singular or rank-deficient: only the subspace where $\mathbf H_{\mathrm{lik}}$ has eigenvalues above a numerical cutoff carries Gaussian Fisher information, and inverse powers of $\mathbf H_{\mathrm{lik}}$ must be restricted there. In the Posterior framework with a proper Gaussian prior, this construction is unnecessary: $\mathbf H_{\mathrm{post}} = \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ is positive definite on the full parameter space (Section~2.1), so every Posterior IDM quantity of Sections~4--7 is globally well-defined. The prior precision plays the role of regularizer that the retained-subspace projection plays in the Likelihood supplement, with the additional advantage that the prior eigenvalues provide an objective regularization scale while the Likelihood retained-eigenspace cutoff is a numerical heuristic.
+
+\subsection*{8.1 Why no projection is required}
+
+For a proper Gaussian prior, $\mathbf H_{\mathrm{prior}} \succ \mathbf 0$. Two cases arise depending on the sign profile of $\mathbf H_{\mathrm{lik}}$:
+\begin{itemize}
+\item \emph{Analytic Gaussian Fisher Information.} $\mathbf H_{\mathrm{lik}} \succeq \mathbf 0$ by construction, so $\mathbf H_{\mathrm{post}} \succeq \mathbf H_{\mathrm{prior}} \succ \mathbf 0$ unconditionally (Eq.~\eqref{eq:posterior-hessian-pd}). The symmetric inverse square root $\mathbf H_{\mathrm{post}}^{-1/2}$ used to whiten $\mathbf{JT}_{\mathrm{post}}$ and $\mathbf{JS}_{\mathrm{post}}$ is unconditionally defined on all of $\mathbb{R}^d$. Rank-deficient $\mathbf H_{\mathrm{lik}}$ (null and zero-eigenvalue directions) is handled trivially: any $\mathbf H_{\mathrm{prior}} \succ \mathbf 0$ suffices.
+\item \emph{Finite-difference $\mathbf H_{\mathrm{lik}}$ with indefinite spectrum.} The Jordan decomposition $\mathbf H_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}^+ - \mathbf H_{\mathrm{lik}}^-$ of \eqref{eq:hlik-jordan-decomposition} isolates the negative part. Positive definiteness of $\mathbf H_{\mathrm{post}}$ is then equivalent to the dominance condition $\mathbf H_{\mathrm{prior}} - \mathbf H_{\mathrm{lik}}^- \succ \mathbf 0$ of \eqref{eq:dominance-condition}. This single matrix inequality is the bookkeeping condition that replaces the retained-subspace treatment of Section~8 of the Likelihood supplement: rather than discarding negatively-biased directions, the prior absorbs them.
+\end{itemize}
+In both cases, the symmetric inverse square root \eqref{eq:posterior-symm-sqrt} of $\mathbf H_{\mathrm{post}}$ is computed by spectral decomposition on the full parameter space; the Posterior IDM, sample distortion, correlation distortion, DCC, and DIB of Sections~4--7 are then evaluated globally without subspace selection.
+
+\subsection*{8.2 Connection between the regimes}
+
+The flat-prior and strong-prior regimes are continuously connected; the singular-likelihood case at vanishing prior is the only non-smooth boundary.
+
+\paragraph{Weak prior, strong data: $\lambda_{\max}(\mathbf H_{\mathrm{prior}}) \ll \lambda_{\min}(\mathbf H_{\mathrm{lik}})$, with $\mathbf H_{\mathrm{lik}}$ full rank.}
+$\mathbf H_{\mathrm{post}} \approx \mathbf H_{\mathrm{lik}}$ and $\mathbf{JT}_{\mathrm{post}} \approx \mathbf{JT}_{\mathrm{lik}}$, so $\mathbf C_{\mathrm{post}} \to \mathbf C$ entrywise. The Posterior IDM recovers the Likelihood IDM to leading order in $\mathbf H_{\mathrm{prior}}$. Analogously $\mathbf C_{\mathrm{sample},\mathrm{post}} \to \mathbf C_{\mathrm{sample}}$, $\mathbf R_{\mathrm{post}} \to \mathbf R$, $\Sigma_{\mathrm{DCC},\mathrm{post}} \to \Sigma_{\mathrm{DCC}}$, $\mathbf b_{\mathrm{DIB},\mathrm{post}} \to \mathbf b_{\mathrm{DIB}}$, as established in the flat-prior limits of Sections~4.3, 5.3, 6.5, and 7.4 above.
+
+\paragraph{Strong prior, weak data: $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$.}
+By the residual bound \eqref{eq:posterior-c-residual-bound}, $\mathbf C_{\mathrm{post}} \to \mathbf I$ provided the likelihood-side mismatch $\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}$ remains bounded (the regular-misspecification regime; if $\|\mathbf{JT}_{\mathrm{lik}}\|$ itself blows up with the prior, the limit need not hold). Equivalently $\Sigma_{\mathrm{DCC},\mathrm{post}} \to \mathbf H_{\mathrm{prior}}^{-1}$ (Eq.~\eqref{eq:posterior-sigma-dcc-strong-limit}) and $\mathbf b_{\mathrm{DIB},\mathrm{post}} \to -(\theta_0 - \mu_{\mathrm{prior}})$ (Eq.~\eqref{eq:posterior-bdib-strong-limit}): the diagnostic correctly reports that inference along these directions is prior-dominated, with full shrinkage to the prior mean and absolute likelihood-miscalibration signal washed out.
+
+\paragraph{Vanishing prior with singular $\mathbf H_{\mathrm{lik}}$.}
+If $\mathbf H_{\mathrm{prior}} \to \mathbf 0$ while $\mathbf H_{\mathrm{lik}}$ has a non-trivial null space (or eigenvalues below the numerical cutoff), the limit is singular. On the retained eigenspace of $\mathbf H_{\mathrm{lik}}$ (the columns of $\mathbf U_H$ whose eigenvalues exceed the cutoff, in the notation of Section~8 of the Likelihood supplement), the Posterior IDM converges to the Likelihood IDM. On the complementary null space, $\mathbf H_{\mathrm{post}}^{-1/2}$ diverges as $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1/2})$; the limit of the full matrix is undefined and the appropriate object is the retained-subspace Likelihood IDM $\mathbf C_H$ of Section~8 of the Likelihood supplement. The Posterior IDM with a strictly positive $\mathbf H_{\mathrm{prior}}$ is the regularized version of this construction: it preserves the rank-deficient directions as ``prior-dominated'' rather than excising them.
+
+\subsection*{8.3 Practical recommendation}
+
+The two diagnostics report complementary information and are simultaneously computable whenever both are well-defined:
+\begin{itemize}
+\item Use the \emph{Likelihood IDM} (Sections~4--10 of the Likelihood supplement) when $\mathbf H_{\mathrm{lik}}$ is well-conditioned and a prior-independent calibration is desired. The retained-subspace machinery of Section~8 of the Likelihood supplement is unavoidable when $\mathbf H_{\mathrm{lik}}$ is singular or near-singular.
+\item Use the \emph{Posterior IDM} (Sections~4--7 above) when $\mathbf H_{\mathrm{lik}}$ is singular, near-singular, or indefinite (e.g.\ finite-difference Hessian along weakly identified directions), or when the diagnostic is to reflect the actual Bayesian posterior used for inference. The dominance condition \eqref{eq:dominance-condition} is the sole bookkeeping requirement; no eigenvalue cutoff is selected.
+\item In well-conditioned regimes both are reportable, and the prior-strength contrast $\mathbf C - \mathbf C_{\mathrm{post}}$ quantifies the shrinkage effect of the prior on apparent calibration: by \eqref{eq:posterior-c-residual}, $\mathbf C_{\mathrm{post}} - \mathbf I$ is the residual $\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}$ rescaled by $\mathbf H_{\mathrm{post}}^{-1/2}$ rather than $\mathbf H_{\mathrm{lik}}^{-1/2}$. Since $\mathbf H_{\mathrm{post}} \succeq \mathbf H_{\mathrm{lik}}$ in the Loewner order, the operator-norm bound $\|\mathbf C_{\mathrm{post}} - \mathbf I\| \leq \|\mathbf C - \mathbf I\|$ holds (the per-direction comparison is not generally monotone because $\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}}$ is indefinite under misspecification).
+\end{itemize}
+The choice is a reporting decision, not a structural restriction: $\mathbf C$ diagnoses pure likelihood miscalibration in Gaussian Fisher geometry; $\mathbf C_{\mathrm{post}}$ diagnoses the same miscalibration weighted by the actual posterior curvature available for inference.
+
+
 \end{document}
