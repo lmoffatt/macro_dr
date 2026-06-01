@@ -779,4 +779,432 @@ The two diagnostics report complementary information and are simultaneously comp
 The choice is a reporting decision, not a structural restriction: $\mathbf C$ diagnoses pure likelihood miscalibration in Gaussian Fisher geometry; $\mathbf C_{\mathrm{post}}$ diagnoses the same miscalibration weighted by the actual posterior curvature available for inference.
 
 
+
+\section*{9. Posterior Effective Sample Size and Correlation Distortion}
+
+The Likelihood Correlation Distortion $\mathbf R$ of Section~9 of the Likelihood supplement isolates the temporal-dependence content of the score from its within-interval magnitude by whitening $\mathbf{JT}_{\mathrm{lik}}$ with $\mathbf{JS}_{\mathrm{lik}}^{1/2}$ rather than with $\mathbf H_{\mathrm{lik}}^{1/2}$. The Bayesian analogue uses the augmented fluctuation matrices $\mathbf{JT}_{\mathrm{post}}$ and $\mathbf{JS}_{\mathrm{post}}$ of Section~3.
+
+\subsection*{9.1 Posterior Correlation Distortion}
+
+Define the \emph{Posterior Correlation Distortion}
+\begin{equation}
+\mathbf R_{\mathrm{post}}(\theta)
+\;:=\;
+\mathbf{JS}_{\mathrm{post}}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf{JS}_{\mathrm{post}}^{-1/2},
+\label{eq:posterior-r-def}
+\end{equation}
+the direct counterpart of $\mathbf R = \mathbf{JS}_{\mathrm{lik}}^{-1/2}\, \mathbf{JT}_{\mathrm{lik}}\, \mathbf{JS}_{\mathrm{lik}}^{-1/2}$ (Section~9 of the Likelihood supplement, under the bridge \eqref{eq:notation-bridge}). The symmetric inverse square root is computed by spectral decomposition of $\mathbf{JS}_{\mathrm{post}}$ as in Section~4.5; $\mathbf R_{\mathrm{post}}$ is SPD as a congruence transform of the SPD matrix $\mathbf{JT}_{\mathrm{post}}$ by $\mathbf{JS}_{\mathrm{post}}^{-1/2}$. Spectral invariants of $\mathbf R_{\mathrm{post}}$ (eigenvalues, trace, determinant) and per-parameter diagonals $[\mathbf R_{\mathrm{post}}]_{ii}$ in the fixed original parameter basis are well-defined and independent of the square-root algorithm choice (symmetric vs.\ Cholesky), in the same sense as Section~4.5.
+
+\paragraph{Well-posedness.}
+For any proper Gaussian prior, $\mathbf H_{\mathrm{prior}} \succ \mathbf 0$. Since $\mathbf{JS}_{\mathrm{lik}} \succeq \mathbf 0$ as a sum of within-interval score covariances (Section~3 of the Likelihood supplement),
+\begin{equation}
+\mathbf{JS}_{\mathrm{post}}
+\;=\;
+\mathbf{JS}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}
+\;\succeq\;
+\mathbf H_{\mathrm{prior}}
+\;\succ\; \mathbf 0,
+\label{eq:posterior-jspost-pd}
+\end{equation}
+so $\mathbf{JS}_{\mathrm{post}}^{-1/2}$ is unconditionally defined, in contrast with $\mathbf{JS}_{\mathrm{lik}}^{-1/2}$, which requires $\mathbf{JS}_{\mathrm{lik}} \succ \mathbf 0$ (and otherwise the retained-subspace treatment of Section~8 of the Likelihood supplement). For analytic Gaussian Fisher $\mathbf{JT}_{\mathrm{lik}} = \mathrm{Cov}(S_{\mathrm{lik}}) \succeq \mathbf 0$, so $\mathbf{JT}_{\mathrm{post}} \succeq \mathbf H_{\mathrm{prior}} \succ \mathbf 0$ and $\mathbf R_{\mathrm{post}} \succ \mathbf 0$ globally. For finite-difference estimators where $\mathbf{JT}_{\mathrm{lik}}$ may be indefinite, the analogue of the dominance condition \eqref{eq:dominance-condition}, $\mathbf H_{\mathrm{prior}} - \mathbf{JT}_{\mathrm{lik}}^{-} \succ \mathbf 0$ (with $\mathbf{JT}_{\mathrm{lik}}^{-}$ the negative part of the estimator), is required for global SPD-ness of $\mathbf R_{\mathrm{post}}$; cf.\ Section~2.1.
+
+\subsection*{9.2 Cancellation of the prior in the cross-interval residual}
+
+By the sample/total decomposition \eqref{eq:posterior-sample-total} of Section~3 (and its rearrangement),
+\begin{equation}
+\mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}}
+\;=\;
+\mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}}
+\;=\;
+2\sum_{i<j}\mathrm{Cov}(s_i, s_j),
+\label{eq:posterior-r-residual}
+\end{equation}
+since the prior precision $\mathbf H_{\mathrm{prior}}$ enters $\mathbf{JT}_{\mathrm{post}}$ and $\mathbf{JS}_{\mathrm{post}}$ identically and drops out of the difference (Section~3.2). The numerator of the unwhitened residual $\mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}}$ is therefore a pure data quantity, encoding the cross-interval covariance of the per-interval data scores $s_t$. The role of the prior in $\mathbf R_{\mathrm{post}}$ is confined to the whitening transform $\mathbf{JS}_{\mathrm{post}}^{-1/2} (\cdot)\, \mathbf{JS}_{\mathrm{post}}^{-1/2}$, which rescales the residual but does not generate any cross-interval signal of its own.
+
+\subsection*{9.3 Independent-score limit: $\mathbf R_{\mathrm{post}} = \mathbf I$}
+
+If the data scores are temporally uncorrelated, $\mathrm{Cov}(s_i, s_j) = \mathbf 0$ for all $i \neq j$, then $\mathbf{JT}_{\mathrm{lik}} = \mathbf{JS}_{\mathrm{lik}}$, whence $\mathbf{JT}_{\mathrm{post}} = \mathbf{JS}_{\mathrm{post}}$ and
+\begin{equation}
+\mathbf R_{\mathrm{post}}
+\;=\;
+\mathbf{JS}_{\mathrm{post}}^{-1/2}\,
+\mathbf{JS}_{\mathrm{post}}\,
+\mathbf{JS}_{\mathrm{post}}^{-1/2}
+\;=\;
+\mathbf I,
+\label{eq:posterior-r-independent}
+\end{equation}
+exactly as in the Likelihood case. The independent-score baseline is the same for both diagnostics: a proper prior does not by itself create temporal-correlation signal in $\mathbf R_{\mathrm{post}}$.
+
+\subsection*{9.4 Correlated-score regime: prior-softened temporal signal}
+
+When the cross-interval sum $\sum_{i<j}\mathrm{Cov}(s_i, s_j) \neq \mathbf 0$ (the residual \eqref{eq:posterior-r-residual} is nonzero), $\mathbf{JT}_{\mathrm{post}} \neq \mathbf{JS}_{\mathrm{post}}$ and $\mathbf R_{\mathrm{post}} \neq \mathbf I$. (Individual nonzero off-diagonal covariances can cancel in the sum and yield $\mathbf R_{\mathrm{post}} = \mathbf I$ even with serial dependence; it is the residual sum that controls deviation from identity.) The deviation is governed by the same data-side residual that drives $\mathbf R - \mathbf I$ in the Likelihood case, but rescaled by the augmented whitening matrix. Subtracting the identity in \eqref{eq:posterior-r-def} and using \eqref{eq:posterior-r-residual},
+\begin{equation}
+\mathbf R_{\mathrm{post}} - \mathbf I
+\;=\;
+\mathbf{JS}_{\mathrm{post}}^{-1/2}\,
+\bigl(\mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}}\bigr)\,
+\mathbf{JS}_{\mathrm{post}}^{-1/2}.
+\label{eq:posterior-r-deviation}
+\end{equation}
+The data residual $\mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}} = 2\sum_{i<j}\mathrm{Cov}(s_i,s_j)$ is identical to the one in the Likelihood case; the prior contribution enters only through $\mathbf{JS}_{\mathrm{post}}^{-1/2}$. In directions where $\mathbf H_{\mathrm{prior}}$ is large relative to $\mathbf{JS}_{\mathrm{lik}}$, the whitening is dominated by the prior precision and $\mathbf R_{\mathrm{post}} - \mathbf I$ is shrunk toward zero; in directions where $\mathbf H_{\mathrm{prior}}$ is small compared to $\mathbf{JS}_{\mathrm{lik}}$, the whitening matches the Likelihood case and $\mathbf R_{\mathrm{post}} - \mathbf I \approx \mathbf R - \mathbf I$. Informative-prior directions therefore have $\mathbf R_{\mathrm{post}} - \mathbf I$ shrunk toward zero in operator norm relative to the corresponding $\mathbf R - \mathbf I$ from the Likelihood supplement.
+
+\subsection*{9.5 Posterior Effective Sample Size}
+
+The variance-of-sum vs.\ sum-of-variances framework of Section~9 of the Likelihood supplement does \emph{not} transfer literally: the posterior whitening matrix $\mathbf{JS}_{\mathrm{post}} = \mathbf{JS}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ contains the prior precision, so neither $\mathbf{JT}_{\mathrm{post}}$ nor $\mathbf{JS}_{\mathrm{post}}$ matches a variance-of-sum or sum-of-variances of any actual data sequence. The scalar summaries
+\begin{align}
+\kappa_{\mathrm{tr}}^{\mathrm{post}}
+&\;=\;
+\frac{1}{d}\,\mathrm{tr}(\mathbf R_{\mathrm{post}})
+\;=\;
+\frac{1}{d}\sum_{i=1}^d \lambda_i(\mathbf R_{\mathrm{post}}),
+\label{eq:posterior-kappa-tr}\\
+\kappa_{\mathrm{det}}^{\mathrm{post}}
+&\;=\;
+\exp\!\left(\frac{1}{d}\log\det(\mathbf R_{\mathrm{post}})\right)
+\;=\;
+\Bigl(\prod_{i=1}^d \lambda_i(\mathbf R_{\mathrm{post}})\Bigr)^{1/d}
+\label{eq:posterior-kappa-det}
+\end{align}
+are spectral summaries of $\mathbf R_{\mathrm{post}}$ measuring, respectively, the average and geometric-mean per-eigen-direction inflation of the augmented within-interval budget $\mathbf{JS}_{\mathrm{post}}$ by cross-interval DATA covariance $\mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}}$; the prior enters only through the $\mathbf{JS}_{\mathrm{post}}$ whitening, not through the residual numerator. The corresponding posterior effective-sample-size summary is
+\begin{equation}
+T_{\mathrm{eff}}^{\mathrm{post}}
+\;=\;
+T / \kappa^{\mathrm{post}},
+\qquad
+\kappa^{\mathrm{post}} \in \{\kappa_{\mathrm{tr}}^{\mathrm{post}}, \kappa_{\mathrm{det}}^{\mathrm{post}}\},
+\label{eq:posterior-teff}
+\end{equation}
+chosen according to the spectral profile. $T_{\mathrm{eff}}^{\mathrm{post}}$ does not have the literal Var$(L_X)/\sum_t$Var$(X_t)$ interpretation of the Likelihood $T_{\mathrm{eff}}$; it is a defined posterior diagnostic that measures the inflation of the per-direction posterior within-interval budget by cross-interval data covariance, not the total information available for inference.
+
+\paragraph{Isotropic temporal dependence.}
+If $\mathbf R_{\mathrm{post}} \approx \kappa^{\mathrm{post}} \mathbf I$, the data-side temporal dependence (as seen through the posterior whitening) acts isotropically and a single scalar effective sample size captures the diagnostic. Anisotropy in $\mathbf R_{\mathrm{post}}$ indicates that some eigen-directions of the posterior fluctuation budget carry more cross-interval signal than others, and the scalar summaries \eqref{eq:posterior-kappa-tr}--\eqref{eq:posterior-kappa-det} should be reported alongside the spectrum, exactly as in the Likelihood case.
+
+\subsection*{9.6 Limiting Regimes}
+
+Throughout this subsection, $T$ (or $N$) and $\mathbf H_{\mathrm{prior}}$ are varied independently: each limit is taken with the other quantity held fixed unless stated otherwise.
+
+\paragraph{Flat-prior limit.}
+As $\mathbf H_{\mathrm{prior}} \to \mathbf 0$ at fixed $\mathbf{JS}_{\mathrm{lik}}, \mathbf{JT}_{\mathrm{lik}}$, $\mathbf{JS}_{\mathrm{post}} \to \mathbf{JS}_{\mathrm{lik}}$ and $\mathbf{JT}_{\mathrm{post}} \to \mathbf{JT}_{\mathrm{lik}}$ by \eqref{eq:flat-prior-limit}, so
+\begin{equation}
+\mathbf R_{\mathrm{post}} \;\longrightarrow\; \mathbf R,
+\qquad
+\kappa_{\mathrm{tr}}^{\mathrm{post}} \to \kappa_{\mathrm{tr}},
+\qquad
+\kappa_{\mathrm{det}}^{\mathrm{post}} \to \kappa_{\mathrm{det}},
+\label{eq:posterior-r-flat-limit}
+\end{equation}
+recovering the Likelihood Correlation Distortion of Section~9 of the Likelihood supplement. When $\mathbf{JS}_{\mathrm{lik}}$ is rank-deficient the limit is on its retained eigenspace (Section~8 of the Likelihood supplement uses its own $\mathbf{JS}_{\mathrm{lik}}$-eigenspace construction $\mathbf R_{J_{\mathrm{sample}}}$, distinct from the $\mathbf H$-eigenspace projection used for $\mathbf C$); on the null space of $\mathbf{JS}_{\mathrm{lik}}$, $\mathbf R_{\mathrm{post}}$ does not converge to $\mathbf R$ and stays prior-controlled at every $\mathbf H_{\mathrm{prior}}$. A strictly positive $\mathbf H_{\mathrm{prior}}$ regularizes both subspaces simultaneously and makes $\mathbf R_{\mathrm{post}}$ globally well-defined.
+
+\paragraph{Strong-prior limit.}
+As $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$ at fixed $T$ (and fixed $\mathbf{JT}_{\mathrm{lik}}, \mathbf{JS}_{\mathrm{lik}}$, hence fixed bounded residual $\mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}}$), the operator-norm bound
+\begin{equation}
+\|\mathbf R_{\mathrm{post}} - \mathbf I\|
+\;\leq\;
+\lambda_{\min}(\mathbf{JS}_{\mathrm{post}})^{-1}\,
+\bigl\|\mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}}\bigr\|
+\;=\;
+O\!\bigl(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1}\bigr)
+\label{eq:posterior-r-strong-bound}
+\end{equation}
+forces $\mathbf R_{\mathrm{post}} \to \mathbf I$, hence $\kappa_{\mathrm{tr}}^{\mathrm{post}}, \kappa_{\mathrm{det}}^{\mathrm{post}} \to 1$ and $T_{\mathrm{eff}}^{\mathrm{post}} \to T$. The diagnostic correctly reports that data-side temporal dependence has no posterior leverage in the prior-dominated regime, consistent with the strong-prior collapses of $\mathbf C_{\mathrm{post}}$ (Section~5.3), $\Sigma_{\mathrm{DCC},\mathrm{post}}$ (Section~6.5), and $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ (Section~7.4). $T_{\mathrm{eff}}^{\mathrm{post}} = T$ here reports prior dominance (the data-side temporal-dependence channel is whitened away) rather than data informativeness.
+
+\paragraph{Large-data limit.}
+For $N$ independent trajectories at fixed proper $\mathbf H_{\mathrm{prior}}$, $\mathbf{JT}_{\mathrm{lik}}, \mathbf{JS}_{\mathrm{lik}} = O(N)$ while $\mathbf H_{\mathrm{prior}} = O(1)$, so $\mathbf{JS}_{\mathrm{post}} = \mathbf{JS}_{\mathrm{lik}}(1 + O(1/N))$ (and similarly for $\mathbf{JT}_{\mathrm{post}}$), giving $\mathbf R_{\mathrm{post}} = \mathbf R + O(1/N)$. The posterior correlation distortion thus reproduces the Likelihood correlation distortion in the data-dominated regime, again paralleling the corresponding $\mathbf C_{\mathrm{post}}, \Sigma_{\mathrm{DCC},\mathrm{post}}, \mathbf b_{\mathrm{DIB},\mathrm{post}}$ behaviours. The convergence is on the retained eigenspace of $\mathbf{JS}_{\mathrm{lik}}$; on persistent null directions of $\mathbf{JS}_{\mathrm{lik}}$ independent of $N$, $\mathbf R_{\mathrm{post}}$ remains prior-controlled at every $N$.
+
+\subsection*{9.7 Relation to $\mathbf C_{\mathrm{post}}$ and $\mathbf C_{\mathrm{sample},\mathrm{post}}$}
+
+Under correct likelihood specification (Section~4.1, Eq.\ \eqref{eq:posterior-c-identity}), $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ at $\theta_0$ and $\mathbf C_{\mathrm{post}} = \mathbf I$. The companion within-interval identity $\mathbf{JS}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ at the population level is the per-interval Bartlett identity (a per-observation property holding conditionally at each $t$, hence summing to the within-interval Fisher identity independently of cross-interval correlation); this is a strengthening of the total Fisher identity used in Section~4.1 and is local in time. Under the within-interval identity, $\mathbf C_{\mathrm{sample},\mathrm{post}} = \mathbf I$, and:
+
+\begin{itemize}
+\item \emph{Correct specification, no temporal correlation.} Both identities hold and $\mathbf{JT}_{\mathrm{lik}} = \mathbf{JS}_{\mathrm{lik}}$, so $\mathbf R_{\mathrm{post}} = \mathbf I = \mathbf C_{\mathrm{post}} = \mathbf C_{\mathrm{sample},\mathrm{post}}$.
+\item \emph{Correct specification, temporally correlated scores.} The within-interval identity gives $\mathbf{JS}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$, hence $\mathbf{JS}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ and $\mathbf C_{\mathrm{sample},\mathrm{post}} = \mathbf I$; under this identity, $\mathbf R_{\mathrm{post}} = \mathbf{JS}_{\mathrm{post}}^{-1/2}\,\mathbf{JT}_{\mathrm{post}}\,\mathbf{JS}_{\mathrm{post}}^{-1/2} = \mathbf H_{\mathrm{post}}^{-1/2}\,\mathbf{JT}_{\mathrm{post}}\,\mathbf H_{\mathrm{post}}^{-1/2} = \mathbf C_{\mathrm{post}}$, i.e.\ the two whitening operations coincide.
+\item \emph{Within-interval misspecification.} $\mathbf C_{\mathrm{sample},\mathrm{post}} \neq \mathbf I$ and the relation between $\mathbf C_{\mathrm{post}}$ and $\mathbf R_{\mathrm{post}}$ is mediated by $\mathbf C_{\mathrm{sample},\mathrm{post}}$ via the sample/correlation decomposition (Section~10), which holds in the restricted sense developed there (commuting / Fisher-coordinate caveat).
+\end{itemize}
+
+The three diagnostics therefore separate three distinct posterior-side concerns: $\mathbf C_{\mathrm{post}}$ measures total miscalibration, $\mathbf C_{\mathrm{sample},\mathrm{post}}$ measures within-interval mismatch, and $\mathbf R_{\mathrm{post}}$ isolates the temporal-dependence content of the data scores as seen through the posterior whitening.
+
+\section*{10. Posterior Sample Distortion and Decomposition}
+
+The Posterior IDM $\mathbf C_{\mathrm{post}}$ of Section~4 combines two structurally distinct sources of miscalibration: a within-interval mismatch between sample score variance and posterior curvature (the analogue of $\mathbf C_{\mathrm{sample}}$ in Section~10 of the Likelihood supplement), and a cross-interval temporal-correlation effect (the analogue of $\mathbf R$, formalized as $\mathbf R_{\mathrm{post}}$ in Section~9 above). This section promotes the within-interval object $\mathbf C_{\mathrm{sample},\mathrm{post}}$ (introduced inline in Section~4.1 and listed among the Posterior IDM diagnostics in Section~2.2) to a labeled definition, states its consistency reduction, and establishes the sample/correlation decomposition
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+\;=\;
+\mathbf M\,
+\mathbf R_{\mathrm{post}}\,
+\mathbf M^\top
+\;=\;
+\mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}\,
+\widetilde{\mathbf R}_{\mathrm{post}}\,
+\mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2},
+\label{eq:posterior-c-decomposition}
+\end{equation}
+where $\mathbf M$ is the (non-orthogonal) basis change between the $\mathbf{JS}_{\mathrm{post}}$-whitened and $\mathbf H_{\mathrm{post}}$-whitened bases defined below, and $\widetilde{\mathbf R}_{\mathrm{post}}$ is an orthogonal conjugate of $\mathbf R_{\mathrm{post}}$ equal to $\mathbf R_{\mathrm{post}}$ when $[\mathbf H_{\mathrm{post}}, \mathbf{JS}_{\mathrm{post}}] = \mathbf 0$. This is the structural counterpart of $\mathbf C = \mathbf C_{\mathrm{sample}}^{1/2}\,\mathbf R\,\mathbf C_{\mathrm{sample}}^{1/2}$ of Section~10 of the Likelihood supplement (which carries the analogous commuting caveat), lifted to the augmented information budget of Section~3.
+
+\subsection*{10.1 Posterior Sample Distortion}
+
+The Posterior Sample Distortion is the within-interval analogue of $\mathbf C_{\mathrm{post}}$, obtained by replacing $\mathbf{JT}_{\mathrm{post}}$ with $\mathbf{JS}_{\mathrm{post}}$ in the whitening transform \eqref{eq:posterior-c-def}:
+\begin{equation}
+\mathbf C_{\mathrm{sample},\mathrm{post}}(\theta)
+\;:=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JS}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2}.
+\label{eq:posterior-c-sample-def}
+\end{equation}
+By the augmented-observation convention of Section~3.1, $\mathbf{JS}_{\mathrm{post}} = \mathbf{JS}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ and $\mathbf H_{\mathrm{post}} = \mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}$ carry the prior precision identically; $\mathbf C_{\mathrm{sample},\mathrm{post}}$ therefore quantifies the within-interval mismatch between data score variance and likelihood curvature. Well-posedness: $\mathbf{JS}_{\mathrm{post}} \succeq \mathbf H_{\mathrm{prior}} \succ \mathbf 0$ for any proper Gaussian prior, so $\mathbf{JS}_{\mathrm{post}}^{-1/2}$ (needed for both $\mathbf R_{\mathrm{post}}$ and the map $\mathbf M$ below) is unconditionally defined, in parallel with $\mathbf H_{\mathrm{post}}^{-1/2}$ of Section~4.4.
+
+\paragraph{Consistency under correct within-interval specification.}
+The per-interval Bartlett identity $E[s_t s_t^\top \mid y_{1:t-1}] = -E[\nabla s_t \mid y_{1:t-1}]$ holds conditionally for each $t$ (a per-observation property of the conditional likelihood), and summing gives the within-interval Fisher identity $\mathbf{JS}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ in expectation independently of cross-interval correlation. This strengthens the total Fisher identity used in Section~4.1 (which fails under serial dependence by Section~3.2) and is a genuine population statement: a derived per-interval consequence of correct conditional likelihood specification, not a quoted result from the Likelihood supplement. Substituting,
+\begin{equation}
+\mathbf{JS}_{\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}
+\;=\;
+\mathbf H_{\mathrm{post}},
+\qquad
+\mathbf C_{\mathrm{sample},\mathrm{post}}
+\;=\;
+\mathbf I.
+\label{eq:posterior-c-sample-identity}
+\end{equation}
+This holds whether or not $\mathrm{Cov}(s_i, s_j) = 0$ for $i \neq j$: the temporal-correlation contribution lives entirely in the difference $\mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}} = 2\sum_{i<j}\mathrm{Cov}(s_i, s_j)$ from \eqref{eq:posterior-sample-total}, hence in $\mathbf R_{\mathrm{post}}$ rather than in $\mathbf C_{\mathrm{sample},\mathrm{post}}$. The two diagnostics separate the two failure modes through the multiplicative decomposition \eqref{eq:posterior-c-decomposition} (additive only on the log-determinant scale, Section~10.5):
+\begin{itemize}
+\item $\mathbf C_{\mathrm{sample},\mathrm{post}} \neq \mathbf I$ signals likelihood within-interval miscalibration ($\mathbf{JS}_{\mathrm{lik}} \neq \mathbf H_{\mathrm{lik}}$), the per-interval Fisher identity failing.
+\item $\mathbf R_{\mathrm{post}} \neq \mathbf I$ signals cross-interval temporal correlation (the residual sum $\sum_{i<j}\mathrm{Cov}(s_i, s_j) \neq \mathbf 0$), present under correct within-interval specification with serially dependent scores.
+\end{itemize}
+Correspondingly, $\mathbf C_{\mathrm{post}} = \mathbf I$ only when both fail to fire, and otherwise $\mathbf C_{\mathrm{post}}$ inherits its deviation from one or both sources jointly.
+
+\subsection*{10.2 Decomposition Identity}
+
+Starting from the definitions \eqref{eq:posterior-c-def} and \eqref{eq:posterior-c-sample-def}, insert $\mathbf{JS}_{\mathrm{post}}^{1/2}\,\mathbf{JS}_{\mathrm{post}}^{-1/2} = \mathbf I$ on both sides of $\mathbf{JT}_{\mathrm{post}}$:
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JS}_{\mathrm{post}}^{1/2}\,
+\bigl[\mathbf{JS}_{\mathrm{post}}^{-1/2}\,
+\mathbf{JT}_{\mathrm{post}}\,
+\mathbf{JS}_{\mathrm{post}}^{-1/2}\bigr]\,
+\mathbf{JS}_{\mathrm{post}}^{1/2}\,
+\mathbf H_{\mathrm{post}}^{-1/2}.
+\label{eq:posterior-c-insert}
+\end{equation}
+The bracketed factor is $\mathbf R_{\mathrm{post}}$ from Section~9. Setting
+\begin{equation}
+\mathbf M
+\;:=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JS}_{\mathrm{post}}^{1/2},
+\label{eq:posterior-M-def}
+\end{equation}
+which is generally \emph{not} symmetric (it is symmetric iff $\mathbf H_{\mathrm{post}}$ and $\mathbf{JS}_{\mathrm{post}}$ commute), Eq.\ \eqref{eq:posterior-c-insert} reads
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+\;=\;
+\mathbf M\,
+\mathbf R_{\mathrm{post}}\,
+\mathbf M^\top,
+\qquad
+\mathbf M\,\mathbf M^\top
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JS}_{\mathrm{post}}^{1/2}\,
+(\mathbf{JS}_{\mathrm{post}}^{1/2})^\top\,
+(\mathbf H_{\mathrm{post}}^{-1/2})^\top
+\;=\;
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf{JS}_{\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2}
+\;=\;
+\mathbf C_{\mathrm{sample},\mathrm{post}},
+\label{eq:posterior-c-MMT}
+\end{equation}
+using symmetry of $\mathbf{JS}_{\mathrm{post}}^{1/2}$ and $\mathbf H_{\mathrm{post}}^{-1/2}$ in the third equality. So $\mathbf C_{\mathrm{sample},\mathrm{post}} = \mathbf M \mathbf M^\top$: $\mathbf M$ is a non-symmetric square-root factor of $\mathbf C_{\mathrm{sample},\mathrm{post}}$, related to the symmetric PSD root by the polar decomposition $\mathbf M = \mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}\, \mathbf Q$ with $\mathbf Q$ orthogonal. The map $\mathbf M$ is the (generally non-orthogonal) basis change from the $\mathbf{JS}_{\mathrm{post}}$-whitened basis (in which $\mathbf R_{\mathrm{post}}$ is the natural object) to the $\mathbf H_{\mathrm{post}}$-whitened basis (in which $\mathbf C_{\mathrm{post}}$ lives); conjugation by $\mathbf M$ (i.e.\ $B \mapsto \mathbf M B \mathbf M^\top$) sends $\mathbf R_{\mathrm{post}}$ to $\mathbf C_{\mathrm{post}}$.
+
+\paragraph{Sandwich form and the polar-factor caveat.}
+Substituting the polar decomposition into \eqref{eq:posterior-c-MMT},
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+\;=\;
+\mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}\,
+\widetilde{\mathbf R}_{\mathrm{post}}\,
+\mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2},
+\qquad
+\widetilde{\mathbf R}_{\mathrm{post}}
+\;:=\;
+\mathbf Q\,\mathbf R_{\mathrm{post}}\,\mathbf Q^\top,
+\label{eq:posterior-c-sandwich}
+\end{equation}
+i.e.\ the $\mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}$-sandwich form holds with $\mathbf R_{\mathrm{post}}$ replaced by its orthogonal conjugate $\widetilde{\mathbf R}_{\mathrm{post}}$. The literal sandwich identity $\mathbf C_{\mathrm{post}} = \mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}\, \mathbf R_{\mathrm{post}}\, \mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}$ holds iff $\mathbf Q = \mathbf I$, equivalently iff $\mathbf H_{\mathrm{post}}$ and $\mathbf{JS}_{\mathrm{post}}$ commute (simultaneous diagonalizability), and in particular when $\mathbf R_{\mathrm{post}} = \kappa \mathbf I$ is scalar (since $\mathbf Q \kappa \mathbf I \mathbf Q^\top = \kappa \mathbf I$). The parallel identity of Section~10 of the Likelihood supplement, stated there ``in Fisher coordinates'', carries the same commuting caveat. The matrices $\mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}\, \mathbf R_{\mathrm{post}}\, \mathbf C_{\mathrm{sample},\mathrm{post}}^{1/2}$ and $\mathbf C_{\mathrm{post}}$ are always congruent with the same inertia and the same determinant (Section~10.5), but they are not equal as matrices in general.
+
+\subsection*{10.3 Effective Sample Size Correction}
+
+\paragraph{Isotropic temporal effect.}
+If the temporal correlation acts isotropically in the $\mathbf{JS}_{\mathrm{post}}$-whitened basis, $\mathbf R_{\mathrm{post}} = \kappa\,\mathbf I$ for some scalar $\kappa > 0$, then orthogonal conjugation by $\mathbf Q$ leaves $\mathbf R_{\mathrm{post}}$ invariant, so the polar-factor caveat of \eqref{eq:posterior-c-sandwich} drops out and
+\begin{equation}
+\mathbf C_{\mathrm{post}}
+\;=\;
+\kappa\,\mathbf C_{\mathrm{sample},\mathrm{post}},
+\qquad
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\kappa\,
+\mathbf H_{\mathrm{post}}^{-1/2}\,
+\mathbf C_{\mathrm{sample},\mathrm{post}}\,
+\mathbf H_{\mathrm{post}}^{-1/2},
+\label{eq:posterior-isotropic-kappa}
+\end{equation}
+using \eqref{eq:posterior-sigma-dcc-whitening}. Under the additional within-interval Fisher identity ($\mathbf C_{\mathrm{sample},\mathrm{post}} = \mathbf I$ by \eqref{eq:posterior-c-sample-identity}), this collapses to
+\begin{equation}
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+\;=\;
+\kappa\,\mathbf H_{\mathrm{post}}^{-1},
+\label{eq:posterior-isotropic-laplace}
+\end{equation}
+so the Posterior DCC equals the Laplace covariance scaled by a single effective-sample-size factor $\kappa$. The familiar $N_{\mathrm{eff}} = N/\kappa$ rescaling of frequentist standard errors lifts here to a scalar inflation of the entire posterior covariance matrix. The $\kappa\mathbf I$ ansatz applies in three limits established in Sections~4--8: (i) the strong-prior regime where $\mathbf R_{\mathrm{post}} \to \mathbf I$ and $\mathbf C_{\mathrm{sample},\mathrm{post}} \to \mathbf I$ jointly (Section~5.3), with $\kappa \to 1$; (ii) the within-interval Fisher identity (population correct specification, Section~10.1) combined with isotropic serial correlation; (iii) the flat-prior limit when the Likelihood $\kappa$ is itself near-isotropic. The brackets on $\kappa$ are: $\kappa \to \kappa_{\mathrm{lik}}$ (the Likelihood ESS) as $\mathbf H_{\mathrm{prior}} \to \mathbf 0$, and $\kappa \to 1$ as $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$.
+
+\paragraph{Anisotropic or sample-distorted regime.}
+If $\mathbf R_{\mathrm{post}}$ is anisotropic (temporal correlation direction-dependent) or $\mathbf C_{\mathrm{sample},\mathrm{post}} \neq \mathbf I$ (within-interval likelihood mismatch), neither \eqref{eq:posterior-isotropic-kappa} nor \eqref{eq:posterior-isotropic-laplace} reduces to a scalar correction: the distortion is structurally direction-dependent and the full matrix \eqref{eq:posterior-c-decomposition}, with attention to the polar-factor caveat \eqref{eq:posterior-c-sandwich}, is required for inference. The two diagnostics serve as gates: report a scalar $N_{\mathrm{eff}}$ only when $\mathbf R_{\mathrm{post}}$ is near-isotropic and $\mathbf C_{\mathrm{sample},\mathrm{post}}$ is near $\mathbf I$ in operator norm; otherwise report $\Sigma_{\mathrm{DCC},\mathrm{post}}$ directly.
+
+\subsection*{10.4 Flat-Prior Limit}
+
+As $\mathbf H_{\mathrm{prior}} \to \mathbf 0$, the substitutions \eqref{eq:flat-prior-limit} apply to \eqref{eq:posterior-c-sample-def}, \eqref{eq:posterior-c-MMT}, and \eqref{eq:posterior-c-decomposition}, yielding termwise
+\begin{equation}
+\mathbf C_{\mathrm{sample},\mathrm{post}} \to \mathbf C_{\mathrm{sample}},
+\qquad
+\mathbf R_{\mathrm{post}} \to \mathbf R,
+\qquad
+\mathbf C_{\mathrm{post}} \to \mathbf C,
+\label{eq:posterior-decomp-flat}
+\end{equation}
+recovering the decomposition of Section~10 of the Likelihood supplement (with the same polar-factor caveat). Rank caveats apply separately to the two whitening matrices: convergence $\mathbf C_{\mathrm{sample},\mathrm{post}} \to \mathbf C_{\mathrm{sample}}$ requires the $\mathbf H_{\mathrm{lik}}$ retained-eigenspace construction (Section~8 of the Likelihood supplement); convergence $\mathbf R_{\mathrm{post}} \to \mathbf R$ requires the distinct $\mathbf{JS}_{\mathrm{lik}}$-eigenspace construction $\mathbf R_{J_{\mathrm{sample}}}$ used there. The decomposition itself converges in the flat-prior limit on the joint retained eigenspace; off the population within-interval Fisher identity, this requires the retained eigenspaces of $\mathbf H_{\mathrm{lik}}$ and $\mathbf{JS}_{\mathrm{lik}}$ to coincide. A strictly positive $\mathbf H_{\mathrm{prior}}$ regularizes both subspaces simultaneously and makes the decomposition \eqref{eq:posterior-c-decomposition} globally well-defined.
+
+\subsection*{10.5 Strong-Prior Limit}
+
+As $\lambda_{\min}(\mathbf H_{\mathrm{prior}}) \to \infty$ at fixed $\mathbf H_{\mathrm{lik}}, \mathbf{JS}_{\mathrm{lik}}, \mathbf{JT}_{\mathrm{lik}}$: $\mathbf H_{\mathrm{post}} \to \mathbf H_{\mathrm{prior}}$, $\mathbf{JS}_{\mathrm{post}} \to \mathbf H_{\mathrm{prior}}$, and $\mathbf{JT}_{\mathrm{post}} \to \mathbf H_{\mathrm{prior}} + (\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}})$, so $\mathbf H_{\mathrm{post}}$ and $\mathbf{JS}_{\mathrm{post}}$ become asymptotically proportional (both approach $\mathbf H_{\mathrm{prior}}$, in particular they commute in the limit) and
+\begin{equation}
+\mathbf C_{\mathrm{sample},\mathrm{post}} \to \mathbf I,
+\qquad
+\mathbf R_{\mathrm{post}} \to \mathbf I,
+\qquad
+\mathbf Q \to \mathbf I,
+\qquad
+\mathbf C_{\mathrm{post}} \to \mathbf I,
+\label{eq:posterior-decomp-strong}
+\end{equation}
+each with rate $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$ from the residual bound \eqref{eq:posterior-c-residual-bound}, in agreement with Section~5.3, Section~6.5, and Section~9.6. The decomposition \eqref{eq:posterior-c-decomposition} collapses trivially to $\mathbf C_{\mathrm{post}} = \mathbf I$. Both $\mathbf C_{\mathrm{sample},\mathrm{post}}$ and $\mathbf R_{\mathrm{post}}$ lose absolute sensitivity to likelihood miscalibration and temporal correlation in this regime — a feature, not a failure mode, since inference along prior-dominated directions is governed by the prior and not by the data-side budget.
+
+\subsection*{10.6 Evidence-Correction Determinant Split}
+
+Taking determinants directly from $\mathbf C_{\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1} \mathbf{JT}_{\mathrm{post}}$ (in the similarity sense) and $\mathbf C_{\mathrm{sample},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1} \mathbf{JS}_{\mathrm{post}}$ (likewise),
+\begin{equation}
+\det(\mathbf C_{\mathrm{post}})
+\;=\;
+\frac{\det(\mathbf{JT}_{\mathrm{post}})}{\det(\mathbf H_{\mathrm{post}})}
+\;=\;
+\frac{\det(\mathbf{JS}_{\mathrm{post}})}{\det(\mathbf H_{\mathrm{post}})}
+\cdot
+\frac{\det(\mathbf{JT}_{\mathrm{post}})}{\det(\mathbf{JS}_{\mathrm{post}})}
+\;=\;
+\det(\mathbf C_{\mathrm{sample},\mathrm{post}})\,
+\det(\mathbf R_{\mathrm{post}}),
+\label{eq:posterior-det-split}
+\end{equation}
+which is unconditional (it does not rely on the polar-factor caveat of \eqref{eq:posterior-c-sandwich}: $\det(\mathbf M \mathbf R_{\mathrm{post}} \mathbf M^\top) = \det(\mathbf M)^2 \det(\mathbf R_{\mathrm{post}}) = \det(\mathbf C_{\mathrm{sample},\mathrm{post}}) \det(\mathbf R_{\mathrm{post}})$). This is forward-relevant for the Bayesian evidence correction developed in \texttt{supplement\_posterior\_evidence.tex}: the IDM evidence correction $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{post}})$ splits additively into a within-interval mismatch contribution $\tfrac{1}{2}\log\det(\mathbf C_{\mathrm{sample},\mathrm{post}})$ and a temporal-correlation contribution $\tfrac{1}{2}\log\det(\mathbf R_{\mathrm{post}})$. Both terms are computable separately from the same posterior IDM machinery; either can be reported as a standalone diagnostic of the corresponding failure mode, and the two are additive (not multiplicative) on the log-evidence scale. Under correct specification with no temporal correlation, both vanish; under correct within-interval specification with serial dependence only, the first vanishes and the second is the pure effective-sample-size correction; under within-interval misspecification only, the second vanishes and the first reports the per-interval Fisher mismatch.
+
+\paragraph{Limiting behavior of the split.}
+In the flat-prior limit, $\log\det(\mathbf C_{\mathrm{sample},\mathrm{post}}) \to \log\det(\mathbf C_{\mathrm{sample}})$ and $\log\det(\mathbf R_{\mathrm{post}}) \to \log\det(\mathbf R)$, recovering the Likelihood-supplement evidence split. In the strong-prior limit, both terms vanish at rate $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-2})$ by \eqref{eq:posterior-decomp-strong}, in agreement with the strong-prior collapse of the absolute miscalibration signal documented in Section~6.5. The standalone-diagnostic recommendation in the previous paragraph is implicitly conditioned on the moderate-prior regime where each term is at its natural $O(1)$ scale.
+
+\section*{11. Summary}
+
+This supplement lifts the Likelihood Information Distortion machinery of \texttt{supplement\_information\_distortion\_main.tex} to the Bayesian posterior by treating the prior as a single deterministic augmented observation (Section~1) and propagating its precision $\mathbf H_{\mathrm{prior}}$ additively into both the curvature and the score-fluctuation budget (Sections~2--3). The resulting Posterior IDM family is globally well-defined for any proper Gaussian prior when $\mathbf H_{\mathrm{lik}}$ is PSD (analytic Gaussian Fisher), and under the dominance condition \eqref{eq:dominance-condition} when $\mathbf H_{\mathrm{lik}}$ is indefinite (finite-difference case), in both regimes without subspace projection (Section~8). It isolates pure likelihood-side miscalibration weighted by the actual posterior curvature available for inference.
+
+\subsection*{11.1 Glossary}
+
+\begin{align*}
+\mathbf H_{\mathrm{lik}}
+&\rightarrow
+\text{likelihood Gaussian Fisher curvature (Section~2);}\\
+&\phantom{\rightarrow}\ \text{bridges to } \mathbf H \text{ of the Likelihood supplement.}\\
+\mathbf H_{\mathrm{prior}}
+&\rightarrow
+\text{prior precision (Section~2);}\\
+&\phantom{\rightarrow}\ \text{deterministic, diagonal in transformed coordinates, absent from Likelihood IDM.}\\
+\mathbf H_{\mathrm{post}}
+&\rightarrow
+\mathbf H_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}},\ \text{posterior Hessian (Section~2);}\\
+&\phantom{\rightarrow}\ \text{globally positive definite for proper prior or under the dominance condition \eqref{eq:dominance-condition}.}\\
+\mathbf{JT}_{\mathrm{lik}}
+&\rightarrow
+\text{likelihood total score covariance (Section~3);}\\
+&\phantom{\rightarrow}\ \text{bridges to } \mathbf J_{\mathrm{total}} \text{ of the Likelihood supplement.}\\
+\mathbf{JS}_{\mathrm{lik}}
+&\rightarrow
+\text{likelihood within-interval score covariance (Section~3);}\\
+&\phantom{\rightarrow}\ \text{bridges to } \mathbf J_{\mathrm{sample}} \text{ of the Likelihood supplement.}\\
+\mathbf{JT}_{\mathrm{post}}
+&\rightarrow
+\mathbf{JT}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\ \text{(Section~3, augmented-observation convention);}\\
+&\phantom{\rightarrow}\ \text{not the literal } \mathrm{Cov}(S_{\mathrm{post}})\text{, which is } \mathbf{JT}_{\mathrm{lik}}.\\
+\mathbf{JS}_{\mathrm{post}}
+&\rightarrow
+\mathbf{JS}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}}\ \text{(Section~3);}\\
+&\phantom{\rightarrow}\ \text{not the literal within-interval covariance of } S_{\mathrm{post}}\text{ (that is } \mathbf{JS}_{\mathrm{lik}}\text{);}\\
+&\phantom{\rightarrow}\ \text{same prior augmentation as } \mathbf{JT}_{\mathrm{post}}\text{, drops out of the difference } \mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}}.\\
+\mathbf C_{\mathrm{post}}
+&\rightarrow
+\mathbf H_{\mathrm{post}}^{-1/2}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1/2},\ \text{Posterior Information Distortion (Section~4);}\\
+&\phantom{\rightarrow}\ \mathbf C_{\mathrm{post}} = \mathbf I \text{ under correct likelihood specification, any proper prior.}\\
+\mathbf C_{\mathrm{sample},\mathrm{post}}
+&\rightarrow
+\mathbf H_{\mathrm{post}}^{-1/2}\, \mathbf{JS}_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1/2},\ \text{Posterior Sample Distortion (Section~10);}\\
+&\phantom{\rightarrow}\ \text{within-interval mismatch only; by construction does not see cross-interval terms}\\
+&\phantom{\rightarrow}\ \text{(those are isolated in } \mathbf R_{\mathrm{post}} \text{ via } \mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}}\text{).}\\
+\mathbf R_{\mathrm{post}}
+&\rightarrow
+\mathbf{JS}_{\mathrm{post}}^{-1/2}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf{JS}_{\mathrm{post}}^{-1/2},\ \text{Posterior Correlation Distortion (Section~9);}\\
+&\phantom{\rightarrow}\ \text{numerator of } \mathbf R_{\mathrm{post}} - \mathbf I \text{ depends only on data scores; prior } \mathbf H_{\mathrm{prior}}\\
+&\phantom{\rightarrow}\ \text{cancels from } \mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}} \text{ but rescales magnitude via } \mathbf{JS}_{\mathrm{post}}^{-1/2}.\\
+\Sigma_{\mathrm{DCC},\mathrm{post}}
+&\rightarrow
+\mathbf H_{\mathrm{post}}^{-1}\, \mathbf{JT}_{\mathrm{post}}\, \mathbf H_{\mathrm{post}}^{-1},\ \text{Posterior Distortion-Corrected Covariance (Section~6);}\\
+&\phantom{\rightarrow}\ \text{collapses to the Laplace covariance } \mathbf H_{\mathrm{post}}^{-1} \text{ under correct specification.}\\
+\mathbf b_{\mathrm{DIB},\mathrm{post}}(\theta)
+&\rightarrow
+\mathbf H_{\mathrm{post}}^{-1}\bigl(\mathbf g_{\mathrm{lik}}(\theta) + s_\pi(\theta)\bigr),\ \text{Posterior Distortion-Induced Bias (Section~7);}\\
+&\phantom{\rightarrow}\ \text{decomposes into likelihood-misspecification and prior-pull components;}\\
+&\phantom{\rightarrow}\ \text{evaluated at } \theta_0 \text{ in the population derivation, at } \widehat\theta_{\mathrm{MAP}} \text{ in the plug-in.}
+\end{align*}
+
+\subsection*{11.2 Where Posterior IDM differs from Likelihood IDM}
+
+Each Posterior IDM quantity reduces termwise to its Likelihood IDM counterpart in the flat-prior limit (Sections~4.3, 5.3, 6.5, 7.4) and in the data-dominated limit (Sections~5.3, 6.5, 7.3); when $\mathbf H_{\mathrm{lik}}$ is rank-deficient the flat-prior reduction is on its retained eigenspace, and on null directions the Posterior IDM diverges as $O(\lambda_{\min}(\mathbf H_{\mathrm{prior}})^{-1})$ as discussed in those sections. The structural differences from the Likelihood IDM are:
+\begin{itemize}
+\item \emph{Global well-posedness.} For any proper Gaussian prior with PSD $\mathbf H_{\mathrm{lik}}$, $\mathbf H_{\mathrm{post}} \succ \mathbf 0$ on all of $\mathbb{R}^d$ (Section~2.1), so the retained-eigenspace projection of Section~8 of the Likelihood supplement is unnecessary. For rank-deficient analytic $\mathbf H_{\mathrm{lik}}$, the strictly positive $\mathbf H_{\mathrm{prior}}$ absorbs the null directions with no ad hoc cutoff. For finite-difference $\mathbf H_{\mathrm{lik}}$ (possibly indefinite), the dominance condition \eqref{eq:dominance-condition}, $\mathbf H_{\mathrm{prior}} - \mathbf H_{\mathrm{lik}}^{-} \succ \mathbf 0$, is the sole bookkeeping requirement that handles indefiniteness without the numerical eigenvalue cutoff of the Likelihood case (Sections~2.1, 8).
+\item \emph{Prior cancels from the distortion residual.} By \eqref{eq:posterior-c-residual}, $\mathbf C_{\mathrm{post}} - \mathbf I = \mathbf H_{\mathrm{post}}^{-1/2}(\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}})\mathbf H_{\mathrm{post}}^{-1/2}$, so the numerator depends only on likelihood quantities. The same cancellation holds for the difference $\mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}} = \mathbf{JT}_{\mathrm{lik}} - \mathbf{JS}_{\mathrm{lik}}$ encoded by $\mathbf R_{\mathrm{post}}$ (Sections~3.2 and 9). The prior contribution rescales the magnitude of the deviation (through $\mathbf H_{\mathrm{post}}^{-1/2}$ or $\mathbf{JS}_{\mathrm{post}}^{-1/2}$) but cannot create distortion of its own.
+\item \emph{Posterior-curvature weighting.} A strong prior shrinks $\|\mathbf C_{\mathrm{post}} - \mathbf I\|$ toward zero (Section~5.3) and contracts $\Sigma_{\mathrm{DCC},\mathrm{post}}$ to $\mathbf H_{\mathrm{prior}}^{-1}$ (Section~6.5); $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ evaluated at $\theta_0$ saturates to the prior-mean shrinkage $-(\theta_0 - \mu_{\mathrm{prior}})$ (Section~7.4), while its plug-in form at $\widehat\theta_{\mathrm{MAP}}$ correspondingly contracts to zero as $\widehat\theta_{\mathrm{MAP}} \to \mu_{\mathrm{prior}}$. Both diagnostics lose absolute sensitivity to likelihood miscalibration in this regime (Sections~4.2, 6.5); this is a feature, not a failure mode, since inference along those directions is governed by the prior.
+\item \emph{Bias decomposition.} $\mathbf b_{\mathrm{DIB},\mathrm{post}}$ has a structural prior-pull term $\mathbf H_{\mathrm{post}}^{-1}\, s_\pi$ (this supplement, Section~7.5) absent from $\mathbf b_{\mathrm{DIB}}$; under the $N$-scaling of Section~7.3 this term is $O(1/N)$ along directions of positive $\mathbf H_{\mathrm{lik}}$ curvature, while the likelihood-misspecification term inherits the $O(1)$ behaviour of the Likelihood DIB. Along null/weakly-identified directions of $\mathbf H_{\mathrm{lik}}$, the prior-pull term remains $O(1)$ (Section~7.3).
+\end{itemize}
+
+\subsection*{11.3 Concluding remarks}
+
+\paragraph{Posterior IDM as natural Bayesian generalization.}
+The Posterior IDM is the natural Bayesian counterpart of the Likelihood IDM: it is defined whenever $\mathbf H_{\mathrm{post}} \succ \mathbf 0$ (analytic Gaussian Fisher with proper prior, or finite-difference $\mathbf H_{\mathrm{lik}}$ satisfying the dominance condition \eqref{eq:dominance-condition}), regardless of singularity or rank deficiency of $\mathbf H_{\mathrm{lik}}$. Sections~4--7 and the sample/correlation decompositions of Sections~9--10 are stated globally on $\mathbb{R}^d$ with no subspace selection.
+
+\paragraph{Consistency identity under any proper prior.}
+Under correct likelihood specification at $\theta_0$ and any proper Gaussian prior, the population information identity $\mathbf{JT}_{\mathrm{lik}} = \mathbf H_{\mathrm{lik}}$ combined with the augmented-observation convention \eqref{eq:JT-post-def} gives $\mathbf{JT}_{\mathrm{post}} = \mathbf H_{\mathrm{post}}$ by construction (not as an independent posterior-side Bartlett identity), hence $\mathbf C_{\mathrm{post}} = \mathbf I$ and $\Sigma_{\mathrm{DCC},\mathrm{post}} = \mathbf H_{\mathrm{post}}^{-1}$ (the Laplace posterior covariance) \emph{regardless of prior strength}. The prior contribution enters $\mathbf H_{\mathrm{post}}$ and $\mathbf{JT}_{\mathrm{post}}$ symmetrically and cancels under the whitening transform.
+
+\paragraph{Diagnostic isolates pure likelihood-side miscalibration.}
+Under likelihood misspecification, the deviation $\mathbf C_{\mathrm{post}} - \mathbf I = \mathbf H_{\mathrm{post}}^{-1/2}(\mathbf{JT}_{\mathrm{lik}} - \mathbf H_{\mathrm{lik}})\mathbf H_{\mathrm{post}}^{-1/2}$ has a numerator that depends only on likelihood quantities, so the diagnostic isolates likelihood-side calibration failures weighted by the actual posterior curvature. The same cancellation applies to $\mathbf{JT}_{\mathrm{post}} - \mathbf{JS}_{\mathrm{post}}$, so the numerator of $\mathbf R_{\mathrm{post}} - \mathbf I$ depends only on the data scores; the whitening by $\mathbf{JS}_{\mathrm{post}}^{-1/2} = (\mathbf{JS}_{\mathrm{lik}} + \mathbf H_{\mathrm{prior}})^{-1/2}$ rescales the magnitude in proportion to the posterior within-interval budget but cannot create cross-interval distortion of its own.
+
+\paragraph{Likelihood vs.\ Posterior IDM as a reporting choice.}
+The choice between Likelihood IDM and Posterior IDM is a reporting decision, not a structural restriction. Reported in well-conditioned regimes, $\mathbf C$ diagnoses pure likelihood miscalibration in Gaussian Fisher geometry, while $\mathbf C_{\mathrm{post}}$ diagnoses the same miscalibration weighted by the posterior curvature actually available for inference (Section~8.3). When $\mathbf H_{\mathrm{lik}}$ is singular, near-singular, or indefinite (the latter subject to the dominance condition \eqref{eq:dominance-condition}), the Posterior IDM is the only globally well-defined report and replaces the retained-eigenspace machinery of Section~8 of the Likelihood supplement.
+
+\paragraph{Companion documents.}
+The definitions established in Sections~1--10 of this supplement underwrite three further analyses in this folder. The Posterior DCC of Section~6 enters the distortion correction to the Bayesian model evidence and the Bayes factor comparison developed in \texttt{supplement\_posterior\_evidence.tex}. The full Posterior IDM family enters the information-gain decomposition developed in \texttt{supplement\_information\_gain.tex}, separating data-driven from prior-driven contributions. The dominance condition \eqref{eq:dominance-condition}, the well-posedness regimes of Section~8, and the bootstrap-level monitoring of $\mathbf C_{\mathrm{post}}$, $\mathbf R_{\mathrm{post}}$, and $\Sigma_{\mathrm{DCC},\mathrm{post}}$ feed the safety-categorization policy of \texttt{supplement\_safety\_categorization.tex}. The Posterior IDM defined here is the parameter-space substrate on which all three companion documents build.
+
+
 \end{document}
