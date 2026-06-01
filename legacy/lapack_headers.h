@@ -695,13 +695,13 @@ constexpr std::string function_name<&lapack::Lapack_DCC_Matrix_Subspace>() {
 }
 
 template <>
-constexpr std::string function_name<&lapack::Lapack_Sample_Distortion_Matrix_Subspace>() {
-    return "Lapack_Sample_Distortion_Matrix_Subspace";
+constexpr std::string function_name<&lapack::Lapack_Likelihood_Sample_Distortion_Subspace>() {
+    return "Lapack_Likelihood_Sample_Distortion_Subspace";
 }
 
 template <>
-constexpr std::string function_name<&lapack::Lapack_Correlation_Distortion_Matrix_Subspace>() {
-    return "Lapack_Correlation_Distortion_Matrix_Subspace";
+constexpr std::string function_name<&lapack::Lapack_Likelihood_Correlation_Distortion_Subspace>() {
+    return "Lapack_Likelihood_Correlation_Distortion_Subspace";
 }
 
 template <>
@@ -2616,7 +2616,7 @@ inline Maybe_error<SymPosDefMatrix<double>> Lapack_DCC_Matrix_Subspace(
     return dense_to_semidefinite(embed_from_basis(basis, maybe_validated.value()));
 }
 
-inline Maybe_error<SymPosDefMatrix<double>> Lapack_Sample_Distortion_Matrix_Subspace(
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_Likelihood_Sample_Distortion_Subspace(
     const SymPosDefMatrix<double>& H, const SymPosDefMatrix<double>& J_sample, double rtol,
     double atol) {
     return Lapack_PSD_Normalized_Congruence_Matrix(H, J_sample, "H",
@@ -2624,7 +2624,7 @@ inline Maybe_error<SymPosDefMatrix<double>> Lapack_Sample_Distortion_Matrix_Subs
                                                    atol);
 }
 
-inline Maybe_error<SymPosDefMatrix<double>> Lapack_Correlation_Distortion_Matrix_Subspace(
+inline Maybe_error<SymPosDefMatrix<double>> Lapack_Likelihood_Correlation_Distortion_Subspace(
     const SymPosDefMatrix<double>& J_sample, const SymPosDefMatrix<double>& J_total, double rtol,
     double atol) {
     return Lapack_PSD_Normalized_Congruence_Matrix(
@@ -2663,9 +2663,9 @@ inline Maybe_error<SymPosDefMatrix<double>> Lapack_C_h_R_C_h_Subspace(
                                         atol);
 }
 
-inline Maybe_error<Matrix<double>> Lapack_Distortion_Induced_Bias_Subspace(
+inline Maybe_error<Matrix<double>> Lapack_Likelihood_Distortion_Induced_Bias_Subspace(
     const SymPosDefMatrix<double>& H, const Matrix<double>& g, double rtol, double atol) {
-    return_error<Matrix<double>> Error{"Lapack_Distortion_Induced_Bias_Subspace: "};
+    return_error<Matrix<double>> Error{"Lapack_Likelihood_Distortion_Induced_Bias_Subspace: "};
 
     if (H.nrows() != H.ncols())
         return Error("Distortion-induced bias: H is not square");
@@ -2882,7 +2882,7 @@ inline Maybe_error<SymPosDefMatrix<double>> apply_inverse_congruence(
 }
 
 // result = basis * (sqrt_vals * basisᵀ · B · basis · sqrt_vals) * basisᵀ
-// Congruence with A^{1/2}: used by the c_h R c_h subspace (Information_Distortion_Reconstituted).
+// Congruence with A^{1/2}: used by the c_h R c_h subspace (Likelihood_Information_Distortion_Reconstituted).
 inline Maybe_error<SymPosDefMatrix<double>> apply_sqrt_congruence(
     const PSDDecomposition& W, const SymPosDefMatrix<double>& B, const std::string& result_name,
     double rtol, double atol) {
@@ -2926,7 +2926,7 @@ inline Maybe_error<Matrix<double>> apply_inverse_vector(const PSDDecomposition& 
 }
 
 // result = basis * inv * basisᵀ. The pseudo-inverse of the original PSD matrix.
-// Used by Fisher_Covariance (FC = H^{-1}).
+// Used by Likelihood_Fisher_Covariance (FC = H^{-1}).
 inline SymPosDefMatrix<double> apply_inverse_as_matrix(const PSDDecomposition& W) {
     if (W.empty)
         return SymPosDefMatrix<double>(W.original_dim, W.original_dim, 0.0);

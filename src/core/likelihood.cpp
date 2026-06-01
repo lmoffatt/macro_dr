@@ -302,7 +302,7 @@ void write_bootstrap_samples_binary(const std::vector<Sample>& samples,
     // enforces consistent (rows, cols) per observable across replicates by
     // NaN-padding any shape mismatch.
     const std::size_t p =
-        get<Numerical_Fisher_Information>(samples[0])().value().nrows();
+        get<Likelihood_Numerical_Fisher_Information>(samples[0])().value().nrows();
     const double NaN_d = std::numeric_limits<double>::quiet_NaN();
 
     std::vector<cell_observable_data> obs_list;
@@ -365,116 +365,116 @@ void write_bootstrap_samples_binary(const std::vector<Sample>& samples,
                   return get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(r)())().value();
               });
     add_dense("idm", p, p, [](const auto& r) -> const SymPosDefMatrix<double>& {
-        return get<Information_Distortion_Matrix>(r)().value();
+        return get<Likelihood_Information_Distortion>(r)().value();
     });
     add_dense("gfd", p, p, [](const auto& r) -> const SymPosDefMatrix<double>& {
-        return get<Gaussian_Fisher_Distortion>(r)().value();
+        return get<Likelihood_Gaussian_Fisher_Distortion>(r)().value();
     });
     add_dense("sdm", p, p, [](const auto& r) -> const SymPosDefMatrix<double>& {
-        return get<Sample_Distortion_Matrix>(r)().value();
+        return get<Likelihood_Sample_Distortion>(r)().value();
     });
     add_dense("cdm", p, p, [](const auto& r) -> const SymPosDefMatrix<double>& {
-        return get<Correlation_Distortion_Matrix>(r)().value();
+        return get<Likelihood_Correlation_Distortion>(r)().value();
     });
     add_dense("fisher_covariance", p, p,
               [](const auto& r) -> const SymPosDefMatrix<double>& {
-                  return get<Fisher_Covariance>(r)().value();
+                  return get<Likelihood_Fisher_Covariance>(r)().value();
               });
     add_dense("dcc", p, p, [](const auto& r) -> const SymPosDefMatrix<double>& {
-        return get<Distortion_Corrected_Covariance>(r)().value();
+        return get<Likelihood_Distortion_Corrected_Covariance>(r)().value();
     });
     add_dense("numerical_fim", p, p,
               [](const auto& r) -> const SymPosDefMatrix<double>& {
-                  return get<Numerical_Fisher_Information>(r)().value();
+                  return get<Likelihood_Numerical_Fisher_Information>(r)().value();
               });
     add_dense("idr", p, p, [](const auto& r) -> const SymPosDefMatrix<double>& {
-        return get<Information_Distortion_Reconstituted>(r)().value();
+        return get<Likelihood_Information_Distortion_Reconstituted>(r)().value();
     });
     // Eigenvalue spectra are p × 1 sorted-descending column vectors
     add_dense("idm_spectrum", p, 1, [](const auto& r) -> const Matrix<double>& {
-        return get<Eigenvalue_Spectrum<Information_Distortion_Matrix>>(r)();
+        return get<Eigenvalue_Spectrum<Likelihood_Information_Distortion>>(r)();
     });
     add_dense("gfd_spectrum", p, 1, [](const auto& r) -> const Matrix<double>& {
-        return get<Eigenvalue_Spectrum<Gaussian_Fisher_Distortion>>(r)();
+        return get<Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_dense("fisher_covariance_spectrum", p, 1,
               [](const auto& r) -> const Matrix<double>& {
-                  return get<Eigenvalue_Spectrum<Fisher_Covariance>>(r)();
+                  return get<Eigenvalue_Spectrum<Likelihood_Fisher_Covariance>>(r)();
               });
     add_dense("dcc_spectrum", p, 1, [](const auto& r) -> const Matrix<double>& {
-        return get<Eigenvalue_Spectrum<Distortion_Corrected_Covariance>>(r)();
+        return get<Eigenvalue_Spectrum<Likelihood_Distortion_Corrected_Covariance>>(r)();
     });
     add_scalar("idm_log_det", [](const auto& r) {
-        return get<log_Det<Information_Distortion_Matrix>>(r)();
+        return get<log_Det<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("gfd_log_det", [](const auto& r) {
-        return get<log_Det<Gaussian_Fisher_Distortion>>(r)();
+        return get<log_Det<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("fisher_covariance_log_det", [](const auto& r) {
-        return get<log_Det<Fisher_Covariance>>(r)();
+        return get<log_Det<Likelihood_Fisher_Covariance>>(r)();
     });
     add_scalar("dcc_log_det", [](const auto& r) {
-        return get<log_Det<Distortion_Corrected_Covariance>>(r)();
+        return get<log_Det<Likelihood_Distortion_Corrected_Covariance>>(r)();
     });
     add_scalar("sdm_log_det", [](const auto& r) {
-        return get<log_Det<Sample_Distortion_Matrix>>(r)();
+        return get<log_Det<Likelihood_Sample_Distortion>>(r)();
     });
     add_scalar("cdm_log_det", [](const auto& r) {
-        return get<log_Det<Correlation_Distortion_Matrix>>(r)();
+        return get<log_Det<Likelihood_Correlation_Distortion>>(r)();
     });
     add_scalar("idm_spectrum_condition_number", [](const auto& r) {
-        return get<Spectrum_Condition_Number<Information_Distortion_Matrix>>(r)();
+        return get<Spectrum_Condition_Number<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("gfd_spectrum_condition_number", [](const auto& r) {
-        return get<Spectrum_Condition_Number<Gaussian_Fisher_Distortion>>(r)();
+        return get<Spectrum_Condition_Number<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("fisher_covariance_spectrum_condition_number", [](const auto& r) {
-        return get<Spectrum_Condition_Number<Fisher_Covariance>>(r)();
+        return get<Spectrum_Condition_Number<Likelihood_Fisher_Covariance>>(r)();
     });
     add_scalar("dcc_spectrum_condition_number", [](const auto& r) {
-        return get<Spectrum_Condition_Number<Distortion_Corrected_Covariance>>(r)();
+        return get<Spectrum_Condition_Number<Likelihood_Distortion_Corrected_Covariance>>(r)();
     });
     add_scalar("fisher_covariance_effective_rank", [](const auto& r) {
-        return static_cast<double>(get<Effective_Rank<Fisher_Covariance>>(r)());
+        return static_cast<double>(get<Effective_Rank<Likelihood_Fisher_Covariance>>(r)());
     });
     add_scalar("dcc_effective_rank", [](const auto& r) {
-        return static_cast<double>(get<Effective_Rank<Distortion_Corrected_Covariance>>(r)());
+        return static_cast<double>(get<Effective_Rank<Likelihood_Distortion_Corrected_Covariance>>(r)());
     });
     add_scalar("idm_max_eigenvalue", [](const auto& r) {
-        return get<Max_Eigenvalue<Information_Distortion_Matrix>>(r)();
+        return get<Max_Eigenvalue<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("idm_min_eigenvalue", [](const auto& r) {
-        return get<Min_Eigenvalue<Information_Distortion_Matrix>>(r)();
+        return get<Min_Eigenvalue<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("idm_mean_log_eigenvalue", [](const auto& r) {
-        return get<Mean_Log_Eigenvalue<Information_Distortion_Matrix>>(r)();
+        return get<Mean_Log_Eigenvalue<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("idm_log_eigenvalue_variance", [](const auto& r) {
-        return get<Log_Eigenvalue_Variance<Information_Distortion_Matrix>>(r)();
+        return get<Log_Eigenvalue_Variance<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("idm_affine_invariant_distance", [](const auto& r) {
-        return get<Affine_Invariant_Distance<Information_Distortion_Matrix>>(r)();
+        return get<Affine_Invariant_Distance<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("idm_symmetrized_kl_distortion", [](const auto& r) {
-        return get<Symmetrized_KL_Distortion<Information_Distortion_Matrix>>(r)();
+        return get<Symmetrized_KL_Distortion<Likelihood_Information_Distortion>>(r)();
     });
     add_scalar("gfd_max_eigenvalue", [](const auto& r) {
-        return get<Max_Eigenvalue<Gaussian_Fisher_Distortion>>(r)();
+        return get<Max_Eigenvalue<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("gfd_min_eigenvalue", [](const auto& r) {
-        return get<Min_Eigenvalue<Gaussian_Fisher_Distortion>>(r)();
+        return get<Min_Eigenvalue<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("gfd_mean_log_eigenvalue", [](const auto& r) {
-        return get<Mean_Log_Eigenvalue<Gaussian_Fisher_Distortion>>(r)();
+        return get<Mean_Log_Eigenvalue<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("gfd_log_eigenvalue_variance", [](const auto& r) {
-        return get<Log_Eigenvalue_Variance<Gaussian_Fisher_Distortion>>(r)();
+        return get<Log_Eigenvalue_Variance<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("gfd_affine_invariant_distance", [](const auto& r) {
-        return get<Affine_Invariant_Distance<Gaussian_Fisher_Distortion>>(r)();
+        return get<Affine_Invariant_Distance<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
     add_scalar("gfd_symmetrized_kl_distortion", [](const auto& r) {
-        return get<Symmetrized_KL_Distortion<Gaussian_Fisher_Distortion>>(r)();
+        return get<Symmetrized_KL_Distortion<Likelihood_Gaussian_Fisher_Distortion>>(r)();
     });
 
     // Lock-free: atomic counter assigns a unique cell_id; thread writes its
@@ -2575,7 +2575,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
             // predictive is a finite mixture and y_mean / y_var carry its
             // first two moments (with the within-cell variance term included
             // in run_step), so this is the moment-match approximation —
-            // exactly the quantity Gaussian_Fisher_Distortion measures
+            // exactly the quantity Likelihood_Gaussian_Fisher_Distortion measures
             // against the numerical truth.
             //
             // NaN-observation samples / secular-growth derivatives produce
@@ -2598,7 +2598,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
             Moment_statistics<trust_coefficient>, Moment_statistics<dlogL, true>,
             Moment_statistics<Gaussian_Fisher_Information, false>>>>{},
         std::type_identity<
-            Evolution_of<Vector_Space<Sample_Distortion_Matrix, Distortion_Induced_Bias>>>{},
+            Evolution_of<Vector_Space<Likelihood_Sample_Distortion, Likelihood_Distortion_Induced_Bias>>>{},
 
         // Same NaN guards as in sum_moments: r_std and trust_coefficient inherit
         // NaN from NaN-observation samples (unlike logL/elogL/dlogL which are
@@ -2674,7 +2674,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
     };
     auto F_b = compute_F_b();
 
-    auto numerical_fim = Numerical_Fisher_Information(F_b.value(), F_b.parameters_ptr());
+    auto numerical_fim = Likelihood_Numerical_Fisher_Information(F_b.value(), F_b.parameters_ptr());
 
     auto maybe_W_F_b = lapack::compute_psd_decomp(F_b.value(), "F_b", k_psd_rtol, k_psd_atol);
     lapack::PSDDecomposition W_F_b;
@@ -2700,7 +2700,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
     for (auto& m : evol_moments()) {
         auto g_t = get<mean<dlogL>>(get<dlogL>(m)())();
 
-        get<Sample_Distortion_Matrix>(m)() =
+        get<Likelihood_Sample_Distortion>(m)() =
             parameter_spd_payload(
                 lapack::apply_normalized_congruence(
                     W_F_b, get<covariance<dlogL>>(get<dlogL>(m)())().value(),
@@ -2708,7 +2708,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
                     .value_or(nan_spd()),
                 F_b.parameters_ptr());
 
-        get<Distortion_Induced_Bias>(m)() =
+        get<Likelihood_Distortion_Induced_Bias>(m)() =
             parameter_vector_payload(
                 lapack::apply_inverse_vector(W_F_b, g_t.value(),
                                              "Distortion-induced bias")
@@ -2727,7 +2727,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
             evol_moments(), [](const auto& m) { return get<Gaussian_Fisher_Information>(m)(); });
 
     // G_b: cheap analytic Gaussian FIM (Σ_t GFI_t aggregated and bootstrap-meaned).
-    // Used only as the normalization frame for the new Gaussian_Fisher_Distortion
+    // Used only as the normalization frame for the new Likelihood_Gaussian_Fisher_Distortion
     // diagnostic — no longer drives any other diagnostic.
     auto G_b = get<mean<Sum<Gaussian_Fisher_Information>>>(
         get<Sum<Gaussian_Fisher_Information>>(sum_moments)());
@@ -2737,9 +2737,9 @@ auto calculate_Likelihood_diagnostics_preset_f(
     auto J_sample = get<covariance<dlogL>>(sum_dlogL());
     auto score_mean = get<mean<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)());
 
-    // Information_Distortion_Matrix uses F_b as the H reference (numerical
+    // Likelihood_Information_Distortion uses F_b as the H reference (numerical
     // truth, not the cheap Gaussian-formula approximation).
-    auto idm = Information_Distortion_Matrix(
+    auto idm = Likelihood_Information_Distortion(
         lapack::apply_normalized_congruence(W_F_b, J().value(), "IDM subspace matrix", k_psd_rtol,
                                             k_psd_atol)
             .value_or(nan_spd()),
@@ -2748,7 +2748,7 @@ auto calculate_Likelihood_diagnostics_preset_f(
     // parameter directions (e.g. Num_ch_mean for the lifted micro path) before
     // computing the determinant, so a structurally rank-deficient FIM yields a
     // finite pseudo-log-det instead of −∞ / NaN that poisons the bootstrap.
-    auto log_det_idm = log_Det<Information_Distortion_Matrix>(
+    auto log_det_idm = log_Det<Likelihood_Information_Distortion>(
         logdet_active_subspace(idm()));
 
     // Spectral-scalar suite for IDM: λ_max/min, ē, s², D_AI, D_J — see
@@ -2756,38 +2756,38 @@ auto calculate_Likelihood_diagnostics_preset_f(
     // wired generically (κ, effective rank, sorted spectrum) for IDM.
     auto idm_scalars = compute_distortion_scalars(idm().value(), k_psd_rtol, k_psd_atol);
     auto idm_lambda_max =
-        Max_Eigenvalue<Information_Distortion_Matrix>(idm_scalars.lambda_max);
+        Max_Eigenvalue<Likelihood_Information_Distortion>(idm_scalars.lambda_max);
     auto idm_lambda_min =
-        Min_Eigenvalue<Information_Distortion_Matrix>(idm_scalars.lambda_min);
+        Min_Eigenvalue<Likelihood_Information_Distortion>(idm_scalars.lambda_min);
     auto idm_mean_log =
-        Mean_Log_Eigenvalue<Information_Distortion_Matrix>(idm_scalars.mean_log_eigenvalue);
+        Mean_Log_Eigenvalue<Likelihood_Information_Distortion>(idm_scalars.mean_log_eigenvalue);
     auto idm_log_var =
-        Log_Eigenvalue_Variance<Information_Distortion_Matrix>(idm_scalars.log_eigenvalue_variance);
-    auto idm_d_ai = Affine_Invariant_Distance<Information_Distortion_Matrix>(
+        Log_Eigenvalue_Variance<Likelihood_Information_Distortion>(idm_scalars.log_eigenvalue_variance);
+    auto idm_d_ai = Affine_Invariant_Distance<Likelihood_Information_Distortion>(
         idm_scalars.affine_invariant_distance);
-    auto idm_d_j = Symmetrized_KL_Distortion<Information_Distortion_Matrix>(
+    auto idm_d_j = Symmetrized_KL_Distortion<Likelihood_Information_Distortion>(
         idm_scalars.symmetrized_kl_distortion);
     auto maybe_W_idm =
         lapack::compute_psd_decomp(idm().value(), "IDM", k_psd_rtol, k_psd_atol);
     lapack::PSDDecomposition W_idm;
     if (maybe_W_idm) W_idm = std::move(maybe_W_idm.value());
     auto idm_spectrum =
-        Eigenvalue_Spectrum<Information_Distortion_Matrix>(lapack::eigenvalue_spectrum(W_idm));
-    auto idm_cond = Spectrum_Condition_Number<Information_Distortion_Matrix>(
+        Eigenvalue_Spectrum<Likelihood_Information_Distortion>(lapack::eigenvalue_spectrum(W_idm));
+    auto idm_cond = Spectrum_Condition_Number<Likelihood_Information_Distortion>(
         lapack::spectrum_condition_number(W_idm));
 
-    // Gaussian_Fisher_Distortion = inv(√G_b) · F_b · inv(√G_b) — measures how
+    // Likelihood_Gaussian_Fisher_Distortion = inv(√G_b) · F_b · inv(√G_b) — measures how
     // far the cheap analytic Gaussian-formula FIM is from the numerical truth,
     // using the IDM-frame convention (identity ⇔ no distortion).
     auto maybe_W_G_b = lapack::compute_psd_decomp(G_b().value(), "G_b", k_psd_rtol, k_psd_atol);
     lapack::PSDDecomposition W_G_b;
     if (maybe_W_G_b) W_G_b = std::move(maybe_W_G_b.value());
-    auto gfd = Gaussian_Fisher_Distortion(
+    auto gfd = Likelihood_Gaussian_Fisher_Distortion(
         lapack::apply_normalized_congruence(W_G_b, F_b.value(), "GFD subspace matrix", k_psd_rtol,
                                             k_psd_atol)
             .value_or(nan_spd()),
         F_b.parameters_ptr());
-    auto log_det_gfd = log_Det<Gaussian_Fisher_Distortion>(
+    auto log_det_gfd = log_Det<Likelihood_Gaussian_Fisher_Distortion>(
         logdet_active_subspace(gfd()));
 
     // Same spectral-scalar suite for GFD — validates the calibration-shortcut
@@ -2795,33 +2795,33 @@ auto calculate_Likelihood_diagnostics_preset_f(
     // information); see compute_distortion_scalars.
     auto gfd_scalars = compute_distortion_scalars(gfd().value(), k_psd_rtol, k_psd_atol);
     auto gfd_lambda_max =
-        Max_Eigenvalue<Gaussian_Fisher_Distortion>(gfd_scalars.lambda_max);
+        Max_Eigenvalue<Likelihood_Gaussian_Fisher_Distortion>(gfd_scalars.lambda_max);
     auto gfd_lambda_min =
-        Min_Eigenvalue<Gaussian_Fisher_Distortion>(gfd_scalars.lambda_min);
+        Min_Eigenvalue<Likelihood_Gaussian_Fisher_Distortion>(gfd_scalars.lambda_min);
     auto gfd_mean_log =
-        Mean_Log_Eigenvalue<Gaussian_Fisher_Distortion>(gfd_scalars.mean_log_eigenvalue);
+        Mean_Log_Eigenvalue<Likelihood_Gaussian_Fisher_Distortion>(gfd_scalars.mean_log_eigenvalue);
     auto gfd_log_var =
-        Log_Eigenvalue_Variance<Gaussian_Fisher_Distortion>(gfd_scalars.log_eigenvalue_variance);
-    auto gfd_d_ai = Affine_Invariant_Distance<Gaussian_Fisher_Distortion>(
+        Log_Eigenvalue_Variance<Likelihood_Gaussian_Fisher_Distortion>(gfd_scalars.log_eigenvalue_variance);
+    auto gfd_d_ai = Affine_Invariant_Distance<Likelihood_Gaussian_Fisher_Distortion>(
         gfd_scalars.affine_invariant_distance);
-    auto gfd_d_j = Symmetrized_KL_Distortion<Gaussian_Fisher_Distortion>(
+    auto gfd_d_j = Symmetrized_KL_Distortion<Likelihood_Gaussian_Fisher_Distortion>(
         gfd_scalars.symmetrized_kl_distortion);
     auto maybe_W_gfd =
         lapack::compute_psd_decomp(gfd().value(), "GFD", k_psd_rtol, k_psd_atol);
     lapack::PSDDecomposition W_gfd;
     if (maybe_W_gfd) W_gfd = std::move(maybe_W_gfd.value());
     auto gfd_spectrum =
-        Eigenvalue_Spectrum<Gaussian_Fisher_Distortion>(lapack::eigenvalue_spectrum(W_gfd));
-    auto gfd_cond = Spectrum_Condition_Number<Gaussian_Fisher_Distortion>(
+        Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion>(lapack::eigenvalue_spectrum(W_gfd));
+    auto gfd_cond = Spectrum_Condition_Number<Likelihood_Gaussian_Fisher_Distortion>(
         lapack::spectrum_condition_number(W_gfd));
 
-    auto sdm = Sample_Distortion_Matrix(
+    auto sdm = Likelihood_Sample_Distortion(
         lapack::apply_normalized_congruence(W_F_b, J_sample().value(),
                                             "sample distortion subspace matrix", k_psd_rtol,
                                             k_psd_atol)
             .value_or(nan_spd()),
         F_b.parameters_ptr());
-    auto log_det_sdm = log_Det<Sample_Distortion_Matrix>(
+    auto log_det_sdm = log_Det<Likelihood_Sample_Distortion>(
         logdet_active_subspace(sdm()));
 
     auto maybe_W_Js = lapack::compute_psd_decomp(J_sample().value(), "J_sample", k_psd_rtol,
@@ -2829,20 +2829,20 @@ auto calculate_Likelihood_diagnostics_preset_f(
     lapack::PSDDecomposition W_Js;
     if (maybe_W_Js) W_Js = std::move(maybe_W_Js.value());
 
-    auto cdm = Correlation_Distortion_Matrix(
+    auto cdm = Likelihood_Correlation_Distortion(
         lapack::apply_normalized_congruence(W_Js, J().value(),
                                             "correlation distortion subspace matrix", k_psd_rtol,
                                             k_psd_atol)
             .value_or(nan_spd()),
         J_sample().parameters_ptr());
-    auto log_det_cdm = log_Det<Correlation_Distortion_Matrix>(
+    auto log_det_cdm = log_Det<Likelihood_Correlation_Distortion>(
         logdet_active_subspace(cdm()));
 
     auto maybe_W_SDM = lapack::compute_psd_decomp(sdm().value(), "SDM", k_psd_rtol, k_psd_atol);
     lapack::PSDDecomposition W_SDM;
     if (maybe_W_SDM) W_SDM = std::move(maybe_W_SDM.value());
 
-    auto idm2 = Information_Distortion_Reconstituted(
+    auto idm2 = Likelihood_Information_Distortion_Reconstituted(
         lapack::apply_sqrt_congruence(W_SDM, cdm().value(),
                                       "reconstituted distortion matrix", k_psd_rtol, k_psd_atol)
             .value_or(nan_spd()),
@@ -2860,47 +2860,47 @@ auto calculate_Likelihood_diagnostics_preset_f(
     auto null_proj_matrix = lapack::null_space_projector(W_F_b, k_psd_rtol, k_psd_atol);
     auto worst_proj_matrix = lapack::worst_subspace_projector(W_F_b);
 
-    auto fc = Fisher_Covariance(lapack::apply_inverse_as_matrix(W_F_b), F_b.parameters_ptr());
-    auto log_det_fc = log_Det<Fisher_Covariance>(logdet_active_subspace(fc()));
+    auto fc = Likelihood_Fisher_Covariance(lapack::apply_inverse_as_matrix(W_F_b), F_b.parameters_ptr());
+    auto log_det_fc = log_Det<Likelihood_Fisher_Covariance>(logdet_active_subspace(fc()));
     // Spectral-form correlations: bounded in [-1, 1] by construction, computed
     // directly from (V, λ) without reconstructing a p×p covariance.
-    using fc_corr_payload = typename Correlation_Of<Fisher_Covariance>::payload_type;
-    auto corr_fc = Correlation_Of<Fisher_Covariance>(
+    using fc_corr_payload = typename Correlation_Of<Likelihood_Fisher_Covariance>::payload_type;
+    auto corr_fc = Correlation_Of<Likelihood_Fisher_Covariance>(
         fc_corr_payload(lapack::fc_correlation_from_decomp(W_F_b), F_b.parameters_ptr()));
-    auto spectrum_fc = Eigenvalue_Spectrum<Fisher_Covariance>(spectrum_F_mat);
-    auto eff_rank_fc = Effective_Rank<Fisher_Covariance>(eff_rank_F);
-    auto cond_fc = Spectrum_Condition_Number<Fisher_Covariance>(cond_F);
-    using fc_null_payload = typename Null_Space_Projector<Fisher_Covariance>::payload_type;
-    auto null_proj_fc = Null_Space_Projector<Fisher_Covariance>(
+    auto spectrum_fc = Eigenvalue_Spectrum<Likelihood_Fisher_Covariance>(spectrum_F_mat);
+    auto eff_rank_fc = Effective_Rank<Likelihood_Fisher_Covariance>(eff_rank_F);
+    auto cond_fc = Spectrum_Condition_Number<Likelihood_Fisher_Covariance>(cond_F);
+    using fc_null_payload = typename Null_Space_Projector<Likelihood_Fisher_Covariance>::payload_type;
+    auto null_proj_fc = Null_Space_Projector<Likelihood_Fisher_Covariance>(
         fc_null_payload(null_proj_matrix, F_b.parameters_ptr()));
-    using fc_worst_payload = typename Worst_Subspace_Projector<Fisher_Covariance>::payload_type;
-    auto worst_proj_fc = Worst_Subspace_Projector<Fisher_Covariance>(
+    using fc_worst_payload = typename Worst_Subspace_Projector<Likelihood_Fisher_Covariance>::payload_type;
+    auto worst_proj_fc = Worst_Subspace_Projector<Likelihood_Fisher_Covariance>(
         fc_worst_payload(worst_proj_matrix, F_b.parameters_ptr()));
 
-    auto dcc = Distortion_Corrected_Covariance(
+    auto dcc = Likelihood_Distortion_Corrected_Covariance(
         lapack::apply_inverse_congruence(W_F_b, J().value(), "DCC subspace matrix", k_psd_rtol,
                                          k_psd_atol)
             .value_or(nan_spd()),
         F_b.parameters_ptr());
-    auto log_det_dcc = log_Det<Distortion_Corrected_Covariance>(logdet_active_subspace(dcc()));
+    auto log_det_dcc = log_Det<Likelihood_Distortion_Corrected_Covariance>(logdet_active_subspace(dcc()));
     using dcc_corr_payload =
-        typename Correlation_Of<Distortion_Corrected_Covariance>::payload_type;
-    auto corr_dcc = Correlation_Of<Distortion_Corrected_Covariance>(
+        typename Correlation_Of<Likelihood_Distortion_Corrected_Covariance>::payload_type;
+    auto corr_dcc = Correlation_Of<Likelihood_Distortion_Corrected_Covariance>(
         dcc_corr_payload(lapack::dcc_correlation_from_decomp(W_F_b, J().value()),
                          F_b.parameters_ptr()));
-    auto spectrum_dcc = Eigenvalue_Spectrum<Distortion_Corrected_Covariance>(spectrum_F_mat);
-    auto eff_rank_dcc = Effective_Rank<Distortion_Corrected_Covariance>(eff_rank_F);
-    auto cond_dcc = Spectrum_Condition_Number<Distortion_Corrected_Covariance>(cond_F);
+    auto spectrum_dcc = Eigenvalue_Spectrum<Likelihood_Distortion_Corrected_Covariance>(spectrum_F_mat);
+    auto eff_rank_dcc = Effective_Rank<Likelihood_Distortion_Corrected_Covariance>(eff_rank_F);
+    auto cond_dcc = Spectrum_Condition_Number<Likelihood_Distortion_Corrected_Covariance>(cond_F);
     using dcc_null_payload =
-        typename Null_Space_Projector<Distortion_Corrected_Covariance>::payload_type;
-    auto null_proj_dcc = Null_Space_Projector<Distortion_Corrected_Covariance>(
+        typename Null_Space_Projector<Likelihood_Distortion_Corrected_Covariance>::payload_type;
+    auto null_proj_dcc = Null_Space_Projector<Likelihood_Distortion_Corrected_Covariance>(
         dcc_null_payload(null_proj_matrix, F_b.parameters_ptr()));
     using dcc_worst_payload =
-        typename Worst_Subspace_Projector<Distortion_Corrected_Covariance>::payload_type;
-    auto worst_proj_dcc = Worst_Subspace_Projector<Distortion_Corrected_Covariance>(
+        typename Worst_Subspace_Projector<Likelihood_Distortion_Corrected_Covariance>::payload_type;
+    auto worst_proj_dcc = Worst_Subspace_Projector<Likelihood_Distortion_Corrected_Covariance>(
         dcc_worst_payload(worst_proj_matrix, F_b.parameters_ptr()));
 
-    auto dib = Distortion_Induced_Bias(
+    auto dib = Likelihood_Distortion_Induced_Bias(
         lapack::apply_inverse_vector(W_F_b, score_mean().value(), "Distortion-induced bias")
             .value_or(nan_vec()),
         F_b.parameters_ptr());
@@ -2908,12 +2908,12 @@ auto calculate_Likelihood_diagnostics_preset_f(
     // Extract Per_sample_derived (SDM, DIB only) from the full evol_moments.
     // Built lazily below when the preset needs it.
     auto build_per_sample_derived = [&]() {
-        using derived_vs = var::Vector_Space<Sample_Distortion_Matrix, Distortion_Induced_Bias>;
+        using derived_vs = var::Vector_Space<Likelihood_Sample_Distortion, Likelihood_Distortion_Induced_Bias>;
         Evolution_of<derived_vs> out;
         out().reserve(evol_moments().size());
         for (auto& m : evol_moments()) {
-            out().emplace_back(derived_vs(get<Sample_Distortion_Matrix>(m),
-                                          get<Distortion_Induced_Bias>(m)));
+            out().emplace_back(derived_vs(get<Likelihood_Sample_Distortion>(m),
+                                          get<Likelihood_Distortion_Induced_Bias>(m)));
         }
         return out;
     };

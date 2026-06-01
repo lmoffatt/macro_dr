@@ -107,7 +107,7 @@ TEST_CASE("matrix get_mean_Probits returns empty matrices when all samples are e
 
 TEST_CASE("Probit_statistics for distortion matrices inherits empty-sample filtering",
           "[probit][matrix]") {
-    using Idm = Information_Distortion_Matrix;
+    using Idm = Likelihood_Information_Distortion;
 
     std::vector<Idm> samples{
         Idm(SymPosDefMatrix<double>{}),
