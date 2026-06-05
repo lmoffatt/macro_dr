@@ -601,6 +601,33 @@ class Likelihood_Gaussian_Fisher_Distortion
     }
 };
 
+// Distortion of the empirical Cov_emp (= covariance of θ̂ across groups)
+// relative to the theoretical Fisher covariance F⁻¹. Concretely the matrix
+//     C_distortion = F^{1/2} · Cov_emp · F^{1/2}
+// (or equivalently any congruence-form of Cov_emp ↦ F frame). If the
+// asymptotic theory holds, C_distortion ≈ I and all derived distortion
+// scalars (Affine_Invariant_Distance, log_Det, Eigenvalue_Spectrum, etc.)
+// reduce to their identity values. Mirrors Likelihood_Information_Distortion
+// in shape, used downstream of calc_MLE_per_group_of_replicates.
+class Empirical_Covariance_Distortion
+    : public var::Constant<Empirical_Covariance_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Empirical_Covariance_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Empirical_Covariance_Distortion() = default;
+    Empirical_Covariance_Distortion(SymPosDefMatrix<double> value,
+                                    var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Empirical_Covariance_Distortion(SymPosDefMatrix<double> value,
+                                    var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Empirical_Covariance_Distortion) {
+        return "Empirical_Covariance_Distortion";
+    }
+};
+
 class Likelihood_Fisher_Covariance
     : public var::Constant<Likelihood_Fisher_Covariance, parameter_spd_payload> {
     using base_type = var::Constant<Likelihood_Fisher_Covariance, parameter_spd_payload>;

@@ -1436,6 +1436,28 @@ using dMacro_State_Hessian_minimal =
 using diff_Macro_State_Gradient_Hessian =
     add_t<Macro_State<>, var::please_include<elogL, vlogL, Grad, Gaussian_Fisher_Information>>;
 
+// Tag carrying the per-replicate MLE estimate θ̂. Used inside MLE result
+// states so downstream Moment_statistics<Model_Parameters_Hat> can compute
+// mean(θ̂) and Cov_emp = covariance(θ̂) across replicates automatically.
+// "Hat" preserves the honest "this is our estimate, not the truth" semantic.
+class Model_Parameters_Hat
+    : public var::Constant<Model_Parameters_Hat, var::Parameters_transformed> {
+   public:
+    using base_type = var::Constant<Model_Parameters_Hat, var::Parameters_transformed>;
+    using base_type::base_type;
+    Model_Parameters_Hat() = default;
+    friend std::string className(Model_Parameters_Hat) {
+        return "Model_Parameters_Hat";
+    }
+};
+
+// dMacro_State_Hessian_minimal extended with the per-replicate θ̂ slot.
+// Used as the State template argument in calc_MLE_per_group_of_replicates so
+// the per-group result carries the MLE estimate directly accessible for
+// aggregation (no AD-chain unwrap needed downstream).
+using dMacro_State_Hessian_minimal_param =
+    add_t<dMacro_State_Hessian_minimal, var::please_include<Model_Parameters_Hat>>;
+
 using Macro_State_Ev_predictions =
     add_t<Macro_State_reg,
           var::please_include<Evolution_of<add_t<Vector_Space<>, predictions_element>>>>;
