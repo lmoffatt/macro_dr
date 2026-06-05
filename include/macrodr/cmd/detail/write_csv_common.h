@@ -218,6 +218,8 @@ struct leaf_variable<::Affine_Invariant_Distance<V>> : leaf_variable<V> {};
 template <class V>
 struct leaf_variable<::Symmetrized_KL_Distortion<V>> : leaf_variable<V> {};
 template <class V>
+struct leaf_variable<::Wald_T2<V>> : leaf_variable<V> {};
+template <class V>
 struct leaf_variable<var::Indexed<V>> : leaf_variable<V> {};
 template <class V, class P>
 struct leaf_variable<var::Derivative<V, P>> : leaf_variable<V> {};
@@ -350,6 +352,12 @@ template <class V>
 struct operation_chain<::Symmetrized_KL_Distortion<V>> {
     static std::string value() {
         return op_chain_detail::join("symmetrized_kl_distortion", operation_chain<V>::value());
+    }
+};
+template <class V>
+struct operation_chain<::Wald_T2<V>> {
+    static std::string value() {
+        return op_chain_detail::join("wald_t2", operation_chain<V>::value());
     }
 };
 // count / mean / variance / covariance / series_* unwrap transparently —

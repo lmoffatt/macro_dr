@@ -4,6 +4,8 @@
 #include <distributions.h>
 #include <macrodr/interface/IModel.h>
 #include <macrodr/cmd/detail/write_csv_common.h>
+#include <gauss_newton.h>
+#include <probit_samples.h>
 
 #include <type_traits>
 #include <utility>
@@ -668,6 +670,95 @@ using Analisis_derivative_diagnostic_series_kernel_full = var::concatenate_t<
             Probit_statistics<Report_local_var<Gaussian_Fisher_Information>>>>,
     var::Vector_Space<Per_sample_derived_diagnostics>>;
 
+
+// =============================================================================
+// MLE per-group-of-replicates output (Path A: minimal State).
+//
+// Composite output of calc_MLE_per_group_of_replicates at one group_size n.
+// Only recording-level diagnostics (no per-step Evolution_of) — the state
+// stored per group is dMacro_State_Hessian_minimal which lacks the per-step
+// data feeding the Moment_statistics<Sum<logL>>, Moment_statistics<dlogL>,
+// etc. slots in Analisis_derivative_diagnostic_base. A Path B variant for
+// group_size=1 with the full state will be added later, separate type.
+//
+// Templated on State so the saved probit samples carry the State the command
+// was instantiated with — for Path A this is dMacro_State_Hessian_minimal_param.
+template <class State>
+using MLE_Group_Analysis = var::Vector_Space<
+    Group_Size,
+
+    // MLE-specific aggregates over per-group θ̂:
+    Probit_statistics<Moment_statistics<Model_Parameters_Hat, true>>,
+
+    // Recording-level Fisher (per group, aggregated to F_b_n at this n):
+    Probit_statistics<Likelihood_Numerical_Fisher_Information>,
+    Probit_statistics<Likelihood_Fisher_Covariance>,
+    Probit_statistics<log_Det<Likelihood_Fisher_Covariance>>,
+    Probit_statistics<Eigenvalue_Spectrum<Likelihood_Fisher_Covariance>>,
+    Probit_statistics<Correlation_Of<Likelihood_Fisher_Covariance>>,
+    Probit_statistics<Spectrum_Condition_Number<Likelihood_Fisher_Covariance>>,
+    Probit_statistics<Effective_Rank<Likelihood_Fisher_Covariance>>,
+    Probit_statistics<Min_Eigenvalue<Likelihood_Fisher_Covariance>>,
+
+    // Sandwich-corrected covariance (DCC, F⁻¹·J·F⁻¹) — needs the score
+    // covariance J across groups; computed from per-group total scores:
+    Probit_statistics<Likelihood_Distortion_Corrected_Covariance>,
+    Probit_statistics<log_Det<Likelihood_Distortion_Corrected_Covariance>>,
+    Probit_statistics<Eigenvalue_Spectrum<Likelihood_Distortion_Corrected_Covariance>>,
+    Probit_statistics<Spectrum_Condition_Number<Likelihood_Distortion_Corrected_Covariance>>,
+
+    // Wald T² tests against two metrics:
+    Probit_statistics<Wald_T2<Likelihood_Fisher_Covariance>>,
+    Probit_statistics<Wald_T2<Likelihood_Distortion_Corrected_Covariance>>,
+
+    // Empirical-covariance vs F⁻¹ distortion + derived (only valid if
+    // N_groups ≥ p+1, else NaN-filled by the analysis function):
+    Probit_statistics<Empirical_Covariance_Distortion>,
+    Probit_statistics<Affine_Invariant_Distance<Empirical_Covariance_Distortion>>,
+    Probit_statistics<log_Det<Empirical_Covariance_Distortion>>,
+    Probit_statistics<Eigenvalue_Spectrum<Empirical_Covariance_Distortion>>,
+    Probit_statistics<Spectrum_Condition_Number<Empirical_Covariance_Distortion>>,
+
+    // K representative groups per ranking variable at each probit height —
+    // full per-group State preserved for downstream inspection:
+    Probit_Samples_at_Group_Size<State>>;
+
+// Run per-group MLE optimisation at a single group_size, then bootstrap-
+// aggregate the per-group F + state into the figure_2 battery applied at
+// θ̂_group (NOT at fixed θ_sim — F is per-group). Save K representative
+// groups per ranking variable at the requested probit heights for later
+// inspection (full state preserved at each saved group).
+//
+// group_size = 1 recovers per-replicate analysis. Larger group_size pools n
+// recordings into one MLE optimisation via combined-likelihood. Independent
+// runs at multiple group_sizes are script-level (call this command once per n).
+//
+// Bootstrap is on GROUPS, not on recordings — N_groups = N_total / group_size.
+// If N_groups < min_groups_for_bootstrap, bootstrap-derived probit slots are
+// NaN-filled; point estimates and probit samples are still produced.
+//
+// State template parameter (used for the saved probit samples only; the GN
+// inner loop always uses dMacro_State_Hessian_minimal for speed):
+//   - dMacro_State_Hessian_minimal_param : Path A, minimal memory footprint
+//   - dMacro_State_Ev_gradient_all_param : Path B, full Evolution_of preserved
+template <class State>
+auto calc_MLE_per_group_of_replicates(
+    const likelihood_algorithm_type& likelihood_algorithm,
+    const var::Parameters_transformed& theta_warmstart,
+    const Experiment& experiment,
+    const std::vector<Recording>& recordings,
+    std::size_t group_size,
+    std::size_t n_bootstrap_samples,
+    std::size_t min_groups_for_bootstrap,
+    const std::set<double>& probit_cis,
+    const std::set<double>& probit_sample_heights,
+    const std::vector<std::string>& ranking_variables,
+    std::size_t seed,
+    const macrodr::optimization::gauss_newton_options& gn_opts,
+    double F_h_relative = 1e-5)
+    -> Maybe_error<MLE_Group_Analysis<State>>;
+
+// =============================================================================
 
 auto calculate_Likelihood_derivative_basic_diagnostics(
     const std::vector<dMacro_State_Ev_gradient_all>& dy,

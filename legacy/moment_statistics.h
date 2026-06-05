@@ -221,6 +221,16 @@ struct count : public var::Constant<count<Va>, std::size_t> {
     }
 };
 
+// Size of the per-group MLE replicate pool — n in
+// calc_MLE_per_group_of_replicates (n=1 recovers per-replicate analysis;
+// n=8/64/1024 pool n recordings into one MLE optimisation). Not templated
+// because there is only one group-size at a time in any given output.
+struct Group_Size : public var::Constant<Group_Size, std::size_t> {
+    Group_Size() : var::Constant<Group_Size, std::size_t>{0} {}
+    Group_Size(std::size_t n) : var::Constant<Group_Size, std::size_t>{n} {}
+    friend std::string className(Group_Size) { return "Group_Size"; }
+};
+
 
 template <class Va>
 struct series_count : public var::Constant<series_count<Va>, std::vector<std::size_t>> {
@@ -625,6 +635,20 @@ template <class Va>
 struct Min_Eigenvalue : public var::Var<Min_Eigenvalue<Va>, double> {
     Min_Eigenvalue() : var::Var<Min_Eigenvalue<Va>, double>{0.0} {}
     Min_Eigenvalue(double x) : var::Var<Min_Eigenvalue<Va>, double>{x} {}
+};
+
+// Wald T² scalar statistic for testing a parameter-vector difference Δθ
+// against a metric matrix Va (SPD precision, e.g. F or DCC):
+//     T² = Δθᵀ · Va · Δθ
+// Under H₀ (Δθ asymptotically normal with covariance Va⁻¹), T² ~ χ²_p. The
+// vector Δθ being measured is implicit from context — typically (θ̄ − θ_0)
+// for testing per-group MLE bias. Templated by the metric tag so the same
+// Wald can be evaluated against different references (F, DCC, etc.) and
+// recorded as distinct named columns.
+template <class Va>
+struct Wald_T2 : public var::Var<Wald_T2<Va>, double> {
+    Wald_T2() : var::Var<Wald_T2<Va>, double>{0.0} {}
+    Wald_T2(double x) : var::Var<Wald_T2<Va>, double>{x} {}
 };
 
 // Mean log-eigenvalue ē = (1/d) Σᵢ log λᵢ = (1/d) log det(Va). Signed
