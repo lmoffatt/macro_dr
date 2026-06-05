@@ -295,7 +295,8 @@ TEST_CASE("Gauss-Newton converges from perturbed initial guess",
     };
 
     macrodr::optimization::gauss_newton_options opts;
-    opts.initial_lambda = 1e-3;
+    // Loop starts at lambda=0 (Newton). On failure, jumps to lambda_kickoff (default 1).
+    // For figure_2 setup, kickoff=1 is enough — θ_init is moderately close to θ_sim.
     opts.max_iter       = 50;
     opts.grad_rtol      = 1e-6;
     opts.dvalue_tol     = 1e-10;

@@ -439,7 +439,11 @@ using dMacro_State_Ev_gradient_minimal =
 using dMacro_State_Ev_gradient_all =
     add_t<dMacro_State<>,
           var::please_include<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>,
-                              evaluation_time>>;
+                              evaluation_time, Gaussian_Fisher_Information>>;
+// Note: Gaussian_Fisher_Information slot added at the top level so this state
+// can be used directly as the gauss_newton_result evaluator type for MLE
+// per-replicate analysis (Path B / "complete"). The slot is accumulated by
+// `update_macro_state` via has_var_c<>, no extra integration code needed.
 
 // Adapter: micro_*_element is a superset of gradient_*_element, so the
 // per-step Evolution slot has the same shape on both sides — copy it through.

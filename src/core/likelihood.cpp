@@ -848,10 +848,21 @@ auto calculate_n_simulation_mdlikelihood_predictions_impl(
 }
 
 // Numerical Fisher information via the likelihood_algorithm_type variant.
-// Calls calculate_mdlikelihood_predictions 2·n_params times at θ ± h_i·e_i,
-// reads the recording-level score derivative(get<logL>(...)), and finite-
-// differences column-by-column. See calculate_numerical_fisher_information
-// for the central-difference derivation.
+// Calls calculate_mdlikelihood 2·n_params times at θ ± h_i·e_i, reads the
+// recording-level score derivative(get<logL>(...)), and finite-differences
+// column-by-column. See calculate_numerical_fisher_information for the
+// central-difference derivation.
+//
+// Uses calculate_mdlikelihood (returns dMacro_State_Hessian_minimal — slim)
+// rather than calculate_mdlikelihood_predictions (returns dMacro_State_Ev_
+// gradient_all — full, with Evolution_of per-step). The score derivative is
+// the only thing this function consumes from the returned state; both
+// pipelines invoke the same Macro_DMR::log_Likelihood<…> templated on State,
+// and the per-step logL accumulation in update_macro_state is identical
+// regardless of State. Equivalence is asserted by
+// tests/macroir/test_dlogLikelihood_equivalence.cpp (logL and score bit-
+// identical between the two paths). Saves ~30-50% per F evaluation by not
+// building the unused Evolution_of payload 2·p times.
 auto calculate_mnumerical_fisher_information(
     const likelihood_algorithm_type& modelLikelihood_v,
     const var::Parameters_transformed& par, const Experiment& e, const Recording& r,
@@ -871,12 +882,12 @@ auto calculate_mnumerical_fisher_information(
         par_minus[i] -= h_i;
 
         auto dy_plus =
-            calculate_mdlikelihood_predictions(modelLikelihood_v, par_plus, e, r);
+            calculate_mdlikelihood(modelLikelihood_v, par_plus, e, r);
         if (!dy_plus)
             return error_message("numerical FIM at +h, param " + std::to_string(i) + ": " +
                                  dy_plus.error()());
         auto dy_minus =
-            calculate_mdlikelihood_predictions(modelLikelihood_v, par_minus, e, r);
+            calculate_mdlikelihood(modelLikelihood_v, par_minus, e, r);
         if (!dy_minus)
             return error_message("numerical FIM at -h, param " + std::to_string(i) + ": " +
                                  dy_minus.error()());
