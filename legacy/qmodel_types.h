@@ -1431,10 +1431,10 @@ using Macro_State_minimal = Macro_State<>;
 using Macro_State_reg = add_t<Macro_State_minimal, var::please_include<elogL, vlogL>>;
 
 using dMacro_State_Hessian_minimal =
-    add_t<dMacro_State<>, var::please_include<FIM>>;
+    add_t<dMacro_State<>, var::please_include<Gaussian_Fisher_Information>>;
 
 using diff_Macro_State_Gradient_Hessian =
-    add_t<Macro_State<>, var::please_include<elogL, vlogL, Grad, FIM>>;
+    add_t<Macro_State<>, var::please_include<elogL, vlogL, Grad, Gaussian_Fisher_Information>>;
 
 using Macro_State_Ev_predictions =
     add_t<Macro_State_reg,

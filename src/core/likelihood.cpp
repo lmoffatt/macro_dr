@@ -895,7 +895,15 @@ auto calculate_mnumerical_fisher_information(
             F_raw(j, i) = Fji;
         }
         if (!col_finite) {
-            for (std::size_t j = 0; j < n; ++j) F_raw(j, i) = 0.0;
+            // NaN-propagation: AD-score had a non-finite entry while computing
+            // the i-th column of the FD-of-AD Hessian. Mark the entire column
+            // as NaN rather than zeroing it; symmetrization then propagates
+            // NaN through the whole matrix, and the FIM's is_good() check
+            // (legacy/distributions.h) flags the replicate so downstream can
+            // exclude it. Trades a silent half-populated F (previous behavior)
+            // for a loud, detectable failure — AD-score NaN is rare but always
+            // indicates upstream numerical trouble worth investigating.
+            for (std::size_t j = 0; j < n; ++j) F_raw(j, i) = std::nan("");
         }
     }
 
@@ -1620,7 +1628,15 @@ auto calculate_numerical_fisher_information(
             F_raw(j, i) = Fji;
         }
         if (!col_finite) {
-            for (std::size_t j = 0; j < n; ++j) F_raw(j, i) = 0.0;
+            // NaN-propagation: AD-score had a non-finite entry while computing
+            // the i-th column of the FD-of-AD Hessian. Mark the entire column
+            // as NaN rather than zeroing it; symmetrization then propagates
+            // NaN through the whole matrix, and the FIM's is_good() check
+            // (legacy/distributions.h) flags the replicate so downstream can
+            // exclude it. Trades a silent half-populated F (previous behavior)
+            // for a loud, detectable failure — AD-score NaN is rare but always
+            // indicates upstream numerical trouble worth investigating.
+            for (std::size_t j = 0; j < n; ++j) F_raw(j, i) = std::nan("");
         }
     }
 
@@ -1687,9 +1703,9 @@ std::vector<std::string> get_param_names_if_any(const Lik& lik) {
     } else if constexpr (macrodr::has_var_c<Lik const&, Grad> &&
                          requires { var::parameter_names(get<Grad>(lik)()); }) {
         param_names = var::parameter_names(get<Grad>(lik)());
-    } else if constexpr (macrodr::has_var_c<Lik const&, FIM> &&
-                         requires { var::parameter_names(get<FIM>(lik)()); }) {
-        param_names = var::parameter_names(get<FIM>(lik)());
+    } else if constexpr (macrodr::has_var_c<Lik const&, Gaussian_Fisher_Information> &&
+                         requires { var::parameter_names(get<Gaussian_Fisher_Information>(lik)()); }) {
+        param_names = var::parameter_names(get<Gaussian_Fisher_Information>(lik)());
     } else if constexpr (requires { var::parameter_names(lik); }) {
         param_names = var::parameter_names(lik);
     }

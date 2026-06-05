@@ -26,6 +26,7 @@ set(TEST_SOURCES
     macroir/test_macroir_derivatives.cpp
     microir/test_micro_derivatives.cpp
     microir/test_micro_full_vs_monoid_logL.cpp
+    optimization/test_gauss_newton.cpp
     ${PROJECT_SOURCE_DIR}/third_party/catch2/catch_amalgamated.cpp
 )
 

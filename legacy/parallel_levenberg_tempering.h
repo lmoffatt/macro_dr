@@ -133,10 +133,12 @@ struct levenberg_mcmc {
 
     Maybe_error<bool> check_dimensions() const {
         auto npar = m_x.size();
-        if (!((get<FIM>(m_logP)().nrows() == npar) && (get<FIM>(m_logP)().ncols() == npar) &&
+        if (!((get<Gaussian_Fisher_Information>(m_logP)().nrows() == npar) &&
+              (get<Gaussian_Fisher_Information>(m_logP)().ncols() == npar) &&
               (get<Grad>(m_logP)().nrows() == npar)))
             return error_message("error in logP gradient or FIM dimensions");
-        if (!((get<FIM>(m_logL)().nrows() == npar) && (get<FIM>(m_logL)().ncols() == npar) &&
+        if (!((get<Gaussian_Fisher_Information>(m_logL)().nrows() == npar) &&
+              (get<Gaussian_Fisher_Information>(m_logL)().ncols() == npar) &&
               (get<Grad>(m_logL)().nrows() == npar)))
             return error_message("error in logL gradient or FIM dimensions");
         return true;
@@ -152,7 +154,13 @@ struct levenberg_mcmc {
 
     Maybe_error<multivariate_normal_distribution<double, SymPosDefMatrix<double>>>
         ProposedDistribution(double beta, double lambda) const {
-        auto thFim = (get<FIM>(m_logP)() + get<FIM>(m_logL)() * beta);
+        // NOTE: stored as `Gaussian_Fisher_Information` on both states, but
+        // semantically m_logP carries H_prior (= Σ_prior⁻¹, the prior precision,
+        // not a Fisher Information in the strict sense) and m_logL carries G_lik.
+        // The sum is G_post(β). Tag-name cleanup is a separate refactor —
+        // see deferred PR introducing `Prior_Precision` and `Gaussian_Fisher_Posterior`.
+        auto thFim = (get<Gaussian_Fisher_Information>(m_logP)() +
+                      get<Gaussian_Fisher_Information>(m_logL)() * beta);
 
         auto FIml = SymPosDefMatrix<double>::I_sware_it_is_possitive(
             thFim.value() + diag(thFim.value()) * lambda);
@@ -262,7 +270,7 @@ inline Maybe_error<dlogPs> dlogPrior(var::Parameters_Normal_Distribution const& 
     if (!r_logP)
         return r_logP.error();
     return dlogPs{logL(r_logP.value()), Grad(prior.dlogP(ca), ca),
-                  FIM(SymPosDefMatrix<double>(prior.FIM(ca)), ca)};
+                  Gaussian_Fisher_Information(SymPosDefMatrix<double>(prior.FIM(ca)), ca)};
 }
 
 template <class FunctionTable, class Prior, class Likelihood, class Variables, class DataType,

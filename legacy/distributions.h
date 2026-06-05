@@ -452,6 +452,20 @@ class Gaussian_Fisher_Information
     friend std::string className(Gaussian_Fisher_Information) {
         return "Gaussian_Fisher_Information";
     }
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite(var::fullsum((*this)()))) {
+            std::stringstream ss;
+            ss << "Gaussian_Fisher_Information not finite: " << (*this)();
+            return error_message(ss.str());
+        }
+        for (std::size_t i = 0; i < (*this)().nrows(); ++i)
+            if ((*this)()(i, i) <= 0) {
+                std::stringstream ss;
+                ss << "Gaussian_Fisher_Information diagonal negative or zero: " << (*this)();
+                return error_message(ss.str());
+            }
+        return true;
+    }
 };
 
 // Numerical (observed) Fisher information for the *whole* recording, computed
@@ -807,8 +821,8 @@ inline logLs nan_logL() {
                  vlogL(std::numeric_limits<double>::quiet_NaN()));
 }
 
-using dMacro_State_Hessian_minimal = var::Vector_Space<logL, elogL, vlogL, Grad, FIM>;
-using dlogPs = var::Vector_Space<logL, Grad, FIM>;
+using dMacro_State_Hessian_minimal = var::Vector_Space<logL, elogL, vlogL, Grad, Gaussian_Fisher_Information>;
+using dlogPs = var::Vector_Space<logL, Grad, Gaussian_Fisher_Information>;
 
 template <class... Vs>
 inline Maybe_error<bool> is_good(const var::Vector_Space<Vs...>& x) {
