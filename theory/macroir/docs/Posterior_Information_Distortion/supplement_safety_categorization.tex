@@ -1,0 +1,596 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\title{Supplementary Information:\\
+Per-Replicate Safety Categorization\\
+in the Posterior Information Distortion Framework}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent We formalize a per-replicate safety categorization policy that
+operationalizes the four-test algorithm validation framework of
+\texttt{supplement\_algorithm\_validation.tex} into a four-category
+classification: SAFE, MARGINAL, UNRELIABLE, BIASED. The classification
+gates which diagnostics are reportable for each bootstrap replicate
+and each cell of the figure\_2 sweep. The taxonomy is built on two
+independent axes --- spectral health of the likelihood Hessian
+$\mathbf H_{\mathrm{lik}}$ and pattern of the four validation tests
+$(\mathcal D(\mathbf C_{\mathrm{IDM}}^{\mathrm{post}}),
+\mathcal D(\mathbf{GFD}^{\mathrm{post}}),
+\mathcal D(\mathbf C_{\mathrm{match}}), T^2)$ --- with thresholds
+derived from existing numerical tolerances in the codebase
+($\tau_{\mathrm{safe}}$, $\tau_{\mathrm{singular}}$ from
+\texttt{lapack\_headers.h}) and the universal noise scale
+$2\sqrt{p/(B-1)}$ for the matrix diagnostics. We specify per-category
+reporting policies, cross-replicate aggregation rules at the
+observable level, and the binary-output column schema for downstream
+analysis scripts.
+\end{abstract}
+
+\section*{1. Scope and Position in the PID Framework}
+\label{sec:sc-scope}
+
+This document operationalizes the algorithm-validation framework
+([[supplement-algorithm-validation]]) as a per-replicate per-cell
+safety categorization. It does not introduce new diagnostics; it
+specifies the decision policy by which the existing diagnostics gate
+the validity of downstream inference outputs (evidence, credible
+intervals, information gain reports).
+
+The categorization is per-replicate $b \in 1,\ldots,B$ within each
+cell of the figure\_2 sweep, with cross-replicate aggregation to the
+per-cell level for table and figure reporting. It is operationally
+distinct from the $\theta_{\mathrm{MAP}}$-level matrix diagnostics:
+those produce numbers; this produces decisions.
+
+\paragraph{Disambiguation: ``BIASED'' here is not the DIB matrix.}
+``BIASED'' as a safety category refers to estimator-level structural
+failure of the algorithm, NOT to the Distortion-Induced Bias matrix
+$\mathbf b_{\mathrm{DIB},\mathrm{post}}$ of Section 7 of
+[[supplement-posterior-main]]. The DIB measures bias of the posterior
+mean estimate; the BIASED category here flags algorithm structural
+failure of the kind documented in Section 7 of
+[[supplement-algorithm-validation]] (the fourth regime). The two
+share a word but not a referent.
+
+\paragraph{Operational scope.}
+The four-category classification is the unit of safety information
+exposed to users:
+\begin{itemize}
+\item As an integer enum column in the bootstrap-samples binary
+  (\texttt{safety\_category} $\in \{0,1,2,3\}$)
+\item As a per-cell summary in the figure\_2 analysis CSV
+\item As a categorical gate in downstream plotting (which replicates
+  contribute to quantiles, which observable cells are reportable)
+\item As a textual flag in published tables and figures
+\end{itemize}
+
+\section*{2. The Two Decision Axes}
+\label{sec:sc-two-axes}
+
+The categorization combines two independent axes:
+
+\subsection*{2.1 Spectral health of $\mathbf H_{\mathrm{lik}}$}
+\label{sec:sc-spectral-axis}
+
+The first axis is the position of the minimum eigenvalue of the
+likelihood Hessian relative to two numerical tolerances:
+\begin{equation}
+\tau_{\mathrm{singular}}
+\;=\;
+\mathrm{atol}_{\mathrm{psd}} \;+\; \mathrm{rtol}_{\mathrm{psd}} \cdot \lambda_{\max}(\mathbf H_{\mathrm{lik}}),
+\qquad
+\tau_{\mathrm{safe}}
+\;=\;
+10^4 \cdot \tau_{\mathrm{singular}}.
+\label{eq:sc-tolerances}
+\end{equation}
+The constants $\mathrm{atol}_{\mathrm{psd}}$ and $\mathrm{rtol}_{\mathrm{psd}}$
+are inherited from the existing
+\texttt{subspace\_tol} pattern in
+\texttt{legacy/lapack\_headers.h} (currently $\mathrm{atol} = 0$,
+$\mathrm{rtol} = 10^{-10}$); the factor of $10^4$ separating
+$\tau_{\mathrm{safe}}$ from $\tau_{\mathrm{singular}}$ reflects four
+orders of magnitude between ``numerically reliable as positive'' and
+``numerically indistinguishable from zero''.
+
+The four spectral states are:
+\begin{itemize}
+\item $\lambda_{\min}(\mathbf H_{\mathrm{lik}}) > \tau_{\mathrm{safe}}$:
+  \textbf{safely PD}. Likelihood Hessian is unambiguously positive
+  definite. Likelihood IDM is computable without retained-eigenspace
+  machinery.
+\item $\tau_{\mathrm{singular}} < \lambda_{\min}(\mathbf H_{\mathrm{lik}}) \leq \tau_{\mathrm{safe}}$:
+  \textbf{marginally PD}. Positive but within numerical reach of zero.
+  Likelihood IDM is technically defined but the smallest eigenvalue
+  estimate is unreliable. Posterior IDM is the diagnostic of record.
+\item $|\lambda_{\min}(\mathbf H_{\mathrm{lik}})| \leq \tau_{\mathrm{singular}}$:
+  \textbf{singular}. Numerically indistinguishable from zero.
+  Likelihood IDM requires retained-eigenspace projection
+  ([[implementation-subspace-information-distortion]]). Posterior IDM
+  is well-defined under the dominance condition of
+  [[supplement-posterior-main]] Section 2.1.
+\item $\lambda_{\min}(\mathbf H_{\mathrm{lik}}) < -\tau_{\mathrm{singular}}$:
+  \textbf{indefinite}. The likelihood Hessian has substantively
+  negative eigenvalues. This is the regime where the dominance
+  condition is non-trivial and where the fourth-regime signature of
+  [[supplement-algorithm-validation]] Section 7 manifests when
+  coincident with $\mathrm{rank}(\mathbf G_{\mathrm{lik}}) < p$.
+\end{itemize}
+
+The four states are exhaustive and mutually exclusive. The spectral
+axis can be summarized by an integer code
+\texttt{spectral\_state} $\in \{0, 1, 2, 3\}$ for safely PD, marginally
+PD, singular, indefinite respectively.
+
+\subsection*{2.2 Pattern of validation tests}
+\label{sec:sc-validation-axis}
+
+The second axis is the joint pattern of the four canonical tests of
+[[supplement-algorithm-validation]] Section 4. For each replicate
+the four scalar statistics are computed:
+\begin{equation}
+\bigl(
+\mathcal D(\mathbf C_{\mathrm{IDM}}^{\mathrm{post}}),\;
+\mathcal D(\mathbf{GFD}^{\mathrm{post}}),\;
+\mathcal D(\mathbf C_{\mathrm{match}}),\;
+T^2
+\bigr)
+\label{eq:sc-four-tests}
+\end{equation}
+and compared against their thresholds:
+$\tau_{\mathcal D} = 2\sqrt{p/(B-1)}$ for the three matrix tests and
+$\chi^2_{p,\,0.95}$ for the Wald statistic. The number of failed
+tests is an integer between 0 and 4; the identity of the failed
+tests further classifies the failure mode.
+
+\paragraph{Production scope.}
+In production use, $\theta_{\mathrm{sim}}$ is unknown and $T^2$ is
+unavailable. The validation axis reduces to three tests. The safety
+categorization defined in Section 4 below remains well-defined; only
+the BIASED-vs-UNRELIABLE distinction loses some discriminating power
+in production, as detailed there.
+
+\section*{3. The Combined Categorization Rule}
+\label{sec:sc-combined-rule}
+
+The two axes combine into the four-category SAFE/MARGINAL/UNRELIABLE/BIASED
+classification:
+
+\begin{equation}
+\boxed{\quad
+\begin{array}{l|l}
+\text{Spectral state} & \text{Worst-case category given validation pattern} \\
+\hline
+\text{safely PD} & \text{SAFE if 0--1 validation tests fail, MARGINAL if 2+} \\
+\text{marginally PD} & \text{MARGINAL if 0--1 tests fail, UNRELIABLE if 2+} \\
+\text{singular} & \text{UNRELIABLE if 0--2 tests fail, BIASED if 3+} \\
+\text{indefinite} & \text{BIASED (always)}
+\end{array}
+\quad}
+\label{eq:sc-combined-rule}
+\end{equation}
+
+The promotion rules (worse spectral state $\Longrightarrow$ at least
+one category worse than the validation alone) reflect the
+operational principle: spectral indeterminacy is always a deeper
+problem than statistical-test failure, because it propagates to
+\emph{all} downstream inversions and not just one diagnostic.
+
+\subsection*{3.1 Operational definitions}
+
+\paragraph{SAFE.} Likelihood Hessian is safely PD AND at most one
+validation test marginally exceeds threshold. The Likelihood IDM,
+Posterior IDM, Distortion-Corrected Covariance, Distortion-Induced
+Bias, GFD, and all spectral scalars (\texttt{idm\_min\_eigenvalue},
+\texttt{gfd\_log\_det}, etc.) are computed and reported without
+caveat. The replicate participates in all cross-replicate aggregates
+including tail quantiles ($q_{0.025}$, $q_{0.975}$). The integer
+code is \texttt{safety\_category} $= 0$.
+
+\paragraph{MARGINAL.} Either (a) spectral state is marginally PD with
+at most one test failure, or (b) spectral state is safely PD with two
+or more test failures. The Posterior IDM and DCC are the diagnostics
+of record; the Likelihood IDM is reported with a flag column or
+NaN-filled depending on the specific failure pattern. The replicate
+participates in median-based aggregates but is excluded from tail
+quantiles. The integer code is $= 1$.
+
+\paragraph{UNRELIABLE.} Either (a) spectral state is singular with at
+most two test failures, or (b) spectral state is marginally PD with
+two or more failures. The Posterior IDM is reported only with caveat;
+Likelihood IDM is NaN-filled (or reported on a reduced retained
+subspace if available). The replicate is excluded from tail quantiles
+and from any median quantile that would otherwise be visualized at
+publication-grade.
+The integer code is $= 2$.
+
+\paragraph{BIASED.} Either (a) spectral state is indefinite (any
+$\lambda_{\min}(\mathbf H_{\mathrm{lik}}) < -\tau_{\mathrm{singular}}$),
+or (b) spectral state is singular with three or four test failures.
+All distortion shapes are NaN-filled in the binary output; raw
+spectral diagnostics (the bare eigenvalue lists of
+$\mathbf H_{\mathrm{lik}}$ and $\mathbf G_{\mathrm{lik}}$) are
+preserved for forensic inspection following the
+\texttt{compute\_psd\_decomp} spectrum-only fallback pattern at
+\texttt{legacy/lapack\_headers.h}. The replicate is excluded entirely
+from cross-replicate quantiles and medians. The integer code is $= 3$.
+
+\subsection*{3.2 Why two axes rather than one}
+
+A spectral-only categorization fails to detect classical
+misspecification (regime 1 of [[supplement-algorithm-validation]]
+Section 7) because the likelihood Hessian can be perfectly
+well-conditioned while the Bartlett identity fails. A
+validation-only categorization fails to detect rank-deficiency or
+indefiniteness that may not manifest in the dimensionless tests when
+the prior already dominates the affected subspace.
+
+The combined rule \eqref{eq:sc-combined-rule} captures both failure
+modes. Section 7 below specifies the per-direction decomposition that
+refines this categorization when the failure pattern is direction-
+specific.
+
+\section*{4. Per-Category Reporting Policy}
+\label{sec:sc-reporting-policy}
+
+Per replicate, each category $c$ specifies an output policy
+$\pi(c)$ for the binary samples and the analysis CSV:
+
+\begin{itemize}
+\item[$c = 0$ (SAFE):] All matrix observables computed and emitted
+  (\texttt{idm}, \texttt{gfd}, \texttt{sdm}, \texttt{cdm},
+  \texttt{fisher\_covariance}, \texttt{dcc}, \texttt{numerical\_fim},
+  \texttt{idr}). All scalar summaries
+  (\texttt{idm\_log\_det}, \texttt{gfd\_min\_eigenvalue}, etc.) emitted.
+  Replicate index in the cross-replicate \texttt{quantile\_mask} is set
+  to 1.
+
+\item[$c = 1$ (MARGINAL):] All Posterior matrix observables emitted;
+  Likelihood matrix observables emitted with a sister
+  \texttt{idm\_flag} column equal to ``marginal''. Scalar summaries
+  emitted for Posterior, NaN-filled for Likelihood. Replicate index
+  in \texttt{tail\_quantile\_mask} is set to 0 but in
+  \texttt{median\_mask} is 1.
+
+\item[$c = 2$ (UNRELIABLE):] Posterior matrix observables emitted with
+  caveat tag. Likelihood matrix observables NaN-filled. Replicate
+  index in \texttt{median\_mask} is set to 0; only the raw spectral
+  diagnostic columns
+  (\texttt{idm\_spectrum}, \texttt{gfd\_spectrum}) are populated.
+
+\item[$c = 3$ (BIASED):] All distortion-shape observables NaN-filled.
+  Bare spectral observables of $\mathbf H_{\mathrm{lik}}$ and
+  $\mathbf G_{\mathrm{lik}}$ emitted for forensic inspection.
+  Replicate excluded from all cross-replicate aggregates.
+\end{itemize}
+
+This policy is encoded as a static table consulted by
+\texttt{write\_bootstrap\_samples\_binary} at the point of per-
+replicate observable extraction. The \texttt{safety\_category} column
+itself is computed inside
+\texttt{calculate\_Likelihood\_diagnostics\_preset\_f} after
+$\mathbf F_b$ and $\mathbf{JT}$ are built and before the distortion
+matrices are extracted, so a BIASED replicate short-circuits and
+avoids the costly distortion-shape computations.
+
+\section*{5. Cross-Replicate Aggregation to the Cell Level}
+\label{sec:sc-aggregation}
+
+Per-replicate categories aggregate to a per-cell category for table
+and figure reporting. The cell-level safety category is determined by
+the fraction of replicates in each per-replicate category:
+\begin{equation}
+\boxed{\quad
+\mathrm{cell\_category}(c)
+\;=\;
+\begin{cases}
+\mathrm{SAFE} & \text{if } f_{\mathrm{SAFE}}(c) \geq f_{\mathrm{safe}} \\
+\mathrm{MARGINAL} & \text{if } f_{\mathrm{SAFE}}(c) + f_{\mathrm{MARGINAL}}(c) \geq f_{\mathrm{marginal}} \\
+\mathrm{UNRELIABLE} & \text{if } f_{\mathrm{BIASED}}(c) < f_{\mathrm{biased,unrel}} \\
+\mathrm{BIASED} & \text{otherwise}
+\end{cases}
+\quad}
+\label{eq:sc-cell-aggregation}
+\end{equation}
+with default fractions:
+\begin{itemize}
+\item $f_{\mathrm{safe}} = 0.90$
+\item $f_{\mathrm{marginal}} = 0.75$
+\item $f_{\mathrm{biased,unrel}} = 0.10$
+\end{itemize}
+
+These fractions reflect the practical reality that at $B = 100$
+replicates per cell, the granularity is 1\%: requiring all 100
+replicates be SAFE before declaring a cell SAFE would demote
+operationally good cells based on single noisy replicates. The 90/75/10
+defaults give the framework a tolerant interpretation of replicate
+noise while preserving categorical signal.
+
+\paragraph{Cell-level operational scope.}
+A SAFE cell is the publication-grade benchmark: all replicates
+contribute to all aggregates without caveat; tail quantiles are
+meaningful estimators of bootstrap uncertainty. A MARGINAL cell is
+reportable in supplementary tables with a footnote. An UNRELIABLE
+cell is reported with caveat but only median-grade aggregates are
+published. A BIASED cell is the categorical failure: the cell is
+reported as ``algorithm structurally fails at this $\Delta t$'' with
+the per-direction decomposition of Section 7 indicating which
+parameter combinations are affected.
+
+\subsection*{5.1 Sensitivity to fraction choices}
+
+The fraction-based aggregation has a known sensitivity: at the
+boundary (e.g., $f_{\mathrm{SAFE}} = 0.89$ vs.\ $0.90$), a cell may
+flip categories. This is addressed by reporting alongside the
+category the actual fraction $f_{\mathrm{SAFE}}(c)$ for each
+algorithm$\times$cell, allowing inspection of borderline cases.
+
+\subsection*{5.2 Per-direction refinement at the cell level}
+
+When a cell is categorized as MARGINAL, UNRELIABLE, or BIASED, the
+underlying failure may be confined to a single parameter direction.
+Section 7 specifies the per-direction reporting that refines the
+cell-level summary to identify which parameters are operationally
+recoverable and which are not.
+
+\section*{6. The Special Case of Coincident Singularity and Indefiniteness}
+\label{sec:sc-coincident}
+
+The fourth regime of algorithm failure documented in
+[[supplement-algorithm-validation]] Section 7.4 ---
+$\mathrm{rank}(\mathbf G_{\mathrm{lik}}) < p$ coincident with
+$\lambda_{\min}(\mathbf H_{\mathrm{lik}}) < 0$ in the same direction
+--- requires explicit categorization beyond what
+\eqref{eq:sc-combined-rule} delivers.
+
+The signature is:
+\begin{enumerate}
+\item Spectral state is indefinite ($\lambda_{\min}(\mathbf H_{\mathrm{lik}}) < -\tau_{\mathrm{singular}}$).
+  By rule \eqref{eq:sc-combined-rule}, category is BIASED.
+\item The eigenvector $\mathbf u_-$ of the negative eigenvalue of
+  $\mathbf H_{\mathrm{lik}}$ satisfies
+  $\mathbf u_-^\top \mathbf G_{\mathrm{lik}} \mathbf u_- < \tau_{\mathrm{singular}}$.
+  The Gaussian moment-matched FIM is rank-deficient in the same direction.
+\end{enumerate}
+
+Both conditions together constitute the fourth-regime signature.
+Replicates exhibiting this signature are classified as
+$\mathrm{BIASED}_{\mathrm{IV}}$ (a sub-code of the BIASED category,
+emitted as
+$\mathrm{safety\_category} = 4$ rather than $3$ in the binary output)
+to distinguish from generic indefiniteness due to off-MLE evaluation
+or numerical noise. In the aggregation \eqref{eq:sc-cell-aggregation}
+both sub-codes contribute to the BIASED fraction.
+
+The distinction matters for the failure mode reporting:
+$\mathrm{BIASED}_{\mathrm{IV}}$ is the
+\emph{algorithm-structural failure} of the kind documented for
+macro\_R at $\Delta t = 1\tau$. Plain $\mathrm{BIASED}$ may be
+recoverable by refitting to a tighter MAP tolerance or by adjusting
+the prior; $\mathrm{BIASED}_{\mathrm{IV}}$ is not recoverable by any
+post-hoc remediation --- the algorithm is producing a likelihood
+whose moment-matched approximation has structurally lost rank.
+
+\section*{7. Per-Direction Reporting Within Non-SAFE Categories}
+\label{sec:sc-per-direction}
+
+For a replicate categorized as MARGINAL, UNRELIABLE, or BIASED, the
+failure may be confined to a subspace of the full parameter space.
+Section 4 of [[supplement-posterior-main]] specifies the
+identification of \emph{active} and \emph{ineffective} directions via
+spectral decomposition of $\mathbf C_{\mathrm{post}}$. Here we extend
+that analysis to the safety report.
+
+\paragraph{Per-direction safety category.}
+Each parameter eigendirection $\mathbf v_k$ of
+$\mathbf C_{\mathrm{post}}$ has its own per-direction safety category:
+\begin{itemize}
+\item SAFE: $\mathbf v_k^\top \mathbf H_{\mathrm{lik}} \mathbf v_k > \tau_{\mathrm{safe}}$
+  AND the projection of the failed validation test onto $\mathbf v_k$
+  is below threshold.
+\item MARGINAL: scaled-down version
+\item UNRELIABLE: $\mathbf v_k^\top \mathbf H_{\mathrm{lik}} \mathbf v_k$ near zero
+\item BIASED: $\mathbf v_k^\top \mathbf H_{\mathrm{lik}} \mathbf v_k < -\tau_{\mathrm{singular}}$
+\end{itemize}
+The replicate-level safety category is the worst per-direction
+category, with the per-direction breakdown available for forensic
+inspection.
+
+\paragraph{Reporting in published tables.}
+For each algorithm$\times$cell that is categorized as MARGINAL or
+worse at the cell level, the published supplementary table lists the
+parameter combination eigenvectors of $\mathbf C_{\mathrm{post}}$
+that are responsible for the categorization. This makes the
+operational failure mode concrete: ``the algorithm fails to
+identify the linear combination $\mathbf v = (0.71, -0.71, 0, 0, 0, 0)$,
+corresponding to the differential rate $k_{\mathrm{on}}^{(1)} - k_{\mathrm{on}}^{(2)}$
+--- in this combination the likelihood is structurally non-convex''
+(hypothetical example).
+
+\section*{8. Implementation Hooks}
+\label{sec:sc-implementation}
+
+\subsection*{8.1 New binary output columns}
+
+The bootstrap-samples binary writer
+(\texttt{write\_bootstrap\_samples\_binary} in
+\texttt{src/core/likelihood.cpp}) gains the following scalar columns:
+
+\begin{itemize}
+\item \texttt{safety\_category} (integer $\in \{0,1,2,3,4\}$):
+  the per-replicate category code
+\item \texttt{spectral\_state} (integer $\in \{0,1,2,3\}$):
+  the spectral axis code
+\item \texttt{n\_validation\_failures} (integer $\in \{0,1,2,3,4\}$):
+  the number of failed validation tests
+\item \texttt{H\_lik\_lambda\_min} (double): the actual
+  $\lambda_{\min}(\mathbf H_{\mathrm{lik}})$ value, for sanity-check
+  inspection
+\item \texttt{G\_lik\_lambda\_min} (double): the corresponding
+  $\lambda_{\min}(\mathbf G_{\mathrm{lik}})$, for fourth-regime
+  signature detection
+\item \texttt{D\_C\_match} (double): the affine-invariant distance
+  of $\mathbf C_{\mathrm{match}}$ (= the new diagnostic of
+  [[supplement-algorithm-validation]])
+\end{itemize}
+
+\subsection*{8.2 Computation site}
+
+The category is computed inside
+\texttt{calculate\_Likelihood\_diagnostics\_preset\_f}
+(\texttt{src/core/likelihood.cpp}) after $\mathbf F_b$ and
+$\mathbf{JT}$ are built and before the distortion-shape matrices are
+computed. This allows BIASED replicates to short-circuit the costly
+matrix extractions.
+
+\subsection*{8.3 Downstream consumption in R}
+
+The \texttt{figure\_2\_samples.Rmd} analysis script consumes the
+\texttt{safety\_category} column as a factor and uses it for:
+\begin{itemize}
+\item Filtering: \texttt{boot\$samples \%>\% filter(safety\_category $\leq$ 1)}
+  for SAFE+MARGINAL only aggregates
+\item Faceting: per-category boxplots of distortion scalars to
+  diagnose failure-mode patterns
+\item Cell-level rollup: per-cell category from the fraction-based
+  rule \eqref{eq:sc-cell-aggregation}, computed in R rather than C++
+  for ease of fraction-threshold tuning
+\end{itemize}
+
+\subsection*{8.4 Manifest entries}
+
+For each new column, the manifest.csv emits a corresponding row
+(\texttt{observable, rows, cols, n\_replicates}). The
+\texttt{reader.R} auto-generated reader propagates the new columns
+into the 4D-array list automatically.
+
+\section*{9. Worked Example: macro\_R vs.\ macro\_IR at figure\_2}
+\label{sec:sc-worked-example}
+
+For the eLife 2025 figure\_2 sweep with macro\_R and macro\_IR across
+$\Delta t \in \{1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01\}\tau$ at
+$N_{\mathrm{sim}} = 16384$, $B = 100$, $\sigma^2_{\mathrm{prior}} = 2$:
+
+\subsection*{9.1 Predicted per-cell categorization}
+
+Based on the empirical findings of
+[[supplement-algorithm-validation]] Section 6 and the rule
+\eqref{eq:sc-combined-rule}:
+
+\begin{center}
+\begin{tabular}{lcc}
+\hline
+$\Delta t$ ($\tau$) & macro\_R & macro\_IR \\
+\hline
+1.0 & $\mathrm{BIASED}_{\mathrm{IV}}$ & SAFE \\
+0.5 & SAFE & SAFE \\
+0.2 & SAFE & SAFE \\
+0.1 & SAFE & SAFE \\
+0.05 & SAFE & SAFE \\
+0.02 & SAFE & SAFE \\
+0.01 & SAFE & SAFE (with 2/100 MARGINAL flagged outliers) \\
+\hline
+\end{tabular}
+\end{center}
+
+The macro\_R column shows the categorical failure at $\Delta t = 1\tau$
+(all 100 replicates exhibit the fourth-regime signature, so
+$f_{\mathrm{BIASED}}(c) = 1.0 \gg 0.10$). The macro\_IR column is
+SAFE everywhere; the 2/100 MARGINAL outliers at $\Delta t = 0.01\tau$
+are reported as a footnote but do not change the cell category
+($f_{\mathrm{SAFE}} = 0.98 \geq 0.90$).
+
+\subsection*{9.2 Per-direction breakdown for macro\_R at $\Delta t = 1\tau$}
+
+The fourth-regime failure is confined to a single parameter
+combination eigendirection (the direction of the negative eigenvalue
+of $\mathbf H_{\mathrm{lik}}$ coincident with the singular direction
+of $\mathbf G_{\mathrm{lik}}$). The other five parameter directions
+are SAFE.
+
+For the eLife paper this translates to: macro\_R at $\Delta t = 1\tau$
+fails to identify a specific linear combination of kinetic parameters.
+The other identifiable combinations (the bulk of the parameter
+information) are operationally recoverable from the macro\_R analysis;
+the failed combination is recoverable only from macro\_IR.
+
+The figure\_2 paper-facing tables list explicitly which parameter
+combination is affected, with the eigenvector projected onto the
+original kinetic parameter coordinates.
+
+\subsection*{9.3 Reporting impact}
+
+\begin{itemize}
+\item Evidence (\texttt{log\_Z}) for macro\_R at $\Delta t = 1\tau$ is
+  computed using the prior-dominated subspace decomposition of
+  Section 8 of [[supplement-posterior-main]] but reported with a
+  $\mathrm{BIASED}_{\mathrm{IV}}$ flag and a direct cross-reference
+  to the macro\_IR analysis at the same $\Delta t$ for the operationally
+  valid evidence.
+\item Information gain ([[supplement-information-gain]]) for macro\_R
+  at $\Delta t = 1\tau$ is decomposed per-direction, with the failed
+  direction reported as ``algorithm-undetermined'' and the other
+  five as data-informed.
+\item Posterior intervals on the kinetic rate constants individually
+  remain computable for macro\_R at $\Delta t = 1\tau$, but the
+  joint interval on the failed parameter combination is reported as
+  the prior interval (since the data carries no information in that
+  direction under macro\_R).
+\end{itemize}
+
+\section*{10. Summary}
+\label{sec:sc-summary}
+
+\begin{itemize}
+\item \textbf{Two decision axes.} The per-replicate safety
+  categorization combines (i) spectral health of
+  $\mathbf H_{\mathrm{lik}}$ via tolerances $\tau_{\mathrm{safe}}$
+  and $\tau_{\mathrm{singular}}$ inherited from
+  \texttt{lapack\_headers.h}, and (ii) the four-test pattern from
+  [[supplement-algorithm-validation]] with thresholds
+  $\tau_{\mathcal D} = 2\sqrt{p/(B-1)}$ and $\chi^2_{p,\,0.95}$.
+\item \textbf{Four categories.} SAFE / MARGINAL / UNRELIABLE /
+  BIASED, with the combined rule \eqref{eq:sc-combined-rule}. The
+  promotion principle: worse spectral state cannot be redeemed by
+  better test pattern.
+\item \textbf{Fourth-regime sub-code.} The coincident failure mode
+  $\mathrm{rank}(\mathbf G_{\mathrm{lik}}) < p$ and
+  $\lambda_{\min}(\mathbf H_{\mathrm{lik}}) < 0$ in the same direction
+  is emitted as $\mathrm{BIASED}_{\mathrm{IV}}$
+  (\texttt{safety\_category} $= 4$) to distinguish from generic
+  indefiniteness.
+\item \textbf{Per-category reporting.} Each category maps to a
+  reporting policy that gates which diagnostics are emitted, NaN-filled,
+  or flagged in the bootstrap-samples binary output, and which
+  replicates contribute to which cross-replicate aggregates.
+\item \textbf{Cross-replicate aggregation.} Fraction-based rule
+  \eqref{eq:sc-cell-aggregation} promotes per-replicate categories to
+  cell-level categories. Default fractions $f_{\mathrm{safe}} = 0.90$,
+  $f_{\mathrm{marginal}} = 0.75$, $f_{\mathrm{biased,unrel}} = 0.10$.
+\item \textbf{Per-direction refinement.} Non-SAFE replicates are
+  decomposed by parameter eigendirection of $\mathbf C_{\mathrm{post}}$,
+  allowing the supplement table to identify which kinetic-parameter
+  combinations are operationally recoverable and which are not.
+\item \textbf{Empirical case.} macro\_R at $\Delta t = 1\tau$ is
+  categorized as $\mathrm{BIASED}_{\mathrm{IV}}$ at the cell level
+  (100\% of replicates exhibit the fourth-regime signature in one
+  parameter direction). macro\_IR is SAFE everywhere.
+\item \textbf{Production scope.} In production use where
+  $\theta_{\mathrm{sim}}$ is unknown and the Wald test $T^2$ is
+  unavailable, the BIASED-vs-UNRELIABLE distinction at the validation
+  axis loses one piece of evidence, but the spectral axis and the
+  three matrix tests remain operational. The categorization framework
+  applies to real experimental data, not only to simulation studies.
+\end{itemize}
+
+\end{document}

@@ -1,0 +1,768 @@
+---
+title: "FIM Sanity Check — Spectrum of F vs GFD"
+author: "Claude (con LM)"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.width = 10, fig.height = 6)
+library(tidyverse)
+library(patchwork)
+```
+
+# Setup: dónde están los datos
+
+El binary output vive en `projects/eLife_2025/figures/data/figure_2_*` —
+una carpeta por cell (combinación de Num_ch × nsim × algorithm × noise). Cada
+carpeta tiene `manifest.csv`, `reader.R` (auto-generado), y un `.bin` por
+observable.
+
+```{r config}
+# Cambiá esto al cell que querés analizar. Recomendado: macro_R con
+# Num_ch alto, donde más probable es ver λ_min(F) negativo.
+samples_dir <- "data/figure_2_nch_10000_nsim_16384_macro_IR_noise_0.1"
+
+# El reader.R que vino con la carpeta define read_macrodr_bootstrap()
+source(file.path(samples_dir, "reader.R"))
+```
+
+# Cargar las matrices
+
+`read_macrodr_bootstrap()` devuelve una lista con:
+
+- `samples`: lista nombrada de arrays 4D `[rows, cols, replicate, cell]`
+- `manifest`: el manifest.csv parseado (forma de cada observable)
+- `n_replicates`: B (número de bootstrap replicates por cell)
+
+```{r load}
+boot <- read_macrodr_bootstrap(samples_dir)
+
+cat("Observables disponibles:\n")
+print(boot$manifest)
+cat("\nDimensiones de arrays clave:\n")
+cat("numerical_fim:", dim(boot$samples$numerical_fim), "\n")
+cat("gfd:           ", dim(boot$samples$gfd), "\n")
+cat("idm:           ", dim(boot$samples$idm), "\n")
+```
+
+
+
+
+
+
+
+
+Los arrays tienen forma `[p, p, B, n_cells]`. `p` = número de parámetros,
+`B` = replicates, `n_cells` = combinaciones de hiperparámetros corridas. Para
+una sola cell, `n_cells = 1`.
+
+# Unified tables: 3-tabla API con join automático de axes
+
+El binary NO guarda los axis values (algorithm, interval_in_tau, Num_ch, noise).
+El README oficial dice: usar `sum_logL` mean per cell como fingerprint y joinear
+contra `figure_2_*_analysis.csv`. Implemento eso acá.
+
+## Tres tablas
+
+- **`scalars`**: 1 row per `(cell, replicate)`, 1 columna por observable escalar
+- **`spectra`**: 1 row per `(cell, replicate, dir_rank)`, 1 columna por espectro
+- **`matrices`**: 1 row per `(cell, replicate)`, list-columns con las matrices crudas
+
+Las tres se joinean por `(cell, replicate)`. Las axes (algorithm, interval_in_tau,
+etc.) entran como columnas vía join con el CSV.
+
+## Flatten helpers (por forma del array)
+
+```{r flatten_helpers}
+# [1, 1, B, n_cells] -> tibble(cell, replicate, value)
+flatten_scalar <- function(arr) {
+  dims <- dim(arr); B <- dims[3]; n_cells <- dims[4]
+  tibble(
+    cell      = rep(seq_len(n_cells), each = B),
+    replicate = rep(seq_len(B), times = n_cells),
+    value     = as.vector(arr[1, 1, , , drop = TRUE])
+  )
+}
+
+# [p, 1, B, n_cells] -> tibble(cell, replicate, dir_rank, value)
+# R column-major: dir_rank fastest, then replicate, then cell
+flatten_vector <- function(arr) {
+  dims <- dim(arr); p <- dims[1]; B <- dims[3]; n_cells <- dims[4]
+  tibble(
+    cell      = rep(seq_len(n_cells), each = p * B),
+    replicate = rep(rep(seq_len(B), each = p), times = n_cells),
+    dir_rank  = rep(rep(seq_len(p), times = B), times = n_cells),
+    value     = as.vector(arr[, 1, , , drop = TRUE])
+  )
+}
+
+# [p, p, B, n_cells] -> tibble(cell, replicate, value) con value = list-column de matrices
+flatten_matrix_list <- function(arr) {
+  dims <- dim(arr); p1 <- dims[1]; p2 <- dims[2]; B <- dims[3]; n_cells <- dims[4]
+  expand.grid(replicate = seq_len(B), cell = seq_len(n_cells)) %>%
+    as_tibble() %>%
+    select(cell, replicate) %>%
+    mutate(value = pmap(list(cell, replicate),
+                        function(c, b) arr[, , b, c]))
+}
+
+# Helper que computa el espectro de cada matriz [p,p,B,n_cells] y devuelve
+# tidy spectrum (mismo shape que flatten_vector). Útil para numerical_fim y gfd
+# cuyos espectros no están pre-computados.
+compute_spectrum_from_matrix <- function(arr) {
+  dims <- dim(arr); p <- dims[1]; B <- dims[3]; n_cells <- dims[4]
+  flatten_matrix_list(arr) %>%
+    mutate(spec = map(value, function(M) {
+      M <- 0.5 * (M + t(M))
+      eigen(M, symmetric = TRUE, only.values = TRUE)$values  # sorted desc
+    })) %>%
+    select(-value) %>%
+    unnest_longer(spec, indices_to = "dir_rank", values_to = "eigenvalue")
+}
+```
+
+## Cell-id ↔ axes mapping (fingerprint match contra el CSV)
+
+```{r cell_mapping}
+build_cell_map <- function(boot, csv_path, fingerprint_round_digits = 4) {
+  csv <- read.csv(csv_path, stringsAsFactors = FALSE)
+
+  # Recipe del README oficial (replicada de bouts.Rmd):
+  csv_fp <- csv %>%
+    filter(probit == "mean", statistic == "mean",
+           variable == "logL", operation == "probit.moment.sum") %>%
+    select(algorithm, simulation_algorithm, interval_in_tau, Num_ch,
+           noise_in_conductance_tau, value) %>%
+    rename(fp = value) %>%
+    distinct()
+
+  arr <- boot$samples$sum_logL
+  n_cells <- dim(arr)[4]
+  bin_fp <- tibble(
+    cell = seq_len(n_cells),
+    fp   = vapply(seq_len(n_cells),
+                  function(i) mean(arr[1, 1, , i], na.rm = TRUE),
+                  numeric(1))
+  )
+
+  bin_fp %>%
+    mutate(k = round(fp, fingerprint_round_digits)) %>%
+    inner_join(csv_fp %>% mutate(k = round(fp, fingerprint_round_digits)),
+               by = "k", suffix = c("_bin", "_csv")) %>%
+    select(cell, algorithm, simulation_algorithm,
+           interval_in_tau, Num_ch, noise_in_conductance_tau)
+}
+```
+
+## API top-level: build_macrodr_tables()
+
+```{r build_tables}
+# Construye las 3 tablas a partir de un samples_dir.
+# csv_path: opcional, si presente se hace el join con axis values.
+# extra_computed_spectra: agrega F_spectrum y gfd_full_spectrum derivados via eigen()
+build_macrodr_tables <- function(samples_dir, csv_path = NULL,
+                                  extra_computed_spectra = TRUE) {
+  source(file.path(samples_dir, "reader.R"))
+  boot <- read_macrodr_bootstrap(samples_dir)
+  manifest <- boot$manifest
+
+  # Clasificación por shape
+  scalar_obs <- manifest %>% filter(rows == 1, cols == 1) %>% pull(observable)
+  vector_obs <- manifest %>% filter(cols == 1, rows >  1) %>% pull(observable)
+  matrix_obs <- manifest %>% filter(rows >  1, cols >  1) %>% pull(observable)
+
+  # 1) scalars table
+  scalars <- map(scalar_obs, function(obs) {
+    flatten_scalar(boot$samples[[obs]]) %>% rename(!!obs := value)
+  }) %>%
+    reduce(full_join, by = c("cell", "replicate"))
+
+  # 2) spectra table (vector observables)
+  spectra <- map(vector_obs, function(obs) {
+    flatten_vector(boot$samples[[obs]]) %>% rename(!!obs := value)
+  }) %>%
+    reduce(full_join, by = c("cell", "replicate", "dir_rank"))
+
+  # 2b) Espectros derivados (F y gfd_full vía eigen) — opcional pero útil
+  if (extra_computed_spectra) {
+    F_spec_computed <- compute_spectrum_from_matrix(boot$samples$numerical_fim) %>%
+      rename(F_spectrum_computed = eigenvalue)
+    GFD_spec_computed <- compute_spectrum_from_matrix(boot$samples$gfd) %>%
+      rename(gfd_spectrum_computed = eigenvalue)
+    spectra <- spectra %>%
+      full_join(F_spec_computed,   by = c("cell", "replicate", "dir_rank")) %>%
+      full_join(GFD_spec_computed, by = c("cell", "replicate", "dir_rank"))
+  }
+
+  # 3) matrices table (list-columns)
+  matrices <- map(matrix_obs, function(obs) {
+    flatten_matrix_list(boot$samples[[obs]]) %>% rename(!!obs := value)
+  }) %>%
+    reduce(full_join, by = c("cell", "replicate"))
+
+  # Cell map vía fingerprint si CSV está disponible
+  cell_map <- if (!is.null(csv_path) && file.exists(csv_path)) {
+    build_cell_map(boot, csv_path)
+  } else {
+    tibble(cell = seq_len(dim(boot$samples[[scalar_obs[1]]])[4]))
+  }
+
+  # Anexar axis columns a las 3 tablas
+  scalars  <- scalars  %>% left_join(cell_map, by = "cell")
+  spectra  <- spectra  %>% left_join(cell_map, by = "cell")
+  matrices <- matrices %>% left_join(cell_map, by = "cell")
+
+  list(
+    scalars  = scalars,
+    spectra  = spectra,
+    matrices = matrices,
+    cell_map = cell_map,
+    manifest = manifest
+  )
+}
+```
+
+## API multi-run
+
+```{r build_tables_multi}
+# Carga múltiples samples_dirs y los stackea con una columna `run_label`.
+# Cada entrada de samples_dirs puede ser un samples_dir crudo o una lista
+# list(dir = "...", csv = "...") si querés distintos CSVs por run.
+build_macrodr_tables_multi <- function(samples_dirs, default_csv = NULL) {
+  results <- imap(samples_dirs, function(spec, label) {
+    sd  <- if (is.list(spec)) spec$dir else spec
+    csv <- if (is.list(spec) && !is.null(spec$csv)) spec$csv else default_csv
+    out <- build_macrodr_tables(sd, csv)
+    list(
+      scalars  = out$scalars  %>% mutate(run_label = label),
+      spectra  = out$spectra  %>% mutate(run_label = label),
+      matrices = out$matrices %>% mutate(run_label = label),
+      cell_map = out$cell_map %>% mutate(run_label = label)
+    )
+  })
+  list(
+    scalars  = bind_rows(map(results, "scalars")),
+    spectra  = bind_rows(map(results, "spectra")),
+    matrices = bind_rows(map(results, "matrices")),
+    cell_map = bind_rows(map(results, "cell_map"))
+  )
+}
+```
+
+## Test: cargar macro_R + macro_IR con sus axes mapeadas
+
+```{r unified_load}
+# El analysis CSV vive junto a la carpeta samples
+csv_R  <- "data/figure_2_nch_10000_nsim_16384_macro_R_noise_0.1_analysis.csv"
+csv_IR_4096 <- "data/figure_2_nch_10000_nsim_4096_scheme_CO_IR_analysis.csv"
+csv_IR_16384 <- "data/figure_2_nch_10000_nsim_16384_macro_IR_noise_0.1_analysis.csv"
+
+all <- build_macrodr_tables_multi(
+  list(
+    macro_R_16384  = list(dir = "data/figure_2_nch_10000_nsim_16384_macro_R_noise_0.1",
+                    csv = csv_R),
+    macro_IR_4096 = list(dir = "data/figure_2_nch_10000_nsim_4096_scheme_CO_IR",
+                    csv = csv_IR_4096),
+    macro_IR_16384 = list(dir = "data/figure_2_nch_10000_nsim_16384_macro_IR_noise_0.1",
+                    csv = csv_IR_16384)
+  )
+)
+
+cat("scalars dims:", dim(all$scalars), "\n")
+cat("spectra dims:", dim(all$spectra), "\n")
+cat("matrices dims:", dim(all$matrices), "\n")
+cat("\nCell map (axes recuperados por fingerprint):\n")
+print(all$cell_map)
+cat("\nObservables escalares disponibles:\n")
+print(names(all$scalars))
+cat("\nObservables de espectro disponibles:\n")
+print(names(all$spectra))
+```
+
+```{r,fig.height=20, fig.width=20}
+d<-all$spectra
+d%>%filter(algorithm=="macro_R")%>%ggplot( aes(x=dcc_spectrum, y=gfd_spectrum_computed))+geom_point(aes(color=algorithm))+facet_wrap(interval_in_tau+run_label~dir_rank, scale="free", ncol=6)
+```
+
+
+```{r,fig.height=10, fig.width=10}
+stop
+```
+
+
+
+
+## Ejemplo de queries triviales con la API unificada
+
+```{r unified_examples, fig.height = 6}
+# Q1: condition number de IDM por (algorithm, interval_in_tau)
+all$scalars %>%
+  ggplot(aes(x = factor(interval_in_tau), y = idm_spectrum_condition_number,
+             fill = algorithm)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_y_log10() +
+  labs(title = "IDM condition number — por Δt × algoritmo",
+       x = "interval_in_tau (Δt en τ)", y = "κ(IDM)") +
+  theme_minimal()
+
+# Q2: λ_min(F computado) vs λ_min(GFD spectrum stored) por (algorithm, interval)
+all$spectra %>%
+  group_by(run_label, algorithm, interval_in_tau, cell, replicate) %>%
+  summarise(lmin_F_computed = min(F_spectrum_computed),
+            lmin_GFD_stored = min(gfd_spectrum),
+            .groups = "drop") %>%
+  ggplot(aes(x = factor(interval_in_tau), y = lmin_F_computed, fill = algorithm)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "λ_min(F) por Δt — usando la tabla unificada",
+       x = "interval_in_tau", y = "λ_min(numerical_fim)") +
+  theme_minimal()
+```
+
+
+
+# Núcleo: extraer espectros por replicate
+
+```{r spectra}
+# Helper: para un array [p, p, B, n_cells], devolver tibble con (cell, replicate,
+# dir_rank, eigenvalue) donde dir_rank es el ranking descendente del autovalor
+extract_spectrum <- function(mat_array, name) {
+  dims <- dim(mat_array)
+  p <- dims[1]; B <- dims[3]; n_cells <- dims[4]
+
+  tibble(
+    cell      = rep(seq_len(n_cells), each = B * p),
+    replicate = rep(rep(seq_len(B), each = p), times = n_cells),
+    dir_rank  = rep(rep(seq_len(p), times = B), times = n_cells)
+  ) %>%
+    mutate(
+      eigenvalue = pmap_dbl(list(cell, replicate, dir_rank), function(c, b, k) {
+        M <- mat_array[, , b, c]
+        # Symmetrize defensively (FD-of-AD can give tiny asymmetries)
+        M <- 0.5 * (M + t(M))
+        eig <- eigen(M, symmetric = TRUE, only.values = TRUE)$values
+        eig[k]  # ya viene sorted descending por eigen()
+      }),
+      matrix_name = name
+    )
+}
+
+# Para data sets grandes esto puede tardar — extract_spectrum hace eigen() en
+# B * n_cells matrices p×p. Para p=6, B=100 es trivial.
+F_spec   <- extract_spectrum(boot$samples$numerical_fim, "F")
+GFD_spec <- extract_spectrum(boot$samples$gfd,           "GFD")
+
+cat("Spectrum extracted: F has", nrow(F_spec), "rows; GFD has", nrow(GFD_spec), "rows\n")
+```
+
+# Diagnostic plot 1: distribución de λ por matriz
+
+¿Cuántos replicates tienen autovalores negativos en F? ¿Y en GFD?
+
+```{r plot_distributions}
+both_spec <- bind_rows(F_spec, GFD_spec) %>%
+  mutate(matrix_name = factor(matrix_name, levels = c("F", "GFD")))
+
+p1 <- both_spec %>%
+  ggplot(aes(x = eigenvalue, fill = matrix_name)) +
+  geom_histogram(bins = 60, alpha = 0.7) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ matrix_name, scales = "free") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 7)) +
+  labs(title = "Distribución de autovalores por matriz",
+       subtitle = "Línea roja en λ=0; cualquier masa a la izquierda es indefinición",
+       x = "λ", y = "count") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+p2 <- both_spec %>%
+  group_by(matrix_name, replicate, cell) %>%
+  summarise(lambda_min = min(eigenvalue), .groups = "drop") %>%
+  ggplot(aes(x = lambda_min, fill = matrix_name)) +
+  geom_histogram(bins = 40, alpha = 0.7) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ matrix_name, scales = "free") +
+  labs(title = "λ_min por replicate",
+       subtitle = "Si F tiene mass < 0 pero GFD no → indefinición exclusiva de F",
+       x = "λ_min", y = "replicates") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+p1 / p2
+```
+
+# Diagnostic plot 2: pairing por rank (λ_F vs λ_GFD)
+
+Apareando el i-ésimo autovalor de F con el i-ésimo de GFD (ambos sorted
+descendente). **Caveat**: esto NO es alineación por eigenvector — es por rank.
+En la mayoría de los casos las dos ordenaciones coinciden porque G ≈ F bajo
+correct spec, pero cerca del cero o con cambios de signo, los rankings pueden
+divergir. Lo notamos en la interpretación.
+
+```{r pair_by_rank}
+paired <- F_spec %>%
+  rename(lambda_F = eigenvalue) %>%
+  inner_join(GFD_spec %>% rename(lambda_GFD = eigenvalue),
+             by = c("cell", "replicate", "dir_rank")) %>%
+  select(-matrix_name.x, -matrix_name.y) %>%
+  mutate(
+    # g_implied es la "amplitud" de G en esta dirección, derivada de
+    # λ_GFD = λ_F / g  (ver discusión teórica: G^{-1/2} F G^{-1/2} = GFD)
+    # Cuidado: esto vale ESTRICTAMENTE solo cuando los eigenvecs alinean.
+    # Como aproximación rank-aligned, es informativo pero no exacto.
+    g_implied = lambda_F / lambda_GFD,
+    sign_F   = if_else(lambda_F   > 0, "+", if_else(lambda_F   < 0, "-", "0")),
+    sign_GFD = if_else(lambda_GFD > 0, "+", if_else(lambda_GFD < 0, "-", "0"))
+  )
+
+# Sylvester sanity check: F y GFD deberían tener mismo número de positivos
+# por replicate. Si no, pairing por rank está engañando.
+sylvester_check <- paired %>%
+  group_by(cell, replicate) %>%
+  summarise(
+    n_pos_F   = sum(lambda_F   > 0),
+    n_pos_GFD = sum(lambda_GFD > 0),
+    matches   = n_pos_F == n_pos_GFD,
+    .groups = "drop"
+  )
+
+cat("Sylvester check (debería ser TRUE en todos los replicates):\n")
+cat("  fracción de replicates con matching positive count:",
+    mean(sylvester_check$matches), "\n")
+```
+
+```{r scatter}
+p_scatter <- paired %>%
+  ggplot(aes(x = lambda_F, y = lambda_GFD, color = factor(dir_rank))) +
+  geom_point(alpha = 0.4, size = 1.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red", alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dotted", color = "blue", alpha = 0.5) +
+  scale_color_brewer(palette = "Set1", name = "dir_rank") +
+  labs(title = "λ(F) vs λ(GFD) — rank-aligned",
+       subtitle = "Cuadrante inf-izq = ambos negativos (indefinición coherente)\nLínea azul punteada = identity (perfect agreement bajo correct spec)",
+       x = "λ(F) (observed Fisher)", y = "λ(GFD)") +
+  theme_minimal()
+
+# Versión log-scale para magnitudes:
+p_scatter_log <- paired %>%
+  mutate(abs_F   = abs(lambda_F),
+         abs_GFD = abs(lambda_GFD)) %>%
+  ggplot(aes(x = abs_F, y = abs_GFD,
+             color = interaction(sign_F, sign_GFD),
+             shape = factor(dir_rank))) +
+  geom_point(alpha = 0.5) +
+  scale_x_log10() + scale_y_log10() +
+  scale_color_discrete(name = "sign(F).sign(GFD)") +
+  labs(title = "|λ(F)| vs |λ(GFD)| — log scale, sign-colored",
+       x = "|λ(F)|", y = "|λ(GFD)|") +
+  theme_minimal()
+
+p_scatter / p_scatter_log
+```
+
+# Diagnostic plot 3: el g_implied diagnóstico
+
+Si pairing por rank es razonable (Sylvester check ≈ TRUE en todas las replicates),
+`g_implied = λ_F / λ_GFD` aproxima el autovalor correspondiente de G_lik en
+esa dirección.
+
+- `g_implied ≈ 1`: F y G coinciden — modelo bien especificado en esa direccion
+- `g_implied >> 1`: F mayor que G — dato más informativo que el modelo predice
+- `g_implied << 1`: F menor que G — modelo más informativo que el dato muestra (probablemente sloppy)
+- `g_implied < 0`: F y GFD signos opuestos — **patológico**, no debería pasar (Sylvester violation)
+
+```{r g_implied}
+paired %>%
+  filter(abs(lambda_GFD) > 1e-12) %>%   # evita div by zero
+  ggplot(aes(x = abs(lambda_F), y = g_implied, color = factor(dir_rank))) +
+  geom_point(alpha = 0.4) +
+  geom_hline(yintercept = 1, linetype = "dotted", color = "blue") +
+  scale_x_log10() + scale_y_log10() +
+  scale_color_brewer(palette = "Set1", name = "dir_rank") +
+  labs(title = "g_implied (≈ autovalor de G_lik en esa dirección) vs |λ_F|",
+       subtitle = "Cluster cerca de g=1: F≈G (modelo OK)\nCluster con g<<1: sloppy direction (G chico, F arbitrario)\ng>>1: misspec con info empírica que el modelo no captura",
+       x = "|λ_F|", y = "g_implied = λ_F / λ_GFD") +
+  theme_minimal()
+```
+
+# Interpretación: la pregunta del -40
+
+```{r conclude}
+# Replicates donde F tiene λ_min < umbral (= "BIASED" en la categorización original)
+threshold <- 0   # podés cambiar a -1 si querés filtrar solo "fuertemente" negativos
+
+biased_replicates <- paired %>%
+  filter(lambda_F < threshold) %>%
+  arrange(lambda_F)
+
+cat("Replicates con λ_min(F) <", threshold, ":\n")
+cat("  Total entries con λ_F < ", threshold, ": ", nrow(biased_replicates), "\n")
+cat("  Range de λ_F negativos: [", min(biased_replicates$lambda_F), ",",
+    max(biased_replicates$lambda_F), "]\n\n")
+
+cat("Para los entries más negativos (top 20 most-negative λ_F):\n")
+biased_replicates %>%
+  head(20) %>%
+  select(cell, replicate, dir_rank, lambda_F, lambda_GFD, g_implied, sign_F, sign_GFD) %>%
+  print()
+```
+
+**Lectura del output**:
+
+- Si los entries con λ_F muy negativo (digamos < -10) tienen `g_implied` muy
+  chico (g << 1), las direcciones de indefinición son **sloppy** y G ≈ 0 ahí.
+  El -40 es esencialmente ruido amplificado por la pequeñez de G en esa
+  dirección. **El framework PID con prior σ²=2 sigue siendo viable** porque la
+  curvatura "real" del modelo en esa dirección es chiquita; lo que el FD ve
+  son fluctuaciones finite-N + truncation noise.
+
+- Si los entries con λ_F muy negativo tienen `g_implied` ≈ 1 (signo positivo,
+  magnitud similar a |λ_F|), la indefinición es **estructural**. El modelo
+  predice información de Fisher de magnitud comparable a la curvatura
+  observada, pero la curvatura observada es de signo opuesto. **Esto es
+  misspec genuina o off-MLE severo.** Refit más fino o aceptar como finding.
+
+- Si Sylvester check < 100%: pairing por rank está engañando, y necesitamos
+  hacer la cosa bien (generalized eigenvalue problem F u = λ G u). Hay código
+  comentado al final para ese caso.
+
+# Comparación directa F vs G: macro_R vs macro_IR
+
+Carga el mismo cell (nch=10000, nsim=16384, noise=0.1) bajo los dos algoritmos
+y los compara codo a codo. Si la teoría es correcta:
+
+- **macro_R** debe mostrar la patología (λ_F negativo en alguna dirección
+  donde G se vuelve singular, para algún Δt extremo)
+- **macro_IR** NO debe mostrar esa patología — debería tener F y G alineados
+  en todas las direcciones para todos los Δt
+
+Esa es la firma diagnóstica que distingue los dos algoritmos.
+
+```{r load_both}
+# Asume que el samples_dir de arriba era macro_R. Cargamos el de macro_IR
+# en paralelo:
+samples_dir_R  <- samples_dir
+samples_dir_IR <- str_replace(samples_dir, "macro_R", "macro_IR")
+
+stopifnot(dir.exists(samples_dir_R), dir.exists(samples_dir_IR))
+
+# Recompute reader (en caso de que se sobreescriba)
+source(file.path(samples_dir_R, "reader.R"))
+boot_R  <- read_macrodr_bootstrap(samples_dir_R)
+boot_IR <- read_macrodr_bootstrap(samples_dir_IR)
+
+cat("macro_R:   numerical_fim dims =", dim(boot_R$samples$numerical_fim),  "\n")
+cat("macro_IR:  numerical_fim dims =", dim(boot_IR$samples$numerical_fim), "\n")
+```
+
+## Extracción paralela y g_implied por algoritmo
+
+`g_implied = λ_F / λ_GFD` es la estimación rank-paired del autovalor de G_lik
+en cada dirección. Es exacto bajo correct spec (donde rank-pairing coincide
+con eigenvector-pairing), aproximado fuera de eso.
+
+```{r extract_both}
+build_paired <- function(boot_obj, algorithm_label) {
+  F_spec   <- extract_spectrum(boot_obj$samples$numerical_fim, "F")
+  GFD_spec <- extract_spectrum(boot_obj$samples$gfd,           "GFD")
+
+  F_spec %>%
+    rename(lambda_F = eigenvalue) %>%
+    inner_join(GFD_spec %>% rename(lambda_GFD = eigenvalue),
+               by = c("cell", "replicate", "dir_rank")) %>%
+    select(-matrix_name.x, -matrix_name.y) %>%
+    mutate(
+      g_implied = lambda_F / lambda_GFD,
+      sign_F   = if_else(lambda_F   > 0, "+", if_else(lambda_F   < 0, "-", "0")),
+      sign_GFD = if_else(lambda_GFD > 0, "+", if_else(lambda_GFD < 0, "-", "0")),
+      algorithm = algorithm_label
+    )
+}
+
+paired_R  <- build_paired(boot_R,  "macro_R")
+paired_IR <- build_paired(boot_IR, "macro_IR")
+paired_both <- bind_rows(paired_R, paired_IR) %>%
+  mutate(algorithm = factor(algorithm, levels = c("macro_R", "macro_IR")))
+
+cat("Sylvester check (fracción de replicates con # positivos F == # positivos GFD):\n")
+paired_both %>%
+  group_by(algorithm, cell, replicate) %>%
+  summarise(n_pos_F = sum(lambda_F > 0),
+            n_pos_GFD = sum(lambda_GFD > 0),
+            match = n_pos_F == n_pos_GFD,
+            .groups = "drop") %>%
+  group_by(algorithm) %>%
+  summarise(sylvester_pass_rate = mean(match), .groups = "drop") %>%
+  print()
+```
+
+Si macro_IR pasa 100% de Sylvester pero macro_R no, **eso es el primer hint
+de que la patología es macro_R-específica**.
+
+## λ_min(F) por cell, ambos algoritmos
+
+¿Qué Δt (= cell) muestra el problema en cada algoritmo?
+
+```{r lmin_by_cell}
+lmin_data <- paired_both %>%
+  group_by(algorithm, cell, replicate) %>%
+  summarise(lambda_min_F   = min(lambda_F),
+            lambda_min_GFD = min(lambda_GFD),
+            .groups = "drop")
+
+# Tabla resumen
+lmin_summary <- lmin_data %>%
+  group_by(algorithm, cell) %>%
+  summarise(
+    median_lambda_min_F   = median(lambda_min_F),
+    q05_lambda_min_F      = quantile(lambda_min_F, 0.05),
+    q95_lambda_min_F      = quantile(lambda_min_F, 0.95),
+    n_neg                 = sum(lambda_min_F < 0),
+    median_lambda_min_GFD = median(lambda_min_GFD),
+    .groups = "drop"
+  )
+cat("Resumen por (algorithm, cell):\n")
+print(lmin_summary)
+
+# Plot λ_min(F) por cell, comparando algoritmos
+ggplot(lmin_data, aes(x = factor(cell), y = lambda_min_F, fill = algorithm)) +
+  geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "λ_min(F) por cell — macro_R vs macro_IR",
+       subtitle = "Cell = Δt regime. Una caja abajo del cero = ese Δt tiene curvatura negativa estructural",
+       x = "cell (= Δt index)", y = "λ_min(F_b) por replicate") +
+  theme_minimal()
+```
+
+## λ_min(GFD) por cell
+
+¿Está la patología de G singular (λ_min(GFD) = 0) localizada en macro_R, o
+también en macro_IR?
+
+```{r lmin_gfd}
+ggplot(lmin_data, aes(x = factor(cell), y = lambda_min_GFD, fill = algorithm)) +
+  geom_boxplot(outlier.size = 0.5, alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "λ_min(GFD) por cell — macro_R vs macro_IR",
+       subtitle = "Si una caja toca el cero → G singular en esa dirección\n(en macro_R esperamos esto en cell extrema; en macro_IR NO debería pasar)",
+       x = "cell (= Δt index)", y = "λ_min(gfd) por replicate") +
+  theme_minimal()
+```
+
+## Plot conjunto: λ_F vs g_implied, faceted por algoritmo
+
+```{r joint_plot, fig.height = 8}
+paired_both %>%
+  filter(abs(lambda_GFD) > 1e-12) %>%  # excluye singularidades
+  ggplot(aes(x = lambda_F, y = g_implied, color = factor(dir_rank))) +
+  geom_point(alpha = 0.4, size = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", alpha = 0.4) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red", alpha = 0.4) +
+  scale_color_brewer(palette = "Set1", name = "dir_rank") +
+  facet_grid(algorithm ~ ., scales = "free_y") +
+  labs(title = "λ_F vs g_implied (= autovalor de G_lik) — comparación",
+       subtitle = "Si macro_IR no tiene puntos en cuadrante inferior-izquierdo (λ_F<0)\nmientras macro_R sí → patología macro_R-específica confirmada",
+       x = "λ_F", y = "g_implied = λ_F / λ_GFD") +
+  theme_minimal()
+```
+
+## Conteo de replicates BIASED por algoritmo
+
+```{r count_biased}
+biased_counts <- paired_both %>%
+  group_by(algorithm) %>%
+  summarise(
+    total_entries    = n(),
+    n_lambda_F_neg   = sum(lambda_F   < 0),
+    n_lambda_GFD_zero = sum(abs(lambda_GFD) < 1e-12),
+    n_both           = sum(lambda_F < 0 & abs(lambda_GFD) < 1e-12),
+    pct_lambda_F_neg = round(100 * mean(lambda_F < 0), 2),
+    .groups = "drop"
+  )
+print(biased_counts)
+```
+
+**Lectura**: si `pct_lambda_F_neg` es alto en macro_R y cero en macro_IR, el
+diagnóstico es definitivo: macro_R produce indefinición estructural de F que
+macro_IR no produce, en idénticas condiciones de simulación.
+
+## Interpretación esperada
+
+| Resultado | Lectura |
+|---|---|
+| macro_R tiene cell(s) con λ_F < 0 y λ_GFD = 0; macro_IR no | Confirma la tesis del paper: macro_R falla estructuralmente en Δt patológico |
+| Ambos tienen el patrón | El patrón es del modelo (modelo 2-estado), no del algoritmo. Habría que revisar la teoría |
+| macro_IR también tiene el patrón pero menor | Patrón gradual; macro_IR mejor pero no inmune. Vale reportar magnitud |
+| macro_IR no tiene patrón pero macro_R tiene varios cells malos | Pintura aún más fuerte para el paper |
+
+# Phase 2: convergencia en h_rel (mini-run a correr aparte)
+
+(Skipped si la Fase 1 dio respuesta clara. Si la respuesta fue ambigua,
+correr un mini figure_2 con `nch=1000`, `nsim=512`, `B=50`, dos veces:
+`h_rel = 1e-4` y `h_rel = 1e-6`. Cargar las dos carpetas de samples y
+comparar histogramas de λ_min(F).)
+
+```{r phase2, eval=FALSE}
+# Ejemplo de comparación cuando tengas los dos runs:
+# samples_dirs <- list(
+#   h1em4 = "../projects/eLife_2025/figures/data/sanity_check_h1em4",
+#   h1em5 = samples_dir,   # ya cargado arriba (h_rel = 1e-5)
+#   h1em6 = "../projects/eLife_2025/figures/data/sanity_check_h1em6"
+# )
+#
+# all_spectra <- map_dfr(names(samples_dirs), function(h_label) {
+#   sd <- samples_dirs[[h_label]]
+#   source(file.path(sd, "reader.R"))
+#   boot_h <- read_macrodr_bootstrap(sd)
+#   extract_spectrum(boot_h$samples$numerical_fim, "F") %>%
+#     mutate(h_rel_label = h_label)
+# })
+#
+# all_spectra %>%
+#   group_by(h_rel_label, replicate) %>%
+#   summarise(lambda_min = min(eigenvalue), .groups = "drop") %>%
+#   ggplot(aes(x = lambda_min, fill = h_rel_label)) +
+#   geom_density(alpha = 0.4) +
+#   geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+#   labs(title = "λ_min(F) vs h_rel",
+#        subtitle = "Si las 3 densidades coinciden → FD estable, -40 es real\nSi se desplazan → FD inestable, mirar AD")
+```
+
+# Bonus: generalized eigenvalue solver (cuando Sylvester check falla)
+
+Si pairing por rank engaña, hay que resolver el problema generalizado
+$F u = \lambda G u$ directamente. G no está dumpeado, pero se puede recuperar
+algorítmicamente desde F y GFD:
+
+$\mathrm{GFD} = G^{-1/2} F G^{-1/2}$ implica
+$G^{1/2} \mathrm{GFD} G^{1/2} = F$, por lo tanto los eigenvalores de
+$F G^{-1}$ son los de GFD. Pero G en sí requiere invertir el square-root.
+
+```{r geigen, eval=FALSE}
+# Si necesitás G explícito (raro), recuperalo así:
+# Para cada replicate:
+#   1. Eigendecompose GFD = U D U^T
+#   2. F = G^{1/2} GFD G^{1/2}, entonces G^{1/2} = F^{1/2} · (GFD)^{-1/2}
+#      (usar como semilla numérica + iteración fixed-point si falla)
+#   3. Mejor: directamente generalized eigenvalue solver:
+#      eigen(solve(G) %*% F)  o usar pkg geigen
+#
+# Pero en la práctica, con macro-DR p=6, el pairing por rank ya da info
+# suficiente para identificar el patrón.
+```
+
+# Acción esperada según resultado
+
+| Patrón | Acción |
+|---|---|
+| Casi todos g ≈ 1 | F y G concuerdan; -40 (si lo hay) es geometría real del modelo. Reportar como finding |
+| Cluster con g << 1 | Sloppy directions dominan. -40 es ruido amplificado. Framework PID con prior está bien |
+| g >> 1 sistemático | Modelo NO captura info que el dato sí muestra. **Misspec inversa** — el modelo es too simple |
+| g_implied < 0 (Sylvester fail) | Pairing engañó. Reanalizar con generalized eigenvalue solver |
+| Histograma λ_min(F) sensible a h_rel (Phase 2) | FD/AD inestable. Bug downstream, investigar |

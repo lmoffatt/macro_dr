@@ -1,0 +1,362 @@
+---
+title: "Figure 2"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r}
+
+filename=c(
+  "data/figure_2_nch_10_nsim_4096_scheme_CO_IR_analysis"
+  ,"data/figure_2_nch_100_nsim_4096_scheme_CO_IR_analysis"
+  ,"data/figure_2_nch_1000_nsim_4096_scheme_CO_IR_analysis"
+  ,"data/figure_2_nch_10000_nsim_4096_scheme_CO_IR_analysis"
+  ,"data/figure_2_nch_10_nsim_4096_IR_10noise_analysis"
+  ,"data/figure_2_nch_100_nsim_4096_IR_10noise_analysis"
+  ,"data/figure_2_nch_1000_nsim_4096_IR_10noise_analysis"
+  ,"data/figure_2_nch_10000_nsim_4096_IR_10noise_analysis"
+  
+  
+  ,"data/figure_2_nch_10_nsim_4096_macro_R_noise_0.1_analysis"
+  ,
+  "data/figure_2_nch_100_nsim_4096_macro_R_noise_0.1_analysis",
+  "data/figure_2_nch_1000_nsim_4096_macro_R_noise_0.1_analysis"
+  
+  
+  
+  
+  )
+
+
+```
+
+```{r}
+
+library(dplyr)
+
+d <- lapply(paste0(filename, ".csv"), read.csv) %>% 
+  bind_rows()
+```
+
+```{r}
+d<- d %>%
+  select(where(~ !all(is.na(.))))
+```
+
+```{r}
+d%>%select(component_path)%>%distinct()%>%pull()
+
+```
+
+```{r}
+d<-d%>%mutate(component= component_path %>%
+           str_replace("^Probit_statistics_", "") )
+   
+     
+```
+
+```{r}
+d%>%select(component)%>%distinct()%>%pull()
+
+```
+
+
+
+```{r}
+d_mean<-
+  d%>%filter(!component%in%c("Probit_statistics","count_r_std","count_dlogL"))%>%
+  #select(component_path,component,param_name,algorithm,sample_index,calculus,statistic,param_index,param_col,param_name,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%
+  pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+d_mean
+```
+
+```{r}
+scalar_components<-d_mean%>%filter(statistic%in%c("mean", "value"), is.na(param_col),is.na(param_index) , !is.na(mean_NA))%>%select(component)%>%distinct()%>%pull()
+scalar_components
+
+```
+```{r}
+d_algo<-
+  d%>%filter(!component%in%c("Probit_statistics","count_r_std","count_dlogL"))%>%
+  #select(component_path,component,param_name,algorithm,sample_index,calculus,statistic,param_index,param_col,param_name,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%
+  pivot_wider(names_from = c(algorithm,probit,quantile_level), values_from = value)
+d_algo
+
+```
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.10" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Moment_statistics_Sum_r_std", "Moment_statistics_Sum_r2_std")
+
+for (al in c("macro_IR","macro_R"))
+for (comp in components_to_plot) {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      component == comp, 
+      statistic == "mean", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization"
+    ) %>%
+    # Ensure matching by formatting numbers to match your exact vector keys
+    mutate(
+      key = sprintf("%.2f", interval_in_tau), # e.g., 0.5 becomes "0.50"
+      # If your keys are exactly "1.00", "0.5", "0.20", let's normalize them:
+      key = case_when(
+        interval_in_tau == 1.00 ~ "1.00",
+        interval_in_tau == 0.50 ~ "0.5",
+        interval_in_tau == 0.20 ~ "0.20",
+        interval_in_tau == 0.10 ~ "0.10",
+        interval_in_tau == 0.05 ~ "0.05",
+        interval_in_tau == 0.02 ~ "0.02",
+        interval_in_tau == 0.01 ~ "0.01",
+        TRUE ~ as.character(interval_in_tau)
+      ),
+      n_samples = num_samples[key],
+      
+      # Pre-calculate scaled values to keep ggplot code clean
+      scaled_mean = mean_NA / n_samples,
+      scaled_ymin = quantile_0.025 / n_samples,
+      scaled_ymax = quantile_0.975 / n_samples
+    )
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = interval_in_tau, color = component)) +
+    geom_point(aes(y = scaled_mean)) +
+    geom_errorbar(aes(ymin = scaled_ymin, ymax = scaled_ymax), width = 0.05) +
+    scale_x_log10() +
+    facet_grid(Num_ch ~ noise_in_conductance_tau, scales = "free") +
+    geom_hline(yintercept = ifelse(comp=="Moment_statistics_Sum_r2_std",1,0), color="green")+
+    ggtitle(paste0(al," ",comp)) 
+  
+  print(p)
+}
+
+
+```
+
+
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Distortion_Induced_Bias", "Moment_statistics_Sum_dlogL")
+
+
+for (al in c("macro_IR","macro_R")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      component == comp, 
+      statistic %in%c( "value","mean"), 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      Num_ch>5)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x =interval_in_tau, color = factor(interval_in_tau)) )+
+    geom_point(aes(y = mean_NA)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=factor(interval_in_tau)), width = 0.05) +
+    scale_x_log10() +
+    #facet_grid(param_name~Num_ch, scales = "free") +
+    facet_wrap(param_name~Num_ch, scales = "free", nrow=6) +
+    geom_hline(yintercept = 0, color="green")+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  print(p)
+}
+}
+
+```
+
+
+
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Information_Distortion_Matrix", "Gaussian_Fisher_Distortion", "Correlation_Distortion_Matrix", "Sample_Distortion_Matrix")
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR","macro_MR","macro_R","macro_MNR")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      Num_ch>5,
+      component == comp, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      interval_in_tau>0.001,
+      param_col==param_index)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = Num_ch, color = param_name)) +
+    geom_point(aes(y = mean_NA)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(interval_in_tau~param_name, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  p2 <- ggplot(plot_data, aes(x = interval_in_tau , color = param_name)) +
+    geom_point(aes(y = mean_NA)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(Num_ch~param_name, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  
+  print(p)
+  print(p2)
+}
+}
+
+```
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Max_Eigenvalue_Information_Distortion_Matrix",
+                        
+"Min_Eigenvalue_Information_Distortion_Matrix"                )
+
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR"))
+  
+for (noi in noise_in_conductance_tau_plot)
+
+ {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      noise_in_conductance_tau == noi, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      component%in% components_to_plot
+    )
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = interval_in_tau, color = component)) +
+    geom_point(aes(y = mean_NA)) +
+    geom_errorbar(aes(ymin = quantile_0.025, ymax = quantile_0.975, color=component), width = 0.05) +
+    scale_x_log10() +
+    facet_grid(Num_ch ~ component, scales = "free") +
+    geom_hline(yintercept = 1.0, color="green")+
+    ggtitle(paste0(al," ",noi)) 
+  
+  print(p)
+}
+
+
+```
+
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c(                   "Log_Eigenvalue_Variance_Information_Distortion_Matrix",    
+"Affine_Invariant_Distance_Information_Distortion_Matrix",   "Symmetrized_KL_Distortion_Information_Distortion_Matrix"   )
+
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR"))
+  
+for (noi in noise_in_conductance_tau_plot)
+
+ {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      noise_in_conductance_tau == noi, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      component%in% components_to_plot
+    )
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = interval_in_tau, color = component)) +
+    geom_point(aes(y = mean_NA)) +
+    geom_errorbar(aes(ymin = quantile_0.025, ymax = quantile_0.975, color=component), width = 0.05) +
+    scale_x_log10() +
+    facet_grid(Num_ch ~ component, scales = "free") +
+    geom_hline(yintercept = ifelse(comp=="Moment_statistics_Sum_r2_std",1,0), color="green")+
+    ggtitle(paste0(al," ",noi)) 
+  
+  print(p)
+}
+
+
+```
+
+
+
+
+```{r,fig.width=40,fig.height=40}
+
+pars=d_mean%>%filter(component=="Information_Distortion_Matrix", param_index!="", param_col==param_index)%>%select(param_name)%>%distinct()%>%pull()
+al=d_mean%>%filter(component=="Distortion_Induced_Bias", param_index!="")%>%select(algorithm)%>%distinct()%>%pull()
+
+
+#for (p in pars )
+ for (a in c("macro_IR"))
+{print(
+d_mean%>%filter(component%in%c("Numerical_Fisher_Information","Moment_statistics_Sum_dlogL"), statistic %in% c("value","covariance"), algorithm==a , param_index==param_col, simulation_algorithm!="lsubsteps_1000")%>%ggplot()+geom_point(aes(x = component, y = mean_NA, color=algorithm))+geom_errorbar(aes(x=component, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+scale_y_log10()+facet_wrap(Num_ch~interval_in_tau+param_name, scales="free", ncol=12) 
+)
+}
+```
+
