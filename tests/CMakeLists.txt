@@ -24,6 +24,7 @@ set(TEST_SOURCES
     math/test_parlett.cpp
     macroir/test_qdt_derivatives.cpp
     macroir/test_macroir_derivatives.cpp
+    macroir/test_dlogLikelihood_equivalence.cpp
     microir/test_micro_derivatives.cpp
     microir/test_micro_full_vs_monoid_logL.cpp
     optimization/test_gauss_newton.cpp

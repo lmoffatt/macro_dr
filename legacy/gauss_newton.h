@@ -46,11 +46,31 @@
 
 namespace macrodr::optimization {
 
+
+
+
+
 struct gauss_newton_options {
-    double initial_lambda = 1e-3;
-    double lambda_factor  = 10.0;
-    double lambda_min     = 1e-10;
-    double lambda_max     = 1e10;
+    // Damping policy: lambda walks along the geometric sequence
+    //   0 ↔ kickoff ↔ kickoff·factor ↔ kickoff·factor² ↔ … ↔ lambda_max
+    //
+    // Loop starts at lambda = 0 (pure Newton).
+    //   - On reject/failure: step UP in the sequence (0 → kickoff → kickoff·factor → …).
+    //   - On accept:         step DOWN in the sequence (… → kickoff·factor → kickoff → 0).
+    //
+    // Symmetric — no "snap" asymmetry between accept and reject. Gradual —
+    // factor=3 ≈ √10 gives ~2× finer control than factor=10 at similar
+    // convergence speed; the sequence 0,1,3,9,27,… has roughly log₂ steps to
+    // reach a target damping versus log₁₀ for factor=10.
+    //
+    // Intermediate values between 0 and kickoff (e.g. 0.001, 0.01, 0.1) are
+    // skipped on purpose — they are "almost Newton" without adding meaningful
+    // regularisation.
+    double lambda_kickoff = 1.0;   // smallest non-zero value in the sequence;
+                                   // configurable — start higher if you suspect
+                                   // θ_init is far from the optimum
+    double lambda_factor  = 3.0;   // geometric ratio between successive damped values
+    double lambda_max     = 1e10;  // give-up bound
 
     std::size_t max_iter  = 100;
 
@@ -66,7 +86,8 @@ struct gauss_newton_options {
 template <class Parameters, class Evaluted_Object>
 struct gauss_newton_result {
     Parameters argmax;
-    Evaluted_Object value;
+    Evaluted_Object initial_value;
+    Evaluted_Object result_value;
     double max_value = 0.0;
     std::size_t n_iter = 0;
     std::string status;                    // "converged_grad" / "converged_value" /
@@ -120,7 +141,7 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
                            gauss_newton_options const& opts = {}) {
 
     auto theta  = std::move(initial);
-    double lambda = opts.initial_lambda;
+    double lambda = 0.0;  // start in Newton mode; jumps to opts.lambda_kickoff on first failure
 
     // Initial objective evaluation.
     auto Maybe_state = objective(theta);
@@ -217,14 +238,26 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
         //   1. damped = Lᵀ·L   (cholesky → upper-triangular L)
         //   2. L_inv = L⁻¹      (inv of triangular, tested)
         //   3. damped⁻¹ = L⁻ᵀ·L⁻¹ = XXT(tr(L_inv))
+        // Helpers for damping walk along the sequence
+        //   0 ↔ kickoff ↔ kickoff·factor ↔ kickoff·factor² ↔ …
+        // step_up = reject/failure direction; step_down = accept direction.
+        // Intermediate values (0, kickoff) are skipped on both sides — they
+        // are "almost Newton" with no regularisation gain.
+        auto step_up = [&]() {
+            return (lambda == 0.0) ? opts.lambda_kickoff : lambda * opts.lambda_factor;
+        };
+        auto step_down = [&]() {
+            return (lambda <= opts.lambda_kickoff) ? 0.0 : (lambda / opts.lambda_factor);
+        };
+
         auto Maybe_chol = cholesky(damped);
         if (!Maybe_chol) {
-            // Cholesky failed -> grow damping, retry.
+            // Cholesky failed -> escalate damping, retry.
             if (opts.verbose) {
-                std::cerr << "[gn]   cholesky(damped) FAILED — grow lambda " << lambda
-                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+                std::cerr << "[gn]   cholesky(damped) FAILED — escalate lambda " << lambda
+                          << " -> " << step_up() << "\n";
             }
-            lambda *= opts.lambda_factor;
+            lambda = step_up();
             if (lambda > opts.lambda_max) {
                 return ReturnT(error_message(
                     "gauss_newton: Cholesky failed and lambda exceeded lambda_max"));
@@ -234,10 +267,10 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
         auto Maybe_L_inv = inv(Maybe_chol.value());
         if (!Maybe_L_inv) {
             if (opts.verbose) {
-                std::cerr << "[gn]   inv(L) FAILED — grow lambda " << lambda
-                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+                std::cerr << "[gn]   inv(L) FAILED — escalate lambda " << lambda
+                          << " -> " << step_up() << "\n";
             }
-            lambda *= opts.lambda_factor;
+            lambda = step_up();
             if (lambda > opts.lambda_max) {
                 return ReturnT(error_message(
                     "gauss_newton: triangular inverse failed and lambda exceeded lambda_max"));
@@ -268,13 +301,13 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
         auto Maybe_state_new = objective(theta_proposed);
         if (!Maybe_state_new) {
             // Objective failure (e.g. AD pipeline NaN, out-of-domain step):
-            // grow lambda, retry from same theta.
+            // escalate damping, retry from same theta.
             if (opts.verbose) {
                 std::cerr << "[gn]   objective FAILED: " << Maybe_state_new.error()()
-                          << " — grow lambda " << lambda
-                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+                          << " — escalate lambda " << lambda
+                          << " -> " << step_up() << "\n";
             }
-            lambda *= opts.lambda_factor;
+            lambda = step_up();
             if (lambda > opts.lambda_max) {
                 return ReturnT(error_message(
                     std::string("gauss_newton: objective failed at proposal and ")
@@ -288,18 +321,20 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
 
         // -------- Armijo-trivial accept/reject --------
         if (dvalue > 0.0) {
-            // Accept: update state and shrink damping.
+            // Accept: step DOWN one notch in the damping sequence. At kickoff
+            // (smallest damped value) the next step is 0 (Newton); higher up
+            // we divide by factor. Intermediate values between 0 and kickoff
+            // are skipped — they would be "almost Newton" without regularisation.
             if (opts.verbose) {
                 std::cerr << "[gn]   ACCEPT value " << value << " -> " << value_new
                           << " (dvalue=" << dvalue
-                          << ") — shrink lambda " << lambda
-                          << " -> " << std::max(opts.lambda_min, lambda / opts.lambda_factor)
-                          << "\n";
+                          << ") — step_down lambda " << lambda
+                          << " -> " << step_down() << "\n";
             }
             theta       = std::move(theta_proposed);
             Maybe_state = std::move(Maybe_state_new);
             value       = value_new;
-            lambda      = std::max(opts.lambda_min, lambda / opts.lambda_factor);
+            lambda      = step_down();
 
             // Convergence check on value change.
             if (std::abs(dvalue) < opts.dvalue_tol) {
@@ -309,14 +344,14 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
                 });
             }
         } else {
-            // Reject: grow damping and retry from same theta.
+            // Reject: escalate damping and retry from same theta.
             if (opts.verbose) {
                 std::cerr << "[gn]   REJECT value " << value << " -> " << value_new
                           << " (dvalue=" << dvalue
-                          << ") — grow lambda " << lambda
-                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+                          << ") — escalate lambda " << lambda
+                          << " -> " << step_up() << "\n";
             }
-            lambda *= opts.lambda_factor;
+            lambda = step_up();
             if (lambda > opts.lambda_max) {
                 return ReturnT(error_message(
                     "gauss_newton: step rejected and lambda exceeded lambda_max"));
