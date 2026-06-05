@@ -659,7 +659,7 @@ TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matri
     score[0] = 1.25;
     score[1] = -0.75;
 
-    auto summary = var::Vector_Space{dlogL(std::move(score), params), FIM(make_diag_spd({2.0, 5.0}), params)};
+    auto summary = var::Vector_Space{dlogL(std::move(score), params), Gaussian_Fisher_Information(make_diag_spd({2.0, 5.0}), params)};
 
     auto out = write_csv(summary, base.string());
     REQUIRE(out);
@@ -690,7 +690,7 @@ TEST_CASE("generic write_csv emits parameter names for wrapped vectors and matri
     CHECK(dlogl1[column_index(header, "param_col")].empty());
     CHECK(dlogl1[column_index(header, "param_name")] == "koff");
 
-    CHECK(fim00[column_index(header, "component_path")] == "FIM");
+    CHECK(fim00[column_index(header, "component_path")] == "Gaussian_Fisher_Information");
     CHECK(fim00[column_index(header, "param_index")] == "0");
     CHECK(fim00[column_index(header, "param_col")] == "0");
     CHECK(fim00[column_index(header, "param_name")] == "kon_kon");

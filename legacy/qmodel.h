@@ -6037,11 +6037,27 @@ class Macro_DMR {
         get<covariance<Grad>>(t_prior_all)() = get<covariance<Grad>>(t_prior_all)() + t_CovGradient();
        }
 
-       if constexpr (var::has_it_v<dMacro_State<vVars...>, Hessian> ){
-        auto t_Hessian = parameter_spd_payload(
+       // NOTE: use `has_var_c` (concept-based, follows inheritance via Var<>
+       // subscript) instead of `var::has_it_v` (which is template-pattern based
+       // and does NOT see slots through the dMacro_State → Vector_Space derivation).
+       // The Hessian/covariance<Grad>/elogL/vlogL siblings using has_it_v in
+       // this function are dead branches by the same root cause — they should
+       // be migrated to has_var_c in a follow-up cleanup.
+       if constexpr (has_var_c<dMacro_State<vVars...>&, Gaussian_Fisher_Information> ){
+        // Per-step Gaussian Fisher Information block accumulated across
+        // timesteps. G_lik = E[-∂²ℓ/∂θ²] under the moment-matched Gaussian
+        // observation model. Used as PSD curvature by MLE optimizers.
+        auto t_GFI = parameter_spd_payload(
             XXT(d_y_mean) / r_y_var + XXT(d_y_var) / (2 * r_y_var * r_y_var),
             var::get_dx_of_dfdx(t_logL));
-         get<Hessian>(t_prior_all)() = get<Hessian>(t_prior_all)() + t_Hessian;
+         auto& current_GFI = get<Gaussian_Fisher_Information>(t_prior_all)();
+         // First step: slot is default-constructed (empty SymPosDef); initialise
+         // to t_GFI directly. Subsequent steps accumulate.
+         if (current_GFI.value().nrows() == 0) {
+             current_GFI = t_GFI;
+         } else {
+             current_GFI = current_GFI + t_GFI;
+         }
        }
        if constexpr (var::has_it_v<dMacro_State<vVars...>, elogL> )
             get<elogL>(t_prior_all)() = get<elogL>(t_prior_all)() + t_elogL ();
@@ -8191,7 +8207,7 @@ Maybe_error<diff_Macro_State_Gradient_Hessian> diff_logLikelihood(
     return diff_Macro_State_Gradient_Hessian(
         std::move(get<logL>(v_MacroEv)), std::move(get<Patch_State>(v_MacroEv)),
         std::move(get<elogL>(v_MacroEv)), std::move(get<vlogL>(v_MacroEv)),
-        Grad(std::move(G), p), FIM(std::move(r_FIM), p));
+        Grad(std::move(G), p), Gaussian_Fisher_Information(std::move(r_FIM), p));
 }
 
 template <class adaptive, class recursive, class averaging, class variance,

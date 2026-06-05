@@ -1,0 +1,336 @@
+#ifndef MACRODR_OPTIMIZATION_GAUSS_NEWTON_H
+#define MACRODR_OPTIMIZATION_GAUSS_NEWTON_H
+
+// Generic Gauss-Newton / Levenberg-Marquardt optimizer.
+//
+// Maximizes a smooth scalar objective whose evaluation returns a structured
+// type with three named accessors:
+//
+//   get<logL>(state)()                 -> double                value
+//   get<Grad>(state)().value()         -> Matrix<double>        gradient
+//   get<CurvTag>(state)().value()      -> SymPosDefMatrix       curvature (PSD)
+//
+// `CurvTag` is the only template parameter the caller specifies; `logL` and
+// `Grad` are hard-coded because the codebase uses a single canonical name for
+// each. The curvature is templated because there are three mathematically
+// distinct PSD curvature estimators in macro-dr:
+//
+//   - Gaussian_Fisher_Information           (= G_lik, the moment-matched FIM)
+//   - Likelihood_Numerical_Fisher_Information (= F, the observed Hessian; can
+//                                              be indefinite, requires strong
+//                                              LM damping or projection)
+//   - Score_Covariance_Matrix               (= J, empirical score covariance)
+//
+// For MLE with the Gaussian-moment-matched likelihood, instantiate with
+// `<Gaussian_Fisher_Information>` (the slot populated by update_macro_state
+// in the AD pipeline, accumulating G_lik per timestep). For MAP, a wrapper
+// objective composes G_post = G_lik + H_prior before passing it back here.
+//
+// Step: standard LM with adaptive damping
+//   (curv + lambda * diag(curv)) * delta = grad
+//   theta_new = theta + delta
+// Accept if value increased; otherwise grow lambda and retry from same theta.
+// Shrink lambda on accept, grow on reject. Convergence on ||grad|| < tol or
+// |dvalue| < tol.
+
+#include "distributions.h"    // logL, Grad, Gaussian_Fisher_Information, Vector_Space, get<>
+#include "lapack_headers.h"   // Lapack_SymmPosDef_inv
+#include "matrix.h"           // Matrix, SymPosDefMatrix
+#include "maybe_error.h"      // Maybe_error, error_message
+
+#include <cmath>
+#include <cstddef>
+#include <iostream>
+#include <string>
+#include <utility>
+
+namespace macrodr::optimization {
+
+struct gauss_newton_options {
+    double initial_lambda = 1e-3;
+    double lambda_factor  = 10.0;
+    double lambda_min     = 1e-10;
+    double lambda_max     = 1e10;
+
+    std::size_t max_iter  = 100;
+
+    // Convergence: ||grad|| < grad_rtol * max(1, ||theta||)
+    double grad_rtol      = 1e-6;
+
+    // Convergence: |dvalue| < dvalue_tol (absolute on the objective value)
+    double dvalue_tol     = 1e-10;
+
+    bool verbose          = false;
+};
+
+template <class Parameters, class Evaluted_Object>
+struct gauss_newton_result {
+    Parameters argmax;
+    Evaluted_Object value;
+    double max_value = 0.0;
+    std::size_t n_iter = 0;
+    std::string status;                    // "converged_grad" / "converged_value" /
+                                           // "max_iter_reached" / "stalled"
+};
+
+namespace detail {
+
+template <class Mat>
+inline double frobenius_norm(Mat const& m) {
+    double s = 0.0;
+    for (std::size_t i = 0; i < m.nrows(); ++i)
+        for (std::size_t j = 0; j < m.ncols(); ++j)
+            s += m(i, j) * m(i, j);
+    return std::sqrt(s);
+}
+
+}  // namespace detail
+
+
+// ----------------------------------------------------------------------------
+// gauss_newton_maximize
+// ----------------------------------------------------------------------------
+//
+// Generic Gauss-Newton-with-LM-damping maximizer.
+//
+// Template parameters:
+//   CurvTag      : the tag used to extract the PSD curvature matrix from the
+//                  objective's state (e.g. FIM, Gaussian_Fisher_Information,
+//                  Likelihood_Numerical_Fisher_Information, Score_Covariance_Matrix).
+//   Objective    : callable with signature
+//                    Maybe_error<State> operator()(Parameters const&) const;
+//                  where State satisfies:
+//                    - get<logL>(state)()                 -> double
+//                    - get<Grad>(state)().value()         -> Matrix<double>
+//                    - get<CurvTag>(state)().value()      -> SymPosDefMatrix<double>
+//                    - get<Grad>(state)().parameters_ptr()    -> ptr (optional, for names)
+//                    - get<CurvTag>(state)().parameters_ptr() -> ptr (optional, for names)
+//   Parameters   : the parameter type (typically var::Parameters_transformed),
+//                  supporting operator() to extract values as Matrix and
+//                  create(Matrix) to produce a new instance with updated values.
+//
+// Behaviour:
+//   - Iterates LM-damped Gauss-Newton steps until convergence or max_iter.
+//   - Adapts lambda: shrink on accept, grow on reject.
+//   - Returns Maybe_error<gauss_newton_result>: error if lambda exceeds
+//     lambda_max while still rejecting / failing.
+//
+template <class CurvTag, class Objective, class Parameters>
+auto gauss_newton_maximize(Objective const& objective, Parameters initial,
+                           gauss_newton_options const& opts = {}) {
+
+    auto theta  = std::move(initial);
+    double lambda = opts.initial_lambda;
+
+    // Initial objective evaluation.
+    auto Maybe_state = objective(theta);
+
+    // Deduce the evaluated-object type and the result type from the objective's
+    // return. EvalT is whatever the objective puts inside its Maybe_error.
+    using EvalT   = std::decay_t<decltype(Maybe_state.value())>;
+    using ResultT = gauss_newton_result<Parameters, EvalT>;
+    using ReturnT = Maybe_error<ResultT>;
+
+    if (!Maybe_state)
+        return ReturnT(error_message(
+            std::string("gauss_newton: initial objective failed: ") + Maybe_state.error()()));
+    double value = get<logL>(Maybe_state.value())();
+
+    std::size_t iter = 0;
+    for (; iter < opts.max_iter; ++iter) {
+
+        // Extract gradient and curvature at current theta (for the LM step).
+        auto const& grad = get<Grad>(Maybe_state.value())().value();
+        auto const& curv = get<CurvTag>(Maybe_state.value())().value();
+
+        // -------- Convergence check on gradient norm --------
+        const double grad_norm  = detail::frobenius_norm(grad);
+        const double theta_norm = std::max(1.0, detail::frobenius_norm(theta()));
+        if (opts.verbose) {
+            std::cerr << "[gn] iter=" << iter
+                      << " lambda=" << lambda
+                      << " value=" << value
+                      << " grad_norm=" << grad_norm
+                      << " theta_norm=" << theta_norm
+                      << "\n";
+        }
+        if (grad_norm < opts.grad_rtol * theta_norm) {
+            return ReturnT(ResultT{
+                std::move(theta), std::move(Maybe_state.value()),
+                value, iter, "converged_grad"
+            });
+        }
+
+        // -------- Hybrid Marquardt + Levenberg damping --------
+        // damped(i,i) = curv(i,i) * (1 + lambda) + lambda * max_diag
+        //                ^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^
+        //                  Marquardt (scale-       Levenberg shift
+        //                   invariant)              (lifts near-zero eigs)
+        //
+        // Pure Marquardt (the multiplicative term alone) preserves the
+        // condition number of curv — it can't rescue near-singular FIMs
+        // (e.g. figure_2 ~ scheme_CO with σ_n = 1e-4 gives κ ~ 500 from
+        // the Current_Noise vs Num_ch_mean diagonal-ratio alone, and worse
+        // off-diagonal near-colinearities). Without the Levenberg term, the
+        // LM step in the near-null direction blows up regardless of lambda,
+        // producing overflow in the AD parameter transform (Log10⁻¹ → inf).
+        //
+        // The Levenberg term lambda·max_diag floods small eigenvalues with a
+        // floor proportional to lambda. Effect at moderate lambda (~0.1·max_diag):
+        // all damped diagonals become comparable, conditioning improves to O(10).
+        // At small lambda, the Marquardt term dominates (good near-Newton step);
+        // at large lambda, the Levenberg term dominates (well-conditioned
+        // gradient-descent-like step). PSD preserved (curv PSD + nonnegative
+        // shift to diagonals).
+        //
+        // Off-diagonals untouched in either term.
+        SymPosDefMatrix<double> damped = curv;
+        double max_diag = 0.0;
+        for (std::size_t i = 0; i < damped.nrows(); ++i) {
+            max_diag = std::max(max_diag, damped(i, i));
+        }
+        const double lev_shift = lambda * max_diag;
+        if (opts.verbose) {
+            std::cerr << "[gn]   pre-damping: curv(0,0)=" << curv(0,0)
+                      << " curv(3,3)=" << curv(3,3)
+                      << " max_diag=" << max_diag
+                      << " lev_shift=" << lev_shift
+                      << "\n";
+        }
+        for (std::size_t i = 0; i < damped.nrows(); ++i) {
+            damped.set(i, i, damped(i, i) * (1.0 + lambda) + lev_shift);
+        }
+        if (opts.verbose) {
+            std::cerr << "[gn]   post-damping: damped(0,0)=" << damped(0,0)
+                      << " damped(3,3)=" << damped(3,3)
+                      << "\n";
+        }
+
+        // Solve damped * delta = grad via Cholesky factorisation. Mirrors the
+        // pattern used by parallel_levenberg_tempering (the only place in the
+        // codebase that actually inverts a damped SPD matrix in production).
+        // The direct `inv(damped)` route via Lapack_SymmPosDef_inv (dpotrf+dpotri)
+        // is declared but unexercised — it returned garbage in practice, leaving
+        // step magnitude essentially insensitive to lambda.
+        //
+        // Steps:
+        //   1. damped = Lᵀ·L   (cholesky → upper-triangular L)
+        //   2. L_inv = L⁻¹      (inv of triangular, tested)
+        //   3. damped⁻¹ = L⁻ᵀ·L⁻¹ = XXT(tr(L_inv))
+        auto Maybe_chol = cholesky(damped);
+        if (!Maybe_chol) {
+            // Cholesky failed -> grow damping, retry.
+            if (opts.verbose) {
+                std::cerr << "[gn]   cholesky(damped) FAILED — grow lambda " << lambda
+                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+            }
+            lambda *= opts.lambda_factor;
+            if (lambda > opts.lambda_max) {
+                return ReturnT(error_message(
+                    "gauss_newton: Cholesky failed and lambda exceeded lambda_max"));
+            }
+            continue;
+        }
+        auto Maybe_L_inv = inv(Maybe_chol.value());
+        if (!Maybe_L_inv) {
+            if (opts.verbose) {
+                std::cerr << "[gn]   inv(L) FAILED — grow lambda " << lambda
+                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+            }
+            lambda *= opts.lambda_factor;
+            if (lambda > opts.lambda_max) {
+                return ReturnT(error_message(
+                    "gauss_newton: triangular inverse failed and lambda exceeded lambda_max"));
+            }
+            continue;
+        }
+        auto damped_inv = XXT(tr(Maybe_L_inv.value()));
+
+        // delta_theta = damped^{-1} * grad
+        Matrix<double> delta_theta = damped_inv * grad;
+        if (opts.verbose) {
+            const double step_norm = detail::frobenius_norm(delta_theta);
+            std::cerr << "[gn]   step_norm=" << step_norm
+                      << " damped_inv(0,0)=" << damped_inv(0,0)
+                      << " damped_inv(3,3)=" << damped_inv(3,3)
+                      << "\n";
+            std::cerr << "[gn]   step =";
+            for (std::size_t i = 0; i < delta_theta.nrows(); ++i)
+                std::cerr << " " << delta_theta(i, 0);
+            std::cerr << "\n";
+        }
+
+        // Propose new theta. Parameters_transformed::create preserves the
+        // parameter-name infrastructure.
+        auto theta_proposed = theta.create(theta() + delta_theta);
+
+        // -------- Evaluate objective at proposed theta --------
+        auto Maybe_state_new = objective(theta_proposed);
+        if (!Maybe_state_new) {
+            // Objective failure (e.g. AD pipeline NaN, out-of-domain step):
+            // grow lambda, retry from same theta.
+            if (opts.verbose) {
+                std::cerr << "[gn]   objective FAILED: " << Maybe_state_new.error()()
+                          << " — grow lambda " << lambda
+                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+            }
+            lambda *= opts.lambda_factor;
+            if (lambda > opts.lambda_max) {
+                return ReturnT(error_message(
+                    std::string("gauss_newton: objective failed at proposal and ")
+                    + "lambda exceeded lambda_max: " + Maybe_state_new.error()()));
+            }
+            continue;
+        }
+
+        const double value_new = get<logL>(Maybe_state_new.value())();
+        const double dvalue    = value_new - value;
+
+        // -------- Armijo-trivial accept/reject --------
+        if (dvalue > 0.0) {
+            // Accept: update state and shrink damping.
+            if (opts.verbose) {
+                std::cerr << "[gn]   ACCEPT value " << value << " -> " << value_new
+                          << " (dvalue=" << dvalue
+                          << ") — shrink lambda " << lambda
+                          << " -> " << std::max(opts.lambda_min, lambda / opts.lambda_factor)
+                          << "\n";
+            }
+            theta       = std::move(theta_proposed);
+            Maybe_state = std::move(Maybe_state_new);
+            value       = value_new;
+            lambda      = std::max(opts.lambda_min, lambda / opts.lambda_factor);
+
+            // Convergence check on value change.
+            if (std::abs(dvalue) < opts.dvalue_tol) {
+                return ReturnT(ResultT{
+                    std::move(theta), std::move(Maybe_state.value()),
+                    value, iter + 1, "converged_value"
+                });
+            }
+        } else {
+            // Reject: grow damping and retry from same theta.
+            if (opts.verbose) {
+                std::cerr << "[gn]   REJECT value " << value << " -> " << value_new
+                          << " (dvalue=" << dvalue
+                          << ") — grow lambda " << lambda
+                          << " -> " << (lambda * opts.lambda_factor) << "\n";
+            }
+            lambda *= opts.lambda_factor;
+            if (lambda > opts.lambda_max) {
+                return ReturnT(error_message(
+                    "gauss_newton: step rejected and lambda exceeded lambda_max"));
+            }
+        }
+    }
+
+    // Max iterations reached without convergence.
+    return ReturnT(ResultT{
+        std::move(theta), std::move(Maybe_state.value()),
+        value, iter, "max_iter_reached"
+    });
+}
+
+}  // namespace macrodr::optimization
+
+#endif  // MACRODR_OPTIMIZATION_GAUSS_NEWTON_H
