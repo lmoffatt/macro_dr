@@ -96,20 +96,41 @@ trust region on the mean update.
 
 \section{Solution (implementation-ready recipe)}
 
-We introduce a shrink factor \(\alpha\in[0,1]\) on the Kalman update and
-compute the maximal \(\alpha\) that keeps the mean inside the safe region.
-The covariance update is scaled by the same \(\alpha\) so that the posterior
-mean and covariance remain consistent with the same trust-region correction.
+We introduce a shrink factor \(\alpha_\mu\in[0,1]\) on the Kalman mean update
+and compute the maximal \(\alpha_\mu\) that keeps the mean inside the safe
+region (this is the simplex trust coefficient, the only one this document is
+concerned with).
+
+\paragraph{Mean and covariance trust are decoupled.}
+The current implementation does \emph{not} apply this simplex shrink
+\(\alpha_\mu\) to the covariance update. The mean update uses \(\alpha_\mu\)
+alone; the covariance down-date is handled independently (it takes the full
+\(\alpha=1\) step in the standard rank-1 branch, guarded by a separate
+positive-semidefiniteness canary, and only requires its own PSD trust
+coefficient \(\alpha_\sigma\) in the variance-correction Taylor branches).
+Sharing \(\alpha_\mu\) with the covariance is in fact harmful: at a
+likelihood-residual zero-crossing the bound \((p_{\min}\text{-type})\) defining
+\(\alpha_\mu\) becomes singular in \(\delta\), whereas the mean step
+\(\alpha_\mu\,\mathbf{g}\,\delta/\sigma^2_{\text{pred}}\) vanishes there and is
+harmless; carrying that singularity into the (\(\delta\)-free) covariance
+down-date destabilises the per-sample numerical Fisher. The justification for
+keeping the mean and covariance on the same iterate is tempered-likelihood, not
+a Kalman gain identity. The remainder of this document derives \(\alpha_\mu\)
+from the probability constraints; the covariance equations below are written
+with their own factor \(\alpha\) and should be read with \(\alpha=1\) in the
+standard branch (\(\alpha=\alpha_\sigma\) only in the Taylor branches), never
+with \(\alpha=\alpha_\mu\).
 
 \paragraph{Implementation note.}
 An earlier variant interpreted this shrink factor as an effective variance
 inflation in the per-interval likelihood. In practice this turned out to be a
-bad choice: when the admissible trust coefficient reaches \(\alpha=0\), the
-naive substitution of \(\alpha\) into the likelihood variance produces a
+bad choice: when the admissible trust coefficient reaches \(\alpha_\mu=0\), the
+naive substitution of \(\alpha_\mu\) into the likelihood variance produces a
 singular log term and unstable likelihood values. The current implementation
-therefore uses \(\alpha\) only to scale the state correction
-\((\boldsymbol{\mu},\boldsymbol{\Sigma})\), while \(\log L\) and \(E[\log L]\)
-continue to use the unmodified predictive variance \(\sigma^2_{\text{pred}}\).
+therefore uses \(\alpha_\mu\) only to scale the mean correction
+\(\boldsymbol{\mu}\) (the covariance is updated independently; see above), while
+\(\log L\) and \(E[\log L]\) continue to use the unmodified predictive variance
+\(\sigma^2_{\text{pred}}\).
 
 \subsection{Parameters}
 
@@ -173,10 +194,15 @@ Instead of taking the full step, use
   \alpha\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}}.
   \label{eq:alpha-cov}
 \end{align}
-Here \(\alpha\in[0,1]\).  Both mean and covariance are updated with the same
-\(\alpha\), which will correspond to using an effective variance
-\(\sigma^2_{\text{eff}} = \sigma^2_{\text{pred}}/\alpha\) in a standard
-Kalman update (see Section~\ref{subsec:scaled-update-equivalence}).
+Here \(\alpha\in[0,1]\).  We write the mean and covariance with a common
+symbol \(\alpha\) only to expose the formal variance-inflation interpretation
+\(\sigma^2_{\text{eff}} = \sigma^2_{\text{pred}}/\alpha\) in a standard Kalman
+update (see Section~\ref{subsec:scaled-update-equivalence}); as noted above,
+the implementation does not tie the covariance factor to the simplex shrink
+\(\alpha_\mu\). In the standard rank-1 branch the covariance takes the full
+\(\alpha=1\) down-date (its positive semidefiniteness is guaranteed by
+construction, see Section~\ref{sec:covariance-psd}); a separate PSD trust
+\(\alpha_\sigma\) is needed only in the variance-correction Taylor branches.
 
 \subsection{Step 3: Constraints from probabilities}
 
@@ -259,14 +285,16 @@ We now define the actual shrink factor
   \max\bigl(0,\min(1,\alpha_{\text{mean}})\bigr).
 \]
 
-Two limiting cases are useful:
+Two limiting cases are useful (recall that \(\alpha^\star\) acts on the
+\emph{mean} only):
 \begin{itemize}
-  \item If \(\alpha^\star=1\), we recover the standard Gaussian update with
-        no shrink.
-  \item If \(\alpha^\star=0\), we perform \emph{no} Kalman correction:
-        \(\boldsymbol{\mu}^{\text{post}}=\boldsymbol{\mu}^{\text{prop}}\) and
-        \(\boldsymbol{\Sigma}^{\text{post}}=\boldsymbol{\Sigma}^{\text{prop}}\).
-        In practice, one may treat such intervals as fully rejected outliers.
+  \item If \(\alpha^\star=1\), we recover the standard Gaussian mean update
+        with no shrink.
+  \item If \(\alpha^\star=0\), we perform \emph{no} mean correction:
+        \(\boldsymbol{\mu}^{\text{post}}=\boldsymbol{\mu}^{\text{prop}}\).
+        The covariance down-date is unaffected by \(\alpha^\star\) and still
+        proceeds (see \eqref{eq:final-cov-update}). In practice, one may treat
+        such intervals as fully rejected outliers \emph{for the mean}.
 \end{itemize}
 
 In implementation, it is often convenient to introduce a small threshold
@@ -277,9 +305,10 @@ In implementation, it is often convenient to introduce a small threshold
   \item otherwise use \(\alpha^\star\) as computed.
 \end{itemize}
 This makes the “outlier” behaviour explicit: a sufficiently incompatible
-observation leaves the mean and covariance unchanged.
+observation leaves the mean unchanged (the covariance down-date is governed by
+its own factor and is unaffected).
 
-The implemented update is therefore
+The implemented mean update is therefore
 \begin{align}
   \boldsymbol{\mu}^{\text{post}}
   &=
@@ -287,14 +316,22 @@ The implemented update is therefore
   +
   \alpha^\star\,\Delta\boldsymbol{\mu},
   \label{eq:final-mean-update}
-  \\
+\end{align}
+where \(\alpha^\star\) is the simplex shrink \(\alpha_\mu\) derived above. The
+covariance is down-dated independently of \(\alpha^\star\):
+\begin{align}
   \boldsymbol{\Sigma}^{\text{post}}
   &=
   \boldsymbol{\Sigma}^{\text{prop}}
   -
-  \alpha^\star\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}},
+  \alpha\,\frac{\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\text{pred}}},
   \label{eq:final-cov-update}
 \end{align}
+with \(\alpha=1\) in the standard rank-1 branch (full down-date, PSD by
+construction; see Section~\ref{sec:covariance-psd}) and \(\alpha=\alpha_\sigma\)
+only in the variance-correction Taylor branches. In particular, even when the
+mean step is fully suppressed (\(\alpha^\star=0\), an outlier interval), the
+standard covariance down-date is \emph{not} suppressed.
 
 \subsection{Step 5: Log-likelihood contribution for this interval}
 
