@@ -58,6 +58,11 @@ N_SIMS=(${N_SIMS:-1024 1024 1024 1024})
 N_NOISE=(${N_NOISE:-0.1 0.1 0.1 0.1})
 #N_ALGO=(${N_ALGO:-macro_IR macro_IRT })
 N_ALGO=(${N_ALGO:-macro_IR macro_R macro_MR macro_NR macro_NMR})
+# h_rel: relative step for the central-difference numerical Fisher. figure_2.macroir
+# keeps h_rel_value commented (file contract) and expects it injected — same idiom as
+# the local/debug dispatchers. Injected as a single-value axis (axis_h_fim) so the
+# output matches them; pass H_RELS="1e-5 1e-6" to sweep h_rel inside each job.
+H_RELS=(${H_RELS:-1e-5})
 
 
 [ "${#NCHS[@]}" -eq "${#N_SIMS[@]}" ] || {
@@ -68,6 +73,15 @@ N_ALGO=(${N_ALGO:-macro_IR macro_R macro_MR macro_NR macro_NMR})
 # Shared output dir on scratch; jobs write nch-distinct filenames into it.
 WORKDIR="${SCRATCH_MACRO:-/scratch/$(whoami)/macro_dr}/eLife_2025"
 mkdir -p "$WORKDIR/figures/data" "$WORKDIR/logs"
+
+# h_rel_value injection (figure_2.macroir references it but keeps it commented per
+# the file contract). axis_h_fim must precede h_rel_value, which references it.
+# Independent of the (algo, nch) loop, so build once.
+join_csv()  { local IFS=,; echo "$*"; }
+join_qcsv() { local out=""; for v in "$@"; do [ -n "$out" ] && out+=","; out+="\"$v\""; done; echo "$out"; }
+axis_h_arg=$(printf -- '--axis_h_fim = axis(name= "axis_h_fim", labels= [%s])' "$(join_qcsv "${H_RELS[@]}")")
+h_rel_arg=$( printf -- '--h_rel_value = indexed_double_by(axis= axis_h_fim, values=[%s])' "$(join_csv "${H_RELS[@]}")")
+
 for j in "${!N_ALGO[@]}"; do
 
 for i in "${!NCHS[@]}"; do
@@ -153,6 +167,7 @@ for i in "${!NCHS[@]}"; do
         "$axis_interval_arg" \
         "$exp_step_1_arg" "$exp_samp_1_arg" "$exp_step_2_arg" "$exp_samp_2_arg" \
         "$exp_step_3_arg" "$exp_samp_3_arg" \
+        "$axis_h_arg" "$h_rel_arg" \
         "$SCRIPT")
 
     echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"
