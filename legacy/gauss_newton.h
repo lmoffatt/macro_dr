@@ -155,6 +155,7 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
     if (!Maybe_state)
         return ReturnT(error_message(
             std::string("gauss_newton: initial objective failed: ") + Maybe_state.error()()));
+    EvalT initial_state = Maybe_state.value();
     double value = get<logL>(Maybe_state.value())();
 
     std::size_t iter = 0;
@@ -177,7 +178,8 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
         }
         if (grad_norm < opts.grad_rtol * theta_norm) {
             return ReturnT(ResultT{
-                std::move(theta), std::move(Maybe_state.value()),
+                std::move(theta), std::move(initial_state),
+                std::move(Maybe_state.value()),
                 value, iter, "converged_grad"
             });
         }
@@ -339,7 +341,8 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
             // Convergence check on value change.
             if (std::abs(dvalue) < opts.dvalue_tol) {
                 return ReturnT(ResultT{
-                    std::move(theta), std::move(Maybe_state.value()),
+                    std::move(theta), std::move(initial_state),
+                    std::move(Maybe_state.value()),
                     value, iter + 1, "converged_value"
                 });
             }
@@ -361,7 +364,8 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
 
     // Max iterations reached without convergence.
     return ReturnT(ResultT{
-        std::move(theta), std::move(Maybe_state.value()),
+        std::move(theta), std::move(initial_state),
+        std::move(Maybe_state.value()),
         value, iter, "max_iter_reached"
     });
 }

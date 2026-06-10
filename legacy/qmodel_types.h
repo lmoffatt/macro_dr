@@ -1144,6 +1144,20 @@ class trust_coefficient : public var::Var<trust_coefficient, double> {
     friend std::string className(trust_coefficient) { return "trust_coefficient"; }
 };
 
+// Split components of the standard-Kalman trust coefficient, stored for the
+// detailed per-sample diagnostic. The stored trust_coefficient is
+// softmin(alfa_mu, alfa_sigma): alfa_mu keeps μ·tP + α·chi·gS on the simplex,
+// alfa_sigma (= calculate_psd_trust_coefficient) keeps the Σ down-date
+// diagonals ≥ 0. Capturing them separately tells whether the FD discontinuity
+// rides the mean-simplex constraint or the PSD constraint. Default 1.0 (no
+// constraint) when not in the standard Kalman branch.
+class trust_mean_coefficient : public var::Var<trust_mean_coefficient, double> {
+    friend std::string className(trust_mean_coefficient) { return "trust_mean_coefficient"; }
+};
+class trust_psd_coefficient : public var::Var<trust_psd_coefficient, double> {
+    friend std::string className(trust_psd_coefficient) { return "trust_psd_coefficient"; }
+};
+
 // IRT/MRT (variance_correction=true) diagnostics. All three are 1.0/0.0
 // defaults in the standard Kalman branch (no Taylor active); computed in
 // the IRT/MRT branch of safely_calculate_Algo_State_recursive.
@@ -1254,7 +1268,8 @@ class Algo_State_Dynamic
 
 using Algo_State_space=Vector_Space<y_mean, y_var, trust_coefficient,
                                     taylor_trust_coefficient, taylor_vSv, taylor_strength,
-                                    r_std, Chi2, P_mean, P_Cov>;
+                                    r_std, Chi2, P_mean, P_Cov,
+                                    trust_mean_coefficient, trust_psd_coefficient>;
 
 
 class Algo_State
@@ -1264,13 +1279,15 @@ class Algo_State
         var::Var<Algo_State, Vector_Space<y_mean, y_var, trust_coefficient,
                                           taylor_trust_coefficient, taylor_vSv, taylor_strength,
                                           r_std, Chi2, P_mean,
-                                          P_Cov>>;
+                                          P_Cov,
+                                          trust_mean_coefficient, trust_psd_coefficient>>;
     Algo_State(const Algo_State_Dynamic& p)
         : base_type{Vector_Space(get<y_mean>(p()), get<y_var>(p()), get<trust_coefficient>(p()),
                                  get<taylor_trust_coefficient>(p()), get<taylor_vSv>(p()),
                                  get<taylor_strength>(p()),
                                  get<r_std>(p()), get<Chi2>(p()),
-                                 P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()))} {}
+                                 P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()),
+                                 trust_mean_coefficient{}, trust_psd_coefficient{})} {}
 
     using base_type::Var;
 };
@@ -1426,6 +1443,25 @@ using gradient_all_element =
                         var::Derivative<r_std, var::Parameters_transformed>, trust_coefficient,
                         taylor_trust_coefficient, taylor_vSv, taylor_strength>;
 
+// Detailed per-step element for the per-sample derivative diagnostic: the
+// significant recursion variables carried as Derivatives — value X AND the
+// regular AD gradient ∂X/∂θ over ALL parameters (the Jacobian already covers
+// every parameter; no per-parameter perturbation). Auto-populated by
+// update_macro_state's copy_component (logL via the per-step assignment;
+// y_mean/y_var/P_mean/P_Cov/trust_coefficient via copy_component, which already
+// runs for all of these). P_mean/P_Cov are the data-dependent recursive state;
+// inspecting their gradients per sample (sick vs sane replicas) localizes where
+// an intermediate derivative misbehaves even when the logL gradient looks fine.
+using detailed_element =
+    var::please_include<var::Derivative<logL, var::Parameters_transformed>,
+                        var::Derivative<y_mean, var::Parameters_transformed>,
+                        var::Derivative<y_var, var::Parameters_transformed>,
+                        var::Derivative<P_mean, var::Parameters_transformed>,
+                        var::Derivative<P_Cov, var::Parameters_transformed>,
+                        var::Derivative<trust_coefficient, var::Parameters_transformed>,
+                        var::Derivative<trust_mean_coefficient, var::Parameters_transformed>,
+                        var::Derivative<trust_psd_coefficient, var::Parameters_transformed>>;
+
 using Macro_State_minimal = Macro_State<>;
 
 using Macro_State_reg = add_t<Macro_State_minimal, var::please_include<elogL, vlogL>>;
@@ -1440,12 +1476,27 @@ using diff_Macro_State_Gradient_Hessian =
 // states so downstream Moment_statistics<Model_Parameters_Hat> can compute
 // mean(θ̂) and Cov_emp = covariance(θ̂) across replicates automatically.
 // "Hat" preserves the honest "this is our estimate, not the truth" semantic.
+//
+// Payload is parameter_vector_payload (the same wrapper used by dlogL, Grad,
+// and every other vector-shaped slot in distributions.h). Storing
+// Parameters_transformed directly would not work: it lacks operator+/-/*//
+// and a sqr_X<bool> overload, so Moment_statistics<Model_Parameters_Hat>
+// cannot accumulate over groups. parameter_vector_payload (=
+// ParameterIndexed<Matrix<double>, Parameters_transformed>) provides all
+// those arithmetic operations via parameter_indexed.h, AND keeps the
+// metadata pointer for write_csv name recovery (parameters_ptr() →
+// Parameters_transformed::parameters() → names).
 class Model_Parameters_Hat
-    : public var::Constant<Model_Parameters_Hat, var::Parameters_transformed> {
+    : public var::Constant<Model_Parameters_Hat, parameter_vector_payload> {
+    using base_type = var::Constant<Model_Parameters_Hat, parameter_vector_payload>;
+
    public:
-    using base_type = var::Constant<Model_Parameters_Hat, var::Parameters_transformed>;
     using base_type::base_type;
     Model_Parameters_Hat() = default;
+    Model_Parameters_Hat(Matrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+    Model_Parameters_Hat(Matrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
     friend std::string className(Model_Parameters_Hat) {
         return "Model_Parameters_Hat";
     }

@@ -492,6 +492,7 @@ struct CsvContext {
     std::optional<std::size_t> param_col;
     std::optional<std::string> param_name;
     std::vector<std::optional<std::string>> axis_values;
+    bool skip_evolution = false;
 };
 
 class CsvWriter {
@@ -1257,16 +1258,30 @@ Maybe_error<bool> emit_derivative_object(Writer& w, CsvContext ctx, const Der& d
             return primitive_ok;
         }
         const auto& m = d.derivative()();
+        // Prefer the derivative's OWN dx() parameter names — they're the
+        // authoritative source. Fall back to the CsvWriter's global
+        // param_names list (probed at construction time) when dx() is not
+        // available or has no names. This makes per-row param_name correct
+        // even when the writer's global probe came up empty or stale.
+        auto pname_for = [&](std::size_t r) -> std::optional<std::string> {
+            if constexpr (requires {
+                { d.has_dx() } -> std::convertible_to<bool>;
+                d.dx().parameters().names();
+            }) {
+                if (d.has_dx()) {
+                    const auto& names = d.dx().parameters().names();
+                    if (r < names.size()) return std::string(names[r]);
+                }
+            }
+            if (r < w.param_names().size()) return w.param_names()[r];
+            return std::nullopt;
+        };
         for (std::size_t r = 0; r < m.nrows(); ++r) {
             for (std::size_t c = 0; c < m.ncols(); ++c) {
                 auto row_ctx = ctx;
                 row_ctx.param_index = r;
                 row_ctx.param_col = c;
-                if (r < w.param_names().size()) {
-                    row_ctx.param_name = w.param_names()[r];
-                } else {
-                    row_ctx.param_name.reset();
-                }
+                row_ctx.param_name = pname_for(r);
                 auto ok = emit_calculus_value(w, std::move(row_ctx), "derivative", m(r, c));
                 if (!ok || !ok.value()) {
                     return ok;
@@ -1338,6 +1353,7 @@ Maybe_error<bool> emit_any(Writer& w, CsvContext ctx, const T& x) {
     } else if constexpr (var::is_derivative_v<std::remove_cvref_t<T>>) {
         return emit_derivative_object(w, std::move(ctx), x);
     } else if constexpr (is_evolution_of_v<T>) {
+        if (ctx.skip_evolution) return true;
         const auto& values = x();
         for (std::size_t i = 0; i < values.size(); ++i) {
             auto item_ctx = ctx;

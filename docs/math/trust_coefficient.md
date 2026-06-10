@@ -9,6 +9,10 @@ are updated:
 Σ_new = Σ_pre − (α · N / y_var) · gSᵀ gS            (covariance)
 ```
 
+(The two `α`'s are **not** the same coefficient — the mean uses α_μ and the
+covariance uses α_Σ, decoupled; and in the standard rank-1 branch the covariance
+trust is just α = 1. See *Decoupled α* below.)
+
 with
 
 ```
@@ -33,10 +37,16 @@ wrong frame — manifested historically as a Distortion-Induced-Bias spike in
 macro_R at long intervals / large Num_ch (fixed 2026-05-10).
 
 A naive (α = 1) Kalman update can drive the posterior off the simplex (negative
-or > 1 entries in μ) or off the PSD cone (negative diagonal in Σ). The
-algorithm therefore introduces a trust coefficient α ∈ (0, 1] that scales both
-updates by the same amount, picked as the largest α satisfying both the
-simplex and PSD constraints.
+or > 1 entries in μ). The algorithm therefore introduces a mean trust
+coefficient α_μ ∈ (0, 1], picked as the largest α satisfying the simplex
+constraint on μ.
+
+The covariance is treated **separately** (the two trusts are *decoupled* —
+there is no shared α scaling both updates). In the standard rank-1 branch the
+undamped (α = 1) down-date is PSD by construction (see *α_Σ is redundant in the
+standard rank-1 branch* below), so Σ takes the full step. A separate PSD trust
+α_Σ is computed but is genuinely needed only in the variance_correction (Taylor)
+branches; see those sections below.
 
 α is computed in the **smooth (C∞) form**
 
@@ -60,10 +70,17 @@ The softmin form removes the step entirely. `ε` controls the smoothing band:
   boundary; residual bias `α ≤ min(1, factor·alfa_p)` of at most `ε / 2` ≈ 5e-5,
   small vs the `1 − factor = 0.1` safety margin.
 
-Three softmins are applied:
+Two softmins are applied:
 1. `α_μ = softmin(1, factor · alfa_p_μ)` — inside `calculate_trust_coefficient`
 2. `α_Σ = softmin(1, factor · alfa_p_Σ)` — inside `calculate_psd_trust_coefficient`
-3. `α   = softmin(α_μ, α_Σ)`             — at the call site, kink at α_μ = α_Σ
+
+The mean and covariance trusts are **decoupled**: the mean update uses α_μ
+alone, the covariance update uses α_Σ alone (only in the variance_correction
+branches; the standard branch leaves Σ undamped). There is **no** shared
+`α = softmin(α_μ, α_Σ)` — that earlier combined form is gone, removing the
+α_μ = α_Σ kink and, crucially, keeping the simplex-trust singularity (α_μ's
+`(1 − μ_i)/d_i` bound at a residual zero-crossing `d → 0`) out of the
+covariance down-date, where it had destabilized the per-sample numerical Fisher.
 
 `factor ∈ (0, 1)` (typically 0.9) is the safety margin: when the constraint
 binds the result is ≈ `factor · alfa_p`, leaving a `1 − factor` margin off the
@@ -108,18 +125,54 @@ and other indices set the bound. If no index binds (or only degenerate ones
 exist), α = 1 and the full Bayesian step is taken; downstream PSD checks
 (`to_Covariance_Probability`) catch any residual problem.
 
-## Combined α
+## α_Σ is redundant in the standard rank-1 branch
 
-Both updates are scaled by the same coefficient:
+In the standard rank-1 branch the undamped (α = 1) down-date
+`Σ_pre − (N / y_var) · gSᵀ gS` is **positive-semidefinite by construction**, so
+α_Σ never binds and has been **dropped** — the covariance takes the full α = 1
+step, guarded only by the `to_Covariance_Probability` canary.
+
+The reason is the structure of `y_var = e + N · gᵀΣg`: the dominant PSD margin
+is the Markov-step / multinomial covariance (the Löwner term
+`Σ_pre ⪰ Aᵀ · Cov · A`), which is present even at residual `e = 0`. In closed
+form for the 2-state av=1 case, the single nonzero eigenvalue of the α = 1
+down-date is
 
 ```
-α = min(α_μ, α_Σ)
+λ = (e·A + N·B) / (2 (e + N·gSg))        with A, B ≥ 0   ⇒   λ ≥ 0  identically.
 ```
 
-Choosing the more restrictive bound guarantees both the simplex constraint on
-μ_new and the diagonal-PSD constraint on Σ_new. A safety factor (currently
-`trust_multiplying_factor = 0.9`) is applied when α < 1, leaving 10 % margin
-against the boundary.
+PSD first fails only at `α* = 1 + e/(N·gSg) > 1`, which the `cap ≤ 1` code never
+reaches.
+
+Note the margin `e / (e + N·gSg)` **grows as N shrinks** (`e` does not scale with
+N), so α_Σ is even *less* needed at few channels. At low N the binding
+constraint is the simplex/mean trust α_μ, not the PSD trust. (The earlier claim
+that small N makes α_Σ bind is backwards for this branch; it holds only for the
+variance_correction branches and/or n > 2 states — see below.)
+
+## Decoupled α
+
+The mean and covariance trusts are applied **independently** — they are *not*
+combined into a single `min(α_μ, α_Σ)` scaling both updates:
+
+```
+μ_new : scaled by α_μ          (simplex trust, calculate_trust_coefficient)
+Σ_new : scaled by α_Σ          (PSD trust, only in the variance_correction branches;
+                                the standard rank-1 branch leaves Σ undamped, α = 1)
+```
+
+Why decouple. At a likelihood-residual zero-crossing `d = chi·gS → 0`, α_μ's
+bound `(1 − μ_i)/d_i` is singular, but the *mean* step `α_μ·chi·gS ≡ 0` there,
+so the singularity is harmless on the mean. Sharing a single α carried that
+singularity into the Σ down-date — which is chi-free and scaled by `N` (≈ 10⁴)
+— and destabilized the per-sample numerical Fisher. Decoupling removes that
+path. (Keeping the two trusts on the same iterate is justified by the
+tempered-likelihood view, not by a Kalman gain identity: the down-date here is
+linear in α and carries `N`, not the α² Joseph form.)
+
+A safety factor (currently `trust_multiplying_factor = 0.9`) is applied to each
+trust when it binds (< 1), leaving 10 % margin against the respective boundary.
 
 ## Necessary vs sufficient PSD
 
@@ -135,10 +188,16 @@ correlations (e.g. `[[1, 2], [2, 1]]` has positive diagonal but eigenvalues
 where `Σ_pre⁺` is the pseudoinverse on the simplex tangent space (Σ_pre has
 the all-ones vector in its null space, so it is rank-deficient by construction).
 Computing this bound exactly is O(n³) per step (Cholesky / SVD), versus O(n)
-for the diagonal bound. In practice the diagonal bound is sufficient for the
-regimes encountered in patch-clamp inference; if it ever fails to prevent
-non-PSD outputs, `to_Covariance_Probability` will catch the violation
-downstream.
+for the diagonal bound.
+
+The per-diagonal form is in fact the wrong form regardless: in the safe 2-state
+regime it is over-conservative (it can only spuriously bind, since the α = 1
+down-date is already PSD by construction — see *α_Σ is redundant in the standard
+rank-1 branch*), and in the dangerous n ≥ 3 regime it gives zero protection
+against off-diagonal PSD breaches. Where genuine protection is required (the
+variance_correction branches, see below), a det/eigen-sign check on the relevant
+block — or the Joseph form — is the correct guard. The final PSD safety net is
+the `to_Covariance_Probability` canary downstream.
 
 ## Joseph-form alternative
 
@@ -157,20 +216,39 @@ remains open.
 
 ## When α_Σ is the binding constraint
 
-Empirically, α_Σ < α_μ in regimes with:
+**Scope.** This applies only to the variance_correction (Taylor) branches and/or
+n > 2 states. In the standard rank-1 branch α_Σ never binds (the α = 1 down-date
+is PSD by construction), so it is not applied at all there.
+
+Within those branches, α_Σ < α_μ in regimes with:
 
 - low observation noise (large `N / y_var`), so each interval injects much
   information per unit prior covariance;
 - accumulated information from prior intervals that have already squeezed
   Σ_pre below its initial bare-cov values;
-- few channels (small N), so the prior covariance scale is small relative to
-  the per-interval information gain;
 - conductance vectors with most mass on a single state, so `gSᵀgS` is
   rank-1-like and concentrates information narrowly.
+
+Note that *few channels* (small N) does **not** make α_Σ bind — the PSD margin
+`e/(e + N·gSg)` grows as N shrinks, so the PSD trust is *less* needed at low N.
+At low N it is the simplex/mean trust α_μ that binds, not α_Σ.
 
 A persistent α_Σ < α_μ across many intervals is itself a diagnostic signal:
 the algorithm is operating at the edge of its PSD-preserving regime, and a
 Joseph-form update or a finer-grained averaging may be appropriate.
+
+## Where α_Σ is genuinely needed: the variance_correction branches
+
+α_Σ is retained (and necessary) only in the variance_correction (Taylor)
+branches — MacroMRT (av=1) and MacroIRT (av=2). Those use a **rank-2 Woodbury**
+down-date whose middle block `m22 = c − 2V²/N` can go negative (indefinite K),
+so the self-limiting PSD guarantee of the standard rank-1 branch structurally
+breaks.
+
+Even there, the per-diagonal α_Σ form is *necessary but not sufficient*: for
+n ≥ 3 it false-passes off-diagonal PSD breaches. The correct guard is a
+det/eigen-sign check on the 2×2 middle block `K`, or a Joseph form. (These
+Taylor branches are cut from the May-2026 paper.)
 
 ## History
 
@@ -183,11 +261,20 @@ of Σ are decremented, and the previously latent PSD-overshoot regime became
 visible. `calculate_psd_trust_coefficient` was added in the same commit as the
 fix to address it without falling back to Joseph form.
 
+In retrospect (2026-06), the "PSD overshoot" this was meant to catch was not a
+genuine exit from the PSD cone in the standard rank-1 branch: that down-date is
+PSD by construction (see *α_Σ is redundant in the standard rank-1 branch*), so
+the per-diagonal α_Σ there could only ever bind spuriously. α_Σ has since been
+dropped from the standard branch and is retained only in the variance_correction
+(Taylor) branches, where the down-date is a rank-2 Woodbury form that can
+genuinely lose PSD.
+
 ## See also
 
 - `legacy/qmodel.h` :: `Macro_DMR::calculate_trust_coefficient`
 - `legacy/qmodel.h` :: `Macro_DMR::calculate_psd_trust_coefficient`
 - `legacy/qmodel.h` :: `Macro_DMR::safely_calculate_Algo_State_recursive`
-  (call site that combines α_μ and α_Σ)
+  (call site; applies α_μ to the mean and leaves Σ undamped in the standard
+  branch — α_μ and α_Σ are decoupled, no shared α)
 - `legacy/qmodel_types.h` :: `to_Covariance_Probability` (downstream PSD canary
   on the resulting Σ_new)

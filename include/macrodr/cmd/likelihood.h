@@ -210,6 +210,47 @@ inline auto calculate_simulation_mnumerical_fisher_information(
                                                     get<Recording>(simulation()), h_rel);
 }
 
+// Per-replica per-sample numerical Fisher Information. Decomposes the global
+// F per replica into one F_t contribution per timestep, via per-step FD on
+// the cumulative AD score. By linearity of d/dθ on the additive logL, the
+// sum over timesteps of F_t equals the global F returned by
+// calculate_n_simulation_mnumerical_fisher_information at the same (par, h_rel).
+//
+// Output: one dMacro_State_Ev_per_sample_F per replica, whose Evolution_of<>
+// slot is populated with the per-step F at each timestep. Caller writes the
+// result with the existing write_csv overloads for vector<State> with
+// Evolution (axes columns propagate via Indexed-aware variants).
+//
+// Cost: 2·n_params calls to calculate_n_simulation_mdlikelihood_predictions
+// (each batched across all replicas — the FuncMap_St cache is reused). Same
+// per-h_rel cost as calc_numerical_fisher_information but produces per-sample
+// data instead of the aggregate.
+auto calculate_per_sample_n_simulation_mnumerical_fisher_information(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation,
+    double h_rel) -> Maybe_error<std::vector<dMacro_State_Ev_per_sample_F>>;
+
+// Detailed per-sample diagnostic. Runs the dlikelihood ONCE at θ and dumps the
+// SIGNIFICANT recursion variables (logL, y_mean, y_var, P_mean, P_Cov,
+// trust_coefficient) per sample, each as a Derivative carrying the value X AND
+// the regular AD gradient ∂X/∂θ over ALL parameters (no per-parameter
+// perturbation — the Jacobian already covers every parameter). The perturbation
+// for an FD-instability hunt is built OUTSIDE, by passing `par` as an
+// Indexed<Parameters_transformed> over the perturbation axes (see
+// by_parameter_coordinate + apply_relative_perturbation); the DSL lifts this
+// command over them.
+//
+// Each replica's Evolution is windowed to the inclusive ABSOLUTE sample range
+// [sample_min, sample_max] BEFORE returning — this caps memory when the command
+// is lifted over many perturbations (2·p legs × replicas), instead of holding
+// full Evolutions until write time. The matching write_csv overload takes the
+// same sample_min and maps the windowed elements back to absolute samples.
+auto calculate_n_simulation_mdetailed_predictions(
+    const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation,
+    std::size_t sample_min,
+    std::size_t sample_max) -> Maybe_error<std::vector<dMacro_State_Ev_detailed>>;
+
 inline auto calculate_n_simulation_mnumerical_fisher_information(
     const likelihood_algorithm_type& likelihood_algorithm, const var::Parameters_transformed& par,
     const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulation,
@@ -518,11 +559,58 @@ Maybe_error<std::string> write_csv(
     Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
     var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path);
 
+// Windowed sibling of the (Experiment, Indexed-sims, Indexed-states) overload:
+// emits only the per-step Evolution rows for the inclusive absolute sample
+// window [sample_min, sample_max]. Used by the detailed FD-instability
+// diagnostic to keep the CSV small while keeping absolute sample indices /
+// times / agonist / patch_current correct.
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::size_t sample_min,
+    std::size_t sample_max, std::string path);
+
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path);
 
+// Indexed state-batch with NO Experiment/Simulation. Emits axis columns +
+// simulation_index per replica + the state's Evolution (sample_index per
+// timestep). Used for the per-sample numerical Fisher CSV: passing the
+// Indexed states directly (no plain-sim arg) lets the DSL match an Indexed
+// param without lifting, so the axis columns survive into the CSV.
+template <template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path);
 
-auto calculate_boot_Likelihood_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy, 
+// Per-replica summary CSV: emits ALL slots of each state EXCEPT Evolution_of
+// (skipped via CsvContext::skip_evolution=true so the Evolution branch in
+// emit_any returns early), and tags the numerical Fisher per replica as
+// Likelihood_Numerical_Fisher_Information. Designed for bug-hunting on
+// numeric_Fisher_information variability across replicates.
+template <template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    std::vector<TMacro_State<vVars...>> const& dlikelihood_predictions,
+    std::vector<parameter_spd_payload> const& numerical_fisher_information,
+    std::string path);
+
+// Indexed (multi-axis) overload of the above. Iterates the axis space and
+// populates the CSV's axis_values columns per coord so the output matches the
+// schema of the analysis CSV (algorithm, noise_in_conductance_tau, Num_ch,
+// interval_in_tau, simulation_algorithm, axis_h_fim, ...). Used when the DSL
+// hands dlikelihood_predictions / numerical_fisher_information as Indexed
+// values from a multi-axis context.
+template <template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& dlikelihood_predictions,
+    var::Indexed<std::vector<parameter_spd_payload>> const& numerical_fisher_information,
+    std::string path);
+
+
+auto calculate_boot_Likelihood_diagnostics(const std::vector<dMacro_State_Ev_gradient_all>& dy,
                const std::vector<Simulated_Recording<var::please_include<>>>& simulation)
     -> Maybe_error<std::vector<Macro_State_Ev_diagnostic>>;
 

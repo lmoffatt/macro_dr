@@ -4142,6 +4142,68 @@ class Macro_DMR {
         return (sum - root) * 0.5;
     }
 
+
+    // ────────────────────────────────────────────────────────────────────
+    // LogSumExp soft-min of the simplex trust bounds, capped at 1 — a C∞
+    // alternative to calculate_trust_coefficient's hard min + d_i sign-branch.
+    //
+    // NOT CURRENTLY WIRED IN. The active trust path is calculate_trust_coefficient
+    // (softmin-fold over candidates); this is kept as a reference implementation
+    // of the LogSumExp formulation we may switch to.
+    //
+    //   α = −(1/k)·log( exp(−k·1) + Σ_i exp(−k·factor·bound_i) )
+    //
+    // with the per-component binding bound (the largest α keeping μ_i = p_i + α·d_i
+    // inside [0,1]):
+    //   d_i > 0 :  bound_i = (1 − p_i)/d_i        (upper face)
+    //   d_i < 0 :  bound_i = (0 − p_i)/d_i        (lower face; > 0 since d_i < 0)
+    //   d_i = 0 :  no constraint                  (skipped)
+    //
+    // Why this is smooth where the hard min is not: as d_i → 0 the forward bound
+    // → +∞ from BOTH sides, so its term exp(−k·factor·bound_i) → 0 — the component
+    // drops out of the sum smoothly, the d_i=0 face-switch is invisible (both faces
+    // give +∞ → zero weight), and no 1/d_i blow-up survives into α. The max-shift m
+    // is taken over PRIMITIVES only, so it cancels in the ratio and derivatives pass
+    // through exactly while the exponentials stay bounded. k = LSE sharpness (→ hard
+    // min as k→∞; larger k is sharper but has more curvature near the knee).
+    // ────────────────────────────────────────────────────────────────────
+    template <class C_Matrix1, class C_Matrix2>
+    auto log_Sum_Exp_min_1(C_Matrix1 const& t_pmean, C_Matrix2 const& d,
+                           double factor) const {
+        using std::exp;
+        using std::log;
+        constexpr double k = 1e4;  // LSE sharpness
+
+        auto d_p = var::inside_out(d);          // per-element scalars (Derivative-aware)
+        auto r_pmean = var::inside_out(t_pmean);
+
+        // Pass 1 (primitives only): the smallest exponent argument, for the shift.
+        // x_cap = 1 ; x_i = factor·bound_i ; m = min over the cap and valid bounds.
+        double m = 1.0;
+        for (std::size_t i = 0; i < d_p.size(); ++i) {
+            const double di = primitive(d_p[i]);
+            if (di == 0.0)
+                continue;
+            const double pi = primitive(r_pmean[i]);
+            const double bound = (di > 0.0) ? (1.0 - pi) / di : (0.0 - pi) / di;
+            m = std::min(m, factor * bound);
+        }
+
+        // Pass 2 (Derivative-aware): Σ exp(−k·(x − m)), starting with the cap term.
+        auto sum = exp(-k * (1.0 - m)) + 0.0 * d_p[0];  // cap term + dx carrier (zero deriv)
+        for (std::size_t i = 0; i < d_p.size(); ++i) {
+            const double di = primitive(d_p[i]);
+            if (di == 0.0)
+                continue;
+            auto bound_i = (di > 0.0) ? (1.0 - r_pmean[i]) / d_p[i]   // upper face, derivatives intact
+                                      : (0.0 - r_pmean[i]) / d_p[i];  // lower face
+            sum = sum + exp(-k * (factor * bound_i - m));
+        }
+        auto alpha = m - (1.0 / k) * log(sum);
+        return build<trust_coefficient>(alpha);
+    }
+
+
     // ────────────────────────────────────────────────────────────────────
     // Trust coefficient for the recursive POSTERIOR-MEAN update.
     //
@@ -4157,61 +4219,54 @@ class Macro_DMR {
     // has its own (often tighter) constraint — see calculate_psd_trust_coefficient
     // and docs/math/trust_coefficient.md.
     // ────────────────────────────────────────────────────────────────────
-    // Derivative-aware. The argmin `binding_i` over i is locally constant in θ
-    // (changes only at ties), so we find it via primitives (cheap, plain
-    // doubles) and then evaluate the binding expression `(1 − p_b)/d_b` (or
-    // `−p_b/d_b`) at that single index. Indexing `t_pmean[binding_i]` /
-    // `d[binding_i]` returns the AD element via Derivative<Matrix>::operator[]
-    // (matrix_derivative.h), so chain rule through the SINGLE binding component
-    // is exact away from ties — no `inside_out` repacking needed.
+    // Derivative-aware, and SMOOTH IN THE INDEX SELECTION. The constraint is
+    // α ≤ min_i alfa_i with alfa_i = (1−p_i)/d_i (d_i>0) or −p_i/d_i (d_i<0).
     //
-    // SMOOTH (C∞) form:    α = softmin(1, factor · alfa_b; ε)
-    //   factor·alfa_b ≪ 1 :  α ≈ factor·alfa_b   (binding)
-    //   factor·alfa_b ≫ 1 :  α ≈ 1               (no constraint)
-    //   no kink at the crossover — ∂α/∂θ is continuous everywhere.
+    // The previous version took the min via a HARD argmin over primitives and
+    // evaluated the binding expression at that single index. That keeps the
+    // VALUE continuous but makes ∂α/∂θ DISCONTINUOUS: when the argmin switches
+    // between components (a tie, reachable under any θ-perturbation) the
+    // derivative jumps from ∂alfa_a/∂θ to ∂alfa_b/∂θ. The per-sample detailed
+    // dump localized exactly this jump in ∂(trust_coefficient)/∂θ as the source
+    // of the numerical-Fisher (FD-of-AD) instability.
     //
-    // ε = trust_softmin_eps (1e-4) controls the smoothing band; residual bias
-    // ε/2 = 5e-5, tiny vs the (1 − factor) = 0.1 safety margin.
+    // Fix: fold a softmin over ALL candidates instead — α = softmin(1,
+    // factor·alfa_0, factor·alfa_1, …), derivative-aware on every component. Then
+    // ∂α/∂θ = Σ_i w_i·∂alfa_i/∂θ with smooth softmax weights → continuous across
+    // ties. The softmin also smooths the 1-vs-alfa cap (no kink there either).
     //
-    // The no-binding branch (no nonzero d_i — degenerate case) returns α = 1
-    // with derivatives propagated (zero) from the inputs.
+    // For a 2-state simplex this is degenerate (p_C+p_O=1 and the tangent
+    // displacement d_C=−d_O make the two candidates identical in value AND
+    // derivative, so the old argmin tie was already harmless) — the fix matters
+    // for the PSD constraint and for any model with >2 states. Kept here for
+    // uniformity. ε = trust_softmin_eps (1e-4); the fold adds ~ε bias per
+    // candidate, tiny vs the (1 − factor) = 0.1 margin. No candidates → α = 1
+    // with zero derivative (same as the old no-binding branch).
     template <class C_Matrix1, class C_Matrix2>
     auto calculate_trust_coefficient(C_Matrix1 const& t_pmean, C_Matrix2 const& d,
                                      double factor) const {
         constexpr double trust_softmin_eps = 1e-4;
-        auto const& t_pmean_p = primitive(t_pmean);
-        auto const& d_p = primitive(d);
+        auto d_p = var::inside_out(d);
+        auto r_pmean= var::inside_out(t_pmean);
 
-        // Find the smallest alfa_i across i (no clamp at 1/factor; we want the
-        // primitive argmin of the binding expression so softmin can smooth across
-        // its boundary with 1).
-        double alfa_p = std::numeric_limits<double>::infinity();
-        std::size_t binding_i = 0;
-        int binding_sign = 0;  // +1 : (1−p)/d (d > 0)
-                               // −1 : −p/d   (d < 0)
-                               //  0 : no nonzero d_i in scan — degenerate
+        auto alpha = 1.0 + 0.0 * d_p[0];  // cap at 1, with (zero) derivatives carried
+        // α_μ is now DECOUPLED (applied only to the mean update, never to Σ). At a
+        // likelihood-residual zero-crossing d=chi·gS→0 the bound (1−p)/d_i is at its
+        // 1/d_i singularity, but the mean step α_μ·chi·gS≡0 there for any α, so the
+        // residual irregularity is harmless — it no longer reaches the covariance.
+        // The d=0 sign-branch is kept as-is (the singular region is exactly the
+        // non-binding region, disjoint from where α_μ actually constrains).
         for (std::size_t i = 0; i < d_p.size(); ++i) {
-            const double d_i = d_p[i];
-            const double p_i = t_pmean_p[i];
-            if (d_i > 0) {
-                const double alfa_i = (1.0 - p_i) / d_i;
-                if (alfa_i < alfa_p) { alfa_p = alfa_i; binding_i = i; binding_sign = +1; }
-            } else if (d_i < 0) {
-                const double alfa_i = -p_i / d_i;
-                if (alfa_i < alfa_p) { alfa_p = alfa_i; binding_i = i; binding_sign = -1; }
+            const auto&  d_i = d_p[i];
+            if (primitive(d_i) > 0) {
+                auto alfa_i = (1.0 - r_pmean[i]) / d_p[i];  // bound (1−p_i)/d_i, derivatives intact
+                alpha = softmin(alpha, alfa_i * factor, trust_softmin_eps);
+            } else if (primitive(d_i) < 0) {
+                auto alfa_i = (0.0 - r_pmean[i]) / d_p[i];  // bound −p_i/d_i, derivatives intact
+                alpha = softmin(alpha, alfa_i * factor, trust_softmin_eps);
             }
         }
-
-        if (binding_sign == 0)
-            return build<trust_coefficient>(1.0 + 0.0 * d[0]);
-
-        // alfa_b at the binding index, with derivatives intact.
-        auto alfa_b = (binding_sign > 0)
-                          ? (1.0 - t_pmean[binding_i]) / d[binding_i]
-                          : (0.0 - t_pmean[binding_i]) / d[binding_i];
-
-        // α = softmin(1, factor · alfa_b; ε) — smooth at the binding boundary.
-        return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
+        return build<trust_coefficient>(alpha);
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -4237,18 +4292,18 @@ class Macro_DMR {
     // PSD argument, and notes on when a Joseph-form update would be a
     // stronger alternative.
     // ────────────────────────────────────────────────────────────────────
-    // Derivative-aware. Same pattern as calculate_trust_coefficient: argmin
-    // via primitives, then evaluate the binding expression at the single
-    // binding index with derivatives intact. beta = N / y_var carries
-    // derivatives in AD context.
-    //
-    // SMOOTH (C∞) form:    α = softmin(1, factor · alfa_b; ε)
+    // Derivative-aware, and SMOOTH in the diagonal selection (same fix as
+    // calculate_trust_coefficient): instead of a hard argmin over diagonals it
+    // folds a softmin over all valid per-diagonal bounds, so ∂α/∂θ stays
+    // continuous when the binding diagonal switches. beta = N / y_var carries
+    // derivatives in AD context. See the in-body comment for why this overload
+    // is the one that drove the numerical-Fisher instability.
     //
     // The trust coefficient's role is to REDUCE gS so the rank-1 down-date
     // preserves diagonal positivity — never to abort the step with α = 0.
-    // Indices where Σ_pre(i,i) ≤ 0 are SKIPPED in the argmin: those diagonals
-    // are already degenerate and no α > 0 fixes them, so the constraint at i
-    // contributes no information to α. Other indices set the bound.
+    // Indices where Σ_pre(i,i) ≤ 0 are SKIPPED: those diagonals are already
+    // degenerate and no α > 0 fixes them, so the constraint at i contributes no
+    // information to α. Other indices set the bound.
     template <class C_Sigma, class C_gS, class C_beta>
     auto calculate_psd_trust_coefficient(C_Sigma const& Sigma_pre,
                                          C_gS const& gS,
@@ -4257,32 +4312,23 @@ class Macro_DMR {
         constexpr double trust_softmin_eps = 1e-4;
         auto const& Sigma_p = primitive(Sigma_pre);
         auto const& gS_p = primitive(gS);
-        const double beta_p = primitive(beta);
 
-        double alfa_p = std::numeric_limits<double>::infinity();
-        std::size_t binding_i = 0;
-        int binding_sign = 0;  // 0 if no constraint binds — α = 1
+        // SMOOTH over diagonals (see calculate_trust_coefficient): α = softmin(1,
+        // factor·alfa_0, factor·alfa_1, …) with alfa_i = Σ_ii/(β·gS_i²),
+        // derivative-aware on every valid diagonal — NO hard argmin. The PSD
+        // bounds are INDEPENDENT across i (no simplex degeneracy linking them),
+        // so the old argmin made ∂α/∂θ discontinuous whenever the binding
+        // diagonal switched (Σ_00·gS_1² = Σ_11·gS_0²). That jump — localized by
+        // the per-sample detailed dump — is the numerical-Fisher instability;
+        // the softmin fold removes it (∂α/∂θ = Σ_i w_i·∂alfa_i/∂θ, continuous).
+        auto alpha = 1.0 + 0.0 * gS[0];  // cap at 1, with (zero) derivatives carried
         for (std::size_t i = 0; i < gS_p.size(); ++i) {
-            const double gS_i = gS_p[i];
-            if (gS_i == 0.0)
-                continue;
-            const double Sigma_ii = Sigma_p(i, i);
-            if (Sigma_ii <= 0.0)
-                continue;  // already-degenerate diagonal — trust coeff can't fix it; skip.
-            const double alfa_i = Sigma_ii / (beta_p * gS_i * gS_i);
-            if (alfa_i < alfa_p) { alfa_p = alfa_i; binding_i = i; binding_sign = 1; }
+            if (gS_p[i] == 0.0 || Sigma_p(i, i) <= 0.0)
+                continue;  // unconstrained / already-degenerate diagonal — skip (as before)
+            auto alfa_i = Sigma_pre(i, i) / (beta * gS[i] * gS[i]);  // Σ_ii/(β·gS_i²), derivatives intact
+            alpha = softmin(alpha, alfa_i * factor, trust_softmin_eps);
         }
-
-        if (binding_sign == 0)
-            return build<trust_coefficient>(1.0 + 0.0 * gS[0]);
-
-        // alfa_b at the binding index with derivatives intact:
-        //   alfa_b = Σ_pre(b,b) / (β · gS_bˆ2)
-        auto gS_b = gS[binding_i];
-        auto alfa_b = Sigma_pre(binding_i, binding_i) / (beta * gS_b * gS_b);
-
-        // α = softmin(1, factor · alfa_b; ε)
-        return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
+        return build<trust_coefficient>(alpha);
     }
 
     template <class C_Sigma, class C_Downdate>
@@ -4293,29 +4339,17 @@ class Macro_DMR {
         auto const& Sigma_p = primitive(Sigma_pre);
         auto const& down_p = primitive(downdate);
 
-        double alfa_p = std::numeric_limits<double>::infinity();
-        std::size_t binding_i = 0;
-        bool binding = false;
+        // SMOOTH over diagonals (same fix as the other PSD overload): softmin
+        // over {1} ∪ {factor·Σ_ii/downdate_ii}, derivative-aware, no hard argmin
+        // — so ∂α/∂θ stays continuous when the binding diagonal switches.
+        auto alpha = 1.0 + 0.0 * downdate(0, 0);  // cap at 1, derivatives (zero) carried
         for (std::size_t i = 0; i < Sigma_p.nrows(); ++i) {
-            const double d_ii = down_p(i, i);
-            if (d_ii <= 0.0)
+            if (down_p(i, i) <= 0.0 || Sigma_p(i, i) <= 0.0)
                 continue;
-            const double Sigma_ii = Sigma_p(i, i);
-            if (Sigma_ii <= 0.0)
-                continue;
-            const double alfa_i = Sigma_ii / d_ii;
-            if (alfa_i < alfa_p) {
-                alfa_p = alfa_i;
-                binding_i = i;
-                binding = true;
-            }
+            auto alfa_i = Sigma_pre(i, i) / downdate(i, i);  // Σ_ii/downdate_ii, derivatives intact
+            alpha = softmin(alpha, alfa_i * factor, trust_softmin_eps);
         }
-
-        if (!binding)
-            return build<trust_coefficient>(1.0 + 0.0 * downdate(0, 0));
-
-        auto alfa_b = Sigma_pre(binding_i, binding_i) / downdate(binding_i, binding_i);
-        return build<trust_coefficient>(softmin(1.0, alfa_b * factor, trust_softmin_eps));
+        return build<trust_coefficient>(alpha);
     }
 
     template <bool dynamic, class averaging, class variance, class C_Patch_State, class C_Qdt,
@@ -5376,9 +5410,13 @@ class Macro_DMR {
             auto alfa = build<trust_coefficient>(softmin(
                 alfa_mu_irt(), alfa_sigma_irt(), trust_softmin_eps_irt));
 
-            // Apply alfa to mean and covariance updates
+            // DECOUPLED trust: mean uses α_μ alone, covariance uses α_σ alone
+            // (independent — no shared softmin). α_σ is RETAINED here (unlike the
+            // standard rank-1 branch) because this Taylor/IRT down-date is not
+            // self-limiting. `alfa` (the combined value) is kept only for the
+            // diagnostic dump / error logs below.
             auto Maybe_r_P_mean =
-                to_Probability(p_P_mean() * t_P() + alfa() * mean_dir);
+                to_Probability(p_P_mean() * t_P() + alfa_mu_irt() * mean_dir);
             if (!Maybe_r_P_mean) {
                 std::cerr << "[IRT-fail Pmean] av=" << averaging::value
                           << " N=" << primitive(N)
@@ -5400,7 +5438,7 @@ class Macro_DMR {
             auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
 
             auto Maybe_r_P_cov =
-                to_Covariance_Probability(sigma_pre - alfa() * cov_downdate);
+                to_Covariance_Probability(sigma_pre - alfa_sigma_irt() * cov_downdate);  // decoupled: Σ uses α_σ
             if (!Maybe_r_P_cov) {
                 std::cerr << "[IRT-fail Pcov] av=" << averaging::value
                           << " N=" << primitive(N)
@@ -5589,18 +5627,19 @@ class Macro_DMR {
         auto alfa_mu = calculate_trust_coefficient(
             p_P_mean() * t_P(), chi * gS, trust_multiplying_factor);
 
-        // α_Σ : largest α keeping each diagonal of  Σ_pre − (α·N/y_var)·gSᵀgS  ≥ 0.
-        // Necessary (not sufficient) PSD condition; complements α_μ. The smaller of
-        // the two is the right α to apply uniformly to both μ and Σ updates.
-        // See docs/math/trust_coefficient.md.
-        auto alfa_sigma = calculate_psd_trust_coefficient(
+        // α_Σ : per-diagonal PSD trust. REDUNDANT in this rank-1 branch — the
+        // undamped (α=1) down-date is PSD by construction (Markov-step Löwner margin;
+        // see docs/math/trust_coefficient.md and the α_σ-necessity analysis). It is
+        // NO LONGER APPLIED to Σ; kept only for the diagnostic dump. The real PSD
+        // guard is the to_Covariance_Probability canary below. (It is genuinely needed
+        // only in the variance_correction Taylor branches, which are handled elsewhere.)
+        [[maybe_unused]] auto alfa_sigma = calculate_psd_trust_coefficient(
             sigma_pre, gS, N / r_y_var(), trust_multiplying_factor);
 
-        // Smoothly combine α_μ and α_Σ via softmin — eliminates the kink at
-        // α_μ = α_Σ in ∂α/∂θ. ε matches the inner softmin scale.
-        constexpr double trust_softmin_eps = 1e-4;
-        auto alfa = build<trust_coefficient>(softmin(alfa_mu(), alfa_sigma(),
-                                                     trust_softmin_eps));
+        // DECOUPLED trust: the mean uses α_μ alone; the covariance down-date is left
+        // undamped (α=1, see the Σ updates below). α_μ no longer reaches Σ, so its
+        // residual irregularity at residual zero-crossings is harmless.
+        auto alfa = build<trust_coefficient>(alfa_mu());
 
 
         // Mean update at endpoint frame, unified across all averaging values.
@@ -5613,7 +5652,7 @@ class Macro_DMR {
         auto r_P_mean = build<P_mean>(std::move(Maybe_r_P_mean.value()));
 
         auto Maybe_r_P_cov = to_Covariance_Probability(
-            sigma_pre - (alfa() * N / r_y_var()) * XTX(gS));
+            sigma_pre - (N / r_y_var()) * XTX(gS));  // decoupled: Σ undamped (α=1, α_σ dropped — PSD by construction)
         if (!Maybe_r_P_cov)
             return Maybe_r_P_cov.error();
 
@@ -5639,6 +5678,11 @@ class Macro_DMR {
             get<r_std>(out())= std::move(r_r_std);
 
             get<trust_coefficient>(out()) = alfa;
+            // DIAGNOSTIC: keep α_μ and α_Σ separately so the per-sample detailed
+            // dump can tell which constraint's derivative jumps (mean-simplex vs
+            // PSD) at the FD-instability spike.
+            get<trust_mean_coefficient>(out())() = alfa_mu();
+            get<trust_psd_coefficient>(out())() = alfa_sigma();
             // Standard Kalman branch — Taylor not active.
             get<taylor_trust_coefficient>(out()) = taylor_trust_coefficient(1.0);
             get<taylor_vSv>(out()) = taylor_vSv(0.0);
@@ -5710,7 +5754,7 @@ class Macro_DMR {
 
                 
                 // Posterior reduced cross-covariance after conditioning on y_{0->t}.
-                auto r_P_cross_cov_0t_y1= r_P_cross_cov_0t_y0 - (alfa()*N/r_y_var())* TranspMult(gS0,gS);
+                auto r_P_cross_cov_0t_y1= r_P_cross_cov_0t_y0 - (N/r_y_var())* TranspMult(gS0,gS);  // decoupled: α=1
                 Matrix<double> uT(1ul,p_P_mean().size(), 1.0);
          
                
@@ -5743,7 +5787,7 @@ class Macro_DMR {
                 auto Maybe_r_P_cov_t11_y0 =
                     to_Covariance_Probability(AT_B_A(t_P(), SmD) + diag(p_P_mean() * t_P()));
                 auto Maybe_r_P_cov_t10_y1 = to_Covariance_Probability(
-                    get<P_Cov>(t_prior())() - (alfa() * N / r_y_var()) * XTX(gS0));
+                    get<P_Cov>(t_prior())() - (N / r_y_var()) * XTX(gS0));  // decoupled: α=1
 
                 if (!Maybe_r_P_cov_t11_y0) {
                     return Maybe_r_P_cov_t11_y0.error();
@@ -5774,7 +5818,7 @@ class Macro_DMR {
                     return Maybe_r_P_cov_t2_y0.error();  
                 }
                 auto Maybe_r_P_cov_t1_y1 = to_Covariance_Probability(
-                    get<P_Cov>(t_prior())() - (alfa() * N / r_y_var()) * XTX(gS));
+                    get<P_Cov>(t_prior())() - (N / r_y_var()) * XTX(gS));  // decoupled: α=1
 
                 if (!Maybe_r_P_cov_t1_y1) {
                     return Maybe_r_P_cov_t1_y1.error();
@@ -5835,7 +5879,7 @@ class Macro_DMR {
 
                 get<P_mean_t15_y1>(out())() = std::move(Maybe_r_P_mean_t15_y1.value());
                 auto Maybe_r_P_cov_t15_y1 = to_Covariance_Probability(
-                    p_P_Cov() - (alfa() * N / r_y_var()) * XTX(gS0));
+                    p_P_Cov() - (N / r_y_var()) * XTX(gS0));  // decoupled: α=1
 
                 if (!Maybe_r_P_cov_t15_y1) {
                     return Maybe_r_P_cov_t15_y1.error();
@@ -5936,6 +5980,8 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<trust_mean_coefficient>{});
+            copy_component(std::type_identity<trust_psd_coefficient>{});
 
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
@@ -6101,6 +6147,8 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<trust_mean_coefficient>{});
+            copy_component(std::type_identity<trust_psd_coefficient>{});
             copy_component(std::type_identity<r_std>{});
 
             copy_component(std::type_identity<P_mean>{});
@@ -6170,6 +6218,8 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<trust_mean_coefficient>{});
+            copy_component(std::type_identity<trust_psd_coefficient>{});
 
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
@@ -6245,6 +6295,8 @@ class Macro_DMR {
             copy_component(std::type_identity<y_mean>{});
             copy_component(std::type_identity<y_var>{});
             copy_component(std::type_identity<trust_coefficient>{});
+            copy_component(std::type_identity<trust_mean_coefficient>{});
+            copy_component(std::type_identity<trust_psd_coefficient>{});
             copy_component(std::type_identity<P_mean>{});
             copy_component(std::type_identity<P_Cov>{});
             copy_component(std::type_identity<r_std>{});
@@ -8270,6 +8322,28 @@ Maybe_error<dMacro_State_Ev_gradient_all> dlogLikelihoodPredictions(
     return Macro_DMR{}
         .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
                         dMacro_State_Ev_gradient_all>(f, lik.m, dpp, y, var);
+}
+
+// Detailed-state sibling: same evaluation, but the per-step Evolution carries
+// the rich detailed_element (P_mean/P_Cov/y_mean/y_var/trust_coefficient/logL
+// as Derivatives). Used for the FD-instability localization diagnostic.
+template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class micro, class FuncTable, class Model, class Variables,
+          class DataType>
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+             uses_micro_aproximation_c<micro>)
+Maybe_error<dMacro_State_Ev_detailed> dlogLikelihoodPredictionsDetailed(
+    FuncTable& f,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
+                                     micro, Model>& lik,
+    var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
+    auto dp = var::selfDerivative(p);
+    auto dpp = dp.to_value();
+    return Macro_DMR{}
+        .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
+                        dMacro_State_Ev_detailed>(f, lik.m, dpp, y, var);
 }
 
 template <class adaptive, class recursive, class averaging, class variance,

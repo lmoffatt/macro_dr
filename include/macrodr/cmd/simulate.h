@@ -59,6 +59,30 @@ inline Simulated_Recording<var::please_include<>> remove_intervals(
     return Simulated_Recording<var::please_include<> >{{get<SeedNumber>(simulation()), get<Recording>(simulation())}};
 }
 
+// Load simulations from a CSV file written by write_csv(experiment, simulations,
+// path). Returns one Simulated_Recording per requested simulation_index, with
+// patch_current values populated from the "value" column. If
+// replica_indices is empty, loads ALL simulations found in the file; otherwise
+// only loads those listed. SeedNumber is set to 0 in the loaded records (the
+// original seed is not persisted in the CSV; downstream uses only need the
+// recorded patch_current values).
+// Index-aware sibling of simulate(): reads a simulation CSV and reconstructs
+// the SAME var::Indexed<vector<Simulated_Recording>> type simulate() produces
+// via DSL lifting, carrying the same axes (reconstructed from the CSV's axis
+// columns — any header column outside the fixed schema). Keeps the axis chain
+// alive so downstream stays Indexed and axis columns propagate.
+//
+// Args BY VALUE (not const-ref) so the DSL accepts literal arguments inline
+// (load_simulations(filename="path", replica_indices=[0,44])). Errors if any
+// reconstructed axis coordinate is missing data.
+Maybe_error<var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>>
+load_simulations(std::string filename,
+                 std::vector<std::size_t> replica_indices);
+
+// Overload that loads all simulations (no index filter).
+Maybe_error<var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>>
+load_simulations(std::string filename);
+
 
 Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simulations(
     const ModelPtr& model, const var::Parameters_values& par,std::size_t n_simulations,

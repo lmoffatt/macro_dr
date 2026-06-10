@@ -337,7 +337,7 @@ TEST_CASE("Gauss-Newton converges from perturbed initial guess",
         // Per-parameter Δ and σ are still logged as INFO for diagnostic value
         // (using cholesky+inv(L)+XXT for the proper SPD inverse — see
         //  feedback_lapack_symmposdef_inv_broken).
-        auto const& gfi_at_max = get<Gaussian_Fisher_Information>(result.value)().value();
+        auto const& gfi_at_max = get<Gaussian_Fisher_Information>(result.result_value)().value();
         auto maybe_chol = cholesky(gfi_at_max);
         if (!maybe_chol) {
             UNSCOPED_INFO("cholesky(Gaussian_Fisher_Information) failed at converged "
