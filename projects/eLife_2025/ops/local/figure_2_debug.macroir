@@ -1,17 +1,46 @@
+
+#axis_Nchanels =axis(name= "Num_ch", labels= ["1", "2","5","10", "20","50","100", "200","500","1000","10000"])
+#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,200,500,1000,10000])
+
+# n_simulations= 16384
+#filepath="figures/data/figure_2_0519_002"
+
+model_str = "scheme_CO"
+# Dispatcher already encodes nch/nsim/algorithm in `filepath`, so just use it.
+filepath_run = filepath
+ 
+
 model = load_model("scheme_CO")
-
+# DEBUG: single interval 0.01 — must match the regenerated single-interval
+# simulation CSV that load_simulations reads below (the experiment structure
+# drives the recording length; a 7-interval experiment over single-interval
+# data would mismatch and segfault). Hardcoded here because this is the debug
+# script, not production figure_2.macroir.
 axis_interval = axis(name= "interval_in_tau", labels= ["0.01"])
-axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1"])
-axis_Nchanels =axis(name= "Num_ch", labels= ["1", "10"])
+#axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
 
-current_noise= indexed_double_by(axis= axis_noise,values=[0.0001])
+#axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.1"])
+#axis_noise = axis(name= "noise_in_conductance_tau", labels= ["0.1", "1","10","100"])
+
+# axis_noise injected by the dispatcher (--axis_noise=...); keep commented so
+# the in-file definition does not clobber the injection.
+#axis_noise = axis(name= "noise_in_conductance_tau", labels= ["10"])
 
 
-Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1, 10])
 
+#axis_Nchanels =axis(name= "Num_ch", labels= ["10","20","100", "200","500","1000","10000"])
+#axis_Nchanels =axis(name= "Num_ch", labels= ["1","10", "100", "1000","10000"])
+# axis_Nchanels injected by the dispatcher (--axis_Nchanels=...); keep commented
+# so the in-file definition does not clobber the injection.
+#axis_Nchanels =axis(name= "Num_ch", labels= ["100"])
 
-n_interval = indexed_size_by(axis= axis_interval,values=[100])
+#current_noise= indexed_double_by(axis= axis_noise,values=[0.0001,0.001,0.01,0.1])
+# current_noise injected by the dispatcher (--current_noise=...); keep commented.
+#current_noise= indexed_double_by(axis= axis_noise,values=[0.01])
 
+#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,2,5, 10,20,50,100,1000])
+#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[1,10,100,1000,10000])
+#Num_ch = indexed_double_by(axis= axis_Nchanels,values=[10,20,100,200,500,1000,10000])
 
 
 parameter = create_parameters(
@@ -29,48 +58,106 @@ parameter = create_parameters(
 
 
 
+# Single interval 0.01: the last column of the 7-interval production arrays
+# (step 200/400/400, samples 5/5/5). Matches the regenerated single-interval data.
 experiment = create_experiment(
    experiment_structure=[
-      {indexed_size_by(axis= axis_interval,values=[1]),indexed_size_by(axis= axis_interval,values=[500]),0.0},
-      {indexed_size_by(axis= axis_interval,values=[2]),indexed_size_by(axis= axis_interval,values=[500]),10.0},
-      {indexed_size_by(axis= axis_interval,values=[3]),indexed_size_by(axis= axis_interval,values=[500]),0.0}
-      ], 
+      {indexed_size_by(axis= axis_interval,values=[200]),indexed_size_by(axis= axis_interval,values=[5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[400]),indexed_size_by(axis= axis_interval,values=[5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[400]),indexed_size_by(axis= axis_interval,values=[5]),0.0}
+      ],
 frequency_of_sampling = 50e3,
-initial_agonist = 0.0, 
+initial_agonist = 0.0,
 initial_time = 0.0)
                                 
 observations = set_observations(values_set= [0,0,0,0])
 
 par_tr = get_standard_parameter_transformed_values(parameter)
  
-model_str="scheme_CO"
+# model_str defined at top (drives the filename infix)
 
-simulation_axis = axis(name= "simulation_algorithm", labels= ["substeps_1000"])
-
-
-simulations =  simulate(model= model, parameter_transformed = par_tr, n_simulations= 12800, experiment = experiment,
-                         observations = observations, 
-                         simulation_algorithm= indexed_string_by(axis= simulation_axis, values=["substeps"]),
-                         number_of_substeps = indexed_size_by(axis=simulation_axis,values= [1000]),
-                 seed = 0)
+simulation_axis = axis(name= "simulation_algorithm", labels= ["uniformization"])
 
 
+# === DEBUG: load PRE-EXISTING simulations from a previous run instead of
+# generating fresh ones. This keeps the SICK replica (index 44 in the
+# referenced CSV) and SANE comparators (0, 1, 5, 10) consistent across runs
+# of this script — simulate() with seed=0 → random_device produces a
+# different set of replicas every time, which would erase the specific
+# trajectory we're hunting in.
+# Hardcoded path (edit when targeting a different reference run) and
+# hardcoded indices (inline literal — DSL infers vector<size_t> from
+# load_simulations' signature). The DSL requires string args to be bound to
+# a variable first (const-ref param); literal strings inline don't pass
+# the borrow check.
+debug_simulation_csv_path = "/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/figure_2_nch_10000_nsim_64_macro_IR_noise_0.1_h_1e-6_simulation.csv"
+simulations = load_simulations(
+    filename = debug_simulation_csv_path,
+    replica_indices = [0, 1, 2, 3, 48])
 
-simulation_file = write_csv(experiment= experiment, simulations=simulations,
-   path= "figures/data/figure_2_simulation_debug")
+# NO _simulation re-emit here: it would write to the SAME path load_simulations
+# reads from (concat(filepath_run,"_simulation") == debug_simulation_csv_path),
+# destroying the source. The debug script reads _simulation but never writes it.
 
 
-algorithm_axis = axis(name= "algorithm", labels= ["macro_MNRV", "macro_MRV", "macro_IRV", "macro_IRTV"])
 
-algo_recursive_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,true,true,true])
-algo_taylor_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,false,false,true])
+#algorithm_axis = axis(name= "algorithm",
+#    labels= [ "macro_MR", "macro_MRT","macro_IR", "macro_IRT"])
+ 
+#algorithm_axis = axis(name= "algorithm",
+#    labels= [ "macro_MR", "macro_IR"])
+# algorithm_axis injected by the dispatcher (--algorithm_axis=...); keep commented.
+#algorithm_axis = axis(name= "algorithm",
+#    labels= [ "macro_IR"])
 
-algorithms = build_likelihood_function(model =model,
-            adaptive_approximation = false,
-            recursive_approximation = algo_recursive_approximation,
-            averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[1,1,2,2]),
-            variance_approximation = true,
-            taylor_variance_correction = algo_taylor_approximation)
+
+#algorithm_axis = axis(name= "algorithm",
+ #   labels= ["macro_NR", "macro_R", "macro_MNR", "macro_MR",  "macro_IR"])
+    #,
+    #         "micro_R", "micro_MR", "micro_IR"])
+
+
+#algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, true, false, true, true ])#,   true, true, true])
+# algo_recursive_approximation injected by the dispatcher; keep commented.
+#algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[ true ])
+
+
+#algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false, false, false, true, false, true])#,   false, false, false])
+#algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false, false, false, false, false, false])#,   true, true, true])
+#algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false, false, false, false, false, false])#,   true, true, true])
+
+
+
+#algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[true, true,true, true ])#,   true, true, true])
+#algo_taylor_approximation    = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, true,false, true])#,  false, true, false, false, false])
+#algo_micro_approximation     = indexed_bool_by(axis= algorithm_axis,
+#    values=[false, false,false, false])#,   true, true, true])
+# taylor_qdt_approximation is a fossil: micro_* now builds micro Qdt via the
+# monoid-potentiation lift (legacy/micro_monoid.h) — macro Qdt is computed at the
+# well-conditioned k×k level and combinatorially lifted to microstate
+# granularity (no per-micro expm), superseding the old Taylor/Schur micro-Q
+# workarounds for the lifted-Q ill-conditioning. So it stays false for all
+# algorithms; micro is selected by micro_approximation, not by this flag.
+#algo_taylor_qdt_approximation = indexed_bool_by(axis= algorithm_axis,
+#    values=[ false, false,false, false])#,   true, true, true])
+
+algorithms = build_likelihood_function(model = model,
+            adaptive_approximation     = false,
+            recursive_approximation    = algo_recursive_approximation,
+            averaging_approximation    = algo_averaging_approximation,
+           #                                values=[ 0 ,0, 1, 1, 2]),
+           #                               values=[0, 0, 1, 1, 1, 2, 2]),#,   0, 1, 2]),
+            variance_approximation     = true,
+            taylor_variance_correction = algo_taylor_approximation,
+            micro_approximation        = algo_micro_approximation,
+            taylor_qdt_approximation   = false )#algo_taylor_qdt_approximation)
 
 
 
@@ -78,13 +165,70 @@ algorithms = build_likelihood_function(model =model,
 dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =algorithms, parameters=par_tr, experiment =experiment,
 data_series = simulations)
 
-dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
-   path= "figures/data/figure_2_dlikelihood_predictions_debug")
+#dlikelihood_file = write_csv(experiment= experiment, simulations = simulations, likelihood = dlikelihood_predictions,
+#   path= concat(filepath_run,"_dlikelihoods"))
+
+# h_rel_value: step-size (relative) for the central-diff Fisher.
+# Dispatcher injects `--h_rel_value = <value>`; keep commented so the
+# in-file definition does not clobber the injection.
+# h_rel_value = 1e-5
+
+# Numerical (observed) Fisher information per simulation: F_b is the H reference
+# for the IDM and feeds the new Likelihood_Gaussian_Fisher_Distortion diagnostic. Cost:
+# 2·n_params extra dlikelihood passes per selected simulation. `decimate=K`
+# evaluates F on every K-th simulation only — F's bootstrap is independent of
+# dy's, so a sparser F vector still gives a valid bootstrap.
+numerical_fisher_information = calc_numerical_fisher_information(
+    likelihood_algorithm = algorithms, parameters = par_tr, experiment = experiment,
+    data_series = simulations, h_rel = h_rel_value, decimate = 1)
 
 
-likelihood_analysis = likelihood_derivative_diagnostics(dlikelihood_predictions = dlikelihood_predictions , n_boostrap_samples=100,
-            probits = [ 0.025 , 0.975 ] , seed=0)
+dlikelihood_file = write_csv(
+    dlikelihood_predictions = dlikelihood_predictions,
+    numerical_fisher_information = numerical_fisher_information,
+    path = concat(filepath_run, "_replicates"))
+
+
+# Per-replica per-sample numerical Fisher Information (DIAGNOSTIC).
+# Decomposes the global F into per-timestep contributions F_t. By logL
+# additivity, Σ_t F_t equals the global numerical_fisher_information per
+# replica. Used for bug-hunting which timestep triggers FD instabilities in
+# score derivatives along specific parameter directions (Current_Noise /
+# Current_Baseline directions show isolated-replica blowups in the global F).
+#
+# Cost: 2·n_params extra dlikelihood passes (batched across replicas, shared
+# FuncMap_St cache). Output CSV size scales as n_replicas × n_timesteps × p²
+# — keep nsim small for the debug runs (8-64).
+per_sample_F = calc_per_sample_numerical_fisher_information(
+    likelihood_algorithm = algorithms,
+    parameters = par_tr,
+    experiment = experiment,
+    data_series = simulations,
+    h_rel = h_rel_value)
+
+# write_csv(experiment, simulations, per_sample_F, path): with load_simulations
+# now returning Indexed, BOTH simulations and per_sample_F are Indexed → the DSL
+# matches the (Indexed-sims, Indexed-states) overload directly (no lifting) →
+# emit_state_rows_with_experiment populates axis columns + agonist + patch_current
+# + time per sample, plus the per-timestep F.
+per_sample_F_file = write_csv(
+    experiment = experiment,
+    simulations = simulations,
+    likelihood = per_sample_F,
+    path = concat(filepath_run, "_per_sample_F"))
+
+
+# Per-sample detailed derivative dump lives in figure_2_debug_samples.macroir
+# (the focused, self-contained script), not here.
+
+
+likelihood_analysis = likelihood_derivative_basic_diagnostics_paired(
+    dlikelihood_predictions = dlikelihood_predictions,
+    numerical_fisher_information = numerical_fisher_information,
+    n_boostrap_samples = 100,
+    probits = [ 0.025, 0.16, 0.5, 0.84, 0.975 ] , seed=0, max_lag=10,
+    samples_dir = filepath_run )
 
 
 likelihood_analysis_res = write_csv(analysis = likelihood_analysis,
-   path= "figures/data/figure_2_dlikelihood_analysis_debug")
+   path= concat(filepath_run,"_analysis"))

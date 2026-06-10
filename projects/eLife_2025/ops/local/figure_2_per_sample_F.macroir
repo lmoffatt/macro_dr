@@ -1,0 +1,90 @@
+# Focused debug script for per-sample numerical Fisher Information.
+#
+# Loads existing simulations from a previous figure_2 run (skipping the
+# expensive simulate() step) for a specific subset of replicas, then computes
+# the per-timestep F contribution F_t along all parameter directions and
+# emits one CSV.
+#
+# Setup mirrors figure_2.macroir for scheme_CO + macro_IR at 10000 channels,
+# but the simulation provenance is the load_simulations() input — caller is
+# responsible for passing the right _simulation.csv path matching the model
+# and parameters in this file.
+#
+# Dispatcher injects via --eval (same as figure_2 pipeline):
+#   --axis_Nchanels, --Num_ch, --filepath
+#   --axis_noise, --current_noise
+#   --algorithm_axis, --algo_recursive_approximation,
+#   --algo_averaging_approximation, --algo_taylor_approximation,
+#   --algo_micro_approximation
+#   --axis_h_fim, --h_rel_value
+#   --simulation_csv_path           (path to load_simulations input)
+#   --replica_indices               (vector<size_t> of replica indices to load)
+
+
+model_str = "scheme_CO"
+filepath_run = filepath
+
+model = load_model("scheme_CO")
+axis_interval = axis(name= "interval_in_tau", labels= ["1", "0.5","0.2","0.1","0.05","0.02","0.01"])
+
+parameter = create_parameters(
+   model = model,
+   parameters_info= [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",current_noise},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", Num_ch}]
+)
+
+experiment = create_experiment(
+   experiment_structure=[
+      {indexed_size_by(axis= axis_interval,values=[2,4,10,20,40,100,200]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[4,8,20,40,80,200,400]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[4,8,20,40,80,200,400]),indexed_size_by(axis= axis_interval,values=[500,250,100,50,25,10,5]),0.0}
+      ],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+
+# === LOAD pre-computed simulations (replaces simulate() — saves minutes per run) ===
+# replica_indices and simulation_csv_path injected by the dispatcher.
+simulations = load_simulations(
+    filename = simulation_csv_path,
+    replica_indices = replica_indices)
+
+
+# === Build the likelihood algorithm bundle ===
+algorithms = build_likelihood_function(
+   model = model,
+   adaptive_approximation     = false,
+   recursive_approximation    = algo_recursive_approximation,
+   averaging_approximation    = algo_averaging_approximation,
+   variance_approximation     = true,
+   taylor_variance_correction = algo_taylor_approximation,
+   micro_approximation        = algo_micro_approximation,
+   taylor_qdt_approximation   = false)
+
+
+# === Compute per-replica per-sample F ===
+# Output: vector<dMacro_State_Ev_per_sample_F> — one State per loaded replica,
+# Evolution_of<Likelihood_Numerical_Fisher_Information> inside with per-step
+# F contribution. By logL additivity, Σ_t F_t = global F per replica.
+per_sample_F = calc_per_sample_numerical_fisher_information(
+   likelihood_algorithm = algorithms,
+   parameters = par_tr,
+   experiment = experiment,
+   data_series = simulations,
+   h_rel = h_rel_value)
+
+
+# === Emit per-sample F CSV with axes columns ===
+per_sample_F_file = write_csv(
+   experiment = experiment,
+   simulations = simulations,
+   likelihood = per_sample_F,
+   path = concat(filepath_run, "_per_sample_F"))

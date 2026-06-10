@@ -1,0 +1,141 @@
+# figure_2_debug_samples.macroir — focused, SELF-CONTAINED per-sample detailed
+# diagnostic.
+#
+# Unlike figure_2_debug.macroir (which also computes the replicate dump,
+# per_sample_F and the bootstrap analysis, and depends on dispatcher
+# injections), this script hardcodes the SINGLE debug scenario — nch=10000,
+# noise=0.1, macro_IR, the sick replica 48 + sane comparators 0/1/2/3 — and
+# produces ONLY the `_detailed` CSV: the significant recursion variables
+# (logL, y_mean, y_var, P_mean, P_Cov, trust_coefficient) per sample, each as a
+# Derivative — the value X AND the regular AD gradient ∂X/∂θ over ALL parameters
+# (one run at θ, no perturbation) — windowed to the samples around the spike.
+#
+# No dispatcher, no bash, no injections — run it DIRECTLY:
+#   build/gcc-release/macrodr_cli \
+#     projects/eLife_2025/ops/local/figure_2_debug_samples.macroir
+# All paths are absolute, so the working directory does not matter.
+
+
+model = load_model("scheme_CO")
+
+# Output base (absolute — robust to CWD since there is no dispatcher `cd`).
+filepath_run = "/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/figure_2_debug_samples"
+
+
+# --- scenario axes -----------------------------------------------------------
+# Only the axes that are genuinely swept here. interval feeds the experiment;
+# algorithm feeds the likelihood flags. noise / Num_ch are PLAIN scalars (not
+# Indexed) so that par_tr stays plain — by_parameter_coordinate returns Indexed
+# and therefore needs plain arguments. The noise / Num_ch axis columns still
+# appear in the CSV: they come from the loaded `simulations` (Indexed over the
+# CSV's own axes). simulation_algorithm likewise comes from the simulations.
+axis_interval   = axis(name= "interval_in_tau", labels= ["0.01"])
+algorithm_axis  = axis(name= "algorithm",       labels= ["macro_IR"])
+
+# noise label 0.1 → conductance-tau variance 0.0001 (same map the dispatcher
+# uses: 0.1→0.0001, 1→0.001, 10→0.01, 100→0.1).
+current_noise = 0.0001
+Num_ch        = 10000
+
+
+parameter = create_parameters(
+   model = model,
+   parameters_info= [
+      {"on","Log10",10},
+{"off","Log10",100},
+{"unitary_current","Log10",1},
+{"Current_Noise","Log10",current_noise},
+{"Current_Baseline","Log10",1},
+{"Num_ch_mean","Log10", Num_ch}]
+)
+
+
+# Single interval 0.01 (step 200/400/400, samples 5/5/5) — must match the
+# single-interval simulation CSV loaded below.
+experiment = create_experiment(
+   experiment_structure=[
+      {indexed_size_by(axis= axis_interval,values=[200]),indexed_size_by(axis= axis_interval,values=[5]),0.0},
+      {indexed_size_by(axis= axis_interval,values=[400]),indexed_size_by(axis= axis_interval,values=[5]),10.0},
+      {indexed_size_by(axis= axis_interval,values=[400]),indexed_size_by(axis= axis_interval,values=[5]),0.0}
+      ],
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0,
+initial_time = 0.0)
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+
+# Same pre-existing simulation source + the same replica selection (sick 48 +
+# sane 0,1,2,3) as figure_2_debug.macroir, so the trajectory under analysis is
+# byte-identical. Edit the path/indices to retarget a different reference run.
+debug_simulation_csv_path = "/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/figure_2_nch_10000_nsim_64_macro_IR_noise_0.1_h_1e-6_simulation.csv"
+simulations = load_simulations(
+    filename = debug_simulation_csv_path,
+    replica_indices = [0, 1, 2, 3, 48])
+
+
+# macro_IR = recursive, averaging=2 (inclusive), variance ON, no taylor / no
+# micro. Single-coordinate Indexed flags over algorithm_axis. They MUST be bound
+# to variables first: indexed<bool> passed inline to the lifted
+# build_likelihood_function fails ("mutable borrowed coordinate access" —
+# vector<bool> has no real bool&; a bound variable is a const borrow).
+algo_recursive  = indexed_bool_by(axis= algorithm_axis, values= [true])
+algo_averaging  = indexed_int_by(axis= algorithm_axis,  values= [2])
+algo_taylor     = indexed_bool_by(axis= algorithm_axis, values= [false])
+algo_micro      = indexed_bool_by(axis= algorithm_axis, values= [false])
+
+algorithms = build_likelihood_function(model = model,
+            adaptive_approximation     = false,
+            recursive_approximation    = algo_recursive,
+            averaging_approximation    = algo_averaging,
+            variance_approximation     = true,
+            taylor_variance_correction = algo_taylor,
+            micro_approximation        = algo_micro,
+            taylor_qdt_approximation   = false )
+
+
+# === DETAILED per-sample diagnostic ==========================================
+# The command dumps, per sample, the significant recursion variables — logL,
+# y_mean, y_var, P_mean, P_Cov, trust_coefficient — each as a Derivative: the
+# value X AND the regular AD gradient ∂X/∂θ over ALL parameters.
+#
+# The ±h perturbation is built OUTSIDE in TWO steps (Luthier: the command stays
+# agnostic, it just receives an Indexed `parameters`; and the Fisher-scaling
+# logic lives in one place, identical to numeric_fisher_information):
+#
+#   1. by_parameter_coordinate(par_tr, [h, -h, ...]) → the raw Δ's (h·e_i),
+#      Indexed over (parameter_coordinate × h_rel): zero everywhere except slot i
+#      = the signed relative step. The `by_` prefix = returns an Indexed keyed by
+#      a derived axis. Plain args + Indexed return → native-indexed, no lifting.
+#   2. apply_relative_perturbation(par_tr, Δ) → θ'_i = θ_i + Δ_i·max(|θ_i|,1).
+#      Returns a PLAIN Parameters_transformed, so the DSL lifts it over Δ's axes
+#      and combines them → par_pert Indexed over (parameter_coordinate × h_rel).
+#
+# Add more magnitudes to the list ([1e-6,-1e-6, 1e-5,-1e-5, ...]) to scan h.
+displacements = by_parameter_coordinate(parameters = par_tr, h_rels = [1e-6, -1e-6])
+par_pert      = apply_relative_perturbation(parameters = par_tr, perturbation = displacements)
+# par_pert is Indexed over (parameter_coordinate × h_rel); the command lifts over
+# it (× algorithm × interval × the simulations' axes) → one regular-derivative
+# dump per (param, sign).
+#
+# sample_min/sample_max window each Evolution INSIDE the command (memory): the
+# spike for the sick replica (48) is at t≈640-643, so we keep a little context.
+detailed = calc_per_sample_numerical_fisher_information_detailed(
+    likelihood_algorithm = algorithms,
+    parameters = par_pert,
+    experiment = experiment,
+    data_series = simulations,
+    sample_min = 630,
+    sample_max = 650)
+
+# Same window at write: the CSV gets the `parameter_coordinate` and `h_rel`
+# columns (distinguish param and +h/−h), plus absolute sample index / time /
+# agonist / patch_current. The writer maps the pre-windowed Evolution back to
+# absolute samples via sample_min.
+detailed_file = write_csv(
+    experiment = experiment,
+    simulations = simulations,
+    likelihood = detailed,
+    sample_min = 630,
+    sample_max = 650,
+    path = concat(filepath_run, "_detailed"))

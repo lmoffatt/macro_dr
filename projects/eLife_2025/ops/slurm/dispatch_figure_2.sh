@@ -43,7 +43,7 @@ set -e
 # (where its own $0 no longer points at the repo).
 export MACRODR_PROFILE="$PROFILE"
 
-# Default BIN to this cluster's latest build; override (export BIN=…) to pin one.
+# Default BIN to this cluster's latest build; override (exExcelenteport BIN=…) to pin one.
 BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 [ -x "$BIN" ] || {
     echo "[dispatch] binary not found: $BIN" >&2
@@ -119,6 +119,19 @@ for i in "${!NCHS[@]}"; do
     taylor_arg=$( printf -- '--algo_taylor_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$taylor")
     micro_arg=$( printf -- '--algo_micro_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$micro")
 
+    # interval_in_tau — figure_2.macroir now has axis_interval + the experiment
+    # step/sample sizes injection-ready (commented), so the dispatcher injects
+    # them. Production = the full 7-interval grid (identical to the values that
+    # used to be hardcoded in figure_2.macroir). axis_interval must precede the
+    # exp_n_* (which reference it).
+    axis_interval_arg=$(printf -- '--axis_interval = axis(name= "interval_in_tau", labels= ["1","0.5","0.2","0.1","0.05","0.02","0.01"])')
+    exp_step_1_arg=$(printf -- '--exp_n_step_1 = indexed_size_by(axis= axis_interval, values=[2,4,10,20,40,100,200])')
+    exp_samp_1_arg=$(printf -- '--exp_n_samp_1 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
+    exp_step_2_arg=$(printf -- '--exp_n_step_2 = indexed_size_by(axis= axis_interval, values=[4,8,20,40,80,200,400])')
+    exp_samp_2_arg=$(printf -- '--exp_n_samp_2 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
+    exp_step_3_arg=$(printf -- '--exp_n_step_3 = indexed_size_by(axis= axis_interval, values=[4,8,20,40,80,200,400])')
+    exp_samp_3_arg=$(printf -- '--exp_n_samp_3 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
+
     # MACRODR_AXIS_SERIAL=1 serializes the internal axis-combo loop so the
     # per-simulation / bootstrap loops become the active OpenMP level. Without
     # it the combo loop stays parallel and memory ∝ concurrent combos → OOM
@@ -137,6 +150,9 @@ for i in "${!NCHS[@]}"; do
         "$axis_noise_arg" "$current_noise_arg" \
         "$axis_algo_arg" "$recursive_arg" "$averaging_arg" "$taylor_arg" \
         "$micro_arg" \
+        "$axis_interval_arg" \
+        "$exp_step_1_arg" "$exp_samp_1_arg" "$exp_step_2_arg" "$exp_samp_2_arg" \
+        "$exp_step_3_arg" "$exp_samp_3_arg" \
         "$SCRIPT")
 
     echo "submitted fig2_nch_${nch}  job=${jobid}  n_sim=${nsim}  -> ${WORKDIR}/figures/data/figure_2_nch_${nch}_nsim_${nsim}_*"
