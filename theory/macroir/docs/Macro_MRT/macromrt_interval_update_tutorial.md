@@ -144,9 +144,26 @@ between MRT and IRT.
 
 ## A.6 Trust-Region Simplex Shrink
 
-Identical to MacroIR. Compute α* as the largest scalar in [0,1] keeping
-every component of `mu_post` inside `[p_min, p_max]`; scale both the
-mean and covariance updates by α*. Record α* as `trust_coefficient`.
+Identical to MacroIR. The mean and covariance trusts are **decoupled**:
+they are no longer a single shared α* applied to both updates.
+
+- **Mean (simplex) trust α_μ.** Compute α_μ as the largest scalar in
+  [0,1] keeping every component of `mu_post` inside `[p_min, p_max]`
+  (`calculate_trust_coefficient`); scale the **mean** update alone by
+  α_μ. Record it as `trust_coefficient`.
+- **Covariance (PSD) trust α_σ.** Scale the **covariance** update by
+  the independent PSD trust α_σ — not by α_μ. Because MacroMRT is a
+  variance_correction (Taylor) branch, it uses a rank-2 Woodbury
+  down-date whose middle block can become indefinite, so the
+  self-limiting PSD guarantee of the standard rank-1 branch does not
+  hold and α_σ is genuinely needed here.
+
+Keeping α_μ off Σ matters: at a residual zero-crossing `delta → 0`,
+α_μ's bound is singular, but the mean step `α_μ · (delta/V) · …` is
+identically zero there, so the singularity is harmless on the mean.
+Sharing it would carry that singularity into the (chi-free, ×N)
+covariance down-date and destabilize the per-sample numerical Fisher.
+
 The likelihood `log L` uses the unmodified `V` (the variance-inflation
 interpretation was discarded; see
 `macro_ir_variance_inflation_correction.tex`).
