@@ -1,0 +1,130 @@
+---
+title: "Figure_2_debug_detail"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+filename =c("data/figure_2_debug_samples_detailed")
+
+
+```
+
+```{r}
+d <- lapply(seq_along(filename), function(i) {
+  read.csv(paste0(filename[i], ".csv")) 
+}) %>% 
+  bind_rows()
+
+```
+
+```{r}
+d<- d %>% filter(scope=="evolution") %>%
+  select(where(~ !all(is.na(.))))
+d%>%select(component_path)%>%distinct()%>%pull()
+```
+```{r}
+h_i_map <- c(on=1e-6, off=2e-6, unitary_current=1e-6,
+             Current_Noise=4e-6, Current_Baseline=1e-6, Num_ch_mean=4e-6)
+
+dp <- d %>% filter(scope=="evolution") %>%                      # <-- ver nota
+  pivot_wider(names_from=h_rel, values_from=value, names_prefix="value_") %>%
+  mutate(h_i = h_i_map[parameter_coordinate],
+         dfdh  = -(`value_1e-06` - `value_-1e-06`) / (2*h_i))     # <-- signo + 2hᵢ
+
+```
+
+
+
+
+```{r}
+dp
+```
+```{r, fig.width=20,fig.height=20}
+dp%>%filter(component_path=="trust_psd_coefficient", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)
+
+```
+
+```{r, fig.width=10,fig.height=4}
+dp%>%filter(component_path=="y_mean", calculus=="primitive",scope=="evolution", n_step>635, n_step<645)%>%
+  ggplot(aes(x=n_step, y=`value_1e-06`-patch_current, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(simulation_index~., scale="free", ncol=6)
+
+```
+
+
+
+```{r, fig.width=20,fig.height=10}
+dp%>%filter(component_path=="trust_mean_coefficient", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)
+
+```
+
+
+```{r, fig.width=20,fig.height=10}
+dp%>%filter(component_path=="y_mean", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6) +ggtitle("y_mean")
+
+dp%>%filter(component_path=="y_var", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)+ggtitle("y_var")
+
+
+dp%>%filter(component_path=="trust_mean_coefficient", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)+ggtitle("trust_mean_coefficient")
+
+dp%>%filter(component_path=="P_Cov", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name, value_row, value_col)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)+ggtitle("P_Cov")
+
+dp%>%filter(component_path=="P_mean", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name, value_row, value_col)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)+ggtitle("P_mean")
+
+
+```
+
+
+
+```{r, fig.width=20,fig.height=20}
+dp%>%filter(component_path=="logL", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)
+
+```
+
+
+
+
+
+```{r, fig.width=20,fig.height=20}
+dp%>%filter(component_path=="trust_coefficient", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)
+
+```
+
+
+```{r, fig.width=20,fig.height=20}
+dp%>%filter(component_path=="P_Cov", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name, value_row, value_col)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)
+
+```
+```{r, fig.width=20,fig.height=20}
+dp%>%filter(component_path=="P_mean", calculus=="derivative",scope=="evolution", n_step>635, n_step<645)%>%group_by(simulation_index, param_name, value_row, value_col)%>%arrange(n_step)%>%mutate(cum_value=cumsum(dfdh))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~parameter_coordinate, scale="free", ncol=6)
+
+```

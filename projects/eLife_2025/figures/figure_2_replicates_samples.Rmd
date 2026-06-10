@@ -1,0 +1,52 @@
+---
+title: "figure_2_debug_analysis"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+
+```{r}
+filename =c("data/figure_2_nch_10000_nsim_64_macro_IR_noise_0.1_h_1e-6_")
+
+
+```
+
+```{r}
+d <- lapply(seq_along(filename), function(i) {
+  read.csv(paste0(filename[i], "per_sample_F.csv")) 
+}) %>% 
+  bind_rows()
+
+```
+
+```{r}
+d<- d %>%
+  select(where(~ !all(is.na(.))))
+d%>%select(component_path)%>%distinct()%>%pull()
+```
+```{r, fig.width=20,fig.height=20}
+d%>%filter(component_path=="Likelihood_Numerical_Fisher_Information")%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(value))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~., scale="free", ncol=6)
+
+```
+```{r, fig.width=10,fig.height=10}
+n_step_min=625
+n_step_max=650
+
+
+d%>%filter(component_path=="Likelihood_Numerical_Fisher_Information", param_name=="off_Current_Baseline", n_step>n_step_min, n_step<n_step_max)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(value))%>%
+  ggplot(aes(x=n_step, y=cum_value, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~., scale="free", ncol=6)
+
+d%>%filter(component_path=="Likelihood_Numerical_Fisher_Information", param_name=="off_Current_Baseline", n_step>n_step_min, n_step<n_step_max)%>%group_by(simulation_index, param_name)%>%arrange(n_step)%>%mutate(cum_value=cumsum(value))%>%
+  ggplot(aes(x=n_step, y= step_end, color=factor(simulation_index)))+
+  geom_point()+facet_wrap(param_name~., scale="free", ncol=6)
+
+```

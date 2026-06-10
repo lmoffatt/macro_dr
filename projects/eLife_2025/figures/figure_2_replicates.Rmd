@@ -1,0 +1,50 @@
+---
+title: "replicates analysis"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+
+```{r}
+filename =c("data/figure_2_nch_10000_nsim_4096_macro_IR_noise_0.1_h_1e-4_1e-5_1e-6_")
+
+
+```
+
+```{r}
+d <- lapply(seq_along(filename), function(i) {
+  read.csv(paste0(filename[i], "replicates.csv")) 
+}) %>% 
+  bind_rows()
+
+```
+
+```{r}
+d<- d %>%
+  select(where(~ !all(is.na(.))))
+d%>%select(component_path)%>%distinct()%>%pull()
+```
+
+```{r, fig.width=20, fig.height=60}
+d%>%filter(component_path=="Likelihood_Numerical_Fisher_Information")%>%ggplot(aes(x=simulation_index, y=value, color=factor(simulation_index%%10)))+geom_point()+facet_wrap(param_name~axis_h_fim, scale="free", ncol=3)
+```
+
+
+```{r, fig.width=20, fig.height=40}
+d%>%filter(component_path=="Gaussian_Fisher_Information",interval_in_tau==0.01)%>%ggplot(aes(x=simulation_index, y=value, color=factor(axis_h_fim)))+geom_point()+facet_wrap(~param_name, scale="free")
+
+```
+
+```{r, fig.width=10, fig.height=10}
+d%>%filter(component_path=="logL")%>%ggplot(aes(x=simulation_index, y=value, color=factor(axis_h_fim)))+geom_point()+facet_wrap(~param_index, scale="free")
+
+```
+
+
