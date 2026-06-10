@@ -306,7 +306,29 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     cm.push_function("load_observations", dsl::to_typed_function<std::string>(
                                               &macrodr::cmd::load_recording, "filename"));
 
-    
+    // Load simulations from a CSV (the _simulation.csv written by
+    // write_csv(experiment, simulations, path)). Returns var::Indexed (native
+    // Indexed return, like indexed_by) reconstructed from the CSV axis columns,
+    // so the axis chain survives into downstream Indexed pipelines. Two overloads:
+    //   load_simulations(filename)                  -> all simulations
+    //   load_simulations(filename, replica_indices) -> only listed indices
+    // Args by-value so the DSL accepts literal arguments inline.
+    using LoadSimAll =
+        Maybe_error<var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>> (*)(
+            std::string);
+    using LoadSimFiltered =
+        Maybe_error<var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>> (*)(
+            std::string, std::vector<std::size_t>);
+    cm.push_function(
+        "load_simulations",
+        dsl::to_typed_function<std::string>(
+            static_cast<LoadSimAll>(&macrodr::cmd::load_simulations), "filename"));
+    cm.push_function(
+        "load_simulations",
+        dsl::to_typed_function<std::string, std::vector<std::size_t>>(
+            static_cast<LoadSimFiltered>(&macrodr::cmd::load_simulations),
+            "filename", "replica_indices"));
+
     cm.push_function("set_observations", dsl::to_typed_function<std::vector<double>>(
                                               &macrodr::cmd::define_recording, "values_set"));
 
@@ -369,6 +391,17 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     using IndexedDiagnostics = var::Indexed<Macro_State_Ev_diagnostic>;
     using IndexedGradients = var::Indexed<dMacro_State_Ev_gradient_all>;
     using IndexedGradientBatch = var::Indexed<GradientBatch>;
+    // Per-sample numerical Fisher Information State (diagnostic): same shape
+    // family as GradientBatch but the Evolution slot carries per-step F_t
+    // contributions instead of the gradient_all element. Used by the bug-hunt
+    // pipeline (calc_per_sample_numerical_fisher_information).
+    using PerSampleFBatch = std::vector<dMacro_State_Ev_per_sample_F>;
+    using IndexedPerSampleFBatch = var::Indexed<PerSampleFBatch>;
+    // Detailed per-sample diagnostic State: Evolution slot carries the rich
+    // detailed_element (P_mean/P_Cov/y_mean/y_var/trust_coefficient/logL as
+    // Derivatives). Used by calc_per_sample_numerical_fisher_information_detailed.
+    using DetailedBatch = std::vector<dMacro_State_Ev_detailed>;
+    using IndexedDetailedBatch = var::Indexed<DetailedBatch>;
 
     cm.push_function("write_csv", dsl::to_typed_return_function<
         Maybe_error<std::string>,Experiment const&,Simulated_recording const&, std::string >(&macrodr::cmd::write_csv,
@@ -507,6 +540,89 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                                       IndexedSimulationBatch const&, IndexedGradientBatch const&,
                                       std::string>(&macrodr::cmd::write_csv, "experiment",
                                                    "simulations", "likelihood", "path"));
+
+    // write_csv for the per-sample numerical Fisher Information State. Same
+    // 4-variant set as GradientBatch above (plain vs Indexed × simulations vs
+    // states) — needed so DSL dispatch picks the right overload regardless of
+    // how the inputs got wrapped through the axis-combo loop.
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      SimulationBatch const&, PerSampleFBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, PerSampleFBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      SimulationBatch const&, IndexedPerSampleFBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, IndexedPerSampleFBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+    // Dedicated 2-arg overload (Indexed states + path, no Experiment/Simulation):
+    // the DSL matches the Indexed param directly without lifting, so the axis
+    // columns survive into the per_sample_F CSV.
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      IndexedPerSampleFBatch const&, std::string>(
+            &macrodr::cmd::write_csv, "likelihood", "path"));
+
+    // DETAILED diagnostic write_csv: windowed (sample_min/sample_max) variant is
+    // the primary one — both simulations and likelihood arrive Indexed over the
+    // scenario/data axes. The window keeps the CSV small while preserving
+    // absolute sample indices / times / agonist / patch_current.
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, IndexedDetailedBatch const&,
+                                      std::size_t, std::size_t, std::string>(
+            &macrodr::cmd::write_csv, "experiment", "simulations", "likelihood", "sample_min",
+            "sample_max", "path"));
+    // Non-windowed sibling (full Evolution) for convenience.
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, Experiment const&,
+                                      IndexedSimulationBatch const&, IndexedDetailedBatch const&,
+                                      std::string>(&macrodr::cmd::write_csv, "experiment",
+                                                   "simulations", "likelihood", "path"));
+
+    // Per-replica state + numerical Fisher dump (no Experiment, no Simulation).
+    // Emits each state without its Evolution_of slot and the matched F as
+    // Likelihood_Numerical_Fisher_Information. Designed for bug-hunting on
+    // numeric_Fisher_information variability across replicates.
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      GradientBatch const&,
+                                      std::vector<parameter_spd_payload> const&,
+                                      std::string>(
+            &macrodr::cmd::write_csv,
+            "dlikelihood_predictions", "numerical_fisher_information", "path"));
+
+    // Indexed (multi-axis) variant: when called from a DSL context with
+    // axes in scope (algorithm × interval × Num_ch × h_rel × ...), the DSL
+    // hands these as Indexed values. This overload iterates the axis space
+    // and emits the CSV with axis_values columns populated per coord (matching
+    // the analysis CSV schema).
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      var::Indexed<GradientBatch> const&,
+                                      var::Indexed<std::vector<parameter_spd_payload>> const&,
+                                      std::string>(
+            &macrodr::cmd::write_csv,
+            "dlikelihood_predictions", "numerical_fisher_information", "path"));
 
 
     cm.push_function(
@@ -664,7 +780,23 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                      dsl::to_typed_function<var::Parameters_Transformations const&>(
                          &macrodr::cmd::get_standard_parameter_transformed_values, "parameters"));
 
-    
+    // Two-step perturbation for the per-sample FD diagnostic, built outside the
+    // (agnostic) command. Step 1: by_parameter_coordinate → Indexed raw Δ (h·eᵢ)
+    // over `parameter_coordinate` × `h_rel` (the `by_` prefix = returns Indexed
+    // keyed by a derived axis; plain args + Indexed return → native indexed, no
+    // lift). Step 2: apply_relative_perturbation applies θ′ᵢ = θᵢ + Δᵢ·max(|θᵢ|,1)
+    // and returns PLAIN, so the DSL lifts it over Δ's axes and combines them.
+    // h_rels is a plain vector ([+h,−h], or several scales).
+    cm.push_function(
+        "by_parameter_coordinate",
+        dsl::to_typed_function<var::Parameters_transformed const&, std::vector<double>>(
+            &macrodr::cmd::by_parameter_coordinate, "parameters", "h_rels"));
+    cm.push_function("apply_relative_perturbation",
+                     dsl::to_typed_function<var::Parameters_transformed const&,
+                                            var::Parameters_transformed const&>(
+                         &macrodr::cmd::apply_relative_perturbation, "parameters", "perturbation"));
+
+
     cm.push_function(
         "patch_model",
         dsl::to_typed_return_function<Maybe_error<macrodr::cmd::PatchModel>, ModelPtr const&,
@@ -928,6 +1060,42 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                                double, std::size_t>(
             &cmd::calculate_n_simulation_mnumerical_fisher_information, "likelihood_algorithm",
             "parameters", "experiment", "data_series", "h_rel", "decimate"));
+
+    // Per-sample variant: decomposes the global F per replica into per-timestep
+    // F_t contributions via per-step FD on the cumulative AD score. Returns a
+    // vector<dMacro_State_Ev_per_sample_F> whose Evolution_of<> slot carries
+    // one Likelihood_Numerical_Fisher_Information per timestep. By additivity
+    // of logL = Σ_t logL_t, summing F_t over the Evolution recovers the global
+    // F. Used for diagnostic localization of FD instabilities — find which
+    // timestep triggers the kink in score derivatives for specific parameter
+    // directions (the bug hunt on Current_Noise / Current_Baseline directions).
+    cm.push_function(
+        "calc_per_sample_numerical_fisher_information",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const std::vector<Simulated_Recording<var::please_include<>>>&,
+                               double>(
+            &cmd::calculate_per_sample_n_simulation_mnumerical_fisher_information,
+            "likelihood_algorithm", "parameters", "experiment", "data_series", "h_rel"));
+
+    // Detailed variant: runs the dlikelihood ONCE at θ and dumps the significant
+    // recursion variables (logL, y_mean, y_var, P_mean, P_Cov, trust_coefficient)
+    // per sample, each as a Derivative carrying the value X AND the regular AD
+    // gradient ∂X/∂θ over ALL parameters (the Jacobian already covers every
+    // parameter). The FD-instability perturbation is built OUTSIDE: pass
+    // `parameters` as an Indexed over the perturbation axes (see
+    // by_parameter_coordinate + apply_relative_perturbation) and the DSL lifts
+    // this command over them.
+    // sample_min/sample_max window each Evolution INSIDE (memory) — absolute
+    // sample indices are preserved into the CSV by the matching write_csv.
+    cm.push_function(
+        "calc_per_sample_numerical_fisher_information_detailed",
+        dsl::to_typed_function<const cmd::likelihood_algorithm_type&,
+                               const var::Parameters_transformed&, const Experiment&,
+                               const std::vector<Simulated_Recording<var::please_include<>>>&,
+                               std::size_t, std::size_t>(
+            &cmd::calculate_n_simulation_mdetailed_predictions, "likelihood_algorithm",
+            "parameters", "experiment", "data_series", "sample_min", "sample_max"));
 
     // Raw-model variants (matches calc_likelihood / calc_dlikelihood pattern):
     // takes ModelPtr and individual approximation flags rather than the

@@ -3,7 +3,12 @@
 #include <macrodr/cmd/simulate.h>
 #include <macrodr/cmd/detail/write_csv_common.h>
 
+#include <algorithm>
 #include <cstddef>
+#include <fstream>
+#include <map>
+#include <set>
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -636,5 +641,197 @@ Maybe_error<std::string> write_csv(
         });
 }
 
+
+// ===========================================================================
+// load_simulations: INDEX-AWARE sibling of simulate(). Reads a CSV written by
+// write_csv(experiment, simulations, path) and reconstructs the SAME type that
+// simulate() produces through DSL lifting: var::Indexed<vector<Simulated_
+// Recording>>, carrying the same axes. This keeps the axis chain alive so
+// downstream (calc_dlikelihood / calc_*_fisher / write_csv) stays Indexed and
+// the axis columns propagate into every output CSV — symmetric to the
+// index-aware WRITE that put all combos into one CSV with axis columns.
+//
+// Axis detection: any header column NOT in the fixed CSV schema is treated as
+// an axis (the schema's standard 24 columns are known; the writer appends axis
+// columns beyond them). Distinct labels per axis are collected in first-
+// appearance order (matching the writer's flat-coordinate iteration).
+//
+// Recording reconstruction: rows with scope=="simulation" and non-empty
+// (simulation_index, sample_index, value) are grouped by (coordinate,
+// simulation_index); the `value` column (= patch_current) builds each
+// Recording in sample_index order.
+//
+// `replica_indices` filters which simulation_index values to load (empty =>
+// all). Errors if any coordinate of the reconstructed index space has no data
+// (a missing axis index — the CSV is incomplete).
+//
+// The original SeedNumber is not persisted in the CSV; loaded records get
+// SeedNumber=0 (downstream reads only the Recording).
+// ===========================================================================
+Maybe_error<var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>>
+load_simulations(std::string filename,
+                 std::vector<std::size_t> replica_indices) {
+    using SimVec = std::vector<Simulated_Recording<var::please_include<>>>;
+    std::ifstream f(filename);
+    if (!f.is_open())
+        return error_message("cannot open ", filename);
+
+    std::string header_line;
+    if (!std::getline(f, header_line))
+        return error_message("empty file ", filename);
+
+    std::vector<std::string> headers;
+    {
+        std::stringstream ss(header_line);
+        std::string col;
+        while (std::getline(ss, col, ',')) headers.push_back(col);
+    }
+    auto find_col = [&](const std::string& name) -> Maybe_error<std::size_t> {
+        auto it = std::find(headers.begin(), headers.end(), name);
+        if (it == headers.end())
+            return error_message("column '", name, "' not found in header of ", filename);
+        return static_cast<std::size_t>(std::distance(headers.begin(), it));
+    };
+
+    auto maybe_scope = find_col("scope");
+    auto maybe_sim = find_col("simulation_index");
+    auto maybe_sample = find_col("sample_index");
+    auto maybe_value = find_col("value");
+    if (!maybe_scope) return maybe_scope.error();
+    if (!maybe_sim) return maybe_sim.error();
+    if (!maybe_sample) return maybe_sample.error();
+    if (!maybe_value) return maybe_value.error();
+    const auto scope_col = maybe_scope.value();
+    const auto sim_col = maybe_sim.value();
+    const auto sample_col = maybe_sample.value();
+    const auto value_col = maybe_value.value();
+
+    // Fixed CSV schema (anything else in the header is an axis column).
+    static const std::set<std::string> fixed_cols = {
+        "scope", "simulation_index", "sample_index", "segment_index", "sub_index",
+        "n_step", "step_start", "step_end", "step_middle", "agonist", "patch_current",
+        "component_path", "variable", "operation", "value_row", "value_col", "probit",
+        "calculus", "statistic", "quantile_level", "param_index", "param_col",
+        "param_name", "value"};
+    std::vector<std::size_t> axis_cols;
+    std::vector<std::string> axis_names;
+    for (std::size_t c = 0; c < headers.size(); ++c) {
+        if (fixed_cols.find(headers[c]) == fixed_cols.end()) {
+            axis_cols.push_back(c);
+            axis_names.push_back(headers[c]);
+        }
+    }
+    const std::size_t n_axes = axis_cols.size();
+
+    // Per-axis label → index, in first-appearance order.
+    std::vector<std::map<std::string, std::size_t>> label_index(n_axes);
+    std::vector<std::vector<std::string>> labels(n_axes);
+
+    std::size_t max_col = std::max({scope_col, sim_col, sample_col, value_col});
+    for (auto c : axis_cols) max_col = std::max(max_col, c);
+
+    const bool load_all = replica_indices.empty();
+    std::set<std::size_t> requested(replica_indices.begin(), replica_indices.end());
+
+    // Raw rows kept for a second pass once axes are known: (axis label idxs,
+    // sim_idx, sample_idx, value).
+    struct Row { std::vector<std::size_t> coord; std::size_t sim, sample; double value; };
+    std::vector<Row> rows;
+
+    std::string line;
+    while (std::getline(f, line)) {
+        std::vector<std::string> cols;
+        std::stringstream ss(line);
+        std::string col;
+        while (std::getline(ss, col, ',')) cols.push_back(col);
+        if (cols.size() <= max_col) continue;
+        if (cols[scope_col] != "simulation") continue;
+        if (cols[sim_col].empty() || cols[sample_col].empty() || cols[value_col].empty())
+            continue;
+
+        std::size_t sim_idx, sample_idx;
+        double value;
+        try {
+            sim_idx = std::stoull(cols[sim_col]);
+            sample_idx = std::stoull(cols[sample_col]);
+            value = std::stod(cols[value_col]);
+        } catch (std::exception const& e) {
+            return error_message("parse error in ", filename, ": ", e.what(), " (line: ", line, ")");
+        }
+        if (!load_all && requested.find(sim_idx) == requested.end()) continue;
+
+        Row row;
+        row.coord.resize(n_axes);
+        for (std::size_t a = 0; a < n_axes; ++a) {
+            const std::string& lbl = cols[axis_cols[a]];
+            auto it = label_index[a].find(lbl);
+            std::size_t idx;
+            if (it == label_index[a].end()) {
+                idx = labels[a].size();
+                label_index[a].emplace(lbl, idx);
+                labels[a].push_back(lbl);
+            } else {
+                idx = it->second;
+            }
+            row.coord[a] = idx;
+        }
+        row.sim = sim_idx;
+        row.sample = sample_idx;
+        row.value = value;
+        rows.push_back(std::move(row));
+    }
+
+    // Build the index space and per-axis sizes (for flat indexing).
+    std::vector<var::Axis> out_axes;
+    out_axes.reserve(n_axes);
+    std::vector<std::size_t> axis_size(n_axes);
+    for (std::size_t a = 0; a < n_axes; ++a) {
+        axis_size[a] = labels[a].size();
+        out_axes.emplace_back(var::AxisId(axis_names[a]), labels[a]);
+    }
+    var::IndexSpace space(std::move(out_axes));
+    const std::size_t n_coords = space.size();  // product of axis sizes (1 if no axes)
+
+    auto flat_of = [&](const std::vector<std::size_t>& coord) -> std::size_t {
+        std::size_t flat = 0, mult = 1;
+        for (std::size_t a = 0; a < n_axes; ++a) {
+            flat += coord[a] * mult;
+            mult *= axis_size[a];
+        }
+        return flat;
+    };
+
+    // data[flat][sim_idx][sample_idx] = value.
+    std::vector<std::map<std::size_t, std::map<std::size_t, double>>> data(n_coords);
+    for (auto& row : rows) {
+        data[flat_of(row.coord)][row.sim][row.sample] = row.value;
+    }
+
+    // Build the Indexed values: one vector<Sim> per coordinate.
+    std::vector<SimVec> values(n_coords);
+    for (std::size_t flat = 0; flat < n_coords; ++flat) {
+        if (data[flat].empty())
+            return error_message("load_simulations: index coordinate (flat ", flat,
+                                 ") has no data in ", filename,
+                                 " — the CSV is missing an axis index");
+        SimVec sims;
+        sims.reserve(data[flat].size());
+        for (auto& [sim_idx, samples] : data[flat]) {
+            Recording rec;
+            rec().reserve(samples.size());
+            for (auto& [sample_idx, v] : samples) rec().emplace_back(v);
+            sims.push_back(Simulated_Recording<var::please_include<>>{
+                {SeedNumber{0}, std::move(rec)}});
+        }
+        values[flat] = std::move(sims);
+    }
+
+    return var::Indexed<SimVec>(std::move(space), std::move(values));
+}
+
+Maybe_error<var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>>>
+load_simulations(std::string filename) {
+    return load_simulations(std::move(filename), std::vector<std::size_t>{});
+}
 
 }  // namespace macrodr::cmd

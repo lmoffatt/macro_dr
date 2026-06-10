@@ -275,6 +275,7 @@ class micro_Algo_State
                                  get<taylor_strength>(p()),
                                  get<r_std>(p()), get<Chi2>(p()),
                                  P_mean(p.get_P_mean()), P_Cov(p.get_P_Cov()),
+                                 trust_mean_coefficient{}, trust_psd_coefficient{},
                                  get<logL>(p()), get<elogL>(p()),
                                  get<micro_r_std>(p()), get<micro_Chi2>(p()),
                                  get<gaussian_logL>(p()),
@@ -442,6 +443,30 @@ using dMacro_State_Ev_gradient_all =
                               evaluation_time, Gaussian_Fisher_Information>>;
 // Note: Gaussian_Fisher_Information slot added at the top level so this state
 // can be used directly as the gauss_newton_result evaluator type for MLE
+
+// Per-replica per-sample numerical Fisher Information variant. Each timestep
+// of the Evolution_of<> slot carries the per-step (NOT cumulative) FD-computed
+// F contribution F_t = -∂²(logL_t)/∂θ². By additivity of logL across timesteps,
+// Σ_t F_t equals the global F returned by
+// calculate_n_simulation_mnumerical_fisher_information.
+// Used by calculate_per_sample_n_simulation_mnumerical_fisher_information for
+// diagnostic localization of FD instabilities in score derivatives — the bug
+// hunt looking for which timestep triggers the discontinuity on specific
+// parameter directions.
+using dMacro_State_Ev_per_sample_F =
+    add_t<dMacro_State<>,
+          var::please_include<Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>>;
+
+// Detailed per-sample diagnostic state: per-step Evolution of the significant
+// recursion variables as Derivatives (logL, y_mean, y_var, P_mean, P_Cov,
+// trust_coefficient). Used by calc_per_sample_numerical_fisher_information
+// _detailed to dump, per sample, the value X AND the regular AD gradient ∂X/∂θ
+// (over all parameters) at θ, so an intermediate variable whose gradient
+// misbehaves can be spotted by comparing sick vs sane replicas.
+using dMacro_State_Ev_detailed =
+    add_t<dMacro_State<>,
+          var::please_include<Evolution_of<add_t<Vector_Space<>, detailed_element>>,
+                              evaluation_time>>;
 // per-replicate analysis (Path B / "complete"). The slot is accumulated by
 // `update_macro_state` via has_var_c<>, no extra integration code needed.
 

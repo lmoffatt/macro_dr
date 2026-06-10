@@ -777,6 +777,50 @@ auto calculate_mdlikelihood_predictions_visit(const likelihood_algorithm_type& m
         modelLikelihood_v);
 }
 
+// Detailed-state evaluator: same as the gradient_all impl/visit but routes
+// through dlogLikelihoodPredictionsDetailed → dMacro_State_Ev_detailed. Macro
+// only (micro not supported for this diagnostic).
+template <class adaptive, class recursive, class averaging, class variance, class taylor,
+          class micro, class Model, class FuncTable>
+auto calculate_mdetailed_predictions_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
+        lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r) -> Maybe_error<dMacro_State_Ev_detailed> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
+                                                  micro, decltype(*model0_d)>(*model0_d,
+                                                                              lik.n_sub_dt);
+    return dlogLikelihoodPredictionsDetailed(ftbl3, dlikelihood, par, r, e);
+}
+
+template <class FuncTable>
+auto calculate_mdetailed_predictions_visit(const likelihood_algorithm_type& modelLikelihood_v,
+                                           FuncTable& ftbl3,
+                                           const var::Parameters_transformed& par,
+                                           const Experiment& e, const Recording& r)
+    -> Maybe_error<dMacro_State_Ev_detailed> {
+    return std::visit(
+        [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_detailed> {
+            using ModelL = std::decay_t<decltype(modelLikelihood)>;
+            if constexpr (ModelL::micro_type::value) {
+                return error_message(
+                    "calc_per_sample_numerical_fisher_information_detailed: micro algorithms "
+                    "are not supported for the detailed diagnostic");
+            } else {
+                evaluation_timer timer;
+                auto result = calculate_mdetailed_predictions_impl(modelLikelihood, ftbl3, par, e, r);
+                if (result) timer.stamp_into(result.value());
+                return result;
+            }
+        },
+        modelLikelihood_v);
+}
+
 }  // namespace
 
 auto calculate_mdlikelihood_predictions(const likelihood_algorithm_type& modelLikelihood_v,
@@ -926,6 +970,185 @@ auto calculate_mnumerical_fisher_information(
         }
     }
     return parameter_spd_payload(std::move(F), &par);
+}
+
+// =============================================================================
+// Per-replica per-sample numerical Fisher Information.
+//
+// For each parameter direction i ∈ 0..p-1: perturb par by ±h_i·e_i and run
+// calculate_n_simulation_mdlikelihood_predictions (which preserves the per-step
+// Evolution<>). Then, per replica r per timestep t, compute the PER-STEP score
+// contribution by differencing cumulative scores between consecutive timesteps,
+// and FD that against the perturbations to fill column i of F_t.
+//
+// By linearity of d/dθ on the additive logL = Σ_t logL_t:
+//     Σ_t F_t[i,j] = F_global[i,j]
+// so the per-sample output sums (across timesteps) to the global F per replica.
+//
+// Cost: 2·p calls to the batched n-simulation dlikelihood evaluator. Each call
+// processes all replicas in one shared-cache pass.
+// =============================================================================
+auto calculate_per_sample_n_simulation_mnumerical_fisher_information(
+    const likelihood_algorithm_type& likelihood_algorithm,
+    const var::Parameters_transformed& par, const Experiment& e,
+    const std::vector<Simulated_Recording<var::please_include<>>>& simulation,
+    double h_rel) -> Maybe_error<std::vector<dMacro_State_Ev_per_sample_F>> {
+    const auto n = par.size();
+    const std::size_t n_replicas = simulation.size();
+
+    std::vector<dMacro_State_Ev_per_sample_F> result(n_replicas);
+    if (n == 0 || n_replicas == 0) return result;
+
+    // Stage-1 storage: F_raw[r][t](k, i) accumulates column i across the loop
+    // over perturbation directions. We allocate lazily after the first call.
+    std::vector<std::vector<Matrix<double>>> F_raw(n_replicas);
+    bool initialized = false;
+
+    for (std::size_t i = 0; i < n; ++i) {
+        const double h_i = h_rel * std::max(std::abs(par[i]), 1.0);
+
+        auto par_plus = par;
+        par_plus[i] += h_i;
+        auto par_minus = par;
+        par_minus[i] -= h_i;
+
+        auto maybe_batch_plus = calculate_n_simulation_mdlikelihood_predictions(
+            likelihood_algorithm, par_plus, e, simulation);
+        if (!maybe_batch_plus)
+            return error_message("per-sample numerical FIM at +h, param ", i, ": ",
+                                 maybe_batch_plus.error()());
+        auto maybe_batch_minus = calculate_n_simulation_mdlikelihood_predictions(
+            likelihood_algorithm, par_minus, e, simulation);
+        if (!maybe_batch_minus)
+            return error_message("per-sample numerical FIM at -h, param ", i, ": ",
+                                 maybe_batch_minus.error()());
+
+        const auto& batch_plus = maybe_batch_plus.value();
+        const auto& batch_minus = maybe_batch_minus.value();
+        if (batch_plus.size() != n_replicas || batch_minus.size() != n_replicas)
+            return error_message("dlikelihood batch size mismatch");
+
+        using LogLD = var::Derivative<logL, var::Parameters_transformed>;
+
+        for (std::size_t r = 0; r < n_replicas; ++r) {
+            const auto& evol_plus = get<Evolution>(batch_plus[r])();
+            const auto& evol_minus = get<Evolution>(batch_minus[r])();
+            if (evol_plus.size() != evol_minus.size())
+                return error_message(
+                    "evolution size mismatch at replica ", r,
+                    " (+h=", evol_plus.size(), ", -h=", evol_minus.size(), ")");
+            const std::size_t n_t = evol_plus.size();
+
+            if (!initialized) {
+                F_raw[r].assign(n_t, Matrix<double>(n, n, 0.0));
+            }
+
+            // The Evolution element's logL is ALREADY the per-step contribution
+            // (update_macro_state, qmodel.h: `get<logL>(el) = t_logL` where
+            // t_logL is the single-step logL; the cumulative lives at the state
+            // top level). So the per-step score is read directly — NO
+            // differencing of consecutive timesteps. By Σ_t (per-step score) =
+            // total score, Σ_t F_t = F_global per replica.
+            for (std::size_t t = 0; t < n_t; ++t) {
+                const auto& step_plus = derivative(get<LogLD>(evol_plus[t]))();
+                const auto& step_minus = derivative(get<LogLD>(evol_minus[t]))();
+
+                // F_t[:, i] = -(s_plus_t - s_minus_t) / (2 h_i), per-step score.
+                for (std::size_t k = 0; k < n; ++k) {
+                    F_raw[r][t](k, i) =
+                        -(step_plus[k] - step_minus[k]) / (2.0 * h_i);
+                }
+            }
+        }
+        initialized = true;
+    }
+
+    // Stage-2: symmetrize and pack into the result State's Evolution slot.
+    for (std::size_t r = 0; r < n_replicas; ++r) {
+        auto& evol = get<Evolution>(result[r])();
+        const std::size_t n_t = F_raw[r].size();
+        evol.resize(n_t);
+        for (std::size_t t = 0; t < n_t; ++t) {
+            SymPosDefMatrix<double> F_sym(n, n, 0.0);
+            for (std::size_t i = 0; i < n; ++i) {
+                for (std::size_t j = i; j < n; ++j) {
+                    const double avg =
+                        0.5 * (F_raw[r][t](i, j) + F_raw[r][t](j, i));
+                    F_sym.set(i, j, avg);
+                }
+            }
+            get<Likelihood_Numerical_Fisher_Information>(evol[t]) =
+                Likelihood_Numerical_Fisher_Information(std::move(F_sym), &par);
+        }
+    }
+
+    return result;
+}
+
+// =============================================================================
+// Detailed per-sample diagnostic (FD-instability localization).
+//
+// calculate_n_simulation_mdetailed_predictions: batched detailed-state
+// evaluator. Same parallel-over-replicas structure as
+// calculate_n_simulation_mdlikelihood_predictions_impl, but routes through the
+// anon-namespace calculate_mdetailed_predictions_visit so each replica's
+// per-step Evolution carries the rich detailed_element (P_mean / P_Cov /
+// y_mean / y_var / trust_coefficient / logL as Derivatives).
+// =============================================================================
+auto calculate_n_simulation_mdetailed_predictions(
+    const likelihood_algorithm_type& modelLikelihood_v, const var::Parameters_transformed& par,
+    const Experiment& e, const std::vector<Simulated_Recording<var::please_include<>>>& simulations,
+    std::size_t sample_min,
+    std::size_t sample_max) -> Maybe_error<std::vector<dMacro_State_Ev_detailed>> {
+    bool memoize = resolve_memoize_flag(true);
+
+    // Truncate one replica's per-step Evolution to the inclusive absolute window
+    // [sample_min, sample_max], in place. The full Evolution is built by the
+    // filter (the hot path is untouched) and the out-of-window tail/head are
+    // dropped here, so the accumulated memory across all lifted perturbations is
+    // the window, not the full ~1000 samples. Element k of the result then maps
+    // to absolute sample (sample_min + k) — the write_csv overload undoes that.
+    auto window_evolution = [&](dMacro_State_Ev_detailed& state) {
+        auto& evol = get<Evolution>(state)();
+        const std::size_t sz = evol.size();
+        const std::size_t hi = (sample_max < sz) ? (sample_max + 1) : sz;  // exclusive end
+        const std::size_t lo = std::min(sample_min, hi);
+        if (hi < sz) evol.erase(evol.begin() + hi, evol.end());
+        if (lo > 0) evol.erase(evol.begin(), evol.begin() + lo);
+    };
+
+    auto run_loop = [&](auto& ftbl3) -> Maybe_error<std::vector<dMacro_State_Ev_detailed>> {
+        const std::size_t n = simulations.size();
+        auto forks = ftbl3.fork(omp_get_max_threads());
+        std::vector<std::optional<dMacro_State_Ev_detailed>> slots(n);
+        std::vector<std::string> errs(n);
+#pragma omp parallel for schedule(static)
+        for (std::size_t i = 0; i < n; ++i) {
+            auto& ftbl = forks[static_cast<std::size_t>(omp_get_thread_num())];
+            auto res = calculate_mdetailed_predictions_visit(
+                modelLikelihood_v, ftbl, par, e, get<Recording>(simulations[i]()));
+            if (res) {
+                window_evolution(res.value());  // drop out-of-window samples early
+                slots[i].emplace(std::move(res.value()));
+            } else
+                errs[i] = res.error()();
+        }
+        std::vector<dMacro_State_Ev_detailed> results;
+        results.reserve(n);
+        for (std::size_t i = 0; i < n; ++i) {
+            if (!errs[i].empty()) return error_message(errs[i]);
+            results.push_back(std::move(*slots[i]));
+        }
+        return results;
+    };
+
+    if (memoize) {
+        auto ftbl3 = get_function_Table_maker_St("dummy", 100, 100)();
+        return run_loop(ftbl3);
+    } else {
+        auto ftbl3 = get_function_Table_maker_St_no_Qdt_memoization("dummy", 100, 100)();
+        return run_loop(ftbl3);
+    }
 }
 
 auto calculate_likelihood(const ModelPtr& model0,
@@ -2055,12 +2278,18 @@ Maybe_error<bool> emit_state_rows_without_experiment(Writer& writer,
     return true;
 }
 
+// sample_min / sample_max window the per-step Evolution rows emitted (inclusive,
+// absolute sample indices). Top-level state members are always emitted. Because
+// step_start is re-read from conditions()[i] each iteration, skipping an
+// out-of-window i never corrupts the times of in-window samples — so the
+// emitted sample_index, time, agonist and patch_current stay ABSOLUTE/correct
+// for the windowed range. Defaults emit every sample (no windowing).
 template <class Writer, class Lik>
-Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experiment& e,
-                                                  const Recording& recording,
-                                                  std::optional<std::size_t> simulation_index,
-                                                  const Lik& lik,
-                                                  const detail::CsvContext& base_ctx = {}) {
+Maybe_error<bool> emit_state_rows_with_experiment(
+    Writer& writer, const Experiment& e, const Recording& recording,
+    std::optional<std::size_t> simulation_index, const Lik& lik,
+    const detail::CsvContext& base_ctx = {}, std::size_t sample_min = 0,
+    std::size_t sample_max = std::numeric_limits<std::size_t>::max()) {
     const auto& conditions = get<Recording_conditions>(e);
     if (conditions().size() != recording().size()) {
         return error_message("Experiment samples ", conditions().size(),
@@ -2072,14 +2301,24 @@ Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experime
         return ok;
     }
 
+    // OFFSET mapping: evolution[k] corresponds to ABSOLUTE sample (sample_min +
+    // k). For a full (un-windowed) Evolution, sample_min defaults to 0 and this
+    // is the identity over [0, conditions). For a window pre-truncated by the
+    // command (calculate_n_simulation_mdetailed_predictions), the Evolution is
+    // shorter and starts at sample_min; we still read time/agonist/current and
+    // the emitted sample_index from the ABSOLUTE conditions()[sample_min + k].
     const auto& evolution = get<Evolution>(lik)();
-    if (evolution.size() != conditions().size()) {
-        return error_message("Evolution samples ", evolution.size(),
-                             " differ from Recording samples ", conditions().size());
+    if (sample_min + evolution.size() > conditions().size()) {
+        return error_message("Evolution window [", sample_min, ", +", evolution.size(),
+                             ") exceeds Recording samples ", conditions().size());
     }
 
     const double fs = get<Frequency_of_Sampling>(e)();
-    for (std::size_t i = 0; i < conditions().size(); ++i) {
+    for (std::size_t k = 0; k < evolution.size(); ++k) {
+        const std::size_t i = sample_min + k;
+        if (i > sample_max) {
+            break;
+        }
         double step_start = get<Time>(conditions()[i])();
         const auto& segments = get<Agonist_evolution>(conditions()[i])();
         for (std::size_t j = 0; j < segments.size(); ++j) {
@@ -2099,7 +2338,7 @@ Maybe_error<bool> emit_state_rows_with_experiment(Writer& writer, const Experime
             evo_ctx.agonist = get<Agonist_concentration>(segments[j])();
             evo_ctx.patch_current = recording()[i]();
 
-            ok = detail::emit_any(writer, std::move(evo_ctx), evolution[i]);
+            ok = detail::emit_any(writer, std::move(evo_ctx), evolution[k]);
             if (!ok || !ok.value()) {
                 return ok;
             }
@@ -2358,6 +2597,48 @@ Maybe_error<std::string> write_csv(
         });
 }
 
+// Indexed state-batch, NO Experiment / Simulation. Emits axis columns (from
+// the index space), simulation_index per replica, and the state's Evolution
+// (sample_index per timestep) — exactly what the per-sample numerical Fisher
+// CSV needs. Routes through write_indexed_rows_csv (axes) +
+// emit_state_rows_without_experiment (sim_index + Evolution). Used because the
+// (Experiment, plain-sims, Indexed-states) overload is not selected when the
+// DSL lifts the plain variant over a mixed plain-sim / Indexed-state call —
+// here both the matched param and the argument are Indexed, so the DSL matches
+// directly (no lifting) and the axes survive.
+template <template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::string path) {
+    auto lik_valid = detail::validate_indexed_write_csv_value(liks, "likelihood");
+    if (!lik_valid) {
+        return lik_valid.error();
+    }
+    auto maybe_first = indexed_front(liks);
+    if (!maybe_first) {
+        return maybe_first.error();
+    }
+    auto param_names = first_non_empty_param_names(maybe_first.value().get());
+
+    return detail::write_indexed_rows_csv(
+        liks.index_space(), param_names, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_lik = liks.at(coord);
+            if (!maybe_lik) {
+                return maybe_lik.error();
+            }
+            const auto& batch = maybe_lik.value().get();
+            for (std::size_t r = 0; r < batch.size(); ++r) {
+                auto ok = emit_state_rows_without_experiment(writer, r, batch[r], base_ctx);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
+}
+
 template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
     requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
 Maybe_error<std::string> write_csv(
@@ -2411,6 +2692,67 @@ Maybe_error<std::string> write_csv(
         });
 }
 
+// (4-windowed) Same as the (Experiment, Indexed-sims, Indexed-states) variant,
+// but emits only the per-step Evolution rows for the inclusive absolute sample
+// window [sample_min, sample_max]. Used by the detailed FD-instability
+// diagnostic to keep the CSV small while preserving absolute sample indices,
+// times, agonist and patch_current (the full experiment is still passed, so the
+// window check inside emit_state_rows_with_experiment yields correct columns).
+template <typename SimTag, template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    Experiment const& e, var::Indexed<std::vector<Simulated_Recording<SimTag>>> const& simulation,
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& liks, std::size_t sample_min,
+    std::size_t sample_max, std::string path) {
+    auto sim_valid = detail::validate_indexed_write_csv_value(simulation, "simulations");
+    if (!sim_valid) {
+        return sim_valid.error();
+    }
+    auto lik_valid = detail::validate_indexed_write_csv_value(liks, "likelihood");
+    if (!lik_valid) {
+        return lik_valid.error();
+    }
+    auto maybe_space = detail::merge_indexed_write_csv_spaces(
+        simulation.index_space(), "simulations", liks.index_space(), "likelihood");
+    if (!maybe_space) {
+        return maybe_space.error();
+    }
+    auto maybe_first = indexed_front(liks);
+    if (!maybe_first) {
+        return maybe_first.error();
+    }
+    auto param_names = first_non_empty_param_names(maybe_first.value().get());
+
+    return detail::write_indexed_rows_csv(
+        maybe_space.value(), param_names, std::move(path),
+        [&](detail::CsvWriter& writer, const detail::CsvContext& base_ctx,
+            const var::Coordinate& coord) -> Maybe_error<bool> {
+            auto maybe_sim = simulation.at(coord);
+            if (!maybe_sim) {
+                return maybe_sim.error();
+            }
+            auto maybe_lik = liks.at(coord);
+            if (!maybe_lik) {
+                return maybe_lik.error();
+            }
+            const auto& sims = maybe_sim.value().get();
+            const auto& batch = maybe_lik.value().get();
+            if (sims.size() != batch.size()) {
+                return error_message("number of Simulated_Recordings ", sims.size(),
+                                     " differ from number of Likelihood states ", batch.size());
+            }
+            for (std::size_t sim_i = 0; sim_i < sims.size(); ++sim_i) {
+                auto ok = emit_state_rows_with_experiment(writer, e, get<Recording>(sims[sim_i]()),
+                                                          sim_i, batch[sim_i], base_ctx, sample_min,
+                                                          sample_max);
+                if (!ok || !ok.value()) {
+                    return ok;
+                }
+            }
+            return true;
+        });
+}
+
 // (2) State without Experiment indexing
 template <template <typename...> class TMacro_State, typename... vVars>
 Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::string path) {
@@ -2425,6 +2767,153 @@ Maybe_error<std::string> write_csv(TMacro_State<vVars...> const& lik, std::strin
     if (!ok || !ok.value()) {
         return ok.error()();
     }
+    return path_;
+}
+
+// (3) Per-replica state + numerical Fisher pair, no Experiment indexing.
+//     emit_state_members already skips top-level Evolution_of slots, so the
+//     output is the "minimal" view of each state (Hessian + Gaussian Fisher +
+//     parameters_hat + scalars) followed by the numerical Fisher tagged as
+//     Likelihood_Numerical_Fisher_Information. The two input vectors must
+//     have the same size (one (state, F) pair per replica).
+template <template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    std::vector<TMacro_State<vVars...>> const& dlikelihood_predictions,
+    std::vector<parameter_spd_payload> const& numerical_fisher_information,
+    std::string path) {
+    if (dlikelihood_predictions.size() != numerical_fisher_information.size())
+        return error_message("write_csv: size mismatch: dlikelihood_predictions=",
+                              dlikelihood_predictions.size(),
+                              ", numerical_fisher_information=",
+                              numerical_fisher_information.size());
+
+    const auto path_ = path + ".csv";
+    std::ofstream f(path_);
+    if (!f.is_open())
+        return error_message("cannot open ", path_);
+
+    std::vector<std::string> param_names;
+    if (!dlikelihood_predictions.empty())
+        param_names = detail::get_param_names_if_any(dlikelihood_predictions[0]);
+    detail::CsvWriter writer(f, param_names);
+
+    for (std::size_t i = 0; i < dlikelihood_predictions.size(); ++i) {
+        detail::CsvContext ctx;
+        ctx.scope = "state";
+        ctx.simulation_index = i;
+        ctx.skip_evolution = true;
+
+        auto ok = emit_state_members(writer, ctx, dlikelihood_predictions[i]);
+        if (!ok || !ok.value()) {
+            return ok.error()();
+        }
+
+        auto numerical_fim = Likelihood_Numerical_Fisher_Information(
+            numerical_fisher_information[i].value(),
+            numerical_fisher_information[i].parameters_ptr());
+        ok = detail::emit_named_component(
+            writer, ctx,
+            detail::component_label<Likelihood_Numerical_Fisher_Information>(),
+            numerical_fim);
+        if (!ok || !ok.value()) {
+            return ok.error()();
+        }
+    }
+
+    return path_;
+}
+
+// (4) Indexed (multi-axis) version of (3): iterates the axis space and
+//     populates CSV axis_values columns per coord, matching the schema of the
+//     analysis CSV. Mirrors the emit_indexed pattern in write_csv_common.h.
+template <template <typename...> class TMacro_State, typename... vVars>
+    requires(macrodr::has_var_c<TMacro_State<vVars...> const&, Evolution>)
+Maybe_error<std::string> write_csv(
+    var::Indexed<std::vector<TMacro_State<vVars...>>> const& dlikelihood_predictions,
+    var::Indexed<std::vector<parameter_spd_payload>> const& numerical_fisher_information,
+    std::string path) {
+    const auto path_ = path + ".csv";
+    std::ofstream f(path_);
+    if (!f.is_open())
+        return error_message("cannot open ", path_);
+    // Provenance sidecar (matches the convention of write_summary_csv).
+    std::ofstream(path + ".binary") << GIT_COMMIT_HASH << "\n";
+
+    // Iterate the LARGER index space — numerical_fisher_information's, which is
+    // a superset of dlikelihood_predictions' axes (it includes h_rel via
+    // axis_h_fim). dlikelihood_predictions.at(coord) auto-projects via
+    // IndexSpace::local_coordinate (ignores axes not in dl_space), so the
+    // shared states get correctly duplicated across h_rel levels.
+    const auto& fi_space = numerical_fisher_information.index_space();
+    const auto axis_names = detail::axis_column_names(fi_space);
+
+    // Param names probed from the first non-empty replica vector. Empty space
+    // → empty CSV (with header).
+    std::vector<std::string> param_names;
+    auto maybe_first_coord = numerical_fisher_information.begin();
+    if (maybe_first_coord) {
+        auto maybe_first_fs = numerical_fisher_information.at(maybe_first_coord.value());
+        if (maybe_first_fs) {
+            auto const& first_fs = maybe_first_fs.value().get();
+            if (!first_fs.empty()) {
+                if (auto const* p = first_fs[0].parameters_ptr())
+                    param_names = p->parameters().names();
+            }
+        }
+    }
+    detail::CsvWriter writer(f, param_names, axis_names);
+
+    if (!maybe_first_coord)
+        return path_;
+    auto coord = maybe_first_coord.value();
+    while (true) {
+        detail::CsvContext base_ctx;
+        base_ctx.scope = "state";
+        base_ctx.axis_values.resize(axis_names.size());
+        auto meta = detail::assign_coordinate_metadata(base_ctx, axis_names, coord);
+        if (!meta)
+            return meta.error();
+
+        auto maybe_states = dlikelihood_predictions.at(coord);
+        if (!maybe_states)
+            return maybe_states.error();
+        auto maybe_fs = numerical_fisher_information.at(coord);
+        if (!maybe_fs)
+            return maybe_fs.error();
+
+        auto const& states = maybe_states.value().get();
+        auto const& fs = maybe_fs.value().get();
+        if (states.size() != fs.size())
+            return error_message(
+                "write_csv: size mismatch at axis coord: dlikelihood_predictions=",
+                states.size(),
+                ", numerical_fisher_information=", fs.size());
+
+        for (std::size_t i = 0; i < states.size(); ++i) {
+            auto ctx = base_ctx;
+            ctx.simulation_index = i;
+            ctx.skip_evolution = true;
+
+            auto ok = emit_state_members(writer, ctx, states[i]);
+            if (!ok || !ok.value())
+                return ok.error()();
+
+            auto numerical_fim = Likelihood_Numerical_Fisher_Information(
+                fs[i].value(), fs[i].parameters_ptr());
+            ok = detail::emit_named_component(
+                writer, ctx,
+                detail::component_label<Likelihood_Numerical_Fisher_Information>(),
+                numerical_fim);
+            if (!ok || !ok.value())
+                return ok.error()();
+        }
+
+        if (fi_space.m_axes.empty() || coord.last())
+            break;
+        coord.next();
+    }
+
     return path_;
 }
 
@@ -3205,51 +3694,51 @@ template Maybe_error<std::string>
         std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, Simulated_Recording<var::please_include<>> const&,
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&, std::string);
+    dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information> const&, std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
-    dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&, std::string);
+    dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information> const&, std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, Simulated_Recording<var::please_include<>> const&,
-    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
+    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, var::Indexed<Simulated_Recording<var::please_include<>>> const&,
-    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
+    var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
-    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
+    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
-    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
+    std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, std::vector<Simulated_Recording<var::please_include<>>> const&,
     var::Indexed<
-        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>>> const&,
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>>> const&,
     std::string);
 
 template Maybe_error<std::string> write_csv<
-    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
+    var::please_include<>, dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
     Experiment const&, var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
     var::Indexed<
-        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>>> const&,
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>>> const&,
     std::string);
 
 template Maybe_error<std::string>
@@ -3257,7 +3746,7 @@ template Maybe_error<std::string>
               Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>>(
         Experiment const&,
         Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
-        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&,
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information> const&,
         std::string);
 
 template Maybe_error<std::string>
@@ -3266,7 +3755,7 @@ template Maybe_error<std::string>
         Experiment const&,
         var::Indexed<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&,
-        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&,
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information> const&,
         std::string);
 
 template Maybe_error<std::string>
@@ -3274,7 +3763,7 @@ template Maybe_error<std::string>
               Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>>(
         Experiment const&,
         Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>> const&,
-        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
+        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
         std::string);
 
 template Maybe_error<std::string>
@@ -3283,7 +3772,7 @@ template Maybe_error<std::string>
         Experiment const&,
         var::Indexed<
             Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> const&,
-        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>> const&,
+        var::Indexed<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
         std::string);
 
 template Maybe_error<std::string>
@@ -3297,8 +3786,91 @@ template Maybe_error<std::string>
         std::string);
 
 template Maybe_error<std::string>
-    write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time>(
-        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time> const&,
+    write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
+        dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
+        std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>> const&,
+        std::vector<parameter_spd_payload> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<dMacro_State, Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>(
+        var::Indexed<std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, micro_gradient_all_element>>, evaluation_time, Gaussian_Fisher_Information>>> const&,
+        var::Indexed<std::vector<parameter_spd_payload>> const&,
+        std::string);
+
+// ============================================================================
+// Explicit instantiations of write_csv for dMacro_State_Ev_per_sample_F (the
+// per-replica per-sample numerical Fisher state). Four vector-input variants
+// so the DSL caller gets axis-aware emission regardless of whether the inputs
+// are wrapped in var::Indexed or not. This pattern matches the existing
+// dMacro_State_Ev_gradient_all instantiations above — adding here ensures the
+// axes columns (algorithm, Num_ch, interval_in_tau, axis_h_fim, ...) propagate
+// into the per_sample_F CSV the same way they do for the analysis CSV.
+// ============================================================================
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, dMacro_State,
+              Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>(
+        Experiment const&,
+        std::vector<Simulated_Recording<var::please_include<>>> const&,
+        std::vector<dMacro_State<Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, dMacro_State,
+              Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>(
+        Experiment const&,
+        var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
+        std::vector<dMacro_State<Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, dMacro_State,
+              Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>(
+        Experiment const&,
+        std::vector<Simulated_Recording<var::please_include<>>> const&,
+        var::Indexed<std::vector<dMacro_State<Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>>> const&,
+        std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, dMacro_State,
+              Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>(
+        Experiment const&,
+        var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
+        var::Indexed<std::vector<dMacro_State<Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>>> const&,
+        std::string);
+
+// Dedicated Indexed-state (no Experiment/Simulation) overload for per_sample_F.
+template Maybe_error<std::string>
+    write_csv<dMacro_State, Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>(
+        var::Indexed<std::vector<dMacro_State<Evolution_of<Vector_Space<Likelihood_Numerical_Fisher_Information>>>>> const&,
+        std::string);
+
+// ============================================================================
+// write_csv instantiations for the DETAILED per-sample diagnostic state
+// (dMacro_State_Ev_detailed = dMacro_State<Evolution_of<add_t<Vector_Space<>,
+// detailed_element>>, evaluation_time>). The PRIMARY overload is the windowed
+// (Indexed-sims, Indexed-states, sample_min, sample_max, path) variant — both
+// inputs arrive Indexed over the scenario/data axes; the non-windowed sibling
+// is kept for convenience.
+// ============================================================================
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, dMacro_State,
+              Evolution_of<add_t<Vector_Space<>, detailed_element>>, evaluation_time>(
+        Experiment const&,
+        var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
+        var::Indexed<std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, detailed_element>>, evaluation_time>>> const&,
+        std::size_t, std::size_t, std::string);
+
+template Maybe_error<std::string>
+    write_csv<var::please_include<>, dMacro_State,
+              Evolution_of<add_t<Vector_Space<>, detailed_element>>, evaluation_time>(
+        Experiment const&,
+        var::Indexed<std::vector<Simulated_Recording<var::please_include<>>>> const&,
+        var::Indexed<std::vector<dMacro_State<Evolution_of<add_t<Vector_Space<>, detailed_element>>, evaluation_time>>> const&,
         std::string);
 
 }  // namespace macrodr::cmd
