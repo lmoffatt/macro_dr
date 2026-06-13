@@ -550,6 +550,26 @@ struct Eigenvalue_Spectrum : public var::Var<Eigenvalue_Spectrum<Va>, Matrix<dou
         : var::Var<Eigenvalue_Spectrum<Va>, Matrix<double>>{x} {}
 };
 
+// Eigenvector matrix V (p×K, columns = retained eigenvectors) of the source
+// SPD Va, paired column-for-column with Eigenvalue_Spectrum<Va>. UNLIKE the
+// spectrum and all distortion scalars, eigenvectors are NOT bootstrapped: a
+// resampled eigenbasis mixes degenerate / near-degenerate directions and its
+// per-replicate average is meaningless. This slot is therefore a BARE point
+// estimate computed ONCE on the aggregate matrix (compute_psd_decomp(M).basis)
+// and lives OUTSIDE Probit_statistics in the output Vector_Space (alongside
+// Group_Size). Plain Matrix<double> payload (eigenvector matrices are not
+// symmetric, so the SPD-metadata payloads used by Correlation_Of / projectors
+// do not apply); serialization follows the Eigenvalue_Spectrum<Va> path.
+template <class Va>
+struct Eigenvectors_Of : public var::Var<Eigenvectors_Of<Va>, Matrix<double>> {
+    Eigenvectors_Of()
+        : var::Var<Eigenvectors_Of<Va>, Matrix<double>>{Matrix<double>{}} {}
+    Eigenvectors_Of(Matrix<double>&& x)
+        : var::Var<Eigenvectors_Of<Va>, Matrix<double>>{std::move(x)} {}
+    Eigenvectors_Of(Matrix<double> const& x)
+        : var::Var<Eigenvectors_Of<Va>, Matrix<double>>{x} {}
+};
+
 // Count of eigenvalues above the retention tolerance — the number of
 // identifiable directions. Null defect = p − Effective_Rank.
 template <class Va>

@@ -1,0 +1,92 @@
+# Minimal end-to-end smoke test for calc_MLE_per_group_of_replicates.
+# scheme_CO + macro_IR, single-recording groups (group_size = 1 == per-replicate).
+# theta_warmstart == theta_reference == theta_sim (start the GN at the truth and
+# test Wald recovery against it).
+#
+# Experiment cell: Num_ch = 10000, interval_in_tau = 0.1 (intermediate granularity
+# between the coarse "1" and the production-run fine "0.01"), current_noise = 1e-4
+# (noise label 0.1), macro_IR. interval 0.1 -> {20,50},{40,50},{40,50}.
+# n_simulations kept small here for a quick smoke run; bump to 4096 to match the
+# production replicate count.
+#
+# Run:
+#   ./build/<preset>/macrodr projects/eLife_2025/ops/local/mle_per_group_min.macroir
+# (adjust the binary path to your build output).
+
+out_path = "mle_min_out"
+
+model = load_model("scheme_CO")
+
+# figure_2 canonical values for scheme_CO (see test_gauss_newton.cpp build_theta_sim):
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",1e-4},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10",10000}])
+
+# Three-segment protocol @ interval_in_tau = 0.1 (intermediate cell):
+#   20 steps x 50 samples = 1000 pre @ 0 µM
+#   40 steps x 50 samples = 2000 @ 10 µM
+#   40 steps x 50 samples = 2000 post @ 0 µM
+# (5000 samples @ 50 kHz — matches dispatch_figure_2.sh interval "0.1", index 3).
+experiment = create_experiment(
+   experiment_structure = [
+      {20, 50, 0.0},
+      {40, 50, 10.0},
+      {40, 50, 0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = 100,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = 0)
+
+# Single algorithm (plain scalars -> one likelihood_algorithm_type, not Indexed):
+# macro_IR = recursive, averaging = 2, variance, no taylor / micro / taylor_qdt.
+algorithm = build_likelihood_function(
+   model = model,
+   adaptive_approximation = false,
+   recursive_approximation = true,
+   averaging_approximation = 2,
+   variance_approximation = true,
+   taylor_variance_correction = false,
+   micro_approximation = false,
+   taylor_qdt_approximation = false)
+
+# Adapt the simulated recordings into the std::vector<Recording> the MLE driver wants.
+recordings = get_recordings_from_simulations(simulations = simulations)
+
+gn_opts = build_gauss_newton_options(
+   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
+   max_iter = 100, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
+
+mle_analysis = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = 1,
+   n_bootstrap_samples = 100,
+   min_groups_for_bootstrap = 10,
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.025, 0.5, 0.975],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
+
+mle_file = write_csv(analysis = mle_analysis, path = concat(out_path, "_mle"))

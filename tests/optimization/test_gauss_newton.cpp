@@ -313,7 +313,8 @@ TEST_CASE("Gauss-Newton converges from perturbed initial guess",
     SECTION("Converged with reasonable status") {
         INFO("status = " << result.status << ", n_iter = " << result.n_iter
                          << ", max_logL = " << result.max_value);
-        REQUIRE((result.status == "converged_grad" ||
+        REQUIRE((result.status == "converged_newton_dec" ||
+                 result.status == "converged_grad" ||
                  result.status == "converged_value"));
         REQUIRE(result.n_iter < 30);
     }

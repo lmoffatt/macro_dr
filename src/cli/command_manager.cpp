@@ -24,6 +24,34 @@
 #include "function_builder.h"
 #include "lapack_headers.h"
 
+// ---------------------------------------------------------------------------
+// JSON (de)serialization stub for the DEFERRED Probit_Samples_at_Group_Size
+// slot of MLE_Group_Cloud. That slot is a std::vector<Probit_Sample_Record>,
+// and Probit_Sample_Record has no JSON conversion. The DSL registers every
+// command return type for JSON round-trip (Compiler::ensure_type_registered),
+// which would otherwise try to (de)serialize each Probit_Sample_Record and fail
+// (the generic vector path does `T element{}`, ill-formed for the Matrix member,
+// and there is no element from_json). In the driver-first cut this slot is
+// ALWAYS EMPTY, so trivial (de)serialization is both sufficient and correct.
+// Found by ADL on Probit_Sample_Record's namespace (macrodr); more specialized
+// than the generic std::vector<T> overloads, so it intercepts before recursion.
+// Replace with real serialization when the representative-group snapshotting
+// (the rest of the figure_2 battery) is implemented.
+namespace macrodr {
+template <class State>
+inline io::json::Json to_json(const std::vector<Probit_Sample_Record<State>>&,
+                              io::json::conv::TagPolicy) {
+    return io::json::Json::array();
+}
+template <class State>
+inline Maybe_error<void> from_json(const io::json::Json&,
+                                   std::vector<Probit_Sample_Record<State>>& out,
+                                   const std::string&, io::json::conv::TagPolicy) {
+    out.clear();
+    return {};
+}
+}  // namespace macrodr
+
 namespace macrodr::cli {
 using std::size_t;
 using ModelPtr = macrodr::cmd::ModelPtr;
@@ -87,6 +115,75 @@ auto calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl(
     std::size_t max_lag) {
     return cmd::calculate_Likelihood_derivative_series_kernel_full_diagnostics(
         dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
+}
+
+// Build a gauss_newton_options struct by value (mirrors build_likelihood_function).
+// Exposes the 7 tunable fields so a DSL script can configure the per-group MLE
+// inner loop without recompiling.
+auto build_gauss_newton_options_dsl(double lambda_kickoff, double lambda_factor,
+                                     double lambda_max, std::size_t max_iter, double grad_rtol,
+                                     double dvalue_tol, bool verbose)
+    -> macrodr::optimization::gauss_newton_options {
+    macrodr::optimization::gauss_newton_options o;
+    o.lambda_kickoff = lambda_kickoff;
+    o.lambda_factor = lambda_factor;
+    o.lambda_max = lambda_max;
+    o.max_iter = max_iter;
+    o.grad_rtol = grad_rtol;
+    o.dvalue_tol = dvalue_tol;
+    o.verbose = verbose;
+    return o;
+}
+
+// Extract the plain Recording from each loaded Simulated_recording. The
+// calc_MLE_per_group_of_replicates input is std::vector<Recording>; load_simulations
+// yields std::vector<Simulated_Recording<...>>, whose Vector_Space carries a
+// Recording slot (get<Recording>(sim()), same access as calculate_simulation_*).
+auto get_recordings_from_simulations_dsl(
+    const std::vector<Simulated_Recording<var::please_include<>>>& simulations)
+    -> std::vector<Recording> {
+    std::vector<Recording> out;
+    out.reserve(simulations.size());
+    for (auto const& s : simulations) out.push_back(get<Recording>(s()));
+    return out;
+}
+
+// Driver wrapper pinning State = dMacro_State_Hessian_minimal_param (Path A).
+// F_h_relative is bound to its header default (1e-5) here rather than exposed.
+auto calc_MLE_per_group_of_replicates_dsl(
+    const cmd::likelihood_algorithm_type& likelihood_algorithm,
+    const var::Parameters_transformed& theta_warmstart,
+    const var::Parameters_transformed& theta_reference, const Experiment& experiment,
+    const std::vector<Recording>& recordings, std::size_t group_size,
+    std::size_t n_bootstrap_samples, std::size_t min_groups_for_bootstrap,
+    std::set<double> probit_cis, std::set<double> probit_sample_heights,
+    std::vector<std::string> ranking_variables, std::size_t seed,
+    const macrodr::optimization::gauss_newton_options& gn_opts)
+    -> Maybe_error<cmd::MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>> {
+    return cmd::calc_MLE_per_group_of_replicates<dMacro_State_Hessian_minimal_param>(
+        likelihood_algorithm, theta_warmstart, theta_reference, experiment, recordings, group_size,
+        n_bootstrap_samples, min_groups_for_bootstrap, probit_cis, probit_sample_heights,
+        ranking_variables, seed, gn_opts, 1e-5);
+}
+
+// θ̄ handoff: rebuild the full-sample mean of θ̂ as a Parameters_transformed from
+// the cloud's BARE Model_Parameters_Hat slot. State pinned to Path A.
+auto get_parameters_mean_dsl(
+    const cmd::MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>& cloud)
+    -> Maybe_error<var::Parameters_transformed> {
+    return cmd::get_parameters_mean<dMacro_State_Hessian_minimal_param>(cloud);
+}
+
+// figure_3 Fase-2 empirical-vs-theoretical capstone. State pinned to Path A;
+// rtol / atol bound to their header defaults (1e-10 / 0.0).
+auto calc_empirical_distortion_dsl(
+    const cmd::MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>& cloud,
+    const std::vector<parameter_spd_payload>& fim_sim,
+    const std::vector<parameter_spd_payload>& fim_bar,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar)
+    -> Maybe_error<cmd::Empirical_Distortion_Analysis> {
+    return cmd::calc_empirical_distortion<dMacro_State_Hessian_minimal_param>(
+        cloud, fim_sim, fim_bar, dlik_bar, 1e-10, 0.0);
 }
 
 }
@@ -1096,6 +1193,91 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                                std::size_t, std::size_t>(
             &cmd::calculate_n_simulation_mdetailed_predictions, "likelihood_algorithm",
             "parameters", "experiment", "data_series", "sample_min", "sample_max"));
+
+    // -------- Per-group MLE refit + figure_2 battery at θ̂_group --------------
+    // Builder for the Gauss-Newton inner-loop options (by value, like
+    // build_likelihood_function).
+    cm.push_function(
+        "build_gauss_newton_options",
+        dsl::to_typed_function<double, double, double, std::size_t, double, double, bool>(
+            &build_gauss_newton_options_dsl, "lambda_kickoff", "lambda_factor", "lambda_max",
+            "max_iter", "grad_rtol", "dvalue_tol", "verbose"));
+
+    // Extract plain Recordings from loaded simulations (input adapter for the
+    // calc_MLE_per_group_of_replicates std::vector<Recording> argument).
+    cm.push_function(
+        "get_recordings_from_simulations",
+        dsl::to_typed_function<const std::vector<Simulated_Recording<var::please_include<>>>&>(
+            &get_recordings_from_simulations_dsl, "simulations"));
+
+    // Per-group Gauss-Newton MLE refit then the figure_2-style diagnostic
+    // battery evaluated at θ̂_group. State pinned to Path A
+    // (dMacro_State_Hessian_minimal_param); F_h_relative bound to 1e-5.
+    cm.push_function(
+        "calc_MLE_per_group_of_replicates",
+        dsl::to_typed_function<
+            const cmd::likelihood_algorithm_type&, const var::Parameters_transformed&,
+            const var::Parameters_transformed&, const Experiment&,
+            const std::vector<Recording>&, std::size_t, std::size_t,
+            std::size_t, std::set<double>, std::set<double>, std::vector<std::string>,
+            std::size_t, const macrodr::optimization::gauss_newton_options&>(
+            &calc_MLE_per_group_of_replicates_dsl, "likelihood_algorithm", "theta_warmstart",
+            "theta_reference", "experiment", "recordings", "group_size", "n_bootstrap_samples",
+            "min_groups_for_bootstrap", "probit_cis", "probit_sample_heights",
+            "ranking_variables", "seed", "gauss_newton_options"));
+
+    // write_csv for the MLE_Group_Cloud<State> output. The dedicated
+    // write_csv(MLE_Group_Cloud<State>) overload (likelihood.h) handles the
+    // plain case; the generic write_csv(Indexed<T>) handles the Indexed case.
+    // Alias the long type (pattern: the Analisis_derivative_* writers).
+    using MLEGroupCloudMinimal =
+        cmd::MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>;
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>, const MLEGroupCloudMinimal&,
+                                      std::string>(
+            &macrodr::cmd::write_csv<dMacro_State_Hessian_minimal_param>, "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const var::Indexed<MLEGroupCloudMinimal>&, std::string>(
+            &macrodr::cmd::write_csv<MLEGroupCloudMinimal>, "analysis", "path"));
+
+    // θ̄ handoff: rebuild the full-sample mean of θ̂ as a Parameters_transformed
+    // from the cloud (for the downstream figure_2 battery at θ̄). State pinned
+    // to Path A (dMacro_State_Hessian_minimal_param).
+    cm.push_function(
+        "get_parameters_mean",
+        dsl::to_typed_return_function<Maybe_error<var::Parameters_transformed>,
+                                      const MLEGroupCloudMinimal&>(
+            &get_parameters_mean_dsl, "cloud"));
+
+    // figure_3 Fase-2 empirical-vs-theoretical capstone. State pinned to Path A;
+    // composes the cloud's bare Cov_emp with the figure_2 numerical-Fisher
+    // (at θ_sim and θ̄) and score (at θ̄) outputs.
+    cm.push_function(
+        "calc_empirical_distortion",
+        dsl::to_typed_return_function<Maybe_error<cmd::Empirical_Distortion_Analysis>,
+                                      const MLEGroupCloudMinimal&,
+                                      const std::vector<parameter_spd_payload>&,
+                                      const std::vector<parameter_spd_payload>&,
+                                      const std::vector<dMacro_State_Ev_gradient_all>&>(
+            &calc_empirical_distortion_dsl, "cloud", "fim_sim", "fim_bar", "dlik_bar"));
+
+    // write_csv for the empirical-distortion capstone output (plain + Indexed).
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const cmd::Empirical_Distortion_Analysis&, std::string>(
+            static_cast<Maybe_error<std::string> (*)(
+                cmd::Empirical_Distortion_Analysis const&, std::string)>(&macrodr::cmd::write_csv),
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const var::Indexed<cmd::Empirical_Distortion_Analysis>&,
+                                      std::string>(
+            &macrodr::cmd::write_csv<cmd::Empirical_Distortion_Analysis>, "analysis", "path"));
 
     // Raw-model variants (matches calc_likelihood / calc_dlikelihood pattern):
     // takes ModelPtr and individual approximation flags rather than the

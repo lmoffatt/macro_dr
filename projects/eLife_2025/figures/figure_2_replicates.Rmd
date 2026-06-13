@@ -13,7 +13,7 @@ library(tidyverse)
 
 
 ```{r}
-filename =c("data/figure_2_nch_10000_nsim_4096_macro_IR_noise_0.1_h_1e-4_1e-5_1e-6_")
+filename =c("data/figure_2_nch_10000_nsim_1024_macro_IR_noise_0.1_")
 
 
 ```

@@ -602,29 +602,108 @@ class Likelihood_Gaussian_Fisher_Distortion
 };
 
 // Distortion of the empirical Cov_emp (= covariance of θ̂ across groups)
-// relative to the theoretical Fisher covariance F⁻¹. Concretely the matrix
-//     C_distortion = F^{1/2} · Cov_emp · F^{1/2}
-// (or equivalently any congruence-form of Cov_emp ↦ F frame). If the
-// asymptotic theory holds, C_distortion ≈ I and all derived distortion
-// scalars (Affine_Invariant_Distance, log_Det, Eigenvalue_Spectrum, etc.)
-// reduce to their identity values. Mirrors Likelihood_Information_Distortion
-// in shape, used downstream of calc_MLE_per_group_of_replicates.
-class Empirical_Covariance_Distortion
-    : public var::Constant<Empirical_Covariance_Distortion, parameter_spd_payload> {
-    using base_type = var::Constant<Empirical_Covariance_Distortion, parameter_spd_payload>;
+// relative to a THEORETICAL parameter covariance, in congruence form. If the
+// theory holds the matrix ≈ I and all derived distortion scalars
+// (Affine_Invariant_Distance, log_Det, Eigenvalue_Spectrum, condition) reduce
+// to identity. Two anchors, named by the reference covariance:
+//
+// Fisher anchor (vs the naive Fisher covariance FC = F⁻¹):
+//     Empirical_Covariance_Fisher_Distortion = F^{1/2} · Cov_emp · F^{1/2}
+//   ≈ I ⟺ Cov_emp = F⁻¹  (the uncorrected Fisher CI already matches reality;
+//   deviation = the total variance inflation a naive user would miss).
+class Empirical_Covariance_Fisher_Distortion
+    : public var::Constant<Empirical_Covariance_Fisher_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Empirical_Covariance_Fisher_Distortion, parameter_spd_payload>;
 
    public:
     using base_type::base_type;
-    Empirical_Covariance_Distortion() = default;
-    Empirical_Covariance_Distortion(SymPosDefMatrix<double> value,
+    Empirical_Covariance_Fisher_Distortion() = default;
+    Empirical_Covariance_Fisher_Distortion(SymPosDefMatrix<double> value,
                                     var::Parameters_transformed const& params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
-    Empirical_Covariance_Distortion(SymPosDefMatrix<double> value,
+    Empirical_Covariance_Fisher_Distortion(SymPosDefMatrix<double> value,
                                     var::Parameters_transformed const* params)
         : base_type(parameter_spd_payload(std::move(value), params)) {}
 
-    friend std::string className(Empirical_Covariance_Distortion) {
-        return "Empirical_Covariance_Distortion";
+    friend std::string className(Empirical_Covariance_Fisher_Distortion) {
+        return "Empirical_Covariance_Fisher_Distortion";
+    }
+};
+
+// Corrected anchor (vs the distortion-corrected covariance DCC = F⁻¹ J F⁻¹):
+//     Empirical_Covariance_Corrected_Distortion = DCC^{-1/2} · Cov_emp · DCC^{-1/2}
+//   ≈ I ⟺ Cov_emp = DCC  (the sandwich correction successfully predicts the
+//   empirical spread). Residual deviation = what the leading-order sandwich
+//   still misses (finite-sample / Cox-Snell). This is the capstone validation
+//   of the distortion-correction machinery.
+class Empirical_Covariance_Corrected_Distortion
+    : public var::Constant<Empirical_Covariance_Corrected_Distortion, parameter_spd_payload> {
+    using base_type =
+        var::Constant<Empirical_Covariance_Corrected_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Empirical_Covariance_Corrected_Distortion() = default;
+    Empirical_Covariance_Corrected_Distortion(SymPosDefMatrix<double> value,
+                                    var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Empirical_Covariance_Corrected_Distortion(SymPosDefMatrix<double> value,
+                                    var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Empirical_Covariance_Corrected_Distortion) {
+        return "Empirical_Covariance_Corrected_Distortion";
+    }
+};
+
+// Raw full-sample empirical covariance of θ̂ (Cov_emp) carried as a BARE handoff
+// slot in the MLE_Group_Cloud. It is the covariance of the θ̂ cloud over all
+// successfully refit groups (the same all-group Moment_statistics whose mean is
+// the bare θ̄ point). Stored so the downstream empirical-vs-theoretical capstone
+// (calc_empirical_distortion) can compare it against the Fisher / corrected /
+// optimum anchors without re-running the per-group MLE.
+class Empirical_Parameter_Covariance
+    : public var::Constant<Empirical_Parameter_Covariance, parameter_spd_payload> {
+    using base_type = var::Constant<Empirical_Parameter_Covariance, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Empirical_Parameter_Covariance() = default;
+    Empirical_Parameter_Covariance(SymPosDefMatrix<double> value,
+                                   var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Empirical_Parameter_Covariance(SymPosDefMatrix<double> value,
+                                   var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Empirical_Parameter_Covariance) {
+        return "Empirical_Parameter_Covariance";
+    }
+};
+
+// Distortion of the SIMULATION Fisher (FIM_sim, numerical Fisher at θ_sim)
+// measured in the frame of the PSD optimum Fisher F̄_bar (numerical Fisher at
+// θ̄):
+//     Optimum_Fisher_Distortion = F̄_bar^{-1/2} · FIM_sim · F̄_bar^{-1/2}
+// ≈ I ⟺ the simulation Fisher matches the optimum Fisher. Because FIM_sim is a
+// finite-difference numerical Fisher it can be indefinite; NEGATIVE eigenvalues
+// here are the key "FIM_sim indefinite?" readout (Min_Eigenvalue < 0).
+class Optimum_Fisher_Distortion
+    : public var::Constant<Optimum_Fisher_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Optimum_Fisher_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Optimum_Fisher_Distortion() = default;
+    Optimum_Fisher_Distortion(SymPosDefMatrix<double> value,
+                              var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Optimum_Fisher_Distortion(SymPosDefMatrix<double> value,
+                              var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Optimum_Fisher_Distortion) {
+        return "Optimum_Fisher_Distortion";
     }
 };
 

@@ -41,6 +41,7 @@
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -74,7 +75,19 @@ struct gauss_newton_options {
 
     std::size_t max_iter  = 100;
 
-    // Convergence: ||grad|| < grad_rtol * max(1, ||theta||)
+    // Convergence (PRIMARY): Newton decrement  ½·gᵀH⁻¹g < newton_dec2_tol.
+    // ½·gᵀH⁻¹g is the quadratic-model estimate of the objective sub-optimality
+    // f(θ) − f*, in objective (log-likelihood) units. It is SCALE-INVARIANT:
+    // unlike ‖grad‖ — which scales ∝ N for an MLE, so a fixed grad_rtol becomes
+    // effectively N× tighter at large N and can fall BELOW the gradient's
+    // numerical floor (→ the optimiser churns near the optimum and escalates λ
+    // to lambda_max instead of converging) — the Newton decrement's numerical
+    // floor shrinks ∝ 1/N, so one fixed tolerance converges robustly across data
+    // sizes. H is the (undamped) CurvTag curvature.
+    double newton_dec2_tol = 1e-8;
+
+    // Convergence (FALLBACK): ||grad|| < grad_rtol * max(1, ||theta||).
+    // Kept for back-compat; at large N the Newton decrement above is preferred.
     double grad_rtol      = 1e-6;
 
     // Convergence: |dvalue| < dvalue_tol (absolute on the objective value)
@@ -165,17 +178,50 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
         auto const& grad = get<Grad>(Maybe_state.value())().value();
         auto const& curv = get<CurvTag>(Maybe_state.value())().value();
 
-        // -------- Convergence check on gradient norm --------
+        // -------- Convergence checks --------
         const double grad_norm  = detail::frobenius_norm(grad);
         const double theta_norm = std::max(1.0, detail::frobenius_norm(theta()));
+
+        // Newton decrement λ² = gᵀ H⁻¹ g on the UNDAMPED curvature (scale-
+        // invariant; see newton_dec2_tol). curv is PSD by construction; if it is
+        // singular the decrement is left at +inf and we fall back to the
+        // grad-norm criterion below. Cheap (p×p, p = #params); the cholesky is
+        // recomputed for the damped solve below but that is negligible for small p.
+        double newton_dec2 = std::numeric_limits<double>::infinity();
+        {
+            auto Maybe_cholH = cholesky(curv);
+            if (Maybe_cholH) {
+                auto Maybe_LHinv = inv(Maybe_cholH.value());
+                if (Maybe_LHinv) {
+                    auto Hinv   = XXT(tr(Maybe_LHinv.value()));
+                    auto Hinv_g = Hinv * grad;
+                    double acc  = 0.0;
+                    for (std::size_t i = 0; i < grad.nrows(); ++i)
+                        acc += grad(i, 0ul) * Hinv_g(i, 0ul);
+                    newton_dec2 = acc;
+                }
+            }
+        }
+
         if (opts.verbose) {
             std::cerr << "[gn] iter=" << iter
                       << " lambda=" << lambda
                       << " value=" << value
                       << " grad_norm=" << grad_norm
+                      << " newton_dec2=" << newton_dec2
                       << " theta_norm=" << theta_norm
                       << "\n";
         }
+
+        // PRIMARY: Newton-decrement convergence (objective sub-optimality ½·λ²).
+        if (0.5 * newton_dec2 < opts.newton_dec2_tol) {
+            return ReturnT(ResultT{
+                std::move(theta), std::move(initial_state),
+                std::move(Maybe_state.value()),
+                value, iter, "converged_newton_dec"
+            });
+        }
+        // FALLBACK: raw gradient norm (back-compat; can be unreachable at large N).
         if (grad_norm < opts.grad_rtol * theta_norm) {
             return ReturnT(ResultT{
                 std::move(theta), std::move(initial_state),

@@ -1,0 +1,132 @@
+# =============================================================================
+# figure_3_mle — INJECTION-READY (dispatched by ops/slurm/dispatch_figure_3.sh).
+#
+# This script behaves as a FUNCTION of the parameters the dispatcher injects as
+# inline `--key = <DSL expr>` argv tokens BEFORE this file. FILE CONTRACT: those
+# names must stay UNDEFINED here (commented out) — an in-file assignment would
+# clobber the injection. For a standalone local run use figure_3_mle_smoke.macroir.
+#
+# Injected by dispatch_figure_3.sh (same contract as figure_2 + the MLE knobs):
+#   axis_Nchanels, Num_ch                    (channel count)
+#   axis_noise, current_noise                (conductance-tau noise)
+#   n_simulations, filepath                  (replicates, output prefix)
+#   algorithm_axis, algo_{recursive,averaging,taylor,micro}_approximation
+#   axis_interval, exp_n_step_{1,2,3}, exp_n_samp_{1,2,3}   (interval grid)
+#   axis_h_fim, h_rel_value                  (numerical-Fisher step)
+#   group_size, n_bootstrap_samples, min_groups_for_bootstrap, gn_max_iter  (MLE)
+#
+# Stages: 1) light per-group MLE refit → θ̂ cloud (θ̄, Cov_emp, recovery Wald);
+#         2) numerical Fisher at sim truth (par_tr) and at θ̄;
+#         3) figure_2 battery recomputed at θ̄ (incl. autocorrelation / Path B);
+#         4) empirical-vs-theoretical distortion capstone (Fisher / Corrected / Optimum).
+# =============================================================================
+
+model = load_model("scheme_CO")
+
+# Dispatcher injects filepath (the run-name prefix); jobs write nch/algo-distinct files.
+filepath_run = filepath
+
+# figure_2 canonical scheme_CO values; Current_Noise and Num_ch_mean are injected.
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",current_noise},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", Num_ch}])
+
+# Experiment step/sample sizes are indexed over axis_interval (injected). Three
+# segments: pre @ 0 µM, agonist @ 10 µM, post @ 0 µM.
+experiment = create_experiment(
+   experiment_structure = [
+      {exp_n_step_1, exp_n_samp_1, 0.0},
+      {exp_n_step_2, exp_n_samp_2, 10.0},
+      {exp_n_step_3, exp_n_samp_3, 0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = n_simulations,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = 0)
+
+recordings = get_recordings_from_simulations(simulations = simulations)
+
+# Algorithm selected by the dispatcher (one per job) via algorithm_axis + the
+# indexed algo_* flags — mirrors figure_2. Result is Indexed; the MLE/Fisher
+# commands broadcast over it (single algorithm here).
+algorithm = build_likelihood_function(
+   model = model,
+   adaptive_approximation = false,
+   recursive_approximation = algo_recursive_approximation,
+   averaging_approximation = algo_averaging_approximation,
+   variance_approximation = true,
+   taylor_variance_correction = algo_taylor_approximation,
+   micro_approximation = algo_micro_approximation,
+   taylor_qdt_approximation = false)
+
+# GN inner-loop options. max_iter is injected (the dominant cost lever); the rest
+# are numerical-method constants (Newton decrement is the primary convergence).
+gn_opts = build_gauss_newton_options(
+   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
+   max_iter = gn_max_iter, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
+
+# ---- Stage 1: light per-group MLE refit → slim cloud, then θ̄ handoff --------
+# theta_warmstart = theta_reference = par_tr: start the GN at the sim truth and
+# test recovery against it (a recovery test, not a free dispatch knob).
+mle = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = group_size,
+   n_bootstrap_samples = n_bootstrap_samples,
+   min_groups_for_bootstrap = min_groups_for_bootstrap,
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.5],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
+
+mle_csv = write_csv(analysis = mle, path = concat(filepath_run, "_mle_cloud"))
+
+theta_bar = get_parameters_mean(cloud = mle)
+
+# ---- Stage 2: numerical Fisher at the sim truth and at θ̄ --------------------
+fim_sim = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
+   data_series = simulations, h_rel = h_rel_value, decimate = 1)
+
+fim_bar = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = theta_bar, experiment = experiment,
+   data_series = simulations, h_rel = h_rel_value, decimate = 1)
+
+# ---- Stage 3: figure_2 diagnostic battery recomputed at θ̄ -------------------
+dlik_bar = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = theta_bar, experiment = experiment,
+   data_series = simulations)
+
+battery = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_bar,
+   numerical_fisher_information = fim_bar,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_csv = write_csv(analysis = battery, path = concat(filepath_run, "_battery_bar"))
+
+# ---- Stage 4: empirical-vs-theoretical distortion capstone ------------------
+emp = calc_empirical_distortion(cloud = mle, fim_sim = fim_sim, fim_bar = fim_bar, dlik_bar = dlik_bar)
+emp_csv = write_csv(analysis = emp, path = concat(filepath_run, "_empirical"))

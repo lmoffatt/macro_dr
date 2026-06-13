@@ -1,0 +1,127 @@
+# =============================================================================
+# figure_3_mle — Stages 1-3 (Fase 1). The empirical comparison (Fase 2) is separate.
+#
+# Stage 1: light per-group MLE refit (calc_MLE_per_group_of_replicates) → the
+#          slim "cloud" (θ̂ cloud mean+cov, recovery Wald T², bare θ̄). Hand off
+#          θ̄ via get_parameters_mean.
+# Stage 2: numerical Fisher at the simulation truth AND at θ̄.
+# Stage 3: the figure_2 diagnostic battery recomputed at θ̄ (unchanged figure_2
+#          commands: calc_dlikelihood_predictions +
+#          likelihood_derivative_basic_diagnostics_paired at fim_bar).
+#
+# Self-contained smoke: simulates rather than loading (mirrors figure_2.macroir /
+# mle_per_group_min.macroir). scheme_CO + macro_IR, single-recording groups.
+# =============================================================================
+
+# No subdirectory: write_csv targets are relative to the CWD (repo root when run
+# directly), like mle_per_group_min.macroir's "mle_min_out". For the organized
+# run under projects/eLife_2025 use a "figures/data/..." prefix and run from there.
+filepath_run = "figure_3_mle_smoke"
+
+model = load_model("scheme_CO")
+
+# figure_2 canonical values for scheme_CO; Num_ch = 10000.
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",1e-4},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10",10000}])
+
+# Three-segment protocol @ interval_in_tau = 0.1 (intermediate cell):
+#   20 steps x 50 samples = 1000 pre @ 0 µM
+#   40 steps x 50 samples = 2000 @ 10 µM
+#   40 steps x 50 samples = 2000 post @ 0 µM
+experiment = create_experiment(
+   experiment_structure = [
+      {20, 50, 0.0},
+      {40, 50, 10.0},
+      {40, 50, 0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = 100,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = 0)
+
+# Adapt the simulated recordings into the std::vector<Recording> the MLE driver wants.
+recordings = get_recordings_from_simulations(simulations = simulations)
+
+# Single algorithm: macro_IR = recursive, averaging = 2, variance, no taylor /
+# micro / taylor_qdt (plain scalars → one likelihood_algorithm_type, not Indexed).
+algorithm = build_likelihood_function(
+   model = model,
+   adaptive_approximation = false,
+   recursive_approximation = true,
+   averaging_approximation = 2,
+   variance_approximation = true,
+   taylor_variance_correction = false,
+   micro_approximation = false,
+   taylor_qdt_approximation = false)
+
+gn_opts = build_gauss_newton_options(
+   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
+   max_iter = 100, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
+
+# ---- Stage 1: light MLE → slim cloud, then θ̄ handoff ------------------------
+mle = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = 1,
+   n_bootstrap_samples = 100,
+   min_groups_for_bootstrap = 10,
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.5],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
+
+mle_csv = write_csv(analysis = mle, path = concat(filepath_run, "_mle_cloud"))
+
+theta_bar = get_parameters_mean(cloud = mle)
+
+# ---- Stage 2: numerical Fisher at the sim truth and at θ̄ --------------------
+fim_sim = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
+   data_series = simulations, h_rel = 1e-5, decimate = 1)
+
+fim_bar = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = theta_bar, experiment = experiment,
+   data_series = simulations, h_rel = 1e-5, decimate = 1)
+
+# ---- Stage 3: figure_2 battery recomputed at θ̄ (unchanged figure_2 commands) -
+dlik_bar = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = theta_bar, experiment = experiment,
+   data_series = simulations)
+
+battery = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_bar,
+   numerical_fisher_information = fim_bar,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_csv = write_csv(analysis = battery, path = concat(filepath_run, "_battery_bar"))
+
+# ---- Stage 4: empirical-vs-theoretical distortion capstone (Fase 2) ----------
+# Composes the slim cloud's bare Cov_emp with the figure_2 outputs already
+# produced above (fim_sim, fim_bar, dlik_bar). Point estimates only (no
+# bootstrap in v1).
+emp = calc_empirical_distortion(cloud = mle, fim_sim = fim_sim, fim_bar = fim_bar, dlik_bar = dlik_bar)
+emp_csv = write_csv(analysis = emp, path = concat(filepath_run, "_empirical"))
