@@ -760,55 +760,45 @@ using Analisis_derivative_diagnostic_series_kernel_full = var::concatenate_t<
 
 
 // =============================================================================
-// MLE per-group-of-replicates output (Path A: minimal State).
+// MLE per-group-of-replicates output (Path A: minimal State) — SLIM "cloud".
 //
 // Composite output of calc_MLE_per_group_of_replicates at one group_size n.
-// Only recording-level diagnostics (no per-step Evolution_of) — the state
-// stored per group is dMacro_State_Hessian_minimal which lacks the per-step
-// data feeding the Moment_statistics<Sum<logL>>, Moment_statistics<dlogL>,
-// etc. slots in Analisis_derivative_diagnostic_base. A Path B variant for
-// group_size=1 with the full state will be added later, separate type.
+// This is the SLIMMED output: only the θ̂ cloud (mean + empirical covariance),
+// the recovery Wald T² of (θ̄ − θ_reference) in the aggregated G_lik metric, a
+// BARE point estimate of θ̄ (the handoff for get_parameters_mean), and the
+// (currently empty) representative-group sample stub. The heavy diagnostic
+// battery (numerical Fisher F̄_b, FC family, GFD, IDM, DCC, the Empirical-
+// Covariance distortions, eigenvector slots) is NOT computed here anymore — it
+// is recomputed downstream by composing the existing figure_2 commands at θ̄
+// (calc_numerical_fisher_information / calc_dlikelihood_predictions /
+// likelihood_derivative_basic_diagnostics_paired). The distortion / eigenvector
+// TAG types are intentionally retained (distributions.h / moment_statistics.h)
+// for that downstream reuse; only THIS command stops computing them.
 //
 // Templated on State so the saved probit samples carry the State the command
 // was instantiated with — for Path A this is dMacro_State_Hessian_minimal_param.
 template <class State>
-using MLE_Group_Analysis = var::Vector_Space<
+using MLE_Group_Cloud = var::Vector_Space<
     Group_Size,
 
-    // MLE-specific aggregates over per-group θ̂:
+    // θ̂ cloud over the bootstrapped groups: θ̄ (mean) + Cov_emp (covariance):
     Probit_statistics<Moment_statistics<Model_Parameters_Hat, true>>,
 
-    // Recording-level Fisher (per group, aggregated to F_b_n at this n):
-    Probit_statistics<Likelihood_Numerical_Fisher_Information>,
-    Probit_statistics<Likelihood_Fisher_Covariance>,
-    Probit_statistics<log_Det<Likelihood_Fisher_Covariance>>,
-    Probit_statistics<Eigenvalue_Spectrum<Likelihood_Fisher_Covariance>>,
-    Probit_statistics<Correlation_Of<Likelihood_Fisher_Covariance>>,
-    Probit_statistics<Spectrum_Condition_Number<Likelihood_Fisher_Covariance>>,
-    Probit_statistics<Effective_Rank<Likelihood_Fisher_Covariance>>,
-    Probit_statistics<Min_Eigenvalue<Likelihood_Fisher_Covariance>>,
+    // Recovery Wald T² = Δθᵀ·Ḡ_lik·Δθ, Δθ = θ̄ − theta_reference, Ḡ_lik = group-
+    // mean of the per-group Gaussian-formula FIM (the precision-like curvature):
+    Probit_statistics<Wald_T2<Gaussian_Fisher_Information>>,
 
-    // Sandwich-corrected covariance (DCC, F⁻¹·J·F⁻¹) — needs the score
-    // covariance J across groups; computed from per-group total scores:
-    Probit_statistics<Likelihood_Distortion_Corrected_Covariance>,
-    Probit_statistics<log_Det<Likelihood_Distortion_Corrected_Covariance>>,
-    Probit_statistics<Eigenvalue_Spectrum<Likelihood_Distortion_Corrected_Covariance>>,
-    Probit_statistics<Spectrum_Condition_Number<Likelihood_Distortion_Corrected_Covariance>>,
+    // BARE point estimate of θ̄ (full-sample mean over ALL valid groups, NOT
+    // bootstrapped) — the handoff consumed by get_parameters_mean:
+    Model_Parameters_Hat,
 
-    // Wald T² tests against two metrics:
-    Probit_statistics<Wald_T2<Likelihood_Fisher_Covariance>>,
-    Probit_statistics<Wald_T2<Likelihood_Distortion_Corrected_Covariance>>,
-
-    // Empirical-covariance vs F⁻¹ distortion + derived (only valid if
-    // N_groups ≥ p+1, else NaN-filled by the analysis function):
-    Probit_statistics<Empirical_Covariance_Distortion>,
-    Probit_statistics<Affine_Invariant_Distance<Empirical_Covariance_Distortion>>,
-    Probit_statistics<log_Det<Empirical_Covariance_Distortion>>,
-    Probit_statistics<Eigenvalue_Spectrum<Empirical_Covariance_Distortion>>,
-    Probit_statistics<Spectrum_Condition_Number<Empirical_Covariance_Distortion>>,
+    // BARE raw full-sample empirical covariance Cov_emp of the θ̂ cloud over ALL
+    // valid groups (the covariance of the SAME all-group Moment_statistics whose
+    // mean is the θ̄ point above). Handoff consumed by calc_empirical_distortion:
+    Empirical_Parameter_Covariance,
 
     // K representative groups per ranking variable at each probit height —
-    // full per-group State preserved for downstream inspection:
+    // full per-group State preserved for downstream inspection (empty stub):
     Probit_Samples_at_Group_Size<State>>;
 
 // Run per-group MLE optimisation at a single group_size, then bootstrap-
@@ -825,6 +815,11 @@ using MLE_Group_Analysis = var::Vector_Space<
 // If N_groups < min_groups_for_bootstrap, bootstrap-derived probit slots are
 // NaN-filled; point estimates and probit samples are still produced.
 //
+// theta_warmstart = the GN initial guess; theta_reference = the value θ̂ is
+// tested against in the Wald T² (θ₀, typically the simulation truth θ_sim).
+// They are decoupled so the optimizer may start anywhere while the Wald tests
+// recovery of the true generating parameter.
+//
 // State template parameter (used for the saved probit samples only; the GN
 // inner loop always uses dMacro_State_Hessian_minimal for speed):
 //   - dMacro_State_Hessian_minimal_param : Path A, minimal memory footprint
@@ -833,6 +828,7 @@ template <class State>
 auto calc_MLE_per_group_of_replicates(
     const likelihood_algorithm_type& likelihood_algorithm,
     const var::Parameters_transformed& theta_warmstart,
+    const var::Parameters_transformed& theta_reference,
     const Experiment& experiment,
     const std::vector<Recording>& recordings,
     std::size_t group_size,
@@ -844,7 +840,64 @@ auto calc_MLE_per_group_of_replicates(
     std::size_t seed,
     const macrodr::optimization::gauss_newton_options& gn_opts,
     double F_h_relative = 1e-5)
-    -> Maybe_error<MLE_Group_Analysis<State>>;
+    -> Maybe_error<MLE_Group_Cloud<State>>;
+
+// Rebuild θ̄ (the bare full-sample mean of θ̂) from the cloud's Model_Parameters_Hat
+// slot as a Parameters_transformed bound to the same parameter metadata. The
+// handoff to the downstream figure_2 battery (calc_*_fisher / calc_dlikelihood
+// at θ̄). The slot's parameter_vector_payload carries the Matrix (value()) and
+// the Parameters_transformed* (parameters_ptr()); create() rebinds the names.
+template <class State>
+auto get_parameters_mean(const MLE_Group_Cloud<State>& cloud)
+    -> Maybe_error<var::Parameters_transformed>;
+
+// =============================================================================
+// Empirical-vs-theoretical distortion capstone (figure_3 Fase 2).
+//
+// Composes the MLE cloud's bare empirical covariance Cov_emp with the figure_2
+// outputs (numerical Fisher at θ_sim and at θ̄, score states at θ̄) into three
+// distortion matrices, each with the same scalar suite the diagnostic battery
+// emits:
+//   - Empirical_Covariance_Fisher_Distortion  = F̄_bar^{1/2} · Cov_emp · F̄_bar^{1/2}
+//   - Empirical_Covariance_Corrected_Distortion = DCC^{-1/2} · Cov_emp · DCC^{-1/2},
+//                                                  DCC = F̄_bar^{-1} J F̄_bar^{-1}
+//   - Optimum_Fisher_Distortion = F̄_bar^{-1/2} · F̄_sim · F̄_bar^{-1/2}
+// where F̄_bar / F̄_sim are the means of the per-recording numerical Fisher
+// vectors and J is the HAC score covariance at θ̄ (the same J the battery
+// computes via get<covariance<Sum<dlogL>>>). Point estimates only — NO
+// bootstrap in v1 (the cloud already carries the bootstrap of the θ̂ cloud; this
+// command is a deterministic comparison of aggregate matrices).
+using Empirical_Distortion_Analysis = var::Vector_Space<
+    Empirical_Covariance_Fisher_Distortion,
+    Affine_Invariant_Distance<Empirical_Covariance_Fisher_Distortion>,
+    log_Det<Empirical_Covariance_Fisher_Distortion>,
+    Eigenvalue_Spectrum<Empirical_Covariance_Fisher_Distortion>,
+    Spectrum_Condition_Number<Empirical_Covariance_Fisher_Distortion>,
+    Empirical_Covariance_Corrected_Distortion,
+    Affine_Invariant_Distance<Empirical_Covariance_Corrected_Distortion>,
+    log_Det<Empirical_Covariance_Corrected_Distortion>,
+    Eigenvalue_Spectrum<Empirical_Covariance_Corrected_Distortion>,
+    Spectrum_Condition_Number<Empirical_Covariance_Corrected_Distortion>,
+    Optimum_Fisher_Distortion,
+    Affine_Invariant_Distance<Optimum_Fisher_Distortion>,
+    log_Det<Optimum_Fisher_Distortion>,
+    Eigenvalue_Spectrum<Optimum_Fisher_Distortion>,
+    Min_Eigenvalue<Optimum_Fisher_Distortion>,  // the key "FIM_sim indefinite?" readout
+    Spectrum_Condition_Number<Optimum_Fisher_Distortion>>;
+
+// Empirical-vs-theoretical capstone command (figure_3 Fase 2). State templates
+// only the cloud (the figure_2 vectors are State-agnostic).
+//   fim_sim  : numerical Fisher at θ_sim, per recording (decimate=1)
+//   fim_bar  : numerical Fisher at θ̄,    per recording (decimate=1)
+//   dlik_bar : score states at θ̄, per recording (the J / HAC Ω source)
+template <class State>
+auto calc_empirical_distortion(
+    const MLE_Group_Cloud<State>& cloud,
+    const std::vector<parameter_spd_payload>& fim_sim,
+    const std::vector<parameter_spd_payload>& fim_bar,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    double rtol = 1e-10, double atol = 0.0)
+    -> Maybe_error<Empirical_Distortion_Analysis>;
 
 // =============================================================================
 
@@ -923,6 +976,23 @@ inline Maybe_error<std::string> write_csv(Analisis_derivative_diagnostic_series_
 }
 inline Maybe_error<std::string> write_csv(
     Analisis_derivative_diagnostic_series_kernel_full const& lik, std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+
+// Dedicated overload for the per-group MLE cloud. MLE_Group_Cloud<State>
+// is a var::Vector_Space alias, so it would otherwise be ambiguous between the
+// generic write_csv(Vector_Space<Vs...>) and write_csv(TMacro_State<vVars...>)
+// templates; templating on State (not on the full pack) makes this overload the
+// more specialized — and therefore unambiguous — match.
+template <class State>
+inline Maybe_error<std::string> write_csv(MLE_Group_Cloud<State> const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+
+// write_csv for the figure_3 Fase-2 empirical-distortion capstone output.
+inline Maybe_error<std::string> write_csv(Empirical_Distortion_Analysis const& lik,
+                                          std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }
 

@@ -19,7 +19,9 @@
 #include <omp.h>    // omp_get_max_threads / omp_get_thread_num (per-simulation parallel loop)
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <mutex>
+#include <optional>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -3631,6 +3633,481 @@ auto calculate_Likelihood_derivative_series_kernel_full_diagnostics(
         &calculate_Likelihood_diagnostics_preset_f<Diagnostic_preset::series_kernel_full>, dy, F_per_recording,
         n_boostrap_samples, cis, mt, max_lag);
 }
+
+// =============================================================================
+// calc_MLE_per_group_of_replicates — per-group Gauss-Newton MLE refit + the
+// figure_2-style diagnostic battery evaluated at θ̂_group.
+//
+// SCOPE = "DRIVER FIRST": the real per-group GN optimisation driver plus the
+// LIGHT diagnostic slots (θ̂ cloud, per-group / aggregated Fisher family, and
+// Wald_T2<FC>) are computed. The HEAVY slots (DCC family + Wald_T2<DCC>, the
+// Empirical_Covariance_{Fisher,Corrected}_Distortion families, and the saved probit samples) are
+// NaN-filled here with a `// TODO(battery):` marker so they can be filled in
+// later WITHOUT changing the signature or the output type. NaN-fill uses the
+// same nan_spd() pattern as calculate_Likelihood_diagnostics_preset_f so the
+// spectral/probit builders produce NaN naturally and get_mean_Probits filters
+// the replicate instead of poisoning the bootstrap.
+// =============================================================================
+namespace {
+
+// Adapt a single-recording calculate_mdlikelihood AD state into dlogPs
+// (logL / Grad / Gaussian_Fisher_Information). Mirrors the test adapter at
+// tests/optimization/test_gauss_newton.cpp:156-176.
+inline Maybe_error<dlogPs> evaluate_likelihood_as_dlogPs_impl(
+    const likelihood_algorithm_type& lik, const var::Parameters_transformed& p,
+    const Experiment& e, const Recording& r) {
+    auto Maybe_dml = calculate_mdlikelihood(lik, p, e, r);
+    if (!Maybe_dml) return Maybe_dml.error();
+    auto const& dml = Maybe_dml.value();
+    return dlogPs{logL(primitive(get<logL>(dml))()),
+                  Grad(derivative(get<logL>(dml))(), p),
+                  Gaussian_Fisher_Information(get<Gaussian_Fisher_Information>(dml)().value(), p)};
+}
+
+// Sum the per-recording dlogPs over a group of recordings into a single
+// combined-group dlogPs. logL sums, score sums, Fisher sums (independent
+// recordings); var::Vector_Space::operator+ does this slot-wise and
+// SymPosDefMatrix::operator+ is PSD-preserving and empty-safe.
+inline Maybe_error<dlogPs> evaluate_combined_group_as_dlogPs(
+    const likelihood_algorithm_type& lik, const var::Parameters_transformed& p,
+    const Experiment& e, const std::vector<Recording>& group_recordings) {
+    std::optional<dlogPs> acc;
+    for (Recording const& r : group_recordings) {
+        auto m = evaluate_likelihood_as_dlogPs_impl(lik, p, e, r);
+        if (!m) return m.error();
+        acc = acc ? dlogPs(acc.value() + m.value()) : m.value();
+    }
+    if (!acc) return error_message("evaluate_combined_group_as_dlogPs: empty group");
+    return acc.value();
+}
+
+// Per-group point estimate produced once by the GN refit. The bootstrap below
+// resamples over these (not over individual recordings). SLIM cloud path: only
+// θ̂_group and the per-group Gaussian-formula FIM G_group (averaged into Ḡ_lik,
+// the Wald metric) are retained — the numerical Fisher F̄_group and the
+// reference score (J_tot input) are no longer computed (heavy battery dropped).
+struct per_group_estimate {
+    Matrix<double> theta_hat;          // p×1 transformed-space θ̂_group
+    SymPosDefMatrix<double> G_group;    // combined per-group Gaussian-formula FIM at θ̂
+    std::vector<std::size_t> recording_indices;  // refs into the input recordings
+    bool ok = false;
+};
+
+}  // namespace
+
+template <class State>
+auto calc_MLE_per_group_of_replicates(
+    const likelihood_algorithm_type& likelihood_algorithm,
+    const var::Parameters_transformed& theta_warmstart,
+    const var::Parameters_transformed& theta_reference, const Experiment& experiment,
+    const std::vector<Recording>& recordings, std::size_t group_size,
+    std::size_t n_bootstrap_samples, std::size_t min_groups_for_bootstrap,
+    const std::set<double>& probit_cis, const std::set<double>& /*probit_sample_heights*/,
+    const std::vector<std::string>& /*ranking_variables*/, std::size_t seed,
+    const macrodr::optimization::gauss_newton_options& gn_opts, double /*F_h_relative*/)
+    -> Maybe_error<MLE_Group_Cloud<State>> {
+
+    const double NaN_d = std::numeric_limits<double>::quiet_NaN();
+
+    // ----- Grouping (floor; drop the remainder) -------------------------------
+    const std::size_t gsize = group_size == 0 ? 1 : group_size;
+    const std::size_t N_groups = recordings.size() / gsize;
+    if (N_groups == 0)
+        return error_message("calc_MLE_per_group_of_replicates: fewer recordings (" +
+                             std::to_string(recordings.size()) + ") than group_size (" +
+                             std::to_string(gsize) + ")");
+    const std::size_t remainder = recordings.size() - N_groups * gsize;
+    if (remainder != 0) {
+        std::cerr << "[calc_MLE_per_group_of_replicates] dropping " << remainder
+                  << " remainder recording(s): " << recordings.size() << " % " << gsize
+                  << " != 0\n";
+    }
+
+    // Canonical parameter count from the warmstart (transformed space).
+    const std::size_t p_canonical = theta_warmstart().nrows();
+    auto nan_spd = [&]() { return SymPosDefMatrix<double>(p_canonical, p_canonical, NaN_d); };
+    auto* params_ptr = &theta_warmstart;  // metadata frame for write_csv name recovery
+
+    // ----- Per-group Gauss-Newton MLE refit (the real driver) -----------------
+    // Each group is refit ONCE; the bootstrap below resamples over the resulting
+    // per-group point estimates (θ̂_group, F̄_group), not over recordings. Groups
+    // whose GN refit fails are dropped (not retained as NaN) so they don't bias
+    // the θ̂ cloud mean / Fisher aggregation downstream.
+    std::vector<per_group_estimate> groups;
+    groups.reserve(N_groups);
+    for (std::size_t g = 0; g < N_groups; ++g) {
+        std::vector<Recording> group_recordings;
+        group_recordings.reserve(gsize);
+        std::vector<std::size_t> rec_indices;
+        rec_indices.reserve(gsize);
+        for (std::size_t k = 0; k < gsize; ++k) {
+            std::size_t idx = g * gsize + k;
+            group_recordings.push_back(recordings[idx]);
+            rec_indices.push_back(idx);
+        }
+
+        auto objective =
+            [&](var::Parameters_transformed const& p) -> Maybe_error<dlogPs> {
+            return evaluate_combined_group_as_dlogPs(likelihood_algorithm, p, experiment,
+                                                     group_recordings);
+        };
+
+        auto maybe_result = macrodr::optimization::gauss_newton_maximize<Gaussian_Fisher_Information>(
+            objective, theta_warmstart, gn_opts);
+        if (!maybe_result) {
+            std::cerr << "[calc_MLE_per_group_of_replicates] group " << g
+                      << " GN refit failed: " << maybe_result.error()() << "\n";
+            continue;
+        }
+        auto const& result = maybe_result.value();
+        // θ̂_group = argmax; per-group practical FIM Ḡ_group = Gaussian-formula
+        // Fisher at θ̂ (the GN curvature already evaluated at the refit estimate).
+        // Averaged over groups downstream into Ḡ_lik — the Wald T² metric.
+        per_group_estimate est;
+        est.theta_hat = result.argmax();
+        est.recording_indices = std::move(rec_indices);
+
+        {
+            auto const& G = get<Gaussian_Fisher_Information>(result.result_value)().value();
+            if (G.nrows() == p_canonical && lapack::matrix_has_only_finite(G))
+                est.G_group = G;
+            else
+                est.G_group = nan_spd();
+        }
+
+        est.ok = true;
+        groups.push_back(std::move(est));
+    }
+
+    const std::size_t N_groups_ok = groups.size();
+    if (N_groups_ok == 0)
+        return error_message(
+            "calc_MLE_per_group_of_replicates: every group's Gauss-Newton refit failed");
+
+    // ----- Per-resample factory (SLIM cloud) ---------------------------------
+    // Inner middle space, built per bootstrap replicate over a resampled set of
+    // GROUP indices. Field order MUST match the middle of MLE_Group_Cloud<State>
+    // (likelihood.h): θ̂ cloud (Moment_statistics) then the recovery Wald T².
+    using middle_space = var::Vector_Space<Moment_statistics<Model_Parameters_Hat, true>,
+                                           Wald_T2<Gaussian_Fisher_Information>>;
+
+    auto factory = [&](const std::vector<per_group_estimate>& gs,
+                       const std::vector<std::size_t>& indices) -> middle_space {
+        // -- θ̂ cloud over the resampled groups (mean=θ̄, covariance=Cov_emp) --
+        // Project each selected group to its θ̂ as a parameter_vector_payload.
+        auto theta_moments = Moment_statistics<Model_Parameters_Hat, true>(
+            gs, indices, [&](const per_group_estimate& e) {
+                return parameter_vector_payload(e.theta_hat, params_ptr);
+            });
+        // θ̄ (resample mean of θ̂) as a bare Matrix, for the Wald Δθ below.
+        Matrix<double> theta_bar =
+            get<mean<Model_Parameters_Hat>>(theta_moments())().value();
+
+        // -- Ḡ_lik = group-mean of the per-group Gaussian-formula FIM ----------
+        // The precision-like curvature used as the Wald metric. Averaged over the
+        // resampled groups with finite G_group.
+        SymPosDefMatrix<double> G_bar(p_canonical, p_canonical, 0.0);
+        std::size_t n_valid_G = 0;
+        for (auto idx : indices) {
+            auto const& Gi = gs[idx].G_group;
+            if (Gi.nrows() != p_canonical) continue;
+            bool finite = true;
+            for (std::size_t i = 0; i < p_canonical && finite; ++i)
+                for (std::size_t j = i; j < p_canonical; ++j)
+                    if (!std::isfinite(Gi(i, j))) { finite = false; break; }
+            if (!finite) continue;
+            for (std::size_t i = 0; i < p_canonical; ++i)
+                for (std::size_t j = i; j < p_canonical; ++j)
+                    G_bar.set(i, j, G_bar(i, j) + Gi(i, j));
+            ++n_valid_G;
+        }
+        if (n_valid_G == 0) {
+            G_bar = nan_spd();
+        } else {
+            double scale = 1.0 / static_cast<double>(n_valid_G);
+            for (std::size_t i = 0; i < p_canonical; ++i)
+                for (std::size_t j = i; j < p_canonical; ++j)
+                    G_bar.set(i, j, G_bar(i, j) * scale);
+        }
+
+        // -- Recovery Wald T² = Δθᵀ·Ḡ_lik·Δθ, Δθ = θ̄ − theta_reference --------
+        // theta_reference = the value θ̂ is tested against (θ₀, typically θ_sim).
+        // Ḡ_lik is the curvature/precision, so T² = Δθᵀ Ḡ_lik Δθ (matches the
+        // old Wald<FC> = Δθᵀ F̄ Δθ pattern). Use 0ul for const-matrix access.
+        double T2 = NaN_d;
+        if (n_valid_G > 0 && theta_bar.nrows() == p_canonical &&
+            theta_reference().nrows() == p_canonical) {
+            Matrix<double> delta(p_canonical, 1, 0.0);
+            for (std::size_t i = 0; i < p_canonical; ++i)
+                delta(i, 0) = theta_bar(i, 0) - theta_reference()(i, 0ul);
+            double acc = 0.0;
+            for (std::size_t i = 0; i < p_canonical; ++i)
+                for (std::size_t j = 0; j < p_canonical; ++j)
+                    acc += delta(i, 0) * G_bar(i, j) * delta(j, 0);
+            T2 = acc;
+        }
+        auto wald = Wald_T2<Gaussian_Fisher_Information>(T2);
+
+        return middle_space(std::move(theta_moments), std::move(wald));
+    };
+
+    // ----- Bootstrap over GROUPS ---------------------------------------------
+    // Bootstrap is over the (successfully refit) GROUPS, not over recordings.
+    auto mt = mt_64i(seed);
+    std::vector<middle_space> samples;
+    if (N_groups_ok >= min_groups_for_bootstrap && n_bootstrap_samples > 0) {
+        samples = bootstrap_it(factory, groups, n_bootstrap_samples, mt);
+    } else {
+        // Too few groups for a meaningful group-bootstrap: still produce the
+        // point estimate (one "replicate" over all groups, no resampling). The
+        // probit slots derived from that single sample collapse to the point
+        // value (their CIs degenerate) — point estimates still produced.
+        std::vector<std::size_t> all_idx(N_groups_ok);
+        for (std::size_t g = 0; g < N_groups_ok; ++g) all_idx[g] = g;
+        samples.push_back(factory(groups, all_idx));
+    }
+
+    // Probit-wrap the slim middle space uniformly (both tags wrapped).
+    auto middle_probit = apply_Probit_statistics(samples, probit_cis);
+
+    // ----- BARE θ̄ point estimate over ALL valid groups (NOT bootstrapped) ----
+    // The handoff for get_parameters_mean: full-sample mean of θ̂ over every
+    // successfully refit group (a single Moment_statistics over all groups,
+    // mean slot extracted). Wrapped as Model_Parameters_Hat with the same
+    // parameter metadata frame (params_ptr) for write_csv name recovery and the
+    // downstream Parameters_transformed rebuild.
+    Matrix<double> theta_bar_point(p_canonical, 1, NaN_d);
+    // BARE raw full-sample empirical covariance Cov_emp of the θ̂ cloud over all
+    // valid groups — the covariance slot of the SAME all-group Moment_statistics
+    // used for the θ̄ point. Defaults to a p×p NaN matrix when something fails.
+    SymPosDefMatrix<double> cov_emp_matrix = nan_spd();
+    {
+        std::vector<std::size_t> all_idx(N_groups_ok);
+        for (std::size_t g = 0; g < N_groups_ok; ++g) all_idx[g] = g;
+        auto theta_moments_all = Moment_statistics<Model_Parameters_Hat, true>(
+            groups, all_idx, [&](const per_group_estimate& e) {
+                return parameter_vector_payload(e.theta_hat, params_ptr);
+            });
+        theta_bar_point = get<mean<Model_Parameters_Hat>>(theta_moments_all())().value();
+        cov_emp_matrix = get<covariance<Model_Parameters_Hat>>(theta_moments_all())().value();
+    }
+    auto theta_bar_hat = Model_Parameters_Hat(std::move(theta_bar_point), params_ptr);
+    auto cov_emp = Empirical_Parameter_Covariance(std::move(cov_emp_matrix), params_ptr);
+
+    // ----- Trailing slot: Probit_Samples_at_Group_Size<State> (deferred) -----
+    // Empty stub (representative-group snapshotting is the downstream Fase-2 work).
+    auto probit_samples = Probit_Samples_at_Group_Size<State>(
+        std::vector<Probit_Sample_Record<State>>{});
+
+    // ----- Assemble final MLE_Group_Cloud<State> in declared field order ------
+    // Group_Size (plain) ++ Probit middle (θ̂ cloud, Wald T²) ++ BARE θ̄ point ++
+    // BARE Cov_emp ++ Probit_Samples (plain). Order MUST match the
+    // MLE_Group_Cloud typedef.
+    auto head = var::Vector_Space<Group_Size>(Group_Size(gsize));
+    auto bare = var::Vector_Space<Model_Parameters_Hat, Empirical_Parameter_Covariance>(
+        std::move(theta_bar_hat), std::move(cov_emp));
+    auto tail = var::Vector_Space<Probit_Samples_at_Group_Size<State>>(std::move(probit_samples));
+    MLE_Group_Cloud<State> out = concatenate(std::move(head), std::move(middle_probit),
+                                             std::move(bare), std::move(tail));
+    return out;
+}
+
+// Rebuild θ̄ as a Parameters_transformed from the cloud's BARE Model_Parameters_Hat
+// slot. The slot is a parameter_vector_payload carrying the θ̄ Matrix (.value())
+// and the Parameters_transformed* metadata frame (.parameters_ptr()); create()
+// rebinds the parameter names (mirrors gauss_newton.h's theta.create(...)).
+template <class State>
+auto get_parameters_mean(const MLE_Group_Cloud<State>& cloud)
+    -> Maybe_error<var::Parameters_transformed> {
+    auto const& payload = get<Model_Parameters_Hat>(cloud)();
+    if (!payload.has_parameters())
+        return error_message(
+            "get_parameters_mean: Model_Parameters_Hat slot has no parameter metadata");
+    return payload.parameters().create(payload.value());
+}
+
+// Explicit instantiation for Path A (minimal State).
+template auto get_parameters_mean<dMacro_State_Hessian_minimal_param>(
+    const MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>&)
+    -> Maybe_error<var::Parameters_transformed>;
+
+// =============================================================================
+// calc_empirical_distortion — figure_3 Fase-2 empirical-vs-theoretical capstone.
+//
+// Composes the cloud's bare Cov_emp with the figure_2 numerical-Fisher and
+// score outputs into three distortion matrices, each with the battery's scalar
+// suite. POINT ESTIMATES only — NO bootstrap in v1.
+template <class State>
+auto calc_empirical_distortion(
+    const MLE_Group_Cloud<State>& cloud,
+    const std::vector<parameter_spd_payload>& fim_sim,
+    const std::vector<parameter_spd_payload>& fim_bar,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar, double rtol, double atol)
+    -> Maybe_error<Empirical_Distortion_Analysis> {
+
+    const double NaN_d = std::numeric_limits<double>::quiet_NaN();
+
+    // ----- Cov_emp (raw empirical covariance of θ̂) from the cloud -------------
+    auto const& cov_emp_payload = get<Empirical_Parameter_Covariance>(cloud)();
+    SymPosDefMatrix<double> Cov_emp = cov_emp_payload.value();
+    auto* params_ptr = cov_emp_payload.parameters_ptr();
+    const std::size_t p = Cov_emp.nrows();
+    if (p == 0)
+        return error_message("calc_empirical_distortion: empty Cov_emp from cloud");
+
+    auto nan_spd = [&]() { return SymPosDefMatrix<double>(p, p, NaN_d); };
+
+    // ----- F̄_sim / F̄_bar = mean over the per-recording numerical Fisher ------
+    // Sum the SymPosDefMatrix payloads / n (mirrors compute_F_b). Returns a NaN
+    // p×p matrix when the input vector is empty or shapes mismatch.
+    auto mean_fisher = [&](const std::vector<parameter_spd_payload>& fs)
+        -> SymPosDefMatrix<double> {
+        if (fs.empty()) return nan_spd();
+        const std::size_t n = fs[0].value().nrows();
+        if (n != p) return nan_spd();
+        SymPosDefMatrix<double> acc(p, p, 0.0);
+        std::size_t n_valid = 0;
+        for (auto const& Fi : fs) {
+            if (Fi.value().nrows() != p) continue;
+            if (!lapack::matrix_has_only_finite(Fi.value())) continue;
+            for (std::size_t i = 0; i < p; ++i)
+                for (std::size_t j = i; j < p; ++j)
+                    acc.set(i, j, acc(i, j) + Fi.value()(i, j));
+            ++n_valid;
+        }
+        if (n_valid == 0) return nan_spd();
+        const double scale = 1.0 / static_cast<double>(n_valid);
+        for (std::size_t i = 0; i < p; ++i)
+            for (std::size_t j = i; j < p; ++j) acc.set(i, j, acc(i, j) * scale);
+        return acc;
+    };
+    SymPosDefMatrix<double> F_bar_sim = mean_fisher(fim_sim);
+    SymPosDefMatrix<double> F_bar_bar = mean_fisher(fim_bar);
+
+    // ----- J = HAC score covariance at θ̄ from dlik_bar -----------------------
+    // Reuse the battery's evolution-correlation path over ALL recordings
+    // (indices = 0..n-1), with only the dlogL slot. J = Cov(Σ_t dlogL_t).
+    SymPosDefMatrix<double> J = nan_spd();
+    if (!dlik_bar.empty()) {
+        std::vector<std::size_t> all_indices(dlik_bar.size());
+        for (std::size_t i = 0; i < dlik_bar.size(); ++i) all_indices[i] = i;
+        auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
+            dlik_bar, all_indices,
+            std::type_identity<
+                Evolution_of<Vector_Space<Moment_statistics<dlogL, true>>>>{},
+            [](const auto& evo_i) {
+                return parameter_vector_payload(derivative(get<logL>(evo_i))(),
+                                                var::get_dx_of_dfdx(get<logL>(evo_i)));
+            });
+        auto J_val = get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)())().value();
+        if (J_val.nrows() == p) J = J_val;
+    }
+
+    // ----- W_Fbar = PSD decomposition of F̄_bar (the optimum-Fisher frame) ----
+    auto maybe_W_Fbar = lapack::compute_psd_decomp(F_bar_bar, "F_bar", rtol, atol);
+    lapack::PSDDecomposition W_Fbar;
+    if (maybe_W_Fbar) W_Fbar = std::move(maybe_W_Fbar.value());
+
+    // ----- DCC = F̄_bar^{-1} J F̄_bar^{-1} -------------------------------------
+    SymPosDefMatrix<double> DCC =
+        lapack::apply_inverse_congruence(W_Fbar, J, "DCC subspace matrix", rtol, atol)
+            .value_or(nan_spd());
+
+    // ----- The three distortion matrices --------------------------------------
+    // ECD_Fisher = F̄_bar^{1/2} · Cov_emp · F̄_bar^{1/2}
+    auto ECD_Fisher = Empirical_Covariance_Fisher_Distortion(
+        lapack::apply_sqrt_congruence(W_Fbar, Cov_emp, "ECD_Fisher subspace matrix", rtol, atol)
+            .value_or(nan_spd()),
+        params_ptr);
+
+    // ECD_Corrected = DCC^{-1/2} · Cov_emp · DCC^{-1/2}
+    auto maybe_W_DCC = lapack::compute_psd_decomp(DCC, "DCC", rtol, atol);
+    lapack::PSDDecomposition W_DCC;
+    if (maybe_W_DCC) W_DCC = std::move(maybe_W_DCC.value());
+    auto ECD_Corrected = Empirical_Covariance_Corrected_Distortion(
+        lapack::apply_normalized_congruence(W_DCC, Cov_emp, "ECD_Corrected subspace matrix", rtol,
+                                            atol)
+            .value_or(nan_spd()),
+        params_ptr);
+
+    // Optimum = F̄_bar^{-1/2} · F̄_sim · F̄_bar^{-1/2}
+    auto Optimum = Optimum_Fisher_Distortion(
+        lapack::apply_normalized_congruence(W_Fbar, F_bar_sim, "Optimum subspace matrix", rtol,
+                                            atol)
+            .value_or(nan_spd()),
+        params_ptr);
+
+    // ----- Scalar suites (mirror the battery recipes) -------------------------
+    // ECD_Fisher
+    auto ecd_f_scalars = compute_distortion_scalars(ECD_Fisher().value(), rtol, atol);
+    auto ecd_f_d_ai = Affine_Invariant_Distance<Empirical_Covariance_Fisher_Distortion>(
+        ecd_f_scalars.affine_invariant_distance);
+    auto ecd_f_log_det = log_Det<Empirical_Covariance_Fisher_Distortion>(
+        logdet_active_subspace(ECD_Fisher()));
+    auto maybe_W_ecd_f =
+        lapack::compute_psd_decomp(ECD_Fisher().value(), "ECD_Fisher", rtol, atol);
+    lapack::PSDDecomposition W_ecd_f;
+    if (maybe_W_ecd_f) W_ecd_f = std::move(maybe_W_ecd_f.value());
+    auto ecd_f_spectrum = Eigenvalue_Spectrum<Empirical_Covariance_Fisher_Distortion>(
+        lapack::eigenvalue_spectrum(W_ecd_f));
+    auto ecd_f_cond = Spectrum_Condition_Number<Empirical_Covariance_Fisher_Distortion>(
+        lapack::spectrum_condition_number(W_ecd_f));
+
+    // ECD_Corrected
+    auto ecd_c_scalars = compute_distortion_scalars(ECD_Corrected().value(), rtol, atol);
+    auto ecd_c_d_ai = Affine_Invariant_Distance<Empirical_Covariance_Corrected_Distortion>(
+        ecd_c_scalars.affine_invariant_distance);
+    auto ecd_c_log_det = log_Det<Empirical_Covariance_Corrected_Distortion>(
+        logdet_active_subspace(ECD_Corrected()));
+    auto maybe_W_ecd_c =
+        lapack::compute_psd_decomp(ECD_Corrected().value(), "ECD_Corrected", rtol, atol);
+    lapack::PSDDecomposition W_ecd_c;
+    if (maybe_W_ecd_c) W_ecd_c = std::move(maybe_W_ecd_c.value());
+    auto ecd_c_spectrum = Eigenvalue_Spectrum<Empirical_Covariance_Corrected_Distortion>(
+        lapack::eigenvalue_spectrum(W_ecd_c));
+    auto ecd_c_cond = Spectrum_Condition_Number<Empirical_Covariance_Corrected_Distortion>(
+        lapack::spectrum_condition_number(W_ecd_c));
+
+    // Optimum (adds Min_Eigenvalue — the "FIM_sim indefinite?" readout)
+    auto opt_scalars = compute_distortion_scalars(Optimum().value(), rtol, atol);
+    auto opt_d_ai = Affine_Invariant_Distance<Optimum_Fisher_Distortion>(
+        opt_scalars.affine_invariant_distance);
+    auto opt_log_det =
+        log_Det<Optimum_Fisher_Distortion>(logdet_active_subspace(Optimum()));
+    auto maybe_W_opt = lapack::compute_psd_decomp(Optimum().value(), "Optimum", rtol, atol);
+    lapack::PSDDecomposition W_opt;
+    if (maybe_W_opt) W_opt = std::move(maybe_W_opt.value());
+    auto opt_spectrum =
+        Eigenvalue_Spectrum<Optimum_Fisher_Distortion>(lapack::eigenvalue_spectrum(W_opt));
+    auto opt_min_eig = Min_Eigenvalue<Optimum_Fisher_Distortion>(opt_scalars.lambda_min);
+    auto opt_cond = Spectrum_Condition_Number<Optimum_Fisher_Distortion>(
+        lapack::spectrum_condition_number(W_opt));
+
+    // ----- Assemble in the EXACT Empirical_Distortion_Analysis typedef order ---
+    return Empirical_Distortion_Analysis(
+        std::move(ECD_Fisher), std::move(ecd_f_d_ai), std::move(ecd_f_log_det),
+        std::move(ecd_f_spectrum), std::move(ecd_f_cond),
+        std::move(ECD_Corrected), std::move(ecd_c_d_ai), std::move(ecd_c_log_det),
+        std::move(ecd_c_spectrum), std::move(ecd_c_cond),
+        std::move(Optimum), std::move(opt_d_ai), std::move(opt_log_det),
+        std::move(opt_spectrum), std::move(opt_min_eig), std::move(opt_cond));
+}
+
+// Explicit instantiation for Path A (minimal State).
+template auto calc_empirical_distortion<dMacro_State_Hessian_minimal_param>(
+    const MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>&,
+    const std::vector<parameter_spd_payload>&, const std::vector<parameter_spd_payload>&,
+    const std::vector<dMacro_State_Ev_gradient_all>&, double, double)
+    -> Maybe_error<Empirical_Distortion_Analysis>;
+
+// Explicit instantiation for Path A (minimal State).
+template auto calc_MLE_per_group_of_replicates<dMacro_State_Hessian_minimal_param>(
+    const likelihood_algorithm_type&, const var::Parameters_transformed&,
+    const var::Parameters_transformed&, const Experiment&,
+    const std::vector<Recording>&, std::size_t, std::size_t, std::size_t,
+    const std::set<double>&, const std::set<double>&, const std::vector<std::string>&,
+    std::size_t, const macrodr::optimization::gauss_newton_options&, double)
+    -> Maybe_error<MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>>;
 
 // Explicit instantiations for the CLI-registered overloads to avoid link errors.
 template Maybe_error<std::string>
