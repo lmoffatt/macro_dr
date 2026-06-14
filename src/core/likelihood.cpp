@@ -3690,8 +3690,25 @@ struct per_group_estimate {
     Matrix<double> theta_hat;          // p×1 transformed-space θ̂_group
     SymPosDefMatrix<double> G_group;    // combined per-group Gaussian-formula FIM at θ̂
     std::vector<std::size_t> recording_indices;  // refs into the input recordings
+    // Complete GN-result diagnostics for the per-group MLE_Run log (companion CSV):
+    Matrix<double> score;              // ∇logL(θ̂) (p×1) — Grad from result_value, ≈0
+    double max_logL = std::numeric_limits<double>::quiet_NaN();   // result.max_value
+    std::size_t n_iter = 0;                                       // result.n_iter
+    double status_code = -1.0;                                    // mapped result.status
+    double recovery_dist = std::numeric_limits<double>::quiet_NaN();  // ‖θ̂ − θ_ref‖₂
     bool ok = false;
 };
+
+// gauss_newton_result::status → numeric code (the write_csv writer is doubles-
+// only). Mirrors Convergence_Status_Code's documented mapping (moment_statistics.h).
+inline double gn_status_to_code(const std::string& s) {
+    if (s == "converged_newton_dec") return 0.0;
+    if (s == "converged_grad") return 1.0;
+    if (s == "converged_value") return 2.0;
+    if (s == "max_iter_reached") return 3.0;
+    if (s == "stalled") return 4.0;
+    return -1.0;
+}
 
 }  // namespace
 
@@ -3773,6 +3790,29 @@ auto calc_MLE_per_group_of_replicates(
                 est.G_group = G;
             else
                 est.G_group = nan_spd();
+        }
+
+        // Complete GN-result capture for the per-group MLE_Run log: the maximum
+        // logL, iteration count, convergence status (as a code), the score
+        // ∇logL(θ̂) (≈0 at a clean MLE), and the recovery distance ‖θ̂ − θ_ref‖.
+        est.max_logL = result.max_value;
+        est.n_iter = result.n_iter;
+        est.status_code = gn_status_to_code(result.status);
+        {
+            auto const& gr = get<Grad>(result.result_value)().value();
+            if (gr.nrows() == p_canonical && lapack::matrix_has_only_finite(gr))
+                est.score = gr;
+            else
+                est.score = Matrix<double>(p_canonical, 1, NaN_d);
+        }
+        if (theta_reference().nrows() == p_canonical &&
+            est.theta_hat.nrows() == p_canonical) {
+            double acc = 0.0;
+            for (std::size_t i = 0; i < p_canonical; ++i) {
+                double d = est.theta_hat(i, 0ul) - theta_reference()(i, 0ul);
+                acc += d * d;
+            }
+            est.recovery_dist = std::sqrt(acc);
         }
 
         est.ok = true;
@@ -3894,6 +3934,22 @@ auto calc_MLE_per_group_of_replicates(
     auto theta_bar_hat = Model_Parameters_Hat(std::move(theta_bar_point), params_ptr);
     auto cov_emp = Empirical_Parameter_Covariance(std::move(cov_emp_matrix), params_ptr);
 
+    // ----- Complete per-group MLE run log (companion <path>_runs.csv) --------
+    // One MLE_Run per successfully-refit group: θ̂ + maximum logL + gradient
+    // ∇logL(θ̂) + G_group + n_iter + convergence-status code + recovery distance.
+    // Built straight from the GN-result fields captured above; companion-only
+    // (skipped in the reduced summary CSV — see write_csv / emit_any).
+    std::vector<MLE_Run> run_records;
+    run_records.reserve(groups.size());
+    for (auto const& e : groups) {
+        run_records.push_back(MLE_Run(
+            Model_Parameters_Hat(e.theta_hat, params_ptr), logL(e.max_logL),
+            Grad(e.score, params_ptr), Gaussian_Fisher_Information(e.G_group, params_ptr),
+            Newton_Iterations(e.n_iter), Convergence_Status_Code(e.status_code),
+            Recovery_Distance(e.recovery_dist)));
+    }
+    auto run_slot = MLE_Run_Records(std::move(run_records));
+
     // ----- Trailing slot: Probit_Samples_at_Group_Size<State> (deferred) -----
     // Empty stub (representative-group snapshotting is the downstream Fase-2 work).
     auto probit_samples = Probit_Samples_at_Group_Size<State>(
@@ -3901,11 +3957,12 @@ auto calc_MLE_per_group_of_replicates(
 
     // ----- Assemble final MLE_Group_Cloud<State> in declared field order ------
     // Group_Size (plain) ++ Probit middle (θ̂ cloud, Wald T²) ++ BARE θ̄ point ++
-    // BARE Cov_emp ++ Probit_Samples (plain). Order MUST match the
-    // MLE_Group_Cloud typedef.
+    // BARE Cov_emp ++ MLE_Run_Records (companion) ++ Probit_Samples (plain).
+    // Order MUST match the MLE_Group_Cloud typedef.
     auto head = var::Vector_Space<Group_Size>(Group_Size(gsize));
-    auto bare = var::Vector_Space<Model_Parameters_Hat, Empirical_Parameter_Covariance>(
-        std::move(theta_bar_hat), std::move(cov_emp));
+    auto bare =
+        var::Vector_Space<Model_Parameters_Hat, Empirical_Parameter_Covariance, MLE_Run_Records>(
+            std::move(theta_bar_hat), std::move(cov_emp), std::move(run_slot));
     auto tail = var::Vector_Space<Probit_Samples_at_Group_Size<State>>(std::move(probit_samples));
     MLE_Group_Cloud<State> out = concatenate(std::move(head), std::move(middle_probit),
                                              std::move(bare), std::move(tail));

@@ -231,6 +231,32 @@ struct Group_Size : public var::Constant<Group_Size, std::size_t> {
     friend std::string className(Group_Size) { return "Group_Size"; }
 };
 
+// Per-group Gauss-Newton refit diagnostics, one value per group, carried by the
+// MLE_Run record (likelihood.h) and emitted to the <path>_runs.csv companion.
+// Number of GN iterations to convergence (gauss_newton_result::n_iter).
+struct Newton_Iterations : public var::Constant<Newton_Iterations, std::size_t> {
+    Newton_Iterations() : var::Constant<Newton_Iterations, std::size_t>{0} {}
+    Newton_Iterations(std::size_t n) : var::Constant<Newton_Iterations, std::size_t>{n} {}
+    friend std::string className(Newton_Iterations) { return "Newton_Iterations"; }
+};
+
+// gauss_newton_result::status mapped to a numeric code (the write_csv writer is
+// doubles-only): 0 converged_newton_dec / 1 converged_grad / 2 converged_value /
+// 3 max_iter_reached / 4 stalled / -1 unknown.
+struct Convergence_Status_Code : public var::Constant<Convergence_Status_Code, double> {
+    Convergence_Status_Code() : var::Constant<Convergence_Status_Code, double>{-1.0} {}
+    Convergence_Status_Code(double c) : var::Constant<Convergence_Status_Code, double>{c} {}
+    friend std::string className(Convergence_Status_Code) { return "Convergence_Status_Code"; }
+};
+
+// Recovery distance ‖θ̂_group − θ_reference‖₂ (θ_reference = the value θ̂ is
+// tested against, typically the simulation truth) — the per-group "did it recover".
+struct Recovery_Distance : public var::Constant<Recovery_Distance, double> {
+    Recovery_Distance() : var::Constant<Recovery_Distance, double>{0.0} {}
+    Recovery_Distance(double d) : var::Constant<Recovery_Distance, double>{d} {}
+    friend std::string className(Recovery_Distance) { return "Recovery_Distance"; }
+};
+
 
 template <class Va>
 struct series_count : public var::Constant<series_count<Va>, std::vector<std::size_t>> {

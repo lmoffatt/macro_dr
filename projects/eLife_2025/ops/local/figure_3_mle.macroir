@@ -15,10 +15,22 @@
 #   axis_h_fim, h_rel_value                  (numerical-Fisher step)
 #   group_size, n_bootstrap_samples, min_groups_for_bootstrap, gn_max_iter  (MLE)
 #
-# Stages: 1) light per-group MLE refit → θ̂ cloud (θ̄, Cov_emp, recovery Wald);
-#         2) numerical Fisher at sim truth (par_tr) and at θ̄;
-#         3) figure_2 battery recomputed at θ̄ (incl. autocorrelation / Path B);
-#         4) empirical-vs-theoretical distortion capstone (Fisher / Corrected / Optimum).
+# TWO ANCHORS, two complementary questions (see theory: misspecification frame):
+#   theta_sim  = the simulation truth (par_tr).
+#   theta_pool = the JOINT MLE over ALL replicates (the pseudo-true value the macro
+#            estimator centres on; a single stationary point, NOT the mean theta_bar
+#            of the per-group fits — those differ when the likelihood is non-quadratic).
+#
+# Stages:
+#   1) per-group MLE refit (group_size=1) -> ONLY the theta_hat cloud (Cov_emp + the
+#      raw per-group log in _mle_cloud_runs.csv, for skewness/normality in R);
+#   2) JOINT MLE (group_size=n_simulations) -> theta_pool (its _pool_runs.csv has the
+#      single joint fit; gradient ~ 0 validates stationarity);
+#   3) numerical Fisher at theta_sim AND theta_pool;
+#   4) score / dlikelihood at theta_sim AND theta_pool (-> J at each);
+#   5) figure_2 diagnostic battery at theta_sim (= figure_2) AND theta_pool;
+#   6) empirical-vs-theoretical distortion capstone, sandwich ANCHORED at theta_pool
+#      (fim/dlik at theta_pool), Optimum numerator at theta_sim. Cov_emp from stage 1.
 # =============================================================================
 
 model = load_model("scheme_CO")
@@ -82,9 +94,11 @@ gn_opts = build_gauss_newton_options(
    lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
    max_iter = gn_max_iter, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
 
-# ---- Stage 1: light per-group MLE refit → slim cloud, then θ̄ handoff --------
+# ---- Stage 1: per-group MLE refit (group_size=1) -> theta_hat cloud (Cov_emp) -
 # theta_warmstart = theta_reference = par_tr: start the GN at the sim truth and
-# test recovery against it (a recovery test, not a free dispatch knob).
+# test recovery against it. We consume ONLY Cov_emp + the raw cloud downstream;
+# theta_bar (its mean) is NOT used as an anchor (it is biased / non-stationary).
+# The per-group theta_hat + gradient + status land in <prefix>_mle_cloud_runs.csv.
 mle = calc_MLE_per_group_of_replicates(
    likelihood_algorithm = algorithm,
    theta_warmstart = par_tr,
@@ -102,31 +116,81 @@ mle = calc_MLE_per_group_of_replicates(
 
 mle_csv = write_csv(analysis = mle, path = concat(filepath_run, "_mle_cloud"))
 
-theta_bar = get_parameters_mean(cloud = mle)
+# ---- Stage 2: JOINT MLE (group_size=n_simulations) -> theta_pool --------------
+# One group = ALL replicates -> the pooled/joint MLE (the pseudo-true theta*). The
+# bootstrap is skipped (n_bootstrap_samples=0 -> single point fit); Cov_emp / probit
+# slots of this cloud are degenerate and intentionally ignored — we take only its
+# mean (= theta_pool). _pool_runs.csv holds the single joint fit.
+#
+# Warmstart at par_tr (theta_sim), NOT at theta_bar: where the bias is large
+# (coarse intervals) the gradient at theta_sim is large (H is sharp) so one Newton
+# step resolves theta_pool; theta_bar (already ~theta_pool) would stall sub-FP at
+# itself, returning the mean-of-argmaxes instead of the joint optimum. Where the
+# bias is ~0 (fine intervals) both stall ~theta_pool, which is correct. The pool's
+# gradient in _pool_runs.csv certifies whether it truly converged.
+pool = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = n_simulations,
+   n_bootstrap_samples = get_number(n = 0),
+   min_groups_for_bootstrap = get_number(n = 2),
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.5],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
 
-# ---- Stage 2: numerical Fisher at the sim truth and at θ̄ --------------------
+pool_csv = write_csv(analysis = pool, path = concat(filepath_run, "_pool"))
+
+theta_pool = get_parameters_mean(cloud = pool)
+
+# ---- Stage 3: numerical Fisher at theta_sim AND theta_pool -------------------
 fim_sim = calc_numerical_fisher_information(
    likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
    data_series = simulations, h_rel = h_rel_value, decimate = 1)
 
-fim_bar = calc_numerical_fisher_information(
-   likelihood_algorithm = algorithm, parameters = theta_bar, experiment = experiment,
+fim_pool = calc_numerical_fisher_information(
+   likelihood_algorithm = algorithm, parameters = theta_pool, experiment = experiment,
    data_series = simulations, h_rel = h_rel_value, decimate = 1)
 
-# ---- Stage 3: figure_2 diagnostic battery recomputed at θ̄ -------------------
-dlik_bar = calc_dlikelihood_predictions(
-   likelihood_algorithm = algorithm, parameters = theta_bar, experiment = experiment,
+# ---- Stage 4: score / dlikelihood at theta_sim AND theta_pool (-> J at each) --
+dlik_sim = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = par_tr, experiment = experiment,
    data_series = simulations)
 
-battery = likelihood_derivative_basic_diagnostics_paired(
-   dlikelihood_predictions = dlik_bar,
-   numerical_fisher_information = fim_bar,
+dlik_pool = calc_dlikelihood_predictions(
+   likelihood_algorithm = algorithm, parameters = theta_pool, experiment = experiment,
+   data_series = simulations)
+
+# ---- Stage 5: figure_2 diagnostic battery at theta_sim (= figure_2) AND theta_pool
+# battery_sim reads the misspecification AT TRUTH: Sum_dlogL mean != 0 (~ F*bias)
+# and the F!=J distortion. battery_pool is the same suite at the realistic anchor.
+battery_sim = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_sim,
+   numerical_fisher_information = fim_sim,
    n_boostrap_samples = 100,
    probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
    samples_dir = "")
 
-battery_csv = write_csv(analysis = battery, path = concat(filepath_run, "_battery_bar"))
+battery_sim_csv = write_csv(analysis = battery_sim, path = concat(filepath_run, "_battery_sim"))
 
-# ---- Stage 4: empirical-vs-theoretical distortion capstone ------------------
-emp = calc_empirical_distortion(cloud = mle, fim_sim = fim_sim, fim_bar = fim_bar, dlik_bar = dlik_bar)
+battery_pool = likelihood_derivative_basic_diagnostics_paired(
+   dlikelihood_predictions = dlik_pool,
+   numerical_fisher_information = fim_pool,
+   n_boostrap_samples = 100,
+   probits = [0.025, 0.16, 0.5, 0.84, 0.975], seed = 0, max_lag = 10,
+   samples_dir = "")
+
+battery_pool_csv = write_csv(analysis = battery_pool, path = concat(filepath_run, "_battery_pool"))
+
+# ---- Stage 6: empirical-vs-theoretical capstone, sandwich ANCHORED at theta_pool
+# Cov_emp from the stage-1 cloud; the sandwich bread (fim) and meat (dlik->J) at
+# theta_pool; the Optimum numerator (fim_sim) at theta_sim. (calc_empirical_distortion's
+# fim_bar / dlik_bar slots receive the theta_pool versions — the anchor.)
+emp = calc_empirical_distortion(
+   cloud = mle, fim_sim = fim_sim, fim_bar = fim_pool, dlik_bar = dlik_pool)
+
 emp_csv = write_csv(analysis = emp, path = concat(filepath_run, "_empirical"))

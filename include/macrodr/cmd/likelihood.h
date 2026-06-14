@@ -760,6 +760,35 @@ using Analisis_derivative_diagnostic_series_kernel_full = var::concatenate_t<
 
 
 // =============================================================================
+// MLE_Run — the COMPLETE per-group Gauss-Newton refit record (one Vector_Space
+// per refit group of n replicas). Reuses the GN result_value dlogPs slots at θ̂
+// (logL / Grad / Gaussian_Fisher_Information — same meaning, same types) plus
+// θ̂ itself and the run diagnostics. Built as a Vector_Space so the existing
+// write_csv machinery emits its columns; the gradient Grad = ∇logL(θ̂) is ≈0 at
+// a clean MLE, a direct convergence probe.
+using MLE_Run = var::Vector_Space<
+    Model_Parameters_Hat,          // θ̂_group (p×1, parameter-named)
+    logL,                          // maximum logL at θ̂  (result.max_value)
+    Grad,                          // ∇logL(θ̂) (p×1, named) — the gradient
+    Gaussian_Fisher_Information,   // G_group at θ̂
+    Newton_Iterations,             // GN iterations to convergence
+    Convergence_Status_Code,       // status → numeric code (see the tag)
+    Recovery_Distance>;            // ‖θ̂ − θ_reference‖₂
+
+// Cloud slot holding every group's MLE_Run. Marked is_write_csv_companion_slot
+// so write_csv emits it to the <path>_runs.csv companion (one row per group ×
+// component, group keyed by sample_index) and the flat summary writer SKIPS it
+// (a vector of Vector_Space records would otherwise collide the group index with
+// the per-parameter value_row). See detail::write_runs_csv / emit_any.
+struct MLE_Run_Records : public var::Constant<MLE_Run_Records, std::vector<MLE_Run>> {
+    using base_type = var::Constant<MLE_Run_Records, std::vector<MLE_Run>>;
+    using base_type::base_type;
+    static constexpr bool is_write_csv_companion_slot = true;
+    MLE_Run_Records() = default;
+    friend std::string className(MLE_Run_Records) { return "MLE_Run_Records"; }
+};
+
+// =============================================================================
 // MLE per-group-of-replicates output (Path A: minimal State) — SLIM "cloud".
 //
 // Composite output of calc_MLE_per_group_of_replicates at one group_size n.
@@ -796,6 +825,11 @@ using MLE_Group_Cloud = var::Vector_Space<
     // valid groups (the covariance of the SAME all-group Moment_statistics whose
     // mean is the θ̄ point above). Handoff consumed by calc_empirical_distortion:
     Empirical_Parameter_Covariance,
+
+    // Complete per-group GN refit log (θ̂ + gradient + Fisher + status + n_iter +
+    // recovery distance), one MLE_Run per group. Companion-only: emitted to
+    // <path>_runs.csv, skipped in the summary:
+    MLE_Run_Records,
 
     // K representative groups per ranking variable at each probit height —
     // full per-group State preserved for downstream inspection (empty stub):
@@ -987,7 +1021,48 @@ inline Maybe_error<std::string> write_csv(
 template <class State>
 inline Maybe_error<std::string> write_csv(MLE_Group_Cloud<State> const& lik,
                                           std::string path) {
-    return detail::write_summary_csv(lik, std::move(path), "summary");
+    // The cloud's only CSV output is the raw per-group run log (<path>_runs.csv):
+    // one row per (group × component), the group keyed by sample_index. The reduced
+    // view (θ̄ / Cov_emp / bootstrap CIs / Wald T²) is fully derivable from it in R,
+    // so no separate reduced summary is written (raw in C++, derived in R).
+    auto param_names = detail::get_param_names_if_any(lik);
+    return detail::write_runs_csv(get<MLE_Run_Records>(lik)(), param_names, path + "_runs");
+}
+
+// write_csv for the INDEXED per-group MLE cloud. figure_3 broadcasts the cloud
+// over the algorithm / interval axes, so the DSL hands write_csv an
+// Indexed<MLE_Group_Cloud<State>>. The cloud's only CSV output is the per-group
+// run log (<path>_runs.csv) with the cell's axis columns, iterating each indexed
+// cell's MLE_Run_Records (one row per cell × group × component). The reduced view
+// is derived in R from it (raw in C++, derived in R), so no reduced summary is
+// written. Registered explicitly in command_manager.cpp for the Indexed cloud case.
+template <class State>
+inline Maybe_error<std::string> write_csv_indexed_cloud(
+    var::Indexed<MLE_Group_Cloud<State>> const& indexed, std::string path) {
+    // Parameter names from the first cell's cloud (shared θ̂ metadata frame).
+    std::vector<std::string> param_names;
+    auto maybe_first = indexed.begin();
+    if (maybe_first) {
+        auto first_cell = indexed.at(maybe_first.value());
+        if (first_cell) param_names = detail::get_param_names_if_any(first_cell.value().get());
+    }
+
+    return detail::write_indexed_rows_csv(
+        indexed.index_space(), param_names, path + "_runs",
+        [&indexed](auto& writer, detail::CsvContext base_ctx,
+                   auto const& coord) -> Maybe_error<bool> {
+            auto cell = indexed.at(coord);
+            if (!cell) return cell.error();
+            auto const& recs = get<MLE_Run_Records>(cell.value().get())();
+            for (std::size_t g = 0; g < recs.size(); ++g) {
+                detail::CsvContext ctx = base_ctx;
+                ctx.scope = "mle_run";
+                ctx.sample_index = g;
+                auto ok = detail::emit_any(writer, std::move(ctx), recs[g]);
+                if (!ok || !ok.value()) return ok;
+            }
+            return Maybe_error<bool>(true);
+        });
 }
 
 // write_csv for the figure_3 Fase-2 empirical-distortion capstone output.

@@ -1299,7 +1299,17 @@ Maybe_error<bool> emit_derivative_object(Writer& w, CsvContext ctx, const Der& d
 
 template <class Writer, class T>
 Maybe_error<bool> emit_any(Writer& w, CsvContext ctx, const T& x) {
-    if constexpr (is_probit_statistics_v<T>) {
+    if constexpr (requires { std::remove_cvref_t<T>::is_write_csv_companion_slot; }) {
+        // Companion-only slot (e.g. MLE_Run_Records): a std::vector of
+        // Vector_Space records written to its own <path>_runs.csv by
+        // write_runs_csv (group keyed by sample_index). Skipped in the flat
+        // summary — emitting it here would collide the group index with the
+        // per-parameter value_row of each record's vector components.
+        (void)w;
+        (void)ctx;
+        (void)x;
+        return true;
+    } else if constexpr (is_probit_statistics_v<T>) {
         using Id = typename probit_statistics_traits<std::remove_cvref_t<T>>::id;
         auto count_ctx = ctx;
         count_ctx.probit = "mean";
@@ -1397,6 +1407,36 @@ Maybe_error<bool> emit_any(Writer& w, CsvContext ctx, const T& x) {
         return error_message("write_csv_rows: unsupported value type ", ctx.component_path, " (",
                              macrodr::dsl::type_name<T>(), ")");
     }
+}
+
+// Companion writer for a flat per-record log (e.g. the per-group MLE_Run cloud).
+// Each record is emitted through the same emit_any machinery (so all the column
+// formatting, parameter names and matrix/vector unrolling are reused), wrapped
+// in a per-record `sample_index` discriminator — mirrors the Evolution_of path.
+// One row per (record × component); the record index lives in sample_index so it
+// never collides with the per-parameter value_row of vector/matrix components.
+template <class Run>
+Maybe_error<std::string> write_runs_csv(const std::vector<Run>& runs,
+                                        const std::vector<std::string>& param_names,
+                                        std::string path, std::string scope = "mle_run") {
+    const auto path_with_extension = path + ".csv";
+    std::ofstream f(path_with_extension);
+    if (!f.is_open()) {
+        return error_message("cannot open ", path_with_extension);
+    }
+    std::ofstream(path + ".binary") << GIT_COMMIT_HASH << "\n";
+
+    CsvWriter writer(f, param_names);
+    for (std::size_t g = 0; g < runs.size(); ++g) {
+        CsvContext ctx;
+        ctx.scope = scope;
+        ctx.sample_index = g;
+        auto ok = emit_any(writer, std::move(ctx), runs[g]);
+        if (!ok || !ok.value()) {
+            return ok.error()();
+        }
+    }
+    return path_with_extension;
 }
 
 template <class T>
