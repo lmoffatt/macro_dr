@@ -1237,11 +1237,14 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
         dsl::to_typed_return_function<Maybe_error<std::string>, const MLEGroupCloudMinimal&,
                                       std::string>(
             &macrodr::cmd::write_csv<dMacro_State_Hessian_minimal_param>, "analysis", "path"));
+    // Indexed cloud: dedicated writer that also emits the per-group _runs.csv
+    // companion (the generic write_csv(Indexed<T>) would only write the summary).
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<Maybe_error<std::string>,
                                       const var::Indexed<MLEGroupCloudMinimal>&, std::string>(
-            &macrodr::cmd::write_csv<MLEGroupCloudMinimal>, "analysis", "path"));
+            &macrodr::cmd::write_csv_indexed_cloud<dMacro_State_Hessian_minimal_param>,
+            "analysis", "path"));
 
     // θ̄ handoff: rebuild the full-sample mean of θ̂ as a Parameters_transformed
     // from the cloud (for the downstream figure_2 battery at θ̄). State pinned

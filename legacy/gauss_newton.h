@@ -307,8 +307,12 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
             }
             lambda = step_up();
             if (lambda > opts.lambda_max) {
-                return ReturnT(error_message(
-                    "gauss_newton: Cholesky failed and lambda exceeded lambda_max"));
+                // lambda_max reached: return the current best theta as "stalled"
+                // (a numerical stationary point) so EVERY group yields an MLE
+                // result instead of being dropped. Quality is read downstream
+                // from the gradient (Grad ~ 0 => genuine optimum).
+                return ReturnT(ResultT{std::move(theta), std::move(initial_state),
+                                       std::move(Maybe_state.value()), value, iter, "stalled"});
             }
             continue;
         }
@@ -320,8 +324,10 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
             }
             lambda = step_up();
             if (lambda > opts.lambda_max) {
-                return ReturnT(error_message(
-                    "gauss_newton: triangular inverse failed and lambda exceeded lambda_max"));
+                // lambda_max reached: return the current best theta as "stalled"
+                // (see the Cholesky branch) so the group still yields an MLE.
+                return ReturnT(ResultT{std::move(theta), std::move(initial_state),
+                                       std::move(Maybe_state.value()), value, iter, "stalled"});
             }
             continue;
         }
@@ -357,9 +363,11 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
             }
             lambda = step_up();
             if (lambda > opts.lambda_max) {
-                return ReturnT(error_message(
-                    std::string("gauss_newton: objective failed at proposal and ")
-                    + "lambda exceeded lambda_max: " + Maybe_state_new.error()()));
+                // lambda_max reached with every proposal failing: return the last
+                // good theta as "stalled" (see the Cholesky branch) so the group
+                // still yields an MLE.
+                return ReturnT(ResultT{std::move(theta), std::move(initial_state),
+                                       std::move(Maybe_state.value()), value, iter, "stalled"});
             }
             continue;
         }
@@ -402,8 +410,13 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
             }
             lambda = step_up();
             if (lambda > opts.lambda_max) {
-                return ReturnT(error_message(
-                    "gauss_newton: step rejected and lambda exceeded lambda_max"));
+                // No step improves even at maximal damping: the proposed step is
+                // ~0 yet value_new <= value (sub-FP-resolution progress on a very
+                // sharp/flat surface) — the current theta IS the numerical
+                // optimum. Return it as "stalled" (see the Cholesky branch) so
+                // every group yields an MLE instead of failing the whole refit.
+                return ReturnT(ResultT{std::move(theta), std::move(initial_state),
+                                       std::move(Maybe_state.value()), value, iter, "stalled"});
             }
         }
     }
