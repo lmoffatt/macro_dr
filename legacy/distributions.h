@@ -607,7 +607,11 @@ class Likelihood_Gaussian_Fisher_Distortion
 // (Affine_Invariant_Distance, log_Det, Eigenvalue_Spectrum, condition) reduce
 // to identity. Two anchors, named by the reference covariance:
 //
-// Fisher anchor (vs the naive Fisher covariance FC = F⁻¹):
+// Fisher anchor (vs the naive Fisher covariance FC = F⁻¹). NOTE: F is the
+// per-GROUP TOTAL Fisher (Σ over the gsize recordings a group MLE pools, i.e.
+// gsize·F̄ per-recording), so it lives at the same scale as Cov_emp — the group
+// θ̂ covariance. Anchoring on the per-recording mean Fisher instead would leave
+// the matrix ≈ (1/gsize)·I rather than ≈ I:
 //     Empirical_Covariance_Fisher_Distortion = F^{1/2} · Cov_emp · F^{1/2}
 //   ≈ I ⟺ Cov_emp = F⁻¹  (the uncorrected Fisher CI already matches reality;
 //   deviation = the total variance inflation a naive user would miss).

@@ -4057,8 +4057,32 @@ auto calc_empirical_distortion(
         return acc;
     };
 
+    // Per-group TOTAL Fisher = mean over valid recordings × gsize. This is the
+    // scale Cov_emp actually lives at: one group MLE pools gsize recordings, so
+    // its information ADDS, A_group = Σ_{r∈g} F_r ≈ gsize·F̄. Using mean×gsize
+    // (not a literal Σ) imputes any dropped recording at the group mean instead
+    // of under-counting that group. Applied to BOTH fim_sim and fim_bar, so the
+    // Optimum ratio F̄ᵍ_bar^{-1/2}·F̄ᵍ_sim·F̄ᵍ_bar^{-1/2} is unchanged (gsize cancels).
+    auto sum_fisher = [&](const std::vector<parameter_spd_payload>& fs,
+                          const std::vector<std::size_t>& R) -> SymPosDefMatrix<double> {
+        auto F = mean_fisher(fs, R);
+        const double gs = static_cast<double>(gsize);
+        for (std::size_t i = 0; i < p; ++i)
+            for (std::size_t j = i; j < p; ++j) F.set(i, j, F(i, j) * gs);
+        return F;
+    };
+
     // ----- The full distortion analysis over a set of GROUP indices ----------
-    // Cov_emp over the resampled groups; F̄ / J over the EXPANDED recordings.
+    // Anchors are built at GROUP scale to match Cov_emp's per-group units:
+    //   F̄ᵍ = group TOTAL Fisher  = sum_fisher (mean over recordings × gsize)
+    //   J  = group score covariance = gsize · per-RECORDING score covariance
+    // J scales the per-RECORDING score covariance (|R| = N_g·gsize DoF) by gsize
+    // rather than taking the covariance of per-group SUMMED scores (only N_g−1
+    // DoF). Under within-group independence — the pools are iid simulated
+    // recordings, so cross terms vanish — both have the SAME expectation gsize·Σ_s,
+    // but the per-recording form is √gsize× better conditioned. That matters most
+    // exactly where the group-sum form fails: few groups / large pools.
+    // Cov_emp / F̄ᵍ / J all evaluated over the same resampled groups.
     // Called once over all groups (point estimate) and once per bootstrap resample.
     auto compute_distortion =
         [&](const std::vector<std::size_t>& group_indices) -> Empirical_Distortion_Analysis {
@@ -4075,10 +4099,14 @@ auto calc_empirical_distortion(
     for (auto g : group_indices)
         for (std::size_t k = 0; k < gsize; ++k) R.push_back(g * gsize + k);
 
-    SymPosDefMatrix<double> F_bar_sim = mean_fisher(fim_sim, R);
-    SymPosDefMatrix<double> F_bar_bar = mean_fisher(fim_bar, R);
+    SymPosDefMatrix<double> F_bar_sim = sum_fisher(fim_sim, R);
+    SymPosDefMatrix<double> F_bar_bar = sum_fisher(fim_bar, R);
 
-    // ----- J = HAC score covariance over the expanded recordings R -----------
+    // ----- J = group score covariance B = gsize · per-recording score cov ----
+    // Cov_rec = covariance of the per-RECORDING summed score across the |R| =
+    // N_g·gsize expanded recordings (the existing helper). The group B is then
+    // gsize·Cov_rec: exact in expectation under within-group independence, and
+    // √gsize× better conditioned than the covariance of N_g per-group sums.
     SymPosDefMatrix<double> J = nan_spd();
     if (!R.empty()) {
         auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
@@ -4090,7 +4118,12 @@ auto calc_empirical_distortion(
                                                 var::get_dx_of_dfdx(get<logL>(evo_i)));
             });
         auto J_val = get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)())().value();
-        if (J_val.nrows() == p) J = J_val;
+        if (J_val.nrows() == p) {
+            const double gs = static_cast<double>(gsize);  // Cov_rec → group B
+            for (std::size_t i = 0; i < p; ++i)
+                for (std::size_t j = i; j < p; ++j) J_val.set(i, j, J_val(i, j) * gs);
+            J = J_val;
+        }
     }
 
     // ----- W_Fbar = PSD decomposition of F̄_bar (the optimum-Fisher frame) ----
@@ -4104,6 +4137,8 @@ auto calc_empirical_distortion(
             .value_or(nan_spd());
 
     // ----- The three distortion matrices --------------------------------------
+    // NB: F̄_bar / F̄_sim below are the GROUP-scale totals from sum_fisher, and J
+    // is the group-scale B — so every anchor matches Cov_emp's per-group units.
     // ECD_Fisher = F̄_bar^{1/2} · Cov_emp · F̄_bar^{1/2}
     auto ECD_Fisher = Empirical_Covariance_Fisher_Distortion(
         lapack::apply_sqrt_congruence(W_Fbar, Cov_emp, "ECD_Fisher subspace matrix", rtol, atol)
