@@ -2839,8 +2839,7 @@ Maybe_error<std::string> write_csv(
     std::ofstream f(path_);
     if (!f.is_open())
         return error_message("cannot open ", path_);
-    // Provenance sidecar (matches the convention of write_summary_csv).
-    std::ofstream(path + ".binary") << GIT_COMMIT_HASH << "\n";
+    detail::write_provenance_row(f);  // commit hash as line 1, before the header
 
     // Iterate the LARGER index space — numerical_fisher_information's, which is
     // a superset of dlikelihood_predictions' axes (it includes h_rel via
@@ -3999,37 +3998,56 @@ auto calc_empirical_distortion(
     const MLE_Group_Cloud<State>& cloud,
     const std::vector<parameter_spd_payload>& fim_sim,
     const std::vector<parameter_spd_payload>& fim_bar,
-    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar, double rtol, double atol)
-    -> Maybe_error<Empirical_Distortion_Analysis> {
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    std::size_t n_bootstrap, std::size_t seed, const std::set<double>& probit_cis,
+    double rtol, double atol)
+    -> Maybe_error<Empirical_Distortion_Bootstrap> {
 
     const double NaN_d = std::numeric_limits<double>::quiet_NaN();
 
-    // ----- Cov_emp (raw empirical covariance of θ̂) from the cloud -------------
-    auto const& cov_emp_payload = get<Empirical_Parameter_Covariance>(cloud)();
-    SymPosDefMatrix<double> Cov_emp = cov_emp_payload.value();
-    auto* params_ptr = cov_emp_payload.parameters_ptr();
-    const std::size_t p = Cov_emp.nrows();
+    // ----- Raw per-group θ̂ (the iid bootstrap units) from the cloud -----------
+    auto const& runs = get<MLE_Run_Records>(cloud)();
+    const std::size_t N_groups = runs.size();
+    if (N_groups == 0)
+        return error_message("calc_empirical_distortion: empty MLE_Run_Records (no groups)");
+    auto const& theta0 = get<Model_Parameters_Hat>(runs[0])();
+    auto* params_ptr = theta0.parameters_ptr();
+    const std::size_t p = theta0.value().nrows();
     if (p == 0)
-        return error_message("calc_empirical_distortion: empty Cov_emp from cloud");
+        return error_message("calc_empirical_distortion: empty θ̂ in the cloud");
+
+    // ----- group_size + the group→recording mapping (Option 1: contiguous) -----
+    // group g spans recordings [g·gsize, (g+1)·gsize). Reconstructed from
+    // Group_Size and VALIDATED against the per-recording vectors, so a dropped
+    // group (which would shift the contiguous mapping) FAILS LOUD instead of
+    // silently misaligning the bootstrap.
+    const std::size_t gsize = get<Group_Size>(cloud)();
+    if (gsize == 0)
+        return error_message("calc_empirical_distortion: Group_Size == 0");
+    if (!(fim_sim.size() == fim_bar.size() && fim_bar.size() == dlik_bar.size()))
+        return error_message(
+            "calc_empirical_distortion: fim_sim / fim_bar / dlik_bar size mismatch");
+    if (runs.size() != fim_sim.size() / gsize)
+        return error_message(
+            "calc_empirical_distortion: N_groups (" + std::to_string(runs.size()) +
+            ") != n_recordings/gsize (" + std::to_string(fim_sim.size() / gsize) +
+            ") — dropped groups break the contiguous group->recording mapping");
 
     auto nan_spd = [&]() { return SymPosDefMatrix<double>(p, p, NaN_d); };
 
-    // ----- F̄_sim / F̄_bar = mean over the per-recording numerical Fisher ------
-    // Sum the SymPosDefMatrix payloads / n (mirrors compute_F_b). Returns a NaN
-    // p×p matrix when the input vector is empty or shapes mismatch.
-    auto mean_fisher = [&](const std::vector<parameter_spd_payload>& fs)
-        -> SymPosDefMatrix<double> {
-        if (fs.empty()) return nan_spd();
-        const std::size_t n = fs[0].value().nrows();
-        if (n != p) return nan_spd();
+    // Mean over the per-recording numerical Fisher, restricted to a recording set R
+    // (R may contain REPEATS — a group resampled k times contributes its recordings
+    // k times). Returns a NaN p×p matrix when there is no finite entry.
+    auto mean_fisher = [&](const std::vector<parameter_spd_payload>& fs,
+                           const std::vector<std::size_t>& R) -> SymPosDefMatrix<double> {
         SymPosDefMatrix<double> acc(p, p, 0.0);
         std::size_t n_valid = 0;
-        for (auto const& Fi : fs) {
-            if (Fi.value().nrows() != p) continue;
-            if (!lapack::matrix_has_only_finite(Fi.value())) continue;
+        for (auto r : R) {
+            if (r >= fs.size()) continue;
+            auto const& Fi = fs[r].value();
+            if (Fi.nrows() != p || !lapack::matrix_has_only_finite(Fi)) continue;
             for (std::size_t i = 0; i < p; ++i)
-                for (std::size_t j = i; j < p; ++j)
-                    acc.set(i, j, acc(i, j) + Fi.value()(i, j));
+                for (std::size_t j = i; j < p; ++j) acc.set(i, j, acc(i, j) + Fi(i, j));
             ++n_valid;
         }
         if (n_valid == 0) return nan_spd();
@@ -4038,18 +4056,33 @@ auto calc_empirical_distortion(
             for (std::size_t j = i; j < p; ++j) acc.set(i, j, acc(i, j) * scale);
         return acc;
     };
-    SymPosDefMatrix<double> F_bar_sim = mean_fisher(fim_sim);
-    SymPosDefMatrix<double> F_bar_bar = mean_fisher(fim_bar);
 
-    // ----- J = HAC score covariance at θ̄ from dlik_bar -----------------------
-    // Reuse the battery's evolution-correlation path over ALL recordings
-    // (indices = 0..n-1), with only the dlogL slot. J = Cov(Σ_t dlogL_t).
+    // ----- The full distortion analysis over a set of GROUP indices ----------
+    // Cov_emp over the resampled groups; F̄ / J over the EXPANDED recordings.
+    // Called once over all groups (point estimate) and once per bootstrap resample.
+    auto compute_distortion =
+        [&](const std::vector<std::size_t>& group_indices) -> Empirical_Distortion_Analysis {
+    // Cov_emp = empirical covariance of the resampled θ̂ cloud (over groups).
+    auto theta_moments = Moment_statistics<Model_Parameters_Hat, true>(
+        runs, group_indices,
+        [](const MLE_Run& r) { return get<Model_Parameters_Hat>(r)(); });
+    SymPosDefMatrix<double> Cov_emp =
+        get<covariance<Model_Parameters_Hat>>(theta_moments())().value();
+
+    // Expand the resampled groups to their recordings (contiguous; with repeats).
+    std::vector<std::size_t> R;
+    R.reserve(group_indices.size() * gsize);
+    for (auto g : group_indices)
+        for (std::size_t k = 0; k < gsize; ++k) R.push_back(g * gsize + k);
+
+    SymPosDefMatrix<double> F_bar_sim = mean_fisher(fim_sim, R);
+    SymPosDefMatrix<double> F_bar_bar = mean_fisher(fim_bar, R);
+
+    // ----- J = HAC score covariance over the expanded recordings R -----------
     SymPosDefMatrix<double> J = nan_spd();
-    if (!dlik_bar.empty()) {
-        std::vector<std::size_t> all_indices(dlik_bar.size());
-        for (std::size_t i = 0; i < dlik_bar.size(); ++i) all_indices[i] = i;
+    if (!R.empty()) {
         auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
-            dlik_bar, all_indices,
+            dlik_bar, R,
             std::type_identity<
                 Evolution_of<Vector_Space<Moment_statistics<dlogL, true>>>>{},
             [](const auto& evo_i) {
@@ -4148,14 +4181,40 @@ auto calc_empirical_distortion(
         std::move(ecd_c_spectrum), std::move(ecd_c_cond),
         std::move(Optimum), std::move(opt_d_ai), std::move(opt_log_det),
         std::move(opt_spectrum), std::move(opt_min_eig), std::move(opt_cond));
+    };  // end compute_distortion
+
+    // ----- Point estimate (all groups) + bootstrap OVER GROUPS ----------------
+    std::vector<std::size_t> all_groups(N_groups);
+    for (std::size_t g = 0; g < N_groups; ++g) all_groups[g] = g;
+    Empirical_Distortion_Analysis point = compute_distortion(all_groups);
+
+    // Bootstrap resamples GROUPS (the θ̂ are the iid units); each resampled group
+    // is expanded to its recordings inside compute_distortion. Few groups (large
+    // group_size) collapse the CIs, like calc_MLE's group bootstrap.
+    std::vector<Empirical_Distortion_Analysis> samples;
+    if (N_groups >= 2 && n_bootstrap > 0) {
+        auto mt = mt_64i(seed);
+        samples = bootstrap_it(
+            [&](const std::vector<MLE_Run>&, const std::vector<std::size_t>& idx) {
+                return compute_distortion(idx);
+            },
+            runs, n_bootstrap, mt);
+    } else {
+        samples.push_back(point);
+    }
+    auto probits = apply_Probit_statistics(samples, probit_cis);
+
+    // Flat concatenation: point estimate ++ per-component probit CIs.
+    return concatenate(std::move(point), std::move(probits));
 }
 
 // Explicit instantiation for Path A (minimal State).
 template auto calc_empirical_distortion<dMacro_State_Hessian_minimal_param>(
     const MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>&,
     const std::vector<parameter_spd_payload>&, const std::vector<parameter_spd_payload>&,
-    const std::vector<dMacro_State_Ev_gradient_all>&, double, double)
-    -> Maybe_error<Empirical_Distortion_Analysis>;
+    const std::vector<dMacro_State_Ev_gradient_all>&, std::size_t, std::size_t,
+    const std::set<double>&, double, double)
+    -> Maybe_error<Empirical_Distortion_Bootstrap>;
 
 // Explicit instantiation for Path A (minimal State).
 template auto calc_MLE_per_group_of_replicates<dMacro_State_Hessian_minimal_param>(

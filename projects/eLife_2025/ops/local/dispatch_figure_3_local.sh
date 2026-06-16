@@ -8,7 +8,7 @@
 # FILE CONTRACT — figure_3_mle.macroir must NOT define the injected names itself
 # (same as the dirac dispatcher): axis_Nchanels, Num_ch, axis_noise, current_noise,
 # n_simulations, filepath, algorithm_axis, algo_*_approximation, axis_interval,
-# exp_n_step_/exp_n_samp_, axis_h_fim, h_rel_value, group_size,
+# exp_n_step_/exp_n_samp_, axis_h_fim, h_rel_value, group_size_axis, group_size,
 # n_bootstrap_samples, min_groups_for_bootstrap, gn_max_iter.
 #
 # Prereq: a local build (the user compiles): build/gcc-release/macrodr_cli.
@@ -16,9 +16,10 @@
 # Usage (from anywhere; paths are resolved relative to the repo base):
 #   projects/eLife_2025/ops/local/dispatch_figure_3_local.sh
 # Tunables via env: NCHS and N_SIMS (parallel arrays, same length), N_NOISE,
-# N_ALGO, H_RELS, GROUP_SIZE, N_BOOT, MIN_GROUPS, GN_MAX_ITER, THREADS, BIN, WORKDIR.
-# Example (reproduce a dirac cell locally):
-#   NCHS="1000" N_SIMS="64" N_ALGO="macro_IR" \
+# N_ALGO, H_RELS, GROUP_SIZE (a DSL axis — broadcast within one run; cloud CSV
+# gains a group_size column), N_BOOT, MIN_GROUPS, GN_MAX_ITER, THREADS, BIN, WORKDIR.
+# Example (reproduce a dirac cell locally, sweeping group size):
+#   NCHS="1000" N_SIMS="64" N_ALGO="macro_IR" GROUP_SIZE="1 10 100" \
 #     projects/eLife_2025/ops/local/dispatch_figure_3_local.sh
 
 set -eo pipefail
@@ -44,7 +45,10 @@ N_ALGO=(${N_ALGO:-macro_IR})
 H_RELS=(${H_RELS:-1e-5})
 
 # Per-group MLE knobs (same as dirac; injected as size_t literals).
-GROUP_SIZE="${GROUP_SIZE:-1}"          # 1 = per-replicate; >1 pools recordings per refit
+# GROUP_SIZE is a DSL axis (broadcast within one run): 1 = per-replicate; >1 pools
+# recordings per refit. Multi-value sweeps the cloud over group size in one run,
+# e.g. GROUP_SIZE="1 10 100".
+GROUP_SIZE=(${GROUP_SIZE:-1})
 N_BOOT="${N_BOOT:-100}"                # bootstrap replicates over groups
 MIN_GROUPS="${MIN_GROUPS:-10}"         # below this, probit slots NaN-filled
 GN_MAX_ITER="${GN_MAX_ITER:-100}"      # GN per-group refit iteration cap
@@ -54,9 +58,25 @@ GN_MAX_ITER="${GN_MAX_ITER:-100}"      # GN per-group refit iteration cap
     exit 1
 }
 
-# Output dir: the repo's eLife_2025 tree, so figures/data/ lands next to the
-# dirac downloads and the R notebooks read them. Override with WORKDIR=…
-WORKDIR="${WORKDIR:-$BASE/projects/eLife_2025}"
+# Per-commit output isolation, mirroring the dirac dispatcher. Ask the binary for
+# its baked git hash (the same string it stamps as row 1 of every CSV) so two
+# commit versions write to DISJOINT folders. Folder precedence:
+#   WORKDIR=/abs       explicit, highest -> used verbatim (documented back-compat knob)
+#   RUN_DIR=egesij56   -> $BASE/projects/eLife_2025/egesij56  (continuation over old data)
+#   RUN_DIR=/abs/path  -> used verbatim
+#   (default)          -> $BASE/projects/eLife_2025/<commit>
+if ! commit="$("$BIN" --commit)"; then
+    echo "[local] could not query commit hash: '$BIN --commit' failed" >&2
+    exit 1
+fi
+[ -n "$commit" ] || { echo "[local] '$BIN --commit' returned empty" >&2; exit 1; }
+run="${RUN_DIR:-$commit}"
+if [ -z "${WORKDIR:-}" ]; then
+    case "$run" in
+        /*) WORKDIR="$run" ;;
+        *)  WORKDIR="$BASE/projects/eLife_2025/$run" ;;
+    esac
+fi
 WORKDIR="$(readlink -f "$WORKDIR")"
 mkdir -p "$WORKDIR/figures/data" "$WORKDIR/logs"
 
@@ -76,7 +96,11 @@ join_qcsv() { local out=""; for v in "$@"; do [ -n "$out" ] && out+=","; out+="\
 # Loop-invariant injections (built once). axis_h_fim must precede h_rel_value.
 axis_h_arg=$(printf -- '--axis_h_fim = axis(name= "axis_h_fim", labels= [%s])' "$(join_qcsv "${H_RELS[@]}")")
 h_rel_arg=$( printf -- '--h_rel_value = indexed_double_by(axis= axis_h_fim, values=[%s])' "$(join_csv "${H_RELS[@]}")")
-gs_arg=$(    printf -- '--group_size = get_number(n=%s)' "$GROUP_SIZE")
+# group_size is a DSL AXIS (group_size_axis must precede the indexed_size_by that
+# references it). calc_MLE broadcasts over it → one run sweeps all group sizes and
+# the cloud CSV gains a group_size column. Multi-value via GROUP_SIZE="1 10 100".
+group_size_axis_arg=$(printf -- '--group_size_axis = axis(name= "group_size", labels= [%s])' "$(join_qcsv "${GROUP_SIZE[@]}")")
+gs_arg=$( printf -- '--group_size = indexed_size_by(axis= group_size_axis, values=[%s])' "$(join_csv "${GROUP_SIZE[@]}")")
 nboot_arg=$( printf -- '--n_bootstrap_samples = get_number(n=%s)' "$N_BOOT")
 mingrp_arg=$(printf -- '--min_groups_for_bootstrap = get_number(n=%s)' "$MIN_GROUPS")
 gnmaxit_arg=$(printf -- '--gn_max_iter = get_number(n=%s)' "$GN_MAX_ITER")
@@ -84,6 +108,7 @@ gnmaxit_arg=$(printf -- '--gn_max_iter = get_number(n=%s)' "$GN_MAX_ITER")
 cd "$WORKDIR"
 echo "[local] base=$BASE"
 echo "[local] bin=$BIN"
+echo "[local] commit=$commit  run=$run"
 echo "[local] cwd=$WORKDIR  threads=$OMP_NUM_THREADS"
 
 for j in "${!N_ALGO[@]}"; do
@@ -118,7 +143,7 @@ for i in "${!NCHS[@]}"; do
     axis_arg=$(printf -- '--axis_Nchanels = axis(name= "Num_ch", labels= ["%s"])' "$nch")
     num_arg=$( printf -- '--Num_ch = indexed_double_by(axis= axis_Nchanels, values=[%s])' "$nch")
     nsim_arg=$(printf -- '--n_simulations = get_number(n=%s)' "$nsim")
-    fp_arg=$(  printf -- '--filepath = "figures/data/figure_3_nch_%s_nsim_%s_%s_noise_%s_gs_%s"' "$nch" "$nsim" "$algo" "$nnoise" "$GROUP_SIZE")
+    fp_arg=$(  printf -- '--filepath = "figures/data/figure_3_nch_%s_nsim_%s_%s_noise_%s"' "$nch" "$nsim" "$algo" "$nnoise")
     axis_noise_arg=$(printf -- '--axis_noise = axis(name= "noise_in_conductance_tau", labels= ["%s"])' "$nnoise")
     current_noise_arg=$(printf -- '--current_noise = indexed_double_by(axis= axis_noise, values=[%s])' "$vnoise")
     axis_algo_arg=$( printf -- '--algorithm_axis = axis(name= "algorithm", labels= ["%s"])' "$algo")
@@ -136,9 +161,9 @@ for i in "${!NCHS[@]}"; do
     exp_step_3_arg=$(printf -- '--exp_n_step_3 = indexed_size_by(axis= axis_interval, values=[4,8,20,40,80,200,400])')
     exp_samp_3_arg=$(printf -- '--exp_n_samp_3 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
 
-    fp_label="figure_3_nch_${nch}_nsim_${nsim}_${algo}_noise_${nnoise}_gs_${GROUP_SIZE}"
+    fp_label="figure_3_nch_${nch}_nsim_${nsim}_${algo}_noise_${nnoise}"
     log="$WORKDIR/logs/${fp_label}.log"
-    echo "[local] running ${fp_label}  (n_sim=${nsim}, algo=${algo}, gs=${GROUP_SIZE}) -> ${log}"
+    echo "[local] running ${fp_label}  (n_sim=${nsim}, algo=${algo}, gs_axis=[${GROUP_SIZE[*]}]) -> ${log}"
 
     "$BIN" \
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
@@ -149,7 +174,7 @@ for i in "${!NCHS[@]}"; do
         "$exp_step_1_arg" "$exp_samp_1_arg" "$exp_step_2_arg" "$exp_samp_2_arg" \
         "$exp_step_3_arg" "$exp_samp_3_arg" \
         "$axis_h_arg" "$h_rel_arg" \
-        "$gs_arg" "$nboot_arg" "$mingrp_arg" "$gnmaxit_arg" \
+        "$group_size_axis_arg" "$gs_arg" "$nboot_arg" "$mingrp_arg" "$gnmaxit_arg" \
         "$SCRIPT" 2>&1 | tee "$log"
 
     echo "[local] done ${fp_label} -> ${WORKDIR}/figures/data/${fp_label}_*"

@@ -19,6 +19,7 @@
 #include "maybe_error.h"
 #include "matrix.h"
 #include "macrodr/dsl/type_name.h"
+#include "macrodr/git_commit.h"
 #include "variables.h"
 #include "derivative_operator.h"
 #include "matrix_derivative.h"
@@ -997,7 +998,7 @@ inline Json to_json(
     const std::unique_ptr<macrodr::interface::IModel<var::Parameters_values>>& m, TagPolicy) {
     Json obj = Json::object();
     obj.obj.emplace("model_id", Json::string(m ? m->model_name() : std::string{}));
-    obj.obj.emplace("binary", Json::string(GIT_COMMIT_HASH));
+    obj.obj.emplace("binary", Json::string(macrodr::git_commit_hash()));
     return obj;
 }
 

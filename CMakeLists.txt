@@ -59,18 +59,38 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 
 # -------------------------------------------------------
-# 2) Obtain Git commit hash (unchanged)
+# 2) Git commit hash — build-time version stamp
 # -------------------------------------------------------
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    execute_process(
-        COMMAND git rev-parse --short HEAD
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE GIT_COMMIT_HASH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-else()
-    set(GIT_COMMIT_HASH "unknown")
-endif()
+# The hash is compiled into ONE generated TU (git_commit.generated.cpp), exposed
+# via macrodr::git_commit_hash(). A custom target regenerates it on EVERY build
+# (write-if-different), so a new commit is picked up WITHOUT re-configuring and
+# recompiles ONLY that one file (then a fast relink) — never the whole core lib.
+# Replaces the old configure-time -DGIT_COMMIT_HASH, which (a) went stale after a
+# commit until you re-ran cmake and (b) put the flag on every TU's command line,
+# forcing a full core rebuild whenever it changed.
+set(MACRODR_GIT_STAMP_TEMPLATE  ${CMAKE_SOURCE_DIR}/cmake/git_commit.cpp.in)
+set(MACRODR_GIT_STAMP_SCRIPT    ${CMAKE_SOURCE_DIR}/cmake/GenerateGitCommit.cmake)
+set(MACRODR_GIT_STAMP_GENERATED ${CMAKE_BINARY_DIR}/git_commit.generated.cpp)
+
+# Generate once at configure time so the file exists for the first compile...
+execute_process(COMMAND ${CMAKE_COMMAND}
+    -DGIT_SRC_DIR=${CMAKE_SOURCE_DIR}
+    -DTEMPLATE_FILE=${MACRODR_GIT_STAMP_TEMPLATE}
+    -DOUTPUT_FILE=${MACRODR_GIT_STAMP_GENERATED}
+    -P ${MACRODR_GIT_STAMP_SCRIPT})
+
+# ...and refresh it on every build (write-if-different keeps it a no-op unless the
+# hash changed, so the dependent recompile only fires on a real commit/dirty flip).
+add_custom_target(macrodr_git_stamp ALL
+    BYPRODUCTS ${MACRODR_GIT_STAMP_GENERATED}
+    COMMAND ${CMAKE_COMMAND}
+        -DGIT_SRC_DIR=${CMAKE_SOURCE_DIR}
+        -DTEMPLATE_FILE=${MACRODR_GIT_STAMP_TEMPLATE}
+        -DOUTPUT_FILE=${MACRODR_GIT_STAMP_GENERATED}
+        -P ${MACRODR_GIT_STAMP_SCRIPT}
+    COMMENT "Stamping git commit hash"
+    VERBATIM)
+set_source_files_properties(${MACRODR_GIT_STAMP_GENERATED} PROPERTIES GENERATED TRUE)
 
 # -------------------------------------------------------
 # 3) Third-party single-header interface target ### NEW
@@ -180,7 +200,11 @@ add_library(macrodr_core STATIC
     ${MACRODR_PUBLIC_HEADERS}
     ${MACRODR_CORE_HEADERS}
     ${MACRODR_CORE_SRC}
+    ${MACRODR_GIT_STAMP_GENERATED}
     ${MACRODR_LEGACY_HEADERS})
+
+# Regenerate the git-commit stamp before core compiles the generated TU.
+add_dependencies(macrodr_core macrodr_git_stamp)
 
 target_include_directories(macrodr_core PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -190,8 +214,9 @@ target_include_directories(macrodr_core SYSTEM PUBLIC
     $<INSTALL_INTERFACE:legacy>
     ${gsl_dir})   # GSL headers — don't rely on the module's CPATH being inherited
 
-target_compile_definitions(macrodr_core
-    PUBLIC GIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
+# (Git commit hash is provided via macrodr::git_commit_hash() from the build-time
+#  version stamp above — no compile definition, so a new commit recompiles only
+#  git_commit.generated.cpp.)
 
 # -------------------------------------------------------
 # 7) Legacy object library (kept compiling) ### NEW

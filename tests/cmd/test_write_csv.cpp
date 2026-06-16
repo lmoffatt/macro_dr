@@ -2,6 +2,7 @@
 
 #include <macrodr/cmd/detail/write_csv_common.h>
 #include <macrodr/cmd/likelihood.h>
+#include <macrodr/git_commit.h>
 #include <macrodr/cmd/load_experiment.h>
 #include <macrodr/cmd/simulate.h>
 
@@ -33,12 +34,39 @@ struct TempDirGuard {
     }
 };
 
+// Reads a macrodr CSV, STRIPPING the build-provenance row that every writer now
+// emits as physical line 1 (the git commit hash — see write_provenance_row in
+// write_csv_common.h). Returning header+data unchanged keeps every per-test
+// assertion on header position / row count valid. The row's presence and
+// non-emptiness are asserted here so the feature stays covered for all callers.
 std::vector<std::string> read_lines(const std::filesystem::path& path) {
     std::ifstream in(path);
     if (!in.is_open()) {
         throw std::runtime_error("cannot open test csv: " + path.string());
     }
 
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(in, line)) {
+        lines.push_back(line);
+    }
+    if (lines.empty()) {
+        throw std::runtime_error("csv missing provenance row: " + path.string());
+    }
+    if (lines.front().empty()) {
+        throw std::runtime_error("csv provenance row is empty: " + path.string());
+    }
+    lines.erase(lines.begin());  // drop the commit-hash row; callers see header first
+    return lines;
+}
+
+// Returns the RAW physical lines (provenance row included), for the dedicated
+// provenance test that asserts the hash row itself.
+std::vector<std::string> read_raw_lines(const std::filesystem::path& path) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        throw std::runtime_error("cannot open test csv: " + path.string());
+    }
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(in, line)) {
@@ -177,6 +205,30 @@ TEST_CASE("generic write_csv serializes moment and probit statistics", "[write_c
     }
     CHECK(saw_low_quantile);
     CHECK(saw_high_quantile);
+}
+
+TEST_CASE("write_csv prepends the build commit hash as the first row", "[write_csv]") {
+    using namespace macrodr;
+    using namespace macrodr::cmd;
+
+    TempDirGuard dir("write_csv_provenance");
+    const auto base = dir.path / "provenance";
+
+    auto summary = var::Vector_Space{
+        Moment_statistics<logL>(std::vector<logL>{logL(-2.0), logL(-1.0)})};
+
+    auto out = write_csv(summary, base.string());
+    REQUIRE(out);
+
+    const auto raw = read_raw_lines(base.string() + ".csv");
+    REQUIRE(raw.size() >= 2);
+    // Line 1 is the provenance row: exactly what the writer was built with
+    // (macrodr::git_commit_hash() from the build-time version stamp).
+    CHECK(raw.front() == std::string(macrodr::git_commit_hash()));
+    // Line 2 is the column header (what callers used to see as line 1).
+    CHECK(raw[1] == expected_header());
+    // No fragile <path>.binary sidecar should be produced anymore.
+    CHECK_FALSE(std::filesystem::exists(base.string() + ".binary"));
 }
 
 TEST_CASE("recording write_csv uses the unified schema", "[write_csv]") {

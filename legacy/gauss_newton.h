@@ -171,6 +171,13 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
     EvalT initial_state = Maybe_state.value();
     double value = get<logL>(Maybe_state.value())();
 
+    // Stable reference scale for the grad-norm fallback: the WARMSTART norm, NOT
+    // the current theta(). Using the current theta is self-defeating — a non-
+    // identifiable parameter that runs away inflates ‖θ‖, which inflates the
+    // tolerance (grad_rtol·‖θ‖), so a diverged, NON-converged point (large
+    // gradient) gets falsely accepted as "converged_grad". The warmstart is stable.
+    const double theta_ref_norm = std::max(1.0, detail::frobenius_norm(theta()));
+
     std::size_t iter = 0;
     for (; iter < opts.max_iter; ++iter) {
 
@@ -221,8 +228,10 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
                 value, iter, "converged_newton_dec"
             });
         }
-        // FALLBACK: raw gradient norm (back-compat; can be unreachable at large N).
-        if (grad_norm < opts.grad_rtol * theta_norm) {
+        // FALLBACK: raw gradient norm, relative to the STABLE warmstart scale
+        // (theta_ref_norm), NEVER the current ‖θ‖ — a diverging parameter would
+        // inflate the current norm and falsely satisfy this test (see above).
+        if (grad_norm < opts.grad_rtol * theta_ref_norm) {
             return ReturnT(ResultT{
                 std::move(theta), std::move(initial_state),
                 std::move(Maybe_state.value()),

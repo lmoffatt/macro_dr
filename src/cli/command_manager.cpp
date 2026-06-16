@@ -180,10 +180,11 @@ auto calc_empirical_distortion_dsl(
     const cmd::MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>& cloud,
     const std::vector<parameter_spd_payload>& fim_sim,
     const std::vector<parameter_spd_payload>& fim_bar,
-    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar)
-    -> Maybe_error<cmd::Empirical_Distortion_Analysis> {
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    std::size_t n_bootstrap, std::size_t seed, std::set<double> probit_cis)
+    -> Maybe_error<cmd::Empirical_Distortion_Bootstrap> {
     return cmd::calc_empirical_distortion<dMacro_State_Hessian_minimal_param>(
-        cloud, fim_sim, fim_bar, dlik_bar, 1e-10, 0.0);
+        cloud, fim_sim, fim_bar, dlik_bar, n_bootstrap, seed, probit_cis, 1e-10, 0.0);
 }
 
 }
@@ -1260,27 +1261,30 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
     // (at θ_sim and θ̄) and score (at θ̄) outputs.
     cm.push_function(
         "calc_empirical_distortion",
-        dsl::to_typed_return_function<Maybe_error<cmd::Empirical_Distortion_Analysis>,
+        dsl::to_typed_return_function<Maybe_error<cmd::Empirical_Distortion_Bootstrap>,
                                       const MLEGroupCloudMinimal&,
                                       const std::vector<parameter_spd_payload>&,
                                       const std::vector<parameter_spd_payload>&,
-                                      const std::vector<dMacro_State_Ev_gradient_all>&>(
-            &calc_empirical_distortion_dsl, "cloud", "fim_sim", "fim_bar", "dlik_bar"));
+                                      const std::vector<dMacro_State_Ev_gradient_all>&,
+                                      std::size_t, std::size_t, std::set<double>>(
+            &calc_empirical_distortion_dsl, "cloud", "fim_sim", "fim_bar", "dlik_bar",
+            "n_bootstrap", "seed", "probit_cis"));
 
-    // write_csv for the empirical-distortion capstone output (plain + Indexed).
+    // write_csv for the empirical-distortion capstone output (point ++ probit CIs;
+    // plain + Indexed).
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<Maybe_error<std::string>,
-                                      const cmd::Empirical_Distortion_Analysis&, std::string>(
+                                      const cmd::Empirical_Distortion_Bootstrap&, std::string>(
             static_cast<Maybe_error<std::string> (*)(
-                cmd::Empirical_Distortion_Analysis const&, std::string)>(&macrodr::cmd::write_csv),
+                cmd::Empirical_Distortion_Bootstrap const&, std::string)>(&macrodr::cmd::write_csv),
             "analysis", "path"));
     cm.push_function(
         "write_csv",
         dsl::to_typed_return_function<Maybe_error<std::string>,
-                                      const var::Indexed<cmd::Empirical_Distortion_Analysis>&,
+                                      const var::Indexed<cmd::Empirical_Distortion_Bootstrap>&,
                                       std::string>(
-            &macrodr::cmd::write_csv<cmd::Empirical_Distortion_Analysis>, "analysis", "path"));
+            &macrodr::cmd::write_csv<cmd::Empirical_Distortion_Bootstrap>, "analysis", "path"));
 
     // Raw-model variants (matches calc_likelihood / calc_dlikelihood pattern):
     // takes ModelPtr and individual approximation flags rather than the

@@ -55,6 +55,10 @@ CliOptions parse_cli(int argc, const char* const argv[]) {
             out.version = true;
             continue;
         }
+        if (!end_of_options && tok == "--commit") {
+            out.commit = true;
+            continue;
+        }
         if (!end_of_options && (tok == "-n" || tok == "--check-syntax")) {
             out.check_syntax = true;
             continue;
