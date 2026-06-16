@@ -1,0 +1,13 @@
+// GENERATED at build time by cmake/GenerateGitCommit.cmake — DO NOT EDIT.
+// configure_file() write-if-different keeps this file (and its mtime) stable
+// across builds unless the commit hash actually changes, so only THIS TU
+// recompiles on a new commit.
+#include <macrodr/git_commit.h>
+
+namespace macrodr {
+
+const char* git_commit_hash() {
+    return "@MACRODR_GIT_COMMIT_HASH@";
+}
+
+}  // namespace macrodr
