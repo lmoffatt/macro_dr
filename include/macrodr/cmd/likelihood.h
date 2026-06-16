@@ -893,8 +893,12 @@ auto get_parameters_mean(const MLE_Group_Cloud<State>& cloud)
 // distortion matrices, each with the same scalar suite the diagnostic battery
 // emits:
 //   - Empirical_Covariance_Fisher_Distortion  = F̄_bar^{1/2} · Cov_emp · F̄_bar^{1/2}
-//   - Empirical_Covariance_Corrected_Distortion = DCC^{-1/2} · Cov_emp · DCC^{-1/2},
+//   - Empirical_Covariance_Corrected_Distortion ~ DCC^{-1/2} · Cov_emp · DCC^{-1/2},
 //                                                  DCC = F̄_bar^{-1} J F̄_bar^{-1}
+//     computed WITHOUT forming/decomposing the doubly-ill-conditioned DCC, via the
+//     identity eig(DCC^{-1/2}·Cov_emp·DCC^{-1/2}) = eig(IDM^{-1}·ECD_Fisher) as
+//     IDM^{-1/2}·ECD_Fisher·IDM^{-1/2}, IDM = F̄_bar^{-1/2} J F̄_bar^{-1/2} (≈ I ⟺
+//     Cov_emp ≈ DCC; the test that bites when IDM ≠ I, i.e. under misspecification)
 //   - Optimum_Fisher_Distortion = F̄_bar^{-1/2} · F̄_sim · F̄_bar^{-1/2}
 // where F̄_bar / F̄_sim are the means of the per-recording numerical Fisher
 // vectors and J is the HAC score covariance at θ̄ (the same J the battery
