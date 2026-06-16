@@ -30,7 +30,7 @@ nsamples=rep(1024,length(filename))
 library(dplyr)
 
 d <- lapply(seq_along(filename), function(i) {
-  read.csv(paste0(filename[i], "_battery_pool.csv"), skip = 1) %>% 
+  read.csv(paste0(filename[i], "_empirical.csv"), skip = 1) %>% 
     mutate(nsamples = nsamples[i])
 }) %>% 
   bind_rows()
@@ -230,11 +230,11 @@ for (noi in noise_in_conductance_tau_plot)
 library(ggplot2)
 
 num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
-components_to_plot <- c("Likelihood_Information_Distortion", "Likelihood_Gaussian_Fisher_Distortion", "Likelihood_Correlation_Distortion", "Likelihood_Sample_Distortion")
+  components_to_plot <- c("Empirical_Covariance_Fisher_Distortion", "Empirical_Covariance_Corrected_Distortion", "Optimum_Fisher_Distortion")
 
 noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
 
-for (al in c("macro_IR","macro_R")){
+for (al in c("macro_IR")){
 noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
   
 for (comp in components_to_plot) 
@@ -260,7 +260,7 @@ for (noi in noise_in_conductance_tau_plot)
     geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
     scale_x_log10() +
   #  facet_grid(interval_in_tau~param_name, scales = "free") +
-    facet_wrap(interval_in_tau~param_name+nsamples, scales = "free", ncol=6) +
+    facet_wrap(interval_in_tau~param_name+group_size, scales = "free", ncol=6) +
     geom_hline(yintercept = 1, color="green")+
     scale_y_log10()+
     ggtitle(paste0(al," ",comp, " noise:", noi)) 
@@ -271,7 +271,7 @@ for (noi in noise_in_conductance_tau_plot)
     geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
     scale_x_log10() +
   #  facet_grid(interval_in_tau~param_name, scales = "free") +
-    facet_wrap(Num_ch~param_name+nsamples, scales = "free", ncol=6) +
+    facet_wrap(Num_ch~param_name+group_size, scales = "free", ncol=6) +
     geom_hline(yintercept = 1, color="green")+
     scale_y_log10()+
     ggtitle(paste0(al," ",comp, " noise:", noi)) 

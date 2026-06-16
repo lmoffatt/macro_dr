@@ -72,11 +72,19 @@ set(MACRODR_GIT_STAMP_TEMPLATE  ${CMAKE_SOURCE_DIR}/cmake/git_commit.cpp.in)
 set(MACRODR_GIT_STAMP_SCRIPT    ${CMAKE_SOURCE_DIR}/cmake/GenerateGitCommit.cmake)
 set(MACRODR_GIT_STAMP_GENERATED ${CMAKE_BINARY_DIR}/git_commit.generated.cpp)
 
+# Explicit hash override: skips the build-time git query entirely. build_cluster.sh
+# sets this to the hash it reads on the LOGIN node, because the actual compile runs
+# on a COMPUTE node where git is usually not on PATH (otherwise the stamp falls back
+# to "unknown"). Empty (local builds) → query git as usual.
+set(MACRODR_GIT_COMMIT_OVERRIDE "" CACHE STRING
+    "Explicit git commit stamp; skips the build-time git query (set by build_cluster.sh).")
+
 # Generate once at configure time so the file exists for the first compile...
 execute_process(COMMAND ${CMAKE_COMMAND}
     -DGIT_SRC_DIR=${CMAKE_SOURCE_DIR}
     -DTEMPLATE_FILE=${MACRODR_GIT_STAMP_TEMPLATE}
     -DOUTPUT_FILE=${MACRODR_GIT_STAMP_GENERATED}
+    -DOVERRIDE_HASH=${MACRODR_GIT_COMMIT_OVERRIDE}
     -P ${MACRODR_GIT_STAMP_SCRIPT})
 
 # ...and refresh it on every build (write-if-different keeps it a no-op unless the
@@ -87,6 +95,7 @@ add_custom_target(macrodr_git_stamp ALL
         -DGIT_SRC_DIR=${CMAKE_SOURCE_DIR}
         -DTEMPLATE_FILE=${MACRODR_GIT_STAMP_TEMPLATE}
         -DOUTPUT_FILE=${MACRODR_GIT_STAMP_GENERATED}
+        -DOVERRIDE_HASH=${MACRODR_GIT_COMMIT_OVERRIDE}
         -P ${MACRODR_GIT_STAMP_SCRIPT}
     COMMENT "Stamping git commit hash"
     VERBATIM)
