@@ -20,9 +20,10 @@
 # Tunables via env: NCHS and N_SIMS (parallel arrays, same length), N_NOISE,
 # N_ALGO, H_RELS, GROUP_SIZE (a DSL axis — broadcast within one job; cloud CSV
 # gains a group_size column), N_BOOT, MIN_GROUPS, GN_MAX_ITER, CPUS, MEM, TIME,
-# PARTITION, BIN. Example:
+# PARTITION, BIN, DEPEND (job id to wait for — unset = no dependency). Example:
 #   NCHS="10000" N_SIMS="256" N_ALGO="macro_IR" GROUP_SIZE="1 10 100" \
 #     projects/eLife_2025/ops/slurm/dispatch_figure_3.sh dirac
+#   # chain after a build job:  DEPEND=<jobid> projects/eLife_2025/ops/slurm/dispatch_figure_3.sh dirac
 
 set -eo pipefail
 
@@ -67,6 +68,22 @@ if ! commit="$("$BIN" --commit)"; then
 fi
 [ -n "$commit" ] || { echo "[dispatch] '$BIN --commit' returned empty" >&2; exit 1; }
 run="${RUN_DIR:-$commit}"
+
+# Optional SLURM job dependency: hold every dispatched job until another job
+# finishes — e.g. chain figure_3 after a compile/build job. Set DEPEND to either a
+# bare job id (→ afterok, start only if it SUCCEEDS) or a full SLURM dependency
+# expression (passed verbatim):
+#   DEPEND=12345           -> --dependency=afterok:12345
+#   DEPEND=afterany:12345  -> --dependency=afterany:12345  (start regardless of exit)
+#   DEPEND=afterok:12:34   -> --dependency=afterok:12:34    (after several jobs)
+DEP_SPEC=""
+if [ -n "${DEPEND:-}" ]; then
+    case "$DEPEND" in
+        *[!0-9]*) DEP_SPEC="$DEPEND" ;;         # has a non-digit → full SLURM expr
+        *)        DEP_SPEC="afterok:$DEPEND" ;; # bare job id → afterok
+    esac
+    echo "[dispatch] job dependency: --dependency=$DEP_SPEC"
+fi
 
 # This run's grid. NCHS and N_SIMS are parallel arrays paired by index:
 # job i runs NCHS[i] channels with N_SIMS[i] simulations. figure_3 defaults to
@@ -180,6 +197,7 @@ for i in "${!NCHS[@]}"; do
     jobid=$(sbatch --parsable \
         --partition="${PARTITION:-batch}" \
         ${ACCOUNT:+--account="$ACCOUNT"} \
+        ${DEPEND:+--dependency="$DEP_SPEC"} \
         --cpus-per-task="${CPUS:-32}" \
         --mem="${MEM:-48G}" \
         --time="${TIME:-12:00:00}" \
