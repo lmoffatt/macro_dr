@@ -4131,11 +4131,6 @@ auto calc_empirical_distortion(
     lapack::PSDDecomposition W_Fbar;
     if (maybe_W_Fbar) W_Fbar = std::move(maybe_W_Fbar.value());
 
-    // ----- DCC = F̄_bar^{-1} J F̄_bar^{-1} -------------------------------------
-    SymPosDefMatrix<double> DCC =
-        lapack::apply_inverse_congruence(W_Fbar, J, "DCC subspace matrix", rtol, atol)
-            .value_or(nan_spd());
-
     // ----- The three distortion matrices --------------------------------------
     // NB: F̄_bar / F̄_sim below are the GROUP-scale totals from sum_fisher, and J
     // is the group-scale B — so every anchor matches Cov_emp's per-group units.
@@ -4145,14 +4140,30 @@ auto calc_empirical_distortion(
             .value_or(nan_spd()),
         params_ptr);
 
-    // ECD_Corrected = DCC^{-1/2} · Cov_emp · DCC^{-1/2}
-    auto maybe_W_DCC = lapack::compute_psd_decomp(DCC, "DCC", rtol, atol);
-    lapack::PSDDecomposition W_DCC;
-    if (maybe_W_DCC) W_DCC = std::move(maybe_W_DCC.value());
+    // ECD_Corrected tests whether the sandwich DCC = F̄_bar^{-1}·J·F̄_bar^{-1}
+    // predicts Cov_emp. We do NOT form or decompose DCC: it is doubly inverse-
+    // congruenced (κ(DCC) ≈ κ(IDM)·κ(F̄_bar)), so its smallest eigenvalue dips
+    // below the strict PSD gate and compute_psd_decomp(DCC) silently falls back to
+    // an empty decomposition → an all-zero ECD_Corrected. Instead use the identity
+    //   eig(DCC^{-1/2}·Cov_emp·DCC^{-1/2}) = eig(IDM^{-1}·ECD_Fisher),
+    // whitening ECD_Fisher by IDM = F̄_bar^{-1/2}·J·F̄_bar^{-1/2} (single inverse,
+    // well-conditioned — the same F̄_bar frame the battery's IDM/DCC diagnostics
+    // use). So ECD_Corrected ≈ I ⟺ ECD_Fisher ≈ IDM ⟺ Cov_emp ≈ DCC, the
+    // meaningful test exactly when IDM ≠ I (misspecification): the empirical-vs-
+    // Fisher distortion must match the information distortion for the sandwich.
+    auto IDM = lapack::apply_normalized_congruence(W_Fbar, J, "IDM subspace matrix", rtol, atol)
+                   .value_or(nan_spd());
+    auto maybe_W_IDM = lapack::compute_psd_decomp(IDM, "IDM", rtol, atol);
+    lapack::PSDDecomposition W_IDM;
+    if (maybe_W_IDM) W_IDM = std::move(maybe_W_IDM.value());
+    // A genuinely degenerate IDM (J or F̄_bar singular) → nan_spd(): a clean NaN the
+    // Probit pipeline filters, never apply_normalized_congruence's silent zero
+    // (which would survive the bootstrap as a fake "0 distortion").
     auto ECD_Corrected = Empirical_Covariance_Corrected_Distortion(
-        lapack::apply_normalized_congruence(W_DCC, Cov_emp, "ECD_Corrected subspace matrix", rtol,
-                                            atol)
-            .value_or(nan_spd()),
+        W_IDM.empty ? nan_spd()
+                    : lapack::apply_normalized_congruence(W_IDM, ECD_Fisher().value(),
+                                                          "ECD_Corrected subspace matrix", rtol, atol)
+                          .value_or(nan_spd()),
         params_ptr);
 
     // Optimum = F̄_bar^{-1/2} · F̄_sim · F̄_bar^{-1/2}
