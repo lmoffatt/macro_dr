@@ -13,6 +13,10 @@ std::optional<int> handle_immediate_flags(const macrodr::cli::CliOptions& opts) 
         macrodr::cmd::cli_version();
         return 0;
     }
+    if (opts.commit) {
+        macrodr::cmd::cli_commit();
+        return 0;
+    }
     return std::nullopt;
 }
 

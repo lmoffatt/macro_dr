@@ -919,19 +919,43 @@ using Empirical_Distortion_Analysis = var::Vector_Space<
     Min_Eigenvalue<Optimum_Fisher_Distortion>,  // the key "FIM_sim indefinite?" readout
     Spectrum_Condition_Number<Optimum_Fisher_Distortion>>;
 
+// Bootstrap output: the point estimate (over ALL groups) CONCATENATED with the
+// per-component bootstrap CIs (every distortion matrix entry, every sorted
+// eigenvalue, every scalar wrapped in Probit_statistics — apply_Probit_statistics
+// produces exactly var::Vector_Space<Probit_statistics<Vs>...>). The bare point
+// and the Probit_statistics<bare> are DISTINCT types, so the flat concatenation
+// has no component-path collision (mirrors MLE_Group_Cloud's bare ++ probit).
+template <class VS>
+struct probit_wrapped;
+template <class... Vs>
+struct probit_wrapped<var::Vector_Space<Vs...>> {
+    using type = var::Vector_Space<Probit_statistics<Vs>...>;
+};
+template <class VS>
+using probit_wrapped_t = typename probit_wrapped<std::remove_cvref_t<VS>>::type;
+
+using Empirical_Distortion_Bootstrap =
+    decltype(concatenate(std::declval<Empirical_Distortion_Analysis>(),
+                         std::declval<probit_wrapped_t<Empirical_Distortion_Analysis>>()));
+
 // Empirical-vs-theoretical capstone command (figure_3 Fase 2). State templates
 // only the cloud (the figure_2 vectors are State-agnostic).
 //   fim_sim  : numerical Fisher at θ_sim, per recording (decimate=1)
-//   fim_bar  : numerical Fisher at θ̄,    per recording (decimate=1)
-//   dlik_bar : score states at θ̄, per recording (the J / HAC Ω source)
+//   fim_bar  : numerical Fisher at θ_pool (the anchor), per recording (decimate=1)
+//   dlik_bar : score states at the anchor, per recording (the J / HAC Ω source)
+// Bootstrap is over GROUPS (the cloud's MLE_Run_Records θ̂ are the iid units);
+// each resampled group is EXPANDED to its group_size recordings (contiguous,
+// reconstructed from Group_Size) for the per-recording F̄ / J. Returns the point
+// estimate ++ per-component probit CIs.
 template <class State>
 auto calc_empirical_distortion(
     const MLE_Group_Cloud<State>& cloud,
     const std::vector<parameter_spd_payload>& fim_sim,
     const std::vector<parameter_spd_payload>& fim_bar,
     const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    std::size_t n_bootstrap, std::size_t seed, const std::set<double>& probit_cis,
     double rtol = 1e-10, double atol = 0.0)
-    -> Maybe_error<Empirical_Distortion_Analysis>;
+    -> Maybe_error<Empirical_Distortion_Bootstrap>;
 
 // =============================================================================
 
@@ -1067,6 +1091,15 @@ inline Maybe_error<std::string> write_csv_indexed_cloud(
 
 // write_csv for the figure_3 Fase-2 empirical-distortion capstone output.
 inline Maybe_error<std::string> write_csv(Empirical_Distortion_Analysis const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+
+// write_csv for the BOOTSTRAPPED capstone (point estimate ++ per-component probit
+// CIs). It is a flat var::Vector_Space, so the generic summary writer emits the
+// bare point components and the Probit_statistics<·> components (with the
+// probit/quantile columns) side by side, distinguished by component_path.
+inline Maybe_error<std::string> write_csv(Empirical_Distortion_Bootstrap const& lik,
                                           std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }

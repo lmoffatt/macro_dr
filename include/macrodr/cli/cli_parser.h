@@ -20,6 +20,7 @@ struct CliOptions {
     // Process-level flags
     bool help = false;
     bool version = false;
+    bool commit = false;        // print git commit hash and exit
     bool check_syntax = false;  // parse/compile only
     int verbosity = 0;          // -v increments
 

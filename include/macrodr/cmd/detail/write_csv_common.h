@@ -2,6 +2,7 @@
 
 #include <derivative_operator.h>
 #include <macrodr/dsl/type_name.h>
+#include <macrodr/git_commit.h>
 
 #include <algorithm>
 #include <cctype>
@@ -25,6 +26,17 @@
 #include "qmodel.h"
 
 namespace macrodr::cmd::detail {
+
+// Provenance convention: the build's git commit hash is written as the FIRST LINE
+// of every CSV, BEFORE the column header. This makes each file self-describing and
+// survives copy/move (unlike the previous fragile <path>.binary sidecar). Readers
+// skip line 1 and treat line 2 as the header (R: read.csv(f, skip = 1); tests:
+// see tests/cmd/test_write_csv.cpp). Call it on the open stream before the CsvWriter.
+// The hash comes from macrodr::git_commit_hash() (build-time version stamp), so a
+// new commit recompiles only git_commit.generated.cpp, not every CSV writer.
+inline void write_provenance_row(std::ofstream& f) {
+    f << macrodr::git_commit_hash() << "\n";
+}
 
 template <class VS>
 struct vector_space_types;
@@ -749,10 +761,7 @@ Maybe_error<std::string> write_indexed_rows_csv(const var::IndexSpace& space,
     if (!f.is_open()) {
         return error_message("cannot open ", path_with_extension);
     }
-    // Provenance: write the building commit to a sidecar (<path>.binary), not
-    // into the CSV — an in-CSV line breaks readers/tests that assert exact
-    // structure (e.g. tests/cmd/test_write_csv.cpp checks line count + header).
-    std::ofstream(path + ".binary") << GIT_COMMIT_HASH << "\n";
+    write_provenance_row(f);  // commit hash as line 1, before the header
 
     const auto axis_names = axis_column_names(space);
     CsvWriter writer(f, param_names, axis_names);
@@ -1424,7 +1433,7 @@ Maybe_error<std::string> write_runs_csv(const std::vector<Run>& runs,
     if (!f.is_open()) {
         return error_message("cannot open ", path_with_extension);
     }
-    std::ofstream(path + ".binary") << GIT_COMMIT_HASH << "\n";
+    write_provenance_row(f);  // commit hash as line 1, before the header
 
     CsvWriter writer(f, param_names);
     for (std::size_t g = 0; g < runs.size(); ++g) {
@@ -1447,10 +1456,7 @@ Maybe_error<std::string> write_summary_csv(const T& x, std::string path,
     if (!f.is_open()) {
         return error_message("cannot open ", path_with_extension);
     }
-    // Provenance: write the building commit to a sidecar (<path>.binary), not
-    // into the CSV — an in-CSV line breaks readers/tests that assert exact
-    // structure (e.g. tests/cmd/test_write_csv.cpp checks line count + header).
-    std::ofstream(path + ".binary") << GIT_COMMIT_HASH << "\n";
+    write_provenance_row(f);  // commit hash as line 1, before the header
 
     const auto param_names = get_param_names_if_any(x);
     std::vector<std::string> axis_names;

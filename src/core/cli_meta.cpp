@@ -1,4 +1,5 @@
 #include <macrodr/cmd/cli_meta.h>
+#include <macrodr/git_commit.h>
 
 #include <iostream>
 #include <string>
@@ -24,6 +25,7 @@ constexpr const char* kUsage =
     "      --env-load-mode <mode>\n"
     "                         append (default) or replace when loading\n"
     "      --version         Print version and exit\n"
+    "      --commit          Print build's git commit hash and exit\n"
     "  -h, --help            Print this help and exit\n"
     "  --                    End of options; remaining args are script files\n"
     "\nNotes:\n"
@@ -49,10 +51,17 @@ std::string cli_version() {
     return v;
 }
 
+std::string cli_commit() {
+    std::string h = macrodr::git_commit_hash();
+    std::cout << h << '\n';
+    return h;
+}
+
 dsl::Compiler<dsl::Lexer> make_cli_meta_compiler() {
     dsl::Compiler<dsl::Lexer> cm;
     cm.push_function("help", dsl::to_typed_function<>(&cli_help));
     cm.push_function("version", dsl::to_typed_function<>(&cli_version));
+    cm.push_function("commit", dsl::to_typed_function<>(&cli_commit));
     return cm;
 }
 

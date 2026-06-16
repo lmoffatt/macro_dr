@@ -17,6 +17,11 @@ void cli_help();
 // Prints version to stdout and also returns it.
 std::string cli_version();
 
+// Prints ONLY the build's git commit hash (no prefix) to stdout and returns it.
+// The bare form is deliberate: dispatchers capture it as `commit=$(bin --commit)`
+// to name the per-commit output directory (see ops/.../dispatch_figure_3.sh).
+std::string cli_commit();
+
 // Registry builder that registers help() and version() as DSL functions.
 // This returns a dsl::Compiler<dsl::Lexer> containing only these commands; aggregate it
 // via merge(...) in the CLI command manager.

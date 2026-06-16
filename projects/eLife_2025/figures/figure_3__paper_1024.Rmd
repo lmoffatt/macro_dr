@@ -14,7 +14,15 @@ library(patchwork)
 ```{r}
 
 filename=c(
-  "data/figure_3_nch_1000_nsim_256_macro_IR_noise_0.1_gs_1_battery_bar"
+  "data/figure_3_nch_10_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_100_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_1000_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_10000_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_10_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_100_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_1000_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_10000_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool"
+  
   )
 
 nsamples=rep(1024,length(filename))
@@ -85,7 +93,7 @@ library(ggplot2)
 num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.10" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
 components_to_plot <- c("Moment_statistics_Sum_r_std", "Moment_statistics_Sum_r2_std")
 
-for (al in c("macro_IR"))
+for (al in c("macro_IR","macro_R"))
 for (comp in components_to_plot) {
   
   # 1. Filter and compute scaled values safely beforehand
@@ -163,7 +171,7 @@ num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200,
 components_to_plot <- c("Likelihood_Distortion_Induced_Bias", "Moment_statistics_Sum_dlogL")
 
 
-for (al in c("macro_IR")){
+for (al in c("macro_IR","macro_R")){
 noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
   
 for (comp in components_to_plot) 

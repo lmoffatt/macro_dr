@@ -13,7 +13,7 @@
 #   algorithm_axis, algo_{recursive,averaging,taylor,micro}_approximation
 #   axis_interval, exp_n_step_{1,2,3}, exp_n_samp_{1,2,3}   (interval grid)
 #   axis_h_fim, h_rel_value                  (numerical-Fisher step)
-#   group_size, n_bootstrap_samples, min_groups_for_bootstrap, gn_max_iter  (MLE)
+#   group_size_axis, group_size, n_bootstrap_samples, min_groups_for_bootstrap, gn_max_iter  (MLE)
 #
 # TWO ANCHORS, two complementary questions (see theory: misspecification frame):
 #   theta_sim  = the simulation truth (par_tr).
@@ -190,7 +190,12 @@ battery_pool_csv = write_csv(analysis = battery_pool, path = concat(filepath_run
 # Cov_emp from the stage-1 cloud; the sandwich bread (fim) and meat (dlik->J) at
 # theta_pool; the Optimum numerator (fim_sim) at theta_sim. (calc_empirical_distortion's
 # fim_bar / dlik_bar slots receive the theta_pool versions — the anchor.)
+# Bootstrap over GROUPS (the gs=1 cloud's theta_hat) -> point estimate ++ probit
+# CIs on every distortion matrix entry / eigenvalue / scalar. n_bootstrap modest
+# (the J/HAC recompute per replicate is the cost). seed shared for reproducibility.
 emp = calc_empirical_distortion(
-   cloud = mle, fim_sim = fim_sim, fim_bar = fim_pool, dlik_bar = dlik_pool)
+   cloud = mle, fim_sim = fim_sim, fim_bar = fim_pool, dlik_bar = dlik_pool,
+   n_bootstrap = get_number(n = 200), seed = 0,
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975])
 
 emp_csv = write_csv(analysis = emp, path = concat(filepath_run, "_empirical"))
