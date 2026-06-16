@@ -143,7 +143,6 @@ for i in "${!NCHS[@]}"; do
     nch="${NCHS[$i]}"
     nsim="${N_SIMS[$i]}"
     nnoise="${N_NOISE[$i]}"
-
     algo="${N_ALGO[$j]}"
 
     # Map the algorithm label to its (recursive, averaging, taylor, micro) flags.
