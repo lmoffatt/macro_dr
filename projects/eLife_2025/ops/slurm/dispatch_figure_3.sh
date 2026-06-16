@@ -45,7 +45,8 @@ source "$PROFILE"
 set -e
 # Passed to run_macroir.sh so it finds the profile from the sbatch spool copy
 # (where its own $0 no longer points at the repo).
-export MACRODR_PROFILE="$PROFILE
+export MACRODR_PROFILE="$PROFILE"
+
 # Default BIN to this cluster's latest build; override (export BIN=…) to pin one.
 BIN="${BIN:-$(readlink -f "build/macrodr_cli-${CLUSTER}-current")}"
 [ -x "$BIN" ] || {
