@@ -76,10 +76,15 @@ BUILD_DIR="build/${CLUSTER}-${TAG}"
 # bridges that: unchanged TUs are cache hits even in a fresh dir. Use it if
 # available; harmless no-op otherwise.
 CCACHE="$(command -v ccache || true)"
+# Pass TAG (read from git on the LOGIN node, line 31) as the commit stamp: the
+# compile runs on a compute node where git is usually absent, so the in-build git
+# query would fall back to "unknown". This makes the binary's --commit, the build
+# dir name, and the dispatcher's output folder all agree on TAG.
 cmake -S . -B "$BUILD_DIR" -G "${MACRODR_GENERATOR:-Ninja}" \
     ${CCACHE:+-DCMAKE_CXX_COMPILER_LAUNCHER="$CCACHE"} \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_COMPILER=g++ \
+    -DMACRODR_GIT_COMMIT_OVERRIDE="$TAG" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # cc1plus needs up to ~16 GB on the heaviest TUs (command_manager.cpp,
