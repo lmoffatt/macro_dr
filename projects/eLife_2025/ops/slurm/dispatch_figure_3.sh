@@ -84,7 +84,7 @@ H_RELS=(${H_RELS:-1e-5})
 # GROUP_SIZE is a DSL axis (broadcast within one job): 1 = per-replicate; >1 pools
 # recordings per refit. Multi-value sweeps the cloud over group size in one run,
 # e.g. GROUP_SIZE="1 10 100".
-GROUP_SIZE=(${GROUP_SIZE:-10})
+GROUP_SIZE=(${GROUP_SIZE:- 1 10 100})
 N_BOOT="${N_BOOT:-100}"                # bootstrap replicates over groups
 MIN_GROUPS="${MIN_GROUPS:-10}"         # below this, probit slots NaN-filled
 GN_MAX_ITER="${GN_MAX_ITER:-100}"      # GN per-group refit iteration cap

@@ -1,0 +1,585 @@
+---
+title: "Figure 2"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r}
+
+filename=c(
+  "data/figure_3_nch_10_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_100_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_1000_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_10000_nsim_1024_macro_IR_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_10_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_100_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_1000_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool",
+  "data/figure_3_nch_10000_nsim_1024_macro_R_noise_0.1_gs_1_battery_pool"
+  
+  )
+
+nsamples=rep(1024,length(filename))
+
+```
+
+```{r}
+
+library(dplyr)
+
+d <- lapply(seq_along(filename), function(i) {
+  read.csv(paste0(filename[i], ".csv")) %>% 
+    mutate(nsamples = nsamples[i])
+}) %>% 
+  bind_rows()
+```
+
+```{r}
+d<- d %>%
+  select(where(~ !all(is.na(.))))
+```
+
+```{r}
+d%>%select(component_path)%>%distinct()%>%pull()
+
+```
+
+```{r}
+d<-d%>%mutate(component= component_path %>%
+           str_replace("^Probit_statistics_", "") )
+   
+     
+```
+
+```{r}
+d%>%select(component)%>%distinct()%>%pull()
+
+```
+
+
+
+```{r}
+d_mean<-
+  d%>%filter(!component%in%c("Probit_statistics","count_r_std","count_dlogL"))%>%
+  #select(component_path,component,param_name,algorithm,sample_index,calculus,statistic,param_index,param_col,param_name,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%
+  pivot_wider(names_from = c(probit,quantile_level), values_from = value)
+d_mean
+```
+
+```{r}
+scalar_components<-d_mean%>%filter(statistic%in%c("mean", "value"), is.na(param_col),is.na(param_index) , !is.na(mean_NA))%>%select(component)%>%distinct()%>%pull()
+scalar_components
+
+```
+```{r}
+d_algo<-
+  d%>%filter(!component%in%c("Probit_statistics","count_r_std","count_dlogL"))%>%
+  #select(component_path,component,param_name,algorithm,sample_index,calculus,statistic,param_index,param_col,param_name,simulation_algorithm,noise_in_conductance_tau,Num_ch,interval_in_tau,statistic,probit,quantile_level,value,value_row,value_col)%>%
+  pivot_wider(names_from = c(algorithm,probit,quantile_level), values_from = value)
+d_algo
+
+```
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.10" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Moment_statistics_Sum_r_std", "Moment_statistics_Sum_r2_std")
+
+for (al in c("macro_IR","macro_R"))
+for (comp in components_to_plot) {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      component == comp, 
+      statistic == "mean", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization"
+    ) %>%
+    # Ensure matching by formatting numbers to match your exact vector keys
+    mutate(
+      key = sprintf("%.2f", interval_in_tau), # e.g., 0.5 becomes "0.50"
+      # If your keys are exactly "1.00", "0.5", "0.20", let's normalize them:
+      key = case_when(
+        interval_in_tau == 1.00 ~ "1.00",
+        interval_in_tau == 0.50 ~ "0.5",
+        interval_in_tau == 0.20 ~ "0.20",
+        interval_in_tau == 0.10 ~ "0.10",
+        interval_in_tau == 0.05 ~ "0.05",
+        interval_in_tau == 0.02 ~ "0.02",
+        interval_in_tau == 0.01 ~ "0.01",
+        TRUE ~ as.character(interval_in_tau)
+      ),
+      n_samples = num_samples[key],
+      
+      # Pre-calculate scaled values to keep ggplot code clean
+      scaled_mean = mean_NA / n_samples,
+      scaled_ymin = quantile_0.025 / n_samples,
+      scaled_ymax = quantile_0.975 / n_samples
+    )
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = interval_in_tau, color = component)) +
+    geom_point(aes(y = scaled_mean,color=factor(nsamples))) +
+    geom_errorbar(aes(ymin = scaled_ymin, ymax = scaled_ymax, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+    facet_grid(Num_ch ~ noise_in_conductance_tau, scales = "free") +
+    geom_hline(yintercept = ifelse(comp=="Moment_statistics_Sum_r2_std",1,0), color="green")+
+    ggtitle(paste0(al," ",comp)) 
+  
+  print(p)
+}
+
+
+```
+
+ [1] "Moment_statistics_Sum_logL"                                           "Moment_statistics_Sum_elogL"                                          "Moment_statistics_Sum_r_std"                                         
+ [4] "Moment_statistics_Sum_r2_std"                                         "Moment_statistics_Sum_trust_coefficient"                              "Moment_statistics_Sum_dlogL"                                         
+ [7] "Moment_statistics_Sum_Gaussian_Fisher_Information"                    "Sum_Moment_statistics_r_std_false"                                    "Sum_Moment_statistics_dlogL_true"                                    
+[10] "Sum_Moment_statistics_Gaussian_Fisher_Information_false"              "Moment_statistics_evaluation_time"                                    "Likelihood_Numerical_Fisher_Information"                             
+[13] "Likelihood_Information_Distortion"                                    "log_Det_Likelihood_Information_Distortion"                            "Eigenvalue_Spectrum_Likelihood_Information_Distortion"               
+[16] "Spectrum_Condition_Number_Likelihood_Information_Distortion"          "Max_Eigenvalue_Likelihood_Information_Distortion"                     "Min_Eigenvalue_Likelihood_Information_Distortion"                    
+[19] "Mean_Log_Eigenvalue_Likelihood_Information_Distortion"                "Log_Eigenvalue_Variance_Likelihood_Information_Distortion"            "Affine_Invariant_Distance_Likelihood_Information_Distortion"         
+[22] "Symmetrized_KL_Distortion_Likelihood_Information_Distortion"          "Likelihood_Gaussian_Fisher_Distortion"                                "log_Det_Likelihood_Gaussian_Fisher_Distortion"                       
+[25] "Eigenvalue_Spectrum_Likelihood_Gaussian_Fisher_Distortion"            "Spectrum_Condition_Number_Likelihood_Gaussian_Fisher_Distortion"      "Max_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                
+[28] "Min_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                 "Mean_Log_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"            "Log_Eigenvalue_Variance_Likelihood_Gaussian_Fisher_Distortion"       
+[31] "Affine_Invariant_Distance_Likelihood_Gaussian_Fisher_Distortion"      "Symmetrized_KL_Distortion_Likelihood_Gaussian_Fisher_Distortion"      "Likelihood_Information_Distortion_Reconstituted"                     
+[34] "Likelihood_Sample_Distortion"                                         "log_Det_Likelihood_Sample_Distortion"                                 "Likelihood_Correlation_Distortion"                                   
+[37] "log_Det_Likelihood_Correlation_Distortion"                            "Likelihood_Fisher_Covariance"                                         "log_Det_Likelihood_Fisher_Covariance"                                
+[40] "Correlation_Of_Likelihood_Fisher_Covariance"                          "Eigenvalue_Spectrum_Likelihood_Fisher_Covariance"                     "Effective_Rank_Likelihood_Fisher_Covariance"                         
+[43] "Spectrum_Condition_Number_Likelihood_Fisher_Covariance"               "Null_Space_Projector_Likelihood_Fisher_Covariance"                    "Worst_Subspace_Projector_Likelihood_Fisher_Covariance"               
+[46] "Likelihood_Distortion_Corrected_Covariance"                           "log_Det_Likelihood_Distortion_Corrected_Covariance"                   "Correlation_Of_Likelihood_Distortion_Corrected_Covariance"           
+[49] "Eigenvalue_Spectrum_Likelihood_Distortion_Corrected_Covariance"       "Effective_Rank_Likelihood_Distortion_Corrected_Covariance"            "Spectrum_Condition_Number_Likelihood_Distortion_Corrected_Covariance"
+[52] "Null_Space_Projector_Likelihood_Distortion_Corrected_Covariance"      "Worst_Subspace_Projector_Likelihood_Distortion_Corrected_Covariance"  "Likelihood_Distortion_Induced_Bias"                                  
+[55] "Report_integral_logL"                                                 "Report_integral_y_mean"                                               "Report_integral_y_var"                                               
+[58] "Report_integral_r_std"                                                "Report_integral_dlogL"              
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Likelihood_Distortion_Induced_Bias", "Moment_statistics_Sum_dlogL")
+
+
+for (al in c("macro_IR","macro_R")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      component == comp, 
+      statistic %in%c( "value","mean"), 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      Num_ch>5)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x =interval_in_tau, color = factor(nsamples)) )+
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+    #facet_grid(param_name~Num_ch, scales = "free") +
+    facet_wrap(param_name~Num_ch, scales = "free", nrow=6) +
+    geom_hline(yintercept = 0, color="green")+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  print(p)
+}
+}
+
+```
+
+
+
+[1] "Moment_statistics_Sum_logL"                                           "Moment_statistics_Sum_elogL"                                          "Moment_statistics_Sum_r_std"                                         
+ [4] "Moment_statistics_Sum_r2_std"                                         "Moment_statistics_Sum_trust_coefficient"                              "Moment_statistics_Sum_dlogL"                                         
+ [7] "Moment_statistics_Sum_Gaussian_Fisher_Information"                    "Sum_Moment_statistics_r_std_false"                                    "Sum_Moment_statistics_dlogL_true"                                    
+[10] "Sum_Moment_statistics_Gaussian_Fisher_Information_false"              "Moment_statistics_evaluation_time"                                    "Likelihood_Numerical_Fisher_Information"                             
+[13] "Likelihood_Information_Distortion"                                    "log_Det_Likelihood_Information_Distortion"                            "Eigenvalue_Spectrum_Likelihood_Information_Distortion"               
+[16] "Spectrum_Condition_Number_Likelihood_Information_Distortion"          "Max_Eigenvalue_Likelihood_Information_Distortion"                     "Min_Eigenvalue_Likelihood_Information_Distortion"                    
+[19] "Mean_Log_Eigenvalue_Likelihood_Information_Distortion"                "Log_Eigenvalue_Variance_Likelihood_Information_Distortion"            "Affine_Invariant_Distance_Likelihood_Information_Distortion"         
+[22] "Symmetrized_KL_Distortion_Likelihood_Information_Distortion"          "Likelihood_Gaussian_Fisher_Distortion"                                "log_Det_Likelihood_Gaussian_Fisher_Distortion"                       
+[25] "Eigenvalue_Spectrum_Likelihood_Gaussian_Fisher_Distortion"            "Spectrum_Condition_Number_Likelihood_Gaussian_Fisher_Distortion"      "Max_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                
+[28] "Min_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                 "Mean_Log_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"            "Log_Eigenvalue_Variance_Likelihood_Gaussian_Fisher_Distortion"       
+[31] "Affine_Invariant_Distance_Likelihood_Gaussian_Fisher_Distortion"      "Symmetrized_KL_Distortion_Likelihood_Gaussian_Fisher_Distortion"      "Likelihood_Information_Distortion_Reconstituted"                     
+[34] "Likelihood_Sample_Distortion"                                         "log_Det_Likelihood_Sample_Distortion"                                 "Likelihood_Correlation_Distortion"                                   
+[37] "log_Det_Likelihood_Correlation_Distortion"                            "Likelihood_Fisher_Covariance"                                         "log_Det_Likelihood_Fisher_Covariance"                                
+[40] "Correlation_Of_Likelihood_Fisher_Covariance"                          "Eigenvalue_Spectrum_Likelihood_Fisher_Covariance"                     "Effective_Rank_Likelihood_Fisher_Covariance"                         
+[43] "Spectrum_Condition_Number_Likelihood_Fisher_Covariance"               "Null_Space_Projector_Likelihood_Fisher_Covariance"                    "Worst_Subspace_Projector_Likelihood_Fisher_Covariance"               
+[46] "Likelihood_Distortion_Corrected_Covariance"                           "log_Det_Likelihood_Distortion_Corrected_Covariance"                   "Correlation_Of_Likelihood_Distortion_Corrected_Covariance"           
+[49] "Eigenvalue_Spectrum_Likelihood_Distortion_Corrected_Covariance"       "Effective_Rank_Likelihood_Distortion_Corrected_Covariance"            "Spectrum_Condition_Number_Likelihood_Distortion_Corrected_Covariance"
+[52] "Null_Space_Projector_Likelihood_Distortion_Corrected_Covariance"      "Worst_Subspace_Projector_Likelihood_Distortion_Corrected_Covariance"  "Likelihood_Distortion_Induced_Bias"                                  
+[55] "Report_integral_logL"                                                 "Report_integral_y_mean"                                               "Report_integral_y_var"                                               
+[58] "Report_integral_r_std"                                                "Report_integral_dlogL"              
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Likelihood_Information_Distortion", "Likelihood_Gaussian_Fisher_Distortion", "Likelihood_Correlation_Distortion", "Likelihood_Sample_Distortion")
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR","macro_R")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      Num_ch>5,
+      component == comp, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      interval_in_tau>0.001,
+      param_col==param_index)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = Num_ch, color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(interval_in_tau~param_name+nsamples, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  p2 <- ggplot(plot_data, aes(x = interval_in_tau , color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(Num_ch~param_name+nsamples, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  
+  print(p)
+  print(p2)
+}
+}
+
+```
+
+
+
+
+"Moment_statistics_Sum_logL"                                           "Moment_statistics_Sum_elogL"                                         
+ [3] "Moment_statistics_Sum_r_std"                                          "Moment_statistics_Sum_r2_std"                                        
+ [5] "Moment_statistics_Sum_trust_coefficient"                              "Moment_statistics_Sum_dlogL"                                         
+ [7] "Moment_statistics_Sum_Gaussian_Fisher_Information"                    "Sum_Moment_statistics_r_std_false"                                   
+ [9] "Sum_Moment_statistics_dlogL_true"                                     "Sum_Moment_statistics_Gaussian_Fisher_Information_false"             
+[11] "Moment_statistics_evaluation_time"                                    "Likelihood_Numerical_Fisher_Information"                             
+[13] "Likelihood_Information_Distortion"                                    "log_Det_Likelihood_Information_Distortion"                           
+[15] "Eigenvalue_Spectrum_Likelihood_Information_Distortion"                "Spectrum_Condition_Number_Likelihood_Information_Distortion"         
+[17] "Max_Eigenvalue_Likelihood_Information_Distortion"                     "Min_Eigenvalue_Likelihood_Information_Distortion"                    
+[19] "Mean_Log_Eigenvalue_Likelihood_Information_Distortion"                "Log_Eigenvalue_Variance_Likelihood_Information_Distortion"           
+[21] "Affine_Invariant_Distance_Likelihood_Information_Distortion"          "Symmetrized_KL_Distortion_Likelihood_Information_Distortion"         
+[23] "Likelihood_Gaussian_Fisher_Distortion"                                "log_Det_Likelihood_Gaussian_Fisher_Distortion"                       
+[25] "Eigenvalue_Spectrum_Likelihood_Gaussian_Fisher_Distortion"            "Spectrum_Condition_Number_Likelihood_Gaussian_Fisher_Distortion"     
+[27] "Max_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                 "Min_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                
+[29] "Mean_Log_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"            "Log_Eigenvalue_Variance_Likelihood_Gaussian_Fisher_Distortion"       
+[31] "Affine_Invariant_Distance_Likelihood_Gaussian_Fisher_Distortion"      "Symmetrized_KL_Distortion_Likelihood_Gaussian_Fisher_Distortion"     
+[33] "Likelihood_Information_Distortion_Reconstituted"                      "Likelihood_Sample_Distortion"                                        
+[35] "log_Det_Likelihood_Sample_Distortion"                                 "Likelihood_Correlation_Distortion"                                   
+[37] "log_Det_Likelihood_Correlation_Distortion"                            "Likelihood_Fisher_Covariance"                                        
+[39] "log_Det_Likelihood_Fisher_Covariance"                                 "Correlation_Of_Likelihood_Fisher_Covariance"                         
+[41] "Eigenvalue_Spectrum_Likelihood_Fisher_Covariance"                     "Effective_Rank_Likelihood_Fisher_Covariance"                         
+[43] "Spectrum_Condition_Number_Likelihood_Fisher_Covariance"               "Null_Space_Projector_Likelihood_Fisher_Covariance"                   
+[45] "Worst_Subspace_Projector_Likelihood_Fisher_Covariance"                "Likelihood_Distortion_Corrected_Covariance"                          
+[47] "log_Det_Likelihood_Distortion_Corrected_Covariance"                   "Correlation_Of_Likelihood_Distortion_Corrected_Covariance"           
+[49] "Eigenvalue_Spectrum_Likelihood_Distortion_Corrected_Covariance"       "Effective_Rank_Likelihood_Distortion_Corrected_Covariance"           
+[51] "Spectrum_Condition_Number_Likelihood_Distortion_Corrected_Covariance" "Null_Space_Projector_Likelihood_Distortion_Corrected_Covariance"     
+[53] "Worst_Subspace_Projector_Likelihood_Distortion_Corrected_Covariance"  "Likelihood_Distortion_Induced_Bias"                                  
+[55] "Report_integral_logL"                                                 "Report_integral_y_mean"                                              
+[57] "Report_integral_y_var"                                                "Report_integral_r_std"                                               
+[59] "Report_integral_dlogL"                                               
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Likelihood_Numerical_Fisher_Information")
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR","macro_R")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      Num_ch>5,
+      component == comp, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      interval_in_tau>0.001,
+      param_col==param_index)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = Num_ch, color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(interval_in_tau~param_name+nsamples, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  p2 <- ggplot(plot_data, aes(x = interval_in_tau , color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(Num_ch~param_name+nsamples, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  
+  print(p)
+  print(p2)
+}
+}
+
+```
+
+[1] "Moment_statistics_Sum_logL"                                           "Moment_statistics_Sum_elogL"                                         
+ [3] "Moment_statistics_Sum_r_std"                                          "Moment_statistics_Sum_r2_std"                                        
+ [5] "Moment_statistics_Sum_trust_coefficient"                              "Moment_statistics_Sum_dlogL"                                         
+ [7] "Moment_statistics_Sum_Gaussian_Fisher_Information"                    "Sum_Moment_statistics_r_std_false"                                   
+ [9] "Sum_Moment_statistics_dlogL_true"                                     "Sum_Moment_statistics_Gaussian_Fisher_Information_false"             
+[11] "Moment_statistics_evaluation_time"                                    "Likelihood_Numerical_Fisher_Information"                             
+[13] "Likelihood_Information_Distortion"                                    "log_Det_Likelihood_Information_Distortion"                           
+[15] "Eigenvalue_Spectrum_Likelihood_Information_Distortion"                "Spectrum_Condition_Number_Likelihood_Information_Distortion"         
+[17] "Max_Eigenvalue_Likelihood_Information_Distortion"                     "Min_Eigenvalue_Likelihood_Information_Distortion"                    
+[19] "Mean_Log_Eigenvalue_Likelihood_Information_Distortion"                "Log_Eigenvalue_Variance_Likelihood_Information_Distortion"           
+[21] "Affine_Invariant_Distance_Likelihood_Information_Distortion"          "Symmetrized_KL_Distortion_Likelihood_Information_Distortion"         
+[23] "Likelihood_Gaussian_Fisher_Distortion"                                "log_Det_Likelihood_Gaussian_Fisher_Distortion"                       
+[25] "Eigenvalue_Spectrum_Likelihood_Gaussian_Fisher_Distortion"            "Spectrum_Condition_Number_Likelihood_Gaussian_Fisher_Distortion"     
+[27] "Max_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                 "Min_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"                
+[29] "Mean_Log_Eigenvalue_Likelihood_Gaussian_Fisher_Distortion"            "Log_Eigenvalue_Variance_Likelihood_Gaussian_Fisher_Distortion"       
+[31] "Affine_Invariant_Distance_Likelihood_Gaussian_Fisher_Distortion"      "Symmetrized_KL_Distortion_Likelihood_Gaussian_Fisher_Distortion"     
+[33] "Likelihood_Information_Distortion_Reconstituted"                      "Likelihood_Sample_Distortion"                                        
+[35] "log_Det_Likelihood_Sample_Distortion"                                 "Likelihood_Correlation_Distortion"                                   
+[37] "log_Det_Likelihood_Correlation_Distortion"                            "Likelihood_Fisher_Covariance"                                        
+[39] "log_Det_Likelihood_Fisher_Covariance"                                 "Correlation_Of_Likelihood_Fisher_Covariance"                         
+[41] "Eigenvalue_Spectrum_Likelihood_Fisher_Covariance"                     "Effective_Rank_Likelihood_Fisher_Covariance"                         
+[43] "Spectrum_Condition_Number_Likelihood_Fisher_Covariance"               "Null_Space_Projector_Likelihood_Fisher_Covariance"                   
+[45] "Worst_Subspace_Projector_Likelihood_Fisher_Covariance"                "Likelihood_Distortion_Corrected_Covariance"                          
+[47] "log_Det_Likelihood_Distortion_Corrected_Covariance"                   "Correlation_Of_Likelihood_Distortion_Corrected_Covariance"           
+[49] "Eigenvalue_Spectrum_Likelihood_Distortion_Corrected_Covariance"       "Effective_Rank_Likelihood_Distortion_Corrected_Covariance"           
+[51] "Spectrum_Condition_Number_Likelihood_Distortion_Corrected_Covariance" "Null_Space_Projector_Likelihood_Distortion_Corrected_Covariance"     
+[53] "Worst_Subspace_Projector_Likelihood_Distortion_Corrected_Covariance"  "Likelihood_Distortion_Induced_Bias"                                  
+[55] "Report_integral_logL"                                                 "Report_integral_y_mean"                                              
+[57] "Report_integral_y_var"                                                "Report_integral_r_std"                                               
+[59] "Report_integral_dlogL"                                               
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Likelihood_Numerical_Fisher_Information")
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR","macro_R")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      Num_ch>5,
+      component == comp, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      interval_in_tau>0.001,
+      param_col==param_index)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = Num_ch, color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(interval_in_tau~param_name+nsamples, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  p2 <- ggplot(plot_data, aes(x = interval_in_tau , color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(Num_ch~param_name+nsamples, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi)) 
+  
+  
+  print(p)
+  print(p2)
+}
+}
+
+```
+
+
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c("Max_Eigenvalue_Likelihood_Information_Distortion",
+                        
+"Min_Eigenvalue_Likelihood_Information_Distortion"                )
+
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR","macro_R"))
+  
+for (noi in noise_in_conductance_tau_plot)
+
+ {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      noise_in_conductance_tau == noi, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      component%in% components_to_plot
+    )
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = interval_in_tau, color = component)) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin = quantile_0.16, ymax = quantile_0.84, color=component), width = 0.05) +
+    scale_x_log10() +
+    facet_grid(Num_ch ~ component, scales = "free") +
+    geom_hline(yintercept = 1.0, color="green")+
+    ggtitle(paste0(al," ",noi)) 
+  
+  print(p)
+}
+
+
+```
+
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+components_to_plot <- c(                   "Log_Eigenvalue_Variance_Likelihood_Information_Distortion",    
+"Affine_Invariant_Distance_Likelihood_Information_Distortion",   "Symmetrized_KL_Distortion_Likelihood_Information_Distortion"   )
+
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+
+for (al in c("macro_IR","macro_R"))
+  
+for (noi in noise_in_conductance_tau_plot)
+
+ {
+  
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+      noise_in_conductance_tau == noi, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      component%in% components_to_plot
+    )
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = interval_in_tau, color = component)) +
+    geom_point(aes(y = mean_NA)) +
+    geom_errorbar(aes(ymin = quantile_0.025, ymax = quantile_0.975, color=component), width = 0.05) +
+    scale_x_log10() +
+    facet_grid(Num_ch ~ component, scales = "free") +
+    geom_hline(yintercept = ifelse(comp=="Moment_statistics_Sum_r2_std",1,0), color="green")+
+    ggtitle(paste0(al," ",noi)) 
+  
+  print(p)
+}
+
+
+```
+
+
+
+
+```{r,fig.width=40,fig.height=80}
+
+pars=d_mean%>%filter(component=="Likelihood_Information_Distortion", param_index!="", param_col==param_index)%>%select(param_name)%>%distinct()%>%pull()
+al=d_mean%>%filter(component=="Likelihood_Distortion_Induced_Bias", param_index!="")%>%select(algorithm)%>%distinct()%>%pull()
+
+
+#for (p in pars )
+ for (a in c("macro_IR","macro_R"))
+{print(
+d_mean%>%filter(component%in%c("Numerical_Fisher_Information","Moment_statistics_Sum_dlogL"), statistic %in% c("value","covariance"), algorithm==a , param_index==param_col, simulation_algorithm!="lsubsteps_1000")%>%ggplot()+geom_point(aes(x = component, y = mean_NA, color=algorithm))+geom_errorbar(aes(x=component, y= (mean_NA),ymin = quantile_0.025,ymax = quantile_0.975 ,color=algorithm))+scale_y_log10()+facet_wrap(Num_ch~interval_in_tau+param_name, scales="free", ncol=6) 
+)
+}
+```
+
