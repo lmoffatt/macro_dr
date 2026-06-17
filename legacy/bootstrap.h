@@ -94,12 +94,22 @@ requires requires(F&& f, const std::vector<vectorSpace> x, const std::vector<std
 { { f(x, indices, std::forward<T>(args)...) }; }
 auto bootstrap_it(F&& f,const std::vector<vectorSpace>& vs,  std::size_t n_replicates, mt_64i& gen, T&& ...args) {
     using R=std::decay_t<decltype(f(vs,generate_bootstrap_indices(vs.size(), gen), std::forward<T>(args)...))>;
+    // 1) Serial pass: pre-generate every resample's indices, consuming `gen` in the
+    //    same order as the old interleaved loop → bit-identical results (f never
+    //    touches gen). This strips the only shared-mutable so f() can run parallel.
+    std::vector<std::vector<std::size_t>> idxs(n_replicates);
+    for (std::size_t i = 0; i < n_replicates; ++i)
+        idxs[i] = generate_bootstrap_indices(vs.size(), gen);
+    // 2) Parallel pass: replicates are independent; f must be pure/thread-safe.
+    //    f/args are invoked n_replicates times, so pass as lvalues (no forward).
+    std::vector<std::optional<R>> slots(n_replicates);
+#pragma omp parallel for schedule(dynamic)
+    for (std::size_t i = 0; i < n_replicates; ++i)
+        slots[i].emplace(f(vs, idxs[i], args...));
     bootstrap<R> out;
     out.reserve(n_replicates);
-    for (std::size_t i = 0; i < n_replicates; ++i) {
-        out.push_back(std::forward<F>(f)(vs, generate_bootstrap_indices(vs.size(), gen), std::forward<T>(args)...));
-    }
-    return out; 
+    for (auto& s : slots) out.push_back(std::move(*s));
+    return out;
  }
 
  
