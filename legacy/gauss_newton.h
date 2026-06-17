@@ -86,6 +86,20 @@ struct gauss_newton_options {
     // sizes. H is the (undamped) CurvTag curvature.
     double newton_dec2_tol = 1e-8;
 
+    // Adaptive relaxation of the Newton-decrement tol. 1e-8 is statistically far
+    // below the noise floor (≈ 1e-4 of a standard error); for NOISY / flat
+    // likelihoods (few channels, group_size=1) the optimiser cannot reach it and
+    // burns iterations to max_iter refining θ̂ below what the data supports
+    // (measured on nch=10/gsize=1: ~40% of groups hit the 100-iter cap, most of
+    // them already NEXT TO a good θ̂ — smaller recovery distance than the
+    // converged ones). So apply the tight tol only for the first `tight_iters`
+    // steps (well-conditioned cases — large N, large group_size — converge there
+    // for free); afterwards accept the relaxed tol, still well below the
+    // statistical scale. Set tight_iters >= max_iter to disable (recover the pure
+    // newton_dec2_tol behaviour).
+    double newton_dec2_tol_relax = 1e-4;
+    std::size_t tight_iters      = 10;
+
     // Convergence (FALLBACK): ||grad|| < grad_rtol * max(1, ||theta||).
     // Kept for back-compat; at large N the Newton decrement above is preferred.
     double grad_rtol      = 1e-6;
@@ -221,7 +235,12 @@ auto gauss_newton_maximize(Objective const& objective, Parameters initial,
         }
 
         // PRIMARY: Newton-decrement convergence (objective sub-optimality ½·λ²).
-        if (0.5 * newton_dec2 < opts.newton_dec2_tol) {
+        // Tight tol for the first opts.tight_iters steps, then the relaxed tol:
+        // the tail past ~tight_iters chases a precision below the noise floor,
+        // which is costly for flat (noisy) likelihoods — see newton_dec2_tol_relax.
+        const double dec_tol =
+            (iter < opts.tight_iters) ? opts.newton_dec2_tol : opts.newton_dec2_tol_relax;
+        if (0.5 * newton_dec2 < dec_tol) {
             return ReturnT(ResultT{
                 std::move(theta), std::move(initial_state),
                 std::move(Maybe_state.value()),
