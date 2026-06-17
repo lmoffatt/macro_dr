@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <fstream>
 #include <map>
+#include <omp.h>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <string>
@@ -277,20 +279,38 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
     std::size_t myseed) {
     myseed = calc_seed(myseed);
 
+    // Sim params are constant across recordings — compute once.
+    auto maybe_params = simulation_parameters_for_substeps(n_sub);
+    if (!maybe_params) {
+        return maybe_params.error();
+    }
+    auto sim = maybe_params.value();
+
+    // One independent RNG per recording: seeds are pre-generated SERIALLY from the
+    // master mt → reproducible regardless of thread schedule (NOT a per-thread pool,
+    // whose state would depend on the runtime schedule). Recordings are independent
+    // and sample() reads a const model + a per-recording mt (no shared state), so
+    // the loop parallelizes. NB: not bit-identical to the old single-stream serial
+    // sim — it is a different but equally valid, reproducible draw.
     mt_64i mt(myseed);
+    std::vector<decltype(mt())> seeds(n_simulations);
+    for (std::size_t i = 0; i < n_simulations; ++i) seeds[i] = mt();
+    std::vector<std::optional<Simulated_Recording<var::please_include<>>>> slots(n_simulations);
+    std::vector<std::string> errs(n_simulations);
+#pragma omp parallel for schedule(dynamic) if(n_simulations >= 2 && !omp_in_parallel())
+    for (std::size_t i = 0; i < n_simulations; ++i) {
+        mt_64i mt_i(seeds[i]);
+        auto maybe_recording = Macro_DMR{}.sample(mt_i, *model, par, e, sim, r);
+        if (maybe_recording)
+            slots[i].emplace(std::move(maybe_recording.value()));
+        else
+            errs[i] = maybe_recording.error()();
+    }
     std::vector<Simulated_Recording<var::please_include<>>> result;
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
-        auto maybe_params = simulation_parameters_for_substeps(n_sub);
-        if (!maybe_params) {
-            return maybe_params.error();
-        }
-        auto sim = maybe_params.value();
-        auto maybe_recording = Macro_DMR{}.sample(mt, *model, par, e, sim, r);
-        if (!maybe_recording) {
-            return maybe_recording.error();
-        }
-        result.push_back(maybe_recording.value());
+        if (!errs[i].empty()) return error_message(errs[i]);
+        result.push_back(std::move(slots[i].value()));
     }
     return result;
 }
@@ -317,15 +337,29 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<>>>> run_n_simul
         return maybe_sim_params.error();
     }
 
+    // One independent RNG per recording: seeds pre-generated serially from the
+    // master mt → reproducible, schedule-independent. sample() reads a const model
+    // + per-recording mt (no shared state) → safe to parallelize. Not bit-identical
+    // to the old single-stream serial draw (a different, reproducible realization).
     mt_64i mt(myseed);
+    std::vector<decltype(mt())> seeds(n_simulations);
+    for (std::size_t i = 0; i < n_simulations; ++i) seeds[i] = mt();
+    std::vector<std::optional<Simulated_Recording<var::please_include<>>>> slots(n_simulations);
+    std::vector<std::string> errs(n_simulations);
+#pragma omp parallel for schedule(dynamic) if(n_simulations >= 2 && !omp_in_parallel())
+    for (std::size_t i = 0; i < n_simulations; ++i) {
+        mt_64i mt_i(seeds[i]);
+        auto maybe_sim = Macro_DMR{}.sample(mt_i, *model, par, e, maybe_sim_params.value(), r);
+        if (maybe_sim)
+            slots[i].emplace(std::move(maybe_sim.value()));
+        else
+            errs[i] = maybe_sim.error()();
+    }
     std::vector<Simulated_Recording<var::please_include<>>> result;
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
-        auto maybe_sim = Macro_DMR{}.sample(mt, *model, par, e, maybe_sim_params.value(), r);
-        if (!maybe_sim) {
-            return maybe_sim.error();
-        }
-        result.push_back(maybe_sim.value());
+        if (!errs[i].empty()) return error_message(errs[i]);
+        result.push_back(std::move(slots[i].value()));
     }
     return result;
 }
@@ -396,20 +430,36 @@ Maybe_error<std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_S
                                          const Recording& r, std::size_t n_sub,
                                          std::size_t myseed) {
     myseed = calc_seed(myseed);
+    // Sim params constant — compute once.
+    auto maybe_params = simulation_parameters_for_substeps(n_sub);
+    if (!maybe_params) {
+        return maybe_params.error();
+    }
+    auto sim = maybe_params.value();
+
+    // Independent RNG per recording (serial seed pre-gen → reproducible, schedule-
+    // independent). sample_sub_y reads a const model + per-recording mt → safe to
+    // parallelize. Not bit-identical to the old single-stream serial draw.
     mt_64i mt(myseed);
+    std::vector<decltype(mt())> seeds(n_simulations);
+    for (std::size_t i = 0; i < n_simulations; ++i) seeds[i] = mt();
+    std::vector<std::optional<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>>>
+        slots(n_simulations);
+    std::vector<std::string> errs(n_simulations);
+#pragma omp parallel for schedule(dynamic) if(n_simulations >= 2 && !omp_in_parallel())
+    for (std::size_t i = 0; i < n_simulations; ++i) {
+        mt_64i mt_i(seeds[i]);
+        auto maybe_recording = Macro_DMR{}.sample_sub_y(mt_i, *model, par, e, sim, r);
+        if (maybe_recording)
+            slots[i].emplace(std::move(maybe_recording.value()));
+        else
+            errs[i] = maybe_recording.error()();
+    }
     std::vector<Simulated_Recording<var::please_include<Only_Ch_Curent_Sub_Evolution>>> result;
     result.reserve(n_simulations);
     for (std::size_t i = 0; i < n_simulations; ++i) {
-        auto maybe_params = simulation_parameters_for_substeps(n_sub);
-        if (!maybe_params) {
-            return maybe_params.error();
-        }
-        auto sim = maybe_params.value();
-        auto maybe_recording = Macro_DMR{}.sample_sub_y(mt, *model, par, e, sim, r);
-        if (!maybe_recording) {
-            return maybe_recording.error();
-        }
-        result.push_back(maybe_recording.value());
+        if (!errs[i].empty()) return error_message(errs[i]);
+        result.push_back(std::move(slots[i].value()));
     }
     return result;
 }
