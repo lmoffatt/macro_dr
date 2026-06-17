@@ -14,8 +14,8 @@ library(patchwork)
 ```{r}
 
 filename=c(
-  "data/dfa842d/figure_3_nch_1000_nsim_1024_macro_IR_noise_0.1",
-  "data/dfa842d/figure_3_nch_10000_nsim_1024_macro_IR_noise_0.1"
+  "data/8fc274d/figure_3_nch_1000_nsim_1024_macro_IR_noise_0.1",
+  "data/8fc274d/figure_3_nch_10000_nsim_1024_macro_IR_noise_0.1"
 
   )
 
