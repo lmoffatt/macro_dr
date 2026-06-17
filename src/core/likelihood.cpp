@@ -3670,11 +3670,30 @@ inline Maybe_error<dlogPs> evaluate_likelihood_as_dlogPs_impl(
 inline Maybe_error<dlogPs> evaluate_combined_group_as_dlogPs(
     const likelihood_algorithm_type& lik, const var::Parameters_transformed& p,
     const Experiment& e, const std::vector<Recording>& group_recordings) {
+    // Per-recording dlogPs evaluated in parallel into own slots — no shared
+    // accumulator and no return out of the region (both illegal/racy under omp).
+    // Each calculate_mdlikelihood builds its own function table per call, so the
+    // evaluations are independent and thread-safe. The if() also guards
+    // !omp_in_parallel(): this INNER level takes the pool only when the outer
+    // per-group loop left it free (large gsize → few groups), and never nests.
+    const std::size_t n = group_recordings.size();
+    std::vector<std::optional<dlogPs>> slots(n);
+    std::vector<std::string> errs(n);
+    #pragma omp parallel for schedule(dynamic) if(n >= 2 && !omp_in_parallel())
+    for (std::size_t i = 0; i < n; ++i) {
+        auto m = evaluate_likelihood_as_dlogPs_impl(lik, p, e, group_recordings[i]);
+        if (m)
+            slots[i].emplace(std::move(m.value()));
+        else
+            errs[i] = m.error()();
+    }
+    // Sequential reduce + first-error surface (dlogPs add is associative:
+    // independent recordings → logL / score / Fisher add slot-wise).
     std::optional<dlogPs> acc;
-    for (Recording const& r : group_recordings) {
-        auto m = evaluate_likelihood_as_dlogPs_impl(lik, p, e, r);
-        if (!m) return m.error();
-        acc = acc ? dlogPs(acc.value() + m.value()) : m.value();
+    for (std::size_t i = 0; i < n; ++i) {
+        if (!errs[i].empty())
+            return error_message(errs[i]);
+        acc = acc ? dlogPs(acc.value() + slots[i].value()) : slots[i].value();
     }
     if (!acc) return error_message("evaluate_combined_group_as_dlogPs: empty group");
     return acc.value();
@@ -3749,8 +3768,12 @@ auto calc_MLE_per_group_of_replicates(
     // per-group point estimates (θ̂_group, F̄_group), not over recordings. Groups
     // whose GN refit fails are dropped (not retained as NaN) so they don't bias
     // the θ̂ cloud mean / Fisher aggregation downstream.
-    std::vector<per_group_estimate> groups;
-    groups.reserve(N_groups);
+    // OUTER level: parallelize over groups only when there are enough to fill the
+    // pool (N_groups >= threads). When groups are few (large gsize), this stays
+    // serial and yields the pool to the INNER per-recording loop in
+    // evaluate_combined_group_as_dlogPs (guarded by !omp_in_parallel()). No nesting.
+    std::vector<per_group_estimate> slots(N_groups);
+    #pragma omp parallel for schedule(dynamic) if(N_groups >= omp_get_max_threads())
     for (std::size_t g = 0; g < N_groups; ++g) {
         std::vector<Recording> group_recordings;
         group_recordings.reserve(gsize);
@@ -3815,8 +3838,16 @@ auto calc_MLE_per_group_of_replicates(
         }
 
         est.ok = true;
-        groups.push_back(std::move(est));
+        slots[g] = std::move(est);  // own slot → no race
     }
+
+    // Collect successful refits sequentially (slots[] was filled in parallel by
+    // group; failed/empty groups keep ok=false and drop out here, preserving the
+    // "only-ok groups" contract the bootstrap factory below relies on).
+    std::vector<per_group_estimate> groups;
+    groups.reserve(N_groups);
+    for (auto& s : slots)
+        if (s.ok) groups.push_back(std::move(s));
 
     const std::size_t N_groups_ok = groups.size();
     if (N_groups_ok == 0)
