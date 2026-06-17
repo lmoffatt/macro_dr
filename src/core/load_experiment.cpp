@@ -104,6 +104,7 @@ Experiment create_experiment(std::vector<std::tuple<std::size_t,std::size_t,doub
     if (!f.is_open()) {
         return error_message("cannot open ", path_);
     }
+    detail::write_provenance_row(f);  // commit hash as line 1, before the header
 
     const auto& conditions = get<Recording_conditions>(e);
     const auto n_samples = conditions().size();
