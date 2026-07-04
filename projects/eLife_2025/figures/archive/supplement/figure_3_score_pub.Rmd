@@ -1,0 +1,101 @@
+---
+title: "Figure (score whiteness) — temporal autocorrelation of the per-step score"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Per-ALGORITHM temporal-whiteness diagnostic. 5 ensemble CSVs
+figures/data/figure_3_time_dlik_{NR,R,NMR,MR,IR}.csv. Per-step score
+   s_t,k = d logL_t / d theta_k  (component_path=="logL", calculus=="derivative",
+   sample_index populated, param_index = k), at the TRUE parameter on data simulated there.
+A well-specified filter has a WHITE (martingale-difference) score -> ACF(s_t,k)=0 at lags>=1;
+a naive filter leaves temporal structure -> non-zero ACF (the memory that becomes the
+distorted Fisher / miscalibrated CIs). Only the lag-resolved ACF lives here; the global
+scalars (score bias, F!=J) belong with the global-estimate figure.
+
+The score ACF is essentially PARAMETER-INDEPENDENT (lag-1: NR 0.75-0.79, IR -0.001..0.008
+across all 4 params) -> the MAIN figure shows ONE representative parameter x 5 algorithms;
+the 4-parameter grid (which only confirms the independence) is the SUPPLEMENT.
+Significance = mean over recordings +/- 1.96 SE per lag (CI excludes 0 -> non-white); the
+single-series 1.96/sqrt(n) band is NOT drawn (it answers a weaker, one-recording question).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+MAIN_PARAM <- "k[off]"   # representative; score ACF is parameter-independent (see supplement)
+```
+
+```{r read}
+ALGOS <- c("NR", "R", "NMR", "MR", "IR")   # NMR = data-file key
+ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", IR = "IR")   # display: show NMR as MNR
+PIDX  <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PLAB  <- c(on = "k[on]", off = "k[off]", unitary_current = "i", Num_ch_mean = "N[ch]")
+
+read_score <- function(a) {
+  dt <- data.table::fread(sprintf("../data/figure_3_time_dlik_%s.csv", a),
+                          skip = 1, showProgress = FALSE)
+  s  <- tibble::as_tibble(dt[component_path == "logL" & calculus == "derivative" &
+                             param_index %in% unname(PIDX) & !is.na(sample_index),
+                             .(simulation_index, sample_index, param_index, value)])
+  rm(dt); gc(verbose = FALSE)
+  s %>% group_by(simulation_index, sample_index, param_index) %>%
+    summarise(score = first(value), .groups = "drop") %>%
+    filter(is.finite(score)) %>% mutate(algorithm = a)
+}
+
+sc <- map_dfr(ALGOS, read_score) %>%
+  mutate(algorithm = factor(algorithm, levels = ALGOS),
+         param = factor(PLAB[names(PIDX)[match(param_index, PIDX)]], levels = unname(PLAB))) %>%
+  arrange(algorithm, param, simulation_index, sample_index)
+n_samp <- n_distinct(sc$sample_index)
+```
+
+```{r autocorrelation}
+LAGMAX  <- min(25, n_samp - 2)
+acf_one <- function(x) as.numeric(acf(x, lag.max = LAGMAX, plot = FALSE)$acf)
+acf_df <- sc %>% group_by(algorithm, param, simulation_index) %>%
+  summarise(a = list(acf_one(score)), .groups = "drop") %>%
+  group_by(algorithm, param) %>%
+  summarise(M = list(do.call(rbind, a)), .groups = "drop") %>%
+  mutate(d = map(M, ~ tibble(lag = 0:LAGMAX, acf = colMeans(.x),
+                             se = apply(.x, 2, sd) / sqrt(nrow(.x))))) %>%
+  select(algorithm, param, d) %>% unnest(d) %>% filter(lag >= 1)
+```
+
+```{r acf-plot}
+COL <- "#D55E00"
+acf_panel <- function(df, grid = FALSE) {
+  p <- ggplot(df, aes(lag, acf)) +
+    geom_hline(yintercept = 0, colour = "#009E73", linewidth = .4) +
+    geom_linerange(aes(ymin = acf - 1.96*se, ymax = acf + 1.96*se), colour = COL, linewidth = .35) +
+    geom_point(colour = COL, size = .25) +
+    labs(x = "lag", y = expression(ACF(s[t]))) +
+    theme_bw(base_size = 9) + theme(panel.grid.minor = element_blank())
+  if (grid) p + facet_grid(param ~ algorithm, labeller = labeller(param = label_parsed, algorithm = ALAB))
+  else      p + facet_wrap(~ algorithm, nrow = 1, labeller = labeller(algorithm = ALAB))
+}
+```
+
+```{r main, fig.width = 11, fig.height = 2.6}
+# MAIN — score ACF for one representative parameter x 5 algorithms
+g_main <- acf_panel(acf_df %>% filter(as.character(param) == MAIN_PARAM))
+g_main
+ggsave("Figure_3_score_acf.pdf", g_main, width = 11, height = 2.6)
+```
+
+```{r supplement, fig.width = 11, fig.height = 8}
+# SUPPLEMENT — all 4 parameters (confirms parameter-independence)
+g_supp <- acf_panel(acf_df, grid = TRUE)
+g_supp
+ggsave("Figure_S_score_acf_allparams.pdf", g_supp, width = 11, height = 8)
+```
+
+```{r summary-table}
+acf_df %>% group_by(algorithm, param) %>%
+  summarise(acf_lag1 = round(acf[lag == 1], 3),
+            max_abs_acf = round(max(abs(acf)), 3), .groups = "drop") %>%
+  pivot_wider(names_from = param, values_from = c(acf_lag1, max_abs_acf))
+```

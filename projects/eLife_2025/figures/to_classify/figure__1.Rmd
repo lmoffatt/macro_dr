@@ -527,10 +527,10 @@
                 xend= lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=    P_mean_t20_y1_1))   
   )
   
-  ```
+```
   
   
-  ```{r}
+```{r}
   library(patchwork)
   d%>%filter(component=="y_mean")%>%ggplot()+geom_segment(data=d_s%>%filter(row_kind=="sub"),aes(x=step_start,xend=step_end, y=patch_current))+
   geom_segment( aes(x=step_start,xend=step_end, primitive))+facet_wrap(~algo)

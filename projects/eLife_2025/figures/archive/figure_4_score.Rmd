@@ -1,0 +1,227 @@
+---
+title: "Figure 4 — the score across the 5 macro algorithms: bias, per-interval and accumulated information"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+SCORE-LEVEL Bartlett tests, time-resolved, for the 5-algorithm comparison. Reads the same
+5 ensemble CSVs figures/data/figure_3_time_dlik_{NR,R,NMR,MR,IR}.csv (each ~1 GB, 1000 sims;
+cell N_ch=100, Current_Noise=1e-4, interval=0.1 tau) ONCE each, filters to the per-interval
+score and the predictive-moment derivatives for k_off, then discards.
+
+The per-interval score is the STORED d logL_t / d k_off (component_path=="logL",
+calculus=="derivative", param_index==1). Verified against the analytic Gaussian score
+  s_t = (y_t - mu_t)/v_t * dmu_t + 0.5*((y_t-mu_t)^2/v_t^2 - 1/v_t) * dv_t
+to machine precision (ratio 1.0000 at a sampled interval). The per-interval Fisher is the
+Gaussian FIM diagonal
+  F_t = dmu_t^2 / v_t + 0.5 * dv_t^2 / v_t^2 ,
+verified to sum over the recording to the stored total Gaussian_Fisher_Information[k_off,k_off]
+(sum_t F_t = 9447.95 exactly for the first recording). (mu_t = y_mean, v_t = y_var.)
+
+Three rows, all time-resolved, all with the agonist shading; columns are the five approximations.
+  A  score bias: sbar_t = mean over recordings of s_t. Test 1, E[score]=0. null line 0.
+  B  per-interval information ratio: Var_recordings(s_t) / mean_recordings(F_t). Test 2 at the
+     interval level. null line 1. This is the CONTROL: per step the identity holds for all five.
+  C  accumulated information ratio: Var_recordings(sum_{k<=t} s_k) / sum_{k<=t} mean_recordings(F_k)
+     = J_T / F_T. Test 2 at the recording level. null line 1. The naive pair accumulates the
+     temporal correlation of the score and diverges from 1 (the overconfidence of Figure 2); the
+     recursive trio stays near 1. This is the whole argument: the identity holds per interval (B)
+     but fails once the correlated score is summed (C).
+
+J_T is the variance ACROSS the 1000 recordings of the progressive (cumulative) score; F_T is the
+cumulative sum of the per-interval Fisher. Rows A and C use a separate scale per block (naive
+NR/NMR | recursive R/MR/IR); row B is shared (all near 1). B and C confidence bands are a
+nonparametric bootstrap over the 1000 recordings; row A is mean +/- 1.96 SE.
+
+RENDER: this reads 5 GB, too heavy for a laptop; run where figures/data/ resolves.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+library(patchwork)
+```
+
+```{r read}
+ALGOS  <- c("NR", "NMR", "R", "MR", "IR")   # non-recursive | recursive  (NMR = data-file key)
+ALAB   <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", IR = "IR")   # display label
+FULL   <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
+            MR = "Mean Recursive", IR = "Interval Recursive")
+P_MAIN <- 1L    # k_off (param_index); the score is essentially parameter-independent
+B      <- 400   # bootstrap replicates over recordings
+
+read_one <- function(a) {
+  dt <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE)
+  pick <- function(comp, calc, p = NA) {
+    q <- dt[component_path == comp & calculus == calc & !is.na(sample_index)]
+    if (!is.na(p)) q <- q[param_index == p]
+    # LOAD-BEARING dedup: the writer emits every evolution row TWICE (one
+    # segment_index-blank copy with no timing + one segment_index=0 copy with
+    # timing), identical values. Collapse to one row per (sim,sample) so the
+    # dcast in compute_one has a single value per cell. (== filtering segment_index==0.)
+    q[, .(v = mean(value)), by = .(simulation_index, sample_index)]
+  }
+  sc <- pick("logL",   "derivative", P_MAIN); setnames(sc, "v", "s")
+  dm <- pick("y_mean", "derivative", P_MAIN); setnames(dm, "v", "dm")
+  dv <- pick("y_var",  "derivative", P_MAIN); setnames(dv, "v", "dv")
+  yv <- pick("y_var",  "primitive");          setnames(yv, "v", "yv")
+  tm <- unique(dt[!is.na(patch_current), .(sample_index, t = step_middle, agonist)])
+  tm <- tm[, .(t = first(t), agonist = first(agonist)), by = sample_index]
+  rm(dt); gc(verbose = FALSE)
+  X <- Reduce(function(x, y) merge(x, y, by = c("simulation_index", "sample_index")),
+              list(sc, dm, dv, yv))
+  X[, I := dm^2 / yv + 0.5 * dv^2 / yv^2]           # per-interval Gaussian FIM (k_off)
+  list(si = X[, .(algo = a, simulation_index, sample_index, s, I)], tm = tm)
+}
+raw  <- lapply(ALGOS, read_one)
+SI   <- rbindlist(lapply(raw, `[[`, "si"))
+tmap <- raw[[1]]$tm
+tmap[, t := t * 1000]                     # step_middle seconds -> ms (coherent with Figure 1)
+setorder(SI, algo, simulation_index, sample_index)
+```
+
+```{r compute}
+set.seed(1)
+colVar    <- function(M) { n <- nrow(M); m <- colMeans(M); (colMeans(M * M) - m^2) * n / (n - 1) }
+rowCumsum <- function(M) t(apply(M, 1, cumsum))   # recordings x samples cumulative score
+
+compute_one <- function(d) {
+  Sm  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "s")[, -1])
+  Im  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "I")[, -1])
+  smp <- as.integer(colnames(Sm)); n <- nrow(Sm)
+  vA  <- colVar(Sm)
+  mA  <- colMeans(Sm)                                   # A: score mean
+  rB  <- vA / colMeans(Im)                              # B: per-interval Var(s)/F
+  rC  <- colVar(rowCumsum(Sm)) / cumsum(colMeans(Im))   # C: cumulative J_T/F_T
+  repB <- matrix(NA_real_, B, length(smp))
+  repC <- matrix(NA_real_, B, length(smp))
+  for (b in seq_len(B)) {
+    idx <- sample.int(n, n, replace = TRUE)
+    Sb  <- Sm[idx, , drop = FALSE]; Ib <- Im[idx, , drop = FALSE]
+    repB[b, ] <- colVar(Sb) / colMeans(Ib)
+    repC[b, ] <- colVar(rowCumsum(Sb)) / cumsum(colMeans(Ib))
+  }
+  ci <- function(M, p) apply(M, 2, quantile, p, na.rm = TRUE)
+  data.table(sample_index = smp,
+             mA = mA, seA = sqrt(vA / n), Fbar = colMeans(Im),
+             rB = rB, rB_lo = ci(repB, .025), rB_hi = ci(repB, .975),
+             rC = rC, rC_lo = ci(repC, .025), rC_hi = ci(repC, .975))
+}
+RES <- SI[, compute_one(.SD), by = algo]
+RES <- merge(RES, tmap, by = "sample_index")
+RES[, algo := factor(algo, levels = ALGOS)]
+
+dA <- RES[is.finite(mA)]
+# B is a ratio with denominator F_t; restrict to informative intervals (F_t appreciable)
+# per algorithm, else it blows up where F_t -> 0 (pre/post pulse, no information).
+# rB_lo > 0 / rC_lo > 0: the log10 axis needs strictly positive ribbon bounds.
+dB <- RES[is.finite(rB) & is.finite(rB_lo) & rB_lo > 0]
+dB <- dB[, .SD[Fbar > 1e-3 * max(Fbar, na.rm = TRUE)], by = algo]
+dC <- RES[is.finite(rC) & is.finite(rC_lo) & rC_lo > 0]
+```
+
+```{r layout}
+COL <- "#0072B2"; NUL <- "#009E73"
+naive <- c("NR", "NMR"); recg <- c("R", "MR", "IR")
+
+grange <- function(lo, hi, algo, pad = .08) {
+  g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
+    summarise(lo = min(lo), hi = max(hi), .groups = "drop") %>%
+    mutate(pd = (hi - lo) * pad, lo = lo - pd, hi = hi + pd)
+  list(naive = c(g$lo[g$grp == 1], g$hi[g$grp == 1]),
+       rec   = c(g$lo[g$grp == 2], g$hi[g$grp == 2]))
+}
+padr <- function(r, f = .06) r + c(-1, 1) * diff(r) * f
+
+# nice ratio breaks within [lo, hi] (RATIO units), ALWAYS including 1; dense
+# (1-1.5-2-3-5-7) for narrow ranges, sparse (1-2-5) once it spans >~1 decade.
+ratio_breaks <- function(lo, hi) {
+  cand <- if (log10(hi) - log10(lo) <= 1.2)
+            c(.1, .2, .3, .5, .7, 1, 1.5, 2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100)
+          else c(.1, .2, .5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
+  b <- cand[cand >= lo & cand <= hi]
+  sort(unique(c(1, b)))
+}
+
+colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = FULL[[k]]) +
+  theme(plot.title = element_text(hjust = .5, size = 9),
+        plot.subtitle = element_text(hjust = .5, size = 7))
+
+# logr = TRUE -> log10 y-axis (Var/F ratios), breaks in ratio units incl 1, null at 1;
+# logr = FALSE -> linear y-axis, breaks forced to include 0 (the null of row A).
+deco <- function(p, col, split, xr, yl, yq, ttl = NULL, tag = NULL, bottom = FALSE, logr = FALSE) {
+  ylim <- if (is.list(yl)) (if (col %in% naive) yl$naive else yl$rec) else yl
+  if (logr) {
+    ylim <- c(min(ylim[1], 1), max(ylim[2], 1))          # 1 must sit on the axis
+    rb <- ratio_breaks(ylim[1], ylim[2])
+    p <- p + scale_y_log10(breaks = rb, labels = as.character(rb)) +
+      coord_cartesian(xlim = xr, ylim = ylim)
+  } else {
+    brk <- pretty(ylim); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
+    p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
+  }
+  if (col == "NR") p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
+  else if (col == "R" && split) p <- p + theme(axis.title.y = element_blank())
+  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(),
+                      axis.ticks.y = element_blank())
+  # bottom row keeps the x numbers but NOT a per-panel title (one global "time (ms)" below)
+  if (bottom) p <- p + theme(axis.title.x = element_blank())
+  else p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+  if (!is.null(tag)) p <- p + labs(tag = tag)
+  if (!is.null(ttl)) p <- p + ggtitle(ttl) +
+    theme(plot.title = element_text(hjust = 0, size = 8.5, face = "plain", margin = margin(b = 1)))
+  p + theme(panel.grid.minor = element_blank(), plot.margin = margin(1.5, 3, 1.5, 3))
+}
+base <- function() theme_bw(base_size = 8)
+
+tr    <- range(tmap$t)
+agon  <- tmap[agonist > 0]; x0 <- min(agon$t); x1 <- max(agon$t)
+# full-panel agonist band. ymax=1e10 works on both scales; ymin branches because a log10
+# axis rejects a negative floor (log10(<=0)=NaN, rect dropped) while a linear panel (score
+# bias) goes negative and must reach the floor. coord_cartesian clips the ridiculous bounds.
+mkshade <- function(logr = FALSE) annotate("rect", xmin = x0, xmax = x1,
+                  ymin = if (logr) 1e-10 else -1e10, ymax = 1e10, fill = "grey85", alpha = .5)
+
+# Row A: score bias, GROUPED (naive | recursive), null 0
+yA <- grange(dA$mA - 1.96 * dA$seA, dA$mA + 1.96 * dA$seA, as.character(dA$algo))
+pA <- lapply(ALGOS, function(a) {
+  d <- dA[algo == a]
+  g <- ggplot(d, aes(t, mA)) + mkshade() + geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = mA - 1.96 * seA, ymax = mA + 1.96 * seA), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, split = TRUE, xr = tr, yl = yA, yq = expression(bar(s)[t]),
+       ttl = if (a == "NR") "score bias (first moment)" else NULL, tag = if (a == "NR") "A" else NULL)
+})
+# Row B: per-interval Var(s)/F, SHARED log10, null 1 (robust scale via log-space quantiles:
+# a stray near-zero-F interval must not set the axis)
+yB <- 10^padr(log10(as.numeric(quantile(c(dB$rB_lo, dB$rB_hi), c(.01, .99), na.rm = TRUE))))
+pB <- lapply(ALGOS, function(a) {
+  d <- dB[algo == a]
+  g <- ggplot(d, aes(t, rB)) + mkshade(TRUE) + geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = rB_lo, ymax = rB_hi), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, split = FALSE, xr = tr, yl = yB, yq = expression(Var(s[t]) / F[t]),
+       ttl = if (a == "NR") "per-interval information ratio" else NULL, tag = if (a == "NR") "B" else NULL,
+       logr = TRUE)
+})
+# Row C: accumulated J_T/F_T, GROUPED (naive | recursive) log10, null 1, bottom -> time axis
+# (grange in log space so the padded limits stay positive)
+yC <- lapply(grange(log10(dC$rC_lo), log10(dC$rC_hi), as.character(dC$algo)), function(r) 10^r)
+pC <- lapply(ALGOS, function(a) {
+  d <- dC[algo == a]
+  g <- ggplot(d, aes(t, rC)) + mkshade(TRUE) + geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = rC_lo, ymax = rC_hi), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, split = TRUE, xr = tr, yl = yC, yq = expression(Var(sum(s[t])) / sum(F[t])),
+       ttl = if (a == "NR") "accumulated information ratio" else NULL, tag = if (a == "NR") "C" else NULL,
+       bottom = TRUE, logr = TRUE)
+})
+
+grid <- wrap_plots(c(lapply(ALGOS, colhead), pA, pB, pC), ncol = 5, heights = c(0.10, 1, 1, 1))
+xlab_row <- wrap_elements(grid::textGrob("time (ms)", gp = grid::gpar(fontsize = 9)))   # one x title
+g4 <- wrap_plots(grid, xlab_row, ncol = 1, heights = c(1, 0.03))
+ggsave("Figure_4_score.pdf", g4, width = 7.0, height = 6.4)
+```

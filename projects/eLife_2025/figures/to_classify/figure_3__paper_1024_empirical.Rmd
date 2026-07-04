@@ -14,12 +14,21 @@ library(patchwork)
 ```{r}
 
 filename=c(
-    "data/8fc274d/figure_3_nch_1000_nsim_1024_macro_IR_noise_0.1",
- "data/8fc274d/figure_3_nch_10000_nsim_1024_macro_IR_noise_0.1"
+#    "data/433ed13/figure_3_nch_10_nsim_1000_macro_IR_noise_0.1",
+# "data/433ed13/figure_3_nch_100_nsim_1000_macro_IR_noise_0.1",
+#"data/433ed13/figure_3_nch_1000_nsim_1000_macro_IR_noise_0.1",
+#"data/433ed13/figure_3_nch_10000_nsim_1000_macro_IR_noise_0.1"
+   "data/433ed13/figure_3_nch_10_nsim_10000_macro_IR_noise_0.1",
+ "data/433ed13/figure_3_nch_100_nsim_10000_macro_IR_noise_0.1",
+"data/433ed13/figure_3_nch_1000_nsim_10000_macro_IR_noise_0.1",
+"data/433ed13/figure_3_nch_10000_nsim_10000_macro_IR_noise_0.1"
 
   )
 
-nsamples=rep(1024,length(filename))
+nsamples=rep(
+  #1000,1000,1000,1000,
+  10000,10000,10000,10000
+  )
 
 ```
 
@@ -78,6 +87,74 @@ d_algo<-
 d_algo
 
 ```
+
+
+```{r,fig.width=20,fig.height=20}
+  
+  library(dplyr)
+library(ggplot2)
+
+num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
+  components_to_plot <- c("Empirical_Covariance_Fisher_Distortion", "Empirical_Covariance_Corrected_Distortion", "Optimum_Fisher_Distortion")
+
+noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
+gs =unique(d_mean$group_size)
+
+for (al in c("macro_IR")){
+noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
+  
+for (comp in components_to_plot) 
+for (noi in noise_in_conductance_tau_plot)
+    {
+  for (ng in gs){
+  # 1. Filter and compute scaled values safely beforehand
+  plot_data <- d_mean %>%
+    filter(
+     # nsamples==1000,
+      Num_ch>5,
+      group_size==ng,
+      component == comp, 
+      statistic == "value", 
+      algorithm == al, 
+      simulation_algorithm == "uniformization", 
+      noise_in_conductance_tau==noi, 
+      interval_in_tau>0.001,
+      param_col==param_index)
+  
+  # 2. Build and print the plot
+  p <- ggplot(plot_data, aes(x = Num_ch, color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(interval_in_tau~param_name, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi, "group size:",ng)) 
+  
+  p2 <- ggplot(plot_data, aes(x = interval_in_tau , color = factor(nsamples))) +
+    geom_point(aes(y = quantile_0.5)) +
+    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
+    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
+    scale_x_log10() +
+  #  facet_grid(interval_in_tau~param_name, scales = "free") +
+    facet_wrap(Num_ch~param_name, scales = "free", ncol=6) +
+    geom_hline(yintercept = 1, color="green")+
+    scale_y_log10()+
+    ggtitle(paste0(al," ",comp, " noise:", noi, "group size:",ng)) 
+  
+  
+  print(p)
+  print(p2)
+  }
+}
+}
+  
+```
+
+
+
 ```{r,fig.width=20,fig.height=20}
   
   library(dplyr)
@@ -220,67 +297,6 @@ for (noi in noise_in_conductance_tau_plot)
 [52] "Null_Space_Projector_Likelihood_Distortion_Corrected_Covariance"      "Worst_Subspace_Projector_Likelihood_Distortion_Corrected_Covariance"  "Likelihood_Distortion_Induced_Bias"                                  
 [55] "Report_integral_logL"                                                 "Report_integral_y_mean"                                               "Report_integral_y_var"                                               
 [58] "Report_integral_r_std"                                                "Report_integral_dlogL"              
-
-
-```{r,fig.width=20,fig.height=20}
-  
-  library(dplyr)
-library(ggplot2)
-
-num_samples <- c("1.00" = 10, "0.5" = 20, "0.20" = 50,"0.1" = 100, "0.05" = 200, "0.02" = 500, "0.01" = 1000 )
-  components_to_plot <- c("Empirical_Covariance_Fisher_Distortion", "Empirical_Covariance_Corrected_Distortion", "Optimum_Fisher_Distortion")
-
-noise_in_conductance_tau_plot =unique(d_mean$noise_in_conductance_tau)
-
-for (al in c("macro_IR")){
-noise_in_conductance_tau_plot =d_mean%>%filter(algorithm == al)%>%select(noise_in_conductance_tau)%>%distinct()%>%pull()
-  
-for (comp in components_to_plot) 
-for (noi in noise_in_conductance_tau_plot)
-    {
-  
-  # 1. Filter and compute scaled values safely beforehand
-  plot_data <- d_mean %>%
-    filter(
-      Num_ch>5,
-      component == comp, 
-      statistic == "value", 
-      algorithm == al, 
-      simulation_algorithm == "uniformization", 
-      noise_in_conductance_tau==noi, 
-      interval_in_tau>0.001,
-      param_col==param_index)
-  
-  # 2. Build and print the plot
-  p <- ggplot(plot_data, aes(x = Num_ch, color = factor(nsamples))) +
-    geom_point(aes(y = quantile_0.5)) +
-    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
-    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
-    scale_x_log10() +
-  #  facet_grid(interval_in_tau~param_name, scales = "free") +
-    facet_wrap(interval_in_tau~param_name+group_size, scales = "free", ncol=6) +
-    geom_hline(yintercept = 1, color="green")+
-    scale_y_log10()+
-    ggtitle(paste0(al," ",comp, " noise:", noi)) 
-  
-  p2 <- ggplot(plot_data, aes(x = interval_in_tau , color = factor(nsamples))) +
-    geom_point(aes(y = quantile_0.5)) +
-    geom_errorbar(aes(ymin =quantile_0.025 , ymax = quantile_0.975, color=param_name), width = 0.05) +
-    geom_errorbar(aes(ymin =quantile_0.16 , ymax = quantile_0.84, color=factor(nsamples)), width = 0.05) +
-    scale_x_log10() +
-  #  facet_grid(interval_in_tau~param_name, scales = "free") +
-    facet_wrap(Num_ch~param_name+group_size, scales = "free", ncol=6) +
-    geom_hline(yintercept = 1, color="green")+
-    scale_y_log10()+
-    ggtitle(paste0(al," ",comp, " noise:", noi)) 
-  
-  
-  print(p)
-  print(p2)
-}
-  }
-  
-  ```
 
 
 

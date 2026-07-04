@@ -1,0 +1,123 @@
+---
+title: "Figure 5 (distortion contour, masked) — macro_IR iso-distortion over the (interval, N_ch) plane, unreliable cells greyed"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+The filled iso-distortion map (figure_5_distortion_contour, filled style) PLUS a confidence mask:
+cells whose bootstrap 95% CI half-width exceeds ERR_MAX are covered by a grey rectangle, so the
+noise-driven speckle (mostly noise = 10, few channels) reads as "can't tell" instead of as real
+distortion. The contour fill is computed on the FULL field (rectangular grid, no holes); only the
+DISPLAY of unreliable cells is masked. ONE Rmd emits THREE PDFs (Information / Sample / Correlation).
+
+11 log-even bands, white centred on 1, the two outer bands reserved (off-scale). ALGO = macro_IR.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR <- "../data/433ed13"
+NSIM     <- 10000
+NOISES   <- c("0.1", "1", "10")
+ALGO     <- "macro_IR"
+ERR_MAX  <- 0.2
+
+ORD       <- c("on", "off", "unitary_current", "Num_ch_mean")
+PIDX      <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+
+# 5 blue + white + 5 red, evenly spaced in log; white band (0.956, 1.046] centred on 1; outer bands
+# reserved (bound the map above/below). 1.1 / 1.2 land in different bands.
+FILL_BREAKS <- c(0, 0.667, 0.729, 0.798, 0.873, 0.956, 1.046, 1.145, 1.253, 1.371, 1.5, Inf)
+
+MATS <- list(
+  list(comp = "Probit_statistics_Likelihood_Information_Distortion",  title = "Information distortion (diagonal)", key = "info"),
+  list(comp = "Probit_statistics_Likelihood_Sample_Distortion",       title = "Sample distortion (diagonal)",      key = "sample"),
+  list(comp = "Probit_statistics_Likelihood_Correlation_Distortion",  title = "Correlation distortion (diagonal)", key = "corr"))
+```
+
+```{r read}
+read_tagged <- function(z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_sim.csv", NSIM, ALGO, z)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z))
+}
+bsim <- map_dfr(NOISES, read_tagged)
+```
+
+```{r extractor}
+per_param_diag <- function(df, comp) {
+  df %>%
+    filter(component_path == comp, statistic == "value",
+           param_index == param_col, param_index %in% PIDX,
+           probit == "mean" | (probit == "quantile" & quantile_level %in% c(0.025, 0.975))) %>%
+    mutate(param_name = names(PIDX)[match(param_index, PIDX)],
+           q = if_else(probit == "mean", "value",
+                       if_else(quantile_level == 0.025, "lo", "hi"))) %>%
+    group_by(noise, Num_ch, interval_in_tau, param_name, q) %>%
+    summarise(v = mean(value), .groups = "drop") %>%
+    pivot_wider(names_from = q, values_from = v) %>%
+    mutate(reliable = is.finite(lo) & is.finite(hi) & (hi - lo) / 2 <= ERR_MAX,
+           lx = log10(interval_in_tau), ly = log10(Num_ch),
+           param  = factor(param_name, levels = ORD, labels = unname(PARAM_LAB[ORD])),
+           noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+}
+
+# cell boundaries = midpoints between sorted neighbours (half-step at the ends). Handles the
+# uneven log grid (e.g. the 1000 -> 10000 decade jump in N_ch) that a fixed tile width would miss.
+cell_edges <- function(u) {
+  u <- sort(unique(u)); n <- length(u)
+  if (n == 1) return(list(lo = u - 0.15, hi = u + 0.15))
+  mids <- (u[-1] + u[-n]) / 2
+  list(lo = c(u[1] - (mids[1] - u[1]), mids),
+       hi = c(mids, u[n] + (u[n] - mids[n - 1])))
+}
+
+# grey rectangles over the unreliable cells, tiled exactly, per (param, noise) facet
+make_mask <- function(dd) {
+  dd %>% group_by(param, noisef) %>% group_modify(~{
+    xe <- cell_edges(.x$lx); ye <- cell_edges(.x$ly)
+    xm <- tibble(lx = sort(unique(.x$lx)), xmin = xe$lo, xmax = xe$hi)
+    ym <- tibble(ly = sort(unique(.x$ly)), ymin = ye$lo, ymax = ye$hi)
+    .x %>% filter(!reliable) %>%
+      left_join(xm, by = "lx") %>% left_join(ym, by = "ly") %>%
+      select(xmin, xmax, ymin, ymax)
+  }) %>% ungroup()
+}
+```
+
+```{r plot-fn}
+X_BRK <- log10(c(.01, .1, 1));           X_LAB <- c(".01", ".1", "1")
+Y_BRK <- log10(c(10, 100, 1000, 10000)); Y_LAB <- c("10", "100", "1e3", "1e4")
+
+build_one <- function(comp, title, key) {
+  dd   <- per_param_diag(bsim, comp)
+  mask <- make_mask(dd)
+  g <- ggplot(dd, aes(lx, ly, z = value)) +
+    geom_contour_filled(breaks = FILL_BREAKS) +
+    scale_fill_brewer(palette = "RdBu", direction = -1, name = "distortion", drop = FALSE) +
+    geom_rect(data = mask, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+              fill = "grey82", alpha = 0.95, inherit.aes = FALSE) +
+    geom_point(size = .4, colour = "grey25") +
+    facet_grid(param ~ noisef, labeller = labeller(param = label_parsed)) +
+    scale_x_continuous(breaks = X_BRK, labels = X_LAB) +
+    scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+    labs(x = expression(Delta / tau[min]), y = expression(N[ch]),
+         title = paste0("macro_IR  ", title, "  (grey = unreliable)")) +
+    theme_bw(base_size = 9) +
+    theme(panel.grid.minor = element_blank(), legend.position = "right",
+          strip.text = element_text(size = 8), plot.title = element_text(size = 11, face = "bold"))
+  ggsave(sprintf("Figure_5_%s_distortion_contour_masked.pdf", key), g, width = 7.0, height = 8.0)
+  g
+}
+```
+
+```{r plot, fig.width = 7.0, fig.height = 8.0, results = "asis"}
+for (M in MATS) print(build_one(M$comp, M$title, M$key))
+```

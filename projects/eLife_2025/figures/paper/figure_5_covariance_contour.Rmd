@@ -1,0 +1,78 @@
+---
+title: "Figure 5 (covariance contour) — macro_IR corrected parameter covariance over the (interval, N_ch) plane, N_ch-normalised"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Filled contour of the DIAGONAL of the CORRECTED (distortion-corrected / sandwich) parameter
+covariance, N_ch-NORMALISED (multiplied by N_ch, removing the trivial Cov ~ 1/N_ch scaling so the
+per-channel precision is comparable across N_ch). Plane x = interval, y = N_ch; faceted parameter
+(rows) x noise (columns). Per-recording (group of 100): battery covariance x 1/100. ALGO = macro_IR.
+Reads: what stays flat in N_ch scales as 1/N_ch (kinetics); what grows is a worsening degeneracy (i, N_ch).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR   <- "../data/433ed13"
+NSIM       <- 10000
+NOISES     <- c("0.1", "1", "10")
+ALGO       <- "macro_IR"
+GROUP_SIZE <- 100
+COV_SCALE  <- 1 / GROUP_SIZE
+
+ORD       <- c("on", "off", "unitary_current", "Num_ch_mean")
+PIDX      <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+```
+
+```{r read}
+read_tagged <- function(z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_sim.csv", NSIM, ALGO, z)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z))
+}
+bsim <- map_dfr(NOISES, read_tagged)
+
+dd <- bsim %>%
+  filter(component_path == "Probit_statistics_Likelihood_Distortion_Corrected_Covariance",
+         statistic == "value", probit == "mean", param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)]) %>%
+  group_by(noise, Num_ch, interval_in_tau, param_name) %>%
+  summarise(cov = mean(value) * COV_SCALE, .groups = "drop") %>%
+  filter(is.finite(cov), cov > 0,
+         !(noise == "10" & Num_ch == 5)) %>%   # noise 10 / N_ch 5: sandwich unstable, drop
+  mutate(val = Num_ch * cov,
+         lx  = log10(interval_in_tau), ly = log10(Num_ch),
+         param  = factor(param_name, levels = ORD, labels = unname(PARAM_LAB[ORD])),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 8.0}
+X_BRK <- log10(c(.01, .1, 1));           X_LAB <- c(".01", ".1", "1")
+Y_BRK <- log10(c(10, 100, 1000, 10000)); Y_LAB <- c("10", "100", "1e3", "1e4")
+rng   <- range(dd$val)
+BRKS  <- 10^seq(floor(log10(rng[1])), ceiling(log10(rng[2])), by = .5)
+
+g <- ggplot(dd, aes(lx, ly, z = val)) +
+  geom_contour_filled(breaks = BRKS) +
+  scale_fill_viridis_d(name = expression(N[ch] %*% Cov[diag]), drop = FALSE) +
+  geom_point(size = .3, colour = "grey30") +
+  facet_grid(param ~ noisef, labeller = labeller(param = label_parsed)) +
+  scale_x_continuous(breaks = X_BRK, labels = X_LAB) +
+  scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+  labs(x = expression(Delta / tau[min]), y = expression(N[ch]),
+       title = "macro_IR  N_ch-normalised CORRECTED covariance (diagonal)") +
+  theme_bw(base_size = 9) +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        legend.text = element_text(size = 7), strip.text = element_text(size = 8),
+        plot.title = element_text(size = 11, face = "bold"))
+g
+ggsave("Figure_5_covariance_contour.pdf", g, width = 7.0, height = 8.0)
+```

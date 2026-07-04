@@ -1,0 +1,200 @@
+---
+title: "Figure S2 (supplement to Figure 2) — recovery cloud colour-coded by per-recording maximized logL"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+EXPLORATORY alternative to Figure 2 Part A. Same recovery clouds (per-recording MLEs) for the two
+parameter pairs across the 5 approximations, but each point is COLOUR-CODED by the maximized
+log-likelihood of that recording (logL at its own MLE). The question this figure asks: do the
+outlier / mis-recovered estimates sit at low logL, i.e. does logL flag the bad recoveries?
+
+DATA: the same {base}_mle_cloud_runs.csv files read by figure_2.Rmd (../data/433ed13, skip=1).
+Within one battery cell (Num_ch = 100, interval = 0.1 tau, group_size = 10) a recording is keyed by
+sample_index (1000 recordings per algorithm, sample_index 0..999). Two kinds of rows are used:
+  - component_path == "Model_Parameters_Hat": one value per parameter per recording (the cloud
+    coordinates), param_name in {on, off, unitary_current, Num_ch_mean}.
+  - component_path == "logL": ONE maximized logL per recording (param columns empty).
+The join is on (algorithm, sample_index) inside the fixed cell -> one logL per cloud point.
+
+TWO views of the same data:
+  PANEL (global scale): raw logL on a single shared viridis colourbar (robust global clip). The
+    dominant, real signal is the BETWEEN-algorithm logL gap (naive NR/MNR ~ -2200, recursive
+    R/MR/IR ~ -1450). Within any one cloud the colour is nearly uniform.
+  PANEL (per-algorithm scale): logL rescaled to each algorithm's own robust range so within-cloud
+    variation is visible. This is the panel that actually answers the exploratory question.
+
+FINDING (annotated on the per-algorithm panel): the Spearman correlation between a recording's logL
+and its Mahalanobis outlier distance from the cloud centre is ~0 in every cell (rho in -0.05..0.05),
+so the low-logL points are NOT the mis-recovered / outlier ones -> logL does not flag bad recoveries.
+The kinetic row (on, off) is therefore just colour speckle. The ONE real structure logL carries is a
+gradient ALONG the N_ch/i degeneracy ridge: rho(logL, N_ch) ~ +0.4..+0.7, rho(logL, i) ~ -0.7..-0.85
+(higher N_ch / lower i -> higher logL). That is why the amplitude row shows a smooth along-ridge
+colour gradient, yet the outlier-distance rho stays ~0: the gradient runs along the ellipse's long
+axis, which Mahalanobis distance normalises away. So the slope is over the sloppy (identifiable-only-
+as-a-product) direction, not over recovery quality. Net: a negative-result diagnostic, not a main
+figure.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+library(patchwork)
+library(scales)   # squish (out-of-bounds clamping for the clipped colourbar)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+REP_NCH      <- 100
+REP_NSIM     <- 10000
+REP_NOISE    <- "0.1"
+REP_GROUP    <- 10
+REP_INTERVAL <- 0.1
+
+ALGOS    <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR", macro_IR="IR")
+
+PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+# plotmath-parseable labels (rendered as proper subscripted math on axes and strips)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+TRUTH <- c(on = log10(10), off = log10(100),
+           unitary_current = log10(1), Num_ch_mean = log10(REP_NCH))
+
+near_int <- function(x) abs(x - REP_INTERVAL) < 1e-9
+```
+
+```{r read}
+# read_skip1: same skip=1 provenance-row convention as figure_2.Rmd; fread + column selection keeps
+# the five ~70 MB files light (only the columns this figure needs).
+KEEP <- c("sample_index","component_path","statistic","param_name","algorithm",
+          "Num_ch","interval_in_tau","group_size","value")
+read_skip1 <- function(path) fread(path, skip = 1, select = KEEP, showProgress = FALSE)
+base  <- file.path(DATA_DIR,
+  sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s", REP_NCH, REP_NSIM, ALGOS, REP_NOISE))
+cloud <- rbindlist(lapply(paste0(base, "_mle_cloud_runs.csv"), read_skip1), fill = TRUE)
+
+# cloud coordinates: one value per parameter per recording, keyed by (algorithm, sample_index)
+pts <- cloud %>% as_tibble() %>%
+  filter(component_path == "Model_Parameters_Hat", statistic == "value",
+         Num_ch == REP_NCH, group_size == REP_GROUP, near_int(interval_in_tau),
+         param_name %in% names(PARAM_IDX)) %>%
+  select(algorithm, sample_index, param_name, value) %>%
+  pivot_wider(names_from = param_name, values_from = value)
+
+# maximized logL: ONE row per recording (param columns empty), same cell, same key
+logL <- cloud %>% as_tibble() %>%
+  filter(component_path == "logL", statistic == "value",
+         Num_ch == REP_NCH, group_size == REP_GROUP, near_int(interval_in_tau)) %>%
+  select(algorithm, sample_index, logL = value)
+
+# join logL onto the cloud points by the recording key; drop any non-finite logL (failed runs)
+d <- pts %>%
+  left_join(logL, by = c("algorithm", "sample_index")) %>%
+  filter(if_all(c(on, off, unitary_current, Num_ch_mean, logL), is.finite)) %>%
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+
+# per-algorithm robust logL scaling (p02..p98 -> 0..1) and Mahalanobis outlier distance from the
+# cloud centre, for both pairs (used to test whether low logL == mis-recovered).
+robust01 <- function(z) { q <- quantile(z, c(.02, .98), na.rm = TRUE)
+  pmin(pmax((z - q[1]) / (q[2] - q[1]), 0), 1) }
+maha2 <- function(a, b) { X <- cbind(a, b); mahalanobis(X, colMeans(X), cov(X)) }
+d <- d %>% group_by(algo) %>% mutate(
+  logL_rel = robust01(logL),
+  m_kin    = maha2(on, off),
+  m_amp    = maha2(Num_ch_mean, unitary_current)) %>% ungroup()
+
+message(sprintf("rows: %d | algos: %d | non-finite logL dropped during join",
+                nrow(d), n_distinct(d$algo)))
+```
+
+```{r helpers}
+# per-facet Spearman correlation of logL with the outlier (Mahalanobis) distance from the cloud
+# centre; ~0 means logL does not track mis-recovery. Placed as a small annotation on each facet.
+rho_labels <- function(px, py) {
+  mcol <- if (all(c(px, py) %in% c("on","off"))) "m_kin" else "m_amp"
+  d %>% group_by(algo) %>%
+    summarise(rho = cor(logL, .data[[mcol]], method = "spearman"), .groups = "drop") %>%
+    mutate(lab = sprintf("rho == %.2f", rho))
+}
+
+# one small-multiple row (5 algorithms) for a parameter pair, points coloured by logL.
+# fill_mode = "global"  -> raw logL, single shared viridis, robust GLOBAL clip (faithful to brief)
+#           = "peralgo" -> per-algorithm robust-scaled logL (within-cloud structure made visible)
+pair_plot_logL <- function(px, py, fill_mode = c("global","peralgo"),
+                            show_strip = TRUE, show_rho = FALSE) {
+  fill_mode <- match.arg(fill_mode)
+  cl <- d %>% transmute(algo, x = .data[[px]], y = .data[[py]], logL, logL_rel) %>%
+    filter(is.finite(x), is.finite(y))
+
+  tx <- unname(TRUTH[px]); ty <- unname(TRUTH[py])          # centre every panel on the truth
+  hx <- 1.5 * max(abs(quantile(cl$x, c(.01, .99), na.rm = TRUE) - tx))
+  hy <- 1.5 * max(abs(quantile(cl$y, c(.01, .99), na.rm = TRUE) - ty))
+  truth <- tibble(x = tx, y = ty)
+
+  g <- ggplot(cl, aes(x, y)) +
+    { if (fill_mode == "global")
+        geom_point(aes(colour = logL), size = .5, alpha = .8)
+      else
+        geom_point(aes(colour = logL_rel), size = .5, alpha = .8) } +
+    geom_point(data = truth, aes(x, y), shape = 3, size = 2.6, stroke = 1,
+               colour = "black", inherit.aes = FALSE) +          # the truth cross
+    facet_wrap(~ algo, nrow = 1) +
+    coord_cartesian(xlim = tx + c(-hx, hx), ylim = ty + c(-hy, hy)) +
+    labs(x = parse(text = unname(PARAM_LAB[px]))[[1]],
+         y = parse(text = unname(PARAM_LAB[py]))[[1]]) +
+    theme_bw(base_size = 8) +
+    theme(legend.position = "right", panel.grid.minor = element_blank(),
+          strip.text = element_text(size = 8))
+
+  if (fill_mode == "global") {
+    clip <- quantile(d$logL, c(.01, .99), na.rm = TRUE)         # robust global clip
+    g <- g + scale_colour_viridis_c(name = "logL", limits = clip, oob = squish)
+  } else {
+    g <- g + scale_colour_viridis_c(name = "logL\n(per-algo\nrescaled\n2-98%)",
+                                    limits = c(0, 1), breaks = c(0, .5, 1),
+                                    labels = c("low", "", "high"))
+  }
+  if (!show_strip) g <- g + theme(strip.text = element_blank(),
+                                  strip.background = element_blank())
+  if (show_rho) {
+    rl <- rho_labels(px, py)
+    g <- g + geom_text(data = rl, aes(x = tx - hx * 0.94, y = ty + hy * 0.9, label = lab),
+                       parse = TRUE, inherit.aes = FALSE, size = 2.6, hjust = 0, vjust = 1,
+                       colour = "grey20")
+  }
+  g
+}
+```
+
+```{r plot-peralgo, fig.width = 7.0, fig.height = 4.6}
+# The panel that answers the exploratory question: logL rescaled inside each algorithm so within-
+# cloud variation shows. Per-facet Spearman rho(logL, outlier distance) is annotated: ~0 everywhere
+# means the low-logL (dark) points are NOT the mis-recovered ones -> logL does not flag bad runs.
+rowKr <- pair_plot_logL("on", "off", "peralgo", show_rho = TRUE) + labs(tag = "A")
+rowAr <- pair_plot_logL("Num_ch_mean", "unitary_current", "peralgo",
+                        show_strip = FALSE, show_rho = TRUE) + labs(tag = "B")
+g_peralgo <- (rowKr / rowAr) + plot_layout(guides = "collect") &
+  theme(legend.position = "right", legend.key.height = unit(28, "pt"),
+        legend.title = element_text(size = 8), legend.text = element_text(size = 7))
+g_peralgo
+ggsave("Figure_S2.pdf", g_peralgo, width = 7.0, height = 4.6)
+```
+
+```{r diagnostics}
+# quantitative version of the annotation: does low logL track mis-recovery?
+# rho_kin/rho_amp = Spearman(logL, Mahalanobis outlier distance) for the kinetic / amplitude pair;
+# worst5_maha / all_maha = median outlier distance of the worst-5%-by-logL recordings vs all.
+d %>% group_by(algo) %>% summarise(
+  n            = n(),
+  logL_med     = median(logL),
+  logL_iqr     = IQR(logL),
+  rho_kin      = cor(logL, m_kin, method = "spearman"),
+  rho_amp      = cor(logL, m_amp, method = "spearman"),
+  worst5_maha  = median(m_kin[logL <= quantile(logL, .05)]),
+  all_maha     = median(m_kin),
+  .groups = "drop")
+```

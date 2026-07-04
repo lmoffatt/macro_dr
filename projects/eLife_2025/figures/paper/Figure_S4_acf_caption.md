@@ -1,0 +1,7 @@
+# Figure S4 (autocorrelation) caption
+
+**Figure S4 (autocorrelation). The temporal whiteness at the data and inference levels, for all four parameters.**
+
+The autocorrelation test against lag, at the residual (data) level and the score (inference) level, on the same 1,000 recordings as Figure 3 and across the five approximations NR (Non-Recursive), MNR (Mean Non-Recursive), R (Recursive), MR (Mean Recursive) and IR (Interval Recursive). Each quantity is the mean over the recordings of the per-recording autocorrelation, the bar is its 95% interval (1.96 standard errors), and the green line is the calibrated value (zero). (A) The autocorrelation of the standardized residual r = (observed current − predicted mean) / predicted standard deviation. (B to E) The autocorrelation of the per-interval score s_t = ∂ logL_t / ∂θ for θ = k_on, k_off, i and N_ch in turn.
+
+The recursive trio is white (autocorrelation near zero at every lag) at both levels and for every parameter. The non-recursive pair shows a decaying positive autocorrelation that is the same feature at the residual level (A) and at the score level (B to E), and the same across the four parameters. This temporal memory of the score is what makes the accumulated information ratio of Figure 3E diverge from one: the variance of the summed score exceeds the summed per-step Fisher information by the accumulated cross-lag covariance shown here. Each row uses a separate scale for the non-recursive pair (NR, MNR) and the recursive trio (R, MR, IR) so the near-zero recursive traces are not flattened.

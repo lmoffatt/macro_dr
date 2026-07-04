@@ -1,0 +1,214 @@
+---
+title: "Figure 3 — Validity map of the macro approximations"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PUBLICATION figure 3. Three blocks:
+
+  1  r_std, r2_std   residual calibration (null 0 and null 1) per measurement,
+                     all algorithms (the first-order "alibi": every method looks fine).
+  2  bias lines      theta_pool - theta_sim for k_on, k_off, N_ch, unitary_current,
+                     IR extensive (every N_ch IR was run at), one line per N_ch.
+  3  bias heatmaps   one heatmap PER PARAMETER over (interval x N_ch) FOR ALL ALGORITHMS;
+                     fill = signed bias; GREY = the pooled Newton did not converge.
+
+Bias = EXACT misspecification bias from *_pool_runs.csv (Model_Parameters_Hat), not the
+linearised DIB -> no FD-Fisher filter, only convergence of the pooled fit. theta_sim:
+on=log10(10), off=log10(100), unitary_current=log10(1), N_ch=log10(Num_ch). nsim=10000,
+read skip=1 (data/433ed13 provenance row). Idioms from figure_3_pub / figure_3_paper.
+
+Convergence (verified, identical at nsim 1000 & 10000 -> NOT a replica effect): IR/R/MR
+converge on the whole grid; NR/NMR share one frontier (cap at long Delta/tau, frontier
+moves to shorter Delta/tau as N_ch grows); at capped cells ||grad|| 1e5-1e9 growing with
+N_ch (over-confident near-singular surface) -> forcing convergence is meaningless, the grey
+region IS the result.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+library(scales)
+```
+
+```{r params}
+DATA_DIR   <- "../data/433ed13"
+NSIM       <- 10000
+NOISE      <- "0.1"
+ALGOS      <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB   <- c(macro_NR="NR", macro_NMR="NMR", macro_R="R", macro_MR="MR", macro_IR="IR")
+ALGO_LEV   <- c("NR","NMR","R","MR","IR")
+NCH_HEAT   <- c(10, 100, 1000, 10000)              # common grid for the heatmaps
+
+# four parameters, in the order k_on, k_off, N_ch, unitary_current
+PIDX       <- c(on = 0, off = 1, Num_ch_mean = 5, unitary_current = 2)
+PARAMS     <- names(PIDX)
+PARAM_LAB  <- c(on = "k_on", off = "k_off", Num_ch_mean = "N_ch",
+                unitary_current = "unitary current")
+TRUTH_FIX  <- c(on = log10(10), off = log10(100), unitary_current = log10(1))  # N_ch handled per cell
+
+# heatmap colour-scale selector: "common" (algos share a per-parameter scale) or
+# "free" (each algo self-scaled, legend relative; FREE_FLOOR keeps IR mostly white)
+SCALE_MODE <- "common"
+FREE_FLOOR <- 0.02
+```
+
+```{r read}
+read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE) %>%
+  mutate(.file = basename(path))
+
+base <- Sys.glob(file.path(
+  DATA_DIR, sprintf("figure_3_nch_*_nsim_%d_macro_*_noise_%s_pool_runs.csv", NSIM, NOISE)))
+base <- sub("_pool_runs\\.csv$", "", base)
+
+pool <- map_dfr(paste0(base, "_pool_runs.csv"), read_skip1) %>%
+  filter(algorithm %in% ALGOS) %>%
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = ALGO_LEV))
+
+batt <- map_dfr(paste0(base, "_battery_sim.csv"), read_skip1) %>%
+  filter(algorithm %in% ALGOS) %>%
+  select(where(~ !all(is.na(.)))) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+         algo = factor(ALGO_LAB[algorithm], levels = ALGO_LEV))
+```
+
+```{r bias}
+truth_of <- function(param, Num_ch)
+  ifelse(param == "Num_ch_mean", log10(Num_ch), TRUTH_FIX[param])
+
+conv_run <- pool %>%
+  filter(component_path == "Convergence_Status_Code") %>%
+  transmute(.file, algo, Num_ch, interval_in_tau, conv = value)
+
+cell <- pool %>%
+  filter(component_path == "Model_Parameters_Hat", param_index %in% PIDX) %>%
+  mutate(param = names(PIDX)[match(param_index, PIDX)],
+         b = value - truth_of(param, Num_ch)) %>%
+  left_join(conv_run, by = c(".file","algo","Num_ch","interval_in_tau")) %>%
+  group_by(algo, Num_ch, interval_in_tau, param) %>%
+  summarise(converged = any(conv == 0),
+            bias = if (any(conv == 0)) mean(b[conv == 0]) else NA_real_,
+            .groups = "drop") %>%
+  mutate(param = factor(param, levels = PARAMS))
+```
+
+```{r block1-residuals, fig.width = 12, fig.height = 5}
+# r_std (null 0) and r2_std (null 1), per measurement: stored quantity is a SUM over
+# the n = 10/(Delta/tau) acquisition windows of a recording, so divide by n. Facet by
+# algorithm (free_y) so NR/NMR blow-ups don't crush R/MR/IR.
+resid <- batt %>%
+  filter(component %in% c("Moment_statistics_Sum_r_std", "Moment_statistics_Sum_r2_std"),
+         statistic == "mean") %>%
+  pivot_wider(names_from = c(probit, quantile_level), values_from = value) %>%
+  filter(!is.na(mean_NA)) %>%
+  mutate(n_samples = round(10 / interval_in_tau),
+         scaled    = mean_NA        / n_samples,
+         scaled_lo = quantile_0.025 / n_samples,
+         scaled_hi = quantile_0.975 / n_samples)
+
+resid_r  <- resid %>% filter(component == "Moment_statistics_Sum_r_std")
+resid_r2 <- resid %>% filter(component == "Moment_statistics_Sum_r2_std")
+
+gR1 <- ggplot(resid_r, aes(interval_in_tau, scaled, colour = factor(Num_ch), group = Num_ch)) +
+  geom_hline(yintercept = 0, colour = "#009E73", linewidth = .4) +
+  geom_linerange(aes(ymin = scaled_lo, ymax = scaled_hi), alpha = .5) +
+  geom_line() + geom_point(size = 1) +
+  facet_wrap(~ algo, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_colour_viridis_d(name = expression(N[ch]), end = .9) +
+  labs(x = NULL, y = expression(bar(r)[std]~"  (null 0)"),
+       title = "1   Residual calibration per measurement (sum / n,  n = 10/(Delta/tau); bars = 95% bootstrap CI)") +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+
+gR2 <- ggplot(resid_r2, aes(interval_in_tau, scaled, colour = factor(Num_ch), group = Num_ch)) +
+  geom_hline(yintercept = 1, colour = "#009E73", linewidth = .4) +
+  geom_linerange(aes(ymin = scaled_lo, ymax = scaled_hi), alpha = .5) +
+  geom_line() + geom_point(size = 1) +
+  facet_wrap(~ algo, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_y_log10() + scale_colour_viridis_d(name = expression(N[ch]), end = .9) +
+  labs(x = expression(Delta/tau[min]), y = expression(bar(r^2)[std]~"  (null 1, log)")) +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+gR1 / gR2
+```
+
+```{r}
+gBiasP <- cell %>%
+  filter(algo == "IR", converged) %>%pivot_wider(names_from = param, values_from = bias)
+  mutate(param = factor(PARAM_LAB[as.character(param)], levels = unname(PARAM_LAB))) %>%
+  ggplot(aes(interval_in_tau, bias, colour = factor(Num_ch), group = Num_ch)) +
+  geom_hline(yintercept = 0, colour = "grey55", linewidth = .3) +
+  geom_line(linewidth = .4) + geom_point(size = 1) +
+  facet_wrap(~ param, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_colour_viridis_d(name = expression(N[ch]), end = .92) +
+  labs(x = expression(Delta/tau[min]), y = "bias  (log10)",
+       title = "2   IR is unbiased across the whole plane",
+       subtitle = expression(theta[pool] - theta[sim]*", one line per "*N[ch]*", free y-axis")) +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+gBias
+```
+
+
+
+
+```{r block2-IRbias, fig.width = 12, fig.height = 3.4}
+# IR extensive: exact bias for the four parameters over IR's full N_ch grid, free_y.
+gBias <- cell %>%
+  filter(algo == "IR", converged) %>%
+  mutate(param = factor(PARAM_LAB[as.character(param)], levels = unname(PARAM_LAB))) %>%
+  ggplot(aes(interval_in_tau, bias, colour = factor(Num_ch), group = Num_ch)) +
+  geom_hline(yintercept = 0, colour = "grey55", linewidth = .3) +
+  geom_line(linewidth = .4) + geom_point(size = 1) +
+  facet_wrap(~ param, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_colour_viridis_d(name = expression(N[ch]), end = .92) +
+  labs(x = expression(Delta/tau[min]), y = "bias  (log10)",
+       title = "2   IR is unbiased across the whole plane",
+       subtitle = expression(theta[pool] - theta[sim]*", one line per "*N[ch]*", free y-axis")) +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+gBias
+```
+
+```{r block3-heatmaps, fig.width = 12, fig.height = 9}
+heat <- cell %>% filter(Num_ch %in% NCH_HEAT) %>%
+  mutate(x = factor(interval_in_tau, levels = sort(unique(interval_in_tau))),
+         y = factor(Num_ch,          levels = sort(unique(Num_ch))))
+
+# one heatmap row per parameter (its own colour scale; magnitudes differ across params),
+# algorithms across columns. Grey = pooled fit did not converge.
+build_row <- function(pp, show_strip_x = FALSE) {
+  d <- heat %>% filter(param == pp)
+  if (SCALE_MODE == "free") {
+    d <- d %>% group_by(algo) %>%
+      mutate(m = max(FREE_FLOOR, max(abs(bias), na.rm = TRUE)), fillv = bias / m) %>% ungroup()
+    lim <- c(-1, 1); leg <- sprintf("%s\n(rel.)", PARAM_LAB[pp])
+  } else {
+    m   <- max(FREE_FLOOR, max(abs(d$bias), na.rm = TRUE))
+    d   <- d %>% mutate(fillv = bias); lim <- c(-m, m); leg <- sprintf("%s\nbias", PARAM_LAB[pp])
+  }
+  ggplot(d, aes(x, y, fill = fillv)) +
+    geom_tile(colour = "grey92", linewidth = .3) +
+    facet_wrap(~ algo, nrow = 1) +
+    scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
+                         midpoint = 0, limits = lim, oob = scales::squish,
+                         na.value = "grey75", name = leg) +
+    labs(x = if (show_strip_x) expression(Delta/tau[min]) else NULL, y = expression(N[ch])) +
+    theme_bw(base_size = 9) +
+    theme(panel.grid = element_blank(), legend.key.width = unit(.7, "lines"),
+          axis.text.x = if (show_strip_x) element_text(angle = 45, hjust = 1) else element_blank(),
+          strip.text  = if (pp == PARAMS[1]) element_text() else element_blank())
+}
+
+gHeat <- build_row(PARAMS[1]) / build_row(PARAMS[2]) / build_row(PARAMS[3]) /
+         build_row(PARAMS[4], TRUE) +
+  plot_annotation(
+    title = "3   Validity map: exact bias per parameter, all algorithms (grey = pooled fit did not converge)",
+    subtitle = sprintf("colour scale: %s", SCALE_MODE))
+gHeat
+```
+
+```{r compose, fig.width = 12, fig.height = 18}
+fig3 <- gR1 / gR2 / gBias / gHeat + plot_layout(heights = c(1, 1, 1.2, 5))
+ggsave("Figure_3.pdf", fig3, width = 12, height = 18, limitsize = FALSE)
+fig3
+```

@@ -1,0 +1,209 @@
+---
+title: "Figure 2A — Two physical axes: kinetics (k_on,k_off) and amplitude (N_ch,i)"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PUBLICATION figure 2, VARIANT A. Same machinery / anchoring as figure_2_pub.Rmd
+(model covariances read at theta_pool from *_battery_pool; cloud in group units,
+cov_scale = 1/REP_GROUP), but the comparison across the 5 macro likelihoods is shown
+for TWO representative parameter pairs, stacked:
+
+  row 1 : (log10 k_on, log10 k_off)              -- the kinetic axis
+  row 2 : (log10 N_ch, log10 i_unit)             -- the amplitude/count axis
+                                                     (the N*i degeneracy ridge)
+
+Each row is the 5-algorithm small-multiple in that pair's own axes, with the three
+95% ellipses (empirical / naive Fisher / White-sandwich corrected) and the three
+centre markers (truth / empirical mean / predicted truth+DIB).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r params}
+DATA_DIR  <- "data/433ed13"
+REP_NCH      <- 100
+REP_NSIM     <- 10000
+REP_NOISE    <- "0.1"
+REP_GROUP    <- 10
+REP_INTERVAL <- 0.1
+
+ALGOS    <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="NMR", macro_R="R", macro_MR="MR", macro_IR="IR")
+
+# the four informative parameters (drop Current_Noise=3, Current_Baseline=4)
+PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB <- c(on = "log10 k_on", off = "log10 k_off",
+               unitary_current = "log10 i_unit", Num_ch_mean = "log10 N_ch")
+# theta_sim truth in optimizer space = log10(natural)
+TRUTH <- c(on = log10(10), off = log10(100),
+           unitary_current = log10(1), Num_ch_mean = log10(REP_NCH))
+
+cov_scale <- 1 / REP_GROUP
+near_int  <- function(x) abs(x - REP_INTERVAL) < 1e-9
+```
+
+```{r read}
+read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
+base <- file.path(DATA_DIR,
+  sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s", REP_NCH, REP_NSIM, ALGOS, REP_NOISE))
+
+cloud   <- map_dfr(paste0(base, "_mle_cloud_runs.csv"), read_skip1)
+battery <- map_dfr(paste0(base, "_battery_pool.csv"),   read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""))
+bsim    <- map_dfr(paste0(base, "_battery_sim.csv"),    read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+         algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+```
+
+```{r cloud-points}
+# wide MLE cloud over the four informative params; one row per group fit
+pts <- cloud %>%
+  filter(component_path == "Model_Parameters_Hat", statistic == "value",
+         Num_ch == REP_NCH, group_size == REP_GROUP, near_int(interval_in_tau),
+         param_name %in% names(PARAM_IDX)) %>%
+  select(algorithm, sample_index, param_name, value) %>%
+  pivot_wider(names_from = param_name, values_from = value) %>%
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+```
+
+```{r helpers}
+# 95% ellipse path for centre (cx,cy) and 2x2 covariance S; NULL if not PD
+ellipse_path <- function(cx, cy, S, level = 0.95, npoints = 200) {
+  if (is.null(S) || any(!is.finite(S))) return(NULL)
+  ev <- eigen(S, symmetric = TRUE)
+  if (any(ev$values <= 0)) return(NULL)
+  r  <- sqrt(qchisq(level, df = 2))
+  th <- seq(0, 2 * pi, length.out = npoints)
+  Tm <- ev$vectors %*% diag(sqrt(ev$values)) %*% t(ev$vectors)
+  P  <- Tm %*% (r * rbind(cos(th), sin(th)))
+  data.frame(x = cx + P[1, ], y = cy + P[2, ])
+}
+
+# 2x2 battery covariance block for params with indices (pi,pj), one algorithm
+battery_cov_pair <- function(comp, algo, pi, pj) {
+  df <- battery %>%
+    filter(component == comp, statistic == "value", probit == "mean",
+           algorithm == algo, Num_ch == REP_NCH, near_int(interval_in_tau),
+           param_index %in% c(pi, pj), param_col %in% c(pi, pj)) %>%
+    select(param_index, param_col, value)
+  m <- matrix(NA_real_, 2, 2); idx <- c(pi, pj)
+  for (a in 1:2) for (b in 1:2) {
+    v <- df$value[df$param_index == idx[a] & df$param_col == idx[b]]
+    if (length(v) == 1 && is.finite(v)) m[a, b] <- v
+  }
+  m * cov_scale
+}
+
+# build the three centre markers for a pair (px,py are param NAMES)
+centers_for_pair <- function(px, py, algos) {
+  truth <- tibble(algo = factor(ALGO_LAB[algos], levels = unname(ALGO_LAB)),
+                  x = unname(TRUTH[px]), y = unname(TRUTH[py]), kind = "truth")
+  empc <- pts %>% filter(algorithm %in% algos) %>% group_by(algo) %>%
+    summarise(x = mean(.data[[px]], na.rm = TRUE),
+              y = mean(.data[[py]], na.rm = TRUE), .groups = "drop") %>%
+    mutate(kind = "empirical mean")
+  dib <- bsim %>%
+    filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+           probit == "mean", Num_ch == REP_NCH, near_int(interval_in_tau),
+           param_name %in% c(px, py)) %>%
+    select(algo, param_name, value) %>%
+    pivot_wider(names_from = param_name, values_from = value)
+  predc <- dib %>%
+    transmute(algo, x = unname(TRUTH[px]) + .data[[px]],
+              y = unname(TRUTH[py]) + .data[[py]], kind = "predicted (truth+DIB)")
+  bind_rows(truth, empc, predc) %>%
+    mutate(kind = factor(kind, levels = c("truth","empirical mean","predicted (truth+DIB)")))
+}
+
+# one 5-algorithm small-multiple row for the parameter pair (px,py)
+pair_plot <- function(px, py, algos = ALGOS, show_legend = FALSE) {
+  pix <- PARAM_IDX[px]; piy <- PARAM_IDX[py]
+  cl_all <- pts %>% filter(algorithm %in% algos) %>%
+    transmute(algo, x = .data[[px]], y = .data[[py]]) %>%
+    filter(is.finite(x), is.finite(y))
+  ell <- list()
+  for (a in algos) {
+    lab <- ALGO_LAB[a]
+    cl <- pts %>% filter(algorithm == a) %>%
+      transmute(x = .data[[px]], y = .data[[py]]) %>% filter(is.finite(x), is.finite(y))
+    if (nrow(cl) < 3) next
+    ctr  <- c(mean(cl$x), mean(cl$y))
+    Semp <- cov(cbind(cl$x, cl$y))
+    Sfis <- battery_cov_pair("Likelihood_Fisher_Covariance", a, pix, piy)
+    Scor <- battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, pix, piy)
+    for (nm in c("empirical","Fisher","corrected")) {
+      S <- switch(nm, empirical = Semp, Fisher = Sfis, corrected = Scor)
+      e <- ellipse_path(ctr[1], ctr[2], S)
+      if (!is.null(e)) ell[[length(ell) + 1]] <- e %>% mutate(algo = lab, source = nm)
+    }
+  }
+  ellipses <- bind_rows(ell) %>%
+    mutate(algo = factor(algo, levels = unname(ALGO_LAB)),
+           source = factor(source, levels = c("empirical","Fisher","corrected")))
+  centers <- centers_for_pair(px, py, algos)
+
+  xr <- quantile(cl_all$x, c(.005, .995), na.rm = TRUE)
+  yr <- quantile(cl_all$y, c(.005, .995), na.rm = TRUE)
+  padx <- c(-1, 1) * 0.15 * diff(xr); pady <- c(-1, 1) * 0.15 * diff(yr)
+
+  ggplot() +
+    geom_point(data = cl_all, aes(x, y), colour = "grey55", size = .35, alpha = .18) +
+    geom_path(data = ellipses, aes(x, y, colour = source, linetype = source), linewidth = .7) +
+    geom_point(data = centers, aes(x, y, shape = kind), size = 2.4, stroke = .9,
+               colour = "black", inherit.aes = FALSE) +
+    facet_wrap(~ algo, nrow = 1) +
+    coord_cartesian(xlim = xr + padx, ylim = yr + pady) +
+    scale_colour_manual(values = c(empirical = "black", Fisher = "#D55E00",
+                                   corrected = "#0072B2"), name = NULL) +
+    scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed",
+                                     corrected = "dotted"), name = NULL) +
+    scale_shape_manual(values = c("truth" = 3, "empirical mean" = 19,
+                                  "predicted (truth+DIB)" = 1), name = NULL) +
+    labs(x = PARAM_LAB[px], y = PARAM_LAB[py]) +
+    theme_bw(base_size = 11) +
+    theme(legend.position = if (show_legend) "bottom" else "none",
+          panel.grid.minor = element_blank())
+}
+```
+
+```{r plot, fig.width = 14, fig.height = 7}
+row1 <- pair_plot("on", "off", show_legend = FALSE) +
+  ggtitle(sprintf("Kinetic axis (k_on, k_off)  -  N_ch=%d, noise=%s, Delta/tau=%s, group=%d",
+                  REP_NCH, REP_NOISE, REP_INTERVAL, REP_GROUP))
+row2 <- pair_plot("Num_ch_mean", "unitary_current", show_legend = TRUE) +
+  ggtitle("Amplitude axis (N_ch, i_unit)  -  the N*i degeneracy ridge")
+
+g2A <- row1 / row2 +
+  plot_annotation(
+    title = "Figure 2A  Parameter recovery on two physical axes (5 algorithms)",
+    subtitle = "Ellipses (95%): empirical / Fisher / corrected.  Markers: + truth, filled = empirical mean, open = predicted truth+DIB.")
+g2A
+ggsave("Figure_2A.pdf", g2A, width = 14, height = 7)
+```
+
+```{r diagnostics-table}
+area <- function(S) if (is.null(S) || any(!is.finite(S))) NA else
+  { ev <- eigen(S, symmetric = TRUE)$values; if (any(ev <= 0)) NA else sqrt(prod(ev)) }
+
+diag_pair <- function(px, py) {
+  pix <- PARAM_IDX[px]; piy <- PARAM_IDX[py]
+  map_dfr(ALGOS, function(a) {
+    cl <- pts %>% filter(algorithm == a) %>%
+      transmute(x = .data[[px]], y = .data[[py]]) %>% filter(is.finite(x), is.finite(y))
+    Semp <- if (nrow(cl) > 2) cov(cbind(cl$x, cl$y)) else NULL
+    tibble(pair = paste(px, py, sep = "/"), algorithm = ALGO_LAB[a],
+           empirical = area(Semp),
+           Fisher    = area(battery_cov_pair("Likelihood_Fisher_Covariance", a, pix, piy)),
+           corrected = area(battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, pix, piy))) %>%
+      mutate(Fisher_over_emp = Fisher / empirical)
+  })
+}
+bind_rows(diag_pair("on", "off"), diag_pair("Num_ch_mean", "unitary_current"))
+```

@@ -1,0 +1,139 @@
+---
+title: "Figure 5 (first) — empirical vs theoretical bias across the (N_ch × interval × noise) design"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+FIRST cut of the new exploration: how the macro approximations bias the recovered
+parameters as a function of number of channels (N_ch), measurement interval (Delta/tau)
+and observation noise, for the 5 algorithms and the 4 identified parameters.
+
+The figure asks ONE question: does the theory predict the bias? For every design cell
+(algo x N_ch x interval x noise) we plot
+
+  x = THEORETICAL bias   = Likelihood_Distortion_Induced_Bias (DIB), from *_battery_sim.csv
+  y = EMPIRICAL   bias   = theta_pool - theta_sim, from *_pool_runs.csv (the pooled MLE)
+
+Both are in log10 parameter units, so they are directly comparable. If the distortion
+theory is right the points sit on the dashed y = x line. Panels: parameter (rows) x noise
+(columns), colour = algorithm. Only converged pooled fits are kept.
+
+theta_sim (truth, log10 natural units): k_on = log10(10), k_off = log10(100),
+i = log10(1) = 0, N_ch = log10(Num_ch of the cell).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR <- "../data/433ed13"
+NSIM     <- 10000
+NOISES   <- c("0.1", "1", "10")
+
+ALGOS    <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")
+ALGO_LAB <- c(macro_NR = "NR", macro_NMR = "MNR", macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+ALGO_LEV <- c("NR", "MNR", "R", "MR", "IR")
+ALGO_COL <- c(NR = "#E69F00", MNR = "#56B4E9", R = "#009E73", MR = "#CC79A7", IR = "#0072B2")
+
+# the four identified parameters and their truth (log10 natural units); N_ch truth is per cell
+PARAMS    <- c("on", "off", "unitary_current", "Num_ch_mean")
+PARAM_LAB <- c(on = "k_on", off = "k_off", unitary_current = "i", Num_ch_mean = "N_ch")
+TRUTH_FIX <- c(on = log10(10), off = log10(100), unitary_current = log10(1))
+
+truth_of <- function(param, Num_ch)
+  ifelse(param == "Num_ch_mean", log10(Num_ch), TRUTH_FIX[param])
+```
+
+```{r read}
+# read every noise level; the noise value lives in the file name, so tag it on read.
+read_tagged <- function(kind) {
+  files <- unlist(lapply(NOISES, function(z) Sys.glob(file.path(DATA_DIR,
+      sprintf("figure_3_nch_*_nsim_%d_macro_*_noise_%s_%s.csv", NSIM, z, kind)))))
+  map_dfr(files, function(p) {
+    noise <- sub(".*_noise_([0-9.eE+-]+)_.*", "\\1", basename(p))
+    read.csv(p, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = noise)
+  })
+}
+pool <- read_tagged("pool_runs")   %>% filter(algorithm %in% ALGOS)
+bsim <- read_tagged("battery_sim") %>% filter(algorithm %in% ALGOS)
+```
+
+```{r bias}
+key     <- c("algorithm", "Num_ch", "interval_in_tau", "noise", "param_name")
+cellkey <- c("algorithm", "Num_ch", "interval_in_tau", "noise")
+
+# Convergence_Status_Code (see likelihood.cpp gn_status_to_code): 0 newton-dec, 1 grad,
+# 2 value => CONVERGED; 3 max_iter, 4 stalled => not converged.
+conv <- pool %>%
+  filter(component_path == "Convergence_Status_Code") %>%
+  transmute(algorithm, Num_ch, interval_in_tau, noise, converged = value %in% c(0, 1, 2))
+
+# EMPIRICAL bias: theta_pool - theta_sim, converged pooled fits only.
+emp <- pool %>%
+  filter(component_path == "Model_Parameters_Hat", param_name %in% PARAMS) %>%
+  left_join(conv, by = cellkey) %>% filter(converged) %>%
+  transmute(algorithm, Num_ch, interval_in_tau, noise, param_name,
+            b_emp = value - truth_of(param_name, Num_ch))
+
+# THEORETICAL bias: the distortion-induced bias (DIB), predicted by the sandwich theory.
+theo <- bsim %>%
+  filter(component_path == "Probit_statistics_Likelihood_Distortion_Induced_Bias",
+         statistic == "value", probit == "mean", param_name %in% PARAMS) %>%
+  transmute(algorithm, Num_ch, interval_in_tau, noise, param_name, b_theo = value)
+
+# Identifiability gate: the DIB is only DEFINED where the Fisher covariance is non-singular.
+# (Every fit converged; the DIB blow-ups are near-singular-Fisher cells, not failed fits.)
+kappa <- bsim %>%
+  filter(component_path == "Probit_statistics_Spectrum_Condition_Number_Likelihood_Fisher_Covariance",
+         statistic == "value", probit == "mean") %>%
+  transmute(algorithm, Num_ch, interval_in_tau, noise, kappa = value)
+
+d <- inner_join(emp, theo, by = key) %>%
+  left_join(kappa, by = cellkey) %>%
+  mutate(algo  = factor(ALGO_LAB[algorithm], levels = ALGO_LEV),
+         param = factor(PARAM_LAB[param_name], levels = unname(PARAM_LAB)),
+         noise = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 8.5}
+# Keep only cells where the theory is DEFINED (finite Fisher condition number). This is an
+# identifiability gate, NOT a convergence one: all fits converged, but at singular Fisher the
+# distortion bias is undefined (that is where the raw DIB reached ~10 decades). Report the drop.
+ndrop <- sum(!is.finite(d$kappa))
+message(sprintf("dropped %d of %d param-points at singular Fisher (kappa = Inf); all fits converged",
+                ndrop, nrow(d)))
+dp <- d %>% filter(is.finite(kappa))
+
+# square each (param, noise) panel so the dashed identity line y = x sits at 45 degrees
+lims  <- dp %>% group_by(param, noise) %>%
+  summarise(L = max(abs(c(b_emp, b_theo)), na.rm = TRUE) * 1.05, .groups = "drop")
+blank <- bind_rows(transmute(lims, param, noise, b_theo =  L, b_emp =  L),
+                   transmute(lims, param, noise, b_theo = -L, b_emp = -L))
+
+g5 <- ggplot(dp, aes(b_theo, b_emp)) +
+  geom_blank(data = blank) +
+  geom_abline(slope = 1, intercept = 0, linewidth = .4, colour = "grey55", linetype = "dashed") +
+  geom_hline(yintercept = 0, colour = "grey85", linewidth = .3) +
+  geom_vline(xintercept = 0, colour = "grey85", linewidth = .3) +
+  geom_point(aes(colour = algo), size = 1.1, alpha = .8) +
+  facet_wrap(~ param + noise, ncol = 3, scales = "free",
+             labeller = labeller(.multi_line = FALSE)) +
+  scale_colour_manual(values = ALGO_COL, name = NULL) +
+  labs(x = "theoretical bias  (DIB, log10)", y = "empirical bias  (theta_pool - theta_sim, log10)") +
+  theme_bw(base_size = 9) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+g5
+ggsave("Figure_5_first.pdf", g5, width = 7.0, height = 8.5)
+```
+
+```{r table}
+# how far off the y = x line, per algorithm and parameter (RMSE of empirical vs theoretical)
+dp %>% group_by(algo, param) %>%
+  summarise(n = n(), rmse = sqrt(mean((b_emp - b_theo)^2, na.rm = TRUE)),
+            .groups = "drop") %>%
+  pivot_wider(names_from = param, values_from = rmse, id_cols = c(algo, n))
+```

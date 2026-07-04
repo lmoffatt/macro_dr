@@ -1,0 +1,244 @@
+---
+title: "Figure 3 — First-order diagnostics: the classical methods pass the obvious checks"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PUBLICATION figure 3. The "alibi": at the level of data fit and first-order
+statistics every algorithm looks fine, which is exactly why a covariance-level
+error went unnoticed. Three null-zero checks:
+
+  A  residual mean      Moment_statistics_Sum_r_std        (null 0)
+  B  expected score     Moment_statistics_Sum_dlogL @ sim  (null 0, per parameter)
+  C  estimator bias     theta_bar - theta_sim              (null 0, bootstrap CI)
+
+Idioms (read skip=1, component strip, boot_param_probit, theta_sim_of) are taken
+verbatim from figure_3_paper.Rmd.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+NSIM      <- 10000         # use the 10000-replica runs, NOT the nsim_1000 ones
+NOISE     <- "0.1"
+NCH       <- c(10, 100, 1000, 10000)
+ALGOS     <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB  <- c(macro_NR="NR", macro_NMR="NMR", macro_R="R", macro_MR="MR", macro_IR="IR")
+ALGO_COL  <- c(NR="#D55E00", NMR="#E69F00", R="#CC79A7", MR="#0072B2", IR="#009E73")
+BIAS_GROUP <- 10           # group_size used for the bias panel cloud
+KIN       <- c("on","off") # kinetic parameters for the score panel (B)
+PARAMS_C  <- c("on","off","unitary_current") # bias panel (C): + unitary_current,
+                           # which shows the non-monotonic N_ch bias from non-normality
+```
+
+```{r read}
+read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
+
+grid  <- expand.grid(nch = NCH, algo = ALGOS, stringsAsFactors = FALSE)
+base  <- file.path(DATA_DIR, sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s",
+                                     grid$nch, NSIM, grid$algo, NOISE))
+base  <- base[file.exists(paste0(base, "_battery_sim.csv"))]
+
+d <- bind_rows(
+  map_dfr(paste0(base, "_battery_sim.csv"),    read_skip1),
+  map_dfr(paste0(base, "_mle_cloud_runs.csv"), read_skip1)
+) %>%
+  select(where(~ !all(is.na(.)))) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+         algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+```
+
+```{r d_mean}
+# wide over the bootstrap summary (mean_NA + quantile_*), like figure_3_paper.Rmd
+d_mean <- d %>%
+  filter(!component %in% c("Probit_statistics")) %>%
+  pivot_wider(names_from = c(probit, quantile_level), values_from = value)
+```
+
+```{r panelA-residuals, fig.width = 12, fig.height = 5}
+# Residual diagnostics CORRECTED PER MEASUREMENT: the stored quantity is a SUM over
+# the n measurements of a recording, so divide by n = 10 / (Delta/tau) (the number
+# of acquisition windows; matches num_samples in figure_3_paper.Rmd). Then the mean
+# standardized residual -> 0 (A1) and the mean SQUARED residual -> 1 (A2) when the
+# predictive variance is right. Facet by algorithm so NR/NMR don't crush R/MR/IR.
+resid <- d_mean %>%
+  filter(component %in% c("Moment_statistics_Sum_r_std",
+                          "Moment_statistics_Sum_r2_std"),
+         statistic == "mean", !is.na(mean_NA)) %>%
+  mutate(
+    # measurements per recording = 10 / (Delta/tau); exactly the num_samples vector
+    # in figure_3_paper.Rmd (1.00->10, 0.5->20, ... 0.01->1000)
+    n_samples  = round(10 / interval_in_tau),
+    scaled     = mean_NA        / n_samples,
+    scaled_lo  = quantile_0.025 / n_samples,        # 95% bootstrap CI, same scaling
+    scaled_hi  = quantile_0.975 / n_samples)
+
+# r (null 0): SYMMETRIC LINEAR scale around 0 (geom_blank mirror forces |y|<=ext)
+resid_r <- resid %>% filter(component == "Moment_statistics_Sum_r_std") %>%
+  mutate(ext = pmax(abs(scaled), abs(scaled_lo), abs(scaled_hi), na.rm = TRUE))
+# r^2 (null 1): SYMMETRIC LOG scale around 1 (mirror is the reciprocal)
+resid_r2 <- resid %>% filter(component == "Moment_statistics_Sum_r2_std") %>%
+  mutate(extlog = pmax(abs(log10(scaled)), abs(log10(scaled_lo)),
+                       abs(log10(scaled_hi)), na.rm = TRUE))
+
+gA1 <- ggplot(resid_r, aes(interval_in_tau, scaled, colour = factor(Num_ch), group = Num_ch)) +
+  geom_hline(yintercept = 0, colour = "#009E73", linewidth = .4) +
+  geom_blank(aes(y = ext)) + geom_blank(aes(y = -ext)) +
+  geom_linerange(aes(ymin = scaled_lo, ymax = scaled_hi), alpha = .5) +
+  geom_line() + geom_point(size = 1) +
+  facet_wrap(~ algo, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_colour_viridis_d(name = "N_ch", end = .9) +
+  labs(x = NULL, y = "mean residual\nr  (null 0)",
+       title = "A  Residual diagnostics per measurement (sum / n,  n = 10/(Delta/tau); bars = 95% bootstrap CI)") +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+
+gA2 <- ggplot(resid_r2, aes(interval_in_tau, scaled, colour = factor(Num_ch), group = Num_ch)) +
+  geom_hline(yintercept = 1, colour = "#009E73", linewidth = .4) +
+  geom_blank(aes(y = 10^extlog)) + geom_blank(aes(y = 10^(-extlog))) +
+  geom_linerange(aes(ymin = scaled_lo, ymax = scaled_hi), alpha = .5) +
+  geom_line() + geom_point(size = 1) +
+  facet_wrap(~ algo, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_y_log10() + scale_colour_viridis_d(name = "N_ch", end = .9) +
+  labs(x = expression(Delta/tau[min]), y = "mean sq residual\n r^2  (null 1, log)") +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+gA1 / gA2
+```
+
+```{r panelB-score, fig.width = 12, fig.height = 3}
+# STANDARDIZED score = mean score / sqrt(Fisher diagonal). The raw sum scales with
+# N_ch (it crushes small-N_ch curves within a panel); the standardized score is
+# O(1) and N_ch-comparable, ~0 under correct specification. Facet by algorithm.
+fish_diag <- d_mean %>%
+  filter(component == "Moment_statistics_Sum_Gaussian_Fisher_Information",
+         statistic == "mean", param_index == param_col, param_index %in% c(0, 1),
+         !is.na(mean_NA)) %>%
+  transmute(algo, Num_ch, interval_in_tau, param_index, fisher = mean_NA)
+
+score_z <- d_mean %>%
+  filter(component == "Moment_statistics_Sum_dlogL", statistic == "mean",
+         param_name %in% KIN, !is.na(mean_NA)) %>%
+  transmute(algo, Num_ch, interval_in_tau, param_index, param_name, score = mean_NA,
+            q_lo = quantile_0.025, q_hi = quantile_0.975) %>%       # 95% bootstrap CI
+  left_join(fish_diag, by = c("algo","Num_ch","interval_in_tau","param_index")) %>%
+  mutate(z = score / sqrt(fisher),
+         z_lo = q_lo / sqrt(fisher), z_hi = q_hi / sqrt(fisher),
+         ext = pmax(abs(z), abs(z_lo), abs(z_hi), na.rm = TRUE))  # symmetric around 0
+
+gB <- ggplot(score_z, aes(interval_in_tau, z, colour = factor(Num_ch),
+                          linetype = param_name,
+                          group = interaction(Num_ch, param_name))) +
+  geom_hline(yintercept = 0, colour = "grey40", linewidth = .3) +
+  geom_blank(aes(y = ext)) + geom_blank(aes(y = -ext)) +
+  geom_linerange(aes(ymin = z_lo, ymax = z_hi), alpha = .4) +
+  geom_line() + geom_point(size = 1) +
+  facet_wrap(~ algo, nrow = 1, scales = "free_y") +
+  scale_x_log10() + scale_colour_viridis_d(name = "N_ch", end = .9) +
+  scale_linetype_manual(values = c(on = "solid", off = "22"), name = NULL) +
+  labs(x = expression(Delta/tau[min]), y = "standardized score\n(score / sqrt Fisher)",
+       title = "B  Expected score ~ 0 at the true parameters (standardized)") +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+gB
+```
+
+```{r panelC-bias}
+# bootstrap of the pooled MLE -> bias vs truth, idioms from figure_3_paper.Rmd
+boot_param_probit <- function(x, B = 100, cis = c(0.025,0.16,0.5,0.84,0.975)) {
+  x <- x[is.finite(x)]; n <- length(x)
+  if (n < 1) return(tibble(mean_NA=NA_real_, quantile_0.025=NA_real_,
+    quantile_0.16=NA_real_, quantile_0.5=NA_real_, quantile_0.84=NA_real_,
+    quantile_0.975=NA_real_, n_units=0L, theta_bar=NA_real_))
+  reps <- colMeans(matrix(sample(x, n * B, replace = TRUE), nrow = n))
+  q <- quantile(reps, cis, type = 6, names = FALSE)
+  tibble(mean_NA = mean(reps), quantile_0.025 = q[1], quantile_0.16 = q[2],
+         quantile_0.5 = q[3], quantile_0.84 = q[4], quantile_0.975 = q[5],
+         n_units = n, theta_bar = mean(x))
+}
+theta_sim_of <- function(param_name, Num_ch) dplyr::case_when(
+  param_name == "on" ~ log10(10), param_name == "off" ~ log10(100),
+  param_name == "unitary_current" ~ log10(1), param_name == "Current_Noise" ~ log10(1e-4),
+  param_name == "Current_Baseline" ~ log10(1), param_name == "Num_ch_mean" ~ log10(Num_ch),
+  TRUE ~ NA_real_)
+
+# CONVERGENCE FILTER. The Gauss-Newton optimiser caps at 100 iterations;
+# Convergence_Status_Code == 0 means converged, == 3 means it hit the cap without
+# converging. NR and NMR saturate the cap at long intervals (Δ/τ >= 0.2): there the
+# measured θ̄ is garbage and does NOT match the predicted bias. We keep only
+# converged fits and drop cells where < 50% of fits converged (annotated below).
+conv <- d %>%
+  filter(component == "Convergence_Status_Code") %>%
+  transmute(algo, Num_ch, interval_in_tau, group_size, sample_index, conv = value) %>%
+  distinct()
+
+conv_frac <- conv %>%
+  filter(group_size == BIAS_GROUP) %>%
+  group_by(algo, Num_ch, interval_in_tau) %>%
+  summarise(frac_conv = mean(conv == 0), .groups = "drop")
+
+set.seed(1)
+mle_bias <- d %>%
+  filter(component == "Model_Parameters_Hat", statistic == "value",
+         group_size == BIAS_GROUP, param_name %in% PARAMS_C) %>%
+  left_join(conv, by = c("algo","Num_ch","interval_in_tau","group_size","sample_index")) %>%
+  filter(conv == 0) %>%                                  # keep converged fits only
+  group_by(Num_ch, algo, interval_in_tau, param_name) %>%
+  group_modify(~ boot_param_probit(.x$value)) %>%
+  ungroup() %>%
+  left_join(conv_frac, by = c("algo","Num_ch","interval_in_tau")) %>%
+  mutate(theta_sim = theta_sim_of(param_name, Num_ch),    # plot the bootstrap median
+         bias  = quantile_0.5   - theta_sim,
+         lo16  = quantile_0.16  - theta_sim, hi84  = quantile_0.84  - theta_sim,
+         lo025 = quantile_0.025 - theta_sim, hi975 = quantile_0.975 - theta_sim,
+         ext   = pmax(abs(bias), abs(lo025), abs(hi975), na.rm = TRUE)) %>%  # symmetric around 0
+  filter(frac_conv >= 0.5)                                # drop non-converged regimes (all N_ch kept)
+
+# PREDICTED bias = Distortion-Induced Bias = (numerical FD-Fisher)^-1 * score, at
+# theta_sim. The FD-Fisher goes near-singular in scattered cells -> the DIB blows up;
+# drop those with Luciano's filters (N_ch>10 and a sane bootstrap CI), NOT the
+# measured bias, where every N_ch is real (incl. the N_ch=10 non-normality signal).
+dib <- d_mean %>%
+  filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+         param_name %in% PARAMS_C, Num_ch > 10,
+         quantile_0.975 < 50, quantile_0.025 > -50) %>%
+  transmute(algo, Num_ch, interval_in_tau, param_name, bias = quantile_0.5)
+```
+
+```{r panelC-plot, fig.width = 12, fig.height = 6}
+# one panel per ALGORITHM (param in rows), colour by N_ch. The bias is NOT
+# intensive: it carries real N_ch structure (e.g. unitary_current is non-monotonic
+# in N_ch from the departure from normality), which is why colouring by N_ch matters.
+# measured bias = points + 68% (thick) and 95% (thin) bootstrap CI; the dashed line
+# is the predicted DIB where the FD-Fisher is well-conditioned.
+gC <- ggplot(mapping = aes(interval_in_tau, bias, colour = factor(Num_ch))) +
+  geom_hline(yintercept = 0, colour = "grey40", linewidth = .3) +
+  # symmetric around 0, sized by the MEASURED bias (the DIB overshoot may run off-panel)
+  geom_blank(data = mle_bias, aes(y = ext)) +
+  geom_blank(data = mle_bias, aes(y = -ext)) +
+  geom_linerange(data = mle_bias, aes(ymin = lo025, ymax = hi975), alpha = .3) +
+  geom_linerange(data = mle_bias, aes(ymin = lo16, ymax = hi84),
+                 linewidth = .9, alpha = .6) +
+  geom_point(data = mle_bias, size = 1) +
+  geom_line(data = dib, aes(group = Num_ch), linetype = "22") +
+  facet_grid(param_name ~ algo, scales = "free_y") +
+  scale_x_log10() +
+  scale_colour_viridis_d(name = "N_ch", end = .9) +
+  labs(x = expression(Delta/tau[min]), y = "bias (log10)",
+       title = "C  Measured bias (points, 68%/95% bootstrap CI) vs predicted DIB (dashed)",
+       subtitle = "one panel per algorithm; measured keeps every N_ch; DIB shown only where the numerical FD-Fisher is well-conditioned") +
+  theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
+gC
+```
+
+```{r compose, fig.width = 12, fig.height = 17}
+fig3 <- gA1 / gA2 / gB / gC +
+  plot_layout(heights = c(1, 1, 1, 2.6), guides = "collect") &
+  theme(legend.position = "bottom")
+fig3
+ggsave("Figure_3.pdf", fig3, width = 12, height = 17)
+```

@@ -1,0 +1,216 @@
+---
+title: "Figure S5 — score diagnostics across all four parameters"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Supplement to Figure 3 / Figure 4: the two per-interval SCORE diagnostics for ALL FOUR fitted
+parameters (k_on, k_off, i, N_ch), across the 5 macro approximations (NR, MNR, R, MR, IR). The
+main figures show only k_off (representative); this figure justifies that choice by showing the
+SAME behaviour for every parameter. Reads the 5 ensemble CSVs
+figures/data/figure_3_time_dlik_{NR,NMR,R,MR,IR}.csv ONCE each, keeping only the per-interval
+score rows s_t,k = d logL_t / d theta_k  (component_path=="logL", calculus=="derivative",
+param_index in {0,1,2,5}, sample_index populated). The two duplicate rows per (sim, sample,
+param) in the dump (a blank-segment copy + a segment_index=0 copy, identical values) are
+collapsed by mean, else sums double.
+
+Two diagnostics, both a well-specified filter drives to zero:
+  score bias  sbar_t,k = mean_recordings(s_t,k) over TIME (ms)     ~ 0 (a martingale-difference
+              score is mean-zero at every step); a localised departure marks where the
+              mis-specification biases the gradient. Agonist shading on the time rows.
+  score ACF   autocorrelation of s_t,k over LAG                    ~ 0 (a white score); a naive
+              filter leaves temporal memory -> non-zero ACF -> the F != J that distorts the
+              Fisher CIs of Figure 2.
+
+Layout: header strip + 8 diagnostic rows x 5 approximation columns. Rows 1-4 are the score BIAS
+of the four parameters (time axis); rows 5-8 are the score ACF of the same four parameters (lag
+axis). Both diagnostics are SIGNED, so every panel is on a LINEAR y with 0 forced onto the ticks
+and a green null line at 0 (NO log10). y-scale is per group (naive NR/MNR | recursive R/MR/IR),
+per row: the naive gradient blows up and on one shared scale would crush the recursive trio. The
+x TITLE appears ONCE per block (centre column R): "time (ms)" under the bias block, "lag" under
+the ACF block. Bands: bias = 95% bootstrap CI over the 1000 recordings; ACF = mean +/- 1.96 SE
+per lag.
+
+The story: read a COLUMN (one approximation) down the four bias rows, or down the four ACF rows:
+the pattern is the same for every parameter (naive biased + temporally correlated; recursive
+~ 0). The score behaviour is essentially parameter-independent, so k_off in the main figures is
+representative.
+
+RENDER: reads > 5 GB across the 5 CSVs; too heavy for a laptop. Run only where figures/data/
+resolves and there is memory to spare.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+library(patchwork)
+ALGOS <- c("NR", "NMR", "R", "MR", "IR")                             # NMR = data-file key
+ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", IR = "IR")    # display: show NMR as MNR
+FULL  <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
+           MR = "Mean Recursive", IR = "Interval Recursive")
+PIDX  <- c(0, 1, 2, 5)                                               # k_on, k_off, i, N_ch
+PLAB  <- c("k[on]", "k[off]", "i", "N[ch]")                          # plotmath parameter labels
+B     <- 400                                                        # bootstrap replicates over recordings
+```
+
+```{r read}
+# each CSV once: the per-interval score for the 4 parameters, deduped over the writer's x2 copies.
+read_sc <- function(a) {
+  dt <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE)
+  s  <- dt[component_path == "logL" & calculus == "derivative" &
+           param_index %in% PIDX & !is.na(sample_index),
+           .(simulation_index, sample_index, param_index, value)]
+  tm <- unique(dt[!is.na(step_middle) & !is.na(sample_index),
+                  .(sample_index, t = step_middle * 1000, agonist)])          # step_middle s -> ms
+  tm <- tm[, .(t = first(t), agonist = first(agonist)), by = sample_index]    # one row per sample
+  rm(dt); gc(verbose = FALSE)
+  s1 <- s[, .(s = mean(value)), by = .(simulation_index, sample_index, param_index)]  # dedup x2
+  list(s = s1[, algo := a], tm = tm)
+}
+raw    <- lapply(ALGOS, read_sc)
+SC     <- rbindlist(lapply(raw, `[[`, "s"))
+tmap   <- raw[[1]]$tm
+setorder(SC, algo, param_index, simulation_index, sample_index)               # ACF needs sample order
+n_samp <- uniqueN(SC$sample_index)
+```
+
+```{r bias-stats}
+# score bias: mean over recordings of s_t,k per (algo, param, step), with a bootstrap-over-
+# recordings 95% CI. sbar_t,k ~ 0 for a well-specified filter.
+set.seed(1)
+cMean <- function(M) colMeans(M, na.rm = TRUE)
+fmean <- function(d) {
+  Sm  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "s")[, -1])
+  smp <- as.integer(colnames(Sm)); n <- nrow(Sm)
+  reps <- matrix(NA_real_, B, ncol(Sm))
+  for (b in seq_len(B)) reps[b, ] <- cMean(Sm[sample.int(n, n, replace = TRUE), , drop = FALSE])
+  data.table(sample_index = smp, m = cMean(Sm),
+             lo = apply(reps, 2, quantile, 0.025, na.rm = TRUE),
+             hi = apply(reps, 2, quantile, 0.975, na.rm = TRUE))
+}
+SB <- SC[, fmean(.SD), by = .(algo, param_index)]
+SB <- merge(SB, tmap[, .(sample_index, t)], by = "sample_index")
+SB[, `:=`(algo  = factor(algo, levels = ALGOS),
+          param = factor(PLAB[match(param_index, PIDX)], levels = PLAB))]
+```
+
+```{r acf-stats}
+# score autocorrelation: per (algo, param, sim) ACF of the ordered score series, then mean over
+# recordings +/- 1.96 SE per lag. ACF(s_t,k) ~ 0 at lags >= 1 for a white (uncorrelated) score.
+LAGMAX  <- min(25, n_samp - 2)
+acf_one <- function(x) as.numeric(acf(x, lag.max = LAGMAX, plot = FALSE)$acf)
+SA <- as_tibble(SC) %>%
+  group_by(algo, param_index, simulation_index) %>%
+  summarise(a = list(acf_one(s)), .groups = "drop") %>%
+  group_by(algo, param_index) %>%
+  summarise(M = list(do.call(rbind, a)), .groups = "drop") %>%
+  mutate(d = map(M, ~ tibble(lag = 0:LAGMAX, acf = colMeans(.x),
+                             se = apply(.x, 2, sd) / sqrt(nrow(.x))))) %>%
+  select(algo, param_index, d) %>% unnest(d) %>% filter(lag >= 1)
+SA <- as.data.table(SA)
+SA[, `:=`(algo  = factor(algo, levels = ALGOS),
+          param = factor(PLAB[match(param_index, PIDX)], levels = PLAB))]
+```
+
+```{r panels, fig.width = 7.0, fig.height = 10.5}
+COL   <- "#0072B2"; NUL <- "#009E73"                     # house blue; green null line
+naive <- c("NR", "NMR"); recg <- c("R", "MR", "IR")      # keys (NMR displayed as MNR)
+
+# per-group y-range (naive | recursive), padded: the naive gradient/ACF blows up and on one
+# shared scale would crush the recursive trio's ~0, so each block gets its own axis.
+grange <- function(lo, hi, algo, pad = .08) {
+  g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
+    summarise(lo = min(lo), hi = max(hi), .groups = "drop") %>%
+    mutate(pd = (hi - lo) * pad, lo = lo - pd, hi = hi + pd)
+  list(naive = c(g$lo[g$grp == 1], g$hi[g$grp == 1]), rec = c(g$lo[g$grp == 2], g$hi[g$grp == 2]))
+}
+padr <- function(r, f = .06) r + c(-1, 1) * diff(r) * f
+
+# column-header strip cell (approximations on top, ONCE); ALAB shows the NMR key as MNR
+colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = FULL[[k]]) +
+  theme(plot.title = element_text(hjust = .5, size = 9), plot.subtitle = element_text(hjust = .5, size = 7))
+
+# decorate a panel. Signed quantities only -> LINEAR y, 0 forced onto the ticks. y-NUMBERS on NR
+# (+ its quantity title) and, for the grouped rows, on R (the recursive block's leftmost). x-NUMBERS
+# on every bottom-of-block panel, but the x TITLE only ONCE, on the centre column (R).
+deco <- function(p, col, split, xr, yl, yq, ttl = NULL, tag = NULL, bottom = FALSE, xlab = NULL) {
+  ylim <- if (is.list(yl)) (if (col %in% naive) yl$naive else yl$rec) else yl
+  brk  <- pretty(ylim); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
+  p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
+  if (col == "NR") p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
+  else if (col == "R" && split) p <- p + theme(axis.title.y = element_blank())            # numbers, no title
+  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  if (bottom) {
+    if (col == "R") p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
+    else p <- p + theme(axis.title.x = element_blank())
+  } else p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+  if (!is.null(tag)) p <- p + labs(tag = tag)
+  if (!is.null(ttl)) p <- p + ggtitle(ttl) +
+    theme(plot.title = element_text(hjust = 0, size = 8.5, face = "plain", margin = margin(b = 1)))
+  p + theme(panel.grid.minor = element_blank(), plot.margin = margin(1.5, 3, 1.5, 3))
+}
+base <- function() theme_bw(base_size = 8)
+
+tr <- range(SB$t); lr <- range(c(1, SA$lag))
+agon <- tmap[agonist > 0]; x0 <- min(agon$t); x1 <- max(agon$t)   # agonist window (ms)
+# full-panel agonist band for the TIME (bias) rows only; linear panels need a negative floor.
+mkshade <- function() annotate("rect", xmin = x0, xmax = x1, ymin = -1e10, ymax = 1e10,
+                               fill = "grey85", alpha = .5)
+
+# row titles (plotmath) and panel tags, one per parameter x diagnostic
+TTL_BIAS <- list(expression(plain("score bias:") ~ k[on]),  expression(plain("score bias:") ~ k[off]),
+                 expression(plain("score bias:") ~ i),       expression(plain("score bias:") ~ N[ch]))
+TTL_ACF  <- list(expression(plain("score ACF:")  ~ k[on]),  expression(plain("score ACF:")  ~ k[off]),
+                 expression(plain("score ACF:")  ~ i),       expression(plain("score ACF:")  ~ N[ch]))
+TAG_BIAS <- c("A", "B", "C", "D"); TAG_ACF <- c("E", "F", "G", "H")
+
+# a score-bias row (one parameter, 5 approximation columns): mean over recordings +/- bootstrap CI
+# over TIME, agonist shading, GROUPED naive|recursive scale, linear signed y.
+bias_row <- function(j, bottom) {
+  dP <- SB[param == PLAB[j]]
+  yl <- grange(dP$lo, dP$hi, as.character(dP$algo))
+  lapply(ALGOS, function(a) {
+    d <- dP[algo == a]
+    g <- ggplot(d, aes(t, m)) + mkshade() + geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+      geom_ribbon(aes(ymin = lo, ymax = hi), fill = COL, alpha = .25) +
+      geom_line(colour = COL, linewidth = .4) + base()
+    deco(g, a, TRUE, tr, yl, expression(bar(s)[t]),
+         ttl = if (a == "NR") TTL_BIAS[[j]] else NULL, tag = if (a == "NR") TAG_BIAS[j] else NULL,
+         bottom = bottom, xlab = if (bottom) "time (ms)" else NULL)
+  })
+}
+
+# a score-ACF row (one parameter, 5 approximation columns): mean over recordings +/- 1.96 SE per
+# LAG, no shading (x is lag), GROUPED naive|recursive scale, linear signed y.
+acf_row <- function(j, bottom) {
+  dP <- SA[param == PLAB[j]]
+  yl <- grange(dP$acf - 1.96 * dP$se, dP$acf + 1.96 * dP$se, as.character(dP$algo))
+  lapply(ALGOS, function(a) {
+    d <- dP[algo == a]
+    g <- ggplot(d, aes(lag, acf)) + geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+      geom_linerange(aes(ymin = acf - 1.96 * se, ymax = acf + 1.96 * se), colour = COL, linewidth = .35) +
+      geom_point(colour = COL, size = .25) + base()
+    deco(g, a, TRUE, lr, yl, "ACF",
+         ttl = if (a == "NR") TTL_ACF[[j]] else NULL, tag = if (a == "NR") TAG_ACF[j] else NULL,
+         bottom = bottom, xlab = if (bottom) "lag" else NULL)
+  })
+}
+
+gS5 <- wrap_plots(c(lapply(ALGOS, colhead),
+                    bias_row(1, FALSE), bias_row(2, FALSE), bias_row(3, FALSE), bias_row(4, TRUE),
+                    acf_row(1, FALSE),  acf_row(2, FALSE),  acf_row(3, FALSE),  acf_row(4, TRUE)),
+                  ncol = 5, heights = c(0.13, rep(1, 8)))
+gS5
+ggsave("Figure_S5.pdf", gS5, width = 7.0, height = 10.5)
+```
+
+```{r summary-table}
+# numeric backing for "parameter-independent": lag-1 score ACF and max |score bias| per algo x param
+bias_tab <- SB[, .(max_abs_bias = round(max(abs(m), na.rm = TRUE), 3)), by = .(algo, param)]
+acf_tab  <- SA[lag == 1, .(acf_lag1 = round(acf, 3)), by = .(algo, param)]
+merge(bias_tab, acf_tab, by = c("algo", "param")) %>% as_tibble() %>%
+  pivot_wider(names_from = param, values_from = c(max_abs_bias, acf_lag1))
+```

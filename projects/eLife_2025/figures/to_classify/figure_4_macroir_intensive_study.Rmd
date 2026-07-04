@@ -1,0 +1,238 @@
+---
+title: "MacroIR intensive validation study (the deep-dive behind the Figure 4 validity map)"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PANEL A — the intensive MacroIR study, figure_3_paper style: every distortion component,
+per-parameter and as a scalar, swept over Δ/τ and N_ch, for TWO measurement-noise levels
+(noise_in_conductance_tau = 0.1 and 1). MacroIR is the subject; R and MR are the foils.
+
+Claim to support: MacroIR sits at the null across the whole grid and at both noise levels,
+while R and MR drift away from it. Six distortion matrices:
+
+  battery_pool  (Likelihood_* at theta_pool, null = 1 on the diagonal, 0 for log_det):
+    Likelihood_Information_Distortion        total (the IDM)
+    Likelihood_Gaussian_Fisher_Distortion    analytic-vs-numerical Fisher mismatch
+    Likelihood_Correlation_Distortion        temporal-correlation blindness (short Δ/τ)
+    Likelihood_Sample_Distortion             Gaussian-vs-Poisson geometric tension
+  empirical  (group_size = 10):
+    Empirical_Covariance_Fisher_Distortion       empirical cloud vs naive Fisher (CI inflation)
+    Empirical_Covariance_Corrected_Distortion    empirical cloud vs sandwich (≈1 if the fix works)
+
+Diagonal cells: operation == "probit", param_index == param_col. Bootstrap percentiles in
+quantile_level. log_det / eigenvalue / affine summaries come as their own component_path with
+the matching operation tag. Provenance row is skipped (skip = 1).
+
+NOTE: noise = 1 currently exists for IR/R/MR only (not NR/NMR), which is fine here.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.width = 16, fig.height = 12)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR <- "data/433ed13"
+NSIM     <- 10000
+NOISES   <- c("0.1", "1")
+NCH      <- c(10, 20, 50, 100, 200, 500, 1000, 10000)
+ALGOS    <- c("macro_IR", "macro_R", "macro_MR")        # IR is the subject; R, MR are foils
+ALGO_LAB <- c(macro_IR="IR", macro_R="R", macro_MR="MR")
+GS       <- 10                                          # group_size for the empirical pair
+KIN_IDX  <- 0:1                                          # on, off (the kinetic params)
+
+# matrix-valued distortions (we read the diagonal) ...
+COMP_MAT <- c("Likelihood_Information_Distortion",
+              "Likelihood_Gaussian_Fisher_Distortion",
+              "Likelihood_Correlation_Distortion",
+              "Likelihood_Sample_Distortion",
+              "Empirical_Covariance_Fisher_Distortion",
+              "Empirical_Covariance_Corrected_Distortion")
+# ... and the scalar summaries of the total IDM (its own component_path each)
+COMP_SCALAR <- c(log_det = "log_Det_Likelihood_Information_Distortion",
+                 max_eig = "Max_Eigenvalue_Likelihood_Information_Distortion",
+                 min_eig = "Min_Eigenvalue_Likelihood_Information_Distortion",
+                 affine  = "Affine_Invariant_Distance_Likelihood_Information_Distortion")
+
+COMP_LAB <- c(Likelihood_Information_Distortion         = "information (total)",
+              Likelihood_Gaussian_Fisher_Distortion     = "Gaussian-vs-num Fisher",
+              Likelihood_Correlation_Distortion         = "correlation",
+              Likelihood_Sample_Distortion              = "sample",
+              Empirical_Covariance_Fisher_Distortion    = "emp.cov vs Fisher",
+              Empirical_Covariance_Corrected_Distortion = "emp.cov vs corrected")
+```
+
+```{r read}
+# read one file, keep only the component_paths we care about, strip the Probit prefix
+WANT <- paste0("Probit_statistics_", c(COMP_MAT, unname(COMP_SCALAR)))
+
+read_one <- function(path, algo, noise, src) {
+  if (!file.exists(path)) return(NULL)
+  df <- read.csv(path, skip = 1, stringsAsFactors = FALSE) %>%
+    filter(component_path %in% WANT, statistic == "value")
+  if (!"group_size" %in% names(df)) df$group_size <- NA_integer_
+  df %>%
+    mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+           algo  = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)),
+           noise = factor(noise, levels = NOISES),
+           source = src) %>%
+    select(component, algo, noise, source, Num_ch, interval_in_tau,
+           operation, param_index, param_col, param_name, group_size, quantile_level, value)
+}
+
+grid <- expand.grid(nch = NCH, algo = ALGOS, noise = NOISES, stringsAsFactors = FALSE)
+raw <- pmap_dfr(grid, function(nch, algo, noise) {
+  bp <- sprintf("%s/figure_3_nch_%d_nsim_%d_%s_noise_%s_battery_pool.csv", DATA_DIR, nch, NSIM, algo, noise)
+  em <- sprintf("%s/figure_3_nch_%d_nsim_%d_%s_noise_%s_empirical.csv",    DATA_DIR, nch, NSIM, algo, noise)
+  bind_rows(read_one(bp, algo, noise, "pool"),
+            read_one(em, algo, noise, "empirical"))
+})
+
+wide <- raw %>%
+  pivot_wider(names_from = quantile_level, values_from = value, names_prefix = "q") %>%
+  mutate(intv = interval_in_tau)
+cat("rows:", nrow(wide), " | algos:", paste(levels(wide$algo), collapse=","),
+    " | noises:", paste(levels(wide$noise), collapse=","), "\n")
+```
+
+```{r helpers}
+# diagonal matrix cells of a distortion (one per parameter), null = 1
+diag_cells <- function(comp, gs_filter = FALSE) {
+  d <- wide %>% filter(component == comp, operation == "probit",
+                       param_index == param_col, Num_ch > 5)
+  if (gs_filter) d <- filter(d, group_size == GS)
+  d
+}
+
+# kinetic diagonal collapsed to geometric mean over on/off, null = 1
+geomean_kin <- function(comp, gs_filter = FALSE) {
+  diag_cells(comp, gs_filter) %>%
+    filter(param_index %in% KIN_IDX) %>%
+    group_by(algo, noise, Num_ch, interval_in_tau) %>%
+    summarise(med = exp(mean(log(q0.5))),
+              lo16 = exp(mean(log(q0.16))), hi84 = exp(mean(log(q0.84))),
+              lo025 = exp(mean(log(q0.025))), hi975 = exp(mean(log(q0.975))),
+              .groups = "drop")
+}
+
+ALG_COL <- c(IR = "#0072B2", R = "#D55E00", MR = "#CC79A7")
+
+band_plot <- function(df, xvar, null_y, log_y = TRUE, facet, title, ylab) {
+  p <- ggplot(df, aes({{ xvar }}, med, colour = algo, group = algo)) +
+    geom_hline(yintercept = null_y, colour = "#009E73", linewidth = .4) +
+    geom_linerange(aes(ymin = lo025, ymax = hi975), alpha = .25,
+                   position = position_dodge(width = .08)) +
+    geom_linerange(aes(ymin = lo16, ymax = hi84), linewidth = .9, alpha = .55,
+                   position = position_dodge(width = .08)) +
+    geom_line(alpha = .8) +
+    geom_point(size = 1, position = position_dodge(width = .08)) +
+    scale_x_log10() + scale_colour_manual(values = ALG_COL, name = "algorithm") +
+    labs(title = title, y = ylab) +
+    theme_bw(base_size = 11) +
+    theme(panel.grid.minor = element_blank(), legend.position = "bottom")
+  if (log_y) p <- p + scale_y_log10()
+  p + facet
+}
+```
+
+## 1. The six distortion components, collapsed (geomean over on/off) vs Δ/τ
+
+IR should hug the green null (1) in every panel and at both noise levels; R and MR drift.
+
+```{r decomposition, fig.height = 16}
+dec <- bind_rows(lapply(COMP_MAT, function(c)
+  geomean_kin(c, gs_filter = c %in% c("Empirical_Covariance_Fisher_Distortion",
+                                      "Empirical_Covariance_Corrected_Distortion")) %>%
+    mutate(component = c))) %>%
+  mutate(component = factor(COMP_LAB[component], levels = unname(COMP_LAB)))
+
+for (noi in NOISES) {
+  print(band_plot(filter(dec, noise == noi), interval_in_tau, null_y = 1,
+                  facet = facet_grid(component ~ Num_ch, scales = "free_y"),
+                  title = paste0("Distortion components vs Δ/τ, noise", noi,
+                                 "  (geomean on/off, null = 1)"),
+                  ylab = "distortion (diagonal)"))
+}
+```
+
+## 2. Total information distortion, per parameter
+
+The full diagonal of the IDM, one line per parameter, so a per-parameter read of where (if
+anywhere) IR departs from the null.
+
+```{r idm-per-param, fig.height = 14}
+idm <- diag_cells("Likelihood_Information_Distortion") %>%
+  mutate(param = factor(param_name))
+for (noi in NOISES) {
+  print(
+    ggplot(filter(idm, noise == noi),
+           aes(interval_in_tau, q0.5, colour = algo, group = algo)) +
+      geom_hline(yintercept = 1, colour = "#009E73", linewidth = .4) +
+      geom_linerange(aes(ymin = q0.16, ymax = q0.84), linewidth = .8, alpha = .6,
+                     position = position_dodge(width = .08)) +
+      geom_line(alpha = .8) + geom_point(size = 1, position = position_dodge(width = .08)) +
+      scale_x_log10() + scale_y_log10() +
+      scale_colour_manual(values = ALG_COL, name = "algorithm") +
+      facet_grid(param ~ Num_ch, scales = "free_y") +
+      labs(title = paste0("IDM diagonal per parameter vs Δ/τ, noise", noi),
+           y = "distortion") +
+      theme_bw(base_size = 11) +
+      theme(panel.grid.minor = element_blank(), legend.position = "bottom")
+  )
+}
+```
+
+## 3. Scalar summaries of the IDM (signed): log-det, eigenvalues, affine distance
+
+The single numbers behind the heatmap. log_det and affine null at 0; eigenvalues null at 1.
+IR flat at the null across N_ch and both noises; R/MR climb with N_ch.
+
+```{r idm-scalars, fig.height = 12}
+scal <- wide %>%
+  filter(component %in% unname(COMP_SCALAR), Num_ch > 5) %>%
+  mutate(metric = names(COMP_SCALAR)[match(component, COMP_SCALAR)],
+         null_y = if_else(metric %in% c("max_eig","min_eig"), 1, 0))
+
+for (noi in NOISES) {
+  print(
+    ggplot(filter(scal, noise == noi),
+           aes(Num_ch, q0.5, colour = algo, group = algo)) +
+      geom_hline(aes(yintercept = null_y), colour = "#009E73", linewidth = .4) +
+      geom_linerange(aes(ymin = q0.16, ymax = q0.84), linewidth = .8, alpha = .6,
+                     position = position_dodge(width = .1)) +
+      geom_line(alpha = .8) + geom_point(size = 1, position = position_dodge(width = .1)) +
+      scale_x_log10() +
+      scale_colour_manual(values = ALG_COL, name = "algorithm") +
+      facet_grid(metric ~ interval_in_tau, scales = "free_y") +
+      labs(title = paste0("IDM scalar summaries vs N_ch, noise", noi),
+           y = "value (log_det/affine null 0; eig null 1)") +
+      theme_bw(base_size = 11) +
+      theme(panel.grid.minor = element_blank(), legend.position = "bottom")
+  )
+}
+```
+
+## 4. Empirical validation: does the IR cloud match its own Fisher?
+
+Empirical_Covariance_Fisher_Distortion = empirical MLE cloud vs naive Fisher (>1 means the
+Fisher CI is too tight). Empirical_Covariance_Corrected_Distortion = cloud vs sandwich (≈1 if
+the correction works). For IR both should sit near 1.
+
+```{r empirical, fig.height = 10}
+emp <- bind_rows(
+  geomean_kin("Empirical_Covariance_Fisher_Distortion",    gs_filter = TRUE) %>% mutate(component = "emp.cov vs Fisher"),
+  geomean_kin("Empirical_Covariance_Corrected_Distortion", gs_filter = TRUE) %>% mutate(component = "emp.cov vs corrected")
+) %>% mutate(component = factor(component, levels = c("emp.cov vs Fisher","emp.cov vs corrected")))
+
+for (noi in NOISES) {
+  print(band_plot(filter(emp, noise == noi), interval_in_tau, null_y = 1,
+                  facet = facet_grid(component ~ Num_ch, scales = "free_y"),
+                  title = paste0("Empirical covariance distortion vs Δ/τ, noise", noi,
+                                 "  (group_size ", GS, ", null = 1)"),
+                  ylab = "distortion (diagonal, geomean on/off)"))
+}
+```
