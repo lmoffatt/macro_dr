@@ -1,0 +1,341 @@
+//w/0---
+title: "analysis"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r}
+Nch= 20
+
+fs = 50e3
+nsamples= 100
+noise=1e-4 *fs/nsamples
+```
+
+
+```{r}
+filenames=c(
+  "../data/figure_1_likelihood_diagnostic_NR",
+  "../data/figure_1_likelihood_diagnostic_MNR",
+  "../data/figure_1_likelihood_diagnostic_R",
+  "../data/figure_1_likelihood_diagnostic_MR",
+  "../data/figure_1_likelihood_diagnostic_IR",
+  "../data/figure_1_simulation"
+
+)
+
+algorithms=c("NR"
+             ,"MNR"
+             ,"R"
+             ,"MR"
+             ,"IR"
+             ,"SIM")
+
+```
+
+
+```{r}
+
+d=data.frame()
+for (i in 1:length(filenames)){
+  
+  d0=read.csv(paste0(filenames[i],".csv"), check.names = FALSE) 
+  d0$algo=algorithms[i]
+  d=rbind(d,d0)
+}
+
+```
+
+```{r}
+d_MR=d%>%filter(algo=="MR", scope=="evolution", value_row==1, is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+           str_replace("^Algo_State_Dynamic\\.", "") %>%
+           str_replace("^Patch_State\\.", ""))%>%
+  select(sample_index,step_start,step_middle,step_end,component,value_row,value_col,value)%>%pivot_wider(names_from = component, values_from = value)
+d_IR=d%>%filter(algo=="IR", scope=="evolution", value_row==1,  is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+           str_replace("^Algo_State_Dynamic\\.", "") %>%
+           str_replace("^Patch_State\\.", ""))%>%
+  select(sample_index,step_start,step_middle,step_end,component,value_row,value_col,value)%>%
+  pivot_wider(names_from = component, values_from = value)
+
+d_R=d%>%filter(algo=="R", scope=="evolution", value_row==1,  is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+           str_replace("^Algo_State_Dynamic\\.", "") %>%
+           str_replace("^Patch_State\\.", ""))%>%
+  select(sample_index,step_start,step_middle,step_end,component,value_row,value_col,value)%>%
+  pivot_wider(names_from = component, values_from = value)
+
+d_NR=d%>%filter(algo=="NR", scope=="evolution", value_row==1,  is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+           str_replace("^Algo_State_Dynamic\\.", "") %>%
+           str_replace("^Patch_State\\.", ""))%>%
+  select(sample_index,step_start,step_middle,step_end,component,value_row,value_col,value)%>%
+  pivot_wider(names_from = component, values_from = value)
+
+#%>%select(step_start,step_middle,step_end)
+
+
+d_s=d%>%filter(algo=="SIM", scope=="simulation_sub")%>%select(sub_index,sample_index,step_start,step_middle,step_end,component_path,value)%>%pivot_wider(names_from = component_path, values_from = value)
+```
+
+
+```{r}
+common_theme = theme_classic()+ theme( legend.position = "right")
+
+compact_theme <- common_theme +theme(
+  axis.title.x = element_blank(),
+  axis.text.x  = element_blank(),
+  axis.ticks.x = element_blank(),
+  legend.position = "right",
+  plot.margin = margin(1, 5, 1, 5)
+)
+x_only_ticks=theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+y_only_ticks=theme(axis.title.y = element_blank(), axis.text.y = element_blank())
+no_y_axis= theme( axis.text.y = element_blank(), # Removes y-axis text
+         axis.title.y = element_blank(), # Removes y-axis title
+          axis.ticks.y = element_blank(), 
+        axis.line.y = element_blank())
+no_x_axis= theme( axis.text.x = element_blank(), # Removes y-axis text
+         axis.title.x = element_blank(), # Removes y-axis title
+          axis.ticks.x = element_blank(), 
+        axis.line.x = element_blank())
+y_no_title=theme(axis.title.y = element_blank())
+
+
+xmin=min(d$step_start)
+xmax=max(d$step_end)
+
+dx=xmax-xmin
+x_scale<-scale_x_continuous(limits = c(xmin-0.05*dx, xmax+0.05*dx))
+
+
+d_step_IR=0.1
+d_step_MR= 0.1
+```
+
+
+```{r}
+d_p_IR=0.004*diff(range(-d_s$patch_current/Nch))
+
+```
+
+
+```{r, fig.height=6,fig.width=12}
+d_step_IR=0
+d_step_MR= 0
+
+MR_color_plot<- c(
+      "current"   = "#009E73",
+      "prior"     = "#999999",  # Light Grey
+      "posterior" = "#000000",  # Strong Black
+      "Markov"    = "#0072B2",  # Deep Blue
+      "Markov_on_prior" ="#0072B2",
+      "Bayes"     = "#E69F00", 
+      "next_measure" ="darkblue"
+    )
+
+
+MR_bayes_color<-scale_color_manual(
+    values =MR_color_plot,
+    breaks = c("current","prior", "posterior","Markov", "Markov_on_prior","Bayes","next_measure"),
+    labels = c("Simulated Current","Prior Point State", "Posterior Point State", "Markov Prediction", "Markov Prediction on Prior", "Bayesian Update", "Next Measure")
+  ) 
+
+  MR_bayes_guides<-guides(color = guide_legend(override.aes = list(shape = c(NA,16, 16, NA, NA), 
+                                                linetype = c(1,0, 0, 1,1))))
+ 
+
+  IR_color_plot<- c(
+      "current"   = "#009E73",
+      "prior"     = "#999999",  # Light Grey
+      "prior_state"     = "#999999",  # Light Grey
+      "posterior" = "#000000",  # Strong Black
+      "posterior_state" ="#000000",
+      "Markov"    = "#0072B2",  # Deep Blue
+      "Bayes"     = "#E69F00", 
+      "next_measure" ="darkblue"
+    )
+
+
+IR_bayes_color<-scale_color_manual(
+    values =IR_color_plot,
+    breaks = c("current","prior", "prior_state","posterior","posterior_state", "Markov", "Bayes"),
+    labels = c("Simulated Current","Prior Point State","Prior Boundary State", "Posterior Point State","Posterior Boundary State", "Markov Prediction", "Bayesian Update")
+  )
+
+  # boundary-state endpoints: start = hollow circle (1), end = solid circle (16)
+  IR_boundary_shape <- scale_shape_manual(
+    values = c("start" = 1, "end" = 16),
+    breaks = c("start", "end"),
+    labels = c("start", "end"),
+    name = NULL)
+
+  IR_bayes_guides<-guides(
+    color = guide_legend(order = 1, override.aes = list(shape = rep(NA, 4),
+                                                linetype = c(1,1,1,1))),
+    shape = guide_legend(order = 2, override.aes = list(color = "black", linetype = 0)))
+
+  # leave a small gap so the Bayes arrows stop short of the boundary circles/lines (tune arrow_gap)
+  arrow_gap = 0.008
+  shr_a <- function(y0, y1) y0 + pmin(arrow_gap, 0.35*abs(y1-y0))*sign(y1-y0)  # start, pulled toward the end
+  shr_b <- function(y0, y1) y1 - pmin(arrow_gap, 0.35*abs(y1-y0))*sign(y1-y0)  # end, pulled toward the start
+  d_IR <- d_IR %>% mutate(
+    bayes0_y    = shr_a(lag(P_mean_t20_y1), P_mean_t10_y1),
+    bayes0_yend = shr_b(lag(P_mean_t20_y1), P_mean_t10_y1),
+    bayesA_y    = shr_a(lag(P_mean_t20_y1)*0.75 + P_mean_t11_y0*0.25, P_mean_t10_y1*0.75 + P_mean_t20_y1*0.25),
+    bayesA_yend = shr_b(lag(P_mean_t20_y1)*0.75 + P_mean_t11_y0*0.25, P_mean_t10_y1*0.75 + P_mean_t20_y1*0.25),
+    bayesB_y    = shr_a(lag(P_mean_t20_y1)*0.5  + P_mean_t11_y0*0.5,  P_mean_t10_y1*0.5  + P_mean_t20_y1*0.5),
+    bayesB_yend = shr_b(lag(P_mean_t20_y1)*0.5  + P_mean_t11_y0*0.5,  P_mean_t10_y1*0.5  + P_mean_t20_y1*0.5),
+    bayesC_y    = shr_a(lag(P_mean_t20_y1)*0.25 + P_mean_t11_y0*0.75, P_mean_t10_y1*0.25 + P_mean_t20_y1*0.75),
+    bayesC_yend = shr_b(lag(P_mean_t20_y1)*0.25 + P_mean_t11_y0*0.75, P_mean_t10_y1*0.25 + P_mean_t20_y1*0.75),
+    bayes1_y    = shr_a(P_mean_t11_y0, P_mean_t20_y1),
+    bayes1_yend = shr_b(P_mean_t11_y0, P_mean_t20_y1))
+ 
+
+  no_legend<-theme(legend.position = "none")
+  
+  # MR arrows: Bayes (vertical) absolute gap; Markov (diagonal) fractional gap (aspect-invariant)
+  markov_f = 0.08
+  d_MR <- d_MR %>% mutate(
+    bayesM_y    = lag(P_mean_t2_y1) + pmin(arrow_gap, 0.35*abs(P_mean_t1_y1 - lag(P_mean_t2_y1)))*sign(P_mean_t1_y1 - lag(P_mean_t2_y1)),
+    bayesM_yend = P_mean_t1_y1      - pmin(arrow_gap, 0.35*abs(P_mean_t1_y1 - lag(P_mean_t2_y1)))*sign(P_mean_t1_y1 - lag(P_mean_t2_y1)),
+    markov_x    = step_start   + markov_f*(step_end-step_start),
+    markov_xend = step_end     - markov_f*(step_end-step_start),
+    markov_y    = P_mean_t1_y1 + markov_f*(P_mean_t2_y1 - P_mean_t1_y1),
+    markov_yend = P_mean_t2_y1 - markov_f*(P_mean_t2_y1 - P_mean_t1_y1))
+
+g_MR<-ggplot(d_MR) +
+    
+  #0. set the measurment intervals
+#  geom_vline(aes(xintercept = step_start), linewidth = 1.2, alpha= 0.6, color="grey", linetype=3)+  
+  # 1. Current data (Black bars)
+  geom_line(data=d_s, aes(x=step_middle, y=-patch_current/Nch, color="current"), 
+                linewidth = 0.5) +
+# geom_segment(data=d_s, aes(x=step_start, xend=step_end, y=-patch_current/Nch, color="current"), 
+#                linewidth = 0.8) +
+#    geom_segment(data=d_s, aes(x=step_end, xend=step_end, y=patch_current/-Nch, yend=-lead(patch_current)/-Nch, color="current"), linewidth = 0.8) +
+  
+  # 2. Auxiliary Markov Path (Dashed/Faint)
+  # This represents what the model would predict if it didn't update from data
+ # geom_segment(aes(x = step_start , 
+#                   y = lag(P_mean_t2_y1),
+#                   xend = step_end - d_step_IR * (step_end - step_start), 
+#                   yend = P_mean_t2_y0, color="Markov_on_prior"), 
+#                alpha = 0.6, linetype = "dashed",linewidth = 0.8,
+#               arrow = arrow(length = unit(0.070, "in"))) +
+
+  # 3. Main Markov Prediction Path (Solid Blue)
+  geom_segment(aes(x = markov_x,
+                   y = markov_y,
+                   xend = markov_xend,
+                   yend = markov_yend, color = "Markov"),
+               linewidth = 1, arrow = arrow(length = unit(0.10, "in"))) +
+
+  # 4. Bayesian Update Arrows (Gold)
+  # We make these slightly thicker to show the 'work' the data is doing
+  geom_segment(aes(x = step_start ,
+                   y = bayesM_y,
+                   xend = step_start ,
+                   yend = bayesM_yend-1e-9, color = "Bayes"),
+               linewidth = 1, arrow = arrow(length = unit(0.10, "in"))) +
+
+  # 5. Connecting Markov Step (Horizontal transition)
+ # geom_segment(aes(x = step_end, 
+#                   y = P_mean_t2_y1,
+#                   xend = lead(step_start) , 
+#                   yend = P_mean_t2_y1, color="next_measure"),linetype = 3,  
+#               linewidth = 0.5) +
+
+  # 6. Points (Last layer so they sit on top of the arrows)
+  geom_point(aes(x = step_start , y = lag(P_mean_t2_y1), color = "prior"), size = 2) +
+ # geom_point(aes(x = step_end, y = P_mean_t2_y0, color = "prior"), alpha = 0.6, size = 2) +
+  geom_point(aes(x = step_start , y = P_mean_t1_y1, color = "posterior"), size = 2) +
+#  geom_point(aes(x = step_end, y = P_mean_t2_y1, color = "posterior"), size = 2) +
+
+  # --- Scales and Themes ---
+  x_scale +
+  common_theme +
+  ylab("open state\nprobability") +
+  xlab("time (s)") +
+   MR_bayes_color+MR_bayes_guides +theme(legend.position = "inside",legend.position.inside = c(0.8,0.2), legend.title = element_blank())
+g_IR<-
+    
+
+  ggplot(d_IR) +
+ # geom_vline(aes(xintercept = step_start), linewidth = 1.2, alpha= 0.6, color="grey", linetype=3)+  
+    # 1. Background Data
+   geom_line(data=d_s, aes(x=step_middle, y=-patch_current/Nch, color="current"), 
+                linewidth = 0.5) +
+# geom_segment(data=d_s, aes(x=step_start, xend=step_end, y=-patch_current/Nch, color="current"), 
+ #               linewidth = 0.8) +
+#    geom_segment(data=d_s, aes(x=step_end, xend=step_end, y=patch_current/-Nch, yend=-lead(patch_current)/-Nch, color="current"), linewidth = 0.8) +
+   
+    # 2. Point states (prior/posterior) — superseded by boundary-state endpoint markers below
+   # geom_point(aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1), color="prior"), size = 2) +
+   # geom_point(aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t11_y0, color="prior"), size = 2) +
+
+   # geom_point(aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t10_y1, color="posterior"), size = 2) +
+   # geom_point(aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t20_y1, color="posterior"), size = 2) +
+    
+    # 4. Bayesian Update Arrows (Thicker Gold)
+  #  geom_segment(aes(x=step_start+d_step_IR*(step_end-step_start), y=bayes0_y,
+  #                   xend=step_start+d_step_IR*(step_end-step_start), yend=bayes0_yend, color="Bayes"),
+   #              linewidth = 0.7, arrow=arrow(length=unit(0.1,"in"))) +
+
+    # Intermediate Bayesian Arrows
+    geom_segment(aes(x=(step_start+d_step_IR*(step_end-step_start))*0.75 + (step_end-d_step_IR*(step_end-step_start))*0.25,
+                     y=bayesA_y,
+                     xend=(step_start+d_step_IR*(step_end-step_start))*0.75 + (step_end-d_step_IR*(step_end-step_start))*0.25,
+                     yend=bayesA_yend, color="Bayes"),
+                 alpha=1, linewidth = 0.8, arrow=arrow(length=unit(0.07,"in"))) +
+
+    geom_segment(aes(x=(step_start+d_step_IR*(step_end-step_start))*0.5 + (step_end-d_step_IR*(step_end-step_start))*0.5,
+                     y=bayesB_y,
+                     xend=(step_start+d_step_IR*(step_end-step_start))*0.5 + (step_end-d_step_IR*(step_end-step_start))*0.5,
+                     yend=bayesB_yend, color="Bayes"),
+                 alpha=1, linewidth = 0.8, arrow=arrow(length=unit(0.07,"in"))) +
+
+    geom_segment(aes(x=(step_start+d_step_IR*(step_end-step_start))*0.25 + (step_end-d_step_IR*(step_end-step_start))*0.75,
+                     y=bayesC_y,
+                     xend=(step_start+d_step_IR*(step_end-step_start))*0.25 + (step_end-d_step_IR*(step_end-step_start))*0.75,
+                     yend=bayesC_yend, color="Bayes"),
+                 alpha=1, linewidth = 0.8, arrow=arrow(length=unit(0.07,"in"))) +
+    
+    #geom_segment(aes(x=step_end-d_step_IR*(step_end-step_start), y=bayes1_y,
+     #                xend=step_end-d_step_IR*(step_end-step_start), yend=bayes1_yend, color="Bayes"),
+      #           linewidth = 1, arrow=arrow(length=unit(0.07,"in"))) +
+
+    # 5. Markov and Posterior Connections
+    geom_segment(aes(x=step_start+d_step_IR*(step_end-step_start), y=P_mean_t10_y1,
+                     xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t20_y1, color="posterior_state"), alpha=1,linetype = "solid", linewidth = 1) +
+
+    geom_segment(aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1)+d_p_IR,
+                     xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t11_y0+d_p_IR, color="prior_state"),linetype = "solid",               linewidth = 1) +
+
+    # Boundary-state endpoints: hollow circle = start, solid circle = end (grey = prior, black = posterior)
+    geom_point(aes(x=step_start, y=P_mean_t10_y1,             color="posterior_state", shape="start"), size = 2.5) +
+    geom_point(aes(x=step_end,   y=P_mean_t20_y1,             color="posterior_state", shape="end"),   size = 2.5) +
+    geom_point(aes(x=step_start, y=lag(P_mean_t20_y1)+d_p_IR, color="prior_state",     shape="start"), size = 2.5) +
+    geom_point(aes(x=step_end,   y=P_mean_t11_y0+d_p_IR,      color="prior_state",     shape="end"),   size = 2.5) +
+
+   # geom_segment(aes(x=step_start+d_step_IR*(step_end-step_start), y=lag(P_mean_t20_y1)-d_p_IR*2,
+  #                   xend=step_end-d_step_IR*(step_end-step_start), yend=P_mean_t11_y0-d_p_IR*2, color="Markov"),
+  #               linewidth = 0.5, arrow=arrow(length=unit(0.07,"in"))) +
+
+    geom_segment(aes(x=step_end-d_step_IR*(step_end-step_start), y=P_mean_t20_y1,
+                     xend=lead(step_start)+ d_step_IR*(lead(step_end)-lead(step_start)), yend=P_mean_t20_y1, color="next_measure"),linetype = 3,
+                 linewidth = 0.5, show.legend = FALSE) +
+
+    # --- Scales and Themes ---
+    x_scale +
+    common_theme + no_y_axis + xlab("time (s)") + IR_bayes_color+IR_boundary_shape+IR_bayes_guides+theme(legend.position = "inside",legend.position.inside = c(0.8,0.2), legend.title = element_blank())
+
+g_MR| g_IR
+
+  ggsave("Figure_1.pdf", width = 12, height = 6)
+```
+

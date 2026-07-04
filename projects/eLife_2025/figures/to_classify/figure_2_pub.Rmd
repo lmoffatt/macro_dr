@@ -1,0 +1,224 @@
+---
+title: "Figure 2 — Parameter recovery: the means agree, the covariance does not"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PUBLICATION figure 2 (NEW — there was no prior script for this one).
+Question: across the five macro likelihoods, do the estimated parameter
+covariances match the empirical spread of the fits, or do the classical methods
+keep the mean right while wrecking the covariance?
+
+Built ENTIRELY from the figure_3 grid on disk (data/433ed13), one representative
+cell. Three covariance ellipses per algorithm in (log10 k_on, log10 k_off) space:
+
+  - EMPIRICAL  : cov() of the MLE cloud           <- from *_mle_cloud_runs.csv
+  - FISHER     : the likelihood's self-claimed cov <- Likelihood_Fisher_Covariance
+  - CORRECTED  : the White sandwich H^-1 J H^-1    <- Likelihood_Distortion_Corrected_Covariance
+
+ANCHOR: the model covariances (Fisher, corrected) are read from the *_battery_pool
+files, i.e. evaluated at theta_pool (the misspecified MLE's probability limit),
+NOT at theta_sim. The MLE cloud is centred at theta_pool, so that is the point
+where its curvature and score variance are defined; anchoring the sandwich at
+theta_sim makes corrected != empirical for the misspecified algorithms (R, MR).
+With the theta_pool anchor, corrected ~ empirical for ALL five algorithms while
+the naive Fisher under-states the spread (catastrophically for NR/NMR).
+
+The cloud lives in GROUP units (each MLE pools `REP_GROUP` recordings), while the
+battery covariances are per-recording. They are put on the same footing with
+cov_scale = 1/REP_GROUP (this single constant is the only scaling assumption; for
+a well-specified algorithm (IR) the three ellipses coincide, the built-in check).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r params}
+DATA_DIR  <- "data/433ed13"
+REP_NCH      <- 100        # representative channel count
+REP_NSIM     <- 10000      # recordings simulated — USE the 10000-replica runs, NOT the nsim_1000 ones
+REP_NOISE    <- "0.1"      # noise_in_conductance_tau label (= current_noise 1e-4)
+REP_GROUP    <- 10         # recordings pooled per MLE -> cloud point  (group_size)
+REP_INTERVAL <- 0.1        # representative Delta/tau_min  (one of 0.01..1)
+
+ALGOS  <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="NMR", macro_R="R", macro_MR="MR", macro_IR="IR")
+ALGO_COL <- c(NR="#D55E00", NMR="#E69F00", R="#CC79A7", MR="#0072B2", IR="#009E73")
+
+# the two kinetic parameters that carry the story (param_index 0 and 1)
+PARAMS <- c("on","off")
+
+# theta_sim truth in optimizer space = log10(natural): on=10, off=100
+TRUTH <- c(on = log10(10), off = log10(100))
+
+cov_scale <- 1 / REP_GROUP   # per-recording battery cov -> group-of-REP_GROUP units
+```
+
+```{r read}
+read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
+
+base <- file.path(DATA_DIR,
+  sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s", REP_NCH, REP_NSIM, ALGOS, REP_NOISE))
+
+# model covariances anchored at theta_pool (battery_pool), where the cloud lives
+cloud   <- map_dfr(paste0(base, "_mle_cloud_runs.csv"), read_skip1)
+battery <- map_dfr(paste0(base, "_battery_pool.csv"),   read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""))
+
+# predicted (theoretical) bias = distortion-induced bias, defined at theta_sim,
+# so it is read from battery_sim. Bias is intensive (no /group_size scaling).
+bsim <- map_dfr(paste0(base, "_battery_sim.csv"), read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+         algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+
+near_int <- function(x) abs(x - REP_INTERVAL) < 1e-9
+```
+
+```{r cloud-points}
+# raw MLE cloud in (on, off); one point per group fit (sample_index)
+pts <- cloud %>%
+  filter(component_path == "Model_Parameters_Hat", statistic == "value",
+         Num_ch == REP_NCH, group_size == REP_GROUP, near_int(interval_in_tau),
+         param_name %in% PARAMS) %>%
+  select(algorithm, sample_index, param_name, value) %>%
+  pivot_wider(names_from = param_name, values_from = value) %>%
+  filter(is.finite(on), is.finite(off)) %>%
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+```
+
+```{r cov-helpers}
+# assemble a 2x2 (on,off) block from a long (param_index, param_col, value) frame
+mat2 <- function(df) {
+  m <- matrix(NA_real_, 2, 2)
+  for (i in 0:1) for (j in 0:1) {
+    v <- df$value[df$param_index == i & df$param_col == j]
+    if (length(v) == 1 && is.finite(v)) m[i + 1, j + 1] <- v
+  }
+  m
+}
+
+# 95% ellipse path for center (cx,cy) and 2x2 covariance S; NULL if not PD
+ellipse_path <- function(cx, cy, S, level = 0.95, npoints = 200) {
+  if (is.null(S) || any(!is.finite(S))) return(NULL)
+  ev <- eigen(S, symmetric = TRUE)
+  if (any(ev$values <= 0)) return(NULL)
+  r  <- sqrt(qchisq(level, df = 2))
+  th <- seq(0, 2 * pi, length.out = npoints)
+  Tm <- ev$vectors %*% diag(sqrt(ev$values)) %*% t(ev$vectors)
+  P  <- Tm %*% (r * rbind(cos(th), sin(th)))
+  data.frame(x = cx + P[1, ], y = cy + P[2, ])
+}
+
+# pull a battery covariance matrix (on,off block) for one algorithm
+battery_cov <- function(comp, algo) {
+  df <- battery %>%
+    filter(component == comp, statistic == "value", probit == "mean",
+           algorithm == algo, Num_ch == REP_NCH, near_int(interval_in_tau),
+           param_index %in% 0:1, param_col %in% 0:1) %>%
+    select(param_index, param_col, value)
+  mat2(df) * cov_scale
+}
+```
+
+```{r build-ellipses}
+ell_rows <- list()
+for (a in ALGOS) {
+  lab <- ALGO_LAB[a]
+  cl  <- pts %>% filter(algorithm == a)
+  if (nrow(cl) < 3) next
+  ctr <- c(mean(cl$on), mean(cl$off))
+
+  Semp <- cov(cbind(cl$on, cl$off))                                   # empirical
+  Sfis <- battery_cov("Likelihood_Fisher_Covariance", a)              # naive Fisher
+  Scor <- battery_cov("Likelihood_Distortion_Corrected_Covariance", a)# sandwich
+
+  for (nm in c("empirical","Fisher","corrected")) {
+    S <- switch(nm, empirical = Semp, Fisher = Sfis, corrected = Scor)
+    e <- ellipse_path(ctr[1], ctr[2], S)
+    if (!is.null(e)) ell_rows[[length(ell_rows) + 1]] <-
+      e %>% mutate(algo = lab, source = nm)
+  }
+}
+ellipses <- bind_rows(ell_rows) %>%
+  mutate(algo   = factor(algo, levels = unname(ALGO_LAB)),
+         source = factor(source, levels = c("empirical","Fisher","corrected")))
+```
+
+```{r centers}
+# three markers per panel: truth (theta_sim), empirical mean of the cloud
+# (where the estimates actually land = empirical bias from truth), and the
+# theory-predicted centre theta_sim + DIB (predicted bias).
+emp_centers <- pts %>%
+  group_by(algo) %>%
+  summarise(on = mean(on), off = mean(off), .groups = "drop") %>%
+  mutate(kind = "empirical mean")
+
+theo_centers <- bsim %>%
+  filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+         probit == "mean", Num_ch == REP_NCH, near_int(interval_in_tau),
+         param_name %in% c("on","off")) %>%
+  select(algo, param_name, value) %>%
+  pivot_wider(names_from = param_name, values_from = value) %>%
+  transmute(algo, on = unname(TRUTH["on"]) + on, off = unname(TRUTH["off"]) + off,
+            kind = "predicted (truth+DIB)")
+
+truth_center <- tibble(algo = factor(unname(ALGO_LAB), levels = unname(ALGO_LAB)),
+                       on = unname(TRUTH["on"]), off = unname(TRUTH["off"]),
+                       kind = "truth")
+
+centers <- bind_rows(truth_center, emp_centers, theo_centers) %>%
+  mutate(kind = factor(kind, levels = c("truth","empirical mean","predicted (truth+DIB)")))
+```
+
+```{r plot, fig.width = 14, fig.height = 3.6}
+# axis window from the empirical clouds (robust quantiles) so a catastrophic NR
+# ellipse runs off-panel rather than crushing the others
+xr <- quantile(pts$on,  c(.005, .995), na.rm = TRUE)
+yr <- quantile(pts$off, c(.005, .995), na.rm = TRUE)
+pad <- c(-1, 1) * 0.15 * c(diff(xr), diff(yr))
+
+g2 <- ggplot() +
+  geom_point(data = pts, aes(on, off), colour = "grey55", size = .35, alpha = .18) +
+  geom_path(data = ellipses, aes(x, y, colour = source, linetype = source),
+            linewidth = .7) +
+  geom_point(data = centers, aes(on, off, shape = kind),
+             size = 2.4, stroke = .9, colour = "black", inherit.aes = FALSE) +
+  facet_wrap(~ algo, nrow = 1) +
+  coord_cartesian(xlim = xr + pad[1:2], ylim = yr + pad[1:2]) +
+  scale_colour_manual(values = c(empirical = "black", Fisher = "#D55E00",
+                                 corrected = "#0072B2"), name = NULL) +
+  scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed",
+                                   corrected = "dotted"), name = NULL) +
+  scale_shape_manual(values = c("truth" = 3, "empirical mean" = 19,
+                                "predicted (truth+DIB)" = 1), name = NULL) +
+  labs(x = expression(log[10]~k[on]), y = expression(log[10]~k[off]),
+       title = sprintf("Parameter recovery at N_ch=%d, noise=%s, Delta/tau=%s, group=%d",
+                       REP_NCH, REP_NOISE, REP_INTERVAL, REP_GROUP),
+       subtitle = "Markers: + truth, filled = empirical mean, open = predicted (truth+DIB). Ellipses: empirical / Fisher / corrected (95%).") +
+  theme_bw(base_size = 11) +
+  theme(legend.position = "bottom", panel.grid.minor = element_blank())
+g2
+ggsave("Figure_2.pdf", g2, width = 14, height = 3.6)
+```
+
+```{r diagnostics-table}
+# numeric backup: per-algorithm ellipse areas (sqrt det) in each metric.
+# For a well-specified algorithm empirical ~ Fisher ~ corrected.
+area <- function(S) if (is.null(S) || any(!is.finite(S))) NA else
+  { ev <- eigen(S, symmetric = TRUE)$values; if (any(ev <= 0)) NA else sqrt(prod(ev)) }
+tibble(algorithm = ALGO_LAB[ALGOS]) %>%
+  mutate(across(everything(), as.character)) %>%
+  bind_cols(map_dfr(ALGOS, function(a) {
+    cl <- pts %>% filter(algorithm == a)
+    tibble(
+      empirical = area(if (nrow(cl) > 2) cov(cbind(cl$on, cl$off)) else NULL),
+      Fisher    = area(battery_cov("Likelihood_Fisher_Covariance", a)),
+      corrected = area(battery_cov("Likelihood_Distortion_Corrected_Covariance", a)))
+  })) %>%
+  mutate(Fisher_over_emp = as.numeric(Fisher) / as.numeric(empirical))
+```

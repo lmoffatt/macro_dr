@@ -1,0 +1,95 @@
+---
+title: "Figure 5 (covariance lines) — macro_IR corrected parameter covariance vs interval, two colourings"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Line view of the DIAGONAL of the CORRECTED (sandwich) parameter covariance vs interval, per-recording
+(group of 100): battery covariance x 1/100. NO N_ch normalisation here (each N_ch is analysed
+separately, so the trivial 1/N_ch factor is left in and the curves simply stack by N_ch). log y.
+Two colourings, ONE Rmd:
+  A: colour = N_ch,  facet parameter x noise         -> Figure_5_covariance_lines_bynoise.pdf
+  B: colour = noise, facet N_ch (rows) x parameter   -> Figure_5_covariance_lines_bynch.pdf
+ALGO = macro_IR.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR   <- "../data/433ed13"
+NSIM       <- 10000
+NOISES     <- c("0.1", "1", "10")
+ALGO       <- "macro_IR"
+GROUP_SIZE <- 100
+COV_SCALE  <- 1 / GROUP_SIZE
+
+ORD       <- c("on", "off", "unitary_current", "Num_ch_mean")
+PIDX      <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+NOISE_COL <- c("0.1" = "#0072B2", "1" = "#009E73", "10" = "#D55E00")
+```
+
+```{r read}
+read_tagged <- function(z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_sim.csv", NSIM, ALGO, z)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z))
+}
+bsim <- map_dfr(NOISES, read_tagged)
+
+d0 <- bsim %>%
+  filter(component_path == "Probit_statistics_Likelihood_Distortion_Corrected_Covariance",
+         statistic == "value", probit == "mean", param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)]) %>%
+  group_by(noise, Num_ch, interval_in_tau, param_name) %>%
+  summarise(cov = mean(value) * COV_SCALE, .groups = "drop") %>%
+  filter(is.finite(cov), cov > 0,
+         !(noise == "10" & Num_ch == 5))   # noise 10 / N_ch 5: sandwich unstable, drop
+
+nch_lev <- sort(unique(d0$Num_ch))
+dd <- d0 %>%
+  mutate(param  = factor(param_name, levels = ORD, labels = unname(PARAM_LAB[ORD])),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         noisec = factor(noise, levels = NOISES),
+         nch_f  = factor(Num_ch, levels = nch_lev, labels = paste0("N==", nch_lev)),
+         Nch    = factor(Num_ch, levels = nch_lev))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 8.0, results = "asis"}
+common <- list(
+  geom_line(linewidth = .4), geom_point(size = .7),
+  scale_x_log10(breaks = c(.01, .1, 1)), scale_y_log10(),
+  labs(x = expression(Delta / tau[min]), y = expression(Cov[diag]~"(corrected, per 100-ch recording)")),
+  theme_bw(base_size = 9),
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        strip.text = element_text(size = 8), plot.title = element_text(size = 11, face = "bold")))
+
+gA <- ggplot(dd, aes(interval_in_tau, cov, colour = Nch, group = Num_ch)) + common +
+  facet_wrap(vars(param, noisef), ncol = 3, scales = "free", labeller = labeller(param = label_parsed)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .9) +
+  ggtitle("macro_IR  corrected covariance (diagonal) vs interval, by N_ch")
+
+gB <- ggplot(dd, aes(interval_in_tau, cov, colour = noisec, group = noise)) + common +
+  facet_wrap(vars(nch_f, param), ncol = 4, scales = "free", labeller = label_parsed) +
+  scale_colour_manual(values = NOISE_COL, name = "noise") +
+  ggtitle("macro_IR  corrected covariance (diagonal) vs interval, by noise")
+
+# same by-N_ch layout but N_ch-CORRECTED (y = N_ch x Cov): the curves collapse where Cov ~ 1/N_ch
+# (kinetics) and fan out where the 1/N_ch gain saturates (the i / N_ch degeneracy).
+gN <- ggplot(dd, aes(interval_in_tau, Num_ch * cov, colour = Nch, group = Num_ch)) + common +
+  facet_wrap(vars(param, noisef), ncol = 3, scales = "free", labeller = labeller(param = label_parsed)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .9) +
+  labs(y = expression(N[ch] %*% Cov[diag]~"(corrected)")) +
+  ggtitle("macro_IR  N_ch-corrected covariance (N_ch x Cov) vs interval, by N_ch")
+
+ggsave("Figure_5_covariance_lines_bynoise.pdf",       gA, width = 7.0, height = 8.0)
+ggsave("Figure_5_covariance_lines_bynch.pdf",         gB, width = 7.0, height = 11.0)
+ggsave("Figure_5_covariance_lines_bynoise_Ncorr.pdf", gN, width = 7.0, height = 8.0)
+gA; gB; gN
+```

@@ -22,15 +22,15 @@ noise=1e-4 *fs/nsamples
 
 ```{r}
 filenames=c(
-  "data/figure_1_likelihood_diagnostic_NR",
-  "data/figure_1_likelihood_diagnostic_MNR",
-  "data/figure_1_likelihood_diagnostic_MNRV",
-  "data/figure_1_likelihood_diagnostic_R",
-  "data/figure_1_likelihood_diagnostic_MR",
-  "data/figure_1_likelihood_diagnostic_MRV",
-  "data/figure_1_likelihood_diagnostic_IR",
-  "data/figure_1_likelihood_diagnostic_IRV",
-  "data/figure_1_simulation"
+  "../data/figure_1_likelihood_diagnostic_NR",
+  "../data/figure_1_likelihood_diagnostic_MNR",
+  "../data/figure_1_likelihood_diagnostic_MNRV",
+  "../data/figure_1_likelihood_diagnostic_R",
+  "../data/figure_1_likelihood_diagnostic_MR",
+  "../data/figure_1_likelihood_diagnostic_MRV",
+  "../data/figure_1_likelihood_diagnostic_IR",
+  "../data/figure_1_likelihood_diagnostic_IRV",
+  "../data/figure_1_simulation"
   
 )
 
@@ -60,7 +60,7 @@ for (i in 1:length(filenames)){
 ```
 
 ```{r}
-d_MRV=d%>%filter(algo=="MRV", scope=="evolution", value_row==1, is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
+d_MRV=d%>%filter(algo=="MR", scope=="evolution", value_row==1, is.na(value_col), !is.na(step_start))%>%mutate(component= component_path %>%
            str_replace("^Algo_State_Dynamic\\.", "") %>%
            str_replace("^Patch_State\\.", ""))%>%
   select(sample_index,step_start,step_middle,step_end,component,value_row,value_col,value)%>%pivot_wider(names_from = component, values_from = value)

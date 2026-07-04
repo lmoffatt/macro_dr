@@ -1,0 +1,95 @@
+---
+title: "Figure (score mean, time-resolved) — mean per-step score over time, per algorithm and parameter"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+TIME-RESOLVED first-Bartlett check: at each step, is the mean score zero? 5 ensemble CSVs
+figures/data/figure_3_time_dlik_{NR,NMR,R,MR,IR}.csv read once each, ONLY the per-step score
+rows (component_path=="logL", calculus=="derivative", per param_index, per sample). Per
+(algorithm, parameter, step): mean over recordings of s_t,k, with a bootstrap-over-recordings
+95% CI. A well-specified filter has mean_recordings(s_t,k) ~ 0 at every t (the per-step score
+is a zero-mean martingale difference); a localized departure marks where in time the
+mis-specification biases the gradient. The GLOBAL total-score bias (the scalar) is analysed
+separately, later. The two duplicate rows per (sim, sample) in the dump are collapsed by mean.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+ALGOS <- c("NR", "NMR", "R", "MR", "IR")   # NMR = data-file key
+ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", IR = "IR")   # display: show NMR as MNR
+PIDX  <- c(0, 1, 2, 5)
+PLAB  <- c("k[on]", "k[off]", "i", "N[ch]")
+B     <- 200
+YLIM  <- c(-3, 3)                                  # common scale (same structure as the ratio fig)
+```
+
+```{r read}
+read_sc <- function(a) {
+  dt <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE)
+  s  <- dt[component_path == "logL" & calculus == "derivative" &
+           param_index %in% PIDX & !is.na(sample_index),
+           .(simulation_index, sample_index, param_index, value)]
+  tm <- unique(dt[!is.na(step_middle) & !is.na(sample_index), .(sample_index, t = step_middle, agonist)])
+  rm(dt); gc(verbose = FALSE)
+  s1 <- s[, .(s = mean(value)), by = .(simulation_index, sample_index, param_index)][, algo := a]
+  list(s = s1, tm = tm)
+}
+raw  <- lapply(ALGOS, read_sc)
+SC   <- rbindlist(lapply(raw, `[[`, "s"))
+tmap <- raw[[1]]$tm
+agw  <- c(min(tmap[agonist > 0]$t), max(tmap[agonist > 0]$t))
+```
+
+```{r mean-bootstrap}
+set.seed(1)
+cMean <- function(M) colMeans(M, na.rm = TRUE)
+fmean <- function(d) {
+  Sm  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "s")[, -1])
+  smp <- as.integer(colnames(Sm)); n <- nrow(Sm)
+  reps <- matrix(NA_real_, B, ncol(Sm))
+  for (b in seq_len(B)) reps[b, ] <- cMean(Sm[sample.int(n, n, replace = TRUE), , drop = FALSE])
+  data.table(sample_index = smp, m = cMean(Sm),
+             lo = apply(reps, 2, quantile, 0.025, na.rm = TRUE),
+             hi = apply(reps, 2, quantile, 0.975, na.rm = TRUE))
+}
+M <- SC[, fmean(.SD), by = .(algo, param_index)]
+M <- merge(M, tmap[, .(sample_index, t)], by = "sample_index")
+M[, `:=`(algo = factor(algo, levels = ALGOS),
+         param = factor(PLAB[match(param_index, PIDX)], levels = PLAB))]
+```
+
+```{r plot, fig.width = 11, fig.height = 8}
+library(patchwork)
+COL  <- "#D55E00"
+ylab <- expression(bar(s)[t]~"(t)  (null 0; 95% bootstrap CI)")
+# Two blocks, independent (free) y per parameter row: the NR/NMR gradient blows up and on one
+# shared scale it clips ITSELF and crushes the recursive trio (the Fig 3 B/C grouped treatment).
+mk_block <- function(algos, with_ylab) {
+  d <- M[algo %in% algos]; d[, algo := factor(as.character(algo), levels = algos)]
+  ggplot(d, aes(t, m)) +
+    annotate("rect", xmin = agw[1], xmax = agw[2], ymin = -Inf, ymax = Inf, fill = "grey85", alpha = .5) +
+    geom_hline(yintercept = 0, colour = "#009E73", linewidth = .4) +
+    geom_ribbon(aes(ymin = lo, ymax = hi), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) +
+    geom_point(colour = COL, size = .2) +
+    facet_grid(param ~ algo, labeller = labeller(param = label_parsed, algo = ALAB), scales = "free_y") +
+    labs(x = "time (s)", y = if (with_ylab) ylab else NULL) +
+    theme_bw(base_size = 9) + theme(panel.grid.minor = element_blank())
+}
+g <- ((mk_block(c("NR", "NMR"), TRUE) + theme(strip.text.y = element_blank())) |
+       mk_block(c("R", "MR", "IR"), FALSE)) + plot_layout(widths = c(2, 3))
+g
+ggsave("Figure_S_score_mean.pdf", g, width = 11, height = 8)
+```
+
+```{r summary-table}
+M %>% as_tibble() %>% group_by(algorithm = algo, param) %>%
+  summarise(n_sig_t = sum(lo > 0 | hi < 0, na.rm = TRUE),
+            max_abs_m = round(max(abs(m), na.rm = TRUE), 2), .groups = "drop") %>%
+  pivot_wider(names_from = param, values_from = c(n_sig_t, max_abs_m))
+```

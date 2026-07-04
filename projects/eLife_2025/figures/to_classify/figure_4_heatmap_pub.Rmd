@@ -1,0 +1,135 @@
+---
+title: "Figure 4 — Validity map: log-det of the information distortion over Δ/τ × N_ch"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PUBLICATION figure 4 = validity map (the "where is each approximation reliable?" map).
+
+One scalar per grid cell: log det of the total information distortion matrix (IDM),
+read straight from component_path = Probit_statistics_log_Det_Likelihood_Information_Distortion
+(operation = probit.log_det, statistic = value), median = quantile_0.5 of the bootstrap.
+
+  log_det(IDM) = 0   -> exact (Fisher == sample-score covariance, in volume)
+  log_det(IDM) > 0   -> OVER-confident (Gaussian Fisher larger than the truth)
+  log_det(IDM) < 0   -> under-confident
+
+Axes per panel: x = N_ch (channels), y = Δ/τ_min (interval). Diverging fill centred at 0.
+
+SCALES (per Luciano): three regimes have incomparable magnitudes, so each gets its own
+colour scale instead of one global scale that would wash out R and IR:
+  main figure  -> R, MR (shared signed scale)  +  IR (own signed scale, ~null everywhere)
+  supplement   -> NR, NMR (own scale, distortion is an order of magnitude larger)
+
+A cell is marked with a hollow dot when its 95% bootstrap interval (q0.025..q0.975)
+INCLUDES 0, i.e. it is statistically indistinguishable from the exact likelihood.
+That turns the heatmap into a validity map: dotted cells = "safe to use here".
+
+Since N_sim = 10000 is fixed across the whole grid, the Jensen/convexity bias of log_det
+is a roughly constant offset and does not move the spatial pattern; the debiased (Wald)
+magnitude is only needed for an absolute "is it significant" call, handled here by the CI dot.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+library(scales)
+```
+
+```{r params}
+DATA_DIR <- "data/433ed13"
+NSIM     <- 10000
+NOISES   <- c("0.1", "1")     # two measurement-noise conditions; noise=1 still missing for NR/NMR
+NCH      <- c(10, 20, 50, 100, 200, 500, 1000, 10000)   # IR is dense; others use the sparse subset
+ALGOS    <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="NMR", macro_R="R", macro_MR="MR", macro_IR="IR")
+
+CP_LOGDET <- "Probit_statistics_log_Det_Likelihood_Information_Distortion"
+noise_lab <- function(x) paste0("noise ", x)
+```
+
+```{r read}
+grid  <- expand.grid(nch = NCH, algo = ALGOS, noise = NOISES, stringsAsFactors = FALSE)
+grid$path <- file.path(DATA_DIR, sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s_battery_pool.csv",
+                                         grid$nch, NSIM, grid$algo, grid$noise))
+grid <- grid[file.exists(grid$path), ]
+
+read_logdet <- function(p, noi) {
+  read.csv(p, skip = 1, stringsAsFactors = FALSE) %>%
+    filter(component_path == CP_LOGDET,
+           operation == "probit.log_det",
+           statistic == "value") %>%
+    select(algorithm, Num_ch, interval_in_tau, quantile_level, value) %>%
+    mutate(noise = noi)
+}
+
+h <- map2_dfr(grid$path, grid$noise, read_logdet) %>%
+  pivot_wider(names_from = quantile_level, values_from = value,
+              names_prefix = "q") %>%
+  transmute(
+    algo  = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)),
+    noise = factor(noise, levels = NOISES),
+    Num_ch, interval_in_tau,
+    med   = q0.5, lo16 = q0.16, hi84 = q0.84, lo025 = q0.025, hi975 = q0.975,
+    null_ok = (lo025 <= 0 & hi975 >= 0)          # 95% CI includes 0 -> indistinguishable from exact
+  ) %>%
+  mutate(Num_ch = factor(Num_ch, levels = sort(unique(Num_ch))),
+         intv   = factor(interval_in_tau, levels = sort(unique(interval_in_tau))))
+```
+
+```{r plot-builder}
+# one heatmap panel-group (noise rows x algo cols) with its own signed colour scale.
+# axes: x = Δ/τ (interval, horizontal), y = N_ch (channels, vertical)
+heat <- function(df, limit, title, show_legend = TRUE) {
+  ggplot(df, aes(intv, Num_ch, fill = med)) +
+    geom_tile(colour = "grey85", linewidth = .3) +
+    geom_point(data = ~ filter(.x, null_ok), shape = 21, size = 1.6,
+               colour = "grey20", fill = NA, stroke = .5) +
+    geom_text(aes(label = sprintf("%.2f", med)), size = 2.2, colour = "grey15") +
+    facet_grid(noise ~ algo, labeller = labeller(noise = noise_lab)) +
+    scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
+                         midpoint = 0, limits = c(-limit, limit),
+                         oob = squish, name = "log det(IDM)") +
+    labs(x = expression(Delta/tau[min]),
+         y = expression(N[ch]~"(channels)"), title = title) +
+    theme_minimal(base_size = 10) +
+    theme(panel.grid = element_blank(),
+          legend.position = if (show_legend) "right" else "none",
+          plot.title = element_text(size = 10, face = "bold"))
+}
+```
+
+```{r fig4-main, fig.width = 11, fig.height = 7}
+L_RMR <- ceiling(max(abs(h$med[h$algo %in% c("R","MR")]), na.rm = TRUE) * 10) / 10
+L_IR  <- 0.5   # IR structure lives in +/-0.25; the one noisy N_ch=10 cell saturates
+
+p_rmr <- heat(filter(h, algo %in% c("R","MR")), L_RMR,
+              "R / MR (shared signed scale)")
+p_ir  <- heat(filter(h, algo == "IR"), L_IR,
+              "IR (own scale; flat at null; dots = indistinguishable from exact)")
+
+g4 <- p_rmr / p_ir +
+  plot_annotation(title = "Figure 4. Validity map: log det of the information distortion over interval and N_ch",
+                  subtitle = "0 = exact, >0 over-confident, <0 under-confident, dot = 95% CI includes 0")
+g4
+ggsave("Figure_4_heatmap.pdf", g4, width = 11, height = 7)
+```
+
+```{r fig4-supp, fig.width = 9, fig.height = 4}
+L_SUP <- ceiling(max(h$med[h$algo %in% c("NR","NMR")], na.rm = TRUE))
+p_sup <- ggplot(filter(h, algo %in% c("NR","NMR")), aes(intv, Num_ch, fill = med)) +
+  geom_tile(colour = "grey85", linewidth = .3) +
+  geom_text(aes(label = sprintf("%.1f", med)), size = 2.6, colour = "grey15") +
+  facet_wrap(~ algo, nrow = 1) +
+  scale_fill_gradient(low = "white", high = "#67001F", limits = c(0, L_SUP),
+                      oob = squish, name = "log det(IDM)") +
+  labs(x = expression(Delta/tau[min]), y = expression(N[ch]~"(channels)"),
+       title = "Figure 4 supplement. Non-recursive NR, NMR (noise 0.1; noise 1 pending)") +
+  theme_minimal(base_size = 10) +
+  theme(panel.grid = element_blank(), plot.title = element_text(size = 10, face = "bold"))
+p_sup
+ggsave("Figure_4_heatmap_supp_NR_NMR.pdf", p_sup, width = 9, height = 4)
+```

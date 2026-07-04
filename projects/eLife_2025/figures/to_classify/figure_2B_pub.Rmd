@@ -1,0 +1,227 @@
+---
+title: "Figure 2B — kinetic comparison (5 algos) + full correlation corner for MacroIR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+PUBLICATION figure 2, VARIANT B. Same anchoring/scaling as figure_2_pub.Rmd
+(model covariances at theta_pool from *_battery_pool, cov_scale = 1/REP_GROUP).
+Two stacked blocks:
+
+  TOP : the (log10 k_on, log10 k_off) small-multiple across the 5 algorithms
+        (the "means agree, covariance does not" headline).
+  BOTTOM : the FULL correlation corner of the four informative parameters
+        (on, off, unitary_current, Num_ch_mean) for MacroIR ALONE -- the
+        "now analyse the winner in depth" panel. Each corner cell shows the IR
+        cloud with the three 95% ellipses (empirical / Fisher / corrected) and
+        the truth marker; for a self-consistent filter the three coincide.
+
+NB Luciano did not have a corner in figure_3_paper.Rmd; this corner is new, but
+the empirical-vs-battery scaling follows his convention (per-recording battery cov
+brought to group units by 1/group_size; see boot_cov_probit / cov_full there).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r params}
+DATA_DIR  <- "data/433ed13"
+REP_NCH      <- 100
+REP_NSIM     <- 10000
+REP_NOISE    <- "0.1"
+REP_GROUP    <- 100
+REP_INTERVAL <- 0.1
+
+ALGOS    <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="NMR", macro_R="R", macro_MR="MR", macro_IR="IR")
+
+PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB <- c(on = "log10 k_on", off = "log10 k_off",
+               unitary_current = "log10 i_unit", Num_ch_mean = "log10 N_ch")
+ORD <- c("on","off","unitary_current","Num_ch_mean")     # corner ordering
+TRUTH <- c(on = log10(10), off = log10(100),
+           unitary_current = log10(1), Num_ch_mean = log10(REP_NCH))
+
+cov_scale <- 1 / REP_GROUP
+near_int  <- function(x) abs(x - REP_INTERVAL) < 1e-9
+```
+
+```{r read}
+read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
+base <- file.path(DATA_DIR,
+  sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s", REP_NCH, REP_NSIM, ALGOS, REP_NOISE))
+
+cloud   <- map_dfr(paste0(base, "_mle_cloud_runs.csv"), read_skip1)
+battery <- map_dfr(paste0(base, "_battery_pool.csv"),   read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""))
+bsim    <- map_dfr(paste0(base, "_battery_sim.csv"),    read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+         algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+
+pts <- cloud %>%
+  filter(component_path == "Model_Parameters_Hat", statistic == "value",
+         Num_ch == REP_NCH, group_size == REP_GROUP, near_int(interval_in_tau),
+         param_name %in% names(PARAM_IDX)) %>%
+  select(algorithm, sample_index, param_name, value) %>%
+  pivot_wider(names_from = param_name, values_from = value) %>%
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+```
+
+```{r helpers}
+ellipse_path <- function(cx, cy, S, level = 0.95, npoints = 200) {
+  if (is.null(S) || any(!is.finite(S))) return(NULL)
+  ev <- eigen(S, symmetric = TRUE)
+  if (any(ev$values <= 0)) return(NULL)
+  r  <- sqrt(qchisq(level, df = 2))
+  th <- seq(0, 2 * pi, length.out = npoints)
+  Tm <- ev$vectors %*% diag(sqrt(ev$values)) %*% t(ev$vectors)
+  P  <- Tm %*% (r * rbind(cos(th), sin(th)))
+  data.frame(x = cx + P[1, ], y = cy + P[2, ])
+}
+
+battery_cov_pair <- function(comp, algo, pi, pj) {
+  df <- battery %>%
+    filter(component == comp, statistic == "value", probit == "mean",
+           algorithm == algo, Num_ch == REP_NCH, near_int(interval_in_tau),
+           param_index %in% c(pi, pj), param_col %in% c(pi, pj)) %>%
+    select(param_index, param_col, value)
+  m <- matrix(NA_real_, 2, 2); idx <- c(pi, pj)
+  for (a in 1:2) for (b in 1:2) {
+    v <- df$value[df$param_index == idx[a] & df$param_col == idx[b]]
+    if (length(v) == 1 && is.finite(v)) m[a, b] <- v
+  }
+  m * cov_scale
+}
+
+# --- (1) the 5-algorithm small-multiple for one parameter pair ---
+centers_for_pair <- function(px, py, algos) {
+  truth <- tibble(algo = factor(ALGO_LAB[algos], levels = unname(ALGO_LAB)),
+                  x = unname(TRUTH[px]), y = unname(TRUTH[py]), kind = "truth")
+  empc <- pts %>% filter(algorithm %in% algos) %>% group_by(algo) %>%
+    summarise(x = mean(.data[[px]], na.rm = TRUE),
+              y = mean(.data[[py]], na.rm = TRUE), .groups = "drop") %>%
+    mutate(kind = "empirical mean")
+  dib <- bsim %>%
+    filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+           probit == "mean", Num_ch == REP_NCH, near_int(interval_in_tau),
+           param_name %in% c(px, py)) %>%
+    select(algo, param_name, value) %>%
+    pivot_wider(names_from = param_name, values_from = value)
+  predc <- dib %>%
+    transmute(algo, x = unname(TRUTH[px]) + .data[[px]],
+              y = unname(TRUTH[py]) + .data[[py]], kind = "predicted (truth+DIB)")
+  bind_rows(truth, empc, predc) %>%
+    mutate(kind = factor(kind, levels = c("truth","empirical mean","predicted (truth+DIB)")))
+}
+
+pair_plot <- function(px, py, algos = ALGOS, show_legend = TRUE) {
+  pix <- PARAM_IDX[px]; piy <- PARAM_IDX[py]
+  cl_all <- pts %>% filter(algorithm %in% algos) %>%
+    transmute(algo, x = .data[[px]], y = .data[[py]]) %>% filter(is.finite(x), is.finite(y))
+  ell <- list()
+  for (a in algos) {
+    lab <- ALGO_LAB[a]
+    cl <- pts %>% filter(algorithm == a) %>%
+      transmute(x = .data[[px]], y = .data[[py]]) %>% filter(is.finite(x), is.finite(y))
+    if (nrow(cl) < 3) next
+    ctr  <- c(mean(cl$x), mean(cl$y))
+    Ss <- list(empirical = cov(cbind(cl$x, cl$y)),
+               Fisher    = battery_cov_pair("Likelihood_Fisher_Covariance", a, pix, piy),
+               corrected = battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, pix, piy))
+    for (nm in names(Ss)) {
+      e <- ellipse_path(ctr[1], ctr[2], Ss[[nm]])
+      if (!is.null(e)) ell[[length(ell) + 1]] <- e %>% mutate(algo = lab, source = nm)
+    }
+  }
+  ellipses <- bind_rows(ell) %>%
+    mutate(algo = factor(algo, levels = unname(ALGO_LAB)),
+           source = factor(source, levels = c("empirical","Fisher","corrected")))
+  centers <- centers_for_pair(px, py, algos)
+  xr <- quantile(cl_all$x, c(.005, .995), na.rm = TRUE)
+  yr <- quantile(cl_all$y, c(.005, .995), na.rm = TRUE)
+  padx <- c(-1, 1) * 0.15 * diff(xr); pady <- c(-1, 1) * 0.15 * diff(yr)
+  ggplot() +
+    geom_point(data = cl_all, aes(x, y), colour = "grey55", size = .35, alpha = .18) +
+    geom_path(data = ellipses, aes(x, y, colour = source, linetype = source), linewidth = .7) +
+    geom_point(data = centers, aes(x, y, shape = kind), size = 2.4, stroke = .9,
+               colour = "black", inherit.aes = FALSE) +
+    facet_wrap(~ algo, nrow = 1) +
+    coord_cartesian(xlim = xr + padx, ylim = yr + pady) +
+    scale_colour_manual(values = c(empirical = "black", Fisher = "#D55E00",
+                                   corrected = "#0072B2"), name = NULL) +
+    scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed",
+                                     corrected = "dotted"), name = NULL) +
+    scale_shape_manual(values = c("truth" = 3, "empirical mean" = 19,
+                                  "predicted (truth+DIB)" = 1), name = NULL) +
+    labs(x = PARAM_LAB[px], y = PARAM_LAB[py]) +
+    theme_bw(base_size = 11) +
+    theme(legend.position = if (show_legend) "bottom" else "none",
+          panel.grid.minor = element_blank())
+}
+
+# --- (2) the full lower-triangle correlation corner for ONE algorithm ---
+corner_plot <- function(algo, title = NULL) {
+  xlev <- ORD[1:3]; ylev <- ORD[2:4]                       # cols / rows of the corner
+  prs <- expand.grid(xp = ORD, yp = ORD, stringsAsFactors = FALSE) %>%
+    filter(match(yp, ORD) > match(xp, ORD))                # lower triangle only
+  cl <- pts %>% filter(algorithm == .env$algo)   # .env: arg wins over the `algo` column in pts
+  cloud_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xp <- prs$xp[k]; yp <- prs$yp[k]
+    cl %>% transmute(xp = xp, yp = yp, x = .data[[xp]], y = .data[[yp]])
+  }) %>% filter(is.finite(x), is.finite(y))
+  ell_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xp <- prs$xp[k]; yp <- prs$yp[k]
+    c2 <- cl %>% transmute(x = .data[[xp]], y = .data[[yp]]) %>% filter(is.finite(x), is.finite(y))
+    if (nrow(c2) < 3) return(NULL)
+    ctr <- c(mean(c2$x), mean(c2$y))
+    Ss <- list(empirical = cov(cbind(c2$x, c2$y)),
+               Fisher    = battery_cov_pair("Likelihood_Fisher_Covariance", algo, PARAM_IDX[xp], PARAM_IDX[yp]),
+               corrected = battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", algo, PARAM_IDX[xp], PARAM_IDX[yp]))
+    map_dfr(names(Ss), function(nm) {
+      e <- ellipse_path(ctr[1], ctr[2], Ss[[nm]]); if (is.null(e)) return(NULL)
+      e %>% mutate(xp = xp, yp = yp, source = nm)
+    })
+  })
+  truth_l <- map_dfr(seq_len(nrow(prs)), function(k)
+    tibble(xp = prs$xp[k], yp = prs$yp[k],
+           x = unname(TRUTH[prs$xp[k]]), y = unname(TRUTH[prs$yp[k]])))
+  fx <- function(z) factor(z, levels = xlev, labels = PARAM_LAB[xlev])
+  fy <- function(z) factor(z, levels = ylev, labels = PARAM_LAB[ylev])
+  cloud_l <- mutate(cloud_l, xp = fx(xp), yp = fy(yp))
+  ell_l   <- mutate(ell_l,   xp = fx(xp), yp = fy(yp),
+                    source = factor(source, levels = c("empirical","Fisher","corrected")))
+  truth_l <- mutate(truth_l, xp = fx(xp), yp = fy(yp))
+
+  ggplot() +
+    geom_point(data = cloud_l, aes(x, y), colour = "grey55", size = .3, alpha = .15) +
+    geom_path(data = ell_l, aes(x, y, colour = source, linetype = source), linewidth = .6) +
+    geom_point(data = truth_l, aes(x, y), shape = 3, size = 2, stroke = .9, colour = "black") +
+    facet_grid(yp ~ xp, scales = "free", drop = FALSE) +
+    scale_colour_manual(values = c(empirical = "black", Fisher = "#D55E00",
+                                   corrected = "#0072B2"), name = NULL) +
+    scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed",
+                                     corrected = "dotted"), name = NULL) +
+    labs(x = NULL, y = NULL, title = title) +
+    theme_bw(base_size = 10) +
+    theme(legend.position = "bottom", panel.grid.minor = element_blank())
+}
+```
+
+```{r plot, fig.width = 13, fig.height = 13}
+top <- pair_plot("on", "off", show_legend = TRUE) +
+  ggtitle(sprintf("Kinetic recovery across 5 algorithms  (N_ch=%d, noise=%s, Delta/tau=%s, group=%d)",
+                  REP_NCH, REP_NOISE, REP_INTERVAL, REP_GROUP))
+corner <- corner_plot("macro_IR",
+  "MacroIR - full parameter correlation corner (empirical / Fisher / corrected 95%, + = truth)")
+
+g2B <- top / corner +
+  plot_layout(heights = c(1, 2.6)) +
+  plot_annotation(title = "Figure 2B  Prove the winner, then dissect it")
+g2B
+ggsave("Figure_2B2.pdf", g2B, width = 13, height = 13)
+```

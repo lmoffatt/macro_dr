@@ -1,0 +1,171 @@
+---
+title: "Figure 5 (bias path) — macro_IR parameter-bias corner over the (N_ch, interval) design"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Corner plot of the macro_IR EMPIRICAL parameter bias (theta_pool - theta_sim), read from
+*_pool_runs.csv. In every parameter pair each line joins the experiments that share the
+number of channels N_ch (colour), and the point size marks the measurement interval
+Delta/tau. So each N_ch traces a PATH in the (bias_x, bias_y) plane as the sampling is
+coarsened; the crosshair at (0, 0) is the unbiased target.
+
+The extractor per_param() is generic: it pulls ANY per-parameter component into a
+(Num_ch, interval, param, value) table, so the same corner can later show the theoretical
+DIB, the score, etc. We start with the empirical parameter bias (subtract_truth = TRUE).
+
+Fixed cell: noise = 0.1, nsim = 10000. theta_sim (truth, log10 natural units):
+k_on = log10(10), k_off = log10(100), i = log10(1) = 0, N_ch = log10(Num_ch of the cell).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r params}
+DATA_DIR <- "../data/433ed13"
+NSIM     <- 10000
+NOISES   <- c("0.1", "1", "10")
+ALGO     <- "macro_IR"
+
+# the four identified parameters, corner order, and plotmath labels
+ORD       <- c("on", "off", "unitary_current", "Num_ch_mean")
+PARAMS    <- ORD
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+TRUTH_FIX <- c(on = log10(10), off = log10(100), unitary_current = log10(1))
+
+truth_of <- function(param, Num_ch)
+  ifelse(param == "Num_ch_mean", log10(Num_ch), TRUTH_FIX[param])
+```
+
+```{r read}
+# read every noise level; the noise value is in the file name, so tag it on read.
+read_tagged <- function(kind, z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_%s.csv", NSIM, ALGO, z, kind)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z))
+}
+pool <- map_dfr(NOISES, ~ read_tagged("pool_runs",   .x))   # empirical: theta_pool
+bsim <- map_dfr(NOISES, ~ read_tagged("battery_sim", .x))   # theoretical: the DIB
+
+# keep only converged design cells (status 0/1/2 = newton-dec / grad / value; 3/4 = failed)
+converged <- pool %>%
+  filter(component_path == "Convergence_Status_Code", value %in% c(0, 1, 2)) %>%
+  distinct(noise, Num_ch, interval_in_tau)
+pool <- semi_join(pool, converged, by = c("noise", "Num_ch", "interval_in_tau"))
+```
+
+```{r extractor}
+# GENERIC: pull any per-parameter component into a (Num_ch, interval, param, value) table.
+# `...` are extra row filters (e.g. statistic == "value", probit == "mean"); subtract_truth
+# turns a raw parameter estimate into a bias (value - theta_sim).
+per_param <- function(df, comp, ..., subtract_truth = FALSE) {
+  d <- df %>%
+    filter(component_path == comp, param_name %in% PARAMS, ...) %>%
+    group_by(Num_ch, interval_in_tau, param_name) %>%
+    summarise(value = mean(value), .groups = "drop")
+  if (subtract_truth) d <- mutate(d, value = value - truth_of(param_name, Num_ch))
+  d
+}
+```
+
+```{r corner-fn}
+# round, 0-centred tick vector (a value always lands on 0; ~3 ticks so labels never collide)
+centered_break_vec <- function(center, half) {
+  if (!is.finite(half) || half <= 0) return(center)
+  raw  <- half * 0.6
+  mag  <- 10^floor(log10(raw))
+  step <- mag * c(1, 2, 5, 10)[findInterval(raw / mag, c(0, 1.5, 3.5, 7.5, Inf))]
+  round(center + step * (-1:1), 6)
+}
+zero_breaks <- function(lims) centered_break_vec(0, max(abs(lims)))
+
+# turn a (Num_ch, interval, kind, param, value) table into corner pair long-format. `kind`
+# tags the quantity (empirical bias / theoretical DIB) so several can overlay in one corner.
+to_pairs <- function(long) {
+  wide <- long %>% pivot_wider(names_from = param_name, values_from = value)
+  prs  <- expand.grid(xp = ORD, yp = ORD, stringsAsFactors = FALSE) %>%
+    filter(match(yp, ORD) > match(xp, ORD))                       # lower triangle
+  map_dfr(seq_len(nrow(prs)), function(k) {
+    xp <- prs$xp[k]; yp <- prs$yp[k]
+    wide %>% transmute(Num_ch, interval_in_tau, kind, xp = xp, yp = yp,
+                       x = .data[[xp]], y = .data[[yp]])
+  }) %>% filter(is.finite(x), is.finite(y)) %>%
+    mutate(xp = factor(xp, levels = ORD[1:3], labels = unname(PARAM_LAB[ORD[1:3]])),
+           yp = factor(yp, levels = ORD[2:4], labels = unname(PARAM_LAB[ORD[2:4]])))
+}
+
+# corner of per-parameter quantities: lines join equal-N_ch cells (colour), point size =
+# interval, and `kind` maps to line/point style (empirical solid+filled, theoretical dashed+open).
+KIND_LT <- c(empirical = "solid", theoretical = "dashed")
+KIND_SH <- c(empirical = 16,      theoretical = 1)
+
+corner_plot <- function(dd, lims = NULL, title = NULL, nch_levels = sort(unique(dd$Num_ch))) {
+  dd <- dd %>% arrange(kind, Num_ch, interval_in_tau) %>%         # path order: coarsen the interval
+    mutate(Nch  = factor(Num_ch, levels = nch_levels),
+           kind = factor(kind, levels = c("empirical", "theoretical")))
+  g <- ggplot(dd, aes(x, y))
+  if (!is.null(lims)) g <- g + geom_blank(data = lims, aes(x, y))   # shared scales across corners
+  g +
+    geom_hline(yintercept = 0, colour = "grey80", linewidth = .3) +
+    geom_vline(xintercept = 0, colour = "grey80", linewidth = .3) +
+    # colour legend comes from the POINT only (path also maps colour -> would double the N_ch legend)
+    geom_path(aes(colour = Nch, group = interaction(Num_ch, kind), linetype = kind),
+              linewidth = .4, alpha = .9, show.legend = c(colour = FALSE, linetype = TRUE)) +
+    geom_point(aes(colour = Nch, size = interval_in_tau, shape = kind), alpha = .9,
+               show.legend = c(colour = TRUE, size = TRUE, shape = TRUE)) +
+    facet_grid(yp ~ xp, scales = "free", drop = FALSE, labeller = label_parsed) +
+    scale_x_continuous(breaks = zero_breaks) + scale_y_continuous(breaks = zero_breaks) +
+    scale_colour_viridis_d(name = expression(N[ch]), end = .9, drop = FALSE) +
+    scale_size(name = expression(Delta/tau[min]), trans = "log10",
+               range = c(.5, 2.7), breaks = c(.01, .1, 1)) +
+    scale_linetype_manual(values = KIND_LT, name = NULL) +
+    scale_shape_manual(values = KIND_SH, name = NULL) +
+    # one guide each: merge the empirical/theoretical key (shape+linetype) and stop the
+    # colour aesthetic from splitting into two N_ch legends across the path/point geoms.
+    guides(shape    = guide_legend(order = 1), linetype = guide_legend(order = 1),
+           colour   = guide_legend(order = 2, override.aes = list(linetype = 0, shape = 16, size = 2.2)),
+           size     = guide_legend(order = 3, override.aes = list(colour = "grey30", linetype = 0, shape = 16))) +
+    labs(x = NULL, y = NULL, title = title) +
+    theme_bw(base_size = 9) +
+    theme(legend.position = "right", panel.grid.minor = element_blank(),
+          strip.text = element_text(size = 8),
+          plot.title = element_text(size = 10, face = "bold"))
+}
+```
+
+```{r plot, fig.width = 7.5, fig.height = 16}
+DIB     <- "Probit_statistics_Likelihood_Distortion_Induced_Bias"
+ALL_NCH <- sort(unique(pool$Num_ch))            # shared colour mapping across the three corners
+
+# per noise: empirical bias (theta_pool - theta_sim) and theoretical DIB, in one pair table
+pairs_by_noise <- lapply(NOISES, function(z) {
+  emp  <- per_param(filter(pool, noise == z), "Model_Parameters_Hat",
+                    statistic == "value", subtract_truth = TRUE) %>% mutate(kind = "empirical")
+  theo <- per_param(filter(bsim, noise == z), DIB,
+                    statistic == "value", probit == "mean")       %>% mutate(kind = "theoretical")
+  to_pairs(bind_rows(emp, theo)) %>% mutate(noise = z)
+})
+
+# shared, 0-centred limits per parameter pair (over all noises), so the corners are comparable
+lims  <- bind_rows(pairs_by_noise) %>% group_by(xp, yp) %>%
+  summarise(Lx = max(abs(x)), Ly = max(abs(y)), .groups = "drop")
+blank <- bind_rows(transmute(lims, xp, yp, x =  Lx, y =  Ly),
+                   transmute(lims, xp, yp, x = -Lx, y = -Ly))
+
+corners <- lapply(seq_along(NOISES), function(i)
+  corner_plot(pairs_by_noise[[i]], lims = blank, nch_levels = ALL_NCH,
+              title = paste("noise =", NOISES[i])))
+
+g <- wrap_plots(corners, ncol = 1, guides = "collect") +
+  plot_annotation(
+    title = "macro_IR parameter bias: empirical (solid, filled) vs theoretical DIB (dashed, open)",
+    subtitle = "log10 units; colour = N_ch, point size = interval")
+g
+ggsave("Figure_5_bias_path.pdf", g, width = 7.5, height = 16)
+```

@@ -1,0 +1,303 @@
+---
+title: "Figure S3 (supplement to Figure 2) — full correlation corners for NR / MNR / R / MR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+SUPPLEMENT TO FIGURE 2.
+
+Figure 2 Panel B shows the full correlation corner (all 6 pairs of the four
+informative parameters, each with three 95% ellipses + area-ratio numbers + bias
+markers) for MacroIR ALONE, the algorithm that calibrates. This supplement shows
+the SAME corner for the four OTHER likelihood approximations — NR, MNR, R, MR —
+so the reader sees the full correlation structure and the overconfidence for
+every algorithm, not just IR.
+
+Each corner keeps exactly what Panel B has:
+  * three 95% ellipses  : empirical (grey) / Fisher (orange dashed) /
+                          distortion-corrected (blue dotted)
+  * two area-ratio numbers per pair : empirical/Fisher (orange = the
+    overconfidence factor) and empirical/corrected (blue, ~1 when the sandwich
+    recovers the true spread)
+  * three centre markers : truth (cross) / empirical mean (filled circle) /
+                           predicted truth+bias (open circle)
+over the 6 pairs of the four parameters (log10 k_on, log10 k_off, log10 i,
+log10 N_ch).
+
+The data loading and the corner_plot() function are REUSED VERBATIM from
+figure_2.Rmd. The only change: ALGOS is restricted to the four non-IR
+approximations (so IR's cloud is not re-read), and four corners are composed in
+a 2x2 patchwork instead of one.
+
+Anchoring/scaling identical to figure_2.Rmd: model covariances at theta_pool
+(*_battery_pool), cov_scale = 1/REP_GROUP. group_size = 10, noise = 0.1.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+REP_NCH      <- 100
+REP_NSIM     <- 10000
+REP_NOISE    <- "0.1"
+REP_GROUP    <- 10
+REP_INTERVAL <- 0.1
+
+# The four non-IR approximations (IR is Figure 2 Panel B; not re-read here).
+ALGOS    <- c("macro_NR","macro_NMR","macro_R","macro_MR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR")
+
+PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+# plotmath-parseable labels (rendered as proper subscripted math on axes and strips)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+ORD <- c("on","off","unitary_current","Num_ch_mean")
+TRUTH <- c(on = log10(10), off = log10(100),
+           unitary_current = log10(1), Num_ch_mean = log10(REP_NCH))
+
+cov_scale <- 1 / REP_GROUP
+near_int  <- function(x) abs(x - REP_INTERVAL) < 1e-9
+```
+
+```{r read}
+read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
+base <- file.path(DATA_DIR,
+  sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s", REP_NCH, REP_NSIM, ALGOS, REP_NOISE))
+
+cloud   <- map_dfr(paste0(base, "_mle_cloud_runs.csv"), read_skip1)
+battery <- map_dfr(paste0(base, "_battery_pool.csv"),   read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""))
+bsim    <- map_dfr(paste0(base, "_battery_sim.csv"),    read_skip1) %>%
+  mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
+         algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+
+pts <- cloud %>%
+  filter(component_path == "Model_Parameters_Hat", statistic == "value",
+         Num_ch == REP_NCH, group_size == REP_GROUP, near_int(interval_in_tau),
+         param_name %in% names(PARAM_IDX)) %>%
+  select(algorithm, sample_index, param_name, value) %>%
+  pivot_wider(names_from = param_name, values_from = value) %>%
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+```
+
+```{r helpers}
+# breaks ANCHORED on the centre (the expected value, a round 0/1/2) with a 1-2-5 nice
+# step: the round value always gets a tick AND there are enough ticks (3-5) to read the scale.
+centered_break_vec <- function(center, half) {
+  if (!is.finite(half) || half <= 0) return(center)
+  raw  <- half / 2
+  mag  <- 10^floor(log10(raw))
+  step <- mag * c(1, 2, 5, 10)[findInterval(raw / mag, c(0, 1.5, 3.5, 7.5, Inf))]
+  round(center + step * (-2:2), 6)   # 5 ticks centred on the expected value (outer may clip)
+}
+# free-scale facets (corner): each panel is symmetric about its truth, so centre = mean(lims).
+# In the 2x2 supplement each corner is only ~3.5 in wide (half of figure_2's single corner), so
+# a panel's x-axis is ~1 in: 5 ticks collide with each other and with the neighbouring panel's
+# edge labels. Keep just the inner 3 (centre and centre +/- one step); these always sit inside the
+# panel (the outer +/-2 step can clip), so no adjacent-panel collision, and the scale still reads.
+sym_breaks_fn <- function(lims) {
+  v <- centered_break_vec(mean(lims), (max(lims) - min(lims)) / 2)
+  if (length(v) >= 5) v[c(2, 3, 4)] else v
+}
+
+ellipse_path <- function(cx, cy, S, level = 0.95, npoints = 200) {
+  if (is.null(S) || any(!is.finite(S))) return(NULL)
+  ev <- eigen(S, symmetric = TRUE)
+  if (any(ev$values <= 0)) return(NULL)
+  r  <- sqrt(qchisq(level, df = 2))
+  th <- seq(0, 2 * pi, length.out = npoints)
+  Tm <- ev$vectors %*% diag(sqrt(ev$values)) %*% t(ev$vectors)
+  P  <- Tm %*% (r * rbind(cos(th), sin(th)))
+  data.frame(x = cx + P[1, ], y = cy + P[2, ])
+}
+
+# ellipse "area" proxy = sqrt(det) (proportional to the 95% region area); ratios grade each ellipse
+.area <- function(S) if (is.null(S) || any(!is.finite(S))) NA_real_ else
+  { ev <- eigen(S, symmetric = TRUE)$values; if (any(ev <= 0)) NA_real_ else sqrt(prod(ev)) }
+.fmt  <- function(r) ifelse(!is.finite(r), "", ifelse(r >= 10, sprintf("%.0f×", r), sprintf("%.1f×", r)))
+
+battery_cov_pair <- function(comp, algo, ix, jx) {           # ix,jx = param indices
+  df <- battery %>%
+    filter(component == comp, statistic == "value", probit == "mean",
+           algorithm == algo, Num_ch == REP_NCH, near_int(interval_in_tau),
+           param_index %in% c(ix, jx), param_col %in% c(ix, jx)) %>%
+    select(param_index, param_col, value)
+  m <- matrix(NA_real_, 2, 2); idx <- c(ix, jx)
+  for (a in 1:2) for (b in 1:2) {
+    v <- df$value[df$param_index == idx[a] & df$param_col == idx[b]]
+    if (length(v) == 1 && is.finite(v)) m[a, b] <- v
+  }
+  m * cov_scale
+}
+
+# DIB vector (named param -> bias) for one algorithm, from battery_sim
+dib_vector <- function(algo) {
+  bsim %>%
+    filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+           probit == "mean", algorithm == .env$algo, Num_ch == REP_NCH,
+           near_int(interval_in_tau), param_name %in% ORD) %>%
+    select(param_name, value) %>% deframe()
+}
+
+# --- full lower-triangle correlation corner for ONE algorithm,
+#     with ellipses (emp/Fisher/corrected) AND markers (truth/emp/pred) ---
+# Verbatim from figure_2.Rmd Part B.
+corner_plot <- function(algo, title = NULL) {
+  xlev <- ORD[1:3]; ylev <- ORD[2:4]
+  prs <- expand.grid(xp = ORD, yp = ORD, stringsAsFactors = FALSE) %>%
+    filter(match(yp, ORD) > match(xp, ORD))
+  cl  <- pts %>% filter(algorithm == .env$algo)          # .env: arg wins over `algo` column
+  dib <- dib_vector(algo)
+
+  cloud_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xp <- prs$xp[k]; yp <- prs$yp[k]
+    cl %>% transmute(xp = xp, yp = yp, x = .data[[xp]], y = .data[[yp]])
+  }) %>% filter(is.finite(x), is.finite(y))
+
+  ell_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xp <- prs$xp[k]; yp <- prs$yp[k]
+    c2 <- cl %>% transmute(x = .data[[xp]], y = .data[[yp]]) %>% filter(is.finite(x), is.finite(y))
+    if (nrow(c2) < 3) return(NULL)
+    ctr <- c(mean(c2$x), mean(c2$y))
+    Ss <- list(empirical = cov(cbind(c2$x, c2$y)),
+               Fisher    = battery_cov_pair("Likelihood_Fisher_Covariance", algo, PARAM_IDX[xp], PARAM_IDX[yp]),
+               corrected = battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", algo, PARAM_IDX[xp], PARAM_IDX[yp]))
+    map_dfr(names(Ss), function(nm) {
+      e <- ellipse_path(ctr[1], ctr[2], Ss[[nm]]); if (is.null(e)) return(NULL)
+      e %>% mutate(xp = xp, yp = yp, source = nm)
+    })
+  })
+
+  cen_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xpk <- prs$xp[k]; ypk <- prs$yp[k]
+    c2 <- cl %>% transmute(x = .data[[xpk]], y = .data[[ypk]]) %>% filter(is.finite(x), is.finite(y))
+    # precompute scalars OUTSIDE tibble() so its data-masking cannot reinterpret xp/yp as the
+    # just-created columns (the bug that inflated column sizes)
+    tx <- unname(TRUTH[xpk]); ty <- unname(TRUTH[ypk])
+    bx <- unname(dib[xpk]);   by <- unname(dib[ypk])
+    mx <- if (nrow(c2)) mean(c2$x) else NA_real_
+    my <- if (nrow(c2)) mean(c2$y) else NA_real_
+    tibble(xp = xpk, yp = ypk,
+           x = c(tx, mx, tx + bx),
+           y = c(ty, my, ty + by),
+           kind = c("truth", "empirical mean", "predicted (truth + bias)"))
+  })
+
+  fx <- function(z) factor(z, levels = xlev, labels = unname(PARAM_LAB[xlev]))
+  fy <- function(z) factor(z, levels = ylev, labels = unname(PARAM_LAB[ylev]))
+  cloud_l <- mutate(cloud_l, xp = fx(xp), yp = fy(yp))
+  ell_l   <- mutate(ell_l,   xp = fx(xp), yp = fy(yp),
+                    source = factor(source, levels = c("empirical","Fisher","corrected")))
+  cen_l   <- mutate(cen_l,   xp = fx(xp), yp = fy(yp),
+                    kind = factor(kind, levels = c("truth","empirical mean","predicted (truth + bias)")))
+
+  # symmetric per-panel limits so the expected value sits at the CENTRE of each cell; the extra
+  # half-width (1.25) also leaves clean room for the area-ratio labels in the top-left corner.
+  lims_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xpk <- prs$xp[k]; ypk <- prs$yp[k]
+    c2 <- cl %>% transmute(x = .data[[xpk]], y = .data[[ypk]]) %>% filter(is.finite(x), is.finite(y))
+    tx <- unname(TRUTH[xpk]); ty <- unname(TRUTH[ypk])
+    hx <- 1.25 * max(abs(c2$x - tx), na.rm = TRUE)
+    hy <- 1.25 * max(abs(c2$y - ty), na.rm = TRUE)
+    tibble(xp = xpk, yp = ypk, x = c(tx - hx, tx + hx), y = c(ty - hy, ty + hy))
+  }) %>% mutate(xp = fx(xp), yp = fy(yp))
+
+  # area-ratio labels per corner cell: orange = empirical/Fisher, blue = empirical/corrected.
+  labs_l <- map_dfr(seq_len(nrow(prs)), function(k) {
+    xpk <- prs$xp[k]; ypk <- prs$yp[k]
+    c2 <- cl %>% transmute(x = .data[[xpk]], y = .data[[ypk]]) %>% filter(is.finite(x), is.finite(y))
+    if (nrow(c2) < 3) return(NULL)
+    tx <- unname(TRUTH[xpk]); ty <- unname(TRUTH[ypk])
+    hx <- 1.25 * max(abs(c2$x - tx), na.rm = TRUE); hy <- 1.25 * max(abs(c2$y - ty), na.rm = TRUE)
+    Aemp <- .area(cov(cbind(c2$x, c2$y)))
+    # place the labels in the TOP corner OFF the cloud's tilt: positive correlation -> the cloud
+    # runs bottom-left..top-right, so top-left is empty (hj=0); negative -> top-right is empty (hj=1).
+    rho <- suppressWarnings(cor(c2$x, c2$y))
+    hj  <- if (is.finite(rho) && rho < 0) 1 else 0
+    tibble(xp = xpk, yp = ypk, hj = hj,
+           lab_F = .fmt(Aemp / .area(battery_cov_pair("Likelihood_Fisher_Covariance", algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
+           lab_C = .fmt(Aemp / .area(battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
+           x = tx + ifelse(hj == 1, hx, -hx) * 0.92, yF = ty + hy * 0.92, yC = ty + hy * 0.60)
+  }) %>% mutate(xp = fx(xp), yp = fy(yp))
+
+  ggplot() +
+    geom_blank(data = lims_l, aes(x, y)) +
+    geom_point(data = cloud_l, aes(x, y), colour = "grey55", size = .3, alpha = .15) +
+    geom_path(data = ell_l, aes(x, y, colour = source, linetype = source, linewidth = source)) +
+    geom_point(data = cen_l, aes(x, y, shape = kind), size = 2, stroke = .8,
+               colour = "black", inherit.aes = FALSE) +
+    geom_text(data = labs_l, aes(x, yF, label = lab_F, hjust = hj), colour = "#D55E00", size = 2.5, vjust = 1) +
+    geom_text(data = labs_l, aes(x, yC, label = lab_C, hjust = hj), colour = "#0072B2", size = 2.5, vjust = 1) +
+    facet_grid(yp ~ xp, scales = "free", drop = FALSE, labeller = label_parsed) +
+    scale_x_continuous(breaks = sym_breaks_fn) + scale_y_continuous(breaks = sym_breaks_fn) +
+    scale_colour_manual(values = c(empirical = "grey45", Fisher = "#D55E00",
+                                   corrected = "#0072B2"), name = NULL) +
+    scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed",
+                                     corrected = "dotted"), name = NULL) +
+    scale_linewidth_manual(values = c(empirical = .5, Fisher = .65, corrected = .95), guide = "none") +
+    scale_shape_manual(values = c("truth" = 3, "empirical mean" = 19,
+                                  "predicted (truth + bias)" = 1), name = NULL) +
+    labs(x = NULL, y = NULL, title = title) +
+    theme_bw(base_size = 10) +
+    theme(legend.position = "bottom", panel.grid.minor = element_blank(),
+          strip.text = element_text(size = 9),
+          plot.title = element_text(hjust = 0.5, size = 11, face = "bold"))
+}
+```
+
+```{r plot, fig.width = 7.0, fig.height = 9.4}
+# One corner per non-IR approximation, same construction as Figure 2 Panel B.
+cNR  <- corner_plot("macro_NR",  title = "NR")  + labs(tag = "A")
+cNMR <- corner_plot("macro_NMR", title = "MNR") + labs(tag = "B")
+cR   <- corner_plot("macro_R",   title = "R")   + labs(tag = "C")
+cMR  <- corner_plot("macro_MR",  title = "MR")  + labs(tag = "D")
+
+# 2x2 grid; one shared legend collected at the bottom (per eLife author guidance the
+# figure title and full legend live in the manuscript text, only panel lettering stays).
+gS3 <- (cNR | cNMR) / (cR | cMR) +
+  plot_layout(guides = "collect") &
+  # axis.text -> 7 pt (eLife minimum): in the narrow-range k_off column the three tick labels
+  # (1.95 / 2.00 / 2.05) otherwise sit almost edge-to-edge at ~1 in panel width.
+  theme(legend.position = "bottom", legend.box = "horizontal",
+        legend.margin = margin(0, 0, 0, 0), legend.spacing.x = unit(5, "pt"),
+        legend.text = element_text(size = 8.5), legend.key.size = unit(10, "pt"),
+        axis.text = element_text(size = 7),
+        plot.tag = element_text(size = 12, face = "bold"))
+gS3
+ggsave("Figure_S3.pdf", gS3, width = 7.0, height = 7.0)
+```
+
+```{r diagnostics-table}
+# empirical/Fisher (overconfidence) and empirical/corrected area ratios per pair per algorithm,
+# aggregated to the corner-level (geometric mean over the 6 pairs) plus the per-pair detail.
+area <- .area
+prs <- expand.grid(xp = ORD, yp = ORD, stringsAsFactors = FALSE) %>%
+  filter(match(yp, ORD) > match(xp, ORD))
+
+ratio_tbl <- map_dfr(ALGOS, function(a) {
+  cl <- pts %>% filter(algorithm == a)
+  map_dfr(seq_len(nrow(prs)), function(k) {
+    xp <- prs$xp[k]; yp <- prs$yp[k]
+    c2 <- cl %>% transmute(x = .data[[xp]], y = .data[[yp]]) %>% filter(is.finite(x), is.finite(y))
+    Aemp <- area(cov(cbind(c2$x, c2$y)))
+    tibble(algorithm = ALGO_LAB[a], pair = paste(xp, yp, sep = "/"),
+           emp_over_Fisher    = Aemp / area(battery_cov_pair("Likelihood_Fisher_Covariance", a, PARAM_IDX[xp], PARAM_IDX[yp])),
+           emp_over_corrected = Aemp / area(battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, PARAM_IDX[xp], PARAM_IDX[yp])))
+  })
+})
+ratio_tbl
+
+# corner-level summary (geometric mean of the per-pair overconfidence ratios)
+ratio_tbl %>% group_by(algorithm) %>%
+  summarise(gm_emp_over_Fisher    = exp(mean(log(emp_over_Fisher), na.rm = TRUE)),
+            gm_emp_over_corrected = exp(mean(log(emp_over_corrected), na.rm = TRUE)),
+            .groups = "drop")
+```
+</content>
+</invoke>

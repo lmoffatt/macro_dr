@@ -4,8 +4,7 @@
 
 
 
-Write a clear, reproducible paper that answers: **How to solve macroscopic currents using MacroIR, a recursive boundary state bayesian algortihm. Estimations of its error rate , using **score/FIM and residual-based tests**.
-
+Write a clear, reproducible paper that answers: **How to solve macroscopic currents using MacroIR, a recursive boundary state aproximate bayesian algortihm. How to estimate the error rate of MacroIR and alternative algorithms and how this error rate depends on the number of channels, the measurment interval time and the instrumental error, using **score/FIM and residual-based tests**.
 
 
 
@@ -16,14 +15,15 @@ Write a clear, reproducible paper that answers: **How to solve macroscopic curre
 - **Macroscopic** (many-channel) current traces observed as **interval averages**.
 - Likelihood approximations family currently used in this repo (naming used in scripts):
   - `NR`, `R`, `MNR`, `MR`,  `IR` 
-- **Correctness/validity characterization** using:
+  - **Correctness/validity characterization** using:
+  - **Residual diagnostics** (normalized residuals, autocorrelation; optionally PIT).
   - **Score (gradient) mean test** at true parameters.
   - **Fisher Information Matrix (FIM) consistency** tests (two estimators).
-  - **Residual diagnostics** (normalized residuals, autocorrelation; optionally PIT).
   - **Score correlation diagnostics** (Cov(sum score) vs sum Cov(score)).
   - **Variance inflation / sandwich factor** to quantify parameter uncertainty distortion.
-- A **validity map** (main figure) over an interpretable 2D regime.
-
+  - **Empirical test of the MLE parameters: do their distribution match the theory
+ - A **validity map** (main figure) over an interpretable 2D regime.
+ 
 ### Out of scope (explicitly excluded to reduce attack surface)
 
 - **MicroIR / microscopic-recursive “gold standard”** comparisons in the main paper.
@@ -38,7 +38,7 @@ We keep the paper anchored to a simple narrative: **problem → mechanism → va
 
 - Show the **core problem**: inference from *interval-averaged* observations is not the same as point sampling; naïve approximations can bias inference.
 - Show a minimal schematic of **MR vs IR update timing**:
-  - MR: Bayesian update at the interval boundary, Markov propagation across interval.
+  - MR: Bayesian update at the initial boundary, Markov propagation across interval.
   - IR: Bayesian “interval-recursive” update that integrates start/end information more symmetrically.
 - Candidate implementation artifact already exists:
   - `projects/eLife_2025/ops/local/figure_1.macroir`

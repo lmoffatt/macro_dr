@@ -1,0 +1,130 @@
+---
+title: "Figure 5 (bias lines) — macro_IR parameter bias vs interval, empirical vs predicted, with bootstrap errors"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Line view of the macro_IR parameter BIAS vs interval, EMPIRICAL (solid) vs PREDICTED (dashed),
+BOTH with error bars:
+  EMPIRICAL = mean over the 1000 per-recording MLEs of (theta_hat - theta_sim), from
+              *_mle_cloud_runs.csv, +/- 1.96 * SE (the quantity the DIB actually predicts).
+  PREDICTED = distortion-induced bias (DIB), from *_battery_sim.csv, +/- its 95% percentile
+              bootstrap CI (probit quantiles 0.025 / 0.975).
+Bias is signed (log10 units) -> LINEAR y with a 0 reference. Two colourings, ONE Rmd:
+  A: colour = N_ch,  facet parameter x noise         -> Figure_5_bias_lines_bynoise.pdf
+  B: colour = noise, facet N_ch (rows) x parameter   -> Figure_5_bias_lines_bynch.pdf
+NOTE: reads the IR cloud (~1.9 GB across 27 files), aggregated per file so memory stays low.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+```
+
+```{r params}
+DATA_DIR   <- "../data/433ed13"
+NSIM       <- 10000
+NOISES     <- c("0.1", "1", "10")
+ALGO       <- "macro_IR"
+GROUP_SIZE <- 100        # sims per recording MLE: 100 converges well even at few channels (10 does not)
+
+ORD       <- c("on", "off", "unitary_current", "Num_ch_mean")
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+TRUTH_FIX <- c(on = log10(10), off = log10(100), unitary_current = log10(1))
+NOISE_COL <- c("0.1" = "#0072B2", "1" = "#009E73", "10" = "#D55E00")
+KIND_LT   <- c(empirical = "solid", predicted = "22")
+```
+
+```{r empirical-cloud}
+# EMPIRICAL bias with error: read each cloud file, aggregate to mean +/- SE per (N_ch, interval,
+# param) over the 1000 recordings, discard the raw rows. Keeps memory low despite ~1.9 GB total.
+cloud_files <- Sys.glob(file.path(DATA_DIR,
+  sprintf("figure_3_nch_*_nsim_%d_%s_noise_*_mle_cloud_runs.csv", NSIM, ALGO)))
+read_cloud <- function(path) {
+  z  <- sub(".*_noise_([0-9.]+)_mle.*", "\\1", basename(path))
+  dt <- fread(path, skip = 1, showProgress = FALSE,
+              select = c("component_path", "sample_index", "param_name",
+                         "interval_in_tau", "Num_ch", "group_size", "value"))
+  dt <- dt[group_size == GROUP_SIZE]   # the cloud holds several group sizes; pick one
+  # keep only recordings whose per-recording MLE converged (status 0/1/2), else wild non-converged
+  # estimates inflate the mean at few channels
+  conv <- unique(dt[component_path == "Convergence_Status_Code" & value %in% c(0, 1, 2),
+                    .(sample_index, interval_in_tau)])
+  mp <- dt[component_path == "Model_Parameters_Hat" & param_name %in% ORD &
+             !is.na(sample_index) & is.finite(value)]
+  mp <- mp[conv, on = .(sample_index, interval_in_tau), nomatch = 0]
+  mp[, truth := fifelse(param_name == "Num_ch_mean", log10(Num_ch), TRUTH_FIX[param_name])]
+  mp[, b := value - truth]
+  mp[, .(bias = mean(b), se = sd(b) / sqrt(.N)),
+     by = .(Num_ch, interval_in_tau, param_name)][, noise := z]
+}
+empirical <- rbindlist(lapply(cloud_files, read_cloud))[noise %in% NOISES]
+empirical[, `:=`(lo = bias - 1.96 * se, hi = bias + 1.96 * se, kind = "empirical")]
+```
+
+```{r predicted-battery}
+read_batt <- function(z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_sim.csv", NSIM, ALGO, z)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z))
+}
+bsim <- map_dfr(NOISES, read_batt)
+predicted <- bsim %>%
+  filter(component_path == "Probit_statistics_Likelihood_Distortion_Induced_Bias",
+         statistic == "value", param_name %in% ORD,
+         probit == "mean" | (probit == "quantile" & quantile_level %in% c(0.025, 0.975))) %>%
+  mutate(q = if_else(probit == "mean", "bias",
+                     if_else(quantile_level == 0.025, "lo", "hi"))) %>%
+  group_by(noise, Num_ch, interval_in_tau, param_name, q) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = q, values_from = v) %>% mutate(kind = "predicted")
+```
+
+```{r combine}
+keep <- c("noise", "Num_ch", "interval_in_tau", "param_name", "bias", "lo", "hi", "kind")
+nch_lev <- sort(unique(c(empirical$Num_ch, predicted$Num_ch)))
+bias_all <- bind_rows(as_tibble(empirical)[, keep], predicted[, keep]) %>%
+  mutate(param  = factor(param_name, levels = ORD, labels = unname(PARAM_LAB[ORD])),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         noisec = factor(noise, levels = NOISES),
+         nch_f  = factor(Num_ch, levels = nch_lev, labels = paste0("N==", nch_lev)),
+         Nch    = factor(Num_ch, levels = nch_lev),
+         kind   = factor(kind, levels = c("empirical", "predicted")))
+```
+
+```{r plot-fn}
+base_layers <- function(g) g +
+  geom_hline(yintercept = 0, colour = "grey70", linewidth = .3, linetype = "dashed") +
+  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = .3, alpha = .4) +
+  geom_line(aes(linetype = kind), linewidth = .4) +
+  geom_point(aes(shape = kind), size = .6) +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_linetype_manual(values = KIND_LT, name = NULL) +
+  scale_shape_manual(values = c(empirical = 16, predicted = 1), name = NULL) +
+  labs(x = expression(Delta / tau[min]), y = "bias  (log10 units)") +
+  theme_bw(base_size = 9) +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        strip.text = element_text(size = 8), plot.title = element_text(size = 11, face = "bold"))
+
+gA <- base_layers(ggplot(bias_all, aes(interval_in_tau, bias,
+                                       colour = Nch, group = interaction(Num_ch, kind)))) +
+  facet_grid(param ~ noisef, scales = "free_y", labeller = labeller(param = label_parsed)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .9) +
+  ggtitle("macro_IR  parameter bias: empirical (solid) vs predicted (dashed), 95% CI, group_size = 100")
+
+gB <- base_layers(ggplot(bias_all, aes(interval_in_tau, bias,
+                                       colour = noisec, group = interaction(noise, kind)))) +
+  facet_grid(nch_f ~ param, scales = "free_y", labeller = label_parsed) +
+  scale_colour_manual(values = NOISE_COL, name = "noise") +
+  ggtitle("macro_IR  parameter bias: empirical (solid) vs predicted (dashed), 95% CI, group_size = 100")
+```
+
+```{r plot, fig.width = 7.0, fig.height = 8.0, results = "asis"}
+ggsave("Figure_5_bias_lines_bynoise.pdf", gA, width = 7.0, height = 8.0)
+ggsave("Figure_5_bias_lines_bynch.pdf",   gB, width = 7.0, height = 11.0)
+gA; gB
+```

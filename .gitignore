@@ -152,6 +152,8 @@ __pycache__/
 .Rproj.user/
 *.Rhistory
 *.RData
+*.rds
+*.html
 
 # CTest in-source artifacts
 /Testing/

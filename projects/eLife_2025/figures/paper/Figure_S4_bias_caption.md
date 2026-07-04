@@ -1,0 +1,7 @@
+# Figure S4 (bias) caption
+
+**Figure S4 (bias). The first-moment calibration at the data and inference levels, for all four parameters.**
+
+The bias test over time, at the residual (data) level and the score (inference) level, on the same 1,000 recordings as Figure 3 (a patch of N_ch = 100 two-state channels, instrumental noise 1e-4, measurement interval 0.1 τ) and across the five approximations NR (Non-Recursive), MNR (Mean Non-Recursive), R (Recursive), MR (Mean Recursive) and IR (Interval Recursive). Each quantity is a mean over the recordings, the shaded band is its 95% interval (1.96 standard errors), the green line is the calibrated value (zero), and the grey band marks the agonist pulse; time is in milliseconds. (A) The residual bias, the mean standardized residual r = (observed current − predicted mean) / predicted standard deviation. (B to E) The score bias for each parameter, the mean per-interval score s_t = ∂ logL_t / ∂θ for θ = k_on, k_off, i and N_ch in turn.
+
+The recursive trio sits on zero at both levels and for every parameter. The non-recursive pair carries a bias over the agonist window that is the same feature at the residual level (A) and at the score level (B to E), and the same across the four parameters. This parameter independence is why Figure 3 shows the score for k_off alone as representative. Each row uses a separate scale for the non-recursive pair (NR, MNR) and the recursive trio (R, MR, IR) so the near-zero recursive traces are not flattened by the naive departures.
