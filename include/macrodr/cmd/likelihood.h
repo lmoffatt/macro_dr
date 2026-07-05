@@ -974,6 +974,32 @@ using Empirical_Distortion_Bootstrap =
     decltype(concatenate(std::declval<Empirical_Distortion_Analysis>(),
                          std::declval<probit_wrapped_t<Empirical_Distortion_Analysis>>()));
 
+// Gaussian-Fisher-anchored twin of Empirical_Distortion_Analysis (same 16-field
+// 5/5/6 shape; Min_Eigenvalue only on the Gaussian Optimum). Anchored on the
+// Gaussian Fisher Ḡ built from the dlikelihood, so it needs NO numerical Fisher.
+using Empirical_Distortion_Gaussian_Analysis = var::Vector_Space<
+    Empirical_Covariance_Gaussian_Distortion,
+    Affine_Invariant_Distance<Empirical_Covariance_Gaussian_Distortion>,
+    log_Det<Empirical_Covariance_Gaussian_Distortion>,
+    Eigenvalue_Spectrum<Empirical_Covariance_Gaussian_Distortion>,
+    Spectrum_Condition_Number<Empirical_Covariance_Gaussian_Distortion>,
+    Empirical_Covariance_Gaussian_Corrected_Distortion,
+    Affine_Invariant_Distance<Empirical_Covariance_Gaussian_Corrected_Distortion>,
+    log_Det<Empirical_Covariance_Gaussian_Corrected_Distortion>,
+    Eigenvalue_Spectrum<Empirical_Covariance_Gaussian_Corrected_Distortion>,
+    Spectrum_Condition_Number<Empirical_Covariance_Gaussian_Corrected_Distortion>,
+    Optimum_Gaussian_Distortion,
+    Affine_Invariant_Distance<Optimum_Gaussian_Distortion>,
+    log_Det<Optimum_Gaussian_Distortion>,
+    Eigenvalue_Spectrum<Optimum_Gaussian_Distortion>,
+    Min_Eigenvalue<Optimum_Gaussian_Distortion>,  // sim-vs-pool frame gap (NOT indefiniteness)
+    Spectrum_Condition_Number<Optimum_Gaussian_Distortion>>;
+
+using Empirical_Distortion_Gaussian_Bootstrap =
+    decltype(concatenate(
+        std::declval<Empirical_Distortion_Gaussian_Analysis>(),
+        std::declval<probit_wrapped_t<Empirical_Distortion_Gaussian_Analysis>>()));
+
 // Empirical-vs-theoretical capstone command (figure_3 Fase 2). State templates
 // only the cloud (the figure_2 vectors are State-agnostic).
 //   fim_sim  : numerical Fisher at θ_sim, per recording (decimate=1)
@@ -992,6 +1018,21 @@ auto calc_empirical_distortion(
     std::size_t n_bootstrap, std::size_t seed, const std::set<double>& probit_cis,
     double rtol = 1e-10, double atol = 0.0)
     -> Maybe_error<Empirical_Distortion_Bootstrap>;
+
+// Gaussian-Fisher-anchored twin of calc_empirical_distortion — NO numerical
+// Fisher. The anchor Ḡ and the Optimum numerator are the Gaussian Fisher
+// Σ_t GFI_t (× gsize) built from the dlikelihood:
+//   dlik_sim : score states at θ_sim   (Optimum-Gaussian numerator, Ḡ_sim)
+//   dlik_bar : score states at θ̄       (anchor Ḡ_bar + the J / score-cov source)
+// Same GROUP-scale + group bootstrap as the F version. Returns point ++ probit CIs.
+template <class State>
+auto calc_empirical_distortion_gaussian(
+    const MLE_Group_Cloud<State>& cloud,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_sim,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    std::size_t n_bootstrap, std::size_t seed, const std::set<double>& probit_cis,
+    double rtol = 1e-10, double atol = 0.0)
+    -> Maybe_error<Empirical_Distortion_Gaussian_Bootstrap>;
 
 // =============================================================================
 
@@ -1136,6 +1177,17 @@ inline Maybe_error<std::string> write_csv(Empirical_Distortion_Analysis const& l
 // bare point components and the Probit_statistics<·> components (with the
 // probit/quantile columns) side by side, distinguished by component_path.
 inline Maybe_error<std::string> write_csv(Empirical_Distortion_Bootstrap const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+
+// write_csv for the Gaussian-Fisher-anchored capstone (mle_G variant).
+inline Maybe_error<std::string> write_csv(Empirical_Distortion_Gaussian_Analysis const& lik,
+                                          std::string path) {
+    return detail::write_summary_csv(lik, std::move(path), "summary");
+}
+
+inline Maybe_error<std::string> write_csv(Empirical_Distortion_Gaussian_Bootstrap const& lik,
                                           std::string path) {
     return detail::write_summary_csv(lik, std::move(path), "summary");
 }

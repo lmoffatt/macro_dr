@@ -4523,6 +4523,254 @@ template auto calc_empirical_distortion<dMacro_State_Hessian_minimal_param>(
     const std::set<double>&, double, double)
     -> Maybe_error<Empirical_Distortion_Bootstrap>;
 
+// calc_empirical_distortion_gaussian — Gaussian-Fisher-anchored twin of the
+// figure_3 capstone. Anchors on the GROUP-scale Gaussian Fisher Ḡ (Σ_t GFI_t per
+// recording × gsize, built from the dlikelihood) instead of the numerical Fisher,
+// so figure_3 runs with NO finite-difference Fisher. dlik_sim (score at θ_sim)
+// supplies the Optimum-G numerator; dlik_bar (score at θ̄) the anchor + J. J is
+// the SAME score covariance as the F version (not Fisher), so it is shared.
+template <class State>
+auto calc_empirical_distortion_gaussian(
+    const MLE_Group_Cloud<State>& cloud,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_sim,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    std::size_t n_bootstrap, std::size_t seed, const std::set<double>& probit_cis,
+    double rtol, double atol)
+    -> Maybe_error<Empirical_Distortion_Gaussian_Bootstrap> {
+
+    const double NaN_d = std::numeric_limits<double>::quiet_NaN();
+
+    auto const& runs = get<MLE_Run_Records>(cloud)();
+    const std::size_t N_groups = runs.size();
+    if (N_groups == 0)
+        return error_message(
+            "calc_empirical_distortion_gaussian: empty MLE_Run_Records (no groups)");
+    auto const& theta0 = get<Model_Parameters_Hat>(runs[0])();
+    auto* params_ptr = theta0.parameters_ptr();
+    const std::size_t p = theta0.value().nrows();
+    if (p == 0)
+        return error_message("calc_empirical_distortion_gaussian: empty θ̂ in the cloud");
+
+    const std::size_t gsize = get<Group_Size>(cloud)();
+    if (gsize == 0)
+        return error_message("calc_empirical_distortion_gaussian: Group_Size == 0");
+    if (dlik_sim.size() != dlik_bar.size())
+        return error_message(
+            "calc_empirical_distortion_gaussian: dlik_sim / dlik_bar size mismatch");
+    if (runs.size() != dlik_bar.size() / gsize)
+        return error_message(
+            "calc_empirical_distortion_gaussian: N_groups (" + std::to_string(runs.size()) +
+            ") != n_recordings/gsize (" + std::to_string(dlik_bar.size() / gsize) +
+            ") — dropped groups break the contiguous group->recording mapping");
+
+    auto nan_spd = [&]() { return SymPosDefMatrix<double>(p, p, NaN_d); };
+
+    // Per-recording Gaussian Fisher G_r = Σ_t GFI_t (the G-twin of a per-recording
+    // numerical fim payload; identical per-sample GFI as the battery). Built ONCE,
+    // at full length (decimate=1), so the contiguous group→recording mapping holds.
+    auto gfi_lambda = [](const auto& evo_i) {
+        auto gfi = sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                       (1.0 / primitive(get<y_var>(evo_i))()) +
+                   sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                       (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+        if (!lapack::matrix_has_only_finite(gfi))
+            gfi = SymPosDefMatrix<double>(gfi.nrows(), gfi.ncols(), 0.0);
+        return parameter_spd_payload(std::move(gfi), var::get_dx_of_dfdx(get<y_mean>(evo_i)));
+    };
+    auto build_G_per_recording =
+        [&](const std::vector<dMacro_State_Ev_gradient_all>& dlik) {
+            std::vector<parameter_spd_payload> G(dlik.size());
+            for (std::size_t r = 0; r < dlik.size(); ++r)
+                G[r] = Sum<Gaussian_Fisher_Information>(get<Evolution>(dlik[r])(), gfi_lambda)();
+            return G;
+        };
+    const std::vector<parameter_spd_payload> G_per_recording_sim = build_G_per_recording(dlik_sim);
+    const std::vector<parameter_spd_payload> G_per_recording_bar = build_G_per_recording(dlik_bar);
+
+    // Mean/group reductions — identical to the F path (operate on any payload vec);
+    // sum_fisher lifts the per-recording G to the per-GROUP total (mean × gsize),
+    // the scale Cov_emp and J live at (do NOT use the battery's recording-scale G_b).
+    auto mean_fisher = [&](const std::vector<parameter_spd_payload>& fs,
+                           const std::vector<std::size_t>& R) -> SymPosDefMatrix<double> {
+        SymPosDefMatrix<double> acc(p, p, 0.0);
+        std::size_t n_valid = 0;
+        for (auto r : R) {
+            if (r >= fs.size()) continue;
+            auto const& Fi = fs[r].value();
+            if (Fi.nrows() != p || !lapack::matrix_has_only_finite(Fi)) continue;
+            for (std::size_t i = 0; i < p; ++i)
+                for (std::size_t j = i; j < p; ++j) acc.set(i, j, acc(i, j) + Fi(i, j));
+            ++n_valid;
+        }
+        if (n_valid == 0) return nan_spd();
+        const double scale = 1.0 / static_cast<double>(n_valid);
+        for (std::size_t i = 0; i < p; ++i)
+            for (std::size_t j = i; j < p; ++j) acc.set(i, j, acc(i, j) * scale);
+        return acc;
+    };
+    auto sum_fisher = [&](const std::vector<parameter_spd_payload>& fs,
+                          const std::vector<std::size_t>& R) -> SymPosDefMatrix<double> {
+        auto F = mean_fisher(fs, R);
+        const double gs = static_cast<double>(gsize);
+        for (std::size_t i = 0; i < p; ++i)
+            for (std::size_t j = i; j < p; ++j) F.set(i, j, F(i, j) * gs);
+        return F;
+    };
+
+    auto compute_distortion =
+        [&](const std::vector<std::size_t>& group_indices) -> Empirical_Distortion_Gaussian_Analysis {
+    auto theta_moments = Moment_statistics<Model_Parameters_Hat, true>(
+        runs, group_indices,
+        [](const MLE_Run& r) { return get<Model_Parameters_Hat>(r)(); });
+    SymPosDefMatrix<double> Cov_emp =
+        get<covariance<Model_Parameters_Hat>>(theta_moments())().value();
+
+    std::vector<std::size_t> R;
+    R.reserve(group_indices.size() * gsize);
+    for (auto g : group_indices)
+        for (std::size_t k = 0; k < gsize; ++k) R.push_back(g * gsize + k);
+
+    SymPosDefMatrix<double> G_bar_sim = sum_fisher(G_per_recording_sim, R);
+    SymPosDefMatrix<double> G_bar_bar = sum_fisher(G_per_recording_bar, R);
+
+    // J = group score covariance (dlik_bar-derived; identical to the F path).
+    SymPosDefMatrix<double> J = nan_spd();
+    if (!R.empty()) {
+        auto sum_moments = calculate_Likelihood_diagnostics_evolution_correlation_impl(
+            dlik_bar, R,
+            std::type_identity<
+                Evolution_of<Vector_Space<Moment_statistics<dlogL, true>>>>{},
+            [](const auto& evo_i) {
+                return parameter_vector_payload(derivative(get<logL>(evo_i))(),
+                                                var::get_dx_of_dfdx(get<logL>(evo_i)));
+            });
+        auto J_val = get<covariance<Sum<dlogL>>>(get<Sum<dlogL>>(sum_moments)())().value();
+        if (J_val.nrows() == p) {
+            const double gs = static_cast<double>(gsize);
+            for (std::size_t i = 0; i < p; ++i)
+                for (std::size_t j = i; j < p; ++j) J_val.set(i, j, J_val(i, j) * gs);
+            J = J_val;
+        }
+    }
+
+    // W_Gbar = PSD decomposition of Ḡ_bar (the Gaussian optimum frame).
+    auto maybe_W_Gbar = lapack::compute_psd_decomp(G_bar_bar, "G_bar", rtol, atol);
+    lapack::PSDDecomposition W_Gbar;
+    if (maybe_W_Gbar) W_Gbar = std::move(maybe_W_Gbar.value());
+
+    // ECD_G = Ḡ_bar^{1/2} · Cov_emp · Ḡ_bar^{1/2}
+    auto ECD_G = Empirical_Covariance_Gaussian_Distortion(
+        lapack::apply_sqrt_congruence(W_Gbar, Cov_emp, "ECD_Gaussian subspace matrix", rtol, atol)
+            .value_or(nan_spd()),
+        params_ptr);
+
+    // ECD_G_Corrected via the same identity as the F path: whiten ECD_G by
+    // GIDM = Ḡ_bar^{-1/2}·J·Ḡ_bar^{-1/2} (single inverse, well-conditioned).
+    auto IDM_G = lapack::apply_normalized_congruence(W_Gbar, J, "GIDM subspace matrix", rtol, atol)
+                     .value_or(nan_spd());
+    auto maybe_W_IDM_G = lapack::compute_psd_decomp(IDM_G, "GIDM", rtol, atol);
+    lapack::PSDDecomposition W_IDM_G;
+    if (maybe_W_IDM_G) W_IDM_G = std::move(maybe_W_IDM_G.value());
+    auto ECD_G_Corrected = Empirical_Covariance_Gaussian_Corrected_Distortion(
+        W_IDM_G.empty
+            ? nan_spd()
+            : lapack::apply_normalized_congruence(W_IDM_G, ECD_G().value(),
+                                                  "ECD_Gaussian_Corrected subspace matrix", rtol, atol)
+                  .value_or(nan_spd()),
+        params_ptr);
+
+    // Optimum_G = Ḡ_bar^{-1/2} · Ḡ_sim · Ḡ_bar^{-1/2}  (sim frame vs pool frame).
+    auto Optimum_G = Optimum_Gaussian_Distortion(
+        lapack::apply_normalized_congruence(W_Gbar, G_bar_sim, "Optimum_Gaussian subspace matrix",
+                                            rtol, atol)
+            .value_or(nan_spd()),
+        params_ptr);
+
+    // ----- Scalar suites (mirror the F path) ----------------------------------
+    auto ecd_g_scalars = compute_distortion_scalars(ECD_G().value(), rtol, atol);
+    auto ecd_g_d_ai = Affine_Invariant_Distance<Empirical_Covariance_Gaussian_Distortion>(
+        ecd_g_scalars.affine_invariant_distance);
+    auto ecd_g_log_det = log_Det<Empirical_Covariance_Gaussian_Distortion>(
+        logdet_active_subspace(ECD_G()));
+    auto maybe_W_ecd_g =
+        lapack::compute_psd_decomp(ECD_G().value(), "ECD_Gaussian", rtol, atol);
+    lapack::PSDDecomposition W_ecd_g;
+    if (maybe_W_ecd_g) W_ecd_g = std::move(maybe_W_ecd_g.value());
+    auto ecd_g_spectrum = Eigenvalue_Spectrum<Empirical_Covariance_Gaussian_Distortion>(
+        lapack::eigenvalue_spectrum(W_ecd_g));
+    auto ecd_g_cond = Spectrum_Condition_Number<Empirical_Covariance_Gaussian_Distortion>(
+        lapack::spectrum_condition_number(W_ecd_g));
+
+    auto ecd_gc_scalars = compute_distortion_scalars(ECD_G_Corrected().value(), rtol, atol);
+    auto ecd_gc_d_ai =
+        Affine_Invariant_Distance<Empirical_Covariance_Gaussian_Corrected_Distortion>(
+            ecd_gc_scalars.affine_invariant_distance);
+    auto ecd_gc_log_det = log_Det<Empirical_Covariance_Gaussian_Corrected_Distortion>(
+        logdet_active_subspace(ECD_G_Corrected()));
+    auto maybe_W_ecd_gc = lapack::compute_psd_decomp(ECD_G_Corrected().value(),
+                                                     "ECD_Gaussian_Corrected", rtol, atol);
+    lapack::PSDDecomposition W_ecd_gc;
+    if (maybe_W_ecd_gc) W_ecd_gc = std::move(maybe_W_ecd_gc.value());
+    auto ecd_gc_spectrum = Eigenvalue_Spectrum<Empirical_Covariance_Gaussian_Corrected_Distortion>(
+        lapack::eigenvalue_spectrum(W_ecd_gc));
+    auto ecd_gc_cond = Spectrum_Condition_Number<Empirical_Covariance_Gaussian_Corrected_Distortion>(
+        lapack::spectrum_condition_number(W_ecd_gc));
+
+    // Optimum_G (adds Min_Eigenvalue — here the sim-vs-pool frame gap, NOT an
+    // indefiniteness flag: the Gaussian Fisher is PSD by construction).
+    auto opt_g_scalars = compute_distortion_scalars(Optimum_G().value(), rtol, atol);
+    auto opt_g_d_ai = Affine_Invariant_Distance<Optimum_Gaussian_Distortion>(
+        opt_g_scalars.affine_invariant_distance);
+    auto opt_g_log_det =
+        log_Det<Optimum_Gaussian_Distortion>(logdet_active_subspace(Optimum_G()));
+    auto maybe_W_opt_g =
+        lapack::compute_psd_decomp(Optimum_G().value(), "Optimum_Gaussian", rtol, atol);
+    lapack::PSDDecomposition W_opt_g;
+    if (maybe_W_opt_g) W_opt_g = std::move(maybe_W_opt_g.value());
+    auto opt_g_spectrum =
+        Eigenvalue_Spectrum<Optimum_Gaussian_Distortion>(lapack::eigenvalue_spectrum(W_opt_g));
+    auto opt_g_min_eig = Min_Eigenvalue<Optimum_Gaussian_Distortion>(opt_g_scalars.lambda_min);
+    auto opt_g_cond = Spectrum_Condition_Number<Optimum_Gaussian_Distortion>(
+        lapack::spectrum_condition_number(W_opt_g));
+
+    // ----- Assemble in the EXACT Empirical_Distortion_Gaussian_Analysis order --
+    return Empirical_Distortion_Gaussian_Analysis(
+        std::move(ECD_G), std::move(ecd_g_d_ai), std::move(ecd_g_log_det),
+        std::move(ecd_g_spectrum), std::move(ecd_g_cond),
+        std::move(ECD_G_Corrected), std::move(ecd_gc_d_ai), std::move(ecd_gc_log_det),
+        std::move(ecd_gc_spectrum), std::move(ecd_gc_cond),
+        std::move(Optimum_G), std::move(opt_g_d_ai), std::move(opt_g_log_det),
+        std::move(opt_g_spectrum), std::move(opt_g_min_eig), std::move(opt_g_cond));
+    };  // end compute_distortion
+
+    std::vector<std::size_t> all_groups(N_groups);
+    for (std::size_t g = 0; g < N_groups; ++g) all_groups[g] = g;
+    Empirical_Distortion_Gaussian_Analysis point = compute_distortion(all_groups);
+
+    std::vector<Empirical_Distortion_Gaussian_Analysis> samples;
+    if (N_groups >= 2 && n_bootstrap > 0) {
+        auto mt = mt_64i(seed);
+        samples = bootstrap_it(
+            [&](const std::vector<MLE_Run>&, const std::vector<std::size_t>& idx) {
+                return compute_distortion(idx);
+            },
+            runs, n_bootstrap, mt);
+    } else {
+        samples.push_back(point);
+    }
+    auto probits = apply_Probit_statistics(samples, probit_cis);
+
+    return concatenate(std::move(point), std::move(probits));
+}
+
+// Explicit instantiation for Path A (minimal State).
+template auto calc_empirical_distortion_gaussian<dMacro_State_Hessian_minimal_param>(
+    const MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>&,
+    const std::vector<dMacro_State_Ev_gradient_all>&,
+    const std::vector<dMacro_State_Ev_gradient_all>&, std::size_t, std::size_t,
+    const std::set<double>&, double, double)
+    -> Maybe_error<Empirical_Distortion_Gaussian_Bootstrap>;
+
 // Explicit instantiation for Path A (minimal State).
 template auto calc_MLE_per_group_of_replicates<dMacro_State_Hessian_minimal_param>(
     const likelihood_algorithm_type&, const var::Parameters_transformed&,

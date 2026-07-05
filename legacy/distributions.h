@@ -738,6 +738,84 @@ class Optimum_Fisher_Distortion
     }
 };
 
+// ---- Gaussian-Fisher-anchored twins of the empirical-distortion capstone -----
+// Same three empirical-vs-theoretical distortions as above, anchored on the
+// GROUP-scale Gaussian Fisher Ḡ (= gsize · mean over recordings of Σ_t GFI_t,
+// built from the dlikelihood alone) instead of the numerical Fisher F̄. Let
+// figure_3 run WITHOUT any finite-difference numerical Fisher (the mle_G
+// variant). For a Gaussian (macro) likelihood G_b is the model's own Fisher, so
+// these measure misspecification in the model's own frame.
+
+// Empirical_Covariance_Gaussian_Distortion = Ḡ^{1/2} · Cov_emp · Ḡ^{1/2}
+// (twin of Empirical_Covariance_Fisher_Distortion).
+class Empirical_Covariance_Gaussian_Distortion
+    : public var::Constant<Empirical_Covariance_Gaussian_Distortion, parameter_spd_payload> {
+    using base_type =
+        var::Constant<Empirical_Covariance_Gaussian_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Empirical_Covariance_Gaussian_Distortion() = default;
+    Empirical_Covariance_Gaussian_Distortion(SymPosDefMatrix<double> value,
+                                             var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Empirical_Covariance_Gaussian_Distortion(SymPosDefMatrix<double> value,
+                                             var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Empirical_Covariance_Gaussian_Distortion) {
+        return "Empirical_Covariance_Gaussian_Distortion";
+    }
+};
+
+// Empirical_Covariance_Gaussian_Corrected_Distortion — ECD_G whitened by
+// GIDM = Ḡ^{-1/2}·J·Ḡ^{-1/2} (twin of Empirical_Covariance_Corrected_Distortion).
+class Empirical_Covariance_Gaussian_Corrected_Distortion
+    : public var::Constant<Empirical_Covariance_Gaussian_Corrected_Distortion,
+                           parameter_spd_payload> {
+    using base_type = var::Constant<Empirical_Covariance_Gaussian_Corrected_Distortion,
+                                    parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Empirical_Covariance_Gaussian_Corrected_Distortion() = default;
+    Empirical_Covariance_Gaussian_Corrected_Distortion(
+        SymPosDefMatrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Empirical_Covariance_Gaussian_Corrected_Distortion(
+        SymPosDefMatrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Empirical_Covariance_Gaussian_Corrected_Distortion) {
+        return "Empirical_Covariance_Gaussian_Corrected_Distortion";
+    }
+};
+
+// Optimum_Gaussian_Distortion = Ḡ_bar^{-1/2}·Ḡ_sim·Ḡ_bar^{-1/2} (twin of
+// Optimum_Fisher_Distortion): compares the truth-anchored Gaussian frame Ḡ_sim
+// (at θ_sim) with the pool-anchored frame Ḡ_bar (at θ̄). NOTE: unlike the
+// numerical Optimum, the Gaussian Fisher is PSD by construction, so
+// Min_Eigenvalue here is NEVER negative — it is NOT an indefiniteness readout;
+// it measures how far the sim frame sits from the pool frame.
+class Optimum_Gaussian_Distortion
+    : public var::Constant<Optimum_Gaussian_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Optimum_Gaussian_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Optimum_Gaussian_Distortion() = default;
+    Optimum_Gaussian_Distortion(SymPosDefMatrix<double> value,
+                                var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Optimum_Gaussian_Distortion(SymPosDefMatrix<double> value,
+                                var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Optimum_Gaussian_Distortion) {
+        return "Optimum_Gaussian_Distortion";
+    }
+};
+
 class Likelihood_Fisher_Covariance
     : public var::Constant<Likelihood_Fisher_Covariance, parameter_spd_payload> {
     using base_type = var::Constant<Likelihood_Fisher_Covariance, parameter_spd_payload>;
