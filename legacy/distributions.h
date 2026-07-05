@@ -575,6 +575,33 @@ class Likelihood_Information_Distortion_Reconstituted
     }
 };
 
+// Gaussian-Fisher-anchored twin of Likelihood_Information_Distortion. Uses the
+// cheap analytic Gaussian Fisher G_b (derivable from the dlikelihood alone) as
+// the H reference in place of the numerical Fisher F_b:
+//   Likelihood_Gaussian_Information_Distortion = inv(√G_b) · J · inv(√G_b)
+// Emitted alongside the F_b-anchored IDM so downstream analysis can pick the
+// better frame; the sole diagnostic available when the (expensive) numerical
+// Fisher is not computed (gaussian-only mode).
+class Likelihood_Gaussian_Information_Distortion
+    : public var::Constant<Likelihood_Gaussian_Information_Distortion, parameter_spd_payload> {
+    using base_type =
+        var::Constant<Likelihood_Gaussian_Information_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Likelihood_Gaussian_Information_Distortion() = default;
+    Likelihood_Gaussian_Information_Distortion(SymPosDefMatrix<double> value,
+                                               var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Likelihood_Gaussian_Information_Distortion(SymPosDefMatrix<double> value,
+                                               var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Likelihood_Gaussian_Information_Distortion) {
+        return "Likelihood_Gaussian_Information_Distortion";
+    }
+};
+
 // Quantifies how far the cheap analytic Gaussian_Fisher_Information G is from
 // the numerical truth F = Likelihood_Numerical_Fisher_Information, in the same frame as
 // the IDM:
@@ -728,7 +755,29 @@ class Likelihood_Fisher_Covariance
     friend std::string className(Likelihood_Fisher_Covariance) {
         return "Likelihood_Fisher_Covariance";
     }
-};  
+};
+
+// Gaussian-Fisher-anchored twin of Likelihood_Fisher_Covariance (GFC = G_b⁻¹):
+// the naive covariance estimate that uses the cheap Gaussian Fisher as the
+// information matrix instead of the numerical Fisher.
+class Gaussian_Fisher_Covariance
+    : public var::Constant<Gaussian_Fisher_Covariance, parameter_spd_payload> {
+    using base_type = var::Constant<Gaussian_Fisher_Covariance, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Gaussian_Fisher_Covariance() = default;
+    Gaussian_Fisher_Covariance(SymPosDefMatrix<double> value,
+                               var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Gaussian_Fisher_Covariance(SymPosDefMatrix<double> value,
+                               var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Gaussian_Fisher_Covariance) {
+        return "Gaussian_Fisher_Covariance";
+    }
+};
 
 
 class Likelihood_Distortion_Corrected_Covariance
@@ -748,7 +797,30 @@ class Likelihood_Distortion_Corrected_Covariance
     friend std::string className(Likelihood_Distortion_Corrected_Covariance) {
         return "Likelihood_Distortion_Corrected_Covariance";
     }
-};  
+};
+
+// Gaussian-Fisher-anchored twin of Likelihood_Distortion_Corrected_Covariance
+// (GDCC = G_b⁻¹ · J · G_b⁻¹): the sandwich covariance estimate built on the
+// cheap Gaussian Fisher instead of the numerical Fisher.
+class Gaussian_Distortion_Corrected_Covariance
+    : public var::Constant<Gaussian_Distortion_Corrected_Covariance, parameter_spd_payload> {
+    using base_type =
+        var::Constant<Gaussian_Distortion_Corrected_Covariance, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Gaussian_Distortion_Corrected_Covariance() = default;
+    Gaussian_Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
+                                             var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Gaussian_Distortion_Corrected_Covariance(SymPosDefMatrix<double> value,
+                                             var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Gaussian_Distortion_Corrected_Covariance) {
+        return "Gaussian_Distortion_Corrected_Covariance";
+    }
+};
 
 class Score_Mean : public var::Constant<Score_Mean, Matrix<double>> {
    public:
@@ -782,6 +854,36 @@ class Likelihood_Distortion_Induced_Bias : public var::Constant<Likelihood_Disto
     }
 };
 
+// Gaussian-Fisher-anchored twin of Likelihood_Distortion_Induced_Bias
+// (GDIB = G_b⁻¹ · score_mean): the leading-order bias in the Gaussian frame.
+// Serves both the recording-level GDIB and the per-sample GDIB_t (same tag at
+// two levels, mirroring Likelihood_Distortion_Induced_Bias).
+class Gaussian_Distortion_Induced_Bias
+    : public var::Constant<Gaussian_Distortion_Induced_Bias, parameter_vector_payload> {
+    using base_type = var::Constant<Gaussian_Distortion_Induced_Bias, parameter_vector_payload>;
+
+   public:
+    using base_type::base_type;
+    Gaussian_Distortion_Induced_Bias() = default;
+    Gaussian_Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const& params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+    Gaussian_Distortion_Induced_Bias(Matrix<double> value, var::Parameters_transformed const* params)
+        : base_type(parameter_vector_payload(std::move(value), params)) {}
+
+    friend std::string className(Gaussian_Distortion_Induced_Bias) {
+        return "Gaussian_Distortion_Induced_Bias";
+    }
+
+    Maybe_error<bool> is_good() const {
+        if (!std::isfinite(var::fullsum((*this)()))) {
+            std::stringstream ss;
+            ss << "Gaussian_Distortion_Induced_Bias not finite: " << (*this)();
+            return error_message(ss.str());
+        }
+        return true;
+    }
+};
+
 
 
 class Likelihood_Sample_Distortion
@@ -801,7 +903,32 @@ class Likelihood_Sample_Distortion
     friend std::string className(Likelihood_Sample_Distortion) {
         return "Likelihood_Sample_Distortion";
     }
-};  
+};
+
+// Gaussian-Fisher-anchored twin of Likelihood_Sample_Distortion
+// (G-SDM = inv(√G_b) · J_sample · inv(√G_b)). Like its F-twin it uses the
+// RECORDING-level G_b as a constant frame across samples t (no per-sample
+// Gaussian Fisher), so Σ_t G-SDM_t ≈ Likelihood_Gaussian_Information_Distortion
+// holds by linearity. Reconstitutes with the shared (frame-independent)
+// Likelihood_Correlation_Distortion.
+class Gaussian_Sample_Distortion
+    : public var::Constant<Gaussian_Sample_Distortion, parameter_spd_payload> {
+    using base_type = var::Constant<Gaussian_Sample_Distortion, parameter_spd_payload>;
+
+   public:
+    using base_type::base_type;
+    Gaussian_Sample_Distortion() = default;
+    Gaussian_Sample_Distortion(SymPosDefMatrix<double> value,
+                               var::Parameters_transformed const& params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+    Gaussian_Sample_Distortion(SymPosDefMatrix<double> value,
+                               var::Parameters_transformed const* params)
+        : base_type(parameter_spd_payload(std::move(value), params)) {}
+
+    friend std::string className(Gaussian_Sample_Distortion) {
+        return "Gaussian_Sample_Distortion";
+    }
+};
 
 class Likelihood_Correlation_Distortion
     : public var::Constant<Likelihood_Correlation_Distortion, parameter_spd_payload> {

@@ -117,6 +117,53 @@ auto calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl(
         dlikelihood_predictions, F_per_recording, n_boostrap_samples, probits, seed, max_lag);
 }
 
+// Gaussian-only overloads: same command names, one fewer argument (no
+// numerical_fisher_information). Registered as a second overload per name so a
+// config that omits the fim resolves here (DSL resolves overloads by arity).
+// They call the same cmd function with an EMPTY F vector, which computes only
+// the Gaussian-Fisher-anchored distortion family (the F-anchored family + GFD
+// drop out) and skips the expensive upstream numerical Fisher entirely. No
+// gaussian variant of the _paired command — pairing asserts equal vs1/vs2 sizes.
+auto calculate_likelihood_derivative_basic_diagnostics_gaussian_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_basic_diagnostics(
+        dlikelihood_predictions, {}, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_var_diagnostics_gaussian_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_var_diagnostics(
+        dlikelihood_predictions, {}, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_cov_diagnostics_gaussian_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_cov_diagnostics(
+        dlikelihood_predictions, {}, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_kernel_diagnostics_gaussian_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_kernel_diagnostics(
+        dlikelihood_predictions, {}, n_boostrap_samples, probits, seed, max_lag);
+}
+
+auto calculate_likelihood_derivative_series_kernel_full_diagnostics_gaussian_dsl(
+    const std::vector<dMacro_State_Ev_gradient_all>& dlikelihood_predictions,
+    std::size_t n_boostrap_samples, std::set<double> probits, std::size_t seed,
+    std::size_t max_lag) {
+    return cmd::calculate_Likelihood_derivative_series_kernel_full_diagnostics(
+        dlikelihood_predictions, {}, n_boostrap_samples, probits, seed, max_lag);
+}
+
 // Build a gauss_newton_options struct by value (mirrors build_likelihood_function).
 // Exposes the 7 tunable fields so a DSL script can configure the per-group MLE
 // inner loop without recompiling.
@@ -1426,6 +1473,49 @@ cm.push_function(
                                std::size_t, std::set<double>, std::size_t, std::size_t>(
             &calculate_likelihood_derivative_series_kernel_full_diagnostics_dsl,
             "dlikelihood_predictions", "numerical_fisher_information",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    // Gaussian-only overloads: same names, no numerical_fisher_information arg.
+    // The DSL resolves by arity, so a config that omits the fim lands here and
+    // gets only the Gaussian-Fisher-anchored distortion family.
+    cm.push_function(
+        "likelihood_derivative_basic_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_basic_diagnostics_gaussian_dsl,
+            "dlikelihood_predictions",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_var_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_var_diagnostics_gaussian_dsl,
+            "dlikelihood_predictions",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_cov_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_cov_diagnostics_gaussian_dsl,
+            "dlikelihood_predictions",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_kernel_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_kernel_diagnostics_gaussian_dsl,
+            "dlikelihood_predictions",
+            "n_boostrap_samples", "probits", "seed", "max_lag"));
+
+    cm.push_function(
+        "likelihood_derivative_series_kernel_full_diagnostics",
+        dsl::to_typed_function<const std::vector<dMacro_State_Ev_gradient_all>&,
+                               std::size_t, std::set<double>, std::size_t, std::size_t>(
+            &calculate_likelihood_derivative_series_kernel_full_diagnostics_gaussian_dsl,
+            "dlikelihood_predictions",
             "n_boostrap_samples", "probits", "seed", "max_lag"));
 
 

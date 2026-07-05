@@ -647,6 +647,16 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Log_Eigenvalue_Variance<Likelihood_Information_Distortion>>,
         Probit_statistics<Affine_Invariant_Distance<Likelihood_Information_Distortion>>,
         Probit_statistics<Symmetrized_KL_Distortion<Likelihood_Information_Distortion>>,
+        Probit_statistics<Likelihood_Gaussian_Information_Distortion>,
+        Probit_statistics<log_Det<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Eigenvalue_Spectrum<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Spectrum_Condition_Number<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Max_Eigenvalue<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Min_Eigenvalue<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Mean_Log_Eigenvalue<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Log_Eigenvalue_Variance<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Affine_Invariant_Distance<Likelihood_Gaussian_Information_Distortion>>,
+        Probit_statistics<Symmetrized_KL_Distortion<Likelihood_Gaussian_Information_Distortion>>,
         Probit_statistics<Likelihood_Gaussian_Fisher_Distortion>,
         Probit_statistics<log_Det<Likelihood_Gaussian_Fisher_Distortion>>,
         Probit_statistics<Eigenvalue_Spectrum<Likelihood_Gaussian_Fisher_Distortion>>,
@@ -660,6 +670,8 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Likelihood_Information_Distortion_Reconstituted>,
         Probit_statistics<Likelihood_Sample_Distortion>,
         Probit_statistics<log_Det<Likelihood_Sample_Distortion>>,
+        Probit_statistics<Gaussian_Sample_Distortion>,
+        Probit_statistics<log_Det<Gaussian_Sample_Distortion>>,
         Probit_statistics<Likelihood_Correlation_Distortion>,
         Probit_statistics<log_Det<Likelihood_Correlation_Distortion>>,
         Probit_statistics<Likelihood_Fisher_Covariance>,
@@ -670,6 +682,14 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Spectrum_Condition_Number<Likelihood_Fisher_Covariance>>,
         Probit_statistics<Null_Space_Projector<Likelihood_Fisher_Covariance>>,
         Probit_statistics<Worst_Subspace_Projector<Likelihood_Fisher_Covariance>>,
+        Probit_statistics<Gaussian_Fisher_Covariance>,
+        Probit_statistics<log_Det<Gaussian_Fisher_Covariance>>,
+        Probit_statistics<Correlation_Of<Gaussian_Fisher_Covariance>>,
+        Probit_statistics<Eigenvalue_Spectrum<Gaussian_Fisher_Covariance>>,
+        Probit_statistics<Effective_Rank<Gaussian_Fisher_Covariance>>,
+        Probit_statistics<Spectrum_Condition_Number<Gaussian_Fisher_Covariance>>,
+        Probit_statistics<Null_Space_Projector<Gaussian_Fisher_Covariance>>,
+        Probit_statistics<Worst_Subspace_Projector<Gaussian_Fisher_Covariance>>,
         Probit_statistics<Likelihood_Distortion_Corrected_Covariance>,
         Probit_statistics<log_Det<Likelihood_Distortion_Corrected_Covariance>>,
         Probit_statistics<Correlation_Of<Likelihood_Distortion_Corrected_Covariance>>,
@@ -678,14 +698,26 @@ using Analisis_derivative_diagnostic_base = var::Vector_Space
         Probit_statistics<Spectrum_Condition_Number<Likelihood_Distortion_Corrected_Covariance>>,
         Probit_statistics<Null_Space_Projector<Likelihood_Distortion_Corrected_Covariance>>,
         Probit_statistics<Worst_Subspace_Projector<Likelihood_Distortion_Corrected_Covariance>>,
-        Probit_statistics<Likelihood_Distortion_Induced_Bias>>;
+        Probit_statistics<Gaussian_Distortion_Corrected_Covariance>,
+        Probit_statistics<log_Det<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Correlation_Of<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Eigenvalue_Spectrum<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Effective_Rank<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Spectrum_Condition_Number<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Null_Space_Projector<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Worst_Subspace_Projector<Gaussian_Distortion_Corrected_Covariance>>,
+        Probit_statistics<Likelihood_Distortion_Induced_Bias>,
+        Probit_statistics<Gaussian_Distortion_Induced_Bias>>;
 
-// Per-sample derived diagnostics: Likelihood_Sample_Distortion and
-// Likelihood_Distortion_Induced_Bias evaluated at each sample. Included by presets that
+// Per-sample derived diagnostics: F- and G-anchored Sample_Distortion and
+// Distortion_Induced_Bias evaluated at each sample. Included by presets that
 // ask for trace-local detail (series_var, series_cov, series_kernel_full).
+// Field order MUST match build_per_sample_derived's derived_vs in
+// src/core/likelihood.cpp.
 using Per_sample_derived_diagnostics =
     Probit_statistics<macrodr::Evolution_of<var::Vector_Space<
-        Likelihood_Sample_Distortion, Likelihood_Distortion_Induced_Bias>>>;
+        Likelihood_Sample_Distortion, Likelihood_Distortion_Induced_Bias,
+        Gaussian_Sample_Distortion, Gaussian_Distortion_Induced_Bias>>>;
 
 // Preset 1: basic — one integral correlation lag per headline observable.
 // Used for lattice-scale runs; keeps output at megabyte scale.
