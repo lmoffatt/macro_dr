@@ -234,6 +234,18 @@ auto calc_empirical_distortion_dsl(
         cloud, fim_sim, fim_bar, dlik_bar, n_bootstrap, seed, probit_cis, 1e-10, 0.0);
 }
 
+// Gaussian-Fisher-anchored capstone (mle_G variant): no numerical Fisher; the
+// anchor + Optimum numerator are the Gaussian Fisher built from dlik_bar/dlik_sim.
+auto calc_empirical_distortion_gaussian_dsl(
+    const cmd::MLE_Group_Cloud<dMacro_State_Hessian_minimal_param>& cloud,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_sim,
+    const std::vector<dMacro_State_Ev_gradient_all>& dlik_bar,
+    std::size_t n_bootstrap, std::size_t seed, std::set<double> probit_cis)
+    -> Maybe_error<cmd::Empirical_Distortion_Gaussian_Bootstrap> {
+    return cmd::calc_empirical_distortion_gaussian<dMacro_State_Hessian_minimal_param>(
+        cloud, dlik_sim, dlik_bar, n_bootstrap, seed, probit_cis, 1e-10, 0.0);
+}
+
 }
 
 inline macrodr::dsl::Compiler<macrodr::dsl::Lexer> make_simulations_compiler() {
@@ -1332,6 +1344,35 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                                       const var::Indexed<cmd::Empirical_Distortion_Bootstrap>&,
                                       std::string>(
             &macrodr::cmd::write_csv<cmd::Empirical_Distortion_Bootstrap>, "analysis", "path"));
+
+    // Gaussian-Fisher-anchored capstone (mle_G): no numerical Fisher inputs — the
+    // anchor + Optimum numerator come from dlik_bar / dlik_sim (Gaussian Fisher).
+    cm.push_function(
+        "calc_empirical_distortion_gaussian",
+        dsl::to_typed_return_function<Maybe_error<cmd::Empirical_Distortion_Gaussian_Bootstrap>,
+                                      const MLEGroupCloudMinimal&,
+                                      const std::vector<dMacro_State_Ev_gradient_all>&,
+                                      const std::vector<dMacro_State_Ev_gradient_all>&,
+                                      std::size_t, std::size_t, std::set<double>>(
+            &calc_empirical_distortion_gaussian_dsl, "cloud", "dlik_sim", "dlik_bar",
+            "n_bootstrap", "seed", "probit_cis"));
+
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<Maybe_error<std::string>,
+                                      const cmd::Empirical_Distortion_Gaussian_Bootstrap&,
+                                      std::string>(
+            static_cast<Maybe_error<std::string> (*)(
+                cmd::Empirical_Distortion_Gaussian_Bootstrap const&, std::string)>(
+                &macrodr::cmd::write_csv),
+            "analysis", "path"));
+    cm.push_function(
+        "write_csv",
+        dsl::to_typed_return_function<
+            Maybe_error<std::string>,
+            const var::Indexed<cmd::Empirical_Distortion_Gaussian_Bootstrap>&, std::string>(
+            &macrodr::cmd::write_csv<cmd::Empirical_Distortion_Gaussian_Bootstrap>, "analysis",
+            "path"));
 
     // Raw-model variants (matches calc_likelihood / calc_dlikelihood pattern):
     // takes ModelPtr and individual approximation flags rather than the
