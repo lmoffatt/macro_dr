@@ -140,12 +140,16 @@ for i in "${!NCHS[@]}"; do
         *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR,IRT})" >&2; exit 1 ;;
     esac
 
-    case "$nnoise" in
+    case "$nnoise" in                    # label -> current_noise (vnoise = label / 1000)
+        0.05) vnoise=0.00005;;
         0.1)  vnoise=0.0001;;
+        0.2)  vnoise=0.0002;;
+        0.3)  vnoise=0.0003;;
+        0.5)  vnoise=0.0005;;
         1)    vnoise=0.001;;
         10)   vnoise=0.01;;
         100)  vnoise=0.1;;
-        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.1, 1, 10, 100)" >&2; exit 1 ;;
+        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.05, 0.1, 0.2, 0.3, 0.5, 1, 10, 100; vnoise = label/1000)" >&2; exit 1 ;;
     esac
 
     # printf builds the injections so the DSL double-quotes need no shell escaping.
