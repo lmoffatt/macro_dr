@@ -1,0 +1,89 @@
+---
+title: "Figure 5 (macro_IR) — migration of the sample-distortion peak with instrument noise, at 10 and 20 channels"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Densified noise axis at low channel number (new runs: noise 0.05/0.2/0.5 added to 0.1/1/10). At few channels
+the gating emission is most non-Gaussian, so the per-sample distortion (Jensen gap between J and F) peaks at an
+intermediate interval where the Poissonian gating noise and the Gaussian instrument noise are balanced. As the
+instrument noise grows, the balance point moves to longer intervals: the peak Delta* should migrate to the
+right. This figure shows the sample distortion vs interval at N_ch = 10 and 20 for every available noise, with
+the per-curve maximum marked, to read off the migration. macro_IR, 1c2ae6f, Gaussian_Sample_Distortion diagonal.
+Noise coverage differs by N_ch (10: 0.1-10 ; 20: 0.05-0.5).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+SAMP     <- "Probit_statistics_Gaussian_Sample_Distortion"
+NOISES   <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+NCH      <- c(10, 20)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+
+read_noise <- function(z) {
+  fs <- Sys.glob(sprintf("../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z))
+  if (!length(fs)) return(NULL)
+  map_dfr(fs, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+}
+d <- map_dfr(NOISES, read_noise) %>%
+  filter(component_path == SAMP, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX, Num_ch %in% NCH) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)], nz = as.numeric(noise)) %>%
+  group_by(param_name, noise, nz, Num_ch, interval_in_tau) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  mutate(noisef = factor(noise, levels = NOISES),
+         nch_lab = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCH)),
+         param   = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+
+# refined interior peak Delta* (vertex of a log-log parabola through the 3 points around the argmax);
+# peaks pinned at the interval-grid edge are left unmarked (censored, not resolved).
+peak_iv <- function(df) {
+  df <- df %>% arrange(interval_in_tau); i <- which.max(df$D)
+  edge <- (i == 1) || (i == nrow(df)); Dstar <- NA_real_; Dpk <- df$D[i]
+  if (!edge) {
+    s <- df[(i - 1):(i + 1), ]; x <- log10(s$interval_in_tau); y <- log10(pmax(s$D, 1e-6))
+    m <- lm(y ~ poly(x, 2, raw = TRUE)); a <- coef(m)[3]
+    if (is.finite(a) && a < 0) {
+      xv <- -coef(m)[2] / (2 * a)
+      if (xv >= min(x) && xv <= max(x)) Dstar <- 10^xv else edge <- TRUE
+    } else edge <- TRUE
+  }
+  tibble(interval_in_tau = if (is.na(Dstar)) df$interval_in_tau[i] else Dstar, D = Dpk, edge = edge)
+}
+pk <- d %>% group_by(param, param_name, nch_lab, Num_ch, noise, noisef, nz) %>%
+  group_modify(~ peak_iv(.x)) %>% ungroup()
+```
+
+```{r migration-table}
+cat("=== peak interval Delta* of the sample distortion, per (param, Nch, noise) ===\n")
+pk %>% transmute(param_name, Num_ch, noise = nz, Dstar = interval_in_tau, Dmax = round(D, 3)) %>%
+  arrange(param_name, Num_ch, noise) %>%
+  filter(param_name %in% c("off", "on")) %>% as.data.frame() %>% print()
+```
+
+```{r plot, fig.width = 8.0, fig.height = 8.5}
+g <- ggplot(d, aes(interval_in_tau, D, colour = noisef, group = noisef)) +
+  geom_hline(yintercept = 1, colour = "grey55", linewidth = .3, linetype = "dashed") +
+  geom_line(linewidth = .5) + geom_point(size = 1) +
+  geom_point(data = filter(pk, !edge), size = 2.6, shape = 21, stroke = .7, fill = "white") +
+  facet_grid(param ~ nch_lab, scales = "free_y",
+             labeller = labeller(param = label_parsed, nch_lab = label_parsed)) +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_colour_viridis_d(name = "instrument\nnoise", end = .92, option = "C") +
+  labs(x = expression(Delta / tau[min]~"  (sampling interval in relaxation times)"),
+       y = "sample distortion (diagonal)  —  open circle marks the peak") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8.5))
+g
+ggsave("Figure_5_IR_sample_peak_migration.pdf", g, width = 8.0, height = 8.5)
+```

@@ -1,0 +1,73 @@
+---
+title: "Figure 5 (macro_IR) — incremental covariance loss per interval step, normalised by the increment"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Discrete derivative of the per-recording parameter variance with respect to the measurement interval:
+for each consecutive pair (Delta -> Delta_next, increment = Delta_next/Delta = 2 or 2.5),
+    y = [ var(Delta_next) / var(Delta) ] / (Delta_next / Delta)
+i.e. the variance-loss factor per unit interval increment. Reference y = 1: variance grows in proportion
+to the interval. y > 1: you lose MORE than proportional -> refining the interval here pays. y < 1: less
+than proportional -> near saturation / oversampling. macro_IR, noise 0.1, 433ed13,
+Likelihood_Fisher_Covariance diagonal, all params, all N_ch. Plotted at the geometric midpoint of each pair.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+COV      <- "Probit_statistics_Gaussian_Distortion_Corrected_Covariance"   # gaussian run (1c2ae6f); Likelihood_ is empty there
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+
+d <- map_dfr(Sys.glob("../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_0.1_battery_pool_G.csv"),
+             ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE))
+
+v <- d %>%
+  filter(component_path == COV, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)]) %>%
+  group_by(Num_ch, interval_in_tau, param_name) %>%
+  summarise(var = mean(value), .groups = "drop")
+
+dd <- v %>% group_by(Num_ch, param_name) %>% arrange(interval_in_tau) %>%
+  mutate(iv_next = lead(interval_in_tau), var_next = lead(var),
+         increment = iv_next / interval_in_tau,
+         loss = var_next / var,
+         y = log(loss) / log(increment),     # elasticity: d log(var)/d log(interval) = local exponent
+         iv_mid = sqrt(interval_in_tau * iv_next)) %>%
+  filter(!is.na(y)) %>% ungroup() %>%
+  mutate(nch_f = factor(Num_ch),
+         param = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+```
+
+```{r plot, fig.width = 7.5, fig.height = 5.6}
+g <- ggplot(dd, aes(iv_mid, y, colour = nch_f, group = nch_f)) +
+  geom_hline(yintercept = 0, colour = "grey55", linewidth = .3) +
+  geom_hline(yintercept = 1, colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_line(linewidth = .5) + geom_point(size = 1) +
+  facet_wrap(~ param, nrow = 2, labeller = label_parsed) +
+  scale_x_log10(breaks = c(.02, .1, .5)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  labs(x = expression(Delta / tau[min]~"(geometric midpoint of the step)"),
+       y = "loss elasticity   d log(variance) / d log(interval)") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8.5))
+g
+ggsave("Figure_5_IR_interval_loss.pdf", g, width = 7.5, height = 5.6)
+```
+
+```{r table}
+# where does refining pay (y>1) vs not, median over N_ch, per param and step
+dd %>% group_by(param_name, iv_mid = round(iv_mid, 3)) %>%
+  summarise(y = round(median(y), 2), .groups = "drop") %>%
+  pivot_wider(names_from = param_name, values_from = y) %>% as.data.frame()
+```

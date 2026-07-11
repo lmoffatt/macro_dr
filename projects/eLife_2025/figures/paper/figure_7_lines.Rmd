@@ -1,0 +1,75 @@
+---
+title: "Figure 7 (macro_IR residual distortion, line view) — sample & correlation vs interval, by N_ch and noise, with bootstrap CI"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+macro_IR-only detail (1c2ae6f gaussian run): the two components of the residual information distortion,
+  sample distortion      = Gaussian_Sample_Distortion       (per-sample non-Gaussianity of the emission)
+  correlation distortion = Likelihood_Correlation_Distortion (temporal over-counting between samples)
+as LINES vs the measurement interval (Δ·k_off), one colour per N_ch, faceted parameter × noise, with the 95%
+bootstrap CI as a ribbon. Line view (not contour) because IR's distortion is ~1 (near the bootstrap floor), so
+showing the CI against the self-consistency line (1) is what tells whether the structure is real. Two blocks:
+A = sample distortion, B = correlation distortion. Noises 0.1/1/10 (the ones with the full N_ch range).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse); library(patchwork)
+```
+
+```{r data}
+NOISES   <- c("0.05", "0.1", "0.2", "0.5", "1", "10")   # 0.05/0.2/0.5 only reach N_ch 100 (truncated cols)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+COMPS    <- c(sample = "Probit_statistics_Gaussian_Sample_Distortion",
+              corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+COMP_LAB <- c(sample = "sample distortion", corr = "correlation distortion")
+
+read_noise <- function(z) map_dfr(Sys.glob(sprintf(
+  "../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z)),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+raw <- map_dfr(NOISES, read_noise) %>%
+  filter(component_path %in% COMPS, param_index == param_col, param_index %in% PIDX,
+         statistic == "value", probit %in% c("mean", "quantile"))
+
+stat <- raw %>%
+  mutate(comp = names(COMPS)[match(component_path, COMPS)],
+         key = case_when(probit == "mean" ~ "m",
+                         quantile_level == 0.025 ~ "lo",
+                         quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(comp, noise, Num_ch, interval_in_tau, param_index, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  mutate(lm = log10(m), llo = log10(lo), lhi = log10(hi),   # plot in log10 so space="free_y" is log-proportional
+         param  = factor(names(PIDX)[match(param_index, PIDX)], levels = names(PIDX), labels = unname(PARAM_LAB)),
+         nch_f  = factor(Num_ch),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         comp_f = factor(comp, levels = names(COMP_LAB), labels = unname(COMP_LAB)))
+```
+
+```{r plot, fig.width = 13, fig.height = 13}
+# space="free_y" => each row's HEIGHT is proportional to its (log10) distortion range, so distortion-per-cm is
+# CONSTANT across all panels (wide-range rows are taller). y in log10. Rows = component × parameter.
+g <- ggplot(stat, aes(interval_in_tau, lm, colour = nch_f, fill = nch_f, group = nch_f)) +
+  geom_hline(yintercept = 0, colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_ribbon(aes(ymin = llo, ymax = lhi), alpha = .12, colour = NA) +
+  geom_line(linewidth = .4) + geom_point(size = .6) +
+  facet_grid(comp_f + param ~ noisef, labeller = labeller(param = label_parsed),
+             scales = "free_y", space = "free_y") +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_y_continuous(labels = function(v) formatC(10^v, format = "g", digits = 2)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  scale_fill_viridis_d(guide = "none", end = .92, direction = -1) +
+  labs(x = expression(Delta %.% k[off]), y = "distortion  (log scale, constant distortion/cm)") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 6.5), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 7.3))
+g
+ggsave("Figure_7_lines.pdf", g, width = 13, height = 13)
+```

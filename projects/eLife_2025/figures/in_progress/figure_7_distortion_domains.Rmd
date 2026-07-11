@@ -1,0 +1,72 @@
+---
+title: "Figure 7 — total information distortion with physical regime boundaries (macro_IR)"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+The TOTAL information distortion (GIDM = G_b^{-1/2} J G_b^{-1/2}, the composition of sample x correlation),
+for k_off, macro_IR, noise 0.1, over the design plane (Delta/tau x N_ch), with the two idealized physical
+regime boundaries drawn ON the data so their (mis)match is visible:
+  - N_ch * (Delta/tau) = 1   : one aggregate transition per interval  (below-left: frozen/multinomial count)
+  - Delta/tau = 1            : single-channel decorrelation (right edge: samples independent)
+This is meant to test whether the "multinomial" and "Poisson/telegraph" domain labels survive the data.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+NCHS <- c(10,20,50,100,200,500,1000,2000,5000,10000); NS <- "0.1"
+comp <- "Probit_statistics_Likelihood_Gaussian_Information_Distortion"
+d <- map_dfr(NCHS, function(nc){
+  f <- sprintf("../data/1c2ae6f/figure_3_G_nch_%d_nsim_10000_macro_IR_noise_%s_battery_sim_G.csv", nc, NS)
+  if (!file.exists(f)) return(NULL)
+  read.csv(f, skip = 1, stringsAsFactors = FALSE) %>%
+    filter(component_path == comp, probit == "mean", statistic == "value",
+           param_index == param_col, param_index == 1) %>%
+    transmute(N = nc, interval = interval_in_tau, gidm = value)
+}) %>%
+  mutate(lx = log10(interval), ly = log10(N),
+         z = pmin(pmax(log10(gidm), log10(0.97)), log10(1.5)))     # clamp to the shown band
+```
+
+```{r palette}
+RAMP <- c("#F7F7F7","#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F","#3d0011")
+BR   <- log10(c(0.97, 1.01, 1.03, 1.06, 1.1, 1.15, 1.25, 1.5))     # white below 1.01, reds above
+PAL  <- c("#F7F7F7", colorRampPalette(RAMP[2:7], space = "Lab")(length(BR)-2))
+LAB  <- c("1","1.01","1.03","1.06","1.1","1.15","1.25","1.5")
+```
+
+```{r plot, fig.width = 6.4, fig.height = 5}
+XB <- log10(c(.01,.1,1)); YB <- log10(c(10,100,1000,10000))
+g <- ggplot(d, aes(lx, ly, z = z)) +
+  geom_contour_filled(breaks = BR) +
+  scale_fill_manual(values = PAL, drop = FALSE, name = "info\ndistortion",
+                    labels = LAB[-1]) +
+  geom_point(size = .5, colour = "grey40", alpha = .5) +
+  # idealized physical boundaries:
+  geom_abline(slope = -1, intercept = 0, colour = "#21618c", linewidth = .6, linetype = "dashed") +   # N·Δ = 1
+  annotate("segment", x = log10(0.2), xend = log10(0.2), y = log10(10), yend = log10(10000),
+           colour = "grey30", linewidth = .5, linetype = "dotted") +                                  # Δ/τ ≈ 0.2 (decorr onset)
+  # region labels
+  annotate("text", x = log10(0.45), y = log10(6000), label = "Gaussian (CLT)\ndistortion %->% 1",
+           parse = TRUE, size = 3.2, colour = "#7b1a1a", fontface = "bold", lineheight = .9) +
+  annotate("text", x = log10(0.02), y = log10(14), label = "few channels\n+ few transitions",
+           size = 2.9, colour = "#5a1010", lineheight = .9) +
+  annotate("text", x = log10(0.045), y = log10(2000), label = "N[ch]%.%Delta == 1",
+           parse = TRUE, size = 2.7, colour = "#21618c", angle = -34) +
+  scale_x_continuous(breaks = XB, labels = c(".01",".1","1"), expand = c(0,0)) +
+  scale_y_continuous(breaks = YB, labels = c("10","100","1000","10000"), expand = c(0,0)) +
+  coord_cartesian(xlim = c(log10(.01), 0), ylim = c(1, 4)) +
+  labs(x = expression(Delta / tau[min]), y = expression(N[ch]),
+       title = "Total information distortion (macro_IR, k_off, noise 0.1)") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid = element_blank(), axis.text = element_text(size = 8),
+        legend.key.size = unit(.35,"cm"), plot.title = element_text(size = 9))
+g
+ggsave("Figure_7_distortion_domains.pdf", g, width = 6.4, height = 5)
+```

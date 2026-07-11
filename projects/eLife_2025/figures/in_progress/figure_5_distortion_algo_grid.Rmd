@@ -1,0 +1,143 @@
+---
+title: "Figure 5 (method comparison) — information-distortion grid: 5 algorithms x (2 params x 3 noises)"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Main method-comparison figure. ONE grid:
+  columns = the 5 algorithms  NR, MNR, R, MR, IR  (left = naive, right = recursive IR)
+  rows    = 2 parameters x 3 noises, PARAM-MAJOR:  k_on {0.1,1,10} then N_ch {0.1,1,10}
+Each panel = filled contour of log10(information distortion) over the design plane (x = interval, y = N_ch),
+on the SHARED 23-band symmetric-log scale (white = distortion 1 = self-consistent), so all 30 panels are
+directly comparable. Source = battery_pool (distortion evaluated at the pooled fit theta_pool).
+
+Validity threshold lines overlaid (one-sided, overconfidence direction):
+  solid black : distortion = 1.4   (SE off ~18%, coverage of a nominal 95% CI ~90%)
+  dashed grey : distortion = 2     (SE off ~41%, coverage ~83%)
+Where a panel has NO line it is entirely on one side; the FILL colour says which (white = all valid,
+dark red = all invalid). The line marks the validity FRONTIER when it falls inside the panel.
+
+Reads (verified in-data, POOL, N_ch >= 10): validity is a SYMMETRIC +/-15% self-consistency band
+(1/1.15 < distortion < 1.15, coverage ~93%). IR is nearly exact: self-consistent in 0.88 -> 0.99 -> 1.00
+of the plane as noise grows; its departures at low noise are UNDERconfident (distortion down to ~0.5 at
+the low-N_ch corner, the SAFE direction) and noise fixes them -- IR's own self-correction, finally visible
+at this resolution. R is SYSTEMATICALLY OVERconfident (0.27 -> 0.50 -> 0.75); MR worse (0.05 -> 0.34);
+NR/MNR ~0. The symmetric lines separate the two failure directions: IR pokes out the BOTTOM (underconfident,
+safe), R and MR out the TOP (overconfident, dangerous).
+Second output: quantitative summary = fraction self-consistent (1/VALID < distortion < VALID) vs noise.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+NSIM      <- 10000
+NOISES    <- c("0.1", "1", "10")
+ALGOS     <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")
+ALGO_LAB  <- c(macro_NR = "NR", macro_NMR = "MNR", macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+PARAMS    <- c(on = 0, Num_ch_mean = 5)                       # k_on (a rate) and N_ch (a count)
+PARAM_LAB <- c(on = "log[10]~k[on]", Num_ch_mean = "log[10]~N[ch]")
+
+# shared symmetric-log distortion scale (23 bands, white = log10 distortion 0 = distortion 1)
+POS         <- c(0.03, 0.06, 0.1, 0.16, 0.25, 0.4, 0.65, 1.0, 1.6, 2.5, 4.0)
+FILL_BREAKS <- c(-Inf, -rev(POS), POS, Inf)
+PAL <- colorRampPalette(c("#021024", "#053061", "#2166AC", "#4393C3", "#92C5DE", "#D1E5F0",
+                          "#F7F7F7",
+                          "#FDDBC7", "#F4A582", "#D6604D", "#B2182B", "#67001F", "#3d0011")
+                        )(length(FILL_BREAKS) - 1)
+# legend: label the (log-spaced) band boundaries as DISTORTION (linear), not log10(distortion)
+d_edge   <- 10^FILL_BREAKS
+fmt_d    <- function(x) ifelse(is.infinite(x) & x > 0, "Inf",
+                        ifelse(x == 0, "0", formatC(x, format = "g", digits = 3)))
+BAND_LAB <- paste0("(", fmt_d(head(d_edge, -1)), ", ", fmt_d(tail(d_edge, -1)), "]")
+# compact horizontal colourbar: label ~8 band boundaries (incl. the 0.871 / 1.15 valid-band edges), blank rest
+up_edge      <- tail(d_edge, -1)
+LAB_KEEP     <- c(1, 4, 7, 10, 13, 16, 19, 22)
+BAND_LAB_BAR <- ifelse(seq_along(up_edge) %in% LAB_KEEP, fmt_d(up_edge), "")
+FLOOR <- 1e-5
+
+VALID  <- 1.15  # primary self-consistency band edge, SYMMETRIC: 1/1.15 .. 1.15 = within +/-15% of exact
+                # (coverage ~93%). Tight enough that IR's own mild departures show; 1.2/1.4 let R pass.
+VALID2 <- 1.5   # secondary band edge (symmetric 1/1.5 .. 1.5, coverage ~89%): R stays below it, MR
+                # crosses it, so the dashed line is the R/MR frontier (more informative than 2, which
+                # only re-states the recursive/non-recursive split the colour already shows)
+```
+
+```{r read}
+read_one <- function(algo, z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_pool.csv", NSIM, algo, z)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(algo = algo, noise = z)
+}
+raw <- map_dfr(ALGOS, function(a) map_dfr(NOISES, function(z) read_one(a, z)))
+
+dd <- raw %>%
+  filter(component_path == "Probit_statistics_Likelihood_Information_Distortion",
+         statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PARAMS, Num_ch >= 10) %>%
+  mutate(param_name = names(PARAMS)[match(param_index, PARAMS)]) %>%
+  group_by(algo, noise, Num_ch, interval_in_tau, param_name) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  mutate(logD   = log10(pmax(D, FLOOR)),
+         lx     = log10(interval_in_tau), ly = log10(Num_ch),
+         algo_f = factor(ALGO_LAB[algo], levels = unname(ALGO_LAB[ALGOS])),
+         param  = factor(param_name, levels = names(PARAMS), labels = unname(PARAM_LAB[names(PARAMS)])),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+```
+
+```{r grid, fig.width = 7.0, fig.height = 9.0}
+X_BRK <- log10(c(.01, .1, 1));           X_LAB <- c(".01", ".1", "1")
+Y_BRK <- log10(c(10, 100, 1000, 10000)); Y_LAB <- c("10", "100", "1e3", "1e4")
+
+g <- ggplot(dd, aes(lx, ly, z = logD)) +
+  geom_contour_filled(breaks = FILL_BREAKS) +
+  scale_fill_manual(values = PAL, drop = FALSE, labels = BAND_LAB_BAR, name = "distortion",
+                    guide = guide_legend(nrow = 1, byrow = TRUE, label.position = "bottom",
+                                         title.position = "left", title.vjust = 0.9,
+                                         keywidth = unit(0.34, "cm"), keyheight = unit(0.30, "cm"))) +
+  geom_contour(breaks = c(log10(1 / VALID2), log10(VALID2)), colour = "grey20", linewidth = .25, linetype = "dashed") +
+  geom_contour(breaks = c(log10(1 / VALID),  log10(VALID)),  colour = "black",  linewidth = .4) +
+  geom_point(size = .15, colour = "grey35", alpha = .4) +
+  facet_grid(param + noisef ~ algo_f, labeller = labeller(param = label_parsed)) +
+  scale_x_continuous(breaks = X_BRK, labels = X_LAB) +
+  scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+  labs(x = expression(Delta / tau[min]), y = expression(N[ch])) +   # title/legend go in the manuscript text (eLife)
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.title = element_text(size = 8), legend.text = element_text(size = 7),
+        legend.key.spacing.x = unit(0, "pt"),
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+        strip.text = element_text(size = 7.5))
+g
+ggsave("Figure_5_distortion_algo_grid.pdf", g, width = 7.0, height = 9.0)
+```
+
+```{r summary, fig.width = 6.0, fig.height = 3.4}
+# quantitative noise trend: fraction of the plane SELF-CONSISTENT (1/VALID < distortion < VALID), per algo.
+# Two-sided +/-15% band: IR now shows its OWN noise self-correction (0.88 -> 1.00, its underconfident
+# low-N_ch corner shrinks with noise); R starts far below (0.27), MR lower, NR/MNR ~0.
+ALGO_COL <- c(NR = "#000000", MNR = "#E69F00", R = "#009E73", MR = "#CC79A7", IR = "#0072B2")
+sm <- dd %>% group_by(algo_f, param, noise) %>%
+  summarise(fvalid = mean(D > 1 / VALID & D < VALID), .groups = "drop") %>%
+  mutate(noise_n = as.numeric(noise))
+
+gs <- ggplot(sm, aes(noise_n, fvalid, colour = algo_f, group = algo_f)) +
+  geom_line(linewidth = .5) + geom_point(size = 1.2) +
+  facet_wrap(~ param, labeller = label_parsed) +
+  scale_x_log10(breaks = c(.1, 1, 10)) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(0, .25, .5, .75, 1)) +
+  scale_colour_manual(values = ALGO_COL, name = NULL) +
+  labs(x = "instrument noise",
+       y = paste0("fraction self-consistent (", round(1 / VALID, 2), " < distortion < ", VALID, ")")) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "top",
+        legend.text = element_text(size = 7), axis.text = element_text(size = 7),
+        axis.title = element_text(size = 8), strip.text = element_text(size = 8))
+gs
+ggsave("Figure_5_distortion_vs_noise_summary.pdf", gs, width = 6.0, height = 3.4)
+```

@@ -1,0 +1,110 @@
+---
+title: "Figure 7 — macro_IR residual distortion by parameter: sample vs correlation"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Per-PARAMETER residual distortion of macro_IR (battery_sim_G, bootstrap over 10000 simulations). Two blocks:
+A = Gaussian sample distortion (per-sample non-Gaussianity, G_b vs J_sample),
+B = likelihood correlation distortion (temporal, J_sample vs J).
+Rows = parameters (k_on, k_off, i, sigma_noise, N_ch), columns = noise, plane = (Delta*k_off x N_ch).
+The message is per-parameter: parameters separate by component — the current amplitude (i) is SAMPLE-dominated
+(marginal non-Gaussianity), while N_ch and the kinetics are CORRELATION-dominated (temporal), k_off mixed.
+CI-aware fill: a cell collapses to 1 (white) when the 95% bootstrap CI brackets 1, so colour == significant.
+(The cross-ALGORITHM comparison — R/MR fail more in correlation — lives in figure_5_master, not here.)
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse); library(patchwork)
+```
+
+```{r params}
+NOISES   <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Current_Noise = 3, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]", unitary_current = "log[10]~i",
+              Current_Noise = "log[10]~sigma[noise]", Num_ch_mean = "log[10]~N[ch]")
+COMPS    <- c(sample = "Probit_statistics_Gaussian_Sample_Distortion",
+              corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+
+RAMP <- c("#021024","#053061","#2166AC","#4393C3","#92C5DE","#D1E5F0","#F7F7F7",
+          "#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F","#3d0011")
+bandcols <- function(breaks) {
+  n <- length(breaks) - 1; ctr <- findInterval(0, breaks); nb <- ctr - 1; nr <- n - ctr; K <- max(nb, nr, 1)
+  blue <- colorRampPalette(rev(RAMP[1:7]), space = "Lab")(K + 1)
+  red  <- colorRampPalette(RAMP[7:13],     space = "Lab")(K + 1)
+  cols <- rep(RAMP[7], n)
+  if (nb > 0) cols[seq(ctr - 1, 1)] <- blue[2:(nb + 1)]
+  if (nr > 0) cols[seq(ctr + 1, n)] <- red[2:(nr + 1)]
+  cols
+}
+fmt_big <- function(x) ifelse(x >= 1000, paste0("10^", round(log10(x))), formatC(x, format = "g", digits = 3))
+DIST_LIN    <- c(0.5, 0.67, 0.8, 0.87, 0.91, 0.94, 0.97, 0.99, 1.01, 1.03, 1.06, 1.1, 1.15, 1.25, 1.5, 1.7, 2.5)
+DIST_BREAKS <- log10(DIST_LIN)
+DIST_PAL    <- bandcols(DIST_BREAKS)
+DIST_LAB    <- fmt_big(DIST_LIN)
+```
+
+```{r data}
+read_noise <- function(z) map_dfr(Sys.glob(sprintf(
+  "../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_sim_G.csv", z)),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+stat <- map_dfr(NOISES, read_noise) %>%
+  filter(component_path %in% COMPS, param_index == param_col, param_index %in% PIDX,
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  mutate(comp = names(COMPS)[match(component_path, COMPS)],
+         key = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                         quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(comp, noise, Num_ch, interval_in_tau, param_index, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  mutate(Dconf = ifelse(m > 1, pmax(1, lo), pmin(1, hi)),                       # CI bound nearest 1; else white
+         lx = log10(interval_in_tau), ly = log10(Num_ch),
+         z = pmin(pmax(log10(Dconf), min(DIST_BREAKS)), max(DIST_BREAKS)),
+         param  = factor(names(PIDX)[match(param_index, PIDX)], levels = names(PIDX), labels = unname(PARAM_LAB)),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+```
+
+```{r plot, fig.width = 13, fig.height = 13}
+X_BRK <- log10(c(.01,.1,1)); Y_BRK <- log10(c(10, 100, 1000, 10000))
+block <- function(which_comp, tag) {
+  ggplot(filter(stat, comp == which_comp), aes(lx, ly, z = z)) +
+    geom_contour_filled(breaks = DIST_BREAKS) +
+    scale_fill_manual(values = DIST_PAL, drop = FALSE, guide = "none") +
+    geom_contour(breaks = c(log10(1/1.5),  log10(1.5)),  colour = "grey30", linewidth = .25, linetype = "dashed") +
+    geom_contour(breaks = c(log10(1/1.15), log10(1.15)), colour = "black",  linewidth = .3) +
+    geom_point(size = .1, colour = "grey35", alpha = .4) +
+    facet_grid(param ~ noisef, labeller = labeller(param = label_parsed)) +
+    scale_x_continuous(breaks = X_BRK, labels = c(".01",".1","1")) +
+    scale_y_continuous(breaks = Y_BRK, labels = c("10","100","1000","10000")) +
+    labs(x = expression(Delta %.% k[off]), y = expression(N[ch]), tag = tag) +
+    theme_bw(base_size = 9, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.15, "cm"), legend.position = "none",
+          axis.text = element_text(size = 6.5), axis.title = element_text(size = 8.5),
+          strip.text = element_text(size = 8), plot.tag = element_text(size = 12, face = "bold"))
+}
+colorbar <- function(pal, edge_lab, title, lin, sol = numeric(0), dsh = numeric(0)) {
+  n <- length(pal); pos <- function(v) match(v, lin) - 0.5
+  marks <- c(
+    if (length(dsh)) list(annotate("segment", x = pos(dsh), xend = pos(dsh), y = 0.5, yend = 2.0,
+                                   colour = "grey25", linewidth = .35, linetype = "dashed")),
+    if (length(sol)) list(annotate("segment", x = pos(sol), xend = pos(sol), y = 0.5, yend = 2.0,
+                                   colour = "black", linewidth = .5)))
+  ggplot(data.frame(x = seq_len(n)), aes(x, 1, fill = factor(x))) +
+    geom_tile(colour = "grey92", linewidth = .15) + marks +
+    scale_fill_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = seq(0.5, n + 0.5, 1), labels = parse(text = edge_lab), expand = c(0, 0)) +
+    coord_cartesian(ylim = c(0.5, 2.0), clip = "off") +
+    labs(y = title) + theme_void(base_family = "Helvetica") +
+    theme(axis.title.y = element_text(angle = 0, size = 7.5, hjust = 1, vjust = .5, margin = margin(r = 4)),
+          axis.text.x = element_text(size = 6), axis.ticks.x = element_line(colour = "grey55", linewidth = .3),
+          axis.ticks.length.x = unit(2, "pt"), plot.margin = margin(5, 120, 3, 60))
+}
+cb <- colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5))
+g <- block("sample", "A") / block("corr", "B") / cb + plot_layout(heights = c(5, 5, 0.5))
+g
+ggsave("Figure_7_contour.pdf", g, width = 13, height = 13)
+```

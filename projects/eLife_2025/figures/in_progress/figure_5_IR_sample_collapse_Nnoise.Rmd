@@ -1,0 +1,93 @@
+---
+title: "Figure 5 (macro_IR sample distortion) — collapse with an N-scaled instrument (conductance) noise"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Hypothesis (Luciano): the swept noise is a PER-CHANNEL conductance noise, so its contribution to the
+per-sample emission variance scales with N (like the gating variance), not as a flat instrument noise.
+If so, the instrument term in the balance is N*noise/Delta, and the N CANCELS against the gating N*Delta:
+    instrument fraction  x = (N*noise/Delta) / (N*noise/Delta + N*Delta) = noise / (noise + Delta^2 / W)
+which is N-INDEPENDENT. The only N-dependence left is the CLT amplitude 1/sqrt(N). So:
+    left column  : raw distortion D vs x            -> tests SHAPE collapse (curves overlap across N & noise)
+    right column : (D-1)*sqrt(N) vs x               -> tests FULL collapse (removes the 1/sqrt(N) amplitude)
+If both hold, every N_ch and every noise fall on a single curve per parameter. W is the one tunable knob.
+sample = Gaussian_Sample_Distortion, macro_IR, 1c2ae6f. Compare against figure_5_IR_sample_collapse_W (no N).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+SAMP     <- "Probit_statistics_Gaussian_Sample_Distortion"
+NOISES   <- c("0.1", "1", "10")
+W        <- 1                                    # instrument weight in noise/(noise + Delta^2/W)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+
+read_noise <- function(z) map_dfr(Sys.glob(sprintf(
+  "../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z)),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+d <- map_dfr(NOISES, read_noise) %>%
+  filter(component_path == SAMP, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)], nz = as.numeric(noise)) %>%
+  group_by(param_name, noise, nz, Num_ch, interval_in_tau) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  mutate(x = nz / (nz + interval_in_tau^2 / W),          # N-independent instrument fraction
+         amp = (D - 1) * sqrt(Num_ch),                    # amplitude-factored departure
+         nch_f  = factor(Num_ch),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         param  = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+
+dl <- d %>%
+  pivot_longer(c(D, amp), names_to = "metric", values_to = "y") %>%
+  mutate(metric = factor(metric, levels = c("D", "amp"),
+                         labels = c("distortion~D", "(D-1)%.%sqrt(N[ch])")))
+```
+
+```{r plot, fig.width = 7.5, fig.height = 8.5}
+g <- ggplot(dl, aes(x, y, colour = nch_f, shape = noisef, group = interaction(nch_f, noise))) +
+  geom_hline(data = tibble(metric = factor("distortion~D", levels = levels(dl$metric)), y = 1),
+             aes(yintercept = y), colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_hline(data = tibble(metric = factor("(D-1)%.%sqrt(N[ch])", levels = levels(dl$metric)), y = 0),
+             aes(yintercept = y), colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_line(linewidth = .3, alpha = .5) + geom_point(size = 1) +
+  facet_grid(param ~ metric, scales = "free_y",
+             labeller = labeller(param = label_parsed, metric = label_parsed)) +
+  scale_x_continuous(breaks = c(0, .25, .5, .75, 1)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  scale_shape_manual(values = c(16, 17, 15), name = NULL) +
+  labs(x = expression("instrument fraction  " * x == noise / (noise + Delta^2 / W)),
+       y = NULL) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8))
+g
+ggsave("Figure_5_IR_sample_collapse_Nnoise.pdf", g, width = 7.5, height = 8.5)
+```
+
+```{r r2-scan}
+# collapse R^2 (fraction of D-variance explained by binning on x), scanning W, for the N-scaled fraction.
+r2 <- function(df, w) {
+  x  <- df$nz / (df$nz + df$interval_in_tau^2 / w)
+  b  <- cut(x, 20)
+  wv <- df %>% mutate(b = b) %>% group_by(b) %>% summarise(v = var(D), n = n(), .groups = "drop") %>% filter(n > 2)
+  1 - weighted.mean(wv$v, wv$n, na.rm = TRUE) / var(df$D)
+}
+Ws  <- c(0.1, 0.3, 1, 3, 10, 30, 100)
+res <- map_dfr(unique(d$param_name), function(p) {
+  df <- d %>% filter(param_name == p)
+  tibble(param = p, W = Ws, R2 = sapply(Ws, function(w) round(r2(df, w), 3)))
+})
+cat("collapse R^2 of D vs the N-scaled instrument fraction, per param, over W:\n")
+res %>% pivot_wider(names_from = W, values_from = R2) %>% as.data.frame() %>% print()
+cat("\nbest W per param (N-scaled form):\n")
+res %>% group_by(param) %>% slice_max(R2, n = 1) %>% as.data.frame() %>% print()
+```

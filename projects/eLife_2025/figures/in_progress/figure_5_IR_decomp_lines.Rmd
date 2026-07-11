@@ -1,0 +1,75 @@
+---
+title: "Figure 5 (macro_IR distortion decomposition, lines) — sample & correlation vs interval, by N_ch"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Dedicated to macro_IR: the fine residual structure the heatmap hides. Sample and correlation distortion
+diagonal vs measurement interval, coloured by N_ch, with bootstrap 95% CI shown BOTH as ribbons and as
+error bars (linerange). Y is ZOOMED to ~0.6-1.15 (IR lives in a narrow band around 1); the +/-15%
+self-consistency band (1/1.15 .. 1.15) is shaded and 1 is dashed. IR's residual is small but often
+significant and on the SAFE (under-confident, <1) side: correlation dips at short delta + few channels,
+sample dips at intermediate delta, both recover to 1 at many channels / coarse delta.
+Layout: rows = parameter (k_off, N_ch), cols = component (sample, correlation). battery_pool, noise 0.1.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+DATA_DIR <- "../data/433ed13"
+NOISE    <- "0.1"
+NCH      <- c(10, 100, 1000, 10000)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+COMPS    <- c(sample = "Probit_statistics_Likelihood_Sample_Distortion",
+              corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+COMP_LAB <- c(sample = "sample distortion", corr = "correlation distortion")
+
+d <- map_dfr(Sys.glob(file.path(DATA_DIR,
+       sprintf("figure_3_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool.csv", NOISE))),
+     ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE))
+
+diag_ci <- function(comp) d %>%
+  filter(component_path == comp, statistic == "value", param_index == param_col,
+         param_index %in% PIDX, Num_ch %in% NCH,
+         probit == "mean" | (probit == "quantile" & quantile_level %in% c(0.025, 0.975))) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)],
+         q = if_else(probit == "mean", "D", if_else(quantile_level == 0.025, "lo", "hi"))) %>%
+  group_by(Num_ch, interval_in_tau, param_name, q) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = q, values_from = v)
+
+dd <- map_dfr(names(COMPS), ~ diag_ci(COMPS[[.x]]) %>% mutate(comp = .x)) %>%
+  arrange(interval_in_tau) %>%
+  mutate(nch_f  = factor(Num_ch, levels = NCH, labels = c("10", "100", "1e3", "1e4")),
+         param  = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)),
+         comp_f = factor(comp, levels = names(COMP_LAB), labels = unname(COMP_LAB)))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 9.5}
+g <- ggplot(dd, aes(interval_in_tau, D, colour = nch_f, fill = nch_f, group = nch_f)) +
+  geom_hline(yintercept = c(1 / 1.15, 1.15), colour = "grey60", linewidth = .3, linetype = "dotted") +
+  geom_hline(yintercept = 1, colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = .12, colour = NA) +
+  geom_linerange(aes(ymin = lo, ymax = hi), linewidth = .35, alpha = .8) +
+  geom_line(linewidth = .45) + geom_point(size = 1) +
+  facet_grid(param ~ comp_f, labeller = labeller(param = label_parsed)) +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_y_log10(breaks = c(0.8, 0.9, 1.0, 1.1, 1.2, 1.4)) +
+  coord_cartesian(ylim = c(0.7, 1.45)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .9) +
+  scale_fill_viridis_d(name = expression(N[ch]), end = .9) +
+  labs(x = expression(Delta / tau[min]), y = "distortion (diagonal), 95% bootstrap CI") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "top",
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8.5))
+g
+ggsave("Figure_5_IR_decomp_lines.pdf", g, width = 7.0, height = 9.5)
+```

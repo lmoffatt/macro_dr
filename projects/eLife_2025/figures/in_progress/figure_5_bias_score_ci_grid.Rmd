@@ -1,0 +1,119 @@
+---
+title: "Figure 5 bias (score-based, median FIM + bootstrap CI) — 5 algorithms"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Score-based / theoretical bias, robust version. Two changes vs figure_5_bias_score_grid:
+ (1) MEDIAN Gaussian FIM (bootstrap median, probit="quantile" q=0.5) instead of the mean -> stabler inverse
+     where the system is ill-conditioned (the i . N_ch degeneracy).
+ (2) BOOTSTRAP CI from the score quantiles: point bias = inv(median F) . mean-score; the 95% band is
+     inv(median F) . score(q0.025) and .score(q0.975). A cell is SIGNIFICANT (dot) if that band excludes
+     factor 1 (bias 0). This flags the ill-conditioned blow-ups (huge CI -> not significant -> no dot) and
+     confirms IR has no significant bias (no dots) while R/MR's N_ch over-estimate is significant (dots).
+All from *_battery_sim at the truth. Same multiplicative scale (10^bias = estimate/truth), k_off + N_ch,
+N_ch >= 10, solid 1.05x, dashed 1.5x.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+NSIM      <- 10000
+NOISES    <- c("0.1", "1", "10")
+ALGOS     <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")
+ALGO_LAB  <- c(macro_NR = "NR", macro_NMR = "MNR", macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+PARAM_LAB <- c(off = "log[10]~k[off]", Num_ch_mean = "log[10]~N[ch]")
+SC  <- "Probit_statistics_Moment_statistics_Sum_dlogL"
+FIM <- "Probit_statistics_Moment_statistics_Sum_Gaussian_Fisher_Information"
+
+FACTORS     <- c(1.02, 1.05, 1.10, 1.15, 1.25, 1.5, 2, 3, 5, 10, 20)
+POS_B       <- log10(FACTORS)
+BIAS_BREAKS <- c(-Inf, -rev(POS_B), POS_B, Inf)
+PAL <- colorRampPalette(c("#021024", "#053061", "#2166AC", "#4393C3", "#92C5DE", "#D1E5F0",
+                          "#F7F7F7",
+                          "#FDDBC7", "#F4A582", "#D6604D", "#B2182B", "#67001F", "#3d0011")
+                        )(length(BIAS_BREAKS) - 1)
+edge_fac <- 10^BIAS_BREAKS[-1]
+fmt_f    <- function(x) ifelse(is.infinite(x), "Inf", formatC(x, format = "g", digits = 2))
+KEEP_FAC <- c(0.1, 0.5, 0.67, 0.87, 1.15, 1.5, 2, 10)
+BAND_LAB_BAR <- ifelse(round(edge_fac, 2) %in% round(KEEP_FAC, 2), fmt_f(edge_fac), "")
+VLINE  <- 1.05
+VLINE2 <- 1.5
+```
+
+```{r read-compute}
+read_sim <- function(algo, z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_sim.csv", NSIM, algo, z)))
+  rbindlist(lapply(files, function(p) {
+    d <- fread(p, skip = 1)
+    d[statistic == "mean" &
+        ((component_path == FIM & probit == "quantile" & quantile_level == 0.5) |
+         (component_path == SC  & (probit == "mean" |
+             (probit == "quantile" & quantile_level %in% c(0.025, 0.975))))),
+      .(component_path, probit, quantile_level, Num_ch, interval_in_tau, param_index, param_col, value)]
+  }))[, `:=`(algo = algo, noise = z)]
+}
+sraw <- rbindlist(lapply(ALGOS, function(a) rbindlist(lapply(NOISES, function(z) read_sim(a, z)))))
+sraw <- sraw[Num_ch >= 10]
+sraw[, ck := paste(algo, noise, Num_ch, interval_in_tau)]
+sp <- split(sraw[component_path == SC],  by = "ck")
+fp <- split(sraw[component_path == FIM], by = "ck")
+
+oc <- function(ck) {
+  fk <- fp[[ck]]; sk <- sp[[ck]]
+  if (is.null(fk) || is.null(sk) || nrow(fk) != 36) return(NULL)
+  F <- matrix(0, 6, 6); F[cbind(fk$param_index + 1, fk$param_col + 1)] <- fk$value; F <- (F + t(F)) / 2
+  Fi <- tryCatch(solve(F), error = function(e) MASS::ginv(F))
+  gv <- function(cond) { r <- sk[cond][order(param_index), value]; if (length(r) == 6) r else rep(NA_real_, 6) }
+  pt <- as.numeric(Fi %*% gv(sk$probit == "mean"))
+  lo <- as.numeric(Fi %*% gv(sk$probit == "quantile" & sk$quantile_level == 0.025))
+  hi <- as.numeric(Fi %*% gv(sk$probit == "quantile" & sk$quantile_level == 0.975))
+  sig <- function(j) { a <- min(lo[j], hi[j]); b <- max(lo[j], hi[j]); isTRUE(a > 0 || b < 0) }
+  one <- fk[1]
+  data.table(algo = one$algo, noise = one$noise, Num_ch = one$Num_ch, interval_in_tau = one$interval_in_tau,
+             off = pt[2], off_s = sig(2), Num_ch_mean = pt[6], Nch_s = sig(6))
+}
+bsr <- rbindlist(lapply(names(fp), oc))
+bs <- rbind(
+  bsr[, .(algo, noise, Num_ch, interval_in_tau, param_name = "off",         D = off,         sig = off_s)],
+  bsr[, .(algo, noise, Num_ch, interval_in_tau, param_name = "Num_ch_mean", D = Num_ch_mean, sig = Nch_s)]
+) %>% as_tibble()
+```
+
+```{r plot, fig.width = 7.0, fig.height = 9.0}
+df <- bs %>% filter(is.finite(D)) %>% mutate(
+  lx = log10(interval_in_tau), ly = log10(Num_ch),
+  algo_f = factor(ALGO_LAB[algo], levels = unname(ALGO_LAB[ALGOS])),
+  param  = factor(param_name, levels = names(PARAM_LAB), labels = unname(PARAM_LAB)),
+  noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+
+g <- ggplot(df, aes(lx, ly, z = D)) +
+  geom_contour_filled(breaks = BIAS_BREAKS) +
+  scale_fill_manual(values = PAL, drop = FALSE, labels = BAND_LAB_BAR, name = "estimate / truth",
+                    guide = guide_legend(nrow = 1, byrow = TRUE, label.position = "bottom",
+                                         title.position = "left", title.vjust = 0.9,
+                                         keywidth = unit(0.34, "cm"), keyheight = unit(0.30, "cm"))) +
+  geom_contour(breaks = c(-log10(VLINE2), log10(VLINE2)), colour = "grey20", linewidth = .25, linetype = "dashed") +
+  geom_contour(breaks = c(-log10(VLINE),  log10(VLINE)),  colour = "black",  linewidth = .4) +
+  geom_point(data = filter(df, sig), aes(lx, ly), size = .55, colour = "black", inherit.aes = FALSE) +
+  facet_grid(param + noisef ~ algo_f, labeller = labeller(param = label_parsed)) +
+  scale_x_continuous(breaks = log10(c(.01, .1, 1)), labels = c(".01", ".1", "1")) +
+  scale_y_continuous(breaks = log10(c(10, 100, 1000, 10000)), labels = c("10", "100", "1e3", "1e4")) +
+  labs(x = expression(Delta / tau[min]), y = expression(N[ch])) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.title = element_text(size = 8), legend.text = element_text(size = 7),
+        legend.key.spacing.x = unit(0, "pt"),
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+        strip.text = element_text(size = 7.5))
+g
+ggsave("Figure_5_bias_score_ci_grid.pdf", g, width = 7.0, height = 9.0)
+```

@@ -1,0 +1,218 @@
+---
+title: "Figure 5 (master) — correctness audit: bias + distortion (log-det) x 5 algorithms, one noise"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+One-figure correctness audit at a single noise (0.1). Columns = 5 algorithms, ordered by severity
+(IR, R, MR, NR, MNR). Rows, each a (interval x N_ch) heatmap:
+  bias k_off, bias N_ch  : empirical bias = theta_pool - theta_sim, MULTIPLICATIVE scale (estimate/truth),
+                           signed, from pool_runs (Model_Parameters_Hat). Non-converged cells greyed.
+  log-det Information / Sample / Correlation distortion : the PROGRAM-COMPUTED log-determinant of each
+                           distortion matrix (component log_Det_Likelihood_*), a signed scalar per cell
+                           (=0 <=> self-consistent), WITH bootstrap. Additivity log-det(info) =
+                           log-det(sample) + log-det(correlation) is EXACT for IR/R/MR (residual 0.000) and
+                           breaks only in NR/MNR's indefinite FD-Fisher cells (a data-quality flag).
+Message: IR ~ 0 in every row (unbiased AND self-consistent); the naive methods light up in identifiable
+regimes, little (R, MR) to a lot (NR, MNR); sample vs correlation shows which failure mode. Single noise =
+static regime map; boundaries shift with noise (see mechanism figure). All from 433ed13 (numeric F).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse); library(data.table); library(patchwork)
+```
+
+```{r params}
+DATA_DIR <- "../data/433ed13"; NSIM <- 10000; NOISE <- "0.1"
+ALGOS    <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")   # established order (matches every other figure)
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR", macro_IR="IR")
+alg_f    <- function(a) factor(ALGO_LAB[a], levels = unname(ALGO_LAB[ALGOS]))
+
+# --- bias block: SCORE-BASED bias = inv(median Gaussian FIM) . mean-score, at the truth (battery_sim).
+# Defined even where the MLE does not converge -> more cells than the empirical theta_pool - theta_sim. ---
+BPAR   <- c(off = 1, Num_ch_mean = 5)
+BP_LAB <- c(off = "bias~log[10]~k[off]", Num_ch_mean = "bias~log[10]~N[ch]")
+SC  <- "Probit_statistics_Moment_statistics_Sum_dlogL"                        # summed score at the truth
+FIM <- "Probit_statistics_Moment_statistics_Sum_Gaussian_Fisher_Information"  # Gaussian FIM at the truth
+CIW_MAX <- 2.0   # a bias cell is invalid (x) if inv(F).score 95% CI spans more than this (dex)
+# the established RdBu ramp used by every distortion figure
+RAMP <- c("#021024","#053061","#2166AC","#4393C3","#92C5DE","#D1E5F0","#F7F7F7",
+          "#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F","#3d0011")
+# PERCEPTUALLY-uniform diverging steps (interpolated in Lab): each band is one equal-perceptual step from the
+# white centre band. BLUE for <1 (under), RED for >1 (over). Both sides use the SAME per-step size (K = the
+# longer side), so band k is equally far from white on either side; the band EDGES (B_LIN/LD_LIN) are what set
+# the resolution within each algorithm's range.
+bandcols <- function(breaks) {
+  n   <- length(breaks) - 1
+  ctr <- findInterval(0, breaks)                 # index of the white centre band
+  nb  <- ctr - 1; nr <- n - ctr; K <- max(nb, nr, 1)
+  blue <- colorRampPalette(rev(RAMP[1:7]), space = "Lab")(K + 1)   # white -> vivid -> darkest blue, equal steps
+  red  <- colorRampPalette(RAMP[7:13],     space = "Lab")(K + 1)   # white -> vivid -> darkest red
+  cols <- rep(RAMP[7], n)
+  if (nb > 0) cols[seq(ctr - 1, 1)] <- blue[2:(nb + 1)]   # band nearest white = step 1
+  if (nr > 0) cols[seq(ctr + 1, n)] <- red[2:(nr + 1)]
+  cols
+}
+# eLife number format: superscript 10^n for >=1000, infinity symbol for Inf; parse()-able strings.
+fmt_big <- function(x) ifelse(is.infinite(x), "infinity",
+             ifelse(x >= 1000, paste0("10^", round(log10(x))), formatC(x, format = "g", digits = 3)))
+
+# bias: LINEAR factor (estimate/truth) edges, round, symmetric, white centred at 1; breaks in log10.
+B_LIN    <- c(0.2, 0.33, 0.5, 0.67, 0.8, 0.87, 0.9, 0.95, 0.99, 1.01, 1.05, 1.1, 1.15, 1.25, 1.5, 2, 3, 5)  # fine near 1 (IR)
+B_BREAKS <- log10(B_LIN)
+B_PAL    <- bandcols(B_BREAKS)
+B_LAB    <- fmt_big(B_LIN)
+
+# --- log-det block ---
+LD  <- c(Information = "Probit_statistics_log_Det_Likelihood_Information_Distortion",
+         Sample      = "Probit_statistics_log_Det_Likelihood_Sample_Distortion",
+         Correlation = "Probit_statistics_log_Det_Likelihood_Correlation_Distortion")
+LD_LAB <- c(Information="det~information", Sample="det~sample", Correlation="det~correlation")
+# log-det = ln(det distortion). FINE near white (det ~1), coarsening outward, so IR (det~1), R (det~2) and
+# NR (det~1e6) each resolve into a few levels; white centred at 1. Labels = linear det = exp(edge).
+LD_LIN    <- c(0.5, 0.67, 0.8, 0.87, 0.9, 1.1, 1.15, 1.25, 1.5, 2, 3, 5, 10, 30, 100, 300, 1e3, 1e4, 1e5, Inf)
+LD_BREAKS <- log(LD_LIN)
+LD_PAL    <- bandcols(LD_BREAKS)
+LD_LABV   <- fmt_big(LD_LIN)
+CI_MAX <- 3.0   # mask a log-det cell if its 95% bootstrap CI width exceeds this (nats)
+```
+
+```{r load-bias}
+read_sim <- function(a) rbindlist(lapply(Sys.glob(file.path(DATA_DIR,
+  sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_sim.csv", NSIM, a, NOISE))), function(p) {
+    d <- fread(p, skip = 1)
+    d[statistic == "mean" & (
+        (component_path == FIM & probit == "quantile" & quantile_level == 0.5) |
+        (component_path == SC  & (probit == "mean" |
+           (probit == "quantile" & quantile_level %in% c(0.025, 0.975))))),
+      .(component_path, probit, quantile_level, Num_ch, interval_in_tau, param_index, param_col, value)]
+  }))[, algo := a]
+sraw <- rbindlist(lapply(ALGOS, read_sim))[Num_ch >= 10]
+sraw[, ck := paste(algo, Num_ch, interval_in_tau)]
+sp <- split(sraw[component_path == SC],  by = "ck")
+fp <- split(sraw[component_path == FIM], by = "ck")
+oc <- function(ck) {
+  fk <- fp[[ck]]; sk <- sp[[ck]]
+  if (is.null(fk) || is.null(sk) || nrow(fk) != 36) return(NULL)
+  Fm <- matrix(0, 6, 6); Fm[cbind(fk$param_index + 1, fk$param_col + 1)] <- fk$value; Fm <- (Fm + t(Fm)) / 2
+  sing <- FALSE
+  Fi <- tryCatch(solve(Fm), error = function(e) { sing <<- TRUE; MASS::ginv(Fm) })
+  gv <- function(cond) { r <- sk[cond][order(param_index), value]; if (length(r) == 6) r else rep(NA_real_, 6) }
+  pt <- as.numeric(Fi %*% gv(sk$probit == "mean"))
+  lo <- as.numeric(Fi %*% gv(sk$probit == "quantile" & sk$quantile_level == 0.025))
+  hi <- as.numeric(Fi %*% gv(sk$probit == "quantile" & sk$quantile_level == 0.975))
+  o <- fk[1]
+  data.table(algo = o$algo, Num_ch = o$Num_ch, interval_in_tau = o$interval_in_tau,
+             off = pt[2], off_ok = is.finite(pt[2]) & !sing & abs(hi[2] - lo[2]) < CIW_MAX,
+             nch = pt[6], nch_ok = is.finite(pt[6]) & !sing & abs(hi[6] - lo[6]) < CIW_MAX)
+}
+bias <- rbindlist(lapply(names(fp), oc)) %>% { rbind(
+    .[, .(algo, Num_ch, interval_in_tau, pn = "off",         val = off, valid = off_ok)],
+    .[, .(algo, Num_ch, interval_in_tau, pn = "Num_ch_mean", val = nch, valid = nch_ok)]) } %>%
+  as_tibble() %>% filter(is.finite(val)) %>%
+  mutate(row = factor(BP_LAB[pn], levels = unname(BP_LAB[names(BPAR)])),
+         algo_f = alg_f(algo), lx = log10(interval_in_tau), ly = log10(Num_ch))
+```
+
+```{r load-logdet}
+read_bp <- function(a) map_dfr(Sys.glob(file.path(DATA_DIR,
+  sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_pool.csv", NSIM, a, NOISE))),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(algo = a)
+braw <- map_dfr(ALGOS, read_bp)
+ldsub <- braw %>% filter(component_path %in% LD, probit %in% c("mean","quantile"))
+ld_mean <- ldsub %>% filter(probit == "mean", statistic == "value") %>%
+  transmute(algo, component_path, Num_ch, interval_in_tau, m = value)
+ld_ci <- ldsub %>% filter(probit == "quantile", quantile_level %in% c(0.025, 0.975)) %>%
+  group_by(algo, component_path, Num_ch, interval_in_tau) %>%
+  summarise(ciw = diff(range(value)), .groups = "drop")
+# SINGULAR-FIM fallback: the program returns log-det exactly 0 when the distortion matrix is degenerate
+# (verified: those cells have condition number Inf and NaN eigenvalues). That is NOT low distortion -> grey.
+# (Condition number itself over-flags, since the sample/correlation matrices are rank-deficient by design.)
+cellw <- function(v) { u <- sort(unique(v))
+  e <- c(u[1] - diff(u[1:2]) / 2, (head(u, -1) + tail(u, -1)) / 2,
+         u[length(u)] + diff(u[(length(u) - 1):length(u)]) / 2)
+  setNames(diff(e), as.character(u))[as.character(v)] }
+ld <- ld_mean %>% left_join(ld_ci, by = c("algo","component_path","Num_ch","interval_in_tau")) %>%
+  mutate(q = names(LD)[match(component_path, LD)],
+         row = factor(LD_LAB[q], levels = unname(LD_LAB[names(LD)])),
+         algo_f = alg_f(algo), lx = log10(interval_in_tau), ly = log10(Num_ch),
+         singular = abs(m) < 1e-9,
+         reliable = (is.na(ciw) | ciw <= CI_MAX) & !singular) %>%
+  filter(Num_ch >= 10) %>%
+  group_by(algo, q) %>% mutate(w = cellw(lx), h = cellw(ly)) %>% ungroup()
+```
+
+```{r plot, fig.width = 7.2, fig.height = 9.2}
+X_BRK <- log10(c(.01,.1,1)); X_LAB <- c(".01",".1","1")
+Y_BRK <- log10(c(10,100,1000,10000)); Y_LAB <- c("10","100","1e3","1e4")
+base_layers <- function(xlab) list(
+  scale_x_continuous(breaks = X_BRK, labels = X_LAB),
+  scale_y_continuous(breaks = Y_BRK, labels = Y_LAB),
+  labs(x = xlab, y = expression(N[ch])),
+  theme_bw(base_size = 9, base_family = "Helvetica"),
+  theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.28, "cm"), legend.position = "none",
+        axis.text = element_text(size = 6.8), axis.title = element_text(size = 8),
+        strip.text = element_text(size = 7.3), plot.tag = element_text(size = 12, face = "bold")))
+dot   <- function(d) geom_point(data = d, aes(lx, ly), size = .3, colour = "grey15", inherit.aes = FALSE)
+cross <- function(d) geom_point(data = d, aes(lx, ly), shape = 4, size = .8, stroke = .35,
+                                colour = "grey30", inherit.aes = FALSE)
+clamp <- function(v, b) pmin(pmax(v, min(b)), max(b))
+
+gB <- ggplot(filter(bias, valid), aes(lx, ly, z = clamp(val, B_BREAKS))) +
+  geom_contour_filled(breaks = B_BREAKS) + scale_fill_manual(values = B_PAL, drop = FALSE, guide = "none") +
+  geom_contour(breaks = c(log10(1/1.15), log10(1.15)), colour = "grey30", linewidth = .3, linetype = "dashed") +
+  geom_contour(breaks = c(log10(1/1.05), log10(1.05)), colour = "black",  linewidth = .35) +  # IR's own p99 precision
+  dot(filter(bias, valid)) + cross(filter(bias, !valid)) +
+  facet_grid(row ~ algo_f, labeller = labeller(row = label_parsed)) +
+  base_layers(expression(Delta %.% k[off])) + labs(tag = "A")
+
+gL <- ggplot(ld, aes(lx, ly, z = clamp(m, LD_BREAKS))) +
+  geom_contour_filled(breaks = LD_BREAKS) + scale_fill_manual(values = LD_PAL, drop = FALSE, guide = "none") +
+  geom_contour(breaks = c(log(1/1.5),  log(1.5)),  colour = "grey30", linewidth = .3, linetype = "dashed") +
+  geom_contour(breaks = c(log(1/1.15), log(1.15)), colour = "black",  linewidth = .35) +  # self-consistency 1.15
+  geom_tile(data = filter(ld, singular), aes(lx, ly, width = w, height = h),
+            fill = "grey85", inherit.aes = FALSE) +                      # singular FIM: distortion undefined
+  dot(filter(ld, reliable)) + cross(filter(ld, !reliable)) +
+  facet_grid(row ~ algo_f, labeller = labeller(row = label_parsed)) +
+  base_layers(expression(Delta %.% k[off])) + labs(tag = "B")
+
+# horizontal stepped colour key: numbers sit AT the boundaries between colours (linear values)
+# colour key; the self-consistency contour values (solid, dashed) are marked ON the bar in their line style,
+# rising above the strip, at the same positions their numeric labels already sit.
+colorbar <- function(pal, edge_lab, title, lin, sol = numeric(0), dsh = numeric(0)) {
+  n <- length(pal); pos <- function(v) match(v, lin) - 0.5
+  marks <- c(
+    if (length(dsh)) list(annotate("segment", x = pos(dsh), xend = pos(dsh), y = 0.5, yend = 2.0,
+                                   colour = "grey25", linewidth = .35, linetype = "dashed")),
+    if (length(sol)) list(annotate("segment", x = pos(sol), xend = pos(sol), y = 0.5, yend = 2.0,
+                                   colour = "black", linewidth = .5)))
+  ggplot(data.frame(x = seq_len(n)), aes(x, 1, fill = factor(x))) +
+    geom_tile(colour = "grey92", linewidth = .15) + marks +
+    scale_fill_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = seq(0.5, n + 0.5, 1), labels = parse(text = edge_lab), expand = c(0, 0),
+                       position = "bottom") +
+    coord_cartesian(ylim = c(0.5, 2.0), clip = "off") +
+    labs(y = title) + theme_void(base_family = "Helvetica") +
+    theme(axis.title.y = element_text(angle = 0, size = 7.5, hjust = 1, vjust = .5, margin = margin(r = 4)),
+          axis.text.x = element_text(size = 6), axis.ticks.x = element_line(colour = "grey55", linewidth = .3),
+          axis.ticks.length.x = unit(2, "pt"), plot.margin = margin(5, 22, 3, 2))
+}
+cbB <- colorbar(B_PAL,  B_LAB,  "bias factor",    B_LIN,  sol = c(0.95, 1.05), dsh = c(0.87, 1.15))
+cbL <- colorbar(LD_PAL, LD_LABV, "det distortion", LD_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5))
+
+g <- gB / cbB / gL / cbL + plot_layout(heights = c(2, 0.16, 3, 0.16))
+g
+ggsave("Figure_5_master.pdf", g, width = 7.2, height = 9.2)
+```
+
+```{r additivity-note}
+ld %>% select(algo, Num_ch, interval_in_tau, q, m) %>%
+  pivot_wider(names_from = q, values_from = m) %>%
+  group_by(algo) %>%
+  summarise(median_logdet = round(median(Information, na.rm = TRUE), 2),
+            max_addit_residual = round(max(abs(Information - Sample - Correlation), na.rm = TRUE), 3),
+            .groups = "drop") %>% as.data.frame() %>% print()
+```

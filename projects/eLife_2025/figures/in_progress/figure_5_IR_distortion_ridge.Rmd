@@ -1,0 +1,59 @@
+---
+title: "Figure 5 (macro_IR) — the sample-distortion ridge in the (interval, channel) plane"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Unifying view of Delta* and N*: the per-sample distortion (non-Gaussianity of the emission) is a ridge in the
+(interval, channel-number) plane, running along the balance where the channel/gating variance is comparable to
+the instrument-noise variance. At the single noise with a full grid (0.1) the ridge hugs the few-channel,
+short-interval corner (N* ~ 10 here, since N* = 2 sigma^2/G grows with noise). Filling mid-channel counts at
+higher noise (0.5/1/10) would push the ridge into the interior. macro_IR, 1c2ae6f, Gaussian_Sample_Distortion
+diagonal, noise 0.1, k_on and i (the clean single-bell parameters).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+SAMP     <- "Probit_statistics_Gaussian_Sample_Distortion"
+PIDX     <- c(on = 0, unitary_current = 2)
+PARAM_LAB<- c(on = "log[10]~k[on]", unitary_current = "log[10]~i")
+
+d <- map_dfr(Sys.glob("../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_0.1_battery_pool_G.csv"),
+             ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>%
+  filter(component_path == SAMP, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)]) %>%
+  group_by(param_name, Num_ch, interval_in_tau) %>%
+  summarise(dev = mean(value) - 1, .groups = "drop") %>%
+  mutate(param = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+
+# empirical ridge: per interval column, the channel number of maximum distortion
+ridge <- d %>% group_by(param, interval_in_tau) %>% slice_max(dev, n = 1, with_ties = FALSE) %>% ungroup()
+```
+
+```{r plot, fig.width = 8.0, fig.height = 4.6}
+g <- ggplot(d, aes(interval_in_tau, Num_ch)) +
+  geom_tile(aes(fill = dev)) +
+  geom_contour(aes(z = dev), colour = "white", linewidth = .25, alpha = .6, bins = 6) +
+  geom_line(data = ridge, colour = "black", linewidth = .5, linetype = "22") +
+  geom_point(data = ridge, colour = "black", size = 1.2) +
+  facet_wrap(~ param, nrow = 1, labeller = label_parsed) +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_y_log10(breaks = c(10, 100, 1000, 10000), labels = c("10", "100", "1e3", "1e4")) +
+  scale_fill_viridis_c(name = "distortion\n D - 1", option = "B", end = .95) +
+  labs(x = expression(Delta / tau[min]),
+       y = expression(N[ch]),
+       subtitle = "noise 0.1  —  dashed line = channel number of maximum distortion at each interval") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 9),
+        plot.subtitle = element_text(size = 7.5), strip.text = element_text(size = 9))
+g
+ggsave("Figure_5_IR_distortion_ridge.pdf", g, width = 8.0, height = 4.6)
+```
