@@ -1,0 +1,120 @@
+---
+title: "Figure 5 (macro_IR decomposition) — collapse variables: gating vs instrument competition"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Same IR sample & correlation distortion as figure_5_IR_decomp_lines_G, but re-plotted against candidate
+COLLAPSE variables to test whether the structure is governed by a single dimensionless group:
+  A) x = 1 / (N_ch * interval)                         -- the gating "signal" (channels x time). noise 0.1.
+  B) x = 1 / (N_ch * interval + W * noise / interval)  -- adds the instrument term (grows at short interval);
+        the two terms are the competition between the Poissonian gating (N*Delta) and the Gaussian
+        instrument (noise/Delta). Uses all three noises so the competition actually varies; if the curves
+        collapse across N_ch AND noise, the group captures the balance. W is a tunable weight.
+sample = Gaussian_Sample_Distortion, correlation = Likelihood_Correlation_Distortion (1c2ae6f); log-log,
+white-band lines at 1.15 / 0.87.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+NOISES   <- c("0.1", "1", "10")
+W        <- 1                                    # weight on the instrument term (tune this)
+C        <- 1                                    # gating/instrument coupling in the mixing fraction (tune this)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+COMPS    <- c(sample = "Probit_statistics_Gaussian_Sample_Distortion",
+              corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+COMP_LAB <- c(sample = "sample distortion (Gaussian)", corr = "correlation distortion")
+
+read_noise <- function(z) map_dfr(Sys.glob(sprintf(
+  "../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z)),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+d <- map_dfr(NOISES, read_noise)
+
+dd <- map_dfr(names(COMPS), function(cn)
+  d %>% filter(component_path == COMPS[[cn]], statistic == "value", probit == "mean",
+               param_index == param_col, param_index %in% PIDX) %>%
+    mutate(comp = cn)) %>%
+  group_by(comp, noise, Num_ch, interval_in_tau, param_index) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  mutate(nz = as.numeric(noise),
+         x_A = 1 / (Num_ch * interval_in_tau),
+         x_B = 1 / (Num_ch * interval_in_tau + W * nz / interval_in_tau),
+         x_C = (nz / interval_in_tau) / (nz / interval_in_tau + C * Num_ch * interval_in_tau),
+         nch_f  = factor(Num_ch),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         comp_f = factor(comp, levels = names(COMP_LAB), labels = unname(COMP_LAB)),
+         param  = factor(names(PIDX)[match(param_index, PIDX)],
+                         levels = names(PIDX), labels = unname(PARAM_LAB)))
+
+base_layers <- function() list(
+  geom_hline(yintercept = c(1 / 1.15, 1.15), colour = "grey60", linewidth = .3, linetype = "dotted"),
+  geom_hline(yintercept = 1, colour = "grey45", linewidth = .3, linetype = "dashed"),
+  facet_grid(param ~ comp_f, scales = "free_y", labeller = labeller(param = label_parsed)),
+  scale_y_log10(),
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1),
+  theme_bw(base_size = 9, base_family = "Helvetica"),
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8)))
+```
+
+```{r plot-A, fig.width = 7.0, fig.height = 8.5}
+gA <- ggplot(filter(dd, noise == "0.1"), aes(x_A, D, colour = nch_f, group = nch_f)) +
+  base_layers() + geom_line(linewidth = .45) + geom_point(size = .9) +
+  scale_x_log10() +
+  labs(x = expression(1 / (N[ch] %.% Delta / tau[min])~"  (inverse gating signal)"),
+       y = "distortion (diagonal)")
+gA
+ggsave("Figure_5_IR_decomp_collapse_A.pdf", gA, width = 7.0, height = 8.5)
+```
+
+```{r plot-B, fig.width = 7.0, fig.height = 8.5}
+gB <- ggplot(dd, aes(x_B, D, colour = nch_f, shape = noisef, group = interaction(nch_f, noise))) +
+  base_layers() + geom_line(linewidth = .35, alpha = .6) + geom_point(size = 1.1) +
+  scale_x_log10() + scale_shape_manual(values = c(16, 17, 15), name = NULL) +
+  labs(x = expression(1 / (N[ch] %.% Delta + W %.% noise / Delta)~"  (gating vs instrument)"),
+       y = "distortion (diagonal)")
+gB
+ggsave("Figure_5_IR_decomp_collapse_B.pdf", gB, width = 7.0, height = 8.5)
+```
+
+```{r plot-C, fig.width = 7.0, fig.height = 8.5}
+# instrument fraction: x in [0,1]; x->1 all Gaussian (distortion ~1), x->0 all gating (departs)
+gC <- ggplot(dd, aes(x_C, D, colour = nch_f, shape = noisef, group = interaction(nch_f, noise))) +
+  base_layers() + geom_line(linewidth = .35, alpha = .6) + geom_point(size = 1.1) +
+  scale_x_continuous(breaks = c(0, .25, .5, .75, 1)) +
+  scale_shape_manual(values = c(16, 17, 15), name = NULL) +
+  labs(x = expression((noise/Delta) / (noise/Delta + C %.% N[ch] %.% Delta)~"  (instrument fraction, 0..1)"),
+       y = "distortion (diagonal)")
+gC
+ggsave("Figure_5_IR_decomp_collapse_C.pdf", gC, width = 7.0, height = 8.5)
+```
+
+```{r plot-D, fig.width = 7.0, fig.height = 8.5}
+# amplitude-factored: (D-1)*sqrt(N) vs the instrument fraction. If the departure is shape(x)*1/sqrt(N),
+# this collapses ALL N_ch and noise onto one curve per facet.
+gD <- ggplot(dd, aes(x_C, (D - 1) * sqrt(Num_ch), colour = nch_f, shape = noisef,
+                     group = interaction(nch_f, noise))) +
+  geom_hline(yintercept = 0, colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_line(linewidth = .35, alpha = .6) + geom_point(size = 1.1) +
+  facet_grid(param ~ comp_f, scales = "free_y", labeller = labeller(param = label_parsed)) +
+  scale_x_continuous(breaks = c(0, .25, .5, .75, 1)) +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  scale_shape_manual(values = c(16, 17, 15), name = NULL) +
+  labs(x = "instrument fraction  (noise/D) / (noise/D + C N D)",
+       y = expression((distortion - 1) %.% sqrt(N[ch]))) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8))
+gD
+ggsave("Figure_5_IR_decomp_collapse_D.pdf", gD, width = 7.0, height = 8.5)
+```

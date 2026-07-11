@@ -1,0 +1,96 @@
+---
+title: "Figure 5 (distortion decomposition, param-major) — sample vs correlation adjacent per parameter"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Variant of figure_5_distortion_decomp_grid with the TYPE OF DISTORTION as the INNERMOST row variable:
+rows = 2 parameters (k_off, N_ch) x 2 components (sample, correlation), PARAM-major, so the sample and
+correlation distortion sit ADJACENT for each parameter (direct within-parameter comparison of the two
+failure modes). Columns = 5 algorithms. One noise (0.1), battery_pool, N_ch >= 10. Same shared
+symmetric-log distortion scale, white = 1, solid 1.15 / dashed 1.5 lines.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+NSIM      <- 10000
+NOISE     <- "0.1"
+ALGOS     <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")
+ALGO_LAB  <- c(macro_NR = "NR", macro_NMR = "MNR", macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+PARAMS    <- c(off = 1, Num_ch_mean = 5)
+PARAM_LAB <- c(off = "log[10]~k[off]", Num_ch_mean = "log[10]~N[ch]")
+COMPS     <- c(sample = "Probit_statistics_Likelihood_Sample_Distortion",
+               corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+COMP_LAB  <- c(sample = "sample distortion", corr = "correlation distortion")
+
+POS         <- c(0.03, 0.06, 0.1, 0.16, 0.25, 0.4, 0.65, 1.0, 1.6, 2.5, 4.0)
+FILL_BREAKS <- c(-Inf, -rev(POS), POS, Inf)
+PAL <- colorRampPalette(c("#021024", "#053061", "#2166AC", "#4393C3", "#92C5DE", "#D1E5F0",
+                          "#F7F7F7",
+                          "#FDDBC7", "#F4A582", "#D6604D", "#B2182B", "#67001F", "#3d0011")
+                        )(length(FILL_BREAKS) - 1)
+d_edge   <- 10^FILL_BREAKS
+fmt_d    <- function(x) ifelse(is.infinite(x) & x > 0, "Inf", ifelse(x == 0, "0", formatC(x, format = "g", digits = 3)))
+up_edge  <- tail(d_edge, -1)
+LAB_KEEP <- c(1, 4, 7, 10, 13, 16, 19, 22)
+BAND_LAB_BAR <- ifelse(seq_along(up_edge) %in% LAB_KEEP, fmt_d(up_edge), "")
+FLOOR  <- 1e-5
+VALID  <- 1.15
+VALID2 <- 1.5
+```
+
+```{r read}
+read_one <- function(algo) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_pool.csv", NSIM, algo, NOISE)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(algo = algo)
+}
+raw <- map_dfr(ALGOS, read_one)
+
+dd <- map_dfr(names(COMPS), function(cn)
+  raw %>% filter(component_path == COMPS[[cn]], statistic == "value", probit == "mean",
+                 param_index == param_col, param_index %in% PARAMS, Num_ch >= 10) %>%
+    mutate(comp = cn)) %>%
+  group_by(comp, algo, Num_ch, interval_in_tau, param_index) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  mutate(logD   = log10(pmax(D, FLOOR)),
+         lx     = log10(interval_in_tau), ly = log10(Num_ch),
+         algo_f = factor(ALGO_LAB[algo], levels = unname(ALGO_LAB[ALGOS])),
+         comp_f = factor(comp, levels = names(COMP_LAB), labels = unname(COMP_LAB)),
+         param  = factor(names(PARAMS)[match(param_index, PARAMS)],
+                         levels = names(PARAMS), labels = unname(PARAM_LAB)))
+```
+
+```{r grid, fig.width = 7.0, fig.height = 6.5}
+X_BRK <- log10(c(.01, .1, 1));           X_LAB <- c(".01", ".1", "1")
+Y_BRK <- log10(c(10, 100, 1000, 10000)); Y_LAB <- c("10", "100", "1e3", "1e4")
+
+g <- ggplot(dd, aes(lx, ly, z = logD)) +
+  geom_contour_filled(breaks = FILL_BREAKS) +
+  scale_fill_manual(values = PAL, drop = FALSE, labels = BAND_LAB_BAR, name = "distortion",
+                    guide = guide_legend(nrow = 1, byrow = TRUE, label.position = "bottom",
+                                         title.position = "left", title.vjust = 0.9,
+                                         keywidth = unit(0.34, "cm"), keyheight = unit(0.30, "cm"))) +
+  geom_contour(breaks = c(log10(1 / VALID2), log10(VALID2)), colour = "grey20", linewidth = .25, linetype = "dashed") +
+  geom_contour(breaks = c(log10(1 / VALID),  log10(VALID)),  colour = "black",  linewidth = .4) +
+  geom_point(size = .15, colour = "grey35", alpha = .4) +
+  facet_grid(param + comp_f ~ algo_f, labeller = labeller(param = label_parsed)) +   # PARAM-major, type innermost
+  scale_x_continuous(breaks = X_BRK, labels = X_LAB) +
+  scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+  labs(x = expression(Delta / tau[min]), y = expression(N[ch])) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        legend.title = element_text(size = 8), legend.text = element_text(size = 7),
+        legend.key.spacing.x = unit(0, "pt"),
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+        strip.text = element_text(size = 7.5))
+g
+ggsave("Figure_5_distortion_decomp_grid_by_param.pdf", g, width = 7.0, height = 6.5)
+```

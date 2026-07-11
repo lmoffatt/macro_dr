@@ -1,0 +1,70 @@
+---
+title: "Figure 5 (macro_IR sample distortion vs interval, by noise) — the peak marches right with noise"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Mechanism figure. In the SAMPLE distortion the Poissonian gating noise (~ Delta, dominant at coarse
+sampling) competes with the Gaussian instrumental noise (~ 1/Delta, dominant at short sampling / high
+frequency). Their crossover is Delta* ~ sigma/g, so more instrumental noise pushes the sample-distortion
+PEAK to the RIGHT (coarser Delta) and, because higher Gaussian noise makes the emission more Gaussian,
+FLATTENS it. Verified in-data. Here: Gaussian_Sample_Distortion diagonal vs interval for macro_IR,
+one curve per instrument noise (0.1 / 1 / 10), faceted by N_ch (rows) x parameter (cols), 95% bootstrap
+CI ribbons, log y, +/-15% dotted lines. Data: 1c2ae6f (Gaussian-Fisher run), battery_pool_G.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+DATA_DIR <- "../data/1c2ae6f"
+NOISES   <- c("0.1", "1", "10")
+NCH      <- c(10, 100, 1000, 10000)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+SAMP     <- "Probit_statistics_Gaussian_Sample_Distortion"
+
+read_noise <- function(z) map_dfr(Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z))),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+d <- map_dfr(NOISES, read_noise)
+
+dd <- d %>%
+  filter(component_path == SAMP, statistic == "value", param_index == param_col,
+         param_index %in% PIDX, Num_ch %in% NCH,
+         probit == "mean" | (probit == "quantile" & quantile_level %in% c(0.025, 0.975))) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)],
+         q = if_else(probit == "mean", "D", if_else(quantile_level == 0.025, "lo", "hi"))) %>%
+  group_by(noise, Num_ch, interval_in_tau, param_name, q) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = q, values_from = v) %>%
+  arrange(interval_in_tau) %>%
+  mutate(noisef = factor(noise, levels = NOISES, labels = paste("noise", NOISES)),
+         nch_f  = factor(Num_ch, levels = NCH, labels = paste0("N[ch]==", NCH)),
+         param  = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+```
+
+```{r plot, fig.width = 7.5, fig.height = 8.0}
+g <- ggplot(dd, aes(interval_in_tau, D, colour = noisef, fill = noisef, group = noisef)) +
+  geom_hline(yintercept = 1, colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = .12, colour = NA) +
+  geom_line(linewidth = .5) + geom_point(size = 1) +
+  facet_grid(nch_f ~ param, scales = "free_y",
+             labeller = labeller(param = label_parsed, nch_f = label_parsed)) +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_y_log10() +
+  scale_colour_viridis_d(name = NULL, option = "C", end = .85, direction = -1) +
+  scale_fill_viridis_d(name = NULL, option = "C", end = .85, direction = -1) +
+  labs(x = expression(Delta / tau[min]), y = "sample distortion (diagonal), 95% CI") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "top",
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8.5))
+g
+ggsave("Figure_5_IR_sample_noise.pdf", g, width = 7.5, height = 8.0)
+```

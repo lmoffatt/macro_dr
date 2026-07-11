@@ -1,0 +1,148 @@
+---
+title: "Figure 5 bias (empirical) — theta_hat - truth grid: pooled fit vs cloud mean, 5 algorithms"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Empirical bias = theta_hat - theta_sim (dex = log10 parameter units), NOT the distortion-induced bias
+(which is F^-1 * mean-score: ~0 at the pooled MLE by design, and a first-order predictor that misses the
+large NR effect). Two estimators of theta_hat, both shown to compare:
+  POOLED : Model_Parameters_Hat from *_pool_runs.csv  (one fit to ALL 10000 replicas; cleanest, lowest noise)
+  CLOUD  : mean of Model_Parameters_Hat from *_mle_cloud_runs.csv, group_size==100, converged (noisier)
+Layout matches the distortion grid: columns = 5 algorithms; rows = 2 params x 3 noises, param-major. Cells
+are a heatmap (discrete design grid) coloured by signed bias on the symmetric symlog scale (white ~ 0), with
+NON-CONVERGED cells in GREY (pooled: Convergence_Status_Code not in {0,1,2}; cloud: <50% of fits converged).
+theta_sim (truth, dex): k_on = 1, N_ch = log10(Num_ch). Source N_ch >= 10.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"
+NSIM      <- 10000
+NOISES    <- c("0.1", "1", "10")
+ALGOS     <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")
+ALGO_LAB  <- c(macro_NR = "NR", macro_NMR = "MNR", macro_R = "R", macro_MR = "MR", macro_IR = "IR")
+PARAMS    <- c(off = 1, Num_ch_mean = 5)    # k_off and N_ch
+PARAM_LAB <- c(off = "log[10]~k[off]", Num_ch_mean = "log[10]~N[ch]")
+CONV_OK   <- c(0, 1, 2)                     # converged status codes
+truth_of  <- function(pn, nch) if_else(pn == "off", 2, log10(nch))   # log10 natural: k_off=100 -> 2
+
+# MULTIPLICATIVE scale: colour by the bias FACTOR 10^bias = estimate/truth (1 = no bias, white),
+# log-spaced and symmetric like the distortion figure. Band edges are round factors so the 1.15x / 1.5x
+# threshold lines land on band boundaries.
+FACTORS     <- c(1.02, 1.05, 1.10, 1.15, 1.25, 1.5, 2, 3, 5, 10, 20)
+POS_B       <- log10(FACTORS)                                  # band edges in dex (>1 side)
+BIAS_BREAKS <- c(-Inf, -rev(POS_B), POS_B, Inf)                # 23 bands, white = factor in (0.98, 1.02]
+PAL <- colorRampPalette(c("#021024", "#053061", "#2166AC", "#4393C3", "#92C5DE", "#D1E5F0",
+                          "#F7F7F7",
+                          "#FDDBC7", "#F4A582", "#D6604D", "#B2182B", "#67001F", "#3d0011")
+                        )(length(BIAS_BREAKS) - 1)
+edge_fac <- 10^BIAS_BREAKS[-1]                                  # multiplicative factor at each band's upper edge
+fmt_f    <- function(x) ifelse(is.infinite(x), "Inf", formatC(x, format = "g", digits = 2))
+KEEP_FAC <- c(0.1, 0.5, 0.67, 0.87, 1.15, 1.5, 2, 10)
+BAND_LAB_BAR <- ifelse(round(edge_fac, 2) %in% round(KEEP_FAC, 2), fmt_f(edge_fac), "")
+BAND_LEVELS  <- levels(cut(0, BIAS_BREAKS))
+VLINE  <- 1.05   # solid threshold = MacroIR's own precision (its p99 of |estimate/truth| is 1.057);
+                 # IR stays inside 98% of the plane, R/MR/NR fail ~half. 1.15x is too loose (MNR passes 95%).
+VLINE2 <- 1.5    # dashed threshold: gross bias
+```
+
+```{r read-pooled}
+read_pool <- function(algo, z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_pool_runs.csv", NSIM, algo, z)))
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(algo = algo, noise = z)
+}
+praw <- map_dfr(ALGOS, function(a) map_dfr(NOISES, function(z) read_pool(a, z)))
+
+pconv <- praw %>% filter(component_path == "Convergence_Status_Code") %>%
+  group_by(algo, noise, Num_ch, interval_in_tau) %>% summarise(code = value[1], .groups = "drop")
+
+bias_pool <- praw %>%
+  filter(component_path == "Model_Parameters_Hat", param_index %in% PARAMS, Num_ch >= 10) %>%
+  group_by(algo, noise, Num_ch, interval_in_tau, param_index) %>%
+  summarise(hat = mean(value), .groups = "drop") %>%
+  left_join(pconv, by = c("algo", "noise", "Num_ch", "interval_in_tau")) %>%
+  mutate(param_name = names(PARAMS)[match(param_index, PARAMS)],
+         D = hat - truth_of(param_name, Num_ch),
+         converged = code %in% CONV_OK,
+         src = "pooled fit (10000 replicas)")
+```
+
+```{r read-cloud}
+read_cloud <- function(algo, z) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_mle_cloud_runs.csv", NSIM, algo, z)))
+  rbindlist(lapply(files, function(p) {
+    d <- fread(p, skip = 1)
+    d <- d[group_size == 100 &
+             component_path %in% c("Model_Parameters_Hat", "Convergence_Status_Code")]
+    d[, .(component_path, simulation_index, sample_index, Num_ch, interval_in_tau, param_index, value)]
+  }))[, `:=`(algo = algo, noise = z)]
+}
+craw <- rbindlist(lapply(ALGOS, function(a) rbindlist(lapply(NOISES, function(z) read_cloud(a, z)))))
+
+fitkey <- c("algo", "noise", "Num_ch", "interval_in_tau", "simulation_index", "sample_index")
+cconv  <- craw[component_path == "Convergence_Status_Code",
+               .(code = value[1]), by = fitkey]
+cpar   <- craw[component_path == "Model_Parameters_Hat" & param_index %in% PARAMS & Num_ch >= 10]
+cpar   <- merge(cpar, cconv, by = fitkey)
+
+bias_cloud <- cpar[, .(hat = mean(value[code %in% CONV_OK]),
+                       conv_frac = mean(code %in% CONV_OK)),
+                   by = .(algo, noise, Num_ch, interval_in_tau, param_index)] %>%
+  as_tibble() %>%
+  mutate(param_name = names(PARAMS)[match(param_index, PARAMS)],
+         D = hat - truth_of(param_name, Num_ch),
+         converged = conv_frac >= 0.5,
+         src = "cloud mean (group 100, converged)")
+```
+
+```{r plot-fn}
+# Interpolated (contour_filled) over ONLY the real measured cells of each algorithm -- no complete(),
+# no union grid, so cells with NO DATA (e.g. N_ch 20/50 exist for IR but not for NR/MNR/MR/R) are simply
+# absent, never grey. True data marked with points: converged = small dot, NOT converged = x.
+plot_bias <- function(df, file, sub) {
+  df <- df %>% filter(!is.na(D)) %>% mutate(
+    lx     = log10(interval_in_tau), ly = log10(Num_ch),
+    algo_f = factor(ALGO_LAB[algo], levels = unname(ALGO_LAB[ALGOS])),
+    param  = factor(param_name, levels = names(PARAMS), labels = unname(PARAM_LAB[names(PARAMS)])),
+    noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)))
+  g <- ggplot(filter(df, converged), aes(lx, ly, z = D)) +   # contour ONLY over converged cells
+    geom_contour_filled(breaks = BIAS_BREAKS) +
+    scale_fill_manual(values = PAL, drop = FALSE, labels = BAND_LAB_BAR, name = "estimate / truth",
+                      guide = guide_legend(nrow = 1, byrow = TRUE, label.position = "bottom",
+                                           title.position = "left", title.vjust = 0.9,
+                                           keywidth = unit(0.34, "cm"), keyheight = unit(0.30, "cm"))) +
+    geom_contour(breaks = c(-log10(VLINE2), log10(VLINE2)), colour = "grey20", linewidth = .25, linetype = "dashed") +
+    geom_contour(breaks = c(-log10(VLINE),  log10(VLINE)),  colour = "black",  linewidth = .4) +
+    geom_point(data = filter(df, converged), aes(lx, ly),
+               size = .3, colour = "grey20", alpha = .45, inherit.aes = FALSE) +
+    geom_point(data = filter(df, !converged), aes(lx, ly),   # measured but NOT converged -> white + x
+               shape = 4, size = .9, stroke = .4, colour = "grey30", inherit.aes = FALSE) +
+    facet_grid(param + noisef ~ algo_f, labeller = labeller(param = label_parsed)) +
+    scale_x_continuous(breaks = log10(c(.01, .1, 1)), labels = c(".01", ".1", "1")) +
+    scale_y_continuous(breaks = log10(c(10, 100, 1000, 10000)), labels = c("10", "100", "1e3", "1e4")) +
+    labs(x = expression(Delta / tau[min]), y = expression(N[ch])) +
+    theme_bw(base_size = 9, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+          legend.title = element_text(size = 8), legend.text = element_text(size = 7),
+          legend.key.spacing.x = unit(0, "pt"),
+          axis.text = element_text(size = 7), axis.title = element_text(size = 8),
+          strip.text = element_text(size = 7.5))
+  ggsave(file, g, width = 7.0, height = 9.0)
+  g
+}
+```
+
+```{r plot, fig.width = 7.0, fig.height = 9.0, results = "asis"}
+print(plot_bias(bias_pool,  "Figure_5_bias_empirical_pooled.pdf", "pooled fit to 10000 replicas"))
+print(plot_bias(bias_cloud, "Figure_5_bias_empirical_cloud.pdf",  "cloud mean, group 100 converged"))
+```

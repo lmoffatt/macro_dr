@@ -1,0 +1,81 @@
+---
+title: "Figure 5 — sample-distortion collapse on the FAILING method (macro_NR): inverse total emission variance"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+The collapse variable x_B = 1/(N*Delta + W*noise/Delta) = 1/sigma^2_tot is the inverse total per-sample
+emission variance (verified: sigma^2_inst = Current_Noise/Delta, N-independent; sigma^2_chan ~ N*Delta gating).
+On macro_IR the distortion is ~1 so the collapse only reaches R^2~0.3-0.76 (tiny signal). Here we run the SAME
+variable on macro_NR, the method that fails: its sample distortion spans 1 -> 100s, huge SNR, so if the balance
+is the right physics the curves across all N_ch and all noise should fall on ONE curve per parameter.
+Numeric run 433ed13, Likelihood_Sample_Distortion diagonal. W scanned for the best per-param collapse.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+ALGO     <- "NR"
+SAMP     <- "Probit_statistics_Likelihood_Sample_Distortion"
+NOISES   <- c("0.1", "1", "10")
+W        <- 10                                    # instrument weight (scanned below)
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+
+read_noise <- function(z) map_dfr(Sys.glob(sprintf(
+  "../data/433ed13/figure_3_nch_*_nsim_10000_macro_%s_noise_%s_battery_pool.csv", ALGO, z)),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+d <- map_dfr(NOISES, read_noise) %>%
+  filter(component_path == SAMP, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)], nz = as.numeric(noise)) %>%
+  group_by(param_name, noise, nz, Num_ch, interval_in_tau) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  filter(is.finite(D), D > 0) %>%
+  mutate(x_B = 1 / (Num_ch * interval_in_tau + W * nz / interval_in_tau),
+         nch_f  = factor(Num_ch),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         param  = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+```
+
+```{r r2-scan}
+r2 <- function(v, y) {
+  b  <- cut(v, 18); w <- tibble(b, y) %>% group_by(b) %>%
+    summarise(vv = var(y), n = n(), .groups = "drop") %>% filter(n > 2)
+  1 - weighted.mean(w$vv, w$n, na.rm = TRUE) / var(y)
+}
+Ws  <- c(1, 3, 10, 30, 100)
+res <- map_dfr(unique(d$param_name), function(p) {
+  df <- d %>% filter(param_name == p)
+  tibble(param = p, W = Ws, R2 = sapply(Ws, function(w)
+    round(r2(log10(1 / (df$Num_ch * df$interval_in_tau + w * df$nz / df$interval_in_tau)), log10(df$D)), 3)))
+})
+cat("collapse R^2 of log10(sample distortion) vs log10(x_B), macro_NR, per param, over W:\n")
+res %>% pivot_wider(names_from = W, values_from = R2) %>% as.data.frame() %>% print()
+cat("\nbest W per param:\n")
+res %>% group_by(param) %>% slice_max(R2, n = 1) %>% as.data.frame() %>% print()
+```
+
+```{r plot, fig.width = 7.5, fig.height = 7.5}
+g <- ggplot(d, aes(x_B, D, colour = nch_f, shape = noisef, group = interaction(nch_f, noise))) +
+  geom_hline(yintercept = 1, colour = "grey45", linewidth = .3, linetype = "dashed") +
+  geom_line(linewidth = .3, alpha = .5) + geom_point(size = 1) +
+  facet_wrap(~ param, nrow = 2, scales = "free", labeller = label_parsed) +
+  scale_x_log10() + scale_y_log10() +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  scale_shape_manual(values = c(16, 17, 15), name = NULL) +
+  labs(x = expression(x[B]==1 / (N[ch] %.% Delta + W %.% noise / Delta)~"  (inverse total emission variance)"),
+       y = "sample distortion (macro_NR, diagonal)") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8.5))
+g
+ggsave("Figure_5_NR_sample_collapse.pdf", g, width = 7.5, height = 7.5)
+```

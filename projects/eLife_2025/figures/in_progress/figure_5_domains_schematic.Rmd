@@ -1,0 +1,64 @@
+---
+title: "Figure 5 — conceptual schematic of the non-Gaussian domains"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Conceptual (not data) schematic: where each source of non-Gaussianity dominates on the design plane
+(x = interval Delta/tau, y = N_ch), i.e. where the Gaussian likelihood is distorted.
+ - Gaussian (CLT): many channels AND many transitions per interval -> distortion -> 1 (top-right).
+ - Multinomial / binomial: FEW channels -> the channel-occupancy count is not Gaussian (bottom band).
+ - Poisson / telegraph: SHORT interval -> few switching events per interval, the discrete on/off
+   dominates (left band). Bottom-left = both fail = worst distortion.
+This is the legend of the empirical distortion heatmaps.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r plot, fig.width = 5.2, fig.height = 4.2}
+XB <- log10(c(.01, .1, 1)); YB <- log10(c(10, 100, 1000, 10000))
+by0 <- log10(30)                                  # multinomial: N_ch < 30 (binomial CLT, p-dependent)
+# telegraph: N_ch * (Delta/tau) < 1  ->  ly < -lx  -> triangle in the bottom-left (clipped to the plot)
+tri <- data.frame(x = c(-2, -2, -1), y = c(1, 2, 1))
+
+g <- ggplot() +
+  annotate("rect", xmin = -2, xmax = 0, ymin = 1, ymax = 4, fill = "#EAF3F7") +            # Gaussian base
+  geom_polygon(data = tri, aes(x, y), fill = "#4393C3", alpha = .45) +                     # telegraph (N_ch.Δ<1)
+  annotate("rect", xmin = -2, xmax = 0, ymin = 1, ymax = by0, fill = "#F4A582", alpha = .5) +  # multinomial (N_ch<30)
+  annotate("segment", x = -2, xend = -1, y = 2, yend = 1,
+           colour = "#21618c", linewidth = .5, linetype = "dashed") +                      # N_ch.Δ = 1
+  annotate("segment", x = -1.7, xend = -0.2, y = 1.9, yend = 3.7,
+           colour = "grey40", linewidth = .45, arrow = arrow(length = unit(.16, "cm"))) +
+  annotate("text", x = -0.95, y = 2.75, angle = 32, size = 2.6, colour = "grey35",
+           label = "increasing~Gaussianity~~(distortion %->% 1)", parse = TRUE) +
+  annotate("text", x = -0.55, y = 3.62, size = 3.4, fontface = "bold", colour = "#1a5276",
+           label = "Gaussian (CLT)") +
+  annotate("text", x = -0.55, y = 3.40, size = 2.8, colour = "#1a5276",
+           label = "distortion %~~% 1", parse = TRUE) +
+  annotate("segment", x = -1.72, xend = -1.85, y = 2.32, yend = 1.55,
+           colour = "#21618c", linewidth = .3) +                                   # leader to the triangle
+  annotate("text", x = -1.62, y = 2.62, size = 3.0, fontface = "bold", colour = "#21618c",
+           label = "Poisson /") +
+  annotate("text", x = -1.62, y = 2.44, size = 3.0, fontface = "bold", colour = "#21618c",
+           label = "telegraph") +
+  annotate("text", x = -0.98, y = 1.62, size = 2.5, colour = "#21618c",
+           label = "N[ch] * Delta < 1", parse = TRUE) +
+  annotate("text", x = -0.6, y = 1.32, size = 3.2, fontface = "bold", colour = "#a04000",
+           label = "multinomial") +
+  annotate("text", x = -0.6, y = 1.15, size = 2.6, colour = "#a04000",
+           label = "N[ch] < 30", parse = TRUE) +
+  scale_x_continuous(breaks = XB, labels = c(".01", ".1", "1"), expand = c(0, 0)) +
+  scale_y_continuous(breaks = YB, labels = c("10", "100", "1e3", "1e4"), expand = c(0, 0)) +
+  coord_cartesian(xlim = c(-2, 0), ylim = c(1, 4)) +
+  labs(x = expression(Delta / tau[min]), y = expression(N[ch])) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid = element_blank(), axis.text = element_text(size = 8),
+        axis.title = element_text(size = 9))
+g
+ggsave("Figure_5_domains_schematic.pdf", g, width = 5.2, height = 4.2)
+```

@@ -1,0 +1,60 @@
+---
+title: "Figure 5 (macro_IR) — channel-normalised covariance vs interval, by N_ch, param and noise"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Per-recording parameter variance MULTIPLIED by the channel number, N_ch * var(N_ch), as a function of the
+measurement interval, one curve per N_ch, in a parameter x noise grid. The N_ch factor removes the trivial
+1/N scaling: if the information were linear in channels the curves for different N_ch would COLLAPSE onto
+one; the spread between them is exactly the sub-linearity (the loss from concentrating channels). Rates
+collapse (linear); i and N_ch spread (sub-linear), more so at coarse interval and low noise. macro_IR,
+1c2ae6f, Gaussian_Distortion_Corrected_Covariance diagonal; noise levels present in the run; free y per parameter row.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+COV      <- "Probit_statistics_Gaussian_Distortion_Corrected_Covariance"
+PIDX     <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB<- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+              unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+
+read_dir <- function(z) map_dfr(Sys.glob(sprintf(
+  "../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z)),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+NOISES <- c("0.1", "1", "10")
+d <- map_dfr(NOISES, read_dir)
+
+dd <- d %>%
+  filter(component_path == COV, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)]) %>%
+  group_by(noise, param_name, Num_ch, interval_in_tau) %>%
+  summarise(var = mean(value), .groups = "drop") %>%
+  mutate(normcov = Num_ch * var,
+         nch_f  = factor(Num_ch),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         param  = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+```
+
+```{r plot, fig.width = 7.5, fig.height = 8.5}
+g <- ggplot(dd, aes(interval_in_tau, normcov, colour = nch_f, group = nch_f)) +
+  geom_line(linewidth = .5) + geom_point(size = .8) +
+  facet_grid(param ~ noisef, scales = "free_y", labeller = labeller(param = label_parsed)) +
+  scale_x_log10(breaks = c(.01, .1, 1)) + scale_y_log10() +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  labs(x = expression(Delta / tau[min]),
+       y = expression(N[ch]%*%"per-recording variance   (channel-normalised covariance)")) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        axis.text = element_text(size = 7), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 8))
+g
+ggsave("Figure_5_IR_normcov_noise.pdf", g, width = 7.5, height = 8.5)
+```

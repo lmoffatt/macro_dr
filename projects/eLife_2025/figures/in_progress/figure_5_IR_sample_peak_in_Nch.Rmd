@@ -1,0 +1,114 @@
+---
+title: "Figure 5 (macro_IR) — the sample-distortion peak in channel number marches with instrument noise"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+The per-sample distortion (non-Gaussianity of the emission) is NON-MONOTONIC in channel number: skewness of the
+binomial gating falls as 1/sqrt(N) (Gaussianising) while the gating variance N*G rises against the fixed
+instrument variance sigma^2 (exposing the non-Gaussian shape). The total skewness ~ N/(N*G+sigma^2)^{3/2} peaks
+at N* = 2 sigma^2 / G, G = i^2 p(1-p). Since sigma^2 grows with the swept noise, N* marches to higher N_ch.
+
+REBUILT with the denser low/mid-N_ch runs (noise 0.05/0.2/0.5/1 filled in at N_ch 10..200). Method fixes over
+the first version: (1) N* is the vertex of a log-log parabola through the three points around the peak, NOT a
+raw argmax on the coarse grid; (2) peaks pinned at the grid edge (true N* below the smallest N_ch, or above the
+largest) are marked as boundary-censored, not plotted as resolved; (3) a companion panel tests the predicted
+scaling law N* ∝ sigma^2 ∝ noise. macro_IR, 1c2ae6f, Gaussian_Sample_Distortion diagonal, k_on and i (clean
+single-bell parameters); y = max over interval of (distortion - 1).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+SAMP     <- "Probit_statistics_Gaussian_Sample_Distortion"
+NOISES   <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+PIDX     <- c(on = 0, unitary_current = 2)
+PARAM_LAB<- c(on = "log[10]~k[on]", unitary_current = "log[10]~i")
+
+read_noise <- function(z) {
+  fs <- Sys.glob(sprintf("../data/1c2ae6f/figure_3_G_nch_*_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", z))
+  if (!length(fs)) return(NULL)
+  map_dfr(fs, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(noise = z)
+}
+d <- map_dfr(NOISES, read_noise) %>%
+  filter(component_path == SAMP, statistic == "value", probit == "mean",
+         param_index == param_col, param_index %in% PIDX) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)], nz = as.numeric(noise)) %>%
+  group_by(param_name, noise, nz, Num_ch, interval_in_tau) %>%
+  summarise(D = mean(value), .groups = "drop") %>%
+  group_by(param_name, noise, nz, Num_ch) %>%
+  summarise(amp = max(D) - 1, .groups = "drop") %>%          # peak distortion over interval
+  mutate(noisef = factor(noise, levels = NOISES),
+         param  = factor(param_name, levels = names(PIDX), labels = unname(PARAM_LAB)))
+
+# refined peak in N: vertex of a log-log parabola through the 3 points around the argmax.
+# edge = TRUE when the peak sits at the smallest/largest sampled N_ch (censored, not resolved).
+peak_N <- function(df) {
+  df <- df %>% arrange(Num_ch); i <- which.max(df$amp)
+  edge <- (i == 1) || (i == nrow(df)) || (df$amp[i] <= 0)
+  Nstar <- NA_real_
+  if (!edge) {
+    s <- df[(i - 1):(i + 1), ]; x <- log10(s$Num_ch); y <- log10(pmax(s$amp, 1e-6))
+    m <- lm(y ~ poly(x, 2, raw = TRUE)); a <- coef(m)[3]
+    if (is.finite(a) && a < 0) {                              # concave => real interior max
+      xv <- -coef(m)[2] / (2 * a)
+      if (xv >= min(x) && xv <= max(x)) Nstar <- 10^xv else edge <- TRUE
+    } else edge <- TRUE
+  }
+  tibble(Nstar = Nstar, amp_at = df$amp[i], edge = edge, N_argmax = df$Num_ch[i])
+}
+pk <- d %>% group_by(param, param_name, noisef, nz) %>% group_modify(~ peak_N(.x)) %>% ungroup()
+```
+
+```{r plot-bells, fig.width = 8.0, fig.height = 4.2}
+mark <- pk %>% filter(!edge)
+gB <- ggplot(d, aes(Num_ch, amp, colour = noisef, group = noisef)) +
+  geom_hline(yintercept = 0, colour = "grey60", linewidth = .3, linetype = "dashed") +
+  geom_line(linewidth = .5) + geom_point(size = 1) +
+  geom_point(data = mark, aes(x = Nstar, y = amp_at), size = 3, shape = 21, stroke = .9, fill = "white") +
+  facet_wrap(~ param, nrow = 1, scales = "free_y", labeller = label_parsed) +
+  scale_x_log10(breaks = c(10, 100, 1000, 10000), labels = c("10", "100", "1e3", "1e4")) +
+  scale_colour_viridis_d(name = "instrument\nnoise", end = .92, option = "C") +
+  labs(x = expression(N[ch]),
+       y = "peak sample distortion,  max(D) - 1",
+       subtitle = "open circle = refined N* (interior peaks only; edge-pinned peaks left unmarked)") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "right",
+        plot.subtitle = element_text(size = 7.5),
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 8.5), strip.text = element_text(size = 8.5))
+gB
+ggsave("Figure_5_IR_sample_peak_in_Nch.pdf", gB, width = 8.0, height = 4.2)
+```
+
+```{r plot-scaling, fig.width = 5.0, fig.height = 4.2}
+sc <- pk %>% filter(!edge, is.finite(Nstar))
+fit <- lm(log10(Nstar) ~ log10(nz), sc); b <- coef(fit)[2]; r2 <- summary(fit)$r.squared
+lab <- sprintf("N* proportional to noise^%.2f  (R^2 = %.2f)", b, r2)
+gS <- ggplot(sc, aes(nz, Nstar)) +
+  geom_smooth(method = "lm", se = FALSE, colour = "grey55", linewidth = .5, linetype = "22") +
+  geom_point(aes(colour = param, shape = param), size = 2.4) +
+  scale_x_log10() + scale_y_log10() +
+  scale_colour_brewer(palette = "Set1", name = NULL, labels = parse(text = levels(sc$param))) +
+  scale_shape_manual(values = c(16, 17), name = NULL, labels = parse(text = levels(sc$param))) +
+  labs(x = "instrument noise  (proportional to sigma^2)", y = expression(N^"*"~"(refined peak channel number)"),
+       subtitle = lab) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = c(.02, .98),
+        legend.justification = c(0, 1), legend.background = element_rect(fill = "white", colour = "grey80"),
+        plot.subtitle = element_text(size = 8),
+        axis.text = element_text(size = 7.5), axis.title = element_text(size = 8.5))
+gS
+ggsave("Figure_5_IR_sample_Nstar_scaling.pdf", gS, width = 5.0, height = 4.2)
+```
+
+```{r table}
+cat("refined N* (interior peaks) and edge-censored peaks, per param x noise:\n")
+pk %>% transmute(param_name, noise = nz, N_argmax, Nstar = round(Nstar, 0),
+                 status = ifelse(edge, "edge-censored", "interior")) %>%
+  arrange(param_name, noise) %>% as.data.frame() %>% print()
+```

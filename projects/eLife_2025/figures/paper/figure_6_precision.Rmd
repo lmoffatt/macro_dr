@@ -1,0 +1,93 @@
+---
+title: "Figure 6 — precision (channel-normalised corrected covariance) vs interval, 4 params x 5 algorithms"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+*** DATA SOURCE IS A DRAFT ***  This uses the NUMERIC run 433ed13 (Likelihood_Distortion_Corrected_Covariance),
+whose FD Fisher is unstable/indefinite for the naive methods (hence the erratic NR/MNR spikes we CI-filter out).
+The DEFINITIVE figure waits for the dispatch_G sims in 1c2ae6f (Gaussian, all 5 algorithms). When they land, swap:
+  DATA_DIR -> "../data/1c2ae6f";  file glob -> "figure_3_G_nch_*_..._battery_pool_G.csv";
+  CC       -> "Probit_statistics_Gaussian_Distortion_Corrected_Covariance".
+Everything else (N_ch·cov, 4 params × 5 algos, log y, CI filter CIR_MAX, error bars, N_ch subset) stays.
+
+Companion to Figure 5. Fig 5 asked "is the error bar honest?" (calibration/distortion). Fig 6 asks "how small
+is the actual error, and how does it trade with the experimental design?" (efficiency). Quantity = N_ch x the
+DISTORTION-CORRECTED (sandwich, honest) covariance of each parameter = per-channel precision; multiplying by
+N_ch removes the trivial 1/N_ch so a FLAT family across N_ch = information linear in channels (concentrating =
+spreading), a RISING/fanning family = sub-linear (loss from concentrating channels). Lines vs interval, coloured
+by N_ch; facet columns = 5 algorithms, rows = 4 parameters. Log y (range spans orders of magnitude).
+
+Message (verified in-data, noise 0.1): parameter-dependent. For the RATES (k_on, k_off) all algorithms reach
+~the SAME corrected covariance -> the naive methods there are only miscalibrated (Fig 5), NOT less efficient.
+For the AMPLITUDE params (unitary current i, N_ch) the naive methods are genuinely LESS PRECISE (NR ~4.5x IR,
+worse at coarse interval). Numeric run 433ed13, Likelihood_Distortion_Corrected_Covariance diagonal. Cells with
+a singular FIM (non-finite corrected covariance) drop out of the lines.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIR  <- "../data/433ed13"; NSIM <- 10000; NOISE <- "0.1"
+ALGOS     <- c("macro_NR", "macro_NMR", "macro_R", "macro_MR", "macro_IR")   # established order
+ALGO_LAB  <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR", macro_IR="IR")
+CC        <- "Probit_statistics_Likelihood_Distortion_Corrected_Covariance"
+PIDX      <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+```
+
+```{r data}
+read_one <- function(a) map_dfr(Sys.glob(file.path(DATA_DIR,
+  sprintf("figure_3_nch_*_nsim_%d_%s_noise_%s_battery_pool.csv", NSIM, a, NOISE))),
+  ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>% mutate(algo = a)
+raw <- map_dfr(ALGOS, read_one) %>%
+  filter(component_path == CC, statistic == "value",
+         param_index == param_col, param_index %in% PIDX, Num_ch %in% c(10, 100, 1000, 10000))
+CIR_MAX <- 8   # drop a cell whose 95% bootstrap CI spans more than this factor (near-singular / unreliable)
+KEY <- c("algo", "Num_ch", "interval_in_tau", "param_index")
+d <- raw %>% filter(probit == "mean") %>% group_by(across(all_of(KEY))) %>%
+  summarise(cov = mean(value), .groups = "drop") %>%
+  left_join(raw %>% filter(probit == "quantile", quantile_level %in% c(0.025, 0.975)) %>%
+              group_by(across(all_of(KEY))) %>% summarise(lo = min(value), hi = max(value), .groups = "drop"),
+            by = KEY) %>%
+  mutate(ncov = Num_ch * cov, ncov_lo = Num_ch * lo, ncov_hi = Num_ch * hi) %>%
+  filter(is.finite(ncov), ncov > 1e-12, is.finite(ncov_lo), ncov_lo > 0,   # drop singular / non-finite
+         is.finite(ncov_hi), ncov_hi / ncov_lo < CIR_MAX) %>%              # drop very-wide-CI cells
+  mutate(nch_f  = factor(Num_ch),
+         algo_f = factor(ALGO_LAB[algo], levels = unname(ALGO_LAB[ALGOS])),
+         param  = factor(names(PIDX)[match(param_index, PIDX)],
+                         levels = names(PIDX), labels = unname(PARAM_LAB)))
+```
+
+```{r plot, fig.width = 7.4, fig.height = 8.6}
+g <- ggplot(d, aes(interval_in_tau, ncov, colour = nch_f, group = nch_f)) +
+  geom_linerange(aes(ymin = ncov_lo, ymax = ncov_hi), linewidth = .35, alpha = .55) +
+  geom_line(linewidth = .45) + geom_point(size = .8) +
+  facet_grid(param ~ algo_f, scales = "free_y", labeller = labeller(param = label_parsed)) +
+  scale_x_log10(breaks = c(.01, .1, 1), labels = c(".01", ".1", "1")) +
+  scale_y_log10() +
+  scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+  labs(x = expression(Delta %.% k[off]),
+       y = expression(N[ch] %.% "corrected covariance   (per-channel precision)")) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), panel.spacing.x = unit(0.18, "cm"), legend.position = "right",
+        legend.title = element_text(size = 8), legend.text = element_text(size = 6.8),
+        legend.key.size = unit(.32, "cm"),
+        axis.text = element_text(size = 6.8), axis.title = element_text(size = 8.5),
+        strip.text = element_text(size = 7.8))
+g
+ggsave("Figure_6_precision.pdf", g, width = 7.4, height = 8.6)
+```
+
+```{r table}
+# median N_ch*corrected-cov per algo x param, and the ratio to IR (efficiency loss of the naive methods)
+d %>% group_by(param, algo_f) %>% summarise(m = median(ncov), .groups = "drop") %>%
+  pivot_wider(names_from = algo_f, values_from = m) %>%
+  mutate(across(where(is.numeric), ~ signif(.x, 3))) %>% as.data.frame() %>% print()
+```

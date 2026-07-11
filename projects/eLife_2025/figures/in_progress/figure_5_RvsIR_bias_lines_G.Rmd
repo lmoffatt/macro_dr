@@ -1,0 +1,134 @@
+---
+title: "Figure 5 (R vs IR, GAUSSIAN frame) bias lines — predicted (GDIB) and empirical"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Gaussian-frame twin of figure_5_RvsIR_bias_lines. PREDICTED bias = Gaussian distortion-induced bias
+(GDIB) from battery_sim_G (figures/data/1c2ae6f), anchored on the PSD Gaussian Fisher G_b at theta_sim
+-> no FD 0-sentinels (fills macro_R once its N_ch=10 run lands). EMPIRICAL bias = per-recording MLE cloud
+(mle_cloud_runs, group_size=100), already complete at N_ch=10 for R and IR.
+Signed bias (log10 units) -> LINEAR y, 0 = unbiased. Colour = ALGORITHM, facet parameter x N_ch (10 | 100),
+noise 0.1, x = Delta t * k_off. 95% ribbon + 68% bar.
+NOTE (2026-07-10): macro_R N_ch=10 battery_sim_G still running (slowest); until it lands the PREDICTED
+N_ch=10 column shows IR only. EMPIRICAL is complete. Re-render to fill predicted R when the file appears.
+TWO PDFs, ONE Rmd.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+```
+
+```{r params}
+DATA_DIR   <- "../data/1c2ae6f"
+NSIM       <- 10000
+NOISE      <- "0.1"
+ALGOS      <- c("macro_R", "macro_IR")
+NCHS       <- c(10, 100)
+GROUP_SIZE <- 100
+BIAS_W_MAX <- 1.5
+
+ALGO_COL  <- c(R = "#009E73", IR = "#0072B2")
+ALGO_LAB  <- c(macro_R = "R", macro_IR = "IR")
+ORD       <- c("on", "off", "unitary_current", "Num_ch_mean")
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+               unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+TRUTH_FIX <- c(on = log10(10), off = log10(100), unitary_current = log10(1))
+```
+
+```{r predicted-battery}
+read_batt <- function(a) {
+  files <- Sys.glob(file.path(DATA_DIR,
+    sprintf("figure_3_G_nch_*_nsim_%d_%s_noise_%s_battery_sim_G.csv", NSIM, a, NOISE)))
+  if (!length(files)) return(NULL)
+  map_dfr(files, ~ read.csv(.x, skip = 1, stringsAsFactors = FALSE)) %>%
+    filter(Num_ch %in% NCHS) %>% mutate(algo = a)
+}
+bsim <- map_dfr(ALGOS, read_batt)
+predicted <- bsim %>%
+  filter(component_path == "Probit_statistics_Gaussian_Distortion_Induced_Bias",
+         statistic == "value", param_name %in% ORD,
+         probit == "mean" |
+           (probit == "quantile" & quantile_level %in% c(0.025, 0.16, 0.84, 0.975))) %>%
+  mutate(q = case_when(probit == "mean"       ~ "bias",
+                       quantile_level == 0.025 ~ "lo95",
+                       quantile_level == 0.16  ~ "lo68",
+                       quantile_level == 0.84  ~ "hi68",
+                       quantile_level == 0.975 ~ "hi95")) %>%
+  group_by(algo, Num_ch, interval_in_tau, param_name, q) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = q, values_from = v) %>%
+  mutate(across(c(bias, lo95, lo68, hi68, hi95),
+                ~ if_else(algo == "macro_R" & bias == 0, NA_real_, .))) %>%
+  filter(is.finite(bias))
+```
+
+```{r empirical-cloud}
+read_cloud <- function(a, nch) {
+  path <- file.path(DATA_DIR,
+    sprintf("figure_3_G_nch_%d_nsim_%d_%s_noise_%s_mle_cloud_runs.csv", nch, NSIM, a, NOISE))
+  if (!file.exists(path)) return(NULL)
+  dt <- fread(path, skip = 1, showProgress = FALSE,
+              select = c("component_path", "sample_index", "param_name",
+                         "interval_in_tau", "Num_ch", "group_size", "value"))
+  dt <- dt[group_size == GROUP_SIZE]
+  conv <- unique(dt[component_path == "Convergence_Status_Code" & value %in% c(0, 1, 2),
+                    .(sample_index, interval_in_tau)])
+  mp <- dt[component_path == "Model_Parameters_Hat" & param_name %in% ORD &
+             !is.na(sample_index) & is.finite(value)]
+  mp <- mp[conv, on = .(sample_index, interval_in_tau), nomatch = 0]
+  mp[, truth := fifelse(param_name == "Num_ch_mean", log10(Num_ch), TRUTH_FIX[param_name])]
+  mp[, b := value - truth]
+  out <- mp[, .(bias = mean(b), se = sd(b) / sqrt(.N)),
+            by = .(Num_ch, interval_in_tau, param_name)]
+  out[, algo := a]
+  out[]
+}
+empirical <- rbindlist(lapply(ALGOS, function(a) rbindlist(lapply(NCHS, function(n) read_cloud(a, n)))))
+empirical[, `:=`(lo95 = bias - 1.96 * se, hi95 = bias + 1.96 * se,
+                 lo68 = bias - se,        hi68 = bias + se)]
+```
+
+```{r shape}
+shape_bias <- function(df) {
+  as_tibble(df) %>%
+    transmute(algo = factor(ALGO_LAB[algo], levels = c("R", "IR")),
+              Num_ch, interval_in_tau, param_name, bias, lo95, hi95, lo68, hi68,
+              param = factor(param_name, levels = ORD, labels = unname(PARAM_LAB[ORD])),
+              Nch   = factor(paste0("N[ch] == ", Num_ch), levels = paste0("N[ch] == ", NCHS)))
+}
+pred_d <- shape_bias(predicted) %>% filter((hi95 - lo95) / 2 <= BIAS_W_MAX)
+emp_d  <- shape_bias(empirical)  %>% filter((hi95 - lo95) / 2 <= BIAS_W_MAX)
+```
+
+```{r plot-fn}
+plot_bias <- function(dd, title) {
+  ggplot(dd, aes(interval_in_tau, bias, colour = algo, fill = algo, group = algo)) +
+    geom_hline(yintercept = 0, colour = "grey70", linewidth = .3, linetype = "dashed") +
+    geom_ribbon(aes(ymin = lo95, ymax = hi95), alpha = .13, colour = NA) +
+    geom_linerange(aes(ymin = lo68, ymax = hi68), linewidth = .45, alpha = .7) +
+    geom_line(linewidth = .5) +
+    geom_point(size = 1) +
+    facet_grid(param ~ Nch, scales = "free_y",
+               labeller = labeller(param = label_parsed, Nch = label_parsed)) +
+    scale_x_log10(breaks = c(.01, .1, 1)) +
+    scale_colour_manual(values = ALGO_COL, name = NULL) +
+    scale_fill_manual(values = ALGO_COL, name = NULL, guide = "none") +
+    labs(x = expression(Delta * t %.% k[off]), y = "bias  (log10 units)", title = title) +
+    theme_bw(base_size = 9) +
+    theme(panel.grid.minor = element_blank(), legend.position = "top",
+          strip.text = element_text(size = 8), plot.title = element_text(size = 11, face = "bold"))
+}
+```
+
+```{r plot, fig.width = 6.6, fig.height = 8.0, results = "asis"}
+gP <- plot_bias(pred_d, "Parameter bias: Gaussian predicted (GDIB), 95% + 68% bootstrap")
+gE <- plot_bias(emp_d,  "Parameter bias: empirical (per-recording MLEs), 95% + 68% SE, group_size = 100")
+ggsave("Figure_5_RvsIR_G_bias_predicted_lines.pdf", gP, width = 6.6, height = 8.0)
+ggsave("Figure_5_RvsIR_G_bias_empirical_lines.pdf", gE, width = 6.6, height = 8.0)
+gP; gE
+```

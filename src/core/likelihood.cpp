@@ -704,6 +704,48 @@ auto calculate_mdlikelihood_predictions_micro_impl(
     return widen_to_dMacro_Ev_gradient_all(std::move(micro_result.value()));
 }
 
+// Reduce a micro dlikelihood-predictions result (dMacro_State_Ev_gradient_all,
+// produced via Micro_DMR + widen) down to the dMacro_State_Hessian_minimal that
+// the Gauss-Newton MLE driver consumes. It needs two things: the recording-total
+// logL with its AD score (carried at the top level of the gradient state), and
+// the total moment-matched Gaussian Fisher
+//   Ḡ = Σ_t [ (∂y_mean_t)(∂y_mean_t)ᵀ / v_t + (∂y_var_t)(∂y_var_t)ᵀ / (2 v_t²) ].
+// That per-step Gaussian-formula FIM is the SAME quantity the macro filter
+// accumulates in-step (qmodel.h:6096-6107) and the diagnostics build at
+// calculate_Likelihood_diagnostics_preset_f (the sqr_X<true>/y_var idiom below).
+// The micro filter already populates per-step Derivative<y_mean>/<y_var> in the
+// Evolution slot, so summing it here as a post-pass makes the micro MLE metric
+// numerically identical to macro without touching the (hot) micro filter.
+inline auto reduce_micro_gradient_all_to_hessian_minimal(
+    const dMacro_State_Ev_gradient_all& g, const var::Parameters_transformed& par)
+    -> dMacro_State_Hessian_minimal {
+    using DLogL = var::Derivative<logL, var::Parameters_transformed>;
+    dMacro_State_Hessian_minimal out;
+    get<DLogL>(out) = get<DLogL>(g);
+
+    std::optional<parameter_spd_payload> GFI;
+    for (auto const& evo_i : get<Evolution>(g)()) {
+        auto gfi = sqr_X<true>(derivative(get<y_mean>(evo_i))()) *
+                       (1.0 / primitive(get<y_var>(evo_i))()) +
+                   sqr_X<true>(derivative(get<y_var>(evo_i))()) *
+                       (1.0 / 2.0 / sqr(primitive(get<y_var>(evo_i))()));
+        // NaN-observation samples / secular-growth derivatives produce non-finite
+        // GFI entries that would poison the metric; zero them (matches the
+        // diagnostics guard at calculate_Likelihood_diagnostics_preset_f).
+        if (!lapack::matrix_has_only_finite(gfi))
+            gfi = SymPosDefMatrix<double>(gfi.nrows(), gfi.ncols(), 0.0);
+        auto t_GFI =
+            parameter_spd_payload(std::move(gfi), var::get_dx_of_dfdx(get<y_mean>(evo_i)));
+        if (!GFI)
+            GFI = std::move(t_GFI);
+        else
+            GFI = *GFI + t_GFI;
+    }
+    if (GFI)
+        get<Gaussian_Fisher_Information>(out)() = std::move(*GFI);
+    return out;
+}
+
 }  // namespace
 
 auto calculate_mlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
@@ -743,7 +785,15 @@ auto calculate_mdlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Hessian_minimal> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
             if constexpr (ModelL::micro_type::value) {
-                return error_message("micro path does not yet support dlogLikelihood");
+                // Micro has no in-filter Hessian_minimal accumulator (it folds a
+                // micro state with micro_Patch_State). Route through the supported
+                // micro predictions path and reduce its per-step Evolution to the
+                // {logL, score, Ḡ} the driver needs (identical Gaussian FIM to macro).
+                auto g = calculate_mdlikelihood_predictions_micro_impl(modelLikelihood, ftbl3, par,
+                                                                       e, r);
+                if (!g)
+                    return g.error();
+                return reduce_micro_gradient_all_to_hessian_minimal(g.value(), par);
             } else {
                 return calculate_mdlikelihood_impl(modelLikelihood, ftbl3, par, e, r);
             }

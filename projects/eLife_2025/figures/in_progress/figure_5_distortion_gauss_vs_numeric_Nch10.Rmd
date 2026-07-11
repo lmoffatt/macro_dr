@@ -1,0 +1,82 @@
+---
+title: "Figure 5 (info distortion: numeric vs Gaussian Fisher) — the stressed corner: N_ch = 10"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Restricted comparison: N_ch = 10 (few channels) as a function of measurement interval. Pooling over all
+intervals hid the effect; here the relative bootstrap CI of the distortion diagonal is plotted vs interval,
+per parameter x noise, for the numeric FD Fisher (433ed13, Likelihood_Information_Distortion) vs the analytic
+Gaussian FIM (1c2ae6f, Likelihood_Gaussian_Information_Distortion). At SHORT delta the numeric FD is 2-6x more
+variable (worst for N_ch and k_on, the directions coupled by the i.N_ch degeneracy), while the Gaussian stays
+flat -- so the Gaussian FIM matters precisely in the few-channel / fine-sampling corner.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r data}
+ORD        <- c("on", "off", "unitary_current", "Num_ch_mean")
+PIDX       <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
+PARAM_LAB  <- c(on = "log[10]~k[on]", off = "log[10]~k[off]",
+                unitary_current = "log[10]~i", Num_ch_mean = "log[10]~N[ch]")
+APPROX_COL <- c(numeric = "#D55E00", gaussian = "#0072B2")
+
+diag_ci <- function(df, comp) df %>%
+  filter(component_path == comp, statistic == "value",
+         param_index == param_col, param_index %in% PIDX,
+         probit == "mean" | (probit == "quantile" & quantile_level %in% c(0.025, 0.975))) %>%
+  mutate(param_name = names(PIDX)[match(param_index, PIDX)],
+         q = if_else(probit == "mean", "D", if_else(quantile_level == 0.025, "lo", "hi"))) %>%
+  group_by(noise, interval_in_tau, param_name, q) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = q, values_from = v)
+
+read_dir <- function(pat) map_dfr(Sys.glob(pat), function(p) {
+  z <- sub(".*_noise_([0-9.eE+-]+)_.*", "\\1", basename(p))
+  read.csv(p, skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z)
+})
+# N_ch = 10 only
+old <- read_dir("../data/433ed13/figure_3_nch_10_nsim_10000_macro_IR_noise_*_battery_sim.csv")
+new <- read_dir("../data/1c2ae6f/figure_3_G_nch_10_nsim_10000_macro_IR_noise_*_battery_sim_G.csv")
+NOISES <- as.character(sort(as.numeric(unique(new$noise))))
+
+dd <- bind_rows(
+  diag_ci(old, "Probit_statistics_Likelihood_Information_Distortion")          %>% mutate(approx = "numeric"),
+  diag_ci(new, "Probit_statistics_Likelihood_Gaussian_Information_Distortion") %>% mutate(approx = "gaussian")) %>%
+  filter(noise %in% NOISES, is.finite(D), is.finite(lo), is.finite(hi), D != 0) %>%
+  mutate(relCI  = (hi - lo) / (2 * abs(D)),
+         param  = factor(param_name, levels = ORD, labels = unname(PARAM_LAB[ORD])),
+         noisef = factor(paste("noise", noise), levels = paste("noise", NOISES)),
+         approx = factor(approx, levels = c("numeric", "gaussian")))
+```
+
+```{r plot, fig.width = 7.0, fig.height = 5.0}
+g <- ggplot(dd, aes(interval_in_tau, relCI, colour = approx, group = approx)) +
+  geom_line(linewidth = .45) + geom_point(size = 1) +
+  facet_grid(noisef ~ param, labeller = labeller(param = label_parsed)) +
+  scale_x_log10(breaks = c(.01, .1, 1)) +
+  scale_y_continuous(limits = c(0, NA)) +
+  scale_colour_manual(values = APPROX_COL, name = NULL) +
+  labs(x = expression(Delta / tau[min]),
+       y = "relative bootstrap CI of distortion diagonal",
+       title = expression("macro_IR, "*N[ch]*" = 10: numeric FD blows up at short "*Delta*", Gaussian stays flat")) +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "top",
+        strip.text = element_text(size = 8), plot.title = element_text(size = 10, face = "bold"))
+g
+ggsave("Figure_5_distortion_gauss_vs_numeric_Nch10.pdf", g, width = 7.0, height = 5.0)
+```
+
+```{r table}
+dd %>% filter(interval_in_tau <= 0.05) %>%
+  group_by(noise, param_name, interval_in_tau, approx) %>%
+  summarise(relCI = round(relCI, 3), .groups = "drop") %>%
+  pivot_wider(names_from = approx, values_from = relCI) %>%
+  mutate(num_over_gau = round(numeric / gaussian, 2)) %>%
+  arrange(noise, param_name, interval_in_tau)
+```
