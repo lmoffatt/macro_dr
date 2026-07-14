@@ -1,5 +1,7 @@
 # Prior Choice Justification — Posterior Information Distortion Framework
 
+> **Superseded for the current eLife paper (2026-07).** The current paper is **likelihood-only**; the Posterior Information Distortion framework described here is CUT from it and kept for a future (mechanism-discrimination) component. The likelihood-side evidence correction stays in the paper as motivation only. Do NOT read the statements below that "the framework is Posterior, not Likelihood" or that "the eLife paper adopts the Posterior framework as the diagnostic of record" as current — they reflect an earlier plan. Canonical decisions: `papers/macroir-elife-2025/02_decision_log.md`.
+
 ## Scope
 
 This document justifies the **structural role** of a proper Gaussian prior in
