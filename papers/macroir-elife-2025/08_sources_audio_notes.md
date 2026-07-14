@@ -1,43 +1,36 @@
 # Paper 2 (MacroIR / eLife 2025) — Sources & Audio Notes Index
 
-This paper plan was derived from:
+Index of the sources this plan derives from. Treat transcripts as idea-capture, not citable text (automated transcription, occasional word errors).
 
-1. existing in-repo draft(s) under `papers/macroir-elife-2025/docs/manuscript-drafts/`
-2. the existing `projects/eLife_2025/` prototype scripts/figures
-3. the audio-note transcripts (MacroIR10)
+## Manuscript source (head)
+- `papers/macroir-elife-2025/docs/manuscript-drafts/elife_paper.tex` — the live draft to build on.
+- Superseded drafts (`elife-macroir*.tex`, incl. `-merged`, `-revised*`) are earlier variants kept as history.
 
-## Primary manuscript sources
+## Framing / plan
+- `From molecular mechanisms to data back and forth PROGRAM.md` — research-program framing (this paper = bridge 2).
+- `00_master_plan_v2.md`, `02_decision_log.md`, `09_carve_plan.md`.
 
-- `papers/macroir-elife-2025/docs/manuscript-drafts/elife-macroir-merged.tex`
-- `papers/macroir-elife-2025/docs/manuscript-drafts/elife-macroir-revised3.tex`
+## Prior published work
+- Moffatt & Pierdominici-Sottile, Comm Biol 2025 (P2X2) — the demonstration; `docs/bibliography/Moffatt_PierdominiciSottile_2025_*`.
+- Moffatt 2007, Biophys J — the origin of MacroR; `docs/bibliography/Moffatt_2007_*`.
 
-## Prototype pipeline sources
+## Prototype pipeline
+- `projects/eLife_2025/ops/local/*.macroir`, `ops/slurm/`, `ops/clusters/`; `projects/eLife_2025/figures/paper/*.Rmd`.
 
-- `projects/eLife_2025/ops/local/figure_1.macroir`
-- `projects/eLife_2025/ops/local/figure_2.macroir`
-- `projects/eLife_2025/figures/figure_1.Rmd`
-- `projects/eLife_2025/figures/figure_2.Rmd`
+## Audio transcripts
+All under `program/source-notes/audios/`.
 
-## MacroIR10 audio transcripts (high-signal)
+### MacroIR 13 (2026-05 → 2026-07) — current source of record
+Folder `Chat de WhatsApp con MacroIR 13/`. Carries the current consensus. High-signal:
+- **2026-05-19** — inaugurates the paper; the abstract problem (must say more than Comm Biol).
+- **2026-05-31 / 06-02 / 06-03** — Information Distortion Matrix blow-ups; Fisher singular/indefinite; measure the Hessian at the optimum; posterior-vs-likelihood split (later cut to likelihood-only).
+- **2026-06-09 / 06-10** — the trust-coefficient discontinuity bug found and fixed; decouple α_μ (mean) from the covariance down-date; IR canonical, IRT/Taylor cut.
+- **2026-06-22 / 06-23** — the paper narrative dictated: two Gaussian approximations, three regimes (multinomial / telegraphic / Gaussian), the diagnostics, the ranking; MacroMR strawman; MacroIR ≈ time-augmented Kalman as hypothesis.
+- **2026-07-02 → 07-08** — figures: heatmaps of bias/distortion, correlation/sample decomposition, the shift to the Gaussian-Fisher anchor for the definitive figures.
+- **2026-07-11** (18.21 + 20.34/35/36) — the scope lock: 2-state, non-stationary, macroscopic-only; MacroIR sole survivor; the Fisher-to-0 result (info about the original channel number vanishes on relaxation); evidence correction as discussion; micro / >2-states / stationary / experimental-data as explicit open doors.
 
-All files live under:
-
-- `program/source-notes/audios/`
-
-Key transcripts (examples):
-
-- `WhatsApp Ptt 2025-12-20 at 16.05.30.md`
-  - 4-figure narrative; avoid MicroIR in this paper to reduce attack surface.
-- `WhatsApp Ptt 2025-12-25 at 22.51.04.md`
-  - Don’t over-invest in the “distribution update” figure that requires MicroIR; focus on score/FIM efficacy first.
-- `WhatsApp Ptt 2025-12-25 at 23.23.44.md`
-  - Score mean CI logic; partial vs total likelihood gradients.
-- `WhatsApp Ptt 2026-01-11 at 19.04.34.md`
-  - `Cov(sum score)` vs `sum Cov(score)` diagnostic; likelihood variance intuition.
-- `WhatsApp Ptt 2026-01-14 at 20.52.42.md`
-  - variance inflation factor; residual tests; links to inference/evidence distortion.
-
-## Notes about transcripts
-
-- These were produced by an automated transcription engine; there will be occasional word errors.
-- Treat them as *idea capture*, not as citable text.
+### MacroIR 10 (2025-12 → 2026-01) — earlier, still valid pointers
+- **2025-12-20** — 4-figure narrative; avoid MicroIR to reduce attack surface.
+- **2025-12-25** — score/FIM efficacy first; partial vs total likelihood gradients.
+- **2026-01-11** — Cov(Σ score) vs Σ Cov(score) diagnostic.
+- **2026-01-14** — variance inflation factor; residual tests; inference/evidence distortion.

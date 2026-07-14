@@ -1,115 +1,46 @@
 # Paper 2 (MacroIR / eLife 2025) — Metrics & Diagnostics
 
-This file defines *what we measure* to claim an approximation is “good”.
+Detail layer beneath `00_master_plan_v2.md` §3 (the authoritative summary); this file holds the operational definitions. Anchor throughout: the model's own **Gaussian Fisher** H; the numerical finite-difference Fisher enters only to gauge how faithful the Gaussian one is. All tests evaluated at the global MLE / optimum (for a misspecified likelihood, θ_sim and the optimum differ, and that gap is the bias).
 
-## 1) Minimal “must-pass” metrics (main text)
+## 1) Must-pass metrics (main text)
 
-### M1 — Score mean (unbiasedness at true parameters)
+### M1 — Score bias
+- **Claim:** at the true parameters θ*, E[∇ log L(θ*)] = 0.
+- **Test:** simulate many datasets at θ*, compute the score each time; 0 should lie in the CI per parameter, CI width shrinking ~ 1/√(n_simulations). Project the residual E[score] through the parameter covariance → a bias vector (DIB), the reader-facing "how wrong is the estimate".
+- **Why:** a biased score biases the MLE.
 
-- **Claim:** At the true parameters θ\*, `E[∇ log L(θ\*)] = 0`.
-- **Operational test:** simulate many independent datasets at θ\*, compute the score each time, and show:
-  - 0 lies inside the CI for each parameter, and
-  - CI width shrinks ~ `1/sqrt(n_simulations)`.
-- **Why it matters:** if the score is biased, the MLE/MAP/posterior will be biased.
-
-### M2 — FIM consistency (two estimators)
-
-For a correctly specified likelihood, under regularity conditions:
-
-- `FIM = Cov(score) = -E[Hessian(log L)]`
-
-Operationally, compare:
-
-- **Estimator A:** covariance of per-dataset score (from simulations)
-- **Estimator B:** expected negative Hessian (or a Hessian estimator available from the diagnostic output)
-
-Summaries:
-
-- elementwise relative error, matrix norm ratio, determinant ratio, etc.
+### M2 — Fisher consistency (Gaussian Fisher vs score covariance)
+- Correct specification ⇒ Var(score) = H, the Gaussian Fisher.
+- **Anchor:** H is the model's analytic Gaussian Fisher (PSD by construction), NOT a numerical −E[Hessian]. The numerical FD-Fisher is computed only to measure how faithful H is (the F-vs-G bridge).
+- Compare Cov(per-dataset score) against H; summarize via the distortion matrix (§2).
 
 ### M3 — Normalized residual sanity
+- r_t = (y_obs,t − y_pred,t) / σ_pred,t.
+- Good predictive: mean(r) ≈ 0, var(r) ≈ 1, and **no temporal autocorrelation** (ACF ≈ 0 beyond lag 0). Whiteness is not optional: residual autocorrelation is the correlation-distortion signal.
 
-Define residual per interval:
+## 2) Distortion matrix (the core quantitative object)
 
-- `r_t = (y_obs,t - y_pred,t) / sigma_pred,t`
+Symmetric sandwich, anchored on the Gaussian Fisher:
+- **C = H^(−1/2) J H^(−1/2)**, with J = Cov(score) (J_total, incl. cross-interval terms).
+- C = I under correct specification; deviation quantifies how much the approximation distorts parameter uncertainty.
+- **Decomposition:**
+  - **correlation distortion** — temporal, missing higher moments appearing as ghost state-correlation (short Δ, few channels);
+  - **sample / geometric distortion** — per-sample non-Gaussianity (J_sample-anchored).
+- **Direct check:** empirical covariance of the MLE cloud vs the sandwich-predicted covariance.
 
-Expected behavior for a good predictive distribution:
+### Evidence-correction payoff (motivation only)
+Near the maximum the distortion propagates to the Bayesian evidence through two scalar summaries of eig(C):
+- volume: Δ log Z = ½ log det C (geometric mean, O(1) in T, decisive for Bayes factors);
+- peak / effective samples: α⋆ = p / tr C (arithmetic mean, O(T)).
+Derivation deferred to the bridge-3 study.
 
-- mean(r) ≈ 0
-- var(r) ≈ 1
-- weak temporal correlation (autocorrelation near 0 beyond lag 0)
+## 3) Optional predictive check
+- **PIT:** u_t = F_t(y_obs,t) ≈ Uniform(0,1) for a correct predictive. Good extra check; not one of the four main indicators.
 
-This is a simple, robust “first check”.
+## 4) Thresholds (open — D-4 in v2 §8)
+- Candidate "valid": distortion < 1.1 per parameter (≈10% error); bootstrap error < 1.1.
+- Residual placeholders until empirical variability is seen: |mean(r)| < 0.1; 0.8 < var(r) < 1.2; max ACF (lag>0) < 0.1; max |mean(score)/sd(score)| < 0.2 per parameter.
+- Start rank-based (best→worst per cell), add absolute cutoffs after the Gaussian rerun.
 
-## 2) Strong diagnostics (recommended)
-
-### D1 — Score correlation diagnostic (hidden dependence)
-
-Compute:
-
-- `Cov( Σ_t score_t )`  (covariance of the total score)
-- `Σ_t Cov(score_t)`    (sum of per-interval score covariances)
-
-Their difference reflects cross-time correlation of score contributions.
-
-Interpretation (from audio notes): large discrepancy implies missing “memory” or temporal dependence not captured by the approximation; MacroIR should reduce this relative to MacroMR.
-
-### D2 — Variance inflation / sandwich factor (impact on inference)
-
-Define two information-like matrices:
-
-- `J = -E[Hessian(log L)]`
-- `K = Cov(score)`
-
-A standard misspecification diagnostic is the “sandwich”:
-
-- `J^{-1} K J^{-1}`
-
-We can summarize inflation relative to the ideal case (`J = K`) using:
-
-- eigenvalues of `J^{-1}K` (inflation/deflation factors)
-- trace / determinant ratios
-
-This provides a direct “reader-facing” interpretation: **how much parameter uncertainty is distorted** by using a wrong likelihood approximation (and implications for evidence).
-
-### D3 — PIT (optional; good for predictive checks)
-
-If the predictive CDF per interval is `F_t`, compute:
-
-- `u_t = F_t(y_obs,t)`
-
-For a correct predictive model, `u_t` should be approximately Uniform(0,1).
-
-## 3) How these connect to existing repo outputs
-
-Existing CSV outputs from `projects/eLife_2025/ops/local/*` include fields like:
-
-- `logL`, `elogL`, `vlogL`
-- `y_mean`, `y_var`
-- per-interval prior/posterior state probability summaries (`P_mean_*`, `P_Cov_*`)
-
-These are sufficient to build:
-
-- normalized residuals (`y_mean`, `y_var`)
-- score summaries (from derivative outputs in `figure_2` datasets)
-
-What may still be needed (plan-only for now):
-
-- explicit extraction of Hessian or a consistent FIM estimator from diagnostics/predictions
-- scripts to aggregate metrics into one table per algorithm × regime cell
-
-## 4) Thresholds (to be decided)
-
-We need to decide practical cutoffs to color the validity map.
-
-Suggested start (easy, robust):
-
-- Use **rank-based** (best to worst) per cell for the first iteration.
-- Then add absolute thresholds, e.g.:
-  - `|mean(r)| < 0.1`
-  - `0.8 < var(r) < 1.2`
-  - maximum residual autocorrelation at lag>0 below 0.1
-  - max |score mean / score sd| below 0.2 (per parameter)
-
-These are placeholders until we see empirical variability.
-
+## 5) Repo outputs feeding these
+- Diagnostic CSVs expose logL / elogL / vlogL, y_mean / y_var, per-interval prior/posterior state summaries, and the score + Gaussian-Fisher fields — enough for residuals, score summaries, and the distortion matrix. Exact field names: the current `figures/paper/*.Rmd` are the source of truth once the Gaussian rerun is final.

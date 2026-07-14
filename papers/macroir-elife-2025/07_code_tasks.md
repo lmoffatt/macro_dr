@@ -9,7 +9,7 @@ This file is intentionally *plan-only*. We do not touch code until the plan docs
 
 ## Candidate code tasks (to schedule later)
 
-- Implement missing FIM-from-predictions helpers (ensure definitions match paper notation).
+- ~~Implement missing FIM-from-predictions helpers~~ — DONE: the Gaussian-Fisher FIM family is built and run.
 - Add a small CLI/regression test that validates:
   - score mean ≈ 0 at θ\*
   - two FIM estimators agree within tolerance in a “good regime”
@@ -20,5 +20,5 @@ This file is intentionally *plan-only*. We do not touch code until the plan docs
 
 Any code work for Paper 2 should be done in small, isolated commits with a clear purpose and a matching update to:
 
-- `papers/macroir-elife-2025/01_workboard.md`
+- `papers/macroir-elife-2025/00_master_plan_v2.md` (§9)
 - `papers/macroir-elife-2025/02_decision_log.md`
