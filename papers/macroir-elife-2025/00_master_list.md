@@ -20,41 +20,41 @@ Three consequences worth naming, because the pack currently violates all three:
 
 Status vocabulary: **LIVE** = the owner, read it as current. **REWRITE** = still the owner, but it currently says something wrong (see §4). **POINTER** = kept only to redirect. **RETIRED** = tombstone. **CREATE** = does not exist yet.
 
-`git` column: `untracked` means the file is not in version control and one `git clean` deletes it. This is the most urgent problem in the pack and it applies to most of the documents everything else now depends on.
+`git` column: everything listed here is in version control as of 2026-07-14. Keep it that way. Until that day, most of the documents everything else depends on were untracked, one `git clean` from gone.
 
 ### A. Governance
 
 | Document | Owns | Status | Updated | git |
 |---|---|---|---|---|
-| `00_master_list.md` (this) | The topic→owner routing table; the document lifecycle | LIVE | 2026-07-14 | new |
-| `00_master_plan_v2.md` | The thesis, the two-approximation frame, the three regimes, the open-decision register (D-1…D-7), the task list | REWRITE | 2026-07-13 | untracked |
-| `02_decision_log.md` | Every **settled** cross-cutting decision: scope, algorithm roster, the anchor, the ranking verdict, the repo boundary | REWRITE | 2026-07-13 | modified |
-| `08_sources_audio_notes.md` | Which audio/chat is the source of record, and which wins when two disagree | LIVE | 2026-07-13 | modified |
-| `09_carve_plan.md` | The repo boundary, the freeze trigger, what moves to `macroir-validity`, code availability | LIVE | 2026-07-13 | untracked |
-| `07_code_tasks.md` | The engine backlog owed to this paper (regression test, the CSV row-duplication writer bug, the IDM call site) | REWRITE | 2026-07-13 | modified |
-| `README.md` | Nothing. It routes, and it routes to three tombstones | POINTER | 2026-07-14 | modified |
-| `AGENTS.md` (repo root) | Where an agent starts. Must register this file | REWRITE | — | modified |
-| `00_master_plan.md` | — superseded by `00_master_plan_v2.md` | RETIRED | — | modified |
-| `01_workboard.md` | — task tracking moved to master plan §9 | RETIRED | — | modified |
-| `06_repro_pipeline.md` | — moved to `09_carve_plan.md` and `docs/figure_provenance.md` | RETIRED | — | modified |
+| `00_master_list.md` (this) | The topic→owner routing table; the document lifecycle | LIVE | 2026-07-14 | committed |
+| `00_master_plan_v2.md` | The thesis, the two-approximation frame, the three regimes, the open-decision register (D-1…D-7), the task list | REWRITE | 2026-07-13 | committed |
+| `02_decision_log.md` | Every **settled** cross-cutting decision: scope, algorithm roster, the anchor, the ranking verdict, the repo boundary | REWRITE | 2026-07-13 | committed |
+| `08_sources_audio_notes.md` | Which audio/chat is the source of record, and which wins when two disagree | LIVE | 2026-07-13 | committed |
+| `09_carve_plan.md` | The repo boundary, the freeze trigger, what moves to `macroir-validity`, code availability | LIVE | 2026-07-13 | committed |
+| `07_code_tasks.md` | The engine backlog owed to this paper (regression test, the CSV row-duplication writer bug, the IDM call site) | REWRITE | 2026-07-13 | committed |
+| `README.md` | Nothing. It routes, and it routes to three tombstones | POINTER | 2026-07-14 | committed |
+| `AGENTS.md` (repo root) | Where an agent starts. Must register this file | REWRITE | — | committed |
+| `00_master_plan.md` | — superseded by `00_master_plan_v2.md` | RETIRED | — | committed |
+| `01_workboard.md` | — task tracking moved to master plan §9 | RETIRED | — | committed |
+| `06_repro_pipeline.md` | — moved to `09_carve_plan.md` and `docs/figure_provenance.md` | RETIRED | — | committed |
 
 ### B. Argument and scope
 
 | Document | Owns | Status | Updated | git |
 |---|---|---|---|---|
-| `From molecular … PROGRAM.md` | This paper's position in the program (bridge 2; Comm Biol is the demonstration) | LIVE | 2026-07-13 | untracked |
-| `nomenclature.md` | The five names, the letter semantics, the MNR/NMR spelling, the data-key↔display-label map | REWRITE | 2026-07-14 | untracked |
-| `title_options.md` | The title argument and the project's claim/accuracy rules (the rules do not belong here, see §5) | REWRITE | 2026-07-14 | untracked |
-| `docs/bibliography/MacroIR_prior_art_map.md` | The novelty position, the Kalman concession, every citation attribution | LIVE | 2026-07-14 | modified |
-| `docs/bibliography/identifiability/README.md` | The identifiability perimeter (what macroscopic data cannot recover) | LIVE | 2026-07-13 | untracked |
+| `From molecular … PROGRAM.md` | This paper's position in the program (bridge 2; Comm Biol is the demonstration) | LIVE | 2026-07-13 | committed |
+| `nomenclature.md` | The five names, the letter semantics, the MNR/NMR spelling, the data-key↔display-label map | REWRITE | 2026-07-14 | committed |
+| `title_options.md` | The title argument and the project's claim/accuracy rules (the rules do not belong here, see §5) | REWRITE | 2026-07-14 | committed |
+| `docs/bibliography/MacroIR_prior_art_map.md` | The novelty position, the Kalman concession, every citation attribution | LIVE | 2026-07-14 | committed |
+| `docs/bibliography/identifiability/README.md` | The identifiability perimeter (what macroscopic data cannot recover) | LIVE | 2026-07-13 | committed |
 
 ### C. Science content
 
 | Document | Owns | Status | Updated | git |
 |---|---|---|---|---|
-| `03_metrics_diagnostics.md` | The metric **registry**: each diagnostic's definition, its sign convention, its threshold, and which CSV field carries it | REWRITE | 2026-07-13 | modified |
-| `05_experiment_grid.md` | The sweep design: control variables, the definition of τ, the per-cell protocol | REWRITE | 2026-07-13 | modified |
-| `correction_idm_reconstruction.md` | The correct distortion-decomposition identity (`IDM = K·CDM·Kᵀ`) and what composes exactly | LIVE | 2026-07-14 | untracked |
+| `03_metrics_diagnostics.md` | The metric **registry**: each diagnostic's definition, its sign convention, its threshold, and which CSV field carries it | REWRITE | 2026-07-13 | committed |
+| `05_experiment_grid.md` | The sweep design: control variables, the definition of τ, the per-cell protocol | REWRITE | 2026-07-13 | committed |
+| `correction_idm_reconstruction.md` | The correct distortion-decomposition identity (`IDM = K·CDM·Kᵀ`) and what composes exactly | LIVE | 2026-07-14 | committed |
 | `theory/…/Gaussian_Fisher_Distortion_Family.md` | What the anchor **H** is, and the numerical-vs-Gaussian Fisher bridge | LIVE | 2026-07-05 | committed |
 | `theory/…/score_martingale_argument.md` | Why recursion fixes the reported uncertainty without fixing the bias | LIVE | — | committed |
 | `theory/…/Macro_IR/` | The algorithm derivation feeding Theory and the supplement | LIVE | — | committed |
@@ -65,12 +65,12 @@ Status vocabulary: **LIVE** = the owner, read it as current. **REWRITE** = still
 
 | Document | Owns | Status | Updated | git |
 |---|---|---|---|---|
-| `results_plan.md` | **The figure arc**: which figures exist, in what order, what claim each carries, the numbering register, the do-not-say list | LIVE | 2026-07-14 | untracked |
-| `docs/figure_provenance.md` | **The run manifest**: which script produced which data, what is built, what is not, what is reproducible | LIVE | 2026-07-14 | untracked |
+| `results_plan.md` | **The figure arc**: which figures exist, in what order, what claim each carries, the numbering register, the do-not-say list | LIVE | 2026-07-14 | committed |
+| `docs/figure_provenance.md` | **The run manifest**: which script produced which data, what is built, what is not, what is reproducible | LIVE | 2026-07-14 | committed |
 | `figures/in_progress/figure_5_PLAN.md` | Panel selection for Figure 5 (main / supplementary / drop), and nothing else | LIVE | 2026-07-08 | committed |
 | `figures/paper/*_caption.md` | The caption text of the figure each is named for | REWRITE | various | committed |
 | `figures/instructions.md` (this pack) | Figure assembly and the cross-figure visual system (colours, fonts, panel letters) | REWRITE | 2026-03-25 | committed |
-| `04_figures_storyboard.md` | — the 4-figure arc is dead; the panel sketches survive only as reference | POINTER | 2026-07-13 | modified |
+| `04_figures_storyboard.md` | — the 4-figure arc is dead; the panel sketches survive only as reference | POINTER | 2026-07-13 | committed |
 
 ### E. Manuscript sections
 
@@ -78,14 +78,14 @@ Each owns its section's job, structure, argument and prose. None owns a cross-cu
 
 | Document | Owns | Status | Updated | git |
 |---|---|---|---|---|
-| `abstract_draft.md` | The abstract and the Impact Statement, while drafting | REWRITE | 2026-07-14 | untracked |
-| `introduction_plan.md` | The Introduction | REWRITE | 2026-07-14 | untracked |
-| `theory_plan.md` | The Theory section (the family as one object with two knobs) | LIVE | 2026-07-14 | untracked |
-| `diagnostics_plan.md` | The Diagnostics section (the validation machinery as a procedure a sceptic could run) | LIVE | 2026-07-14 | untracked |
-| `results_plan.md` | The Results (see D: it also owns the arc) | LIVE | 2026-07-14 | untracked |
-| `discussion_plan.md` | The Discussion, and the decision rule the paper is cited for | LIVE | 2026-07-14 | untracked |
-| `methods_plan.md` | Materials and Methods, the emission model, and every run value | REWRITE | 2026-07-14 | untracked |
-| `docs/manuscript-drafts/elife_paper.tex` | Nothing. It is the **vessel**, not a second author. Every claim in it is owned upstream | LIVE | 2026-07-13 | modified |
+| `abstract_draft.md` | The abstract and the Impact Statement, while drafting | REWRITE | 2026-07-14 | committed |
+| `introduction_plan.md` | The Introduction | REWRITE | 2026-07-14 | committed |
+| `theory_plan.md` | The Theory section (the family as one object with two knobs) | LIVE | 2026-07-14 | committed |
+| `diagnostics_plan.md` | The Diagnostics section (the validation machinery as a procedure a sceptic could run) | LIVE | 2026-07-14 | committed |
+| `results_plan.md` | The Results (see D: it also owns the arc) | LIVE | 2026-07-14 | committed |
+| `discussion_plan.md` | The Discussion, and the decision rule the paper is cited for | LIVE | 2026-07-14 | committed |
+| `methods_plan.md` | Materials and Methods, the emission model, and every run value | REWRITE | 2026-07-14 | committed |
+| `docs/manuscript-drafts/elife_paper.tex` | Nothing. It is the **vessel**, not a second author. Every claim in it is owned upstream | LIVE | 2026-07-13 | committed |
 
 ### F. Production (does not exist yet, see §5)
 
@@ -177,7 +177,7 @@ Three rules:
   - `docs/bibliography/MacroIR_prior_art_map.md` → `introduction_plan.md`, `abstract_draft.md`, `discussion_plan.md`
   - `nomenclature.md` → everything (a rename touches every figure, caption and script)
 
-**Commit the pack.** Eleven of the documents this list depends on are untracked: `results_plan`, `methods_plan`, `figure_provenance`, `nomenclature`, `diagnostics_plan`, `theory_plan`, `discussion_plan`, `introduction_plan`, `abstract_draft`, `title_options`, `correction_idm_reconstruction`, `00_master_plan_v2`, `09_carve_plan`, `PROGRAM.md`, and the identifiability folder. They are one `git clean` from gone, and they are the newest and most load-bearing things in the project.
+- **Commit on write.** The whole pack went into git on 2026-07-14 (commits `0419c74`…`d2eb71e`). Before that, fourteen of the documents this list depends on were untracked, including every section plan, the run manifest and the master plan itself. A planning document that is not committed does not exist.
 
 ## 7. Needs the author
 
