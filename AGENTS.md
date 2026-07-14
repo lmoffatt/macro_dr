@@ -26,6 +26,18 @@ Scope: applies to the whole repository.
 - `tests/` — Unit/CLI tests (if present); keep new tests focused and fast.
 - `CMakeLists.txt`, `CMakePresets.json` — Build config (targets: `macrodr_core`, `macrodr_cli`).
 
+## Research Paper & Planning (eLife 2025)
+
+The active paper built on this engine is the **MacroIR validity** paper (eLife 2025). Agents working on the paper (not the engine) should start here:
+
+- `papers/macroir-elife-2025/00_master_list.md` — **read this first.** The topic→owner routing table: which document owns which topic, each one's status and last update, and where the documents currently contradict each other. The rule is one topic, one owner: if a fact is owned by another document, cite it, never restate it.
+- `papers/macroir-elife-2025/00_master_plan_v2.md` — the thesis and the open decisions (the plain `00_master_plan.md` is a retired stub).
+- `papers/macroir-elife-2025/From molecular mechanisms to data back and forth PROGRAM.md` — the research-program framing.
+- `papers/macroir-elife-2025/02_decision_log.md` — settled decisions (scope: two-state, non-stationary, likelihood-only), and the only place a decision is settled.
+- `papers/macroir-elife-2025/09_carve_plan.md` — how the paper will split into its own repo at code freeze.
+
+Paper ops/runs live under `projects/eLife_2025/` (its own `ops/`), not the `projects/p2x2/ops/` example below. Theory feeding the paper: `theory/macroir/docs/` (see the status note there for what is canonical vs cut).
+
 ## Key Concepts & Where To Edit
 
 - DSL registry

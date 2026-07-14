@@ -1,76 +1,40 @@
-# Paper 2 (MacroIR / eLife 2025) — Validity Map Grid Spec
+# Paper 2 (MacroIR / eLife 2025) — Experiment Grid Spec
 
-## 1) Purpose
+Detail layer beneath `00_master_plan_v2.md` §6. Defines the regime sweep for the validity / distortion maps.
 
-Define a 2D regime grid that is:
+## 1) Control variables
+From the two-state `scheme_CO`:
+- **N_ch** — effective number of channels.
+- **K_off** — the kinetic axis (paired with N_ch in the regime maps).
+- **interval Δ / τ** — Δ = n_samples / fs; τ = 1 / max_k|Re(λ_k)| of the generator Q at the agonist condition. Standardize how τ is recorded in run metadata.
+- **instrumental noise** — swept separately.
 
-- scientifically meaningful
-- easy to compute / reproduce
-- aligned with the paper’s core question (when to use each approximation)
+## 2) Regime maps
+- Primary: **N_ch × K_off** heatmaps (bias, distortion), per algorithm. (Supersedes the old Δ/τ_min × N_ch axes.)
+- Additional sweeps: interval and noise, for the MacroIR-focused line plots and the three-domain picture.
+- Critical cube from the July audios: N_ch 10–1000, noise 0.05–1, across the interval range — where the distortion is measurable and structured.
 
-## 2) Axes (selected)
+## 3) Model
+- `scheme_CO` only (two states). `scheme_CCO` (3-state) is out of scope (>2 states = later program component).
 
-### x-axis: Δ / τ_min
+## 4) Algorithms
+- `NR`, `NMR`, `R`, `MR`, `IR`. Drop the Taylor variance-correction variants (MNRV/MRV/IRV — cut, taylor=false). Naming: MNR → NMR.
 
-- **Δ**: interval duration (seconds). For our experiments it is determined by:
-  - sampling frequency (`fs`) and number of samples per interval (`n_samples`)
-  - roughly, `Δ = n_samples / fs`
-- **τ_min**: fastest characteristic timescale of the kinetics (seconds).
-  - Working definition: `τ_min = 1 / max_k |Re(λ_k)|` where `λ_k` are eigenvalues of the generator `Q` at a specified agonist condition (e.g. maximal agonist).
+## 5) Per-cell protocol
+For each cell and algorithm:
+1. Fixed non-stationary experiment (single concentration jump / pulse + washout).
+2. Simulate n_simulations datasets at θ* (reuse the same samples across intervals/algorithms where possible).
+3. Compute the score, the Gaussian Fisher H, and per-interval predictive mean/variance (residuals). Numerical FD-Fisher only to gauge H.
+4. MLE / Gauss-Newton local max → empirical parameter covariance.
+5. Reduce to the scalar metrics below.
 
-We should standardize how τ_min is computed and recorded in metadata for the grid runs.
+## 6) Scalar metrics per cell (per algorithm)
+- score bias norm (max |mean(score_i)/sd(score_i)|) and the projected DIB;
+- distortion matrix C = H^(−1/2) J H^(−1/2): det (→ ½ log det C) and its correlation vs sample/geometric split;
+- residual mean, var, max ACF (lag>0);
+- empirical-vs-sandwich covariance ratio.
 
-### y-axis: N_ch
+Always store the reduced table (so the maps plot cheaply); raw data stays out of git (see `09_carve_plan.md`).
 
-- effective number of channels in the patch (ensemble size).
-
-## 3) Proposed grid (initial)
-
-This is a starter; adjust after the first pilot run.
-
-### N_ch values
-
-- 10, 30, 100, 300, 1000, 3000
-
-### Δ / τ_min values
-
-- 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2
-
-## 4) Models / schemes
-
-Default selection:
-
-- Main: `scheme_CO`
-- Secondary: `scheme_CCO` (robustness/supplement)
-
-If time allows, add one more scheme with more complexity for stress testing.
-
-## 5) Algorithms to compare
-
-Include all presets used in the current scripts:
-
-- `NR`, `R`, `MNR`, `MR`, `MNRV`, `MRV`, `IR`, `IRV`
-
-## 6) Per-cell experimental protocol (high level)
-
-For each grid cell (Δ/τ_min, N_ch), and for each algorithm:
-
-1. Choose a standard experiment structure (pulse + washout) with fixed shape.
-2. Simulate `n_simulations` datasets at θ\* (true parameters).
-3. Compute:
-   - score (and Hessian/FIM estimators if available)
-   - per-interval predictive mean/variance (residuals)
-4. Reduce to a small set of scalar metrics (Section 7).
-
-## 7) Scalar metrics to store per cell (minimal)
-
-Per algorithm × cell:
-
-- `score_bias_norm` (e.g., max |mean(score_i)/sd(score_i)| across parameters)
-- `fim_mismatch` (norm of difference between two FIM estimators)
-- `residual_mean`, `residual_var`
-- `residual_autocorr_max_lag` (summary)
-- `inflation_eigs_summary` (e.g., max eigenvalue of J^{-1}K)
-
-Store raw data as needed, but always also store this reduced table so the validity map is easy to plot.
-
+## 7) Exact grid values
+The definitive values live in the `ops/` dispatch configs (`figure_2*.macroir`, the `figure_3*` Gaussian-Fisher dispatch) — the source of truth once the Gaussian rerun is final. Do not hardcode a second copy here.

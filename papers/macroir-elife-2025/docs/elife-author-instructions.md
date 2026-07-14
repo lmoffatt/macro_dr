@@ -1,13 +1,24 @@
 # eLife Instructions for Authors (local copy)
 
-**Captured:** 2026-06-18. Faithful transcription of eLife's author-guide pages,
-which block automated fetching (HTTP 403) and so must otherwise be read in a
-browser. Figure specifications come from eLife's figure-preparation guidance.
+**Captured:** 2026-06-18. **Completed and corrected: 2026-07-14.** Faithful transcription
+of eLife's author guide. Figure specifications come from eLife's figure-preparation guidance.
 
-Sections follow eLife's Author Guide navigation order. Pages captured so far:
-**Editorial Process, Article Types, Reviewed Preprints, Data Availability.**
-Still to add: *Revised Submissions, Versions of Record, Publishing Policies,
-Publication Fees, Media Policy, FAQs.*
+**Retrieval note.** `https://reviewer.elifesciences.org/author-guide/full` 301-redirects to
+`https://elife-rp.msubmit.net/html/elife-rp_author_instructions.html`, which is the single
+full guide (all tabs on one page). **WebFetch gets HTTP 403; plain `curl` with a browser
+user-agent returns 200.** Use curl to re-check this document.
+
+**Status: complete.** All sections now captured: Editorial Process, Article Types,
+**Manuscript Preparation**, Reviewed Preprints, **Revised Submissions**, **Versions of
+Record**, Data Availability, **Publishing Policies**, **Publication Fees**, **Media
+Policy**, **FAQs**.
+
+> **Two contradictions inside eLife's own pages (2026-07-14).**
+> 1. **Abstract length.** The live guide says **150–200 words**; the LaTeX template
+>    (`elife.cls` v1.11, dated 2022-06-01) still says "no more than 150 words". The widely
+>    cited "150" comes from the template. **Write to 150, treat 200 as the ceiling.**
+> 2. **Fee.** The Fees tab and the public site say **$3,750**; the FAQ tab on the same page
+>    still says $3,000. The FAQ is stale.
 
 **Sources**
 
@@ -51,8 +62,9 @@ Key features:
   a new assessment and/or new Public Reviews. The updated Reviewed Preprint also
   includes the recommendations and the authors' response to them.
 - Authors can request that eLife produces a **Version of Record (VOR)**.
-- **Fee:** for submissions from **July 1, 2025 it is $3,000**, charged at the point
-  eLife commits to peer reviewing the work (waived for anyone who cannot afford it).
+- **Fee:** **$3,750** for submissions from **July 1, 2026** (corrected 2026-07-14; the old
+  $3,000 figure is stale and still appears in eLife's own FAQ tab), charged at the point
+  eLife commits to peer reviewing the work. Full waivers available, see Publication Fees below.
 
 Authors may submit directly, or transfer files from **bioRxiv** or **medRxiv** if a
 preprint is already posted. eLife also welcomes submissions from **Review Commons**.
@@ -141,6 +153,93 @@ specialist-only reviews. Notes:
   no longer covers papers in other journals. Title: **"Comment on 'Title of original
   article'"**. Usually **≤1,500 words**, **≤4** main display items; measured tone
   required. Uses the **legacy submission system**.
+
+## Manuscript Preparation
+
+*Source: full author guide, "Versions of Record" tab, which is where eLife now keeps all
+manuscript-preparation guidance. Structural note: there is **no separate initial-submission
+formatting section**. The strict requirements formally bite at VOR stage; the initial
+submission is essentially your preprint plus submission-form metadata.*
+
+### Title
+"Succinct (we suggest **up to 120 characters**), with a clear indication of the biological
+system under investigation (if appropriate), avoiding abbreviations and unfamiliar acronyms."
+**Two-part titles should be avoided for research papers.** Suggested, not enforced.
+
+> Our title, *Information distortion in likelihood approximations for macroscopic ion-channel
+> currents*, is **88 characters**. Within the guidance, and not two-part.
+
+### Abstract
+"**Normally 150–200 words.**" Subheadings discouraged (except medical submissions, which may
+run to ~250 words with Background/Methods/Results/Conclusions/Funding). "Clear, measured, and
+concise." **If the biological system is not in the title, it must be in the abstract.**
+See the contradiction note at the top: the LaTeX template says 150. Target 150.
+
+### Impact Statement — STILL REQUIRED
+The eLife assessment did **not** replace it. It is a **submission-form field**, not part of the
+article file (the LaTeX class has no `\impactstatement` macro).
+
+- **One sentence, typically 15–30 words.**
+- Summarises the single most important finding.
+- Must **complement, not repeat, the title**.
+- **Third person.** No "we", no "our".
+- Do **not** open with "We show…", "This study…", "Our work…".
+- Avoid acronyms not familiar to a broad readership.
+
+### eLife digest
+A plain-language summary, **only at Version of Record stage** and only for some papers. Opt in
+by answering "Yes" to the digest query when submitting the VOR; the Features Team then sends
+four questions. Not written at initial submission.
+
+### Required sections and order
+"Introduction; Results; Discussion; Materials and Methods." Fuller running order for Research
+Articles: Introduction; Results; Discussion; Materials and Methods; Acknowledgements;
+References; Figures (legend below each); Tables. **A Methods or Model section may appear after
+the Introduction where it makes sense.** Optional: an "**Ideas and Speculation**" subsection
+inside the Discussion.
+
+Other preparation rules: personal communications inline; manufacturers named on first mention;
+footnotes in parentheses in the text (no footnote list); tables editable and inside the article
+file (tables-as-figures not accepted); appendices at the end or as a second Article File, with
+no separate reference list; supplementary files labelled "Supplementary File 1, 2, …".
+
+### LaTeX specifics
+Upload the `.tex` plus `.bib` and any `.bst`/`.sty` as **"LaTeX Support Files"**, and a clean
+compiled PDF as a Related Manuscript File.
+
+> **Binding constraint for our figures:** "LaTeX code uploaded to our submission system
+> **cannot make use of packages such as `subfig` or `subcaption`**, so **all figures with
+> panels must be collected into single figure files prior to upload**." Our multi-panel
+> figures must each be one file.
+
+The template ships `vancouver-elife.bst`, so the existing bibliography setup is fine.
+
+### References
+"**Authors do not need to spend time formatting their references.**" APA is the closest match
+to eLife style, but any style is accepted and eLife reformats in production. **Provide a DOI
+wherever possible.** Datasets, program code, and previously published methods must all be cited
+and appear in the reference list with a persistent identifier. Software citations must include a
+**version**. Preprints are citable.
+
+### Author contributions, competing interests, funding
+- **Author contributions:** required, using the **CRediT** taxonomy, entered per co-author.
+- **Competing interests:** required **for each author**; ICMJE window is the **36 months** before
+  submission; full ICMJE forms only for medicine submissions.
+- **Funding:** entered in the submission form with **grant DOIs or reference numbers** and the
+  authors tied to each source. "**Do not include information about direct funding in the
+  acknowledgements**" (avoids duplication). State whether funders were involved in design, data
+  collection, interpretation, or the decision to submit.
+
+### Key Resources Table
+"Where appropriate, and **especially for studies including bench research**", at the **VOR**
+stage, at the very beginning of Materials and Methods. A purely computational paper is not
+obviously forced into a full KRT, but a **software row with version and RRID** is expected.
+
+### Cover letter — NOT a general requirement
+The current guide contains **no general cover-letter requirement** for Research Articles, Short
+Reports, or Tools and Resources. It is required only for **Review Articles** and **Replication
+Studies**, and it is the place to request **data-availability exceptions** or note
+**preregistration**. There are also **no presubmission enquiries**.
 
 ## Reviewed Preprints
 
@@ -266,6 +365,99 @@ From eLife's figure-preparation guidance:
 - **PDF:** must be a **vector** image format.
 - **Color space:** **RGB**; minimise whitespace around figures (especially in PDFs).
 - Turn off any **hidden layers** before uploading to avoid processing issues.
+
+## Revised Submissions
+
+- Revise **when ready**. Alert eLife if you need **longer than 12 months**.
+- Before resubmitting, **update the preprint on the preprint server** to match the revision, and
+  give its URL, DOI and version number in the submission form. On bioRxiv/medRxiv choose the
+  option indicating the work has **not** been published in a journal.
+- Upload a **response to the previous letter**; a **tracked-changes** article file is recommended.
+- The revision usually goes back to the reviewers. If you are not seeking an updated eLife
+  Assessment, or the changes are minor, say so at the top of the Author Response and the editors
+  can assess without the reviewers.
+- Version 2 of the Reviewed Preprint carries the revised preprint, updated Assessment and Public
+  Reviews, and the author response. Authors get a **two-week window** to flag factual errors.
+- "We are always willing to consider the **first** round of revisions; requests to consider
+  subsequent rounds will need to be justified."
+
+## Versions of Record
+
+- The authors ask for the latest Reviewed Preprint to be declared the VOR. **Most do this at
+  version 2** (after one round of revision and re-review).
+- The VOR must be **requested within 12 months** of the Reviewed Preprint being published.
+- It is identical to the latest Reviewed Preprint apart from minor non-scientific changes, and is
+  "expected to meet **more stringent policies and standards around ethics and data availability**".
+- Publication of the VOR "marks the formal end of eLife's peer review process ... and is therefore
+  akin to a traditional journal paper". There is a VOR checklist.
+- **Indexing (important):** Reviewed Preprints are indexed by **Google Scholar and Scopus only**.
+  VORs are indexed by DOAJ, Google Scholar, **PubMed**, PubMed Central, Europe PMC, Web of Science
+  and OpenAlex. **PubMed indexing requires the VOR.**
+- DOIs: a version DOI (cite this), an umbrella DOI resolving to the latest version (for grants and
+  CVs), and separate DOIs for the peer reviews.
+
+## Publishing Policies
+
+The parts that bind a computational methods paper:
+
+- **Code and reproducibility.** Authors "must provide **program code, algorithms, scripts for
+  statistical packages, and other documentation sufficient to allow an informed researcher to
+  precisely reproduce all published results**."
+- **Software (binding).** If new software or a new algorithm is central, authors must confirm the
+  software **conforms to the Open Source Definition**, is **deposited in an appropriate public
+  repository**, and is released under an **open source license**. Version control (GitHub/GitLab)
+  encouraged; **eLife archives GitHub-hosted code at Software Heritage**. Binary files should be
+  minimised, ideally **under 50 MB**, avoiding files over 100 MB.
+- **RRIDs** encouraged in Materials and Methods for tools (software or databases), e.g.
+  `RRID:SCR_007358`.
+- **Use of AI tools (binding).** Generative AI "cannot be listed as or serve as co-authors of a
+  paper, and **their use must be clearly described in the Materials and Methods section**."
+  AI-generated images cannot be used as striking images (not CC-BY compatible).
+- **MDAR.** eLife endorses the **MDAR framework**; a completed **MDAR checklist must be uploaded
+  and is published as a supplementary file**.
+- **Reusable and open methods.** Do not bury detailed methods in supplements or on lab websites.
+  Citing a method instead of describing it is allowed only if the citation describes a very similar
+  or identical method, is detailed enough to reproduce it, and is **open access**. All
+  modifications must be described.
+- Also in this tab: COPE ethics, editorial independence, misconduct, **appeals** (within one month,
+  on grounds of factual error, competing interest, or new data; one appeal per version), authorship
+  (CRediT), ORCID, funder OA compliance (CC-BY, auto-deposit to PMC at VOR), plagiarism screening
+  (iThenticate), preregistration, inclusive language, licensing, nomenclature.
+
+## Publication Fees
+
+- **$3,750** for submissions from **1 July 2026**, charged when the preprint is sent for peer
+  review. 20% VAT added if invoiced to an individual rather than a business.
+  *(eLife's own FAQ tab still says $3,000. It is stale.)*
+- Covers initial evaluation, staff checks, peer review, publication of the Reviewed Preprint,
+  re-review, subsequent versions, and the VOR on request.
+- **Applies to** Research Articles, Short Reports, **Tools and Resources**, Research Advances,
+  Replication Studies, Review Articles.
+- **Full waivers available**, applied for during submission with a brief justification. **No strict
+  criteria** (lack of funder or institutional support, terminated grant, career stage, geographic
+  location, under-funded discipline all count). **Confidential:** editors and reviewers have no
+  access to waiver information, so it cannot affect the outcome.
+
+## Media Policy
+
+- **No embargo.** Because eLife only reviews work already public as preprints, "we do not release
+  our content under embargo ... journalists can write and publish articles about an eLife paper or
+  Reviewed Preprint at any time".
+- Authors are free to present findings at meetings, speak to the media at any time, and share the
+  preprint with journalists.
+
+## FAQs (the useful ones)
+
+- **Scoop protection: yes.** eLife "will not decline to peer review your submission on the grounds
+  that it lacks novelty because a paper on a similar topic has been published ... or posted as a
+  preprint". Applies to competing preprints posted later, and to similar manuscripts already under
+  review at eLife.
+- **You can take the paper elsewhere after eLife review**, including taking eLife's reviews to
+  another journal. "It is their paper, not ours." A VOR, however, ends the process.
+- **No presubmission enquiries. No preprint required before submission** (eLife will deposit to
+  bioRxiv for you if it proceeds with review).
+- eLife does **not** track or support the impact factor (DORA co-founder).
+- **Authors cannot switch from the pre-2023 model** to the new one.
 
 ## Publisher
 
