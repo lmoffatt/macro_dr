@@ -53,10 +53,26 @@ macro_dr @ tag  +  run configs   ──run on Dirac──►  raw outputs (large
 
 ## Open boundary decisions [Q]
 
-1. **Process docs.** Do the internal board docs (`00_master_plan_v2`, `01_workboard`, `02_decision_log`, `06_repro_pipeline`, `07_code_tasks`, `08_sources_audio_notes`) go into the paper repo as a `process/` folder (full transparency), or stay in `macro_dr` as dev-process? Default: paper-facing docs go, pure-process board stays.
+1. **Process docs.** Do the internal board docs (`00_master_list`, `00_master_plan_v2`, `01_writing_plan`, `02_decision_log`, `08_sources_audio_notes`) go into the paper repo as a `process/` folder (full transparency), or stay in `macro_dr` as dev-process? Default: paper-facing docs go, pure-process board stays.
 2. **eLife-specific assets.** `Authors/eLife_LaTeX_template.zip`, `docs/elife-author-instructions.md` — venue-specific. Keep in a `submission/` folder, or drop for a venue-agnostic repo? Default: keep in `submission/`, since the repo name is already venue-agnostic.
 3. **SI theory snapshot** (see bucket B): confirm the copy-at-freeze convention.
 4. **Reduction step** (see handoff): confirm whether it exists.
+
+## Freeze preconditions: the engine work that must land in the frozen commit
+
+Absorbed from the retired `07_code_tasks.md` (2026-07-14, `archive/07_code_tasks.md`), whose own opening rule ("we do not touch code") made it the owner of the code it forbade touching.
+
+These are not a parallel hygiene lane to be done later. The binary stamps its own git hash into the output directory name and into row 1 of every CSV (`write_provenance_row`), and the dispatcher takes the data folder from `$BIN --commit`. So **any engine change alters the provenance key of everything produced after it.** Land these first, tag once, build once, run everything from that build. Otherwise the deposited code is not the code that made the deposited data.
+
+| | Item | Why it gates the freeze |
+|---|---|---|
+| E-1 | **Log the resolved random seed.** `calc_seed(0)` draws from `std::random_device` (`legacy/mcmc.h:37-45`), so `seed = 0` means *random*, and the resolved value is written neither to `meta.json` nor to the CSVs. | Without it no simulated ensemble is reproducible, which the Data Availability statement cannot survive. See `docs/figure_provenance.md` §9. |
+| E-2 | **Fix the IDM reconstruction call site** (`likelihood.cpp:3501`): it uses the symmetric square root, and the exact identity is `IDM = K·CDM·Kᵀ` with `K = H^(-1/2) J_s^(1/2)`. | The identity is also printed in the supplement. Verified 2026-07-14: it invalidates no built figure (only `idm2` / `..._Reconstituted` uses it, consumed by one notebook outside the arc), so this is a clean fix, not a rebuild. Spec: `correction_idm_reconstruction.md`. |
+| E-3 | **Stop double-writing every evolution row.** `emit_state_rows_with_experiment` calls `emit_state_rows_without_experiment` as its first act (`src/core/likelihood.cpp:2421`), so each per-interval record appears twice. | The notebooks currently deduplicate by hand; a naive sum double-counts. Fixing it changes the CSV schema, so it must precede the runs, not follow them. |
+| E-4 | **Regression test**: score mean ≈ 0 at θ\*, and the two Fisher estimators agree in a good regime. | The paper's claims *are* the algorithms. A referee is entitled to a test that fails when they break. |
+| E-5 | **The valgrind invalid read** logged under `projects/eLife_2025/`. Investigate, fix or explain, add a minimal reproducer. | An unexplained memory error in the code that produced the figures is a referee gift. |
+
+**Consequence for any rerun.** Landing E-1 or E-3 changes the commit hash, so new cells write into a *new* hash-named directory, not into `1c2ae6f`. New cells cannot be mixed into the old directory without passing `RUN_DIR` explicitly, and mixing ensembles from different engine builds in one heatmap is not defensible anyway. Decide the freeze commit **before** launching the missing cells, not after.
 
 ## The 3 steps (at freeze)
 

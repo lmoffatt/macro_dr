@@ -1,4 +1,8 @@
-# Paper 2 (MacroIR / eLife 2025) — Code Tasks (Future, Not Now)
+# Paper 2 (MacroIR / eLife 2025) — Code Tasks (ARCHIVED)
+
+> **Archived 2026-07-14.** Its live items moved to `09_carve_plan.md`, "Freeze preconditions", where they belong: they must land in the frozen commit *before* any rerun, because the binary stamps its git hash into every CSV.
+>
+> Why it was retired and not just updated: its opening rule was "we do not touch code until the plan docs are reviewed", which made it the owner of exactly the code that has to be touched. A self-blocking node. Kept for history; do not read as current.
 
 This file is intentionally *plan-only*. We do not touch code until the plan docs are reviewed.
 

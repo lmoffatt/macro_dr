@@ -135,9 +135,10 @@ Theory sources ready to feed Methods/Supplement:
 
 ## 9) Next actions
 
-1. Freeze this plan, then rewrite `02_decision_log.md` to match (it is the reference every other doc aligns to).
-2. Update `08_sources_audio_notes.md` to add the March-July (MacroIR 11/12/13) audios as the current source of record.
-3. Produce the one-page outline, the ranking table, and the figure-to-section map.
-4. Assemble Methods from the aligned theory sources; rewrite `elife_paper.tex`.
+Moved out, 2026-07-14. This section is a pointer, not a list. It was a task ledger inside a document whose own header says "freeze this plan", and a frozen document cannot host a ledger that mutates weekly: within a day it had forked from the one in `00_master_list.md`, with zero overlap between them.
+
+- **Writing order, section gates, definition of done:** `01_writing_plan.md`.
+- **Engine work that must land in the frozen commit:** `09_carve_plan.md`, Freeze preconditions.
+- **Who owns which topic, and where the documents contradict each other:** `00_master_list.md`.
 
 Framing and program context live in `From molecular mechanisms to data back and forth PROGRAM.md`; the repo carve plan in `09_carve_plan.md`.

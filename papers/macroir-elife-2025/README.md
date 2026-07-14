@@ -10,10 +10,11 @@ This directory contains **editable planning documents** for the **second paper**
 ## How to use this pack
 
 1. **Start at `00_master_list.md`.** It says which document owns which topic, what each one's status is, and where the documents currently contradict each other. One topic, one owner: if a fact is owned elsewhere, cite it, do not restate it.
-2. Read `00_master_plan_v2.md` for the thesis and the open decisions (D-1…D-7).
-3. Record any settled choice in `02_decision_log.md`, and only there.
+2. **To write:** `01_writing_plan.md`. The order the sections get drafted, what gates each one, and when a section is done.
+3. Read `00_master_plan_v2.md` for the thesis and the open decisions (D-1…D-7).
+4. Record any settled choice in `02_decision_log.md`, and only there.
 
-Retired, do not read as current: `00_master_plan.md`, `01_workboard.md`, `06_repro_pipeline.md`.
+Retired, do not read as current: `00_master_plan.md`, `06_repro_pipeline.md`, `archive/07_code_tasks.md`.
 
 ## Section-by-section writing docs (one per manuscript section)
 
@@ -38,7 +39,7 @@ Each one says what the section must do, the hard constraints on it, a structure 
 - Metric registry: `03_metrics_diagnostics.md`
 - Sweep design: `05_experiment_grid.md`
 - Figure arc: `results_plan.md`; run manifest: `docs/figure_provenance.md`
-- Engine backlog: `07_code_tasks.md`
+- Engine backlog (must land in the frozen commit): `09_carve_plan.md`, Freeze preconditions
 - Sources (docs + audios): `08_sources_audio_notes.md`
 - Repo carve / freeze: `09_carve_plan.md`
 
