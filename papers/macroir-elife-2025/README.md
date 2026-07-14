@@ -10,9 +10,13 @@ This directory contains **editable planning documents** for the **second paper**
 ## How to use this pack
 
 1. **Start at `00_master_list.md`.** It says which document owns which topic, what each one's status is, and where the documents currently contradict each other. One topic, one owner: if a fact is owned elsewhere, cite it, do not restate it.
-2. **To write:** `01_writing_plan.md`. The order the sections get drafted, what gates each one, and when a section is done.
-3. Read `00_master_plan_v2.md` for the thesis and the open decisions (D-1…D-7).
-4. Record any settled choice in `02_decision_log.md`, and only there.
+2. **To write:** `01_writing_plan.md`. The paper as a task graph agents execute: the objective, the
+   brief for every task (inputs, one output file, the check that decides it is done), and the whole
+   human budget (~3.5 h of approvals, §3). No checkboxes anywhere.
+3. **To know where the paper is:** run `./check.sh`. It derives the state from the repo; nothing is
+   declared by hand. Red is the normal state early on — read the FAILs as the task list.
+4. Read `00_master_plan_v2.md` for the thesis and the open decisions (D-1…D-7).
+5. Record any settled choice in `02_decision_log.md`, and only there.
 
 Retired, do not read as current: `00_master_plan.md`, `06_repro_pipeline.md`, `archive/07_code_tasks.md`.
 

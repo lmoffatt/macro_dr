@@ -8,7 +8,7 @@ parameter = create_parameters(
       {"off","Log10",100},
       {"unitary_current","Log10",1},
       {"Current_Noise","Log10",0.0001},
-      {"Current_Baseline","Log10",1},
+      {"Current_Baseline","Log10",1},  
       {"Num_ch_mean","Log10", 20}])
 
 
