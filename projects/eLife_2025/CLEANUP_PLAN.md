@@ -1,5 +1,7 @@
 # eLife 2025 Root Cleanup Plan
 
+> **Status (2026-07): only partially applied, and largely superseded.** The project root still contains the `scheme_*` inputs, the big `figure_2_dlikelihood_*.csv`, and scratch (`temp_script_file.txt`, `diag.log`) listed below, so the "has now been applied" claim is inaccurate. This is a low-priority hygiene doc, largely mooted by the repo carve at code freeze (`papers/macroir-elife-2025/09_carve_plan.md`), which pulls the paper material into its own repo and leaves `projects/eLife_2025/` as the engine/data side. Do not act on the file moves below without checking the carve plan first.
+
 This document classifies the files currently sitting at the root of
 `projects/eLife_2025/` and records where they should live.
 

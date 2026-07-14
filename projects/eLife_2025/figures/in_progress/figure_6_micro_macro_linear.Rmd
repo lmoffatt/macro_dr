@@ -1,0 +1,169 @@
+---
+title: "Figure 6 (micro vs macro, GAUSSIAN frame) distortion lines — micro_IR | micro_R | macro_R | macro_IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+Twin of figure_5_RvsIR_distortion_lines_G.Rmd, extended to the four algorithms micro_IR / micro_R /
+macro_R / macro_IR. Same Gaussian frame (battery_sim_G, anchored at theta_sim -> keeps at-truth
+misspecification AND the algorithm contrast). Diagonal of each distortion matrix, per parameter (rows)
+x N_ch (columns), colour = algorithm, noise 0.1, x = Delta t * k_off.
+95% bootstrap ribbon + 68% bar. log-log, reference 1 = no distortion.
+
+Data:  macro from figures/data/1c2ae6f (nsim = 10000);  micro from figures/data/87889e6 (nsim 100 & 1000).
+Only replicate counts >= NSIM_MIN (1000) are kept -- the nsim=100 micro runs are dropped as too noisy to
+resolve a modest distortion from 1 (their 95% CI spans ~1.9x; see figure_6 notes). With the data as it
+stands this leaves micro_IR at N_ch=5 only (the sole micro run at 1000); micro_R has no run >= 1000.
+Replicate count -> linetype (1000 dashed / 10000 solid).
+
+Everything that is a DATA DOMAIN is derived from the files, never fixed by hand:
+  - the N_ch columns          = the N_ch present in the window [NCH_MIN, NCH_MAX];
+  - the interval (x) breaks   = round decades spanning the interval_in_tau present;
+  - the parameter rows        = every diagonal param_index present (param_index == param_col).
+Only genuine CHOICES stay literal: the four algorithms (the request), the N_ch window, colours,
+the linetype<-replicate map, and the axis LABELS (prose, not derivable). Read by column NAME only.
+ONE Rmd emits THREE PDFs (Gaussian Information / Gaussian Sample / Correlation distortion).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+MACRO_DIR  <- "../data/1c2ae6f"
+MICRO_DIR  <- "../data/87889e6"
+NOISE      <- "0.1"
+NCH_MIN    <- 5                                # requested window; the actual columns come from the data
+NCH_MAX    <- 100
+MACRO_NSIM <- 10000                            # macro: the 10000-replicate run
+NSIM_MIN   <- 1000                             # only trust replicate counts >= 1000 (drops the nsim=100 micro runs)
+REF        <- 1
+LOGW_MAX   <- 1.3                              # drfigure_6_micro_macro_linearop points whose 95% CI spans > ~20x (guard; G_b is PSD)
+
+# algorithm order requested: micro_IR, micro_R, macro_R, macro_IR (a genuine choice, not a data domain)
+ALGO_SPEC <- tribble(
+  ~algo,      ~dir,       ~nsim_keep,
+  "micro_IR", MICRO_DIR,  NULL,               # micro: keep every replicate run (100 & 1000)
+  "micro_R",  MICRO_DIR,  NULL,
+  "macro_R",  MACRO_DIR,  MACRO_NSIM,
+  "macro_IR", MACRO_DIR,  MACRO_NSIM)
+# canonical ALGO_COL (Okabe-Ito): R green / IR blue; micro = light shade, macro = full shade
+ALGO_COL  <- c("micro IR" = "#56B4E9", "micro R" = "#66C2A5",
+               "macro R"  = "#009E73", "macro IR" = "#0072B2")
+ALGO_LAB  <- c(micro_IR = "micro IR", micro_R = "micro R",
+               macro_R  = "macro R",  macro_IR = "macro IR")
+ALGO_ORD  <- unname(ALGO_LAB)                  # legend / colour order = request order
+LT        <- c(`100` = "dotted", `1000` = "dashed", `10000` = "solid")  # replicate count -> linetype
+
+# authored LABELS only (the domain -- which params appear -- is derived from the data below).
+# params are on log10(natural) scale; fallback = the cleaned param_name for any unexpected index.
+PLABEL_BY_IDX <- c("0" = "log[10]~k[on]", "1" = "log[10]~k[off]",
+                   "2" = "log[10]~i",     "3" = "log[10]~noise",
+                   "4" = "log[10]~baseline", "5" = "log[10]~N[ch]")
+
+MATS <- list(
+  list(comp = "Probit_statistics_Likelihood_Gaussian_Information_Distortion",
+       title = "Gaussian information distortion (diagonal)", pdf = "Figure_6_micro_macro_linear_information.pdf"),
+  list(comp = "Probit_statistics_Gaussian_Sample_Distortion",
+       title = "Gaussian sample distortion (diagonal)",      pdf = "Figure_6_micro_macro_linear_sample.pdf"),
+  list(comp = "Probit_statistics_Likelihood_Correlation_Distortion",
+       title = "Correlation distortion (diagonal, shared frame)", pdf = "Figure_6_micro_macro_linear_correlation.pdf"))
+```
+
+```{r read}
+read_one <- function(f) {
+  df <- read.csv(f, skip = 1, stringsAsFactors = FALSE)   # by NAME (skip provenance line); never by position
+  df$nsim <- as.integer(sub(".*_nsim_([0-9]+)_.*", "\\1", basename(f)))
+  df
+}
+read_algo <- function(algo, dir, nsim_keep) {
+  files <- Sys.glob(file.path(dir,
+    sprintf("figure_3_G_nch_*_nsim_*_%s_noise_%s_battery_sim_G.csv", algo, NOISE)))
+  if (!length(files)) return(NULL)
+  df <- map_dfr(files, read_one)
+  if (!is.null(nsim_keep)) df <- filter(df, nsim %in% nsim_keep)
+  mutate(df, algo = algo)
+}
+bsim <- pmap_dfr(ALGO_SPEC, function(algo, dir, nsim_keep) read_algo(algo, dir, nsim_keep)) %>%
+  filter(Num_ch >= NCH_MIN, Num_ch <= NCH_MAX, nsim >= NSIM_MIN)
+
+# DERIVED data domains (not fixed by hand)
+NCHS <- sort(unique(bsim$Num_ch))
+message("N_ch columns (from data): ", paste(NCHS, collapse = " "))
+```
+
+```{r extractor}
+per_param_diag <- function(df, comp) {
+  d <- df %>%
+    filter(component_path == comp, statistic == "value",
+           param_index == param_col,                       # diagonal = every parameter present
+           probit == "mean" |
+             (probit == "quantile" & quantile_level %in% c(0.025, 0.16, 0.84, 0.975))) %>%
+    mutate(q = case_when(probit == "mean"        ~ "m",
+                         quantile_level == 0.025  ~ "lo95",
+                         quantile_level == 0.16   ~ "lo68",
+                         quantile_level == 0.84   ~ "hi68",
+                         quantile_level == 0.975  ~ "hi95")) %>%
+    group_by(algo, nsim, Num_ch, interval_in_tau, param_index, q) %>%  # nsim in key: micro 100/1000 kept apart
+    summarise(v = mean(value), .groups = "drop") %>%
+    pivot_wider(names_from = q, values_from = v) %>%
+    filter(is.finite(m), is.finite(lo95), is.finite(hi95), lo95 > 0,
+           log10(hi95) - log10(lo95) <= LOGW_MAX)
+
+  pidx <- sort(unique(d$param_index))                       # parameter rows come from the data
+  plab <- ifelse(as.character(pidx) %in% names(PLABEL_BY_IDX),
+                 PLABEL_BY_IDX[as.character(pidx)], paste0("'", pidx, "'"))
+  d %>% mutate(
+    algo  = factor(ALGO_LAB[algo], levels = ALGO_ORD),
+    reps  = factor(nsim, levels = names(LT)),
+    param = factor(param_index, levels = pidx, labels = plab),
+    Nch   = factor(paste0("N[ch] == ", Num_ch), levels = paste0("N[ch] == ", NCHS)))
+}
+```
+
+```{r plot-fn}
+breaks_around1 <- function(l) {
+  v <- c(.2, .3, .5, .7, 1, 1.5, 2, 3, 5, 10, 30, 100)
+  v[v >= min(l, na.rm = TRUE) & v <= max(l, na.rm = TRUE)]
+}
+x_breaks <- function(l) {                                   # round decades spanning the data range
+  lo <- floor(log10(min(l, na.rm = TRUE))); hi <- ceiling(log10(max(l, na.rm = TRUE)))
+  10 ^ (lo:hi)
+}
+
+plot_lines <- function(dd, title) {
+  ggplot(dd, aes(interval_in_tau, m, colour = algo, fill = algo,
+                 linetype = reps, group = interaction(algo, reps))) +
+    geom_hline(yintercept = REF, colour = "grey70", linewidth = .3, linetype = "dashed") +
+    geom_ribbon(aes(ymin = lo95, ymax = hi95), alpha = .10, colour = NA) +
+    geom_linerange(aes(ymin = lo68, ymax = hi68), linewidth = .45, alpha = .7, linetype = 1) +
+    geom_line(linewidth = .5) +
+    geom_point(size = 1) +
+    facet_grid(param ~ Nch, scales = "free_y",
+               labeller = labeller(param = label_parsed, Nch = label_parsed)) +
+    scale_x_log10(breaks = x_breaks) +
+    scale_y_log10(breaks = breaks_around1) +
+    scale_colour_manual(values = ALGO_COL, name = NULL) +
+    scale_fill_manual(values = ALGO_COL, name = NULL, guide = "none") +
+    scale_linetype_manual(values = LT, name = "replicates", drop = TRUE) +
+    labs(x = expression(Delta * t %.% k[off]),
+         y = "distortion factor  (1 = no distortion)", title = title) +
+    theme_bw(base_size = 9) +
+    theme(panel.grid.minor = element_blank(), legend.position = "top",
+          strip.text = element_text(size = 8), plot.title = element_text(size = 11, face = "bold"))
+}
+
+build_one <- function(comp, title, pdf) {
+  dd <- per_param_diag(bsim, comp)
+  g  <- plot_lines(dd, title)
+  ggsave(pdf, g, width = 10.5, height = 10.5)
+  g
+}
+```
+
+```{r plot, fig.width = 10.5, fig.height = 10.5, results = "asis"}
+for (M in MATS) print(build_one(M$comp, M$title, M$pdf))
+```

@@ -106,8 +106,10 @@ common_theme = theme_classic()+ theme( legend.position = "bottom")
 # merges everything into ONE legend. Colour = FILTER PHASE: predict (orange) groups the Markov step
 # with the prior it produces; update (purple) groups the Bayes step with the posterior it produces
 # (this operation->state link holds for MacroR/MR/IR alike). SHAPE separates operation (arrow) from
-# state (point/segment); ALPHA is the carried-over channel: a state computed in one panel reappears
-# FADED in the next (the prior computed in B shows up faded in D). Hue and alpha never collide.
+# state (point/segment); ALPHA is the carried-over channel: an arrow's ORIGIN (the state carried in
+# from the previous step) is drawn faded (ORIG_ALPHA) while the state the panel PRODUCES stays at full
+# alpha. One mechanism for points and segments (the prior produced by the Markov panel reappears faded
+# as the origin of the Bayes panel's arrow, and the posterior the other way). Hue and alpha never collide.
 SEM <- c("channel current"          = "#7FCDBB",   # light green — the true resolved current (background reality)
          "Markov & prior"            = "#E69F00",   # orange      — PREDICT: Markov step, prior, AND predicted current
          "observation & innovation"  = "#0072B2",   # blue        — OBSERVE: observed current AND the innovation (obs - pred)
@@ -155,6 +157,11 @@ markov_arrow = arrow(length = unit(0.07, "in"), type="closed")
 bayes_arrow= arrow(length = unit(0.07, "in"), type="closed")
 pred_arrow = arrow(length = unit(0.07, "in"), type="closed")
 
+# de-emphasis for an arrow's ORIGIN: the state carried in from the previous step is drawn faded, so it
+# recedes to context while the full-colour mark is the state the panel produces. One value for points
+# and segments alike; kept high enough that the hue still reads (not grey) after PDF downsample.
+ORIG_ALPHA = 0.45
+
 
 ```
 
@@ -172,7 +179,7 @@ fA
 
 ```{r fB_IR}
 fB_IR<-ggplot(d_IR)+
-  geom_segment(aes(x=lag(step_start), xend = lag(step_end), y=lag(P_mean_t10_y1), yend = lag(P_mean_t20_y1), color="Bayes & posterior"), linewidth = 1, linetype="dashed")+
+  geom_segment(aes(x=lag(step_start), xend = lag(step_end), y=lag(P_mean_t10_y1), yend = lag(P_mean_t20_y1), color="Bayes & posterior"), linewidth = 1, alpha=ORIG_ALPHA)+
   geom_segment(aes(x=lead(step_start), xend = lead(step_end), y=P_mean_t20_y1, yend =lead( P_mean_t11_y0), color="Markov & prior"), linewidth = 1, alpha=1)+
 geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t10_y1)/2+ lag(P_mean_t20_y1)/2,
    yend = lag(P_mean_t20_y1)/2+ P_mean_t11_y0/2, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
@@ -216,7 +223,7 @@ plot_data_clean_IR <- d_IR %>%
   filter(!is.na(y_start)) # Remove the NA introduced by lag
 fD_IR <- ggplot(plot_data_clean_IR) +
   geom_segment(aes(x = step_start, xend = step_end, y = y_start, yend = y_end, color = "Markov & prior"),
-               linewidth = 1, linetype = "dashed") +
+               linewidth = 1, alpha = ORIG_ALPHA) +
   geom_segment(aes(x = step_start, xend = step_end, y = P_mean_t10_y1, yend = P_mean_t20_y1, color = "Bayes & posterior"),
                linewidth = 1) +
   geom_curve(aes(x = step_middle, y = y_mid_start,
@@ -331,7 +338,7 @@ fE_NR
 
 ```{r fB_R}
 fB_R<-ggplot(d_R)+
-  geom_point(aes(x=lag(step_middle), y=lag(P_mean_t15_y1), color="Bayes & posterior"), shape=1, stroke=0.9)+
+  geom_point(aes(x=lag(step_middle), y=lag(P_mean_t15_y1), color="Bayes & posterior"), alpha=ORIG_ALPHA)+
   geom_point(aes(x=lead(step_middle), y=lead(P_mean_t15_y0), color="Markov & prior"),  alpha=1)+
 geom_curve(aes(x=lag(step_middle), xend = step_middle, y=lag(P_mean_t15_y1),
    yend = P_mean_t15_y0, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
@@ -361,7 +368,7 @@ fC_R
 
 # Pre-calculate to avoid NA/length errors in the plot call
 fD_R <- d_R %>% filter(step_start > 0) %>% ggplot() +
-  geom_point(aes(x = step_middle, y = P_mean_t15_y0, color = "Markov & prior"), shape = 1, stroke = 0.9) +
+  geom_point(aes(x = step_middle, y = P_mean_t15_y0, color = "Markov & prior"), alpha = ORIG_ALPHA) +
   geom_point(aes(x = step_middle, y = P_mean_t15_y1, color = "Bayes & posterior")) +
   geom_curve(aes(x = step_middle, xend = step_middle, y = P_mean_t15_y0, yend = P_mean_t15_y1,
                  color = "Bayes & posterior"),
@@ -391,7 +398,7 @@ fE_NR
 
 ```{r fB_MR}
 fB_MR<-d_MR%>%filter(sample_index>0)%>%ggplot()+
-  geom_point(aes(x=step_start, y=P_mean_t1_y1, color="Bayes & posterior"), shape=1, stroke=0.9)+
+  geom_point(aes(x=step_start, y=P_mean_t1_y1, color="Bayes & posterior"), alpha=ORIG_ALPHA)+
   geom_point(aes(x=step_end, y=P_mean_t2_y1, color="Markov & prior"),  alpha=1)+
 geom_curve(aes(x=step_start, xend = step_end, y=P_mean_t1_y1,
    yend = P_mean_t2_y1, color="Markov & prior"),curvature = 0.6,  angle = 90, ncp=10,linetype = 1, linewidth = 0.5, arrow=markov_arrow)+
@@ -421,7 +428,7 @@ fC_MR
 # Pre-calculate to avoid NA/length errors in the plot call
 fD_MR <- d_MR %>% filter(step_start > 0) %>% ggplot() +
   geom_point(aes(x=step_start, y=P_mean_t1_y1, color="Bayes & posterior"), alpha=1)+
-  geom_point(aes(x=lead(step_end), y=lead(P_mean_t2_y1), color="Markov & prior"),  shape=1, stroke=0.9)+
+  geom_point(aes(x=lead(step_end), y=lead(P_mean_t2_y1), color="Markov & prior"),  alpha=ORIG_ALPHA)+
 geom_curve(aes(x=step_end, xend = step_end, y=P_mean_t2_y1,
    yend = lead(P_mean_t1_y1), 
                  color = "Bayes & posterior"),
@@ -482,6 +489,11 @@ scI  <- scale_y_continuous(limits = YI)     # observation current (full-data ran
 # CAPTION NOTE: in the observation row the predictive spread is a BAND for gmean_i / averaged-
 # conductance algorithms (NMR, MR, IR) and an ERRORBAR for plain-g algorithms (NR, R) — the
 # band-vs-errorbar distinction encodes the averaging (av) axis, on purpose.
+
+# CAPTION NOTE: in the Markov (prior) and Bayes (posterior) panels of the recursive algorithms
+# (R, MR, IR) each arrow starts from a faded mark, the state carried in from the previous step, and
+# points to the full-colour state that the panel computes; the non-recursive algorithms (NR, NMR) have
+# no such carried-in state.
 
 # --- build ONE figure for a given time window and save it. sel = NULL is the whole recording;
 # sel = c(i, j) crops the TIME axis to those windows (full data kept, so every lag/lead arrow is
