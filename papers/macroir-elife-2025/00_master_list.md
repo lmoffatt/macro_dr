@@ -27,16 +27,17 @@ Status vocabulary: **LIVE** = the owner, read it as current. **REWRITE** = still
 | Document | Owns | Status | Updated | git |
 |---|---|---|---|---|
 | `00_master_list.md` (this) | The topic→owner routing table; the document lifecycle | LIVE | 2026-07-14 | committed |
-| `00_master_plan_v2.md` | The thesis, the two-approximation frame, the three regimes, the open-decision register (D-1…D-7), the task list | REWRITE | 2026-07-13 | committed |
+| `01_writing_plan.md` | **The order the manuscript gets drafted**: the gates upstream of prose, what each section needs before its first sentence, and when a section is done | LIVE | 2026-07-14 | committed |
+| `00_master_plan_v2.md` | The thesis, the two-approximation frame, the three regimes, the open-decision register (D-1…D-7). **No longer the task list** (§9 is now a pointer) | REWRITE | 2026-07-14 | committed |
 | `02_decision_log.md` | Every **settled** cross-cutting decision: scope, algorithm roster, the anchor, the ranking verdict, the repo boundary | REWRITE | 2026-07-13 | committed |
 | `08_sources_audio_notes.md` | Which audio/chat is the source of record, and which wins when two disagree | LIVE | 2026-07-13 | committed |
-| `09_carve_plan.md` | The repo boundary, the freeze trigger, what moves to `macroir-validity`, code availability | LIVE | 2026-07-13 | committed |
-| `07_code_tasks.md` | The engine backlog owed to this paper (regression test, the CSV row-duplication writer bug, the IDM call site) | REWRITE | 2026-07-13 | committed |
-| `README.md` | Nothing. It routes, and it routes to three tombstones | POINTER | 2026-07-14 | committed |
-| `AGENTS.md` (repo root) | Where an agent starts. Must register this file | REWRITE | — | committed |
+| `09_carve_plan.md` | The repo boundary, the freeze trigger, what moves to `macroir-validity`, code availability, and **the engine work that must land in the frozen commit** | LIVE | 2026-07-14 | committed |
+| `README.md` | Nothing. It routes | POINTER | 2026-07-14 | committed |
+| `AGENTS.md` (repo root) | Where an agent starts | LIVE | 2026-07-14 | committed |
 | `00_master_plan.md` | — superseded by `00_master_plan_v2.md` | RETIRED | — | committed |
-| `01_workboard.md` | — task tracking moved to master plan §9 | RETIRED | — | committed |
 | `06_repro_pipeline.md` | — moved to `09_carve_plan.md` and `docs/figure_provenance.md` | RETIRED | — | committed |
+| `archive/07_code_tasks.md` | — archived; its live items are the freeze preconditions in `09_carve_plan.md`. Its rule "we do not touch code" made it the owner of the code that had to be touched | RETIRED | — | committed |
+| ~~`01_workboard.md`~~ | — deleted 2026-07-14. Born March with 25 checkboxes, retired July with every one still unticked, including the work that had actually been done. In git history | GONE | — | — |
 
 ### B. Argument and scope
 
@@ -118,6 +119,8 @@ Before writing, look the topic up here.
 | The abstract | `abstract_draft.md` |
 | Run values, the emission model, units | `methods_plan.md` |
 | The repo boundary, the freeze, code availability | `09_carve_plan.md` |
+| The engine work that must land before the frozen build | `09_carve_plan.md` (Freeze preconditions) |
+| The order the manuscript gets written, and what gates each section | `01_writing_plan.md` |
 | Which audio is the source of record | `08_sources_audio_notes.md` |
 | Everything a journal asks for on submission day | `10_submission_pack.md` (to create) |
 
@@ -181,9 +184,17 @@ Three rules:
 
 ## 7. Needs the author
 
-- **C-1**: build the K_off axis and re-run, or restate the maps on the axes the data actually have (N_ch × interval, N_ch × noise) and correct three documents. Recommended: restate. The interval axis is the one the paper's argument is about.
-- **C-3**: spend compute to fill the missing Gaussian-Fisher cells (NMR at minimum), or ship the two-anchor split and disclose it. Recommended: fill them, if it costs less than a few thousand CPU-hours. Every headline number currently sits on the anchor the paper itself calls the less trustworthy one.
-- **C-2** (title) and **C-4** (MNR vs NMR): both are one-line calls that unblock a lot of downstream text.
-- **D-6**: Research Article or Tools and Resources.
-- **Comm Biol / gvar_i**: does this paper say anything about the fact that the published P2X2 validation used the variance formula since corrected? A paper whose whole machinery exists to catch that class of error is the worst place for it to be unmentioned.
-- **D-7**: this pack is in English and you work in Spanish. Keep it, or flip the planning layer.
+This section routes; it does not sequence. **The order in which any of it happens is `01_writing_plan.md`.**
+
+Each live collision in §4 names the document that decides it. Beyond those, three calls are the author's alone and appear nowhere else:
+
+- **The units of the six parameters.** They exist nowhere in the repo and there is no substitute path. It is an afternoon, and it blocks Methods. (`01_writing_plan.md` G-1.)
+- **Research Article or Tools and Resources** (D-6). The only open decision that *adds* work rather than reordering it: T&R obliges benchmarking against existing methods. (`01_writing_plan.md` §5.)
+- **Comm Biol / gvar_i.** Does this paper say anything about the fact that the published P2X2 validation used the variance formula since corrected? A paper whose whole machinery exists to catch that class of error is the worst place for it to go unmentioned.
+
+Still open and unrouted: **D-7**, the language of the planning layer. The pack is in English and you work in Spanish.
+
+Two of the recommendations in the first version of this section have since been settled by measurement, and are recorded here so they are not re-argued:
+
+- **C-1 (map axes).** Recommendation stands: restate the maps on the axes the data actually have. No `K_off` axis exists in the scripts (`figure_3_mle_G.macroir:46` hard-fixes `off = 100`), the output path has no `K_off` component so cells would silently overwrite each other, and building it would cost roughly 35,000 CPU-hours for one supplementary figure.
+- **C-3 (the anchor).** No longer an expensive decision. The gap is **four cells** (NMR × N_ch {10, 100, 1000, 10000} at noise 0.1), about 1,830 CPU-hours, one to two days of queue on a cluster with no CPU-hour quota. Fill them. But read `09_carve_plan.md` (Freeze preconditions) first: the engine fixes change the commit hash, and the hash is the data directory's name.
