@@ -82,7 +82,8 @@ pick, or correct a prefilled artifact.
 | **D-5…D-11** | Seven section ACCEPTs (Theory, Diagnostics, Results, Methods, Discussion, Introduction, Abstract). | The one `.tex` diff, `check.sh` green, and the number→source table for that section. | Accept, or list changes | 20 ea |
 
 **Not a decision, and not a gate:** the overconfidence factor (`abstract_draft.md` says 10-16 on line
-158 and 14-21 on line 162). An agent resolves it from `Figure_S3_caption.md`, which is where it is
+158 and 14-21 on line 162). An agent resolves it (task **B-4**) from
+`projects/eLife_2025/figures/paper/Figure_S3_caption.md`, which is where it is
 computed, and records it in `02_decision_log.md`. It was never Luciano's to settle.
 
 
@@ -120,38 +121,57 @@ real work between the run and Figure 5, nobody has costed it, and it is the thin
 mistaken for a re-knit.
 
 
-## 5. Day zero: three agent tasks, no human input, start now
+## 5. Day zero: seven agent tasks, zero input from Luciano, start now
+
+Two lanes. **T** builds the machinery the rest of the plan runs on. **B** prepares the five decisions
+of §3 so that when they reach Luciano they are already researched, costed and answered — his part is
+to approve, pick, or correct. Nothing in either lane waits on anything.
 
 | ID | Task | Output | Check |
 |---|---|---|---|
-| **T-1** | Split `elife_paper.tex` (90 lines, skeleton, section titles + fill-hints in comments) into `sections/*.tex` pulled in with `\input`. One file per section = one agent owner = no merge conflicts. Carry the fill-hint comments across verbatim. | `docs/manuscript-drafts/sections/*.tex` + a 30-line `elife_paper.tex` | `latexmk -pdf` compiles, PDF unchanged |
-| **T-2** | Write `check.sh` (the definition of done, §0). Everything else in this plan is measured by it. | `papers/macroir-elife-2025/check.sh` | It runs and reports the current state honestly (it will be red on almost everything: that is correct) |
-| **T-3** | **Build `biblio.bib` from zero.** The longest pole in the project, and it has no blockers. Sources already on disk: `docs/bibliography/MacroIR_prior_art_map.md`, `docs/bibliography/identifiability/`, the Comm Biol and Moffatt 2007 lineage, Munch 2022, the Kalman prior art. | `docs/manuscript-drafts/biblio.bib` | Every entry has a DOI or a stable URL; `bibtex` runs clean |
+| **T-1** | Split `elife_paper.tex` (90 lines: section titles + fill-hints in comments) into `sections/*.tex` pulled in with `\input`. One file per section = one agent owner = no merge conflicts. Carry the fill-hint comments across verbatim. | `papers/macroir-elife-2025/docs/manuscript-drafts/sections/*.tex` + a short `elife_paper.tex` | `./check.sh` item 1 still green, PDF unchanged |
+| **T-2** | ~~Write `check.sh`.~~ **Done 2026-07-14.** Current state: 3 pass, 4 fail. The four FAILs are the task list. | `papers/macroir-elife-2025/check.sh` | ✔ |
+| **T-3** | **Build `biblio.bib` from zero.** The longest pole in the project, and it has no blockers. The `.tex` has zero `\cite` and `biblio.bib` is the P2X2 paper's 170 references. Sources on disk: `docs/bibliography/MacroIR_prior_art_map.md`, `docs/bibliography/identifiability/`, the Comm Biol + Moffatt 2007 lineage, Munch 2022, the Kalman prior art. | `papers/macroir-elife-2025/docs/manuscript-drafts/biblio.bib` | every entry has a DOI or stable URL; `bibtex` clean; `./check.sh` item 5 |
+| **B-0** | Cost options (b) and (c) of **D-0** in CPU-hours, from `papers/macroir-elife-2025/05_experiment_grid.md`, the existing run logs, and `projects/eLife_2025/ops/`. State what each one invalidates. | a one-page brief | Luciano picks in 15 min |
+| **B-2** | Prefill the six-parameter units table: infer each unit from the C++ model, the `.macroir` scripts and `scheme_CO_par.csv` / `scheme_CO_prior.csv`, with one evidence line per row. **Mark inferred, never asserted.** | a six-row table | Luciano corrects the wrong cells in 15 min |
+| **B-3** | Draft the replacement novelty paragraph from `docs/bibliography/MacroIR_prior_art_map.md`, plus the one-line retraction of the claim now in `introduction_plan.md`. | one paragraph | Luciano approves in 10 min |
+| **B-4** | Recompute the ranking table from the CSVs; resolve MR's variance direction and IR's corner bound (≤1.3 stated vs ~0.5 observed — check the predicted *observable* variance against the reported *parameter* covariance, the suspected category error); diff against all four existing copies. **Also settle the overconfidence factor** (10-16 vs 14-21) from `projects/eLife_2025/figures/paper/Figure_S3_caption.md`, which is where it is computed, and write it to `02_decision_log.md`. | the table + the diff | Luciano says yes/no in 10 min |
 
-T-3 is the item most likely to be underestimated. It is also the one an agent can do end to end.
+T-3 is the item most likely to be underestimated, and the one an agent can do end to end.
+**D-1** (Research Article vs Tools & Resources) needs no brief: it is a judgment call about scope,
+and the trade-off is already written in §3. It is five minutes whenever he wants to spend them.
 
 
 ## 6. The task graph
+
+**Paths are relative to the repo root** (`macro_dr/`), always, with no exceptions — a bare `docs/`
+is ambiguous between this pack and the repo root, and an agent that guesses wrong stops or, worse,
+reads the wrong file. Verified 2026-07-14: every Input below exists.
 
 Writing tasks. `Needs` are hard preconditions. Everything with no `Needs` can run today, in parallel,
 on separate files (that is what T-1 buys).
 
 | ID | Section | Needs | Inputs (read only these) | Constraints (load-bearing) |
 |---|---|---|---|---|
-| **W-1** | Theory | T-1 | `theory_plan.md`, `nomenclature.md`, `theory/macroir/docs/Macro_IR/macroir_derivation.tex`, `macroir_macroir_paper_section.md` | Assume `nomenclature.md`, do not re-derive it (an MNR/NMR flip later is a `sed`, not a rewrite). **May not claim** the recursive members' Gaussian Fisher is the exact information matrix — it is not, the likelihood is misspecified by construction. (`docs/corrected covariance justification.md` says otherwise and is wrong on this point.) Every symbol used later in the paper is defined here. |
-| **W-2** | Diagnostics | T-1 | `diagnostics_plan.md`, `correction_idm_reconstruction.md`, `supplement_information_distortion_main.tex`, `Gaussian_Fisher_Distortion_Family.md`, `03_metrics_diagnostics.md` | The identity is `IDM = K·CDM·Kᵀ`, **not** `SDM^½·CDM·SDM^½` — the supplement and `likelihood.cpp:3501` both print the false one (E-2). Be explicit, per identity, about which is **exact algebra**, which is **first-order**, and which is **convention**. |
-| **W-3** | Results §1–§4 | T-1, D-0, D-4 | the four figure captions, `results_plan.md`, `docs/figure_provenance.md` (which run made which figure, and the three naming traps that have already misled readers) | Every claim traceable to a panel, every number to the file that computed it (LINT-SRC). Each figure answers the objection raised by the previous one. **Must state once:** which Fisher anchors which panel — the definitive figures were promised on the Gaussian anchor and Figures 2, S2, S3 currently sit on the numerical one (`433ed13`). |
-| **W-4** | Methods | T-1, D-2 | `methods_plan.md` M1–M11, `docs/figure_provenance.md` | eLife excludes Methods from the word count, so be complete: the claims *are* about algorithms, so the Methods **are** the result. **Must state plainly:** `seed = 0` meant *random*, the resolved seed was never logged, so the ensembles are statistically equivalent but **not bit-reproducible** (`methods_plan.md` M5 currently claims the opposite and must be corrected — unless D-0 lands on (b)/(c), which fixes E-1 and makes them reproducible; the Methods text follows D-0); and the ground truth is exact CTMC uniformization, which is what licenses using it as the reference. |
-| **W-5** | Results §5–§6 | C-lane (below) | Figures 5 and 6 once they exist | Until the figures exist: write the surrounding prose with the claim as `\todo{}`. Do not guess the numbers. Forty-four candidates sit in `figures/in_progress/`, sorted by `figure_5_PLAN.md`; four **unselected** PDFs already squat on the names `Figure_5_*` / `Figure_6_*` in `figures/paper/` and must be cleared before promotion or they will be cited by mistake. |
-| **W-6** | Discussion | W-3, D-3, D-4 | `discussion_plan.md`, `docs/bibliography/identifiability/` | **Done when it delivers a decision rule** (how many channels, what interval relative to the relaxation, how much noise, what the cheap approximations cost you in that corner) — not "MacroIR is best". The decision rule is what gets cited. **Must contain:** the Kalman concession (MacroIR ≡ integrated-measurement augmented Kalman filter, verified to ~1e-8: concede it loudly, the novelty is elsewhere); the identifiability perimeter; and IR's own miscalibration at few channels (it over-predicts the observable variance by ~6% — the hero's own failure belongs in the paper that is about failure). |
-| **W-7** | Introduction | W-3, D-3 | `introduction_plan.md`, the prior-art map | Written late on purpose: it sells what the paper delivers, which you only know once the Results exist. Done when the reader reaches "we provide that test" already convinced that no such test existed for this problem and that the field is choosing likelihoods by habit. |
-| **W-8** | Abstract + Impact | all of the above | `abstract_draft.md`, the finished sections | The 209-word abstract in `elife_paper.tex` is **not a placeholder**: it is in the validity-map frame and it reads well. **Reconcile** it with the finished paper; do not rewrite from zero. Also produces the Impact Statement (eLife requires one, ≤40 words). |
-| **W-9** | Front/back matter | D-1 | `09_carve_plan.md`, the venue instructions | Data availability, CRediT, competing interests, funding, acknowledgements, Key Resources Table if the article type requires one. Unowned until now; it is check-item 7. |
+| **W-1** | Theory | T-1 | `papers/macroir-elife-2025/theory_plan.md`, `.../nomenclature.md`, `theory/macroir/docs/Macro_IR/macroir_derivation.tex`, `theory/macroir/docs/Macro_IR/macroir_macroir_paper_section.md` | Assume `nomenclature.md`, do not re-derive it (an MNR/NMR flip later is a `sed`, not a rewrite). **May not claim** the recursive members' Gaussian Fisher is the exact information matrix — it is not, the likelihood is misspecified by construction. (`papers/macroir-elife-2025/docs/corrected covariance justification.md` says otherwise and is wrong on this point.) Every symbol used later in the paper is defined here. |
+| **W-2** | Diagnostics | T-1 | `papers/macroir-elife-2025/{diagnostics_plan,correction_idm_reconstruction,03_metrics_diagnostics}.md`, `theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex`, `theory/macroir/docs/Gaussian_Fisher_Distortion_Family.md` (owns what the anchor **H** is) | The identity is `IDM = K·CDM·Kᵀ`, **not** `SDM^½·CDM·SDM^½` — the supplement and `likelihood.cpp:3501` both print the false one (E-2). Be explicit, per identity, about which is **exact algebra**, which is **first-order**, and which is **convention**. |
+| **W-3** | Results §1–§4 | T-1, D-0, D-4 | `projects/eLife_2025/figures/paper/Figure_{1,2,3,4}_caption.md`, `papers/macroir-elife-2025/results_plan.md`, `papers/macroir-elife-2025/docs/figure_provenance.md` (which run made which figure, and the three naming traps that have already misled readers) | Every claim traceable to a panel, every number to the file that computed it (LINT-SRC). Each figure answers the objection raised by the previous one. **Must state once:** which Fisher anchors which panel — the definitive figures were promised on the Gaussian anchor and Figures 2, S2, S3 currently sit on the numerical one (`433ed13`). |
+| **W-4** | Methods | T-1, D-2 | `papers/macroir-elife-2025/methods_plan.md` M1–M11, `papers/macroir-elife-2025/docs/figure_provenance.md` | eLife excludes Methods from the word count, so be complete: the claims *are* about algorithms, so the Methods **are** the result. **Must state plainly:** `seed = 0` meant *random*, the resolved seed was never logged, so the ensembles are statistically equivalent but **not bit-reproducible** (`methods_plan.md` M5 currently claims the opposite and must be corrected — unless D-0 lands on (b)/(c), which fixes E-1 and makes them reproducible; the Methods text follows D-0); and the ground truth is exact CTMC uniformization, which is what licenses using it as the reference. |
+| **W-5** | Results §5–§6 | C-lane (below) | Figures 5 and 6 once they exist | Until the figures exist: write the surrounding prose with the claim as `\todo{}`. Do not guess the numbers. Forty-four candidates sit in `projects/eLife_2025/figures/in_progress/`, sorted by `.../in_progress/figure_5_PLAN.md`. Verified 2026-07-14: four **unselected** PDFs already squat on the numbers in `projects/eLife_2025/figures/paper/` — `Figure_5_master.pdf`, `Figure_5_master_affine.pdf`, `Figure_5_master_frobenius.pdf`, `Figure_6_precision.pdf`. Clear them before promotion or they will be cited by mistake. |
+| **W-6** | Discussion | W-3, D-3, D-4 | `papers/macroir-elife-2025/discussion_plan.md`, `docs/bibliography/identifiability/` (repo root) | **Done when it delivers a decision rule** (how many channels, what interval relative to the relaxation, how much noise, what the cheap approximations cost you in that corner) — not "MacroIR is best". The decision rule is what gets cited. **Must contain:** the Kalman concession (MacroIR ≡ integrated-measurement augmented Kalman filter, verified to ~1e-8: concede it loudly, the novelty is elsewhere); the identifiability perimeter; and IR's own miscalibration at few channels (it over-predicts the observable variance by ~6% — the hero's own failure belongs in the paper that is about failure). |
+| **W-7** | Introduction | W-3, D-3 | `papers/macroir-elife-2025/introduction_plan.md`, `docs/bibliography/MacroIR_prior_art_map.md` | Written late on purpose: it sells what the paper delivers, which you only know once the Results exist. Done when the reader reaches "we provide that test" already convinced that no such test existed for this problem and that the field is choosing likelihoods by habit. |
+| **W-8** | Abstract + Impact | all of the above | `papers/macroir-elife-2025/abstract_draft.md`, the finished sections | The 209-word abstract in `elife_paper.tex` is **not a placeholder**: it is in the validity-map frame and it reads well. **Reconcile** it with the finished paper; do not rewrite from zero. Also produces the Impact Statement (eLife requires one, ≤40 words). |
+| **W-9** | Front/back matter | D-1 | `papers/macroir-elife-2025/09_carve_plan.md`, `papers/macroir-elife-2025/docs/elife-author-instructions.md` | Data availability, CRediT, competing interests, funding, acknowledgements, Key Resources Table if the article type requires one. Unowned until now; it is check-item 7. |
 
 Compute lane (gated on **D-0**, then owned by `09_carve_plan.md` and `05_experiment_grid.md`):
 **C-1** land E-1…E-5 → **C-2** tag + build once → **C-3** run the cells D-0 selected → **C-4** the
 schema port (§4) → **C-5** promote Figures 5/6 from `in_progress/` and caption them → **C-6** the
 number-refresh pass over every `% src:` in the manuscript.
+
+**The one human touchpoint outside §3: C-3 needs Luciano's hands.** Cluster access is his (the Dirac
+login and account are not in the repo). An agent prepares the dispatch — build, `.macroir` configs,
+SLURM scripts, the `RUN_DIR` for the new hash — and he runs one command. Budget: 10 minutes, once.
+Nobody else can do it, and no amount of planning removes it.
 
 
 ## 7. The critical path, and what it means
