@@ -27,62 +27,17 @@ Time-averaged measurements pervade biology, and the likelihoods used to interpre
 % A validity map shows where time-averaged likelihood approximations for ion-channel currents can be trusted and where they distort inference, and identifies MacroIR as the one that stays calibrated across the practical regime.
 
 % ================= SKELETON: titles only below. Fill-hints in % comments. =================
+% One file per top-level section under sections/, so that one section = one owner = no merge
+% conflicts (01_writing_plan.md, T-1). The fill-hints live in the section files, with the
+% section they brief. Add nothing here but \input lines.
 
-\section*{Introduction}
-% The problem: measurements are interval-averaged; the likelihoods for them are approximations rarely tested.
-% The question: not "is it exact" but "where does it hold and how does it fail".
-% The asymmetry that licenses the approach: forward simulation is easy, the inverse (data -> likelihood) is hard, so the simulation is ground truth.
-% Position: Comm Biol demonstration (Moffatt & Pierdominici-Sottile 2025) + Macro R lineage (Moffatt 2007) + Munch 2022 / Kalman prior art. This paper characterizes the likelihood-algorithm component.
-
-\section*{The macroscopic interval likelihood and its approximations}
-% Theory. Salvage the boundary-state derivation from archives/ (merged, revised3): interval average, E_2 kernel, Q(+)Q factorization, meta-state tcolorbox, the Kalman-like update and gain, and the emission-variance decomposition (eps^2/t + white + pink + N_ch[gating]); the E_3 variance kernel from revised3.
-% Define the family NR / NMR / R / MR / IR and the two Gaussian approximations each makes (occupancy multinomial->Gaussian; single-interval signal->Gaussian). Salvage the full family derivation from archives/elife-macroir-merged.tex.
-
-\section*{Diagnostics: testing a likelihood against its simulation}
-% The four indicators: standardized residuals (mean 0, var 1, whiteness); score bias; information-distortion matrix C = H^{-1/2} J H^{-1/2} anchored on the Gaussian Fisher, decomposed into correlation vs sample/geometric distortion; direct empirical-vs-sandwich covariance test. Evaluate at the optimum. Salvage the score-test prose from archives/; the distortion matrix is new.
-
-\section*{Results}
-
-\subsection*{A minimal two-state model and the algorithm family}
-% The clean 2-state C-O model, non-stationary pulse; why minimal (isolate the algorithm's own error).
-
-\subsection*{Which approximations are calibrated: parameter recovery}
-% Fig 2: MLE clouds + 3 ellipses (empirical / Gaussian-Fisher / sandwich). NR/NMR overconfident; IR calibrated. [regenerate on Gaussian rerun]
-
-\subsection*{Time-resolved calibration and the score/Fisher checks}
-% Fig 3: logL gap, R^2 residual, score bias, per-interval and accumulated J_t/F_t, score autocorrelation. [Gaussian-anchored]
-
-\subsection*{Where the information lives: the Fisher falls to zero on relaxation}
-% Fig 4 (key result): information about N_ch, k_on, i vanishes once the open count relaxes; k_off stays informative. [Gaussian-anchored]
-
-\subsection*{A validity map across channels, interval, and noise}
-% Fig 5: bias and distortion heatmaps over N_ch x K_off, all algorithms; the multinomial / telegraphic / Gaussian regimes. [regenerate on Gaussian rerun]
-
-\subsection*{Decomposing the distortion: correlation versus sample}
-% Fig 6: correlation vs sample/geometric distortion; where and why each approximation fails.
-
-\section*{Discussion}
-% MacroIR the calibrated default; the failure modes trace to the two approximations; ranking (R ~factor 2, MR strawman, NR/NMR inflation, NMR unbiased-but-underdispersed).
-% MacroIR ~ time-augmented integrated Kalman filter (state as hypothesis, verified ~1e-8).
-% The distortion is the correction to the Bayesian evidence (volume 1/2 log det C, effective-sample alpha* = p/tr C): motivation for the program's model-comparison component; derivation deferred.
-% Research-program framing + explicit open doors: micro / >2 states / stationary / experimental data.
-
-\section*{Materials and methods}
-
-\subsection*{Minimal model and simulation}
-\subsection*{The macroscopic likelihood approximations}
-\subsection*{Diagnostics and the Gaussian-Fisher anchor}
-\subsection*{Regime grid and reduction}
-\subsection*{Reproducibility}
-% Engine macro_dr @ pinned tag/hash; figure scripts; data handoff. See papers/macroir-elife-2025/09_carve_plan.md.
-
-\section*{Data and code availability}
-% GitHub repo (macroir-validity) + Zenodo DOI at submission; macro_dr engine referenced by pinned version.
-
-\section*{Acknowledgements}
-
-\section*{Author contributions}
-% LM conceived the study, developed the theory, implemented the algorithms, analyzed data, and wrote the manuscript.
+\input{sections/01_introduction}
+\input{sections/02_theory}
+\input{sections/03_diagnostics}
+\input{sections/04_results}
+\input{sections/05_discussion}
+\input{sections/06_methods}
+\input{sections/07_backmatter}
 
 % \nocite{*}
 \bibliography{biblio}

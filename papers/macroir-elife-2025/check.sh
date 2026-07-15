@@ -35,7 +35,7 @@ if [ -d "$SECTIONS" ] && compgen -G "$SECTIONS/*.tex" >/dev/null; then
 fi
 BODY_TMP="$(mktemp)"; trap 'rm -f "$BODY_TMP"' EXIT
 if [ ${#BODY_FILES[@]} -gt 0 ]; then
-  for f in "${BODY_FILES[@]}"; do sed "s|^|${f}:|" "$f"; done > "$BODY_TMP"
+  for f in "${BODY_FILES[@]}"; do awk -v f="$f" '{print f":"FNR":"$0}' "$f"; done > "$BODY_TMP"
 else
   awk -v f="$TEX" 'p{print f":"FNR":"$0} /\\begin\{document\}/{p=1}' "$TEX" > "$BODY_TMP"
 fi
@@ -140,8 +140,32 @@ fi
 # --- 8. word count ------------------------------------------------------------------
 # Methods are excluded from eLife's count. The limit depends on D-1 (Research Article vs
 # Tools & Resources); until D-1 is answered this reports, it does not judge.
-if command -v detex >/dev/null 2>&1; then W=$(detex "$TEX" | wc -w); else W=$(sed 's/%.*//' "$BODY_TMP" | wc -w); fi
+# Count over the concatenated body (BODY_TMP is file:num:content, so strip that prefix and
+# comment lines first). Running detex on $TEX cannot follow \input once T-1 has split it.
+BODY_TEXT=$(sed 's/^[^:]*:[0-9]*://' "$BODY_TMP" | grep -v '^[[:space:]]*%')
+if command -v detex >/dev/null 2>&1; then W=$(printf '%s' "$BODY_TEXT" | detex 2>/dev/null | wc -w); else W=$(printf '%s' "$BODY_TEXT" | sed 's/%.*//' | wc -w); fi
 warn "8. word count ~$W (limit pending D-1: Research Article vs Tools & Resources)"
+
+# --- 9. index completeness (00_master_list §2 covers the working pack) ---------------
+# Enforces the master_list "completeness guarantee": if a working .md is NOT registered,
+# then "not in the index = not owned" is a false negative. Scope: top-level + decisions/ +
+# components/ (the sub-trees docs/ figures/ theory/ are registered by directory/glob, not per-file).
+ML="$HERE/00_master_list.md"
+reg_ok(){ local b lasttok; b=$(basename "$1")            # tolerate abbreviations (…) and globs in the registry
+  grep -qF "$b" "$ML" && return 0
+  lasttok=$(printf '%s' "$b" | awk '{print $NF}')        # "From molecular … PROGRAM.md" -> match on "PROGRAM.md"
+  [ "$lasttok" != "$b" ] && grep -qF "$lasttok" "$ML" && return 0
+  case "$b" in D-[0-9]*) grep -qF 'D-0' "$ML" && grep -qF 'D-4' "$ML" && return 0;; esac  # decisions/D-0…D-4 glob
+  return 1; }
+UNREG=$(while IFS= read -r f; do
+  [ "$(basename "$f")" = "00_master_list.md" ] && continue
+  reg_ok "$f" || basename "$f"
+done < <(find "$HERE" -maxdepth 1 -name '*.md'; find "$HERE/decisions" "$HERE/components" -name '*.md' 2>/dev/null))
+N_UNREG=$(printf '%s' "$UNREG" | grep -c . || true)
+if [ "$N_UNREG" -eq 0 ]; then green "9. index: every working .md is registered in master_list"; else
+  red "9. index: $N_UNREG working file(s) NOT in master_list ('not indexed = not owned' broken)"
+  printf '%s\n' "$UNREG" | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
+fi
 
 echo
 printf 'pass %d   fail %d   warn %d\n' "$PASS" "$FAIL" "$WARN"

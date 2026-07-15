@@ -16,6 +16,10 @@ Three consequences worth naming, because the pack currently violates all three:
 - A **decision** is settled in exactly one place, `02_decision_log.md`. A document that argues toward a decision (`nomenclature.md`, `title_options.md`) owns the *argument*; the *verdict* graduates to the log.
 - A document that is superseded says so **in its first three lines**, names its successor, and is never read as current again.
 
+**The completeness guarantee (this is what lets an agent trust the index).** §2 is **complete over the pack**: every file appears there with a status. If a file is not in §2, it is not part of the pack. §3 is **exhaustive over cross-cutting decisions**: if a topic is not in §3, it has no owner yet, which means **it is not decided**. So "I looked and it is not in the index" is a reliable negative, not a failed search. `check.sh` enforces §2 completeness mechanically (every `.md` in the pack must be registered), so the guarantee is a check, not a promise.
+
+**On the `components/` experiment.** The atomic component-file scheme (`components/_SPEC.md`) is a **PARKED** proof-of-concept, not a live owner. It earns propagation only when `components/_LOG.md` records that this index failed (see the D-0 rerun refresh test). Until then, the owners are the documents below; `components/*` fact nodes are not canonical.
+
 ## 2. The registry
 
 Status vocabulary: **LIVE** = the owner, read it as current. **REWRITE** = still the owner, but it currently says something wrong (see §4). **POINTER** = kept only to redirect. **RETIRED** = tombstone. **CREATE** = does not exist yet.
@@ -33,6 +37,10 @@ Status vocabulary: **LIVE** = the owner, read it as current. **REWRITE** = still
 | `08_sources_audio_notes.md` | Which audio/chat is the source of record, and which wins when two disagree | LIVE | 2026-07-13 | committed |
 | `09_carve_plan.md` | The repo boundary, the freeze trigger, what moves to `macroir-validity`, code availability, and **the engine work that must land in the frozen commit** | LIVE | 2026-07-14 | committed |
 | `README.md` | Nothing. It routes | POINTER | 2026-07-14 | committed |
+| `check.sh` | The mechanical done-oracle + index-completeness check (enforces §2) | LIVE | 2026-07-15 | uncommitted |
+| `decisions/D-0…D-4*.md` | The four decision briefs (freeze/rerun, units, novelty, ranking), each researched with a recommendation, awaiting Luciano | LIVE | 2026-07-15 | uncommitted |
+| `components/_SPEC.md`, `_LOG.md`, `_MAP.md` | The parked atomic-component scheme (methodology + does-it-work log). **PARKED POC, not a fact-owner** | PARKED | 2026-07-15 | uncommitted |
+| `archive/components_poc/` | The three demo nodes (MR/sandwich/fact) that proved the scheme; archived, not canonical | RETIRED | 2026-07-15 | uncommitted |
 | `AGENTS.md` (repo root) | Where an agent starts | LIVE | 2026-07-14 | committed |
 | `00_master_plan.md` | — superseded by `00_master_plan_v2.md` | RETIRED | — | committed |
 | `06_repro_pipeline.md` | — moved to `09_carve_plan.md` and `docs/figure_provenance.md` | RETIRED | — | committed |
