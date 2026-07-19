@@ -1,3 +1,216 @@
 \section*{The macroscopic interval likelihood and its approximations}
-% Theory. Salvage the boundary-state derivation from archives/ (merged, revised3): interval average, E_2 kernel, Q(+)Q factorization, meta-state tcolorbox, the Kalman-like update and gain, and the emission-variance decomposition (eps^2/t + white + pink + N_ch[gating]); the E_3 variance kernel from revised3.
-% Define the family NR / NMR / R / MR / IR and the two Gaussian approximations each makes (occupancy multinomial->Gaussian; single-interval signal->Gaussian). Salvage the full family derivation from archives/elife-macroir-merged.tex.
+% Owner: theory_plan.md. Presents the five algorithms as one object with two knobs
+% (recursion x window), with the endpoint ladder as the presentation. Does NOT restate:
+% scope (02_decision_log), the novelty claim (D-3, unsettled), diagnostic definitions
+% (diagnostics_plan / 03_metrics_diagnostics), or run values and the noise parameter
+% (methods_plan). The index-level kernels for the boundary moments (E_2, E_3, the
+% Kronecker-sum construction) live in Methods and the Supplement; this section names them.
+
+A macroscopic current is the summed signal of a population of ion channels, each of
+which behaves as an independent continuous-time Markov chain over a small set of
+conformational states. We write $N_{\mathrm{ch}}$ for the number of channels and $K$ for
+the number of kinetic states of one channel ($K=2$ throughout this paper, carried % src: 02_decision_log.md (two-state scope)
+symbolically where it costs nothing). Each channel is governed by a generator (rate)
+matrix $\mathbf{Q}\in\mathbb{R}^{K\times K}$, whose transition matrix over an elapsed time
+$t$ is the row-stochastic $\mathbf{P}(t)=e^{\mathbf{Q}t}$ with entries $P_{i\to j}(t)$. A
+channel in state $k$ carries a conductance $\gamma_k$, and we collect these in the vector
+$\bm{\gamma}\in\mathbb{R}^{K}$.
+
+The likelihood we need is the probability of a recorded sample given the kinetic
+parameters and the data seen so far. Its exact form would require the distribution of the
+interval-averaged conductance of the whole population, which has no closed expression.
+Every practical likelihood replaces that distribution with a Gaussian, and the members of
+the family studied here differ only in what the Gaussian is conditioned on. The rest of
+this section unpacks that sentence.
+
+\subsection*{The observable is an interval average}
+
+A recorded sample is the current averaged over the acquisition window rather than sampled at an instant. The acquisition
+electronics integrate the current across the sampling window $\Delta$ and pass it through
+an anti-aliasing filter before it is written down, so the quantity a likelihood must
+describe is the windowed average
+\begin{equation}
+  \bar{y}_t \;=\; \frac{1}{\Delta}\int_{t-\Delta}^{t} y(\tau)\,\mathrm{d}\tau \;+\; \eta_t,
+  \label{eq:obs-avg}
+\end{equation}
+where $y(\tau)$ is the instantaneous population current and $\eta_t$ is the instrumental
+noise accumulated over the window. This interval average is the physical observable. When
+$\Delta$ is much shorter than the fastest relaxation of $\mathbf{Q}$ the average sits close
+to the instantaneous current and the distinction is negligible; when $\Delta$ is comparable
+to or longer than that relaxation the two diverge, and a likelihood built on instantaneous
+sampling describes the wrong random variable.
+
+\subsection*{Two Gaussian approximations}
+
+Each member of the family makes two closures, on two different objects.
+
+\begin{tcolorbox}[title={The two Gaussian approximations}, colback=gray!5, colframe=gray!55]
+\textbf{Occupancy closure.} The joint distribution of the channel occupancies is exactly
+multinomial when the channels are independent, which is also the maximum-entropy
+distribution consistent with the mean occupancies. It is replaced by a multivariate
+Gaussian with mean $\bm{\mu}$ and covariance $\bm{\Sigma}$, valid for large
+$N_{\mathrm{ch}}$ by the central limit theorem and degrading as the channel count falls.
+
+\smallskip
+\textbf{Interval-signal closure.} The distribution of the interval-averaged conductance
+over one window is a telegraph-like object with no closed form. It is replaced by a
+Gaussian, valid when the window spans many transitions or when instrumental noise
+dominates, and degrading as the window shrinks below the relaxation time.
+\end{tcolorbox}
+
+The higher moments these closures discard do not vanish. They reappear in the data as
+temporal correlation that the likelihood does not predict, which is what the correlation
+term of the information-distortion decomposition measures (Diagnostics). Three regimes
+follow, and we name them here so the maps in the Results have vocabulary: the
+\emph{multinomial} regime (few channels, where the occupancy closure fails), the
+\emph{telegraphic} regime (windows far shorter than the relaxation time, where the
+interval-signal closure fails), and the \emph{Gaussian} regime, where both closures hold
+because the channel count is high enough for the occupancy Gaussian while the window is long
+enough, or the instrumental noise large enough, for the interval-signal Gaussian. Any Gaussian likelihood of this
+kind must fail somewhere. The aim of this paper is to show that the failures are the
+predicted degradation of these two closures rather than defects of a particular algorithm.
+
+\subsection*{The family as a coordinate system}
+
+The family has two knobs. One axis is the window: how much of the acquisition interval the
+conductance is conditioned on. The other is recursion: whether the occupancy distribution
+is conditioned on the data as the recording proceeds.
+
+Along the recursion axis, a recursive (prequential) member factorizes the likelihood as
+$\prod_t q_t(\bar{y}_t \mid \bar{y}_{1:t-1})$, so the occupancy distribution carried into
+each window is the posterior left by the previous windows and the hidden state is
+conditioned on the data. A non-recursive (open-loop) member factorizes as
+$\prod_t m_t(\bar{y}_t)$, with each window's predictive propagated from the initial
+condition and never conditioned on the observed trace.
+
+Along the window axis the members form a ladder, indexed by how many of the interval's
+endpoints the conductance is conditioned on (Table~\ref{tab:ladder}).
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+Conditioned on & Members & Conductance model \\
+\midrule
+no endpoints & \texttt{NR}, \texttt{R} & instantaneous; the acquisition averaging is ignored \\
+one endpoint (the start) & \texttt{NMR}, \texttt{MR} & interval-mean conductance given the start state \\
+two endpoints (the boundary) & \texttt{IR} & interval-mean conductance given both boundary states; interior marginalized \\
+the full trajectory & (exact) & intractable; supplied by the stochastic simulation as ground truth \\
+\bottomrule
+\end{tabular}
+\caption{The window axis as an endpoint ladder. Crossing it with the recursion axis gives
+the implemented grid: \texttt{NR} (non-recursive, $\mathrm{av}=0$), \texttt{R} (recursive,
+$\mathrm{av}=0$), \texttt{NMR} (non-recursive, $\mathrm{av}=1$), \texttt{MR} (recursive,
+$\mathrm{av}=1$), \texttt{IR} (recursive, $\mathrm{av}=2$), where $\mathrm{av}$ counts the
+conditioned endpoints. MacroIR is \texttt{IR}.} % src: nomenclature.md (family grid, av flag)
+\label{tab:ladder}
+\end{table}
+
+Two things follow from the ladder. First, MacroIR occupies the top rung below the
+intractable exact likelihood, so its standing in the family is structural and set before
+any measurement. Second, the lower rungs are established likelihoods rather than
+constructed foils: the non-recursive instantaneous member is the independent-interval
+likelihood of \citet{milescu2005maximum}, and the recursive instantaneous member is the
+macroscopic recursive filter of \citet{moffatt2007estimation} and the generalized filter
+of \citet{munch2022bayesian}. The family is one coordinate system that contains these
+methods as special cases.
+
+\subsection*{The boundary state}
+
+A \emph{boundary state} is the pair $(i_0, i_t)$ of a channel's states at the two ends of
+an acquisition interval. Chaining intervals, the end state of one interval is the start
+state of the next, so there is a single state variable per junction: the filter conditions
+on the states at the interval boundaries and marginalizes the trajectory between them
+analytically. This is the same device as static condensation, or the spatial Markov
+property, applied on the time axis. It is not a transition state in the mechanistic sense,
+and we keep the word \emph{transition} away from it. Because the joint dynamics of the two
+endpoints are generated by the Kronecker sum
+$\mathbf{Q}\oplus\mathbf{Q}=\mathbf{Q}\otimes\mathbf{I}+\mathbf{I}\otimes\mathbf{Q}$, whose
+propagator factorizes as $e^{(\mathbf{Q}\oplus\mathbf{Q})t}=e^{\mathbf{Q}t}\otimes
+e^{\mathbf{Q}t}$, the moments over the $K^2$ boundary pairs collapse to bilinear forms in
+the $K$-dimensional state space and no explicit $K^2$ object is formed (Methods).
+
+The ladder needs two conductance objects, both built from the boundary-conditioned
+single-channel moments $\overline{\Gamma}_{i_0\to i_t}$ (the mean interval-averaged
+conductance of a channel that starts in $i_0$ and ends in $i_t$) and
+$\overline{V}_{i_0\to i_t}$ (its variance), which are computed from $\mathbf{Q}$ and the
+recording filter (Methods). The start-conditioned mean conductance is the $K$-vector
+\begin{equation}
+  (\bar{\gamma}_0)_{i_0} \;=\; \sum_{i_t} P_{i_0\to i_t}(\Delta)\,\overline{\Gamma}_{i_0\to i_t},
+  \label{eq:gammabar}
+\end{equation}
+which conditions on the state at the interval's start alone and is the object used at
+$\mathrm{av}=1$. The boundary-conditioned mean conductance is the same average retained on
+both endpoints, so it stays a $K\times K$ object rather than collapsing to a vector, and is
+the object used at $\mathrm{av}=2$.
+
+\subsection*{The interval update}
+
+Over a window of length $\Delta$, the occupancy mean and covariance propagate as
+\begin{align}
+  \bm{\mu}^{\mathrm{prop}} &= \mathbf{P}(\Delta)^\top \bm{\mu}_0, \label{eq:mu-prop}\\
+  \bm{\Sigma}^{\mathrm{prop}} &= \mathbf{P}(\Delta)^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\mathbf{P}(\Delta) + \mathrm{diag}(\bm{\mu}^{\mathrm{prop}}), \label{eq:sig-prop}
+\end{align}
+where $(\bm{\mu}_0, \bm{\Sigma}_0)$ is the occupancy Gaussian at the start of the window.
+The predicted mean of the interval-averaged current is
+\begin{equation}
+  \bar{y}^{\mathrm{pred}} \;=\; N_{\mathrm{ch}}\,\bm{\mu}_0^\top \bar{\bm{\gamma}}_0,
+  \label{eq:ypred}
+\end{equation}
+and its predicted variance decomposes into three independent contributions,
+\begin{equation}
+  \sigma^2_{\mathrm{pred}} \;=\; \epsilon^2_{\Delta}
+  \;+\; N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  \;+\; N_{\mathrm{ch}}\,\bm{\mu}_0^\top\bm{\sigma}^2_{\bar{\gamma}_0}.
+  \label{eq:pred-var}
+\end{equation}
+The first term $\epsilon^2_{\Delta}$ is the instrumental noise over the window, which
+carries the acquisition averaging and decreases with $\Delta$; its parametric form is given
+in Methods. The second term is the population gating variance, the fluctuation of the window
+current transmitted through the occupancy covariance: $\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}$
+is the boundary covariance of the window collapsed onto the conductance, computed without
+ever forming the $K^2$ boundary matrix. The third term is the within-window per-channel
+variance, with $\bm{\sigma}^2_{\bar{\gamma}_0}$ the start-conditioned interval variance
+built from $\overline{V}_{i_0\to i_t}$.
+
+Writing $\mathbf{g}=\mathrm{Cov}(\text{end-of-window occupancy}, \bar{y})/N_{\mathrm{ch}}$
+for the per-channel cross-covariance between the interval current and the occupancy at the
+end of the window, and $\delta = \bar{y}^{\mathrm{obs}} - \bar{y}^{\mathrm{pred}}$ for the
+innovation, the Gaussian update of the occupancy is the scalar Kalman correction
+\begin{align}
+  \bm{\mu}^{\mathrm{post}} &= \bm{\mu}^{\mathrm{prop}} + \frac{\mathbf{g}}{\sigma^2_{\mathrm{pred}}}\,\delta, \label{eq:mu-post}\\
+  \bm{\Sigma}^{\mathrm{post}} &= \bm{\Sigma}^{\mathrm{prop}} - \frac{N_{\mathrm{ch}}\,\mathbf{g}\mathbf{g}^\top}{\sigma^2_{\mathrm{pred}}}. \label{eq:sig-post}
+\end{align}
+The factor $N_{\mathrm{ch}}$ enters the covariance downdate but not the mean correction
+because $\bm{\Sigma}$ is carried on the population scale, the same $N_{\mathrm{ch}}$ that
+multiplies the gating variance in Eq.~\ref{eq:pred-var}, whereas $\bm{\mu}$ and the gain
+$\mathbf{g}$ are per-channel objects, so the rank-one correction to $\bm{\Sigma}$ must be
+rescaled by $N_{\mathrm{ch}}$ to sit on its scale while the correction to $\bm{\mu}$ needs
+no such factor.
+In a recursive member the posterior pair $(\bm{\mu}^{\mathrm{post}}, \bm{\Sigma}^{\mathrm{post}})$
+becomes the prior for the next window; in a non-recursive member it is not carried forward,
+and each window's predictive is propagated from the initial condition alone. Reusing the
+posterior as the next prior is itself a closure: it is exact only while the end marginal is
+a sufficient summary of the boundary posterior, which the Gaussian projection does not
+guarantee. For this reason the recursive members' Gaussian information is a model-based
+quantity and is not claimed to be the exact information of the process; how far it departs
+from the truth is what the Diagnostics measure.
+
+The single algebraic difference within the family sits in the conductance object of
+Eq.~\ref{eq:pred-var}. MacroIR conditions the interval-averaged conductance on both
+boundary states; MacroMR conditions it on the start state alone, using $\bar{\bm{\gamma}}_0$
+of Eq.~\ref{eq:gammabar} in its place. This drops the boundary cross-covariance term
+\begin{equation}
+  N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  \label{eq:mr-ir}
+\end{equation}
+that MacroIR retains, and it is the only place the two members diverge. Its consequence for
+the predicted variance across the regime grid is characterized in the Results.
+
+\subsection*{The top of the ladder}
+
+The exact likelihood conditions on the full trajectory inside each window and is
+intractable, which is why the two closures above are needed at all. The same stochastic
+model that makes the exact likelihood intractable can be simulated forward exactly, one
+trajectory at a time, so the simulation realizes the object at the top of the ladder and
+serves as the ground truth against which every rung below it is judged.
