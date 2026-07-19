@@ -69,8 +69,14 @@ UNWRITTEN=0
 while IFS= read -r sec; do
   name="${sec%%|*}"; n="${sec##*|}"
   if [ "$n" -eq 0 ]; then UNWRITTEN=$((UNWRITTEN+1)); detail "unwritten: $name"; fi
+# A \section whose prose lives in its subsections (n=0 directly, immediately followed by a
+# \subsection) is a CONTAINER, not unwritten — do not flag it. Leaf headings with no prose are flagged.
 done < <(awk -F: '
-  /\\(sub)?section\*?\{/ { if (cur!="") print cur"|"n; match($0,/\{[^}]*\}/); cur=substr($0,RSTART+1,RLENGTH-2); n=0; next }
+  function htype(s){ return (s ~ /\\subsection\*?\{/) ? "sub" : "sec" }
+  /\\(sub)?section\*?\{/ {
+    ht=htype($0)
+    if (cur!="" && !(ctype=="sec" && n==0 && ht=="sub")) print cur"|"n
+    match($0,/\{[^}]*\}/); cur=substr($0,RSTART+1,RLENGTH-2); ctype=ht; n=0; next }
   cur!="" { line=$0; sub(/^[^:]*:[0-9]*:/,"",line); gsub(/^[ \t]+/,"",line);
             if (line!="" && substr(line,1,1)!="%") n++ }
   END { if (cur!="") print cur"|"n }' "$BODY_TMP")
@@ -80,21 +86,39 @@ if [ "$UNWRITTEN" -eq 0 ] && [ "$STALE" -eq 0 ]; then green "3. every section ha
 fi
 
 # --- 4. LINT-SRC: no number without a source ----------------------------------------
-# A numeral in *prose* must carry "% src: <file>". Math is exempt (a formula is a derivation,
-# not a measurement), as are cross-references, and section/figure numbering.
+# A numeral in *prose* must carry "% src: <file>". EXEMPT: math (a formula is a derivation, not a
+# measurement), cross-refs/cites, section/figure numbering, and code identifiers.
+# Math is blanked FIRST in slurp mode (so $...$ / \[...\] / environments are caught even when they wrap
+# across source lines), replacing non-newline chars with '~' so reported line numbers stay accurate.
+blank_math(){ perl -0777 -pe '
+  s{(\\begin\{(align\*?|equation\*?|aligned|gather\*?|multline\*?|eqnarray\*?|tabular\*?|tcolorbox|array|split|cases|displaymath|matrix|bmatrix|pmatrix)\}.*?\\end\{\2\})}{(my $m=$1)=~s/[^\n]/~/g;$m}ges;
+  s{(\\\[.*?\\\])}{(my $m=$1)=~s/[^\n]/~/g;$m}ges;
+  s{(\$[^\$]*\$)}{(my $m=$1)=~s/[^\n]/~/g;$m}ges;
+  s{(\\\(.*?\\\))}{(my $m=$1)=~s/[^\n]/~/g;$m}ges; ' "$1"; }
+BLANK_TMP="$(mktemp)"
+if [ ${#BODY_FILES[@]} -gt 0 ]; then
+  for f in "${BODY_FILES[@]}"; do blank_math "$f" | awk -v f="$f" '{print f":"FNR":"$0}'; done > "$BLANK_TMP"
+else
+  blank_math "$TEX" | awk -v f="$TEX" 'p{print f":"FNR":"$0} /\\begin\{document\}/{p=1}' > "$BLANK_TMP"
+fi
 UNSOURCED="$(perl -ne '
-  ($f,$rest) = /^([^:]*:\d*):(.*)$/ ? ($1,$2) : ($_,$_);
+  ($f,$rest) = /^([^:]*:\d*):(.*)$/ ? ($1,$2) : ("",$_);
   $t = $rest;
-  next if $t =~ /^\s*%/;                       # a whole-line comment is not prose
+  next if $t =~ /^\s*%/;                        # a whole-line comment is not prose
   $t =~ s/%.*$//;                              # strip trailing comment (incl. the % src: itself)
-  $t =~ s/\$[^\$]*\$//g;                       # inline math
-  $t =~ s/\\\[.*?\\\]//g;                      # display math
-  $t =~ s/\\(ref|cite|label|includegraphics|input|eqref|autoref)\s*(\[[^\]]*\])?\{[^}]*\}//g;
+  $t =~ s/\\texttt\{[^}]*\}//g;                # code identifiers (hashes, env vars, C++NN)
+  $t =~ s/\\verb\|[^|]*\|//g;
+  $t =~ s/\\(ref|cite[tp]?|cite[a-z]*|label|includegraphics|input|eqref|autoref)\s*(\[[^\]]*\])?(\[[^\]]*\])?\{[^}]*\}//g;
   $t =~ s/\\(sub)?section\*?\{[^}]*\}//g;
   $t =~ s/(Figure|Fig\.?|Table|Section|Equation|Eq\.?)~?\s*\d+//gi;   # numbering, not claims
+  $t =~ s/\b[A-Z]-\d+\b//g;                    # decision/engine labels (D-0, E-1) are references
+  $t =~ s/C\+\+\d+//g;                         # language versions (C++20)
+  $t =~ s/[A-Za-z]+\d[A-Za-z0-9]*//g;          # identifiers: letter-then-digit (P2X2)
+  $t =~ s/\d[A-Za-z]+[A-Za-z0-9]*//g;          # identifiers: digit-then-letter (433ed13)
   next unless $t =~ /\d/;
   print "$f: $rest\n" unless $rest =~ /%\s*src:/;
-' "$BODY_TMP")"
+' "$BLANK_TMP")"
+rm -f "$BLANK_TMP"
 N_UNSRC=$(printf '%s' "$UNSOURCED" | grep -c . || true)
 if [ "$N_UNSRC" -eq 0 ]; then green "4. LINT-SRC: every number carries % src:"; else
   red "4. LINT-SRC: $N_UNSRC line(s) carry a number with no % src:"

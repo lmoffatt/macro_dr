@@ -61,6 +61,29 @@
   doi     = {10.1529/biophysj.106.101212}
 }
 
+@article{moffatt2007responses,
+  author  = {Moffatt, Luciano and Hume, Richard I.},
+  title   = {Responses of Rat {P2X2} Receptors to Ultrashort Pulses of {ATP} Provide Insights into {ATP} Binding and Channel Gating},
+  journal = {Journal of General Physiology},
+  year    = {2007},
+  volume  = {130},
+  number  = {2},
+  pages   = {183--201},
+  doi     = {10.1085/jgp.200709779}
+}
+
+@article{moffatthume2007responses,
+  author  = {Moffatt, Luciano and Hume, Richard I.},
+  title   = {Responses of Rat {P2X2} Receptors to Ultrashort Pulses of {ATP} Provide Insights into {ATP} Binding and Channel Gating},
+  journal = {Journal of General Physiology},
+  year    = {2007},
+  volume  = {130},
+  number  = {2},
+  pages   = {183--201},
+  doi     = {10.1085/jgp.200709779},
+  note    = {Uses a balanced-resampling bootstrap (100 replications, percentile intervals) for parameter uncertainty; early in-domain bootstrap-for-kinetic-CIs precedent}
+}
+
 @article{milescu2005maximum,
   author  = {Milescu, Lorin S. and Akk, Gustav and Sachs, Frederick},
   title   = {Maximum Likelihood Estimation of Ion Channel Kinetics from Macroscopic Currents},
@@ -147,16 +170,17 @@
   doi     = {10.1016/j.bpj.2019.08.001}
 }
 
-% UNVERIFIED: bioRxiv preprint (no peer-reviewed DOI). The prior-art map flags Owen &
-% Mirams 2025 (IonBench) as [VERIFY exact venue/year]; below is the bioRxiv record,
-% Crossref-confirmed as a preprint. Re-check for a version of record at submission.
+% Version of record (verified 2026-07-17): published in PLoS Comput Biol; supersedes the
+% bioRxiv preprint 10.1101/2025.01.31.635876. Open-access PDF added to docs/bibliography/.
 @article{owen2025ionbench,
-  author  = {Owen, Matthew J. and Mirams, Gary R.},
-  title   = {{IonBench}: A Benchmark of Optimisation Strategies for Ion Channel Model Fitting},
-  journal = {bioRxiv},
+  author  = {Owen, Matt J. and Mirams, Gary R.},
+  title   = {{IonBench}: A Benchmark of Optimisation Strategies for Mathematical Models of Ion Channel Currents},
+  journal = {PLoS Computational Biology},
   year    = {2025},
-  doi     = {10.1101/2025.01.31.635876},
-  url     = {https://doi.org/10.1101/2025.01.31.635876}
+  volume  = {21},
+  number  = {8},
+  pages   = {e1013319},
+  doi     = {10.1371/journal.pcbi.1013319}
 }
 
 @article{moffatt2025bayesian,
@@ -344,6 +368,42 @@
   year      = {2013},
   publisher = {Cambridge University Press},
   doi       = {10.1017/CBO9781139344203}
+}
+
+% --- semiseparable = state-space GP = Kalman (the equivalence cited in the context note, section 6) ---
+% PDFs added 2026-07-17 to docs/bibliography/. celerite AJ vol/page and both Sarkka DOIs
+% cross-checked against the papers and Cambridge/AAS records this session.
+@article{foremanmackey2017celerite,
+  author  = {Foreman-Mackey, Daniel and Agol, Eric and Ambikasaran, Sivaram and Angus, Ruth},
+  title   = {Fast and Scalable {Gaussian} Process Modeling with Applications to Astronomical Time Series},
+  journal = {The Astronomical Journal},
+  year    = {2017},
+  volume  = {154},
+  number  = {6},
+  pages   = {220},
+  doi     = {10.3847/1538-3881/aa9332},
+  note    = {Introduces the celerite package; arXiv:1703.09710}
+}
+
+@inproceedings{hartikainen2010kalman,
+  author    = {Hartikainen, Jouni and S{\"a}rkk{\"a}, Simo},
+  title     = {{Kalman} Filtering and Smoothing Solutions to Temporal {Gaussian} Process Regression Models},
+  booktitle = {2010 IEEE International Workshop on Machine Learning for Signal Processing (MLSP)},
+  year      = {2010},
+  pages     = {379--384},
+  publisher = {IEEE},
+  address   = {Kittil{\"a}, Finland},
+  doi       = {10.1109/MLSP.2010.5589113}
+}
+
+@book{sarkka2019applied,
+  author    = {S{\"a}rkk{\"a}, Simo and Solin, Arno},
+  title     = {Applied Stochastic Differential Equations},
+  year      = {2019},
+  publisher = {Cambridge University Press},
+  series    = {Institute of Mathematical Statistics Textbooks},
+  volume    = {10},
+  doi       = {10.1017/9781108186735}
 }
 
 @book{harvey1989forecasting,

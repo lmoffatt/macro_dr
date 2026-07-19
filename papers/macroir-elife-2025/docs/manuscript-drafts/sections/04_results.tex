@@ -1,19 +1,67 @@
+\providecommand{\todo}{\textbf{[TODO]~}}
+
 \section*{Results}
 
+The results follow one order, in which each figure answers the objection the previous one raises. The five approximations differ visibly in a single filter step (Figure 1); that difference is miscalibrated parameter uncertainty (Figure 2); the miscalibration lives in the likelihood itself, interval by interval (Figure 3); and it comes from correlation across time rather than any per-sample error (Figure 4). The last two subsections then map how large the distortion is across the operating regime and decompose why it is large where it is.
+
 \subsection*{A minimal two-state model and the algorithm family}
-% The clean 2-state C-O model, non-stationary pulse; why minimal (isolate the algorithm's own error).
+
+We keep the model at the smallest size that still poses the estimation problem, so that any miscalibration we measure is a property of the likelihood approximation and not of the model. A patch of $N_{\mathrm{ch}}$ identical channels, each switching between a closed and an open state ($\mathrm{closed}\rightleftharpoons\mathrm{open}$) at an agonist-dependent opening rate $k_{\mathrm{on}}$ and a closing rate $k_{\mathrm{off}}$, is driven by a step change in agonist concentration; only the open state conducts. The recorded current is the patch current averaged over each measurement interval, with white instrumental noise added. That interval average is the object every approximation in this paper has to account for. Exact stochastic simulation of the channel population supplies the ground truth, because the forward problem of generating a trajectory is tractable where the inverse problem of writing down the exact likelihood of an averaged recording is not.
+
+The five approximations are one recursive filter run under two settings, and they form a ladder in how much of each acquisition interval the hidden state is conditioned on. The recursion setting fixes whether the occupancy covariance is carried from one interval into the next as the prior for the next (R, MR, IR) or each interval is scored afresh from the same fixed start (NR, NMR). The averaging setting fixes the conductance model: an instantaneous conductance (NR, R), the interval-mean conductance given the state at the interval's start (NMR, MR), or the interval-mean conductance given the channel's states at both ends of the interval, which we call boundary-conditioned (IR). MacroIR is the boundary-conditioned recursive member, the top rung below the intractable exact likelihood. Figure 1 lays one turn of the filter cycle side by side for all five, the prior, the predicted current, the Bayesian update and the accumulated log-likelihood; it makes the coordinate system concrete and carries no claim about accuracy.
 
 \subsection*{Which approximations are calibrated: parameter recovery}
-% Fig 2: MLE clouds + 3 ellipses (empirical / Gaussian-Fisher / sandwich). NR/NMR overconfident; IR calibrated. [regenerate on Gaussian rerun]
+
+Figure 2 turns the family into a statement about parameter uncertainty. From ten thousand independent recordings of a patch of $N_{\mathrm{ch}}=100$ channels, each of the four free parameters (the rates $k_{\mathrm{on}}$ and $k_{\mathrm{off}}$, the unitary current $i$, and the channel number $N_{\mathrm{ch}}$) is re-estimated by maximum likelihood under each approximation, and the spread of those maximum-likelihood estimates is compared with the uncertainty each approximation reports from its own Fisher information. The two are different objects. For the non-recursive members the Fisher information is far too tight, understating the true spread by roughly a factor of 10 to 16. % src: Figure_S3_caption.md  % REFRESH-ON-GAUSSIAN
+The recursive members are much closer: R sits within about 1.2 to 1.4, and MR, which conditions on only one end of the interval, is still over-confident at about 1.5 to 2.1. % src: Figure_S3_caption.md
+IR alone is calibrated: its reported and realized uncertainties coincide across every one of the four parameters and it carries no detectable bias, so the ellipse it draws is the ellipse the estimates occupy. % src: Figure_2_caption.md
+
+The ordering follows the endpoint ladder. The members that ignore the acquisition window over-state what the data determine; the member that conditions on both ends of the interval does not, and the same over-confidence is not shared once the interval is respected. % src: decisions/D-4_ranking_verdict.md
+The distortion is measurable and also removable. Rescaling each reported covariance by the observed covariance of the score, the sandwich correction, brings every approximation, IR included, back to a spread ratio near one. % src: Figure_S3_caption.md
+That one correction repairs all five is what makes the distortion a usable quantity rather than a complaint.
+
+A natural worry is that the clouds are driven by a handful of atypical recordings. They are not. Within each cloud the maximized log-likelihood of a recording is essentially uncorrelated with how far its estimate lands from the truth (Figure S2), because the log-likelihood measures how atypical a realization's noise and gating happened to be, not how well its parameters were recovered. % src: Figure_S2_caption.md
+
+These recovery panels (Figures 2, S2 and S3) are computed on the numerical, finite-difference Fisher information of the \texttt{433ed13} simulation run; the definitive versions on the analytic Gaussian-Fisher anchor are in preparation. % src: docs/figure_provenance.md
+Per interval, the variance of the score matches the per-step Fisher information for all five members (Figure 4). % src: Figure_4_caption.md
 
 \subsection*{Time-resolved calibration and the score/Fisher checks}
-% Fig 3: logL gap, R^2 residual, score bias, per-interval and accumulated J_t/F_t, score autocorrelation. [Gaussian-anchored]
+
+The miscalibration is present in the likelihood itself, interval by interval, and is not an artifact of the fit. Scoring one common set of a thousand recordings interval by interval (Figure 3) shows first that the recursive members reach a total log-likelihood near $-145$ while the non-recursive pair reaches about $-230$, a gap of roughly 85 nats: under the recursive, conditional likelihoods the same data are far more probable. % src: Figure_3_caption.md
+% NOTE: Figure_3_caption.md states -145, -230 and "roughly 87 nats"; the endpoints give -230-(-145)=85. Text uses 85 to match the stated endpoints; caption owner to reconcile the 85-vs-87 discrepancy.
+
+The rest of the figure is the hinge of the argument. Per interval, every one of the five reports its information correctly: the variance of the per-interval score matches the per-interval Fisher information, $J_t/F_t \approx 1$, for all of them. % src: Figure_3_caption.md
+The failure appears only once the information is accumulated. The ratio of the variance of the summed score to the summed information stays near one for the recursive members and diverges for the non-recursive pair. % src: Figure_3_caption.md
+So the local information content is right everywhere; the error is entirely in how the information adds up over time.
+
+The reason is visible in the same figure. The per-interval score of the non-recursive members is correlated across time, and a correlated score makes the variance of its sum exceed the sum of the per-interval informations. This temporal correlation of the current, which the recursive filters remove by conditioning on the past, is the empirical form of the diagnosis that Milescu and colleagues gave for the same failure \cite{milescu2005maximum}.
 
 \subsection*{Where the information lives: the Fisher falls to zero on relaxation}
-% Fig 4 (key result): information about N_ch, k_on, i vanishes once the open count relaxes; k_off stays informative. [Gaussian-anchored]
+
+Two results follow from resolving the per-step information in time (Figure 4). The first closes the mechanism. The per-step identity between score variance and Fisher information holds for all five approximations, the naive members included: at each interval the two agree within the bootstrap interval. % src: Figure_4_caption.md
+The over-confidence of the non-recursive members is therefore entirely the cross-time correlation of the score. Every approximation gets each interval right; they differ only in how the intervals combine.
+
+The second result is a property of the measurement, not of any one filter. For the recursive filters the information about the channel number $N_{\mathrm{ch}}$, the opening rate $k_{\mathrm{on}}$ and the unitary current $i$ drops to zero the moment the agonist is removed and the open population relaxes: having conditioned on the past, the filter gains nothing further from watching the channels decay. % src: Figure_4_caption.md
+The closing rate $k_{\mathrm{off}}$ is the exception, staying informative through the relaxation, which its own kinetics govern. Because this behaviour belongs to the macroscopic observable and not to the approximation, it survives every member of the family. Reading off the likelihood when each parameter stops being measured is exactly the question that a recent treatment of this class of models leaves open \cite{delcore2025parameter}.
 
 \subsection*{A validity map across channels, interval, and noise}
-% Fig 5: bias and distortion heatmaps over N_ch x K_off, all algorithms; the multinomial / telegraphic / Gaussian regimes. [regenerate on Gaussian rerun]
+
+The recovery and time-resolved panels fix one operating point; the deliverable is the whole map. Sweeping the channel number, the acquisition interval and the instrumental noise, and asking in each cell whether the likelihood is self-consistent, its reported uncertainty within tolerance of the realized spread, sorts the family cleanly. IR is self-consistent over almost the entire plane and improves as noise rises; R holds over a large but incomplete region that also grows with noise; MR holds only in a small corner; and the non-recursive pair is self-consistent essentially nowhere. \todo{Fig.\ five pending Gaussian fill: self-consistency fractions and final panel}
+
+Where IR does depart from calibration, at the fewest channels, it departs in the conservative direction: it under-states rather than over-states what the data determine, which is the harmless direction for a user to be wrong in. % src: decisions/D-4_ranking_verdict.md
+The window-ignoring approximations fail the other way, inflating the information the data carry. This is the one asymmetry a practitioner needs, and it runs in IR's favour.
+
+The map is a gradient, not a set of bordered territories. The multinomial, telegraphic and Gaussian regimes named in the theory are the asymptotic corners of the two Gaussian approximations; they set the direction of the gradient rather than drawing lines on the plane, and a cell is more or less distorted, never simply inside or outside a regime.
+
+One reading of the map gives an experimenter something to change. Concentrating the same channels into fewer, larger patches costs almost nothing for the closing rate, more for the opening rate, and a great deal for the unitary current, so how channels are apportioned across patches trades directly against which parameters can be recovered. \todo{Fig.\ five pending Gaussian fill: channel-pooling loss factors}
 
 \subsection*{Decomposing the distortion: correlation versus sample}
-% Fig 6: correlation vs sample/geometric distortion; where and why each approximation fails.
+
+The shape of the map has a mechanism. The information distortion separates into two parts, one from the correlation of the signal across intervals and one from the non-Gaussian shape of a single interval's averaged signal, the sample term, and the two failure modes live in different corners. The separation is exact only for the information volume: the log-determinant of the distortion is the sum of a correlation log-determinant and a sample log-determinant, with no residual. The full distortion matrix combines the two through a two-sided congruence, so the volume splits exactly while the trace and eigenvalue pieces carry a residual. % src: correction_idm_reconstruction.md (exact identity IDM = K CDM K^T, K = H^{-1/2} J_s^{1/2}; only the log-det composes)
+The non-recursive members blow up in the correlation term at short intervals, where successive samples are strongly dependent, and in the sample term at coarse intervals, where a single interval's averaged signal is least Gaussian. \todo{Fig.\ six pending Gaussian fill: decomposition grid}
+Two Gaussian approximations, each failing where the theory says it should.
+
+The sample term behaves in a way worth stating on its own. It is non-monotonic in the channel number: the single-interval non-Gaussianity falls as channels are added and the central-limit theorem takes hold, while the gating fraction of the signal variance rises, and the product of the two opposing trends leaves a worst channel count in between. Instrumental noise adds a pure-variance pedestal that dilutes the single-interval non-Gaussianity, so more noise makes the per-sample Gaussian approximation better. \todo{Fig.\ six pending Gaussian fill: sample-peak location and its noise scaling} % src: sample_correlation_distortion_analysis.md
+We report this as a measurement; we do not present the fitted scaling as a confirmed law.
+
+One feature of the map is easy to misread, and it belongs in the text rather than a caption. The large correlation distortion at the shortest intervals reflects the correct cost of oversampling: when the acquisition interval is far shorter than the channel's correlation time, successive samples carry redundant information, and a faithful likelihood has to register that redundancy. The left edge of the map shows the theory working as intended.
