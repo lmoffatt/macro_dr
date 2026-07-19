@@ -7326,6 +7326,179 @@ class Macro_DMR {
         return std::move(Maybe_run.value());
     }
 
+    // ────────────────────────────────────────────────────────────────────
+    // nonlinearsqr_logLikelihood — lean classical nonlinear least-squares
+    // (Moffatt & Hume 2007 JGP) driver. Marginalizes the noise scale σ²
+    // (Jeffreys); computes ONLY the deterministic mean
+    //     μ_i = N·(P_mean_i · gmean_i) + baseline
+    // per interval — NO P_Cov, NO y_var, NO gSg, NO Kalman down-date. The
+    // within-interval kinetics (calc_Qdt / calc_Qdtg) are shared verbatim with
+    // the macro driver; only the reduction differs.
+    //
+    //   SSE = Σ_{finite i} (y_i − μ_i)²,   n = #finite y_i
+    //   logL = lgamma(n/2) − (n/2)·log(π) − (n/2)·log(SSE)   [Jeffreys marginal]
+    //   score = ∂logL/∂θ  (carried for free by the AD chain riding SSE)
+    //   Gaussian_Fisher_Information = (n / SSE)·Σ_i (∂μ_i/∂θ)(∂μ_i/∂θ)ᵀ
+    //
+    // AD-trap (user flag): the Fisher is assembled from the FIRST-order AD
+    // Jacobian rows with the primitive(SSE) prefactor — NEVER as
+    // derivative(derivative(logL)) (the 2nd-order AD Hessian carries residual-
+    // curvature + score-outer terms that are wrong off the optimum).
+    //
+    // Returns the SAME reduced states as the macro driver:
+    //   dMacro_State_Hessian_minimal (Derivative<logL> + Gaussian_Fisher_Information)
+    //     for the MLE / derivative path, and
+    //   Macro_State_reg (logL/elogL/vlogL) for the value path.
+    // The four Evolution-carrying states are guarded at the visit sites (the lean
+    // no-Evolution driver cannot produce an Evolution); only the two reduced
+    // states above are routed here. `adaptive`, `recursive`, `variance` and
+    // `variance_correction` are accepted and ignored (the marginalized LSE mean
+    // has no recursion, no emission variance — the [VAR-BLOCK] behaviour).
+    template <class adaptive, class recursive, class averaging, class variance,
+              class variance_correction, class MacroState, class FuncTable, class C_Parameters,
+              class Model>
+
+        requires(uses_adaptive_aproximation_c<adaptive> &&
+                 uses_recursive_aproximation_c<recursive> &&
+                 uses_averaging_aproximation_c<averaging> &&
+                 uses_variance_aproximation_c<variance> &&
+                 uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+                 is_of_this_template_type_v<FuncTable, FuncMap_St>)
+    auto nonlinearsqr_logLikelihood(FuncTable& f, const Model& model, const C_Parameters& par,
+                                    const Recording& y, const Experiment& e)
+        -> Maybe_error<MacroState> {
+        using DX = var::dx_of_dfdx_t<C_Parameters>;
+        constexpr bool is_deriv = !std::is_same_v<DX, var::NoDerivative>;
+
+        auto Maybe_m = model(par);
+        if (!is_valid(Maybe_m)) {
+            return get_error(Maybe_m);
+        }
+        auto m = std::move(get_value(Maybe_m));
+        auto fs = get<Frequency_of_Sampling>(e).value();
+
+        auto ini = init(m);
+        if (!ini) {
+            return ini.error();
+        }
+        auto f_local = f.create("_lik");
+
+        // Threaded patch state. Only P_mean is propagated (the deterministic
+        // mean trajectory); P_Cov rides untouched and is discarded downstream —
+        // the reduced result states never read it.
+        auto t_patch = std::move(ini.value());
+        auto const& dx = var::get_dx_of_dfdx(t_patch);
+
+        // Accumulators. SSE rides as a Derivative<> scalar so the AD chain
+        // carries the score; Fisher_acc is the plain Gauss-Newton JᵀJ block.
+        auto SSE = var::init_with_dx<DX>(0.0, dx);
+        SymPosDefMatrix<double> Fisher_acc;
+        std::size_t n = 0;
+
+        for (std::size_t i_step = 0; i_step < y().size(); ++i_step) {
+            Agonist_evolution const& t_step =
+                get<Agonist_evolution>(get<Recording_conditions>(e)()[i_step]);
+
+            auto time = get<Time>(get<Recording_conditions>(e)()[i_step])();
+            auto time_segment = get<N_Ch_mean_time_segment_duration>(m)();
+            auto Nchs = get<N_Ch_mean>(m)();
+            std::size_t i_segment =
+                std::min(Nchs.size() - 1.0, std::floor(time / time_segment));
+            auto j_segment = std::min(Nchs.size() - 1, i_segment + 1);
+            auto r = std::max(1.0, time / time_segment - i_segment);
+            auto Nch = Nchs[i_segment] * (1 - r) + r * Nchs[j_segment];
+
+            auto y_baseline = get<Current_Baseline>(m);
+            double yi = y()[i_step].value();
+
+            // Per-interval mean + P_mean propagation, sharing the accumulators.
+            // t_P is the endpoint transition (P for av>0, P_half for av=0);
+            // t_gmean_i is the interval mean single-channel current (gmean_i for
+            // av>0, the bare conductance g for av=0) — mirroring
+            // safely_calculate_Algo_State_non_recursive's r_y_mean.
+            auto process = [&](auto const& t_P, auto const& t_gmean_i) -> Maybe_error<bool> {
+                auto& p_P_mean = get<P_mean>(t_patch());
+                auto r_y_mean =
+                    build<y_mean>(Nch * getvalue(p_P_mean() * t_gmean_i) + y_baseline());
+                if (!std::isnan(yi)) {
+                    auto dy = yi - r_y_mean();
+                    SSE = SSE + dy * dy;
+                    if constexpr (is_deriv) {
+                        auto blk = XXT(var::derivative(r_y_mean)());
+                        if (Fisher_acc.nrows() == 0)
+                            Fisher_acc = std::move(blk);
+                        else
+                            Fisher_acc = Fisher_acc + blk;
+                    }
+                    ++n;
+                }
+                // Propagate P_mean even across NaN (pre-agonist) intervals: the
+                // state must advance so every post-prefix μ_i is correct.
+                auto Maybe_r_P_mean = to_Probability(p_P_mean() * t_P());
+                if (!Maybe_r_P_mean.valid())
+                    return Maybe_r_P_mean.error();
+                p_P_mean() = std::move(Maybe_r_P_mean.value());
+                return true;
+            };
+
+            if constexpr (averaging::value > 0) {
+                auto Maybe_t_Qdt = calc_Qdt(f_local, m, t_step, fs);
+                if (!Maybe_t_Qdt)
+                    return Maybe_error<MacroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | calc_Qdt | " +
+                        Maybe_t_Qdt.error()()));
+                auto t_Qdt = std::move(Maybe_t_Qdt.value());
+                auto ok = process(get<P>(t_Qdt), get<gmean_i>(t_Qdt)());
+                if (!ok)
+                    return Maybe_error<MacroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | nonlinearsqr step | " + ok.error()()));
+            } else {
+                auto Maybe_t_Qdtg = calc_Qdtg(f_local, m, t_step, fs);
+                if (!Maybe_t_Qdtg)
+                    return Maybe_error<MacroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | calc_Qdtg | " +
+                        Maybe_t_Qdtg.error()()));
+                auto t_Qdtg = std::move(Maybe_t_Qdtg.value());
+                auto ok = process(get<P_half>(t_Qdtg), get<g>(m)());
+                if (!ok)
+                    return Maybe_error<MacroState>(error_message(
+                        "k=" + std::to_string(i_step) + " | nonlinearsqr step | " + ok.error()()));
+            }
+        }
+        f += f_local;
+
+        if (n == 0)
+            return Maybe_error<MacroState>(
+                error_message("nonlinearsqr_logLikelihood: no finite observations"));
+        double SSE_v = var::primitive(SSE);
+        if (!std::isfinite(SSE_v) || SSE_v <= 0)
+            return Maybe_error<MacroState>(error_message(
+                "nonlinearsqr_logLikelihood: SSE not finite/positive: " + std::to_string(SSE_v)));
+
+        double n_over_2 = 0.5 * static_cast<double>(n);
+        double logL_const = std::lgamma(n_over_2) - n_over_2 * std::log(std::numbers::pi);
+
+        if constexpr (is_deriv) {
+            // logL = C − (n/2)·log(SSE): the AD chain riding SSE carries the
+            // score = ∂logL/∂θ into the Derivative<logL> the optimizer reads.
+            auto C_deriv = var::init_with_dx<DX>(logL_const, dx);
+            auto t_dlogL = build<logL>(C_deriv + log(SSE) * (-n_over_2));
+            // Gaussian_Fisher_Information = (n / SSE)·JᵀJ, σ̂² = SSE/n (the GN
+            // plug-in NLS curvature). The 1/σ̂² prefactor uses primitive(SSE) —
+            // NOT differentiated (AD-trap above).
+            double sigma2_inv = static_cast<double>(n) / SSE_v;
+            Gaussian_Fisher_Information t_GFI{};
+            t_GFI() = parameter_spd_payload(sigma2_inv * Fisher_acc,
+                                            var::get_dx_of_dfdx(t_dlogL));
+            return Maybe_error<MacroState>(
+                MacroState(std::move(t_dlogL), std::move(t_patch), std::move(t_GFI)));
+        } else {
+            double logL_v = logL_const - n_over_2 * std::log(SSE_v);
+            return Maybe_error<MacroState>(
+                MacroState(logL(logL_v), std::move(t_patch), elogL(0.0), vlogL(0.0)));
+        }
+    }
+
     template <typename Simulate_tag, class Policy = StabilizerPolicyEnabled, class Patch_Model>
     Maybe_error<Simulated_Sub_Step_t<Simulate_tag>> sub_sub_sample(
         mt_64i& mt, Simulated_Sub_Step_t<Simulate_tag> const& t_sim_step, const Patch_Model& m,
@@ -7778,30 +7951,35 @@ struct MacroR2 {
 };
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class Model,
+          class variance_correction, class family, class Model,
           class qdt_method = uses_qdt_method<0>>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro> &&
+             uses_family_aproximation_c<family> &&
              var::is_this_constexpr_Var_v<qdt_method, int, uses_qdt_method>)
 struct Likelihood_Model_constexpr {
     // Expose the template parameters as nested aliases so std::visit lambdas
     // can reach them via typename decltype(modelLikelihood)::micro_type, etc.
+    // family_type is the stored 3-valued selector; micro_type / nonlinearsqr_type
+    // are DERIVED bool_constants so the many visit sites reading micro_type::value
+    // keep working while family carries the third (nonlinearsqr) branch.
     using adaptive_type = adaptive;
     using recursive_type = recursive;
     using averaging_type = averaging;
     using variance_type = variance;
     using variance_correction_type = variance_correction;
-    using micro_type = micro;
+    using family_type = family;
+    using micro_type = std::bool_constant<family_type::value == family_micro>;
+    using nonlinearsqr_type = std::bool_constant<family_type::value == family_nonlinearsqr>;
     using qdt_method_type = qdt_method;
 
     Model m;
     Simulation_n_sub_dt n_sub_dt;
     Likelihood_Model_constexpr(const Model& model, Simulation_n_sub_dt n_sub_dt)
         : m{model}, n_sub_dt{n_sub_dt} {}
-    Likelihood_Model_constexpr(adaptive, recursive, averaging, variance, variance_correction, micro,
+    Likelihood_Model_constexpr(adaptive, recursive, averaging, variance, variance_correction, family,
                                const Model& model, Simulation_n_sub_dt n_sub_dt,
                                qdt_method = qdt_method{})
         : m{model}, n_sub_dt{n_sub_dt} {}
@@ -7815,7 +7993,7 @@ struct Likelihood_Model_constexpr {
         f << "averaging: " << averaging::value << "\n";
         f << "variance: " << variance::value << "\n";
         f << "variance_correction: " << variance_correction::value << "\n";
-        f << "micro: " << micro::value << "\n";
+        f << "family: " << family::value << "\n";
         f << "taylor_qdt: " << qdt_method::value << "\n";
         f << "Simulation_n_sub_dt: " << d.n_sub_dt << "\n";
         report_model(s, d.m);
@@ -7823,7 +8001,7 @@ struct Likelihood_Model_constexpr {
 };
 
 template <class adaptive_range, class recursive_range, class averaging_range, class variance_range,
-          class taylor_variance_correction_range, class micro_range, class Model,
+          class taylor_variance_correction_range, class family_range, class Model,
           class qdt_method_range =
               var::constexpr_Var_domain<int, uses_qdt_method, 0>>
     requires(
@@ -7833,7 +8011,7 @@ template <class adaptive_range, class recursive_range, class averaging_range, cl
         var::is_this_constexpr_Var_domain_c<variance_range, bool, uses_variance_aproximation> &&
         var::is_this_constexpr_Var_domain_c<taylor_variance_correction_range, bool,
                                             uses_taylor_variance_correction_aproximation> &&
-        var::is_this_constexpr_Var_domain_c<micro_range, bool, uses_micro_aproximation> &&
+        var::is_this_constexpr_Var_domain_c<family_range, int, uses_family_aproximation> &&
         var::is_this_constexpr_Var_domain_c<qdt_method_range, int, uses_qdt_method>)
 struct Likelihood_Model_regular {
     Model m;
@@ -7843,7 +8021,7 @@ struct Likelihood_Model_regular {
     uses_averaging_aproximation_value averaging;
     uses_variance_aproximation_value variance;
     uses_taylor_variance_correction_aproximation_value taylor_variance_correction;
-    uses_micro_aproximation_value micro;
+    uses_family_aproximation_value family;
     uses_qdt_method_value qdt_method;
 
     static constexpr adaptive_range range_adaptive = {};
@@ -7851,7 +8029,7 @@ struct Likelihood_Model_regular {
     static constexpr averaging_range range_averaging = {};
     static constexpr variance_range range_variance = {};
     static constexpr taylor_variance_correction_range range_variance_correction = {};
-    static constexpr micro_range range_micro = {};
+    static constexpr family_range range_family = {};
     static constexpr qdt_method_range range_qdt_method = {};
 
     Likelihood_Model_regular(
@@ -7859,7 +8037,7 @@ struct Likelihood_Model_regular {
         uses_recursive_aproximation_value recursive, uses_averaging_aproximation_value averaging,
         uses_variance_aproximation_value variance,
         uses_taylor_variance_correction_aproximation_value taylor_variance_correction,
-        uses_micro_aproximation_value micro,
+        uses_family_aproximation_value family,
         uses_qdt_method_value qdt_method = uses_qdt_method_value{})
         : m{model},
           n_sub_dt{n_sub_dt},
@@ -7868,40 +8046,40 @@ struct Likelihood_Model_regular {
           averaging{averaging},
           variance{variance},
           taylor_variance_correction{taylor_variance_correction},
-          micro{micro},
+          family{family},
           qdt_method{qdt_method} {}
 
     using cartesian = algebra_2<std::tuple, std::variant>::P_constexpr<
         typename adaptive_range::variant_type, typename recursive_range::variant_type,
         typename averaging_range::variant_type, typename variance_range::variant_type,
         typename taylor_variance_correction_range::variant_type,
-        typename micro_range::variant_type,
+        typename family_range::variant_type,
         typename qdt_method_range::variant_type>;
 
     template <class, class>
     struct Likelihood_Model_variant_impl;
     template <class... adaptive, class... recursive, class... averaging, class... variance,
-              class... taylor_variance_correction, class... micro, class... qdt_method, class M>
+              class... taylor_variance_correction, class... family, class... qdt_method, class M>
 
         requires(
             (uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<taylor_variance_correction> &&
-             uses_micro_aproximation_c<micro> &&
+             uses_family_aproximation_c<family> &&
              var::is_this_constexpr_Var_v<qdt_method, int, uses_qdt_method>) &&
             ...)
     struct Likelihood_Model_variant_impl<
         std::variant<
             std::tuple<adaptive, recursive, averaging, variance, taylor_variance_correction,
-                       micro, qdt_method>...>,
+                       family, qdt_method>...>,
         M> {
         // Likelihood_Model_constexpr template arg order is
-        // (adaptive, recursive, averaging, variance, variance_correction, micro,
+        // (adaptive, recursive, averaging, variance, variance_correction, family,
         //  Model, taylor_qdt) — Model precedes the optional taylor_qdt to keep
         // existing 7-arg instantiations backward-compatible.
         using type =
             std::variant<Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
-                                                    taylor_variance_correction, micro, M,
+                                                    taylor_variance_correction, family, M,
                                                     qdt_method>...>;
     };
 
@@ -7914,7 +8092,7 @@ struct Likelihood_Model_regular {
             averaging_range::to_variant(averaging.value),
             variance_range::to_variant(variance.value),
             taylor_variance_correction_range::to_variant(taylor_variance_correction.value),
-            micro_range::to_variant(micro.value),
+            family_range::to_variant(family.value),
             qdt_method_range::to_variant(qdt_method.value)));
 
         if (!car) {
@@ -7925,15 +8103,15 @@ struct Likelihood_Model_regular {
                 return std::visit(
                     [this](auto... v) -> Likelihood_Model_variant {
                         // Tuple element order: (adaptive, recursive, averaging,
-                        // variance, variance_correction, micro, taylor_qdt).
+                        // variance, variance_correction, family, taylor_qdt).
                         // Likelihood_Model_constexpr expects the first 6 then
                         // Model then taylor_qdt — reorder Model into position 7.
-                        auto reorder = [this](auto a, auto r, auto av, auto va, auto vc, auto mi,
+                        auto reorder = [this](auto a, auto r, auto av, auto va, auto vc, auto fa,
                                               auto tq) -> Likelihood_Model_variant {
                             using LMC = Likelihood_Model_constexpr<
                                 std::decay_t<decltype(a)>, std::decay_t<decltype(r)>,
                                 std::decay_t<decltype(av)>, std::decay_t<decltype(va)>,
-                                std::decay_t<decltype(vc)>, std::decay_t<decltype(mi)>, Model,
+                                std::decay_t<decltype(vc)>, std::decay_t<decltype(fa)>, Model,
                                 std::decay_t<decltype(tq)>>;
                             return Likelihood_Model_variant{LMC(m, n_sub_dt)};
                         };
@@ -8135,30 +8313,30 @@ auto merge_Maybe_variant( Maybe_error<std::variant<Vs...>>&& v1, Maybe_error<std
 // };
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class Model>
+          class variance_correction, class family, class Model>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 auto make_Likelihood_Model(const Model& m, Simulation_n_sub_dt n_sub_dt) {
     return Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                      micro, Model>(m, n_sub_dt);
+                                      family, Model>(m, n_sub_dt);
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FuncTable, class Model, class Parameters,
+          class variance_correction, class family, class FuncTable, class Model, class Parameters,
           class Recoding, class Experiment>
 
     requires(uses_adaptive_aproximation_c<adaptive>,
              uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
                  uses_variance_aproximation_c<variance> &&
                  uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-                 uses_micro_aproximation_c<micro>)
+                 uses_family_aproximation_c<family>)
 Maybe_error<logLs> logLikelihood(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     Parameters const& p, const Recoding& y, const Experiment& e) {
     auto v_logL = Macro_DMR{}
                       .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
@@ -8171,17 +8349,17 @@ Maybe_error<logLs> logLikelihood(
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FuncTable, class Model, class Variables,
+          class variance_correction, class family, class FuncTable, class Model, class Variables,
           class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<dMacro_State_Hessian_minimal> dlogLikelihood(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
     auto dp = var::selfDerivative(p);
     auto dpp = dp.to_value();
@@ -8190,17 +8368,70 @@ Maybe_error<dMacro_State_Hessian_minimal> dlogLikelihood(
                         dMacro_State_Hessian_minimal>(f, lik.m, dpp, y, var);
 }
 
+// ── nonlinearsqr (classical LSE) entrypoints ──────────────────────────────
+// Two overloads under one name (mirroring the macro logLikelihood/dlogLikelihood
+// pair) routed from the likelihood.cpp visit arms:
+//   value path (@761)   → nonlinearsqr_logLikelihood(f, lik, par_values, ...)  → logLs
+//   MLE / derivative (@787, via calculate_mdlikelihood_nonlinearsqr_impl)
+//                       → nonlinearsqr_logLikelihood(f, lik, Parameters_transformed, ...)
+//                         → dMacro_State_Hessian_minimal {Derivative<logL>, GFI}
+// The concrete Parameters_transformed 3rd param + the value overload's
+// !same_as<Parameters, Parameters_transformed> constraint keep the two
+// unambiguous.
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FuncTable, class Model, class Variables,
+          class variance_correction, class family, class FuncTable, class Model, class Parameters,
+          class Recoding, class Experiment>
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+             uses_family_aproximation_c<family> &&
+             !std::is_same_v<std::decay_t<Parameters>, var::Parameters_transformed>)
+Maybe_error<logLs> nonlinearsqr_logLikelihood(
+    FuncTable& f,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
+                                     family, Model>& lik,
+    Parameters const& p, const Recoding& y, const Experiment& e) {
+    auto v_logL = Macro_DMR{}
+                      .nonlinearsqr_logLikelihood<adaptive, recursive, averaging, variance,
+                                                  variance_correction, Macro_State_reg>(
+                          f, lik.m, p, y, e);
+    if (!v_logL)
+        return v_logL.error();
+    else
+        return logLs(get<logL>(v_logL.value()), get<elogL>(v_logL.value()),
+                     get<vlogL>(v_logL.value()));
+}
+
+template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class family, class FuncTable, class Model, class Variables,
           class DataType>
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
+Maybe_error<dMacro_State_Hessian_minimal> nonlinearsqr_logLikelihood(
+    FuncTable& f,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
+                                     family, Model>& lik,
+    var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
+    auto dp = var::selfDerivative(p);
+    auto dpp = dp.to_value();
+    return Macro_DMR{}
+        .nonlinearsqr_logLikelihood<adaptive, recursive, averaging, variance, variance_correction,
+                                    dMacro_State_Hessian_minimal>(f, lik.m, dpp, y, var);
+}
+
+template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class family, class FuncTable, class Model, class Variables,
+          class DataType>
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+             uses_family_aproximation_c<family>)
 Maybe_error<diff_Macro_State_Gradient_Hessian> diff_logLikelihood(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     var::Parameters_transformed const& p, const DataType& y, const Variables& var,
     double delta_par) {
     auto v_p = p.to_value();
@@ -8263,17 +8494,17 @@ Maybe_error<diff_Macro_State_Gradient_Hessian> diff_logLikelihood(
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FunctionTable, class Model, class Parameters,
+          class variance_correction, class family, class FunctionTable, class Model, class Parameters,
           class Variables, class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<Macro_State_Ev_predictions> logLikelihoodPredictions(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     Parameters const& p, const DataType& y, const Variables& var) {
     return Macro_DMR{}
         .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
@@ -8281,17 +8512,17 @@ Maybe_error<Macro_State_Ev_predictions> logLikelihoodPredictions(
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FunctionTable, class Model, class Parameters,
+          class variance_correction, class family, class FunctionTable, class Model, class Parameters,
           class Variables, class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<Macro_State_Ev_diagnostic> logLikelihoodDiagnostic(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     Parameters const& p, const DataType& y, const Variables& var) {
     return Macro_DMR{}
         .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
@@ -8305,17 +8536,17 @@ Maybe_error<Macro_State_Ev_diagnostic> logLikelihoodDiagnostic(
 
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FuncTable, class Model, class Variables,
+          class variance_correction, class family, class FuncTable, class Model, class Variables,
           class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<dMacro_State_Ev_gradient_all> dlogLikelihoodPredictions(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
     auto dp = var::selfDerivative(p);
     auto dpp = dp.to_value();
@@ -8328,16 +8559,16 @@ Maybe_error<dMacro_State_Ev_gradient_all> dlogLikelihoodPredictions(
 // the rich detailed_element (P_mean/P_Cov/y_mean/y_var/trust_coefficient/logL
 // as Derivatives). Used for the FD-instability localization diagnostic.
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FuncTable, class Model, class Variables,
+          class variance_correction, class family, class FuncTable, class Model, class Variables,
           class DataType>
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<dMacro_State_Ev_detailed> dlogLikelihoodPredictionsDetailed(
     FuncTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
     auto dp = var::selfDerivative(p);
     auto dpp = dp.to_value();
@@ -8347,17 +8578,17 @@ Maybe_error<dMacro_State_Ev_detailed> dlogLikelihoodPredictionsDetailed(
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FunctionTable, class Model, class Parameters,
+          class variance_correction, class family, class FunctionTable, class Model, class Parameters,
           class Variables, class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<Macro_State_Ev_diagnostic> logLikelihood_Diagnostic(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     Parameters const& p, const DataType& y, const Variables& var) {
     return Macro_DMR{}
         .log_Likelihood<adaptive, recursive, averaging, variance, variance_correction,
@@ -8365,17 +8596,17 @@ Maybe_error<Macro_State_Ev_diagnostic> logLikelihood_Diagnostic(
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class FunctionTable, class Model, class Parameters,
+          class variance_correction, class family, class FunctionTable, class Model, class Parameters,
           class Variables, class DataType>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 Maybe_error<std::vector<Macro_State_Ev_predictions>> fractioned_logLikelihoodPredictions(
     FunctionTable& f,
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
-                                     micro, Model>& lik,
+                                     family, Model>& lik,
     Parameters const& p, const std::vector<Variables>& y, const std::vector<DataType>& var) {
     // std::vector<Macro_State_Evolution> out;
     // for (std::size_t i = 0; i < y.size(); ++i) {
@@ -8448,16 +8679,16 @@ inline Agonist_evolution average_agonist_step(Agonist_evolution const& x,
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class Model, class Parameters, class Variables>
+          class variance_correction, class family, class Model, class Parameters, class Variables>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro> &&
+             uses_family_aproximation_c<family> &&
              !is_of_this_template_type_v<Variables, std::vector>)
 auto simulate(mt_64i& mt,
               const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
-                                               variance_correction, micro, Model>& lik,
+                                               variance_correction, family, Model>& lik,
               Parameters const& p, const Variables& var) {
     return Macro_DMR{}
         .sample(mt, lik.m, p, var, make_substep_simulation_parameters(lik.n_sub_dt()))
@@ -8465,15 +8696,15 @@ auto simulate(mt_64i& mt,
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
-          class variance_correction, class micro, class Model, class Parameters, class Variables>
+          class variance_correction, class family, class Model, class Parameters, class Variables>
 
     requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
              uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
-             uses_micro_aproximation_c<micro>)
+             uses_family_aproximation_c<family>)
 auto simulate(mt_64i& mt,
               const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance,
-                                               variance_correction, micro, Model>& lik,
+                                               variance_correction, family, Model>& lik,
               Parameters const& p, const std::vector<Variables>& var) {
     std::vector<Recording> out(var.size());
     for (std::size_t i = 0; i < var.size(); ++i)

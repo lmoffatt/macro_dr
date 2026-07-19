@@ -1021,6 +1021,16 @@ dsl::Compiler<dsl::Lexer> make_compiler_new() {
                                 "taylor_qdt_approximation")
                             );
 
+    cm.push_function("build_likelihood_function_with_family",
+                     dsl::to_typed_function<
+                         ModelPtr const&, bool, bool, int, bool, bool, int, bool>(
+                         &macrodr::cmd::build_likelihood_function_with_family, "model",
+                                "adaptive_approximation", "recursive_approximation",
+                                "averaging_approximation", "variance_approximation",
+                                "taylor_variance_correction", "family_approximation",
+                                "taylor_qdt_approximation")
+                            );
+
     cm.push_function(
         "calc_likelihood",
         dsl::to_typed_function<const cmd::likelihood_algorithm_type&,

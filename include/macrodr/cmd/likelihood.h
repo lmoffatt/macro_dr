@@ -21,56 +21,83 @@
 
 namespace macrodr::cmd {
 
-inline auto build_likelihood_function(const ModelPtr& model0,
-                                      bool adaptive_approximation, bool recursive_approximation,
-                                      int averaging_approximation, bool variance_approximation,
-                                      bool taylor_variance_correction_approximation,
-                                      bool micro_approximation,
-                                      bool taylor_qdt_approximation = false) {
+// Core likelihood-algorithm builder. The compute family is an int selector —
+// family_macro / family_micro / family_nonlinearsqr — merging FOUR
+// Likelihood_Model_regular branches (macro, macro-taylor, micro, and the lean
+// nonlinear-least-squares fold). build_likelihood_function below is a thin bool
+// wrapper over this for existing scripts and call sites.
+inline auto build_likelihood_function_with_family(
+    const ModelPtr& model0, bool adaptive_approximation, bool recursive_approximation,
+    int averaging_approximation, bool variance_approximation,
+    bool taylor_variance_correction_approximation, int family_approximation,
+    bool taylor_qdt_approximation = false) {
     // Map deprecated bool taylor_qdt_approximation to the new int qdt_method:
     //   false → 0 (eig), true → 2 (schur). Phase 9 wired the previous "true"
     //   semantics through calc_Qdt_schur, so this preserves user behavior.
-    //   New code should call build_likelihood_function_with_method() directly
-    //   with int qdt_method ∈ {0, 1, 2} (overload below).
     int qdt_method_int = taylor_qdt_approximation ? 2 : 0;
     auto nsub = Simulation_n_sub_dt(100);
     const interface::IModel<var::Parameters_values>& model_ref = *model0;
 
     return merge_Maybe_variant(
         merge_Maybe_variant(
-            // Macro non-taylor-variance-correction branch: taylor_qdt fixed
-            // to false (eigen path is well-conditioned for k×k macro Q).
-            Likelihood_Model_regular<
-                var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-                var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
-                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-                var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
-                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
-                                          false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
-                decltype(model_ref),
-                var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
-                model_ref, nsub,
-                uses_adaptive_aproximation_value(adaptive_approximation),
-                uses_recursive_aproximation_value(recursive_approximation),
-                uses_averaging_aproximation_value(averaging_approximation),
-                uses_variance_aproximation_value(variance_approximation),
-                uses_taylor_variance_correction_aproximation_value(
-                    taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation),
-                uses_qdt_method_value(0))
-                .get_variant(),
-            // Macro taylor-variance-correction branch: taylor_qdt fixed false.
+            merge_Maybe_variant(
+                // Macro non-taylor-variance-correction branch: taylor_qdt fixed
+                // to false (eigen path is well-conditioned for k×k macro Q).
+                Likelihood_Model_regular<
+                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                    var::constexpr_Var_domain<bool, uses_recursive_aproximation, false, true>,
+                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
+                    var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
+                    var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                              false>,
+                    var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
+                    decltype(model_ref),
+                    var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
+                    model_ref, nsub,
+                    uses_adaptive_aproximation_value(adaptive_approximation),
+                    uses_recursive_aproximation_value(recursive_approximation),
+                    uses_averaging_aproximation_value(averaging_approximation),
+                    uses_variance_aproximation_value(variance_approximation),
+                    uses_taylor_variance_correction_aproximation_value(
+                        taylor_variance_correction_approximation),
+                    uses_family_aproximation_value(family_approximation),
+                    uses_qdt_method_value(0))
+                    .get_variant(),
+                // Macro taylor-variance-correction branch: taylor_qdt fixed false.
+                Likelihood_Model_regular<
+                    var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
+                    var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
+                    var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                    var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+                    var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
+                                              true>,
+                    var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
+                    decltype(model_ref),
+                    var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
+                    model_ref, nsub,
+                    uses_adaptive_aproximation_value(adaptive_approximation),
+                    uses_recursive_aproximation_value(recursive_approximation),
+                    uses_averaging_aproximation_value(averaging_approximation),
+                    uses_variance_aproximation_value(variance_approximation),
+                    uses_taylor_variance_correction_aproximation_value(
+                        taylor_variance_correction_approximation),
+                    uses_family_aproximation_value(family_approximation),
+                    uses_qdt_method_value(0))
+                    .get_variant()),
+            // Micro branch: recursive=true, taylor_variance_correction=false,
+            // averaging ∈ {0, 1, 2}, taylor_qdt ∈ {false, true} — the eigen vs
+            // Taylor-expm flag for Q's matrix exponential. Only the micro branch
+            // exposes both taylor_qdt values; macro paths fix it false to keep
+            // the variant count manageable.
             Likelihood_Model_regular<
                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
                 var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-                var::constexpr_Var_domain<int, uses_averaging_aproximation, 1, 2>,
+                var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
-                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
-                                          true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
                 decltype(model_ref),
-                var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
+                var::constexpr_Var_domain<int, uses_qdt_method, 0, 1, 2>>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
                 uses_recursive_aproximation_value(recursive_approximation),
@@ -78,23 +105,24 @@ inline auto build_likelihood_function(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation),
-                uses_qdt_method_value(0))
+                uses_family_aproximation_value(family_approximation),
+                uses_qdt_method_value(qdt_method_int))
                 .get_variant()),
-        // Micro branch: recursive=true, taylor_variance_correction=false,
-        // averaging ∈ {0, 1, 2}, taylor_qdt ∈ {false, true} — the eigen vs
-        // Taylor-expm flag for Q's matrix exponential. Only the micro branch
-        // exposes both taylor_qdt values; macro paths fix it false to keep
-        // the variant count manageable.
+        // Nonlinear-least-squares (LSE) branch: the lean Moffatt & Hume 2007 JGP
+        // fold — mean only, no Kalman covariance. adaptive/recursive/taylor_vc
+        // fixed false, qdt fixed to eig (0), averaging ∈ {0, 1}. variance accepts
+        // BOTH values but is ignored in compute: the live .macroir scripts
+        // hardcode variance=true and cannot inject it, so a {false}-only domain
+        // would leave merge_Maybe_variant with no runtime match.
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_recursive_aproximation, true>,
-            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
-            var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
+            var::constexpr_Var_domain<bool, uses_recursive_aproximation, false>,
+            var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1>,
+            var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_nonlinearsqr>,
             decltype(model_ref),
-            var::constexpr_Var_domain<int, uses_qdt_method, 0, 1, 2>>(
+            var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
             model_ref, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
             uses_recursive_aproximation_value(recursive_approximation),
@@ -102,13 +130,29 @@ inline auto build_likelihood_function(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation),
-            uses_qdt_method_value(qdt_method_int))
+            uses_family_aproximation_value(family_approximation),
+            uses_qdt_method_value(0))
             .get_variant());
 }
 
-using likelihood_algorithm_type = var::untransformed_type_t<decltype(build_likelihood_function(
-    std::declval<const ModelPtr&>(), false, false, 2, true, false, false, false))>;
+// Thin bool wrapper preserved so existing scripts and C++ call sites keep
+// working: maps the deprecated bool micro_approximation onto the int family
+// selector (true → family_micro, false → family_macro).
+inline auto build_likelihood_function(const ModelPtr& model0,
+                                      bool adaptive_approximation, bool recursive_approximation,
+                                      int averaging_approximation, bool variance_approximation,
+                                      bool taylor_variance_correction_approximation,
+                                      bool micro_approximation,
+                                      bool taylor_qdt_approximation = false) {
+    return build_likelihood_function_with_family(
+        model0, adaptive_approximation, recursive_approximation, averaging_approximation,
+        variance_approximation, taylor_variance_correction_approximation,
+        micro_approximation ? family_micro : family_macro, taylor_qdt_approximation);
+}
+
+using likelihood_algorithm_type =
+    var::untransformed_type_t<decltype(build_likelihood_function_with_family(
+        std::declval<const ModelPtr&>(), false, false, 2, true, false, family_macro, false))>;
 
 auto calculate_mlikelihood(const likelihood_algorithm_type& likelihood_algorithm,
                            const var::Parameters_transformed& par, const Experiment& e,
