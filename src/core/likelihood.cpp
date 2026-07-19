@@ -640,6 +640,29 @@ auto calculate_mdlikelihood_impl(
     return dlogLikelihood(ftbl3, dlikelihood, par, r, e);
 }
 
+// nonlinearsqr (classical least-squares) analog of calculate_mdlikelihood_impl:
+// same load_dmodel + Derivative-capable re-wrap, but routes to the lean LSE fold
+// nonlinearsqr_logLikelihood (mean-only, marginalized noise scale), which returns
+// the same reduced dMacro_State_Hessian_minimal {Derivative<logL>,
+// Gaussian_Fisher_Information} the Gauss-Newton MLE driver consumes.
+template <class adaptive, class recursive, class averaging, class variance, class taylor,
+          class family, class Model, class FuncTable>
+auto calculate_mdlikelihood_nonlinearsqr_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, family,
+                                     Model>& lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r) -> Maybe_error<dMacro_State_Hessian_minimal> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
+                                                  family, decltype(*model0_d)>(*model0_d,
+                                                                               lik.n_sub_dt);
+    return nonlinearsqr_logLikelihood(ftbl3, dlikelihood, par, r, e);
+}
+
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
           class micro, class Model, class FuncTable>
 auto calculate_mdiff_likelihood_impl(
@@ -717,7 +740,7 @@ auto calculate_mdlikelihood_predictions_micro_impl(
 // Evolution slot, so summing it here as a post-pass makes the micro MLE metric
 // numerically identical to macro without touching the (hot) micro filter.
 inline auto reduce_micro_gradient_all_to_hessian_minimal(
-    const dMacro_State_Ev_gradient_all& g, const var::Parameters_transformed& par)
+    const dMacro_State_Ev_gradient_all& g, const var::Parameters_transformed& /*par*/)
     -> dMacro_State_Hessian_minimal {
     using DLogL = var::Derivative<logL, var::Parameters_transformed>;
     dMacro_State_Hessian_minimal out;
@@ -758,7 +781,9 @@ auto calculate_mlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<Vector_Space<logL, elogL, vlogL>> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                return nonlinearsqr_logLikelihood(ftbl3, modelLikelihood, par_values, r, e);
+            } else if constexpr (ModelL::micro_type::value) {
                 auto result = Micro_DMR{}.template log_Likelihood<
                     typename ModelL::recursive_type, typename ModelL::averaging_type,
                     typename ModelL::variance_type, typename ModelL::variance_correction_type,
@@ -784,7 +809,14 @@ auto calculate_mdlikelihood(const likelihood_algorithm_type& modelLikelihood_v,
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Hessian_minimal> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                // Load-bearing MLE route: the lean least-squares fold returns the
+                // reduced {Derivative<logL>, Gaussian_Fisher_Information}. The
+                // numerical-Fisher path (calculate_mnumerical_fisher_information)
+                // finite-differences derivative(get<logL>) through here, so it
+                // needs no separate arm.
+                return calculate_mdlikelihood_nonlinearsqr_impl(modelLikelihood, ftbl3, par, e, r);
+            } else if constexpr (ModelL::micro_type::value) {
                 // Micro has no in-filter Hessian_minimal accumulator (it folds a
                 // micro state with micro_Patch_State). Route through the supported
                 // micro predictions path and reduce its per-step Evolution to the
@@ -810,7 +842,9 @@ auto calculate_mdiff_likelihood(const likelihood_algorithm_type& modelLikelihood
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                return error_message("unsupported for family==nonlinearsqr");
+            } else if constexpr (ModelL::micro_type::value) {
                 return error_message("micro path does not yet support diff_logLikelihood");
             } else {
                 return calculate_mdiff_likelihood_impl(modelLikelihood, ftbl3, par, e, r,
@@ -831,7 +865,9 @@ auto calculate_mlikelihood_predictions(const likelihood_algorithm_type& modelLik
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<Macro_State_Ev_predictions> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                return error_message("unsupported for family==nonlinearsqr");
+            } else if constexpr (ModelL::micro_type::value) {
                 return error_message("micro path does not yet support logLikelihoodPredictions");
             } else {
                 return logLikelihoodPredictions(ftbl3, modelLikelihood, par_values, r, e);
@@ -851,7 +887,9 @@ auto calculate_mlikelihood_diagnostics(const likelihood_algorithm_type& modelLik
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<Macro_State_Ev_diagnostic> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                return error_message("unsupported for family==nonlinearsqr");
+            } else if constexpr (ModelL::micro_type::value) {
                 return error_message("micro path does not yet support logLikelihoodDiagnostic");
             } else {
                 return logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r, e);
@@ -887,7 +925,9 @@ auto calculate_mdlikelihood_predictions_visit(const likelihood_algorithm_type& m
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
             evaluation_timer timer;
             Maybe_error<dMacro_State_Ev_gradient_all> result;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                result = error_message("unsupported for family==nonlinearsqr");
+            } else if constexpr (ModelL::micro_type::value) {
                 result = calculate_mdlikelihood_predictions_micro_impl(modelLikelihood, ftbl3, par,
                                                                        e, r);
             } else {
@@ -929,7 +969,9 @@ auto calculate_mdetailed_predictions_visit(const likelihood_algorithm_type& mode
     return std::visit(
         [&](const auto& modelLikelihood) -> Maybe_error<dMacro_State_Ev_detailed> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
-            if constexpr (ModelL::micro_type::value) {
+            if constexpr (ModelL::nonlinearsqr_type::value) {
+                return error_message("unsupported for family==nonlinearsqr");
+            } else if constexpr (ModelL::micro_type::value) {
                 return error_message(
                     "calc_per_sample_numerical_fisher_information_detailed: micro algorithms "
                     "are not supported for the detailed diagnostic");
@@ -1296,7 +1338,7 @@ auto calculate_likelihood(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(model_ref)>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1305,7 +1347,7 @@ auto calculate_likelihood(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant(),
             // Branch 2: macro, taylor correction (existing narrower family)
             Likelihood_Model_regular<
@@ -1315,7 +1357,7 @@ auto calculate_likelihood(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(model_ref)>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1324,7 +1366,7 @@ auto calculate_likelihood(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant()),
         // Branch 3: micro (recursive=true, taylor=false, averaging ∈ {0, 1, 2})
         Likelihood_Model_regular<
@@ -1333,7 +1375,7 @@ auto calculate_likelihood(const ModelPtr& model0,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
             decltype(model_ref)>(
             model_ref, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1342,7 +1384,7 @@ auto calculate_likelihood(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation))
+            uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -1398,7 +1440,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(*model0_d)>(
                 *model0_d, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1407,7 +1449,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant(),
             Likelihood_Model_regular<
                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1416,7 +1458,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(*model0_d)>(
                 *model0_d, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1425,7 +1467,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1433,7 +1475,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
             decltype(*model0_d)>(
             *model0_d, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1442,7 +1484,7 @@ auto calculate_dlikelihood(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation))
+            uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -1488,7 +1530,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(*model0_d)>(
                 *model0_d, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1497,7 +1539,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant(),
             Likelihood_Model_regular<
                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1506,7 +1548,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(*model0_d)>(
                 *model0_d, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1515,7 +1557,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1523,7 +1565,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
             decltype(*model0_d)>(
             *model0_d, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1532,7 +1574,7 @@ auto calculate_diff_likelihood(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation))
+            uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -1575,7 +1617,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(model_ref)>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1584,7 +1626,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant(),
             Likelihood_Model_regular<
                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1593,7 +1635,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(model_ref)>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1602,7 +1644,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1610,7 +1652,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
             decltype(model_ref)>(
             model_ref, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1619,7 +1661,7 @@ auto calculate_likelihood_predictions(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation))
+            uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -1663,7 +1705,7 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(model_ref)>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1672,7 +1714,7 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant(),
             Likelihood_Model_regular<
                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1681,7 +1723,7 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(model_ref)>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1690,7 +1732,7 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1698,7 +1740,7 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
             decltype(model_ref)>(
             model_ref, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1707,7 +1749,7 @@ auto calculate_likelihood_diagnostics(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation))
+            uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -1754,7 +1796,7 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           false>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(*model0_d)>(
                 *model0_d, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1763,7 +1805,7 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant(),
             Likelihood_Model_regular<
                 var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1772,7 +1814,7 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                 var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                           true>,
-                var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                 decltype(*model0_d)>(
                 *model0_d, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1781,7 +1823,7 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
                 uses_variance_aproximation_value(variance_approximation),
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
-                uses_micro_aproximation_value(micro_approximation))
+                uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                 .get_variant()),
         Likelihood_Model_regular<
             var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1789,7 +1831,7 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
             var::constexpr_Var_domain<int, uses_averaging_aproximation, 0, 1, 2>,
             var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
-            var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+            var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
             decltype(*model0_d)>(
             *model0_d, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
@@ -1798,7 +1840,7 @@ auto calculate_dlikelihood_predictions(const ModelPtr& model0,
             uses_variance_aproximation_value(variance_approximation),
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
-            uses_micro_aproximation_value(micro_approximation))
+            uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
             .get_variant());
     if (!maybe_modelLikelihood) {
         return maybe_modelLikelihood.error();
@@ -1849,7 +1891,7 @@ auto calculate_dlikelihood_predictions_model(
                         var::constexpr_Var_domain<bool, uses_variance_aproximation, false, true>,
                         var::constexpr_Var_domain<
                             bool, uses_taylor_variance_correction_aproximation, false>,
-                        var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                        var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                         decltype(m)>(
                         m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
                         uses_recursive_aproximation_value(recursive_approximation),
@@ -1857,7 +1899,7 @@ auto calculate_dlikelihood_predictions_model(
                         uses_variance_aproximation_value(variance_approximation),
                         uses_taylor_variance_correction_aproximation_value(
                             taylor_variance_correction_approximation),
-                        uses_micro_aproximation_value(micro_approximation))
+                        uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                         .get_variant(),
                     Likelihood_Model_regular<
                         var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1866,7 +1908,7 @@ auto calculate_dlikelihood_predictions_model(
                         var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                         var::constexpr_Var_domain<
                             bool, uses_taylor_variance_correction_aproximation, true>,
-                        var::constexpr_Var_domain<bool, uses_micro_aproximation, false>,
+                        var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                         decltype(m)>(
                         m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
                         uses_recursive_aproximation_value(recursive_approximation),
@@ -1874,7 +1916,7 @@ auto calculate_dlikelihood_predictions_model(
                         uses_variance_aproximation_value(variance_approximation),
                         uses_taylor_variance_correction_aproximation_value(
                             taylor_variance_correction_approximation),
-                        uses_micro_aproximation_value(micro_approximation))
+                        uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                         .get_variant()),
                 Likelihood_Model_regular<
                     var::constexpr_Var_domain<bool, uses_adaptive_aproximation, false>,
@@ -1883,7 +1925,7 @@ auto calculate_dlikelihood_predictions_model(
                     var::constexpr_Var_domain<bool, uses_variance_aproximation, true>,
                     var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation,
                                               false>,
-                    var::constexpr_Var_domain<bool, uses_micro_aproximation, true>,
+                    var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
                     decltype(m)>(
                     m, nsub, uses_adaptive_aproximation_value(adaptive_approximation),
                     uses_recursive_aproximation_value(recursive_approximation),
@@ -1891,7 +1933,7 @@ auto calculate_dlikelihood_predictions_model(
                     uses_variance_aproximation_value(variance_approximation),
                     uses_taylor_variance_correction_aproximation_value(
                         taylor_variance_correction_approximation),
-                    uses_micro_aproximation_value(micro_approximation))
+                    uses_family_aproximation_value(micro_approximation ? family_micro : family_macro))
                     .get_variant());
             if (!maybe_modelLikelihood) {
                 return maybe_modelLikelihood.error();
@@ -4053,7 +4095,7 @@ auto calc_MLE_per_group_of_replicates(
     // serial and yields the pool to the INNER per-recording loop in
     // evaluate_combined_group_as_dlogPs (guarded by !omp_in_parallel()). No nesting.
     std::vector<per_group_estimate> slots(N_groups);
-    #pragma omp parallel for schedule(dynamic) if(N_groups >= omp_get_max_threads())
+    #pragma omp parallel for schedule(dynamic) if(N_groups >= static_cast<std::size_t>(omp_get_max_threads()))
     for (std::size_t g = 0; g < N_groups; ++g) {
         std::vector<Recording> group_recordings;
         group_recordings.reserve(gsize);

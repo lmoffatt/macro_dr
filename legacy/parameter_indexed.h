@@ -189,8 +189,24 @@ std::vector<std::string> parameter_names(const ParameterIndexed<ValueT, Params>&
     if (!x.has_parameters()) {
         return {};
     }
+    // The stored value vector is over the FREE parameters (Fixed ones are dropped
+    // by the transform), so drop the Fixed positions from the full name list too;
+    // otherwise free param k gets labelled with full-name[k] (shifted). When
+    // nothing is Fixed, fixed_set() is empty and this returns the full list
+    // unchanged (no behaviour change for runs that fix no parameters).
     const auto& names = x.parameters().parameters().names();
-    return std::vector<std::string>(names.begin(), names.end());
+    const auto& fixed = x.parameters().parameters().transf().fixed_set();
+    std::vector<std::string> out;
+    out.reserve(names.size() - fixed.size());
+    std::size_t fi = 0;
+    for (std::size_t i = 0; i < names.size(); ++i) {
+        if (fi < fixed.size() && i == fixed[fi]) {
+            ++fi;
+            continue;
+        }
+        out.push_back(names[i]);
+    }
+    return out;
 }
 
 }  // namespace var

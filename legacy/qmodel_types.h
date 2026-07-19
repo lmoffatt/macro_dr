@@ -102,6 +102,18 @@ class uses_micro_aproximation : public var::constexpr_Var<bool, uses_micro_aprox
 class uses_micro_aproximation_value
     : public var::constexpr_Var_value<bool, uses_micro_aproximation> {};
 
+// Family selects the likelihood compute path (one 3-valued selector, replacing
+// the old boolean micro flag in the model). family_macro keeps the Gaussian
+// Kalman fold; family_micro the lifted micro fold; family_nonlinearsqr the lean
+// nonlinear least-squares (Moffatt & Hume 2007 JGP) fold. uses_micro_aproximation
+// is kept during the transition (the visit sites still read a derived micro_type).
+template <int b>
+class uses_family_aproximation : public var::constexpr_Var<int, uses_family_aproximation, b> {};
+class uses_family_aproximation_value
+    : public var::constexpr_Var_value<int, uses_family_aproximation> {};
+
+inline constexpr int family_macro = 0, family_micro = 1, family_nonlinearsqr = 2;
+
 // Compile-time flag selecting the Qdt computation method:
 //   false → eigendecomposition path (calc_Qdt_eig). Default. Fast for small
 //           Q. Suffers from eigenvector-derivative ill-conditioning when
@@ -156,6 +168,10 @@ concept uses_taylor_variance_correction_aproximation_c =
 template <class T>
 concept uses_micro_aproximation_c =
     var::is_this_constexpr_Var_c<T, bool, uses_micro_aproximation>;
+
+template <class T>
+concept uses_family_aproximation_c =
+    var::is_this_constexpr_Var_c<T, int, uses_family_aproximation>;
 
 template <class V, class Id>
 concept has_var_c = requires(V&& v) {
