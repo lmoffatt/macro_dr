@@ -1,8 +1,19 @@
 # Master list: who owns what
 
-> Opened 2026-07-14. This is the routing document for the MacroIR / eLife paper. It settles nothing about the science; it settles **where each thing is settled**.
+> Opened 2026-07-14. Updated 2026-07-20. This is the routing document for the MacroIR / eLife paper. It settles nothing about the science; it settles **where each thing is settled**.
 >
 > Built from a full read of the 26 documents in this pack plus the theory, figure, bibliography and source layers they depend on.
+
+> ## ⚠ Reframe in flight (2026-07-20): the usage map
+>
+> The paper was reframed on 2026-07-20 (audios 10:54–10:59). Two changes, both settled in `02_decision_log.md`:
+>
+> 1. **Least squares on the mean current enters as method zero** (`nonlinearsqr`, display `LSE`). The roster is six methods on two levels, not five on one lattice.
+> 2. **The noise axis is swept through the gating-noise crossover.** Everything measured before that date sat in the band that favours the gating-aware likelihoods by construction.
+>
+> Consequently the deliverable is a **usage map** (cheapest adequate method per regime), not a ranking. `00_master_plan_v2.md` §0, §1, §1a and §4 carry the new frame.
+>
+> **Until the propagation in §4a is done, treat as stale on sight:** any sentence saying "five algorithms", "the family as one object with two knobs", "IR sole survivor", "only MacroIR stays calibrated", or "MR strawman". These are not errors of fact about band A; they are claims scoped to one band and stated globally.
 
 ## The rule
 
@@ -111,10 +122,14 @@ Before writing, look the topic up here.
 | Topic | Owner |
 |---|---|
 | Thesis, the two Gaussian approximations, the three regimes | `00_master_plan_v2.md` |
+| **The usage-map frame: the root question + the ladder** | `00_master_plan_v2.md` §1 |
+| **The noise bands A/B/C and where the two crossovers fall** | `00_master_plan_v2.md` §1a; the sweep in `05_experiment_grid.md` §2a |
+| **LSE / `nonlinearsqr`: what it is, its seams, its config constraints** | `theory/macroir/notes/nonlinearsqr_lse_plan.md`; the *decision to include it* in `02_decision_log.md` |
+| **Which diagnostics are meaningless or tautological for LSE** | `05_experiment_grid.md` §6 |
 | What is in and out of scope | `02_decision_log.md` |
-| The algorithm roster (why exactly five) | `02_decision_log.md` |
-| The names of the five, and the spelling | `nomenclature.md` → verdict to `02_decision_log.md` |
-| The ranking verdict (IR sole survivor, MR strawman, …) | `02_decision_log.md` |
+| The method roster (six, on two levels) | `02_decision_log.md` |
+| The names of the methods, and the spelling | `nomenclature.md` → verdict to `02_decision_log.md` |
+| The band-A column of the map (the former ranking) | `00_master_plan_v2.md` §4; the two contested cells in `decisions/D-4_ranking_verdict.md` |
 | The distortion anchor (Gaussian vs numerical Fisher) | `theory/…/Gaussian_Fisher_Distortion_Family.md`; the *choice* in `02_decision_log.md` |
 | Diagnostic definitions, thresholds, CSV fields | `03_metrics_diagnostics.md` |
 | The decomposition identity | `correction_idm_reconstruction.md` |
@@ -152,6 +167,45 @@ Places where two documents currently say different things about the same object.
 | C-12 | **The direction of MR's variance error.** The master plan says it overestimates; the S3 caption reports it as overconfident by 1.5–2×. Probably a category error (observable variance vs parameter covariance), which is exactly why it must be written down once. | plan vs caption | `results_plan.md` |
 
 Duplication without contradiction, which is where the *next* collision comes from: the scope call is written out in full in four documents, the evidence-correction formulas (½ log det C, α⋆ = p / tr C) in five, the diagnostics list in three, the ranking table in three. Each copy is a place a future correction can fail to land.
+
+## 4a. Propagation debt from the 2026-07-20 reframe
+
+Done so far: `00_master_plan_v2.md`, `02_decision_log.md`, `05_experiment_grid.md`, this file. Everything below still says the old thing. Ordered by blast radius; each line is a site, not a summary.
+
+**The structural rewrites (the "two knobs" framing is now literally false: LSE carries NMR's two knob settings and differs only by the third flag `family_approximation=2`).**
+
+| Document | Sites |
+|---|---|
+| `nomenclature.md` | `:5` "the five macroscopic likelihood algorithms"; `:15` "## The family, as implemented" + the closed 5-row table `:23-29`; `:84` "the five members do that"; `:114-125` the endpoint ladder, which has **no rung for LSE** and needs the root question above it; `:127-128` "sole survivor" |
+| `theory_plan.md` | `:9` "the five algorithms **one object with two knobs**"; `:15` "the members of the family differ in *what they condition that Gaussian on*" (LSE is a counterexample); `:44` "T3 — the family as a coordinate system"; `:55` "the five members are exactly the implemented grid"; `:59` "MacroIR is the top rung below intractability" (survives, but now as the top rung of the *lower* level); `:85` still calls the noise parameter "a misnomer", which `decisions/D-2_parameter_units.md:41-44` explicitly overturned |
+| `methods_plan.md` | `:79` "## M6 — The five algorithms, as flags"; `:81` "one code with two flags"; `:91` "the family is a genuine grid, not a selection"; `:61-67` the noise-axis "naming trap" framing, also overturned by D-2; `:134`, `:136` "all five algorithms" |
+| `sections/02_theory.tex` | `:2`, `:23`, `:45`, `:73`, `:75`, `:110`, `:115`, `:199` — the whole section is built on the two-knob coordinate system |
+
+**The verdict rewrites.**
+
+| Document | Sites |
+|---|---|
+| `02_decision_log.md` | done |
+| `discussion_plan.md` | `:22-38` D1 "the verdict, as a decision rule" — closest to the new frame already, since it asks for a decision rule rather than a winner; `:74` "survives every approximation in the family" |
+| `decisions/D-4_ranking_verdict.md` | `:28-51` the canonical recomputed table; rescope to band A rather than rewrite |
+| `sections/05_discussion.tex` | `:2` the comment-form ranking summary |
+| `sections/04_results.tex` | `:5`, `:11`, `:26`, `:41`, `:45`, `:49`, `:51` — "the five approximations", "all five members", the band-A-only verdict sentence |
+| `components/_MAP.md` | `:12-16` the 5-bullet roster, `:16` "Sole calibrated survivor" |
+| `From molecular … PROGRAM.md` | `:62` "this paper uses NR, NMR, R, MR, IR" |
+
+**The front-matter rewrites (LSE moves from cited background to measured arm — it is currently the *premise* of the abstract's first sentence).**
+
+| Document | Sites |
+|---|---|
+| `abstract_draft.md` | `:79` the 360-word draft, `:114` version A, `:118` version B — all three open on least squares as the thing the field does wrong, and must now open on it as the thing the paper measures; the Impact Statement drafts `:139-143`; the whole "what stays out" list needs the band-C result added |
+| `introduction_plan.md` | `:56` "the algorithm family is the literature, not an invention" — **this is where LSE belongs**, and it has the strongest literature attribution of the lot (Clerx 2019, IonBench, Del Core & Mirams 2025); `:87` "for the five members of the family"; `:110` "five algorithms look like a coordinate system" |
+| `title_options.md` | the CHOSEN title and its two rivals all describe a distortion study, not a usage map. Re-open (already collision C-2) |
+| `elife_paper.tex:23` | the live abstract carries "Only the interval-averaged recursive likelihood (MacroIR) stays calibrated across the practical regime" |
+| `results_plan.md` | `:10-17` the six-figure through-line; `:99` the headline numbers row, which is band A only; `:12-16` per-figure claims |
+
+**The caption rewrites.** Every caption in `projects/eLife_2025/figures/paper/` enumerates the closed five: `Figure_1_caption.md:3,5,7`, `Figure_2_caption.md:3,5,7`, `Figure_3_caption.md:3,5,7`, `Figure_4_caption.md:3,5,11`, `Figure_4_alt_caption.md:5`, `Figure_S2_caption.md:5`, `Figure_S4_acf_caption.md:5`, `Figure_S4_bias_caption.md:5`. Two need arithmetic, not just wording: `Figure_S3_caption.md:3,5` says "the four approximations other than IR", and `Figure_3_caption.md:7` partitions the five exhaustively as "the recursive trio" and "the naive pair".
+
+**Not a document, but it will bite:** `01_writing_plan.md:25` hard-gates the definition of done at exactly six figures, while `00_master_plan_v2.md` §8 D-2 leaves the count open. Resolve toward D-2.
 
 ## 5. Missing owners
 
