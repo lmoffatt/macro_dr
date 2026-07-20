@@ -911,7 +911,11 @@ auto calculate_mlikelihood_diagnostics(const likelihood_algorithm_type& modelLik
         [&](const auto& modelLikelihood) -> Maybe_error<Macro_State_Ev_diagnostic> {
             using ModelL = std::decay_t<decltype(modelLikelihood)>;
             if constexpr (ModelL::nonlinearsqr_type::value) {
-                return error_message("unsupported for family==nonlinearsqr");
+                // ROUTED (was guarded): figure 1's per-interval diagnostic. The LSE is a
+                // legitimate non-recursive member there — its FLAT predictive band next
+                // to the macro ones (which breathe with the gating) is the visual point.
+                return nonlinearsqr_logLikelihoodDiagnostic(ftbl3, modelLikelihood, par_values, r,
+                                                            e);
             } else if constexpr (ModelL::micro_type::value) {
                 return error_message("micro path does not yet support logLikelihoodDiagnostic");
             } else {

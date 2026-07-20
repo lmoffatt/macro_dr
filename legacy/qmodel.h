@@ -7401,13 +7401,18 @@ class Macro_DMR {
         // prefactor is global — unknown until the fold ends — so pass 1 only
         // RETAINS (μ_t with dμ_t, y_t) and pass 2 fills the Evolution in the
         // finalize. That post-pass is O(T) and does NOT re-run calc_Qdt.
-        constexpr bool wants_evo = is_deriv && has_var_c<MacroState&, Evolution>;
+        // NOTE: not gated on is_deriv — the DERIVATIVE path feeds figures 3/4
+        // (dMacro_State_Ev_gradient_all) and the VALUE path feeds figure 1
+        // (Macro_State_Ev_diagnostic). Both fills live in the finalize below.
+        constexpr bool wants_evo = has_var_c<MacroState&, Evolution>;
         using YMeanT = std::decay_t<decltype(build<y_mean>(var::init_with_dx<DX>(0.0, dx)))>;
         std::vector<YMeanT> ev_ymean;
         std::vector<double> ev_y;
+        std::vector<Matrix<double>> ev_pmean;  // open-loop prior mean (figure 1 only)
         if constexpr (wants_evo) {
             ev_ymean.reserve(y().size());
             ev_y.reserve(y().size());
+            ev_pmean.reserve(y().size());
         }
 
         for (std::size_t i_step = 0; i_step < y().size(); ++i_step) {
@@ -7440,6 +7445,9 @@ class Macro_DMR {
                 if constexpr (wants_evo) {
                     ev_ymean.push_back(r_y_mean);
                     ev_y.push_back(yi);
+                    // the PRIOR (pre-propagation) mean, i.e. the open-loop state that
+                    // produced mu_i — figure 1's "prior open probability" row.
+                    ev_pmean.push_back(var::primitive(p_P_mean()));
                 }
                 if (!std::isnan(yi)) {
                     auto dy = yi - r_y_mean();
@@ -7588,6 +7596,71 @@ class Macro_DMR {
             }
         } else {
             double logL_v = logL_const - n_over_2 * std::log(SSE_v);
+
+            if constexpr (wants_evo) {
+                // ---- Value-path Evolution: the figure-1 per-interval diagnostic ----
+                // Same substitution as the derivative path, without AD: the per-interval
+                // predictive variance IS the global plug-in sigma_hat^2 = SSE/n, so the
+                // LSE's band is FLAT where the macro ones breathe with the gating
+                // (e + N*gSg). That contrast is the point of putting the LSE in figure 1.
+                //
+                // The diagnostic element is NESTED: please_include<logL, elogL, vlogL,
+                // Algo_State_Dynamic>, so the per-interval quantities go INSIDE the
+                // Algo_State_Dynamic space, not as flat slots.
+                //
+                // The intra-interval Kalman snapshots (P_mean_t2_y*, P_Cov_t*, d_gS,
+                // d_GS, ...) are left EMPTY on purpose: the LSE is non-recursive, so
+                // figure 1 should show it as "no update (open loop)", exactly as it
+                // already marks NR and MNR. The open-loop prior mean goes into
+                // P_mean_t20_y1 because that is the slot Algo_State_Dynamic::get_P_mean()
+                // falls back to when the conditioned ones are empty.
+                MacroState out{};
+                get<logL>(out) = logL(logL_v);
+                if constexpr (has_var_c<MacroState&, Patch_State>)
+                    get<Patch_State>(out) = t_patch;
+                if constexpr (has_var_c<MacroState&, elogL>)
+                    get<elogL>(out) = elogL(0.0);
+                if constexpr (has_var_c<MacroState&, vlogL>)
+                    get<vlogL>(out) = vlogL(0.0);
+
+                const double sigma2 = SSE_v / static_cast<double>(n);
+                const double sigma = std::sqrt(sigma2);
+                const double half_log = 0.5 * std::log(2.0 * std::numbers::pi * sigma2);
+
+                auto& evo = get<Evolution>(out)();
+                using Evo = std::decay_t<decltype(get<Evolution>(out))>;
+                using Element = typename Evo::element_type;
+                evo.reserve(ev_ymean.size());
+                for (std::size_t i = 0; i < ev_ymean.size(); ++i) {
+                    Element el{};
+                    const bool finite = !std::isnan(ev_y[i]);
+                    const double mu = var::primitive(ev_ymean[i]());
+                    const double d = finite ? (ev_y[i] - mu) : 0.0;
+
+                    // per-interval PROFILED Gaussian term. NOTE it sums to the profiled
+                    // logL, NOT to the reported Jeffreys marginal (they differ by a
+                    // function of n only). Label the figure-1 cumulative row accordingly.
+                    if constexpr (has_var_c<Element&, logL>)
+                        get<logL>(el)() = finite ? (-half_log - 0.5 * d * d / sigma2) : 0.0;
+                    if constexpr (has_var_c<Element&, elogL>)
+                        get<elogL>(el)() = finite ? (-half_log - 0.5) : 0.0;
+                    if constexpr (has_var_c<Element&, vlogL>)
+                        get<vlogL>(el)() = 0.5;
+
+                    if constexpr (has_var_c<Element&, Algo_State_Dynamic>) {
+                        auto& algo = get<Algo_State_Dynamic>(el)();
+                        get<y_mean>(algo)() = mu;
+                        get<y_var>(algo)() = sigma2;  // FLAT: the LSE homoscedastic band
+                        get<r_std>(algo)() = finite ? d / sigma : 0.0;
+                        get<Chi2>(algo)() = finite ? d * d / sigma2 : 0.0;
+                        if (i < ev_pmean.size())
+                            get<P_mean_t20_y1>(algo)() = ev_pmean[i];
+                    }
+                    evo.emplace_back(std::move(el));
+                }
+                return Maybe_error<MacroState>(std::move(out));
+            }
+
             return Maybe_error<MacroState>(
                 MacroState(logL(logL_v), std::move(t_patch), elogL(0.0), vlogL(0.0)));
         }
@@ -8541,6 +8614,29 @@ Maybe_error<dMacro_State_Ev_gradient_all> nonlinearsqr_dlogLikelihoodPredictions
     return Macro_DMR{}
         .nonlinearsqr_logLikelihood<adaptive, recursive, averaging, variance, variance_correction,
                                     dMacro_State_Ev_gradient_all>(f, lik.m, dpp, y, var);
+}
+
+// VALUE-path Evolution entrypoint (figure 1 per-interval diagnostic). Same lean fold,
+// MacroState = Macro_State_Ev_diagnostic, which switches on the driver's value-path
+// Evolution fill: per interval mu_t, y_var == sigma_hat^2 (FLAT band), r_std, Chi2 and
+// the open-loop prior mean. The intra-interval Kalman snapshots stay empty — the LSE is
+// non-recursive, so figure 1 shows it as "no update (open loop)" like NR and MNR.
+// Takes Parameters_values (the diagnostics visit passes par.to_value()).
+template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class family, class FuncTable, class Model, class Parameters,
+          class Recoding, class Experiment>
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+             uses_family_aproximation_c<family>)
+Maybe_error<Macro_State_Ev_diagnostic> nonlinearsqr_logLikelihoodDiagnostic(
+    FuncTable& f,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
+                                     family, Model>& lik,
+    Parameters const& p, const Recoding& y, const Experiment& e) {
+    return Macro_DMR{}
+        .nonlinearsqr_logLikelihood<adaptive, recursive, averaging, variance, variance_correction,
+                                    Macro_State_Ev_diagnostic>(f, lik.m, p, y, e);
 }
 
 template <class adaptive, class recursive, class averaging, class variance,
