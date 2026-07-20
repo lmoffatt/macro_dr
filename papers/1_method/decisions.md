@@ -39,6 +39,39 @@
   needs the micro attribution anchor below. The three papers' N_ch ranges are chosen jointly
   (`../_program/program.md` §2, still open).
 
+## The non-recursive members: named, not measured (A-strict, 2026-07-20)
+
+**Decided (Luciano).** Paper 1 restricts to the recursive roster R/MR/VR/IR. The non-recursive members
+`NR`, `NMR` are **named once in Theory** — to locate paper 1's ladder as the conductance axis at
+recursion=on — and **measured in no figure**. The recursion axis is established prior work (Moffatt
+2007, Comm Biol 2025); paper 1 holds it fixed and varies the conductance conditioning.
+
+Rationale is concept-first, not a numbers pitch: that NR is dramatically worse is old and roughly
+obvious, so re-showing it is not paper 1's job. The validation machinery is tested *harder* on the
+subtle within-recursive distortions (catching MR's ~1.5× miscalibration and attributing it) than on
+NR's gross one, so restricting to the recursive family is where the method proves it works. The 87-nat
+gap and the 10–16× overconfidence are NR/NMR results and belong to paper 2.
+
+## Fig 1 = R vs IR (not the four-column ladder)
+
+**Decided (Luciano, 2026-07-20).** Fig 1 (the filter step, no statistics) shows **R vs IR only**, the
+two poles of the conductance axis. MR and VR do **not** go in Fig 1: they are visually identical in
+everything a single filter step shows except the predicted observable variance band (same prior, same
+predicted mean, same recursion). Their distinction is a variance claim, which is quantitative, so it
+lives in the mechanism/decomposition figure, where MR→VR is a variance panel (MR's predicted y_var
+above VR's above the realized residual variance) and VR→IR is a gain/calibration panel.
+
+## VR must run before the figures, and the arc branches on its sign
+
+- **Three of paper 1's figures depend on the VR column existing.** VR is not yet run; implementing it
+  is the urgent path (spec: `theory/macroir/notes/vr_variance_form_plan.md`). Without VR the roster is
+  the old R/MR/IR, i.e. the ladder without the control that makes it a measurement.
+- **The Results plan must be written in two branches.** Paper 1's central claim, "MR's problem is the
+  gain not the variance", is confirmed only if **VR comes out over-confident** (residual variance
+  removed without the boundary gain to justify it). If VR comes out calibrated, the thesis falls and
+  the paper says something different. Do not write the arc as though the sign is known. See
+  `[[project_vr_variance_form]]` and `results.md`.
+
 ## The band-A result (the former ranking)
 
 - **The ranking is now the band-A column of paper 1's usage map**, not a global verdict. The table is
