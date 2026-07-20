@@ -1,0 +1,98 @@
+# =============================================================================
+# figure_lse_smoke — self-contained nivel-2 smoke for the nonlinearsqr (LSE)
+# family. Minimal end-to-end run on scheme_CO: simulate a handful of recordings,
+# then fit the classical nonlinear least-squares likelihood (family=2) with
+# calc_MLE_per_group_of_replicates. No dispatcher injection; every axis/value is
+# fixed inline so the file runs stand-alone.
+#
+# Config companions (see theory/macroir/notes/nonlinearsqr_lse_plan.md §7):
+#   - unitary_current -> Fixed  (amplitude ridge: N and g unidentifiable from the
+#     LSE mean I_max = N*g; fix one, keep Num_ch_mean free).
+#   - Current_Noise   -> Fixed  (pure-variance flat direction: the LSE mean has no
+#     noise term, so Current_Noise has an identically-zero score/Fisher row ->
+#     singular theta-Fisher unless fixed).
+#   - FREE = {on, off, Current_Baseline, Num_ch_mean}; averaging pinned to 1.
+#
+# Run:
+#   ./build/<preset>/macrodr projects/eLife_2025/ops/local/figure_lse_smoke.macroir
+# (adjust the binary path to your build output).
+# =============================================================================
+
+model = load_model("scheme_CO")
+
+# figure_2 canonical scheme_CO values. unitary_current and Current_Noise are
+# Fixed (natural value stored as-is under the identity Fixed transform); the rest
+# are Log10 (on=10, off=100, Current_Baseline=1, Num_ch_mean=100).
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Fixed",1},
+      {"Current_Noise","Fixed",1e-4},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10",100}])
+
+# Short three-segment protocol (interval_in_tau = 0.1 cell):
+#   20 steps x 50 samples = 1000 pre  @ 0 µM
+#   40 steps x 50 samples = 2000 agonist @ 10 µM
+#   40 steps x 50 samples = 2000 post @ 0 µM
+experiment = create_experiment(
+   experiment_structure = [
+      {20, 50, 0.0},
+      {40, 50, 10.0},
+      {40, 50, 0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = 64,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = 0)
+
+recordings = get_recordings_from_simulations(simulations = simulations)
+
+# nonlinearsqr (LSE) algorithm: family_approximation = 2, non-recursive,
+# averaging = 1, no taylor. variance_approximation = true is accepted and ignored
+# by the LSE branch (the marginalized-noise LSE has no emission variance).
+algorithm = build_likelihood_function_with_family(
+   model = model,
+   adaptive_approximation = false,
+   recursive_approximation = false,
+   averaging_approximation = 1,
+   variance_approximation = true,
+   taylor_variance_correction = false,
+   family_approximation = 2,
+   taylor_qdt_approximation = false)
+
+gn_opts = build_gauss_newton_options(
+   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
+   max_iter = 100, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
+
+# Per-group MLE refit, single-recording groups (group_size = 1) -> the theta_hat
+# cloud. Warmstart == reference == theta_sim (start the GN at the truth).
+mle = calc_MLE_per_group_of_replicates(
+   likelihood_algorithm = algorithm,
+   theta_warmstart = par_tr,
+   theta_reference = par_tr,
+   experiment = experiment,
+   recordings = recordings,
+   group_size = 1,
+   n_bootstrap_samples = 100,
+   min_groups_for_bootstrap = 10,
+   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
+   probit_sample_heights = [0.5],
+   ranking_variables = ["Maximum_logL"],
+   seed = 0,
+   gauss_newton_options = gn_opts)
+
+mle_csv = write_csv(analysis = mle, path = "figures/data/lse_smoke_mle_cloud")
