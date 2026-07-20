@@ -7659,10 +7659,14 @@ class Macro_DMR {
                     evo.emplace_back(std::move(el));
                 }
                 return Maybe_error<MacroState>(std::move(out));
+            } else {
+                // NOTE the `else` is load-bearing: `if constexpr` only discards the
+                // branch not taken, so a return placed AFTER the block would still be
+                // instantiated for Evolution-carrying states, whose Macro_State ctor
+                // takes one more argument (the Evolution) than this 4-arg form.
+                return Maybe_error<MacroState>(
+                    MacroState(logL(logL_v), std::move(t_patch), elogL(0.0), vlogL(0.0)));
             }
-
-            return Maybe_error<MacroState>(
-                MacroState(logL(logL_v), std::move(t_patch), elogL(0.0), vlogL(0.0)));
         }
     }
 
