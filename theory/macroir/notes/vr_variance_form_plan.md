@@ -42,62 +42,96 @@ there.)
 This changes the effort calculus entirely: **the whole implementation cost is the flag surface**, not
 the math.
 
-## 2. Two options for the flag surface
+## 2. DECIDED (2026-07-20): option (a), the orthogonal flag, end to end
 
-### (a) New orthogonal flag `uses_variance_form_aproximation` (total=0 / residual=1)
-The clean, compiler-checked, durable path. Mirrors the just-landed `family`/`qdt_method` idiom.
-Seam sites (from the scout):
-- **Type machinery** `legacy/qmodel_types.h`: class + `_value` (mirror `94-98`), `_c` concept (mirror
-  `145-147`, NOT the micro concept @169-170). Cf. `uses_family_aproximation` @110-115.
-- **Compute thread** (mirror `variance_correction`, a proven ~144-site thread): template params +
-  `requires` on `safely_calculate_Algo_State_recursive` (`qmodel.h:4457-4464`) and the ONE compute
-  site (the `ms` selector @4544-4557); `safely_calculate_Algo_State` (@5900-5919); `Macror`
-  (@6316,6335); `MacroR2::operator()` (@8117); `log_Likelihood` template + ~9 call sites
-  (@6682-6684, calls @8513/8538/8662/8696/8732/8750/8776/8798/8816).
-- **Model classes** `legacy/qmodel.h`: `Likelihood_Model_constexpr` (@8124-8155); `Likelihood_Model_regular`
-  member + `range_*` + ctor + `cartesian` (@8223-8228) + `Likelihood_Model_variant_impl` (@8230-8255)
-  + `get_variant` (@8259-8294). **This is the bulk.**
-- **Builder** `include/macrodr/cmd/likelihood.h`: param on `build_likelihood_function_with_family`
-  (@29-33) + a `constexpr_Var_domain<…uses_variance_form…>` slot in the macro-non-vc branch ONLY
-  (@46-65; do NOT widen the vc/micro/LSE branches @70/95/120 — cartesian blow-up) + declval @154-155.
-  Keep the bool `build_likelihood_function` wrapper passing a default (total).
-- **Command** `src/cli/command_manager.cpp:1024-1032`: arity/signature + named arg.
-- **Dispatch** new `--algo_variance_form_approximation = indexed_int_by(...)`; `.macroir` →
-  `build_likelihood_function_with_family(..., variance_form_approximation = ...)`. Template already
-  proven by `dispatch_figure_3_LSE.sh` (family injection).
+New orthogonal `uses_variance_form_aproximation<int>` {total=0, residual=1}, named `constexpr int`
+constants (not magic ints), mirroring the just-landed `family`/`qdt_method` idiom. Compiler-checked, no
+overloading of `averaging`. VR = (recursive, av=1, variance_form=residual); IR stays (recursive, av=2);
+MR stays (recursive, av=1, variance_form=total).
 
-### (b) 4th averaging value `av=3` ("av=1 mean + residual variance")
-The fast throwaway path. One compute line + domain + ToString; **reuses `algo_averaging_approximation`,
-no new command arity, `.macroir` untouched**.
-- Compute: `ms` selector @`qmodel.h:4546` → `== 2 || == 3`. Every OTHER averaging branch already routes
-  `av=3` (>0, ≠0, ≠2) onto the av=1 side automatically (gSg @4515 else, gS @4583 else, dynamic @5518) —
-  which is what VR wants.
-- Domain: `likelihood.h:49` add `3` to the macro-non-vc branch ONLY.
-- ToString `qmodel.h:640` mis-labels av≠2 as `"__"` → av=3 needs a fix or it collides with MR in output.
-- Dispatch: `macro_VR) recursive=true; averaging=3; taylor=false; micro=false ;;` and nothing else.
-- **HAZARD (the gvar_i audit's own root-cause lesson):** this overloads `averaging` = "endpoint count"
-  with a variance-form meaning; `av=3` is not "3 endpoints". Every `== 2`/`else` averaging branch (~20
-  sites) must be re-audited to confirm av=3 lands on the av=1 side except `ms` — fragile, NOT
-  compiler-enforced. A missed branch = silently wrong covariance.
+### The ONE semantic decision, at the compute site — do NOT let IR regress
+Today the `ms` residual-vs-total split keys on `averaging::value == 2` (`qmodel.h:4546`). IR gets
+residual *for free* from that test. If you replace that test with `variance_form::value == residual`,
+then **IR must be built with variance_form=residual or it silently reverts to the total variance** — a
+regression in the published algorithm, and the worst kind because it compiles and runs.
 
-## 3. Recommendation: (b) to get the number, (a) if VR ships
-The science question comes FIRST and is cheap: **does VR come out over-confident?** That answer decides
-whether VR is a durable member at all. If VR is calibrated, the mechanism thesis falls and VR may not
-survive — in which case the full option-(a) plumbing was wasted.
+Two ways to write the `ms` selector; pick with eyes open:
 
-So:
-1. **Now, to answer the science:** option (b), restricted to the macro-non-vc domain, `ms` selector +
-   ToString fix + one dispatcher line. Fastest path to a running `macro_VR` column and a first
-   over-confidence measurement. Treat as a throwaway experiment.
-2. **If VR survives its own test** (comes out over-confident, earns a figure and a published name):
-   migrate to option (a) before it ships, for the compiler-checked hygiene and to stop overloading
-   `averaging`. This is the scout's recommendation for anything durable, and it matches the nomenclature
-   decision that VR opens a THIRD axis (variance form), orthogonal to `av` (`../../../papers/_program/nomenclature.md`).
+- **(A) OR-guard (recommended for the first landing, zero IR-regression risk):**
+  `if constexpr (averaging::value == 2 || variance_form::value == residual)` → residual; else total.
+  IR (av=2) is unchanged whatever its variance_form; VR (av=1, residual) adds the residual at av=1; MR
+  (av=1, total) unchanged. Default variance_form = total everywhere is then safe for every existing
+  build. Slightly impure (two flags can express residual) but cannot break IR.
+- **(B) fully orthogonal:** `if constexpr (variance_form::value == residual)` → residual; else total,
+  AND change IR's construction to carry variance_form=residual explicitly. Cleaner axis, but you must
+  find and fix every site that builds IR, or IR regresses. More surface, higher risk.
+
+**Recommend (A) now.** It gives the clean orthogonal flag everywhere in the type system while keeping
+the one compute predicate regression-proof. A later cleanup can tighten to (B). The gSg (@4524) and gS
+(@4587) boundary branches key on `averaging::value == 2` and **must not change** — VR at av=1 correctly
+takes the non-boundary mean and gain. Only the `ms` term moves.
+
+### ToString
+`qmodel.h:640` renders only av — add a variance_form suffix (e.g. `_res`) so VR's output label ≠ MR's,
+or the CSV/label collision silently merges the two.
 
 **Naming:** display `VR`, data key `macro_VR`, verbatim end-to-end (axis label → CSV `algorithm` →
 R `ALGOS`+`ALGO_LAB`); a mismatch silently drops rows to NA. NOT a Taylor variant — the engine flag is
 `taylor_variance_correction`; Methods must say the `V` of `VR` is unrelated. Do not fold the `V`/Taylor
 `MRV`/`IRV` cleanup into this change.
+
+## 3. Ordered tasks (file:symbol — done-check). macro_VR = one more algorithm, end to end.
+
+1. **`legacy/qmodel_types.h`** — ADD `uses_variance_form_aproximation<int>` {variance_total=0,
+   variance_residual=1} + named `constexpr int` constants + `_value` class + `_c` concept. Mirror
+   `uses_averaging_aproximation` (@94-98) + concept (@145-147, NOT the micro concept @169-170); cf.
+   `uses_family_aproximation` @110-115. — *compiles; the two constants resolve.*
+2. **`legacy/qmodel.h` compute** — thread the new param through, mirroring `variance_correction`:
+   - `safely_calculate_Algo_State_recursive` template params + `requires` (@4457-4464).
+   - The `ms` selector (@4544-4557): OR-guard per §2 (A): `averaging::value==2 || variance_form::value
+     ==variance_residual` → residual; else total. **gSg @4524 and gS @4587 untouched.**
+   - `safely_calculate_Algo_State` (@5900-5919); `Macror` (@6316,6335); `MacroR2::operator()` (@8117);
+     `log_Likelihood` template (@6682-6684) + the ~9 `.log_Likelihood<…>` call sites
+     (@8513/8538/8662/8696/8732/8750/8776/8798/8816).
+   - `ToString` (@640): append a `variance_form` suffix (residual→`_res`). — *compiles; a residual
+     build carries a distinct label; verification (0) below passes.*
+3. **`legacy/qmodel.h` model classes** — `Likelihood_Model_constexpr` param + `requires` + `using` +
+   ctor (@8124-8155); `Likelihood_Model_regular` member + `range_*` + ctor + **`cartesian`** (@8223-8228)
+   + **`Likelihood_Model_variant_impl`** (@8230-8255) + **`get_variant`** (@8259-8294). The bulk; the
+   variant cartesian grows by ×2 on the macro-non-vc slot only. — *variant instantiates; arity right.*
+4. **`include/macrodr/cmd/likelihood.h`** — add `variance_form_approximation` param to
+   `build_likelihood_function_with_family` (@29-33) + a `constexpr_Var_domain<…uses_variance_form…,
+   variance_total, variance_residual>` slot in the **macro-non-vc branch ONLY** (@46-65; do NOT widen
+   the vc/micro/LSE branches @70/95/120 — cartesian blow-up) + declval (@154-155). The bool wrapper
+   `build_likelihood_function` (@141-151) passes `variance_total` as default. — *the VR combo is in the
+   variant; existing 8-arg bool scripts still compile.*
+5. **`src/cli/command_manager.cpp:1024-1032`** — bump `build_likelihood_function_with_family`
+   arity/signature + named arg `variance_form_approximation`. The bool `build_likelihood_function`
+   registration unchanged. — *family builder callable with the new named arg; old scripts unaffected.*
+6. **`legacy/qmodel.h` visit / raw builders** — the raw-ModelPtr branch builders that enumerate the
+   macro variant must include the new slot or they fail to compile; default them to `variance_total`.
+   (Same class of edit the family flag needed; grep the sites that construct the macro `Likelihood_Model`
+   variant.) — *whole tree compiles.*
+7. **`projects/eLife_2025/ops/local/figure_3_mle_G.macroir`** (@81-89) — switch the builder from the
+   bool `build_likelihood_function` to `build_likelihood_function_with_family`: replace
+   `micro_approximation = algo_micro_approximation` with `family_approximation = algo_family_approximation`
+   and ADD `variance_form_approximation = algo_variance_form_approximation`. (Template: the LSE macroir
+   already calls `_with_family`.) — *macroir parses; macro_* run unchanged with family=0, vf=total.*
+8. **`projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh`** (@130-141 case block, @165-169 injection) —
+   migrate from the `micro` bool column to `family`+`variance_form` int columns (mirror
+   `dispatch_figure_3_LSE.sh` @134-145/175):
+   - every existing case gains `family=0` (macro) / `family=1` (micro) and `variance_form=0`;
+   - **ADD** `macro_VR) recursive=true; averaging=1; taylor=false; family=0; variance_form=1 ;;`
+   - replace the `--algo_micro_approximation` injection with `--algo_family_approximation = indexed_int_by(...)`
+     and ADD `--algo_variance_form_approximation = indexed_int_by(axis=algorithm_axis, values=[$variance_form])`;
+   - assemble both into the run args (@195-196). — *`N_ALGO="macro_VR" ...G.sh` dispatches; CSV shows a
+     `macro_VR` `algorithm` column.*
+9. **(beyond "hasta dispatch", but data will not plot without it) R figures** — append `macro_VR` to
+   `ALGOS` + `ALGO_LAB` (display `VR`) in each target `.Rmd`; bump `wrap_plots` ncol for the
+   filename-token figures. Verbatim `macro_VR` or rows drop to NA. — *the VR series renders.*
+
+**Compile gate:** do NOT `[[feedback_no_compile]]` build in this environment; hand the tree to Luciano
+to compile. The done-checks above are the acceptance oracle.
 
 ## 4. Config (mirror nonlinearsqr §7, but VR is a full likelihood so fewer constraints)
 VR uses the full emission model (mean + variance + gain), so it does NOT need the LSE amplitude/pure-
