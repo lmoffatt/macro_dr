@@ -48,6 +48,29 @@ PRODUCTION fig3 = `figure_3_mle_G.macroir` (NOT fig3_mle; drops numerical Fisher
 ## G. Non-CLI C++ call sites [MECH]
 `tests/optimization/test_gauss_newton.cpp:126`, `tests/macroir/test_dlogLikelihood_equivalence.cpp:83` pass `/*micro=*/false` → still compile via the bool wrapper (unchanged). No edit needed; update the comment if the wrapper is later retired.
 
+## H. Per-interval Evolution arm — fig 4 (cumulative J_T/F_T) + fig 5 (distortion). [USER]+[MECH]
+**SCOPE REVERSAL (2026-07-19, Luciano):** LSE is a FULL member of fig 2/3/4/5. The old "EXCLUDE from fig 4/5 — no per-step GFI" was WRONG: it confused the macro *implementation* (per-step GFI divides by y_var) with the *concept* (per-interval score/Fisher contributions), which LSE has — score and Fisher are both sums over intervals.
+
+**CENTRAL RESULT (3 independent mappings converged; numerically verified 1.4e-13 / 2.3e-14):** the LSE *is* the Gaussian model with a CONSTANT plug-in variance and a DEAD variance channel. Set, per interval t, `y_var_t ≡ σ̂² = SSE/n` (the same scalar at every t) with an identically ZERO derivative. Then the EXISTING per-step formula `XXT(dμ)/v + XXT(dv)/(2v²)` collapses to `(n/SSE)·dμ_t dμ_tᵀ` = exactly the LSE per-interval Fisher, and the variance channel switches off by the zero derivative. **Consequence: NOTHING downstream changes** — no new type/Var, no writer change, no R formula change, no battery/distortion edit. `dMacro_State_Ev_gradient_all` is reused VERBATIM; the y_var-dependent code is *fed* LSE-correct values, not rewritten.
+
+Per-interval `gradient_all_element` (qmodel_types.h:1454-1460 + micro_types.h:409-411):
+- `Derivative<y_mean>` = μ_t with dμ_t. Already in hand (qmodel.h:7421-7422, 7427).
+- `Derivative<y_var>` = σ̂², derivative **explicit p-vector of ZEROS via `var::init_with_dx<DX>(sigma2, dx)`**. NOT default-constructed: a 0×0 derivative emits no `y_var/derivative` rows and fig4's inner merge on dv **silently drops every row** (empty panel, not an error). Zero-derivative is exact, not an approximation — same plug-in discipline as the finalize (§C AD caveat).
+- `Derivative<logL>`: derivative = `(n/SSE)·(y_t−μ_t)·dμ_t` (the per-interval score). Σ_t == `derivative(get<logL>)` of the scalar finalize (verified 2.3e-14) — **assert in a smoke test**. PRIMITIVE has no principled value (the marginal logL is global, does not decompose) → write 0 and document; fig4 filters `calculus=="derivative"` so it never reads it.
+- `Derivative<r_std>` = (y_t−μ_t)/σ̂. **TRAP: Σ_t r_std_t² = SSE/σ̂² = n IDENTICALLY** → r̄²_std ≡ 1 is a TAUTOLOGY for LSE, not a calibration result. Flag it in any panel reading r2_std or it silently reads "perfectly calibrated".
+- NaN-y interval: dμ_t = ZEROS, score 0 (the driver skips NaN in Fisher_acc @7423, so Σ_t F_t only matches the total GFI if NaN intervals contribute nothing).
+- `trust_coefficient` = 1.0 (no clipping in LSE); taylor_* = 0. Top level: ZERO the `Derivative<Patch_State>` P_Cov before returning (LSE never touches it; today it would dump uninitialised garbage).
+
+**Driver change:** `nonlinearsqr_logLikelihood` (qmodel.h:7367-7501) grows an Evolution arm, **TWO-PASS** (the one genuine structural difference vs macro: the (n/SSE) prefactor is unknown until the fold ends). Pass 1 = the existing loop, retaining per-interval (μ_t, dμ_t, y_t). Pass 2 = cheap O(T) POST-pass after the SSE>0 guard: σ̂²=SSE/n once, then fill the Evolution. **Do NOT re-run calc_Qdt.** The scalar finalize is unchanged and stays the MLE path.
+
+**Routing — ONE guard flips.** `calculate_mdlikelihood_predictions_visit`, src/core/likelihood.cpp:928-929 (`error_message("unsupported for family==nonlinearsqr")`) → route to a new `calculate_mdlikelihood_predictions_nonlinearsqr_impl` (sibling of `calculate_mdlikelihood_nonlinearsqr_impl` @650-664: load_dmodel + Derivative-capable re-wrap), dispatching to an Evolution-producing `nonlinearsqr_dlogLikelihoodPredictions`. **That single site is the SOLE producer of `dMacro_State_Ev_gradient_all` and unlocks BOTH fig4 and fig5** (funnels: single @990-1002, batched @1013-1055, DSL `calc_dlikelihood_predictions` @command_manager.cpp:1106-1112). The other four guards (846 mdiff, 869 predictions, 891 diagnostics, 973 detailed) STAY guarded — none feeds fig4/fig5.
+
+**Caveats to carry into the figures (narrative, not bugs):**
+- **Martingale caveat (fig 4):** the macro J_T/F_T→1 test rests on the per-step score being a martingale-difference sequence. The LSE per-interval scores share the GLOBAL (n/SSE) estimated from the SAME recording, so they are NOT a martingale difference sequence — a rank-1 common-mode enters the across-sim covariance. The identity is *conditionally* exact; state it, do not plot it silently as if it were the macro test.
+- **G_b means something different:** for macro, G_b vs F_b = moment-matched Gaussian FIM vs numerical truth; for LSE, G_b = (n/SSE)JᵀJ is the Gauss-Newton curvature. GIDM = Ḡ^{-1/2}·J·Ḡ^{-1/2} is the honest F-vs-J sandwich; identity ⇔ homoscedastic-white holds (it does not, by gating) → the gap IS the LSE result.
+- **fig5 provenance seam:** figure_5_master.Rmd reads the numeric-Fisher `_battery_*`, but LSE can only produce the gaussian `_battery_*_G` (the `_paired` overload needs a numerical Fisher).
+- **UNRESOLVED:** which fig4 is the paper's (paper/figure_4.Rmd per-step vs archive/figure_4_score.Rmd cumulative). And whether the fig4 LSE run keeps all 6 params free (fig4 never inverts the Fisher, so it is safe and preserves param-index alignment) vs the "fix the flat directions" rule needed for the MLE.
+
 ## Implementation order
 1. [MECH] qmodel_types.h family flag (BESIDE micro) + sqr_dif slot (only if a per-interval dump is wanted — 4 coordinated Algo_State edits, §D).
 2. [MECH] likelihood.h core builder `build_likelihood_function_with_family` + bool wrapper + widened alias + nonlinearsqr branch (variance accepts both, §B); command_manager.cpp register `_with_family`.

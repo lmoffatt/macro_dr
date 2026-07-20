@@ -699,6 +699,29 @@ auto calculate_mdlikelihood_predictions_impl(
     return dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
 }
 
+// nonlinearsqr analog of calculate_mdlikelihood_predictions_impl: same load_dmodel
+// + Derivative-capable re-wrap, but routes to the LSE driver instantiated at
+// dMacro_State_Ev_gradient_all, which switches on its pass-2 per-interval
+// Evolution fill (figure 4 cumulative J_T/F_T, figure 5 distortion).
+// See nonlinearsqr_cpp_spec.md section H.
+template <class adaptive, class recursive, class averaging, class variance, class taylor,
+          class family, class Model, class FuncTable>
+auto calculate_mdlikelihood_predictions_nonlinearsqr_impl(
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, family,
+                                     Model>& lik,
+    FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
+    const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
+    auto dmodel = load_dmodel(lik.m.model_name());
+    if (!dmodel) {
+        return dmodel.error();
+    }
+    auto model0_d = std::move(dmodel.value());
+    auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
+                                                  family, decltype(*model0_d)>(*model0_d,
+                                                                               lik.n_sub_dt);
+    return nonlinearsqr_dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
+}
+
 // Micro analog: same load_dmodel + Likelihood_Model_constexpr re-wrap as the
 // macro impl, but routes through Micro_DMR::log_Likelihood<…, dMicro_State_Ev_gradient_all>
 // and adapts the result to dMacro_State_Ev_gradient_all so the dispatcher
@@ -926,7 +949,12 @@ auto calculate_mdlikelihood_predictions_visit(const likelihood_algorithm_type& m
             evaluation_timer timer;
             Maybe_error<dMacro_State_Ev_gradient_all> result;
             if constexpr (ModelL::nonlinearsqr_type::value) {
-                result = error_message("unsupported for family==nonlinearsqr");
+                // ROUTED (was guarded): this is the SOLE producer of
+                // dMacro_State_Ev_gradient_all, and both figure 4 (_time_dlik
+                // cumulative J_T/F_T) and figure 5 (distortion battery) funnel
+                // through it. See nonlinearsqr_cpp_spec.md section H.
+                result = calculate_mdlikelihood_predictions_nonlinearsqr_impl(modelLikelihood,
+                                                                              ftbl3, par, e, r);
             } else if constexpr (ModelL::micro_type::value) {
                 result = calculate_mdlikelihood_predictions_micro_impl(modelLikelihood, ftbl3, par,
                                                                        e, r);

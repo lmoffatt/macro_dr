@@ -7349,9 +7349,11 @@ class Macro_DMR {
     //   dMacro_State_Hessian_minimal (Derivative<logL> + Gaussian_Fisher_Information)
     //     for the MLE / derivative path, and
     //   Macro_State_reg (logL/elogL/vlogL) for the value path.
-    // The four Evolution-carrying states are guarded at the visit sites (the lean
-    // no-Evolution driver cannot produce an Evolution); only the two reduced
-    // states above are routed here. `adaptive`, `recursive`, `variance` and
+    // ALSO produces the per-interval Evolution when MacroState carries one
+    // (dMacro_State_Ev_gradient_all → fig 4 cumulative J_T/F_T, fig 5 distortion):
+    // see the pass-2 block in the finalize and nonlinearsqr_cpp_spec.md §H. The
+    // remaining Evolution-carrying states (predictions / diagnostic / detailed)
+    // stay guarded at the visit sites. `adaptive`, `recursive`, `variance` and
     // `variance_correction` are accepted and ignored (the marginalized LSE mean
     // has no recursion, no emission variance — the [VAR-BLOCK] behaviour).
     template <class adaptive, class recursive, class averaging, class variance,
@@ -7395,6 +7397,19 @@ class Macro_DMR {
         SymPosDefMatrix<double> Fisher_acc;
         std::size_t n = 0;
 
+        // Per-interval retention for the Evolution (fig 4 / fig 5). The (n/SSE)
+        // prefactor is global — unknown until the fold ends — so pass 1 only
+        // RETAINS (μ_t with dμ_t, y_t) and pass 2 fills the Evolution in the
+        // finalize. That post-pass is O(T) and does NOT re-run calc_Qdt.
+        constexpr bool wants_evo = is_deriv && has_var_c<MacroState&, Evolution>;
+        using YMeanT = std::decay_t<decltype(build<y_mean>(var::init_with_dx<DX>(0.0, dx)))>;
+        std::vector<YMeanT> ev_ymean;
+        std::vector<double> ev_y;
+        if constexpr (wants_evo) {
+            ev_ymean.reserve(y().size());
+            ev_y.reserve(y().size());
+        }
+
         for (std::size_t i_step = 0; i_step < y().size(); ++i_step) {
             Agonist_evolution const& t_step =
                 get<Agonist_evolution>(get<Recording_conditions>(e)()[i_step]);
@@ -7420,6 +7435,12 @@ class Macro_DMR {
                 auto& p_P_mean = get<P_mean>(t_patch());
                 auto r_y_mean =
                     build<y_mean>(Nch * getvalue(p_P_mean() * t_gmean_i) + y_baseline());
+                // Pass 1: retain every interval (NaN ones included, so the
+                // Evolution stays index-aligned with the recording).
+                if constexpr (wants_evo) {
+                    ev_ymean.push_back(r_y_mean);
+                    ev_y.push_back(yi);
+                }
                 if (!std::isnan(yi)) {
                     auto dy = yi - r_y_mean();
                     SSE = SSE + dy * dy;
@@ -7490,8 +7511,81 @@ class Macro_DMR {
             Gaussian_Fisher_Information t_GFI{};
             t_GFI() = parameter_spd_payload(sigma2_inv * Fisher_acc,
                                             var::get_dx_of_dfdx(t_dlogL));
-            return Maybe_error<MacroState>(
-                MacroState(std::move(t_dlogL), std::move(t_patch), std::move(t_GFI)));
+
+            if constexpr (wants_evo) {
+                // ---- Pass 2: per-interval Evolution (fig 4 / fig 5) -------------
+                // sigma_hat^2 is known only here. Setting y_var == sigma_hat^2 with
+                // an identically ZERO derivative makes every EXISTING downstream
+                // consumer's  XXT(dmu)/v + XXT(dv)/(2 v^2)  collapse to
+                // (n/SSE)*dmu_t dmu_t^T = the LSE per-interval Fisher, and makes the
+                // per-interval scores sum to the scalar total. Nothing downstream
+                // changes (no new type, no writer/R/battery edit). See
+                // nonlinearsqr_cpp_spec.md section H.
+                MacroState out{};
+                get<logL>(out) = t_dlogL;
+                if constexpr (has_var_c<MacroState&, Patch_State>)
+                    get<Patch_State>(out) = t_patch;
+                if constexpr (has_var_c<MacroState&, Gaussian_Fisher_Information>)
+                    get<Gaussian_Fisher_Information>(out) = t_GFI;
+
+                const double sigma2 = SSE_v / static_cast<double>(n);
+                const double sigma = std::sqrt(sigma2);
+                const double half_log = 0.5 * std::log(2.0 * std::numbers::pi * sigma2);
+
+                auto& evo = get<Evolution>(out)();
+                using Evo = std::decay_t<decltype(get<Evolution>(out))>;
+                using Element = typename Evo::element_type;
+                evo.reserve(ev_ymean.size());
+                for (std::size_t i = 0; i < ev_ymean.size(); ++i) {
+                    Element el{};
+                    const bool finite = !std::isnan(ev_y[i]);
+
+                    // residual as a Derivative; zero (value and derivative) on a
+                    // NaN interval, mirroring calculate_logL's hard zero.
+                    auto d = var::init_with_dx<DX>(0.0, dx);
+                    if (finite)
+                        d = ev_y[i] - ev_ymean[i]();
+
+                    // y_mean = mu_t with dmu_t. On a NaN interval the derivative is
+                    // ZEROED so sum_t F_t still equals the returned total GFI (the
+                    // fold skips NaN intervals in Fisher_acc).
+                    if constexpr (has_var_c<Element&, y_mean>) {
+                        if (finite)
+                            get<y_mean>(el) = ev_ymean[i];
+                        else
+                            get<y_mean>(el) = build<y_mean>(
+                                var::init_with_dx<DX>(var::primitive(ev_ymean[i]()), dx));
+                    }
+                    // y_var == sigma_hat^2 with EXPLICIT shaped zeros. A default
+                    // (0x0) derivative would emit no y_var/derivative rows and
+                    // silently empty figure 4's panel instead of erroring.
+                    if constexpr (has_var_c<Element&, y_var>)
+                        get<y_var>(el) = build<y_var>(var::init_with_dx<DX>(sigma2, dx));
+                    // logL_t = -0.5*log(2*pi*s2) - 0.5*d^2/s2. s2 is a plug-in
+                    // constant, so the AD chain yields d(logL_t)/dtheta =
+                    // (n/SSE)*d_t*dmu_t exactly, and sum_t equals the scalar score.
+                    if constexpr (has_var_c<Element&, logL>)
+                        get<logL>(el) = build<logL>(
+                            var::init_with_dx<DX>(finite ? -half_log : 0.0, dx) +
+                            (d * d) * (finite ? -0.5 / sigma2 : 0.0));
+                    if constexpr (has_var_c<Element&, elogL>)
+                        get<elogL>(el) = build<elogL>(
+                            var::init_with_dx<DX>(finite ? (-half_log - 0.5) : 0.0, dx));
+                    // NOTE: sum_t r_std_t^2 == n IDENTICALLY for LSE, so any panel
+                    // reading r2_std reads "calibrated" by construction.
+                    if constexpr (has_var_c<Element&, r_std>)
+                        get<r_std>(el) = build<r_std>(d * (1.0 / sigma));
+                    if constexpr (has_var_c<Element&, trust_coefficient>) {
+                        if constexpr (requires { get<trust_coefficient>(el)() = 1.0; })
+                            get<trust_coefficient>(el)() = 1.0;
+                    }
+                    evo.emplace_back(std::move(el));
+                }
+                return Maybe_error<MacroState>(std::move(out));
+            } else {
+                return Maybe_error<MacroState>(
+                    MacroState(std::move(t_dlogL), std::move(t_patch), std::move(t_GFI)));
+            }
         } else {
             double logL_v = logL_const - n_over_2 * std::log(SSE_v);
             return Maybe_error<MacroState>(
@@ -8419,6 +8513,34 @@ Maybe_error<dMacro_State_Hessian_minimal> nonlinearsqr_logLikelihood(
     return Macro_DMR{}
         .nonlinearsqr_logLikelihood<adaptive, recursive, averaging, variance, variance_correction,
                                     dMacro_State_Hessian_minimal>(f, lik.m, dpp, y, var);
+}
+
+// Evolution-producing entrypoint (figure 4 cumulative J_T/F_T, figure 5 distortion).
+// Same lean fold as above, but MacroState carries an Evolution, which switches on
+// the driver's pass-2 post-fill: per-interval y_var == sigma_hat^2 = SSE/n with an
+// identically ZERO derivative, so every existing downstream consumer's
+// XXT(dmu)/v + XXT(dv)/(2 v^2) collapses to (n/SSE)*dmu dmu^T (the LSE per-interval
+// Fisher) and the per-interval scores sum to the scalar total. Nothing downstream
+// changes. Distinct NAME (not an overload) because the signature matches the
+// dMacro_State_Hessian_minimal one and only the return type differs.
+// Routed from likelihood.cpp calculate_mdlikelihood_predictions_visit.
+template <class adaptive, class recursive, class averaging, class variance,
+          class variance_correction, class family, class FuncTable, class Model, class Variables,
+          class DataType>
+    requires(uses_adaptive_aproximation_c<adaptive> && uses_recursive_aproximation_c<recursive> &&
+             uses_averaging_aproximation_c<averaging> && uses_variance_aproximation_c<variance> &&
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+             uses_family_aproximation_c<family>)
+Maybe_error<dMacro_State_Ev_gradient_all> nonlinearsqr_dlogLikelihoodPredictions(
+    FuncTable& f,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, variance_correction,
+                                     family, Model>& lik,
+    var::Parameters_transformed const& p, const DataType& y, const Variables& var) {
+    auto dp = var::selfDerivative(p);
+    auto dpp = dp.to_value();
+    return Macro_DMR{}
+        .nonlinearsqr_logLikelihood<adaptive, recursive, averaging, variance, variance_correction,
+                                    dMacro_State_Ev_gradient_all>(f, lik.m, dpp, y, var);
 }
 
 template <class adaptive, class recursive, class averaging, class variance,

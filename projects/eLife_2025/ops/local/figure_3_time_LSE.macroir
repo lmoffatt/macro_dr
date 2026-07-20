@@ -1,0 +1,75 @@
+# figure_3_time_LSE.macroir — nonlinearsqr (classical LSE) companion to
+# figure_3_time.macroir. ONE simulate, ONE likelihood, ONE per-algorithm CSV, so the
+# LSE joins the 5 macro dumps that feed Figures 3 and 4 (and S4, S5).
+#
+# SAME CELL as figure_3_time.macroir, deliberately: scheme_CO, N_ch=100,
+# Current_Noise=1e-4, exp_n_step=(20,40,40) with n_samp=50, 1000 simulations, seed=0.
+# Only then are the per-interval curves comparable against NR/R/NMR/MR/IR.
+#
+# WHY ALL SIX PARAMETERS STAY FREE (Log10) here, unlike figure_3_mle_LSE.macroir
+# which Fixes unitary_current + Current_Noise:
+#   - figures 3/4 never INVERT the Fisher; they only accumulate it (F_T = cumsum of
+#     the per-interval blocks), so the LSE's flat directions are harmless.
+#   - keeping 6 free preserves param_index alignment with the five macro dumps, which
+#     the R notebooks rely on to compare the same parameter across algorithms. Fixing
+#     two would emit 4 indices against the macro files' 6 and silently misalign.
+#   - the flat directions are then VISIBLE rather than hidden: Current_Noise gets an
+#     identically zero score/Fisher row (the LSE mean has no noise term), and
+#     (unitary_current, Num_ch_mean) form a rank-1 degenerate block (the N*g ridge).
+#
+# WHAT THE LSE EMITS PER INTERVAL (nonlinearsqr_cpp_spec.md section H): y_var is the
+# GLOBAL plug-in sigma_hat^2 = SSE/n with an identically ZERO derivative, so the
+# existing per-interval FIM formula  dmu^2/v + 0.5*dv^2/v^2  collapses to
+# (n/SSE)*dmu^2 — the LSE per-interval Fisher — and the logL derivative rows are the
+# per-interval scores (n/SSE)*(y-mu)*dmu, which sum to the total score exactly.
+#
+# TRAP for whoever reads r_std here: sum_t r_std_t^2 == n IDENTICALLY for the LSE
+# (because sigma_hat^2 = SSE/n by construction), so any r2_std panel reads
+# "perfectly calibrated" as a TAUTOLOGY, not as a result. Do not report it as one.
+#
+# Output: figures/data/figure_3_time_dlik_LSE.csv  (~1 GB, like the macro dumps).
+# The `algorithm` column is added in R from the filename, so the R ALGOS vector needs
+# "LSE" appended alongside NR/NMR/R/MR/IR.
+#
+# RUN LOCALLY (no dirac), from where "figures/data/" resolves:
+#   build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_3_time_LSE.macroir
+
+model = load_model("scheme_CO")
+
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",0.0001},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", 100}])
+
+experiment = create_experiment(
+   experiment_structure = [{20,50,0.0},{40,50,10.0},{40,50,0.0}],
+   frequency_of_sampling = 50e3,
+   initial_agonist = 0.0,
+   initial_time = 0.0)
+
+observations = set_observations(values_set = [0,0,0,0])
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+# shared ensemble of recordings (same seed / size as figure_3_time.macroir)
+simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
+simulations = simulate(
+   model = model, parameter_transformed = par_tr, n_simulations = 1000,
+   experiment = experiment, observations = observations,
+   simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
+   number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
+   seed = 0)
+
+# ---- nonlinearsqr / LSE  (family=2, non-recursive, averaging=1) ----
+# variance_approximation is accepted and IGNORED by the LSE branch ([VAR-BLOCK]).
+lse = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
+   recursive_approximation = 0, averaging_approximation = 1, variance_approximation = 1,
+   taylor_variance_correction = 0, family_approximation = 2, taylor_qdt_approximation = false)
+dlik_LSE = calc_dlikelihood_predictions(likelihood_algorithm = lse, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_LSE = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_LSE,
+   path = "figures/data/figure_3_time_dlik_LSE")
