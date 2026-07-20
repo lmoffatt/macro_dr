@@ -115,8 +115,8 @@ For each main figure in this project, prepare the following bundle:
 Suggested working mapping to the current repo:
 
 - Figure generation code: `projects/eLife_2025/figures/`
-- Storyboard/spec: `papers/macroir-elife-2025/04_figures_storyboard.md`
-- Manuscript drafts: `papers/macroir-elife-2025/docs/manuscript-drafts/`
+- Storyboard/spec: `papers/1_method/04_figures_storyboard.md`
+- Manuscript drafts: `papers/1_method/docs/manuscript-drafts/`
 
 ## 4. Figure-by-figure checklist
 

@@ -75,7 +75,7 @@ This is the “spec” for the main figures. Update it before updating code.
 
 **Data needed (new):**
 
-- the full grid definition from `papers/macroir-elife-2025/05_experiment_grid.md`
+- the full grid definition from `papers/1_method/05_experiment_grid.md`
 - a metric table (algorithm × grid cell)
 
 **Acceptance criteria:**

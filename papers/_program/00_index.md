@@ -4,9 +4,11 @@
 > pack. This routes the shared layer plus three papers. It settles nothing about the science; it
 > settles **where each thing is settled**.
 >
-> **State: the layout below is decided, the moves are not done.** Only this file and `program.md`
-> exist in `_program/` so far. Everything else still sits in `papers/macroir-elife-2025/`. Rows
-> marked **TO MOVE** name the source. Until a row is moved, read it at its old path.
+> **State (2026-07-20): the moves are done.** `papers/macroir-elife-2025/` is now `papers/1_method/`;
+> the shared documents have been moved into `_program/` with `git mv`, so history follows each file.
+> What remains is `check.sh` (step 4) and the five content rewrites (step 5), listed in §5.
+> Rows marked **REWRITE** are at their final path but still say something scoped to the old
+> single-paper frame.
 
 ## The rules
 
@@ -53,41 +55,55 @@ wrong. **TO MOVE** = lives at the old path, belongs at the new one. **REWRITE+MO
 
 ### `_program/` — the shared layer
 
-| Document | Owns | Status | Source if moving |
+| Document | Owns | Status | Note |
 |---|---|---|---|
 | `00_index.md` (this) | the topic→owner routing across four layers | LIVE | — |
-| `program.md` | the three-paper map, the N_ch partition, publication order, citation directionality | LIVE | new; absorbs `From molecular … PROGRAM.md` |
-| `decisions.md` | every settled **cross-paper** decision | CREATE | split from `02_decision_log.md` |
-| `nomenclature.md` | the letters, their semantics, the data-key↔display-label map | REWRITE+MOVE | `macroir-elife-2025/nomenclature.md` — the endpoint ladder needs the root question above it, and `VR` needs deciding |
-| `machinery.md` | the validation machinery: diagnostic definitions, sign conventions, thresholds, CSV fields, the decomposition identity `IDM = K·CDM·Kᵀ` | CREATE | merge `03_metrics_diagnostics.md` + `correction_idm_reconstruction.md` + the non-section half of `diagnostics_plan.md` |
-| `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | the model half of `methods_plan.md` + `decisions/D-2_parameter_units.md` |
-| `axes.md` | N_ch, interval, noise; the two crossovers and the three bands; the label→value maps and their three divergent copies in ops | REWRITE+MOVE | `05_experiment_grid.md` §1–2b (already rewritten 2026-07-20) |
-| `provenance.md` | which run made which data, what is reproducible, the seed sentinel, the n_sims/Jensen hazard | TO MOVE | `docs/figure_provenance.md` |
-| `figures_system.md` | the cross-figure visual system: one algorithm→colour map, fonts, panel letters | REWRITE+MOVE | `figures/instructions.md` — open since March, every figure chose its own palette |
-| `submission.md` | eLife mechanics, figure guidelines, front/back matter, CRediT, data availability | CREATE | `docs/elife-author-instructions.md` + the missing-owner list |
-| `bibliography/` | the novelty position, the Kalman concession, every citation attribution | TO MOVE | `docs/bibliography/` |
-| `sources.md` | which audio/chat is the source of record, and which wins when two disagree | TO MOVE | `08_sources_audio_notes.md` |
-| `carve_plan.md` | the repo boundary, the freeze trigger, code availability, engine work owed | TO MOVE | `09_carve_plan.md` |
-| `paper-2.md` | paper 2's stub: question, roster, axis, what is on disk, what it needs | CREATE | — |
-| `paper-3.md` | paper 3's stub: same | CREATE | — |
-| `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | REWRITE+MOVE | `macroir-elife-2025/check.sh`. Do **not** triplicate it |
+| `program.md` | the three-paper map, the N_ch partition, publication order, citation directionality | LIVE | — |
+| `research_program.md` | the **wider** scientific program this sits in (theory → model → likelihood → evidence → ranking), and Comm Biol's place as the demonstration | LIVE | was `From molecular … PROGRAM.md`. `program.md` is the three-paper map; this is the context around it |
+| `decisions.md` | every settled **cross-paper** decision | LIVE | — |
+| `machinery.md` | the validation machinery: definitions, sign conventions, thresholds, the decomposition identity `IDM = K·CDM·Kᵀ`, the hazards | LIVE | merged from `03_metrics_diagnostics.md` + `correction_idm_reconstruction.md` + the definitional half of `diagnostics_plan.md` |
+| `axes.md` | N_ch, interval, noise; the two crossovers and the three bands; the label→value maps and their three divergent copies in ops; the per-cell protocol | REWRITE | was `05_experiment_grid.md`. Rewritten 2026-07-20 for the bands; still needs its §3–7 split, with paper-1-specific cells going to `1_method/grid.md` |
+| `nomenclature.md` | the letters, their semantics, the data-key↔display-label map | REWRITE | the endpoint ladder needs the root question above it, and `VR` needs deciding |
+| `provenance.md` | which run made which data, what is reproducible, the seed sentinel, the n_sims/Jensen hazard | LIVE | was `docs/figure_provenance.md` |
+| `figures_system.md` | the cross-figure visual system: one algorithm→colour map, fonts, panel letters | REWRITE | was `figures/instructions.md`; open since March, every figure chose its own palette |
+| `elife-author-instructions.md` | the verified eLife author requirements | LIVE | — |
+| `notation_map.md` | symbol↔code↔CSV notation | LIVE | — |
+| `sources.md` | which audio/chat is the source of record, and which wins when two disagree | LIVE | was `08_sources_audio_notes.md` |
+| `carve_plan.md` | the repo boundary, the freeze trigger, code availability, engine work owed | REWRITE | "one paper = one repo" is reopened by the split (`decisions.md` §5) |
+| `paper-2.md`, `paper-3.md` | the two stubs | LIVE | promote to folders when they start drafting |
+| `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | merge the model half of `1_method/methods.md` + `1_method/decisions/D-2_parameter_units.md` |
+| `submission.md` | front/back matter, CRediT, data availability, MDAR, article type | CREATE | from `elife-author-instructions.md` + the missing-owner list |
+| `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | CREATE | currently `1_method/check.sh`, still pointing at the old single-pack layout. Do **not** triplicate it |
+
+**Not in `_program/`, but shared and cited by it:** `docs/bibliography/` lives at the **repo root**, not
+in the papers tree, because the engine and theory layers cite it too. It owns the novelty position,
+the Kalman concession and every citation attribution. Do not move it here.
 
 ### `1_method/` — paper 1
 
-| Document | Owns | Status | Source |
+All at their final path. **REWRITE** means the file is where it belongs and still says something
+scoped to the old single-paper frame.
+
+| Document | Owns | Status | Note |
 |---|---|---|---|
-| `00_plan.md` | paper 1's thesis, scope, roster, the band-A results, its open decisions | REWRITE+MOVE | `00_master_plan_v2.md` (rewritten 2026-07-20; the program parts lift out to `program.md`) |
-| `01_writing_plan.md` | the drafting task graph, the lints, the human budget | TO MOVE | same name |
-| `decisions.md` | paper 1's own settled decisions | CREATE | the paper-specific half of `02_decision_log.md` |
-| `grid.md` | paper 1's cells: which N_ch, which noise, which methods | CREATE | `05_experiment_grid.md` §3–7 |
-| `title.md`, `abstract.md` | its front matter | REWRITE+MOVE | `title_options.md`, `abstract_draft.md` — the abstract currently **opens on least squares**, which is now paper 2 |
-| `introduction.md` | the Introduction | REWRITE+MOVE | `introduction_plan.md` — the roster paragraph and the literature attribution both change |
-| `theory.md` | the Theory section | REWRITE+MOVE | `theory_plan.md` — "one object with two knobs" is now false, and `:85` still calls the noise parameter a misnomer, which D-2 overturned |
-| `diagnostics.md` | the Diagnostics **section** (the machinery itself moves to `_program/machinery.md`) | REWRITE+MOVE | `diagnostics_plan.md` |
-| `results.md` | the Results and **the figure arc** | REWRITE+MOVE | `results_plan.md` |
-| `discussion.md` | the Discussion and the decision rule the paper is cited for | REWRITE+MOVE | `discussion_plan.md` |
-| `methods.md` | Materials and Methods (minus the model, which moves to `_program/`) | REWRITE+MOVE | `methods_plan.md` |
-| `docs/manuscript-drafts/` | the vessel. Owns nothing; every claim in it is owned upstream | TO MOVE | same |
+| `00_plan.md` | paper 1's thesis, scope, roster, the band-A results, its open decisions | REWRITE | was `00_master_plan_v2.md`; reframed 2026-07-20, but its §0 and §1a still speak for the whole program — those parts now belong to `_program/` |
+| `decisions.md` | paper 1's own settled decisions | REWRITE | was `02_decision_log.md`; the cross-paper half has been copied to `_program/decisions.md` and must now be **deleted from here**, not left as a second copy |
+| `01_writing_plan.md` | the drafting task graph, the lints, the human budget | REWRITE | hard-gates the definition of done at six figures while the count is open |
+| `title.md` | the title argument | REWRITE | three live conflicting titles, and all describe a distortion study rather than paper 1's scope |
+| `abstract.md` | the abstract and Impact Statement | REWRITE | **opens on least squares**, which is now paper 2's subject |
+| `introduction.md` | the Introduction | REWRITE | the roster paragraph and the literature attribution both change; `R` now carries the anchor |
+| `theory.md` | the Theory section | REWRITE | "one object with two knobs" is now false; `:85` still calls the noise parameter a misnomer, which D-2 overturned |
+| `diagnostics.md` | the Diagnostics **section**: how it is written and argued | REWRITE | the definitions themselves now live in `_program/machinery.md`; this keeps the prose strategy and the source lift-readiness table |
+| `results.md` | the Results and **paper 1's figure arc** | REWRITE | its headline numbers row is band A only |
+| `discussion.md` | the Discussion and the decision rule the paper is cited for | REWRITE | closest to the new frame already, since it asks for a decision rule rather than a winner |
+| `methods.md` | Materials and Methods | REWRITE | the model and units halves move out to `_program/model_and_sim.md` |
+| `README.md` | routes into paper 1; points at the program layer | LIVE | — |
+| `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan` is REWRITE (six-figure gate); `00_master_plan` is a tombstone |
+| `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
+| `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
+| `docs/manuscript-drafts/` | the vessel. Owns nothing; every claim in it is owned upstream | LIVE | — |
+| `grid.md` | paper 1's cells: which N_ch, which noise, which methods | CREATE | from `_program/axes.md` §3–7 once the N_ch ranges and `VR` are settled |
+| `components/`, `archive/` | parked proof-of-concept and tombstones | RETIRED | never fact owners |
 
 ### Retired, do not read as current
 
@@ -145,13 +161,22 @@ figure count is formally open.
 
 ## 5. Order of operations
 
-1. `program.md` + this index. **← you are here**
-2. The four stubs and merges that have no source to move: `paper-2.md`, `paper-3.md`, `decisions.md`,
-   `machinery.md`.
-3. The moves, with `git mv` so history follows the file, **in batches by topic, not all at once**.
-4. `check.sh`, retargeted to four layers and taking the paper as an argument.
-5. The five real rewrites, one at a time, each touching a thesis: `00_plan.md`, `decisions.md`,
-   `theory.md`, `nomenclature.md`, `abstract.md`.
+1. ~~`program.md` + this index.~~ **Done 2026-07-20.**
+2. ~~The stubs and merges: `paper-2.md`, `paper-3.md`, `decisions.md`, `machinery.md`.~~ **Done.**
+3. ~~The moves, with `git mv` so history follows the file.~~ **Done.** `macroir-elife-2025` →
+   `1_method`; twelve shared documents into `_program/`; ten section plans renamed; three merged or
+   superseded documents tombstoned into `1_method/archive/`.
+4. `check.sh`, retargeted to four layers and taking the paper as an argument. **← you are here.**
+   It currently sits at `1_method/check.sh` and its index-completeness check (item 9) still
+   enumerates the old single pack, so **it is failing for the wrong reason** until this is done.
+5. The five real rewrites, one at a time, each touching a thesis: `00_plan.md` and `1_method/decisions.md`
+   (both must shed the parts that moved to `_program/`, or the split has just manufactured two copies
+   of everything it separated), `theory.md`, `nomenclature.md`, `abstract.md`.
+
+**The immediate risk, named so it is not forgotten.** The cross-paper content was **copied** into
+`_program/decisions.md`, not moved. Until step 5 deletes it from `1_method/decisions.md` and from
+`00_plan.md`, the program has exactly the duplication this restructure exists to prevent. Do step 5
+before anything else builds on either file.
 
 **Not now:** `projects/eLife_2025/`. It is also named for a venue and a year, but every `.Rmd` and
 every dispatcher hardcodes paths into it and there are jobs in flight. After the freeze.

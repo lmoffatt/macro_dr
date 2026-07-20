@@ -1,14 +1,17 @@
-# Paper 2 (MacroIR / eLife 2025) — Sources & Audio Notes Index
+# Sources & Audio Notes Index
 
-Index of the sources this plan derives from. Treat transcripts as idea-capture, not citable text (automated transcription, occasional word errors).
+> Updated: 2026-07-20. Shared across the three papers. Which audio/chat is the source of record, and
+> which wins when two disagree.
+
+Index of the sources the program derives from. Treat transcripts as idea-capture, not citable text (automated transcription, occasional word errors).
 
 ## Manuscript source (head)
-- `papers/macroir-elife-2025/docs/manuscript-drafts/elife_paper.tex` — the live draft to build on.
+- `papers/1_method/docs/manuscript-drafts/elife_paper.tex` — the live draft to build on.
 - Superseded drafts (`elife-macroir*.tex`, incl. `-merged`, `-revised*`) are earlier variants kept as history.
 
 ## Framing / plan
-- `From molecular mechanisms to data back and forth PROGRAM.md` — research-program framing (this paper = bridge 2).
-- `00_master_plan_v2.md`, `02_decision_log.md`, `09_carve_plan.md`.
+- `program.md` — the three-paper map; `research_program.md` — the wider program framing.
+- `1_method/00_plan.md`, `decisions.md` (+ `1_method/decisions.md`), `carve_plan.md`.
 
 ## Prior published work
 - Moffatt & Pierdominici-Sottile, Comm Biol 2025 (P2X2) — the demonstration; `docs/bibliography/Moffatt_PierdominiciSottile_2025_*`.

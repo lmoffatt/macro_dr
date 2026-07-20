@@ -1,6 +1,6 @@
 # Materials and Methods — what it must contain, with the actual run values
 
-> Working doc, same genre as `abstract_draft.md`. Opened 2026-07-14.
+> Working doc, same genre as `abstract.md`. Opened 2026-07-14.
 > Every value below was read out of the run scripts and the production data, not out of a plan document. Path given for each. Where a value could not be found, it says so, and those are the items that must be settled before submission.
 > eLife excludes Methods from the ~5,000-word main-text target (`docs/elife-author-instructions.md`), so this section can afford to be complete. It should be.
 
@@ -32,7 +32,7 @@ Six parameters, all estimated in **log10 coordinates** (from `projects/eLife_202
 
 **Units are not written anywhere in the repo.** Not in the model header, not in any `.macroir` script, not in any dispatcher. The agonist concentration `10.0` is called "10 µM" in a single code comment. **This has to be fixed by the author; nobody else can.** Without units the Methods are not reproducible and the parameter values are not interpretable. It is the single most concrete gap this document found.
 
-Note also that `projects/eLife_2025/data/models/scheme_CO_par.csv` (on = 10, off = 100, unitary = 1, noise = 0.001, baseline = 1, Num_ch = 50) is **not** what the figures use, and neither are the model header's defaults. Only the `.macroir` scripts are authoritative. Say so, or delete the misleading files before the repo is carved (`09_carve_plan.md`).
+Note also that `projects/eLife_2025/data/models/scheme_CO_par.csv` (on = 10, off = 100, unitary = 1, noise = 0.001, baseline = 1, Num_ch = 50) is **not** what the figures use, and neither are the model header's defaults. Only the `.macroir` scripts are authoritative. Say so, or delete the misleading files before the repo is carved (`../_program/carve_plan.md`).
 
 ## M2 — Protocol
 
@@ -52,7 +52,7 @@ The interval is swept through seven levels (identical injection in every dispatc
 
 **Total record duration is held fixed at 100 ms across the sweep.** That is a good design (it varies the interval without varying the amount of data) and it should be stated as a design choice, not left for the reader to derive.
 
-**The τ inconsistency, which must be resolved before Methods are written.** The label `interval_in_tau` implies the interval is expressed in units of a relaxation time τ. The numbers are consistent with **τ = 10 ms = 1/k_off**. But `05_experiment_grid.md` defines τ differently, as 1/max_k |Re λ_k| of the generator at the agonist condition, and it also notes "standardize how τ is recorded in run metadata". At the agonist condition the relaxation rate of a two-state channel is k_on·[A] + k_off, not k_off, so **the two definitions do not agree and the axis label of every map depends on which one we mean.** Pick one, state it, and check that the figure axes are labelled accordingly.
+**The τ inconsistency, which must be resolved before Methods are written.** The label `interval_in_tau` implies the interval is expressed in units of a relaxation time τ. The numbers are consistent with **τ = 10 ms = 1/k_off**. But `../_program/axes.md` defines τ differently, as 1/max_k |Re λ_k| of the generator at the agonist condition, and it also notes "standardize how τ is recorded in run metadata". At the agonist condition the relaxation rate of a two-state channel is k_on·[A] + k_off, not k_off, so **the two definitions do not agree and the axis label of every map depends on which one we mean.** Pick one, state it, and check that the figure axes are labelled accordingly.
 
 ## M4 — Channel number and the noise sweep
 
@@ -88,7 +88,7 @@ The family is not five codebases; it is one code with two flags (`ops/slurm/disp
 | `macro_MR` | true | 1 |
 | `macro_IR` | true | 2 |
 
-with `taylor_variance_correction = false`, `micro_approximation = false`, `adaptive_approximation = false`, `variance_approximation = true` throughout. **The `averaging_approximation` flag literally counts conditioned endpoints** (0 = instantaneous conductance, 1 = conditioned on the interval's start, 2 = conditioned on both boundary states), which is the endpoint ladder of `nomenclature.md` and is worth pointing out: the implementation is self-documenting and the family is a genuine grid, not a selection.
+with `taylor_variance_correction = false`, `micro_approximation = false`, `adaptive_approximation = false`, `variance_approximation = true` throughout. **The `averaging_approximation` flag literally counts conditioned endpoints** (0 = instantaneous conductance, 1 = conditioned on the interval's start, 2 = conditioned on both boundary states), which is the endpoint ladder of `../_program/nomenclature.md` and is worth pointing out: the implementation is self-documenting and the family is a genuine grid, not a selection.
 
 **`taylor_variance_correction = false` means the MR that runs is MacroMR, not MacroMRT.** The theory documents in `theory/macroir/docs/Macro_MRT/` describe MRT. The structural sentence transfers (MacroMR lacks the boundary cross-correlation term N_ch·(γᵀΣγ)~ that MacroIR keeps; that is the central difference between the M and I families) but the Taylor variance correction is *not* in the paper and must not be described as if it were.
 
@@ -131,7 +131,7 @@ Environment, for the record: SLURM, 32 CPUs per task, 48 GB (96 GB for the figur
 
 ## M10 — The two-anchor split, which Methods has to own
 
-The main text will draw cross-algorithm panels from **`433ed13`** (numerical Fisher; the only run with all five algorithms) and IR mechanism panels from **`1c2ae6f`** (Gaussian Fisher; no NMR at all). `00_master_plan_v2.md` §6 says the definitive figures are anchored on the Gaussian Fisher. **They currently cannot be** (`results_plan.md`, Fig 5).
+The main text will draw cross-algorithm panels from **`433ed13`** (numerical Fisher; the only run with all five algorithms) and IR mechanism panels from **`1c2ae6f`** (Gaussian Fisher; no NMR at all). `00_plan.md` §6 says the definitive figures are anchored on the Gaussian Fisher. **They currently cannot be** (`results.md`, Fig 5).
 
 Methods must either (a) state and justify the split (the justification available is Figure 4's per-step identity J_t = F_t across all five algorithms, which says the two anchors agree interval by interval), or (b) it goes away because the missing Gaussian-Fisher cells get run. **This is a decision with a compute cost attached and it should be made before the Results are drafted, not after.**
 
@@ -148,7 +148,7 @@ One paragraph. It exists because the code runs it, and because a reader implemen
 | The filter, in Methods prose | `theory/macroir/docs/Macro_IR/macroir_macroir_paper_section.md` (50 lines) | **Lift nearly as-is.** It is already written as a Methods block. |
 | The full derivation, Supplement | `Macro_IR/macroir_derivation.tex` (1305 lines, compiles) | Supplement-ready. §8 (the measurement update) is labelled a sketch and is the least finished part; finish it or cite the compact version. |
 | The compact supplement | `Macro_IR/macroir_macroir_supplement.tex` (140 lines) | Ready. The better choice if the long derivation feels disproportionate for a two-state paper. |
-| The diagnostics | `Likelihood_Information_Distortion/supplement_information_distortion_main.tex` | Supplement-ready, with the caveats in `diagnostics_plan.md`. |
+| The diagnostics | `Likelihood_Information_Distortion/supplement_information_distortion_main.tex` | Supplement-ready, with the caveats in `diagnostics.md`. |
 | The Gaussian-Fisher anchor | `Gaussian_Fisher_Distortion_Family.md` | Definitions ready; the file is a maintainer note and must be re-prosed. |
 | Numerics | `Macro_IR/macro_ir_variance_inflation_correction.tex` | Ready, cut to one paragraph. |
 

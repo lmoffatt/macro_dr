@@ -1,12 +1,12 @@
 # Diagnostics section — the validation machinery, what it claims, and two things in it that are not what they look like
 
-> Working doc, same genre as `abstract_draft.md`. Opened 2026-07-14.
+> Working doc, same genre as `abstract.md`. Opened 2026-07-14.
 > Covers the manuscript's third section, *"Diagnostics: testing a likelihood against its simulation"* (`docs/manuscript-drafts/elife_paper.tex`), which is the paper's genuinely new contribution and therefore the section most exposed to a methods reviewer.
-> Source of the definitions: `theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex` (373 lines, PDF built) and `theory/macroir/docs/Gaussian_Fisher_Distortion_Family.md`. Operational summary: `03_metrics_diagnostics.md`.
+> Source of the definitions: `theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex` (373 lines, PDF built) and `theory/macroir/docs/Gaussian_Fisher_Distortion_Family.md`. Operational summary: `../_program/machinery.md`.
 
 ## The job
 
-This section has to convert "we tested whether the likelihood is faithful" from a claim into a procedure a sceptic could run on their own likelihood tomorrow. It is the part of the paper that a reader might actually reuse, and it is the reason *Tools and Resources* is a live article-type option (`abstract_draft.md`, decision 4).
+This section has to convert "we tested whether the likelihood is faithful" from a claim into a procedure a sceptic could run on their own likelihood tomorrow. It is the part of the paper that a reader might actually reuse, and it is the reason *Tools and Resources* is a live article-type option (`abstract.md`, decision 4).
 
 It also has to survive a statistician. That means being precise about which identities are exact algebra, which are first-order approximations, and which are conventions. The supplement is honest about this internally; the manuscript must be too.
 
@@ -46,7 +46,7 @@ Three consequences, all of which belong in the paper:
 - It costs nothing extra (derivable from the same derivative pass).
 - The **numerical finite-difference Fisher** is computed separately, and only to gauge how faithful the Gaussian one is (the F-vs-G bridge). It is *not* the anchor, and the reason is empirical: in this regime the finite-difference Fisher is widely indefinite per replicate (`project_numerical_fisher_negative_eig_figure2`). Pooling and eigenvalue-scaling arguments established that the *true* bias is only in NR; the rest of the indefiniteness is finite-difference noise. **State this. It is the honest reason for the anchor switch, and if it is not stated, a reviewer who knows the sandwich literature will ask why the Hessian was not used.**
 
-**The circularity objection, and its answer** (also in `discussion_plan.md`): comparing the approximation to its own Fisher is not circular. H is the information the likelihood *claims*; J is the information it *delivers* against data from the true process. They are different objects, computed from different things, and their disagreement is the definition of misspecification. Write that sentence in the paper.
+**The circularity objection, and its answer** (also in `discussion.md`): comparing the approximation to its own Fisher is not circular. H is the information the likelihood *claims*; J is the information it *delivers* against data from the true process. They are different objects, computed from different things, and their disagreement is the definition of misspecification. Write that sentence in the paper.
 
 ## Two things in this section are not what they look like
 
@@ -84,9 +84,9 @@ holds identically, with no assumption at all.
 
 This is strictly better than the alternative of redefining the correlation factor in the H frame (R_H := C_s^(−1/2) C C_s^(−1/2), which also makes the product exact), because K leaves R **frame-independent**, and that is a property the code deliberately exploits: one CDM serves both the numerical-Fisher and the Gaussian-Fisher anchors (`src/core/likelihood.cpp:3570`).
 
-**This is not hypothetical: the code implements the wrong version, and the symptom was already on the record.** `src/core/likelihood.cpp:3501` computes `Likelihood_Information_Distortion_Reconstituted` as `apply_sqrt_congruence(W_SDM, cdm)` = SDM^(1/2) · CDM · SDM^(1/2), and `00_master_plan_v2.md` §5 records the two-path reconstruction as landing "~1 but not exactly, flagged open question". That near-miss is the missing rotation. Measured on `433ed13` (battery_pool, noise 0.1): the reconstruction error is 0.06% for IR at N_ch = 10⁴, 3.1% for IR at N_ch = 10, and **9.1% for NR at N_ch = 10⁴**, tracking ‖Q − I‖ row by row.
+**This is not hypothetical: the code implements the wrong version, and the symptom was already on the record.** `src/core/likelihood.cpp:3501` computes `Likelihood_Information_Distortion_Reconstituted` as `apply_sqrt_congruence(W_SDM, cdm)` = SDM^(1/2) · CDM · SDM^(1/2), and `00_plan.md` §5 records the two-path reconstruction as landing "~1 but not exactly, flagged open question". That near-miss is the missing rotation. Measured on `433ed13` (battery_pool, noise 0.1): the reconstruction error is 0.06% for IR at N_ch = 10⁴, 3.1% for IR at N_ch = 10, and **9.1% for NR at N_ch = 10⁴**, tracking ‖Q − I‖ row by row.
 
-**Full write-up and the change list: `correction_idm_reconstruction.md`.** No figure or reported number changes; IDM, SDM and CDM are each computed directly from (H, J, J_s) and never through one another.
+**Full write-up and the change list: `../_program/machinery.md`.** No figure or reported number changes; IDM, SDM and CDM are each computed directly from (H, J, J_s) and never through one another.
 
 Two consequences for the figures, either way:
 
@@ -113,7 +113,7 @@ Three consequences the paper cannot avoid:
 
 ## What stays out
 
-- **The evidence correction** (Laplace peak + volume, α-calibration; `supplement_evidence_correction.tex`, 651 lines). Motivation only, one paragraph in the Discussion, derivation deferred (`02_decision_log.md`).
+- **The evidence correction** (Laplace peak + volume, α-calibration; `supplement_evidence_correction.tex`, 651 lines). Motivation only, one paragraph in the Discussion, derivation deferred (`../_program/machinery.md` §10).
 - **The entire posterior-distortion family** (`docs/Posterior_Information_Distortion/`, five substantial supplements). Cut. It is a later component and it is well-written enough to be a paper of its own.
 - **The safety categorization** (SAFE / MARGINAL / UNRELIABLE / BIASED). It gates on the spectrum of the likelihood Hessian and it belongs to the posterior framework. It does not appear in this paper's figures and it should not appear in its text.
 - **The implementation-level trust region** (α_μ, the simplex projection, the PSD guard). Methods, at most a paragraph, and only because the code runs it. Not here.
@@ -132,6 +132,6 @@ Three consequences the paper cannot avoid:
 
 - **The C = C_s^(1/2) R C_s^(1/2) identity.** Either prove it under a stated condition, or demote it to the determinant version. Do not print it as written.
 - **n_sims uniformity across every cell of every heatmap.** (See above. This is the highest-risk item in the paper.)
-- **The direction convention**, once, in code: C_ii > 1 means over-confident. Every verdict depends on it and the repo currently states it with two different signs in three places (`results_plan.md`).
+- **The direction convention**, once, in code: C_ii > 1 means over-confident. Every verdict depends on it and the repo currently states it with two different signs in three places (`results.md`).
 - **Whether `Wald_T2` is computed on the final runs** and whether its debiased form changes any map's ordering. If it does not, say so in one sentence and keep the simpler statistic.
 </content>
