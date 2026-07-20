@@ -1,3 +1,9 @@
+> **RETIRED 2026-07-20. Superseded by `../../_program/00_index.md`.**
+> It routed a single pack; the program now has four layers (_program + three papers).
+> Do not read as current and do not edit. Kept for its content; the live owner is the successor.
+
+---
+
 # Master list: who owns what
 
 > Opened 2026-07-14. Updated 2026-07-20. This is the routing document for the MacroIR / eLife paper. It settles nothing about the science; it settles **where each thing is settled**.

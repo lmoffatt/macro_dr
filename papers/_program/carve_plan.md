@@ -1,17 +1,21 @@
-# Carve plan: macro_dr → macroir-validity
+# Carve plan: macro_dr → a paper/program repo
 
-> Frontier map for splitting this paper into its own repo. Decide the boundary now (no files move); execute the 3 steps at **code freeze** (when the Gaussian-Fisher figures are final and the Dirac runs are done). Open decisions marked **[Q]**. Comment inline.
+> Updated: 2026-07-20. Frontier map for splitting the paper work out of `macro_dr` at **code freeze**.
+> **Reopened by the three-paper split** (`decisions.md` §5): "one paper = one repo" was decided when
+> there was one paper; with three papers sharing one engine, one machinery layer and one data tree, the
+> open question is now one program repo or three. Decide the boundary now (no files move); execute at
+> freeze. Open decisions marked **[Q]**.
 
 ## Why curation, not a move
 
-`projects/eLife_2025/` is **92 GB**: `figures/data/` 73 GB, `runs/` 19 GB. `papers/macroir-elife-2025/` is 6 MB. So ~99% of the material must NOT enter git. The paper repo is a small, curated bundle; the bulk is regenerable from the engine or goes to Zenodo. Cloning the folder wholesale would drag 92 GB into a paper repo.
+`projects/eLife_2025/` is **92 GB**: `figures/data/` 73 GB, `runs/` 19 GB. `papers/1_method/` is 6 MB. So ~99% of the material must NOT enter git. The paper repo is a small, curated bundle; the bulk is regenerable from the engine or goes to Zenodo. Cloning the folder wholesale would drag 92 GB into a paper repo.
 
 ## Three buckets
 
 ### A. Goes into `macroir-validity` (small, git-tracked)
 
-- **Manuscript.** `papers/macroir-elife-2025/docs/manuscript-drafts/elife_paper.tex` (the live head) + `biblio.bib` + `elife.cls` and template assets needed to build. Drop the superseded drafts (`elife-macroir*.tex`) — they stay as history in `macro_dr`.
-- **Program + paper-facing docs.** `From molecular mechanisms to data back and forth PROGRAM.md`, `analysis_figure_S1_score_mean.md`, `docs/notation_map.md`, `docs/corrected covariance justification.md`.
+- **Manuscript.** `papers/1_method/docs/manuscript-drafts/elife_paper.tex` (the live head) + `biblio.bib` + `elife.cls` and template assets needed to build. Drop the superseded drafts (`elife-macroir*.tex`) — they stay as history in `macro_dr`.
+- **Program + paper-facing docs.** `research_program.md`, `1_method/analysis_figure_S1_score_mean.md`, `notation_map.md`, `1_method/docs/corrected covariance justification.md`.
 - **Figure scripts.** `projects/eLife_2025/figures/paper/*.Rmd` + `*_caption.md`, plus the `in_progress/figure_5|6|7_*.Rmd` that become final. NOT `to_classify/` or `archive/`.
 - **Run configs (reproducibility set only).** From `ops/`: the FINAL `.macroir` (`figure_1.macroir`, `figure_2.macroir`, `figure_3.macroir`, `figure_3_mle_G.macroir`, the Gaussian-Fisher dispatch) + the dispatch/slurm/cluster scripts (`ops/slurm/`, `ops/clusters/`, `build_cluster.sh`). NOT the ~20 debug/old/test/IRT/micro variants (`figure_2_debug*`, `figure_2_old`, `figure_2_previous`, `figure_2_v0`, `*_IRT*`, `figure_2_micro*`, `figure_2_error`, ...).
 - **Model inputs.** `scheme_CO_par.csv`, `scheme_CO_prior.csv`, `scheme_CO_model_description` (the 2-state model this paper uses). NOT the other schemes.
@@ -53,7 +57,7 @@ macro_dr @ tag  +  run configs   ──run on Dirac──►  raw outputs (large
 
 ## Open boundary decisions [Q]
 
-1. **Process docs.** Do the internal board docs (`00_master_list`, `00_master_plan_v2`, `01_writing_plan`, `02_decision_log`, `08_sources_audio_notes`) go into the paper repo as a `process/` folder (full transparency), or stay in `macro_dr` as dev-process? Default: paper-facing docs go, pure-process board stays.
+1. **Process docs.** Do the internal board docs (`_program/00_index`, `1_method/00_plan`, `1_method/01_writing_plan`, `_program/decisions` + `1_method/decisions`, `_program/sources`) go into the paper repo as a `process/` folder (full transparency), or stay in `macro_dr` as dev-process? Default: paper-facing docs go, pure-process board stays. **With three papers this is a program-level call**, not per paper.
 2. **eLife-specific assets.** `Authors/eLife_LaTeX_template.zip`, `docs/elife-author-instructions.md` — venue-specific. Keep in a `submission/` folder, or drop for a venue-agnostic repo? Default: keep in `submission/`, since the repo name is already venue-agnostic.
 3. **SI theory snapshot** (see bucket B): confirm the copy-at-freeze convention.
 4. **Reduction step** (see handoff): confirm whether it exists.
@@ -66,8 +70,8 @@ These are not a parallel hygiene lane to be done later. The binary stamps its ow
 
 | | Item | Why it gates the freeze |
 |---|---|---|
-| E-1 | **Log the resolved random seed.** `calc_seed(0)` draws from `std::random_device` (`legacy/mcmc.h:37-45`), so `seed = 0` means *random*, and the resolved value is written neither to `meta.json` nor to the CSVs. | Without it no simulated ensemble is reproducible, which the Data Availability statement cannot survive. See `docs/figure_provenance.md` §9. |
-| E-2 | **Fix the IDM reconstruction call site** (`likelihood.cpp:3501`): it uses the symmetric square root, and the exact identity is `IDM = K·CDM·Kᵀ` with `K = H^(-1/2) J_s^(1/2)`. | The identity is also printed in the supplement. Verified 2026-07-14: it invalidates no built figure (only `idm2` / `..._Reconstituted` uses it, consumed by one notebook outside the arc), so this is a clean fix, not a rebuild. Spec: `correction_idm_reconstruction.md`. |
+| E-1 | **Log the resolved random seed.** `calc_seed(0)` draws from `std::random_device` (`legacy/mcmc.h:37-45`), so `seed = 0` means *random*, and the resolved value is written neither to `meta.json` nor to the CSVs. | Without it no simulated ensemble is reproducible, which the Data Availability statement cannot survive. See `provenance.md` §9. |
+| E-2 | **Fix the IDM reconstruction call site** (`likelihood.cpp:3501`): it uses the symmetric square root, and the exact identity is `IDM = K·CDM·Kᵀ` with `K = H^(-1/2) J_s^(1/2)`. | The identity is also printed in the supplement. Verified 2026-07-14: it invalidates no built figure (only `idm2` / `..._Reconstituted` uses it, consumed by one notebook outside the arc), so this is a clean fix, not a rebuild. Spec: `machinery.md` §5. |
 | E-3 | **Stop double-writing every evolution row.** `emit_state_rows_with_experiment` calls `emit_state_rows_without_experiment` as its first act (`src/core/likelihood.cpp:2421`), so each per-interval record appears twice. | The notebooks currently deduplicate by hand; a naive sum double-counts. Fixing it changes the CSV schema, so it must precede the runs, not follow them. |
 | E-4 | **Regression test**: score mean ≈ 0 at θ\*, and the two Fisher estimators agree in a good regime. | The paper's claims *are* the algorithms. A referee is entitled to a test that fails when they break. |
 | E-5 | **The valgrind invalid read** logged under `projects/eLife_2025/`. Investigate, fix or explain, add a minimal reproducer. | An unexplained memory error in the code that produced the figures is a referee gift. |

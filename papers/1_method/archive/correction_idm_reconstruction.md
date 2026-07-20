@@ -1,3 +1,9 @@
+> **RETIRED 2026-07-20. Superseded by `../../_program/machinery.md`.**
+> Its identity, its empirical table and its code change-list were merged into machinery.md §5.
+> Do not read as current and do not edit. Kept for its content; the live owner is the successor.
+
+---
+
 # Correction: the IDM reconstruction uses the wrong square root
 
 > Opened 2026-07-14. Actionable note: what is wrong, why, what to change, and what does **not** change.

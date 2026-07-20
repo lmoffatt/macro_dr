@@ -1,3 +1,9 @@
+> **RETIRED 2026-07-20. Superseded by `../../_program/machinery.md`.**
+> Its operational definitions were merged there verbatim; the CSV-field pointer went to _program/provenance.md.
+> Do not read as current and do not edit. Kept for its content; the live owner is the successor.
+
+---
+
 # Paper 2 (MacroIR / eLife 2025) — Metrics & Diagnostics
 
 Detail layer beneath `00_master_plan_v2.md` §3 (the authoritative summary); this file holds the operational definitions. Anchor throughout: the model's own **Gaussian Fisher** H; the numerical finite-difference Fisher enters only to gauge how faithful the Gaussian one is. All tests evaluated at the global MLE / optimum (for a misspecified likelihood, θ_sim and the optimum differ, and that gap is the bias).

@@ -1,6 +1,8 @@
 # Paper 2 (MacroIR / eLife 2025) — Experiment Grid Spec
 
-> Updated: 2026-07-20. Detail layer beneath `00_master_plan_v2.md` §6. Defines the regime sweep for the usage map.
+> Updated: 2026-07-20. Shared across the three papers. **Owns** the control variables, the two noise
+> crossovers and the three bands, and the label→value maps. Each paper's results section consumes this;
+> none restates it.
 
 ## 1) Control variables
 From the two-state `scheme_CO`:
@@ -22,7 +24,7 @@ The instrumental noise has two reference scales, separated by exactly a factor N
 | A/B | `10 · interval` | instrumental noise reaches the single-channel gating scale |
 | B/C | `10 · N_ch · interval` | instrumental noise reaches the total gating noise |
 
-Band A is gating-dominated and finely resolved (expect IR); band B is gating-dominated and coarsely resolved (expect R may suffice); band C is instrumental-dominated (expect LSE and the non-recursive members to be adequate, and the interval filter to buy nothing). Derivation and the coverage audit: `00_master_plan_v2.md` §1a.
+Band A is gating-dominated and finely resolved (expect IR); band B is gating-dominated and coarsely resolved (expect R may suffice); band C is instrumental-dominated (expect LSE and the non-recursive members to be adequate, and the interval filter to buy nothing). The two-level structure this maps onto (root question + ladder) is `program.md` §1.
 
 ## 2b) Coverage
 
@@ -55,7 +57,7 @@ For each cell and algorithm:
 - residual mean, var, max ACF (lag>0);
 - empirical-vs-sandwich covariance ratio.
 
-Always store the reduced table (so the maps plot cheaply); raw data stays out of git (see `09_carve_plan.md`).
+Always store the reduced table (so the maps plot cheaply); raw data stays out of git (see `carve_plan.md`).
 
 **Two of these do not mean for LSE what they mean for the five.** State it wherever an LSE cell is plotted beside a likelihood cell:
 - **r̄²_std ≡ 1 is a tautology for LSE**, since Σ r_std² = n identically once σ̂² = SSE/n. Any residual-variance panel reads "calibrated" for LSE by construction and carries no information.

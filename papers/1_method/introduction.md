@@ -1,7 +1,7 @@
 # Introduction — what it must do, and a paragraph plan
 
-> Working doc, same genre as `abstract_draft.md` and `title_options.md`. Opened 2026-07-14.
-> The literature block it rests on is the one verified in `abstract_draft.md` (three independent checks, 2026-07-14); it is not repeated here except where the Introduction has to quote it.
+> Working doc, same genre as `abstract.md` and `title.md`. Opened 2026-07-14.
+> The literature block it rests on is the one verified in `abstract.md` (three independent checks, 2026-07-14); it is not repeated here except where the Introduction has to quote it.
 > Comment and correct inline.
 
 ## The job
@@ -15,7 +15,7 @@ So the Introduction has one hard job and one soft one:
 
 ## Hard constraints
 
-The five accuracy rules from the title review (`title_options.md`) and the six from `abstract_draft.md` apply verbatim here. The two that bite hardest in an Introduction:
+The five accuracy rules from the title review (`title.md`) and the six from `abstract.md` apply verbatim here. The two that bite hardest in an Introduction:
 
 1. **Do not re-announce MacroIR.** The bridge is published (Comm Biol 2025). The Introduction cites it as prior work, in the same breath as Milescu 2005 and Münch 2022, and does not present it. The moment the Introduction starts explaining how MacroIR works, the paper has become a method paper and the reviewer says "you published this".
 2. **The approximation distorts, not the time averaging.** Time averaging is the physical reality. Any sentence of the form "time averaging degrades the information" inverts the causation.
@@ -51,7 +51,7 @@ Then the structural point, which is the paper's organising idea and belongs here
 - **Axis 1, recursion.** Whether the hidden occupancy distribution is conditioned on the data as it arrives (a filter) or propagated open-loop from the initial condition.
 - **Axis 2, the acquisition window.** Whether each sample is treated as an instantaneous observation of the process, or as what it physically is, an average of the process over a finite window.
 
-On axis 2 the literature is unanimous and it is unanimous in the wrong place: **no published likelihood for macroscopic currents integrates the observable over the acquisition window.** The three quotations that establish it (all in `abstract_draft.md`) are Milescu 2005 (*"the method does not handle the effects of decreased variance due to low-pass filtering"*), Celentano and Hawkes 2004 (who mention the window only to dismiss it), and Münch 2022, who file finite integration time under *"misspecifications of the likelihood"* and prescribe an experimental workaround: *"the sampling should be faster than the fastest eigenvalues to avoid biased results."*
+On axis 2 the literature is unanimous and it is unanimous in the wrong place: **no published likelihood for macroscopic currents integrates the observable over the acquisition window.** The three quotations that establish it (all in `abstract.md`) are Milescu 2005 (*"the method does not handle the effects of decreased variance due to low-pass filtering"*), Celentano and Hawkes 2004 (who mention the window only to dismiss it), and Münch 2022, who file finite integration time under *"misspecifications of the likelihood"* and prescribe an experimental workaround: *"the sampling should be faster than the fastest eigenvalues to avoid biased results."*
 
 This paragraph is also where the family gets its honest attribution: **the algorithm family is the literature, not an invention.** `NR` is essentially Milescu 2005; `R` is Moffatt 2007 and Münch 2022; `IR` is MacroIR (Comm Biol 2025). `MR` and `NMR` are the natural intermediates that fill the grid. Say this plainly and early. It converts what could look like five strawmen into a map of the actual field, and it is the single sentence that most protects the paper from the "you invented four bad methods to beat" objection.
 
@@ -94,26 +94,26 @@ The closing paragraph is the "so what", and it must land on the live argument ra
 
 Del Core and Mirams 2025 argue, in print and against filtering, on cost: *"approaches that are based on filtering techniques are computationally expensive because an integration step of the differential moment equations (DMEs), and the corresponding updates in the correction step, are computed between every consecutive time points where the measurements are collected."* The field is deciding, right now, whether the filter is worth paying for, and it has nothing with which to decide. A distortion map is exactly what that decision needs: it says which approximation misreports the uncertainty, by how much, and in which corner of the regime.
 
-One clause, not more, on the further payoff: the same matrix is the correction that keeps Bayesian model comparison valid under an approximate likelihood, which is where this work goes next. Forward-pointing, derivation deferred (`00_master_plan_v2.md` §3).
+One clause, not more, on the further payoff: the same matrix is the correction that keeps Bayesian model comparison valid under an approximate likelihood, which is where this work goes next. Forward-pointing, derivation deferred (`00_plan.md` §3).
 
 ## What stays out of the Introduction
 
 - **The mechanics of MacroIR.** No boundary state, no Kalman gain, no interval kernel. That is the Theory section.
 - **The Fisher-to-zero result.** It is a Results and Discussion item. Foreshadowing it here weakens the Results.
-- **The research-program framing** (`From molecular mechanisms to data back and forth PROGRAM.md`, three bridges). It is genuinely the reason this paper exists, but an Introduction that opens with a research program reads as a grant proposal and *invites* the "this is a component of a bigger thing, come back when it's done" review. The field's own two open questions are a stronger and more self-contained motivation. **The program belongs in the Discussion**, in one paragraph, after the evidence has been delivered.
+- **The research-program framing** (`../_program/research_program.md`, three bridges). It is genuinely the reason this paper exists, but an Introduction that opens with a research program reads as a grant proposal and *invites* the "this is a component of a bigger thing, come back when it's done" review. The field's own two open questions are a stronger and more self-contained motivation. **The program belongs in the Discussion**, in one paragraph, after the evidence has been delivered.
 - **The Comm Biol P2X2 biology.** One citation, no case study.
 - **Any claim about experimental data.** There is none in this paper.
 
 ## Open questions
 
 - **[Q] How much statistics vocabulary in P4?** The tension is real: *score*, *information matrix equality* and *misspecification* are what convince the methods reader and are what lose the electrophysiologist. Current recommendation: use all three words, and immediately gloss each in the same sentence in physical terms ("the score, the gradient of the log-likelihood, which must average to zero at the true parameters if the likelihood is right"). Cost: about forty words. Worth it.
-- **[Q] Where does the two-axis framing (recursion × window) first appear?** It is proposed above for P2, which means the Introduction, not the Theory section, is where the family is organised. That is deliberate: it makes the five algorithms look like a coordinate system rather than a zoo. If it feels heavy there, the fallback is a one-line version in P2 and the full ladder in Theory (the endpoint ladder in `nomenclature.md` is the cleanest presentation and could carry it).
+- **[Q] Where does the two-axis framing (recursion × window) first appear?** It is proposed above for P2, which means the Introduction, not the Theory section, is where the family is organised. That is deliberate: it makes the five algorithms look like a coordinate system rather than a zoo. If it feels heavy there, the fallback is a one-line version in P2 and the full ladder in Theory (the endpoint ladder in `../_program/nomenclature.md` is the cleanest presentation and could carry it).
 - **[Q] Do we name the algorithms in the Introduction at all?** Recommendation: yes, once, in P2, tied to their sources (NR ≈ Milescu, R ≈ Moffatt/Münch, IR = MacroIR). The alternative (describe functionally, name only in Methods) reads coy given that the acronyms then run through every figure.
 - **[Q] Length.** eLife's guidance is under 5,000 words for the main text excluding Methods, references and legends. Six paragraphs at ~130 words is ~800, which is right for a paper whose Results carry six figures. Do not let the literature review swell: the quotations are load-bearing, the paraphrase around them is not.
 
 ## Verify before submission
 
-- **The "no published likelihood integrates the observable over the acquisition window" claim.** It is the Introduction's strongest and most falsifiable sentence, and one counterexample from an adjacent field (a Kalman filter with an integrated observation in cardiac or synaptic modelling) turns it into a liability. It survived three independent checks in July 2026 (see `abstract_draft.md`) and the prior-art map (`docs/bibliography/MacroIR_prior_art_map.md`) already concedes the *device* is known outside the field (integrated-measurement augmented Kalman). Phrase it as scoped to macroscopic ion-channel likelihoods, and cite the prior-art map's concession in the Discussion, not here.
+- **The "no published likelihood integrates the observable over the acquisition window" claim.** It is the Introduction's strongest and most falsifiable sentence, and one counterexample from an adjacent field (a Kalman filter with an integrated observation in cardiac or synaptic modelling) turns it into a liability. It survived three independent checks in July 2026 (see `abstract.md`) and the prior-art map (`docs/bibliography/MacroIR_prior_art_map.md`) already concedes the *device* is known outside the field (integrated-measurement augmented Kalman). Phrase it as scoped to macroscopic ion-channel likelihoods, and cite the prior-art map's concession in the Discussion, not here.
 - **Del Core and Mirams 2025 and Owen and Mirams 2025** are both 2025 and both central to the opening. Re-read them at submission; if either has been revised, the quotations must be re-checked against the version of record.
 </content>
 </invoke>

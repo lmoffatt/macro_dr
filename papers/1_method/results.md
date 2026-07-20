@@ -1,6 +1,6 @@
 # Results — what it must do, the claim-by-claim spine, and what the data actually support
 
-> Working doc, same genre as `abstract_draft.md`. Opened 2026-07-14, written against a full inventory of `projects/eLife_2025/figures/` (scripts, captions, STATUS/PLAN docs, and what is on disk under `figures/data/`), **not** against `00_master_plan_v2.md` §5, which is now behind the figures.
+> Working doc, same genre as `abstract.md`. Opened 2026-07-14, written against a full inventory of `projects/eLife_2025/figures/` (scripts, captions, STATUS/PLAN docs, and what is on disk under `figures/data/`), **not** against `00_plan.md` §5, which is now behind the figures.
 > Every number below is quoted with its source file. Numbers with no source are not in the paper.
 
 ## The job
@@ -22,11 +22,11 @@ The figure inventory contradicts three things currently written down elsewhere. 
 
 ### 1. The overconfidence factor is 10 to 16, not 14 to 21
 
-`abstract_draft.md:102` says "over-confident by roughly 14 to 21 fold". The figure says otherwise. `Figure_S3_caption.md`: empirical/Fisher variance ratio ≈ **10 to 16** for NR and NMR, **1.2 to 1.4** for R, **1.5 to 2.1** for MR, and the sandwich-corrected ratio ≈ **1** in every cell of all four. **The caption is the authoritative number.** Correct the abstract.
+`abstract.md:102` says "over-confident by roughly 14 to 21 fold". The figure says otherwise. `Figure_S3_caption.md`: empirical/Fisher variance ratio ≈ **10 to 16** for NR and NMR, **1.2 to 1.4** for R, **1.5 to 2.1** for MR, and the sandwich-corrected ratio ≈ **1** in every cell of all four. **The caption is the authoritative number.** Correct the abstract.
 
 ### 2. The "MR sign discrepancy" is probably a category error, and it dissolves
 
-`abstract_draft.md` and `discussion_plan.md` both flag an apparent contradiction: the master plan says MR *overestimates variance* while Figure S3 reports MR as *over-confident* (ratio 1.5 to 2.1, meaning the empirical parameter variance exceeds what the Fisher predicts).
+`abstract.md` and `discussion.md` both flag an apparent contradiction: the master plan says MR *overestimates variance* while Figure S3 reports MR as *over-confident* (ratio 1.5 to 2.1, meaning the empirical parameter variance exceeds what the Fisher predicts).
 
 These are two different variances and both statements can be true at once:
 
@@ -51,7 +51,7 @@ Columns = the five algorithms; rows = prior P_open, observation and innovation, 
 
 **What it claims:** the family is a coordinate system, not a zoo, and the reader can *see* where each approximation enters (does the posterior get corrected; is the conductance instantaneous, start-conditioned, or boundary-conditioned).
 
-**What it must not claim:** anything about accuracy. No error bars, no verdict. It is the visual companion of the Theory section's endpoint ladder (`theory_plan.md` T3), and its whole job is to make the ladder concrete.
+**What it must not claim:** anything about accuracy. No error bars, no verdict. It is the visual companion of the Theory section's endpoint ladder (`theory.md` T3), and its whole job is to make the ladder concrete.
 
 ### Fig 2 — Recovery clouds: the miscalibration, in the units the reader cares about
 
@@ -103,7 +103,7 @@ The PLAN's main-text arc:
 **The anchor problem, and it is real.** Cross-algorithm panels can only come from `433ed13`, which is the **numeric-Fisher** run and the only commit with all five algorithms. The IR mechanism panels come from `1c2ae6f`, the **Gaussian-Fisher** run, which has no NMR at all. So the main text is not all on one anchor. `figure_5_PLAN.md:5` states this and says a reader must be told. **Two options and they need a decision:**
   (a) tell the reader, in Methods and in the caption, and justify why it does not matter (Fig 4's per-step J_t = F_t identity is arguably the justification: it says the two anchors agree per step);
   (b) run the missing Gaussian-Fisher cells (at minimum NMR, which is entirely absent from 1c2ae6f) and put the whole main text on one anchor.
-  This contradicts `00_master_plan_v2.md` §6, which asserts the definitive figures anchor on the Gaussian Fisher. **They currently cannot.** Decide before drafting, because option (b) is a compute request, not a writing task.
+  This contradicts `00_plan.md` §6, which asserts the definitive figures anchor on the Gaussian Fisher. **They currently cannot.** Decide before drafting, because option (b) is a compute request, not a writing task.
 
 ### Fig 6 — Why: the distortion decomposition
 
@@ -145,14 +145,14 @@ Say none of these until the gap is closed.
 - **"Definitive figures are anchored on the Gaussian Fisher."** Not true for anything cross-algorithm (see Fig 5). NMR has no Gaussian-Fisher run at all.
 - **"Sample × correlation = total distortion."** Asserted, never plotted (`figure_5_PLAN.md:99`).
 - **The N\* ∝ noise law as a validated prediction.** N\* is measured but never overlaid on its own predicted law N\* = 2σ²/G (`figure_5_PLAN.md:100`), and the fitted exponent is 0.80 with R² = 0.59, which is not a clean 1/2 or 1. Report the measurement; do not present the law as confirmed.
-- **The micro-versus-macro comparison** (`figures/in_progress/figure_6_micro_macro_linear.Rmd`, the newest script in the tree). Blocked on data: micro_IR exists at N_ch = 5 only, micro_R has no run at N_ch ≥ 1000. It is out of scope for this paper anyway (`00_master_plan_v2.md` §2) and should not sneak in through a figure.
+- **The micro-versus-macro comparison** (`figures/in_progress/figure_6_micro_macro_linear.Rmd`, the newest script in the tree). Blocked on data: micro_IR exists at N_ch = 5 only, micro_R has no run at N_ch ≥ 1000. It is out of scope for this paper anyway (`00_plan.md` §2) and should not sneak in through a figure.
 - **Anything from the flagged-wrong scripts.** `figure_5_PLAN.md` names them: `IR_distortion_ridge` (the argmax ridge is noise), the `relCI_by_Nch` panel of `distortion_gauss_vs_numeric_lines` (median-over-intervals artifact that contradicts its own sibling), `domains_schematic` (hard-codes an N_ch = 30 boundary that contradicts the paper's own N\* result), and three scripts with stale headers (`decomp_gaussian`, `IR_covariance_design`, `IR_interval_loss`). **Do not lift a number from any of these.**
 
 ## Framing decision the maps force
 
 `figures/in_progress/figure_7_validity_map.Rmd` already states it: *"Validity map, NOT a regime map ... no hard regime boundaries: the distortion is a continuous gradient in (N, Δ, noise), not domains."*
 
-That is right, and it is rule 3 of `title_options.md` (continuous, not a threshold). But it sits awkwardly with the Theory section's three named regimes (multinomial, telegraphic, Gaussian; `theory_plan.md` T2). The resolution, and it should be written into both sections: **the three regimes are named as the two approximations' asymptotic corners, not as territories with borders.** The map shows a gradient; the corners explain its direction. Any figure that draws a hard line on the plane (the `domains_schematic`) is off-message and is already flagged as method-wrong.
+That is right, and it is rule 3 of `title.md` (continuous, not a threshold). But it sits awkwardly with the Theory section's three named regimes (multinomial, telegraphic, Gaussian; `theory.md` T2). The resolution, and it should be written into both sections: **the three regimes are named as the two approximations' asymptotic corners, not as territories with borders.** The map shows a gradient; the corners explain its direction. Any figure that draws a hard line on the plane (the `domains_schematic`) is off-message and is already flagged as method-wrong.
 
 The trustworthiness contour, if one is drawn, is at distortion = **1.05** in `figure_7_validity_map.Rmd` and at **±15%** in `figure_5_distortion_algo_grid.Rmd`. **Pick one and use it everywhere.** (D-4 in the master plan proposed 1.1. Three different thresholds in three places is exactly the kind of thing a reviewer notices.)
 

@@ -27,8 +27,7 @@ Policy**, **FAQs**.
 - Full author instructions (browser only) — https://elife-rp.msubmit.net/html/elife-rp_author_instructions.html
 - LaTeX template — download from the author guide on elifesciences.org
 
-> Project-facing figure subset already lives in
-> `papers/macroir-elife-2025/figures/instructions.md` (checked 2026-03-25) and is
+> The cross-figure visual system lives in `figures_system.md` (this folder) and is
 > consistent with this document.
 
 ---

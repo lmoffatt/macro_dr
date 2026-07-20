@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
-# check.sh — the definition of done for the MacroIR paper (01_writing_plan.md, section 0).
+# check.sh — the definition of done, for one paper of the program (01_writing_plan.md, section 0).
 #
-# Derives the state of the manuscript from the repo. Nothing here is declared by hand;
+# Derives the state of a paper's manuscript from the repo. Nothing here is declared by hand;
 # there is no ledger to keep in sync. Red is the normal state early on: read the FAILs
-# as the task list.
+# as the task list. ONE script for the whole program; the paper is an argument.
 #
-#   ./check.sh            summary
-#   ./check.sh -v         list every offending line
+#   ./check.sh                 the default paper (1_method)
+#   ./check.sh 3_micro         a named paper folder (sibling of _program)
+#   ./check.sh -v              summary + every offending line
+#   ./check.sh 1_method -v
 #
-# Exit 0 only when the paper is submittable (all eight checks green).
+# Checks 1-8 are the paper's manuscript (paper-specific). Check 9 is index completeness
+# over the shared layer PLUS that paper (program-level). Exit 0 only when all green.
 
 set -uo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MS="$HERE/docs/manuscript-drafts"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # papers/_program
+PAPERS="$(cd "$HERE/.." && pwd)"                        # papers/
+INDEX="$HERE/00_index.md"
+
+PAPER="1_method"; VERBOSE=0
+for a in "$@"; do
+  case "$a" in
+    -v) VERBOSE=1 ;;
+    -*) ;;
+    *)  PAPER="$a" ;;
+  esac
+done
+PAPER_DIR="$PAPERS/$PAPER"
+if [ ! -d "$PAPER_DIR" ]; then
+  echo "no such paper folder: $PAPER_DIR" >&2; exit 2
+fi
+
+MS="$PAPER_DIR/docs/manuscript-drafts"
 TEX="$MS/elife_paper.tex"
 BIB="$MS/biblio.bib"
 SECTIONS="$MS/sections"
-VERBOSE=0
-[ "${1:-}" = "-v" ] && VERBOSE=1
 
 PASS=0; FAIL=0; WARN=0
 red()   { printf '\033[31mFAIL\033[0m  %s\n' "$1"; FAIL=$((FAIL+1)); }
@@ -40,7 +57,7 @@ else
   awk -v f="$TEX" 'p{print f":"FNR":"$0} /\\begin\{document\}/{p=1}' "$TEX" > "$BODY_TMP"
 fi
 
-echo "=== MacroIR paper — state of the manuscript ==="
+echo "=== paper '$PAPER' — state of the manuscript ==="
 echo
 
 # --- 1. it compiles -----------------------------------------------------------------
@@ -170,24 +187,28 @@ BODY_TEXT=$(sed 's/^[^:]*:[0-9]*://' "$BODY_TMP" | grep -v '^[[:space:]]*%')
 if command -v detex >/dev/null 2>&1; then W=$(printf '%s' "$BODY_TEXT" | detex 2>/dev/null | wc -w); else W=$(printf '%s' "$BODY_TEXT" | sed 's/%.*//' | wc -w); fi
 warn "8. word count ~$W (limit pending D-1: Research Article vs Tools & Resources)"
 
-# --- 9. index completeness (00_master_list §2 covers the working pack) ---------------
-# Enforces the master_list "completeness guarantee": if a working .md is NOT registered,
-# then "not in the index = not owned" is a false negative. Scope: top-level + decisions/ +
-# components/ (the sub-trees docs/ figures/ theory/ are registered by directory/glob, not per-file).
-ML="$HERE/00_master_list.md"
+# --- 9. index completeness (00_index.md §2 covers _program PLUS this paper) -----------
+# Enforces the "completeness guarantee": if a working .md is NOT registered in 00_index.md,
+# then "not in the index = not owned" is a false negative. Scope: the shared layer (_program,
+# top level) plus this paper's top level + decisions/. Sub-trees (docs/ figures/ theory/,
+# and archive/ tombstones) are registered by directory/glob, not per file, and are skipped.
 reg_ok(){ local b lasttok; b=$(basename "$1")            # tolerate abbreviations (…) and globs in the registry
-  grep -qF "$b" "$ML" && return 0
-  lasttok=$(printf '%s' "$b" | awk '{print $NF}')        # "From molecular … PROGRAM.md" -> match on "PROGRAM.md"
-  [ "$lasttok" != "$b" ] && grep -qF "$lasttok" "$ML" && return 0
-  case "$b" in D-[0-9]*) grep -qF 'D-0' "$ML" && grep -qF 'D-4' "$ML" && return 0;; esac  # decisions/D-0…D-4 glob
+  grep -qF "$b" "$INDEX" && return 0
+  lasttok=$(printf '%s' "$b" | awk '{print $NF}')        # "From molecular … PROGRAM.md" -> match on last token
+  [ "$lasttok" != "$b" ] && grep -qF "$lasttok" "$INDEX" && return 0
+  case "$b" in D-[0-9]*) grep -qF 'D-0' "$INDEX" && grep -qF 'D-4' "$INDEX" && return 0;; esac  # decisions/ glob
   return 1; }
 UNREG=$(while IFS= read -r f; do
-  [ "$(basename "$f")" = "00_master_list.md" ] && continue
-  reg_ok "$f" || basename "$f"
-done < <(find "$HERE" -maxdepth 1 -name '*.md'; find "$HERE/decisions" "$HERE/components" -name '*.md' 2>/dev/null))
+  [ "$(basename "$f")" = "00_index.md" ] && continue
+  reg_ok "$f" || printf '%s\n' "${f#"$PAPERS/"}"
+done < <(
+  find "$HERE" -maxdepth 1 -name '*.md'
+  find "$PAPER_DIR" -maxdepth 1 -name '*.md'
+  find "$PAPER_DIR/decisions" -name '*.md' 2>/dev/null
+))
 N_UNREG=$(printf '%s' "$UNREG" | grep -c . || true)
-if [ "$N_UNREG" -eq 0 ]; then green "9. index: every working .md is registered in master_list"; else
-  red "9. index: $N_UNREG working file(s) NOT in master_list ('not indexed = not owned' broken)"
+if [ "$N_UNREG" -eq 0 ]; then green "9. index: every working .md is registered in 00_index.md"; else
+  red "9. index: $N_UNREG working file(s) NOT in 00_index.md ('not indexed = not owned' broken)"
   printf '%s\n' "$UNREG" | while IFS= read -r b; do [ -n "$b" ] && detail "$b"; done
 fi
 
