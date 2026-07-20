@@ -1,20 +1,32 @@
 # Results — what it must do, the claim-by-claim spine, and what the data actually support
 
-> Working doc, same genre as `abstract.md`. Opened 2026-07-14, written against a full inventory of `projects/eLife_2025/figures/` (scripts, captions, STATUS/PLAN docs, and what is on disk under `figures/data/`), **not** against `00_plan.md` §5, which is now behind the figures.
+> Updated: 2026-07-20 (A-strict, paper 1). Written against a full inventory of `projects/eLife_2025/figures/`.
 > Every number below is quoted with its source file. Numbers with no source are not in the paper.
+>
+> **A-strict reframe.** Paper 1's roster is `R`, `MR`, `VR`, `IR` (all recursive). The non-recursive
+> members `NR`, `NMR` are named once in Theory and **measured in no figure**; their quantitative
+> results (the 87-nat logL gap, the 10–16× overconfidence) are **relocated to paper 2** and must not
+> anchor a paper-1 claim (`decisions.md`). The figures currently on disk are five-algorithm and need
+> re-rendering to R/MR/VR/IR once `VR` is run.
 
 ## The job
 
-The Results have to walk the reader from "here is one filter step" to "here is the map" without ever making them take a claim on trust. The order below is chosen so that each figure answers the objection raised by the previous one. That is the only ordering principle that matters, and it is what turns six figures into an argument.
+The Results walk the reader from "here is one filter step" to "here is the within-family validity map"
+without making them take a claim on trust. Each figure answers the objection the previous one raises.
+That is what turns the figures into an argument.
 
-The through-line, in one sentence per figure:
+The through-line, one sentence per figure (A-strict):
 
-1. The five algorithms differ, visibly, in a single filter step. (**Fig 1**)
+1. The likelihood is a recursive filter over intervals, and its two poles — no interval conditioning (R) and full boundary conditioning (IR) — are visibly different objects. (**Fig 1**)
 2. That difference shows up as miscalibrated parameter uncertainty. (**Fig 2**)
 3. The miscalibration is not a fitting artifact: it is present in the likelihood itself, interval by interval. (**Fig 3**)
-4. And it comes from one place: correlation across time, not from any per-sample error. (**Fig 4**)
-5. Here is how large it is, everywhere in the regime, for every algorithm. (**Fig 5**)
-6. And here is why it is large where it is large. (**Fig 6**)
+4. And it comes from correlation across time, not from any per-sample error. (**Fig 4**)
+5. Here is how large it is across the gating-dominated regime, for the recursive family. (**Fig 5**)
+6. And here is *which piece of the interval structure* produces it: the `MR → VR → IR` mechanism, variance step then gain step. (**Fig 6**)
+
+The spine's centre of gravity moved from Fig 5 (the map) to Fig 6 (the mechanism): with the map's
+dramatic cross-family contrasts handed to paper 2, paper 1's novel result is the mechanism, and Fig 6
+is where it is proved.
 
 ## Three corrections to the record, before anything is written
 
@@ -43,15 +55,35 @@ The abstract needs some algorithm to *deflate* the information, and it currently
 
 ## Figure-by-figure spine
 
-### Fig 1 — One filter step, five algorithms (mechanism, no statistics yet)
+> **A-strict scoping banner.** The sections below were written for the five-algorithm arc. Read every
+> NR/NMR-specific quantity as **paper 2's**, not paper 1's: the 87-nat recursive-vs-non-recursive logL
+> gap (Fig 3), the 10–16× overconfidence (Fig 2/S3), and the "NR/NMR blow up" framing (Fig 6). The
+> "recursive trio / naive pair" partition is gone; paper 1's members are all recursive. Where a section
+> quotes an NR/NMR number, substitute the recursive-family analog (R vs the averaged members) for
+> paper 1, and leave the dramatic number for paper 2. The `VR` column is new and unrun; any figure
+> that needs it is blocked on the implementation.
 
-`figures/paper/figure_1.Rmd` → `Figure_1.pdf`; whole-recording version `Figure_S1.pdf`. Caption written. **Finished.**
+### Fig 1 — One filter step, R vs IR (mechanism, no statistics yet)
 
-Columns = the five algorithms; rows = prior P_open, observation and innovation, posterior, cumulative logL. Window 6 to 10 ms. Cell: N_ch = 20, f_s = 50 kHz, 100 samples per interval.
+`figures/paper/figure_1.Rmd` → `Figure_1.pdf`; whole-recording version `Figure_S1.pdf`. Caption
+written, but **for the five-algorithm version; re-render to two columns.**
 
-**What it claims:** the family is a coordinate system, not a zoo, and the reader can *see* where each approximation enters (does the posterior get corrected; is the conductance instantaneous, start-conditioned, or boundary-conditioned).
+**A-strict (2026-07-20): two columns, R vs IR**, the poles of the conductance axis (instantaneous
+conductance, no interval conditioning, vs boundary-conditioned, both endpoints). Rows: prior P_open,
+observation and innovation, posterior, cumulative logL. Window 6 to 10 ms. Cell: N_ch = 20, f_s = 50
+kHz, 100 samples per interval.
 
-**What it must not claim:** anything about accuracy. No error bars, no verdict. It is the visual companion of the Theory section's endpoint ladder (`theory.md` T3), and its whole job is to make the ladder concrete.
+**Why not the four-column ladder.** MR and VR are visually identical in everything a single filter step
+shows except the predicted observable variance band (same prior, same predicted mean, same recursion).
+Putting them in Fig 1 gives two near-duplicate columns separated only by a variance band, which is a
+weak use of the figure. Their distinction is a variance claim and belongs in Fig 6, quantitatively.
+R vs IR shows the *span* the paper traverses; Fig 6 walks the path between the poles.
+
+**What it claims:** the likelihood is a recursive filter, and the reader can *see* the two ends of the
+conductance axis — instantaneous vs boundary-conditioned — and where the conditioning enters the
+update. It is the visual companion of the Theory ladder (`theory.md` T3).
+
+**What it must not claim:** anything about accuracy. No error bars, no verdict.
 
 ### Fig 2 — Recovery clouds: the miscalibration, in the units the reader cares about
 
@@ -105,12 +137,30 @@ The PLAN's main-text arc:
   (b) run the missing Gaussian-Fisher cells (at minimum NMR, which is entirely absent from 1c2ae6f) and put the whole main text on one anchor.
   This contradicts `00_plan.md` §6, which asserts the definitive figures anchor on the Gaussian Fisher. **They currently cannot.** Decide before drafting, because option (b) is a compute request, not a writing task.
 
-### Fig 6 — Why: the distortion decomposition
+### Fig 6 — Why: the mechanism (MR → VR → IR), and the distortion decomposition
 
-**Not finished.** PLAN's proposal: `figure_5_distortion_decomp_grid.Rmd` + `figure_5_IR_sample_peak_in_Nch.Rmd`.
+**Not finished, and now paper 1's headline figure** (the map's cross-family drama went to paper 2, so
+the mechanism is what paper 1 is for). Two jobs.
 
-**The claims:**
-- **The two failure modes are separable and they live in different corners.** NR and NMR blow up in the **correlation** term at short intervals and in the **sample** term at coarse intervals. Two Gaussian approximations, two failure modes, each visible where the theory says it should be. This is the section that makes the whole thing feel explained rather than measured.
+**Job 1, the new one: the `MR → VR → IR` mechanism, each step isolating one thing.** This is paper 1's
+central novel result and it needs the `VR` column, which is not yet run (`decisions.md`;
+`theory/macroir/notes/vr_variance_form_plan.md`).
+- **MR → VR (the variance step).** MR carries the total per-start-state variance and double-counts the
+  spread across end states `Var_j[gmean_ij|i]`; VR uses the residual (boundary-conditioned) variance.
+  The panel: MR's predicted y_var sits above VR's above the realized residual variance, and VR matches
+  the realized. **The prediction is that VR is *over*-confident in parameter space** (it removed real
+  observation variance without gaining the boundary information), and if it is not, the mechanism thesis
+  is wrong (write both branches).
+- **VR → IR (the gain step).** IR keeps the boundary cross-covariance N·γᵀΣγ in the gain; VR does not.
+  The panel isolates the calibration recovered by the gain alone.
+This turns "MR's problem is the gain, not the variance" from an algebraic assertion into a measurement,
+which is exactly what a method paper should do.
+
+**Job 2, carried over: the sample/correlation decomposition for the recursive family.**
+- **The two failure modes are separable and live in different corners.** The correlation term dominates
+  at short intervals, the sample term at coarse intervals. (The dramatic version of this, NR/NMR
+  blowing up, is **paper 2**; paper 1 shows it on the recursive family, where it is milder and is the
+  stringent test of the machinery.)
 - **The sample distortion is non-monotonic in channel number**, peaking at N\* = 2σ²/G, and the peak marches from N ≈ 10 to N ≈ 1000 as the noise rises (fitted N\* ∝ noise^0.80, R² = 0.59). Instrumental noise *helps* the Gaussian approximation, and there is a worst channel number for a given noise level. This is genuinely novel, it is counter-intuitive in the right way, and it is the single most interesting mechanistic result in the paper.
 - **A correctness point that belongs in the text, not the caption**: at short intervals the large correlation distortion is **not a model failure**. It is the correct information-redundancy cost of oversampling. Without that sentence the map's left edge reads as a bug.
 
