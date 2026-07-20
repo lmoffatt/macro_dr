@@ -1,0 +1,170 @@
+# figure_1_plus_lse.macroir — figure_1 REGENERATED with nonlinearsqr (LSE) as a
+# sixth algorithm. Supersedes figure_1.macroir once the LSE diagnostic arm exists.
+#
+# WHY A FULL REGENERATION AND NOT AN LSE-ONLY SCRIPT: every panel of figure 1 is a
+# per-interval trace of THE SAME single recording. simulate_with_sub_intervals is
+# called with seed = 0, which is the sentinel for "seed randomly" (legacy/mcmc.h:37-45),
+# so a separate LSE-only run would fold a DIFFERENT trace and its panel would not
+# line up with the other five. All six must share one simulate, in one process.
+#
+# CONSEQUENCE: running this replaces the whole figure-1 data set, including
+# figure_1_simulation.csv. The five macro panels will change (different random
+# ensemble), which is expected and harmless — figure 1 is illustrative, not
+# quantitative — but it does mean the old and new PDFs are not comparable trace by
+# trace. Do not mix old macro CSVs with the new LSE one.
+#
+# WHAT THE LSE PANEL SHOWS (and why it is worth having): the LSE is another
+# NON-recursive member, so its posterior row reads "no update (open loop)" like
+# NR and MNR. The interesting contrast is the predicted-current spread: the macro
+# algorithms carry a per-interval predictive variance that BREATHES with the gating
+# (e + N*gSg, peaking in the transient), whereas the LSE's band is FLAT — a single
+# plug-in sigma_hat^2 = SSE/n for every interval. That flat band next to the macro
+# ones makes the LSE's homoscedastic assumption visible in one glance, which is the
+# paper's whole point about the classical method.
+#
+# CAVEAT for the cumulative-logL row: the LSE marginal logL
+# (lgamma(n/2) - (n/2)log(pi) - (n/2)log(SSE)) is GLOBAL and does not decompose per
+# interval. What the per-interval slot carries is the PROFILED Gaussian term
+# -0.5*log(2*pi*sigma_hat^2) - 0.5*r_std^2, which sums to the profiled logL, not to
+# the reported marginal (they differ by a function of n only, so the SCORE is the
+# same). Label that row accordingly for the LSE, or omit it.
+#
+# STATUS / BLOCKER: calc_likelihood_diagnostic produces Macro_State_Ev_diagnostic,
+# which is still GUARDED for family==nonlinearsqr (src/core/likelihood.cpp, the
+# diagnostics visit arm), and it is a VALUE state, so the derivative-path Evolution
+# arm added for figures 3/4 does NOT cover it. Before this script runs, the C++ needs:
+#   (1) that guard routed, and
+#   (2) a value-path Evolution fill in nonlinearsqr_logLikelihood (per-interval
+#       y_mean, y_var == sigma_hat^2, r_std, logL — no derivatives needed).
+# See nonlinearsqr_cpp_spec.md section H for the derivative-path analogue.
+#
+# RUN LOCALLY, from where "figures/data/" resolves:
+#   build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_1_plus_lse.macroir
+
+model = load_model("scheme_CO")
+
+parameter = create_parameters(
+   model = model,
+   parameters_info = [
+      {"on","Log10",10},
+      {"off","Log10",100},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",0.0001},
+      {"Current_Baseline","Log10",1},
+      {"Num_ch_mean","Log10", 20}])
+
+experiment = create_experiment(experiment_structure=[{1,100,0.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0},{1,100,10.0}],
+frequency_of_sampling = 50e3,
+initial_agonist = 0.0,
+initial_time = 0.0)
+
+observations = set_observations(values_set= [0,0,0,0])
+
+par_tr = get_standard_parameter_transformed_values(parameter)
+
+model_str="scheme_CO"
+
+# ---- the ONE shared recording (all six algorithms fold this same trace) ----
+simulation_with_sub_intervals  = simulate_with_sub_intervals(model= model, parameters = par_tr, experiment = experiment,
+                         observations = observations, number_of_substeps = 250, seed = 0)
+
+simulation_file = write_csv(experiment= experiment, simulation=simulation_with_sub_intervals, number_of_substates=250,
+   path= "figures/data/figure_1_simulation")
+
+simulation = remove_intervals(simulation_with_sub_intervals)
+
+# ---- the five macro builds (unchanged from figure_1.macroir) ----
+# NOTE the pre-existing inconsistency, kept for fidelity: NR and R use
+# variance_approximation = 0 while MNR/MR/IR use 1. Runs 2/3/4 use 1 for all five.
+macro_NR = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+macro_R = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 0,
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+macro_MNR = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+macro_MR = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+macro_IR = build_likelihood_function(model =model,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
+            variance_approximation = 1 , taylor_variance_correction = 0,
+            micro_approximation        = false,
+            taylor_qdt_approximation   = false )
+
+# ---- the sixth: nonlinearsqr / LSE (family = 2, non-recursive, averaging = 1) ----
+# All six parameters stay free (Log10): this script only EVALUATES at par_tr, it
+# never optimizes, so the LSE's flat directions are harmless here and the parameter
+# indexing stays aligned with the macro blocks.
+lse = build_likelihood_function_with_family(model = model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            family_approximation       = 2,
+            taylor_qdt_approximation   = false )
+
+# ---- per-algorithm diagnostics over the shared recording ----
+likelihood_diagnostic_NR = calc_likelihood_diagnostic(model =model, parameters=par_tr, experiment =experiment,
+simulation = simulation,adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
+            variance_approximation = 0, taylor_variance_correction = 0,
+            micro_approximation        = false)
+
+diagnostic_file_NR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_NR,
+   path= "figures/data/figure_1_likelihood_diagnostic_NR")
+
+likelihood_diagnostic_R = calc_likelihood_diagnostic(likelihood_algorithm =macro_R, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_R = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_R,
+   path= "figures/data/figure_1_likelihood_diagnostic_R")
+
+likelihood_diagnostic_MNR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNR, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNR,
+   path= "figures/data/figure_1_likelihood_diagnostic_MNR")
+
+likelihood_diagnostic_MR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MR, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_MR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MR,
+   path= "figures/data/figure_1_likelihood_diagnostic_MR")
+
+likelihood_diagnostic_IR = calc_likelihood_diagnostic(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_IR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IR,
+   path= "figures/data/figure_1_likelihood_diagnostic_IR")
+
+# the sixth panel — BLOCKED until the diagnostics guard is routed for family==2
+likelihood_diagnostic_LSE = calc_likelihood_diagnostic(likelihood_algorithm =lse, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_LSE = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_LSE,
+   path= "figures/data/figure_1_likelihood_diagnostic_LSE")
+
+# ---- IR-only extras (kept from figure_1.macroir; no notebook reads these today) ----
+likelihood_predictions = calc_likelihood_predictions(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment,
+            data = simulation)
+
+likelihood_predictions_file = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_predictions,
+   path= "figures/data/figure_1_likelihood_predictions")
+
+dlikelihood_predictions = calc_dlikelihood_predictions(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment,
+data = simulation)
+
+dlikelihood_file = write_csv(experiment= experiment, simulation = simulation, likelihood = dlikelihood_predictions,
+   path= "figures/data/figure_1_dlikelihood_predictions")
