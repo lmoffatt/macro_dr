@@ -149,7 +149,10 @@ for i in "${!NCHS[@]}"; do
         1)    vnoise=0.001;;
         10)   vnoise=0.01;;
         100)  vnoise=0.1;;
-        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.05, 0.1, 0.2, 0.3, 0.5, 1, 10, 100; vnoise = label/1000)" >&2; exit 1 ;;
+        1000)  vnoise=1;;
+        10000) vnoise=10;;
+        100000) vnoise=100;;
+        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.05, 0.1, 0.2, 0.3, 0.5, 1, 10, 100, 1000, 10000, 100000; vnoise = label/1000)" >&2; exit 1 ;;
     esac
 
     # printf builds the injections so the DSL double-quotes need no shell escaping.
