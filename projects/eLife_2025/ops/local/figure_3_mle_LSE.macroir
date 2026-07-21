@@ -93,6 +93,7 @@ algorithm = build_likelihood_function_with_family(
    variance_approximation = true,
    taylor_variance_correction = algo_taylor_approximation,
    family_approximation = algo_family_approximation,
+   variance_form_approximation = 0,
    taylor_qdt_approximation = false)
 
 # GN inner-loop options. max_iter is injected (the dominant cost lever); the rest

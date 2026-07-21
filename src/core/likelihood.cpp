@@ -623,10 +623,10 @@ inline distortion_scalars compute_distortion_scalars(const SymPosDefMatrix<doubl
 }
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class micro, class Model, class FuncTable>
+          class micro, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdlikelihood_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
-        lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model,
+                                     qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Hessian_minimal> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -635,8 +635,8 @@ auto calculate_mdlikelihood_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  micro, decltype(*model0_d)>(*model0_d,
-                                                                              lik.n_sub_dt);
+                                                  micro, decltype(*model0_d), qdt_method,
+                                                  variance_form>(*model0_d, lik.n_sub_dt);
     return dlogLikelihood(ftbl3, dlikelihood, par, r, e);
 }
 
@@ -646,10 +646,10 @@ auto calculate_mdlikelihood_impl(
 // the same reduced dMacro_State_Hessian_minimal {Derivative<logL>,
 // Gaussian_Fisher_Information} the Gauss-Newton MLE driver consumes.
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class family, class Model, class FuncTable>
+          class family, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdlikelihood_nonlinearsqr_impl(
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, family,
-                                     Model>& lik,
+                                     Model, qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Hessian_minimal> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -658,16 +658,16 @@ auto calculate_mdlikelihood_nonlinearsqr_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  family, decltype(*model0_d)>(*model0_d,
-                                                                               lik.n_sub_dt);
+                                                  family, decltype(*model0_d), qdt_method,
+                                                  variance_form>(*model0_d, lik.n_sub_dt);
     return nonlinearsqr_logLikelihood(ftbl3, dlikelihood, par, r, e);
 }
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class micro, class Model, class FuncTable>
+          class micro, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdiff_likelihood_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
-        lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model,
+                                     qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r, double delta_param) -> Maybe_error<diff_Macro_State_Gradient_Hessian> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -676,16 +676,16 @@ auto calculate_mdiff_likelihood_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  micro, decltype(*model0_d)>(*model0_d,
-                                                                              lik.n_sub_dt);
+                                                  micro, decltype(*model0_d), qdt_method,
+                                                  variance_form>(*model0_d, lik.n_sub_dt);
     return diff_logLikelihood(ftbl3, dlikelihood, par, r, e, delta_param);
 }
 
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class micro, class Model, class FuncTable>
+          class micro, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdlikelihood_predictions_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
-        lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model,
+                                     qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -694,8 +694,8 @@ auto calculate_mdlikelihood_predictions_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  micro, decltype(*model0_d)>(*model0_d,
-                                                                              lik.n_sub_dt);
+                                                  micro, decltype(*model0_d), qdt_method,
+                                                  variance_form>(*model0_d, lik.n_sub_dt);
     return dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
 }
 
@@ -705,10 +705,10 @@ auto calculate_mdlikelihood_predictions_impl(
 // Evolution fill (figure 4 cumulative J_T/F_T, figure 5 distortion).
 // See nonlinearsqr_cpp_spec.md section H.
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class family, class Model, class FuncTable>
+          class family, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdlikelihood_predictions_nonlinearsqr_impl(
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, family,
-                                     Model>& lik,
+                                     Model, qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -717,8 +717,8 @@ auto calculate_mdlikelihood_predictions_nonlinearsqr_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  family, decltype(*model0_d)>(*model0_d,
-                                                                               lik.n_sub_dt);
+                                                  family, decltype(*model0_d), qdt_method,
+                                                  variance_form>(*model0_d, lik.n_sub_dt);
     return nonlinearsqr_dlogLikelihoodPredictions(ftbl3, dlikelihood, par, r, e);
 }
 
@@ -727,10 +727,10 @@ auto calculate_mdlikelihood_predictions_nonlinearsqr_impl(
 // and adapts the result to dMacro_State_Ev_gradient_all so the dispatcher
 // signature stays uniform across macro and micro algorithms.
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class micro, class Model, class qdt_method, class FuncTable>
+          class micro, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdlikelihood_predictions_micro_impl(
     const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model,
-                                     qdt_method>& lik,
+                                     qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Ev_gradient_all> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -975,10 +975,10 @@ auto calculate_mdlikelihood_predictions_visit(const likelihood_algorithm_type& m
 // through dlogLikelihoodPredictionsDetailed → dMacro_State_Ev_detailed. Macro
 // only (micro not supported for this diagnostic).
 template <class adaptive, class recursive, class averaging, class variance, class taylor,
-          class micro, class Model, class FuncTable>
+          class micro, class Model, class qdt_method, class variance_form, class FuncTable>
 auto calculate_mdetailed_predictions_impl(
-    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model>&
-        lik,
+    const Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor, micro, Model,
+                                     qdt_method, variance_form>& lik,
     FuncTable& ftbl3, const var::Parameters_transformed& par, const Experiment& e,
     const Recording& r) -> Maybe_error<dMacro_State_Ev_detailed> {
     auto dmodel = load_dmodel(lik.m.model_name());
@@ -987,8 +987,8 @@ auto calculate_mdetailed_predictions_impl(
     }
     auto model0_d = std::move(dmodel.value());
     auto dlikelihood = Likelihood_Model_constexpr<adaptive, recursive, averaging, variance, taylor,
-                                                  micro, decltype(*model0_d)>(*model0_d,
-                                                                              lik.n_sub_dt);
+                                                  micro, decltype(*model0_d), qdt_method,
+                                                  variance_form>(*model0_d, lik.n_sub_dt);
     return dlogLikelihoodPredictionsDetailed(ftbl3, dlikelihood, par, r, e);
 }
 

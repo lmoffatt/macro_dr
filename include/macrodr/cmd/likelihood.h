@@ -30,6 +30,7 @@ inline auto build_likelihood_function_with_family(
     const ModelPtr& model0, bool adaptive_approximation, bool recursive_approximation,
     int averaging_approximation, bool variance_approximation,
     bool taylor_variance_correction_approximation, int family_approximation,
+    int variance_form_approximation = variance_total,
     bool taylor_qdt_approximation = false) {
     // Map deprecated bool taylor_qdt_approximation to the new int qdt_method:
     //   false → 0 (eig), true → 2 (schur). Phase 9 wired the previous "true"
@@ -52,7 +53,9 @@ inline auto build_likelihood_function_with_family(
                                               false>,
                     var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                     decltype(model_ref),
-                    var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
+                    var::constexpr_Var_domain<int, uses_qdt_method, 0>,
+                    var::constexpr_Var_domain<int, uses_variance_form_aproximation,
+                                              variance_total, variance_residual>>(
                     model_ref, nsub,
                     uses_adaptive_aproximation_value(adaptive_approximation),
                     uses_recursive_aproximation_value(recursive_approximation),
@@ -61,7 +64,8 @@ inline auto build_likelihood_function_with_family(
                     uses_taylor_variance_correction_aproximation_value(
                         taylor_variance_correction_approximation),
                     uses_family_aproximation_value(family_approximation),
-                    uses_qdt_method_value(0))
+                    uses_qdt_method_value(0),
+                    uses_variance_form_aproximation_value(variance_form_approximation))
                     .get_variant(),
                 // Macro taylor-variance-correction branch: taylor_qdt fixed false.
                 Likelihood_Model_regular<
@@ -73,7 +77,9 @@ inline auto build_likelihood_function_with_family(
                                               true>,
                     var::constexpr_Var_domain<int, uses_family_aproximation, family_macro>,
                     decltype(model_ref),
-                    var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
+                    var::constexpr_Var_domain<int, uses_qdt_method, 0>,
+                    var::constexpr_Var_domain<int, uses_variance_form_aproximation,
+                                              variance_total>>(
                     model_ref, nsub,
                     uses_adaptive_aproximation_value(adaptive_approximation),
                     uses_recursive_aproximation_value(recursive_approximation),
@@ -82,7 +88,8 @@ inline auto build_likelihood_function_with_family(
                     uses_taylor_variance_correction_aproximation_value(
                         taylor_variance_correction_approximation),
                     uses_family_aproximation_value(family_approximation),
-                    uses_qdt_method_value(0))
+                    uses_qdt_method_value(0),
+                    uses_variance_form_aproximation_value(variance_total))
                     .get_variant()),
             // Micro branch: recursive=true, taylor_variance_correction=false,
             // averaging ∈ {0, 1, 2}, taylor_qdt ∈ {false, true} — the eigen vs
@@ -97,7 +104,8 @@ inline auto build_likelihood_function_with_family(
                 var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
                 var::constexpr_Var_domain<int, uses_family_aproximation, family_micro>,
                 decltype(model_ref),
-                var::constexpr_Var_domain<int, uses_qdt_method, 0, 1, 2>>(
+                var::constexpr_Var_domain<int, uses_qdt_method, 0, 1, 2>,
+                var::constexpr_Var_domain<int, uses_variance_form_aproximation, variance_total>>(
                 model_ref, nsub,
                 uses_adaptive_aproximation_value(adaptive_approximation),
                 uses_recursive_aproximation_value(recursive_approximation),
@@ -106,7 +114,8 @@ inline auto build_likelihood_function_with_family(
                 uses_taylor_variance_correction_aproximation_value(
                     taylor_variance_correction_approximation),
                 uses_family_aproximation_value(family_approximation),
-                uses_qdt_method_value(qdt_method_int))
+                uses_qdt_method_value(qdt_method_int),
+                uses_variance_form_aproximation_value(variance_total))
                 .get_variant()),
         // Nonlinear-least-squares (LSE) branch: the lean Moffatt & Hume 2007 JGP
         // fold — mean only, no Kalman covariance. adaptive/recursive/taylor_vc
@@ -122,7 +131,8 @@ inline auto build_likelihood_function_with_family(
             var::constexpr_Var_domain<bool, uses_taylor_variance_correction_aproximation, false>,
             var::constexpr_Var_domain<int, uses_family_aproximation, family_nonlinearsqr>,
             decltype(model_ref),
-            var::constexpr_Var_domain<int, uses_qdt_method, 0>>(
+            var::constexpr_Var_domain<int, uses_qdt_method, 0>,
+            var::constexpr_Var_domain<int, uses_variance_form_aproximation, variance_total>>(
             model_ref, nsub,
             uses_adaptive_aproximation_value(adaptive_approximation),
             uses_recursive_aproximation_value(recursive_approximation),
@@ -131,7 +141,8 @@ inline auto build_likelihood_function_with_family(
             uses_taylor_variance_correction_aproximation_value(
                 taylor_variance_correction_approximation),
             uses_family_aproximation_value(family_approximation),
-            uses_qdt_method_value(0))
+            uses_qdt_method_value(0),
+            uses_variance_form_aproximation_value(variance_total))
             .get_variant());
 }
 
@@ -147,12 +158,14 @@ inline auto build_likelihood_function(const ModelPtr& model0,
     return build_likelihood_function_with_family(
         model0, adaptive_approximation, recursive_approximation, averaging_approximation,
         variance_approximation, taylor_variance_correction_approximation,
-        micro_approximation ? family_micro : family_macro, taylor_qdt_approximation);
+        micro_approximation ? family_micro : family_macro, variance_total,
+        taylor_qdt_approximation);
 }
 
 using likelihood_algorithm_type =
     var::untransformed_type_t<decltype(build_likelihood_function_with_family(
-        std::declval<const ModelPtr&>(), false, false, 2, true, false, family_macro, false))>;
+        std::declval<const ModelPtr&>(), false, false, 2, true, false, family_macro,
+        variance_total, false))>;
 
 auto calculate_mlikelihood(const likelihood_algorithm_type& likelihood_algorithm,
                            const var::Parameters_transformed& par, const Experiment& e,
