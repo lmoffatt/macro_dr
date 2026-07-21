@@ -63,6 +63,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -75,6 +76,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -87,6 +89,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<2>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -105,6 +108,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -117,6 +121,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -129,6 +134,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -147,6 +153,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -159,6 +166,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -171,6 +179,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -189,6 +198,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -201,6 +211,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -213,6 +224,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<1>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
@@ -231,6 +243,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_reg>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -243,6 +256,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_predictions>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
 
@@ -255,6 +269,7 @@ inline void calc_likelihood(std::string outfilename, std::string model, paramete
                                                 uses_averaging_aproximation<0>,
                                                 uses_variance_aproximation<true>,
                                                 uses_taylor_variance_correction_aproximation<false>,
+                                                uses_variance_form_aproximation<variance_total>,
                                                 Macro_State_Ev_diagnostic>(
                                     ftbl3, model0, param1, get<Recording>(y()), experiment);
                         if (lik2) {
