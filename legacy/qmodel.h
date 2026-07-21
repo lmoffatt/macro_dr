@@ -746,10 +746,16 @@ Maybe_error<Transfer_Op_to<CQx, P>> expm_sure(const CQx& x) {
         return expm_taylor_scaling_squaring<Policy>(x);
 }
 
-template <class recursive, class averaging, class variance, class variance_correction>
+// The variance_form default lives HERE, on the first declaration, not on the
+// definition below: MacroR2 is used with four arguments earlier in this header
+// (the ToString diagnostics), so the default must already be visible at those
+// points. A default template argument may be given only once.
+template <class recursive, class averaging, class variance, class variance_correction,
+          class variance_form = uses_variance_form_aproximation<variance_total>>
     requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
              uses_variance_aproximation_c<variance> &&
-             uses_taylor_variance_correction_aproximation_c<variance_correction>)
+             uses_taylor_variance_correction_aproximation_c<variance_correction> &&
+             uses_variance_form_aproximation_c<variance_form>)
 struct MacroR2;
 class Macro_DMR {
     template <class C_double>
@@ -8102,9 +8108,10 @@ class Macro_DMR {
 #include "micro_types.h"
 namespace macrodr {
 
+// The variance_form default is declared on the forward declaration above; it must
+// not be repeated here.
 template <class recursive, class averaging, class variance, class variance_correction,
-          class variance_form = uses_variance_form_aproximation<variance_total>>
-
+          class variance_form>
     requires(uses_recursive_aproximation_c<recursive> && uses_averaging_aproximation_c<averaging> &&
              uses_variance_aproximation_c<variance> &&
              uses_taylor_variance_correction_aproximation_c<variance_correction> &&
