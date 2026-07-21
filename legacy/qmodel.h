@@ -6321,8 +6321,11 @@ class Macro_DMR {
         return std::move(t_prior_all);
     }
 
+    // variance_form defaults to the total form: everything after it is deduced
+    // from the function arguments, so legacy four-argument call sites keep working.
     template <class recursive, class averaging, class variance, class variance_correction,
-              class variance_form, class FunctionTable, class C_Macro_State, class C_Qdt, class C_Patch_Model,
+              class variance_form = uses_variance_form_aproximation<variance_total>,
+              class FunctionTable, class C_Macro_State, class C_Qdt, class C_Patch_Model,
               class C_double>
 
         requires(uses_recursive_aproximation_c<recursive> &&

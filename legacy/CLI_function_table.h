@@ -596,6 +596,7 @@ inline void calc_likelihood_old(std::string outfilename, std::string model,
                                 uses_adaptive_aproximation<true>, uses_recursive_aproximation<true>,
                                 uses_averaging_aproximation<2>, uses_variance_aproximation<false>,
                                 uses_taylor_variance_correction_aproximation<false>,
+                                uses_variance_form_aproximation<variance_total>,
                                 Macro_State_Ev_diagnostic>(ftbl3, model0, param1, get<Recording>(y()),
                                                        experiment);
                     if (lik)
