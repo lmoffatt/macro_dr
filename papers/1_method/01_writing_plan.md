@@ -21,7 +21,10 @@
 3. Every section file under `sections/` is non-empty and contains no `TBD`/`XXX`/`FIXME`.
 4. **Every numeric literal in prose carries a source comment** `% src: <file>[#<locator>]` (LINT-SRC).
 5. `\cite` count > 0, every `\cite` key resolves in `biblio.bib`, and `biblio.bib` contains no
-   uncited entry (it is today the P2X2 paper's 170 references, and the `.tex` has **zero** `\cite`).
+   uncited entry. **Status 2026-07-20: the first two hold** (106 entries, 9 cited, zero unresolved).
+   The 97 uncited entries are not dead weight, they are the pool waiting for the Introduction and
+   Discussion, which are the citation-heavy sections and are still unwritten. This check therefore
+   cannot go green until those two sections are drafted.
 6. Six figures are `\includegraphics`'d, each with a caption, each caption's numbers passing LINT-SRC.
 7. Data availability, Author contributions, Competing interests, Funding are non-empty.
 8. Word count is under the limit for the article type chosen in **D-1**.
@@ -131,7 +134,7 @@ to approve, pick, or correct. Nothing in either lane waits on anything.
 |---|---|---|---|
 | **T-1** | Split `elife_paper.tex` (90 lines: section titles + fill-hints in comments) into `sections/*.tex` pulled in with `\input`. One file per section = one agent owner = no merge conflicts. Carry the fill-hint comments across verbatim. | `papers/1_method/docs/manuscript-drafts/sections/*.tex` + a short `elife_paper.tex` | `./check.sh` item 1 still green, PDF unchanged |
 | **T-2** | ~~Write `check.sh`.~~ **Done 2026-07-14.** Current state: 3 pass, 4 fail. The four FAILs are the task list. | `papers/1_method/check.sh` | ✔ |
-| **T-3** | **Build `biblio.bib` from zero.** The longest pole in the project, and it has no blockers. The `.tex` has zero `\cite` and `biblio.bib` is the P2X2 paper's 170 references. Sources on disk: `docs/bibliography/MacroIR_prior_art_map.md`, `docs/bibliography/identifiability/`, the Comm Biol + Moffatt 2007 lineage, Munch 2022, the Kalman prior art. | `papers/1_method/docs/manuscript-drafts/biblio.bib` | every entry has a DOI or stable URL; `bibtex` clean; `./check.sh` item 5 |
+| **T-3** | ~~**Build `biblio.bib` from zero.**~~ **DONE 2026-07-14, and independently verified 2026-07-20** against the PDFs on disk (`docs/bibliography/VERIFICATION_2026-07-20.md`): 106 entries, 104 with a DOI or stable URL, every checkable field matching the printed record, every filename trap resolved to the version of record. **This was believed to be the longest pole and is not; it is finished.** Residual: fetch PDFs for the three statistics classics (`huber1967behavior`, `white1982maximum`, `godambe1960optimum`), which are cited but were not verifiable from disk. | `papers/1_method/docs/manuscript-drafts/biblio.bib` | ✔ |
 | **B-0** | Cost options (b) and (c) of **D-0** in CPU-hours, from `papers/_program/axes.md`, the existing run logs, and `projects/eLife_2025/ops/`. State what each one invalidates. | a one-page brief | Luciano picks in 15 min |
 | **B-2** | Prefill the six-parameter units table: infer each unit from the C++ model, the `.macroir` scripts and `scheme_CO_par.csv` / `scheme_CO_prior.csv`, with one evidence line per row. **Mark inferred, never asserted.** | a six-row table | Luciano corrects the wrong cells in 15 min |
 | **B-3** | Draft the replacement novelty paragraph from `docs/bibliography/MacroIR_prior_art_map.md`, plus the one-line retraction of the claim now in `introduction.md`. | one paragraph | Luciano approves in 10 min |
