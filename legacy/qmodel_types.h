@@ -97,6 +97,14 @@ class uses_averaging_aproximation : public var::constexpr_Var<int, uses_averagin
 class uses_averaging_aproximation_value
     : public var::constexpr_Var_value<int, uses_averaging_aproximation> {};
 
+template <int b>
+class uses_variance_form_aproximation
+    : public var::constexpr_Var<int, uses_variance_form_aproximation, b> {};
+class uses_variance_form_aproximation_value
+    : public var::constexpr_Var_value<int, uses_variance_form_aproximation> {};
+
+inline constexpr int variance_total = 0, variance_residual = 1;
+
 template <bool b>
 class uses_micro_aproximation : public var::constexpr_Var<bool, uses_micro_aproximation, b> {};
 class uses_micro_aproximation_value
@@ -145,6 +153,10 @@ class return_predictions_value : public var::constexpr_Var_value<int, return_pre
 template <class T>
 concept uses_averaging_aproximation_c =
     var::is_this_constexpr_Var_c<T, int, uses_averaging_aproximation>;
+
+template <class T>
+concept uses_variance_form_aproximation_c =
+    var::is_this_constexpr_Var_c<T, int, uses_variance_form_aproximation>;
 
 template <class T>
 concept uses_adaptive_aproximation_c =

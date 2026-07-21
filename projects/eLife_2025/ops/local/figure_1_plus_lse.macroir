@@ -114,6 +114,7 @@ lse = build_likelihood_function_with_family(model = model,
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
             variance_approximation = 1, taylor_variance_correction = 0,
             family_approximation       = 2,
+            variance_form_approximation = 0,
             taylor_qdt_approximation   = false )
 
 # ---- per-algorithm diagnostics over the shared recording ----

@@ -68,7 +68,8 @@ simulations = simulate(
 # variance_approximation is accepted and IGNORED by the LSE branch ([VAR-BLOCK]).
 lse = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
    recursive_approximation = 0, averaging_approximation = 1, variance_approximation = 1,
-   taylor_variance_correction = 0, family_approximation = 2, taylor_qdt_approximation = false)
+   taylor_variance_correction = 0, family_approximation = 2, variance_form_approximation = 0,
+   taylor_qdt_approximation = false)
 dlik_LSE = calc_dlikelihood_predictions(likelihood_algorithm = lse, parameters = par_tr,
    experiment = experiment, data_series = simulations)
 file_LSE = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_LSE,

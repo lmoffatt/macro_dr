@@ -108,18 +108,21 @@ for i in "${!NCHS[@]}"; do
     nnoise="${N_NOISE[$i]}"
     algo="${N_ALGO[$j]}"
 
-    # Algorithm label -> (recursive, averaging, taylor, micro) flags.
+    # Algorithm label -> (recursive, averaging, taylor, family, variance_form) flags.
+    # family: 0=macro, 1=micro. variance_form: 0=total, 1=residual.
+    # macro_VR = MR's mean and gain (averaging=1) with IR's residual variance.
     case "$algo" in
-        macro_NR)  recursive=false; averaging=0 ; taylor=false ; micro=false ;;
-        macro_R)   recursive=true;  averaging=0 ; taylor=false ; micro=false ;;
-        macro_NMR) recursive=false; averaging=1 ; taylor=false ; micro=false ;;
-        macro_MR)  recursive=true;  averaging=1 ; taylor=false ; micro=false ;;
-        macro_IR)  recursive=true;  averaging=2 ; taylor=false ; micro=false ;;
-        macro_IRT) recursive=true;  averaging=2 ; taylor=true  ; micro=false ;;
-        micro_R)   recursive=true;  averaging=0 ; taylor=false ; micro=true ;;
-        micro_MR)  recursive=true;  averaging=1 ; taylor=false ; micro=true ;;
-        micro_IR)  recursive=true;  averaging=2 ; taylor=false ; micro=true ;;
-        *) echo "[local] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR,IRT} or micro_{R,MR,IR})" >&2; exit 1 ;;
+        macro_NR)  recursive=false; averaging=0 ; taylor=false ; family=0 ; variance_form=0 ;;
+        macro_R)   recursive=true;  averaging=0 ; taylor=false ; family=0 ; variance_form=0 ;;
+        macro_NMR) recursive=false; averaging=1 ; taylor=false ; family=0 ; variance_form=0 ;;
+        macro_MR)  recursive=true;  averaging=1 ; taylor=false ; family=0 ; variance_form=0 ;;
+        macro_VR)  recursive=true;  averaging=1 ; taylor=false ; family=0 ; variance_form=1 ;;
+        macro_IR)  recursive=true;  averaging=2 ; taylor=false ; family=0 ; variance_form=0 ;;
+        macro_IRT) recursive=true;  averaging=2 ; taylor=true  ; family=0 ; variance_form=0 ;;
+        micro_R)   recursive=true;  averaging=0 ; taylor=false ; family=1 ; variance_form=0 ;;
+        micro_MR)  recursive=true;  averaging=1 ; taylor=false ; family=1 ; variance_form=0 ;;
+        micro_IR)  recursive=true;  averaging=2 ; taylor=false ; family=1 ; variance_form=0 ;;
+        *) echo "[local] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,VR,IR,IRT} or micro_{R,MR,IR})" >&2; exit 1 ;;
     esac
 
     case "$nnoise" in                    # label -> current_noise (vnoise = label / 1000)
@@ -144,7 +147,8 @@ for i in "${!NCHS[@]}"; do
     recursive_arg=$( printf -- '--algo_recursive_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$recursive")
     averaging_arg=$( printf -- '--algo_averaging_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$averaging")
     taylor_arg=$( printf -- '--algo_taylor_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$taylor")
-    micro_arg=$( printf -- '--algo_micro_approximation = indexed_bool_by(axis= algorithm_axis, values=[%s])' "$micro")
+    family_arg=$( printf -- '--algo_family_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$family")
+    variance_form_arg=$( printf -- '--algo_variance_form_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$variance_form")
 
     axis_interval_arg=$(printf -- '--axis_interval = axis(name= "interval_in_tau", labels= ["1","0.5","0.2","0.1","0.05","0.02","0.01"])')
     exp_step_1_arg=$(printf -- '--exp_n_step_1 = indexed_size_by(axis= axis_interval, values=[2,4,10,20,40,100,200])')
@@ -168,7 +172,7 @@ for i in "${!NCHS[@]}"; do
         "$axis_arg" "$num_arg" "$nsim_arg" "$fp_arg" \
         "$axis_noise_arg" "$current_noise_arg" \
         "$axis_algo_arg" "$recursive_arg" "$averaging_arg" "$taylor_arg" \
-        "$micro_arg" \
+        "$family_arg" "$variance_form_arg" \
         "$axis_interval_arg" \
         "$exp_step_1_arg" "$exp_samp_1_arg" "$exp_step_2_arg" "$exp_samp_2_arg" \
         "$exp_step_3_arg" "$exp_samp_3_arg" \

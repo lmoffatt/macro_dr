@@ -78,14 +78,19 @@ recordings = get_recordings_from_simulations(simulations = simulations)
 # Algorithm selected by the dispatcher (one per job) via algorithm_axis + the
 # indexed algo_* flags — mirrors figure_2. Result is Indexed; the MLE/score
 # commands broadcast over it (single algorithm here).
-algorithm = build_likelihood_function(
+# Uses the family builder (not the bool one) because the variance form is a flag
+# only that builder exposes. macro_VR = averaging 1 (start-conditioned mean, as MR)
+# with variance_form 1 (residual, as IR) and no boundary gain; every other macro_*
+# algorithm passes variance_form 0 (total) and is unchanged.
+algorithm = build_likelihood_function_with_family(
    model = model,
    adaptive_approximation = false,
    recursive_approximation = algo_recursive_approximation,
    averaging_approximation = algo_averaging_approximation,
    variance_approximation = true,
    taylor_variance_correction = algo_taylor_approximation,
-   micro_approximation = algo_micro_approximation,
+   family_approximation = algo_family_approximation,
+   variance_form_approximation = algo_variance_form_approximation,
    taylor_qdt_approximation = false)
 
 # GN inner-loop options. max_iter is injected (the dominant cost lever); the rest
