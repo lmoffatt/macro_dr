@@ -7,7 +7,8 @@ output: html_document
 
 <!--
 TIME-RESOLVED, PER-PARAMETER second-Bartlett check. For each of the four identified parameters
-(k_on, k_off, i, N_ch) two stacked rows, five approximation columns (NR, MNR, R, MR, IR).
+(k_on, k_off, i, N_ch) two stacked rows, four approximation columns (R, MR, VR, IR): the recursive
+ladder, so recursion is held fixed and only the interval conditioning varies.
 
   INFO row (log10 y): the per-step Gaussian Fisher information diagonal E[I_t] (blue) and the
     score variance Var(s_t) (orange). They coincide wherever the filter is calibrated; both
@@ -15,8 +16,10 @@ TIME-RESOLVED, PER-PARAMETER second-Bartlett check. For each of the four identif
     conductance-noise floor.
   LOG J/F row (linear, null 0): the per-step calibration log10(Var(s_t)/E[I_t]) with a 90%
     bootstrap CI over the 1000 recordings. A calibrated filter sits on 0 at every step. The
-    per-step diagonal is roughly calibrated for all algorithms; the large J != F of the naive
-    methods lives in the CROSS-time score correlation (Figure 4_score / the ACF), not here.
+    per-step diagonal is roughly calibrated for all algorithms; the J != F that separates them
+    lives in the CROSS-time score correlation (Figure 3 rows E and F), not here. THIS FIGURE IS THE
+    PREMISE, Figure 3 is the consequence: per step everyone reports its information correctly, so
+    the accumulated failure cannot be a per-sample modelling error.
 
 Reads the same 5 ensemble CSVs figures/data/figure_3_time_dlik_{NR,MR,IR,R,NMR}.csv (each ~1 GB,
 1000 sims; cell N_ch=100, Current_Noise=1e-4, interval=0.1 tau) ONCE each. Per step:
@@ -36,10 +39,13 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(data.table)
 library(patchwork)
-ALGOS <- c("NR", "NMR", "R", "MR", "IR")             # data-file keys: non-recursive | recursive
-ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", IR = "IR")   # display labels (NMR -> MNR)
+# A-strict roster: the recursive ladder (papers/1_method/decisions.md). NR and NMR remain in the
+# dumps and can be restored by putting their keys back here; nothing else needs to change.
+ALGOS <- c("R", "MR", "VR", "IR")                    # data-file keys
+ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")  # display (NMR -> MNR)
 FULL  <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
-           MR = "Mean Recursive", IR = "Interval Recursive")
+           MR = "Mean Recursive", VR = "Variance Recursive", IR = "Interval Recursive")
+LEAD  <- ALGOS[1]     # leftmost column: carries the y title, the row titles and the panel tags
 PIDX  <- c(0, 1, 2, 5)                               # on, off, unitary_current, Num_ch_mean
 PLAB  <- c("k[on]", "k[off]", "i", "N[ch]")          # plotmath row labels
 PTTL  <- list(bquote(k[on] * "  (opening rate)"), bquote(k[off] * "  (closing rate)"),
@@ -142,7 +148,7 @@ deco <- function(p, col, xr, ylim, yq, ttl = NULL, tag = NULL, bottom = FALSE, x
     brk <- pretty(ylim); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
     p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
   }
-  if (col == "NR") p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
+  if (col == LEAD) p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
   else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
   if (bottom) {
     if (col == "R") p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
@@ -166,7 +172,7 @@ mk_info <- function(i, a, tag = NULL, bottom = FALSE) {
                         labels = expression(F[t] == E * "[" * I[t] * "]" ~ "(Fisher information)",
                                             J[t] == Var(s[t]) ~ "(score variance)")) +
     base()
-  deco(g, a, tr, YCURVE, "information", ttl = if (a == "NR") PTTL[[i]] else NULL,
+  deco(g, a, tr, YCURVE, "information", ttl = if (a == LEAD) PTTL[[i]] else NULL,
        tag = tag, bottom = bottom, xlab = "time (ms)", mode = "info")
 }
 # LOG J/F row panel: per-step calibration log10(Var(s_t)/E[I_t]) + 90% bootstrap CI, linear, null 0
@@ -183,12 +189,24 @@ info_tags  <- c("A", "C", "E", "G")
 ratio_tags <- c("B", "D", "F", "H")
 panels <- list()
 for (i in seq_along(PLAB)) {
-  for (a in ALGOS) panels <- c(panels, list(mk_info (i, a, tag = if (a == "NR") info_tags[i]  else NULL)))
-  for (a in ALGOS) panels <- c(panels, list(mk_ratio(i, a, tag = if (a == "NR") ratio_tags[i] else NULL,
+  for (a in ALGOS) panels <- c(panels, list(mk_info (i, a, tag = if (a == LEAD) info_tags[i]  else NULL)))
+  for (a in ALGOS) panels <- c(panels, list(mk_ratio(i, a, tag = if (a == LEAD) ratio_tags[i] else NULL,
                                                       bottom = (i == length(PLAB)))))
 }
 
-g4 <- wrap_plots(c(lapply(ALGOS, colhead), panels), ncol = 5,
+# --- numbers the caption quotes, printed so they are never read off the plot (LINT-SRC) ---
+# Per (algorithm, parameter): the median per-step log10(J/F) over the steps that carry information,
+# and the fraction of those steps whose 90% bootstrap interval covers 0 (i.e. is calibrated).
+.cap4 <- R[, .(median_log10_JF = median(lr),
+               frac_CI_covers_0 = mean(lo <= 0 & hi >= 0),
+               n_steps = .N), by = .(algo, param)]
+setorder(.cap4, param, algo)
+cat("\n=== Figure 4 caption numbers ===\n")
+print(as.data.frame(.cap4), digits = 3, row.names = FALSE)
+cat("overall fraction of (step, algo, param) whose CI covers 0:",
+    sprintf("%.3f\n", R[, mean(lo <= 0 & hi >= 0)]))
+
+g4 <- wrap_plots(c(lapply(ALGOS, colhead), panels), ncol = length(ALGOS),
                  heights = c(0.10, rep(c(1, 0.5), length(PLAB))), guides = "collect") &  # ratio rows half-height
       theme(legend.position = "bottom")
 ggsave("Figure_4.pdf", g4, width = 7.0, height = 11)

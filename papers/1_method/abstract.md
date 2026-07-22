@@ -29,7 +29,7 @@ frame.
 `R` ≈ Moffatt 2007 and Münch 2022 (a published Bayesian Kalman filter); `IR` = MacroIR (Comm Biol
 2025). The recursive filter is published and in use. What was never done is characterize *which
 conditioning* it needs to stay calibrated, and where even it degrades. Two open questions in the
-field's own words land here (full quotes in `../_program/bibliography/` and `introduction.md`):
+field's own words land here (full quotes in `docs/bibliography/` at the repo root, and `introduction.md`):
 
 - **Milescu 2005**, on recursion: whether estimates are "intrinsically biased if obtained by any method
   that is **not** a Bayesian filtering algorithm", and his own dominant error source, "the local time

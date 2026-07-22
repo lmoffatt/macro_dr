@@ -1,0 +1,145 @@
+---
+title: "MLE shape diagnostics — skewness and excess kurtosis of the estimator, over (interval, noise) by N_ch"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WHY THIS EXISTS, and what it does NOT claim.
+
+The distortion machinery of Figures 2 and 5 is a SECOND-MOMENT framework: it compares the covariance
+the likelihood reports with the covariance the estimates actually have. That comparison presumes a
+covariance is an adequate summary of the estimator's uncertainty, i.e. that the sampling distribution
+of the MLE is close to normal.
+
+At few channels and short intervals it is not. This figure measures how far, over the same design
+plane the validity maps use, so the region where an ellipse (and therefore a reported confidence
+interval) means what it says can be drawn rather than assumed.
+
+THE DISTINCTION THAT MUST NOT BE LOST: a non-normal MLE distribution is NOT a defect of the
+likelihood. A perfectly correct likelihood produces a skewed MLE at small samples; normality is an
+asymptotic property of the ESTIMATOR, not a claim of the model. So this is a limitation that sits
+ABOVE the paper's subject: even where the likelihood reports its own information honestly (J = G),
+a 95% interval built from any covariance can fail to cover 95%, because its validity rests on
+asymptotic normality rather than on the second moment being right.
+
+Two group sizes are shown because the group size is what controls the approach to normality: each
+estimate is fitted to `group_size` recordings, so the departure shrinks roughly as 1/sqrt(group).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse); library(patchwork)
+```
+
+```{r params}
+ALGO   <- "macro_IR"
+NCHS   <- c(10, 50, 200, 1000)
+NOISES <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+GROUPS <- c(10, 100)
+DATA   <- "../data/1c2ae6f"
+CACHE  <- "figure_normality_shape_cache.csv"
+
+PARAMS <- c(off = "log[10]~k[off]", Num_ch_mean = "log[10]~N[ch]",
+            on = "log[10]~k[on]", unitary_current = "log[10]~i")
+```
+
+```{r compute}
+# ~1.7 GB of cloud CSVs, so the per-cell moments are cached; delete the cache to recompute.
+if (file.exists(CACHE)) {
+  shp <- read.csv(CACHE, stringsAsFactors = FALSE)
+} else {
+  skew <- function(x) { x <- x[is.finite(x)]; mean((x - mean(x))^3) / sd(x)^3 }
+  exk  <- function(x) { x <- x[is.finite(x)]; mean((x - mean(x))^4) / var(x)^2 - 3 }
+  shp <- expand_grid(nch = NCHS, z = NOISES) %>%
+    pmap_dfr(function(nch, z) {
+      f <- sprintf("%s/figure_3_G_nch_%d_nsim_10000_%s_noise_%s_mle_cloud_runs.csv", DATA, nch, ALGO, z)
+      if (!file.exists(f)) return(NULL)
+      read.csv(f, skip = 1, stringsAsFactors = FALSE) %>%
+        filter(component_path == "Model_Parameters_Hat", statistic == "value",
+               group_size %in% GROUPS, param_name %in% names(PARAMS)) %>%
+        group_by(group_size, interval_in_tau, param_name) %>%
+        summarise(n = n(), skew = skew(value), exkurt = exk(value), .groups = "drop") %>%
+        mutate(Num_ch = nch, noise = z)
+    })
+  write.csv(shp, CACHE, row.names = FALSE)
+}
+shp <- shp %>%
+  mutate(lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+         nchf = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)),
+         prow = factor(sprintf("%s~~~(g==%d)", PARAMS[param_name], group_size),
+                       levels = as.vector(outer(PARAMS[c("off","Num_ch_mean")], GROUPS,
+                                                function(p, g) sprintf("%s~~~(g==%d)", p, g)))))
+cat("cells:", nrow(shp), " | group sizes:", paste(sort(unique(shp$group_size)), collapse = ", "),
+    " | fits per cell:", paste(sort(unique(shp$n)), collapse = ", "), "\n")
+```
+
+```{r plot, fig.width = 7, fig.height = 8}
+RAMP <- c("#021024","#053061","#2166AC","#4393C3","#92C5DE","#D1E5F0","#F7F7F7",
+          "#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F","#3d0011")
+bandcols <- function(breaks) {
+  n <- length(breaks) - 1; ctr <- findInterval(0, breaks); nb <- ctr - 1; nr <- n - ctr; K <- max(nb, nr, 1)
+  blue <- colorRampPalette(rev(RAMP[1:7]), space = "Lab")(K + 1)
+  red  <- colorRampPalette(RAMP[7:13],     space = "Lab")(K + 1)
+  cols <- rep(RAMP[7], n)
+  if (nb > 0) cols[seq(ctr - 1, 1)] <- blue[2:(nb + 1)]
+  if (nr > 0) cols[seq(ctr + 1, n)] <- red[2:(nr + 1)]
+  cols
+}
+SK_BRK <- c(-2,-1,-0.5,-0.25,-0.1,0.1,0.25,0.5,1,2,4); SK_PAL <- bandcols(SK_BRK)
+KU_BRK <- c(-2,-1,-0.5,-0.25,-0.1,0.1,0.25,0.5,1,2,5); KU_PAL <- bandcols(KU_BRK)
+X_BRK <- log10(c(.01,.1,1)); Y_BRK <- log10(c(.05,.5,10))
+
+blk <- function(v, brk, pal, top = FALSE, bottom = FALSE) {
+  d <- shp %>% filter(param_name %in% c("off","Num_ch_mean")) %>%
+    mutate(zz = pmin(pmax(.data[[v]], min(brk)), max(brk)))
+  ggplot(d, aes(lx, ly, z = zz)) +
+    geom_contour_filled(breaks = brk) +
+    scale_fill_manual(values = pal, drop = FALSE, guide = "none") +
+    geom_contour(breaks = c(-0.5, 0.5), colour = "black", linewidth = .3) +
+    geom_point(size = .08, colour = "grey35", alpha = .35) +
+    facet_grid(prow ~ nchf, labeller = label_parsed) +
+    scale_x_continuous(breaks = X_BRK, labels = c(".01",".1","1")) +
+    scale_y_continuous(breaks = Y_BRK, labels = c(".05",".5","10")) +
+    labs(y = "noise") +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(), panel.spacing = unit(.12,"cm"),
+          legend.position = "none", axis.text = element_text(size = 6),
+          axis.title.y = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
+          plot.margin = margin(2,2,2,2)) +
+    (if (top) theme(strip.text.x = element_text(size = 7.5)) else theme(strip.text.x = element_blank())) +
+    (if (bottom) labs(x = expression(Delta %.% k[off])) else
+       theme(axis.title.x = element_blank(), axis.text.x = element_blank()))
+}
+cbar <- function(pal, lab, title) {
+  n <- length(pal)
+  ggplot(data.frame(x = seq_len(n)), aes(x, 1, fill = factor(x))) +
+    geom_tile(colour = "grey92", linewidth = .15) +
+    scale_fill_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = seq(0.5, n + 0.5, 1), labels = lab, expand = c(0,0)) +
+    coord_cartesian(ylim = c(0.5, 2.0), clip = "off") + labs(y = title) +
+    theme_void(base_family = "Helvetica") +
+    theme(axis.title.y = element_text(angle = 0, size = 7, hjust = 1, vjust = .5, margin = margin(r = 4)),
+          axis.text.x = element_text(size = 5.5), plot.margin = margin(3, 26, 2, 40))
+}
+btitle <- function(t) ggplot() + theme_void(base_family="Helvetica") +
+  annotate("text", x=0, y=0, label=t, hjust=0, size=2.9, fontface="bold") +
+  coord_cartesian(xlim=c(0,1), clip="off") + theme(plot.margin=margin(3,2,0,26))
+
+g <- btitle("A   skewness of the MLE marginal") / blk("skew", SK_BRK, SK_PAL, top = TRUE) /
+     cbar(SK_PAL, formatC(SK_BRK, format="g", digits=2), "skewness") /
+     btitle("B   excess kurtosis of the MLE marginal") / blk("exkurt", KU_BRK, KU_PAL, bottom = TRUE) /
+     cbar(KU_PAL, formatC(KU_BRK, format="g", digits=2), "excess kurtosis") +
+     plot_layout(heights = c(0.16, 4, 0.28, 0.16, 4.2, 0.28))
+g
+ggsave("Figure_normality_shape.pdf", g, width = 7.0, height = 8)
+```
+
+```{r numbers}
+cat("\n=== where the Gaussian summary is defensible (|skew| < 0.5 and |exkurt| < 0.5) ===\n")
+print(as.data.frame(shp %>% filter(param_name %in% c("off","Num_ch_mean")) %>%
+  group_by(param_name, group_size, Num_ch) %>%
+  summarise(frac_ok = mean(abs(skew) < 0.5 & abs(exkurt) < 0.5), .groups = "drop") %>%
+  pivot_wider(names_from = Num_ch, values_from = frac_ok)), digits = 2, row.names = FALSE)
+```

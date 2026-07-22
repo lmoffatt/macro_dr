@@ -14,9 +14,9 @@ Primary code reference:
 
 Primary manuscript references:
 
-- `papers/1_method/docs/manuscript-drafts/elife-macroir-revised3.tex`
+- `papers/1_method/docs/manuscript-drafts/archives/elife-macroir-revised3.tex`
 - `papers/1_method/docs/manuscript-drafts/elife-template.tex`
-- `papers/1_method/docs/manuscript-drafts/elife-macroir-merged.tex`
+- `papers/1_method/docs/manuscript-drafts/archives/elife-macroir-merged.tex`
 
 ## 1. Naming conventions used in code
 

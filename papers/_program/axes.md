@@ -7,7 +7,7 @@
 ## 1) Control variables
 From the two-state `scheme_CO`:
 - **N_ch** — effective number of channels. Map axis 1.
-- **instrumental noise** — map axis 2, and the axis that carries the two crossovers (§2a). Swept as the dimensionless label of `decisions/D-2_parameter_units.md` (label = 10·ν, ν = `Current_Noise`·k_off/g²; the dispatcher maps `Current_Noise = label/1000`).
+- **instrumental noise** — map axis 2, and the axis that carries the two crossovers (§2a). Swept as the dimensionless label of `../1_method/decisions/D-2_parameter_units.md` (label = 10·ν, ν = `Current_Noise`·k_off/g²; the dispatcher maps `Current_Noise = label/1000`).
 - **interval Δ / τ** — Δ = n_samples / fs; τ = 1 / max_k|Re(λ_k)| of the generator Q at the agonist condition. Carried *inside* every cell as 7 values of `interval_in_tau`, not as a separate map axis. Standardize how τ is recorded in run metadata.
 - **K_off** — **not swept.** Fixed at 100 on disk (`figure_3_mle_G.macroir:46`), the output path has no K_off component so cells would silently overwrite each other, and building the axis was costed at ~35,000 CPU-hours. Any document still promising an N_ch × K_off map is stale.
 

@@ -12,7 +12,7 @@
 > scalar (per-parameter, evaluated at the pooled fit θ_pool); "over-confident" = the reported
 > uncertainty is **too tight** (emp/Fisher > 1); "under-confident/conservative" = too loose
 > (emp/Fisher < 1). The five algorithms and the NMR↔MNR data/display relabel are in
-> `docs/figure_provenance.md` §3.
+> `../../_program/provenance.md` §3 (was `docs/figure_provenance.md` before the 2026-07-20 split).
 
 ---
 
@@ -180,12 +180,12 @@ reconciliation) cannot be settled from the parameter-covariance CSVs, and the pr
 against the "MR overestimates observable variance" story (§2.1). The clean settle is a direct
 comparison of the predicted `y_var` per interval for MR vs IR on the same ensemble — the columns are
 already in the **Figure 3/4 time-resolved dumps** (`figures/data/figure_3_time_dlik_{MR,IR}.csv`,
-`docs/figure_provenance.md` §6), no new run needed; it is an `awk` over the `y_var` column at matching
-intervals (dedup the ×2 row duplication first, `figure_provenance.md` §6 trap 1). Until then, the
+`../../_program/provenance.md` §6), no new run needed; it is an `awk` over the `y_var` column at matching
+intervals (dedup the ×2 row duplication first, `../../_program/provenance.md` §6 trap 1). Until then, the
 paper should **not** claim MR overestimates the observable variance; the parameter-space verdict
 (over-confident, 1.8) stands on its own and is all Table 1 needs.
 
-Traps respected (`docs/figure_provenance.md`): the S3/Figure-2 data are run 2 = `figure_3_mle.macroir`
+Traps respected (`../../_program/provenance.md`): the S3/Figure-2 data are run 2 = `figure_3_mle.macroir`
 → `433ed13/figure_3_nch_*`, **not** a "figure_2" file (§1 naming trap); "noise 0.1" is the label,
 `Current_Noise = 1e-4` (§1 trap 3); the mle_cloud file **mixes group_size 10 and 100** and I filtered
 to **group_size = 10** to match Figure 2 (`project_cloud_group_size_column`).

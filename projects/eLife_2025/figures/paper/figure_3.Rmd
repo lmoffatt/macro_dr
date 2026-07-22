@@ -48,9 +48,13 @@ library(patchwork)
 ```
 
 ```{r read}
-ALGOS  <- c("NR", "NMR", "R", "MR", "IR")
-ALAB   <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", IR = "IR")
-FULL   <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
+# A-strict roster: paper 1 measures the recursive ladder (papers/1_method/decisions.md). The two
+# non-recursive members stay in the DUMP so figure_4 and the supplements can still use them; only the
+# panel roster changes here. Set ALGOS to all five to get the old figure back.
+ALGOS  <- c("R", "MR", "VR", "IR")
+ALAB   <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+LEAD   <- ALGOS[1]      # leftmost column: carries the y title, the row titles and the panel tags
+FULL   <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive", VR = "Variance Recursive",
             MR = "Mean Recursive", IR = "Interval Recursive")
 P_MAIN <- 1L     # k_off
 B      <- 400    # bootstrap replicates over recordings
@@ -157,7 +161,9 @@ dC <- RES[is.finite(rC) & is.finite(rC_lo) & rC_lo > 0]
 
 ```{r panels, fig.width = 7.0, fig.height = 9.5}
 COL <- "#0072B2"; NUL <- "#009E73"
-naive <- c("NR", "NMR"); recg <- c("R", "MR", "IR")
+# the two-block y scale only exists while a non-recursive column is present; with an all-recursive
+# roster `naive` is empty, every column falls in one group and the split degenerates to one scale.
+naive <- intersect(ALGOS, c("NR", "NMR")); recg <- setdiff(ALGOS, naive)
 
 grange <- function(lo, hi, algo, pad = .08) {
   g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
@@ -185,7 +191,7 @@ deco <- function(p, col, split, xr, yl, yq, ttl = NULL, tag = NULL, bottom = FAL
     brk <- pretty(ylim); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
     p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
   }
-  if (col == "NR") p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
+  if (col == LEAD) p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
   else if (col == "R" && split) p <- p + theme(axis.title.y = element_blank())
   else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
   # x NUMBERS on every bottom-of-block panel, but the x TITLE only ONCE, on the centre column (R)
@@ -224,7 +230,7 @@ pTr <- lapply(ALGOS, function(a) {
              label = sprintf("mean logL\n%.1f %s %.1f", totL[algo == a, mean], "±", totL[algo == a, se])) +
     base()
   deco(g, a, FALSE, tr, yTr, "current",
-       ttl = if (a == "NR") "predicted & observed current" else NULL, tag = if (a == "NR") "A" else NULL)
+       ttl = if (a == LEAD) "predicted & observed current" else NULL, tag = if (a == LEAD) "A" else NULL)
 })
 # B: residual variance (>=0) -> log10, GROUPED, time
 loV <- pmax(tsV$mean_r2 - 1.96 * tsV$se_r2, 1e-6)
@@ -235,7 +241,7 @@ pA <- lapply(ALGOS, function(a) {
     geom_ribbon(aes(ymin = pmax(mean_r2 - 1.96 * se_r2, 1e-6), ymax = mean_r2 + 1.96 * se_r2), fill = COL, alpha = .25) +
     geom_line(colour = COL, linewidth = .4) + base()
   deco(g, a, TRUE, tr, yA, expression(bar(r)[std]^2),
-       ttl = if (a == "NR") "residual variance" else NULL, tag = if (a == "NR") "B" else NULL, logr = TRUE)
+       ttl = if (a == LEAD) "residual variance" else NULL, tag = if (a == LEAD) "B" else NULL, logr = TRUE)
 })
 # C: score bias (k_off), signed -> linear, GROUPED, time
 yC <- grange(dScore$mA - 1.96 * dScore$seA, dScore$mA + 1.96 * dScore$seA, as.character(dScore$algo))
@@ -245,7 +251,7 @@ pC <- lapply(ALGOS, function(a) {
     geom_ribbon(aes(ymin = mA - 1.96 * seA, ymax = mA + 1.96 * seA), fill = COL, alpha = .25) +
     geom_line(colour = COL, linewidth = .4) + base()
   deco(g, a, TRUE, tr, yC, expression(bar(s)[t]),
-       ttl = if (a == "NR") expression("score bias (" * k[off] * ")") else NULL, tag = if (a == "NR") "C" else NULL)
+       ttl = if (a == LEAD) expression("score bias (" * k[off] * ")") else NULL, tag = if (a == LEAD) "C" else NULL)
 })
 # D: per-interval information ratio (>=0) -> log10, SHARED, time  [the sampling-distortion information]
 yD <- 10^padr(log10(as.numeric(quantile(c(dB$rB_lo, dB$rB_hi), c(.01, .99), na.rm = TRUE))))
@@ -255,7 +261,7 @@ pD <- lapply(ALGOS, function(a) {
     geom_ribbon(aes(ymin = rB_lo, ymax = rB_hi), fill = COL, alpha = .25) +
     geom_line(colour = COL, linewidth = .4) + base()
   deco(g, a, FALSE, tr, yD, expression(Var(s[t]) / F[t]),
-       ttl = if (a == "NR") "per-interval information ratio" else NULL, tag = if (a == "NR") "D" else NULL,
+       ttl = if (a == LEAD) "per-interval information ratio" else NULL, tag = if (a == LEAD) "D" else NULL,
        logr = TRUE)
 })
 # E: accumulated information ratio J_T/F_T (>=0) -> log10, GROUPED, bottom of the TIME block
@@ -266,7 +272,7 @@ pE <- lapply(ALGOS, function(a) {
     geom_ribbon(aes(ymin = rC_lo, ymax = rC_hi), fill = COL, alpha = .25) +
     geom_line(colour = COL, linewidth = .4) + base()
   deco(g, a, TRUE, tr, yE, expression(Var(sum(s[t])) / sum(F[t])),
-       ttl = if (a == "NR") "accumulated information ratio" else NULL, tag = if (a == "NR") "E" else NULL,
+       ttl = if (a == LEAD) "accumulated information ratio" else NULL, tag = if (a == LEAD) "E" else NULL,
        bottom = TRUE, xlab = "time (ms)", logr = TRUE)
 })
 # F: SCORE autocorrelation (k_off) over lag, signed -> linear, GROUPED, bottom (LAG block, at the
@@ -278,11 +284,22 @@ pSc <- lapply(ALGOS, function(a) {
     geom_linerange(aes(ymin = acf - 1.96 * se, ymax = acf + 1.96 * se), colour = COL, linewidth = .35) +
     geom_point(colour = COL, size = .25) + base()
   deco(g, a, TRUE, lr, yF, "ACF",
-       ttl = if (a == "NR") expression("score autocorrelation (" * k[off] * ")") else NULL,
-       tag = if (a == "NR") "F" else NULL, bottom = TRUE, xlab = "lag")
+       ttl = if (a == LEAD) expression("score autocorrelation (" * k[off] * ")") else NULL,
+       tag = if (a == LEAD) "F" else NULL, bottom = TRUE, xlab = "lag")
 })
 
-g3a <- wrap_plots(c(lapply(ALGOS, colhead), pTr, pA, pC, pD, pE, pSc), ncol = 5,
+# --- numbers the caption quotes, printed so they are never read off the plot (LINT-SRC) ---
+.capnum <- merge(
+  totL[, .(algo, logL = mean, logL_se = se)],
+  RES[, .SD[which.max(sample_index)], by = algo][, .(algo, accum_ratio = rC, lo = rC_lo, hi = rC_hi)],
+  by = "algo")
+.capnum <- merge(.capnum, as.data.table(acf_sc)[lag == 1, .(algo, acf_lag1 = acf, acf_se = se)], by = "algo")
+.capnum <- .capnum[match(ALGOS, algo)]
+cat("\n=== Figure 3 caption numbers (n_simulations =", uniqueN(SC$simulation_index), ") ===\n")
+print(as.data.frame(.capnum), digits = 3, row.names = FALSE)
+cat("logL spread (best - worst):", sprintf("%.1f nats\n", diff(range(.capnum$logL))))
+
+g3a <- wrap_plots(c(lapply(ALGOS, colhead), pTr, pA, pC, pD, pE, pSc), ncol = length(ALGOS),
                   heights = c(0.10, 1, 1, 1, 1, 1, 1))
 ggsave("Figure_3.pdf", g3a, width = 7.0, height = 11.0)
 ```

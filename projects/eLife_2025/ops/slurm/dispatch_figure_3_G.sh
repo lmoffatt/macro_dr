@@ -20,7 +20,9 @@
 #   projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh <cluster>     # e.g. dirac
 # Tunables via env: NCHS and N_SIMS (parallel arrays, same length), N_NOISE,
 # N_ALGO, GROUP_SIZE (a DSL axis — broadcast within one job; cloud CSV gains a
-# group_size column), N_BOOT, MIN_GROUPS, GN_MAX_ITER, CPUS, MEM, TIME, PARTITION,
+# group_size column), INTERVALS (the acquisition-interval axis, in units of tau;
+# any multiple of 1/500, default the historical seven-value grid),
+# N_BOOT, MIN_GROUPS, GN_MAX_ITER, CPUS, MEM, TIME, PARTITION,
 # BIN, DEPEND (job id to wait for — unset = no dependency). Example:
 #   NCHS="10000" N_SIMS="256" N_ALGO="macro_IR" GROUP_SIZE="1 10 100" \
 #     projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh dirac
@@ -114,6 +116,63 @@ join_qcsv() { local out=""; for v in "$@"; do [ -n "$out" ] && out+=","; out+="\
 # references it). calc_MLE broadcasts over it, so one job sweeps all group sizes.
 group_size_axis_arg=$(printf -- '--group_size_axis = axis(name= "group_size", labels= [%s])' "$(join_qcsv "${GROUP_SIZE[@]}")")
 gs_arg=$( printf -- '--group_size = indexed_size_by(axis= group_size_axis, values=[%s])' "$(join_csv "${GROUP_SIZE[@]}")")
+
+# ---- interval axis, DERIVED rather than tabulated ------------------------------------------------
+# The seven-value grid that used to be hardcoded here is not a table, it is a formula. At the
+# configured sampling frequency (50 kHz) and tau = 1/k_off = 0.01 s, one acquisition interval of
+# n_samp raw samples is n_samp/50000 s, i.e. exactly n_samp/500 in units of tau. Hence
+#
+#     n_samp   = 500 * delta            (raw samples averaged into one interval)
+#     n_step_1 =   2 / delta            (intervals in the pre-agonist segment)
+#     n_step_2 =   4 / delta = n_step_3 (intervals in each agonist segment)
+#
+# so the recording holds a fixed number of RAW samples and only their grouping changes. The old
+# hardcoded arrays are reproduced exactly by these three expressions; verified for all seven values.
+#
+# CONSEQUENCE, and it is a hard limit rather than a rounding convenience: only multiples of 1/500 are
+# reachable, because n_samp is a count. delta = 0.002 is one raw sample per interval and is the floor;
+# anything finer needs a higher acquisition frequency in the .macroir, not a change here.
+#
+#   INTERVALS="1 0.05"      # run two intervals instead of the full grid
+#   INTERVALS="1 0.5 0.2 0.1 0.05 0.02 0.01"   # the default, i.e. the historical grid
+#
+# COST NOTE: the likelihood runs once per INTERVAL, so cost scales with sum(1/delta), not with the
+# number of intervals. On the default grid delta=0.01 alone is 53% of the work and delta=1 is 0.5%.
+INTERVALS=(${INTERVALS:-1 0.5 0.2 0.1 0.05 0.02 0.01})
+
+iv_lab=(); iv_samp=(); iv_step1=(); iv_step2=()
+for d in "${INTERVALS[@]}"; do
+    read -r nsamp st1 st2 eff <<<"$(awk -v d="$d" 'BEGIN{
+        if (d <= 0) { print "0 0 0 0"; exit }
+        ns = d*500; nsr = int(ns + 0.5)
+        printf "%d %d %d %.10g", nsr, int(2/d + 0.5), int(4/d + 0.5), nsr/500 }')"
+    [ "${nsamp:-0}" -ge 1 ] || {
+        echo "[dispatch] interval '$d' would need n_samp = 500*$d = ${nsamp:-0} raw samples per interval;" >&2
+        echo "           the floor at this acquisition frequency is 0.002 (one sample)." >&2
+        exit 1; }
+    if [ "$(awk -v a="$d" -v b="$eff" 'BEGIN{print (a==b) ? 1 : 0}')" != 1 ]; then
+        echo "[dispatch] interval '$d' is not a multiple of 1/500; running $eff (n_samp=$nsamp) instead." >&2
+    fi
+    # Two requested intervals can snap to the same reachable value (0.002 and 0.001 both give one raw
+    # sample). That would put two entries with the same label on the axis, and the second would
+    # silently overwrite the first in the output. Refuse instead.
+    for prev in ${iv_lab[@]+"${iv_lab[@]}"}; do
+        [ "$prev" = "$eff" ] && {
+            echo "[dispatch] intervals '$d' and an earlier one both resolve to $eff (n_samp=$nsamp);" >&2
+            echo "           duplicate axis labels would collide in the output. Drop one." >&2
+            exit 1; }
+    done
+    iv_lab+=("$eff"); iv_samp+=("$nsamp"); iv_step1+=("$st1"); iv_step2+=("$st2")
+done
+echo "[dispatch] intervals: ${iv_lab[*]}  (n_samp: ${iv_samp[*]})"
+
+axis_interval_arg=$(printf -- '--axis_interval = axis(name= "interval_in_tau", labels= [%s])' "$(join_qcsv "${iv_lab[@]}")")
+exp_step_1_arg=$(printf -- '--exp_n_step_1 = indexed_size_by(axis= axis_interval, values=[%s])' "$(join_csv "${iv_step1[@]}")")
+exp_samp_1_arg=$(printf -- '--exp_n_samp_1 = indexed_size_by(axis= axis_interval, values=[%s])' "$(join_csv "${iv_samp[@]}")")
+exp_step_2_arg=$(printf -- '--exp_n_step_2 = indexed_size_by(axis= axis_interval, values=[%s])' "$(join_csv "${iv_step2[@]}")")
+exp_samp_2_arg=$(printf -- '--exp_n_samp_2 = indexed_size_by(axis= axis_interval, values=[%s])' "$(join_csv "${iv_samp[@]}")")
+exp_step_3_arg=$(printf -- '--exp_n_step_3 = indexed_size_by(axis= axis_interval, values=[%s])' "$(join_csv "${iv_step2[@]}")")
+exp_samp_3_arg=$(printf -- '--exp_n_samp_3 = indexed_size_by(axis= axis_interval, values=[%s])' "$(join_csv "${iv_samp[@]}")")
 nboot_arg=$( printf -- '--n_bootstrap_samples = get_number(n=%s)' "$N_BOOT")
 mingrp_arg=$(printf -- '--min_groups_for_bootstrap = get_number(n=%s)' "$MIN_GROUPS")
 gnmaxit_arg=$(printf -- '--gn_max_iter = get_number(n=%s)' "$GN_MAX_ITER")
@@ -176,14 +235,7 @@ for i in "${!NCHS[@]}"; do
     family_arg=$( printf -- '--algo_family_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$family")
     variance_form_arg=$( printf -- '--algo_variance_form_approximation = indexed_int_by(axis= algorithm_axis, values=[%s])' "$variance_form")
 
-    # interval_in_tau grid (identical to figure_2). axis_interval precedes exp_n_*.
-    axis_interval_arg=$(printf -- '--axis_interval = axis(name= "interval_in_tau", labels= ["1","0.5","0.2","0.1","0.05","0.02","0.01"])')
-    exp_step_1_arg=$(printf -- '--exp_n_step_1 = indexed_size_by(axis= axis_interval, values=[2,4,10,20,40,100,200])')
-    exp_samp_1_arg=$(printf -- '--exp_n_samp_1 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
-    exp_step_2_arg=$(printf -- '--exp_n_step_2 = indexed_size_by(axis= axis_interval, values=[4,8,20,40,80,200,400])')
-    exp_samp_2_arg=$(printf -- '--exp_n_samp_2 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
-    exp_step_3_arg=$(printf -- '--exp_n_step_3 = indexed_size_by(axis= axis_interval, values=[4,8,20,40,80,200,400])')
-    exp_samp_3_arg=$(printf -- '--exp_n_samp_3 = indexed_size_by(axis= axis_interval, values=[500,250,100,50,25,10,5])')
+    # interval axis: built once above from INTERVALS, loop-invariant.
 
     # MACRODR_AXIS_SERIAL=1 serializes the internal axis-combo loop so the
     # per-simulation / bootstrap loops become the active OpenMP level (load-bearing).

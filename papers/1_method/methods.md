@@ -2,7 +2,7 @@
 
 > Working doc, same genre as `abstract.md`. Opened 2026-07-14.
 > Every value below was read out of the run scripts and the production data, not out of a plan document. Path given for each. Where a value could not be found, it says so, and those are the items that must be settled before submission.
-> eLife excludes Methods from the ~5,000-word main-text target (`docs/elife-author-instructions.md`), so this section can afford to be complete. It should be.
+> eLife excludes Methods from the ~5,000-word main-text target (`../_program/elife-author-instructions.md`), so this section can afford to be complete. It should be.
 
 ## The job
 

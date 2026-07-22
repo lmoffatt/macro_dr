@@ -129,9 +129,9 @@ bands B and the boundary come from the runs.
 | Algo | Bias | Variance distortion (band A) | Standing |
 |---|---|---|---|
 | **IR** | none | to ~1 in Gaussian regime; conservative (~0.5) in the few-channel corner | Calibrated; the default when gating noise dominates |
-| **VR** | expected none | **not yet measured** — expected over-confident (residual variance without the boundary gain) | The control: `MR → VR` changes only the variance, `VR → IR` only the gain |
+| **VR** | none apparent | **over-confident 1.8–2.2, worse than MR** (one cell, Gaussian anchor, 2026-07-22) | The control, and it fired: removing the variance without the boundary gain degrades calibration, so the gain is what recovers it |
 | **MR** | none | over-confident 1.5–2.1 (drops the boundary cross-covariance N·γᵀΣγ that IR keeps) | Cautionary intermediate; the window axis is non-monotone, MR worse than R |
-| **R** | none | residual distortion, size disputed (see D-4) | Usable; correlation distortion at short Δ |
+| **R** | none | residual distortion, size disputed (see `decisions/D-4_ranking_verdict.md`) | Usable; correlation distortion at short Δ |
 
 Mechanism of MR's over-confidence: `theory/macroir/docs/Macro_MRT/macromrt_macromrt_paper_section.md`
 and `theory/macroir/notes/gvar_i_overcount_audit.md` (use the mechanism, not the inverted May-2026
@@ -139,10 +139,12 @@ verdict). The audited finding: MR's error is genuine misspecification, not a cod
 the end-state spread into the observation variance instead of resolving it through the gain. **`VR` is
 the experiment that measures this**, and it is why the roster includes it.
 
-**Open, and only the runs close them.** VR's actual sign (does it come out over-confident as the gain
-argument predicts?); R's corner behaviour against D-4's two contested cells; where the measured A/B
-boundary falls against the prediction. **Do not pre-write these.** The previous table asserted verdicts
-the data then contradicted in two cells (D-4), which is how the four-copy drift started. NR, NMR and
+**Open, and only the runs close them.** ~~VR's actual sign~~ **answered 2026-07-22: over-confident,
+and more than MR** (`decisions.md`), so the mechanism claim holds at the headline cell and now needs
+the grid to be stated at regime scope. R's corner behaviour against the two contested cells of
+`decisions/D-4_ranking_verdict.md`; where the measured A/B boundary falls against the prediction.
+**Do not pre-write these.** The previous table asserted verdicts the data then contradicted in those
+two cells, which is how the four-copy drift started. NR, NMR and
 LSE rows are deliberately gone: they are other papers.
 
 ## 5) Figures
@@ -200,15 +202,23 @@ Theory fact. Theory sources:
 Paper 1's own. Cross-paper decisions (venue, the N_ch partition, VR's name, one-repo-or-three) live in
 `../_program/program.md` §9 and `../_program/decisions.md` §5.
 
-- **D-0 [Q]** Confirm **NR** is out of paper 1 (moved to paper 2). Default: out.
-- **D-1 [Q]** MR and VR in main text or supplement? "Strawman" is retired; re-decide on the map
-  footing — a method here is one with a domain, and VR's domain is the mechanism proof.
-- **D-3 [Q]** Placement of the Fisher-to-zero result: main Fig 4 as drawn, or supplement. Author:
-  "me voló la cabeza" but "does not go in the abstract".
-- **D-4 [Q]** "Valid" thresholds on the map (candidate distortion < 1.1); the three-way threshold
-  conflict is in `../_program/machinery.md` §8.
-- **D-5 [Q]** Anchor point for bias/distortion. Consensus: optimum / θ_pool; θ_sim exposes the bias.
-- **D-7 [Q]** Language of the planning docs: English (current) or Spanish. (Program-wide, but unrouted.)
+**These are `Q-n`, not `D-n` (relabelled 2026-07-21).** The `D-n` labels belong to the
+manuscript-production register: one brief per decision in `decisions/`, listed in `01_writing_plan.md`
+§3. Both lists used `D-n` until now, so `D-0`, `D-1`, `D-3`, `D-4` and `D-5` each named two unrelated
+things — inside this file, `D-4` in §4 above is the ranking brief while the old `D-4` here was the
+threshold question. The old label is kept in parentheses so earlier references still resolve.
+
+- **Q-1 [Q]** (was D-0) Confirm **NR** is out of paper 1 (moved to paper 2). Default: out.
+- **Q-2 [Q]** (was D-1) MR and VR in main text or supplement? "Strawman" is retired; re-decide on the
+  map footing — a method here is one with a domain, and VR's domain is the mechanism proof.
+- **Q-3 [Q]** (was D-3) Placement of the Fisher-to-zero result: main Fig 4 as drawn, or supplement.
+  Author: "me voló la cabeza" but "does not go in the abstract".
+- **Q-4 [Q]** (was D-4, the threshold one) "Valid" thresholds on the map (candidate distortion < 1.1);
+  the three-way threshold conflict is in `../_program/machinery.md` §8.
+- **Q-5 [Q]** (was D-5) Anchor point for bias/distortion. Consensus: optimum / θ_pool; θ_sim exposes
+  the bias.
+- **Q-6 [Q]** (was D-7) Language of the planning docs: English (current) or Spanish. (Program-wide,
+  but unrouted.)
 
 ## 9) Next actions
 

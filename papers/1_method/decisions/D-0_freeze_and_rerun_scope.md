@@ -2,7 +2,8 @@
 
 Decided with Luciano over the 2026-07-15 session. This header is the decision; B-0's original
 three-option brief (built on a premise that turned out false) is kept below as the evidence trail,
-marked superseded. The one-line record is in `02_decision_log.md`.
+marked superseded. The one-line record is in `../../_program/decisions.md` §4 (this was
+`02_decision_log.md`, which the 2026-07-20 split retired into the cross-paper log).
 
 ## The decision
 

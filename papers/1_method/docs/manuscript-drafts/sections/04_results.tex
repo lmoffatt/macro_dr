@@ -38,10 +38,12 @@ The reason is visible in the same figure. The per-interval score of the non-recu
 
 \subsection*{Where the information lives: the Fisher falls to zero on relaxation}
 
-Two results follow from resolving the per-step information in time (Figure 4). The first closes the mechanism. The per-step identity between score variance and Fisher information holds for all five approximations, the naive members included: at each interval the two agree within the bootstrap interval. % src: Figure_4_caption.md
-The over-confidence of the non-recursive members is therefore entirely the cross-time correlation of the score. Every approximation gets each interval right; they differ only in how the intervals combine.
+Two results follow from resolving the per-step information in time (Figure 4). The first closes the mechanism, and it turns on a change of sign. Per step the score varies \emph{less} than the information predicts: the median $\log_{10}(J_t/F_t)$ over the informative steps is $-0.18$ for R, $-0.25$ for MR and $-0.15$ for VR, while IR sits at $+0.01$ and is the only rung whose bootstrap interval covers zero at most steps. % src: Figure_4_caption.md
+Accumulated over the recording the same ratio rises \emph{above} one, to $1.19$ for MR and $1.20$ for VR against $1.08$ for IR. % src: Figure_3_caption.md
+A discrepancy that reverses sign between the per-step and the accumulated statistic cannot be a per-sample modelling error. It is what a positively correlated score does, and the correlation is visible directly: at lag one the score autocorrelation is $-0.004 \pm 0.004$ for IR, indistinguishable from zero, against $0.19$ for R, $0.26$ for VR and $0.36$ for MR. % src: Figure_3_caption.md
+Every rung gets each interval nearly right; they differ in how the intervals combine.
 
-The second result is a property of the measurement, not of any one filter. For the recursive filters the information about the channel number $N_{\mathrm{ch}}$, the opening rate $k_{\mathrm{on}}$ and the unitary current $i$ drops to zero the moment the agonist is removed and the open population relaxes: having conditioned on the past, the filter gains nothing further from watching the channels decay. % src: Figure_4_caption.md
+The second result is a property of the measurement, not of any one filter. For every rung of the ladder the information about the channel number $N_{\mathrm{ch}}$, the opening rate $k_{\mathrm{on}}$ and the unitary current $i$ drops to zero the moment the agonist is removed and the open population relaxes: having conditioned on the past, the filter gains nothing further from watching the channels decay. % src: Figure_4_caption.md
 The closing rate $k_{\mathrm{off}}$ is the exception, staying informative through the relaxation, which its own kinetics govern. Because this behaviour belongs to the macroscopic observable and not to the approximation, it survives every member of the family. Reading off the likelihood when each parameter stops being measured is exactly the question that a recent treatment of this class of models leaves open \cite{delcore2025parameter}.
 
 \subsection*{A validity map across channels, interval, and noise}

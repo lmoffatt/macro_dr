@@ -63,21 +63,25 @@ The abstract needs some algorithm to *deflate* the information, and it currently
 > paper 1, and leave the dramatic number for paper 2. The `VR` column is new and unrun; any figure
 > that needs it is blocked on the implementation.
 
-### Fig 1 — One filter step, R vs IR (mechanism, no statistics yet)
+### Fig 1 — One filter step along the ladder, R → MR → VR → IR (mechanism, no statistics yet)
 
-`figures/paper/figure_1.Rmd` → `Figure_1.pdf`; whole-recording version `Figure_S1.pdf`. Caption
-written, but **for the five-algorithm version; re-render to two columns.**
+**BUILT 2026-07-21.** `figures/paper/figure_1.Rmd` (roster) + `figure_1_panels.R` (panels, shared) →
+`Figure_1.pdf`, supplement `Figure_S1.pdf`, caption rewritten. The six-algorithm version lives beside
+it as `figure_1_all.Rmd` → `Figure_1_all.pdf`, for orientation only.
 
-**A-strict (2026-07-20): two columns, R vs IR**, the poles of the conductance axis (instantaneous
-conductance, no interval conditioning, vs boundary-conditioned, both endpoints). Rows: prior P_open,
-observation and innovation, posterior, cumulative logL. Window 6 to 10 ms. Cell: N_ch = 20, f_s = 50
-kHz, 100 samples per interval.
+**Four columns, the recursive ladder (2026-07-21, Luciano).** Recursion is held fixed and the columns
+vary only what the interval-averaged conductance is conditioned on: R (instantaneous), MR (interval
+average conditioned on the start state, total variance), VR (same mean and update, residual variance),
+IR (both endpoints, boundary cross-covariance in the gain). Rows: prior P_open, observation and
+innovation, posterior, cumulative logL. Window 6 to 10 ms. Cell: N_ch = 20, f_s = 50 kHz, 100 samples
+per interval.
 
-**Why not the four-column ladder.** MR and VR are visually identical in everything a single filter step
-shows except the predicted observable variance band (same prior, same predicted mean, same recursion).
-Putting them in Fig 1 gives two near-duplicate columns separated only by a variance band, which is a
-weak use of the figure. Their distinction is a variance claim and belongs in Fig 6, quantitatively.
-R vs IR shows the *span* the paper traverses; Fig 6 walks the path between the poles.
+**This supersedes the A-strict two-column call of 2026-07-20** (`decisions.md`), whose reasoning was
+that MR and VR would be near-duplicate columns separated only by a variance band. The rendered figure
+does not bear that out: VR's band is visibly the narrower one wherever the channels gate, and because
+the predictive variance divides the gain, VR's posterior and propagated mean also part from MR's
+within the window. The four columns show the *path*; Fig 6 still owns the quantitative version of the
+same step.
 
 **What it claims:** the likelihood is a recursive filter, and the reader can *see* the two ends of the
 conductance axis — instantaneous vs boundary-conditioned — and where the conditioning enters the
@@ -87,25 +91,72 @@ update. It is the visual companion of the Theory ladder (`theory.md` T3).
 
 ### Fig 2 — Recovery clouds: the miscalibration, in the units the reader cares about
 
-`figures/paper/figure_2.Rmd` → `Figure_2.pdf`. Caption written. **Finished.** Data: `433ed13` (`_mle_cloud_runs`, `_battery_pool`, `_battery_sim`). Cell: N_ch = 100, interval 0.1τ, group_size = 10, 10,000 recordings.
+`figures/paper/figure_2.Rmd` → `Figure_2.pdf`. Caption rewritten. **Rebuilt 2026-07-22 with the
+A-strict roster on the GAUSSIAN anchor**: R, MR, VR, IR, with VR read from `0ffbda7` and the rest from
+`1c2ae6f`, all nsim 10000. Cell: N_ch = 100, interval 0.1τ, group_size = 10, 10,000 recordings.
 
-Part A: MLE clouds, five algorithms × two parameter pairs (kinetic: k_on, k_off; amplitude: N_ch, i), each with three ellipses (empirical, Fisher-predicted, sandwich-corrected), plus area ratios and bias markers. Part B: the full four-parameter corner, IR alone.
+Part A: MLE clouds, four algorithms × two parameter pairs (kinetic: k_on, k_off; amplitude: N_ch, i), each with three ellipses (empirical, Fisher-predicted, sandwich-corrected), plus area ratios and bias markers. Part B: the full four-parameter corner, IR alone.
 
-**The claim, and it is the paper's headline claim:** the ellipse the likelihood *reports* and the ellipse the estimates *actually occupy* are different objects, by a factor of 10 to 16 in variance for the non-recursive members (`Figure_S3_caption.md`), and the sandwich correction closes that gap to ≈ 1. Being able to *fix* it, not just measure it, is what makes the distortion matrix a tool rather than a complaint.
+**The claim, and it is the paper's headline claim:** the ellipse the likelihood *reports* and the
+ellipse the estimates *actually occupy* are different objects, and the sandwich correction closes the
+gap to ≈ 1. Measured empirical-over-Fisher area ratios at this cell: **R 1.32, MR 1.97, VR 2.18,
+IR 1.02** on the kinetic pair and **1.09, 1.53, 1.77, 1.00** on the amplitude pair; corrected, all of
+them within a tenth of one. Being able to *fix* it, not just measure it, is what makes the distortion
+matrix a tool rather than a complaint.
+
+**And this panel is where the mechanism claim is decided.** VR is the most over-confident rung, worse
+than MR, which is the falsifier's prediction: taking the variance out without the boundary gain makes
+the reported uncertainty worse, so the gain is what recovers calibration. Write the confirming branch
+(`decisions.md`). The 10-to-16 factor that used to be quoted here is an NR/NMR number and belongs to
+paper 2.
+
+**Anchor note, now resolvable:** the two anchors agree at this cell (Gaussian R 1.32 / MR 1.97 /
+IR 1.02 against the numeric run's R 1.18-1.42 / MR 1.52-2.07 / IR ≈ 1, `decisions/D-4_ranking_verdict.md`),
+so moving the main text onto the Gaussian anchor costs no result and the open two-anchor decision at
+the Fig 5 section can be closed the same way.
 
 **Watch the group_size trap.** `_mle_cloud_runs.csv` mixes group_size 10 and 100 and averaging across them is meaningless (`project_cloud_group_size_column`). Figure 2 uses group_size = 10; if any panel of the Results quotes a cloud-mean bias, it must state which.
 
 ### Fig 3 — The calibration cascade over time (the likelihood itself, not the fit)
 
-`figures/paper/figure_3.Rmd` → `Figure_3.pdf`. Caption written. **Finished.** Data: the `figure_3_time_dlik_*` dumps (1000 simulated recordings, N_ch = 100, interval 0.1τ).
+`figures/paper/figure_3.Rmd` → `Figure_3.pdf`. Caption rewritten. **Rebuilt 2026-07-22** on the
+A-strict roster over regenerated dumps (engine `0ffbda7`, `seed = 20260722`, 1000 recordings,
+N_ch = 100, interval 0.1τ). Every number below is printed by the notebook's caption-numbers chunk on
+each knit; re-read it after a re-render rather than copying these forward.
 
-Six rows × five algorithms: (A) output and logL, (B) standardized residual r²_std, (C) score bias, (D) per-interval J_t / F_t, (E) accumulated J_T / F_T, (F) score autocorrelation.
+Six rows × four algorithms: (A) output and logL, (B) standardized residual r²_std, (C) score bias,
+(D) per-interval J_t / F_t, (E) accumulated J_T / F_T, (F) score autocorrelation.
 
 **The claims:**
-- The recursive trio (R, MR, IR) reaches total logL ≈ **−145**; the non-recursive pair (NR, NMR) ≈ **−230**. A gap of **~87 nats**: under the recursive likelihoods the same data are ≈ e^87 times more probable. Quote it as a log-likelihood gap and let the reader do the exponentiating; the "e^87 times more probable" line belongs in the caption at most.
-- **Row D is ≈ 1 for all five algorithms**, and **row E diverges only for the non-recursive pair.** This is the hinge of the entire paper and it deserves to be stated in the text as a result, not left to the figure: *per interval*, every member of the family reports its information correctly. The failure is entirely in how the information accumulates.
+- Total logL: R −147.2, MR −153.9, VR −148.9, IR −143.4, each ± ~0.2. The ladder spans **10.4 nats**
+  and IR ends highest. **The old ~87-nat gap is gone from this figure and belongs to paper 2**: it was
+  the recursive-versus-naive contrast, and the naive pair is no longer a column.
+- **Row E separates them**: R 1.07 (CI 0.99–1.17), MR 1.19 (1.10–1.29), VR 1.20 (1.09–1.30),
+  IR 1.08 (1.00–1.17). MR and VR are the pair whose interval clears one.
+- **CORRECTION, 2026-07-22, and it sharpens the hinge.** The long-standing claim that "row D ≈ 1 for
+  all algorithms, so per interval everyone reports its information correctly" is **not what the data
+  say**, and Figure 4 now measures it per parameter: median per-step log10(J_t/F_t) is about −0.18 for
+  R, −0.25 for MR, −0.15 for VR and **+0.01 for IR**, and only IR's bootstrap interval covers zero at
+  most steps (64–91% of them against 0–28% for the rest). Per step the score varies *less* than the
+  information predicts, by up to ~1.5× for MR.
+  **The hinge is better stated as a sign flip:** per step J_t < F_t, yet accumulated J_T/F_T > 1. A
+  discrepancy that reverses sign between the per-step and the accumulated statistic cannot be a
+  per-sample modelling error; it is exactly what positive cross-time score correlation does. Say it
+  that way in the text and in Fig 4's caption; the old wording was a compression that the numbers do
+  not support.
+- **VR is no better than MR here either**, which is the time-domain companion of Figure 2's parameter
+  ratios and the same verdict: removing the variance without the boundary gain does not help.
 
-**The residual-whiteness row (F) is where the correlation distortion becomes visible**, and it is the empirical form of Milescu's own diagnosis ("the local time correlation of the current"). Say so here, in one clause, and pay it off in the Discussion.
+**Row F is where the correlation distortion becomes visible**, and it is the empirical form of
+Milescu's own diagnosis ("the local time correlation of the current"). At lag one: IR −0.004 ± 0.004,
+indistinguishable from zero, against R 0.191, VR 0.256, MR 0.357. **Only the fully conditioned filter
+produces a white score**, and that is a cleaner statement than the old one because it now separates
+members that share the recursion. Say it here in one clause and pay it off in the Discussion.
+
+**Do not equate row E with Figure 2's overconfidence factor.** Same direction, same over-confident
+pair, different scalar: R sits at 1.07 here against 1.32 for its kinetic-pair ellipse in Figure 2,
+because E is a single-parameter (k_off) accumulated ratio and Figure 2's is a two-parameter ellipse
+area. The previous caption asserted the identification; it does not survive the numbers.
 
 **Note on the dumps:** every evolution row is duplicated ×2 in these files (blank-segment plus segment=0 copies; `project_figure3_dlik_per_interval_score`). The scripts dedup. Anyone re-deriving a number from the raw CSVs must too, or they will find a spurious factor of 2.
 
@@ -120,7 +171,7 @@ Per-step Fisher F_t against per-step score variance J_t, four parameters, five a
 1. **The identity J_t = F_t holds per step for all five algorithms** (the ratio row sits on zero within bootstrap CI). Therefore the non-recursive overconfidence is **entirely** cross-time score correlation, and not a per-sample modelling error. This is a mechanism, it is clean, and it is exactly the answer to Milescu's open question.
 2. **The information about k_on, the unitary current i, and N_ch falls to zero once the agonist is removed and the open population relaxes; k_off stays informative through the decay.** It is a property of the macroscopic observable, so it survives every approximation in the family. Del Core and Mirams 2025 declare this problem open.
 
-**Placement decision (D-3 in the master plan) is now easy: this is main text.** The author's own reaction ("me voló la cabeza") plus a 2025 open problem plus algorithm-independence is three reasons. It stays out of the abstract; it does not stay out of the Results.
+**Placement decision (Q-3 in `00_plan.md` §8, labelled D-3 before 2026-07-21) is now easy: this is main text.** The author's own reaction ("me voló la cabeza") plus a 2025 open problem plus algorithm-independence is three reasons. It stays out of the abstract; it does not stay out of the Results.
 
 ### Fig 5 — The validity map (the paper's deliverable)
 
@@ -204,7 +255,7 @@ Say none of these until the gap is closed.
 
 That is right, and it is rule 3 of `title.md` (continuous, not a threshold). But it sits awkwardly with the Theory section's three named regimes (multinomial, telegraphic, Gaussian; `theory.md` T2). The resolution, and it should be written into both sections: **the three regimes are named as the two approximations' asymptotic corners, not as territories with borders.** The map shows a gradient; the corners explain its direction. Any figure that draws a hard line on the plane (the `domains_schematic`) is off-message and is already flagged as method-wrong.
 
-The trustworthiness contour, if one is drawn, is at distortion = **1.05** in `figure_7_validity_map.Rmd` and at **±15%** in `figure_5_distortion_algo_grid.Rmd`. **Pick one and use it everywhere.** (D-4 in the master plan proposed 1.1. Three different thresholds in three places is exactly the kind of thing a reviewer notices.)
+The trustworthiness contour, if one is drawn, is at distortion = **1.05** in `figure_7_validity_map.Rmd` and at **±15%** in `figure_5_distortion_algo_grid.Rmd`. **Pick one and use it everywhere.** (Q-4 in `00_plan.md` §8, labelled D-4 before 2026-07-21, proposed 1.1. Three different thresholds in three places is exactly the kind of thing a reviewer notices.)
 
 ## Verify before submission
 
