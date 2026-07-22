@@ -101,6 +101,7 @@ scoped to the old single-paper frame.
 | `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan` is REWRITE (six-figure gate); `00_master_plan` is a tombstone |
 | `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
 | `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `results.md`, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
+| `CONTINUE_HERE.md` | cold-start pointer for the figure work: what is in flight, and the traps that are not visible in the code | LIVE | opened 2026-07-22; a pointer, not a copy. Delete it the day it starts duplicating the documents it points at |
 | `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
 | `docs/manuscript-drafts/` | the vessel. Owns nothing; every claim in it is owned upstream | LIVE | — |
 | `grid.md` | paper 1's cells: which N_ch, which noise, which methods | CREATE | from `_program/axes.md` §3–7 once the N_ch ranges and `VR` are settled |
