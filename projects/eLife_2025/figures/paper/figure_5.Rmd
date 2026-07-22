@@ -159,9 +159,9 @@ stat <- pmap_dfr(paths, function(nch, z, f)
 # the algorithm alone. Point 3 is a design point calibrated in every direction, for scale.
 ELL_POINTS <- tibble::tribble(
   ~lab, ~nch,   ~noise,  ~dlt,  ~what,
-  "1",  20,     "0.05",  0.01,  "short interval",
-  "2",  20,     "0.05",  1,     "long interval",
-  "3",  10000,  "0.5",   0.1,   "calibrated")
+  "1",  20,     "0.05",  0.01,  "distorted",
+  "2",  20,     "0.05",  1,     "biased",
+  "3",  10000,  "0.5",   0.1,   "faithful")
 # N_ch = 10 AND group_size = 100, and both halves were tested rather than assumed. Measured at the
 # corner (Delta 0.01, noise 0.05), ellipse ratios against what the map reports there (1.62 and 0.65):
 #   N_ch  10, group  10 (1000 fits):  k_off 1.31, N_ch 1.58  <- SIGN FLIPPED on N_ch
@@ -242,8 +242,13 @@ panel <- function(i) {
   shrink <- function(r) { lo <- r * (nf - 1) / qchisq(.975, nf - 1)
                           hi <- r * (nf - 1) / qchisq(.025, nf - 1)
                           if (r > 1) max(1, lo) else min(1, hi) }
-  bandcol <- function(r) DIST_PAL[max(1, min(length(DIST_PAL),
-                          findInterval(log10(shrink(r)), DIST_BREAKS, rightmost.closed = TRUE)))]
+  # colour ties the number to the map: the same ramp, on the CI-shrunk value. But a ratio that is not
+  # distinguishable from 1 lands in the neutral band, which is near-white and therefore invisible on a
+  # white panel - so that case is drawn in grey instead, which also says "not significant" honestly.
+  bandcol <- function(r) { sr <- shrink(r)
+    if (isTRUE(all.equal(sr, 1))) "grey45"
+    else DIST_PAL[max(1, min(length(DIST_PAL),
+           findInterval(log10(sr), DIST_BREAKS, rightmost.closed = TRUE)))] }
 
   # Figure 2's marker grammar: cross = truth, filled circle = empirical mean, open circle = truth
   # plus the bias the distortion theory PREDICTS (distortion-induced bias, anchored at theta_sim, so
@@ -280,11 +285,14 @@ panel <- function(i) {
     # the ratios are of VARIANCES, matching the map's colour scale and Figure 2's area ratio. The eye
     # measures the ellipse in standard deviations, so the visible width ratio is their square root:
     # said once here rather than left for the reader to guess.
-    annotate("text", x = gx + hx, y = gy + hy, hjust = 1.06, vjust = 1.3, size = 2.2,
-             colour = bandcol(rx), parse = TRUE,
+    # on a white plate, so the number stays legible over the cloud and the ellipses
+    annotate("label", x = gx + hx, y = gy + hy, hjust = 1.03, vjust = 1.15, size = 2.2,
+             colour = bandcol(rx), fill = "white", label.size = 0,
+             label.padding = unit(0.6, "pt"), parse = TRUE,
              label = sprintf("k[off]*\" %.2f\u00d7\"", rx)) +
-    annotate("text", x = gx + hx, y = gy + hy, hjust = 1.06, vjust = 2.8, size = 2.2,
-             colour = bandcol(ry), parse = TRUE,
+    annotate("label", x = gx + hx, y = gy + hy, hjust = 1.03, vjust = 2.5, size = 2.2,
+             colour = bandcol(ry), fill = "white", label.size = 0,
+             label.padding = unit(0.6, "pt"), parse = TRUE,
              label = sprintf("N[ch]*\" %.2f\u00d7\"", ry)) +
     scale_colour_manual(values = c(empirical = "grey35", Fisher = "#D55E00", corrected = "#0072B2")) +
     scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed", corrected = "dotted")) +
@@ -323,6 +331,7 @@ marks <- function(rows) ELL_POINTS %>%
   tidyr::crossing(prow = factor(rows, levels = rows))
 
 mapblock <- function(d, zvar, pal, brk, top = FALSE, bottom = FALSE) {
+  if ("comp" %in% names(d)) d <- filter(d, comp == "total")   # the maps show the total, not its parts
   d <- d %>% filter(param %in% PARAM_ORD) %>%
     mutate(prow = factor(PARAM_STRIP[param], levels = unname(PARAM_STRIP[PARAM_ORD])),
            zz = pmin(pmax(zvar(.data), min(brk)), max(brk)))
@@ -371,42 +380,58 @@ btitle <- function(txt) ggplot() + theme_void(base_family = "Helvetica") +
   annotate("text", x = 0, y = 0, label = txt, hjust = 0, size = 2.9, fontface = "bold") +
   coord_cartesian(xlim = c(0, 1), clip = "off") + theme(plot.margin = margin(3, 2, 0, 26))
 
-gB <- mapblock(stat, function(d) log10(d$Dconf), DIST_PAL, DIST_BREAKS, top = TRUE)
-gC <- mapblock(bias, function(d) d$Bconf,        BIAS_PAL, BIAS_LIN,    bottom = TRUE)
+gC <- mapblock(bias, function(d) d$Bconf,        BIAS_PAL, BIAS_LIN,    top = TRUE)
+gB <- mapblock(stat, function(d) log10(d$Dconf), DIST_PAL, DIST_BREAKS, bottom = TRUE)
 
-g5 <- btitle("A   three design points: what the algorithm reports, and what the estimates do   (ratios are empirical/Fisher variances, per axis)") /
+# first moment before second, the natural order. The design points keep their numbering from the x
+# axis (1 at the short interval, on the left of every map panel; 2 at the long one, on the right), so
+# a reader finds them where the number says rather than where the story would put them.
+g5 <- btitle("A   grouped MLE distributions") /
       gA /
-      btitle("B   second moment: the information distortion over the whole plane") /
-      gB /
-      colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5)) /
-      btitle("C   first moment: the distortion-induced bias, in decades") /
+      btitle("B   distortion-induced bias") /
       gC /
-      colorbar(BIAS_PAL, BIAS_LAB, "bias (dex)", BIAS_LIN) +
+      colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN) /
+      btitle("C   information distortion") /
+      gB /
+      colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5)) +
       plot_layout(heights = c(0.16, 2.3, 0.16, 2.1, 0.28, 0.16, 2.25, 0.28))
 g5
 ggsave("Figure_5.pdf", g5, width = 7.0, height = 8.2)
 ```
 
 ```{r caption-numbers}
-# numbers the caption quotes, printed so they are never read off the plot (LINT-SRC)
-raw <- stat %>% select(comp, param, Num_ch, noise, interval_in_tau, m, lo, hi, Dconf)
-corner <- raw %>% filter(Num_ch == 10, noise == "0.05", interval_in_tau == 0.01)
-cat("\n=== Figure 5 caption numbers ===\nCORNER (N_ch 10, noise 0.05, Delta*k_off 0.01):\n")
-print(as.data.frame(corner %>% filter(param %in% c("off", "Num_ch_mean")) %>%
-        select(comp, param, m, lo, hi)), digits = 4, row.names = FALSE)
+# Every number the caption quotes, printed on each knit so none of them is ever read off the plot.
+cat("\n=== Figure 5 caption numbers ===\n\nAT THE THREE REFERENCE POINTS\n")
+ref <- ELL_POINTS %>% rowwise() %>% do({
+  pt <- .
+  d <- stat %>% filter(comp == "total", Num_ch == pt$nch, noise == pt$noise,
+                       abs(interval_in_tau - pt$dlt) < 1e-9, param %in% c("off","Num_ch_mean"))
+  b <- bias %>% filter(Num_ch == pt$nch, noise == pt$noise,
+                       abs(interval_in_tau - pt$dlt) < 1e-9, param %in% c("off","Num_ch_mean"))
+  tibble(point = pt$lab, what = pt$what, N_ch = pt$nch, noise = pt$noise, delta = pt$dlt,
+         D_koff = d$Dconf[d$param == "off"],       D_Nch = d$Dconf[d$param == "Num_ch_mean"],
+         B_koff = b$Bconf[b$param == "off"],       B_Nch = b$Bconf[b$param == "Num_ch_mean"])
+}) %>% ungroup()
+print(as.data.frame(ref), digits = 3, row.names = FALSE)
 
-cat("\nk_off TOTAL along Delta at N_ch 10, noise 0.05 (CI-shrunk):\n")
-print(as.data.frame(raw %>% filter(comp == "total", param == "off", Num_ch == 10, noise == "0.05") %>%
-        arrange(desc(interval_in_tau)) %>% select(interval_in_tau, Dconf)), digits = 4, row.names = FALSE)
-
-cat("\nsample vs correlation on k_off along Delta at N_ch 10, noise 0.05 (raw m - 1):\n")
-print(as.data.frame(raw %>% filter(comp %in% c("sample","corr"), param == "off", Num_ch == 10, noise == "0.05") %>%
-        mutate(dep = m - 1) %>% select(comp, interval_in_tau, dep) %>%
-        pivot_wider(names_from = comp, values_from = dep) %>% arrange(desc(interval_in_tau))),
+cat("\nDISTORTION along the interval, k_off, at the column that carries the failure (N_ch 10, noise 0.05)\n")
+print(as.data.frame(stat %>% filter(comp == "total", param == "off", Num_ch == 10, noise == "0.05") %>%
+        arrange(desc(interval_in_tau)) %>% select(delta = interval_in_tau, Dconf)),
       digits = 3, row.names = FALSE)
 
-cat("\nfraction of (Delta, noise) cells miscalibrated by >=15%, total, per parameter and N_ch:\n")
-print(as.data.frame(raw %>% filter(comp == "total", param %in% c("off","Num_ch_mean")) %>%
-        group_by(param, Num_ch) %>% summarise(frac = mean(abs(Dconf - 1) >= 0.15), .groups = "drop") %>%
-        pivot_wider(names_from = Num_ch, values_from = frac)), digits = 2, row.names = FALSE)
+cat("\nBIAS along the same line (log10 units), both parameters\n")
+print(as.data.frame(bias %>% filter(Num_ch == 10, noise == "0.05", param %in% c("off","Num_ch_mean")) %>%
+        select(param, interval_in_tau, Bconf) %>%
+        pivot_wider(names_from = param, values_from = Bconf) %>% arrange(desc(interval_in_tau))),
+      digits = 3, row.names = FALSE)
+
+cat("\nEXTENT: fraction of (interval, noise) cells that depart significantly, per parameter and N_ch\n")
+cat("  distortion, |D-1| >= 0.15:\n")
+print(as.data.frame(stat %>% filter(comp == "total", param %in% c("off","Num_ch_mean")) %>% group_by(param, Num_ch) %>%
+        summarise(f = mean(abs(Dconf - 1) >= 0.15), .groups = "drop") %>%
+        pivot_wider(names_from = Num_ch, values_from = f)), digits = 2, row.names = FALSE)
+cat("  bias, interval excludes 0:\n")
+print(as.data.frame(bias %>% filter(param %in% c("off","Num_ch_mean")) %>% group_by(param, Num_ch) %>%
+        summarise(f = mean(Bconf != 0), .groups = "drop") %>%
+        pivot_wider(names_from = Num_ch, values_from = f)), digits = 2, row.names = FALSE)
 ```

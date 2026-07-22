@@ -173,20 +173,49 @@ Per-step Fisher F_t against per-step score variance J_t, four parameters, five a
 
 **Placement decision (Q-3 in `00_plan.md` §8, labelled D-3 before 2026-07-21) is now easy: this is main text.** The author's own reaction ("me voló la cabeza") plus a 2025 open problem plus algorithm-independence is three reasons. It stays out of the abstract; it does not stay out of the Results.
 
-### Fig 5 — The validity map (the paper's deliverable)
+### Fig 5 — Where IR itself stops being faithful (BUILT 2026-07-22)
 
-**Not finished. This is the critical-path figure.** Composition is decided (`figures/in_progress/figure_5_PLAN.md`, 2026-07-08, which sorts 44 candidates into 5 MAIN / ~19 SUPP / 16 DROP), but no caption exists and the panel selection has not been executed into a final PDF.
+`figures/paper/figure_5.Rmd` → `Figure_5.pdf`, caption written. **Subject changed**: this is no longer
+the within-family validity map, it is the figure `00_plan.md` §1 promised and never staffed, the one
+that locates MacroIR's own failure. `macro_IR` alone; MR and VR have done their work by Fig 4.
 
-The PLAN's main-text arc:
+Three blocks: **A** grouped MLE distributions at three design points (distorted / biased / faithful),
+**B** the distortion-induced bias (first moment, anchored at θ_sim), **C** the information distortion
+(second moment, anchored at θ_pool). Columns N_ch {10, 20, 50, 100, 1000, 10000}; inside each panel
+x = Δ·k_off over the seven free intervals, y = the six noise levels. Every colour is CI-shrunk, so
+what is coloured is significant at 95%.
 
-- **`figure_5_distortion_algo_grid.Rmd`** (433ed13, five algorithms × two parameters × three noise levels). The headline number: the fraction of the (Δ·k_off × N_ch) plane where the likelihood is self-consistent within ±15%, as noise goes 0.1 → 1 → 10: **IR 0.88 → 0.99 → 1.00; R 0.27 → 0.50 → 0.75; MR 0.05 → 0.34; NR and NMR ≈ 0.** This single row of numbers is the paper's verdict, and it is quantitative, continuous, and it names the conditions. It is what the abstract's last sentence promises.
-- **`figure_5_bias_empirical_grid.Rmd`** (433ed13): IR's bias stays inside the tolerance over 98% of the plane; R, MR and NR fail over roughly half.
-- **`figure_5_IR_channel_pooled_loss.Rmd`** (1c2ae6f): concentrating channels into fewer patches is ≈ free for k_off, costs ≈ **4×** for k_on, and up to ≈ **500×** for the unitary current i. This is the one panel that gives the experimentalist something to do differently on Monday, and it should not be buried.
+**The claims, all measured** (numbers printed by the notebook on each knit, `figures_build_plan.md`
+§3d):
 
-**The anchor problem, and it is real.** Cross-algorithm panels can only come from `433ed13`, which is the **numeric-Fisher** run and the only commit with all five algorithms. The IR mechanism panels come from `1c2ae6f`, the **Gaussian-Fisher** run, which has no NMR at all. So the main text is not all on one anchor. `figure_5_PLAN.md:5` states this and says a reader must be told. **Two options and they need a decision:**
-  (a) tell the reader, in Methods and in the caption, and justify why it does not matter (Fig 4's per-step J_t = F_t identity is arguably the justification: it says the two anchors agree per step);
-  (b) run the missing Gaussian-Fisher cells (at minimum NMR, which is entirely absent from 1c2ae6f) and put the whole main text on one anchor.
-  This contradicts `00_plan.md` §6, which asserts the definitive figures anchor on the Gaussian Fisher. **They currently cannot.** Decide before drafting, because option (b) is a compute request, not a writing task.
+- **IR fails, and where the theory said it would.** The telegraphic edge, worst at few channels and
+  low noise, plus a second narrower edge at the coarsest interval. The dependence on Δ is a **U**,
+  minimum at Δ·k_off = 0.5, so the acquisition interval has an optimum rather than a direction of
+  improvement.
+- **The two moments fail at opposite ends of that axis.** Bias worst at coarse Δ, distortion worst at
+  short Δ. **No single interval optimises both**, and that is the decision rule this figure hands the
+  Discussion.
+- **The failure is signed and direction-dependent**: k_off over-confident where N_ch is conservative,
+  by comparable amounts, so any scalar averaged over parameters cancels them and reports a faithful
+  algorithm. State the map per direction, never as one number.
+- **Attribution** (measured, not plotted here): the short-Δ failure is correlation-led about eight to
+  one, i.e. the interval closure fails to decorrelate successive intervals. Where this goes is open,
+  see below.
+- **The cheap diagnostics are blind to all of it**: r̄²_std off by ≤5.5% and integrated autocorrelation
+  ≤4.8% over the same corner. That is the argument for why the machinery is needed, and it belongs in
+  the text.
+
+**Two caveats the text must carry, not bury.** The ellipse of panel A is a marginalised sandwich and
+is systematically milder than the map; at the current point 1 its N_ch direction is unresolved by 100
+fits and the claim rests on block C. And the MLE distribution is **not normal at few channels**
+(skewness 4.13 at N_ch 10 / group 10), which limits what any ellipse or covariance can mean there.
+That is a limitation of the *estimator's* finite-sample behaviour and **not a defect of the
+likelihood** — a correct likelihood can produce a skewed MLE — so it deserves its own sentence rather
+than being folded into the distortion story. Empirical coverage of the nominal 95% interval is
+0.80–0.93 at N_ch 20 against 0.94–0.98 at N_ch 200.
+
+**[Q] Open:** where the sample/correlation decomposition goes now that it is out of Fig 5 (candidate:
+Fig 6 beside the R-vs-IR map, or supplement), and whether the paper stays gated at six figures.
 
 ### Fig 6 — Why: the mechanism (MR → VR → IR), and the distortion decomposition
 
