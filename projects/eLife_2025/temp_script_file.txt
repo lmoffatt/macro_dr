@@ -1,98 +1,111 @@
-# =============================================================================
-# figure_lse_smoke — self-contained nivel-2 smoke for the nonlinearsqr (LSE)
-# family. Minimal end-to-end run on scheme_CO: simulate a handful of recordings,
-# then fit the classical nonlinear least-squares likelihood (family=2) with
-# calc_MLE_per_group_of_replicates. No dispatcher injection; every axis/value is
-# fixed inline so the file runs stand-alone.
+# figure_3_time.macroir — ENSEMBLE per-step diagnostic for the 5-ALGORITHM data-level
+# comparison (residual + score). ONE simulate (shared recordings), 5 likelihoods, 5
+# per-algorithm CSVs. (Per-algo files, NOT one big CSV: each ~286MB at 300 sims; R reads
+# and filters one at a time -> low peak memory. One 5GB CSV would need ~15-20GB RAM to fread.)
 #
-# Config companions (see theory/macroir/notes/nonlinearsqr_lse_plan.md §7):
-#   - unitary_current -> Fixed  (amplitude ridge: N and g unidentifiable from the
-#     LSE mean I_max = N*g; fix one, keep Num_ch_mean free).
-#   - Current_Noise   -> Fixed  (pure-variance flat direction: the LSE mean has no
-#     noise term, so Current_Noise has an identically-zero score/Fisher row ->
-#     singular theta-Fisher unless fixed).
-#   - FREE = {on, off, Current_Baseline, Num_ch_mean}; averaging pinned to 1.
+# CELL (same as the IR characterization): scheme_CO, N_ch=100, noise=1, interval_in_tau=0.1.
+#   - noise "1"   -> Current_Noise = 0.001    (dispatch_figure_3_local.sh: 0.1->1e-4, 1->1e-3)
+#   - interval 0.1 -> exp_n_step = (20, 40, 40); n_samp = 50 (150-sample protocol)
+#   - variance_approximation = true for ALL 5 (matches figure_3_mle / the cloud comparison)
+# 300 simulations: the IR-vs-naive contrast is LARGE (naive autocorr ~0.2-0.4, ratio != 1),
+# so 300 suffices; bump to 1000 later (re-run) for the tight IR=1.000 precision.
 #
-# Run:
-#   ./build/<preset>/macrodr projects/eLife_2025/ops/local/figure_lse_smoke.macroir
-# (adjust the binary path to your build output).
-# =============================================================================
+# Output: figures/data/figure_3_time_dlik_{NR,R,NMR,MR,IR}.csv
+#   per (simulation_index, sample_index): primitive r_std / y_mean / y_var + patch_current,
+#   and the per-step SCORE d logL_t/d theta (logL calculus=="derivative" rows).
+# The `algorithm` column is added in R from the filename.
+#
+# RUN LOCALLY (no dirac), from where "figures/data/" resolves (as for figure_1):
+#   build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_3_time.macroir
 
 model = load_model("scheme_CO")
 
-# figure_2 canonical scheme_CO values. unitary_current and Current_Noise are
-# Fixed (natural value stored as-is under the identity Fixed transform); the rest
-# are Log10 (on=10, off=100, Current_Baseline=1, Num_ch_mean=100).
 parameter = create_parameters(
    model = model,
    parameters_info = [
       {"on","Log10",10},
       {"off","Log10",100},
-      {"unitary_current","Fixed",1},
-      {"Current_Noise","Fixed",1e-4},
+      {"unitary_current","Log10",1},
+      {"Current_Noise","Log10",0.0001},
       {"Current_Baseline","Log10",1},
-      {"Num_ch_mean","Log10",100}])
+      {"Num_ch_mean","Log10", 100}])
 
-# Short three-segment protocol (interval_in_tau = 0.1 cell):
-#   20 steps x 50 samples = 1000 pre  @ 0 µM
-#   40 steps x 50 samples = 2000 agonist @ 10 µM
-#   40 steps x 50 samples = 2000 post @ 0 µM
 experiment = create_experiment(
-   experiment_structure = [
-      {20, 50, 0.0},
-      {40, 50, 10.0},
-      {40, 50, 0.0}],
+   experiment_structure = [{20,50,0.0},{40,50,10.0},{40,50,0.0}],
    frequency_of_sampling = 50e3,
    initial_agonist = 0.0,
    initial_time = 0.0)
 
 observations = set_observations(values_set = [0,0,0,0])
-
 par_tr = get_standard_parameter_transformed_values(parameter)
 
+# shared ensemble of recordings
 simulation_axis = axis(name = "simulation_algorithm", labels = ["uniformization"])
-
 simulations = simulate(
-   model = model, parameter_transformed = par_tr, n_simulations = 64,
+   model = model, parameter_transformed = par_tr, n_simulations = 1000,
    experiment = experiment, observations = observations,
    simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
    number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
-   seed = 0)
+   # seed = 0 is the std::random_device sentinel: it draws a FRESH ensemble every run and never logs
+   # the value, so no number in figures 3, 4, S4 or S5 could be reproduced or re-audited, and no
+   # algorithm could ever be added later without moving all the other columns. Fixed 2026-07-22, on
+   # the run that adds VR. Change it only if you intend every number in those four figures to move.
+   seed = 20260722)
 
-recordings = get_recordings_from_simulations(simulations = simulations)
+# ---- macro_NR  (recursive=0, averaging=0) ----
+macro_NR = build_likelihood_function(model = model, adaptive_approximation = 0,
+   recursive_approximation = 0, averaging_approximation = 0, variance_approximation = 1,
+   taylor_variance_correction = 0, micro_approximation = false, taylor_qdt_approximation = false)
+dlik_NR = calc_dlikelihood_predictions(likelihood_algorithm = macro_NR, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_NR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_NR,
+   path = "figures/data/figure_3_time_dlik_NR")
 
-# nonlinearsqr (LSE) algorithm: family_approximation = 2, non-recursive,
-# averaging = 1, no taylor. variance_approximation = true is accepted and ignored
-# by the LSE branch (the marginalized-noise LSE has no emission variance).
-algorithm = build_likelihood_function_with_family(
-   model = model,
-   adaptive_approximation = false,
-   recursive_approximation = false,
-   averaging_approximation = 1,
-   variance_approximation = true,
-   taylor_variance_correction = false,
-   family_approximation = 2,
+# ---- macro_R  (recursive=1, averaging=0) ----
+macro_R = build_likelihood_function(model = model, adaptive_approximation = 0,
+   recursive_approximation = 1, averaging_approximation = 0, variance_approximation = 1,
+   taylor_variance_correction = 0, micro_approximation = false, taylor_qdt_approximation = false)
+dlik_R = calc_dlikelihood_predictions(likelihood_algorithm = macro_R, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_R = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_R,
+   path = "figures/data/figure_3_time_dlik_R")
+
+# ---- macro_NMR  (recursive=0, averaging=1) ----
+macro_NMR = build_likelihood_function(model = model, adaptive_approximation = 0,
+   recursive_approximation = 0, averaging_approximation = 1, variance_approximation = 1,
+   taylor_variance_correction = 0, micro_approximation = false, taylor_qdt_approximation = false)
+dlik_NMR = calc_dlikelihood_predictions(likelihood_algorithm = macro_NMR, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_NMR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_NMR,
+   path = "figures/data/figure_3_time_dlik_NMR")
+
+# ---- macro_MR  (recursive=1, averaging=1) ----
+macro_MR = build_likelihood_function(model = model, adaptive_approximation = 0,
+   recursive_approximation = 1, averaging_approximation = 1, variance_approximation = 1,
+   taylor_variance_correction = 0, micro_approximation = false, taylor_qdt_approximation = false)
+dlik_MR = calc_dlikelihood_predictions(likelihood_algorithm = macro_MR, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_MR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_MR,
+   path = "figures/data/figure_3_time_dlik_MR")
+
+# ---- macro_VR  (recursive=1, averaging=1, variance_form=1: MR's mean and gain, residual variance) ----
+# The one block that needs build_likelihood_function_with_family: the bool builder above cannot
+# express the variance form, and hardcodes the total one. family_approximation = 0 is macro, the same
+# family as the other five. NOT a Taylor variant (see figure_1.macroir for the same note).
+macro_VR = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
+   recursive_approximation = 1, averaging_approximation = 1, variance_approximation = 1,
+   taylor_variance_correction = 0, family_approximation = 0, variance_form_approximation = 1,
    taylor_qdt_approximation = false)
+dlik_VR = calc_dlikelihood_predictions(likelihood_algorithm = macro_VR, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_VR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_VR,
+   path = "figures/data/figure_3_time_dlik_VR")
 
-gn_opts = build_gauss_newton_options(
-   lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
-   max_iter = 100, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
-
-# Per-group MLE refit, single-recording groups (group_size = 1) -> the theta_hat
-# cloud. Warmstart == reference == theta_sim (start the GN at the truth).
-mle = calc_MLE_per_group_of_replicates(
-   likelihood_algorithm = algorithm,
-   theta_warmstart = par_tr,
-   theta_reference = par_tr,
-   experiment = experiment,
-   recordings = recordings,
-   group_size = 1,
-   n_bootstrap_samples = 100,
-   min_groups_for_bootstrap = 10,
-   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
-   probit_sample_heights = [0.5],
-   ranking_variables = ["Maximum_logL"],
-   seed = 0,
-   gauss_newton_options = gn_opts)
-
-mle_csv = write_csv(analysis = mle, path = "figures/data/lse_smoke_mle_cloud")
+# ---- macro_IR  (recursive=1, averaging=2) ----
+macro_IR = build_likelihood_function(model = model, adaptive_approximation = 0,
+   recursive_approximation = 1, averaging_approximation = 2, variance_approximation = 1,
+   taylor_variance_correction = 0, micro_approximation = false, taylor_qdt_approximation = false)
+dlik_IR = calc_dlikelihood_predictions(likelihood_algorithm = macro_IR, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_IR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_IR,
+   path = "figures/data/figure_3_time_dlik_IR")

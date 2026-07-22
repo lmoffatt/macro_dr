@@ -1,6 +1,6 @@
 # Figura S1: score medio por paso s̄ₜ(t), 1000 recordings
 
-Análisis de `projects/eLife_2025/figures/supplement/figure_3_bias_pub.Rmd`, salida `Figure_S_score_mean.pdf`.
+Análisis de `projects/eLife_2025/figures/archive/supplement/figure_3_bias_pub.Rmd`, salida `Figure_S_score_mean.pdf`.
 
 **Celda:** esquema C⇌O, N_ch = 100, Current_Noise = 1e-4 (la misma que Figura 2), interval_in_tau = 0.1, 1000 recordings independientes. Grilla de 100 pasos de tiempo, 40 de ellos bajo agonista (el "pulso").
 

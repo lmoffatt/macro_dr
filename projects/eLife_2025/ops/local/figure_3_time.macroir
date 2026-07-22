@@ -46,7 +46,11 @@ simulations = simulate(
    experiment = experiment, observations = observations,
    simulation_algorithm = indexed_string_by(axis = simulation_axis, values = ["uniformization"]),
    number_of_substeps = indexed_size_by(axis = simulation_axis, values = [1000]),
-   seed = 0)
+   # seed = 0 is the std::random_device sentinel: it draws a FRESH ensemble every run and never logs
+   # the value, so no number in figures 3, 4, S4 or S5 could be reproduced or re-audited, and no
+   # algorithm could ever be added later without moving all the other columns. Fixed 2026-07-22, on
+   # the run that adds VR. Change it only if you intend every number in those four figures to move.
+   seed = 20260722)
 
 # ---- macro_NR  (recursive=0, averaging=0) ----
 macro_NR = build_likelihood_function(model = model, adaptive_approximation = 0,
@@ -83,6 +87,19 @@ dlik_MR = calc_dlikelihood_predictions(likelihood_algorithm = macro_MR, paramete
    experiment = experiment, data_series = simulations)
 file_MR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_MR,
    path = "figures/data/figure_3_time_dlik_MR")
+
+# ---- macro_VR  (recursive=1, averaging=1, variance_form=1: MR's mean and gain, residual variance) ----
+# The one block that needs build_likelihood_function_with_family: the bool builder above cannot
+# express the variance form, and hardcodes the total one. family_approximation = 0 is macro, the same
+# family as the other five. NOT a Taylor variant (see figure_1.macroir for the same note).
+macro_VR = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
+   recursive_approximation = 1, averaging_approximation = 1, variance_approximation = 1,
+   taylor_variance_correction = 0, family_approximation = 0, variance_form_approximation = 1,
+   taylor_qdt_approximation = false)
+dlik_VR = calc_dlikelihood_predictions(likelihood_algorithm = macro_VR, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_VR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_VR,
+   path = "figures/data/figure_3_time_dlik_VR")
 
 # ---- macro_IR  (recursive=1, averaging=2) ----
 macro_IR = build_likelihood_function(model = model, adaptive_approximation = 0,

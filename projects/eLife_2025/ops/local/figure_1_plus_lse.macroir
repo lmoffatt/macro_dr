@@ -1,11 +1,17 @@
-# figure_1_plus_lse.macroir — figure_1 REGENERATED with nonlinearsqr (LSE) as a
-# sixth algorithm. Supersedes figure_1.macroir once the LSE diagnostic arm exists.
+# figure_1_plus_lse.macroir — figure_1 REGENERATED with two added algorithms:
+# macro_VR (the sixth macro rung) and nonlinearsqr / LSE (the seventh, off-lattice).
+# Supersedes figure_1.macroir once the LSE diagnostic arm exists.
+#
+# NOTE while that arm is blocked (see STATUS below): this script cannot run at all,
+# because the LSE diagnostic call is guarded. figure_1.macroir carries the same VR
+# block and DOES run today, so it is the one to use for the VR acceptance ladder.
+# Both write the same figures/data/figure_1_* paths, so whichever runs last owns them.
 #
 # WHY A FULL REGENERATION AND NOT AN LSE-ONLY SCRIPT: every panel of figure 1 is a
 # per-interval trace of THE SAME single recording. simulate_with_sub_intervals is
 # called with seed = 0, which is the sentinel for "seed randomly" (legacy/mcmc.h:37-45),
-# so a separate LSE-only run would fold a DIFFERENT trace and its panel would not
-# line up with the other five. All six must share one simulate, in one process.
+# so a separate LSE-only or VR-only run would fold a DIFFERENT trace and its panel
+# would not line up with the others. All seven must share one simulate, in one process.
 #
 # CONSEQUENCE: running this replaces the whole figure-1 data set, including
 # figure_1_simulation.csv. The five macro panels will change (different random
@@ -64,7 +70,7 @@ par_tr = get_standard_parameter_transformed_values(parameter)
 
 model_str="scheme_CO"
 
-# ---- the ONE shared recording (all six algorithms fold this same trace) ----
+# ---- the ONE shared recording (all seven algorithms fold this same trace) ----
 simulation_with_sub_intervals  = simulate_with_sub_intervals(model= model, parameters = par_tr, experiment = experiment,
                          observations = observations, number_of_substeps = 250, seed = 0)
 
@@ -100,13 +106,27 @@ macro_MR = build_likelihood_function(model =model,
             micro_approximation        = false,
             taylor_qdt_approximation   = false )
 
+# ---- VR, the sixth macro rung, between MR and IR ----
+# MR's mean and gain (averaging = 1, start-conditioned, no boundary cross-covariance)
+# with IR's RESIDUAL predictive variance instead of MR's total: MR -> VR is the
+# variance step, VR -> IR the gain step. Needs the family builder, which is the only
+# one exposing variance_form_approximation; family 0 = macro, as the other five.
+# NOT a Taylor variant: the V of VR is unrelated to taylor_variance_correction and to
+# the old figure_1_likelihood_diagnostic_{IRV,MRV,MNRV} files.
+macro_VR = build_likelihood_function_with_family(model =model,
+            adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            family_approximation        = 0,
+            variance_form_approximation = 1,
+            taylor_qdt_approximation   = false )
+
 macro_IR = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 1, averaging_approximation = 2,
             variance_approximation = 1 , taylor_variance_correction = 0,
             micro_approximation        = false,
             taylor_qdt_approximation   = false )
 
-# ---- the sixth: nonlinearsqr / LSE (family = 2, non-recursive, averaging = 1) ----
+# ---- the seventh: nonlinearsqr / LSE (family = 2, non-recursive, averaging = 1) ----
 # All six parameters stay free (Log10): this script only EVALUATES at par_tr, it
 # never optimizes, so the LSE's flat directions are harmless here and the parameter
 # indexing stays aligned with the macro blocks.
@@ -143,6 +163,12 @@ simulation = simulation)
 
 diagnostic_file_MR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MR,
    path= "figures/data/figure_1_likelihood_diagnostic_MR")
+
+likelihood_diagnostic_VR = calc_likelihood_diagnostic(likelihood_algorithm =macro_VR, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_VR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_VR,
+   path= "figures/data/figure_1_likelihood_diagnostic_VR")
 
 likelihood_diagnostic_IR = calc_likelihood_diagnostic(likelihood_algorithm =macro_IR, parameters=par_tr, experiment =experiment,
 simulation = simulation)

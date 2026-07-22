@@ -80,9 +80,12 @@
 - **Venue.** Was one question; is now three (`program.md` §9).
 
 **Left with paper 1**, in `1_method/decisions.md`: its thesis and scope sentence; the band-A results
-table and D-4's two contested cells; its figure arc and figure count; D-1 (MR and NMR in main text or
-supplement, itself reopened by the reframe since "strawman" is a ranking word with no meaning on a
-map); D-3 (where the Fisher-to-zero result goes).
+table and the two contested cells of `1_method/decisions/D-4_ranking_verdict.md`; its figure arc and
+figure count; **Q-2** (MR and **VR** in main text or supplement, itself reopened by the reframe since
+"strawman" is a ranking word with no meaning on a map); **Q-3** (where the Fisher-to-zero result
+goes). Those two were `D-1` and `D-3` until 2026-07-21, when paper 1's open questions were relabelled
+`Q-n` to stop colliding with the `D-n` decision briefs; and it read "MR and NMR" until the same date,
+which was stale — NMR is dropped from the program (§2) and VR is the method in question.
 
 **Working plan, not a decision — the Comm Biol erratum (gvar_i).** Program-level, so it stays here.
 Intent: disclose, done properly. **Decouple** the erratum (re-run at the same fidelity to isolate the

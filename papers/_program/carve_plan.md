@@ -58,13 +58,13 @@ macro_dr @ tag  +  run configs   ──run on Dirac──►  raw outputs (large
 ## Open boundary decisions [Q]
 
 1. **Process docs.** Do the internal board docs (`_program/00_index`, `1_method/00_plan`, `1_method/01_writing_plan`, `_program/decisions` + `1_method/decisions`, `_program/sources`) go into the paper repo as a `process/` folder (full transparency), or stay in `macro_dr` as dev-process? Default: paper-facing docs go, pure-process board stays. **With three papers this is a program-level call**, not per paper.
-2. **eLife-specific assets.** `Authors/eLife_LaTeX_template.zip`, `docs/elife-author-instructions.md` — venue-specific. Keep in a `submission/` folder, or drop for a venue-agnostic repo? Default: keep in `submission/`, since the repo name is already venue-agnostic.
+2. **eLife-specific assets.** The eLife LaTeX template zip (two byte-equivalent copies on disk, under `projects/eLife_2025/Authors/` and `papers/1_method/archive/elife-template-import/`; pick one at carve time), `_program/elife-author-instructions.md` — venue-specific. Keep in a `submission/` folder, or drop for a venue-agnostic repo? Default: keep in `submission/`, since the repo name is already venue-agnostic.
 3. **SI theory snapshot** (see bucket B): confirm the copy-at-freeze convention.
 4. **Reduction step** (see handoff): confirm whether it exists.
 
 ## Freeze preconditions: the engine work that must land in the frozen commit
 
-Absorbed from the retired `07_code_tasks.md` (2026-07-14, `archive/07_code_tasks.md`), whose own opening rule ("we do not touch code") made it the owner of the code it forbade touching.
+Absorbed from the retired `07_code_tasks.md` (2026-07-14, `../1_method/archive/07_code_tasks.md`), whose own opening rule ("we do not touch code") made it the owner of the code it forbade touching.
 
 These are not a parallel hygiene lane to be done later. The binary stamps its own git hash into the output directory name and into row 1 of every CSV (`write_provenance_row`), and the dispatcher takes the data folder from `$BIN --commit`. So **any engine change alters the provenance key of everything produced after it.** Land these first, tag once, build once, run everything from that build. Otherwise the deposited code is not the code that made the deposited data.
 

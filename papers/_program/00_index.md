@@ -73,7 +73,7 @@ wrong. **TO MOVE** = lives at the old path, belongs at the new one. **REWRITE+MO
 | `paper-2.md`, `paper-3.md` | the two stubs | LIVE | promote to folders when they start drafting |
 | `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | merge the model half of `1_method/methods.md` + `1_method/decisions/D-2_parameter_units.md` |
 | `submission.md` | front/back matter, CRediT, data availability, MDAR, article type | CREATE | from `elife-author-instructions.md` + the missing-owner list |
-| `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | CREATE | currently `1_method/check.sh`, still pointing at the old single-pack layout. Do **not** triplicate it |
+| `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | LIVE | done 2026-07-20: it sits at `_program/check.sh`, takes the paper folder as its argument, and item 9 checks this index. Do **not** triplicate it |
 
 **Not in `_program/`, but shared and cited by it:** `docs/bibliography/` lives at the **repo root**, not
 in the papers tree, because the engine and theory layers cite it too. It owns the novelty position,
@@ -100,6 +100,7 @@ scoped to the old single-paper frame.
 | `README.md` | routes into paper 1; points at the program layer | LIVE | — |
 | `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan` is REWRITE (six-figure gate); `00_master_plan` is a tombstone |
 | `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
+| `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `results.md`, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
 | `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
 | `docs/manuscript-drafts/` | the vessel. Owns nothing; every claim in it is owned upstream | LIVE | — |
 | `grid.md` | paper 1's cells: which N_ch, which noise, which methods | CREATE | from `_program/axes.md` §3–7 once the N_ch ranges and `VR` are settled |
@@ -125,7 +126,7 @@ Look the topic up here before writing.
 | The model, the simulator, the parameter units | `_program/model_and_sim.md` |
 | The method names and the letter semantics | `_program/nomenclature.md` |
 | Which data commit holds what; what is reproducible | `_program/provenance.md` |
-| Novelty, prior art, the Kalman concession, citations | `_program/bibliography/` |
+| Novelty, prior art, the Kalman concession, citations | `docs/bibliography/` (repo root, not under `_program/`) |
 | The repo boundary, the freeze, code availability | `_program/carve_plan.md` |
 | Everything a journal asks for on submission day | `_program/submission.md` |
 | Cross-paper settled decisions | `_program/decisions.md` |
@@ -166,9 +167,9 @@ figure count is formally open.
 3. ~~The moves, with `git mv` so history follows the file.~~ **Done.** `macroir-elife-2025` →
    `1_method`; twelve shared documents into `_program/`; ten section plans renamed; three merged or
    superseded documents tombstoned into `1_method/archive/`.
-4. `check.sh`, retargeted to four layers and taking the paper as an argument. **← you are here.**
-   It currently sits at `1_method/check.sh` and its index-completeness check (item 9) still
-   enumerates the old single pack, so **it is failing for the wrong reason** until this is done.
+4. ~~`check.sh`, retargeted to four layers and taking the paper as an argument.~~ **Done.** It sits at
+   `_program/check.sh`, takes the paper folder as its argument, and item 9 enumerates the shared layer
+   plus that paper.
 5. The five real rewrites, one at a time, each touching a thesis: `00_plan.md` and `1_method/decisions.md`
    (both must shed the parts that moved to `_program/`, or the split has just manufactured two copies
    of everything it separated), `theory.md`, `nomenclature.md`, `abstract.md`.

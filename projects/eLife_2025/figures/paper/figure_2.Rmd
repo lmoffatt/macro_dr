@@ -32,15 +32,50 @@ library(patchwork)
 ```
 
 ```{r params}
-DATA_DIR  <- "../data/433ed13"
+# ---- which Fisher anchors the ellipses -------------------------------------------------
+# "gaussian" is the anchor the paper promises (papers/1_method/00_plan.md section 6) AND the only
+# basis macro_VR can ever join, because VR is dispatched by dispatch_figure_3_G.sh alone.
+# "numeric" is the legacy finite-difference basis: five algorithms, no VR, kept because the
+# agreement between the two is itself a reported result.
+#
+# THE TWO ARE NOT INTERCHANGEABLE BY PATH. The Gaussian files carry BOTH vocabularies, and the
+# legacy `Likelihood_*` components are present there with bootstrap_count rows and NO value rows.
+# Repointing DATA_DIR without also switching the component prefix therefore drops every ellipse
+# and renders an empty figure with no error. Verified 2026-07-21 on macro_MR at this cell:
+# Likelihood_Fisher_Covariance has 7 bootstrap_count rows and 0 value rows in the Gaussian file,
+# against 1512 value rows in the numeric one.
+ANCHOR <- "gaussian"
+
+# DATA_DIRS is a SEARCH PATH, not one folder. The dispatcher isolates output per engine commit, so
+# an algorithm added later lands in its own hash directory (macro_VR is in 0ffbda7, the rest of the
+# Gaussian grid in 1c2ae6f). Mixing them in one panel is sanctioned: D-0 accepted multi-commit
+# provenance because every CSV stamps its own engine hash in row 1, so the folder name is a scratch
+# grouping and the FILE is the provenance record. Each algorithm resolves to the first directory
+# holding a complete set for it.
+if (ANCHOR == "gaussian") {
+  DATA_DIRS <- c("../data/1c2ae6f", "../data/0ffbda7")
+  FILE_PRE <- "figure_3_G_"; BAT_SUF <- "_G"; COMP_PRE <- "Gaussian_"
+} else if (ANCHOR == "numeric") {
+  DATA_DIRS <- "../data/433ed13"
+  FILE_PRE <- "figure_3_";   BAT_SUF <- "";   COMP_PRE <- "Likelihood_"
+} else stop("ANCHOR must be 'gaussian' or 'numeric'")
+
+C_FISHER    <- paste0(COMP_PRE, "Fisher_Covariance")
+C_CORRECTED <- paste0(COMP_PRE, "Distortion_Corrected_Covariance")
+C_BIAS      <- paste0(COMP_PRE, "Distortion_Induced_Bias")
+
 REP_NCH      <- 100
 REP_NSIM     <- 10000
 REP_NOISE    <- "0.1"
 REP_GROUP    <- 10
 REP_INTERVAL <- 0.1
 
-ALGOS    <- c("macro_NR","macro_NMR","macro_R","macro_MR","macro_IR")
-ALGO_LAB <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR", macro_IR="IR")
+# A-strict roster: paper 1 measures the recursive ladder only (papers/1_method/decisions.md).
+# VR is listed here on purpose. It has no battery/cloud data at any anchor yet, so it is dropped
+# below WITH A MESSAGE rather than silently; the day the grid run lands it appears by itself.
+ROSTER   <- c("macro_R","macro_MR","macro_VR","macro_IR")
+ALGO_LAB <- c(macro_NR="NR", macro_NMR="MNR", macro_R="R", macro_MR="MR",
+              macro_VR="VR", macro_IR="IR")
 
 PARAM_IDX <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5)
 # plotmath-parseable labels (rendered as proper subscripted math on axes and strips)
@@ -56,15 +91,39 @@ near_int  <- function(x) abs(x - REP_INTERVAL) < 1e-9
 
 ```{r read}
 read_skip1 <- function(path) read.csv(path, skip = 1, stringsAsFactors = FALSE)
-base <- file.path(DATA_DIR,
-  sprintf("figure_3_nch_%d_nsim_%d_%s_noise_%s", REP_NCH, REP_NSIM, ALGOS, REP_NOISE))
+.stem   <- function(dir, a) file.path(dir,
+  sprintf("%snch_%d_nsim_%d_%s_noise_%s", FILE_PRE, REP_NCH, REP_NSIM, a, REP_NOISE))
+.needed <- function(stem) paste0(stem, c("_mle_cloud_runs.csv",
+                                         paste0("_battery_pool", BAT_SUF, ".csv"),
+                                         paste0("_battery_sim",  BAT_SUF, ".csv")))
+# first directory of the search path holding a COMPLETE set for this algorithm, else NA
+base_for <- function(a) {
+  for (d in DATA_DIRS) { st <- .stem(d, a); if (all(file.exists(.needed(st)))) return(st) }
+  NA_character_
+}
+
+# no silent drops: an algorithm with no complete set is named out loud and removed
+have <- vapply(ROSTER, function(a) !is.na(base_for(a)), logical(1))
+# cat(), not message(): the setup chunk sets message = FALSE, which would swallow it, and the
+# whole point of this line is that a missing algorithm can never pass unnoticed.
+if (!all(have)) cat("figure_2: INCOMPLETE at anchor '", ANCHOR, "', dropped from the figure: ",
+                    paste(ROSTER[!have], collapse = ", "),
+                    "\n           (a cloud alone is not enough: the ellipses need ",
+                    "_battery_pool", BAT_SUF, " and the bias marker _battery_sim", BAT_SUF, ")\n", sep = "")
+if (!any(have)) stop("figure_2: no algorithm of the roster has a complete set under ",
+                     paste(DATA_DIRS, collapse = ", "))
+ALGOS   <- ROSTER[have]
+ALGO_LV <- unname(ALGO_LAB[ALGOS])      # factor levels: only the columns actually drawn
+base    <- vapply(ALGOS, base_for, character(1))
+cat("figure_2: drawing", paste(ALGO_LAB[ALGOS], collapse = ", "), "from\n",
+    paste0("  ", ALGOS, " <- ", dirname(base), collapse = "\n"), "\n")
 
 cloud   <- map_dfr(paste0(base, "_mle_cloud_runs.csv"), read_skip1)
-battery <- map_dfr(paste0(base, "_battery_pool.csv"),   read_skip1) %>%
+battery <- map_dfr(paste0(base, "_battery_pool", BAT_SUF, ".csv"), read_skip1) %>%
   mutate(component = str_replace(component_path, "^Probit_statistics_", ""))
-bsim    <- map_dfr(paste0(base, "_battery_sim.csv"),    read_skip1) %>%
+bsim    <- map_dfr(paste0(base, "_battery_sim", BAT_SUF, ".csv"), read_skip1) %>%
   mutate(component = str_replace(component_path, "^Probit_statistics_", ""),
-         algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+         algo = factor(ALGO_LAB[algorithm], levels = ALGO_LV))
 
 pts <- cloud %>%
   filter(component_path == "Model_Parameters_Hat", statistic == "value",
@@ -72,7 +131,7 @@ pts <- cloud %>%
          param_name %in% names(PARAM_IDX)) %>%
   select(algorithm, sample_index, param_name, value) %>%
   pivot_wider(names_from = param_name, values_from = value) %>%
-  mutate(algo = factor(ALGO_LAB[algorithm], levels = unname(ALGO_LAB)))
+  mutate(algo = factor(ALGO_LAB[algorithm], levels = ALGO_LV))
 ```
 
 ```{r helpers}
@@ -129,7 +188,7 @@ battery_cov_pair <- function(comp, algo, ix, jx) {           # ix,jx = param ind
 # DIB vector (named param -> bias) for one algorithm, from battery_sim
 dib_vector <- function(algo) {
   bsim %>%
-    filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+    filter(component == C_BIAS, statistic == "value",
            probit == "mean", algorithm == .env$algo, Num_ch == REP_NCH,
            near_int(interval_in_tau), param_name %in% ORD) %>%
     select(param_name, value) %>% deframe()
@@ -138,12 +197,12 @@ dib_vector <- function(algo) {
 # --- PART A: 5-algorithm small-multiple for one parameter pair ---
 centers_for_pair <- function(px, py, algos) {
   dib <- bsim %>%
-    filter(component == "Likelihood_Distortion_Induced_Bias", statistic == "value",
+    filter(component == C_BIAS, statistic == "value",
            probit == "mean", Num_ch == REP_NCH, near_int(interval_in_tau),
            param_name %in% c(px, py)) %>%
     select(algo, param_name, value) %>%
     pivot_wider(names_from = param_name, values_from = value)
-  truth <- tibble(algo = factor(ALGO_LAB[algos], levels = unname(ALGO_LAB)),
+  truth <- tibble(algo = factor(ALGO_LAB[algos], levels = ALGO_LV),
                   x = unname(TRUTH[px]), y = unname(TRUTH[py]), kind = "truth")
   empc <- pts %>% filter(algorithm %in% algos) %>% group_by(algo) %>%
     summarise(x = mean(.data[[px]], na.rm = TRUE),
@@ -167,15 +226,15 @@ pair_plot <- function(px, py, algos = ALGOS) {
     if (nrow(cl) < 3) next
     ctr  <- c(mean(cl$x), mean(cl$y))
     Ss <- list(empirical = cov(cbind(cl$x, cl$y)),
-               Fisher    = battery_cov_pair("Likelihood_Fisher_Covariance", a, pix, piy),
-               corrected = battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, pix, piy))
+               Fisher    = battery_cov_pair(C_FISHER, a, pix, piy),
+               corrected = battery_cov_pair(C_CORRECTED, a, pix, piy))
     for (nm in names(Ss)) {
       e <- ellipse_path(ctr[1], ctr[2], Ss[[nm]])
       if (!is.null(e)) ell[[length(ell) + 1]] <- e %>% mutate(algo = ALGO_LAB[a], source = nm)
     }
   }
   ellipses <- bind_rows(ell) %>%
-    mutate(algo = factor(algo, levels = unname(ALGO_LAB)),
+    mutate(algo = factor(algo, levels = ALGO_LV),
            source = factor(source, levels = c("empirical","Fisher","corrected")))
   centers <- centers_for_pair(px, py, algos)
   tx <- unname(TRUTH[px]); ty <- unname(TRUTH[py])     # centre EVERY panel on the expected value
@@ -196,9 +255,9 @@ pair_plot <- function(px, py, algos = ALGOS) {
     # correlated, so the old fixed top-left placement sat the numbers on top of the points.
     rho <- suppressWarnings(cor(cl$x, cl$y))
     hj  <- if (is.finite(rho) && rho < 0) 1 else 0
-    tibble(algo  = factor(ALGO_LAB[a], levels = unname(ALGO_LAB)), hj = hj,
-           lab_F = .fmt(Aemp / .area(battery_cov_pair("Likelihood_Fisher_Covariance", a, pix, piy))),
-           lab_C = .fmt(Aemp / .area(battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, pix, piy))))
+    tibble(algo  = factor(ALGO_LAB[a], levels = ALGO_LV), hj = hj,
+           lab_F = .fmt(Aemp / .area(battery_cov_pair(C_FISHER, a, pix, piy))),
+           lab_C = .fmt(Aemp / .area(battery_cov_pair(C_CORRECTED, a, pix, piy))))
   }) %>% mutate(x = tx + ifelse(hj == 1, hx, -hx) * 0.94, yF = ty + hy * 0.92, yC = ty + hy * 0.60)
 
   ggplot() +
@@ -246,8 +305,8 @@ corner_plot <- function(algo, title = NULL) {
     if (nrow(c2) < 3) return(NULL)
     ctr <- c(mean(c2$x), mean(c2$y))
     Ss <- list(empirical = cov(cbind(c2$x, c2$y)),
-               Fisher    = battery_cov_pair("Likelihood_Fisher_Covariance", algo, PARAM_IDX[xp], PARAM_IDX[yp]),
-               corrected = battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", algo, PARAM_IDX[xp], PARAM_IDX[yp]))
+               Fisher    = battery_cov_pair(C_FISHER, algo, PARAM_IDX[xp], PARAM_IDX[yp]),
+               corrected = battery_cov_pair(C_CORRECTED, algo, PARAM_IDX[xp], PARAM_IDX[yp]))
     map_dfr(names(Ss), function(nm) {
       e <- ellipse_path(ctr[1], ctr[2], Ss[[nm]]); if (is.null(e)) return(NULL)
       e %>% mutate(xp = xp, yp = yp, source = nm)
@@ -308,8 +367,8 @@ corner_plot <- function(algo, title = NULL) {
     rho <- suppressWarnings(cor(c2$x, c2$y))
     hj  <- if (is.finite(rho) && rho < 0) 1 else 0
     tibble(xp = xpk, yp = ypk, hj = hj,
-           lab_F = .fmt(Aemp / .area(battery_cov_pair("Likelihood_Fisher_Covariance", algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
-           lab_C = .fmt(Aemp / .area(battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
+           lab_F = .fmt(Aemp / .area(battery_cov_pair(C_FISHER, algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
+           lab_C = .fmt(Aemp / .area(battery_cov_pair(C_CORRECTED, algo, PARAM_IDX[xpk], PARAM_IDX[ypk]))),
            x = tx + ifelse(hj == 1, hx, -hx) * 0.92, yF = ty + hy * 0.92, yC = ty + hy * 0.60)
   }) %>% mutate(xp = fx(xp), yp = fy(yp))
 
@@ -373,8 +432,8 @@ diag_pair <- function(px, py) {
     Semp <- if (nrow(cl) > 2) cov(cbind(cl$x, cl$y)) else NULL
     tibble(pair = paste(px, py, sep = "/"), algorithm = ALGO_LAB[a],
            empirical = area(Semp),
-           Fisher    = area(battery_cov_pair("Likelihood_Fisher_Covariance", a, pix, piy)),
-           corrected = area(battery_cov_pair("Likelihood_Distortion_Corrected_Covariance", a, pix, piy))) %>%
+           Fisher    = area(battery_cov_pair(C_FISHER, a, pix, piy)),
+           corrected = area(battery_cov_pair(C_CORRECTED, a, pix, piy))) %>%
       mutate(emp_over_Fisher = empirical / Fisher)
   })
 }

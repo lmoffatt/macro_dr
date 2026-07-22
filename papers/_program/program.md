@@ -52,9 +52,14 @@ the publication order, not a grid parameter.** If it drops, the order must be re
 ### Paper 1 — method
 - **Owns:** the validation machinery (written here, cited by 2 and 3); the endpoint ladder; the
   interval closure's failure and its mechanism.
-- **The mechanism result, which is new:** `MR → VR` changes only the variance, `VR → IR` changes only
-  the gain. The pair splits the MR-to-IR gap into two named steps and turns an algebraic claim into a
-  measured one. This is what earns the paper its novelty independently of the map.
+- **The mechanism result, which is new:** `VR` inserts a third rung between `MR` and `IR` that keeps
+  MR's boundary-free update and swaps the total per-start-state conductance variance for the residual
+  one, which turns an algebraic claim into a measured one. This is what earns the paper its novelty
+  independently of the map. **Do not state it as "MR → VR changes only the variance, VR → IR only the
+  gain"** (the wording used here until 2026-07-21): the predictive variance divides the gain, so the
+  variance step moves the update as well, and `MR` and `IR` predict the *same* observable variance
+  from the same state, so the whole MR-to-IR difference is the gain. Measured in
+  `../1_method/figures_build_plan.md` §F1-2.
 - **Excludes:** `LSE`, `NR`, `NMR`. NR is not dropped, it **moves to paper 2**, where a cheap
   non-recursive likelihood is exactly the point. NMR is dropped outright: no literature attribution,
   no mechanistic role.
