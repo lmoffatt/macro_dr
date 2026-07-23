@@ -5,17 +5,80 @@ MEM=96G TIME=4-00:00:00 CPUS=32 \
   N_SIMS="10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 10000" \
   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
 
-
-MEM=96G TIME=4-00:00:00 CPUS=16 \
-  N_ALGO="nonlinearsqr" GROUP_SIZE="10 100" \
-  NCHS="1000" \
-  N_NOISE="0.1" \
-  N_SIMS="1000" \
-  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+# =============================================================================
+# BLOQUES DE RUIDO ALTO — VERSION REDUCIDA (2026-07-23)
+#
+# SUPERSEDED EL MISMO DIA por el borrado de la Stage 1 en figure_4.macroir.
+# Para los algoritmos MACRO ya no hace falta relanzar NADA: los jobs en cola leen
+# el .macroir cuando ARRANCAN, no cuando se los encola, asi que los macro_NR /
+# macro_IR / macro_R de los bloques de ruido alto ya encolados van a saltearse la
+# nube solos. GROUP_SIZE y GN_MAX_ITER pasaron a ser inertes para ellos (la nube
+# era lo unico que los usaba; el ajuste conjunto converge en 3-8 iteraciones).
+#
+# LO QUE SI SIGUE PENDIENTE: LSE va por figure_4_LSE.macroir, que TODAVIA tiene su
+# Stage 1. O se le borra tambien (y entonces las 3 celdas vidriera de LSE a
+# noise=0.1 hay que rehacerlas con dispatch_figure_3_G.sh + figure_3_mle_LSE.macroir,
+# que conserva la nube), o se relanzan solo los LSE de ruido alto con los bloques
+# de abajo. Decidir mirando squeue: si el bloque 1 (LSE noise 0.1/1/10) ya corrio,
+# borrar la Stage 1 del LSE es gratis.
+#
+# La medicion que motivo todo (celdas r=10 de 82b956f): la nube por grupos es el
+# 96% del trabajo de ajuste de la celda; a ruido alto solo converge el 8-34% de sus
+# ajustes con group_size 10 (18-24% con 100 en Nch=1e4); el 98% de las iteraciones
+# Gauss-Newton se las llevan ajustes que nunca convergen, y el 65% de esos queda
+# pegado al warm start (estancado en plano, no avanzando lento). Las convergidas
+# terminan en mediana 7 iteraciones, p99=48. El ajuste conjunto, en cambio,
+# converge 7/7 intervalos en todas las celdas salvo Nch=1e4/noise=1e5, donde falla
+# solo en los tres intervalos cortos.
+#
+# OBLIGATORIO al analizar cualquier nube: filtrar Convergence_Status_Code in (0,1,2).
+# =============================================================================
 
 MEM=96G TIME=4-00:00:00 CPUS=32 \
-  N_ALGO="nonlinearsqr" GROUP_SIZE="10 100" \
-  NCHS="1000" \
-  N_NOISE="1" \
-  N_SIMS="10000" \
+  N_ALGO="nonlinearsqr macro_NR macro_IR" GROUP_SIZE="10000" GN_MAX_ITER=25 \
+  NCHS="10 100 1000 10000" \
+  N_NOISE="100 100 100 100" \
+  N_SIMS="10000 10000 10000 10000" \
   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="macro_R" GROUP_SIZE="10000" GN_MAX_ITER=25 \
+  NCHS="10 10000" \
+  N_NOISE="100 100" \
+  N_SIMS="10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr macro_NR macro_R macro_IR" GROUP_SIZE="10000" GN_MAX_ITER=25 \
+  NCHS="100 1000 10000  1000 10000  10000" \
+  N_NOISE="1000 1000 1000 10000 10000 100000" \
+  N_SIMS="10000 10000 10000 10000 10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+# --- registro: los tres bloques anteriores, ya lanzados, a reemplazar ---------
+# MEM=96G TIME=4-00:00:00 CPUS=32 \
+#   N_ALGO="nonlinearsqr macro_NR macro_IR" GROUP_SIZE="10 100" \
+#   NCHS="10 100 1000 10000 " \
+#   N_NOISE="100 100 100 100 " \
+#   N_SIMS="10000 10000 10000 10000" \
+#   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+#
+# MEM=96G TIME=4-00:00:00 CPUS=32 \
+#   N_ALGO="macro_R" GROUP_SIZE="10 100" \
+#   NCHS="10 10000" \
+#   N_NOISE="100 100" \
+#   N_SIMS="10000 10000" \
+#   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+#
+# MEM=96G TIME=4-00:00:00 CPUS=32 \
+#   N_ALGO="nonlinearsqr macro_NR macro_R macro_IR" GROUP_SIZE="10 100" \
+#   NCHS="100 1000 10000  1000 10000  10000" \
+#   N_NOISE="1000 1000 1000 10000 10000 100000" \
+#   N_SIMS="10000 10000 10000 10000 10000 10000" \
+#   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+
