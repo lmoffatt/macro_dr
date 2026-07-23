@@ -1,0 +1,192 @@
+---
+title: "Figure 4—figure supplement 3 — the distortion split into sample and correlation: R's floor is all correlation"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE MECHANISM BEHIND FIGURE 4'S HEADLINE. Figure 4 shows that more channels do not rescue R: its
+k_off distortion sits on a flat floor near 1.44 across four decades while IR converges to 1. This
+supplement says WHY, by splitting the total information distortion into the two factors the machinery
+already computes: a per-sample (Gaussian-approximation) part and a temporal-correlation part.
+
+Measured, k_off, noise 0.1 (medians over the 7 intervals):
+                total  sample  corr
+  R  N_ch 10    1.42   1.086   1.35
+  R  N_ch 100   1.49   1.071   1.36
+  R  N_ch 1000  1.48   1.024   1.43
+  R  N_ch 10000 1.46   0.998   1.47   <- sample gone to 1, ALL of it is correlation
+  IR N_ch 10    1.37   1.099   1.24
+  IR N_ch 10000 1.01   1.007   1.00
+
+So R and IR do NOT differ in per-sample fidelity: BOTH sample parts go to 1 as the channel count
+grows, i.e. the per-sample Gaussian approximation becomes exact for both, as it must. What does not
+vanish for R is the CORRELATION part, which holds at 1.35-1.47 and even grows. R's 1.44 floor IS the
+correlation term. That is the mechanism: conditioning on the interval buys temporal decorrelation,
+not per-sample accuracy, which is also why more channels cannot fix R. This corroborates, by an
+independent route, the score-autocorrelation contrast already in Figure 3 (IR white, non-recursive
+strongly correlated).
+
+WHY R AND IR TOGETHER, NOT ONE SUPPLEMENT EACH. The finding is the COMPARISON of the two
+decompositions - both sample parts vanish, only R's correlation survives. Split into two figures it
+disappears, the same way the IR-only map disappeared into Figure 4's rows.
+
+THE MULTIPLICATIVE READING. The exact relation is a congruence, GIDM = K.CDM.K', not a product, so
+total = sample x correlation is NOT algebra. But measured over the whole volume it holds to a median
+0.04% and a max 2.9% on the diagonal, so the three maps can be read multiplicatively AS AN EMPIRICAL
+NEAR-IDENTITY with that bound - stated in the caption, not asserted as exact. The exactly additive
+statement is log det GIDM = log det GSDM + log det CDM (1e-14). Do NOT use
+Likelihood_Information_Distortion_Reconstituted: it implements the false product identity and is NaN.
+
+DATA: battery_pool_G (theta_pool), Gaussian family. k_off only, the direction that carries the
+failure (figure_4_supplement_1 shows the others). Standard 4 N_ch x 3 noise grid. No new runs.
+
+TRAP: the "noise" label is not the physical noise. current_noise = label/1000.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse); library(patchwork)
+```
+
+```{r params}
+ALGOS    <- c("macro_R", "macro_IR")
+ALGO_LAB <- c(macro_R = "R", macro_IR = "IR")
+NCHS   <- c(10, 100, 1000, 10000)
+NOISES <- c("0.1", "1", "10")
+DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6")
+
+POFF  <- 1                                   # k_off, the direction that carries the failure
+COMPS <- c(total  = "Probit_statistics_Likelihood_Gaussian_Information_Distortion",
+           sample = "Probit_statistics_Gaussian_Sample_Distortion",
+           corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+COMP_LAB <- c(total = "total", sample = "sample", corr = "correlation")
+
+RAMP <- c("#021024","#053061","#2166AC","#4393C3","#92C5DE","#D1E5F0","#F7F7F7",
+          "#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F","#3d0011")
+bandcols <- function(breaks) {
+  n <- length(breaks) - 1; ctr <- findInterval(0, breaks); nb <- ctr - 1; nr <- n - ctr; K <- max(nb, nr, 1)
+  blue <- colorRampPalette(rev(RAMP[1:7]), space = "Lab")(K + 1)
+  red  <- colorRampPalette(RAMP[7:13],     space = "Lab")(K + 1)
+  cols <- rep(RAMP[7], n)
+  if (nb > 0) cols[seq(ctr - 1, 1)] <- blue[2:(nb + 1)]
+  if (nr > 0) cols[seq(ctr + 1, n)] <- red[2:(nr + 1)]
+  cols
+}
+fmt_big <- function(x) formatC(x, format = "g", digits = 3)
+DIST_LIN    <- c(0.5, 0.67, 0.8, 0.87, 0.91, 0.94, 0.97, 0.99, 1.01, 1.03, 1.06, 1.1, 1.15, 1.25, 1.5, 1.7, 2.5)
+DIST_BREAKS <- log10(DIST_LIN); DIST_PAL <- bandcols(DIST_BREAKS); DIST_LAB <- fmt_big(DIST_LIN)
+```
+
+```{r data}
+findf <- function(nch, algo, z) {
+  f <- file.path(DATA_DIRS, sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_battery_pool_G.csv", nch, algo, z))
+  hit <- f[file.exists(f)]
+  if (!length(hit)) stop("supp3: no file for ", algo, " N_ch ", nch, " noise ", z)
+  hit[1]
+}
+cells <- expand_grid(algo = ALGOS, nch = NCHS, z = NOISES)
+cat("supp3:", nrow(cells), "cells, k_off, split into", paste(names(COMPS), collapse = "/"), "\n")
+
+stat <- pmap_dfr(cells, function(algo, nch, z)
+    read.csv(findf(nch, algo, z), skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z, algo = algo)) %>%
+  filter(component_path %in% COMPS, param_index == param_col, param_index == POFF,
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  mutate(comp = names(COMPS)[match(component_path, COMPS)],
+         key  = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                          quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(comp, algo, noise, Num_ch, interval_in_tau, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  mutate(conf = ifelse(m > 1, pmax(1, lo), pmin(1, hi)),
+         lx = log10(interval_in_tau), ly = log10(as.numeric(noise)))
+
+# verify the multiplicative near-identity ON THIS DATA, and print the bound the caption quotes
+mult <- stat %>% select(comp, algo, noise, Num_ch, interval_in_tau, m) %>%
+  pivot_wider(names_from = comp, values_from = m) %>%
+  mutate(rel_err = abs(sample * corr - total) / total)
+cat(sprintf("multiplicative reading total ~ sample x corr: median %.3f%%, 90th %.3f%%, max %.3f%%\n",
+    100 * median(mult$rel_err, na.rm = TRUE), 100 * quantile(mult$rel_err, .9, na.rm = TRUE),
+    100 * max(mult$rel_err, na.rm = TRUE)))
+
+sat <- function(v) cat(sprintf("  distortion  %d/%d below %.3g, %d/%d above %.3g\n",
+  sum(log10(v) < min(DIST_BREAKS), na.rm = TRUE), sum(is.finite(v)), min(DIST_LIN),
+  sum(log10(v) > max(DIST_BREAKS), na.rm = TRUE), sum(is.finite(v)), max(DIST_LIN)))
+cat("scale saturation:\n"); sat(stat$conf)
+```
+
+```{r plot, fig.width = 7, fig.height = 12}
+X_BRK <- log10(c(.01, .1, 1)); Y_BRK <- log10(c(.1, 1, 10))
+
+# rows: component (outer) then algorithm (inner). total, sample, correlation x R, IR = 6 rows.
+COMP_ORD <- names(COMPS)
+rowfac <- function(d) {
+  lv <- as.vector(t(outer(COMP_ORD, ALGOS,
+          function(c, a) sprintf("atop(\"%s\", bold(\"%s\"))", COMP_LAB[c], ALGO_LAB[a]))))
+  d %>% mutate(prow = factor(sprintf("atop(\"%s\", bold(\"%s\"))", COMP_LAB[comp], ALGO_LAB[algo]),
+                             levels = lv),
+               nchf = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+}
+
+d <- rowfac(stat) %>% mutate(zz = pmin(pmax(log10(conf), min(DIST_BREAKS)), max(DIST_BREAKS)))
+g <- ggplot(d, aes(lx, ly, z = zz)) +
+  geom_contour_filled(breaks = DIST_BREAKS) +
+  scale_fill_manual(values = DIST_PAL, drop = FALSE, guide = "none") +
+  geom_point(size = .08, colour = "grey35", alpha = .35) +
+  facet_grid(prow ~ nchf, labeller = label_parsed) +
+  scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
+  scale_y_continuous(breaks = Y_BRK, labels = c(".1", "1", "10")) +
+  labs(x = expression(Delta %.% k[off]), y = "noise",
+       title = "k[off] information distortion, split total = sample x correlation") +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.1, "cm"),
+        legend.position = "none", axis.text = element_text(size = 6),
+        axis.title = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
+        strip.text.x = element_text(size = 7.5), plot.title = element_text(size = 8),
+        plot.margin = margin(2, 2, 2, 2))
+
+cbar <- {
+  n <- length(DIST_PAL); pos <- function(v) match(v, DIST_LIN) - 0.5
+  ggplot(data.frame(x = seq_len(n)), aes(x, 1, fill = factor(x))) +
+    geom_tile(colour = "grey92", linewidth = .15) +
+    annotate("segment", x = pos(c(0.87, 1.15)), xend = pos(c(0.87, 1.15)), y = 0.5, yend = 2,
+             colour = "black", linewidth = .5) +
+    annotate("segment", x = pos(c(0.67, 1.5)), xend = pos(c(0.67, 1.5)), y = 0.5, yend = 2,
+             colour = "grey25", linewidth = .35, linetype = "dashed") +
+    scale_fill_manual(values = DIST_PAL, guide = "none") +
+    scale_x_continuous(breaks = seq(0.5, n + 0.5, 1), labels = DIST_LAB, expand = c(0, 0)) +
+    coord_cartesian(ylim = c(0.5, 2.0), clip = "off") + labs(y = "distortion") +
+    theme_void(base_family = "Helvetica") +
+    theme(axis.title.y = element_text(angle = 0, size = 7, hjust = 1, vjust = .5, margin = margin(r = 4)),
+          axis.text.x = element_text(size = 5.5), axis.ticks.x = element_line(colour = "grey55", linewidth = .3),
+          axis.ticks.length.x = unit(2, "pt"), plot.margin = margin(3, 26, 2, 34))
+}
+gg <- g / cbar + plot_layout(heights = c(6 * 0.95, 0.3))
+H <- 6 * 0.95 + 0.3 + 0.6
+gg
+ggsave("Figure_4_supplement_3.pdf", gg, width = 7.0, height = H)
+cat("Figure_4_supplement_3.pdf: 6 rows, height", round(H, 1), "in\n")
+```
+
+```{r caption-numbers}
+cat("\n=== supp 3 caption numbers ===\n")
+# RAW medians (median of the mean estimate over intervals), NOT the CI-shrunk value the map colours.
+# The quoted decomposition values match Figure 4-figure supplement 4 and decisions.md (which are raw);
+# the map itself colours the conservative CI-shrunk bound `conf`, so a cell near one reads slightly
+# closer to one in colour than the number printed here.
+cat("\nk_off split, RAW medians over the 7 intervals, noise 0.1 (map colours the CI-shrunk bound)\n")
+print(as.data.frame(stat %>% filter(noise == "0.1") %>%
+  group_by(algo, comp, Num_ch) %>% summarise(v = median(m), .groups = "drop") %>%
+  mutate(algo = ALGO_LAB[algo], comp = COMP_LAB[comp]) %>%
+  pivot_wider(names_from = Num_ch, values_from = v) %>%
+  arrange(algo, match(comp, COMP_LAB))), digits = 3, row.names = FALSE)
+
+cat("\nsample part -> 1 with N_ch (both algorithms); correlation is what survives for R\n")
+print(as.data.frame(stat %>% filter(noise == "0.1", comp %in% c("sample", "corr")) %>%
+  group_by(algo, comp, Num_ch) %>% summarise(v = median(m), .groups = "drop") %>%
+  mutate(algo = ALGO_LAB[algo]) %>%
+  pivot_wider(names_from = comp, values_from = v) %>% arrange(algo, Num_ch)),
+  digits = 3, row.names = FALSE)
+```

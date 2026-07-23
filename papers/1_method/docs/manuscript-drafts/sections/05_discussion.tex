@@ -1,5 +1,55 @@
 \section*{Discussion}
-% MacroIR the calibrated default; the failure modes trace to the two approximations; ranking (R ~factor 2, MR strawman, NR/NMR inflation, NMR unbiased-but-underdispersed).
-% MacroIR ~ time-augmented integrated Kalman filter (state as hypothesis, verified ~1e-8).
-% The distortion is the correction to the Bayesian evidence (volume 1/2 log det C, effective-sample alpha* = p/tr C): motivation for the program's model-comparison component; derivation deferred.
-% Research-program framing + explicit open doors: micro / >2 states / stationary / experimental data.
+
+The practical result is that the choice of interval likelihood can be settled by measurement instead of habit.
+Across the gating-dominated regime this paper covers, bands A and B of the noise axis where the fluctuations to be modelled are the channels' own, four members of the recursive family separate cleanly, and they separate along one axis: how much of the acquisition interval the hidden state is conditioned on.
+R conditions on neither endpoint, MR on the interval's start, VR keeps that start but alters the interval variance, and IR conditions on both ends.
+At the reference cell, a patch of $N_{\mathrm{ch}}=100$ channels at instrumental noise $0.1$ and interval $\Delta=0.1\,\tau$, the ratio of realized to reported parameter uncertainty is $1.32$ for R, $1.97$ for MR and $2.18$ for VR on the kinetic pair, against $1.02$ for IR; on the amplitude pair it is $1.09$, $1.53$ and $1.77$ against $1.00$. % src: decisions.md#L86-87 (VR resolution, Gaussian anchor)
+Every member other than IR under-reports what the estimate actually delivers, and one sandwich correction returns all four to within a tenth of one. % src: decisions.md#L87
+
+VR is what turns the mechanism from algebra into measurement.
+MR and IR predict the same total observable variance from the same state, so the whole distance between them is the gain, the boundary conditioning IR applies in the update and MR does not.
+VR isolates that: it changes the variance form without supplying the boundary gain, and its calibration comes out worse than MR's ($2.18$ against $1.97$ on the kinetic pair). % src: decisions.md#L86 (VR>MR); L74-76 (MR-to-IR difference is the gain, not the variance)
+Removing the variance term without the gain does not help; supplying the gain is what closes the distortion.
+The failure is located, not asserted, and the endpoint ladder is why the verdict reads as structural rather than as a benchmark.
+
+For an experimenter the map says when the cheaper conditioning is safe.
+Adding channels does not rescue R: its $k_{\mathrm{off}}$ distortion sits on a floor near $1.4$ across four decades of $N_{\mathrm{ch}}$ ($1.37$, $1.44$, $1.44$, $1.42$) while IR converges to one ($1.32$, $1.10$, $1.00$, $1.00$). % src: decisions.md#L186-189
+R also carries a first-moment cost IR does not, a flat bias of $35$ to $40\%$ in the channel number that does not shrink with more channels. % src: decisions.md#L191-193
+And the distortion is diffuse for R, confined for IR: R departs by at least $15\%$ in a third to two thirds of the design cells depending on the parameter, IR in at most one cell in ten. % src: decisions.md#L200-203
+Instrumental noise helps rather than hurts: IR is self-consistent over $0.88$, $0.99$ and $1.00$ of the plane as the noise rises through the band, because added instrumental variance dilutes the single-interval non-Gaussianity the Gaussian predictive cannot carry. % src: decisions/D-4_ranking_verdict.md#L40
+
+The diagnosis is Milescu's, now measured.
+\cite{milescu2005maximum} named the local time correlation of the current as the dominant error of estimates that do not filter, and that correlation is exactly the cross-interval score correlation the distortion decomposition isolates.
+Interval by interval every rung reports its information correctly, the variance of the per-interval score matching the per-interval Fisher information (Figure 3); the miscalibration appears only in how those intervals accumulate.
+It is visible directly as a lag-one score autocorrelation of $0.19$ for R, $0.26$ for VR and $0.36$ for MR against $-0.004\pm0.004$ for IR, which is white. % src: Figure_3_caption.md
+Conditioning on both interval ends decorrelates the score; the members that skip an endpoint read sequential structure as independent evidence.
+This is also the answer to the objection that the diagnostic compares each approximation with its own Fisher information: that anchor is the information the likelihood claims, the score covariance is the information it delivers against the true process, and their disagreement is what misspecification means, as Methods sets out.
+
+\cite{delcore2025parameter} argue against filtering on cost, since the moment integration and the correction step run between every pair of samples, and that cost is real.
+What it buys is now quantified in units of misreported uncertainty.
+Where channels are many and the interval is not much shorter than the relaxation, R's confidence intervals are usable and the filter's expense is hard to justify on calibration alone, though R's first-moment bias remains.
+Toward short intervals and few channels the correlation distortion grows without bound, and a non-conditioned fit believes it has far more independent intervals than it does, which no compute saving offsets.
+The map states both halves, so a reader can locate their own recording on it and see which side of the trade they sit on.
+
+One result here no better likelihood can overturn, because it is a property of the macroscopic observable and not of any approximation.
+Once the agonist is removed and the open population relaxes, the information about the channel number, the opening rate and the unitary current falls to zero, while the closing rate stays informative through the decay it governs (Figure 3--figure supplement 1).
+The shape holds for all four rungs, so it is scope rather than a finding about conditioning, and it answers a question \cite{delcore2025parameter} leave open.
+For the bench it says the transient carries the information: prolonging the plateau adds data without adding information about $N_{\mathrm{ch}}$, $k_{\mathrm{on}}$ or the unitary current, so an experiment that wants those parameters should spend its samples on the rise.
+
+MacroIR is, as an algorithm, an integrated-measurement augmented Kalman filter, a device long known in control and target tracking \cite{zadrozny1988gaussian}, and its predictions coincide with that construction to about $10^{-8}$. % src: docs/bibliography/MacroIR_prior_art_map.md (verified 1e-8)
+What is specific here is the realization for an exact continuous-time Markov chain of channel occupancies, its use at populations of $10$ to $10^{4}$ channels where the single-molecule integrated filters do not reach, and the measurement of what the cheaper members cost. % src: 00_plan.md#L99 (N_ch 10..1e4)
+The device is conceded; the CTMC realization \cite{moffatt2025bayesian} and the validity map are the contribution, and the recursive lineage they extend is \cite{moffatt2007estimation} and \cite{munch2022bayesian}.
+IR is not exempt from the failure the paper is about.
+At the fewest channels its reported uncertainty leaves calibration, in the conservative direction, its distortion falling to about $0.5$, and that corner is where the occupancy Gaussian, the family's second approximation, begins to fail. % src: decisions/D-4_ranking_verdict.md#L116-119
+Attributing IR's degradation there to the occupancy closure rather than the interval closure needs the microscopic recursion that is a companion paper's subject.
+
+The full distortion matrix is reported, and not a scalar summary, because it is the input to the next question.
+Near the maximum the same matrix propagates into the Bayesian evidence through a volume term $\tfrac12\log\det\mathbf{C}$ and an effective-sample rescaling $\alpha^\star=p/\operatorname{tr}\mathbf{C}$, so whether model comparison under an approximate likelihood ranks mechanisms correctly is decided by the object measured here.
+That correction is derived elsewhere and stated only as motivation.
+It is one bridge of a program that assembles exact simulation, an approximate likelihood and its correction into inference on real recordings \cite{moffatt2025bayesian}.
+
+The perimeter is deliberate.
+The two-state model isolates the closure's own error with no confounding from scheme misspecification; the single concentration jump fixes a non-stationary information structure, whose informative content differs qualitatively from the stationary one by the relaxation argument above; and the ground truth is simulated because these diagnostics need a known truth to mean anything, the biophysical relevance of the family being established already \cite{moffatt2025bayesian}.
+Richer schemes, the stationary regime, the few-channel boundary and experimental data are named companions, not omissions.
+The machinery itself is not specific to ion channels: simulate a process exactly, test the score against the simulation, sandwich the Fisher, read off the distortion.
+It applies to any approximate likelihood for a process that can be simulated exactly but whose likelihood cannot be written down, which is most of stochastic biophysics.

@@ -1,22 +1,27 @@
 ---
-title: "Figure 6 (micro vs macro, GAUSSIAN frame) distortion lines — micro_IR | micro_R | macro_R | macro_IR"
+title: "Figure 6 (micro vs macro, GAUSSIAN frame) distortion lines — micro_IR | micro_R | macro_IR"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-Twin of figure_5_RvsIR_distortion_lines_G.Rmd, extended to the four algorithms micro_IR / micro_R /
-macro_R / macro_IR. Same Gaussian frame (battery_sim_G, anchored at theta_sim -> keeps at-truth
+Twin of figure_5_RvsIR_distortion_lines_G.Rmd, extended to the three algorithms micro_IR / micro_R /
+macro_IR (macro_R dropped 2026-07-22: the attribution contrast is micro_IR vs macro_IR at equal N_ch
+for the occupancy closure, and micro_IR vs micro_R for the interval closure; macro_R is the redundant
+fourth corner). Same Gaussian frame (battery_sim_G, anchored at theta_sim -> keeps at-truth
 misspecification AND the algorithm contrast). Diagonal of each distortion matrix, per parameter (rows)
 x N_ch (columns), colour = algorithm, noise 0.1, x = Delta t * k_off.
 95% bootstrap ribbon + 68% bar. log-log, reference 1 = no distortion.
 
-Data:  macro from figures/data/1c2ae6f (nsim = 10000);  micro from figures/data/87889e6 (nsim 100 & 1000).
-Only replicate counts >= NSIM_MIN (1000) are kept -- the nsim=100 micro runs are dropped as too noisy to
-resolve a modest distortion from 1 (their 95% CI spans ~1.9x; see figure_6 notes). With the data as it
-stands this leaves micro_IR at N_ch=5 only (the sole micro run at 1000); micro_R has no run >= 1000.
-Replicate count -> linetype (1000 dashed / 10000 solid).
+Data:  macro_IR from figures/data/1c2ae6f (N_ch 10..1e4, nsim 10000) plus figures/data/87889e6 (the
+N_ch 5 cell, nsim 10000); micro from figures/data/87889e6 (nsim 100 / 1000 / 10000). Same Gaussian anchor.
+Only 10000-replicate runs are kept (NSIM_MIN = 10000; excludes nsim 100 as too noisy and nsim 1000 by
+request, 2026-07-22). The micro battery_sim_G at nsim 10000 are: micro_IR N_ch 5; micro_R N_ch 5 and 10.
+micro_IR N_ch 10 has battery_sim_G only at nsim 1000 (its 10000 run is cloud-only), so excluding 1000
+drops micro_IR from N_ch 10. With macro_R dropped too, the three-way overlap (micro_IR, micro_R, macro_IR)
+is at N_ch = 5; N_ch 10 has micro_R + macro_IR; N_ch 20-100 are macro_IR-only.
+Replicate count -> linetype (all solid now; 100 dotted / 1000 dashed / 10000 solid kept for future).
 
 Everything that is a DATA DOMAIN is derived from the files, never fixed by hand:
   - the N_ch columns          = the N_ch present in the window [NCH_MIN, NCH_MAX];
@@ -39,22 +44,22 @@ NOISE      <- "0.1"
 NCH_MIN    <- 5                                # requested window; the actual columns come from the data
 NCH_MAX    <- 100
 MACRO_NSIM <- 10000                            # macro: the 10000-replicate run
-NSIM_MIN   <- 1000                             # only trust replicate counts >= 1000 (drops the nsim=100 micro runs)
+NSIM_MIN   <- 10000                            # only 10000-replicate runs (excludes nsim 100 and 1000)
 REF        <- 1
 LOGW_MAX   <- 1.3                              # drfigure_6_micro_macro_linearop points whose 95% CI spans > ~20x (guard; G_b is PSD)
 
-# algorithm order requested: micro_IR, micro_R, macro_R, macro_IR (a genuine choice, not a data domain)
-ALGO_SPEC <- tribble(
-  ~algo,      ~dir,       ~nsim_keep,
-  "micro_IR", MICRO_DIR,  NULL,               # micro: keep every replicate run (100 & 1000)
-  "micro_R",  MICRO_DIR,  NULL,
-  "macro_R",  MACRO_DIR,  MACRO_NSIM,
-  "macro_IR", MACRO_DIR,  MACRO_NSIM)
+# algorithm order requested: micro_IR, micro_R, macro_IR (a genuine choice, not a data domain)
+# macro_IR is read from BOTH dirs: 1c2ae6f carries N_ch 10..1e4, 87889e6 adds the N_ch 5 cell (same
+# Gaussian anchor). micro lives only in 87889e6. 1c2ae6f wins any N_ch overlap (basename dedup in read_algo).
+ALGO_SPEC <- tibble(
+  algo      = c("micro_IR",   "micro_R",    "macro_IR"),
+  dirs      = list(MICRO_DIR, MICRO_DIR,    c(MACRO_DIR, MICRO_DIR)),
+  nsim_keep = list(NULL,      NULL,         MACRO_NSIM))
 # canonical ALGO_COL (Okabe-Ito): R green / IR blue; micro = light shade, macro = full shade
 ALGO_COL  <- c("micro IR" = "#56B4E9", "micro R" = "#66C2A5",
-               "macro R"  = "#009E73", "macro IR" = "#0072B2")
+               "macro IR" = "#0072B2")
 ALGO_LAB  <- c(micro_IR = "micro IR", micro_R = "micro R",
-               macro_R  = "macro R",  macro_IR = "macro IR")
+               macro_IR  = "macro IR")
 ALGO_ORD  <- unname(ALGO_LAB)                  # legend / colour order = request order
 LT        <- c(`100` = "dotted", `1000` = "dashed", `10000` = "solid")  # replicate count -> linetype
 
@@ -79,15 +84,16 @@ read_one <- function(f) {
   df$nsim <- as.integer(sub(".*_nsim_([0-9]+)_.*", "\\1", basename(f)))
   df
 }
-read_algo <- function(algo, dir, nsim_keep) {
-  files <- Sys.glob(file.path(dir,
-    sprintf("figure_3_G_nch_*_nsim_*_%s_noise_%s_battery_sim_G.csv", algo, NOISE)))
+read_algo <- function(algo, dirs, nsim_keep) {
+  files <- unlist(lapply(dirs, function(dir) Sys.glob(file.path(dir,
+    sprintf("figure_3_G_nch_*_nsim_*_%s_noise_%s_battery_sim_G.csv", algo, NOISE)))))
+  files <- files[!duplicated(basename(files))]          # first dir in `dirs` wins any nch/nsim overlap
   if (!length(files)) return(NULL)
   df <- map_dfr(files, read_one)
   if (!is.null(nsim_keep)) df <- filter(df, nsim %in% nsim_keep)
   mutate(df, algo = algo)
 }
-bsim <- pmap_dfr(ALGO_SPEC, function(algo, dir, nsim_keep) read_algo(algo, dir, nsim_keep)) %>%
+bsim <- pmap_dfr(ALGO_SPEC, function(algo, dirs, nsim_keep) read_algo(algo, dirs, nsim_keep)) %>%
   filter(Num_ch >= NCH_MIN, Num_ch <= NCH_MAX, nsim >= NSIM_MIN)
 
 # DERIVED data domains (not fixed by hand)
@@ -142,10 +148,11 @@ plot_lines <- function(dd, title) {
     geom_linerange(aes(ymin = lo68, ymax = hi68), linewidth = .45, alpha = .7, linetype = 1) +
     geom_line(linewidth = .5) +
     geom_point(size = 1) +
-    facet_grid(param ~ Nch, scales = "free_y",
+    facet_grid(param ~ Nch,
                labeller = labeller(param = label_parsed, Nch = label_parsed)) +
     scale_x_log10(breaks = x_breaks) +
-    scale_y_log10(breaks = breaks_around1) +
+    scale_y_log10(breaks = c(0.5, 0.7, 1, 1.5, 2)) +
+    coord_cartesian(ylim = c(0.5, 2)) +   # cap at 2x; micro_R's large excursions clip off the top
     scale_colour_manual(values = ALGO_COL, name = NULL) +
     scale_fill_manual(values = ALGO_COL, name = NULL, guide = "none") +
     scale_linetype_manual(values = LT, name = "replicates", drop = TRUE) +

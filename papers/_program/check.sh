@@ -128,6 +128,7 @@ UNSOURCED="$(perl -ne '
   $t =~ s/\\(ref|cite[tp]?|cite[a-z]*|label|includegraphics|input|eqref|autoref)\s*(\[[^\]]*\])?(\[[^\]]*\])?\{[^}]*\}//g;
   $t =~ s/\\(sub)?section\*?\{[^}]*\}//g;
   $t =~ s/(Figure|Fig\.?|Table|Section|Equation|Eq\.?)~?\s*\d+//gi;   # numbering, not claims
+  $t =~ s/(figure\s+)?supplement\s*\d+//gi;    # eLife "Figure N--figure supplement M" cross-refs
   $t =~ s/\b[A-Z]-\d+\b//g;                    # decision/engine labels (D-0, E-1) are references
   $t =~ s/C\+\+\d+//g;                         # language versions (C++20)
   $t =~ s/[A-Za-z]+\d[A-Za-z0-9]*//g;          # identifiers: letter-then-digit (P2X2)

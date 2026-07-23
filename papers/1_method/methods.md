@@ -131,9 +131,9 @@ Environment, for the record: SLURM, 32 CPUs per task, 48 GB (96 GB for the figur
 
 ## M10 — The two-anchor split, which Methods has to own
 
-The main text will draw cross-algorithm panels from **`433ed13`** (numerical Fisher; the only run with all five algorithms) and IR mechanism panels from **`1c2ae6f`** (Gaussian Fisher; no NMR at all). `00_plan.md` §6 says the definitive figures are anchored on the Gaussian Fisher. **They currently cannot be** (`results.md`, Fig 5).
+The main text draws its map panels (Fig 2 clouds, Fig 4 maps) from the **Gaussian-Fisher** runs (`1c2ae6f` plus `0ffbda7` for VR); the time-resolved figures (Fig 3 and Fig 3—figure supplement 1) are a separate analytic per-step computation on the `0ffbda7` dumps, not the numerical battery. `00_plan.md` §6 wants the definitive figures anchored on the Gaussian Fisher, and as of 2026-07-22 **they are** (`results.md`; `figures_build_plan.md` §3b).
 
-Methods must either (a) state and justify the split (the justification available is Figure 4's per-step identity J_t = F_t across all five algorithms, which says the two anchors agree interval by interval), or (b) it goes away because the missing Gaussian-Fisher cells get run. **This is a decision with a compute cost attached and it should be made before the Results are drafted, not after.**
+The earlier open question — justify a numerical/Gaussian split, or run the missing Gaussian cells — is **closed**: Fig 2 was rebuilt on the Gaussian anchor and the two anchors agree at its cell (Gaussian R 1.32 / MR 1.97 / IR 1.02 against the numeric run, `figures_build_plan.md` §3b), so the split is gone for the body. Methods should state the anchor per figure and cite that agreement.
 
 ## M11 — Numerical safeguards (short, honest, and no more)
 

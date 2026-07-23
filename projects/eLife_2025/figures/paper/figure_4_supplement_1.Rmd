@@ -1,0 +1,74 @@
+---
+title: "Figure 4—figure supplement 1 — R against IR, all five parameters: the distortion-induced bias is diffuse for R, confined for IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+FIRST MOMENT. This is the bias half of the all-parameters R-vs-IR comparison; the distortion half is
+supplement 2. They are split because, unlike Figure 4's two moments (which fail at opposite ends of
+the interval axis and must be read together), here each moment INDEPENDENTLY makes the same claim:
+R's departure is diffuse across the parameters, IR's is confined to two and vanishes.
+
+Measured, fraction of cells whose 95% bootstrap interval EXCLUDES 0:
+                 IR      R
+    k_on        0.14   0.79
+    k_off       0.13   0.57
+    i           0.12   0.88
+    N_ch        0.13   0.87
+    sigma_noise 0.24   0.75
+
+So R carries a bias in every direction; IR's is at the ~0.13 floor everywhere. Conditioning on the
+interval does not merely shrink the bias, it removes it from four of five directions.
+
+DATA: battery_sim_G, anchored at theta_sim (NOT the pool files: at the optimum the score vanishes and
+the bias is zero by construction). Gaussian family. Standard 4 N_ch x 3 noise grid. No new runs.
+
+TRAP inherited from figure_4: three cells are off the +-0.3 scale and clamped - macro_R, N_ch 10000,
+Delta*k_off = 1, in the i and N_ch directions, where the Gaussian Fisher covariance has kappa ~ 1e5,
+so a displacement along a near-null direction costs almost no likelihood. SIGN meaningful, MAGNITUDE
+not a physical bias. Same open question across figure_4 and all four supplements: grey those cells as
+unidentified, or plot bias/SE.
+
+TRAP: the "noise" label is not the physical noise. current_noise = label/1000; the CSV column
+noise_in_conductance_tau stores the LABEL, which is the y axis.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+source("figure_4_supp_common.R")
+```
+
+```{r data}
+kap  <- read_kappa()
+bias <- readcell("battery_sim_G") %>%
+  filter(component_path == BIAS, param_index %in% PIDX,
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  shape(ci_toward = 0) %>%
+  add_unident(min(BIAS_LIN), max(BIAS_LIN), kap)   # grey where clamped AND ill-conditioned
+cat("supp1 (bias):", nrow(CELLS), "cells, all five parameters\n")
+cat("scale saturation:\n"); sat(bias$conf, min(BIAS_LIN), max(BIAS_LIN), "bias")
+cat("greyed (unidentified) cells:", sum(bias$unident), "->",
+    paste(unique(with(filter(bias, unident), paste(ALGO_LAB[algo], param, "N_ch", Num_ch))), collapse = "; "), "\n")
+```
+
+```{r plot, fig.width = 7, fig.height = 9.9}
+nr <- length(PARAM_ORD) * length(ALGOS)      # 10 rows
+gB <- mapblock(bias, function(d) d$conf, BIAS_PAL, BIAS_LIN)
+g <- gB / colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN) +
+     plot_layout(heights = c(0.95 * nr, 0.3))
+H <- 0.95 * nr + 0.3 + 0.5
+g
+ggsave("Figure_4_supplement_1.pdf", g, width = 7.0, height = H)
+cat("Figure_4_supplement_1.pdf:", nr, "rows, height", round(H, 1), "in\n")
+```
+
+```{r caption-numbers}
+cat("\n=== supp 1 (bias) caption numbers ===\n")
+cat("\nfraction of cells whose interval excludes 0, per parameter and algorithm\n")
+print(as.data.frame(bias %>% group_by(param, algo) %>%
+  summarise(frac_nonzero = mean(conf != 0), median = median(conf), .groups = "drop") %>%
+  mutate(algo = ALGO_LAB[algo]) %>% arrange(match(param, PARAM_ORD), algo)),
+  digits = 3, row.names = FALSE)
+```

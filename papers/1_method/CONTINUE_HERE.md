@@ -18,13 +18,18 @@
   `figure_1_all.Rmd` (six columns, orientation only, its own PDFs).
 - **Fig 2** built: the A-strict roster on the **Gaussian anchor**, VR read from `0ffbda7` and the rest
   from `1c2ae6f` by a search path, so a new algorithm joins by itself when its files land.
-- **Figs 3 and 4** built on regenerated dumps (engine `0ffbda7`, **seed now fixed** at 20260722; it
-  was `0`, i.e. irreproducible). NR and NMR stay in the dumps and out of the panels, which is what
-  lets Fig 4 keep its argument.
-- **Fig 5** rebuilt with a **new subject**: where IR itself stops being faithful, in both moments. The
-  old `figure_5_master*` are archived under `figures/archive/paper_superseded_20260722/`.
-- **Figs 6 and 7** not built. The decomposition of the distortion into sample and correlation parts
-  came out of Fig 5 and has no home yet.
+- **Fig 3** built on regenerated dumps (engine `0ffbda7`, **seed now fixed** at 20260722; it was `0`,
+  i.e. irreproducible). Its **Fig 3—figure supplement 1** (the per-step Fisher, ex-Fig 4) is built too;
+  NR and NMR stay in the dumps and out of the panels, which is what lets that supplement keep its
+  ratio-row argument.
+- **Fig 4** built: **R against IR over the design space** (`Figure_4.pdf` long, `Figure_4_short_variant.pdf`),
+  with four supplements. The old IR-only "where IR stops being faithful" figure was **merged into Fig 4's
+  IR rows**, and its `figure_5.Rmd` / `figure_5_master*` archived under
+  `figures/archive/paper_superseded_20260722/`. The sample/correlation decomposition is now **Fig 4—figure
+  supplements 3 and 4**, built.
+- **Fig 5** (the design trade-off, ex-8) is not yet a single built PDF; its content is in three
+  `figures/in_progress/figure_5_IR_*` scripts, two of which read the *claimed* covariance and must be
+  repointed to the corrected one before promotion (`figures_build_plan.md` §6).
 
 ## In flight, and what to check when it lands
 
@@ -37,8 +42,9 @@ GROUP_SIZE="100 250 1000" INTERVALS="1 0.05" N_ALGO="macro_IR" \
 ```
 
 It exists to answer **one** question: with 1000 fits instead of 100, does the N_ch direction of
-Fig 5's panel A cross below one, agreeing with the map, or is the disagreement structural? Look at
-`figure_5A point 1` in the knit output. Second question, from the same files: does the skewness of the
+Fig 4's block A (ex-Fig-5 panel A) cross below one, agreeing with the map, or is the disagreement
+structural? Look at the point-1 design cell in the knit output (the panel moved into `figure_4.Rmd`).
+Second question, from the same files: does the skewness of the
 MLE fall with group size as the CLT predicts, and where does it become small enough for an ellipse to
 mean anything.
 
@@ -85,7 +91,9 @@ The default reproduces the historical grid exactly; that was verified before use
 
 ## Still open, and they are decisions rather than work
 
-- What Figures 6 and 7 are. Proposal on the table: 6 = the R-versus-IR decision map, 7 = the same map
-  in bias. The decomposition needs a home.
-- Whether the paper stays gated at six figures (`01_writing_plan.md` §0).
+- ~~What Figures 6 and 7 are~~ **resolved 2026-07-22:** the R-versus-IR decision map is body **Fig 4**
+  (built), and the sample/correlation decomposition found its home in **Fig 4—figure supplements 3 and
+  4** (built). See `decisions.md` "The figure set".
+- ~~Whether the paper stays gated at six figures~~ **resolved:** five body figures plus supplements, the
+  six-figure gate is moot (`decisions.md`; `01_writing_plan.md` §0 updated).
 - The `Q-n` open questions in `00_plan.md` §8.

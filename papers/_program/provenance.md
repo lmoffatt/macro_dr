@@ -14,9 +14,17 @@ There are four production runs behind the figures, not one. Each is a single `.m
 
 | Run | Script | Dispatcher | Output | Feeds |
 |---|---|---|---|---|
-| 1 | `ops/local/figure_1.macroir` | none, run directly | loose `figures/data/figure_1_*.csv` | Figure 1, Figure S1 |
-| 2 | `ops/local/figure_3_mle.macroir` | `ops/slurm/dispatch_figure_3.sh` | `figures/data/433ed13/` (487 CSVs) | Figure 2, Figures S2 and S3 |
-| 3 | `ops/local/figure_3_time.macroir` | none, run directly | `figures/data/figure_3_time_dlik_{NR,NMR,R,MR,IR}.csv` (5 files, about 1 GB each) | Figures 3 and 4, Figures S4 and S5 |
+| 1 | `ops/local/figure_1.macroir` | none, run directly | loose `figures/data/figure_1_*.csv` | Figure 1, Fig 1—figure supplement 1 (ex-S1) |
+| 2 | `ops/local/figure_3_mle.macroir` | `ops/slurm/dispatch_figure_3.sh` | `figures/data/433ed13/` (487 CSVs) | Figure 2 + its supplements (ex-S2, ex-S3) — numerical anchor, superseded for the body |
+| 3 | `ops/local/figure_3_time.macroir` | none, run directly | `figures/data/figure_3_time_dlik_{NR,NMR,R,MR,IR}.csv` (5 files, about 1 GB each) | Figure 3, Fig 3—figure supplement 1 (ex-Fig 4), Fig 3 supplements (ex-S4, ex-S5) |
+
+> **Anchor/seed note (2026-07-22).** The body Fig 2 and Fig 4 were moved to the **Gaussian anchor**
+> (`1c2ae6f`/`0ffbda7`), so run 2's `433ed13` above now feeds the *superseded* numerical versions and
+> the numerical supplements; and the run-3 dumps were **regenerated at `0ffbda7`, seed 20260722** (the
+> `433ed13-dirty` provenance in §6 describes the old-seed dumps). Both are pending a full provenance
+> refresh here. Figure renumbering (old Fig 4 → Fig 3—figure supplement 1, old Fig 5 → merged into
+> Fig 4, old Fig 6 → Fig 4—figure supplements 3–4, old Fig 8 → Fig 5) follows `1_method/decisions.md`
+> "The figure set".
 | 4 | `ops/local/figure_3_mle_G.macroir` | `ops/slurm/dispatch_figure_3_G.sh` | `figures/data/1c2ae6f/` (355 CSVs) | exploratory `figure_7_*` notebooks only |
 
 Paths are relative to `projects/eLife_2025/`.
@@ -85,7 +93,7 @@ build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_1.macroir
 
 **Caption correction needed.** `Figure_1_caption.md:5` calls Figure S1 the whole recording. It is not: `sel` filters `sample_index %in% 0:4` (`figure_1.Rmd:508`) and the recording has samples 0 to 5, so sample 5 is dropped and S1 shows 0 to 10 ms of a 12 ms record. Figure S1 also has no caption file of its own.
 
-## 5. Run 2: the numerical-Fisher MLE battery (`433ed13`), feeding Figure 2 and Figures S2 and S3
+## 5. Run 2: the numerical-Fisher MLE battery (`433ed13`), feeding Figure 2 and its supplements (ex-S2, ex-S3) — numerical anchor, superseded for the body by the Gaussian rebuild
 
 **Producer.** `ops/local/figure_3_mle.macroir`, dispatched one SLURM job per (algorithm, channel-number) by `ops/slurm/dispatch_figure_3.sh`. A sequential local equivalent with the same injection contract is `ops/local/dispatch_figure_3_local.sh`.
 
@@ -118,9 +126,9 @@ repeated for noise labels 1 and 10, and again with `N_ALGO="macro_IR"` and the e
 
 **Notebooks.** `figure_2.Rmd` slices exactly one cell of this grid: N_ch = 100, 10000 recordings, noise label 0.1, group size 10, acquisition interval 0.1 τ (`figure_2.Rmd:35-40`). It plots the cloud of per-group MLEs for each algorithm together with three ellipses (the empirical covariance of the cloud, the Fisher prediction F_b⁻¹, and the sandwich correction F_b⁻¹ J F_b⁻¹) and a predicted-bias marker F_b⁻¹ times the mean score, all rescaled by 1/group_size = 1/10. It applies no convergence filter to the cloud. Saved at 7.0 by 9.5 inches. `figure_S2.Rmd` and `figure_S3.Rmd` read the same directory.
 
-`figure_5_master*.Rmd` and `figure_6_precision.Rmd` also live in `paper/` and also read `433ed13`, but they are **not** the paper's Figures 5 and 6. The first is self-described as a correctness audit (`figure_5_master_STATUS.md:14`) and the second carries the header `*** DATA SOURCE IS A DRAFT ***` (`figure_6_precision.Rmd:9`). See §8.
+`figure_5_master*.Rmd` and `figure_6_precision.Rmd` also lived in `paper/` and read `433ed13`, but they were **never** the paper's figures; both are **archived** under `figures/archive/paper_superseded_20260722/` (2026-07-22). The first was self-described as a correctness audit (`figure_5_master_STATUS.md:14`) and the second carried the header `*** DATA SOURCE IS A DRAFT ***`. The body's design figure is the new **Fig 5** (ex-8). See §8.
 
-## 6. Run 3: the time-resolved dumps, feeding Figures 3 and 4 and Figures S4 and S5
+## 6. Run 3: the time-resolved dumps, feeding Figure 3, Fig 3—figure supplement 1 (ex-Fig 4) and the Fig 3 supplements (ex-S4, ex-S5)
 
 **Producer.** `ops/local/figure_3_time.macroir`, run directly with no dispatcher, so every value is script-defined and nothing is injected. The ledger entry is `runs/run-20260630-202545/`, whose `meta.json` records the exact invocation:
 
@@ -166,20 +174,25 @@ All at 10000 recordings. **MacroNMR is entirely absent from the Gaussian family,
 
 ## 8. Which figures exist, and which do not
 
-The canonical arc is `1_method/results.md` (2026-07-14), which supersedes the figure list in `1_method/00_plan.md` §5.
+The canonical arc is `1_method/results.md` (updated 2026-07-22), and the figure **set** (numbering,
+body-vs-supplement) is owned by `1_method/decisions.md` "The figure set"; both supersede the figure list
+in `1_method/00_plan.md` §5.
 
-| Figure | Notebook | PDF | Data | Status |
+| Figure (new) | Notebook | PDF | Data | Status |
 |---|---|---|---|---|
 | 1 | `figure_1.Rmd` | `Figure_1.pdf` | run 1 | finished, captioned |
-| 2 | `figure_2.Rmd` | `Figure_2.pdf` | `433ed13` | finished, captioned; manuscript marks it "regenerate on Gaussian rerun" |
-| 3 | `figure_3.Rmd` | `Figure_3.pdf` | run 3 | finished, captioned |
-| 4 | `figure_4.Rmd` | `Figure_4.pdf` | run 3 | finished, captioned |
-| 5 | none selected | none | intended `1c2ae6f` | **not built.** Candidates in `figures/in_progress/`, sorted by `figure_5_PLAN.md`. `1_method/results.md:95` calls it the critical-path figure |
-| 6 | none selected | none | intended `1c2ae6f` | **not built** |
-| S1 | `figure_1.Rmd` | `Figure_S1.pdf` | run 1 | built, no caption file, caption text wrong (§4) |
-| S2 | `figure_S2.Rmd` | `Figure_S2.pdf` | `433ed13` | finished |
-| S3 | `figure_S3.Rmd` | `Figure_S3.pdf` | `433ed13` | finished |
-| S4, S5 | `figure_S4_S5.Rmd` | `Figure_S4.pdf`, `Figure_S5.pdf` | run 3 | finished; note `Figure_S4_acf_caption.md` describes the file saved as `Figure_S5.pdf` |
+| 2 | `figure_2.Rmd` | `Figure_2.pdf` | Gaussian anchor (`1c2ae6f` + `0ffbda7`) | rebuilt 2026-07-22 on the Gaussian anchor, captioned |
+| 3 | `figure_3.Rmd` | `Figure_3.pdf` | run 3, regenerated at `0ffbda7` seed 20260722 | finished, captioned |
+| 3—fig. supp. 1 (ex-Fig 4) | `figure_3_supplement_1.Rmd` | `Figure_3_supplement_1.pdf` | run 3 | built (per-step Fisher / Fisher-to-zero) |
+| 4 (R vs IR) | `figure_4.Rmd` | `Figure_4.pdf`, `Figure_4_short_variant.pdf` | Gaussian anchor | built 2026-07-22; merges the old IR-only map |
+| 4—fig. supp. 1–2 | `figure_4_supplement_{1,2}.Rmd` | `Figure_4_supplement_{1,2}.pdf` | Gaussian anchor | built (bias, distortion, all five params, R vs IR) |
+| 4—fig. supp. 3 (ex-Fig 6) | `figure_4_supplement_3.Rmd` | `Figure_4_supplement_3.pdf` | Gaussian anchor | built (sample/correlation decomposition, k_off) |
+| 4—fig. supp. 4 | `figure_4_supplement_4.Rmd` | `Figure_4_supplement_4.pdf` | Gaussian anchor | built (sample/correlation vs N_ch) |
+| 5 (design trade-off, ex-8) | none selected | none | intended `1c2ae6f`, corrected covariance | **not built.** Candidates in `figures/in_progress/figure_5_IR_*` |
+| 1—fig. supp. 1 (ex-S1) | `figure_1.Rmd` | `Figure_S1.pdf` | run 1 | built, no caption file, caption text wrong (§4) |
+| 2—fig. supp. 1 (ex-S2) | `figure_S2.Rmd` | `Figure_S2.pdf` | `433ed13` | finished |
+| 2—fig. supp. 2 (ex-S3) | `figure_S3.Rmd` | `Figure_S3.pdf` | `433ed13` | finished |
+| 3—fig. supp. 2–3 (ex-S4, S5) | `figure_S4_S5.Rmd` | `Figure_S4.pdf`, `Figure_S5.pdf` | run 3 | finished; `Figure_S4_acf_caption.md` describes the file saved as `Figure_S5.pdf` |
 
 The manuscript itself is not yet assembled: `docs/manuscript-drafts/elife_paper.tex` loads `graphicx` but contains zero `\includegraphics` and zero figure environments. The figures are named only in `%` comments, two of which (Figure 2 and Figure 5) end with "[regenerate on Gaussian rerun]". Nothing has been staged into `papers/1_method/figures/`, which holds only `instructions.md`.
 
@@ -206,7 +219,7 @@ Ordered by how much a referee would care.
 1. **Correct the seed claim** in `1_method/methods.md` M5, and decide what the paper says about it. The honest sentence is that the ensembles are large enough (1000 to 10000 recordings) that the reported statistics are stable, but the exact datasets cannot be regenerated bit for bit. Add the resolved seed to `meta.json` before any rerun.
 2. **Deposit the data.** Two directories and five large dumps. Until they are archived and cited, the provenance story in §2, which is genuinely good, is a story about files on one laptop.
 3. **Commit the run manifest.** §5 and §7 reconstruct the invocations from filenames and CSV columns. Put them next to the data, since the dispatcher defaults actively contradict what was run.
-4. **Decide the anchor split** (`1_method/methods.md` M10). Today it is forced, not chosen: MacroNMR does not exist in the Gaussian family at all. Either run the missing cells or state and justify the split.
-5. **Build Figures 5 and 6**, or drop them from the arc. They are currently unwritten, and one of them is on the critical path.
+4. ~~**Decide the anchor split**~~ **Resolved for the body (2026-07-22):** Fig 2 and Fig 4 are on the Gaussian anchor and the two anchors agree at the Fig-2 cell (`1_method/figures_build_plan.md` §3b); NMR is out of paper 1, so the MacroNMR gap no longer forces a split. State the anchor per figure and cite the agreement.
+5. ~~**Build Figures 5 and 6**~~ **Renumbered/done (2026-07-22):** the R-vs-IR map is body **Fig 4** (built) and the decomposition is **Fig 4—figure supplements 3 and 4** (built); the design trade-off is **Fig 5** (ex-8), still `figures/in_progress/` scripts pending promotion. See `1_method/decisions.md`.
 6. **Pin the R environment** (an `renv.lock` and a one-line render script would close the last unscripted hop in the chain).
 7. **Fix the stale comments and captions** identified here: the Figure S1 caption, the missing Figure S1 caption file, the S4/S5 caption filename mismatch, and the header comments in `figure_3_time.macroir` and `figure_3_mle.macroir`.
