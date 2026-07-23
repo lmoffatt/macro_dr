@@ -1,0 +1,610 @@
+---
+title: "Figure 4 — R against IR: what conditioning on the interval buys, across the design space"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE COMPARATIVE MAP. Paper 1 asks what the likelihood must condition on; this figure answers it over
+the design space instead of at the single cell Figure 2 measures. R is the literature anchor (the
+published recursive filters treat each sample as instantaneous), IR is the answer the paper argues
+for, and the two are put in adjacent rows so the comparison is a vertical glance.
+
+Supersedes the split into an IR-only map plus a separate R-vs-IR map: the IR-only map's blocks were a
+strict subset of this one's IR rows, so the two figures showed the same panels twice. IR's own
+failure is still located here, in its own rows, with the same numbers.
+
+PLANE: one panel per N_ch (columns), x = Delta*k_off (the 7 interval values swept inside every cell),
+y = instrumental noise. ROWS are parameter (outer) then algorithm (inner) — algorithm innermost so
+the R/IR pair is adjacent. Columns are spoken for by N_ch because N_ch is what the reader HAS: Delta
+is a design decision and noise is instrumental, but the preparation gives you the channel count, so a
+reader enters the figure by locating their own column.
+
+BLOCKS:
+  A  grouped MLE distributions, 3 design points x 2 algorithms. This is the referent: a distortion
+     map is a colour field over a ratio of a score covariance to a Fisher information, and nobody has
+     an intuition for 1.44. The cloud says it in the form a reader already knows — here is how your
+     estimates scatter, here is what the algorithm said they would. R above IR at the same point.
+  B  distortion-induced bias (first moment), from battery_sim_G at theta_sim.
+  C  information distortion (second moment), from battery_pool_G at theta_pool.
+First moment before second, the natural order.
+
+TWO VERSIONS, both written on each knit:
+  short  maps on k[off] only — the direction that carries the failure.
+  long   maps on k[off] AND N[ch] — the two directions carry OPPOSITE signs, so any scalar averaged
+         over parameters cancels them and reports a faithful algorithm. The long version is what
+         makes that verifiable.
+Block A is identical in both (an ellipse needs two axes, so it stays on the (k_off, N_ch) pair even
+when the maps show one).
+
+COVERAGE, and why the design points moved (verified 2026-07-22, do not re-derive):
+  Figure 5's points sat at noise 0.05 and 0.5. macro_R exists at NEITHER: on the Gaussian anchor R
+  has noise {0.1, 1, 10} plus an N_ch-scaled level, at N_ch {10, 100, 1000, 10000}, and its finer
+  N_ch values (5, 20, 50) exist only at noise 0.1. IR has {0.05, 0.1, 0.2, 0.5, 1, 10} on a much
+  finer N_ch grid. The intersection is what this figure plots: 4 decades x 3 noise levels. The
+  points therefore moved to noise 0.1, N_ch 10 (1 and 2) and N_ch 10000 (3), where both algorithms
+  have a cloud at group_size 100 over all 7 intervals.
+  UPDATE 2026-07-23: macro_R now reaches noise 100 at N_ch 100 (r = noise/N_ch = 1) and N_ch 1000
+  (r = 0.1), the first two rungs of the constant-r diagonal. IR has no nsim-10000 cell there, so the
+  grid is declared PER ALGORITHM (GRID_BY_ALGO) and R's map rows run one noise decade taller than IR's;
+  facet space = "free_y" holds the distance-per-decade equal, so a taller R row is more noise, not a
+  rescaled axis. Block A (the ellipses) is unchanged: its three design points still sit at noise 0.1.
+  NOTE the noise axis is RAW instrumental noise, not noise/N_ch. Gating variance grows with N_ch, so
+  the same raw level means a different instrumental fraction in each column and the rows are NOT
+  vertically comparable across columns. That is a deliberate limit of this version: on the relative
+  axis the existing cells only cross the transition at N_ch 10 (r = noise/N_ch reaches 1 and 10 there
+  and nowhere else), so "does noise cure R" cannot yet be asked in the other three columns. The cells
+  that would fix it are listed in papers/1_method/figures_build_plan.md.
+
+TWO DIRECTORIES, one search path. R's noise 1 and 10 live in 87889e6 while everything else is in
+1c2ae6f. Sanctioned by D-0: every CSV stamps its own engine hash in row 1, so the folder is a scratch
+grouping and the file is the provenance record. Same design as figure_2.Rmd's DATA_DIRS.
+
+TRAP: the "noise" label is not the physical noise. current_noise = label/1000, and the CSV column
+noise_in_conductance_tau stores the LABEL. The y axis below is the label, and the caption says so.
+
+TRAP: group_size 10 at few channels does not merely add noise, it REVERSES the sign of the N_ch
+direction (its finite-sample inflation is comparable to the true deflation). ELL_GROUP = 100 is the
+floor, at the cost of 100 fits and 14% relative uncertainty on a variance.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse); library(patchwork)
+```
+
+```{r params}
+# battery-fed notebook, so the keys are the PREFIXED form that lands in the CSV `algorithm` column
+ALGOS    <- c("macro_R", "macro_IR")          # order = row order inside each parameter block
+ALGO_LAB <- c(macro_R = "R", macro_IR = "IR")
+
+NCHS <- c(10, 100, 1000, 10000)               # the four decades: the intersection with what R has
+DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6")   # search path, first hit wins
+
+# THE y AXIS IS RAW INSTRUMENTAL NOISE, and dividing it by N_ch would be a mistake. Gating variance
+# grows with N_ch, so the crossover to calibration is expected at an absolute noise PROPORTIONAL to
+# N_ch; on a shared raw axis that renders as a staircase climbing column by column, and the
+# staircase's slope in log-log IS the exponent. Normalising to noise/N_ch flattens it by construction
+# and assumes the very relation this figure can measure. Raw axis, and let the triangle speak.
+#
+# THE GRID IS DECLARED, NOT A PRODUCT, because tracking that staircase makes it ragged: a higher N_ch
+# needs a higher absolute noise to reach the same regime, so the swept levels differ per column.
+# Declaring the pairs keeps the missing-cell hard stop working on a ragged grid - an absent file is
+# still an error, never a silently shortened axis. It is now ALSO ragged between algorithms: macro_R
+# has been run a noise decade higher than IR where its cells exist, so the levels are declared PER
+# ALGORITHM (GRID_BY_ALGO) and R's map rows run taller than IR's (facet space = "free_y").
+GRID_BASE <- tibble::tribble(
+  ~nch,  ~z,
+  10,    "0.1",  10,    "1",  10,    "10",
+  100,   "0.1",  100,   "1",  100,   "10",
+  1000,  "0.1",  1000,  "1",  1000,  "10",
+  10000, "0.1",  10000, "1",  10000, "10")
+# macro_R ONLY: the noise-100 cells that landed 2026-07-23, the first two rungs of the constant-r
+# diagonal (r = noise/N_ch = 1 at N_ch 100, r = 0.1 at N_ch 1000). IR has no nsim-10000 cell at this
+# noise, so these rows belong to R alone and give it a taller noise axis. Add a row the moment its
+# battery_*_G files land (nch 1000 noise 100 arrived cloud+pool first, battery files a few hours on).
+GRID_R_EXTRA <- tibble::tribble(
+  ~nch,  ~z,
+  100,   "100",
+  1000,  "100")
+# STILL PENDING, and why the retarget (measured, not guessed; figure_4_diag_nsim1000.Rmd): the rest of
+# the diagonal at constant r = noise/N_ch, TARGETED AT r = 0.01, 0.1, 1, NOT 0.1/1/10.
+#   - r = 10 is already answered and lies PAST the transition (82b956f probe: R at 1.02-1.06 in all
+#     four decades, bootstrap halfwidth 0.04 << the 0.158 a distortion of 1.44 would need).
+#   - the crossover sits between r = 0.01 and r = 0.1 (nsim 10000 noise-10 column as a function of r:
+#     1.01 at r = 1 / 1.05 at 0.1 / 1.24 at 0.01 / 1.18 at 0.001).
+# A rung that lands for R ALONE goes in GRID_R_EXTRA (taller R rows); a rung that lands for BOTH goes
+# in GRID_PENDING (added to both grids below). Uncomment as cells land; axis range and breaks follow.
+#   dispatch: NCHS="1000 10000 10000 10000"  N_NOISE="1000 100 1000 10000"
+#             GROUP_SIZE="10 100"  N_ALGO="macro_R macro_IR"
+GRID_PENDING <- tibble::tribble(
+  ~nch,  ~z)          # shared (both-algorithm) future cells; R-only cells go in GRID_R_EXTRA
+GRID_BY_ALGO <- list(macro_R  = bind_rows(GRID_BASE, GRID_R_EXTRA, GRID_PENDING),
+                     macro_IR = bind_rows(GRID_BASE, GRID_PENDING))
+GRID <- distinct(bind_rows(GRID_BASE, GRID_R_EXTRA, GRID_PENDING))   # union, for the shared y-breaks
+noise_span <- function(a) diff(range(log10(as.numeric(GRID_BY_ALGO[[a]]$z))))
+
+PIDX      <- c(on = 0, off = 1, unitary_current = 2, Current_Noise = 3, Num_ch_mean = 5)
+COMPS <- c(total  = "Probit_statistics_Likelihood_Gaussian_Information_Distortion",
+           sample = "Probit_statistics_Gaussian_Sample_Distortion",
+           corr   = "Probit_statistics_Likelihood_Correlation_Distortion")
+
+# the two parameter sets the two versions plot. k_off inflates, N_ch deflates: opposite signs.
+PARAM_SHORT <- c("off")
+PARAM_LONG  <- c("off", "Num_ch_mean")
+PARAM_MATH  <- c(off = "log[10]~k[off]", Num_ch_mean = "log[10]~N[ch]")
+
+RAMP <- c("#021024","#053061","#2166AC","#4393C3","#92C5DE","#D1E5F0","#F7F7F7",
+          "#FDDBC7","#F4A582","#D6604D","#B2182B","#67001F","#3d0011")
+bandcols <- function(breaks) {
+  n <- length(breaks) - 1; ctr <- findInterval(0, breaks); nb <- ctr - 1; nr <- n - ctr; K <- max(nb, nr, 1)
+  blue <- colorRampPalette(rev(RAMP[1:7]), space = "Lab")(K + 1)
+  red  <- colorRampPalette(RAMP[7:13],     space = "Lab")(K + 1)
+  cols <- rep(RAMP[7], n)
+  if (nb > 0) cols[seq(ctr - 1, 1)] <- blue[2:(nb + 1)]
+  if (nr > 0) cols[seq(ctr + 1, n)] <- red[2:(nr + 1)]
+  cols
+}
+fmt_big <- function(x) formatC(x, format = "g", digits = 3)
+DIST_LIN    <- c(0.5, 0.67, 0.8, 0.87, 0.91, 0.94, 0.97, 0.99, 1.01, 1.03, 1.06, 1.1, 1.15, 1.25, 1.5, 1.7, 2.5)
+DIST_BREAKS <- log10(DIST_LIN)
+DIST_PAL    <- bandcols(DIST_BREAKS)
+DIST_LAB    <- fmt_big(DIST_LIN)
+
+# Figure 5's bias scale was set from IR alone (-0.004 to +0.064) and R does not fit in it: R's N_ch
+# bias runs to +0.29. Range measured, not guessed: excluding the three cells named below, the
+# CI-shrunk bias spans -0.033 to +0.288, so +-0.3 clips nothing. Bands are log-spaced because IR's
+# values (0.003 to 0.042) and R's (0.13 to 0.15) differ by more than a decade and a linear scale
+# would put every IR cell in the neutral band.
+#
+# THREE CELLS ARE OFF ANY SCALE and are clamped: macro_R, N_ch 10000, Delta*k_off = 1, at all three
+# noise levels, where the predicted N_ch bias is -2.78 log10 (a factor of 600) with a bootstrap
+# interval of width 0.04. This is NOT a bootstrap artifact and NOT R-specific ill-conditioning: the
+# Gaussian Fisher covariance at that cell has kappa = 75272 for R and 99459 for IR, so IR is worse
+# conditioned there and its predicted bias is ~0. The reading: the bias is H^-1 times a
+# miscalibration, IR's numerator is ~0 so nothing is amplified, R's is not and gets amplified along
+# the direction the data barely constrains. The SIGN and the existence are meaningful; the MAGNITUDE
+# is not a physical bias prediction, because a displacement along a near-null direction costs almost
+# no likelihood. OPEN: whether those cells should be greyed as unidentified rather than clamped, and
+# whether block B should plot bias/SE instead of bias. Decide before this figure is called final.
+BIAS_LIN    <- c(-0.3, -0.15, -0.07, -0.03, -0.01, -0.003, 0.003, 0.01, 0.03, 0.07, 0.15, 0.3)
+BIAS_PAL    <- bandcols(BIAS_LIN)
+BIAS_LAB    <- formatC(BIAS_LIN, format = "g", digits = 2)
+```
+
+```{r data}
+# search path, not a fixed directory: R's noise 1 and 10 are in a different run folder from
+# everything else. A missing file is a hard stop, never a silently shortened axis.
+findf <- function(nch, algo, z, kind) {
+  f <- file.path(DATA_DIRS,
+                 sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_%s.csv", nch, algo, z, kind))
+  hit <- f[file.exists(f)]
+  if (!length(hit)) stop("figure_4: no file for ", algo, " N_ch ", nch, " noise ", z, " (", kind, ")")
+  hit[1]
+}
+
+# RAGGED per algorithm: the grid is declared in GRID_BY_ALGO, so macro_R carries the noise-100 rows
+# that IR has no cell for. A missing file is still a hard stop, never a silently shortened axis.
+cells <- imap_dfr(GRID_BY_ALGO, function(g, a) tibble(algo = a, nch = g$nch, z = g$z))
+cat("figure_4:", nrow(cells), "cells over", length(ALGOS),
+    "algorithms (ragged: macro_R carries a noise decade IR has no cell for)\n")
+cat("  noise levels per algorithm x N_ch (the staircase; a ragged row here is the point):\n")
+print(as.data.frame(cells %>% group_by(algo, nch) %>%
+  summarise(noise = paste(sort(as.numeric(z)), collapse = " "), .groups = "drop")), row.names = FALSE)
+for (a in ALGOS) {
+  d <- unique(dirname(pmap_chr(filter(cells, algo == a), function(algo, nch, z)
+        findf(nch, algo, z, "battery_pool_G"))))
+  cat("  ", a, "resolved from:", paste(basename(d), collapse = " + "), "\n")
+}
+
+# one long-format reader for both anchors; `algorithm` is carried explicitly rather than trusted from
+# the CSV column, because the row identity here comes from the filename we asked for.
+readcell <- function(kind) pmap_dfr(cells, function(algo, nch, z)
+  read.csv(findf(nch, algo, z, kind), skip = 1, stringsAsFactors = FALSE) %>%
+    mutate(noise = z, algo = algo))
+
+# BIAS comes from battery_sim_G, anchored at theta_sim. It cannot come from the pool files: a bias
+# evaluated at the optimum is zero by construction because the score vanishes there.
+bias <- readcell("battery_sim_G") %>%
+  filter(component_path == "Probit_statistics_Gaussian_Distortion_Induced_Bias",
+         param_index %in% PIDX[PARAM_LONG],
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  mutate(key = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                         quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(algo, noise, Num_ch, interval_in_tau, param_index, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  # CI-aware toward ZERO: a cell whose interval covers 0 renders white
+  mutate(Bconf = ifelse(m > 0, pmax(0, lo), pmin(0, hi)),
+         lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+         param = names(PIDX)[match(param_index, PIDX)],
+         nchf  = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+
+stat <- readcell("battery_pool_G") %>%
+  filter(component_path %in% COMPS, param_index == param_col, param_index %in% PIDX[PARAM_LONG],
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  mutate(comp = names(COMPS)[match(component_path, COMPS)],
+         key  = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                          quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(algo, comp, noise, Num_ch, interval_in_tau, param_index, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  # CI-aware: a cell whose 95% interval brackets 1 collapses to exactly 1 and renders white
+  mutate(Dconf = ifelse(m > 1, pmax(1, lo), pmin(1, hi)),
+         lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+         param = names(PIDX)[match(param_index, PIDX)],
+         nchf  = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+
+# UNIDENTIFIED cells: greyed, not clamped. Flag a cell where the value is off the plotted scale AND
+# the Gaussian Fisher covariance is ill-conditioned (condition number > 3e4). kappa alone grows with
+# N_ch for everyone and would grey the whole 10000 column; the clamp AND the high kappa together
+# isolate the R corner (N_ch 10000, Delta = 1), a displacement along a near-null direction whose
+# magnitude is not a meaningful bias/distortion. A distinct darker grey with a border, so it is not
+# read as an unrun (grey85) cell.
+kap <- readcell("battery_pool_G") %>%
+  filter(component_path == "Probit_statistics_Spectrum_Condition_Number_Gaussian_Fisher_Covariance",
+         statistic == "value", probit == "mean") %>%
+  group_by(algo, Num_ch, noise, interval_in_tau) %>% summarise(kappa = mean(value), .groups = "drop")
+KAPPA_MAX <- 3e4
+bias <- bias %>% left_join(kap, by = c("algo", "Num_ch", "noise", "interval_in_tau")) %>%
+  mutate(unident = (m < min(BIAS_LIN) | m > max(BIAS_LIN)) & is.finite(kappa) & kappa > KAPPA_MAX)
+stat <- stat %>% left_join(kap, by = c("algo", "Num_ch", "noise", "interval_in_tau")) %>%
+  mutate(unident = (m < min(DIST_LIN) | m > max(DIST_LIN)) & is.finite(kappa) & kappa > KAPPA_MAX)
+cat("greyed (unidentified): bias", sum(bias$unident), "cells, distortion",
+    sum(stat$unident[stat$comp == "total"]), "cells\n")
+
+# NO SILENT CAPS. Both maps clamp to their scale, so report what the clamp swallowed. A non-zero
+# count here means the scale is lying about the size of a departure, not that the figure is fine.
+sat <- function(v, lo, hi, what) {
+  n <- sum(is.finite(v)); b <- sum(v < lo, na.rm = TRUE); t <- sum(v > hi, na.rm = TRUE)
+  cat(sprintf("  %-28s %d/%d below %.3g, %d/%d above %.3g\n", what, b, n, lo, t, n, hi))
+}
+cat("scale saturation (0 is the only acceptable answer for a final render):\n")
+sat(log10(stat$Dconf[stat$comp == "total"]), min(DIST_BREAKS), max(DIST_BREAKS), "distortion")
+sat(bias$Bconf, min(BIAS_LIN), max(BIAS_LIN), "bias")
+```
+
+```{r points}
+# THREE design points, and the middle one is a control, not decoration. At the failing point two
+# things act at once: the algorithm's distortion and the estimator's own finite-sample departure from
+# normality. Point 2 holds group size, N_ch and noise FIXED and moves only the interval, so the
+# difference between 1 and 2 is the algorithm alone. Point 3 is a calibrated design point, for scale.
+#
+# MOVED from Figure 5's points (N_ch 20 at noise 0.05, N_ch 10000 at noise 0.5): macro_R exists at
+# neither noise level, and N_ch 20 is no longer a map column. These three sit on the noise-0.1 row of
+# every map panel and on columns that exist for both algorithms.
+ELL_POINTS <- tibble::tribble(
+  ~lab, ~nch,   ~noise, ~dlt,  ~what,
+  "1",  10,     "0.1",  0.01,  "distorted",
+  "2",  10,     "0.1",  1,     "biased",
+  "3",  10000,  "0.1",  0.1,   "faithful")
+ELL_GROUP <- 100
+```
+
+```{r ellipses, fig.width = 7, fig.height = 4.8}
+# GROUP SIZE 100, NOT 10. Each MLE is fitted to `group_size` recordings; at 10 the estimator carries a
+# finite-sample variance inflation that belongs to the group size, not to the algorithm, and at few
+# channels that inflation REVERSES the sign of the N_ch direction. The MAPS fit no estimates at all
+# and are untouched by this.
+PAIR <- c(off = "off", nch = "Num_ch_mean")   # the two opposite-signed directions
+ell  <- function(S, cx, cy, n = 200) {        # 95% ellipse, 2 dof
+  if (any(!is.finite(S))) return(NULL)
+  e <- eigen(S, symmetric = TRUE); if (any(e$values <= 0)) return(NULL)
+  th <- seq(0, 2 * pi, length.out = n)
+  P <- e$vectors %*% diag(sqrt(e$values * qchisq(0.95, 2))) %*% rbind(cos(th), sin(th))
+  tibble(x = cx + P[1, ], y = cy + P[2, ])
+}
+
+panel <- function(i, algo) {
+  pt   <- ELL_POINTS[i, ]
+  fcl  <- findf(pt$nch, algo, pt$noise, "mle_cloud_runs")
+  fbat <- findf(pt$nch, algo, pt$noise, "battery_pool_G")
+  fsim <- findf(pt$nch, algo, pt$noise, "battery_sim_G")
+
+  pts <- read.csv(fcl, skip = 1) %>%
+    filter(component_path == "Model_Parameters_Hat", statistic == "value",
+           group_size == ELL_GROUP, param_name %in% PAIR,
+           abs(interval_in_tau - pt$dlt) < 1e-9) %>%
+    select(sample_index, param_name, value) %>%
+    pivot_wider(names_from = param_name, values_from = value)
+  bat <- read.csv(fbat, skip = 1) %>%
+    filter(statistic == "value", probit == "mean", abs(interval_in_tau - pt$dlt) < 1e-9,
+           param_index %in% PIDX[PAIR], param_col %in% PIDX[PAIR])
+  cov2 <- function(cp) {
+    d <- bat %>% filter(component_path == cp); m <- matrix(NA_real_, 2, 2); id <- unname(PIDX[PAIR])
+    for (a in 1:2) for (b in 1:2) { v <- d$value[d$param_index == id[a] & d$param_col == id[b]]
+                                    if (length(v) == 1) m[a, b] <- v }
+    m / ELL_GROUP
+  }
+  cx <- mean(pts$off, na.rm = TRUE); cy <- mean(pts$Num_ch_mean, na.rm = TRUE)
+  E  <- cov(cbind(pts$off, pts$Num_ch_mean), use = "complete.obs")
+  src <- bind_rows(
+    mutate(ell(E, cx, cy), source = "empirical"),
+    mutate(ell(cov2("Probit_statistics_Gaussian_Fisher_Covariance"), cx, cy), source = "Fisher"),
+    mutate(ell(cov2("Probit_statistics_Gaussian_Distortion_Corrected_Covariance"), cx, cy),
+           source = "corrected")) %>%
+    mutate(source = factor(source, levels = c("empirical", "Fisher", "corrected")))
+  A <- function(S) { e <- eigen(S, symmetric = TRUE)$values
+                     if (any(!is.finite(S)) || any(e <= 0)) NA_real_ else sqrt(prod(e)) }
+  Fm <- cov2("Probit_statistics_Gaussian_Fisher_Covariance")
+  rF <- A(E) / A(Fm)
+  rC <- A(E) / A(cov2("Probit_statistics_Gaussian_Distortion_Corrected_Covariance"))
+  # PER-AXIS ratios, not one area. An area multiplies an inflated direction by a deflated one and
+  # hides both, which is the very cancellation the maps exist to expose.
+  rx <- E[1, 1] / Fm[1, 1]      # k_off, the x axis
+  ry <- E[2, 2] / Fm[2, 2]      # N_ch,  the y axis
+  nf <- nrow(pts)
+  shrink <- function(r) { lo <- r * (nf - 1) / qchisq(.975, nf - 1)
+                          hi <- r * (nf - 1) / qchisq(.025, nf - 1)
+                          if (r > 1) max(1, lo) else min(1, hi) }
+  bandcol <- function(r) { sr <- shrink(r)
+    if (isTRUE(all.equal(sr, 1))) "grey45"
+    else DIST_PAL[max(1, min(length(DIST_PAL),
+           findInterval(log10(sr), DIST_BREAKS, rightmost.closed = TRUE)))] }
+
+  # THE ELLIPSE AND THE MAP ARE DIFFERENT OBJECTS, and the panel says so instead of leaving the
+  # reader to discover it. The ellipse compares Cov(theta_hat) against the sandwich MARGINALISED over
+  # the other parameters; the maps compare score against Fisher unmarginalised. The marginal reading
+  # is systematically milder. Both numbers are printed: the multiplier from the cloud, and the map's
+  # own value at the same cell, so a disagreement is visible as a stated fact.
+  mval <- function(p) { v <- stat$Dconf[stat$comp == "total" & stat$algo == algo &
+                                        stat$Num_ch == pt$nch & stat$noise == pt$noise &
+                                        abs(stat$interval_in_tau - pt$dlt) < 1e-9 & stat$param == p]
+                        if (length(v) == 1) v else NA_real_ }
+  mx <- mval("off"); my <- mval("Num_ch_mean")
+
+  # Figure 2's marker grammar: cross = truth, filled circle = empirical mean, open circle = truth plus
+  # the bias the distortion theory PREDICTS (anchored at theta_sim, so a prediction and not a
+  # re-description of the cloud).
+  dib <- read.csv(fsim, skip = 1) %>%
+    filter(component_path == "Probit_statistics_Gaussian_Distortion_Induced_Bias",
+           statistic == "value", probit == "mean", abs(interval_in_tau - pt$dlt) < 1e-9,
+           param_index %in% PIDX[PAIR]) %>%
+    select(param_index, value)
+  gx <- 2; gy <- log10(pt$nch)     # truth: log10(k_off) = log10(100) = 2
+  gv <- function(nm) { v <- dib$value[dib$param_index == PIDX[[PAIR[[nm]]]]]
+                       if (length(v) == 1) v else NA_real_ }
+  mk <- tibble(x = c(gx, cx, gx + gv("off")), y = c(gy, cy, gy + gv("nch")),
+               kind = factor(c("truth", "empirical mean", "predicted (truth + bias)"),
+                             levels = c("truth", "empirical mean", "predicted (truth + bias)")))
+
+  # symmetric window CENTRED ON THE TRUTH, so a displacement reads as a displacement. The window is
+  # computed over BOTH algorithms at this point (below) so the R and IR panels of a column share it
+  # and their clouds can be compared by eye rather than by reading the axis numbers.
+  hx <- 1.10 * max(abs(c(src$x, pts$off, mk$x) - gx), na.rm = TRUE)
+  hy <- 1.34 * max(abs(c(src$y, pts$Num_ch_mean, mk$y) - gy), na.rm = TRUE)
+
+  cat(sprintf(paste0("fig4A %-3s point %s (%s): N_ch %d, noise %s, Delta %.2f, n_fits %d | ",
+                     "ellipse emp/Fisher  k_off %.2f  N_ch %.2f | map  k_off %.2f  N_ch %.2f | ",
+                     "area emp/Fisher %.2f, emp/corrected %.2f\n"),
+              ALGO_LAB[[algo]], pt$lab, pt$what, pt$nch, pt$noise, pt$dlt, nf, rx, ry,
+              mx, my, rF, rC))
+  list(g = ggplot() +
+    geom_point(data = pts, aes(off, Num_ch_mean), colour = "grey70", size = .2, alpha = .4) +
+    geom_path(data = src, aes(x, y, colour = source, linetype = source, linewidth = source)) +
+    geom_point(data = mk, aes(x, y, shape = kind), size = 1.7, stroke = .55, fill = "white") +
+    scale_shape_manual(values = c(truth = 3, `empirical mean` = 16, `predicted (truth + bias)` = 21)) +
+    annotate("label", x = gx + hx, y = gy + hy, hjust = 1.03, vjust = 1.15, size = 2.2,
+             colour = bandcol(rx), fill = "white", label.size = 0,
+             label.padding = unit(0.6, "pt"), parse = TRUE,
+             label = sprintf("k[off]*\" %.2f×\"", rx)) +
+    annotate("label", x = gx + hx, y = gy + hy, hjust = 1.03, vjust = 2.5, size = 2.2,
+             colour = bandcol(ry), fill = "white", label.size = 0,
+             label.padding = unit(0.6, "pt"), parse = TRUE,
+             label = sprintf("N[ch]*\" %.2f×\"", ry)) +
+    scale_colour_manual(values = c(empirical = "grey35", Fisher = "#D55E00", corrected = "#0072B2")) +
+    scale_linetype_manual(values = c(empirical = "solid", Fisher = "dashed", corrected = "dotted")) +
+    scale_linewidth_manual(values = c(empirical = .5, Fisher = .7, corrected = .85), guide = "none") +
+    labs(x = expression(log[10]~k[off]), y = expression(log[10]~N[ch]),
+         title = paste0(ALGO_LAB[[algo]], "   ·   ", pt$lab, "  ", pt$what),
+         subtitle = bquote(N[ch] == .(pt$nch) ~ "," ~ sigma == .(pt$noise) ~ "," ~
+                           Delta %.% k[off] == .(pt$dlt))) +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(),
+          plot.title = element_text(size = 7.5, hjust = .5, face = "bold", margin = margin(b = 1)),
+          plot.subtitle = element_text(size = 6, hjust = .5, margin = margin(b = 2)),
+          axis.text = element_text(size = 6), axis.title = element_text(size = 7.5),
+          aspect.ratio = 1,
+          legend.position = "bottom", legend.title = element_blank(), legend.box = "horizontal",
+          legend.text = element_text(size = 6.5), legend.key.size = unit(.6, "lines"),
+          legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(2, "pt"),
+          plot.margin = margin(2, 4, 2, 4)),
+    gx = gx, gy = gy, hx = hx, hy = hy)
+}
+
+# build all six, then give the R and IR panels of a column the SAME window (the larger of the two).
+# Without this the two clouds of a design point are drawn at different zooms and the visual
+# comparison the block exists for is invalid.
+cells6 <- expand_grid(algo = factor(ALGOS, levels = ALGOS), i = seq_len(nrow(ELL_POINTS)))
+built  <- pmap(cells6, function(algo, i) panel(i, as.character(algo)))
+gAlist <- lapply(seq_len(nrow(cells6)), function(k) {
+  i    <- cells6$i[k]
+  mate <- which(cells6$i == i)
+  hx   <- max(vapply(built[mate], function(b) b$hx, numeric(1)))
+  hy   <- max(vapply(built[mate], function(b) b$hy, numeric(1)))
+  b    <- built[[k]]
+  b$g + coord_cartesian(xlim = c(b$gx - hx, b$gx + hx), ylim = c(b$gy - hy, b$gy + hy))
+})
+gA <- wrap_plots(gAlist, nrow = length(ALGOS), byrow = TRUE, guides = "collect") &
+        theme(legend.position = "bottom")
+gA
+```
+
+```{r maps}
+X_BRK <- log10(c(.01, .1, 1))
+# y breaks come from the GRID, not hardcoded: the noise axis grows by three decades when the diagonal
+# cells land, and a fixed set would silently stop labelling the new ones. Powers of ten only, thinned
+# to at most five so the labels never collide in a 1.5 in panel.
+Y_DEC <- sort(unique(as.numeric(GRID$z)))
+Y_BRK <- log10(Y_DEC[seq(1, length(Y_DEC), by = max(1, ceiling(length(Y_DEC) / 5)))])
+Y_LAB <- formatC(10^Y_BRK, format = "g", digits = 3)
+
+# ONE row factor, not nested facets: levels ordered parameter-major, algorithm-minor, so the R/IR
+# pair of a parameter is always adjacent. The strip is a two-line parsed label (parameter over
+# algorithm) because a row label is not an axis label and will not fit inside one at this size.
+rowfac <- function(d, params) {
+  lv <- as.vector(t(outer(params, ALGOS,
+          function(p, a) sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[p], ALGO_LAB[a]))))
+  d %>% filter(param %in% params) %>%
+    mutate(prow = factor(sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[param], ALGO_LAB[algo]),
+                         levels = lv))
+}
+
+marks <- function(rows) ELL_POINTS %>%
+  mutate(lx = log10(dlt), ly = log10(as.numeric(noise)),
+         nchf = factor(paste0("N[ch]==", nch), levels = paste0("N[ch]==", NCHS))) %>%
+  tidyr::crossing(prow = factor(rows, levels = rows))
+
+mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE) {
+  if ("comp" %in% names(d)) d <- filter(d, comp == "total")   # the maps show the total, not its parts
+  d  <- rowfac(d, params) %>% mutate(zz = pmin(pmax(zvar(.data), min(brk)), max(brk)))
+  mk <- marks(levels(d$prow))
+  uni <- if ("unident" %in% names(d)) filter(d, unident) else d[0, ]
+  ggplot(d, aes(lx, ly, z = zz)) +
+    geom_contour_filled(breaks = brk) +
+    scale_fill_manual(values = pal, drop = FALSE, guide = "none") +
+    geom_point(size = .08, colour = "grey35", alpha = .35) +
+    # grey out the unidentified corner (over the fill): value not meaningful there
+    geom_tile(data = uni, aes(lx, ly), inherit.aes = FALSE, fill = "grey60",
+              colour = "grey30", linewidth = .25, width = 0.30, height = 1.0) +
+    geom_point(data = mk, aes(lx, ly), inherit.aes = FALSE, shape = 21, fill = "white",
+               colour = "black", size = 1.5, stroke = .45) +
+    geom_text(data = mk, aes(lx, ly, label = lab), inherit.aes = FALSE, size = 1.9,
+              fontface = "bold", vjust = -0.95) +
+    # free + proportional y: macro_R's rows reach a noise decade IR does not, so each row gets a
+    # height proportional to its own noise span. A decade of noise is then the SAME vertical distance
+    # in the R and IR rows; the taller R row is more noise, not a stretched axis. Columns keep the
+    # shared interval x, and where R has no cell (N_ch 10 / 10000 above noise 10) the panel stays grey.
+    facet_grid(prow ~ nchf, labeller = label_parsed, scales = "free_y", space = "free_y") +
+    scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
+    scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+    labs(y = "noise") +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    # GREY PANEL, not white. On a shared ragged axis a column is only filled up to the highest noise
+    # it was run at, and the CI-shrink rule renders a CALIBRATED cell white. Against a white panel
+    # those two are the same picture: "we measured it and it is fine" would be indistinguishable from
+    # "we never ran it". Grey is the absence of data; white inside the filled region is calibration.
+    theme(panel.background = element_rect(fill = "grey85", colour = NA),
+          panel.grid.minor = element_blank(), panel.spacing = unit(0.12, "cm"),
+          legend.position = "none", axis.text = element_text(size = 6),
+          axis.title.y = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
+          plot.margin = margin(2, 2, 2, 2)) +
+    (if (top) theme(strip.text.x = element_text(size = 7.5)) else theme(strip.text.x = element_blank())) +
+    (if (bottom) labs(x = expression(Delta %.% k[off])) else
+       theme(axis.title.x = element_blank(), axis.text.x = element_blank()))
+}
+
+colorbar <- function(pal, edge_lab, title, lin, sol = numeric(0), dsh = numeric(0)) {
+  n <- length(pal); pos <- function(v) match(v, lin) - 0.5
+  mkx <- c(
+    if (length(dsh)) list(annotate("segment", x = pos(dsh), xend = pos(dsh), y = 0.5, yend = 2.0,
+                                   colour = "grey25", linewidth = .35, linetype = "dashed")),
+    if (length(sol)) list(annotate("segment", x = pos(sol), xend = pos(sol), y = 0.5, yend = 2.0,
+                                   colour = "black", linewidth = .5)))
+  ggplot(data.frame(x = seq_len(n)), aes(x, 1, fill = factor(x))) +
+    geom_tile(colour = "grey92", linewidth = .15) + mkx +
+    scale_fill_manual(values = pal, guide = "none") +
+    scale_x_continuous(breaks = seq(0.5, n + 0.5, 1), labels = edge_lab, expand = c(0, 0)) +
+    coord_cartesian(ylim = c(0.5, 2.0), clip = "off") +
+    labs(y = title) + theme_void(base_family = "Helvetica") +
+    theme(axis.title.y = element_text(angle = 0, size = 7, hjust = 1, vjust = .5, margin = margin(r = 4)),
+          axis.text.x = element_text(size = 5.5), axis.ticks.x = element_line(colour = "grey55", linewidth = .3),
+          axis.ticks.length.x = unit(2, "pt"), plot.margin = margin(3, 26, 2, 34))
+}
+
+btitle <- function(txt) ggplot() + theme_void(base_family = "Helvetica") +
+  annotate("text", x = 0, y = 0, label = txt, hjust = 0, size = 2.9, fontface = "bold") +
+  coord_cartesian(xlim = c(0, 1), clip = "off") + theme(plot.margin = margin(3, 2, 0, 26))
+
+# one assembler, a roster PER BLOCK. Block A is shared: an ellipse needs two axes, so it stays on the
+# (k_off, N_ch) pair whatever the maps show.
+#
+# THE TWO MOMENTS LIVE IN DIFFERENT PARAMETERS, measured, not assumed: the bias is in N_ch (R 0.126 /
+# 0.148 / 0.138 / 0.138 log10 across the four decades against IR's 0.004 / 0 / 0 / 0) while k_off's
+# bias is ~0 for both (R -0.008 / -0.0007 / -0.0001 / 0). The distortion is the other way round: it is
+# k_off that carries the flat 1.44 floor. So a short version cannot be made by dropping a parameter
+# from both blocks - that empties one of them. It is made by giving each block the direction that
+# carries ITS failure.
+assemble <- function(pb, pd) {
+  # HEIGHT PER NOISE DECADE, not per row. macro_R climbs a decade higher than IR, so with facet
+  # space = "free_y" its rows are proportionally taller; the block height tracks the summed noise span
+  # of its rows so a decade of noise is the same distance in every row and nothing is squeezed to fit.
+  # When every algorithm shares the same span this reduces to the old 0.90 / 0.95 inch per row.
+  decades <- sum(vapply(ALGOS, noise_span, numeric(1)))   # summed noise span of the R and IR rows
+  hb <- 0.45  * length(pb) * decades            # bias block       (0.90 in per 2-decade row)
+  hd <- 0.475 * length(pd) * decades            # distortion block (0.95 in per 2-decade row)
+  gC <- mapblock(bias, function(d) d$Bconf,        BIAS_PAL, BIAS_LIN,    pb, top = TRUE)
+  gB <- mapblock(stat, function(d) log10(d$Dconf), DIST_PAL, DIST_BREAKS, pd, bottom = TRUE)
+  g <- btitle("A   grouped MLE distributions") /
+       gA /
+       btitle("B   distortion-induced bias") /
+       gC /
+       colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN) /
+       btitle("C   information distortion") /
+       gB /
+       colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5))
+  # the bottom map block carries the x axis, so it gets a little more height per row than the top one
+  hs <- c(0.16, 2.30 * length(ALGOS), 0.16, hb, 0.28, 0.16, hd, 0.28)
+  list(g = g + plot_layout(heights = hs), h = sum(hs))
+}
+```
+
+```{r render-short, fig.width = 7, fig.height = 10.3}
+# SHORT: one direction per block, each the one that carries that block's failure. Bias on N[ch],
+# distortion on k[off]. Two map rows per block, and neither of them is blank.
+short <- assemble("Num_ch_mean", "off")
+short$g
+ggsave("Figure_4_short_variant.pdf", short$g, width = 7.0, height = short$h)
+cat("Figure_4_short_variant.pdf: bias on N_ch, distortion on k_off; height", round(short$h, 2), "in\n")
+```
+
+```{r render-long, fig.width = 7, fig.height = 14.9}
+# LONG: both directions in both blocks. The two parameters carry OPPOSITE signs - R's N_ch distortion
+# crosses from conservative to over-confident across the columns while its k_off floor stays flat -
+# which is why any scalar averaged over parameters cancels them and reports a faithful algorithm.
+# Only this version makes that verifiable, and it is the one that shows the bias and the distortion
+# are not in the same direction.
+long <- assemble(PARAM_LONG, PARAM_LONG)
+long$g
+ggsave("Figure_4.pdf", long$g, width = 7.0, height = long$h)
+cat("Figure_4.pdf: both directions in both blocks; height", round(long$h, 2), "in\n")
+```
+
+```{r caption-numbers}
+# Every number the caption quotes, printed on each knit so none of them is ever read off the plot.
+cat("\n=== Figure 4 (R vs IR) caption numbers ===\n")
+
+cat("\nDISTORTION, median over the 7 intervals, by algorithm / parameter / N_ch (noise 0.1)\n")
+print(as.data.frame(stat %>% filter(comp == "total", noise == "0.1") %>%
+        group_by(param, algo, Num_ch) %>% summarise(med = median(Dconf), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = med)), digits = 3, row.names = FALSE)
+
+cat("\nDOES NOISE CURE IT? same medians at each noise level, k_off\n")
+print(as.data.frame(stat %>% filter(comp == "total", param == "off") %>%
+        group_by(algo, noise, Num_ch) %>% summarise(med = median(Dconf), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = med) %>%
+        arrange(algo, as.numeric(noise))), digits = 3, row.names = FALSE)
+
+cat("\nBIAS (log10 units), median over the 7 intervals, noise 0.1\n")
+print(as.data.frame(bias %>% filter(noise == "0.1") %>%
+        group_by(param, algo, Num_ch) %>% summarise(med = median(Bconf), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = med)), digits = 3, row.names = FALSE)
+
+cat("\nEXTENT: fraction of (interval, noise) cells departing significantly\n")
+cat("  distortion, |D-1| >= 0.15:\n")
+print(as.data.frame(stat %>% filter(comp == "total") %>% group_by(param, algo, Num_ch) %>%
+        summarise(f = mean(abs(Dconf - 1) >= 0.15), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = f)), digits = 2, row.names = FALSE)
+cat("  bias, interval excludes 0:\n")
+print(as.data.frame(bias %>% group_by(param, algo, Num_ch) %>%
+        summarise(f = mean(Bconf != 0), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = f)), digits = 2, row.names = FALSE)
+```

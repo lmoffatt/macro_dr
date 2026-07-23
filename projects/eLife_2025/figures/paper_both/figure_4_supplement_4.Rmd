@@ -1,0 +1,126 @@
+---
+title: "Figure 4—figure supplement 4 — sample and correlation distortion vs channel count, resolved by noise: R and IR split on the correlation part, and noise cures it only at few channels"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE MECHANISM AS A SHAPE, resolved by instrumental noise. Supplement 3 shows on k_off that the total
+distortion splits as total ~ sample x correlation and that R's floor is the correlation part. This
+supplement generalises that to the two carrier directions (k_off and N_ch) AND adds the noise axis,
+because the noise dependence answers a question Figure 4 leaves open: does raising the instrumental
+noise cure R?
+
+  x = N_ch (log)          y = distortion (null = 1)
+  rows    = parameter (k_off, N_ch), each split into its two components (sample, correlation)
+  columns = instrumental noise (0.1, 1, 10)
+  colour  = algorithm (R, IR), both in every panel
+  band    = interquartile range over the 7 intervals (delta is marginalised into the band; the
+            delta dependence is non-monotone and carries the kappa ~ 1e5 corner, so it is left to
+            supplement 2's maps rather than shown as a cut)
+
+TWO readings, one figure:
+
+  1. THE SPLIT (compare the sample rows with the correlation rows). In the sample rows R and IR lie on
+     top of each other and both go to 1 with N_ch: the per-sample Gaussian approximation becomes
+     exact for both, so they do NOT differ in per-sample fidelity. In the correlation rows R stays
+     elevated and RISES with N_ch while IR descends to 1. The difference between R and IR is entirely
+     correlation.
+
+  2. DOES NOISE CURE R (read the three columns left to right, correlation rows). R's correlation
+     distortion starts LOWER at higher noise (at few channels the instrumental noise dominates the
+     gating variance, so there is little to distort), but it RE-EMERGES as N_ch grows and reaches
+     ~1.3-1.5 at N_ch = 10000 at every noise level. So noise cures R only at FEW channels; because
+     gating variance grows with N_ch, the correlation distortion returns at high channel count no
+     matter the noise. This is the quantitative form of the band-B/band-C boundary the plan asks
+     paper 1 to state: raising noise past the gating variance removes the need, but the gating
+     variance is itself a function of N_ch.
+
+More channels therefore do not rescue R: they push the sample part toward 1 and the correlation part
+up by the same amount, leaving the total flat (Figure 4's 1.44 floor). The correlation is a property
+of the temporal sampling that the interval conditioning removes, in both carrier directions.
+
+DATA: battery_pool_G (theta_pool). Gaussian family: Gaussian_Sample_Distortion and
+Likelihood_Correlation_Distortion. Four decades of N_ch x three noise levels. No new runs. Do NOT use
+Likelihood_Information_Distortion_Reconstituted (false product identity, NaN here).
+
+TRAP: the "noise" label is not the physical noise. current_noise = label/1000; the y-column here is
+the label. TRAP: R's N_ch = 10000 sample band widens because the Delta*k_off = 1 interval sits at the
+kappa ~ 1e5 corner (sample deflates to ~0.44 there); that is the interval spread showing honestly as
+a band.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse) })
+source("figure_4_supp_common.R")
+```
+
+```{r data}
+COMPS    <- c(sample = SAMP, corr = CORR)
+COMP_LAB <- c(sample = "sample", corr = "correlation")
+PARAMS   <- c(off = 1, Num_ch_mean = 5)             # the two carrier directions
+PAR_LAB  <- c(off = "k[off]", Num_ch_mean = "N[ch]")
+ALGO_COL <- c(R = "#D55E00", IR = "#0072B2")
+
+# all three noise levels; collapse the 7 intervals to a median and an IQR band
+d <- pmap_dfr(CELLS, function(algo, nch, z)
+    read.csv(findf(nch, algo, z, "battery_pool_G"), skip = 1, stringsAsFactors = FALSE) %>%
+      mutate(algo = algo, noise = z)) %>%
+  filter(component_path %in% COMPS, param_index == param_col, param_index %in% PARAMS,
+         statistic == "value", probit == "mean") %>%
+  mutate(comp = names(COMPS)[match(component_path, COMPS)]) %>%
+  group_by(comp, algo, noise, Num_ch, param_index) %>%
+  summarise(med = median(value), lo = quantile(value, .25), hi = quantile(value, .75),
+            .groups = "drop") %>%
+  mutate(alab  = factor(ALGO_LAB[algo], levels = c("R", "IR")),
+         param = names(PARAMS)[match(param_index, PARAMS)],
+         # row = parameter (outer) then component (inner): sample and correlation adjacent per param
+         prow  = factor(sprintf("atop(%s, \"%s\")", PAR_LAB[param], COMP_LAB[comp]),
+                        levels = as.vector(t(outer(names(PARAMS), names(COMPS),
+                          function(p, c) sprintf("atop(%s, \"%s\")", PAR_LAB[p], COMP_LAB[c]))))),
+         ncol  = factor(sprintf("sigma == %s", noise),
+                        levels = sprintf("sigma == %s", NOISES)),
+         lx = log10(Num_ch))
+stopifnot(nrow(d) > 0, !any(is.na(d$prow)), !any(is.na(d$ncol)))
+cat("supp4:", nrow(d), "curve points; k_off & N_ch, N_ch", paste(NCHS, collapse = "/"),
+    "x noise", paste(NOISES, collapse = "/"), "\n")
+```
+
+```{r plot, fig.width = 7, fig.height = 6.6}
+X_BRK <- log10(NCHS)
+g <- ggplot(d, aes(lx, med, colour = alab, fill = alab)) +
+  geom_hline(yintercept = 1, colour = "grey55", linewidth = .3) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = .18, colour = NA) +
+  geom_line(linewidth = .5) + geom_point(size = .8) +
+  facet_grid(prow ~ ncol, labeller = label_parsed) +
+  scale_x_continuous(breaks = X_BRK,
+                     labels = c("10", expression(10^2), expression(10^3), expression(10^4))) +
+  scale_colour_manual(values = ALGO_COL) + scale_fill_manual(values = ALGO_COL) +
+  labs(x = expression(N[ch]), y = "distortion (null = 1)", colour = NULL, fill = NULL) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.14, "cm"),
+        strip.text = element_text(size = 7.5), strip.text.y = element_text(angle = 0),
+        axis.text = element_text(size = 6), axis.text.x = element_text(size = 5.5),
+        legend.position = "bottom", legend.key.size = unit(.6, "lines"),
+        legend.text = element_text(size = 7.5), legend.box.spacing = unit(2, "pt"),
+        plot.margin = margin(3, 4, 2, 3))
+g
+ggsave("Figure_4_supplement_4.pdf", g, width = 7.0, height = 6.6)
+cat("Figure_4_supplement_4.pdf: 4 x 3 line panels (param x component rows, noise columns), height 6.6 in\n")
+```
+
+```{r caption-numbers}
+cat("\n=== supp 4 caption numbers ===\n")
+for (pp in names(PARAMS)) for (cc in c("sample", "corr")) {
+  cat(sprintf("\n--- %s, %s : median vs N_ch, by noise ---\n", PAR_LAB[pp], COMP_LAB[cc]))
+  print(as.data.frame(d %>% filter(param == pp, comp == cc) %>%
+    mutate(algo = as.character(alab)) %>%
+    select(algo, noise, Num_ch, med) %>%
+    pivot_wider(names_from = Num_ch, values_from = med) %>%
+    arrange(algo, as.numeric(noise))), digits = 3, row.names = FALSE)
+}
+cat("\nREAD: sample rows -> R and IR agree and go to 1. correlation rows -> R rises with N_ch, IR to 1.\n")
+cat("Across noise columns: R's correlation starts lower at higher noise but re-emerges at high N_ch.\n")
+```

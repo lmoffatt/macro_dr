@@ -45,6 +45,11 @@ COVERAGE, and why the design points moved (verified 2026-07-22, do not re-derive
   finer N_ch grid. The intersection is what this figure plots: 4 decades x 3 noise levels. The
   points therefore moved to noise 0.1, N_ch 10 (1 and 2) and N_ch 10000 (3), where both algorithms
   have a cloud at group_size 100 over all 7 intervals.
+  UPDATE 2026-07-23: macro_R now reaches noise 100 at N_ch 100 (r = noise/N_ch = 1) and N_ch 1000
+  (r = 0.1), the first two rungs of the constant-r diagonal. IR has no nsim-10000 cell there, so the
+  grid is declared PER ALGORITHM (GRID_BY_ALGO) and R's map rows run one noise decade taller than IR's;
+  facet space = "free_y" holds the distance-per-decade equal, so a taller R row is more noise, not a
+  rescaled axis. Block A (the ellipses) is unchanged: its three design points still sit at noise 0.1.
   NOTE the noise axis is RAW instrumental noise, not noise/N_ch. Gating variance grows with N_ch, so
   the same raw level means a different instrumental fraction in each column and the rows are NOT
   vertically comparable across columns. That is a deliberate limit of this version: on the relative
@@ -86,35 +91,39 @@ DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6")   # search path, first hit 
 # THE GRID IS DECLARED, NOT A PRODUCT, because tracking that staircase makes it ragged: a higher N_ch
 # needs a higher absolute noise to reach the same regime, so the swept levels differ per column.
 # Declaring the pairs keeps the missing-cell hard stop working on a ragged grid - an absent file is
-# still an error, never a silently shortened axis.
+# still an error, never a silently shortened axis. It is now ALSO ragged between algorithms: macro_R
+# has been run a noise decade higher than IR where its cells exist, so the levels are declared PER
+# ALGORITHM (GRID_BY_ALGO) and R's map rows run taller than IR's (facet space = "free_y").
 GRID_BASE <- tibble::tribble(
   ~nch,  ~z,
   10,    "0.1",  10,    "1",  10,    "10",
   100,   "0.1",  100,   "1",  100,   "10",
   1000,  "0.1",  1000,  "1",  1000,  "10",
   10000, "0.1",  10000, "1",  10000, "10")
-# PENDING: the diagonal that makes the staircase visible, at constant instrumental/gating ratio
-# r = noise/N_ch. TARGETED AT r = 0.01, 0.1 and 1, NOT 0.1/1/10, and that retargeting is a
-# measurement, not a guess (figure_4_diag_nsim1000.Rmd):
-#   - r = 10 is already answered and lies PAST the transition. The 82b956f probe measures R at
-#     1.02-1.06 there in all four decades, and it is not underpowered: its bootstrap halfwidth is
-#     0.04 in log10 against the 0.158 that R's noise-0.1 distortion of 1.44 would need, so a
-#     departure that size would have been seen. Running r = 10 at nsim 10000 would buy a confirmation
-#     of something already established.
-#   - the crossover sits between r = 0.01 and r = 0.1, from the nsim 10000 noise-10 column read as a
-#     function of r: 1.01 at r = 1 (N_ch 10), 1.05 at r = 0.1 (100), 1.24 at r = 0.01 (1000),
-#     1.18 at r = 0.001 (10000).
-# Six cells per algorithm, the rest of the diagonal already exists. Uncomment each row as its cell
-# lands; nothing else needs editing, the axis range and its breaks are taken from this table.
-#   dispatch: NCHS="100 1000 1000 10000 10000 10000"
-#             N_NOISE="100 100 1000 100 1000 10000"
+# macro_R ONLY: the noise-100 cells that landed 2026-07-23, the first two rungs of the constant-r
+# diagonal (r = noise/N_ch = 1 at N_ch 100, r = 0.1 at N_ch 1000). IR has no nsim-10000 cell at this
+# noise, so these rows belong to R alone and give it a taller noise axis. Add a row the moment its
+# battery_*_G files land (nch 1000 noise 100 arrived cloud+pool first, battery files a few hours on).
+GRID_R_EXTRA <- tibble::tribble(
+  ~nch,  ~z,
+  100,   "100",
+  1000,  "100")
+# STILL PENDING, and why the retarget (measured, not guessed; figure_4_diag_nsim1000.Rmd): the rest of
+# the diagonal at constant r = noise/N_ch, TARGETED AT r = 0.01, 0.1, 1, NOT 0.1/1/10.
+#   - r = 10 is already answered and lies PAST the transition (82b956f probe: R at 1.02-1.06 in all
+#     four decades, bootstrap halfwidth 0.04 << the 0.158 a distortion of 1.44 would need).
+#   - the crossover sits between r = 0.01 and r = 0.1 (nsim 10000 noise-10 column as a function of r:
+#     1.01 at r = 1 / 1.05 at 0.1 / 1.24 at 0.01 / 1.18 at 0.001).
+# A rung that lands for R ALONE goes in GRID_R_EXTRA (taller R rows); a rung that lands for BOTH goes
+# in GRID_PENDING (added to both grids below). Uncomment as cells land; axis range and breaks follow.
+#   dispatch: NCHS="1000 10000 10000 10000"  N_NOISE="1000 100 1000 10000"
 #             GROUP_SIZE="10 100"  N_ALGO="macro_R macro_IR"
 GRID_PENDING <- tibble::tribble(
-  ~nch,  ~z)
-#   100,   "100",                                    # r = 1
-#   1000,  "100",   1000,  "1000",                   # r = 0.1, 1
-#   10000, "100",   10000, "1000",  10000, "10000")  # r = 0.01, 0.1, 1
-GRID <- bind_rows(GRID_BASE, GRID_PENDING)
+  ~nch,  ~z)          # shared (both-algorithm) future cells; R-only cells go in GRID_R_EXTRA
+GRID_BY_ALGO <- list(macro_R  = bind_rows(GRID_BASE, GRID_R_EXTRA, GRID_PENDING),
+                     macro_IR = bind_rows(GRID_BASE, GRID_PENDING))
+GRID <- distinct(bind_rows(GRID_BASE, GRID_R_EXTRA, GRID_PENDING))   # union, for the shared y-breaks
+noise_span <- function(a) diff(range(log10(as.numeric(GRID_BY_ALGO[[a]]$z))))
 
 PIDX      <- c(on = 0, off = 1, unitary_current = 2, Current_Noise = 3, Num_ch_mean = 5)
 COMPS <- c(total  = "Probit_statistics_Likelihood_Gaussian_Information_Distortion",
@@ -175,12 +184,13 @@ findf <- function(nch, algo, z, kind) {
   hit[1]
 }
 
-cells <- expand_grid(algo = ALGOS, i = seq_len(nrow(GRID))) %>%
-  mutate(nch = GRID$nch[i], z = GRID$z[i]) %>% select(algo, nch, z)
-cat("figure_4:", nrow(cells), "cells =", length(ALGOS), "algorithms x", nrow(GRID),
-    "(N_ch, noise) pairs\n")
-cat("  noise levels per N_ch (the staircase; a ragged row here is the point, not a defect):\n")
-print(as.data.frame(GRID %>% group_by(nch) %>%
+# RAGGED per algorithm: the grid is declared in GRID_BY_ALGO, so macro_R carries the noise-100 rows
+# that IR has no cell for. A missing file is still a hard stop, never a silently shortened axis.
+cells <- imap_dfr(GRID_BY_ALGO, function(g, a) tibble(algo = a, nch = g$nch, z = g$z))
+cat("figure_4:", nrow(cells), "cells over", length(ALGOS),
+    "algorithms (ragged: macro_R carries a noise decade IR has no cell for)\n")
+cat("  noise levels per algorithm x N_ch (the staircase; a ragged row here is the point):\n")
+print(as.data.frame(cells %>% group_by(algo, nch) %>%
   summarise(noise = paste(sort(as.numeric(z)), collapse = " "), .groups = "drop")), row.names = FALSE)
 for (a in ALGOS) {
   d <- unique(dirname(pmap_chr(filter(cells, algo == a), function(algo, nch, z)
@@ -464,7 +474,11 @@ mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE) {
                colour = "black", size = 1.5, stroke = .45) +
     geom_text(data = mk, aes(lx, ly, label = lab), inherit.aes = FALSE, size = 1.9,
               fontface = "bold", vjust = -0.95) +
-    facet_grid(prow ~ nchf, labeller = label_parsed) +
+    # free + proportional y: macro_R's rows reach a noise decade IR does not, so each row gets a
+    # height proportional to its own noise span. A decade of noise is then the SAME vertical distance
+    # in the R and IR rows; the taller R row is more noise, not a stretched axis. Columns keep the
+    # shared interval x, and where R has no cell (N_ch 10 / 10000 above noise 10) the panel stays grey.
+    facet_grid(prow ~ nchf, labeller = label_parsed, scales = "free_y", space = "free_y") +
     scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
     scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
     labs(y = "noise") +
@@ -515,8 +529,13 @@ btitle <- function(txt) ggplot() + theme_void(base_family = "Helvetica") +
 # from both blocks - that empties one of them. It is made by giving each block the direction that
 # carries ITS failure.
 assemble <- function(pb, pd) {
-  nrb <- length(pb) * length(ALGOS)             # map rows in the bias block
-  nrd <- length(pd) * length(ALGOS)             # map rows in the distortion block
+  # HEIGHT PER NOISE DECADE, not per row. macro_R climbs a decade higher than IR, so with facet
+  # space = "free_y" its rows are proportionally taller; the block height tracks the summed noise span
+  # of its rows so a decade of noise is the same distance in every row and nothing is squeezed to fit.
+  # When every algorithm shares the same span this reduces to the old 0.90 / 0.95 inch per row.
+  decades <- sum(vapply(ALGOS, noise_span, numeric(1)))   # summed noise span of the R and IR rows
+  hb <- 0.45  * length(pb) * decades            # bias block       (0.90 in per 2-decade row)
+  hd <- 0.475 * length(pd) * decades            # distortion block (0.95 in per 2-decade row)
   gC <- mapblock(bias, function(d) d$Bconf,        BIAS_PAL, BIAS_LIN,    pb, top = TRUE)
   gB <- mapblock(stat, function(d) log10(d$Dconf), DIST_PAL, DIST_BREAKS, pd, bottom = TRUE)
   g <- btitle("A   grouped MLE distributions") /
@@ -528,12 +547,12 @@ assemble <- function(pb, pd) {
        gB /
        colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5))
   # the bottom map block carries the x axis, so it gets a little more height per row than the top one
-  hs <- c(0.16, 2.30 * length(ALGOS), 0.16, 0.90 * nrb, 0.28, 0.16, 0.95 * nrd, 0.28)
+  hs <- c(0.16, 2.30 * length(ALGOS), 0.16, hb, 0.28, 0.16, hd, 0.28)
   list(g = g + plot_layout(heights = hs), h = sum(hs))
 }
 ```
 
-```{r render-short, fig.width = 7, fig.height = 9.4}
+```{r render-short, fig.width = 7, fig.height = 10.3}
 # SHORT: one direction per block, each the one that carries that block's failure. Bias on N[ch],
 # distortion on k[off]. Two map rows per block, and neither of them is blank.
 short <- assemble("Num_ch_mean", "off")
@@ -542,7 +561,7 @@ ggsave("Figure_4_short_variant.pdf", short$g, width = 7.0, height = short$h)
 cat("Figure_4_short_variant.pdf: bias on N_ch, distortion on k_off; height", round(short$h, 2), "in\n")
 ```
 
-```{r render-long, fig.width = 7, fig.height = 13.1}
+```{r render-long, fig.width = 7, fig.height = 14.9}
 # LONG: both directions in both blocks. The two parameters carry OPPOSITE signs - R's N_ch distortion
 # crosses from conservative to over-confident across the columns while its k_off floor stays flat -
 # which is why any scalar averaged over parameters cancels them and reports a faithful algorithm.

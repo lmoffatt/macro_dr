@@ -3,6 +3,10 @@
 \usepackage{amsmath,amssymb,mathtools}
 \usepackage{siunitx}
 \usepackage{graphicx}
+% Figures live in the shared figure tree and are regenerated there; point at the source so
+% the draft always compiles against the current PDFs. Bundle them into the submission dir at
+% submission time. Path is relative to this file (latexmk runs from manuscript-drafts/).
+\graphicspath{{../../../../projects/eLife_2025/figures/paper/}}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{tcolorbox}
@@ -20,11 +24,11 @@
 \maketitle
 
 \begin{abstract}
-Time-averaged measurements pervade biology, and the likelihoods used to interpret them are approximations whose reliability is rarely tested. We ask where such an approximation can be trusted and how it fails when it cannot. For macroscopic ion-channel currents, we simulate a two-state channel under a concentration jump and use the exact simulation as ground truth to judge a family of Gaussian likelihood approximations (non-recursive, recursive, interval-averaged, and their combinations). We measure faithfulness with likelihood-level diagnostics: standardized residuals, the score, and an information-distortion matrix that compares the covariance of the score with the model's own Fisher information. We then map how each approximation deforms inference as a function of the number of channels, the acquisition interval, and the instrumental noise. Only the interval-averaged recursive likelihood (MacroIR) stays calibrated across the practical regime; the others lose or misallocate information in ways that trace to the two Gaussian approximations they make, one on channel occupancy and one on the single-interval signal. We locate the multinomial, telegraphic, and Gaussian regimes where the approximations degrade, and we show the distortion carries a concrete consequence: it maps to a correction of the Bayesian evidence that ranks competing mechanisms. The result is a validity map for time-averaged likelihoods and a calibrated default, MacroIR, for macroscopic recordings.
+Macroscopic ion-channel currents carry information about the gating kinetics in their fluctuations, and using it requires a likelihood for a signal that each sample averages over a finite acquisition window. A recursive filter that conditions on the acquisition interval was recently introduced (MacroIR), but which part of that conditioning keeps its reported uncertainty honest, and where the filter itself degrades, was never characterized. Here we test a graded family of recursive Gaussian likelihoods against the process they approximate, which is possible because the forward process can be simulated exactly although its likelihood cannot. For each member we ask whether the score vanishes at the true parameters and whether the covariance of the score matches the Fisher information the likelihood reports; the mismatch between the two defines an information distortion matrix. In a minimal two-state channel model, in the regime where gating dominates the instrumental noise, conditioning the conductance on the interval mean is not enough: a likelihood that uses the interval mean but the wrong variance misreports the parameter uncertainty, and only conditioning on both interval endpoints, which keeps the boundary cross-covariance in the filter gain, restores calibration. The same matrix supplies corrected error bars and maps how each approximation deforms inference across channel number, acquisition interval and instrumental noise. The result is a mechanism, not a ranking: it says which piece of the interval structure a macroscopic-current likelihood must keep, and what dropping each piece costs.
 \end{abstract}
 
 % Impact statement (eLife requires one, <= 40 words):
-% A validity map shows where time-averaged likelihood approximations for ion-channel currents can be trusted and where they distort inference, and identifies MacroIR as the one that stays calibrated across the practical regime.
+% A simulation-based test shows which part of a macroscopic-current likelihood's interval conditioning keeps its reported uncertainty honest, and what is lost by dropping each part.
 
 % ================= SKELETON: titles only below. Fill-hints in % comments. =================
 % One file per top-level section under sections/, so that one section = one owner = no merge
