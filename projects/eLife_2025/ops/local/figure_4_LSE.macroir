@@ -29,8 +29,8 @@
 #            of the per-group fits — those differ when the likelihood is non-quadratic).
 #
 # Stages:
-#   1) per-group MLE refit (group_size=1) -> ONLY the theta_hat cloud (Cov_emp + the
-#      raw per-group log in _mle_cloud_runs.csv, for skewness/normality in R);
+#   1) REMOVED 2026-07-23 (was: per-group MLE refit -> theta_hat cloud). LSE clouds now come only
+#      from figure_3_mle_LSE.macroir; see the note at the old Stage-1 site for the measurement.
 #   2) JOINT MLE (group_size=n_simulations) -> theta_pool;
 #   4) score / dlikelihood at theta_sim AND theta_pool (-> J + Gaussian Fisher Ḡ at each);
 #   5) figure_2-style GAUSSIAN diagnostic battery at theta_sim AND theta_pool;
@@ -102,23 +102,21 @@ gn_opts = build_gauss_newton_options(
    lambda_kickoff = 10.0, lambda_factor = 3.0, lambda_max = 1e10,
    max_iter = gn_max_iter, grad_rtol = 1e-6, dvalue_tol = 1e-10, verbose = false)
 
-# ---- Stage 1: per-group MLE refit (group_size=1) -> theta_hat cloud (Cov_emp) -
-mle = calc_MLE_per_group_of_replicates(
-   likelihood_algorithm = algorithm,
-   theta_warmstart = par_tr,
-   theta_reference = par_tr,
-   experiment = experiment,
-   recordings = recordings,
-   group_size = group_size,
-   n_bootstrap_samples = n_bootstrap_samples,
-   min_groups_for_bootstrap = min_groups_for_bootstrap,
-   probit_cis = [0.025, 0.16, 0.5, 0.84, 0.975],
-   probit_sample_heights = [0.5],
-   ranking_variables = ["Maximum_logL"],
-   seed = 0,
-   gauss_newton_options = gn_opts)
-
-mle_csv = write_csv(analysis = mle, path = concat(filepath_run, "_mle_cloud"))
+# ---- Stage 1: REMOVED (2026-07-23), same as figure_4.macroir. The per-group MLE cloud was ~96% of
+# the cell's fitting work and NO figure reads it from the cells this script serves: the only LSE cells
+# that need a cloud are figure_2's (Nch=100, noise 0.1, group_size 10) and figure_4's three
+# ELL_POINTS (figure_4_common.R:196, group_size 100), all at noise 0.1 — produce those with
+# dispatch_figure_3_LSE.sh, which drives figure_3_mle_LSE.macroir and keeps its Stage 1.
+# (NOT dispatch_figure_3_G.sh: its SCRIPT is hardcoded to the macro producer and its algorithm
+# case list has no nonlinearsqr arm, so LSE dies there on "unknown algorithm".)
+# Measured on the 82b956f r=10 cells: at high noise only 8-34% of the per-group fits converge at
+# group_size 10, and 98% of all Gauss-Newton iterations are spent by fits that never converge (65% of
+# them ending glued to the warm start). The joint fit below is unaffected — it converged 7/7 intervals
+# at every r=10 cell for nonlinearsqr except Nch=1e4/noise=1e5.
+# The dispatcher still injects group_size_axis / group_size / n_bootstrap_samples /
+# min_groups_for_bootstrap; they are now unused definitions, kept injected so dispatch_figure_4.sh
+# stays shared with the macro script. GN_MAX_ITER is likewise near-inert: it capped the per-group
+# refits, and the joint fit needs single-digit iterations.
 
 # ---- Stage 2: JOINT MLE (group_size=n_simulations) -> theta_pool --------------
 pool = calc_MLE_per_group_of_replicates(
