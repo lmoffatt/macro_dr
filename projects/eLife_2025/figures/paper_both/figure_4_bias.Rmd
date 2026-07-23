@@ -1,0 +1,94 @@
+---
+title: "Figure 4 (bias) — the first moment across the design space: LSE, NR, R, IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE FIRST-MOMENT HALF of the old Figure 4, split in two (Luciano, 2026-07-23) because four algorithms
+carrying both moments would run to sixteen map rows. This half: the ellipses plus the
+DISTORTION-INDUCED BIAS, from battery_sim_G anchored at theta_sim. The second-moment half is
+figure_4_distortion.Rmd, which carries the same ellipse block.
+
+The bias CANNOT come from the pool files: evaluated at the optimum it is zero by construction,
+because the score vanishes there.
+
+BLOCK A, the ellipses, is the referent: a bias map is a colour field over a log10 displacement, and
+nobody has an intuition for 0.13. The cloud says it in the form a reader already knows — here is
+where your estimates land, here is where the truth is, here is where the distortion theory PREDICTS
+they land (open circle = truth + predicted bias, a prediction and not a re-description of the cloud).
+
+PLANE: one panel per N_ch (columns), x = Delta*k_off, y = raw instrumental noise. ROWS are parameter
+(outer) then algorithm (inner), so the four rungs of a parameter are adjacent and the ladder reads
+top-to-bottom.
+
+WHICH DIRECTION: the primary render is N[ch], the direction that carries the bias (R's N_ch bias runs
+0.126/0.148/0.138/0.138 log10 across the four decades against IR's ~0, while k_off's bias is ~0 for
+both). The both-directions variant is also written, because the two parameters carry OPPOSITE signs
+and only showing both makes verifiable that a scalar averaged over parameters cancels them.
+
+All machinery, traps and scales live in figure_4_common.R, shared with the distortion half.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+```
+
+```{r ellipses, fig.width = 7, fig.height = 9.5}
+gA <- build_gA()
+gA
+```
+
+```{r assemble}
+# one assembler, the parameter roster is the argument. Block A is shared and unchanged: an ellipse
+# needs two axes, so it stays on the (k_off, N_ch) pair whatever the maps show.
+assemble_bias <- function(params) {
+  hA <- 2.30 * max(1, length(ELL_ALGOS))
+  hB <- map_height(length(params), 0.45)          # 0.90 in per 2-decade row
+  g <- btitle("A   grouped MLE distributions") /
+       gA /
+       btitle("B   distortion-induced bias") /
+       mapblock(bias, function(d) d$Bconf, BIAS_PAL, BIAS_LIN, params, top = TRUE, bottom = TRUE) /
+       colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN)
+  hs <- c(0.16, hA, 0.16, hB, 0.28)
+  list(g = g + plot_layout(heights = hs), h = sum(hs))
+}
+```
+
+```{r render-primary, fig.width = 7, fig.height = 12}
+# PRIMARY: N[ch] alone, the direction that carries the bias. Four map rows, one per algorithm.
+prim <- assemble_bias("Num_ch_mean")
+prim$g
+ggsave("Figure_4_bias.pdf", prim$g, width = 7.0, height = prim$h)
+cat("Figure_4_bias.pdf: bias on N_ch; height", round(prim$h, 2), "in\n")
+```
+
+```{r render-both-params, fig.width = 7, fig.height = 18}
+# VARIANT: both directions. k_off's bias is ~0 for every algorithm, which is exactly the point —
+# the moments live in DIFFERENT parameters, so a scalar averaged over parameters reports a faithful
+# algorithm. Only this render makes that verifiable.
+both <- assemble_bias(PARAM_LONG)
+both$g
+ggsave("Figure_4_bias_both_params.pdf", both$g, width = 7.0, height = both$h)
+cat("Figure_4_bias_both_params.pdf: k_off and N_ch; height", round(both$h, 2), "in\n")
+```
+
+```{r caption-numbers}
+cat("\n=== Figure 4 (bias) caption numbers ===\n")
+cat("\nBIAS (log10 units), median over the 7 intervals, noise 0.1\n")
+print(as.data.frame(bias %>% filter(noise == "0.1") %>%
+        group_by(param, algo, Num_ch) %>% summarise(med = median(Bconf), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = med)), digits = 3, row.names = FALSE)
+
+cat("\nEXTENT: fraction of (interval, noise) cells whose interval excludes 0\n")
+print(as.data.frame(bias %>% group_by(param, algo, Num_ch) %>%
+        summarise(f = mean(Bconf != 0), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = f)), digits = 2, row.names = FALSE)
+```

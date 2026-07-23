@@ -1,0 +1,21 @@
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr" GROUP_SIZE="10 100" \
+  NCHS="10 100 1000 10000 10 100 1000 10000 10 100 1000 10000" \
+  N_NOISE="0.1 0.1 0.1 0.1 1 1 1 1 10 10 10 10" \
+  N_SIMS="10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+MEM=96G TIME=4-00:00:00 CPUS=16 \
+  N_ALGO="nonlinearsqr" GROUP_SIZE="10 100" \
+  NCHS="1000" \
+  N_NOISE="0.1" \
+  N_SIMS="1000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr" GROUP_SIZE="10 100" \
+  NCHS="1000" \
+  N_NOISE="1" \
+  N_SIMS="10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
