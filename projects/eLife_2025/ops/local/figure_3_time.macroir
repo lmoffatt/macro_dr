@@ -109,3 +109,16 @@ dlik_IR = calc_dlikelihood_predictions(likelihood_algorithm = macro_IR, paramete
    experiment = experiment, data_series = simulations)
 file_IR = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_IR,
    path = "figures/data/figure_3_time_dlik_IR")
+
+# ---- LSE (nonlinearsqr, family=2): the off-lattice incumbent, non-recursive. Evaluated at par_tr
+# (NO MLE here), so its flat directions are harmless — no need to fix i / Current_Noise (that is only
+# for the figure_2 battery, which optimizes). Its C++ dlikelihood arm is routed (likelihood.cpp:960).
+# Its per-interval y_var is the constant sigma_hat^2 with ZERO derivative, so I_t = dmu^2/sigma_hat^2. ----
+lse = build_likelihood_function_with_family(model = model, adaptive_approximation = 0,
+   recursive_approximation = 0, averaging_approximation = 1, variance_approximation = 1,
+   taylor_variance_correction = 0, family_approximation = 2, variance_form_approximation = 0,
+   taylor_qdt_approximation = false)
+dlik_LSE = calc_dlikelihood_predictions(likelihood_algorithm = lse, parameters = par_tr,
+   experiment = experiment, data_series = simulations)
+file_LSE = write_csv(experiment = experiment, simulations = simulations, likelihood = dlik_LSE,
+   path = "figures/data/figure_3_time_dlik_LSE")

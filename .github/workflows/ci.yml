@@ -27,7 +27,9 @@ jobs:
         run: cmake --preset ${{ matrix.preset }}
 
       - name: Build
-        run: cmake --build --preset ${{ matrix.preset }} --clean-first
+        # -j 2 caps parallelism: the heavy template TUs (macroir/micro derivative
+        # tests) each use several GB, and the default nproc+2 jobs OOM the 16 GB runner.
+        run: cmake --build --preset ${{ matrix.preset }} --clean-first -j 2
 
       - name: Run tests
         run: ctest --test-dir build/${{ matrix.preset }} -V

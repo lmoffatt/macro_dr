@@ -48,14 +48,15 @@ library(patchwork)
 ```
 
 ```{r read}
-# A-strict roster: paper 1 measures the recursive ladder (papers/1_method/decisions.md). The two
-# non-recursive members stay in the DUMP so figure_4 and the supplements can still use them; only the
-# panel roster changes here. Set ALGOS to all five to get the old figure back.
-ALGOS  <- c("R", "MR", "VR", "IR")
-ALAB   <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+# Merged-paper roster: the cost ladder LSE -> NR -> R -> IR (the recursive-mechanism ladder R/MR/VR/IR
+# is a supplement). All algorithms stay in the DUMP; only the panel roster changes here. LSE and NR are
+# the non-recursive (open-loop) pair, so they share the "naive" y-scale block below. Set ALGOS back to
+# c("R","MR","VR","IR") for the recursive-ladder figure.
+ALGOS  <- c("LSE", "NR", "R", "IR")
+ALAB   <- c(LSE = "LSE", NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
 LEAD   <- ALGOS[1]      # leftmost column: carries the y title, the row titles and the panel tags
-FULL   <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive", VR = "Variance Recursive",
-            MR = "Mean Recursive", IR = "Interval Recursive")
+FULL   <- c(LSE = "Least Squares", NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
+            VR = "Variance Recursive", MR = "Mean Recursive", IR = "Interval Recursive")
 P_MAIN <- 1L     # k_off
 B      <- 400    # bootstrap replicates over recordings
 
@@ -163,7 +164,7 @@ dC <- RES[is.finite(rC) & is.finite(rC_lo) & rC_lo > 0]
 COL <- "#0072B2"; NUL <- "#009E73"
 # the two-block y scale only exists while a non-recursive column is present; with an all-recursive
 # roster `naive` is empty, every column falls in one group and the split degenerates to one scale.
-naive <- intersect(ALGOS, c("NR", "NMR")); recg <- setdiff(ALGOS, naive)
+naive <- intersect(ALGOS, c("LSE", "NR", "NMR")); recg <- setdiff(ALGOS, naive)
 
 grange <- function(lo, hi, algo, pad = .08) {
   g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
