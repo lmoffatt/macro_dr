@@ -1,0 +1,305 @@
+---
+title: "Figure 3 — the calibration cascade: from the residual to the accumulated score information"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+CURATED single-figure alternative that merges the essential rows of Figure 3 (residual, data
+level) and Figure 4 (score, inference level) into one calibration CASCADE, reading the same 5
+ensemble CSVs figures/data/figure_3_time_dlik_{NR,R,NMR,MR,IR}.csv (each ~1 GB, 1000 sims; cell
+N_ch=100, Current_Noise=1e-4, interval=0.1 tau) ONCE each. Time axis in milliseconds.
+
+Six rows, five approximation columns (NR, MNR, R, MR, IR). The score is the k_off score s_t =
+d logL_t/d k_off (representative; essentially parameter-independent). Rows A-E are TIME (agonist
+shading), row F is LAG at the very bottom:
+  A predicted & observed current   (one example recording: the data + the filter's prediction band;
+    the ENSEMBLE-MEAN total logL over recordings +/- SE annotated per column: recursive ~ -145,
+    naive ~ -230, an ~87-nat gap: the data is ~e^87 more probable under the recursive/conditional filters)
+  B residual variance  mean_t[r_std^2] ~ 1   (data 2nd moment; r_std=(patch-y_mean)/sqrt(y_var))
+  C score bias (k_off)  sbar_t = mean_recordings(s_t) ~ 0   (inference 1st moment)
+  D per-interval information ratio  Var_recordings(s_t)/mean_recordings(F_t) ~ 1
+    (inference 2nd moment, LOCAL: the sampling-distortion information; F_t = dmu^2/v + 0.5 dv^2/v^2)
+  E accumulated information ratio  Var(sum s_t)/sum F_t = J_T/F_T ~ 1
+    (inference 2nd moment, GLOBAL: the score correlation accumulates -> the overconfidence of
+     Figure 2; the naive pair diverges, the recursive trio stays near 1)
+  F score autocorrelation (k_off) (lag) ~ 0   (the temporal memory that MAKES E diverge; = fig 3 row E)
+
+The story: the prediction is miscalibrated in variance (B); the score is biased (C); the information
+identity holds per interval (D ~ 1) but the accumulated identity fails (E diverges) exactly BECAUSE
+the score carries temporal memory (F). Residual autocorrelation (the data-level version of F) stays
+in the full figure_3.
+
+SYSTEMATIC CONVENTION: any non-negative quantity (a variance or a ratio of variances) is on a
+log10 y-axis with the reference value (1) always on the ticks; signed quantities (current, bias,
+ACF) are linear with 0 forced onto the ticks. Rows B,D,E use a separate scale per block (naive
+NR/MNR | recursive R/MR/IR); D is shared (~1). Bands: A/B/C mean +/- 1.96 SE; D/E nonparametric
+bootstrap over the 1000 recordings; F +/- 1.96 SE per lag.
+
+RENDER: reads 5 GB, too heavy for a laptop; run where figures/data/ resolves.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+library(patchwork)
+```
+
+```{r read}
+# A-strict roster: paper 1 measures the recursive ladder (papers/1_method/decisions.md). The two
+# non-recursive members stay in the DUMP so figure_4 and the supplements can still use them; only the
+# panel roster changes here. Set ALGOS to all five to get the old figure back.
+ALGOS  <- c("R", "MR", "VR", "IR")
+ALAB   <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")
+LEAD   <- ALGOS[1]      # leftmost column: carries the y title, the row titles and the panel tags
+FULL   <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive", VR = "Variance Recursive",
+            MR = "Mean Recursive", IR = "Interval Recursive")
+P_MAIN <- 1L     # k_off
+B      <- 400    # bootstrap replicates over recordings
+
+read_one <- function(a) {
+  dt  <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE)
+  agg <- function(d) d[, .(v = mean(value)), by = .(simulation_index, sample_index)]  # dedup writer x2 copies
+  pk  <- function(comp, calc, p = NA) {
+    q <- dt[component_path == comp & calculus == calc & !is.na(sample_index)]
+    if (!is.na(p)) q <- q[param_index == p]
+    agg(q)
+  }
+  rr <- pk("r_std",  "primitive");          setnames(rr, "v", "r_std")
+  ll <- pk("logL",   "primitive");          setnames(ll, "v", "ll")   # the OUTPUT: per-interval logL
+  sc <- pk("logL",   "derivative", P_MAIN); setnames(sc, "v", "s")
+  dm <- pk("y_mean", "derivative", P_MAIN); setnames(dm, "v", "dm")
+  dv <- pk("y_var",  "derivative", P_MAIN); setnames(dv, "v", "dv")
+  yv <- pk("y_var",  "primitive");          setnames(yv, "v", "yv")
+  ti <- unique(dt[!is.na(patch_current), .(sample_index, t = step_middle * 1000, agonist)])  # ms
+  ti <- ti[, .(t = first(t), agonist = first(agonist)), by = sample_index]
+  # example recording (min sim): predicted current mean/var (primitives) over the observed current
+  es  <- dt[!is.na(sample_index), min(simulation_index)]
+  eb  <- unique(dt[simulation_index == es & !is.na(patch_current),
+                   .(sample_index, t = step_middle * 1000, obs = patch_current, agonist)])
+  eb  <- eb[, .(t = first(t), obs = first(obs), agonist = first(agonist)), by = sample_index]
+  em  <- dt[simulation_index == es & component_path == "y_mean" & calculus == "primitive" & !is.na(sample_index),
+            .(y_mean = mean(value)), by = sample_index]
+  ev  <- dt[simulation_index == es & component_path == "y_var"  & calculus == "primitive" & !is.na(sample_index),
+            .(y_var  = mean(value)), by = sample_index]
+  ex  <- Reduce(function(x, y) merge(x, y, by = "sample_index"), list(eb, em, ev))
+  rm(dt); gc(verbose = FALSE)
+  X  <- Reduce(function(x, y) merge(x, y, by = c("simulation_index", "sample_index")),
+               list(sc, dm, dv, yv))
+  X[, I := dm^2 / yv + 0.5 * dv^2 / yv^2]
+  rr <- merge(rr, ll, by = c("simulation_index", "sample_index"))
+  rr <- merge(rr, ti, by = "sample_index")
+  list(resid = rr[is.finite(r_std)][, algo := a],
+       sco   = X[, .(algo = a, simulation_index, sample_index, s, I)],
+       ex    = ex[, algo := a],
+       tm    = ti)
+}
+raw  <- lapply(ALGOS, read_one)
+RR   <- rbindlist(lapply(raw, `[[`, "resid")); RR[, algo := factor(algo, levels = ALGOS)]
+SC   <- rbindlist(lapply(raw, `[[`, "sco"));   SC[, algo := factor(algo, levels = ALGOS)]
+EX   <- rbindlist(lapply(raw, `[[`, "ex"));    EX[, algo := factor(algo, levels = ALGOS)]
+tmap <- raw[[1]]$tm
+setorder(RR, algo, simulation_index, sample_index)
+setorder(SC, algo, simulation_index, sample_index)
+n_samp <- uniqueN(RR$sample_index)
+```
+
+```{r residual-stats}
+# Panel A annotation: the ensemble-mean total logL over recordings +/- its SE. Per-recording total
+# logL first (sum_t logL_t within a recording), then mean and SE across the 1000 recordings.
+totL <- RR[, .(tot = sum(ll)), by = .(algo, simulation_index)][
+              , .(mean = mean(tot), se = sd(tot) / sqrt(.N)), by = algo]
+# Row B: residual variance over time
+tsV <- RR[, .(t = first(t), n = .N,
+              mean_r2 = mean(r_std^2), se_r2 = sd(r_std^2) / sqrt(.N)), by = .(algo, sample_index)]
+# Row F: SCORE autocorrelation over lag (the k_off score s_t; mean over recordings +/- 1.96 SE per
+# lag). Same computation as figure_3's row E, so this panel matches it. This is the temporal memory
+# at the inference level: a non-white score IS the J_T > F_T that makes the accumulated ratio (E)
+# diverge. (Residual autocorrelation, the data-level version, stays in the full figure_3.)
+LAGMAX  <- min(25, n_samp - 2)
+acf_one <- function(x) as.numeric(acf(x, lag.max = LAGMAX, plot = FALSE)$acf)
+acf_sc <- as_tibble(SC) %>%
+  group_by(algo, simulation_index) %>% summarise(a = list(acf_one(s)), .groups = "drop") %>%
+  group_by(algo) %>% summarise(M = list(do.call(rbind, a)), .groups = "drop") %>%
+  mutate(d = map(M, ~ tibble(lag = 0:LAGMAX, acf = colMeans(.x),
+                             se = apply(.x, 2, sd) / sqrt(nrow(.x))))) %>%
+  select(algo, d) %>% unnest(d) %>% filter(lag >= 1)
+```
+
+```{r score-stats}
+set.seed(1)
+colVar    <- function(M) { n <- nrow(M); m <- colMeans(M); (colMeans(M * M) - m^2) * n / (n - 1) }
+rowCumsum <- function(M) t(apply(M, 1, cumsum))
+compute_one <- function(d) {
+  Sm  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "s")[, -1])
+  Im  <- as.matrix(dcast(d, simulation_index ~ sample_index, value.var = "I")[, -1])
+  smp <- as.integer(colnames(Sm)); n <- nrow(Sm)
+  vA  <- colVar(Sm)
+  rB  <- vA / colMeans(Im)
+  rC  <- colVar(rowCumsum(Sm)) / cumsum(colMeans(Im))
+  repB <- matrix(NA_real_, B, length(smp)); repC <- matrix(NA_real_, B, length(smp))
+  for (b in seq_len(B)) {
+    idx <- sample.int(n, n, replace = TRUE)
+    Sb  <- Sm[idx, , drop = FALSE]; Ib <- Im[idx, , drop = FALSE]
+    repB[b, ] <- colVar(Sb) / colMeans(Ib)
+    repC[b, ] <- colVar(rowCumsum(Sb)) / cumsum(colMeans(Ib))
+  }
+  ci <- function(M, p) apply(M, 2, quantile, p, na.rm = TRUE)
+  data.table(sample_index = smp, mA = colMeans(Sm), seA = sqrt(vA / n), Fbar = colMeans(Im),
+             rB = rB, rB_lo = ci(repB, .025), rB_hi = ci(repB, .975),
+             rC = rC, rC_lo = ci(repC, .025), rC_hi = ci(repC, .975))
+}
+RES <- SC[, compute_one(.SD), by = algo]
+RES <- merge(RES, tmap, by = "sample_index"); RES[, algo := factor(algo, levels = ALGOS)]
+dScore <- RES[is.finite(mA)]
+dB <- RES[is.finite(rB) & is.finite(rB_lo) & rB_lo > 0]
+dB <- dB[, .SD[Fbar > 1e-3 * max(Fbar, na.rm = TRUE)], by = algo]
+dC <- RES[is.finite(rC) & is.finite(rC_lo) & rC_lo > 0]
+```
+
+```{r panels, fig.width = 7.0, fig.height = 9.5}
+COL <- "#0072B2"; NUL <- "#009E73"
+# the two-block y scale only exists while a non-recursive column is present; with an all-recursive
+# roster `naive` is empty, every column falls in one group and the split degenerates to one scale.
+naive <- intersect(ALGOS, c("NR", "NMR")); recg <- setdiff(ALGOS, naive)
+
+grange <- function(lo, hi, algo, pad = .08) {
+  g <- tibble(lo, hi, grp = ifelse(algo %in% naive, 1L, 2L)) %>% group_by(grp) %>%
+    summarise(lo = min(lo), hi = max(hi), .groups = "drop") %>%
+    mutate(pd = (hi - lo) * pad, lo = lo - pd, hi = hi + pd)
+  list(naive = c(g$lo[g$grp == 1], g$hi[g$grp == 1]), rec = c(g$lo[g$grp == 2], g$hi[g$grp == 2]))
+}
+padr <- function(r, f = .06) r + c(-1, 1) * diff(r) * f
+ratio_breaks <- function(lo, hi) {
+  cand <- if (log10(hi) - log10(lo) <= 1.2)
+            c(.1, .2, .3, .5, .7, 1, 1.5, 2, 3, 5, 7, 10, 15, 20, 30, 50, 70, 100)
+          else c(.1, .2, .5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000)
+  b <- cand[cand >= lo & cand <= hi]
+  sort(unique(c(1, b)))
+}
+colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = FULL[[k]]) +
+  theme(plot.title = element_text(hjust = .5, size = 9), plot.subtitle = element_text(hjust = .5, size = 7))
+deco <- function(p, col, split, xr, yl, yq, ttl = NULL, tag = NULL, bottom = FALSE, xlab = NULL, logr = FALSE) {
+  ylim <- if (is.list(yl)) (if (col %in% naive) yl$naive else yl$rec) else yl
+  if (logr) {
+    ylim <- c(min(ylim[1], 1), max(ylim[2], 1))
+    rb <- ratio_breaks(ylim[1], ylim[2])
+    p <- p + scale_y_log10(breaks = rb, labels = as.character(rb)) + coord_cartesian(xlim = xr, ylim = ylim)
+  } else {
+    brk <- pretty(ylim); brk <- sort(unique(c(0, brk))); brk <- brk[brk >= ylim[1] & brk <= ylim[2]]
+    p <- p + scale_y_continuous(breaks = brk) + coord_cartesian(xlim = xr, ylim = ylim)
+  }
+  if (col == LEAD) p <- p + ylab(yq) + theme(axis.title.y = element_text(size = 8))
+  else if (col == "R" && split) p <- p + theme(axis.title.y = element_blank())
+  else p <- p + theme(axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank())
+  # x NUMBERS on every bottom-of-block panel, but the x TITLE only ONCE, on the centre column (R)
+  if (bottom) {
+    if (col == "R") p <- p + xlab(xlab) + theme(axis.title.x = element_text(size = 8))
+    else p <- p + theme(axis.title.x = element_blank())
+  } else p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+  if (!is.null(tag)) p <- p + labs(tag = tag)
+  if (!is.null(ttl)) p <- p + ggtitle(ttl) +
+    theme(plot.title = element_text(hjust = 0, size = 8.5, face = "plain", margin = margin(b = 1)))
+  p + theme(panel.grid.minor = element_blank(), plot.margin = margin(1.5, 3, 1.5, 3))
+}
+base <- function() theme_bw(base_size = 8)
+
+tr    <- range(tsV$t)
+lr    <- range(c(1, acf_sc$lag))
+agon  <- tmap[agonist > 0]; x0 <- min(agon$t); x1 <- max(agon$t)
+# full-panel agonist band. ymin branches: a log10 axis rejects a negative floor
+# (log10(<=0)=NaN -> rect dropped); linear panels go negative and need to reach the floor.
+mkshade <- function(logr = FALSE) annotate("rect", xmin = x0, xmax = x1,
+                  ymin = if (logr) 1e-10 else -1e10, ymax = 1e10, fill = "grey85", alpha = .5)
+
+# A: example recording — predicted current (mean +/- sd) over observed; SHARED, linear, time. Extra
+# top headroom (+35% of the range) carries the ensemble-mean total logL over recordings (+/- SE) as a
+# per-column label. Spelled "mean logL" (over recordings) so it is not misread as this one example's
+# logL; on two lines so it fits the narrow single-column width without clipping.
+yTr <- padr(range(c(EX$obs, EX$y_mean - sqrt(EX$y_var), EX$y_mean + sqrt(EX$y_var)), na.rm = TRUE))
+yTr[2] <- yTr[2] + 0.35 * diff(yTr)
+pTr <- lapply(ALGOS, function(a) {
+  d <- EX[algo == a]
+  g <- ggplot(d, aes(t)) + mkshade() +
+    geom_ribbon(aes(ymin = y_mean - sqrt(y_var), ymax = y_mean + sqrt(y_var)), fill = COL, alpha = .3) +
+    geom_point(aes(y = obs), colour = "grey45", size = .35, alpha = .5) +
+    geom_line(aes(y = y_mean), colour = COL, linewidth = .4) +
+    annotate("text", x = tr[2], y = yTr[2], hjust = 1, vjust = 1, size = 2.7, lineheight = .9,
+             label = sprintf("mean logL\n%.1f %s %.1f", totL[algo == a, mean], "±", totL[algo == a, se])) +
+    base()
+  deco(g, a, FALSE, tr, yTr, "current",
+       ttl = if (a == LEAD) "predicted & observed current" else NULL, tag = if (a == LEAD) "A" else NULL)
+})
+# B: residual variance (>=0) -> log10, GROUPED, time
+loV <- pmax(tsV$mean_r2 - 1.96 * tsV$se_r2, 1e-6)
+yA  <- lapply(grange(log10(loV), log10(tsV$mean_r2 + 1.96 * tsV$se_r2), as.character(tsV$algo)), function(r) 10^r)
+pA <- lapply(ALGOS, function(a) {
+  d <- tsV[algo == a]
+  g <- ggplot(d, aes(t, mean_r2)) + mkshade(TRUE) + geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = pmax(mean_r2 - 1.96 * se_r2, 1e-6), ymax = mean_r2 + 1.96 * se_r2), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, TRUE, tr, yA, expression(bar(r)[std]^2),
+       ttl = if (a == LEAD) "residual variance" else NULL, tag = if (a == LEAD) "B" else NULL, logr = TRUE)
+})
+# C: score bias (k_off), signed -> linear, GROUPED, time
+yC <- grange(dScore$mA - 1.96 * dScore$seA, dScore$mA + 1.96 * dScore$seA, as.character(dScore$algo))
+pC <- lapply(ALGOS, function(a) {
+  d <- dScore[algo == a]
+  g <- ggplot(d, aes(t, mA)) + mkshade() + geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = mA - 1.96 * seA, ymax = mA + 1.96 * seA), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, TRUE, tr, yC, expression(bar(s)[t]),
+       ttl = if (a == LEAD) expression("score bias (" * k[off] * ")") else NULL, tag = if (a == LEAD) "C" else NULL)
+})
+# D: per-interval information ratio (>=0) -> log10, SHARED, time  [the sampling-distortion information]
+yD <- 10^padr(log10(as.numeric(quantile(c(dB$rB_lo, dB$rB_hi), c(.01, .99), na.rm = TRUE))))
+pD <- lapply(ALGOS, function(a) {
+  d <- dB[algo == a]
+  g <- ggplot(d, aes(t, rB)) + mkshade(TRUE) + geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = rB_lo, ymax = rB_hi), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, FALSE, tr, yD, expression(Var(s[t]) / F[t]),
+       ttl = if (a == LEAD) "per-interval information ratio" else NULL, tag = if (a == LEAD) "D" else NULL,
+       logr = TRUE)
+})
+# E: accumulated information ratio J_T/F_T (>=0) -> log10, GROUPED, bottom of the TIME block
+yE <- lapply(grange(log10(dC$rC_lo), log10(dC$rC_hi), as.character(dC$algo)), function(r) 10^r)
+pE <- lapply(ALGOS, function(a) {
+  d <- dC[algo == a]
+  g <- ggplot(d, aes(t, rC)) + mkshade(TRUE) + geom_hline(yintercept = 1, colour = NUL, linewidth = .4) +
+    geom_ribbon(aes(ymin = rC_lo, ymax = rC_hi), fill = COL, alpha = .25) +
+    geom_line(colour = COL, linewidth = .4) + base()
+  deco(g, a, TRUE, tr, yE, expression(Var(sum(s[t])) / sum(F[t])),
+       ttl = if (a == LEAD) "accumulated information ratio" else NULL, tag = if (a == LEAD) "E" else NULL,
+       bottom = TRUE, xlab = "time (ms)", logr = TRUE)
+})
+# F: SCORE autocorrelation (k_off) over lag, signed -> linear, GROUPED, bottom (LAG block, at the
+# very bottom): the temporal memory that makes the accumulated ratio (E, just above) diverge.
+yF <- grange(acf_sc$acf - 1.96 * acf_sc$se, acf_sc$acf + 1.96 * acf_sc$se, as.character(acf_sc$algo))
+pSc <- lapply(ALGOS, function(a) {
+  d <- filter(acf_sc, algo == a)
+  g <- ggplot(d, aes(lag, acf)) + geom_hline(yintercept = 0, colour = NUL, linewidth = .4) +
+    geom_linerange(aes(ymin = acf - 1.96 * se, ymax = acf + 1.96 * se), colour = COL, linewidth = .35) +
+    geom_point(colour = COL, size = .25) + base()
+  deco(g, a, TRUE, lr, yF, "ACF",
+       ttl = if (a == LEAD) expression("score autocorrelation (" * k[off] * ")") else NULL,
+       tag = if (a == LEAD) "F" else NULL, bottom = TRUE, xlab = "lag")
+})
+
+# --- numbers the caption quotes, printed so they are never read off the plot (LINT-SRC) ---
+.capnum <- merge(
+  totL[, .(algo, logL = mean, logL_se = se)],
+  RES[, .SD[which.max(sample_index)], by = algo][, .(algo, accum_ratio = rC, lo = rC_lo, hi = rC_hi)],
+  by = "algo")
+.capnum <- merge(.capnum, as.data.table(acf_sc)[lag == 1, .(algo, acf_lag1 = acf, acf_se = se)], by = "algo")
+.capnum <- .capnum[match(ALGOS, algo)]
+cat("\n=== Figure 3 caption numbers (n_simulations =", uniqueN(SC$simulation_index), ") ===\n")
+print(as.data.frame(.capnum), digits = 3, row.names = FALSE)
+cat("logL spread (best - worst):", sprintf("%.1f nats\n", diff(range(.capnum$logL))))
+
+g3a <- wrap_plots(c(lapply(ALGOS, colhead), pTr, pA, pC, pD, pE, pSc), ncol = length(ALGOS),
+                  heights = c(0.10, 1, 1, 1, 1, 1, 1))
+ggsave("Figure_3.pdf", g3a, width = 7.0, height = 11.0)
+```

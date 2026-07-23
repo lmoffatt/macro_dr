@@ -1,0 +1,136 @@
+---
+title: "Figure 4—figure supplement 5 — the sandwich prediction against the empirical multivariate MLE distribution: a Mahalanobis Q-Q"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+WHAT THIS SHOWS, and why it is the standard object. Figure 4's block A compares, per parameter axis,
+the empirical spread of the estimates against the covariance the algorithm reports (Fisher) and
+against the distortion-corrected sandwich. A per-axis ratio is a projection; the honest question is
+whether the reported covariance matches the FULL multivariate distribution of the estimator. The
+established way to answer that (Huber 1967; White 1982, misspecified-MLE sandwich and the information
+matrix test) is to reduce the p-dimensional distribution to one scalar with a known reference: the
+squared Mahalanobis distance of each estimate to the cloud mean,
+
+  d^2_k(Sigma) = (theta_hat_k - theta_bar)^T Sigma^{-1} (theta_hat_k - theta_bar),
+
+which is distributed chi-squared with p degrees of freedom if theta_hat ~ N(theta_bar, Sigma). We
+centre on the empirical mean, not the truth, so this tests the SECOND moment (the covariance) alone,
+free of the bias. Two candidate covariances are tried:
+  - the reported Fisher covariance F^{-1}: if the model is over-confident, d^2 comes out too large,
+    the points rise above the chi-squared line, and the nominal 95% region under-covers.
+  - the sandwich F^{-1} J F^{-1} (the distortion-corrected covariance): if the sandwich is the right
+    covariance, d^2 follows chi-squared_p and the 95% region covers 95%.
+
+MEASURED (IR, N_ch 10, noise 0.05, 1000 fits at group size 100), p = 6 parameters:
+                     Delta = 1        Delta = 0.05
+  95% coverage, Fisher    0.91             0.91
+  95% coverage, sandwich  0.95             0.95
+  median d^2, Fisher      5.89             5.64   (chi2_6 median 5.35)
+  median d^2, sandwich    5.28             5.24
+So the sandwich prediction matches the empirical multivariate distribution and the reported Fisher
+under-covers, in the direction Figure 4 shows.
+
+THE EFFECT IS MILD IN 6D ON PURPOSE, and this is the same marginalisation as block A's ellipse. The
+joint Mahalanobis averages over all directions, so the strong per-axis over-confidence (k_off ~1.5x,
+Figure 4) is diluted against the conservative directions (N_ch ~0.74x): 0.91 against 0.95 is what the
+full-dimensional average of opposite-signed distortions looks like. The per-direction magnitudes live
+in Figure 4 (the map); this supplement shows the joint calibration and that the sandwich, not the
+Fisher, is the covariance the estimator actually has.
+
+DATA: the only high-fits cloud on disk, IR at N_ch 10, noise 0.05, nsim 100000, group size 100 (1000
+fits), intervals 1 and 0.05. This is NOT block A's design point (noise 0.1): 1000 fits are needed for
+a clean Q-Q at p = 6, and that run exists only here. The two covariances come from the matching
+nsim-10000 battery (they are analytic in the Fisher, so nsim-independent).
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+suppressMessages({ library(tidyverse); library(patchwork) })
+```
+
+```{r data}
+CLOUD <- "../data/0ffbda7/figure_3_G_nch_10_nsim_100000_macro_IR_noise_0.05_mle_cloud_runs.csv"
+BATT  <- "../data/1c2ae6f/figure_3_G_nch_10_nsim_10000_macro_IR_noise_0.05_battery_pool_G.csv"
+GROUP    <- 100                    # group size 100 -> 1000 fits (the most fits available)
+INTERVALS <- c(1, 0.05)
+COL <- c(Fisher = "#D55E00", sandwich = "#0072B2")
+
+bat <- read.csv(BATT, skip = 1, stringsAsFactors = FALSE)
+cl  <- read.csv(CLOUD, skip = 1, stringsAsFactors = FALSE)
+
+# the parameters carried by the covariance (all six that are estimated)
+IDS <- bat %>% filter(component_path == "Probit_statistics_Gaussian_Fisher_Covariance",
+                      statistic == "value", probit == "mean") %>% pull(param_index) %>% unique() %>% sort()
+NAMEBYIDX <- c(`0` = "on", `1` = "off", `2` = "unitary_current", `3` = "Current_Noise",
+               `4` = "Current_Baseline", `5` = "Num_ch_mean")
+PNAMES <- unname(NAMEBYIDX[as.character(IDS)])
+P <- length(IDS)
+cat("p =", P, "parameters:", paste(PNAMES, collapse = ", "), "\n")
+
+getmat <- function(cp, dlt) {
+  d <- bat %>% filter(component_path == cp, statistic == "value", probit == "mean",
+                      abs(interval_in_tau - dlt) < 1e-9, param_index %in% IDS, param_col %in% IDS)
+  m <- matrix(NA_real_, P, P, dimnames = list(IDS, IDS))
+  for (i in seq_len(nrow(d))) m[as.character(d$param_index[i]), as.character(d$param_col[i])] <- d$value[i]
+  m
+}
+
+# per interval: the squared Mahalanobis distances of the cloud to its own mean, under each covariance
+qq <- map_dfr(INTERVALS, function(dlt) {
+  pts <- cl %>% filter(component_path == "Model_Parameters_Hat", statistic == "value",
+                       group_size == GROUP, param_name %in% PNAMES, abs(interval_in_tau - dlt) < 1e-9) %>%
+    select(sample_index, param_name, value) %>% pivot_wider(names_from = param_name, values_from = value)
+  X  <- as.matrix(pts[, PNAMES]); X <- X[complete.cases(X), , drop = FALSE]
+  Xc <- scale(X, center = TRUE, scale = FALSE)
+  d2 <- function(S) { Si <- solve(S / GROUP); rowSums((Xc %*% Si) * Xc) }
+  n  <- nrow(X); probs <- (seq_len(n) - 0.5) / n
+  map_dfr(c("Fisher", "sandwich"), function(src) {
+    S <- if (src == "Fisher") getmat("Probit_statistics_Gaussian_Fisher_Covariance", dlt)
+         else                 getmat("Probit_statistics_Gaussian_Distortion_Corrected_Covariance", dlt)
+    tibble(delta = dlt, src = src, n = n,
+           theo = qchisq(probs, P), emp = sort(d2(S)),
+           cover = mean(d2(S) <= qchisq(0.95, P)))
+  })
+})
+cov_tab <- qq %>% group_by(delta, src) %>% summarise(coverage = first(cover), .groups = "drop")
+cat("nominal-95% coverage:\n"); print(as.data.frame(cov_tab), digits = 3, row.names = FALSE)
+```
+
+```{r plot, fig.width = 7, fig.height = 3.6}
+labs_df <- cov_tab %>% mutate(lab = sprintf("%s: %.0f%%", src, 100 * coverage),
+                              facet = sprintf("Delta %.2g", delta))
+qq <- qq %>% mutate(facet = sprintf("Delta %.2g", delta))
+mx <- max(qq$theo, qq$emp)
+g <- ggplot(qq, aes(theo, emp, colour = src)) +
+  geom_abline(slope = 1, intercept = 0, colour = "grey55", linewidth = .35) +
+  geom_vline(xintercept = qchisq(0.95, P), colour = "grey80", linewidth = .3, linetype = "dotted") +
+  geom_line(linewidth = .5) +
+  facet_wrap(~ facet, nrow = 1) +
+  scale_colour_manual(values = COL, name = NULL) +
+  coord_equal(xlim = c(0, mx), ylim = c(0, mx)) +
+  labs(x = bquote("theoretical quantile, " ~ chi[.(P)]^2),
+       y = expression("empirical squared Mahalanobis distance " ~ d^2),
+       title = sprintf("Sandwich vs reported covariance against the empirical MLE cloud (IR, N_ch 10, noise 0.05, 1000 fits, p = %d)", P)) +
+  # the coverage numbers, so the reader sees 91% vs 95% without measuring the tail
+  geom_text(data = labs_df, aes(x = 0.05 * mx, y = mx - (as.integer(factor(src)) - 1) * 0.09 * mx,
+                                label = lab, colour = src), hjust = 0, size = 2.5, show.legend = FALSE) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        plot.title = element_text(size = 8), strip.text = element_text(size = 8),
+        legend.key.size = unit(.6, "lines"), legend.text = element_text(size = 8),
+        axis.title = element_text(size = 8))
+g
+ggsave("Figure_4_supplement_5.pdf", g, width = 7.0, height = 3.6)
+```
+
+```{r caption-numbers}
+cat("\n=== supp 5 caption numbers ===\n")
+cat("p =", P, "; each panel is 1000 fits at group size 100\n")
+cat("\nnominal-95% coverage and median d^2 (chi2_", P, " median = ", round(qchisq(.5, P), 2), "):\n", sep = "")
+print(as.data.frame(qq %>% group_by(delta, src) %>%
+  summarise(coverage_95 = first(cover), median_d2 = median(emp), mean_d2 = mean(emp), .groups = "drop")),
+  digits = 3, row.names = FALSE)
+```

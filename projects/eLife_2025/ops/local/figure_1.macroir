@@ -81,6 +81,18 @@ macro_IR = build_likelihood_function(model =model,
             micro_approximation        = false,
             taylor_qdt_approximation   = false )
 
+# LSE (nonlinearsqr, family = 2): the off-lattice incumbent, non-recursive. Least squares on the mean
+# current with the noise scale marginalised out (variance_form = 0). In figure 1 it is drawn WITHOUT
+# a predictive band — just the mean joined to the measurement. Its per-interval diagnostic arm is
+# ROUTED in C++ (src/core/likelihood.cpp:913, nonlinearsqr_logLikelihoodDiagnostic), so this runs;
+# it only calls calc_likelihood_diagnostic below (not predictions/dlikelihood, which stay IR-only).
+lse = build_likelihood_function_with_family(model = model,
+            adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
+            variance_approximation = 1, taylor_variance_correction = 0,
+            family_approximation       = 2,
+            variance_form_approximation = 0,
+            taylor_qdt_approximation   = false )
+
 # TODO (when macro_IRT / macro_MRT are added to figure_1): the intra-interval
 # diagnostics for the IRT/MRT branch need to be wired before they show
 # meaningful per-frame snapshots here.
@@ -154,6 +166,14 @@ simulation = simulation)
 
 diagnostic_file_IR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_IR,
    path= "figures/data/figure_1_likelihood_diagnostic_IR")
+
+
+
+likelihood_diagnostic_LSE = calc_likelihood_diagnostic(likelihood_algorithm =lse, parameters=par_tr, experiment =experiment,
+simulation = simulation)
+
+diagnostic_file_LSE = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_LSE,
+   path= "figures/data/figure_1_likelihood_diagnostic_LSE")
 
 
 

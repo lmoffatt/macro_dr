@@ -1,0 +1,33 @@
+---
+title: "Figure 1 (all algorithms) — one filter step across the whole roster"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+The exploratory version of Figure 1: **six columns**, every algorithm on disk, including the two
+non-recursive members that paper 1 names but does not measure. Its job is to show the recursion axis
+next to the conductance axis in one picture; the paper's figure is the four-column recursive ladder in
+`figure_1.Rmd`.
+
+It writes to its **own** files (`Figure_1_all.pdf`, `Figure_S1_all.pdf`) so it can never overwrite the
+paper's figure. Everything below the roster lives in `figure_1_panels.R`, shared with `figure_1.Rmd`.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r panels, include=FALSE}
+source("figure_1_panels.R")
+```
+
+```{r roster}
+# DATA keys, not printed names: the mean-non-recursive algorithm is NMR here and prints as MNR
+# (the .DISP map in figure_1_panels.R does the translation).
+COLS <- c("NR", "NMR", "R", "MR", "VR", "IR")
+```
+
+```{r figures}
+build_figure(0:4,     "Figure_S1_all.pdf", COLS)   # samples 0-4 (0 to 10 ms of the 12 ms record)
+build_figure(c(3, 4), "Figure_1_all.pdf",  COLS)   # the 6 to 10 ms zoom
+```

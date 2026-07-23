@@ -1,0 +1,46 @@
+---
+title: "Figure 1 (merged paper) — one filter step, the cost ladder LSE → NR → R → IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Figure 1 for the merged paper. **Four columns**, the ladder from the incumbent least-squares fit to
+the fully interval-conditioned filter: **LSE → NR → R → IR**. Each rung adds one thing — LSE fits the
+mean with a single constant error variance (σ̂²); NR makes that variance per-interval, the gating
+variance (open loop); R adds the recursive update; IR adds the interval conditioning. LSE and NR are non-recursive, so their
+"Bayes & posterior" row reads "no update (open loop)". The recursive-mechanism ladder (R, MR, VR, IR)
+moves to a supplement; `figure_1_all.Rmd` still renders every algorithm for exploration.
+
+Panels live in `figure_1_panels.R` (shared). **LSE is drawn in NR's grammar (point mean + errorbar),
+with a single constant least-squares variance** σ̂² = SSE/n, so its errorbars are all the same width,
+against NR/R's width that varies with the per-interval gating variance. That constant, marginalised
+noise scale is what makes LSE's log-likelihood well-defined, and its flatness is the classical
+method's homoscedastic assumption made visible.
+
+**LSE data:** `../data/figure_1_likelihood_diagnostic_LSE.csv`, produced by the LSE block now in
+`ops/local/figure_1.macroir` (family = 2; its C++ diagnostic arm is routed, likelihood.cpp:913). Until
+that script is re-run, the roster below auto-drops LSE and renders NR → R → IR; the LSE column joins
+by itself once the dump exists. (Re-running figure_1.macroir redraws the whole recording — new random
+ensemble, seed = 0 — so every panel changes trace-by-trace; figure 1 is illustrative, not quantitative.)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r panels, include=FALSE}
+source("figure_1_panels.R")
+```
+
+```{r roster}
+# target ladder; a column auto-drops if its per-interval diagnostic dump is not on disk yet (LSE)
+COLS_TARGET <- c("LSE", "NR", "R", "IR")
+.tok <- c(LSE = "LSE", NR = "NR", R = "R", IR = "IR")   # data-file token per column
+COLS <- COLS_TARGET[file.exists(paste0("../data/figure_1_likelihood_diagnostic_", .tok[COLS_TARGET], ".csv"))]
+message("figure_1 roster present: ", paste(COLS, collapse = ", "))
+```
+
+```{r figures}
+build_figure(0:4,     "Figure_S1.pdf", COLS)   # samples 0-4 (0 to 10 ms of the 12 ms record)
+build_figure(c(3, 4), "Figure_1.pdf",  COLS)   # the 6 to 10 ms zoom
+```

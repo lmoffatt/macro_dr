@@ -94,30 +94,37 @@ stable; the Monte-Carlo standard here is statistical equivalence, not bit identi
 
 \subsection*{The macroscopic likelihood approximations}
 
-The five likelihoods compared here are one filter run under two flags. The first flag, \emph{recursive approximation}, sets whether the
-occupancy covariance is propagated between intervals. The second,
-\emph{averaging approximation} $\mathrm{av}\in\{0,1,2\}$, sets how the
-single-channel conductance is treated within an interval, and it literally counts
-the number of interval endpoints the hidden state is conditioned on.
-% src: papers/macroir-elife-2025/nomenclature.md (two flags; av counts conditioned endpoints)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:149-160 (algorithm -> (recursive, averaging) flags)
+The recursive ladder compared in this paper, R, MR, VR and IR, is one filter run under flags that set how the interval-averaged conductance is conditioned. The \emph{recursive} flag sets whether the
+occupancy covariance is propagated between intervals, and is held true across the four. The
+\emph{averaging} flag $\mathrm{av}\in\{0,1,2\}$ counts the number of interval endpoints the
+hidden state is conditioned on. A third flag, the \emph{variance form}, distinguishes the two
+members that condition on the interval start: MR predicts the interval variance with the total
+per-start-state conductance variance, while VR removes the between-endpoint part, keeping MR's
+mean and gain. The two non-recursive members NR and NMR are named here to locate the ladder
+within the wider family and are measured in no figure of this paper.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:200 (macro_VR: recursive, averaging=1, variance_form=1)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:150-158 (algorithm -> recursive, averaging flags)
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{lccl}
+\begin{tabular}{lcccl}
 \toprule
-Member & Recursive & $\mathrm{av}$ & Conditioning of the conductance \\
+Member & Recursive & $\mathrm{av}$ & Variance & Conditioning of the conductance \\
 \midrule
-NR  & no  & 0 & instantaneous; the acquisition averaging is ignored \\
-NMR & no  & 1 & interval mean given the start state \\
-R   & yes & 0 & instantaneous; the acquisition averaging is ignored \\
-MR  & yes & 1 & interval mean given the start state \\
-IR  & yes & 2 & interval mean given both boundary states, interior marginalised \\
+NR  & no  & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+NMR & no  & 1 & total    & interval mean given the start state \\
+R   & yes & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+MR  & yes & 1 & total    & interval mean given the start state \\
+VR  & yes & 1 & residual & MR's mean and gain, with the between-endpoint variance removed \\
+IR  & yes & 2 & total    & interval mean given both boundary states; the endpoints enter the gain \\
 \bottomrule
 \end{tabular}
-\caption{The likelihood family as two flags. The members form an endpoint ladder:
-no endpoints (NR, R), one endpoint (NMR, MR), both boundary states (IR). The data
-key for NMR is \texttt{macro\_NMR}.}
+\caption{The recursive ladder R, MR, VR, IR as filter flags, with the non-recursive members
+NR and NMR named to locate it. Reading the endpoint flag as a ladder gives no endpoints (NR, R),
+one endpoint (NMR, MR, VR), then both boundary states (IR). MR and IR predict the same total
+interval variance and differ only in the gain; VR shares MR's gain but removes the
+between-endpoint part of the variance, which isolates the variance change from the gain change.
+The data key for a member is \texttt{macro\_}$\langle$member$\rangle$.}
 \label{tab:family}
 \end{table}
 

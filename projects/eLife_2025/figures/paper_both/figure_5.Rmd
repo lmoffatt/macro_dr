@@ -1,0 +1,174 @@
+---
+title: "Figure 5 — the design trade-off: IR's per-channel precision vs interval, by parameter and instrumental noise"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE DESIGN FIGURE. Figures 2-4 establish which likelihood to use (IR) and that its reported
+uncertainty is honest. This figure uses that honesty to advise the experiment: given a fixed budget
+of channels, how should they be acquired?
+
+WHY IR ALONE. The quantity below is a covariance the algorithm reports, and only a calibrated
+algorithm's reported covariance can guide design. For IR the distortion-corrected covariance equals
+the Fisher covariance to within a few percent everywhere (measured: ratio 0.99-1.10 over the 12
+cells), so IR's error bars are the real ones and the advice built on them is sound. For R the two
+differ (Figure 4), so a design figure cannot be built on what R reports. The naive members are not
+shown; the cross-algorithm efficiency comparison is a different question from design.
+
+THE QUANTITY IS A DESIGN TRADE-OFF, not an atlas of precision. y = N_ch x (distortion-corrected
+covariance of the parameter). At a FIXED total channel budget B split into recordings of N_ch
+channels each, the pooled-estimator variance is N_ch * var(N_ch) / B, so this quantity (up to the
+constant 1/B) IS the pooled variance at fixed budget. A line FLAT across N_ch means information is
+linear in channels and concentrating vs spreading is neutral; a RISING line means concentrating
+channels loses information, so the same budget spent as many small patches beats few large ones.
+
+PLANE: x = acquisition interval Delta*k_off (log), colour = N_ch (the design choice, 4 decades),
+rows = parameter (k_on, k_off, i, N_ch, sigma_noise), columns = instrumental noise label. Noise is on
+columns because it is NOT a design variable (the rig sets it); the columns show how the advice shifts
+with the rig, while the design choice itself is the within-panel fan over N_ch. Log y (orders of
+magnitude). Vertical bars are the 95% bootstrap interval.
+
+MEASURED (noise 0.1, median over intervals): the rates are nearly flat (k_off N_ch*cov 0.32, 0.38,
+0.40, 0.39 across N_ch 10..10000: information ~linear, concentrating neutral). The amplitude and count
+directions FAN: N_ch runs 1.2 -> 50, i and sigma similarly, so concentrating channels loses badly for
+those. sigma_noise fans with N_ch too but its noise dependence has the OPPOSITE sign (it improves at
+higher noise: more noise is more signal to estimate the noise from), the one row that gets easier with
+a noisier rig.
+
+MIGRATED from figure_6_precision.Rmd (which was on the numeric anchor 433ed13 with 5 algorithms). This
+is the Gaussian anchor, IR only, noise on columns. Component swapped to the Gaussian corrected
+covariance per the standing "always the Gaussian version" rule.
+
+TRAP: the "noise" column label is the run label, not the physical noise. current_noise = label/1000.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6")   # search path; IR's grid is in 1c2ae6f
+NSIM   <- 10000
+NOISES <- c("0.05", "0.1", "0.2", "0.5", "1", "10")   # all six IR levels (wide, both versions)
+ALGO   <- "macro_IR"
+CC     <- "Probit_statistics_Gaussian_Distortion_Corrected_Covariance"
+PIDX   <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5, Current_Noise = 3)
+PARAM_LAB <- c(on = "log[10]~k[on]", off = "log[10]~k[off]", unitary_current = "log[10]~i",
+               Num_ch_mean = "log[10]~N[ch]", Current_Noise = "log[10]~sigma[noise]")
+NCHS   <- c(10, 100, 1000, 10000)
+CIR_MAX <- 8   # drop a cell whose 95% bootstrap CI spans more than this factor (near-singular)
+```
+
+```{r data}
+findf <- function(nch, z) {
+  f <- file.path(DATA_DIRS,
+                 sprintf("figure_3_G_nch_%d_nsim_%d_%s_noise_%s_battery_pool_G.csv", nch, NSIM, ALGO, z))
+  hit <- f[file.exists(f)]
+  if (!length(hit)) stop("figure_5: missing IR cell N_ch ", nch, " noise ", z)
+  hit[1]
+}
+cells <- expand_grid(nch = NCHS, z = NOISES)
+raw <- pmap_dfr(cells, function(nch, z)
+    read.csv(findf(nch, z), skip = 1, stringsAsFactors = FALSE) %>% mutate(noise = z)) %>%
+  filter(component_path == CC, statistic == "value",
+         param_index == param_col, param_index %in% PIDX)
+
+KEY <- c("noise", "Num_ch", "interval_in_tau", "param_index")
+d <- raw %>% filter(probit == "mean") %>% group_by(across(all_of(KEY))) %>%
+  summarise(cov = mean(value), .groups = "drop") %>%
+  left_join(raw %>% filter(probit == "quantile", quantile_level %in% c(0.025, 0.975)) %>%
+              group_by(across(all_of(KEY))) %>% summarise(lo = min(value), hi = max(value), .groups = "drop"),
+            by = KEY) %>%
+  mutate(ncov = Num_ch * cov, ncov_lo = Num_ch * lo, ncov_hi = Num_ch * hi) %>%
+  filter(is.finite(ncov), ncov > 1e-12, is.finite(ncov_lo), ncov_lo > 0,
+         is.finite(ncov_hi), ncov_hi / ncov_lo < CIR_MAX) %>%
+  mutate(pkey   = names(PIDX)[match(param_index, PIDX)],
+         nch_f  = factor(Num_ch, levels = NCHS),
+         param  = factor(pkey, levels = names(PIDX), labels = unname(PARAM_LAB)),
+         noise_f = factor(sprintf("sigma == %s", noise), levels = sprintf("sigma == %s", NOISES)))
+
+cat("figure_5:", nrow(cells), "IR cells, N_ch", paste(NCHS, collapse = "/"),
+    "x noise", paste(NOISES, collapse = "/"), ";", nrow(d), "surviving (param, cell, interval) points\n")
+
+# ONE builder, two uniform normalisations. Body = N_ch x cov (pooled variance at fixed channel
+# budget: flat across N_ch = concentrating is design-neutral, rising = concentrating loses). The
+# supplement = the covariance DIRECTLY (per-recording precision). The two are the same data shifted by
+# log(N_ch) per line on the log axis, so each curve's shape vs interval is identical; only the
+# vertical meaning of the N_ch lines changes. Not the mixed per-row split (dropped): a published
+# figure keeps one quantity on its y axis.
+fig5 <- function(yv, ylo, yhi, ylab, spacing = 0.10, legend = "bottom") {
+  ggplot(d, aes(interval_in_tau, .data[[yv]], colour = nch_f, group = nch_f)) +
+    geom_linerange(aes(ymin = .data[[ylo]], ymax = .data[[yhi]]), linewidth = .35, alpha = .5) +
+    geom_line(linewidth = .45) + geom_point(size = .7) +
+    facet_grid(param ~ noise_f, scales = "free_y",
+               labeller = labeller(param = label_parsed, noise_f = label_parsed)) +
+    scale_x_log10(breaks = c(.01, .1, 1), labels = c(".01", ".1", "1")) +
+    scale_y_log10() +
+    scale_colour_viridis_d(name = expression(N[ch]), end = .92, direction = -1) +
+    labs(x = expression(Delta %.% k[off]), y = ylab) +
+    theme_bw(base_size = 9, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(), panel.spacing.x = unit(spacing, "cm"),
+          legend.position = legend, legend.title = element_text(size = 8),
+          legend.text = element_text(size = 6.8), legend.key.size = unit(.32, "cm"),
+          legend.box.spacing = unit(2, "pt"),
+          axis.text = element_text(size = 6.8), axis.title = element_text(size = 8.5),
+          strip.text = element_text(size = 7.8)) +
+    guides(colour = guide_legend(nrow = 1))
+}
+```
+
+```{r plot-body, fig.width = 7, fig.height = 9.2}
+# BODY: pooled variance at fixed channel budget, N_ch x corrected covariance, all six noise columns.
+g <- fig5("ncov", "ncov_lo", "ncov_hi",
+          expression(N[ch] %.% "corrected covariance   (pooled variance at fixed channel budget)"))
+g
+ggsave("Figure_5.pdf", g, width = 7.0, height = 9.2)
+cat("Figure_5.pdf (body): N_ch*cov, 5 params x", length(NOISES), "noise columns\n")
+```
+
+```{r plot-supplement, fig.width = 7, fig.height = 9.2}
+# SUPPLEMENT 1: the covariance DIRECTLY (no N_ch scaling), the per-recording achievable precision.
+# Uniform across all five rows (not the mixed split). Its distinct payoff over the body: the N_ch
+# lines order intuitively (more channels, better absolute precision, dark at the bottom), and the
+# sigma_noise row nearly collapses (per-recording precision on the noise is similar across N_ch),
+# which the body's N_ch x cov renders as a misleading 3000x fan.
+gs <- fig5("cov", "lo", "hi", "distortion-corrected covariance   (per-recording precision)")
+gs
+ggsave("Figure_5_supplement_1.pdf", gs, width = 7.0, height = 9.2)
+cat("Figure_5_supplement_1.pdf: direct cov, 5 params x", length(NOISES), "noise columns\n")
+```
+
+```{r caption-numbers}
+cat("\n=== Figure 5 caption numbers ===\n")
+cat("\nper-channel precision N_ch*corrected_cov, median over the 7 intervals, by parameter / noise / N_ch\n")
+cat("(flat across N_ch = information linear in channels; rising = concentrating loses)\n")
+for (pp in names(PIDX)) {
+  cat("\n---", sub("log\\[10\\]~", "", PARAM_LAB[pp]), "---\n")
+  print(as.data.frame(d %>% filter(param == PARAM_LAB[pp]) %>%
+    group_by(noise, Num_ch) %>% summarise(ncov = median(ncov), .groups = "drop") %>%
+    pivot_wider(names_from = Num_ch, values_from = ncov, names_prefix = "Nch") %>%
+    arrange(as.numeric(noise))), digits = 3, row.names = FALSE)
+}
+cat("\nfan factor (N_ch*cov at N_ch 10000 / at N_ch 10), noise 0.1, per parameter (BODY figure):\n")
+print(as.data.frame(d %>% filter(noise == "0.1") %>%
+  group_by(param, Num_ch) %>% summarise(m = median(ncov), .groups = "drop") %>%
+  pivot_wider(names_from = Num_ch, values_from = m) %>%
+  mutate(fan = `10000` / `10`) %>% select(param, fan)), digits = 3, row.names = FALSE)
+
+cat("\n--- SUPPLEMENT 1 (direct cov, per-recording precision) ---\n")
+cat("direct corrected covariance, median over intervals, noise 0.1 (more N_ch = lower = better):\n")
+for (pp in names(PIDX)) {
+  cat("\n---", sub("log\\[10\\]~", "", PARAM_LAB[pp]), "---\n")
+  print(as.data.frame(d %>% filter(param == PARAM_LAB[pp], noise == "0.1") %>%
+    group_by(Num_ch) %>% summarise(cov = median(cov), .groups = "drop") %>%
+    pivot_wider(names_from = Num_ch, values_from = cov, names_prefix = "Nch")),
+    digits = 3, row.names = FALSE)
+}
+cat("\nsigma_noise direct-cov spread (max/min over N_ch, noise 0.1): near 1 = the row collapses\n")
+print(as.data.frame(d %>% filter(pkey == "Current_Noise", noise == "0.1") %>%
+  group_by(Num_ch) %>% summarise(cov = median(cov), .groups = "drop") %>%
+  summarise(min = min(cov), max = max(cov), ratio = max(cov) / min(cov))), digits = 3, row.names = FALSE)
+```
