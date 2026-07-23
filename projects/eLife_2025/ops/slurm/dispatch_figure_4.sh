@@ -217,6 +217,21 @@ for i in "${!NCHS[@]}"; do
     if [ "$family" = 2 ]; then SCRIPT="$SCRIPT_LSE";   prefix="figure_3_LSE_"
     else                       SCRIPT="$SCRIPT_MACRO"; prefix="figure_3_G_"; fi
 
+    # Job-name tag. Within one launch the DISCRIMINATORS are family, N_ch and noise (nsim is normally
+    # fixed across the launch); the old name carried nch and nsim only, so a 12-cell noise sweep
+    # collapsed to one name per N_ch, and squeue's default 8-char NAME column even merged nch 1000
+    # with nch 10000. FILES were never at risk (the filepath carries nch AND noise) and neither were
+    # the logs (slurm-%j.out is per job id) — it was the QUEUE that was unreadable.
+    case "$family" in 1) fam=M ;; 2) fam=L ;; *) fam=G ;; esac
+    # Compact power-of-ten tags so the name stays short and fixed-width-ish: 10000 -> 1E4, 20 -> 2E1,
+    # 0.1 -> 1E-1, 0.05 -> 5E-2. Every value these grids use is a single digit times a power of ten,
+    # so nothing is lost; and truncated to squeue's default 8-char NAME you still read the family and
+    # the N_ch decade, which the old name could not do (1000 and 10000 both showed as f3G_1000).
+    e10() { awk -v v="$1" 'BEGIN{ e = int(log(v)/log(10));
+              while (v/(10^e) >= 10) e++; while (v/(10^e) < 0.999999) e--;
+              printf "%.3gE%d", v/(10^e), e }'; }
+    nchtag=$(e10 "$nch"); ztag=$(e10 "$nnoise")
+
     case "$nnoise" in                    # label -> current_noise (vnoise = label / 1000)
         0.05) vnoise=0.00005;;
         0.1)  vnoise=0.0001;;
@@ -257,7 +272,7 @@ for i in "${!NCHS[@]}"; do
         --cpus-per-task="${CPUS:-32}" \
         --mem="${MEM:-48G}" \
         --time="${TIME:-2-00:00:00}" \
-        --job-name="f3G_${nch}c_${nsim}s" \
+        --job-name="f4${fam}_${nchtag}_${ztag}" \
         --output="$WORKDIR/logs/slurm-%j.out" \
         --export=ALL,CLUSTER="$CLUSTER",BIN="$BIN",WORKDIR="$WORKDIR",MACRODR_PROFILE="$PROFILE",MACRODR_AXIS_SERIAL=1 \
         "$WRAPPER" \

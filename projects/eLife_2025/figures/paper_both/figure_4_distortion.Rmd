@@ -1,0 +1,104 @@
+---
+title: "Figure 4 (distortion) — the second moment across the design space: LSE, NR, R, IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE SECOND-MOMENT HALF of the old Figure 4, split in two (Luciano, 2026-07-23) because four
+algorithms carrying both moments would run to sixteen map rows. This half: the ellipses plus the
+INFORMATION DISTORTION, from battery_pool_G anchored at theta_pool. The first-moment half is
+figure_4_bias.Rmd, which carries the same ellipse block.
+
+BLOCK A, the ellipses, is the referent: a distortion map is a colour field over a ratio of a score
+covariance to a Fisher information, and nobody has an intuition for 1.44. The cloud says it in the
+form a reader already knows — here is how your estimates scatter, here is what the algorithm said
+they would (dashed), here is what the sandwich correction says they would (dotted).
+
+CAUTION the panel prints and the caption must repeat: THE ELLIPSE AND THE MAP ARE DIFFERENT OBJECTS.
+The ellipse compares Cov(theta_hat) against the sandwich MARGINALISED over the other parameters; the
+maps compare score against Fisher unmarginalised. The marginal reading is systematically milder, so
+the two numbers printed per panel (ellipse ratio and the map's own value at the same cell) are
+expected to disagree, and the disagreement is stated rather than hidden.
+
+PLANE: one panel per N_ch (columns), x = Delta*k_off, y = raw instrumental noise. ROWS are parameter
+(outer) then algorithm (inner), so the four rungs of a parameter are adjacent.
+
+WHICH DIRECTION: the primary render is k[off], the direction that carries the distortion (R's k_off
+distortion is a flat floor near 1.4 across four decades while IR converges to 1). The both-directions
+variant is also written: the N_ch direction crosses from conservative to over-confident, the OPPOSITE
+sign, which is why any scalar averaged over parameters cancels them and reports a faithful algorithm.
+
+All machinery, traps and scales live in figure_4_common.R, shared with the bias half.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+```
+
+```{r ellipses, fig.width = 7, fig.height = 9.5}
+gA <- build_gA()
+gA
+```
+
+```{r assemble}
+# one assembler, the parameter roster is the argument. Block A is shared and unchanged: an ellipse
+# needs two axes, so it stays on the (k_off, N_ch) pair whatever the maps show.
+assemble_dist <- function(params) {
+  hA <- 2.30 * max(1, length(ELL_ALGOS))
+  hC <- map_height(length(params), 0.475)         # 0.95 in per 2-decade row (carries the x axis)
+  g <- btitle("A   grouped MLE distributions") /
+       gA /
+       btitle("B   information distortion") /
+       mapblock(stat, function(d) log10(d$Dconf), DIST_PAL, DIST_BREAKS, params,
+                top = TRUE, bottom = TRUE) /
+       colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5))
+  hs <- c(0.16, hA, 0.16, hC, 0.28)
+  list(g = g + plot_layout(heights = hs), h = sum(hs))
+}
+```
+
+```{r render-primary, fig.width = 7, fig.height = 12}
+# PRIMARY: k[off] alone, the direction that carries the distortion. Four map rows, one per algorithm.
+prim <- assemble_dist("off")
+prim$g
+ggsave("Figure_4_distortion.pdf", prim$g, width = 7.0, height = prim$h)
+cat("Figure_4_distortion.pdf: distortion on k_off; height", round(prim$h, 2), "in\n")
+```
+
+```{r render-both-params, fig.width = 7, fig.height = 18}
+# VARIANT: both directions. The N_ch direction carries the OPPOSITE sign to k_off, so a scalar
+# averaged over parameters cancels them and reports a faithful algorithm. Only this render makes
+# that verifiable, and it is the one that shows the two moments are not in the same direction.
+both <- assemble_dist(PARAM_LONG)
+both$g
+ggsave("Figure_4_distortion_both_params.pdf", both$g, width = 7.0, height = both$h)
+cat("Figure_4_distortion_both_params.pdf: k_off and N_ch; height", round(both$h, 2), "in\n")
+```
+
+```{r caption-numbers}
+cat("\n=== Figure 4 (distortion) caption numbers ===\n")
+cat("\nDISTORTION, median over the 7 intervals, by algorithm / parameter / N_ch (noise 0.1)\n")
+print(as.data.frame(stat %>% filter(comp == "total", noise == "0.1") %>%
+        group_by(param, algo, Num_ch) %>% summarise(med = median(Dconf), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = med)), digits = 3, row.names = FALSE)
+
+cat("\nDOES NOISE CURE IT? same medians at each noise level, k_off\n")
+print(as.data.frame(stat %>% filter(comp == "total", param == "off") %>%
+        group_by(algo, noise, Num_ch) %>% summarise(med = median(Dconf), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = med) %>%
+        arrange(algo, as.numeric(noise))), digits = 3, row.names = FALSE)
+
+cat("\nEXTENT: fraction of (interval, noise) cells with |D-1| >= 0.15\n")
+print(as.data.frame(stat %>% filter(comp == "total") %>% group_by(param, algo, Num_ch) %>%
+        summarise(f = mean(abs(Dconf - 1) >= 0.15), .groups = "drop") %>%
+        mutate(algo = ALGO_LAB[algo]) %>%
+        pivot_wider(names_from = Num_ch, values_from = f)), digits = 2, row.names = FALSE)
+```
