@@ -7,6 +7,24 @@
 > Telegraphic on purpose. Every state claim below is dated and carries its file:line, because the
 > whole point of this document is to stop the figures being rebuilt against a stale belief.
 
+## 0'. Renumbering + Figure 4 = R vs IR (2026-07-22, late) — READ decisions.md first
+
+Since the §0 state below was written, the figure set was renumbered and the R-vs-IR figure built.
+**The authoritative record is now `decisions.md`** ("The figure set" and "Figure 4 is R against IR"
+blocks); this plan's §2 table, §3d and §6 predate it and describe the old eight-figure numbering. In
+brief, so a cold reader is not misled by the sections below:
+
+- Body is **five** figures. Old Fig 4 (Fisher profiles) → **Fig 3—figure supplement 1**. Old Fig 5
+  (IR-only map) **merged into** the new **Fig 4 = R vs IR** (it was a strict subset of Fig 4's IR
+  rows). Old Fig 6 (decomposition) → **Fig 4—figure supplement 3**. Old Fig 8 (design) → **Fig 5**.
+- **Fig 4 is built** (`figure_4.Rmd` → `Figure_4.pdf`, long version; `Figure_4_short_variant.pdf`),
+  with **four supplements built** (`figure_4_supplement_{1,2,3,4}.Rmd`, sharing
+  `figure_4_supp_common.R`). All on the Gaussian anchor, no new runs.
+- **§2's claim that R/MR exist at one noise level on the G anchor is FALSE** (see below and
+  decisions.md): both have noise 0.1/1/10 across all four decades.
+- **The VR dispatch commands in §4 are missing `GROUP_SIZE="10 100"`** and are fixed there now; the
+  dispatcher default is `1 10 100` and no existing run has group 1.
+
 ## 0. State on 2026-07-21 (verified, not declared)
 
 - **VR's C++ has landed on `main`.** Flag type `uses_variance_form_aproximation` with
@@ -226,7 +244,7 @@ from `:1653`), the term MR keeps inside `ms` is the same term IR keeps inside `g
 between them: **given the same prior, MR's and IR's predicted `y_var` are algebraically identical**,
 and VR's is strictly smaller than both. If that survives measurement, the ladder is not monotone in
 predicted observable variance, and the one-liner "MR → VR changes only the variance, VR → IR only the
-gain" (`00_plan.md:132`, `decisions.md:22`) is loose in exactly the panel Fig 6 is built to show.
+gain" (`00_plan.md:132`, `decisions.md:22`) is loose in exactly the panel Fig 4—figure supplement 3 is built to show.
 The spec states it correctly (`vr_variance_form_plan.md:143-145`); the paper-side summaries do not.
 **This is a measurement, not an edit: F1-2 settles it on real numbers.**
 
@@ -245,7 +263,7 @@ hardcoded at `:592` against a fixed 7.0in page.
 | **1** | no (panel), yes as smoke test (data) | nothing |
 | **2** | only for the A-strict roster re-render | it reads `433ed13` (numeric); VR exists only on the G anchor, so re-point or migrate the non-G dispatcher |
 | **3, 4** | yes, if the roster is re-rendered | producer `figure_3_time.macroir` uses the bool builder → same migration as F1-1; dumps are ~1 GB per algorithm |
-| **5** | yes | **and** R/MR exist at one noise level only on the G anchor, so the roster map cannot be built without filling them; plus anchor split, panel selection, and three conflicting validity thresholds |
+| **5** | yes | ~~R/MR exist at one noise level only on the G anchor~~ **FALSE (2026-07-22): R and MR have noise 0.1/1/10 across all four decades on the G anchor, plus an N_ch-scaled r=10 level. Exclusive to IR is only the finer N_ch grid and the sub-0.1 noise levels.** Remaining: anchor split, panel selection, three conflicting validity thresholds |
 | **6** | **yes, hard** (paper 1's headline) | job 1 needs per-interval `y_var` for VR → inherits the `figure_3_time.macroir` migration; job 2 is five-algorithm on the numeric basis |
 | **7** | no (IR-only) | a scope decision, not data |
 
@@ -271,7 +289,7 @@ with `results.md`, which implies every five-algorithm figure. Enumerate it or dr
    this.
 4. **The VR grid run on dirac** (cluster, `dispatch_figure_3_G.sh`). This is now the blocking item for
    Figs 2, 5 and 6; see §5 for the exact cells and command.
-5. **`figure_3_time.macroir` migration + rerun** for Figs 3/4 and Fig 6 job 1.
+5. **`figure_3_time.macroir` migration + rerun** for Fig 3, Fig 3—figure supplement 1 (ex-Fig 4), and the mechanism panels (ex-Fig 6 job 1, now carried by Fig 2 / a Fig 4 supplement).
 
 Steps 4 and 5 are independent of each other and both depend on step 1 passing.
 
@@ -300,7 +318,7 @@ Also settled by the same render: the two anchors agree. R 1.32 / MR 1.97 / IR 1.
 anchor sit where the numeric-Fisher run put them (`decisions/D-4_ranking_verdict.md`: R 1.18-1.42,
 MR 1.52-2.07, IR ~1), so moving the main text onto one anchor costs no result.
 
-## 3c. Figures 3 and 4 — producer and notebook prepared 2026-07-22, run pending
+## 3c. Figure 3 and its Fisher supplement (ex-Fig 4) — producer prepared, run DONE 2026-07-22 (dumps regenerated at `0ffbda7` seed 20260722; `Figure_3.pdf` rebuilt, caption refreshed 87 → 10.4 nats)
 
 **Producer.** `ops/local/figure_3_time.macroir` gained a `macro_VR` block between MR and IR, using
 `build_likelihood_function_with_family` (the bool builder used by the other five cannot express the
@@ -335,7 +353,7 @@ sentence goes with it.
 cd projects/eLife_2025 && ../../build/gcc-release/macrodr_cli ops/local/figure_3_time.macroir
 ```
 
-## 3d. Figure 5 — BUILT 2026-07-22. Subject: where IR stops being faithful, in both moments
+## 3d. ex-Figure 5 (IR-only, "where IR stops being faithful") — BUILT 2026-07-22, then MERGED into Fig 4 and archived (see §0' and `decisions.md`)
 
 **New subject.** Figure 5 is no longer the within-family validity map. `00_plan.md` §1 promised that
 paper 1 would locate IR's own failure and no figure had ever been assigned to it; this is that figure.
@@ -419,9 +437,13 @@ newer binary writes beside an older run.
 
 Noise 0.1 belongs with the rest of that column in `1c2ae6f`:
 
+**`GROUP_SIZE="10 100"` is required in every command below** (added 2026-07-22): the dispatcher
+defaults to `1 10 100`, and no existing cloud has group 1, so omitting it makes VR's MLE cloud not
+pair with R's or MR's. Verified against `dispatch_figure_3_G.sh:93` and the three run folders.
+
 ```
 RUN_DIR=1c2ae6f NCHS="10 100 1000 10000" N_SIMS="10000 10000 10000 10000" \
-N_NOISE="0.1 0.1 0.1 0.1" N_ALGO="macro_VR" \
+N_NOISE="0.1 0.1 0.1 0.1" GROUP_SIZE="10 100" N_ALGO="macro_VR" \
   projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh dirac
 ```
 
@@ -430,7 +452,7 @@ Noise 1 and 10 belong where R and MR keep theirs, in `87889e6`:
 ```
 RUN_DIR=87889e6 NCHS="10 100 1000 10000 10 100 1000 10000" \
 N_SIMS="10000 10000 10000 10000 10000 10000 10000 10000" \
-N_NOISE="1 1 1 1 10 10 10 10" N_ALGO="macro_VR" \
+N_NOISE="1 1 1 1 10 10 10 10" GROUP_SIZE="10 100" N_ALGO="macro_VR" \
   projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh dirac
 ```
 
@@ -438,11 +460,84 @@ N_NOISE="1 1 1 1 10 10 10 10" N_ALGO="macro_VR" \
 `projects/eLife_2025/ops/build_cluster.sh dirac` builds it, and the dispatcher defaults `BIN` to
 `build/macrodr_cli-dirac-current`. Cluster access is the author's (`01_writing_plan.md` §6).
 
+## 6. Figures 6, 7 and 8 — design settled 2026-07-22
+
+All three keep Figure 5's grammar unless noted: one panel per N_ch as columns, x = Δ·k_off over the
+seven swept values (free), y = noise, CI-shrunk colour so a cell whose bootstrap interval covers the
+null renders white.
+
+### Figure 6 — the decomposition (sample vs correlation)
+
+Rows: for each of k_off and N_ch, three rows — total, sample, correlation. Six rows.
+
+**The design question was whether three maps side by side can be read multiplicatively**, since the
+exact relation is a congruence (GIDM = K·CDM·Kᵀ) and not a product. Measured over all **1260 points**
+of the volume: the elementwise product sample × correlation reproduces the total with **median
+relative error 0.04%, 90th percentile 0.5%, maximum 2.9%, and not one point past 5%**. So on the
+diagonal and in this data the multiplicative reading is sound; say it in the caption as an empirical
+near-identity with that bound, not as algebra. The exactly additive statement remains
+log det GIDM = log det GSDM + log det CDM (1e-14 on these files).
+
+Content already measured: correlation dominates the telegraphic corner **8:1**, scaling as
+N_ch^−0.49 and noise^−0.64, while the sample part is a bounded hump, **flat in N_ch**, that decays as
+Δ → 0. The N_ch direction is correlation-led too, with the opposite sign.
+
+### Figure 7 — the decision map, R against IR
+
+Two parameters and two quantities: **8 rows × 4 N_ch columns**, with R and IR **adjacent** for each
+(quantity, parameter) pair so the comparison is a vertical glance rather than a jump between blocks.
+Order: bias k_off (R, IR), bias N_ch (R, IR), distortion k_off (R, IR), distortion N_ch (R, IR).
+
+**The finding that makes this a different figure from Figure 5, not Figure 5 plus an algorithm.**
+Median distortion over the seven intervals at noise 0.1:
+
+| | N_ch 10 | 100 | 1000 | 10⁴ |
+|---|---|---|---|---|
+| IR, k_off | 1.32 | 1.10 | 1.00 | 1.00 |
+| IR, N_ch | 0.85 | 0.94 | 0.99 | 1.00 |
+| R, k_off | 1.37 | **1.44** | **1.44** | **1.42** |
+| R, N_ch | 0.87 | 1.10 | 1.23 | **1.26** |
+
+**More channels do not rescue R.** Its k_off distortion is a flat floor near 1.4 across four decades,
+and its N_ch direction crosses from conservative to over-confident (0.87 → 1.26) and keeps growing,
+while IR converges to 1 in both. The two agree at N_ch = 10 and diverge from there, so the 10⁴ column
+is the most informative one, not the emptiest.
+
+Two constraints: the noise axis should be **scaled by N_ch**, because the collapse threshold scales
+with N_ch and a raw axis puts three of four panels outside the transition; and three noise rows are
+the minimum, since a filled contour from two y-levels is provably blind (it renders identically for a
+monotone surface and one with a large interior hump).
+
+### Figure 8 — the design trade-off
+
+Content exists in three scripts under `figures/in_progress/`: `figure_5_IR_channel_pooled_loss.Rmd`
+(fixed channel budget, cov_pooled(N) = N·var(N)/B — flat if information were linear in N, and its
+growth is what concentrating costs), `figure_5_IR_interval_loss.Rmd` (variance loss per unit interval
+increment), and `figure_5_IR_covariance_design.Rmd`, which already combines both questions.
+
+**The trap, and it is the one thing that must not be got wrong:** two of the three read
+`Likelihood_Fisher_Covariance`, the covariance the algorithm *claims*, which is precisely the
+quantity Figures 5 and 7 spend their panels showing to be wrong. A figure that advises experimental
+design must use the **distortion-corrected** covariance, as `figure_5_IR_channel_pooled_loss.Rmd`
+already does. The other two also sit on `433ed13`, the numeric anchor, and need repointing.
+
+### Count, and where things sit
+
+> **SUPERSEDED 2026-07-22 (late).** This section's "the body is now eight" is stale. The count was
+> revised the same day to **five body figures** with the rest as supplements; the authoritative record
+> is `decisions.md` ("The figure set"). What survives here is only the eLife-limit fact.
+
+**eLife imposes no limit** ("No limit on display items", `../_program/elife-author-instructions.md:89`;
+the "up to 8 figures" at :135 is for Review Articles). ~~The six-figure gate at `01_writing_plan.md:35`
+is ours and must be reopened: the body is now **eight**.~~ The body is **five** (see `decisions.md`);
+the design figure that this section called Figure 8 is now **Figure 5**, the decomposition it called
+Figure 6 is now **Figure 4—figure supplement 3**.
+
 ## 5. Open, and blocking
 
 - Does Fig 1 get a VR column (§1, F1-3)? Default: no, per 2026-07-20.
 - VR's spelled-out display name (§3.2).
 - Which figures the "three" are (§2).
-- Fig 5's anchor and threshold conflicts, already open in `results.md`.
+- Fig 4's anchor and threshold conflicts, already open in `results.md`.
 - The arc cannot be captioned before VR runs: the thesis inverts if VR comes out calibrated
   (`decisions.md:69-73`).

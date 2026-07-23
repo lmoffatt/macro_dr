@@ -6,8 +6,8 @@
 > **A-strict reframe.** Paper 1's roster is `R`, `MR`, `VR`, `IR` (all recursive). The non-recursive
 > members `NR`, `NMR` are named once in Theory and **measured in no figure**; their quantitative
 > results (the 87-nat logL gap, the 10–16× overconfidence) are **relocated to paper 2** and must not
-> anchor a paper-1 claim (`decisions.md`). The figures currently on disk are five-algorithm and need
-> re-rendering to R/MR/VR/IR once `VR` is run.
+> anchor a paper-1 claim (`decisions.md`). `VR` was run on 2026-07-22 and the body figures are
+> re-rendered to R/MR/VR/IR; only the pending MR/VR design-map supplement still waits on the VR grid.
 
 ## The job
 
@@ -15,18 +15,20 @@ The Results walk the reader from "here is one filter step" to "here is the withi
 without making them take a claim on trust. Each figure answers the objection the previous one raises.
 That is what turns the figures into an argument.
 
-The through-line, one sentence per figure (A-strict):
+The through-line, one sentence per figure (2026-07-22 renumber, `decisions.md` "The figure set"):
 
-1. The likelihood is a recursive filter over intervals, and its two poles — no interval conditioning (R) and full boundary conditioning (IR) — are visibly different objects. (**Fig 1**)
-2. That difference shows up as miscalibrated parameter uncertainty. (**Fig 2**)
-3. The miscalibration is not a fitting artifact: it is present in the likelihood itself, interval by interval. (**Fig 3**)
-4. And it comes from correlation across time, not from any per-sample error. (**Fig 4**)
-5. Here is how large it is across the gating-dominated regime, for the recursive family. (**Fig 5**)
-6. And here is *which piece of the interval structure* produces it: the `MR → VR → IR` mechanism, variance step then gain step. (**Fig 6**)
+1. The likelihood is a recursive filter over intervals, and its rungs — no interval conditioning (R) through full boundary conditioning (IR) — are visibly different objects. (**Fig 1**)
+2. That difference shows up as miscalibrated parameter uncertainty, and the VR control decides the mechanism: removing the variance without the boundary gain makes it worse, so the gain is what calibrates. (**Fig 2**)
+3. The miscalibration is present in the likelihood itself, interval by interval, and it is cross-time score correlation, not a per-sample error. (**Fig 3**)
+4. Across the whole design space, R against IR: how large the distortion is, where IR itself stops being faithful, and that more channels do not rescue R. (**Fig 4**)
+5. What an experimenter can change: how concentrating channels and choosing the interval trade against which parameters are recovered. (**Fig 5**)
 
-The spine's centre of gravity moved from Fig 5 (the map) to Fig 6 (the mechanism): with the map's
-dramatic cross-family contrasts handed to paper 2, paper 1's novel result is the mechanism, and Fig 6
-is where it is proved.
+The supplements carry what dropped out of the body: the per-step Fisher profiles (Fig 3—figure supplement 1), and the sample/correlation decomposition that gives Fig 4 its mechanism (Fig 4—figure supplements 3 and 4).
+
+The spine's centre of gravity is now Fig 2 and Fig 4. The map's cross-family drama (NR/NMR blowing up)
+went to paper 2, so paper 1's two novel results are the mechanism — decided in Fig 2's clouds, where VR
+is the most over-confident rung — and the R-versus-IR decision map of Fig 4, which locates IR's own
+failure in its own rows and shows R's distortion is a floor that channels do not lower.
 
 ## Three corrections to the record, before anything is written
 
@@ -55,13 +57,14 @@ The abstract needs some algorithm to *deflate* the information, and it currently
 
 ## Figure-by-figure spine
 
-> **A-strict scoping banner.** The sections below were written for the five-algorithm arc. Read every
+> **A-strict scoping banner.** The sections below are renumbered to the five-figure body, but several
+> still quote NR/NMR quantities inline from the old five-algorithm arc. Read every
 > NR/NMR-specific quantity as **paper 2's**, not paper 1's: the 87-nat recursive-vs-non-recursive logL
-> gap (Fig 3), the 10–16× overconfidence (Fig 2/S3), and the "NR/NMR blow up" framing (Fig 6). The
+> gap (Fig 3), the 10–16× overconfidence (Fig 2/S3), and the "NR/NMR blow up" framing. The
 > "recursive trio / naive pair" partition is gone; paper 1's members are all recursive. Where a section
 > quotes an NR/NMR number, substitute the recursive-family analog (R vs the averaged members) for
-> paper 1, and leave the dramatic number for paper 2. The `VR` column is new and unrun; any figure
-> that needs it is blocked on the implementation.
+> paper 1, and leave the dramatic number for paper 2. The `VR` column was run on 2026-07-22; the body
+> figures carry it, and only the pending MR/VR design-map supplement is still blocked on the VR grid.
 
 ### Fig 1 — One filter step along the ladder, R → MR → VR → IR (mechanism, no statistics yet)
 
@@ -80,8 +83,8 @@ per interval.
 that MR and VR would be near-duplicate columns separated only by a variance band. The rendered figure
 does not bear that out: VR's band is visibly the narrower one wherever the channels gate, and because
 the predictive variance divides the gain, VR's posterior and propagated mean also part from MR's
-within the window. The four columns show the *path*; Fig 6 still owns the quantitative version of the
-same step.
+within the window. The four columns show the *path*; Fig 2's clouds own the quantitative version of the
+same step (VR over-confident, the gain is what calibrates).
 
 **What it claims:** the likelihood is a recursive filter, and the reader can *see* the two ends of the
 conductance axis — instantaneous vs boundary-conditioned — and where the conditioning enters the
@@ -113,7 +116,7 @@ paper 2.
 **Anchor note, now resolvable:** the two anchors agree at this cell (Gaussian R 1.32 / MR 1.97 /
 IR 1.02 against the numeric run's R 1.18-1.42 / MR 1.52-2.07 / IR ≈ 1, `decisions/D-4_ranking_verdict.md`),
 so moving the main text onto the Gaussian anchor costs no result and the open two-anchor decision at
-the Fig 5 section can be closed the same way.
+the Fig 4 section can be closed the same way.
 
 **Watch the group_size trap.** `_mle_cloud_runs.csv` mixes group_size 10 and 100 and averaging across them is meaningless (`project_cloud_group_size_column`). Figure 2 uses group_size = 10; if any panel of the Results quotes a cloud-mean bias, it must state which.
 
@@ -135,15 +138,15 @@ Six rows × four algorithms: (A) output and logL, (B) standardized residual r²_
   IR 1.08 (1.00–1.17). MR and VR are the pair whose interval clears one.
 - **CORRECTION, 2026-07-22, and it sharpens the hinge.** The long-standing claim that "row D ≈ 1 for
   all algorithms, so per interval everyone reports its information correctly" is **not what the data
-  say**, and Figure 4 now measures it per parameter: median per-step log10(J_t/F_t) is about −0.18 for
+  say**, and Fig 3—figure supplement 1 now measures it per parameter: median per-step log10(J_t/F_t) is about −0.18 for
   R, −0.25 for MR, −0.15 for VR and **+0.01 for IR**, and only IR's bootstrap interval covers zero at
   most steps (64–91% of them against 0–28% for the rest). Per step the score varies *less* than the
   information predicts, by up to ~1.5× for MR.
   **The hinge is better stated as a sign flip:** per step J_t < F_t, yet accumulated J_T/F_T > 1. A
   discrepancy that reverses sign between the per-step and the accumulated statistic cannot be a
   per-sample modelling error; it is exactly what positive cross-time score correlation does. Say it
-  that way in the text and in Fig 4's caption; the old wording was a compression that the numbers do
-  not support.
+  that way in the text and in Fig 3—figure supplement 1's caption; the old wording was a compression
+  that the numbers do not support.
 - **VR is no better than MR here either**, which is the time-domain companion of Figure 2's parameter
   ratios and the same verdict: removing the variance without the boundary gain does not help.
 
@@ -160,111 +163,162 @@ area. The previous caption asserted the identification; it does not survive the 
 
 **Note on the dumps:** every evolution row is duplicated ×2 in these files (blank-segment plus segment=0 copies; `project_figure3_dlik_per_interval_score`). The scripts dedup. Anyone re-deriving a number from the raw CSVs must too, or they will find a spurious factor of 2.
 
-### Fig 4 — Where the information lives, and where the overconfidence comes from
+### Fig 3—figure supplement 1 — Where the information lives (per-step Fisher profiles)
 
-`figures/paper/figure_4.Rmd` → `Figure_4.pdf`. Two captions written (main and alt). **Finished.** Same data as Fig 3.
+`figures/paper/figure_3_supplement_1.Rmd` → `Figure_3_supplement_1.pdf` (ex-`figure_4.Rmd`/`Figure_4.pdf`,
+renamed on disk 2026-07-22). Caption written. Same data as Fig 3.
 
-Per-step Fisher F_t against per-step score variance J_t, four parameters, five algorithms.
+Per-step Fisher F_t against per-step score variance J_t, four parameters, across the ladder.
 
-**Two claims, and they are the two best results in the paper.**
+**Demoted from the body (2026-07-22, `decisions.md`)** because it discriminates nothing within paper 1's
+roster: the shape holds for all four rungs, so it is a property of the macroscopic observable, not of the
+closure. That reverses Q-3's earlier "stays in the body", but the reason Q-3 gave survives, since a
+supplement is still a shown, legended figure. It earns its space because it answers an open problem of
+Del Core and Mirams 2025.
 
-1. **The identity J_t = F_t holds per step for all five algorithms** (the ratio row sits on zero within bootstrap CI). Therefore the non-recursive overconfidence is **entirely** cross-time score correlation, and not a per-sample modelling error. This is a mechanism, it is clean, and it is exactly the answer to Milescu's open question.
-2. **The information about k_on, the unitary current i, and N_ch falls to zero once the agonist is removed and the open population relaxes; k_off stays informative through the decay.** It is a property of the macroscopic observable, so it survives every approximation in the family. Del Core and Mirams 2025 declare this problem open.
+**Its result is a shape:** the information about k_on, the unitary current i, and N_ch falls to zero once
+the agonist is removed and the open population relaxes, while k_off stays informative through the decay.
+Having conditioned on the past, the filter gains nothing further from watching the channels decay.
 
-**Placement decision (Q-3 in `00_plan.md` §8, labelled D-3 before 2026-07-21) is now easy: this is main text.** The author's own reaction ("me voló la cabeza") plus a 2025 open problem plus algorithm-independence is three reasons. It stays out of the abstract; it does not stay out of the Results.
+The per-step identity story (J_t tracking F_t, and the failure being cross-time correlation rather than a
+per-sample error) is now carried in **Fig 3** (rows D–F and the sign-flip correction above); this
+supplement is the F_t profile, not the J_t/F_t ratio.
 
-### Fig 5 — Where IR itself stops being faithful (BUILT 2026-07-22)
+### Fig 4 — R against IR over the design space (BUILT 2026-07-22)
 
-`figures/paper/figure_5.Rmd` → `Figure_5.pdf`, caption written. **Subject changed**: this is no longer
-the within-family validity map, it is the figure `00_plan.md` §1 promised and never staffed, the one
-that locates MacroIR's own failure. `macro_IR` alone; MR and VR have done their work by Fig 4.
+`figures/paper/figure_4.Rmd` → `Figure_4.pdf` (long) and `Figure_4_short_variant.pdf`, four supplements
+built, captions written. **This merges the old IR-only map (ex-Fig 5) with the planned R-vs-IR decision
+map** (`decisions.md` "Figure 4 is R against IR"): the IR-only figure's bias and distortion blocks were
+a strict subset of the merged figure's IR rows, so IR's own failure is located here, in its own rows,
+without a figure dedicated to it. All on the Gaussian anchor, no new runs; the old `figure_5_master*`
+are archived under `figures/archive/paper_superseded_20260722/`.
 
-Three blocks: **A** grouped MLE distributions at three design points (distorted / biased / faithful),
-**B** the distortion-induced bias (first moment, anchored at θ_sim), **C** the information distortion
-(second moment, anchored at θ_pool). Columns N_ch {10, 20, 50, 100, 1000, 10000}; inside each panel
-x = Δ·k_off over the seven free intervals, y = the six noise levels. Every colour is CI-shrunk, so
-what is coloured is significant at 95%.
+Columns are N_ch (the reader enters by their own channel count). Rows are parameter (outer) then
+algorithm (inner), so each parameter's R and IR panels sit adjacent. Block A keeps the grouped-MLE
+clouds at three design points (distorted / biased / faithful) as the referent a distortion map needs;
+they are not demoted. Every colour is CI-shrunk; no-data cells render grey.
 
-**The claims, all measured** (numbers printed by the notebook on each knit, `figures_build_plan.md`
-§3d):
+**The claims (noise 0.1, medians over the seven intervals; full numbers in `decisions.md`):**
 
-- **IR fails, and where the theory said it would.** The telegraphic edge, worst at few channels and
-  low noise, plus a second narrower edge at the coarsest interval. The dependence on Δ is a **U**,
-  minimum at Δ·k_off = 0.5, so the acquisition interval has an optimum rather than a direction of
-  improvement.
-- **The two moments fail at opposite ends of that axis.** Bias worst at coarse Δ, distortion worst at
-  short Δ. **No single interval optimises both**, and that is the decision rule this figure hands the
-  Discussion.
-- **The failure is signed and direction-dependent**: k_off over-confident where N_ch is conservative,
-  by comparable amounts, so any scalar averaged over parameters cancels them and reports a faithful
-  algorithm. State the map per direction, never as one number.
-- **Attribution** (measured, not plotted here): the short-Δ failure is correlation-led about eight to
-  one, i.e. the interval closure fails to decorrelate successive intervals. Where this goes is open,
-  see below.
-- **The cheap diagnostics are blind to all of it**: r̄²_std off by ≤5.5% and integrated autocorrelation
-  ≤4.8% over the same corner. That is the argument for why the machinery is needed, and it belongs in
-  the text.
+- **More channels do not rescue R.** Its k_off distortion is a flat floor, 1.37 / 1.44 / 1.44 / 1.42
+  across N_ch 10 / 100 / 1000 / 10⁴, while IR converges to one (1.32 / 1.10 / 1.00 / 1.00). R's N_ch
+  direction crosses from conservative to over-confident (0.87 / 1.10 / 1.23 / 1.26) and keeps growing;
+  IR converges (0.85 / 0.94 / 0.99 / 1.00). They agree at N_ch 10 and diverge, so the 10⁴ column is the
+  most informative, not the emptiest.
+- **First moment: R carries a large, flat bias in N_ch**, ~0.13–0.15 log10 (≈ 35–40%) across the four
+  decades, not shrinking with channels; IR's is ~0, and both algorithms' k_off bias is ~0. New; not in
+  the old ranking.
+- **Where IR itself stops being faithful** (the ex-Fig-5 content, now IR's rows). The telegraphic edge,
+  worst at few channels and low noise, plus a narrower edge at the coarsest interval; the dependence on
+  Δ is a **U** with minimum at Δ·k_off = 0.5, so the interval has an optimum, not a direction of
+  improvement. The two moments fail at opposite ends of that axis — bias worst at coarse Δ, distortion
+  worst at short Δ — so **no single interval optimises both**. IR's departures are signed (k_off
+  over-confident where N_ch is conservative, down to ~0.5 in the low-N_ch corner), so any scalar
+  averaged over parameters cancels them; state the map per direction. The conservative direction is the
+  harmless one for a user to be wrong in.
+- **The mechanism is the correlation** (supplements 3 and 4). The distortion splits total ≈ sample ×
+  correlation (empirical near-identity, exact only in the log-determinant); R's sample part goes to one
+  with N_ch exactly as IR's does, while R's correlation part stays elevated and *rises* with N_ch
+  (k_off 1.35 → 1.47). R and IR differ in temporal decorrelation, not per-sample fidelity — which is
+  what conditioning on the interval buys.
+- **Conditioning localises the distortion, it does not merely shrink it** (supplements 1 and 2). R
+  departs by ≥15% in 52 / 68 / 27 / 38% of cells for k_on / k_off / i / N_ch; IR in 2 / 11 / 0 / 4%.
+- **Noise cures R only at few channels** (supplement 4): R's correlation distortion re-emerges to
+  ~1.3–1.5 by N_ch 10⁴ at every noise level, the quantitative form of the band-B/band-C boundary.
 
-**Two caveats the text must carry, not bury.** The ellipse of panel A is a marginalised sandwich and
-is systematically milder than the map; at the current point 1 its N_ch direction is unresolved by 100
-fits and the claim rests on block C. And the MLE distribution is **not normal at few channels**
-(skewness 4.13 at N_ch 10 / group 10), which limits what any ellipse or covariance can mean there.
-That is a limitation of the *estimator's* finite-sample behaviour and **not a defect of the
-likelihood** — a correct likelihood can produce a skewed MLE — so it deserves its own sentence rather
-than being folded into the distortion story. Empirical coverage of the nominal 95% interval is
-0.80–0.93 at N_ch 20 against 0.94–0.98 at N_ch 200.
+**The cheap diagnostics are blind to all of it**: r̄²_std off by ≤5.5% and integrated autocorrelation
+≤4.8% over the same corner — the argument for why the machinery is needed.
 
-**[Q] Open:** where the sample/correlation decomposition goes now that it is out of Fig 5 (candidate:
-Fig 6 beside the R-vs-IR map, or supplement), and whether the paper stays gated at six figures.
+**Two caveats the text must carry.** Panel A's ellipse is a marginalised sandwich, milder than the map,
+and at design point 1 its N_ch direction is unresolved by 100 fits, so that claim rests on the map. And
+the MLE is **not normal at few channels** (skewness 4.13 at N_ch 10 / group 10) — a property of the
+*estimator's* finite-sample behaviour, **not a defect of the likelihood** (a correct likelihood can
+produce a skewed MLE) — so empirical 95% coverage is 0.80–0.93 at N_ch 20 against 0.94–0.98 at N_ch 200.
 
-### Fig 6 — Why: the mechanism (MR → VR → IR), and the distortion decomposition
+**The noise axis stays RAW, not noise/N_ch** (Luciano): dividing by N_ch flattens the calibration
+staircase by construction and assumes the very scaling the figure measures.
 
-**Not finished, and now paper 1's headline figure** (the map's cross-family drama went to paper 2, so
-the mechanism is what paper 1 is for). Two jobs.
+**[Q] open, spanning Fig 4 and its four supplements:** the pathological cell (macro_R, N_ch 10⁴,
+Δ·k_off = 1: bias −2.78 log10, distortion 0.46, off scale; sign real, magnitude not a physical bias) —
+grey it as unidentified, or plot bias/SE (`decisions.md`).
 
-**Job 1, the new one: the `MR → VR → IR` mechanism, each step isolating one thing.** This is paper 1's
-central novel result and it needs the `VR` column, which is not yet run (`decisions.md`;
-`theory/macroir/notes/vr_variance_form_plan.md`).
-- **MR → VR (the variance step).** MR carries the total per-start-state variance and double-counts the
-  spread across end states `Var_j[gmean_ij|i]`; VR uses the residual (boundary-conditioned) variance.
-  The panel: MR's predicted y_var sits above VR's above the realized residual variance, and VR matches
-  the realized. **The prediction is that VR is *over*-confident in parameter space** (it removed real
-  observation variance without gaining the boundary information), and if it is not, the mechanism thesis
-  is wrong (write both branches).
-- **VR → IR (the gain step).** IR keeps the boundary cross-covariance N·γᵀΣγ in the gain; VR does not.
-  The panel isolates the calibration recovered by the gain alone.
-This turns "MR's problem is the gain, not the variance" from an algebraic assertion into a measurement,
-which is exactly what a method paper should do.
+### Fig 5 — The design trade-off (ex-Fig 8)
 
-**Job 2, carried over: the sample/correlation decomposition for the recursive family.**
-- **The two failure modes are separable and live in different corners.** The correlation term dominates
-  at short intervals, the sample term at coarse intervals. (The dramatic version of this, NR/NMR
-  blowing up, is **paper 2**; paper 1 shows it on the recursive family, where it is milder and is the
-  stringent test of the machinery.)
-- **The sample distortion is non-monotonic in channel number**, peaking at N\* = 2σ²/G, and the peak marches from N ≈ 10 to N ≈ 1000 as the noise rises (fitted N\* ∝ noise^0.80, R² = 0.59). Instrumental noise *helps* the Gaussian approximation, and there is a worst channel number for a given noise level. This is genuinely novel, it is counter-intuitive in the right way, and it is the single most interesting mechanistic result in the paper.
+Not yet a single built PDF; content is in three `figures/in_progress/` scripts:
+`figure_5_IR_channel_pooled_loss.Rmd` (fixed channel budget, cov_pooled(N) = N·var(N)/B — flat if
+information were linear in N, and its growth is what concentrating costs), `figure_5_IR_interval_loss.Rmd`
+(variance loss per unit interval increment), and `figure_5_IR_covariance_design.Rmd`, which combines both.
+
+**The claim:** the map gives an experimenter something to change. Concentrating the same channels into
+fewer, larger patches costs almost nothing for the closing rate k_off, more for the opening rate k_on,
+and a great deal for the unitary current i, so how channels are apportioned across patches trades
+directly against which parameters can be recovered.
+
+**The trap, and it must not be got wrong** (`figures_build_plan.md` §6): two of the three scripts read
+`Likelihood_Fisher_Covariance`, the covariance the algorithm *claims* — the very quantity Fig 4 shows to
+be wrong. A design figure must use the **distortion-corrected** covariance, as
+`figure_5_IR_channel_pooled_loss.Rmd` already does; the other two also sit on `433ed13` and need
+repointing before promotion.
+
+### The mechanism and the decomposition — now carried by Fig 2 and Fig 4's supplements
+
+**Retired as a standalone figure (2026-07-22).** The `MR → VR → IR` mechanism is decided in **Fig 2**'s
+clouds — VR is the most over-confident rung, worse than MR, so removing the variance without the boundary
+gain makes the reported uncertainty worse and the gain is what recovers calibration — and the
+sample/correlation decomposition is **Fig 4—figure supplements 3 and 4**. The old "Fig 6 job 1" (the
+mechanism) and "Fig 6 job 2" (the decomposition) no longer share a figure, and the `VR` column they
+waited on is run.
+
+Kept here because they remain Results *claims*, wherever the panels sit:
+
+- **The mechanism, now measured, not asserted.** MR carries the total per-start-state variance and
+  double-counts the spread across end states `Var_j[gmean_ij|i]`; VR uses the residual variance and
+  keeps MR's boundary-free gain; IR keeps the boundary cross-covariance N·γᵀΣγ in the gain. VR coming
+  out *over*-confident (Fig 2) is the falsifier's prediction confirmed: "MR's problem is the gain, not
+  the variance" is now a measurement. **Retire the slogan "MR→VR changes only the variance, VR→IR only
+  the gain"** — the predictive variance divides the gain, and MR and IR predict the same observable
+  variance, so the whole MR-to-IR difference is the gain (`decisions.md`, `figures_build_plan.md` §F1-2).
+- **The two failure modes are separable and live in different corners:** correlation dominates at short
+  intervals, the sample term at coarse intervals (the dramatic NR/NMR version is paper 2's; paper 1
+  shows it on the recursive family, milder, the stringent test of the machinery).
+- **The sample distortion is non-monotonic in channel number**, peaking at N\* = 2σ²/G, the peak marching from N ≈ 10 to N ≈ 1000 as the noise rises (fitted N\* ∝ noise^0.80, R² = 0.59). Instrumental noise *helps* the Gaussian approximation, and there is a worst channel number for a given noise level. Genuinely novel, counter-intuitive in the right way, the single most interesting mechanistic result in the paper.
 - **A correctness point that belongs in the text, not the caption**: at short intervals the large correlation distortion is **not a model failure**. It is the correct information-redundancy cost of oversampling. Without that sentence the map's left edge reads as a bug.
 
 **Do not claim the multiplicative decomposition as demonstrated.** `figure_5_PLAN.md:99`: *"none shows sample × correlation = total J/F on the same axes. The 'multiplicative' claim is asserted, never demonstrated."* Either produce the panel that demonstrates it (the additivity of the log-determinants is exact for IR, R and MR per `figure_5_master_STATUS.md`, so the panel is cheap) or state it as a definition rather than a finding.
 
-### Fig 7 family — IR-only contours (currently seven competing layouts)
+### IR-only contours (ex-Fig 7 family) — absorbed
 
-`figures/paper/figure_7_*.Rmd`, seven scripts, all IR-only, all on `1c2ae6f`, **no captions, no selection made**. They carry the noise axis and the r̄_std / r̄²_std calibration rows.
+`figures/paper/figure_7_*.Rmd`, seven IR-only scripts on `1c2ae6f`, no selection made. **Not a body
+figure**: their content is absorbed into Fig 4 (the IR map) and Fig 5 (the design trade-off), or drops
+to a supplement. Seven layouts of one object is a sign the question was not decided; if none of them
+answers something Figs 4–5 do not, drop them.
 
-**Recommendation: this is not a main figure.** It is either (a) the supplement that supports Fig 6's mechanism claims, or (b) the source of one or two panels that get absorbed into Fig 5. Seven layouts of the same object is a sign the question they answer has not been decided. **[Q] Decide what question Fig 7 answers that Figs 5 and 6 do not.** If there is no such question, drop it to supplement and move on; the paper does not need it.
+One finding from that family is worth main-text space wherever it lands: **at few channels IR
+over-predicts the observable variance by about 6%** (r̄²_std against the θ_sim anchor — it must be
+`battery_sim_G`, the pool anchor averages the effect back to ≈ 1 and hides it;
+`project_rstd_calibration_sim_not_pool`). That is IR's own honest failure and it belongs in Fig 4's IR
+rows or the Discussion.
 
-One finding from that family that *is* worth main-text space, wherever it lands: **at few channels IR over-predicts the observable variance by about 6%** (r̄²_std against the θ_sim anchor; it must be `battery_sim_G`, because the pool anchor averages the effect back to ≈ 1 and hides it; `project_rstd_calibration_sim_not_pool`). That is IR's own honest failure and the paper is better for showing it.
+## Supplements, re-parented to the new scheme (`decisions.md` "The figure set")
 
-## Supplements, as they stand
+eLife has no independently numbered "Supplementary Figure"; every supplement attaches to a parent as
+`Figure N—figure supplement M`, numbering restarting under each parent.
 
-| Figure | Status | What it carries |
-|---|---|---|
-| S1 (`figure_1.Rmd`, whole recording) | finished | the filter step over the full protocol |
-| S2 | finished | Spearman ρ(logL, Mahalanobis outlier distance) ≈ 0 in every cell: **outliers are not driving the clouds** |
-| S3 | finished | the corner plots for NR, NMR, R, MR, and the authoritative 10-16 / 1.2-1.4 / 1.5-2.1 ratios |
-| S4, S5 | finished | bias and autocorrelation at residual and score level |
-| score-mean supplement | drafted (`analysis_figure_S1_score_mean.md`, in Spanish) | significant score-bias steps out of 40: NR 6/7/7/6, NMR 6/5/8/6, R 24/16/38/24, MR 26/16/38/27, **IR 2/5/2/4 (chance level is 2)**; max abs mean score NR up to 10.03, IR 0.30 to 0.71 |
+| New label | Was | Status | What it carries |
+|---|---|---|---|
+| Fig 1—figure supplement 1 | S1 (`figure_1.Rmd`, whole recording) | built; caption text wrong (`provenance.md`) | the filter step over the full protocol |
+| Fig 2—figure supplement 1 | S2 | finished | Spearman ρ(logL, Mahalanobis outlier distance) ≈ 0 in every cell: **outliers are not driving the clouds** ([Q] parent inferred) |
+| Fig 2—figure supplement 2 | S3 (corner) | finished | corner plots; the paper-1 ratios are R 1.2-1.4 / MR 1.5-2.1 (the 10-16 NR/NMR rows are paper 2's) |
+| Fig 2—figure supplement (pending) | — | blocked on VR grid | MR and VR added to the design-space map |
+| Fig 3—figure supplement 1 | ex-Fig 4 (Fisher profiles) | built | per-step Fisher, the information-falls-to-zero shape |
+| Fig 3—figure supplements 2–3 | S4, S5 | finished | bias and autocorrelation at residual and score level |
+| Fig 4—figure supplement 1 | — | built | distortion-induced bias, all five parameters, R vs IR |
+| Fig 4—figure supplement 2 | — | built | information distortion, all five parameters, R vs IR |
+| Fig 4—figure supplement 3 | ex-Fig 6 job 2 | built | distortion decomposed into sample and correlation, k_off, R vs IR |
+| Fig 4—figure supplement 4 | — | built | sample and correlation vs N_ch, lines not maps |
+| score-mean supplement | drafted (`analysis_figure_S1_score_mean.md`, in Spanish) | drafted | significant score-bias steps out of 40: NR 6/7/7/6, NMR 6/5/8/6, R 24/16/38/24, MR 26/16/38/27, **IR 2/5/2/4 (chance level is 2)**; max abs mean score NR up to 10.03, IR 0.30 to 0.71 |
 
-**Naming collision:** `analysis_figure_S1_score_mean.md` calls its figure S1, and `figure_1.Rmd` already emits `Figure_S1.pdf`. Renumber before anything cites either.
+**Naming collision:** `analysis_figure_S1_score_mean.md` calls its figure S1, and `figure_1.Rmd` already emits `Figure_S1.pdf` (now Fig 1—figure supplement 1). Renumber before anything cites either.
 
 **The score-mean supplement contains a puzzle worth resolving before it is published:** R and MR show *more* significant score-bias steps (24-38 of 40) than NR and NMR (5-8 of 40), while IR sits at chance. If that survives scrutiny, the "unbiased score" story is not monotone along the ladder, and the Discussion's clean "recursion fixes the uncertainty, not the bias" line needs re-checking. **[Q] Is this a power effect** (the recursive likelihoods have smaller score variance, so the same absolute bias becomes significant), rather than a larger bias? Almost certainly. If so, report the standardized bias, not the count of significant steps, and the puzzle dissolves. If not, it is a finding.
 
@@ -272,7 +326,7 @@ One finding from that family that *is* worth main-text space, wherever it lands:
 
 Say none of these until the gap is closed.
 
-- **"Definitive figures are anchored on the Gaussian Fisher."** Not true for anything cross-algorithm (see Fig 5). NMR has no Gaussian-Fisher run at all.
+- **"Definitive figures are anchored on the Gaussian Fisher."** Now true for the map figures (Fig 2 and Fig 4 are on the Gaussian anchor, and the two anchors agree at the Fig 2 cell). The time-resolved figures (Fig 3, Fig 3—figure supplement 1) are a different, analytic per-step computation, not the battery anchor, so they are unaffected. This claim is largely resolved for the body.
 - **"Sample × correlation = total distortion."** Asserted, never plotted (`figure_5_PLAN.md:99`).
 - **The N\* ∝ noise law as a validated prediction.** N\* is measured but never overlaid on its own predicted law N\* = 2σ²/G (`figure_5_PLAN.md:100`), and the fitted exponent is 0.80 with R² = 0.59, which is not a clean 1/2 or 1. Report the measurement; do not present the law as confirmed.
 - **The micro-versus-macro comparison** (`figures/in_progress/figure_6_micro_macro_linear.Rmd`, the newest script in the tree). Blocked on data: micro_IR exists at N_ch = 5 only, micro_R has no run at N_ch ≥ 1000. It is out of scope for this paper anyway (`00_plan.md` §2) and should not sneak in through a figure.
@@ -289,6 +343,6 @@ The trustworthiness contour, if one is drawn, is at distortion = **1.05** in `fi
 ## Verify before submission
 
 - The direction convention of the distortion ratio (which way is over-confident), once, against the code. Every verdict in the paper hangs on it and it is currently asserted in three places with two different signs.
-- The ±15% self-consistency fractions, recomputed on whatever anchor the final Fig 5 uses.
+- The ±15% self-consistency fractions, recomputed on whatever anchor the final Fig 4 uses.
 - The 87-nat logL gap: confirm it is the recursive/non-recursive split and not a recursive/averaging split, because the sentence that reports it will be read as a claim about *which* approximation matters.
 </content>

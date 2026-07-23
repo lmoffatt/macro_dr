@@ -1,0 +1,73 @@
+---
+title: "Figure 4—figure supplement 2 — R against IR, all five parameters: the information distortion is diffuse for R, confined for IR"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+SECOND MOMENT. This is the distortion half of the all-parameters R-vs-IR comparison; the bias half is
+supplement 1. Split because each moment independently makes the same claim (see supplement 1).
+
+Measured, fraction of (interval, noise, N_ch) distortion cells departing by >= 15%:
+                 IR      R
+    k_on        2.4%   52%
+    k_off        11%   68%
+    i             0%   27%
+    N_ch        3.6%   38%
+    sigma_noise   0%    0%
+
+IR's distortion is CONFINED to k_off and N_ch (and vanishes with N_ch); R's is DIFFUSE across four of
+five. Only the instrumental-noise direction is clean for both, which is the shared-null control row:
+it says the machinery is not simply painting everything. Conditioning on the interval LOCALISES the
+distortion. This justifies Figure 4's choice of k_off and N_ch by showing what it leaves out, and it
+is a claim R could have refuted and did not. Supplement 4 shows that what survives for R in every one
+of these directions is the correlation part.
+
+DATA: battery_pool_G (theta_pool). Gaussian family. Standard 4 N_ch x 3 noise grid. No new runs.
+
+UNIDENTIFIED: R's k_on and N_ch at the ill-conditioned N_ch 10000, Delta = 1 corner (kappa ~ 66000)
+deflate below the 0.5 floor and are drawn grey (value off scale AND kappa > 3e4), the same near-null
+corner as the bias supplement. Not a scale too tight for the bulk; add_unident in
+figure_4_supp_common.R marks them.
+
+TRAP: the "noise" label is not the physical noise. current_noise = label/1000.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+source("figure_4_supp_common.R")
+```
+
+```{r data}
+kap  <- read_kappa()
+stat <- readcell("battery_pool_G") %>%
+  filter(component_path == DIST, param_index == param_col, param_index %in% PIDX,
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  shape(ci_toward = 1) %>%
+  add_unident(min(DIST_LIN), max(DIST_LIN), kap)   # grey where clamped AND ill-conditioned
+cat("supp2 (distortion):", nrow(CELLS), "cells, all five parameters\n")
+cat("scale saturation:\n"); sat(log10(stat$conf), min(DIST_BREAKS), max(DIST_BREAKS), "distortion")
+cat("greyed (unidentified) cells:", sum(stat$unident), "->",
+    paste(unique(with(filter(stat, unident), paste(ALGO_LAB[algo], param, "N_ch", Num_ch))), collapse = "; "), "\n")
+```
+
+```{r plot, fig.width = 7, fig.height = 9.9}
+nr <- length(PARAM_ORD) * length(ALGOS)      # 10 rows
+gC <- mapblock(stat, function(d) log10(d$conf), DIST_PAL, DIST_BREAKS)
+g <- gC / colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5)) +
+     plot_layout(heights = c(0.95 * nr, 0.3))
+H <- 0.95 * nr + 0.3 + 0.5
+g
+ggsave("Figure_4_supplement_2.pdf", g, width = 7.0, height = H)
+cat("Figure_4_supplement_2.pdf:", nr, "rows, height", round(H, 1), "in\n")
+```
+
+```{r caption-numbers}
+cat("\n=== supp 2 (distortion) caption numbers ===\n")
+cat("\nfraction of cells departing >= 15%, and median, per parameter and algorithm\n")
+print(as.data.frame(stat %>% group_by(param, algo) %>%
+  summarise(frac_15 = mean(abs(conf - 1) >= 0.15), median = median(conf), .groups = "drop") %>%
+  mutate(algo = ALGO_LAB[algo]) %>% arrange(match(param, PARAM_ORD), algo)),
+  digits = 3, row.names = FALSE)
+```

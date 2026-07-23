@@ -32,7 +32,9 @@ its argument; run it from the repo root, or `./check.sh 1_method` from `papers/_
    The 97 uncited entries are not dead weight, they are the pool waiting for the Introduction and
    Discussion, which are the citation-heavy sections and are still unwritten. This check therefore
    cannot go green until those two sections are drafted.
-6. Six figures are `\includegraphics`'d, each with a caption, each caption's numbers passing LINT-SRC.
+6. The five body figures are `\includegraphics`'d plus their supplements, each with a caption, each
+   caption's numbers passing LINT-SRC. (The old six-figure gate is retired: the set is five body figures
+   plus supplements, `decisions.md` "The figure set"; eLife imposes no limit.)
 7. Data availability, Author contributions, Competing interests, Funding are non-empty.
 8. Word count is under the limit for the article type chosen in **D-1**.
 
@@ -177,56 +179,70 @@ on separate files (that is what T-1 buys).
 |---|---|---|---|---|
 | **W-1** | Theory | T-1 | `papers/1_method/theory.md`, `papers/_program/nomenclature.md`, `theory/macroir/docs/Macro_IR/macroir_derivation.tex`, `theory/macroir/docs/Macro_IR/macroir_macroir_paper_section.md` | Assume `../_program/nomenclature.md`, do not re-derive it (an MNR/NMR flip later is a `sed`, not a rewrite). **May not claim** the recursive members' Gaussian Fisher is the exact information matrix — it is not, the likelihood is misspecified by construction. (`papers/1_method/docs/corrected covariance justification.md` says otherwise and is wrong on this point.) Every symbol used later in the paper is defined here. |
 | **W-2** | Diagnostics | T-1 | `papers/1_method/diagnostics.md`, `papers/_program/machinery.md`, `theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex`, `theory/macroir/docs/Gaussian_Fisher_Distortion_Family.md` (owns what the anchor **H** is) | The identity is `IDM = K·CDM·Kᵀ`, **not** `SDM^½·CDM·SDM^½` — the supplement and `src/core/likelihood.cpp:3501` both print the false one (E-2). Be explicit, per identity, about which is **exact algebra**, which is **first-order**, and which is **convention**. |
-| **W-3** | Results §1–§4 | T-1, D-0, D-4 | `projects/eLife_2025/figures/paper/Figure_{1,2,3,4}_caption.md`, `papers/1_method/results.md`, `papers/_program/provenance.md` (which run made which figure, and the three naming traps that have already misled readers) | Every claim traceable to a panel, every number to the file that computed it (LINT-SRC). Each figure answers the objection raised by the previous one. **Must state once:** which Fisher anchors which panel — the definitive figures were promised on the Gaussian anchor and Figures 2, S2, S3 currently sit on the numerical one (`433ed13`). |
+| **W-3** | Results (all five body figures) | T-1, D-0, D-4 | `projects/eLife_2025/figures/paper/Figure_{1,2,3,4,5}_caption.md` + the `Figure_*_supplement_*_caption.md`, `papers/1_method/results.md`, `papers/_program/provenance.md` (which run made which figure, and the three naming traps that have already misled readers) | Every claim traceable to a panel, every number to the file that computed it (LINT-SRC). Each figure answers the objection raised by the previous one. **The set is renumbered** (`decisions.md`, "The figure set"): body = filter ladder / recovery clouds / calibration-in-time / **Fig 4 = R vs IR** (the old IR-only Fig 5 merged in) / **Fig 5 = design trade-off**. Do not cite the archived `figure_5_master*`. **The anchor is settled:** the main text sits on the Gaussian anchor and the two anchors agree at the Fig-2 cell (`figures_build_plan.md` §3b), so state it once as scope, not per panel. **C-6 is folded in here, not a separate step:** the seed-fixed regenerated dumps changed some caption numbers under the prose already drafted (Fig 3 panel A 87 nats → ~10 once NR/NMR leave the panel, `figures_build_plan.md` §3c), so refreshing every `% src:` against the rebuilt captions is part of finishing this task. |
 | **W-4** | Methods | T-1, D-2 | `papers/1_method/methods.md` M1–M11, `papers/_program/provenance.md` | eLife excludes Methods from the word count, so be complete: the claims *are* about algorithms, so the Methods **are** the result. **Must state plainly:** `seed = 0` meant *random*, the resolved seed was never logged, so the ensembles are statistically equivalent but **not bit-reproducible** (`methods.md` M5 currently claims the opposite and must be corrected). **The conditional is closed:** D-0 landed on none of (a)/(b)/(c), E-1 never landed in this paper's engine, so state it unconditionally — it binds all three papers (`../_program/decisions.md` §4); and the ground truth is exact CTMC uniformization, which is what licenses using it as the reference. |
-| **W-5** | Results §5–§6 | C-lane (below) | Figures 5 and 6 once they exist | Until the figures exist: write the surrounding prose with the claim as `\todo{}`. Do not guess the numbers. Forty-four candidates sit in `projects/eLife_2025/figures/in_progress/`, sorted by `projects/eLife_2025/figures/in_progress/figure_5_PLAN.md`. Verified 2026-07-14: four **unselected** PDFs already squat on the numbers in `projects/eLife_2025/figures/paper/` — `Figure_5_master.pdf`, `Figure_5_master_affine.pdf`, `Figure_5_master_frobenius.pdf`, `Figure_6_precision.pdf`. Clear them before promotion or they will be cited by mistake. |
+| **W-5** | ~~Results §5–§6~~ **FOLDED into W-3 (2026-07-22).** The split existed only to separate "Results I can write now" from "Results waiting on a figure". All five body figures now have drafts, so there is one Results task over the five. The stale bits retire with it: the "write `\todo{}` until the figures exist" instruction, the 44 candidates in `in_progress/`, and the four squatting PDFs — Fig 5 was rebuilt with a new subject and the `figure_5_master*` were archived to `figures/archive/paper_superseded_20260722/`, so nothing squats. | — | — | — |
 | **W-6** | Discussion | W-3, D-3, D-4 | `papers/1_method/discussion.md`, `docs/bibliography/identifiability/` (repo root) | **Done when it delivers a decision rule** (how many channels, what interval relative to the relaxation, how much noise, what the cheap approximations cost you in that corner) — not "MacroIR is best". The decision rule is what gets cited. **Must contain:** the Kalman concession (MacroIR ≡ integrated-measurement augmented Kalman filter, verified to ~1e-8: concede it loudly, the novelty is elsewhere); the identifiability perimeter; and IR's own miscalibration at few channels (it over-predicts the observable variance by ~6% — the hero's own failure belongs in the paper that is about failure). |
 | **W-7** | Introduction | W-3, D-3 | `papers/1_method/introduction.md`, `docs/bibliography/MacroIR_prior_art_map.md` | Written late on purpose: it sells what the paper delivers, which you only know once the Results exist. Done when the reader reaches "we provide that test" already convinced that no such test existed for this problem and that the field is choosing likelihoods by habit. |
 | **W-8** | Abstract + Impact | all of the above | `papers/1_method/abstract.md`, the finished sections | The 209-word abstract in `elife_paper.tex` is **not a placeholder**: it is in the validity-map frame and it reads well. **Reconcile** it with the finished paper; do not rewrite from zero. Also produces the Impact Statement (eLife requires one, ≤40 words). |
 | **W-9** | Front/back matter | D-1 | `papers/_program/carve_plan.md`, `papers/_program/elife-author-instructions.md` | Data availability, CRediT, competing interests, funding, acknowledgements, Key Resources Table if the article type requires one. Unowned until now; it is check-item 7. |
 
-Compute lane (was gated on **D-0**, now owned by `../_program/carve_plan.md` and `../_program/axes.md`):
-~~**C-1** land E-1…E-5 → **C-2** tag + build once~~ → **C-3** run the cells D-0 selected → **C-4** the
-schema port (§4) → **C-5** promote Figures 5/6 from `projects/eLife_2025/figures/in_progress/` and
-caption them → **C-6** the number-refresh pass over every `% src:` in the manuscript.
+Compute lane. **Closed except for C-6 (2026-07-22).** ~~**C-1** land E-1…E-5 → **C-2** tag + build
+once~~ (dropped: E-1…E-5 went to `main` as hygiene, multi-commit provenance was accepted) → ~~**C-3**
+run the cells D-0 selected~~ (dispatched 2026-07-15; check against `../_program/provenance.md`) →
+~~**C-4** the schema port~~ (effectively closed: Figs 4 and 5 were built on the Gaussian anchor, which
+is what the port existed to enable) → ~~**C-5** promote Figures 5/6~~ (done: all five body figures and
+their supplements have drafts, `decisions.md` "The figure set") → **C-6, the only survivor: the
+number-refresh pass over every `% src:` in the manuscript**, including the qualitative caption rewrites
+the seed-fixed dumps force (Fig 3, `figures_build_plan.md` §3c). C-6 is folded into W-3 and gates
+Results being final.
 
-**What D-0 did to this lane.** C-1 and C-2 are dropped: E-1…E-5 went to `main` as code hygiene and
-there is no tag-and-build-once, because multi-commit provenance was accepted. C-3 was dispatched
-2026-07-15; check it off against `../_program/provenance.md` rather than against this file, and note
-that the fill covered NR and NMR too, which are no longer paper 1's. C-4, C-5 and C-6 are untouched
-and still owed. **The lane has a new head that D-0 could not have known about: VR must be run**
-(`decisions.md`, "VR must run before the figures"), and three of paper 1's figures wait on it.
+**Two grid runs remain, both off the body critical path.** (a) The VR grid (`figures_build_plan.md`
+§4) is in flight on dirac; it feeds only the *pending* MR/VR design-map supplement, not a body figure.
+(b) The R/IR diagonal at r = 0.01 / 0.1 / 1 (`decisions.md`, "The pending R/IR grid") fills the
+calibration-frontier diagonal of Fig 4, which already has a draft. Both enhance; neither blocks a full
+draft, and the old claim that "three of paper 1's figures wait on VR" was never enumerated and no
+longer holds for the body.
 
-**The one human touchpoint outside §3: C-3 needs Luciano's hands.** Cluster access is his (the Dirac
-login and account are not in the repo). An agent prepares the dispatch — build, `.macroir` configs,
-SLURM scripts, the `RUN_DIR` for the new hash — and he runs one command. Budget: 10 minutes, once.
-Nobody else can do it, and no amount of planning removes it.
+**The cluster touchpoint that survives §3: the two grid runs above need Luciano's hands.** Cluster
+access is his (the Dirac login and account are not in the repo). An agent prepares the dispatch —
+build, `.macroir` configs, SLURM scripts, `RUN_DIR` — and he runs one command each. Budget: 10 minutes.
+Nobody else can do it, and neither is on the path to a complete draft.
 
 
 ## 7. The critical path, and what it means
 
 ```
-D-0 ─► C-1 ─► C-2 ─► C-3 ─► C-4 ─► C-5 ─► W-5 ─┐
-                                               ├─► W-6 ─► W-7 ─► W-8 ─► done
-T-3 (bibliography) ────────────────────────────┤
-W-1, W-2, W-4 (no numbers or few) ─────────────┘   [float: start today, finish whenever]
+W-2 Diagnostics (finish) ─────────────────┐
+W-3 Results ── C-6 caption/number refresh ─┼─► W-6 Discussion ─► W-7 Introduction ─► W-8 Abstract ─► done
+W-1 Theory, W-4 Methods (drafted) ─────────┘   [ACCEPT gates D-5…D-11 in §3]
+W-9 back matter ── D-1 ─────────────────────────────────────────────────────────────┘
 ```
 
-The finish date is set by **compute and the bibliography**, not by writing. Theory, Diagnostics and
-Methods are pure float: large, mechanical, and blocked on nothing but D-2. That is why D-0 and T-3
-start today and the drafting is allowed to lag them.
+The finish date is now set by **writing**, which the earlier versions of this plan explicitly said was
+*not* the constraint. That flipped on 2026-07-22.
 
-**Redraw, 2026-07-21.** The first four nodes of the top chain are closed (D-0 decided, C-1/C-2
-dropped, C-3 dispatched) and so is the bibliography branch (T-3 done, verified against the PDFs on
-2026-07-20). What is left reads `VR → C-4 → C-5 → W-5`, so the finish date is now set by **VR and the
-schema port**. The branch condition is the one thing a diagram cannot carry: paper 1's central claim
-survives only if VR comes out over-confident, and `results.md` is written in two branches for that
-reason.
+**Redraw, 2026-07-22.** The three long poles the earlier redraws named are all down: every one of the
+five body figures has a draft (`decisions.md` "The figure set"), the bibliography is closed and verified
+(T-3, 2026-07-20), and VR is resolved — it came out over-confident and worse than MR, so the Results arc
+collapses to its single confirming branch (`decisions.md`; no two-branch `results.md` needed). What is
+left is the prose that was always allowed to lag: finish Diagnostics (W-2, still thin), close Results
+over the five figures (W-3, gated only on C-6, the caption number-refresh folded into it), then the
+serial chain Discussion → Introduction → Abstract, plus back matter on D-1. Theory (W-1) and Methods
+(W-4) are drafted and reduce to their ACCEPT gates. The two grid runs (§6) sit off this path: they
+improve a supplement and Fig 4's diagonal, not a body draft.
 
-The previous plan sequenced the *sections* and left the two long poles (the compute freeze, and a
-bibliography that does not exist) in a section called "what is deliberately not here". It optimised
-the order of the work that was not the constraint.
+So the plan's own §7 verdict now lands on the plan itself: it kept sequencing a compute lane that is
+closed. The remaining order is a writing order, and there is no compute node left on the critical path
+but the C-6 refresh that feeds W-3.
 
+**History, for rewind. Redraw, 2026-07-21:** the first four nodes of the old top chain were closed
+(D-0 decided, C-1/C-2 dropped, C-3 dispatched) and the bibliography branch too (T-3 done), leaving
+`VR → C-4 → C-5 → W-5`, so the finish date read as *VR and the schema port*; that is superseded once VR
+resolved and the schema port closed by the Gaussian builds. **Original note:** the first plan sequenced
+the *sections* and left the two long poles (the compute freeze, and a bibliography that did not exist)
+in a section called "what is deliberately not here". It optimised the order of the work that was not the
+constraint — which is exactly the failure this redraw catches the plan repeating, one pole later.
 
 ## 8. Status is derived, never declared
 

@@ -149,29 +149,35 @@ LSE rows are deliberately gone: they are other papers.
 
 ## 5) Figures
 
-**The arc is owned by `results.md`** (was `results_plan.md`; `../_program/00_index.md` routes it).
-Paper 1's intended set, minus the program-wide map that belongs to paper 2:
+**The arc is owned by `results.md`** (was `results_plan.md`; `../_program/00_index.md` routes it) and
+the figure set (numbering, body-vs-supplement) is owned by `decisions.md` "The figure set". Paper 1's
+body, five figures, minus the program-wide cross-family map that belongs to paper 2:
 
 - **Fig 1: Mechanism.** One filter step across R, MR, VR, IR (prior, observation, update, logL),
   showing where each approximation enters. Anchor-independent.
 - **Fig 2: Recovery clouds.** MLE clouds with three ellipses (empirical, Gaussian-Fisher,
-  sandwich-corrected), per method.
+  sandwich-corrected), per method; also where the VR control decides the mechanism.
 - **Fig 3: Time-resolved calibration.** logL gap, R² residual, score bias, per-interval and
   accumulated J_t/F_t, score autocorrelation.
-- **Fig 4: Fisher profiles.** Per-step Fisher; the information about N_ch, k_on and i falls to zero
-  once the open-channel count relaxes, while k_off stays informative through the decay.
-- **Fig 5: The within-family validity map.** Over N_ch × noise **within bands A–B**, with interval
-  carried inside each cell and the predicted A/B boundary drawn on it. (The full A–C map with LSE is
-  paper 2's figure.) The old **N_ch × K_off** axes are dead: no K_off axis exists in the scripts
-  (`figure_3_mle_G.macroir` hard-fixes `off = 100`) and building one was costed at ~35,000 CPU-hours.
-- **Fig 6: Distortion decomposition.** Correlation vs sample distortion, and — the new job for this
-  figure — the two steps MR → VR → IR made concrete: which step is variance, which is gain.
-- **Supplement.** Two-path reconstruction (`IDM = K·CDM·Kᵀ`, `../_program/machinery.md` §5); the
-  micro attribution anchor; band schematic; S1 score-mean; S3 corner; S4 bias and autocorrelation.
+- **Fig 4: R against IR over the design space.** Bias and information-distortion maps over N_ch × noise
+  **within bands A–B**, interval carried inside each cell, plus the grouped-MLE clouds that give the
+  maps a referent. Merges the old IR-only validity map (where IR itself fails) into IR's own rows. (The
+  full A–C map with LSE is paper 2's figure.) The old **N_ch × K_off** axes are dead: no K_off axis
+  exists in the scripts (`figure_3_mle_G.macroir` hard-fixes `off = 100`) and building one was costed
+  at ~35,000 CPU-hours.
+- **Fig 5: The design trade-off.** What an experimenter can change: how concentrating channels and the
+  interval choice trade against which parameters are recovered, on the distortion-corrected covariance.
 
-**The figure count is open** (`01_writing_plan.md` gates at six; carried to `../_program/program.md`
-§9). Dropping NR/NMR/LSE columns and adding VR does not change the count; it changes what fills each
-panel.
+Supplements (each attached to a parent, `Figure N—figure supplement M`; full map in `decisions.md`):
+per-step Fisher profiles (Fig 3—figure supplement 1, the ex-Fig-4 Fisher-to-zero result); the distortion
+decomposed into sample and correlation, and the MR→VR→IR mechanism made concrete (Fig 4—figure
+supplements 3 and 4); bias and distortion over all five parameters (Fig 4 supplements 1 and 2); the
+two-path reconstruction (`IDM = K·CDM·Kᵀ`, `../_program/machinery.md` §5); the micro attribution anchor;
+band schematic; score-mean; corner.
+
+**The figure count is settled at five body figures plus supplements** (`decisions.md`); the six-figure
+gate in `01_writing_plan.md` §0 is moot (eLife imposes no limit). Dropping NR/NMR/LSE columns and adding
+VR is what changed which panel each figure carries.
 
 ## 6) Data and reproducibility anchor
 
@@ -211,8 +217,11 @@ threshold question. The old label is kept in parentheses so earlier references s
 - **Q-1 [Q]** (was D-0) Confirm **NR** is out of paper 1 (moved to paper 2). Default: out.
 - **Q-2 [Q]** (was D-1) MR and VR in main text or supplement? "Strawman" is retired; re-decide on the
   map footing — a method here is one with a domain, and VR's domain is the mechanism proof.
-- **Q-3 [Q]** (was D-3) Placement of the Fisher-to-zero result: main Fig 4 as drawn, or supplement.
-  Author: "me voló la cabeza" but "does not go in the abstract".
+- ~~**Q-3**~~ **RESOLVED 2026-07-22, then revised the same day: the Fisher-to-zero result is
+  Fig 3—figure supplement 1, not a body figure.** It was briefly kept in the body; `decisions.md` then
+  demoted it, because it discriminates nothing within the roster (the shape holds for all four rungs).
+  The reason Q-3 gave — a shape is shown or lost — survives demotion, since a supplement is still a
+  shown, legended figure.
 - **Q-4 [Q]** (was D-4, the threshold one) "Valid" thresholds on the map (candidate distortion < 1.1);
   the three-way threshold conflict is in `../_program/machinery.md` §8.
 - **Q-5 [Q]** (was D-5) Anchor point for bias/distortion. Consensus: optimum / θ_pool; θ_sim exposes

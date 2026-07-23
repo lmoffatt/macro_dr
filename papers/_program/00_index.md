@@ -88,7 +88,7 @@ scoped to the old single-paper frame.
 |---|---|---|---|
 | `00_plan.md` | paper 1's thesis, scope, roster, the band-A results, its open decisions | REWRITE | was `00_master_plan_v2.md`; reframed 2026-07-20, but its §0 and §1a still speak for the whole program — those parts now belong to `_program/` |
 | `decisions.md` | paper 1's own settled decisions | REWRITE | was `02_decision_log.md`; the cross-paper half has been copied to `_program/decisions.md` and must now be **deleted from here**, not left as a second copy |
-| `01_writing_plan.md` | the drafting task graph, the lints, the human budget | REWRITE | hard-gates the definition of done at six figures while the count is open |
+| `01_writing_plan.md` | the drafting task graph, the lints, the human budget | REWRITE (partly done) | six-figure gate updated to five body figures + supplements, §6/§7 redrawn to the writing critical path (2026-07-22, `1_method/decisions.md`) |
 | `title.md` | the title argument | REWRITE | three live conflicting titles, and all describe a distortion study rather than paper 1's scope |
 | `abstract.md` | the abstract and Impact Statement | REWRITE | **opens on least squares**, which is now paper 2's subject |
 | `introduction.md` | the Introduction | REWRITE | the roster paragraph and the literature attribution both change; `R` now carries the anchor |
@@ -98,7 +98,7 @@ scoped to the old single-paper frame.
 | `discussion.md` | the Discussion and the decision rule the paper is cited for | REWRITE | closest to the new frame already, since it asks for a decision rule rather than a winner |
 | `methods.md` | Materials and Methods | REWRITE | the model and units halves move out to `_program/model_and_sim.md` |
 | `README.md` | routes into paper 1; points at the program layer | LIVE | — |
-| `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan` is REWRITE (six-figure gate); `00_master_plan` is a tombstone |
+| `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan`'s six-figure gate was fixed 2026-07-22; `00_master_plan` is a tombstone |
 | `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
 | `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `results.md`, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
 | `CONTINUE_HERE.md` | cold-start pointer for the figure work: what is in flight, and the traps that are not visible in the code | LIVE | opened 2026-07-22; a pointer, not a copy. Delete it the day it starts duplicating the documents it points at |
@@ -158,8 +158,8 @@ figure numbering against what is on disk; the title, in three live conflicting v
 
 **New, from the split:** the 2026-07-20 dispatch does not match paper 2's roster (`program.md` §4);
 `87889e6` is recorded as "micro, out of scope" but holds both the micro runs and the macro fill
-(`program.md` §6); `01_writing_plan.md` hard-gates the definition of done at six figures while the
-figure count is formally open.
+(`program.md` §6); `01_writing_plan.md`'s six-figure gate was updated 2026-07-22 to five body
+figures plus supplements (`1_method/decisions.md`).
 
 ## 5. Order of operations
 

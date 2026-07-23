@@ -1,0 +1,185 @@
+---
+title: "Figure 4 diagnostic — R against IR at constant relative noise (r = 10), nsim 1000"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+A DIAGNOSTIC, NOT A PAPER FIGURE. It exists to answer one question before ~3300 CPU-h are spent:
+does the instrumental noise cure R, or does the nsim-1000 data only LOOK cured because its intervals
+are too wide to reject anything?
+
+WHAT THIS DATA IS. figures/data/82b956f is not loose data: it is a complete, deliberate probe at
+CONSTANT relative noise, noise label = 10 * N_ch, i.e. instrumental/gating ratio r = 10, for
+macro_R / macro_MR / macro_NMR / macro_IR at N_ch 10 / 100 / 1000 / 10000. Its whole content is one
+point per column of the staircase that figure_4.Rmd is built to show.
+
+WHY IT CANNOT GO INTO figure_4. It is nsim 1000 while every other cell is nsim 10000, and
+00_plan.md section 6 forbids pooling paper 1's band-A cells with anything at 1000. There is NOT ONE
+cell present at both nsim levels, so the penalty cannot even be calibrated out. Hence a separate
+file with the nsim in its name.
+
+WHY LINES AND NOT A MAP. Each column carries exactly ONE noise level, so a filled contour is
+impossible (it needs at least two distinct y values) and would in any case be the "provably blind"
+two-level contour that figures_build_plan.md section 6 warns about. x = Delta*k_off, y = the value,
+one line per algorithm.
+
+WHY THE RAW MEAN AND ITS INTERVAL, NOT THE CI-SHRUNK VALUE. Everywhere else these quantities are
+rendered CI-shrunk, so a cell whose interval covers the null collapses to exactly the null and draws
+white. That is right for a map and WRONG here: it would convert "we cannot reject calibration" into
+"calibrated", which is precisely the confound this file exists to expose. So the point estimate is
+drawn with its 95% bootstrap band, and the reader sees whether the band contains the null because
+the estimate sits there or because the band is wide.
+
+BOTH ROWS ARE IN log10 UNITS with the null at 0: distortion is a ratio so log10(D) has its null at
+log10(1) = 0, and the distortion-induced bias is already in log10 units with null 0. One null line,
+one axis convention, four rows.
+
+ANCHORS, same as the parent figure: distortion from battery_pool_G (theta_pool), bias from
+battery_sim_G (theta_sim, because at the optimum the score vanishes and the bias is zero by
+construction). Gaussian family throughout (_G files, Gaussian_* components).
+
+NO ELLIPSE BLOCK. At nsim 1000, group_size 100 leaves 10 fits, and a variance from 10 fits carries
+about 47% relative uncertainty; group_size 10 leaves 100 fits but at few channels its finite-sample
+inflation reverses the sign of the N_ch direction. Neither is worth drawing.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+```{r params}
+ALGOS    <- c("macro_R", "macro_IR")
+ALGO_LAB <- c(macro_R = "R", macro_IR = "IR")
+ALGO_COL <- c(R = "#D55E00", IR = "#0072B2")
+
+# the probe: noise label = 10 * N_ch in every column, so r = noise/N_ch = 10 throughout
+GRID <- tibble::tribble(
+  ~nch,  ~z,       ~nsim,
+  10,    "100",    1000,
+  100,   "1000",   1000,
+  1000,  "10000",  1000,
+  10000, "100000", 1000)
+DIR <- "../data/82b956f"
+
+PIDX  <- c(off = 1, Num_ch_mean = 5)
+PLAB  <- c(off = "k[off]", Num_ch_mean = "N[ch]")
+DIST  <- "Probit_statistics_Likelihood_Gaussian_Information_Distortion"
+BIAS  <- "Probit_statistics_Gaussian_Distortion_Induced_Bias"
+```
+
+```{r data}
+findf <- function(nch, algo, z, nsim, kind) {
+  f <- sprintf("%s/figure_3_G_nch_%d_nsim_%d_%s_noise_%s_%s.csv", DIR, nch, nsim, algo, z, kind)
+  if (!file.exists(f)) stop("figure_4_diag: missing ", basename(f))
+  f
+}
+cells <- expand_grid(algo = ALGOS, i = seq_len(nrow(GRID))) %>%
+  mutate(nch = GRID$nch[i], z = GRID$z[i], nsim = GRID$nsim[i]) %>% select(algo, nch, z, nsim)
+cat("figure_4_diag:", nrow(cells), "cells, all at r = noise/N_ch = 10, nsim 1000\n")
+
+# one extractor, both anchors. Keeps the RAW mean and the two quantiles: no CI shrinking here.
+grab <- function(kind, comp, diag_only) pmap_dfr(cells, function(algo, nch, z, nsim)
+    read.csv(findf(nch, algo, z, nsim, kind), skip = 1, stringsAsFactors = FALSE) %>%
+      mutate(algo = algo, nch = nch, noise = z)) %>%
+  filter(component_path == comp, param_index %in% PIDX,
+         if (diag_only) param_index == param_col else TRUE,
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  mutate(key = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                         quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(algo, nch, noise, interval_in_tau, param_index, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  mutate(param = names(PIDX)[match(param_index, PIDX)])
+
+d <- bind_rows(
+  grab("battery_pool_G", DIST, TRUE)  %>% mutate(what = "distortion",
+                                                 across(c(m, lo, hi), log10)),
+  grab("battery_sim_G",  BIAS, FALSE) %>% mutate(what = "bias")) %>%
+  mutate(lx   = log10(interval_in_tau),
+         alab = factor(ALGO_LAB[algo], levels = unname(ALGO_LAB)),
+         prow = factor(sprintf("%s, %s", what, ifelse(param == "off", "k_off", "N_ch")),
+                       levels = c("distortion, k_off", "distortion, N_ch",
+                                  "bias, k_off", "bias, N_ch")),
+         ncol_lab = factor(sprintf("atop(N[ch]==%d, sigma==%s)", nch, noise),
+                           levels = sprintf("atop(N[ch]==%d, sigma==%s)", GRID$nch, GRID$z)))
+stopifnot(nrow(d) > 0, !any(is.na(d$prow)), !any(is.na(d$ncol_lab)))
+```
+
+```{r plot, fig.width = 7, fig.height = 7.6}
+X_BRK <- log10(c(.01, .1, 1))
+g <- ggplot(d, aes(lx, m, colour = alab, fill = alab)) +
+  geom_hline(yintercept = 0, colour = "grey30", linewidth = .35) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = .18, colour = NA) +
+  geom_line(linewidth = .5) + geom_point(size = .7) +
+  facet_grid(prow ~ ncol_lab, scales = "free_y",
+             labeller = labeller(prow = label_value, ncol_lab = label_parsed)) +
+  scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
+  scale_colour_manual(values = ALGO_COL) + scale_fill_manual(values = ALGO_COL) +
+  labs(x = expression(Delta %.% k[off]), y = "log10 units (null = 0)", colour = NULL, fill = NULL,
+       title = "R against IR at constant relative noise (noise = 10 x N_ch, r = 10), nsim 1000",
+       subtitle = paste("point estimate with its 95% bootstrap interval, NOT CI-shrunk:",
+                        "a band covering 0 may mean calibrated OR underpowered")) +
+  theme_bw(base_size = 8, base_family = "Helvetica") +
+  theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.14, "cm"),
+        plot.title = element_text(size = 8.5, face = "bold"),
+        plot.subtitle = element_text(size = 7, colour = "grey30"),
+        strip.text.y = element_text(size = 6.5, angle = 0), strip.text.x = element_text(size = 7),
+        axis.text = element_text(size = 6), legend.position = "bottom",
+        legend.key.size = unit(.6, "lines"), legend.text = element_text(size = 7))
+g
+ggsave("Figure_4_diag_nsim1000.pdf", g, width = 7.0, height = 7.6)
+```
+
+```{r verdict}
+# THE QUESTION THIS FILE EXISTS FOR, answered with numbers rather than by looking at the bands.
+cat("\n=== 1. Is the point estimate at the null, or just consistent with it? ===\n")
+cat("   |m| is the departure in log10 units; halfwidth is (hi-lo)/2. If |m| << halfwidth the cell is\n")
+cat("   UNINFORMATIVE, not calibrated.\n\n")
+print(as.data.frame(d %>% mutate(hw = (hi - lo) / 2) %>%
+  group_by(prow, alab, nch) %>%
+  summarise(med_absm = median(abs(m)), med_hw = median(hw),
+            ratio = median(abs(m)) / median(hw), .groups = "drop") %>%
+  filter(prow %in% c("distortion, k_off", "distortion, N_ch"))), digits = 3, row.names = FALSE)
+
+cat("\n=== 2. THE POWER CHECK: how much wider are the nsim 1000 intervals? ===\n")
+cat("   Same quantity, same algorithm, same N_ch, at nsim 10000 (noise 10, the highest absolute\n")
+cat("   level that exists there). Widths are dominated by nsim, so this bounds the confound.\n\n")
+DIRS10 <- c("../data/1c2ae6f", "../data/87889e6")
+f10 <- function(nch, algo) { f <- file.path(DIRS10,
+    sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_10_battery_pool_G.csv", nch, algo))
+  h <- f[file.exists(f)]; if (length(h)) h[1] else NA_character_ }
+w10 <- expand_grid(algo = ALGOS, nch = GRID$nch) %>%
+  mutate(f = map2_chr(nch, algo, function(n, a) f10(n, a))) %>% filter(!is.na(f)) %>%
+  pmap_dfr(function(algo, nch, f) read.csv(f, skip = 1) %>% mutate(algo = algo, nch = nch)) %>%
+  filter(component_path == DIST, param_index == param_col, param_index %in% PIDX,
+         statistic == "value", probit %in% c("mean", "quantile")) %>%
+  mutate(key = case_when(probit == "mean" ~ "m", quantile_level == 0.025 ~ "lo",
+                         quantile_level == 0.975 ~ "hi", TRUE ~ NA_character_)) %>%
+  filter(!is.na(key)) %>%
+  group_by(algo, nch, interval_in_tau, param_index, key) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  pivot_wider(names_from = key, values_from = v) %>%
+  mutate(across(c(m, lo, hi), log10), hw = (hi - lo) / 2,
+         alab = ALGO_LAB[algo], param = names(PIDX)[match(param_index, PIDX)])
+
+cmp <- d %>% filter(what == "distortion") %>% mutate(hw = (hi - lo) / 2) %>%
+  group_by(alab, nch, param) %>% summarise(hw_1000 = median(hw), .groups = "drop") %>%
+  left_join(w10 %>% group_by(alab, nch, param) %>%
+              summarise(hw_10000 = median(hw), .groups = "drop"),
+            by = c("alab", "nch", "param")) %>%
+  mutate(inflation = hw_1000 / hw_10000)
+print(as.data.frame(cmp), digits = 3, row.names = FALSE)
+cat("\n   sqrt(10) = 3.16 is the naive expectation if the interval scales as 1/sqrt(nsim).\n")
+
+cat("\n=== 3. Verdict per cell: could a departure the size of R's at noise 0.1 have been seen? ===\n")
+cat("   R's k_off distortion at noise 0.1 is about 1.44, i.e. log10 = 0.158. A cell whose halfwidth\n")
+cat("   exceeds that could not have rejected calibration even if R were just as bad here.\n\n")
+print(as.data.frame(d %>% filter(prow == "distortion, k_off") %>% mutate(hw = (hi - lo) / 2) %>%
+  group_by(alab, nch) %>%
+  summarise(med_hw = median(hw), can_detect_0.158 = median(hw) < 0.158, .groups = "drop")),
+  digits = 3, row.names = FALSE)
+```
