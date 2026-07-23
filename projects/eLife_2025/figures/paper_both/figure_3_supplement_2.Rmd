@@ -1,37 +1,39 @@
 ---
-title: "Figure 3—figure supplement 1 — per-step information vs score variance, and their calibration, across the 5 macro algorithms and 4 parameters"
+title: "Figure 3—figure supplement 2 — per-step information vs score variance: LSE against the likelihood family (LSE, NR, R, IR)"
 author: "Luciano Moffatt"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 <!--
-TIME-RESOLVED, PER-PARAMETER second-Bartlett check. For each of the four identified parameters
-(k_on, k_off, i, N_ch) two stacked rows, four approximation columns (R, MR, VR, IR): the recursive
-ladder, so recursion is held fixed and only the interval conditioning varies.
+TIME-RESOLVED, PER-PARAMETER second-Bartlett check, the FOUR-column version that matches figure_3.
+For each of the four identified parameters (k_on, k_off, i, N_ch) two stacked rows, four columns
+(LSE, NR, R, IR).
 
-  INFO row (log10 y): the per-step Gaussian Fisher information diagonal E[I_t] (blue) and the
-    score variance Var(s_t) (orange). They coincide wherever the filter is calibrated; both
-    vanish off-agonist and (k_on / N_ch, recursive filters) in the decay, while i keeps a
-    conductance-noise floor.
-  LOG J/F row (linear, null 0): the per-step calibration log10(Var(s_t)/E[I_t]) with a 90%
-    bootstrap CI over the 1000 recordings. A calibrated filter sits on 0 at every step. The
-    per-step diagonal is roughly calibrated for all algorithms; the J != F that separates them
-    lives in the CROSS-time score correlation (Figure 3 rows E and F), not here. THIS FIGURE IS THE
-    PREMISE, Figure 3 is the consequence: per step everyone reports its information correctly, so
-    the accumulated failure cannot be a per-sample modelling error.
+  INFO row (log10 y): the per-step Gaussian Fisher information diagonal E[I_t] (blue) and the score
+    variance Var(s_t) (orange). They COINCIDE wherever the filter is calibrated per step.
+  LOG J/F row (linear, null 0): the per-step calibration log10(Var(s_t)/E[I_t]) with a 90% bootstrap
+    CI over the 1000 recordings. A per-step-calibrated method sits on 0 at every step.
 
-Reads the same 5 ensemble CSVs figures/data/figure_3_time_dlik_{NR,MR,IR,R,NMR}.csv (each ~1 GB,
-1000 sims; cell N_ch=100, Current_Noise=1e-4, interval=0.1 tau) ONCE each. Per step:
+THE POINT OF THIS FIGURE (vs supplement 1): NR, R, IR sit on 0 — per step they report their
+information correctly, so their accumulated failure (figure_3 rows E/F) is CROSS-TIME correlation.
+LSE does NOT: its per-step ratio is Var(s_t)/E[I_t] = Var(y_t)/sigma_hat^2, which BREATHES (>1 in
+the transient where the true gating variance exceeds the flat plug-in sigma_hat^2, <1 in the
+plateau), and because that factor is parameter-free it is the SAME curve in all four parameter rows.
+So LSE fails already at the per-step level (its homoscedastic assumption), a DIFFERENT failure mode
+from the recursive family's cross-time one. This is the data-level heteroscedasticity of figure_3
+panel B, read at the score level.
+
+Reads figures/data/figure_3_time_dlik_{LSE,NR,R,IR}.csv (each ~1 GB, 1000 sims; cell N_ch=100,
+Current_Noise=1e-4, interval=0.1 tau) ONCE each. Per step:
   I_t,kk = (d y_mean/d theta_k)^2 / y_var + 0.5 (d y_var/d theta_k)^2 / y_var^2   (Gaussian FIM
-diagonal, validated: sum_t I_t reproduces the dumped global FIM to machine precision); the score
-s_t,k is the stored d logL_t/d theta_k. Time axis in milliseconds. The data-file key "NMR" is the
-algorithm shown to readers as "MNR". A point is shown wherever the per-step FIM is non-zero
-(F > 1e-6); genuine zeros (sensitivity = 0, ratio 0/0) are dropped. The writer emits every
-evolution row TWICE (a segment-blank copy + a segment_index=0 copy, identical values); collapsed
-by mean per (sim, sample).
+diagonal; for LSE d y_var/d theta = 0, so I_t = dmu^2/sigma_hat^2); the score s_t,k is the stored
+d logL_t/d theta_k. Time axis in milliseconds. A point is shown wherever the per-step FIM is non-zero
+(F > 1e-6); genuine zeros (sensitivity = 0, ratio 0/0) are dropped. The writer emits every evolution
+row TWICE (a segment-blank copy + a segment_index=0 copy, identical values); collapsed by mean per
+(sim, sample).
 
-RENDER: reads ~5 GB, too heavy for a laptop; run where figures/data/ resolves.
+RENDER: reads ~4 GB, too heavy for a laptop; run where figures/data/ resolves.
 -->
 
 ```{r setup, include=FALSE}
@@ -39,13 +41,11 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(data.table)
 library(patchwork)
-# Roster = the likelihood family that IS per-step calibrated: NR (correct per-interval marginal
-# variance, open loop), R, IR. LSE is deliberately OUT of THIS figure — its flat sigma_hat^2
-# miscalibrates PER STEP (Var(s_t)/F_t = Var(y_t)/sigma_hat^2 breathes, same for all params), which
-# would contradict this figure's premise; that story is figure_3_supplement_2 and figure_3 panel B.
-ALGOS <- c("NR", "R", "IR")                          # data-file keys
-ALAB  <- c(NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")  # display (NMR -> MNR)
-FULL  <- c(NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
+# Merged-paper four-column roster (matches figure_3): LSE, NR, R, IR. LSE is the one that breaks the
+# per-step calibration; supplement 1 is the clean {NR, R, IR} premise. All keys are in the dumps.
+ALGOS <- c("LSE", "NR", "R", "IR")                   # data-file keys
+ALAB  <- c(LSE = "LSE", NR = "NR", NMR = "MNR", R = "R", MR = "MR", VR = "VR", IR = "IR")  # display
+FULL  <- c(LSE = "Least Squares", NR = "Non-Recursive", NMR = "Mean Non-Recursive", R = "Recursive",
            MR = "Mean Recursive", VR = "Variance Recursive", IR = "Interval Recursive")
 LEAD  <- ALGOS[1]     # leftmost column: carries the y title, the row titles and the panel tags
 PIDX  <- c(0, 1, 2, 5)                               # on, off, unitary_current, Num_ch_mean
@@ -54,7 +54,8 @@ PTTL  <- list(bquote(k[on] * "  (opening rate)"), bquote(k[off] * "  (closing ra
               bquote(i * "  (unitary current)"),    bquote(N[ch] * "  (channel number)"))
 FLOOR  <- 1e-6                                        # show wherever the per-step FIM is non-zero
 B      <- 200                                        # bootstrap replicates over recordings
-YLIM   <- c(-0.5, 0.5)                               # log-ratio (log J/F) linear zoom, null 0
+YLIM   <- c(-1, 1)                                    # log-ratio zoom, WIDENED from supplement 1's
+                                                     # +/-0.5 because LSE's ratio breathes past it
 YCURVE <- c(1e-3, 1e3)                               # common log y-range for the two info curves
 ```
 
@@ -115,7 +116,7 @@ R[, `:=`(algo  = factor(algo, levels = ALGOS),
 
 ```{r curves-data}
 # The two raw info curves (no ratio, no 0/0): per-step FIM diagonal E[I_t] and score variance
-# Var(s_t), which coincide where the filter is calibrated.
+# Var(s_t), which coincide where the filter is calibrated per step (and SEPARATE for LSE).
 agg <- SI[, .(FIM = mean(I), score_var = var(s)), by = .(algo, param_index, sample_index)]
 agg <- merge(agg, tmap[, .(sample_index, t)], by = "sample_index")
 curves <- melt(agg, measure.vars = c("FIM", "score_var"),
@@ -141,7 +142,7 @@ colhead <- function(k) ggplot() + theme_void() + ggtitle(ALAB[[k]], subtitle = F
 base <- function() theme_bw(base_size = 8)
 
 # mode = "info" -> log10 magnitude axis (fixed decade breaks, no null); "linear" -> signed axis,
-# 0 forced onto the ticks (the log J/F rows). y title only on NR; x numbers on every bottom-of-
+# 0 forced onto the ticks (the log J/F rows). y title only on LEAD; x numbers on every bottom-of-
 # block panel, x TITLE only ONCE, on the centre column (R).
 deco <- function(p, col, xr, ylim, yq, ttl = NULL, tag = NULL, bottom = FALSE, xlab = NULL, mode = "linear") {
   if (mode == "info") {
@@ -203,7 +204,7 @@ for (i in seq_along(PLAB)) {
                frac_CI_covers_0 = mean(lo <= 0 & hi >= 0),
                n_steps = .N), by = .(algo, param)]
 setorder(.cap4, param, algo)
-cat("\n=== Figure 4 caption numbers ===\n")
+cat("\n=== Figure 3 supplement 2 caption numbers ===\n")
 print(as.data.frame(.cap4), digits = 3, row.names = FALSE)
 cat("overall fraction of (step, algo, param) whose CI covers 0:",
     sprintf("%.3f\n", R[, mean(lo <= 0 & hi >= 0)]))
@@ -211,5 +212,5 @@ cat("overall fraction of (step, algo, param) whose CI covers 0:",
 g4 <- wrap_plots(c(lapply(ALGOS, colhead), panels), ncol = length(ALGOS),
                  heights = c(0.10, rep(c(1, 0.5), length(PLAB))), guides = "collect") &  # ratio rows half-height
       theme(legend.position = "bottom")
-ggsave("Figure_3_supplement_1.pdf", g4, width = 7.0, height = 11)
+ggsave("Figure_3_supplement_2.pdf", g4, width = 7.0, height = 11)
 ```
