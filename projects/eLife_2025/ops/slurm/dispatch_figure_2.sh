@@ -107,12 +107,24 @@ for i in "${!NCHS[@]}"; do
         *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR, IRT})" >&2; exit 1 ;;
     esac
 
+   # label -> current_noise (vnoise = label / 1000). Kept IDENTICAL across all four dispatchers
+   # (2026-07-23): a level accepted by one and rejected by another is a trap, since the same grid
+   # gets driven through figure_2 / figure_3 / figure_3_G / figure_3_LSE / figure_4 at different
+   # times. Extend all of them together or none.
    case "$nnoise" in
+        0.05) vnoise=0.00005;;
         0.1)  vnoise=0.0001;;
+        0.2)  vnoise=0.0002;;
+        0.3)  vnoise=0.0003;;
+        0.5)  vnoise=0.0005;;
         1)  vnoise=0.001;;
         10)  vnoise=0.01;;
         100)  vnoise=0.1;;
-        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.1, 1, 10, 100)" >&2; exit 1 ;;
+        1000)  vnoise=1;;
+        10000) vnoise=10;;
+        100000) vnoise=100;;
+        1000000) vnoise=1000;;
+        *) echo "[dispatch] unknown noise level '$nnoise' (want 0.05, 0.1, 0.2, 0.3, 0.5, 1, 10, 100, 1000, 10000, 100000, 1000000; vnoise = label/1000)" >&2; exit 1 ;;
     esac
 
     # printf builds the injections so the DSL double-quotes need no shell escaping.

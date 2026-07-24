@@ -56,8 +56,9 @@ assemble_dist <- function(params) {
        gA /
        btitle("B   information distortion") /
        mapblock(stat, function(d) log10(d$Dconf), DIST_PAL, DIST_BREAKS, params,
-                top = TRUE, bottom = TRUE) /
-       colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = c(0.87, 1.15), dsh = c(0.67, 1.5))
+                top = TRUE, bottom = TRUE,
+                iso_sol = log10(DIST_SOL), iso_dsh = log10(DIST_DSH)) /
+       colorbar(DIST_PAL, DIST_LAB, "distortion", DIST_LIN, sol = DIST_SOL, dsh = DIST_DSH)
   hs <- c(0.16, hA, 0.16, hC, 0.28)
   list(g = g + plot_layout(heights = hs), h = sum(hs))
 }

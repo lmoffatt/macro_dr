@@ -53,8 +53,10 @@ assemble_bias <- function(params) {
   g <- btitle("A   grouped MLE distributions") /
        gA /
        btitle("B   distortion-induced bias") /
-       mapblock(bias, function(d) d$Bconf, BIAS_PAL, BIAS_LIN, params, top = TRUE, bottom = TRUE) /
-       colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN)
+       mapblock(bias, function(d) d$Bconf, BIAS_PAL, BIAS_LIN, params, top = TRUE, bottom = TRUE,
+                iso_sol = BIAS_SOL, iso_dsh = BIAS_DSH) /
+       colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN,
+                sol = BIAS_SOL, dsh = BIAS_DSH)
   hs <- c(0.16, hA, 0.16, hB, 0.28)
   list(g = g + plot_layout(heights = hs), h = sum(hs))
 }
