@@ -1,0 +1,101 @@
+---
+title: "Figure 3—figure supplement 3 — residual autocorrelation: the gating memory LSE and NR leave in the data, and that R and IR whiten"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE DATA-LEVEL VERSION of Figure 3's row F. Row F plots the autocorrelation of the SCORE (an
+inference-level object); this plots the autocorrelation of the standardised RESIDUAL r_std =
+(patch_current - y_mean)/sqrt(y_var), which is an observable of the data against the fitted mean and
+needs no likelihood to read. figure_3.Rmd's own note flagged this as the panel that "stays in the full
+figure_3"; here it is, on the merged-paper roster LSE / NR / R / IR.
+
+WHY IT IS A GATING-NOISE INDICATOR (Luciano's point). The recorded current is gating fluctuation
+(temporally correlated: the channel population relaxes over a finite time) plus instrumental noise
+(white). So the residual autocorrelation at lag k is
+
+    rho_resid(k) = rho_gating(k) * V_gate / (V_gate + V_inst),
+
+the gating autocorrelation times the gating fraction of the variance. It is large when gating
+dominates and falls to zero as instrumental noise drowns it — a direct read of how much gating signal
+is present, from the data alone.
+
+WHAT EACH ALGORITHM'S r_std MEASURES, and why the ACF is NOT the same object across the row. y_var is
+the variance the algorithm CLAIMS. LSE claims one global marginalised variance (no gating term), so it
+divides the raw residual by a constant and its r_std ACF is the gating ACF itself, undistorted — the
+cleanest estimate of rho_gating(k) available. NR claims a per-time diagonal variance but still models
+no temporal structure, so it too retains the off-diagonal memory. R and IR condition the prediction on
+the past, so a correctly specified model has already absorbed the gating correlation and their r_std
+ACF should be WHITE. The gap between the LSE/NR curves and the R/IR curves is exactly what the
+recursion buys: not more information, a residual with no memory left in it.
+
+CAVEAT, one cell. These dumps are a single design point (the figure_3_time cell, noise 0.1, the
+gating-dominated regime). So this shows the CONTRAST between algorithms at fixed noise, where gating is
+strong and the LSE/NR memory is at its most visible. The noise SWEEP of rho_resid(1) — the actual
+gating-fraction indicator across the design space — would need this residual ACF emitted per battery
+cell, or time-resolved dumps at several noise levels; neither exists yet. Flagged, not silently
+implied.
+
+RENDER: reads the four ~1 GB dumps ONE AT A TIME (only the r_std rows, only the columns needed), so
+peak memory stays near one dump, not four. Run where figures/data/ resolves.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(data.table)
+```
+
+```{r params}
+ALGOS  <- c("LSE", "NR", "R", "IR")
+ALAB   <- c(LSE = "LSE", NR = "NR", R = "R", IR = "IR")
+COL    <- c(LSE = "#B2182B", NR = "#D6604D", R = "#4393C3", IR = "#053061")  # naive pair warm, recursive cool
+LAGMAX <- 20
+```
+
+```{r compute}
+# ACF of one recording's residual series, ordered in time by sample_index (verified: sample_index is
+# the time step, monotone in step_middle at fixed 1 ms spacing, 100 steps/recording). Post-agonist
+# only would be cleaner, but the pre-agonist steps have r_std ~ 0 derivatives and drop out of acf()
+# scaling; we keep the whole trace and note it. mean over recordings, +/- 1.96 SE per lag.
+acf_one <- function(x) if (length(x) > LAGMAX + 1) as.numeric(acf(x, lag.max = LAGMAX, plot = FALSE)$acf) else rep(NA_real_, LAGMAX + 1)
+
+read_resid_acf <- function(a) {
+  dt <- fread(sprintf("../data/figure_3_time_dlik_%s.csv", a), skip = 1, showProgress = FALSE,
+              select = c("component_path", "calculus", "simulation_index", "sample_index", "value"))
+  rr <- dt[component_path == "r_std" & calculus == "primitive" & !is.na(sample_index)]
+  rm(dt); gc(verbose = FALSE)
+  # the writer emits every (sim,sample) row TWICE (blank-segment + segment-0 copies); collapse by mean
+  rr <- rr[, .(r = mean(value)), by = .(simulation_index, sample_index)]
+  rr <- rr[is.finite(r)][order(simulation_index, sample_index)]
+  M  <- rr[, .(acf = list(acf_one(r))), by = simulation_index]
+  A  <- do.call(rbind, M$acf[!sapply(M$acf, function(v) all(is.na(v)))])
+  rm(rr, M); gc(verbose = FALSE)
+  tibble(algo = a, lag = 0:LAGMAX, acf = colMeans(A, na.rm = TRUE),
+         se = apply(A, 2, sd, na.rm = TRUE) / sqrt(nrow(A)))
+}
+
+acf_resid <- map_dfr(ALGOS, read_resid_acf) %>%
+  mutate(algo = factor(algo, levels = ALGOS)) %>% filter(lag >= 1)
+
+# the one-number summary: lag-1 residual autocorrelation per algorithm
+cat("residual autocorrelation at lag 1 (the gating-fraction indicator, this cell):\n")
+print(as.data.frame(acf_resid %>% filter(lag == 1) %>% select(algo, acf, se)), row.names = FALSE, digits = 3)
+```
+
+```{r render, fig.width = 7, fig.height = 4.2}
+ggplot(acf_resid, aes(lag, acf, colour = algo, fill = algo)) +
+  geom_hline(yintercept = 0, colour = "grey60", linewidth = .4) +
+  geom_ribbon(aes(ymin = acf - 1.96 * se, ymax = acf + 1.96 * se), colour = NA, alpha = .18) +
+  geom_line(linewidth = .7) + geom_point(size = 1.1) +
+  scale_colour_manual(values = COL, labels = ALAB, name = NULL) +
+  scale_fill_manual(values = COL, guide = "none") +
+  scale_x_continuous(breaks = seq(0, LAGMAX, 5)) +
+  labs(x = "lag (time steps)", y = expression("residual autocorrelation  " * rho[resid](k)),
+       title = "Gating memory in the residual: retained by LSE and NR, whitened by R and IR") +
+  theme_bw(base_size = 9, base_family = "Helvetica") +
+  theme(legend.position = c(0.88, 0.8), plot.title = element_text(size = 9))
+ggsave("Figure_3_supplement_3.pdf", width = 7.0, height = 4.2)
+```

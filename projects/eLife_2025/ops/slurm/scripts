@@ -73,7 +73,28 @@ MEM=96G TIME=4-00:00:00 CPUS=32 \
   N_SIMS="10000 10000 10000 10000 10000 10000 10000 10000" \
   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
 
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="macro_NR macro_R macro_IR"  \
+  NCHS="100000 100000 100000 100000 100000 100000 100000 " \
+  N_NOISE="1 10 100 1000 10000 100000 1000000" \
+  N_SIMS="10000 10000 10000 10000 10000 10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
 
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr"  \
+  NCHS="100000" \
+  N_NOISE="1000000" \
+  N_SIMS="10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr macro_NR macro_R macro_IR"  \
+  NCHS="10 100 1000 10000" \
+  N_NOISE="1000 10000 100000 1000000" \
+  N_SIMS="10000 10000 10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
 
 
 

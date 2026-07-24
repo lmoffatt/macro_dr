@@ -58,37 +58,52 @@ GRID_BASE <- tibble::tribble(
   100,   "0.1",  100,   "1",  100,   "10",
   1000,  "0.1",  1000,  "1",  1000,  "10",
   10000, "0.1",  10000, "1",  10000, "10")
-# macro_R ONLY: the noise-100 rungs of the constant-r diagonal (r = noise/N_ch = 1 at N_ch 100,
-# r = 0.1 at N_ch 1000). IR has no nsim-10000 cell there, so R's rows run one noise decade taller.
+# macro_R: noise-100 complete at all four N_ch (both batteries; N_ch 10/10000 landed 2026-07-24, so
+# what was the constant-r diagonal is now the full noise-100 rung). R and IR are symmetric at noise
+# 100 now: both carry {0.1, 1, 10, 100} at every N_ch, so R's row no longer runs a decade taller.
 GRID_R_EXTRA <- tibble::tribble(
   ~nch,  ~z,
+  10,    "100",
   100,   "100",
-  1000,  "100")
-# LSE: verified 2026-07-23, nonlinearsqr has ZERO complete (pool_G + sim_G) cells at nsim 10000 —
-# its runs are in flight. ADD A ROW THE MOMENT A CELL LANDS; until then LSE contributes no cells,
-# so nothing is looked up for it and its map rows simply do not appear (facet_grid drops the empty
-# level). Target = GRID_BASE, i.e. N_ch {10,100,1000,10000} x noise {0.1,1,10} at nsim 10000.
-# FIRST LSE CELLS LANDED 2026-07-23: noise = 1 is complete at all four N_ch (battery_sim_G AND
-# battery_pool_G). Nothing else is yet: noise 0.1 has only clouds (N_ch 10/100/1000) plus one stray
-# sim_G at N_ch 100, and noise 10 has sim_G but no pool_G. A cell may be declared here only when it
-# has BOTH batteries, because the two halves share this grid and findf() hard-stops on a miss.
-# PARTIAL, 2026-07-23 23:15. Contours are computed PER PANEL and the panels are N_ch columns, so a
-# column needs two distinct noise levels of its own to draw anything. N_ch 10 and 100 have {1, 10};
-# N_ch 1000 and 10000 still have only {1} and their panels will come out EMPTY until their noise-10
-# battery_pool_G lands (in flight; pool_G has been arriving ~30 min after the matching sim_G).
-# Add cells here as they land — declare only when BOTH batteries exist.
+  1000,  "100",
+  10000, "100")
+# macro_NR: noise-100 complete at all four N_ch (10000 landed 2026-07-24 later batch).
+GRID_NR_EXTRA <- tibble::tribble(
+  ~nch,  ~z,
+  10,    "100",
+  100,   "100",
+  1000,  "100",
+  10000, "100")
+# macro_IR: declared STANDALONE (not GRID_BASE + extra) because IR is the reference and carries a
+# finer noise sweep than the others. The sub-decade 0.05/0.2/0.5 is on disk with both batteries at all
+# four N_ch (verified 2026-07-24) and is kept IN on purpose: it resolves IR's OWN residual distortion
+# in the few-channel / low-noise corner (1.32 at N_ch 10, noise 0.1), the hero's failure the paper is
+# honest about. Only IR has this sweep, so its row is sampled finer than R/NR/LSE; the caption states
+# the asymmetry. Full available set: {0.05, 0.1, 0.2, 0.5, 1, 10, 100} at every N_ch.
+GRID_IR <- tibble::tribble(
+  ~nch,  ~z,
+  10,    "0.05", 10,    "0.1", 10,    "0.2", 10,    "0.5", 10,    "1", 10,    "10", 10,    "100",
+  100,   "0.05", 100,   "0.1", 100,   "0.2", 100,   "0.5", 100,   "1", 100,   "10", 100,   "100",
+  1000,  "0.05", 1000,  "0.1", 1000,  "0.2", 1000,  "0.5", 1000,  "1", 1000,  "10", 1000,  "100",
+  10000, "0.05", 10000, "0.1", 10000, "0.2", 10000, "0.5", 10000, "1", 10000, "10", 10000, "100")
+# LSE: the runs trace a clean diagonal front on disk — each decade of N_ch needs one more decade of
+# instrumental noise to calibrate, so the swept top noise climbs with N_ch (100, 1e3, 1e4, 1e5 across
+# the four columns). Declared to match what is on disk at nsim 10000 with BOTH batteries (verified
+# 2026-07-24): the k_off distortion reaches ~1 only near noise ~10*N_ch, i.e. where the gating signal
+# is already buried, so the front CLOSING is the point (a panel cut at noise 100 never whitens and
+# reads as an un-swept axis). A cell is declared only with both batteries, because this grid is shared
+# with the bias half and findf() hard-stops on a miss. The rows are ragged: N_ch 10 stops at noise
+# 100 (already cured), the top column runs to 1e5.
 GRID_LSE <- tibble::tribble(
   ~nch,  ~z,
-  10,    "1",
-  100,   "1",
-  1000,  "1",
-  10000, "1",
-  10,    "10",
-  100,   "10")
+  10,    "0.1",  10,    "1",  10,    "10",  10,    "100",
+  100,   "0.1",  100,   "1",  100,   "10",  100,   "100",  100,   "1000",
+  1000,  "0.1",  1000,  "1",  1000,  "10",  1000,  "100",  1000,  "1000",  1000,  "10000",
+  10000, "0.1",  10000, "1",  10000, "10",  10000, "100",  10000, "1000",  10000, "10000",  10000, "100000")
 GRID_BY_ALGO <- list(nonlinearsqr = GRID_LSE,
-                     macro_NR     = GRID_BASE,
+                     macro_NR     = bind_rows(GRID_BASE, GRID_NR_EXTRA),
                      macro_R      = bind_rows(GRID_BASE, GRID_R_EXTRA),
-                     macro_IR     = GRID_BASE)
+                     macro_IR     = GRID_IR)
 GRID <- distinct(bind_rows(GRID_BY_ALGO))              # union, for the shared y-breaks
 noise_span <- function(a) {
   z <- GRID_BY_ALGO[[a]]$z

@@ -1,0 +1,69 @@
+---
+title: "IR affine distortion vs noise x N_ch — a one-dimensional predictor"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+A ONE-DIMENSIONAL PREDICTOR of IR's residual distortion. The validity maps show the affine distance
+falls with both noise and N_ch and is non-monotone in the interval (best near Delta*k_off ~ 0.1).
+Measured, the log-log scaling exponents of noise and N_ch are nearly equal (-0.19, -0.20 globally),
+which is exactly the condition for the PRODUCT noise x N_ch to collapse the two axes into one:
+log(affine) ~ -0.19 log(noise) - 0.20 log(N_ch) ~ -0.19 log(noise * N_ch). This plots log(affine)
+against log(noise * N_ch), one line per interval, to show the collapse and read the slope and the
+interval offset.
+
+The equality a~b holds BEST near the optimal interval (Delta 0.1: exponents -0.22, -0.20); at short
+Delta noise dominates (-0.29 vs -0.16) and at long Delta N_ch dominates (-0.05 vs -0.26), so the
+collapse is tightest for the middle intervals and loosens at the extremes.
+
+affine = matrix-computed (aggregate 10^4), total Gaussian information distortion. noise 100 dropped
+(coarse grid). One panel; interval by colour.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+```
+
+```{r data}
+NCHS_F  <- c(10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)
+NOISE_F <- c("0.05", "0.1", "0.2", "0.5", "1", "10")     # drop coarse noise 100
+DATA_DIRS <- c("../data/1c2ae6f", "../data/0ffbda7", "../data/87889e6")
+DIST_M <- "Probit_statistics_Likelihood_Gaussian_Information_Distortion"
+ff <- function(nch, z) { f <- file.path(DATA_DIRS, sprintf("figure_3_G_nch_%d_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", nch, z)); h <- f[file.exists(f)]; if (length(h)) h[1] else NA_character_ }
+aff_mat <- function(sub) { M <- matrix(NA, 6, 6); for (i in seq_len(nrow(sub))) M[sub$value_row[i]+1, sub$value_col[i]+1] <- sub$v[i]; M <- (M+t(M))/2; e <- eigen(M, symmetric=TRUE)$values; if (any(e<=0)) return(NA_real_); sqrt(sum(log(e)^2)) }
+
+cells <- expand_grid(nch = NCHS_F, z = NOISE_F) %>% mutate(f = map2_chr(nch, z, ff)) %>% filter(!is.na(f))
+aff <- pmap_dfr(cells, function(nch, z, f)
+  read.csv(f, skip = 1) %>% filter(component_path == DIST_M, statistic == "value", probit == "mean") %>%
+    group_by(interval_in_tau, value_row, value_col) %>% summarise(v = mean(value), .groups = "drop") %>%
+    group_by(interval_in_tau) %>% group_modify(~ tibble(m = aff_mat(.x))) %>%
+    mutate(Num_ch = nch, noise = as.numeric(z))) %>%
+  filter(is.finite(m), m > 0) %>%
+  mutate(x = log10(noise * Num_ch), la = log10(m),
+         dlab = factor(sprintf("%.2g", interval_in_tau), levels = sprintf("%.2g", sort(unique(interval_in_tau)))))
+
+# collapse quality: R^2 of log(affine) ~ log(noise*N_ch) within each interval
+cat("collapse R^2 (log affine ~ log(noise*N_ch)) per interval:\n")
+print(as.data.frame(aff %>% group_by(dlab) %>%
+  summarise(slope = coef(lm(la ~ x))[2], R2 = summary(lm(la ~ x))$r.squared, .groups = "drop")), row.names = FALSE, digits = 3)
+```
+
+```{r render, fig.width = 7, fig.height = 5}
+COLd <- setNames(colorRampPalette(c("#2166AC", "#4393C3", "#92C5DE", "#F4A582", "#D6604D", "#B2182B", "#67001F"))(length(levels(aff$dlab))), levels(aff$dlab))
+ggplot(aff, aes(x, la, colour = dlab)) +
+  geom_point(size = 1.3, alpha = .8) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = .6) +
+  scale_colour_manual(values = COLd, name = expression(Delta * k[off])) +
+  labs(x = expression(log[10](noise %*% N[ch])), y = expression(log[10](affine~distance)),
+       title = "IR residual distortion collapses on noise x N_ch, offset by interval") +
+  theme_bw(base_size = 10, base_family = "Helvetica") +
+  theme(legend.position = "right", plot.title = element_text(size = 10)) -> g
+g
+ggsave("Figure_5_IR_affine_collapse.pdf", g, width = 7, height = 5)
+```

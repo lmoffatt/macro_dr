@@ -1,0 +1,79 @@
+---
+title: "When IR's distortion is acceptable — worst-case distortion vs the finite-sample noise floor"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE DESIGN CHART. IR's residual distortion (affine distance of the Gaussian information distortion to
+the identity) collapses onto noise x N_ch with a shallow power law; the worst case over acquisition
+intervals is affine_max ~ 0.6 (noise*N_ch)^(-0.2), R^2 = 0.94. The question "is this acceptable?" has
+no arbitrary literature threshold; the principled criterion is: a systematic error-bar distortion is
+undetectable if it is smaller than the RANDOM uncertainty with which you estimate the covariance from
+n finite replicates. That floor comes from the CHI-SQUARED distribution of the sample covariance:
+for one parameter, s^2/sigma^2 ~ chi^2(n)/n exactly, and the 1D affine floor is E|log(chi^2(n)/n)| =
+2/sqrt(pi*n) ~ 1.13/sqrt(n) (the 95% variance-ratio band is [0.74,1.30] at n=100, [0.91,1.09] at
+n=1e3). For the full d=6 matrix the floor is the multivariate generalisation, the Wishart(I,n)/n
+distance to I, ~6.5/sqrt(n) (Monte Carlo: 0.66 / 0.20 / 0.064 / 0.020 at n = 100 / 1e3 / 1e4 / 1e5) —
+larger than the sqrt(2*6/n)=3.46/sqrt(n) of six independent chi^2 by the eigenvalue repulsion of the
+Wishart. This is the standard "bias negligible below the sampling error" rule, in the affine metric.
+
+READING IT: the curve is IR's worst-case distortion; the horizontal lines are the sampling floors for
+n replicates. Where the curve drops below a floor, the distortion is invisible under that much
+averaging. Equivalently, the number of replicates you can average before the distortion surfaces is
+n_max ~ 120 (noise*N_ch)^0.4.
+
+So: at n = 100 replicates the floor (0.66) is above almost the entire design space -> distortion
+irrelevant. At n = 1e4 (floor 0.064) you need noise*N_ch beyond the measured grid for the distortion
+to stay buried. The distortion matters ONLY when you average many replicates.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+```
+
+```{r data}
+NCHS_F  <- c(10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)
+NOISE_F <- c("0.05", "0.1", "0.2", "0.5", "1", "10")
+DATA_DIRS <- c("../data/1c2ae6f", "../data/0ffbda7", "../data/87889e6")
+DIST_M <- "Probit_statistics_Likelihood_Gaussian_Information_Distortion"
+ff <- function(nch, z) { f <- file.path(DATA_DIRS, sprintf("figure_3_G_nch_%d_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", nch, z)); h <- f[file.exists(f)]; if (length(h)) h[1] else NA_character_ }
+aff_mat <- function(sub) { M <- matrix(NA, 6, 6); for (i in seq_len(nrow(sub))) M[sub$value_row[i]+1, sub$value_col[i]+1] <- sub$v[i]; M <- (M+t(M))/2; e <- eigen(M, symmetric=TRUE)$values; if (any(e<=0)) return(NA_real_); sqrt(sum(log(e)^2)) }
+
+cells <- expand_grid(nch = NCHS_F, z = NOISE_F) %>% mutate(f = map2_chr(nch, z, ff)) %>% filter(!is.na(f))
+aff <- pmap_dfr(cells, function(nch, z, f)
+  read.csv(f, skip = 1) %>% filter(component_path == DIST_M, statistic == "value", probit == "mean") %>%
+    group_by(interval_in_tau, value_row, value_col) %>% summarise(v = mean(value), .groups = "drop") %>%
+    group_by(interval_in_tau) %>% group_modify(~ tibble(m = aff_mat(.x))) %>%
+    mutate(Num_ch = nch, noise = as.numeric(z))) %>%
+  filter(is.finite(m), m > 0)
+env <- aff %>% group_by(Num_ch, noise) %>% summarise(worst = max(m), typ = median(m), .groups = "drop") %>%
+  mutate(prod = noise * Num_ch)
+
+# finite-sample floors (Monte Carlo Wishart(I,n)/n, d=6): distance the sampling noise alone produces
+FLOORS <- tibble(n = c(100, 1000, 10000), floor = c(0.66, 0.204, 0.064))
+```
+
+```{r render, fig.width = 7.2, fig.height = 5}
+fitw <- lm(log10(worst) ~ log10(prod), data = env)
+xg <- 10^seq(log10(min(env$prod)), log10(max(env$prod) * 3), length = 100)
+line <- tibble(prod = xg, worst = 10^predict(fitw, newdata = tibble(prod = xg)))
+
+ggplot(env, aes(prod, worst)) +
+  geom_hline(data = FLOORS, aes(yintercept = floor), colour = "grey55", linetype = "dashed", linewidth = .4) +
+  geom_text(data = FLOORS, aes(x = 1.1 * min(env$prod), y = floor, label = paste0("n = ", format(n, big.mark = ""), "  (floor ", floor, ")")),
+            hjust = 0, vjust = -0.4, size = 2.7, colour = "grey35") +
+  geom_point(size = 1.4, colour = "#B2182B", alpha = .7) +
+  geom_line(data = line, colour = "#67001F", linewidth = .7) +
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 1e4, 1e5), labels = c("1", "10", "100", "1e3", "1e4", "1e5")) +
+  scale_y_log10(breaks = c(0.05, 0.1, 0.2, 0.5, 1), labels = c("0.05", "0.1", "0.2", "0.5", "1")) +
+  labs(x = expression(noise %*% N[ch]), y = "worst-case affine distortion (over intervals)",
+       title = expression("IR distortion vs the finite-sample floor: acceptable where the curve is below your  " * n * "-line")) +
+  theme_bw(base_size = 9, base_family = "Helvetica") + theme(plot.title = element_text(size = 8.5))
+ggsave("Figure_5_IR_acceptable_distortion.pdf", width = 7.2, height = 5)
+```

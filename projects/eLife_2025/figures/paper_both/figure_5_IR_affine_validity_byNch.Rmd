@@ -1,0 +1,100 @@
+---
+title: "IR validity map — affine distortion (total, sample, correlation) in the interval x noise plane, by N_ch"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE VALIDITY MAP of the reference method faceted by N_ch, with the distortion decomposed (companion of
+the by-interval version). x = acquisition interval Delta*k_off (log), y = noise (log); COLUMNS = channel
+count from the fine grid {5,10,20,50,100,200,500,1000,2000,5000,10000}; ROWS = the three affine
+distances (TOTAL Gaussian information distortion, SAMPLE part, CORRELATION part). Reading across a row
+shows the calibration plane filling in as the experiment grows; reading down a column shows what the
+residual is made of.
+
+METRIC as in the by-interval version: affine distance of the AGGREGATE 10^4-together matrix (probit ==
+mean of each entry, eigen+norm), not the emitted per-bootstrap scalar. Scale subdivided finely, capped
+at 2, iso-lines at 0.1 and 0.5. Machinery shared from figure_4_common.R.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+library(patchwork)
+```
+
+```{r grid}
+NCHS_F  <- c(5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000)
+NOISE_F <- c("0.05", "0.1", "0.2", "0.5", "1", "10", "100")
+DATA_DIRS <- c("../data/1c2ae6f", "../data/0ffbda7", "../data/87889e6")
+COMP <- c(total       = "Probit_statistics_Likelihood_Gaussian_Information_Distortion",
+          sample      = "Probit_statistics_Gaussian_Sample_Distortion",
+          correlation = "Probit_statistics_Likelihood_Correlation_Distortion")
+
+ff <- function(nch, z) {
+  f <- file.path(DATA_DIRS, sprintf("figure_3_G_nch_%d_nsim_10000_macro_IR_noise_%s_battery_pool_G.csv", nch, z))
+  h <- f[file.exists(f)]; if (length(h)) h[1] else NA_character_
+}
+aff_mat <- function(sub) {
+  M <- matrix(NA, 6, 6)
+  for (i in seq_len(nrow(sub))) M[sub$value_row[i] + 1, sub$value_col[i] + 1] <- sub$v[i]
+  M <- (M + t(M)) / 2
+  e <- eigen(M, symmetric = TRUE)$values
+  if (any(!is.finite(e)) || any(e <= 0)) return(NA_real_)
+  sqrt(sum(log(e)^2))
+}
+```
+
+```{r data}
+cells <- expand_grid(nch = NCHS_F, z = NOISE_F) %>% mutate(f = map2_chr(nch, z, ff)) %>% filter(!is.na(f))
+aff <- pmap_dfr(cells, function(nch, z, f) {
+  raw <- read.csv(f, skip = 1) %>% filter(component_path %in% COMP, statistic == "value", probit == "mean")
+  imap_dfr(COMP, function(cp, nm) raw %>% filter(component_path == cp) %>%
+    group_by(interval_in_tau, value_row, value_col) %>% summarise(v = mean(value), .groups = "drop") %>%
+    group_by(interval_in_tau) %>% group_modify(~ tibble(m = aff_mat(.x))) %>%
+    mutate(Num_ch = nch, noise = z, part = nm))
+}) %>% filter(is.finite(m))
+
+AFF_LIN    <- c(0.02, 0.03, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3, 0.5, 0.7, 1, 1.5, 2)
+AFF_BREAKS <- log10(AFF_LIN)
+AFF_PAL    <- colorRampPalette(RAMP[7:13], space = "Lab")(length(AFF_LIN) - 1)
+AFF_LAB    <- fmt_big(AFF_LIN)
+AFF_SOL    <- 0.1
+AFF_DSH    <- 0.5
+
+cat("IR affine distance by part (median over grid):\n")
+print(as.data.frame(aff %>% group_by(part) %>% summarise(m = median(m), .groups = "drop")), row.names = FALSE, digits = 3)
+```
+
+```{r render, fig.width = 13, fig.height = 4.6}
+X_BRK_I <- log10(c(0.01, 0.1, 1))
+Y_BRK_N <- log10(as.numeric(NOISE_F)); Y_LAB_N <- NOISE_F
+aff <- aff %>% mutate(lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+                      zz = pmin(pmax(log10(m), min(AFF_BREAKS)), max(AFF_BREAKS)),
+                      part = factor(part, levels = names(COMP)),
+                      nlab = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS_F)))
+
+ggplot(aff, aes(lx, ly, z = zz)) +
+  geom_contour_filled(breaks = AFF_BREAKS) +
+  scale_fill_manual(values = AFF_PAL, drop = FALSE, guide = "none") +
+  geom_contour(breaks = log10(AFF_DSH), colour = "grey25", linewidth = .2, linetype = "dashed") +
+  geom_contour(breaks = log10(AFF_SOL), colour = "black", linewidth = .28) +
+  geom_point(size = .06, colour = "grey35", alpha = .4) +
+  facet_grid(part ~ nlab, labeller = label_parsed) +
+  scale_x_continuous(breaks = X_BRK_I, labels = c(".01", ".1", "1")) +
+  scale_y_continuous(breaks = Y_BRK_N, labels = Y_LAB_N) +
+  labs(x = expression(Delta * k[off]), y = "noise",
+       title = "IR validity map: affine distortion (rows: total / sample / correlation), by N_ch") +
+  theme_bw(base_size = 7, base_family = "Helvetica") +
+  theme(panel.background = element_rect(fill = "grey90"), plot.title = element_text(size = 9),
+        strip.text = element_text(size = 6.5)) -> g
+
+gb <- colorbar(AFF_PAL, AFF_LAB, "affine distance", AFF_LIN, sol = AFF_SOL, dsh = AFF_DSH)
+G <- g / gb + plot_layout(heights = c(1, 0.07))
+G
+ggsave("Figure_5_IR_affine_validity_byNch.pdf", G, width = 13, height = 4.6)
+```
