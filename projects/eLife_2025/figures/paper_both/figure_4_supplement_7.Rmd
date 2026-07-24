@@ -1,0 +1,103 @@
+---
+title: "Figure 4—figure supplement 7 — what each algorithm actually achieves: the distortion-corrected standard error over the design space"
+author: "Luciano Moffatt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+THE THIRD SIBLING on Figure 4's plane. The set now answers three separate questions with the same
+rows, the same columns and the same axes:
+  figure_4_bias / figure_4_distortion  -> is the reported error bar honest?
+  figure_4_supplement_6 (kappa)        -> is the Gaussian Fisher near-singular?
+  THIS ONE                             -> how large is the error bar, in truth?
+
+WHY THE CORRECTED COVARIANCE AND NOT THE FISHER ONE. The Fisher covariance is what the algorithm
+CLAIMS, and Figure 4 spends its panels showing that claim to be wrong by up to 74x for NR. The
+distortion-corrected covariance is the sandwich estimate of the estimator's TRUE variance, so it is
+the only version in which a cross-algorithm comparison is apples-to-apples: it reports what each
+method actually achieves, not what it asserts. Same rule as Figure 5 (figures_build_plan.md sec 6).
+
+PLOTTED AS A STANDARD ERROR, sqrt of the diagonal, in log10 units of the parameter, because that is
+the number a reader can act on: an SE of 0.30 in log10 is a factor 2 on the parameter, an SE of 0.0063
+is 1.5 per mil. A variance map would need the reader to halve every exponent in their head.
+
+WHAT IT SHOWS (medians over the grid, measured 2026-07-23):
+  k[off]: IR 0.196 / 0.064 / 0.020 / 0.0063 across N_ch 10..1e4, R identical to three digits, NR only
+    ~12% worse. All three scale as 1/sqrt(N_ch) (0.196/0.064 = 3.07 ~ sqrt(10)). For the rates the
+    recursion buys NOTHING: the information lives in the shape of the deterministic transient, which
+    a mean fit already sees.
+  N[ch]: IR 0.500 / 0.231 / 0.114 / 0.073, R close behind, NR 0.859 / 0.318 / 0.220 / 0.209 — 2.9x
+    worse at 1e4 and, more tellingly, SATURATING: NR stops improving past N_ch 1000 while IR keeps
+    going. The amplitude/count direction is where the fluctuation information matters, and it is the
+    only direction where ignoring the correlation costs real precision.
+
+This is the quantitative backing for Figure 5's framing: the recursion does not hand you more
+information, it hands you an honest account of the information you already had — TRUE for the rates,
+where the three curves coincide, and FALSE for the count, where NR genuinely loses and plateaus. Say
+both, or the claim overreaches.
+
+SCOPE, obligatory: non-stationary protocol. Under stationarity the mean is flat and ALL the rate
+information sits in the fluctuations, so the rate rows would separate too.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r common, include=FALSE}
+source("figure_4_common.R")
+```
+
+```{r data}
+# The diagonal: param_index == param_col, same selector the distortion maps use.
+se <- readcell("battery_pool_G") %>%
+  filter(component_path == "Probit_statistics_Gaussian_Distortion_Corrected_Covariance",
+         param_index == param_col, param_index %in% PIDX[PARAM_LONG],
+         statistic == "value", probit == "mean") %>%
+  group_by(algo, noise, Num_ch, interval_in_tau, param_index) %>%
+  summarise(v = mean(value), .groups = "drop") %>%
+  filter(is.finite(v), v > 0) %>%
+  mutate(sev = sqrt(v),                                   # SE in log10 units of the parameter
+         lx = log10(interval_in_tau), ly = log10(as.numeric(noise)),
+         param = names(PIDX)[match(param_index, PIDX)],
+         nchf  = factor(paste0("N[ch]==", Num_ch), levels = paste0("N[ch]==", NCHS)))
+
+# SEQUENTIAL, built directly — NOT via bandcols(). bandcols centres white on the band containing 0 in
+# break space, i.e. on SE = 1, and this range (0.003 to 2.86) STRADDLES 1, so bandcols would render a
+# diverging scale about a value that means nothing here and would run the intensity backwards (dark
+# for a small SE, pale for a large one). The kappa sibling gets away with bandcols only because every
+# kappa exceeds 1. Here: white = precise, dark red = the estimate is worthless. Range measured
+# 0.0058 to 2.86.
+SE_LIN    <- c(0.003, 0.006, 0.01, 0.02, 0.03, 0.06, 0.1, 0.2, 0.3, 0.6, 1, 2, 3)
+SE_BREAKS <- log10(SE_LIN)
+SE_PAL    <- colorRampPalette(RAMP[7:13], space = "Lab")(length(SE_LIN) - 1)
+SE_LAB    <- fmt_big(SE_LIN)
+SE_SOL    <- 0.03    # a factor 1.07 on the parameter: the estimate is worth quoting
+SE_DSH    <- 0.3     # a factor 2: the estimate is barely an estimate
+
+cat("corrected SE (log10 units) by algorithm and parameter:\n")
+print(as.data.frame(se %>% group_by(algo, param) %>%
+  summarise(n = n(), min = min(sev), median = median(sev), max = max(sev), .groups = "drop")),
+  row.names = FALSE, digits = 3)
+sat(log10(se$sev), min(SE_BREAKS), max(SE_BREAKS), "corrected SE")
+```
+
+```{r assemble}
+assemble_se <- function(params) {
+  hC <- map_height(length(params), 0.475)
+  g <- btitle("Distortion-corrected standard error") /
+       mapblock(se, function(d) log10(d$sev), SE_PAL, SE_BREAKS, params,
+                top = TRUE, bottom = TRUE,
+                iso_sol = log10(SE_SOL), iso_dsh = log10(SE_DSH)) /
+       colorbar(SE_PAL, SE_LAB, "SE (log10 units)", SE_LIN, sol = SE_SOL, dsh = SE_DSH)
+  hs <- c(0.16, hC, 0.28)
+  list(g = g + plot_layout(heights = hs), h = sum(hs))
+}
+```
+
+```{r render, fig.width = 7, fig.height = 9.5}
+both <- assemble_se(PARAM_LONG)     # k_off and N_ch, the two opposite-signed directions
+both$g
+ggsave("Figure_4_supplement_7.pdf", both$g, width = 7.0, height = both$h)
+```

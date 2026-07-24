@@ -35,6 +35,14 @@ MEM=96G TIME=4-00:00:00 CPUS=32 \
 # =============================================================================
 
 MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr" \
+  NCHS="10 100 1000 10000" \
+  N_NOISE="0.1 0.1 0.1 0.1" \
+  N_SIMS="10000 10000 10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
   N_ALGO="nonlinearsqr macro_NR macro_IR" GROUP_SIZE="10000" GN_MAX_ITER=25 \
   NCHS="10 100 1000 10000" \
   N_NOISE="100 100 100 100" \
@@ -51,11 +59,22 @@ MEM=96G TIME=4-00:00:00 CPUS=32 \
 
 
 MEM=96G TIME=4-00:00:00 CPUS=32 \
-  N_ALGO="nonlinearsqr macro_NR macro_R macro_IR" GROUP_SIZE="10000" GN_MAX_ITER=25 \
+  N_ALGO="nonlinearsqr macro_NR macro_R macro_IR"  \
   NCHS="100 1000 10000  1000 10000  10000" \
   N_NOISE="1000 1000 1000 10000 10000 100000" \
   N_SIMS="10000 10000 10000 10000 10000 10000" \
   projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+MEM=96G TIME=4-00:00:00 CPUS=32 \
+  N_ALGO="nonlinearsqr macro_NR macro_R macro_IR"  \
+  NCHS="100000 100000 100000 100000 100000 100000 100000 100000 " \
+  N_NOISE="0.1 1 10 100 1000 10000 100000 1000000" \
+  N_SIMS="10000 10000 10000 10000 10000 10000 10000 10000" \
+  projects/eLife_2025/ops/slurm/dispatch_figure_4.sh dirac
+
+
+
 
 
 # --- registro: los tres bloques anteriores, ya lanzados, a reemplazar ---------

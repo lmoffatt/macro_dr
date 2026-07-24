@@ -68,8 +68,23 @@ GRID_R_EXTRA <- tibble::tribble(
 # its runs are in flight. ADD A ROW THE MOMENT A CELL LANDS; until then LSE contributes no cells,
 # so nothing is looked up for it and its map rows simply do not appear (facet_grid drops the empty
 # level). Target = GRID_BASE, i.e. N_ch {10,100,1000,10000} x noise {0.1,1,10} at nsim 10000.
+# FIRST LSE CELLS LANDED 2026-07-23: noise = 1 is complete at all four N_ch (battery_sim_G AND
+# battery_pool_G). Nothing else is yet: noise 0.1 has only clouds (N_ch 10/100/1000) plus one stray
+# sim_G at N_ch 100, and noise 10 has sim_G but no pool_G. A cell may be declared here only when it
+# has BOTH batteries, because the two halves share this grid and findf() hard-stops on a miss.
+# PARTIAL, 2026-07-23 23:15. Contours are computed PER PANEL and the panels are N_ch columns, so a
+# column needs two distinct noise levels of its own to draw anything. N_ch 10 and 100 have {1, 10};
+# N_ch 1000 and 10000 still have only {1} and their panels will come out EMPTY until their noise-10
+# battery_pool_G lands (in flight; pool_G has been arriving ~30 min after the matching sim_G).
+# Add cells here as they land — declare only when BOTH batteries exist.
 GRID_LSE <- tibble::tribble(
-  ~nch,  ~z)
+  ~nch,  ~z,
+  10,    "1",
+  100,   "1",
+  1000,  "1",
+  10000, "1",
+  10,    "10",
+  100,   "10")
 GRID_BY_ALGO <- list(nonlinearsqr = GRID_LSE,
                      macro_NR     = GRID_BASE,
                      macro_R      = bind_rows(GRID_BASE, GRID_R_EXTRA),
@@ -103,15 +118,50 @@ bandcols <- function(breaks) {
   cols
 }
 fmt_big <- function(x) formatC(x, format = "g", digits = 3)
-DIST_LIN    <- c(0.5, 0.67, 0.8, 0.87, 0.91, 0.94, 0.97, 0.99, 1.01, 1.03, 1.06, 1.1, 1.15, 1.25, 1.5, 1.7, 2.5)
+# EXTENDED 2026-07-23 for the four-column roster. The old vector topped out at 2.5, which is fine for
+# the recursive family (IR 0.97-1.49, R 0.44-1.82) but NOT for NR, whose distortion runs to 1.5e3 in
+# k_off and 3.4e4 in N_ch and GROWS with N_ch (median 4.6 / 11.9 / 26.3 / 74.5 across the four
+# decades). On the old scale NR saturated in every cell and, where kappa also passed KAPPA_MAX, went
+# grey — the mask reading as "unidentified" what is really "off the chart". The fine structure near 1
+# is UNCHANGED (it is what resolves IR against R); only a geometric tail is appended, plus 0.4 at the
+# bottom for R's minimum of 0.439. Same design as the archived log-det scale in
+# figure_5_master.Rmd:76 ("fine near white, coarsening outward, so IR, R and NR each resolve").
+# COST, deliberate: the red ramp now spans 13 bands instead of 8, so cells near 1 lose some
+# saturation — R's 1.4 reads lighter than it used to. That is the price of holding NR on the same
+# scale, and it is the honest one: 1.4 IS mild next to 74. The tail is kept COARSE (2, 5, 10, 30,
+# 100, 1000, 1e5 — one band per half-decade to decade) precisely to limit that dilution; a finer
+# tail buys nothing, since what NR has to show is a trend across decades, not a value.
+DIST_LIN    <- c(0.4, 0.5, 0.67, 0.8, 0.87, 0.91, 0.94, 0.97, 0.99, 1.01, 1.03, 1.06,
+                 1.1, 1.15, 1.25, 1.5, 2, 5, 10, 30, 100, 1000, 1e5)
 DIST_BREAKS <- log10(DIST_LIN)
+# The two validity criteria, DECLARED ONCE and fed to BOTH the colour bar (as tick marks) and the
+# maps (as iso-distortion contours), so the bar and the panels cannot drift apart. Log-symmetric
+# pairs: solid = a factor 1.15 either way, dashed = a factor 2 either way. Widened from 1.5 to 2
+# (2026-07-23) when the scale grew a tail to 1e5: two marks crowded between 0.67 and 1.5 left the
+# whole tail unreferenced. Each value MUST be a member of DIST_LIN — colorbar() places its ticks by
+# match(v, lin), so a non-member vanishes silently.
+DIST_SOL    <- c(0.87, 1.15)
+DIST_DSH    <- c(0.5, 2)
 DIST_PAL    <- bandcols(DIST_BREAKS)
 DIST_LAB    <- fmt_big(DIST_LIN)
 # log-spaced bands: IR's values (0.003-0.042) and R's (0.13-0.15) differ by more than a decade, and a
 # linear scale would put every IR cell in the neutral band.
-BIAS_LIN    <- c(-0.3, -0.15, -0.07, -0.03, -0.01, -0.003, 0.003, 0.01, 0.03, 0.07, 0.15, 0.3)
+# EXTENDED 2026-07-23, same reason as DIST_LIN and measured the same way. The old vector stopped at
+# +-0.3 and the render's own saturation report showed 3 cells below and 21 above it. The overflow is
+# ENTIRELY in the N_ch direction (NR reaches +12.4, R reaches -2.79); in k_off nobody exceeds 0.055,
+# so the primary k_off render used only the three innermost bands of a scale built for a range it
+# never visits. Fine structure near 0 UNCHANGED (that is what resolves IR, max |0.053|); a geometric
+# tail is appended on BOTH sides, symmetric, so the centre band stays white at 0.
+BIAS_LIN    <- c(-15, -7, -3, -1.5, -0.7, -0.3, -0.15, -0.07, -0.03, -0.01, -0.003,
+                 0.003, 0.01, 0.03, 0.07, 0.15, 0.3, 0.7, 1.5, 3, 7, 15)
 BIAS_PAL    <- bandcols(BIAS_LIN)
 BIAS_LAB    <- formatC(BIAS_LIN, format = "g", digits = 2)
+# Same two criteria as the distortion half, expressed in the other scale: a bias of 0.07 in log10 IS
+# a factor 1.175 on the parameter (~DIST_SOL's 1.15) and 0.3 IS a factor 2 (DIST_DSH). So the two
+# halves of Figure 4 declare the SAME thresholds and a reader can carry one reading to the other.
+# Symmetric about 0, the bias's natural centre. Members of BIAS_LIN, as colorbar() requires.
+BIAS_SOL    <- c(-0.07, 0.07)
+BIAS_DSH    <- c(-0.3, 0.3)
 
 # ---- read the declared cells -------------------------------------------------------------------
 cells <- imap_dfr(GRID_BY_ALGO, function(g, a)
@@ -358,12 +408,25 @@ Y_LAB <- formatC(10^Y_BRK, format = "g", digits = 3)
 
 # ONE row factor, not nested facets: levels ordered parameter-major, algorithm-minor, so the four
 # algorithms of a parameter are always adjacent and the ladder reads top-to-bottom in each block.
+# (algorithm, parameter) pairs that must NOT be shown, because the comparison would not be
+# like-for-like (Luciano, 2026-07-23). LSE x N_ch: nonlinearsqr fits with unitary_current FIXED, so
+# the mean alone pins N_ch and the N*i ridge that limits the other three simply does not exist for
+# it. Side by side that reads as LSE winning the count, when what happened is that it assumed the
+# hard part away. LSE therefore appears in the k_off rows only. Applies to every map built through
+# rowfac(), i.e. both figure-4 halves and the corrected-SE supplement.
+EXCLUDE_ROWS <- tibble::tribble(
+  ~algo,          ~param,
+  "nonlinearsqr", "Num_ch_mean")
+
+.rowlab <- function(p, a) sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[p], ALGO_LAB[a])
 rowfac <- function(d, params) {
-  lv <- as.vector(t(outer(params, ALGOS,
-          function(p, a) sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[p], ALGO_LAB[a]))))
+  # parameter outer, algorithm inner, so the cost ladder reads top-to-bottom inside each parameter
+  keep <- tidyr::expand_grid(param = params, algo = ALGOS) %>%
+    dplyr::anti_join(EXCLUDE_ROWS, by = c("algo", "param"))
+  lv <- .rowlab(keep$param, keep$algo)
   d %>% filter(param %in% params) %>%
-    mutate(prow = factor(sprintf("atop(%s, bold(\"%s\"))", PARAM_MATH[param], ALGO_LAB[algo]),
-                         levels = lv))
+    dplyr::anti_join(EXCLUDE_ROWS, by = c("algo", "param")) %>%
+    mutate(prow = factor(.rowlab(param, algo), levels = lv))
 }
 
 marks <- function(rows) ELL_POINTS %>%
@@ -371,7 +434,10 @@ marks <- function(rows) ELL_POINTS %>%
          nchf = factor(paste0("N[ch]==", nch), levels = paste0("N[ch]==", NCHS))) %>%
   tidyr::crossing(prow = factor(rows, levels = rows))
 
-mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE) {
+# iso_sol / iso_dsh: contour levels drawn ON the panels, in the SAME space as brk (the caller
+# transforms, exactly as it already does for brk). Default empty, so the bias map is unchanged.
+mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE,
+                     iso_sol = numeric(0), iso_dsh = numeric(0)) {
   if ("comp" %in% names(d)) d <- filter(d, comp == "total")   # the maps show the total, not its parts
   d  <- rowfac(d, params) %>% mutate(zz = pmin(pmax(zvar(.data), min(brk)), max(brk)))
   mk <- marks(levels(droplevels(d$prow)))
@@ -379,6 +445,12 @@ mapblock <- function(d, zvar, pal, brk, params, top = FALSE, bottom = FALSE) {
   ggplot(d, aes(lx, ly, z = zz)) +
     geom_contour_filled(breaks = brk) +
     scale_fill_manual(values = pal, drop = FALSE, guide = "none") +
+    # iso-distortion contours, ON TOP of the bands: the same two criteria the colour bar ticks, so a
+    # reader can trace where a panel crosses them without counting bands. Drawn after the fill and
+    # before the sample points. An empty level vector adds nothing.
+    (if (length(iso_dsh)) geom_contour(breaks = iso_dsh, colour = "grey25", linewidth = .22,
+                                       linetype = "dashed") else NULL) +
+    (if (length(iso_sol)) geom_contour(breaks = iso_sol, colour = "black", linewidth = .3) else NULL) +
     geom_point(size = .08, colour = "grey35", alpha = .35) +
     geom_tile(data = uni, aes(lx, ly), inherit.aes = FALSE, fill = "grey60",
               colour = "grey30", linewidth = .25, width = 0.30, height = 1.0) +
