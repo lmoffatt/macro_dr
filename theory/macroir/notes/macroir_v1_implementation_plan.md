@@ -1,577 +1,309 @@
-# macroir v1 — implementation plan for parallel agents
+# macroir v1 — implementation plan
 
-Status: draft. Audience: implementing agents and the maintainer.
-Companion document: `flat_model_language.md` (the level-0 model declaration).
+Rewritten 2026-07-25, replacing a version that was wrong in structure. What it
+got wrong is recorded in "How the first attempt failed" at the end, because the
+failure is instructive and cheap to repeat.
 
----
-
-## 0. What this is
-
-`macroir` is a small, self-contained C++ library that computes, for a kinetic
-scheme and a current recording:
-
-- the log-likelihood `logL`,
-- its gradient `score`,
-- the Gaussian Fisher information `FIM`,
-
-using the MacroIR algorithm, plus forward simulation of recordings. It is
-packaged for R and for Python.
-
-It is **not** a reimplementation of `macro_dr` and it is **not** intended to
-reproduce the eLife paper. It reimplements one algorithm, validated numerically
-against `macro_dr`.
-
-### In scope for v1
-
-- Flat (level-0) runtime model declaration, single agonist.
-- Algorithm family IR. Then R and NR as branches of the same recursion.
-- LSE (classical non-linear least squares) as a separate, optional module.
-- Simulation by uniformization.
-- `logL`, `score`, `FIM`.
-- R and Python bindings.
-
-### Explicitly out of scope for v1
-
-Do not build these. If a package seems to need one, stop and ask.
-
-- Allosteric / conformational model generation (level 1). It gets its own paper.
-- MR, VR, IRT, micro, and every Taylor variance-correction variant.
-- The diagnostics battery: `Probit_statistics`, distortion measures, affine
-  invariant distance, correlation distortion, autocorrelations, bootstrap.
-- MCMC, parallel tempering, thermodynamic evidence, Bayes factors, priors.
-- The `.macroir` DSL, a command manager, a script interpreter.
-- Memoization / function tables. Measured on the reference cell: memoization is
-  worth zero (0.980 s with, 0.951 s without, same RSS). Do not port it.
-- An optimizer in C++. See P10/P11: Levenberg-Marquardt lives in R/Python,
-  which is trivial once `logL`, `score` and `FIM` are available.
-- OpenMP anywhere in the core. Parallelism belongs to the host language.
+Companion: `flat_model_language.md` (the level-0 model declaration).
+Repo: `/home/lmoffatt/Code/macroir`, MIT. Reference: `macro_dr`, GPL-3, same
+author.
 
 ---
 
-## 1. Ground rules for every agent
+## What macroir is
 
-1. **Never modify `macro_dr`.** Read it freely. It is the reference. The only
-   write into it is fixture generation, which is P0.2 and is done once.
-2. **Never rebuild `macro_dr`.** A full build is ~8000 s of CPU and destroys
-   the frozen binary's provenance. Read source, run the frozen binary.
-3. **Own your files.** Each package below lists the files it owns. Do not write
-   a file owned by another package. If you need something from another package,
-   it is in a header that P0.3 already pinned; code against the header.
-4. **Do not widen scope.** If your acceptance test passes and you are tempted to
-   add a feature, stop. Write it in `NOTES.md` under your package instead.
-5. **No dependencies** beyond Eigen and the standard library in `core/`.
-   No Boost, no LAPACK link, no OpenMP, no fmt, no spdlog.
-6. **C++17.** Not 20. Portability to older toolchains and to CRAN matters more
-   than concepts do.
-7. Every public function that can fail returns the error type pinned in P0.3.
-   No exceptions across the library boundary, no `assert` as error handling.
-8. When you port a formula from `macro_dr`, cite the source location in a
-   comment: `// ported from legacy/qmodel.h:5629-5921`.
+A small C++ library that computes, for a kinetic scheme and a current recording,
+the log-likelihood, its gradient, and the Gaussian Fisher information, by the
+MacroIR algorithm, exposed to R and Python.
+
+Its first job is to **reproduce macro_dr's numbers**. Not to improve on them.
 
 ---
 
-## 2. Repository skeleton
+## The three rules
 
-The maintainer creates the repo and this skeleton. Agents fill it in.
+### R1 — Faithful. The default is always a transcription.
 
-```
-macroir/
-  CMakeLists.txt
-  core/
-    include/macroir/          # header-only library
-      error.hpp               # P0.3
-      der.hpp                 # P0.3  (derivative bundle)
-      model.hpp               # P0.3 / P1
-      linalg.hpp              # P0.3 / P2
-      matrixfun.hpp           # P0.3 / P2
-      qdt.hpp                 # P0.3 / P6
-      filter.hpp              # P0.3 / P7
-      simulate.hpp            # P0.3 / P4
-      lse.hpp                 # P0.3 / P8
-      experiment.hpp          # P0.3 / P5
-    tests/
-      harness/                # P3
-      model/                  # P1
-      linalg/                 # P2
-      qdt/                    # P6
-      filter/                 # P7
-      simulate/               # P4
-  fixtures/                   # P0.2, generated, committed
-    README.md                 # how each fixture was produced
-  tools/
-    gen_fixtures.sh           # P0.2
-  bindings/
-    r/                        # P10
-    python/                   # P11
-  docs/                       # P12
-```
+Transcribe macro_dr line for line, thresholds and branches included, with a
+comment naming the file and lines. Where its formula has an odd constant, the odd
+constant goes in, with a note and nothing more.
 
----
+Anything that differs is a defect, whatever its merits, because a single
+deliberate divergence anywhere in the chain makes every downstream comparison
+uninterpretable: when logL disagrees you cannot tell your bug from your
+improvement.
 
-## 3. Sequencing
+A variant that looks better is **not a code change, it is a research claim**.
+Demonstrating that one likelihood algorithm beats another is precisely the
+apparatus the eLife paper builds, and it is harder than writing the variant.
+Do not write alternatives. Not behind a flag, not "for comparison". If you find
+one, write a line in `NOTES.md` and keep going.
 
-```
-P0.1 ─ P0.2 ─┐
-P0.3 ────────┼─→ wave 1:  P1  P2  P3  P4  P5   (parallel, no coupling)
-             │
-             └─→ wave 2:  P6 (needs P2)
-                          P7 (needs P6, P1, P5)
-                          P8 (needs P1, P5)
-                          P9 (needs P7)
-             └─→ wave 3:  P10  P11  P12
-```
+### R2 — A discrepancy is not a finding until it moves logL or the score.
 
-P0 is sequential and blocking. Everything in a wave runs in parallel.
+Intermediate quantities are diagnostics for locating a disagreement once logL
+already disagrees. They are not evidence of one.
 
----
+Worked case: an intermediate conditional variance was found to lose all its
+precision at small dt and even go negative, with relative errors reaching 1e9.
+Irrelevant. `y_var = e + N gSg + N ms` with `e = Current_Noise/dt`, so the
+residual term's share of `y_var` goes as dt². It matters at large dt, where the
+computation is exact, and degrades at small dt, where it has vanished. Worst
+measured impact on `y_var`: **2.4e-7**. Hours were spent on it and it was
+reported twice as a finding.
 
-## 4. Phase 0 — blocking, do first, in order
+Before writing the word "finding", compute how much it moves logL.
 
-### P0.1 Preserve the reference binary
+### R3 — Read the design before the formulas.
 
-`build/gcc-release/macrodr_cli` is built from commit `0ffbda7`, which is the
-provenance hash written into row 1 of the reference CSVs. `HEAD` is already
-past it. Any rebuild destroys the only bit-exact reference and the only
-generator of new reference cases.
+The single most costly mistake of the first attempt. Read `macro_dr` to learn
+**how it is shaped**, then go back for the formulas. Specifically, before writing
+anything, read:
 
-- Copy it (and record `sha256`) to a location outside `build/`.
-- Record: commit hash, compiler, flags, date.
-- Write `fixtures/README.md` documenting how to invoke it.
+- `legacy/derivative_operator.h` — the operators on `Derivative`
+- `legacy/parameters_derivative.h:88-140` — the `d_d_` storage
+- one full algorithm function in `legacy/qmodel.h`, start to finish
 
-Acceptance: the binary runs from its new location and reproduces one stored CSV.
+and see the property that organises the whole codebase, stated in R4.
 
-### P0.2 Generate fixtures
+### R4 — One body of code, two modes. This dictates the order of work.
 
-Three tiers. All go in `fixtures/`, all committed.
-
-**Tier A — interior fixture.** From
-`projects/eLife_2025/figures/data/figure_1_likelihood_diagnostic_IR.csv`
-(105 KB, 6 intervals, 2 states, `N_ch=20`). This is the only artefact that
-exposes intermediate quantities: `P`, `gmean_i`, `gvar_i`, `gmean_ij`,
-`gtotal_ij`, `d_GS`, and three sequential checkpoints of the filter. It is the
-fixture the numeric packages develop against.
-
-**Tier B — per-interval fixture.** From a short seeded run of
-`figure_3_time` (`seed = 20260722`). Per-simulation seeds are drawn from a
-master stream before the OpenMP loop, so a prefix of 4 recordings reproduces
-the first 4 of the 1000 exactly (~0.78 s). Gives per-interval `score` and
-`FIM`. **Filter `segment_index == 0`**: every `(sim, sample)` row is written
-twice.
-
-**Tier C — coverage fixtures. This is the one that does not exist yet and
-matters most.** Every existing fixture is 2-state, so nothing exercises the
-loss of precision in dividing by `(lambda_k - lambda_j)` as two eigenvalues
-approach each other, nor the guard that handles it.
-
-The frozen binary can only run schemes compiled into it, so tier C uses
-**adversarial parameter values on the already-registered schemes**, not new
-schemes. No recompilation; the 0ffbda7 binary stays the generator.
-
-Two facts shape this:
-
-- the eigendecomposition is of `Q`, not of `Q*dt`
-  (`calc_eigen(calc_Qx(m, x))`, `legacy/qmodel.h:1099`), so eigenvalues carry
-  units of inverse time and are of order 1e2 to 1e3 here;
-- the guard at `legacy/parameters_derivative.h:1474` and `:1488` is
-  **absolute**, `100*sqrt(eps) = 1.49e-6`. Against eigenvalues of order 1e3
-  that is roughly 1e-9 in relative terms, so it fires only on numerical
-  degeneracy and does not protect against the precision loss that begins
-  several orders of magnitude earlier. The ladder therefore sweeps the
-  **relative** gap and crosses the guard only at the bottom.
-
-Generate, with the frozen binary:
-
-- `scheme_CO`, `scheme_CCO`, `scheme_COC` and `scheme_1` at their reference
-  parameter values (the baseline cases);
-- the degeneracy ladder on `scheme_1`, five rungs. Family:
-  `kon = 560.763`, `gating_off = 3*kon = 1682.289`, `[agonist] = 1`,
-  `koff = gating_on = eps`. Two eigenvalues collide when the fastest binding
-  rate meets the gating-off rate while the reverse rates are slow, and `eps`
-  is the knob (the relative gap goes as `sqrt(eps)`):
-
-  | rung | `eps` | absolute gap | relative gap | guard |
-  |------|-------|--------------|--------------|-------|
-  | C1 | 8.640953e+00 | 1.708e+01 | 1e-2 | – |
-  | C2 | 8.413654e-02 | 1.682e-01 | 1e-4 | – |
-  | C3 | 8.411467e-04 | 1.682e-03 | 1e-6 | – |
-  | C4 | 8.411445e-06 | 1.682e-05 | 1e-8 | – |
-  | C5 | 8.411442e-08 | 1.682e-07 | 1e-10 | **fires** |
-
-  `tools/find_degenerate_params.py` in the `macroir` repo regenerates this
-  table and prints the `log10` values the scripts need.
-
-- one 3-state case from `scheme_CCO` as a sanity fixture. A 3-state chain has
-  far less room: with rates in `[1, 1000]` the smallest reachable relative gap
-  is about 2e-3, and even across `[1e-3, 1e6]` only about 9e-6. The deep rungs
-  need `scheme_1`.
-
-**Label rungs C4 and C5 in `fixtures/README.md` as numerical stress tests, not
-physiology.** A rate of `8.4e-8` per second is not a channel anybody has
-measured. They exist to probe the arithmetic.
-
-For every fixture record: the model in level-0 form, the parameter vector, the
-protocol, the recording, and every output quantity available.
-
-Acceptance: `tools/gen_fixtures.sh` regenerates every fixture byte-identically
-from the frozen binary.
-
-### P0.3 Pin the interfaces
-
-No implementations. Headers with signatures, types and doc comments only,
-compiling against a stub. This is what makes wave 1 parallel, so it must be
-complete before wave 1 starts.
-
-Two decisions must be made here and cannot be deferred:
-
-**D1 — derivative representation. DECIDED: mirror `macro_dr`.**
-
-Carry the value plus one derivative object of the same shape per parameter,
-which is what `macro_dr` already does with `Derivative<X, Parameters>`:
+macro_dr writes each algorithm **once**. Run it with `double` and you get the
+value. Run the same function with `Derivative<double, Parameters_transformed>`
+and you get the value and the gradient, because the operators propagate both:
 
 ```cpp
-template <class X>
-struct Der {
-    X value;
-    std::vector<X> d;      // d.size() == n_params, one partial per parameter
-};
+// legacy/derivative_operator.h:556
+auto operator*(const T& x, const S& y) {
+    return Derivative<F, X>(primitive(x) * primitive(y),
+                            derivative(x)() * primitive(y) + primitive(x) * derivative(y)(),
+                            get_dx_of_dfdx(x, y));
+}
 ```
 
-Not a scalar dual number: that keeps matrix operations as matrix operations
-(BLAS-friendly, no per-element allocation), and the existing codebase
-deliberately templates each input separately because templating on a single
-scalar `T` breaks derivative propagation.
+Three consequences, and they are why this is not a stylistic preference:
 
-### The mirroring rule
+1. **You cannot have a sign error in the derivative that is not also in the
+   value**, because there is no derivative code. Hand-writing the chain rule
+   creates a second implementation that drifts from the first silently, with the
+   value still correct.
+2. **Refactoring the algorithm cannot break the derivative.** It follows.
+3. **Branches are selected on `primitive(x)`** (`qmodel.h:816`, `:847-849`), so
+   the derivative run takes the same branch as the plain run. Only possible
+   because it is one body of code.
 
-The derivation strategy in `macro_dr` works and is the author's. **Mirror the
-mathematics and the numerical strategy; do not mirror the genericity
-machinery.**
+Each function templates **each argument separately** (`operator*(const T& x,
+const S& y)`), not on a single `T`, so a derivative type can meet a plain one.
 
-Mirror, structure for structure, name for name where it helps:
+**Therefore the route is:**
 
-- the forward propagation architecture (`Derivative<X, Parameters>` and its
-  operations),
-- the eigendecomposition derivative, including the near-degeneracy guard,
-- the divided differences `E1 / Ee / E2 / E3`,
-- the Qdt assembly,
-- the IR filter step and the accumulation of `logL`, `score`, `FIM`.
+> **First get logL working with plain doubles, end to end. Then template the same
+> code and instantiate it with the derivative type. The score and the FIM come
+> out of that, not out of new code.**
 
-Do **not** mirror:
-
-- `constexpr_Var_domain`, the 39-alternative `std::variant`,
-  `merge_Maybe_variant`, and the `if constexpr` dispatch on algorithm flags.
-  That machinery exists because `macro_dr` carries seven algorithm families;
-  `macroir` carries one, plus `R` and `NR` as a runtime enum. Importing it
-  would import exactly the complexity the rewrite exists to shed.
-- memoization and function tables (measured: worth zero on the reference cell),
-- the `Vector_Space` tag machinery for the diagnostic slots.
-
-**Why mirroring is worth more than it looks.** If the propagation is
-structurally the same, a disagreement can be localised by comparing intermediate
-derivative objects one to one, instead of staring at a difference in the final
-score. It converts validation into directed debugging.
-
-**And what it costs.** A mirrored implementation inherits any bug in the
-original, and the fixtures cannot see it, because the fixtures come from the
-original. The finite-difference cross-check is therefore not optional and not a
-nicety: it is the only test in the whole plan capable of catching a defect that
-was copied faithfully. Every package that produces a derivative carries one.
-
-**D2 — error type.** Recommendation: a `Maybe<T>` carrying either a value or a
-message, mirroring `macro_dr`'s `Maybe_error`, with an explicit `and_then`.
-Pin the exact signature; every package returns it.
-
-Acceptance: all headers compile standalone; a stub program that calls every
-public entry point links.
+There is no work package called "derivatives". If one appears in your plan, you
+have the architecture wrong.
 
 ---
 
-## 5. Wave 1 — parallel
+## Route
 
-### P1 — Model layer
+Three stages. Each ends at a number that can be compared with macro_dr. Do not
+start a stage before the previous one's checkpoint passes.
 
-**Owns:** `core/include/macroir/model.hpp`, `core/tests/model/`.
+### Stage 1 — logL, plain doubles, end to end
 
-Implement `flat_model_language.md`: parse and validate a level-0 declaration,
-and assemble from it, at runtime:
+Everything with `double`. No templates, no derivative type, no alternatives.
 
-- `Q(a)` for a given agonist concentration `a`,
-- `dQ/dtheta_p` for every parameter — a **constant sparse matrix per parameter**,
-  computed once at load, with entries `ln(10) * exponent_p * q_ij` for
-  `log10` parameters. There is no autodiff and no expression AST in this
-  package. If you find yourself writing an expression evaluator, you have
-  misread the spec.
-- the conductance vector `g`, sign included,
-- the initial distribution,
-- parameter names, in order.
+**Already in the repo and usable as is** (value-only, tested, 4 suites green):
 
-Also implement the reverse map (`Q, g -> parameter vector`), which in the
-current code is a hand-written third copy and here must be **derived** from the
-same declaration.
+| file | what | ported from |
+|---|---|---|
+| `matrix.hpp` | small dense row-major matrix | — |
+| `error.hpp` | `Maybe<T>`, `Status` | `Maybe_error` |
+| `eigen.hpp` | `dgeevx_` with macro_dr's gauge and sort | `lapack_headers.h:1278-1669` |
+| `model.hpp` | level-0 scheme, `assemble_Q`, `assemble_g`, `validate` | `flat_model_language.md` |
+| `schemes.hpp` | the four registered schemes, transcribed | `models_simple.h`, `models_MoffattHume_linear.h:12` |
+| `faithful.hpp` | `Ee`, `E3` and their branches | `qmodel.h:814`, `:860` |
+| `matrixfun.hpp` | `exp(Q dt)` from the decomposition | — |
+| `qdt.hpp` | the whole interval assembly | `qmodel.h:1681-1780` |
 
-Implement the validation rules listed in `flat_model_language.md`.
+`qdt.hpp` is complete: `to_transition_probability`, `kappa_F(V)`, the conjugate
+shrinkage with its two priors, `gvar_ij`, the back-conversion, both range
+canaries, the marginals.
 
-**Reference:** `legacy/models_simple.h` and `legacy/models_MoffattHume_linear.h`
-show the three current representations. Note the two known drifts: `scheme_CO`
-declares `on`/`off` but its formula says `kon`; `scheme_1` puts the current's
-sign only in the lambda (`p[4] * -1.0`), not in `g_formula`.
+**To write:**
 
-**Acceptance (exact, no tolerance):** for `scheme_CO`, `scheme_CCO`,
-`scheme_COC` and `scheme_1`, transcribed to level 0:
-same state count; same sparsity pattern of `Q0` and `Qa`; same parameter names
-in the same order; same coefficients; same conductance vector including sign;
-and `Q` assembled at the reference parameter values equal element-by-element to
-the fixture. Plus: every validation rule has a test that trips it.
+1. **Experiment, protocol, recording.** Agonist concentration as a step function
+   of time, sampling frequency, interval boundaries, the recorded current per
+   interval. Handle missing samples (the predict-without-updating path) from the
+   start; retrofitting it is painful. Reference: `qmodel.h:4483-4487` for the
+   no-data branch.
 
-### P2 — Linear algebra and matrix functions
+2. **The IR filter step.** Read the whole function before writing any of it.
+   - prediction, `y_mean`, `y_var`, `gS`, `gSg`, `ms`, `sigma_pre`:
+     `qmodel.h:4488-4612`
+   - the rank-1 update: `qmodel.h:5630-5702`
+   - `qmodel.h:5703-5909` is diagnostic output, not part of the algorithm
+   - the trust coefficient and its softmin: `qmodel.h:4124-4318`.
+     **Only `calculate_trust_coefficient` is live.** `qmodel.h:4160` holds a
+     second LogSumExp formulation marked `NOT CURRENTLY WIRED IN` and
+     `calculate_psd_trust_coefficient` is computed and stored but never applied
+     (`:5648`, `:5667`, `:5697`). Porting either gives a different score and
+     different confidence intervals.
+   - verified decomposition, useful as a check:
+     `y_var = e + N gSg + N ms`, with `e = Current_Noise * fs / n_samples`
+     (`qmodel.h:4539`), i.e. `Current_Noise / dt`.
 
-**Owns:** `core/include/macroir/linalg.hpp`, `matrixfun.hpp`,
-`core/tests/linalg/`.
+3. **logL accumulation.** `l_t = -0.5 log(2 pi v_t) - 0.5 chi2_t` with
+   `chi2_t = (y_t - mu_t)^2 / v_t` (`qmodel.h:4092`, assembled at `:4416-4417`).
+   The Poisson branch at `:4095` only runs when `Proportional_Noise != 0`, which
+   is 0 in the paper's models and drags in GSL. Skip it.
 
-- Eigendecomposition of a real non-symmetric `Q` (Eigen `EigenSolver`; do not
-  link LAPACK).
-- `exp(Q * dt)` and the divided-difference quantities the Qdt assembly needs.
-- The derivative of the above with respect to `Q`.
+**Checkpoint 1.** Compute logL for one stored recording and compare against
+macro_dr's. Nothing downstream starts until this matches.
 
-**Port, do not reinvent.** The derivation of the eigendecomposition derivative
-is already solved in `macro_dr`: read
-`legacy/parameters_derivative.h:1465-1520` and the divided differences at
-`legacy/qmodel.h:763-870`, and port them. In particular understand the role of
-the `100 * sqrt(eps)` guard before changing anything about it, and understand
-whether `eig_enforce_q_mode` (defined at `parameters_derivative.h:1516` and
-`matrix.h:2100`, currently never called) is needed here.
+### Stage 2 — the same code, with derivatives
 
-> **Correction, 2026-07-25.** An earlier draft of this section, and the analysis
-> it rested on, concluded that computing `dP/dtheta` by Daleckii-Krein removes
-> the eigenvector derivatives and the degeneracy guard from the chain. That is
-> true for `P` and false for everything after it. The filter consumes
-> `gtotal_ij` and `gtotal_sqr_ij`, which are already first- and second-order
-> Frechet derivatives of `expm`; their theta derivatives are second- and
-> third-order ones, needing divided differences of order 2 and 3 and
-> contractions of `O(P N^3)` and `O(P N^4)`, against `O(P N^3)` for the route
-> macro_dr already uses. So P2 does not get cheaper and the guard is not
-> eliminable by that argument. The Daleckii-Krein route is still the right one
-> for `P` itself and is implemented and validated in `macroir`; see
-> `macroir/docs/decisions.md` D4 and D6. Before writing the Qdt derivatives
-> either way, evaluate the Van Loan block-matrix identity, which needs neither
-> eigenvector derivatives nor a guard.
+1. **`Der<X>`**, mirroring `Derivative<X, Parameters_transformed>`: the value plus
+   one object of the same shape per parameter (`parameters_derivative.h:94-99`
+   for the scalar, `:131-136` for the matrix). Not a scalar dual number.
 
-Also note `legacy/schur_parlett.h` (622 lines) exists as an alternative path.
-v1 uses the eigen path only; record in `NOTES.md` any case where it is not
-adequate.
+   macro_dr also carries a raw `Parameters_transformed const*` to check that two
+   derivatives are with respect to the same theta, guarded by
+   `MACRODR_DX_ASSERT`, which is compiled to a no-op in every build
+   (`MACRODR_STRICT_DX_ASSERT` is defined nowhere). Leave the pointer out; it
+   carries no behaviour.
 
-**Acceptance:** against Tier A and Tier C fixtures, `exp(Q*dt)` and its
-derivative to 1e-13 relative, floor 1e-15. Independently, the derivative agrees
-with central finite differences on `Q` to 1e-6 relative. The Tier C
-near-degenerate cases must pass, and a test must exist that fails if the
-degenerate handling is removed.
+2. **The operators**, from `derivative_operator.h:556-610`. Template each argument
+   separately. Seeding is the identity in transformed space
+   (`parameters_derivative.h:1068-1079`), and the log10 Jacobian is applied once
+   explicitly (`:1028`, `parameters.h:164-166`).
 
-### P3 — Fixture harness and comparison infrastructure
+3. **Template the stage 1 chain** on its input types and instantiate with `Der`.
+   Do not write a second version of anything. Where stage 1 has `assemble_Q` and
+   would want an `assemble_dQ`, there is one templated function.
 
-**Owns:** `core/tests/harness/`.
+   One thing must NOT carry a derivative: `kappa_F(V)`, the shrinkage
+   pseudo-count, is computed on the primitive only (`qmodel.h:1076-1092`).
+   Giving it one puts `d eps/d theta` into the shrinkage ratio and changes the
+   score.
 
-This package delivers before any numerics exist, and every other package
-depends on its output format.
+4. **The Fisher**, accumulated per step:
+   `t_GFI = XXT(d_y_mean)/r_y_var + XXT(d_y_var)/(2 r_y_var^2)`
+   (`qmodel.h:6109-6119`). PSD by construction. The score is not accumulated
+   separately; it is the derivative of the accumulated logL.
 
-- Reader for each fixture tier.
-- Comparator with a per-quantity tolerance policy. **Absolute floor 1e-15**:
-  `macro_dr` writes with `setprecision(digits10+1)` = 16 digits, not 17, so
-  doubles do not round-trip. Asking for more is chasing a ghost.
-- Default tolerances: primitives 1e-13, derivatives 1e-11, aggregated `logL`
-  and `score` 1e-12, `FIM` 1e-10, all relative.
-- A report that localises a mismatch to (quantity, interval, parameter index)
-  rather than printing a scalar difference.
-- **A mutation test of the harness itself.** Inject a known error (e.g. drop
-  the factor `2.0` at `legacy/qmodel.h:1740`, or perturb one fixture value by
-  1e-9) and assert the harness reports it. Without this, "the battery passes"
-  means nothing.
+**Checkpoint 2.** Score against central finite differences of the stage 1 logL,
+and against macro_dr's score. FIM against macro_dr's.
 
-**Do not** use "sum of per-step values equals the total" as a correctness
-check. It is tautological: `legacy/qmodel.h:6092` is literally
-`logL = logL + t_logL` and the per-step values dumped **are** the summands. It
-returns 1e-16 even when the formula for `y_var` is wrong. Keep it as a smoke
-test, label it as such.
+### Stage 3 — the rest, in this order
 
-**Acceptance:** the harness reports green on the fixtures against the frozen
-binary's own output, and red on every injected mutation.
-
-### P4 — Simulation
-
-**Owns:** `core/include/macroir/simulate.hpp`, `core/tests/simulate/`.
-
-Exact CTMC realisation by uniformization: given a model, parameters and a
-protocol, produce a current recording. Independent of the derivative machinery;
-nothing here carries a `Der`.
-
-**Decide the RNG contract now, not after v1.** Users in R expect `set.seed()`
-to control it; users in Python expect a `Generator` or an explicit seed
-argument. Changing this after release invalidates third parties' results. The
-core takes an explicit seed or engine; the bindings adapt.
-
-**Do not port the `seed = 0` sentinel.** In `macro_dr`, `seed = 0` means
-`std::random_device` and the resolved seed is never logged, which is why
-figures 4 and 5 of the paper cannot be reproduced. In `macroir` a seed is
-always explicit and is always recorded in the output.
-
-**Reference:** `src/core/simulate.cpp`, in particular the master-stream seed
-derivation around lines 292-302.
-
-**Acceptance:** distributional tests (mean and variance of the current against
-the analytic `y_var = e + N*gSg + N*ms`); and, on a fixed seed, a recording
-that is stable across runs, thread counts and platforms.
-
-### P5 — Experiment, protocol and recording types
-
-**Owns:** `core/include/macroir/experiment.hpp`.
-
-Small but everything depends on it: agonist concentration as a function of
-time (step protocol), sampling frequency, interval boundaries, sub-intervals,
-and the recording (a vector of currents aligned to intervals). Handle missing
-samples (the "predict, do not update" path) from the start; retrofitting it is
-painful.
-
-**Acceptance:** round-trips the protocol of every fixture; the interval
-boundaries it computes match the fixture's `step_start` / `step_end` /
-`n_step` columns exactly.
+Simulation by uniformization (`src/core/simulate.cpp`; decide the RNG contract
+before v1, and do not port the `seed = 0` sentinel, which means `random_device`
+with the resolved seed never logged). Then R and NR as a runtime enum on the
+filter. Then LSE. Then the R and Python bindings, which are a few days each once
+the core is header-only and the API is four functions. The optimizer is thirty
+lines in R and in Python given logL, score and FIM; do not write one in C++.
 
 ---
 
-## 6. Wave 2
+## Out of scope for v1. Do not build these.
 
-### P6 — Qdt assembly
-
-**Owns:** `core/include/macroir/qdt.hpp`, `core/tests/qdt/`. **Needs P2.**
-
-From `exp(Q*dt)` and the divided differences, assemble the per-interval
-quantities the filter consumes: `P`, `gmean_i`, `gvar_i`, `gmean_ij`,
-`gtotal_ij`, and their derivatives.
-
-**Reference:** `legacy/qmodel.h:1581-1677`. Note that the current assembly
-includes a Bayesian shrinkage step (commit `a3241c0`); understand what it is
-for before deciding whether v1 needs it, and record the decision.
-
-**Acceptance:** every quantity against Tier A column-by-column at 1e-13, and
-against Tier C at the same tolerance. Derivatives cross-checked against central
-differences at 1e-6.
-
-### P7 — IR filter, logL, score, FIM
-
-**Owns:** `core/include/macroir/filter.hpp`, `core/tests/filter/`.
-**Needs P6, P1, P5.**
-
-The predict/update recursion with the integrated measurement, the boundary-state
-conditioning, and the accumulation of `logL`, `score` and `FIM`.
-
-The FIM to reproduce is the analytic Gaussian one accumulated per step:
-
-```
-t_GFI = XXT(d_y_mean)/r_y_var + XXT(d_y_var)/(2 * r_y_var^2)
-```
-
-which is PSD by construction and is what an optimizer wants as curvature.
-(`legacy/qmodel.h:6109-6119`.) The numerical FIM is not part of the core.
-
-**Reference:** `legacy/qmodel.h:5629-5921` for the step; `:4124-4318` for the
-trust coefficient and softmin. **Warning:** `legacy/qmodel.h:4160` contains a
-second LogSumExp formulation of the trust coefficient marked
-`NOT CURRENTLY WIRED IN`. Porting that branch instead of the active one yields
-a different score, a different Fisher and different confidence intervals. Port
-the active path (`calculate_trust_coefficient`).
-
-**Acceptance:** Tier A checkpoints at 1e-13; Tier B per-interval `score` and
-`FIM` at 1e-11 and 1e-10; totals at 1e-12; Tier C at the same tolerances. Score
-cross-checked against central finite differences in `theta` at 1e-6 on at least
-five schemes, which is the independent check that catches sign errors.
-
-### P8 — LSE
-
-**Owns:** `core/include/macroir/lse.hpp`. **Needs P1, P5.** Independent of
-P6/P7 and can run alongside them.
-
-Classical non-linear least squares with marginalised noise (the Moffatt & Hume
-2007 JGP method). No filter. Same `logL`/`score`/`FIM` interface.
-
-**Acceptance:** against fixtures generated with `family = nonlinearsqr` at the
-same tolerances. Note the known tautology in the reference: `r̄²_std ≡ 1` for
-LSE by construction; do not treat it as a passing check.
-
-### P9 — R and NR branches
-
-**Owns:** additions to `filter.hpp` behind an enum. **Needs P7.**
-
-`R` and `NR` are variations of the same recursion (recursive versus
-non-recursive), not separate algorithms. Add them as a runtime enum on the
-filter, not as template parameters, and not as a variant type.
-
-**Acceptance:** fixtures generated with `macro_R` and `macro_NR` at the same
-tolerances as P7.
+Allosteric model generation (it gets its own paper), MR, VR, IRT, micro, the
+diagnostics battery (`Probit_statistics`, distortion, bootstrap), MCMC and
+thermodynamic evidence, the `.macroir` DSL, memoization (measured on one cell:
+0.980 s with, 0.951 s without), and OpenMP anywhere in the core.
 
 ---
 
-## 7. Wave 3
+## Testing
 
-### P10 — R binding
-### P11 — Python binding
+Only what a checkpoint needs. The first attempt built an elaborate degeneracy
+ladder, quadrature references and branchless comparisons before there was a
+likelihood, and none of it decided anything.
 
-**Own:** `bindings/r/`, `bindings/python/`. Neither depends on the other.
+- Exact identities cost nothing and catch real errors: rows of `P` sum to one,
+  `P(0) = I`, the semigroup property, and best of all a **constant conductance**,
+  where `Abar = g` with zero variance whatever the trajectory, which exercises
+  the whole divided-difference machinery against a closed-form answer.
+- Finite differences are the only independent check on a derivative. Compare
+  with a tolerance derived from the reference's own error budget
+  (`eps ||f|| / h` for round-off plus `h^2` for truncation), not tuned until
+  green.
+- Compare against macro_dr at the checkpoints, not continuously.
 
-Surface, minimal and identical in both:
-
-```
-scheme  <- read/construct a level-0 model
-sim     <- simulate(scheme, theta, protocol, seed)
-ll      <- loglik(scheme, theta, protocol, recording)   -> logL, score, FIM
-fit     <- mle(...)                                     -> in the host language
-```
-
-`mle` is Levenberg-Marquardt / Fisher scoring written **in R and in Python**,
-roughly thirty lines each given `logL`, `score` and `FIM`. Do not write an
-optimizer in C++.
-
-Both packages vendor `core/include` at release time so they build standalone.
-The core is header-only precisely so this is a file copy.
-
-R specifics: `Rcpp` + `RcppEigen`. No writes to the working directory, ever
-(the current code writes `scheme_N_model_description.txt` during static
-initialisation; that pattern is forbidden here). Distribution via r-universe or
-GitHub first; CRAN is a later decision.
-
-Python specifics: `pybind11` or `nanobind`, Eigen vendored or as a submodule.
-
-**Acceptance:** in both languages, the three fixtures of Tier C give `logL`,
-`score` and `FIM` matching the C++ core bit-for-bit; and a worked example
-defines a scheme from scratch, simulates, and fits.
-
-### P12 — Documentation and examples
-
-**Owns:** `docs/`.
-
-The one thing `macro_dr` never had: a document that tells a user how to define
-their own kinetic scheme and fit their own recording. Three worked examples:
-2-state, the 5-state `scheme_1`, and one with missing samples.
+Reference material: the frozen binary is at
+`/home/lmoffatt/Code/macrodr-reference-0ffbda7/` with its provenance, including
+the BLAS/LAPACK versions, which are part of it because the numbers depend on
+which implementation is installed. It is the only generator of new reference
+cases and cannot be rebuilt. `macrodr_cli --commit` self-identifies.
 
 ---
 
-## 8. Decisions still open for the maintainer
+## Traps, all verified
 
-1. **D1 and D2** in P0.3 (derivative representation, error type). Blocking.
-2. Repo name. `macroir` collides with the `.macroir` DSL extension and with the
-   algorithm name.
-3. Whether the Bayesian shrinkage in the Qdt assembly (P6) is in v1.
-4. Whether `coef` is stored as an integer (recommended, see
-   `flat_model_language.md`) or as a double.
-5. Licence, and whether `macroir` is public from the first commit.
+- **Every `(sim, sample)` row of the dlik dumps is written twice**
+  (`likelihood.cpp:2421`). Filter `segment_index == 0`.
+- **"The sum of the per-step values equals the total" is tautological.**
+  `qmodel.h:6092` is literally `logL = logL + t_logL` and the dumped per-step
+  values are the summands. It returns 1e-16 with a wrong `y_var`.
+- **`seed = 0` means `random_device`** and the resolved seed is never logged.
+- **Four drifts between the symbolic model formulas and the running lambdas**,
+  found by transcribing four schemes. Always follow the lambda:
+  `scheme_CO` names `on`/`off` while its formula says `kon`; `scheme_1` carries
+  the current's sign only in the lambda (`p[4] * -1.0`); `scheme_COC` conducted
+  in state 1 in the lambda and state 2 in the formula, and declared `scheme_CCO`'s
+  parameter names. The last two were fixed in `models_simple.h` on 2026-07-25.
+- **`scheme_CO` gives `Current_Baseline` the value 0 with a log10 transform**,
+  which has no logarithm. `scheme_1` overrides that parameter to linear.
+- **The eigendecomposition is of `Q`, not of `Q dt`**
+  (`calc_eigen(calc_Qx(m, x))`, `qmodel.h:1099`).
+- **What IR consumes is `sum_j P_ij gvar_ij`**, not `gvar_i`, which is MR's.
 
 ---
 
-## 9. Notes on using an agent for each package
+## Open, and not the code's to decide
 
-- Give the agent this document plus `flat_model_language.md`, plus its package
-  section, plus read access to `macro_dr`.
-- Tell it its acceptance test is the definition of done, and that passing it
-  while having written extra features is a failure, not a bonus.
-- The packages that most reward a careful agent are P2 (matrix function
-  derivatives) and P7 (the filter). P1 and P3 are mostly mechanical but are
-  blocking, so they should go first or in parallel with everything.
-- P3 should be finished and red before P2, P6 and P7 start producing numbers,
-  so that the first number any of them produces is already compared.
+**What happens when a safeguard fires.** In macro_dr almost none is fatal:
+`calc_Qdt_agonist_step` (`qmodel.h:3147-3166`) discards the error unread and
+falls back to `calc_Qdt_taylor`, which carries a different pseudo-count
+(`10 sqrt(N) eps` at `:3017` against `eps kappa_F(V)` at `:1694`). The same
+pattern appears in `calc_Qdtg_agonist_step` and `calc_Qdtm_agonist_step`. So
+production silently changes algorithm where the eigen path fails. macroir is
+eigen-only and would stop. This matters at checkpoint 1: a macro_dr run that fell
+back to Taylor is not comparable against a macroir run that refused.
+
+**The production dt.** Whether `Simulation_n_sub_dt(100)` subdivides the interval
+that reaches `calc_Qdt` or is only used by the simulation. Not traced. It decides
+which regime the comparison exercises.
+
+**The name.** `macroir` collides with the `.macroir` DSL extension and with the
+algorithm's own name.
+
+---
+
+## How the first attempt failed
+
+Recorded because it is cheap to repeat and expensive to discover.
+
+**It built bottom-up from the pieces it understood.** Matrix, eigendecomposition,
+divided differences, interval moments: 1.807 lines and 86 tests, all passing, and
+no likelihood. The deliverable never got closer.
+
+**It wrote value code and derivative code separately**, which made "derivatives
+of the interval moments" look like a work package. Under R4 that package does not
+exist. Discovering this meant undoing the architecture.
+
+**It substituted its own judgement four times** — a different route for
+`dP/dtheta`, a different third divided difference, and two safeguards macro_dr
+does not have — each defensible in isolation and each a divergence that would
+have made checkpoint 1 uninterpretable. All four were reverted.
+
+**It reported two numerical differences as findings** that moved logL by 2.4e-7,
+after hours of characterising them.
+
+**It read macro_dr for formulas, not for shape.** Mining `qmodel.h` for `E3` and
+`parameters_derivative.h` for `Omega` while never seeing that the codebase is
+organised around one body of code running in two modes. That is the root of the
+other four.
