@@ -341,6 +341,21 @@ the `100 * sqrt(eps)` guard before changing anything about it, and understand
 whether `eig_enforce_q_mode` (defined at `parameters_derivative.h:1516` and
 `matrix.h:2100`, currently never called) is needed here.
 
+> **Correction, 2026-07-25.** An earlier draft of this section, and the analysis
+> it rested on, concluded that computing `dP/dtheta` by Daleckii-Krein removes
+> the eigenvector derivatives and the degeneracy guard from the chain. That is
+> true for `P` and false for everything after it. The filter consumes
+> `gtotal_ij` and `gtotal_sqr_ij`, which are already first- and second-order
+> Frechet derivatives of `expm`; their theta derivatives are second- and
+> third-order ones, needing divided differences of order 2 and 3 and
+> contractions of `O(P N^3)` and `O(P N^4)`, against `O(P N^3)` for the route
+> macro_dr already uses. So P2 does not get cheaper and the guard is not
+> eliminable by that argument. The Daleckii-Krein route is still the right one
+> for `P` itself and is implemented and validated in `macroir`; see
+> `macroir/docs/decisions.md` D4 and D6. Before writing the Qdt derivatives
+> either way, evaluate the Van Loan block-matrix identity, which needs neither
+> eigenvector derivatives nor a guard.
+
 Also note `legacy/schur_parlett.h` (622 lines) exists as an alternative path.
 v1 uses the eigen path only; record in `NOTES.md` any case where it is not
 adequate.
