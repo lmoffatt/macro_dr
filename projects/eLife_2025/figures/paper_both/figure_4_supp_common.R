@@ -8,8 +8,27 @@ suppressMessages({ library(tidyverse); library(patchwork) })
 ALGOS    <- c("macro_R", "macro_IR")
 ALGO_LAB <- c(macro_R = "R", macro_IR = "IR")
 NCHS   <- c(10, 100, 1000, 10000)
-NOISES <- c("0.1", "1", "10")
-DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6")   # search path: R's noise 1/10 live apart
+DATA_DIRS <- c("../data/1c2ae6f", "../data/87889e6", "../data/0ffbda7")  # noise 100 lives in 0ffbda7
+# NOISES auto-detected from disk (both batteries), so a new run appears on the next knit with no edit.
+# INTERSECTION across ALGOS x NCHS, not union: a level enters only if every R and IR cell at every N_ch
+# has both batteries, which keeps the R-vs-IR maps a clean like-for-like product. This correctly
+# EXCLUDES IR's sub-decade sweep (0.05/0.2/0.5), which R lacks, and any high-noise LSE-style tail.
+# N_ch stays the four columns by layout; only the noise axis is automatic.
+.have_both <- function(nch, algo, z)
+  all(vapply(c("battery_pool_G", "battery_sim_G"), function(k)
+    any(file.exists(file.path(DATA_DIRS,
+      sprintf("figure_3_G_nch_%d_nsim_10000_%s_noise_%s_%s.csv", nch, algo, z, k)))), logical(1)))
+.cand_noise <- unique(unlist(lapply(ALGOS, function(a) {
+  pat <- sprintf("^figure_3_G_nch_[0-9]+_nsim_10000_%s_noise_([0-9.eE+]+)_battery_pool_G\\.csv$", a)
+  f   <- basename(list.files(DATA_DIRS, pattern = pat))
+  if (length(f)) sub(pat, "\\1", f) else character(0)
+})))
+NOISES <- Filter(function(z)
+  all(vapply(ALGOS, function(a)
+    all(vapply(NCHS, function(n) .have_both(n, a, z), logical(1))), logical(1))), .cand_noise)
+NOISES <- NOISES[order(as.numeric(NOISES))]
+cat("fig4 supp: auto-detected noise levels (R & IR complete at all N_ch):",
+    paste(NOISES, collapse = " "), "\n")
 
 # all five, kinetic then amplitude, sigma_noise last as the shared-null control
 PIDX  <- c(on = 0, off = 1, unitary_current = 2, Num_ch_mean = 5, Current_Noise = 3)
@@ -89,7 +108,9 @@ add_unident <- function(d, smin, smax, kap) d %>%
   mutate(unident = (m < smin | m > smax) & is.finite(kappa) & kappa > KAPPA_MAX)
 
 # one map block: rows = parameter (outer) then algorithm (inner), columns = N_ch.
-X_BRK <- log10(c(.01, .1, 1)); Y_BRK <- log10(c(.1, 1, 10))
+X_BRK <- log10(c(.01, .1, 1))
+# y breaks from the auto-detected NOISES, so the noise-100 row (added when the grid extended) is labelled
+.ydec <- sort(unique(as.numeric(NOISES))); Y_BRK <- log10(.ydec); Y_LAB <- formatC(.ydec, format = "g", digits = 3)
 rowfac <- function(d) {
   lv <- as.vector(t(outer(PARAM_ORD, ALGOS,
           function(p, a) sprintf("atop(%s, bold(\"%s\"))", PMATH[p], ALGO_LAB[a]))))
@@ -108,7 +129,7 @@ mapblock <- function(d, zexpr, pal, brk) {
               colour = "grey45", linewidth = .2, width = 0.30, height = 1.0) +
     facet_grid(prow ~ nchf, labeller = label_parsed) +
     scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
-    scale_y_continuous(breaks = Y_BRK, labels = c(".1", "1", "10")) +
+    scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
     labs(x = expression(Delta %.% k[off]), y = "noise") +
     theme_bw(base_size = 8, base_family = "Helvetica") +
     theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.1, "cm"),
@@ -116,6 +137,32 @@ mapblock <- function(d, zexpr, pal, brk) {
           axis.title = element_text(size = 8), strip.text.y = element_text(size = 6, angle = 0),
           strip.text.x = element_text(size = 7.5), plot.margin = margin(2, 2, 2, 2))
 }
+# TRANSPOSED sibling (Luciano, 2026-07-25): N_ch to the ROWS, parameter x algorithm to the COLUMNS.
+# Just swaps the facet formula of mapblock() above and frees the noise (y) per N_ch row. For R-vs-IR
+# both algorithms cure flat, so the rows come out ~equal height (no receding diagonal to make N_ch
+# 10 short and 10000 tall as in the four-algorithm figures); space = "free_y" is kept for consistency.
+# Compact: 4 N_ch rows by (5 params x 2 algorithms) = 10 columns, not a 5-grid vertical stack.
+mapblock_byNch <- function(d, zexpr, pal, brk) {
+  d <- rowfac(d) %>% mutate(zz = pmin(pmax(zexpr(.), min(brk)), max(brk)))
+  uni <- if ("unident" %in% names(d)) filter(d, unident) else d[0, ]
+  ggplot(d, aes(lx, ly, z = zz)) +
+    geom_contour_filled(breaks = brk) +
+    scale_fill_manual(values = pal, drop = FALSE, guide = "none") +
+    geom_point(size = .08, colour = "grey35", alpha = .35) +
+    geom_tile(data = uni, aes(lx, ly), inherit.aes = FALSE, fill = "grey78",
+              colour = "grey45", linewidth = .2, width = 0.30, height = 1.0) +
+    facet_grid(nchf ~ prow, labeller = label_parsed, scales = "free_y", space = "free_y") +
+    scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
+    scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+    labs(x = expression(Delta %.% k[off]), y = "noise") +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.grid.minor = element_blank(), panel.spacing = unit(0.1, "cm"),
+          legend.position = "none", axis.text = element_text(size = 6),
+          axis.title = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
+          strip.text.x = element_text(size = 5, angle = 90), plot.margin = margin(2, 2, 2, 2))
+}
+map_height_byNch <- function(per_row)
+  per_row * length(NCHS) * diff(range(log10(as.numeric(NOISES))))
 colorbar <- function(pal, edge_lab, title, lin, sol = numeric(0), dsh = numeric(0)) {
   n <- length(pal); pos <- function(v) match(v, lin) - 0.5
   mkx <- c(

@@ -48,62 +48,35 @@ have_cell <- function(nch, algo, z, kind) {           # non-throwing probe, for 
     sprintf("%snch_%d_nsim_10000_%s_noise_%s_%s.csv", .pre(algo), nch, algo, z, kind))))
 }
 
-# ---- the grid, DECLARED per algorithm (ragged), never a product ------------------------------
-# A higher N_ch needs a higher absolute noise to reach the same regime, so the swept levels differ
-# per column and per algorithm. Declaring the pairs keeps the missing-cell hard stop working on a
-# ragged grid: an absent file is an error, never a silently shortened axis.
-GRID_BASE <- tibble::tribble(
-  ~nch,  ~z,
-  10,    "0.1",  10,    "1",  10,    "10",
-  100,   "0.1",  100,   "1",  100,   "10",
-  1000,  "0.1",  1000,  "1",  1000,  "10",
-  10000, "0.1",  10000, "1",  10000, "10")
-# macro_R: noise-100 complete at all four N_ch (both batteries; N_ch 10/10000 landed 2026-07-24, so
-# what was the constant-r diagonal is now the full noise-100 rung). R and IR are symmetric at noise
-# 100 now: both carry {0.1, 1, 10, 100} at every N_ch, so R's row no longer runs a decade taller.
-GRID_R_EXTRA <- tibble::tribble(
-  ~nch,  ~z,
-  10,    "100",
-  100,   "100",
-  1000,  "100",
-  10000, "100")
-# macro_NR: noise-100 complete at all four N_ch (10000 landed 2026-07-24 later batch).
-GRID_NR_EXTRA <- tibble::tribble(
-  ~nch,  ~z,
-  10,    "100",
-  100,   "100",
-  1000,  "100",
-  10000, "100")
-# macro_IR: declared STANDALONE (not GRID_BASE + extra) because IR is the reference and carries a
-# finer noise sweep than the others. The sub-decade 0.05/0.2/0.5 is on disk with both batteries at all
-# four N_ch (verified 2026-07-24) and is kept IN on purpose: it resolves IR's OWN residual distortion
-# in the few-channel / low-noise corner (1.32 at N_ch 10, noise 0.1), the hero's failure the paper is
-# honest about. Only IR has this sweep, so its row is sampled finer than R/NR/LSE; the caption states
-# the asymmetry. Full available set: {0.05, 0.1, 0.2, 0.5, 1, 10, 100} at every N_ch.
-GRID_IR <- tibble::tribble(
-  ~nch,  ~z,
-  10,    "0.05", 10,    "0.1", 10,    "0.2", 10,    "0.5", 10,    "1", 10,    "10", 10,    "100",
-  100,   "0.05", 100,   "0.1", 100,   "0.2", 100,   "0.5", 100,   "1", 100,   "10", 100,   "100",
-  1000,  "0.05", 1000,  "0.1", 1000,  "0.2", 1000,  "0.5", 1000,  "1", 1000,  "10", 1000,  "100",
-  10000, "0.05", 10000, "0.1", 10000, "0.2", 10000, "0.5", 10000, "1", 10000, "10", 10000, "100")
-# LSE: the runs trace a clean diagonal front on disk — each decade of N_ch needs one more decade of
-# instrumental noise to calibrate, so the swept top noise climbs with N_ch (100, 1e3, 1e4, 1e5 across
-# the four columns). Declared to match what is on disk at nsim 10000 with BOTH batteries (verified
-# 2026-07-24): the k_off distortion reaches ~1 only near noise ~10*N_ch, i.e. where the gating signal
-# is already buried, so the front CLOSING is the point (a panel cut at noise 100 never whitens and
-# reads as an un-swept axis). A cell is declared only with both batteries, because this grid is shared
-# with the bias half and findf() hard-stops on a miss. The rows are ragged: N_ch 10 stops at noise
-# 100 (already cured), the top column runs to 1e5.
-GRID_LSE <- tibble::tribble(
-  ~nch,  ~z,
-  10,    "0.1",  10,    "1",  10,    "10",  10,    "100",
-  100,   "0.1",  100,   "1",  100,   "10",  100,   "100",  100,   "1000",
-  1000,  "0.1",  1000,  "1",  1000,  "10",  1000,  "100",  1000,  "1000",  1000,  "10000",
-  10000, "0.1",  10000, "1",  10000, "10",  10000, "100",  10000, "1000",  10000, "10000",  10000, "100000")
-GRID_BY_ALGO <- list(nonlinearsqr = GRID_LSE,
-                     macro_NR     = bind_rows(GRID_BASE, GRID_NR_EXTRA),
-                     macro_R      = bind_rows(GRID_BASE, GRID_R_EXTRA),
-                     macro_IR     = GRID_IR)
+# ---- the grid, AUTO-DETECTED from disk (both batteries required) ------------------------------
+# Replaces the hand-declared per-algorithm grids, which went stale every time a run landed. At render
+# time we SCAN DATA_DIRS and include every (N_ch, noise) cell that has BOTH batteries — battery_pool_G
+# for the distortion half AND battery_sim_G for the bias half — at nsim 10000, so a new run appears on
+# the next knit with no edit here. Two rails are kept deliberately:
+#   - N_ch is fixed to NCHS. The four columns are a LAYOUT choice, not auto-grown: IR alone has runs at
+#     5/20/50/200/500/2000/5000, and auto-including them would silently blow the figure to 11 columns.
+#     A new N_ch column is a deliberate edit to NCHS; a new NOISE level is automatic.
+#   - BOTH batteries required, so a half-landed run (sim_G present, pool_G still queued — e.g. the NR
+#     diagonal tail) is skipped, not hard-stopped mid-render by findf().
+# COST, stated so it is not a surprise: a run that FAILS to land simply does not appear (there is no
+# "expected but missing" error any more). Mitigation: the detected grid is printed loudly below on
+# every render, and the data dirs are content-addressed by git hash, so at freeze the figure is still
+# reproducible from a known cell set — read which cells from the render log, not from a table here.
+autodetect_cells <- function(algo) {
+  pat <- sprintf("^%snch_([0-9]+)_nsim_10000_%s_noise_([0-9.eE+]+)_battery_pool_G\\.csv$",
+                 .pre(algo), algo)
+  files <- basename(list.files(DATA_DIRS, pattern = pat))
+  if (!length(files)) return(tibble::tibble(nch = integer(), z = character()))
+  m  <- regmatches(files, regexec(pat, files))
+  df <- tibble::tibble(nch = as.integer(vapply(m, `[`, character(1), 2)),
+                       z   = vapply(m, `[`, character(1), 3)) %>%
+        dplyr::distinct() %>% dplyr::filter(nch %in% NCHS)
+  # keep only cells whose sim_G ALSO exists (the bias half shares this grid and findf() hard-stops)
+  df[vapply(seq_len(nrow(df)),
+            function(i) have_cell(df$nch[i], algo, df$z[i], "battery_sim_G"), logical(1)), , drop = FALSE]
+}
+GRID_BY_ALGO <- lapply(ALGOS, autodetect_cells)
+names(GRID_BY_ALGO) <- ALGOS
 GRID <- distinct(bind_rows(GRID_BY_ALGO))              # union, for the shared y-breaks
 noise_span <- function(a) {
   z <- GRID_BY_ALGO[[a]]$z
@@ -521,4 +494,57 @@ btitle <- function(txt) ggplot() + theme_void(base_family = "Helvetica") +
 map_height <- function(nparams, per_row) {
   decades <- sum(vapply(intersect(ALGOS, unique(cells$algo)), noise_span, numeric(1)))
   per_row * nparams * decades
+}
+
+# ---- TRANSPOSED map block: columns = ALGORITHM, rows = N_ch --------------------------------------
+# A more space-efficient arrangement of the same plane (Luciano, 2026-07-25). One PARAMETER per grid,
+# the algorithm cost ladder (LSE -> IR) across the columns and N_ch down the rows. With
+# space = "free_y" the row height tracks each N_ch's noise reach: the N_ch 10 row (everyone cured by
+# noise 100) is SHORT and the N_ch 10000 row (LSE/NR climb to 1e5 on the diagonal) is TALL, each
+# proportional to the decades it actually spans. The algorithm-row layout, by contrast, stretched
+# every low-N_ch column onto the tall shared axis of its algorithm's highest-N_ch reach. Rows read
+# N_ch 10 (top) to 10000 (bottom); within a row all algorithm columns share that N_ch's noise range,
+# so an R/IR cell that cured at noise 100 shows white below and grey above, which is honest.
+nch_noise_span <- function(n) {
+  allc <- dplyr::bind_rows(GRID_BY_ALGO)
+  z <- as.numeric(unique(allc$z[allc$nch == n]))
+  if (!length(z)) 0 else diff(range(log10(z)))
+}
+map_height_byNch <- function(nparams, per_row)
+  per_row * nparams * sum(vapply(NCHS, nch_noise_span, numeric(1)))
+
+mapblock_byNch <- function(d, zvar, pal, brk, param, top = FALSE, bottom = FALSE,
+                           iso_sol = numeric(0), iso_dsh = numeric(0)) {
+  if ("comp" %in% names(d)) d <- dplyr::filter(d, comp == "total")
+  psel <- param                                        # avoid the arg/column name clash in filter()
+  keep <- setdiff(ALGOS, EXCLUDE_ROWS$algo[EXCLUDE_ROWS$param == psel])   # e.g. drop LSE for N_ch
+  d <- d %>% dplyr::filter(param == psel, algo %in% keep)
+  keep <- intersect(keep, unique(d$algo))              # drop algo columns with no data for this param
+  d <- d %>% dplyr::mutate(zz = pmin(pmax(zvar(.data), min(brk)), max(brk)),
+                           algof = factor(ALGO_LAB[algo], levels = ALGO_LAB[keep]))
+  uni <- if ("unident" %in% names(d)) dplyr::filter(d, unident) else d[0, ]
+  ggplot(d, aes(lx, ly, z = zz)) +
+    geom_contour_filled(breaks = brk) +
+    scale_fill_manual(values = pal, drop = FALSE, guide = "none") +
+    (if (length(iso_dsh)) geom_contour(breaks = iso_dsh, colour = "grey25", linewidth = .22,
+                                       linetype = "dashed") else NULL) +
+    (if (length(iso_sol)) geom_contour(breaks = iso_sol, colour = "black", linewidth = .3) else NULL) +
+    geom_point(size = .08, colour = "grey35", alpha = .35) +
+    geom_tile(data = uni, aes(lx, ly), inherit.aes = FALSE, fill = "grey60",
+              colour = "grey30", linewidth = .25, width = 0.30, height = 1.0) +
+    # rows = N_ch (free + proportional height), columns = algorithm (cost ladder)
+    facet_grid(nchf ~ algof, labeller = labeller(nchf = label_parsed, .default = label_value),
+               scales = "free_y", space = "free_y") +
+    scale_x_continuous(breaks = X_BRK, labels = c(".01", ".1", "1")) +
+    scale_y_continuous(breaks = Y_BRK, labels = Y_LAB) +
+    labs(y = "noise") +
+    theme_bw(base_size = 8, base_family = "Helvetica") +
+    theme(panel.background = element_rect(fill = "grey85", colour = NA),
+          panel.grid.minor = element_blank(), panel.spacing = unit(0.12, "cm"),
+          legend.position = "none", axis.text = element_text(size = 6),
+          axis.title.y = element_text(size = 8), strip.text.y = element_text(size = 6.5, angle = 0),
+          plot.margin = margin(2, 2, 2, 2)) +
+    (if (top) theme(strip.text.x = element_text(size = 7.5)) else theme(strip.text.x = element_blank())) +
+    (if (bottom) labs(x = expression(Delta %.% k[off])) else
+       theme(axis.title.x = element_blank(), axis.text.x = element_blank()))
 }

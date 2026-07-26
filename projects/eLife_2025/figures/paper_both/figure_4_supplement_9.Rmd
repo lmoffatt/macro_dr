@@ -82,3 +82,14 @@ g <- g + plot_layout(heights = hs)
 g
 ggsave("Figure_4_supplement_9.pdf", g, width = 7.0, height = sum(hs))
 ```
+
+```{r render-byNch, fig.width = 7, fig.height = 11}
+# TRANSPOSED sibling (Luciano, 2026-07-25): columns = algorithm, rows = N_ch, proportional row height.
+.pw <- PARAM_LONG
+.gg <- lapply(.pw, function(p) mapblock_byNch(lag_score, function(d) log10(d$m), LAG_PAL, LAG_BREAKS,
+              p, top = TRUE, bottom = TRUE, iso_sol = log10(LAG_SOL), iso_dsh = log10(LAG_DSH)))
+g <- Reduce(`/`, c(list(btitle("Score autocorrelation, integral lag of dlogL (transposed: algo x N_ch)")),
+                   .gg, list(colorbar(LAG_PAL, LAG_LAB, "integral lag", LAG_LIN, sol = LAG_SOL, dsh = LAG_DSH))))
+hs <- c(0.16, rep(map_height_byNch(1, 0.45), length(.pw)), 0.28)
+ggsave("Figure_4_supplement_9_byNch.pdf", g + plot_layout(heights = hs), width = 7.0, height = sum(hs))
+```

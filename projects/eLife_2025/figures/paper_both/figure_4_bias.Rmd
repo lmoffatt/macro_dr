@@ -80,6 +80,41 @@ ggsave("Figure_4_bias_both_params.pdf", both$g, width = 7.0, height = both$h)
 cat("Figure_4_bias_both_params.pdf: k_off and N_ch; height", round(both$h, 2), "in\n")
 ```
 
+```{r render-byNch, fig.width = 7, fig.height = 9}
+# TRANSPOSED layout (Luciano, 2026-07-25): columns = algorithm, rows = N_ch, row height proportional
+# to each N_ch's noise reach. Primary = N_ch, the direction that carries the bias (LSE is dropped from
+# the count columns: its unitary_current is Fixed, so N*i is not a like-for-like comparison).
+PLAB <- c(off = "k_off", Num_ch_mean = "N_ch")
+assemble_bias_byNch <- function(param) {
+  hB <- map_height_byNch(1, 0.45)
+  g <- btitle(paste0("Distortion-induced bias, transposed (", PLAB[param], ")")) /
+       mapblock_byNch(bias, function(d) d$Bconf, BIAS_PAL, BIAS_LIN, param,
+                      top = TRUE, bottom = TRUE, iso_sol = BIAS_SOL, iso_dsh = BIAS_DSH) /
+       colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN, sol = BIAS_SOL, dsh = BIAS_DSH)
+  hs <- c(0.16, hB, 0.28); list(g = g + plot_layout(heights = hs), h = sum(hs))
+}
+bn <- assemble_bias_byNch("Num_ch_mean")
+bn$g
+ggsave("Figure_4_bias_byNch.pdf", bn$g, width = 7.0, height = bn$h)
+cat("Figure_4_bias_byNch.pdf: N_ch, algo x N_ch; height", round(bn$h, 2), "in\n")
+```
+
+```{r render-byNch-both, fig.width = 7, fig.height = 18}
+gk <- mapblock_byNch(bias, function(d) d$Bconf, BIAS_PAL, BIAS_LIN, "off",
+                     top = TRUE, bottom = TRUE, iso_sol = BIAS_SOL, iso_dsh = BIAS_DSH)
+gn <- mapblock_byNch(bias, function(d) d$Bconf, BIAS_PAL, BIAS_LIN, "Num_ch_mean",
+                     top = TRUE, bottom = TRUE, iso_sol = BIAS_SOL, iso_dsh = BIAS_DSH)
+hk <- map_height_byNch(1, 0.45)
+g <- btitle("Distortion-induced bias, transposed (k_off)") / gk /
+     btitle("Distortion-induced bias, transposed (N_ch)") / gn /
+     colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN, sol = BIAS_SOL, dsh = BIAS_DSH)
+hs <- c(0.16, hk, 0.16, hk, 0.28)
+g <- g + plot_layout(heights = hs); H <- sum(hs)
+g
+ggsave("Figure_4_bias_byNch_both_params.pdf", g, width = 7.0, height = H)
+cat("Figure_4_bias_byNch_both_params.pdf: height", round(H, 2), "in\n")
+```
+
 ```{r caption-numbers}
 cat("\n=== Figure 4 (bias) caption numbers ===\n")
 cat("\nBIAS (log10 units), median over the 7 intervals, noise 0.1\n")

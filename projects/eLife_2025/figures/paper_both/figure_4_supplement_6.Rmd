@@ -85,3 +85,15 @@ g <- g + plot_layout(heights = hs)
 g
 ggsave("Figure_4_supplement_6.pdf", g, width = 7.0, height = sum(hs))
 ```
+
+```{r render-byNch, fig.width = 7, fig.height = 6}
+# TRANSPOSED sibling (Luciano, 2026-07-25): columns = algorithm, rows = N_ch, row height proportional
+# to each N_ch's noise reach. Same data, palette and thresholds as the panel above.
+.pw <- "kappa"
+.gg <- lapply(.pw, function(p) mapblock_byNch(kapmap, function(d) log10(d$kappa), KAP_PAL, KAP_BREAKS,
+              p, top = TRUE, bottom = TRUE, iso_sol = log10(KAP_SOL), iso_dsh = log10(KAP_DSH)))
+g <- Reduce(`/`, c(list(btitle("Condition number of the Gaussian Fisher (transposed: algo x N_ch)")),
+                   .gg, list(colorbar(KAP_PAL, KAP_LAB, "kappa", KAP_LIN, sol = KAP_SOL, dsh = KAP_DSH))))
+hs <- c(0.16, rep(map_height_byNch(1, 0.45), length(.pw)), 0.28)
+ggsave("Figure_4_supplement_6_byNch.pdf", g + plot_layout(heights = hs), width = 7.0, height = sum(hs))
+```

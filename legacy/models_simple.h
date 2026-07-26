@@ -200,8 +200,13 @@ static const auto scheme_CCO = Model0::Model("scheme_CCO", []() {
 });
 
 static const auto scheme_COC = Model0::Model("scheme_COC", []() {
-    auto names_model =
-        std::vector<std::string>{"kon", "koff", "gating_on", "gating_off", "unitary_current"};
+    // The parameter names were copied from scheme_CCO and never adjusted: they
+    // said kon/koff/gating_on/gating_off while the lambda below binds
+    // on/off/inactivating_on/inactivating_off. Since names_model is what labels
+    // the reported columns, an inactivation rate was being written out as
+    // "gating_on". Corrected to match what the model actually is.
+    auto names_model = std::vector<std::string>{"on", "off", "inactivating_on",
+                                                "inactivating_off", "unitary_current"};
     auto names_other = std::vector<std::string>{"Current_Noise",
                                                 "Current_Baseline", "Num_ch_mean"};
 
@@ -215,7 +220,9 @@ static const auto scheme_COC = Model0::Model("scheme_COC", []() {
     auto v_Qa_formula = Qa_formula(N);
     v_Qa_formula()[0][1] = "on";
     auto v_g_formula = g_formula(std::vector<std::string>(N, ""));
-    v_g_formula()[2] = "unitary_current";
+    // C-O-C: the OPEN state is the middle one. The lambda below builds g at
+    // {{1,0}}; this said 2, from the same copy.
+    v_g_formula()[1] = "unitary_current";
 
     names_model.insert(names_model.end(), names_other.begin(), names_other.end());
     auto p =

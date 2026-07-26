@@ -72,3 +72,12 @@ print(as.data.frame(bias %>% group_by(param, algo) %>%
   mutate(algo = ALGO_LAB[algo]) %>% arrange(match(param, PARAM_ORD), algo)),
   digits = 3, row.names = FALSE)
 ```
+
+```{r render-byNch, fig.width = 7, fig.height = 6}
+# TRANSPOSED sibling (Luciano, 2026-07-25): N_ch to the rows, parameter x algorithm to the columns.
+gBn <- mapblock_byNch(bias, function(d) d$conf, BIAS_PAL, BIAS_LIN)
+Hn  <- map_height_byNch(0.42) + 0.3
+g <- gBn / colorbar(BIAS_PAL, BIAS_LAB, "bias (log10 units)", BIAS_LIN) +
+     plot_layout(heights = c(map_height_byNch(0.42), 0.3))
+ggsave("Figure_4_supplement_1_byNch.pdf", g, width = 7.0, height = Hn)
+```
