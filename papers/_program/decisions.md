@@ -1,6 +1,6 @@
 # Cross-paper decision log
 
-> Updated: 2026-07-20. Split from `macroir-elife-2025/02_decision_log.md`, which logged a single
+> Updated: 2026-07-28. Split from `macroir-elife-2025/02_decision_log.md`, which logged a single
 > paper. **Only decisions that bind more than one paper live here.** A decision that binds one paper
 > lives in that paper's folder; §5 lists what was left behind and where it went.
 >
@@ -9,35 +9,61 @@
 
 ## 1. The program
 
-- **Three papers on one axis** (2026-07-20). Two Gaussian closures plus the question prior to both;
-  one paper each. The map, the N_ch partition and the publication order are in `program.md`; do not
-  restate them here.
-- **Publication order 1 → 2, 3** with 2 and 3 back to back. Valid structurally, not merely convenient,
-  **because paper 2's floor sits at 10² channels**; that floor is therefore a decision, not a grid
-  parameter (`program.md` §3).
-- **The validation machinery is written once**, in paper 1, and cited by papers 2 and 3. This is what
-  keeps the three from becoming three copies of the same Methods section.
-- **Papers 2 and 3 stay as stubs in `_program/` until they start drafting.** Structure built ahead of
+- **TWO papers, split on the macro/micro boundary** (2026-07-23, superseding the three-paper split of
+  2026-07-20). The former papers 1 and 2 are **merged into one broad macro paper** aimed at eLife;
+  the micro paper (the multinomial boundary) stays separate. The map and the N_ch partition are in
+  `program.md`; do not restate them here.
+- **Why the merge, since it reverses a decision three days old.** The alternative was macro-method to
+  eLife and a near-identical usage-map paper after it. Desk rejections at one journal are **not
+  independent draws**: same triage editor, same topic, and a real salami perception, so two shots at
+  eLife is one poisoned shot. Two near-identical papers is also redundant publication, which is a
+  problem prior to strategy. The merged paper's breadth lives in the **combination** (least squares
+  convicted, the ladder, and the map), not in either half alone.
+- **What unblocked it technically:** eLife has no display-item limit, so the R/MR/VR ladder detail
+  goes to a supplement; and **faceting by N_ch dissolves the two-axis problem**, because at fixed N_ch
+  the single-channel noise scale and the fraction-of-total are the same variable relabelled. Methods
+  must state one convention and derive the other per facet.
+- **The comparison anchor is least squares** (2026-07-28). MacroR has essentially no uptake, so a
+  paper comparing one unused algorithm against another is unsellable. The paper compares the method
+  the field actually uses against the new one. LSE is a **full body citizen** across the figures, not
+  a cited background baseline.
+- **The validation machinery is written once**, in the macro paper, and cited by the micro paper.
+- **The micro paper stays a stub in `_program/` until it starts drafting.** Structure built ahead of
   content rots; `01_workboard.md` retired with all 25 of its checkboxes unticked, including the ones
   whose work had been done.
 - **Citation runs one way:** a paper may cite `_program/`; `_program/` never cites a paper; papers do
   not cite each other in the planning layer (`00_index.md` rule 2).
+- **Venue: eLife is the single shot**, with Biophysical Journal as a clean fallback. Münch et al. 2022
+  was published in eLife under the older, harder model, which is evidence the topic clears triage and
+  simultaneously raises the novelty bar: **the abstract must position against it.** What is offered is
+  the test of whether such filters tell the truth about their own uncertainty, plus the map of where
+  they fail, not another filter.
 
 ## 2. Model, methods, naming
 
 - Minimal **two-state** model (`scheme_CO`), single K_on/K_off, **non-stationary** protocol
-  (single concentration jump). All three papers.
-- **Six methods on two levels.** Off the lattice: classical nonlinear least squares on the mean
+  (single concentration jump). Both papers.
+- **Five methods on two levels.** Off the lattice: classical nonlinear least squares on the mean
   current, data key `nonlinearsqr`, display `LSE`, engine flag `family_approximation = 2`. On the
-  lattice: `NR`, `NMR`, `R`, `MR`, `IR`, plus `VR` pending its name. Which paper carries which is in
-  `program.md` §1.
+  lattice: `NR`, `R`, `MR`, `IR`, plus `VR`. Which of them sit in the body is in `program.md` §1.
 - **LSE is not a rung of the family** (2026-07-20). In the dispatcher it carries the same two knob
-  settings as NMR (`recursive=false, averaging=1`) and differs only by the third flag. The "one object
-  with two knobs" framing is retired; the structure is a root question with the ladder hanging from it.
-- **`NMR` is dropped from the program**, not relocated: no literature attribution, no mechanistic
-  role. It existed to complete a grid that is no longer the argument.
-- Naming standardized on **NMR** (scripts have used MNR). Published-name bridge: IR = MacroIR,
-  NMR = MacroINR.
+  settings as the dropped `NMR` (`recursive=false, averaging=1`) and differs only by the third flag.
+  The "one object with two knobs" framing is retired; the structure is a root question with the ladder
+  hanging from it. **This does not make LSE peripheral** (§1): it is the root of the ladder and the
+  paper's anchor.
+- **`NMR` is dropped from the program**, definitively (Luciano, 2026-07-28: "no hay razones para que
+  esté dentro"). No literature attribution, no mechanistic role, and now a measured reason as well:
+  recomputed on the freeze it is **numerically indistinguishable from NR** (envelope 1.23 to 3.6 × 10⁴
+  against NR's 1.21 to 3.5 × 10⁴; 0 of 336 points within ±15% for both). It measures the same failure
+  at the same size. Evidence kept in `../1_method/decisions/D-4_ranking_verdict.md` §5; delete its
+  verdict row and its novelty claim everywhere else.
+  **This entry supersedes the "six methods" listing that stood two bullets above it until 2026-07-28**
+  and contradicted this one from within the same section.
+- **`VR` keeps its letter** (Luciano, 2026-07-28), closing the open item in `program.md` §9. It earned
+  it: VR was predicted to come out over-confident and more so than MR, and it did. The `V`/Taylor
+  collision warning in `nomenclature.md` still stands and Methods must carry the one sentence.
+- Naming standardized on **NMR** (scripts have used MNR) for the historical record only.
+  Published-name bridge: IR = MacroIR.
 - `nonlinearsqr` must appear **verbatim** end to end (`.macroir` label → CSV `algorithm` cell → R
   `ALGOS` entry). A mismatch silently drops rows, the same failure class as the MNR/NMR bug.
 
@@ -60,9 +86,19 @@
 - **D-0 (2026-07-15):** freeze at `1c2ae6f`; **multi-commit provenance accepted**, each CSV
   self-stamping its engine hash. `433ed13` kept as the numerical-Fisher equivalence demo. E-1…E-5
   decoupled to `main` as code hygiene.
+- **No paper number may be quoted from `433ed13`** (2026-07-28). It is the demo, not the basis. The
+  ranking verdict was computed there and has been **recomputed on `1c2ae6f` + `87889e6` against the
+  Gaussian Fisher**; the verdict survives and the magnitudes move by five to ten percent
+  (`../1_method/decisions/D-4_ranking_verdict.md`, scripts committed under `decisions/recompute/`).
+  That the two anchors agree is exactly what `433ed13` was run to show: state it once in Methods and
+  quote the freeze everywhere else.
+- **The non-IR noise columns are on `87889e6`, not on the freeze.** `1c2ae6f` carries R, MR and NR at
+  noise 0.1 only (plus R at 100); noise 1 and 10 for those three landed with the D-0 fill on
+  `87889e6`. Any grid-wide statement must read both directories or it silently reports a
+  single-noise slice as the whole plane.
 - **`seed = 0` means random.** It is the sentinel for `std::random_device` and the resolved value was
   never logged, so every simulated ensemble is statistically equivalent but **not bit-reproducible**,
-  and cannot be fixed retroactively. Methods must say so plainly in all three papers.
+  and cannot be fixed retroactively. Methods must say so plainly in both papers.
 - **Do not pool cells across n_sims.** Every scalar summary of the distortion matrix carries a Jensen
   bias in n_sims. The grid is ragged across the program: band-A cells at 10⁴, the 2026-07-20 fill at
   1000, `433ed13` also holding 200, and the micro cells at 100/1000/10⁴. Hold n_sims fixed within any
@@ -74,8 +110,8 @@
 
 **Reopened.**
 - **"One paper = one repo."** Settled when there was one paper: this work carves out to a dedicated
-  repo at code freeze, with `macro_dr` referenced by pinned tag. With three papers sharing one engine,
-  one machinery and one data tree, the question is now whether that is one program repo or three, and
+  repo at code freeze, with `macro_dr` referenced by pinned tag. With two papers sharing one engine,
+  one machinery and one data tree, the question is now whether that is one program repo or two, and
   it is **not settled**. Owner: `carve_plan.md`.
 - **Venue.** Was one question; is now three (`program.md` §9).
 
@@ -98,7 +134,25 @@ unmentioned.
 
 ## 6. Superseded (kept for rewind)
 
-- **One paper** → three (2026-07-20).
+- **One paper** → three (2026-07-20) → **two** (2026-07-23, §1). The 1|2 cut was the artificial one
+  (mid against high N_ch, single-channel noise scale against fraction-of-total) and is deleted. The
+  surviving split is the natural one, the Gaussian macro closure against the multinomial micro one.
+- **`paper-2.md`** → archived 2026-07-28 under `archive/`, with a migration ledger. It is the ancestor
+  of both the current body roster and the region map, so it is archived rather than deleted.
+- **A-strict** ("the non-recursive members are named once in Theory and measured in no figure") →
+  **DEAD**. NR is measured, and it is in the body.
+- **"Paper 1's own novelty is the VR mechanism"** → demoted. The headline is the machinery plus the
+  validity map; VR is a supplement that confirms a prediction.
+- **"The temporal correlation of macroscopic currents is unused"** → **false, do not write it**
+  (2026-07-28). It has been used since 1973: the closing rate from the Lorentzian power spectrum
+  (Katz & Miledi 1970/1972; Anderson & Stevens 1973), the exact nonstationary two-time covariance
+  (Conti et al. 1980; Sigworth 1981), and a covariance likelihood three years before MacroR
+  (Celentano & Hawkes 2004). The defensible gap is that **nobody characterised when these methods are
+  valid**. Sources and the replacement paragraph:
+  `docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md` and §A.10 of
+  `docs/bibliography/MacroIR_prior_art_map.md`.
+- **"10 to 16" as the non-recursive overconfidence factor** → **10 to 15**, once NMR is dropped and
+  the anchor moves to the freeze (`D-4` §3). "14 to 21" was never the ellipse-area factor at all.
 - **"Five algorithms" as the closed roster** → six methods on two levels (2026-07-20). LSE was
   previously present only as cited background describing what the field does; it is now a measured arm,
   in paper 2.
@@ -113,6 +167,6 @@ unmentioned.
   K_off framing never had data behind it.
 - LID↔Evidence as a standalone finding (Δlog Z = ½ log det C) → the later component's **motivation**,
   likelihood-side, derivation deferred.
-- "Keep MicroIR out to reduce attack surface" → it is **paper 3**.
+- "Keep MicroIR out to reduce attack surface" → it is **the micro paper**.
 - `elife-macroir-merged.tex` as manuscript source of truth → `elife_paper.tex`, which belongs to
-  paper 1.
+  the macro paper.

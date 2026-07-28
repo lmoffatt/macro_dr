@@ -1,132 +1,138 @@
-# The program: three papers on one axis
+# The program: two papers, split on the macro/micro boundary
 
-> Updated: 2026-07-20. **Decided this day** (working session + audios 10:54–10:59). Supersedes the
-> single-paper plan, whose §0 goal sentence now describes paper 1 only.
+> Updated: 2026-07-28. The three-paper split decided 2026-07-20 lasted three days; papers 1 and 2 were
+> **merged on 2026-07-23** and the reasoning is in `decisions.md` §1. This file is rewritten around
+> the surviving structure. The old three-row table is in git history.
 >
-> Owns: the three-paper map, what each paper owns and excludes, the publication order and why it is
-> safe. Owns no science. Every fact it needs is owned in `_program/` or in a paper's own folder.
+> Owns: the two-paper map, what each owns and excludes, and the publication order. Owns no science.
 
 ## 1. The axis
 
-The method makes **two Gaussian closures**, and there is **one question prior to both**. Each paper
-owns exactly one of the three. That is the whole partition, and it is why these are three papers and
-not three slices of one.
+The method makes **two Gaussian closures**. Each paper owns one, and the question prior to both
+belongs to the macro paper because it is the question its anchor method answers.
 
-| | The question | What is at stake | Control variable | Methods |
+| | The question | What is at stake | Control variables | Methods |
 |---|---|---|---|---|
-| **1 · method** | Given that you will compute a likelihood, what must it condition on? | the **interval-likelihood closure** (conductance over one interval → Gaussian); degrades at short Δ | noise on the **single-channel** scale (ν, `axes.md`); N_ch from 10; interval 1 → 0.01 τ | `R`, `MR`, `VR`, `IR` |
-| **2 · map** | Do you need a likelihood at all, and how much must you pay? | nothing — this is **prior to any closure**: is the gating signal above the instrumental noise? | instrumental noise as a **fraction of total** noise; N_ch 10² → 10⁶ | `LSE`, `NR`, `R`, `IR` |
-| **3 · micro** | Where does the Gaussian occupancy closure break, and where is the exact solver worth its cost? | the **macro closure** (multinomial → Gaussian); degrades at few channels | the **effective fluctuating count** N_ch·p(1−p), not N_ch alone (§5) | `micro_R`, `micro_IR` vs macro `R`, `IR` |
+| **macro** | Do you need a likelihood at all, and if so what must it condition on? | the **interval-likelihood closure** (conductance over one interval → Gaussian), plus the prior question of whether the gating signal is above the instrumental noise | N_ch and instrumental noise, **faceted by N_ch**; interval 1 → 0.01 τ | body: `LSE`, `NR`, `R`, `IR`; supplement: `MR`, `VR` |
+| **micro** | Where does the Gaussian occupancy closure break, and where is the exact solver worth its cost? | the **macro closure** (multinomial → Gaussian); degrades at few channels | the **effective fluctuating count** N_ch·p(1−p), not N_ch alone (§5) | `micro_R`, `micro_IR` against macro `R`, `IR` |
 
-Papers 1 and 3 are siblings, one per closure. Paper 2 sits a level above both.
+**The 1|2 cut was the artificial one.** It separated mid from high N_ch and the single-channel noise
+scale from the fraction-of-total, and both distinctions dissolve once the figures facet by N_ch: at
+fixed N_ch the gating variance is a fixed number, so the two noise conventions are the same variable
+relabelled. The macro/micro cut is the real one, because the closure genuinely changes.
 
-**All three have the same shape**: a cost frontier saying which is the cheapest method that still
-reports its own uncertainty honestly, in that regime. That sameness is what makes this a program
-instead of three loose papers, and it is what lets the validation machinery be written once (paper 1)
-and cited twice.
+**Both papers have the same shape**: a frontier saying which is the cheapest method that still
+reports its own uncertainty honestly, in that regime. That is what lets the validation machinery be
+written once, in the macro paper, and cited by the micro one.
+
+**The ladder, as the macro paper walks it**, is a monotone ladder of cost, and the reader enters at
+whichever rung they are on today:
+
+`LSE` (fit the mean, discard the fluctuations) → `NR` (use the gating variance, no filter) →
+`R` (recursive, instantaneous sample) → `IR` (condition on the interval).
+
+Reading LSE against IR answers "do you need a likelihood?". Reading R against IR answers "what does
+conditioning on the interval buy?". `MR` and `VR` split the R → IR step and live in a supplement.
 
 ## 2. The channel-number axis, partitioned
 
-Low → **paper 3**. Middle → **paper 1**. High → **paper 2**. Each paper lives where its question is
-live and the others have nothing to say.
+Low → **micro**. Everything above it → **macro**. The macro paper now spans the whole range where the
+Gaussian closure holds, which is what the merge bought.
 
-**Decide the three ranges together, once, here** — not per paper. Today: paper 1 runs 10…10⁴,
-paper 2 is specified 10²…10⁶, paper 3 has cells at 5, 10, 20, 100. Left to drift, this produces
-either a gap or an undecided overlap, and in a three-paper program that shows.
+Today: the macro figures run N_ch 5 to 10⁴ for IR and 10 to 10⁴ for the rest; micro has cells at
+5, 10, 20, 100.
 
-**[Q] The three ranges are not yet fixed.** Proposal: paper 3 ≤ 20, paper 1 10…10⁴, paper 2 ≥ 10².
+**[Q] The macro floor is not fixed** (Luciano, 2026-07-28: to be revisited, "probablemente el piso sea
+1 o 2 para ver la frontera"). This is not a grid parameter: the region map's lowest boundary, where
+the Gaussian closure itself fails, is currently **extrapolated** below N_ch 10 and the figure's own
+source note asks for N_ch 2 and 5 at noise 0.1 to 10, ten cells, to pin it. Whether that vertex is a
+measured result or a dashed extrapolation is decided here.
 
-## 3. Publication order: 1, then 2 and 3 back to back
+## 3. Publication order: macro, then micro
 
-Schedule says 1 → 2 → 3: paper 1 is nearly drafted, paper 2 has runs in flight, paper 3 needs its
-analysis. Structure would say 1 → 3 → 2, keeping the two closure-siblings together and letting the
-applied paper close by citing both boundaries.
-
-**The conflict dissolves on one decision: paper 2's floor of 10² channels.** At 10² and above the
-macro closure is comfortable, so paper 2 never touches the multinomial boundary and therefore does
-not depend on paper 3. It depends only on paper 1's interval result. **That floor is load-bearing for
-the publication order, not a grid parameter.** If it drops, the order must be reconsidered.
+The macro paper is the eLife shot and is nearly drafted; the micro paper follows and cites it for the
+machinery. Nothing in the macro paper depends on the micro one except the attribution of IR's own
+few-channel degradation, which one or two annotated cells already supply (§6).
 
 ## 4. What each paper owns, excludes, and still needs
 
-### Paper 1 — method
-- **Owns:** the validation machinery (written here, cited by 2 and 3); the endpoint ladder; the
-  interval closure's failure and its mechanism.
-- **The mechanism result, which is new:** `VR` inserts a third rung between `MR` and `IR` that keeps
-  MR's boundary-free update and swaps the total per-start-state conductance variance for the residual
-  one, which turns an algebraic claim into a measured one. This is what earns the paper its novelty
-  independently of the map. **Do not state it as "MR → VR changes only the variance, VR → IR only the
-  gain"** (the wording used here until 2026-07-21): the predictive variance divides the gain, so the
-  variance step moves the update as well, and `MR` and `IR` predict the *same* observable variance
-  from the same state, so the whole MR-to-IR difference is the gain. Measured in
-  `../1_method/figures_build_plan.md` §F1-2.
-- **Excludes:** `LSE`, `NR`, `NMR`. NR is not dropped, it **moves to paper 2**, where a cheap
-  non-recursive likelihood is exactly the point. NMR is dropped outright: no literature attribution,
-  no mechanistic role.
-- **Literature anchor after the exclusions:** `R` carries it (Moffatt 2007; Münch 2022, a published
-  Bayesian Kalman filter). The frame is "the published recursive filters treat each sample as
-  instantaneous; here is what conditioning on the interval buys, and which half of the mechanism
-  does it." It does not need NR.
-- **Still needs:** `VR` implemented and run (small, if the residual form is computable from existing
-  Qdtm fields as claimed — verify against current code, the note claiming it has a known-inverted
-  verdict); the micro attribution anchor (§6); the scope declaration in band terms (§7).
+### The macro paper
+- **Owns:** the validation machinery (written here, cited by the micro paper); the endpoint ladder;
+  the interval closure's failure and its mechanism; and **the usage map across the whole noise axis**,
+  which is the region map (`../1_method/decisions.md`, "The figure set").
+- **The anchor is least squares** (`decisions.md` §1). The frame is that the field fits the
+  deterministic mean and discards the fluctuations, that the methods which use them have almost no
+  uptake, and that the reason is a missing validity criterion. Not "here is my algorithm".
+- **Literature positioning:** `R` carries the recursive lineage (Moffatt 2007; Münch 2022, a published
+  Bayesian Kalman filter in the target journal, so the abstract must position against it).
+  **The gap claim is about validity, never about absence:** the temporal correlation has carried
+  kinetics since 1973 and a covariance likelihood predates MacroR by three years
+  (`decisions.md` §6; `docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md`).
+- **The VR mechanism is a supplement, not the headline** (2026-07-23). It still earns its rung: `VR`
+  keeps MR's boundary-free update and swaps the total per-start-state conductance variance for the
+  residual one, turning an algebraic claim into a measured one, and it came out over-confident and
+  more so than MR, exactly as predicted. **Do not state it as "MR → VR changes only the variance,
+  VR → IR only the gain"**: the predictive variance divides the gain, so the variance step moves the
+  update too, and `MR` and `IR` predict the *same* observable variance from the same state, so the
+  whole MR-to-IR difference is the gain. Measured in `../1_method/figures_build_plan.md` §F1-2.
+- **Excludes:** `NMR`, dropped from the program (`decisions.md` §2), and micro as a subject.
+- **Still needs:** LSE and NR re-run at n_sims 10⁴ so they can share a panel with the band-A cells;
+  the region map written into Results; the recording-condition overlay lifted out of the notebook
+  into a citable Methods table; the sign convention verified against the producer.
 
-### Paper 2 — usage map
-- **Owns:** the usage map across the gating-noise crossover; the LSE arm.
-- **Status:** LSE implemented end to end in ops; runs dispatched 2026-07-20.
-- **[!] The dispatch does not match this roster.** It ran `nonlinearsqr` plus
-  `macro_{IR,R,MR,NMR}`, i.e. it includes MR and NMR (not in paper 2) and omits NR (in paper 2). It
-  was launched before this split existed. Reconcile before the map is drawn.
-
-### Paper 3 — multinomial boundary
+### The micro paper
 - **Owns:** where the macro closure breaks, and the micro cost frontier.
 - **Status:** runs on disk (§6).
-- **Must have the same shape as 1 and 2.** "The Gaussian breaks below N_ch = X" is a number, not a
+- **Must have the same shape as the macro paper.** "The Gaussian breaks below N_ch = X" is a number, not a
   paper. The paper is: micro is expensive, here is where it stops being worth paying for.
 
-## 5. Paper 3's control variable is not N_ch
+## 5. The micro paper's control variable is not N_ch
 
 If low P_open behaves like reduced N_ch (recorded as a planned experiment in the design notes), then
 what decides the multinomial regime is the number of channels that actually fluctuate, of order
 **N_ch·p(1−p)**, not N_ch. At the P_open = 0.5 fixed everywhere today the two coincide up to a
-factor and the difference is invisible. The moment paper 3 moves off 0.5 they separate, and
+factor and the difference is invisible. The moment the micro paper moves off 0.5 they separate, and
 "the Gaussian breaks below N_ch = X" becomes false as stated, because X depends on P_open.
 
-Choose the effective count as the axis from the start and paper 3's result generalizes; choose bare
+Choose the effective count as the axis from the start and the micro result generalizes; choose bare
 N_ch and it needs correcting later.
 
 ## 6. Data on disk, per paper
 
 | Paper | Where | What |
 |---|---|---|
-| 1 | `projects/eLife_2025/figures/data/1c2ae6f`, `433ed13`, `87889e6` | the band-A grid; `87889e6` also holds the D-0 macro fill (NR, NMR, R, MR at noise 0.1/1/10) |
-| 2 | `.../82b956f` | the LSE runs, starting 2026-07-20 |
-| 3 | `.../87889e6` | `micro_IR` at N_ch 5 (nsim 100/1000/10⁴), 10 (100/1000/10⁴), 20 (100); `micro_R` at 5 (100/10⁴), 10 (100/10⁴), 20 (100), 100 (100). **All at noise 0.1 only.** |
+| macro, likelihood arm | `projects/eLife_2025/figures/data/1c2ae6f`, `87889e6` | the freeze carries IR everywhere and R/MR/NR at noise 0.1 only (plus R at 100); noise 1 and 10 for those three are on `87889e6`, with the now-dropped NMR. `433ed13` is the numerical-Fisher demo and **no paper number is quoted from it** |
+| macro, LSE arm | `.../82b956f` | the LSE runs, dispatched 2026-07-20, **at n_sims 1000**, so they cannot share a panel with the 10⁴ cells until re-run |
+| micro | `.../87889e6` | `micro_IR` at N_ch 5 (nsim 100/1000/10⁴), 10 (100/1000/10⁴), 20 (100); `micro_R` at 5 (100/10⁴), 10 (100/10⁴), 20 (100), 100 (100). **All at noise 0.1 only.** |
 
-**The micro attribution anchor for paper 1 already exists:** `micro_IR`, N_ch = 10, nsim = 10000,
-noise 0.1 — paper 1's floor, its canonical n_sims, its canonical noise. Its job is to attribute IR's
+**The micro attribution anchor for the macro paper already exists:** `micro_IR`, N_ch = 10, nsim = 10000,
+noise 0.1 — the macro paper's floor, its canonical n_sims, its canonical noise. Its job is to attribute IR's
 own low-N_ch degradation: micro_IR keeps the exact multinomial occupancy *and* the interval
 treatment, so if it is calibrated at 10 channels where macro IR is not, the degradation belongs to
-the occupancy closure and therefore to paper 3. **One or two annotated cells, not a column** —
+the occupancy closure and therefore to the micro paper. **One or two annotated cells, not a column** —
 a full micro column re-opens the roster question the split just closed.
 
-Two cautions. The anchor exists at **one noise level only**; if paper 1 makes its few-channel claim
+Two cautions. The anchor exists at **one noise level only**; if the macro paper makes its few-channel claim
 across the noise fan, more cells are needed. And **never pair a 100-sim micro cell with a 10⁴-sim
 macro cell**: the distortion scalars carry a Jensen bias in n_sims and the comparison will manufacture
 a difference. Only `micro_IR` at N_ch 10 / nsim 10⁴ pairs cleanly.
 
 **Correction owed:** the decision log records `87889e6` as "micro, out of scope". It now holds both
-the micro runs and the macro D-0 fill, and paper 1 will cite a cell from it. Multi-commit provenance
+the micro runs and the macro D-0 fill, and the macro paper will cite cells from it. Multi-commit provenance
 is already accepted (each CSV self-stamps its engine hash), so this is a bookkeeping fix, not a
 policy change.
 
-## 7. The scope declaration paper 1 must carry
+## 7. The flank, and what now closes it
 
-The reason LSE and the extended noise axis were added at all was that the paper lived only in the
-regime that favours the gating-aware likelihoods. **The split does not fix that; a stated scope
-does.** Paper 1 must say, in its own words, that it characterizes the gating-dominated regime, define
-that regime by the crossovers in `axes.md`, and name the companion paper for the rest. A stated scope
-is defensible and can be elegant. An unstated one is the flank that started this whole revision.
+The original problem: the paper lived only in the regime that favours the gating-aware likelihoods,
+so it read as though IR won by construction. The 2026-07-20 answer was a **stated scope** in band
+terms, on the ground that a least-squares arm was somebody else's paper.
+
+**That answer is retired.** The merge puts the least-squares arm in this paper and extends the noise
+axis across the crossover, so the flank is closed by **the comparison itself and by the region map**,
+which shows the regions where LSE is as good as IR and the region where IR itself fails. A scope
+declaration is still owed, but it is now about what the model is (two states, one open probability,
+one jump protocol, simulation) and not about which band the paper dares to enter.
 
 ## 8. Citation directionality (this is what keeps four folders from becoming four copies)
 
@@ -146,12 +152,12 @@ whole test, and it is mechanical.
 
 ## 9. Open
 
-- **[Q]** The three N_ch ranges (§2).
-- **[Q]** Paper 3's control variable: effective fluctuating count or bare N_ch (§5).
-- **[Q]** `VR`'s name. The letter reopens a third axis in a naming scheme that is currently
-  compositional (prefix = conductance, suffix = occupancy). Cost is now small — with NR and NMR gone
-  the third axis distinguishes only MR from VR — but `V` collides with the cut Taylor variants
-  `MRV`/`IRV` and with the engine flag `taylor_variance_correction`. Viable if the March Taylor data
-  is deleted and Methods states plainly that this V is not that V.
-- **[Q]** Venue per paper. The old folder name assumed eLife for a single paper; with three, the
-  question is per paper and is open for all three.
+- **[Q]** The macro paper's N_ch floor (§2), which decides whether the region map's lowest vertex is
+  measured or extrapolated. Leaning: 1 or 2, to see the frontier.
+- **[Q]** The micro paper's control variable: effective fluctuating count or bare N_ch (§5).
+- ~~**[Q]** `VR`'s name.~~ **CLOSED 2026-07-28: `VR` keeps the letter** (`decisions.md` §2). The
+  collision caveat survives the closure: `V` still clashes with the cut Taylor variants `MRV`/`IRV`
+  and with the engine flag `taylor_variance_correction`, so the March Taylor data must be deleted and
+  Methods must say in one sentence that this `V` is not that `V`.
+- ~~**[Q]** Venue per paper.~~ **CLOSED: eLife for the macro paper**, Biophysical Journal as the
+  fallback (`decisions.md` §1). The micro paper's venue is open and is not on any critical path.

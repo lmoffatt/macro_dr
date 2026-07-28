@@ -338,6 +338,40 @@ Flagged by the 2026-07-14 search as an Introduction-grade quotable on the curren
 macroscopic-current inference. **Not yet read. Do not cite until it is.** Action item: retrieve, read,
 and either promote to a full entry or delete this stub.
 
+### A.10 The PRE-likelihood correlation lineage — the map's one real in-domain hole (ADDED 2026-07-28)
+
+Until now this map listed only the *likelihood* users of the temporal correlation and none of the
+users who came before them. That made the Introduction vulnerable to a one-line refutation from any
+referee over fifty. Full treatment in
+`temporal_correlation_and_AR_errors_2026-07-28.md`; the essentials:
+
+- **Anderson & Stevens 1973**, *J. Physiol.* 235:655-691. PDF:
+  `Anderson_Stevens_1973_Endplate_Current_Fluctuation_Spectra_JPhysiol.pdf`. Channel closing rate from
+  the **Lorentzian power spectrum** of the macroscopic end-plate current. The spectrum is the Fourier
+  transform of the autocovariance, so **kinetics have been read out of the temporal correlation of
+  macroscopic currents since 1973.** With Katz & Miledi 1970/1972 and the Neher & Stevens 1977 review.
+  Restriction: stationarity, and one corner frequency identifies one rate.
+- **Sigworth 1981**, *Biophys. J.* 34:111-133. PDF:
+  `Sigworth_1981_Covariance_Nonstationary_Na_Fluctuations_BiophysJ.pdf`. **The closest in-domain
+  ancestor.** Exact **nonstationary two-time covariance** for `N` identical independent Markov
+  channels: `C(t1,t2) = N i² p(t1)[p₁₁(t2|t1) − p(t2)]` (Eq. 4), diagonal = the NSFA variance (Eq. 5),
+  built on **Conti, Neumcke, Nonner & Stämpfli 1980**. **The same object MacroR propagates.**
+  Estimated **empirically from ensembles of 256-504 repeated sweeps**, used to **discriminate** kinetic
+  schemes, never to fit rates by likelihood, and with no uncertainty statement. That triple is the gap.
+
+**Consequence for the Introduction.** Do not write that MacroR is the classical method for temporal
+correlation, and do not write that the correlation was unused. Write that the correlation's kinetic
+content has been known since the 1970s, that a likelihood for it exists (Celentano & Hawkes 2004
+onwards), that the field nonetheless still fits the deterministic mean by least squares, and that the
+obstacle is the absence of any criterion for when a correlation-exploiting method is working. The gap
+moves from *"nobody used it"* (false) to *"nobody said when it is valid"* (true, and it is this paper).
+
+**Related, for the AR/ARMA question:** `lei2020considering` (Phil. Trans. R. Soc. A 378:20190349,
+PDF in repo) is the only paper that puts an **ARMA model on ion-channel current residuals** (ARMA(2,2)
+plus two GP variants, hERG). Phenomenological, so it widens posteriors without adding information, and
+they report that *"in some cases, the best predictions were still made by ignoring discrepancy."* Their
+target is *model* discrepancy, not finite-channel gating noise — say so when citing.
+
 ---
 
 ## B. The augmented / integrated-measurement Kalman filter — full bibliography (`concede`)

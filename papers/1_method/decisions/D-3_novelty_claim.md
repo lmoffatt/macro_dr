@@ -27,6 +27,14 @@ What does THIS paper claim as new — distinct from MacroIR (Comm Biol 2025) and
 - **"the device / Kronecker Q⊕Q / k²↔(k+1) equivalence is ours"**
   - against: Zadrozny 88, Harvey 89 (IMKF); Albertsen & Hansen 1994 (Kronecker already in this field); k²-equiv is matrix-analytic folklore
   - verdict: concede
+- **"the temporal correlation of macroscopic currents is unused / MacroR is the classical method for it"** (ADDED 2026-07-28)
+  - against: **Katz & Miledi 1970/1972** and **Anderson & Stevens 1973** (closing rate α from the Lorentzian POWER SPECTRUM of the macroscopic current; the spectrum is the Fourier transform of the autocovariance, so kinetics have come out of temporal correlation since 1973); **Conti, Neumcke, Nonner & Stämpfli 1980** and **Sigworth 1981** (the exact nonstationary two-time covariance `C(t1,t2) = N i² p(t1)[p11(t2|t1) − p(t2)]`, the same object MacroR propagates); **Celentano & Hawkes 2004** (a covariance likelihood, three years BEFORE MacroR: *"CVF fits both the magnitude of the recorded current and the strength of the correlations between different time points"*)
+  - verdict: **dead, and it is a one-line kill from any electrophysiologist over fifty.** Survives only as **validity**: the correlation's kinetic content has been known since the 1970s, a likelihood for it exists, the field still fits the deterministic mean, and **no criterion exists for deciding when a correlation-exploiting method is working**. That is the paper.
+  - what still distinguishes us: Sigworth 1981 estimates the covariance **empirically from ensembles of 256-504 repeated sweeps**, uses it to **discriminate** schemes, never fits rates by likelihood, and states no uncertainty. The spectral route needs stationarity. Ours is a single non-stationary record with a calibrated interval.
+  - sources: `docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md`; §A.10 of `docs/bibliography/MacroIR_prior_art_map.md`; PDFs and bib entries filed
+- **"nobody has modelled correlated residuals in ion-channel fitting"** (ADDED 2026-07-28)
+  - against: **Lei, Ghosh, Mirams et al. 2020** (Phil Trans R Soc A 378:20190349): ARMA(2,2) plus two Gaussian-process discrepancy models on hERG current residuals
+  - verdict: dead as absence, **alive as mechanism**. Their model is phenomenological: it correlates residuals in time without deriving the correlation from finite-channel gating, so it widens posteriors without adding information, and they report that *"in some cases, the best predictions were still made by ignoring discrepancy"*. Cite it as the demonstration that the phenomenological route was tried in this domain and did not pay. **Say that their target is MODEL discrepancy, not gating noise, before a referee does.**
 
 ### CONCEDE — true; cite not claim; place LATE and embedded (never open on it)
 - MacroIR ≈ integrated-measurement Kalman filter (1e-8). BUT own derivation CTMC-native, exact, O(k³)/interval indep of N — that is **Comm Biol's**, cite it, do not disown it.
@@ -34,7 +42,8 @@ What does THIS paper claim as new — distinct from MacroIR (Comm Biol 2025) and
 - Both α⋆ and ½ log det C corrections = published objects (Pauli; Lv & Liu).
 
 ### LIVE — this paper's actual novelty
-- **New likelihoods: MR, MNR** (grid completion). Modest but REAL — B-3's "no new likelihood" was false. MNR should have a speed niche; MR is the cautionary intermediate.
+- ~~**New likelihoods: MR, MNR**~~ **RETRACTED 2026-07-28 for MNR.** It is dropped from the program, and the measured reason is that on the freeze it is **numerically indistinguishable from NR** (`D-4_ranking_verdict.md` §5), so the "speed niche" was never a niche: it buys nothing NR does not. **MR survives** as the cautionary intermediate and now lives in a supplement.
+- **Positioning against Münch et al. 2022** (ADDED 2026-07-28, M-6). It is a published Bayesian Kalman filter for ion channels **in the target journal**, so the topic demonstrably clears the desk and the novelty bar is correspondingly higher. The abstract must offer **the test of whether such filters tell the truth about their own uncertainty, plus the map of where they fail** — not another filter. Münch also already published diagnostic (i), residual whiteness, plus an N_ch rule of thumb; what they never compute is the score, the Fisher information, the score covariance or any sandwich. **That is the delta, and it should be stated as the delta.**
 - **Measurement, not test** (domain-first; map Part III #1)
   - ev: process exactly simulable → H analytic, J = Monte-Carlo over replicates; no null hypothesis; the literature's object is a test statistic with a notorious finite-sample defect (White/Godambe), ours is a measurement
   - claim with finesse — NOT "it's just White's". The epistemic move (exact simulator as ground truth) is the enabler nobody had
@@ -72,5 +81,7 @@ What does THIS paper claim as new — distinct from MacroIR (Comm Biol 2025) and
 - **Qin 2000**: read (how many channels? what cost?) — the retraction leans on it
 - **Michalek**: year is **2000** not 1999 (Crossref-verified, T-3)
 - `[VERIFY]` cites: Fredkin & Rice 1992, Fatehi & Huang 2017 (venue/pages)
-- **MR sign** (→ D-4): docs say "overestimates variance"; data say over-confident. One is backwards.
-- retracted-claim sweep still open: introduction_plan.md:54,:116; abstract_draft.md:30; theory_plan.md:23
+- ~~**MR sign**~~ **CLOSED (D-4 §2.1): over-confident, ~1.6 at the headline cell, recomputed on the freeze. The prose copies that say "overestimates variance" have it backwards. Do NOT assert an observable-variance direction for MR; the production code points the other way.**
+- retracted-claim sweep still open. **Note the targets are stale**: `introduction_plan.md`, `abstract_draft.md` and `theory_plan.md` no longer exist. The live files are `../introduction.md`, `../abstract.md`, `../theory.md`.
+- **Every `% src:` in this folder points at deleted files** (`results_plan.md`, `discussion_plan.md`, `abstract_draft.md`, `methods_plan.md`, `00_master_plan_v2.md`, `02_decision_log.md`, `diagnostics_plan.md`, `theory_plan.md`, `introduction_plan.md`). LINT-SRC (`../01_writing_plan.md` §1) requires every number to trace to the file that computed it, so the chain is currently broken for the whole novelty map. D-4 was repaired 2026-07-28 by recomputing and **committing** its scripts under `recompute/`; do the same here rather than repointing at prose.
+- **Lei 2020 author list** was taken from the arXiv version; verify against the published Phil Trans version before it enters the manuscript.

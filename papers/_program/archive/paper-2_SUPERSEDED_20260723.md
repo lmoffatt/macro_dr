@@ -1,5 +1,29 @@
-# Paper 2 — the usage map (stub)
+# Paper 2 — the usage map (stub) — SUPERSEDED
 
+> **SUPERSEDED 2026-07-23, archived 2026-07-28. There is no paper 2.** Papers 1 and 2 were merged
+> into one macro paper (`../decisions.md` §1). **Do not read this as current.** Successor:
+> `../../1_method/` for everything below, `../program.md` §1 for the roster.
+>
+> It is archived rather than deleted because it is the **ancestor of the merged paper's two best
+> ideas**: the body roster `LSE, NR, R, IR` is this file's roster, and the region map is this file's
+> deliverable. The paragraph below headed "The claim it must make, and the one it must not" is the
+> clearest statement anywhere of why the map is about the confidence interval and not the point
+> estimate, and it should be lifted into the Introduction rather than rewritten.
+>
+> **Migration ledger.** Where each live item went:
+>
+> | Item | Now owned by |
+> |---|---|
+> | the roster `LSE, NR, R, IR` | `../program.md` §1 and `../../1_method/decisions.md` |
+> | the CI-not-point-estimate claim | `../../1_method/introduction.md` and `discussion.md` |
+> | the `family == 2` guard status | `../../1_method/figures_build_plan.md` (verify: `figure_3_time_dlik_LSE.csv` exists, 1.1 GB, so it may have landed) |
+> | the dispatch-versus-roster mismatch | `../../1_method/figures_build_plan.md` |
+> | the duplicate `dispatch_figure_3_G.sh` submissions | same |
+> | the two LSE diagnostic caveats (`r̄²_std ≡ 1` tautology; `F = Var(score)` needs homoscedasticity) | `../machinery.md` §6.2 |
+> | the n_sims 1000 against 10⁴ conflict | `../decisions.md` §4 and `../provenance.md` |
+>
+> Original header follows.
+>
 > Updated: 2026-07-20. A stub, not a folder. It becomes `2_map/` when it starts drafting.
 > Its place in the program: `program.md` §1. Nothing here is settled unless `decisions.md` says so.
 

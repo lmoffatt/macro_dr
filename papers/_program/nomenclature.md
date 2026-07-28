@@ -1,15 +1,19 @@
 # Nomenclature: naming the methods
 
-> Updated: 2026-07-20. Shared across the three papers; cited, never restated. Settled items graduate
-> to `decisions.md`. Which paper uses which method: `program.md` §1.
+> Updated: 2026-07-28. Shared across the two papers; cited, never restated. Settled items graduate
+> to `decisions.md`. Which methods sit in the body: `program.md` §1.
 >
-> Scope: what we call every method in the program, what the letters mean, and how to describe them so
-> each name picks out exactly one method.
+> Scope: what we call every method in the program, what the letters mean, how to describe them so each
+> name picks out exactly one method, and what the regions of the usage map are called.
 
 ## The constraint
 
 `IR` / `MacroIR` is in print (Communications Biology 2025, P2X2). The acronym is fixed; nothing here
-renames it. What is open is the *gloss*, and the name of the one new member, `VR`.
+renames it. What was open was the *gloss*, and the name of the one new member, `VR`.
+
+**`VR` keeps its letter** (Luciano, 2026-07-28; `decisions.md` §2). It earned the rung by behaving
+distinctly: it was predicted to come out over-confident and more so than MR, and it did. The hazard
+below still applies.
 
 ## The structure has two levels, not one lattice
 
@@ -19,8 +23,11 @@ hanging from it** (`program.md` §1):
 
 - **Root: do you model the gating fluctuations at all?** `LSE` (classical nonlinear least squares on
   the mean current) answers no. In the engine it is `family_approximation = 2`; it carries the same two
-  knob settings as `NMR` and is distinguished only by that third flag. **It has no rung and no
-  compositional name** — it is a different kind of object, named for what it is.
+  knob settings as the dropped `NMR` and is distinguished only by that third flag. **It has no
+  compositional name**, because it is a different kind of object, named for what it is.
+  **Corrected 2026-07-28:** this used to read "no rung and no gloss", which is now misleading in the
+  one place it matters. `LSE` is the bottom rung of the cost ladder the paper walks and it is the
+  comparison anchor (`decisions.md` §1). What it lacks is a *compositional* name, not a place.
 - **Given yes, what does the Gaussian condition on, and how is its variance accounted?** That is the
   lattice below.
 
@@ -34,10 +41,14 @@ says how the single-channel conductance is treated within an interval.
 |-------|-----------|-----|---|
 | `NR`  | false     | 0   | — |
 | `R`   | true      | 0   | — |
-| `NMR` | false     | 1   | total |
 | `MR`  | true      | 1   | total |
 | `VR`  | true      | 1   | residual |
 | `IR`  | true      | 2   | residual (+ boundary gain) |
+
+`NMR` (false, 1, total) was the sixth row until 2026-07-28 and is **dropped from the program**
+(`decisions.md` §2). Recomputed on the freeze it is numerically indistinguishable from `NR`, so it
+occupied a lattice cell without measuring anything `NR` does not. The row is kept in
+`../1_method/decisions/D-4_ranking_verdict.md` §5 as the evidence for the drop.
 
 The suffix (`N` / `R`) is the occupancy axis: non-recursive or recursive. The prefix is the
 conductance axis: none for the instantaneous conductance, `M` for the mean conductance, `I` for the
@@ -71,9 +82,10 @@ Two concrete differences drive the whole ladder:
 `av` literally counts the conditioned endpoints (0 instantaneous, 1 start, 2 boundary); the flag is
 self-documenting. The variance axis is not in `av`, which is why it needs its own letter.
 
-## `VR`: a provisional name, and a hazard
+## `VR`: the name is settled, the hazard is not
 
-**`VR` is provisional** (`program.md` §9). Two cautions:
+**`VR` is settled** (2026-07-28, closing `program.md` §9). The second caution below is discharged: VR
+was measured and it does have a distinct behaviour. The first still binds.
 
 - **The `V` collides with the cut Taylor variance-correction variants** `MRV`, `IRV`, and with the
   engine flag `taylor_variance_correction`. `VR` is *not* a Taylor variant. If the name survives,
@@ -106,13 +118,39 @@ point stands; what is retired is stating a one-band result as a global verdict.
 
 | Conditioned on | Members | Conductance model |
 |---|---|---|
+| the gating fluctuations are not modelled | `LSE` | the deterministic mean current only |
 | no endpoints | `NR`, `R` | instantaneous; the averaging is ignored |
-| one endpoint (the start) | `NMR`, `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
+| one endpoint (the start) | `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
 | two endpoints (the boundary) | `IR` | interval-mean given both boundary states; interior marginalized |
 | the full trajectory | (exact) | intractable; the stochastic simulation supplies it as ground truth |
 
-`IR` is the top rung below intractability. Paper 1 walks the recursive spine `R → MR → VR → IR`; the
-non-recursive members `NR`, `NMR` and the off-lattice `LSE` are paper 2's.
+`IR` is the top rung below intractability. **The body walks `LSE → NR → R → IR`**, a monotone ladder
+of cost; `MR` and `VR` split the R → IR step and live in a supplement (`program.md` §1).
+
+## The regions of the usage map
+
+Named here so the figure, its caption and the text do not drift into three vocabularies. **The
+numbering runs bottom to top in instrumental noise at fixed channel count**, which is the direction
+the built figure uses (Luciano, 2026-07-28: "la numeración es con 0 donde falla macroir y 4 donde
+fallan todas"). Any prose that counts them the other way is wrong.
+
+| Region | Name | What it means |
+|---|---|---|
+| **0** | closure fails | the Gaussian closure itself is misspecified, so even `IR` reports a wrong error bar. The one boundary with a *negative* slope, because instrumental noise makes the emission more Gaussian |
+| **1** | `i` + `N_ch` + honest CI | the likelihood delivers the unitary conductance, the channel count and a calibrated interval; least squares reports one several times too narrow |
+| **2** | rates + honest CI | the amplitude pair is no longer separable and the amplitude needs a prior; the likelihood still buys a calibrated interval |
+| **3** | LSE is par | least squares is calibrated too and buys the same answer more cheaply |
+| **4** | nothing estimable | no useful information left |
+
+Call it a **usage map**, and say in the caption that it is a **concept map, not a phase diagram**: its
+boundaries are level sets of continuous diagnostics, so a looser criterion moves each of them by up to
+a decade in noise without changing the layout. Four documents currently forbid drawing a hard line on
+the design plane; that sentence is what reconciles them with the figure, and it should be quoted
+rather than re-derived.
+
+The boundary criterion is a distortion of **1.15**, read as a variance ratio, which is a 7% error on
+the reported standard deviation. Thresholds are owned by `machinery.md` §8, which must adopt this
+value rather than continue to propose 1.1.
 
 ## Scoping the term "boundary state"
 

@@ -1,5 +1,25 @@
 # D-0: freeze commit and re-run scope — DECIDED 2026-07-15
 
+> **Amended 2026-07-28.** Three things changed and none of them reopens the freeze.
+>
+> 1. **`433ed13` is the demo and no paper number may be quoted from it** (Luciano, 2026-07-28). The
+>    ranking verdict was computed there; it has been recomputed on `1c2ae6f` + `87889e6` against the
+>    Gaussian Fisher and it survives, with magnitudes moving five to ten percent
+>    (`D-4_ranking_verdict.md`). That the two anchors agree is what `433ed13` was run to show. State
+>    it once in Methods and quote the freeze everywhere else.
+> 2. **The 36-cell fill landed on `87889e6`, not on `1c2ae6f`.** Verified by inventory: the freeze
+>    carries R, MR and NR at noise 0.1 only (plus R at 100), while noise 1 and 10 for those three, and
+>    NMR at all three, are on `87889e6`. This is multi-commit provenance working as designed, but any
+>    grid-wide statement must read **both** directories or it reports a single-noise slice as the whole
+>    plane. §"The fill" below reads as though it all landed in one place.
+> 3. **NMR is dropped from the program** (`../../_program/decisions.md` §2), so a third of that fill is
+>    now historical. The data stays on disk as the evidence for the drop.
+>
+> Still owed, unchanged: the two engine fixes that gate the tag, because the binary stamps its own git
+> hash into every output file. The IDM reconstruction still uses the symmetric square root against the
+> corrected `K = H^{-1/2} J_s^{1/2}`, and `emit_state_rows_with_experiment` still writes every
+> evolution row twice.
+
 Decided with Luciano over the 2026-07-15 session. This header is the decision; B-0's original
 three-option brief (built on a premise that turned out false) is kept below as the evidence trail,
 marked superseded. The one-line record is in `../../_program/decisions.md` §4 (this was

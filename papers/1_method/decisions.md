@@ -1,33 +1,45 @@
-# Paper 1 (method) — decision log
+# The macro paper — decision log
 
-> Updated: 2026-07-20. Paper 1's **own** settled decisions. Everything that binds more than one paper
-> moved to `../_program/decisions.md`; this file cites it and does not restate it. If a decision here
-> turns out to bind papers 2 or 3 too, it belongs in `_program/`, not here (`../_program/00_index.md`
-> rule 2).
+> Updated: 2026-07-28. **This file governs the MERGED macro paper** (former papers 1 and 2, fused
+> 2026-07-23; `../_program/decisions.md` §1). Its **own** settled decisions; everything that binds
+> the micro paper too moved to `../_program/decisions.md`, which this file cites and does not restate.
 >
 > Open decisions live in `00_plan.md` §8.
 
-## What paper 1 is
+## What this paper is
 
-- **The method paper.** Given that you will compute a likelihood, **what must it condition on?** This
-  is the interval-likelihood closure (`../_program/program.md` §1). The other closure is paper 3; the
-  prior question of whether you need a likelihood at all is paper 2.
-- **Roster: `R`, `MR`, `VR`, `IR`.** A monotone progression in how much of the interval structure the
-  likelihood uses. Cross-paper roster and why each method sits where it does: `../_program/decisions.md`
-  §2 and `../_program/program.md` §1.
-  - **`NR` and `NMR` are not in paper 1.** NR moved to paper 2 (a cheap non-recursive likelihood is
-    that paper's subject, and its link to Milescu 2005 / QuB); NMR was dropped from the program (no
-    literature attribution, no mechanistic role).
-  - **`VR` is in**, displayed as "Variance Recursive" (2026-07-21, `figure_1.Rmd`; overrule there if
-    the paper prefers another wording). It is the control that turns the "MR's problem is the gain,
-    not the variance" claim from algebra into measurement. **Do not describe it as "MR→VR changes only
-    the variance, VR→IR only the gain":** the predictive variance divides the gain, so the variance
-    step moves the update too, and IR's *total* predicted variance is algebraically equal to MR's
+- **The question, in the reader's terms: what is the best I can do with a macroscopic recording, and
+  how would I know?** The paper answers it by measuring, over the design space, which methods report
+  their own uncertainty honestly and which do not.
+- **The comparison anchor is least squares** (2026-07-28). MacroR has essentially no uptake, so a
+  paper pitting one unused algorithm against another is unsellable. The paper compares **the method
+  everyone uses** against the new one and shows what more is available and where.
+- **Body roster: `LSE`, `NR`, `R`, `IR`**, faceted by N_ch. A monotone ladder of cost: fit the mean
+  and discard the fluctuations → use the gating variance without a filter → filter on instantaneous
+  samples → condition on the interval. Reading LSE against IR answers "do you need a likelihood?";
+  reading R against IR answers "what does conditioning buy?".
+- **Supplement roster: `MR`, `VR`**, which split the R → IR step and carry the mechanism.
+  - **`VR` keeps its name** (2026-07-28, `../_program/nomenclature.md`), displayed as "Variance
+    Recursive". It is the control that turns "MR's problem is the gain, not the variance" from algebra
+    into measurement, and it fired. **Do not describe it as "MR→VR changes only the variance, VR→IR
+    only the gain":** the predictive variance divides the gain, so the variance step moves the update
+    too, and IR's *total* predicted variance is algebraically equal to MR's
     (`figures_build_plan.md` §F1-2).
-- **Literature anchor after the exclusions: `R`.** Moffatt 2007; Münch 2022 (a published Bayesian
-  Kalman filter). The frame is "the published recursive filters treat each sample as instantaneous;
-  here is what conditioning on the interval buys, and which half of the mechanism does it." Paper 1
-  does not need NR to anchor itself.
+  - **`NMR` is dropped from the program**, and now for a measured reason as well: on the freeze it is
+    numerically indistinguishable from `NR` (`decisions/D-4_ranking_verdict.md` §5).
+- **Literature positioning.** `R` carries the recursive lineage (Moffatt 2007; Münch 2022, a published
+  Bayesian Kalman filter **in the target journal**, so the abstract must position against it: what is
+  offered is the test of whether such filters tell the truth about their own uncertainty, not another
+  filter).
+- **The gap claim is about validity, never about absence** (2026-07-28). The temporal correlation of
+  macroscopic currents has carried kinetics since 1973 (Lorentzian spectra: Katz & Miledi 1970/1972,
+  Anderson & Stevens 1973), the exact nonstationary two-time covariance was derived and used in
+  1980-1981 (Conti et al.; Sigworth), and a covariance likelihood predates MacroR by three years
+  (Celentano & Hawkes 2004). Writing "nobody used the correlation" is a one-line kill from any referee
+  over fifty. Write instead that **nobody characterised when a method that uses it is valid**.
+  Sources, the replacement paragraph and the ARMA-on-residuals precedent (Lei et al. 2020):
+  `docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md`, and §A.10 of
+  `docs/bibliography/MacroIR_prior_art_map.md`.
 
 ## Scope, and the declaration paper 1 must carry
 
@@ -42,26 +54,38 @@
   needs the micro attribution anchor below. The three papers' N_ch ranges are chosen jointly
   (`../_program/program.md` §2, still open).
 
-## The non-recursive members: named, not measured (A-strict, 2026-07-20)
+## A-strict is DEAD (reversed 2026-07-23)
 
-**Decided (Luciano).** Paper 1 restricts to the recursive roster R/MR/VR/IR. The non-recursive members
-`NR`, `NMR` are **named once in Theory** — to locate paper 1's ladder as the conductance axis at
-recursion=on — and **measured in no figure**. The recursion axis is established prior work (Moffatt
-2007, Comm Biol 2025); paper 1 holds it fixed and varies the conductance conditioning.
+**Superseded, kept for rewind.** A-strict said: restrict to the recursive roster R/MR/VR/IR, name the
+non-recursive members once in Theory, measure them in no figure. The merge reverses it. **`NR` is
+measured and it is in the body**, and the numbers it carries (the overconfidence factor, the
+information gap) come back into this paper because there is no paper 2 to hold them.
 
-Rationale is concept-first, not a numbers pitch: that NR is dramatically worse is old and roughly
-obvious, so re-showing it is not paper 1's job. The validation machinery is tested *harder* on the
-subtle within-recursive distortions (catching MR's ~1.5× miscalibration and attributing it) than on
-NR's gross one, so restricting to the recursive family is where the method proves it works. The 87-nat
-gap and the 10–16× overconfidence are NR/NMR results and belong to paper 2.
+The original rationale is preserved because half of it survives: the validation machinery is indeed
+tested harder on the subtle within-recursive distortions than on NR's gross one, and that is why
+`MR` and `VR` stay in a supplement rather than disappearing. What does not survive is the conclusion.
+Showing NR is now the paper's job, because the ladder is what makes the cost argument legible to a
+reader who is currently using least squares.
 
-## Fig 1 = the four-column ladder R, MR, VR, IR
+**Consequence to sweep:** every "belongs to paper 2" routing of the 87-nat gap and the 10-16×
+overconfidence is dead. **Trap while sweeping:** the caption was already refreshed from 87 nats to
+10.4 once NR and NMR left the panel (`figures_build_plan.md` §321, §349), so restoring the routing
+without checking reinstates a superseded number. And the overconfidence factor is now **10 to 15**,
+not 10 to 16, once NMR is dropped and the anchor moves to the freeze
+(`decisions/D-4_ranking_verdict.md` §3).
 
-**Decided (Luciano, 2026-07-21), and built the same day.** Fig 1 (the filter step, no statistics)
-shows the recursive ladder in order: **R, MR, VR, IR**. Recursion is held fixed across the four, so
-the columns vary only what the interval-averaged conductance is conditioned on. Files:
-`figure_1.Rmd` (roster) over the shared `figure_1_panels.R`; the six-algorithm version is
-`figure_1_all.Rmd`, which writes its own `Figure_1_all.pdf` and carries no measured claim.
+## Fig 1 = the four-column ladder LSE, NR, R, IR
+
+**Decided 2026-07-23 with the merge, and already built:** `paper_both/figure_1.Rmd:37` reads
+`COLS_TARGET <- c("LSE", "NR", "R", "IR")`. Fig 1 (the filter step, no statistics) shows the cost
+ladder in order. The non-recursive members fit the same grammar (row C reads "no update, open loop");
+LSE adds a flat global σ̂² band and a blank row C. Files: `figure_1.Rmd` (roster) over the shared
+`figure_1_panels.R`; the all-algorithm version is `figure_1_all.Rmd`, which writes its own
+`Figure_1_all.pdf` and carries no measured claim.
+
+**Superseded, kept for rewind (2026-07-21):** Fig 1 shows the recursive ladder **R, MR, VR, IR**, with
+recursion held fixed so the columns vary only the conductance conditioning. That was the A-strict
+roster; the merge replaced it with the cost ladder. MR and VR keep a column in the supplement version.
 
 **Superseded, kept for rewind (2026-07-20):** Fig 1 shows *R vs IR only*, on the ground that MR and VR
 would be visually identical in everything a single filter step shows except the predicted observable
@@ -127,14 +151,37 @@ supplements. eLife imposes no limit ("No limit on display items",
 rule), so this is a density-of-argument decision, not a space one, and the six-figure gate at
 `01_writing_plan.md:35` is moot.
 
+**Revised 2026-07-28: SIX body figures.** The region map is the paper's sell and cannot be a
+supplement. `check.sh` check 6 tests `N_CAP >= 5` and must be raised, or the done-oracle stays green
+on a paper short one body figure.
+
 The body:
 
-1. the filter step along the ladder (R, MR, VR, IR)
+1. the filter step along the cost ladder (**LSE, NR, R, IR**)
 2. recovery clouds, the ladder at one cell
 3. the calibration cascade in time
-4. **R against IR over the design space** (bias and information distortion maps, plus the grouped-MLE
-   clouds that give the maps a referent)
-5. the design trade-off (the covariance figure, ex-8)
+4. **the design space, split by moment** (`Figure_4_bias.pdf` and `Figure_4_distortion.pdf`, both
+   built), plus the grouped-MLE clouds that give the maps a referent. Splitting by moment rather than
+   by family is deliberate: splitting by family separates LSE from IR and kills the headline contrast
+5. **the information budget per parameter**, across methods. Rates live in the deterministic
+   transient's shape, so LSE gets them and recursion buys little; the amplitude pair needs the
+   fluctuations, and **LSE holds `unitary_current` Fixed so it cannot estimate `i` at all**. This
+   shields the thesis: where the information is nearly equal, the only variable left is the honesty of
+   the error bar. Must use the distortion-corrected covariance. **Scope caveat obligatory:** all of
+   this is the non-stationary regime; under stationarity the mean is flat and the balance inverts
+6. **the usage map** (`figure_6.Rmd`, built 2026-07-26/27; `Figure_6.pdf`, `Figure_6_regions.pdf`,
+   `Figure_6_frontiers.pdf`, `Figure_6_caption.md`). One plane, N_ch × instrumental noise, partitioned
+   by four boundaries into the five regions named in `../_program/nomenclature.md`, with the three
+   real recording configurations (excised patch, whole cell, oocyte) placed on it. It is the only
+   figure in the set that is not a heatmap: the cells are the input and the **lines are the output**.
+   Read the notebook header before writing about it; it is more current than any planning file.
+
+**Owed on Figure 6, and none of it is redrawing:** lift the ~200 lines of commented derivation for the
+three preparations into a citable Methods table, one source per row (the sourcing is in
+`docs/bibliography/recording_configurations/`, 88 files, **currently untracked**); write the figure
+into `04_results.tex`, which has no region map at all; and decide whether the lower vertex, currently
+extrapolated below N_ch 10, is pinned by the ten cells the notebook's own open item asks for
+(N_ch 2 and 5 at noise 0.1 to 10). That last one is `../_program/program.md` §2.
 
 Attached supplements, each declared inside its parent's `figure` environment (eLife mechanics:
 `reference_elife_figure_guidelines` memory; naming the supplement in the parent legend is a SHOULD,
@@ -235,13 +282,18 @@ algorithm: N_ch 100 at noise 100; N_ch 1000 at 100 and 1000; N_ch 10⁴ at 100, 
 must pass `GROUP_SIZE="10 100"` (the dispatcher default is `1 10 100`, and no existing run has group
 1); the same fix applies to the VR grid commands in `figures_build_plan.md` §4, which omit it.
 
-**Q-3 is resolved: the Fisher-to-zero result stays in the body**, as Figure 4, and the reason is not
-that it is striking. The figure carries two readings of one measurement — the information level F_t,
-which says *when* each parameter is measured, and the ratio J_t/F_t, which asks whether that
-information is honest — and the second cannot be posed without the first, so the figure does not
-split. The deciding test was whether the text could carry the result without the figure: it cannot,
-because the claim is a *shape* (the information about k_on, i and N_ch dies the moment the agonist is
-removed while k_off stays informative through the decay), and a shape is shown or lost.
+**Q-3, and the orphan block deleted 2026-07-28.** Until today this file said in two places that the
+Fisher-to-zero result **stays in the body as Figure 4**, and in one place that it is demoted to
+`Fig 3—figure supplement 1`. The demotion is the later of the two and `00_plan.md:220` records the
+sequence ("RESOLVED 2026-07-22, then revised the same day"), so **the supplement reading wins** and
+the body-figure paragraph has been removed. It also referred to "Figure 4", a slot the current set
+assigns to the design space.
+
+What survives from the deleted paragraph, because it is the real argument and it survives demotion:
+the figure carries two readings of one measurement, the information level F_t (*when* each parameter
+is measured) and the ratio J_t/F_t (whether that information is honest), and the second cannot be
+posed without the first, so the figure does not split. The claim is a **shape** and a shape is shown
+or lost; a supplement is still a shown, legended figure.
 
 **Carry the caveat with it:** that result holds for all four rungs and therefore **discriminates
 nothing** within paper 1's roster. It is a property of the macroscopic observable, not of the
@@ -274,7 +326,59 @@ that names none of its supplements (checked against a real article) is consisten
 above. **Demotion therefore costs no legend prose in the parent.** What it does cost is the parent
 relationship itself, which is the part that belongs in the argument.
 
-## Paper 1's open decisions
+## The abstract, introduction and discussion skeletons (2026-07-28)
+
+Recorded here because they are decisions about what the paper argues; the prose belongs to
+`abstract.md`, `introduction.md` and `discussion.md`.
+
+**Abstract.** Macroscopic currents are generally analysed by least squares, which ignores the
+information in the temporal correlation. Methods that use that correlation have little uptake,
+probably because their validity was never characterised. This paper characterises it. The only method
+without bias or distortion above **[threshold pending, D-J]** is MacroIR; and where the records carry
+no autocorrelation, least squares is just as good.
+
+**Introduction, five moves.** (1) Independence of residuals is the foundational assumption of least
+squares, and violating it costs you the degrees-of-freedom count. (2) Markov chains model temporal
+dependence while still yielding constants universal to the whole record, and they tie biophysical
+structure to observables, so the parameters mean something. (3) The ladder of methods, as in the
+roster above. (4) Why least squares still reigns: it lets you see, point by point, whether the
+prediction is good, which is visually convincing; recursive methods use the previous datum to predict
+the next, so they follow the data closely, hold no surprises, and give you no way to tell a working
+method from a bug. **There is no easy validity criterion, and that is what this paper supplies.**
+(5) Autoregressive alternatives do not solve it: an ARMA error model is stationary by construction
+while the gating covariance tracks the mean current and restarts at every jump, it contains no channel
+count and no unitary current, and its timescales are free where the Markov model ties them to the
+same rates that generate the mean. See
+`docs/bibliography/temporal_correlation_and_AR_errors_2026-07-28.md` for the sourced version and for
+Lei et al. 2020, who tried exactly this on ion-channel data.
+
+**Discussion, three points.** (1) MacroIR is calibrated over almost the whole measured plane, so one
+could simply always use it. (2) Where it fails: few channels, and telegraph (non-Gaussian) noise.
+**Flag: "telegraph" appears nowhere under `papers/`, no simulator capability exists on any freeze
+commit, and no cell has been run.** This is the only new claim in the set with zero data behind it;
+either run it or demote it to an argument with a citation. (3) Why the intermediates fail: you need
+the double conditioning at both interval ends, conditioning on the start alone contributes nothing.
+
+**The risk to fix before the abstract is written, not after review.** The region map's largest region
+is sold on the unitary conductance and the channel count, and `introduction.md:43` already concedes
+both to non-stationary fluctuation analysis while arguing that NSFA does not return a kinetic scheme.
+The headline therefore leans on the parameter the existing defence gave away, and the 1980-1981
+literature makes it worse. What is actually new is the **combination**: a calibrated joint estimate of
+rates *and* amplitudes with honest intervals, from a **single non-stationary record**, where the
+covariance methods needed ensembles of 256 to 504 repeated sweeps and produced no uncertainty
+statement at all, and where NSFA's own practitioners report the unitary current is close to the only
+parameter it recovers reliably. "More conductance information" on its own is not defensible.
+
+## The R and Python ports (2026-07-28)
+
+An R and a Python implementation of MacroIR were extracted from the C++ and cross-checked against it
+once, via `tools/cross_language_check.py`. This is an availability claim and it belongs in Code
+Availability (`../_program/carve_plan.md` owns the topic). **It is currently the weakest sentence in
+the submission**: a usability claim inside a paper about when methods are valid, backed by a single
+cross-check. Run the cross-check across the design grid and record the tolerance per cell before it
+goes in.
+
+## Open decisions
 
 Live in `00_plan.md` §8, and they are labelled **`Q-n`** since 2026-07-21 — the `D-n` labels belong to
 the manuscript-production briefs in `decisions/`, and the two registers used to collide. In brief:
