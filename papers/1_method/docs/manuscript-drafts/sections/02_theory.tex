@@ -1,15 +1,17 @@
 \section*{The macroscopic interval likelihood and its approximations}
-% Owner: theory_plan.md. Presents the five algorithms as one object with two knobs
-% (recursion x window), with the endpoint ladder as the presentation. Does NOT restate:
-% scope (02_decision_log), the novelty claim (D-3, unsettled), diagnostic definitions
-% (diagnostics_plan / 03_metrics_diagnostics), or run values and the noise parameter
-% (methods_plan). The index-level kernels for the boundary moments (E_2, E_3, the
-% Kronecker-sum construction) live in Methods and the Supplement; this section names them.
+% Owner: papers/_program/nomenclature.md (letters, lattice, ladder, region names) and
+% papers/_program/program.md §1 (body roster). Presents the root question (are the gating
+% fluctuations modelled at all?) with least squares at the bottom of the cost ladder, and the
+% lattice of likelihoods that hangs from it, with the endpoint ladder as the presentation.
+% Do NOT restate: model scope (program.md §7), the novelty claim, the diagnostic definitions
+% (03_diagnostics.tex), or run values and the noise parameter (06_methods.tex). The index-level
+% kernels for the boundary moments (E_2, E_3, the Kronecker-sum construction) live in Methods and
+% the Supplement; this section names them.
 
 A macroscopic current is the summed signal of a population of ion channels, each of
 which behaves as an independent continuous-time Markov chain over a small set of
 conformational states. We write $N_{\mathrm{ch}}$ for the number of channels and $K$ for
-the number of kinetic states of one channel ($K=2$ throughout this paper, carried % src: 02_decision_log.md (two-state scope)
+the number of kinetic states of one channel ($K=2$ throughout this paper, carried % src: papers/_program/program.md §7 (model scope: two states)
 symbolically where it costs nothing). Each channel is governed by a generator (rate)
 matrix $\mathbf{Q}\in\mathbb{R}^{K\times K}$, whose transition matrix over an elapsed time
 $t$ is the row-stochastic $\mathbf{P}(t)=e^{\mathbf{Q}t}$ with entries $P_{i\to j}(t)$. A
@@ -20,8 +22,8 @@ The likelihood we need is the probability of a recorded sample given the kinetic
 parameters and the data seen so far. Its exact form would require the distribution of the
 interval-averaged conductance of the whole population, which has no closed expression.
 Every practical likelihood replaces that distribution with a Gaussian, and the members of
-the family studied here differ only in what the Gaussian is conditioned on. The rest of
-this section unpacks that sentence.
+the family studied here differ in what the Gaussian is conditioned on and in how its
+variance is accounted. The rest of this section unpacks that sentence.
 
 \subsection*{The observable is an interval average}
 
@@ -70,11 +72,32 @@ enough, or the instrumental noise large enough, for the interval-signal Gaussian
 kind must fail somewhere. The aim of this paper is to show that the failures are the
 predicted degradation of these two closures rather than defects of a particular algorithm.
 
-\subsection*{The family as a coordinate system}
+The usage map of the Results is drawn on the plane of channel count against instrumental
+noise at one acquisition interval, and its region names follow this vocabulary. % src: papers/_program/nomenclature.md (regions of the usage map)
+Region~0, where the closure itself is misspecified, is the multinomial regime seen on that
+plane, and its boundary carries a negative slope because instrumental noise makes the
+emission more Gaussian and so relaxes the occupancy closure. Regions~1 to~4 (the unitary
+current and channel count with a calibrated interval; the rates with a calibrated interval;
+least squares at par; nothing estimable) all sit inside the Gaussian regime, and what
+orders them is how much the data carry rather than whether the closures hold. The
+telegraphic regime is a statement about $\Delta$ and so does not appear as a region of that
+plane; it is reached by moving along the interval axis of Figure~\ref{fig:plane}.
 
-The family has two knobs. One axis is the window: how much of the acquisition interval the
-conductance is conditioned on. The other is recursion: whether the occupancy distribution
-is conditioned on the data as the recording proceeds.
+\subsection*{The root question, and the ladder below it}
+
+Before any of the choices above comes a prior question: does the method model the gating
+fluctuations at all? Classical nonlinear least squares (\texttt{LSE}) answers no. It fits
+the deterministic mean current and assigns one constant variance to every residual, so it
+carries neither an occupancy distribution nor a conductance conditioned on anything, and
+the temporal structure the two closures approximate is absent from it. \texttt{LSE} is
+therefore not a member of the family. It is the bottom rung of the ladder of computational
+cost this paper walks, and it is the anchor against which every member above it is
+measured, because it is the method most readers are using.
+
+Given a yes to the root question, the members differ along two axes. One axis is the
+window: how much of the acquisition interval the conductance is conditioned on. The other
+is recursion: whether the occupancy distribution is conditioned on the data as the
+recording proceeds.
 
 Along the recursion axis, a recursive (prequential) member factorizes the likelihood as
 $\prod_t q_t(\bar{y}_t \mid \bar{y}_{1:t-1})$, so the occupancy distribution carried into
@@ -92,27 +115,33 @@ endpoints the conductance is conditioned on (Table~\ref{tab:ladder}).
 \toprule
 Conditioned on & Members & Conductance model \\
 \midrule
+the fluctuations are not modelled & \texttt{LSE} & the deterministic mean current only \\
 no endpoints & \texttt{NR}, \texttt{R} & instantaneous; the acquisition averaging is ignored \\
-one endpoint (the start) & \texttt{NMR}, \texttt{MR} & interval-mean conductance given the start state \\
+one endpoint (the start) & \texttt{MR}, \texttt{VR} & interval-mean conductance given the start state \\
 two endpoints (the boundary) & \texttt{IR} & interval-mean conductance given both boundary states; interior marginalized \\
 the full trajectory & (exact) & intractable; supplied by the stochastic simulation as ground truth \\
 \bottomrule
 \end{tabular}
-\caption{The window axis as an endpoint ladder. Crossing it with the recursion axis gives
-the implemented grid: \texttt{NR} (non-recursive, $\mathrm{av}=0$), \texttt{R} (recursive,
-$\mathrm{av}=0$), \texttt{NMR} (non-recursive, $\mathrm{av}=1$), \texttt{MR} (recursive,
-$\mathrm{av}=1$), \texttt{IR} (recursive, $\mathrm{av}=2$), where $\mathrm{av}$ counts the
-conditioned endpoints. MacroIR is \texttt{IR}.} % src: nomenclature.md (family grid, av flag)
+\caption{The window axis as an endpoint ladder, with least squares (\texttt{LSE}) shown at
+the foot of the cost ladder although it lies off the lattice. Crossing the window axis with
+the recursion axis gives the implemented grid: \texttt{NR} (non-recursive,
+$\mathrm{av}=0$), \texttt{R} (recursive, $\mathrm{av}=0$), \texttt{MR} (recursive,
+$\mathrm{av}=1$, total start-conditioned interval variance), \texttt{VR} (recursive,
+$\mathrm{av}=1$, residual interval variance), \texttt{IR} (recursive, $\mathrm{av}=2$),
+where $\mathrm{av}$ counts the conditioned endpoints. The body walks
+\texttt{LSE}, \texttt{NR}, \texttt{R}, \texttt{IR}; \texttt{MR} and \texttt{VR} split the
+step from \texttt{R} to \texttt{IR} and are reported in the Supplement. MacroIR is
+\texttt{IR}.} % src: papers/_program/nomenclature.md (the lattice as implemented; the ladder for the Methods presentation)
 \label{tab:ladder}
 \end{table}
 
-Two things follow from the ladder. First, MacroIR occupies the top rung below the
+Two things follow from the ladder. First, \texttt{IR} occupies the top rung below the
 intractable exact likelihood, so its standing in the family is structural and set before
 any measurement. Second, the lower rungs are established likelihoods rather than
 constructed foils: the non-recursive instantaneous member is the independent-interval
 likelihood of \citet{milescu2005maximum}, and the recursive instantaneous member is the
 macroscopic recursive filter of \citet{moffatt2007estimation} and the generalized filter
-of \citet{munch2022bayesian}. The family is one coordinate system that contains these
+of \citet{munch2022bayesian}. The lattice is one coordinate system that contains these
 methods as special cases.
 
 \subsection*{The boundary state}
@@ -123,7 +152,7 @@ state of the next, so there is a single state variable per junction: the filter 
 on the states at the interval boundaries and marginalizes the trajectory between them
 analytically. This is the same device as static condensation, or the spatial Markov
 property, applied on the time axis. It is not a transition state in the mechanistic sense,
-and we keep the word \emph{transition} away from it. Because the joint dynamics of the two
+and the word \emph{transition} is not used for it here. Because the joint dynamics of the two
 endpoints are generated by the Kronecker sum
 $\mathbf{Q}\oplus\mathbf{Q}=\mathbf{Q}\otimes\mathbf{I}+\mathbf{I}\otimes\mathbf{Q}$, whose
 propagator factorizes as $e^{(\mathbf{Q}\oplus\mathbf{Q})t}=e^{\mathbf{Q}t}\otimes
@@ -196,16 +225,34 @@ guarantee. For this reason the recursive members' Gaussian information is a mode
 quantity and is not claimed to be the exact information of the process; how far it departs
 from the truth is what the Diagnostics measure.
 
-The single algebraic difference within the family sits in the conductance object of
-Eq.~\ref{eq:pred-var}. MacroIR conditions the interval-averaged conductance on both
-boundary states; MacroMR conditions it on the start state alone, using $\bar{\bm{\gamma}}_0$
-of Eq.~\ref{eq:gammabar} in its place. This drops the boundary cross-covariance term
+Two algebraic differences separate the members that sit at $\mathrm{av}=1$ and
+$\mathrm{av}=2$. The first is the form of the third term of Eq.~\ref{eq:pred-var}.
+\texttt{MR} carries the total per-start-state interval variance, the spread of the
+interval-averaged conductance of a channel known only to have started in $i_0$, while
+\texttt{VR} and \texttt{IR} carry the residual variance left once the end state is also
+conditioned on, $\sum_{i_t} P_{i_0\to i_t}(\Delta)\,\overline{V}_{i_0\to i_t}$. By the law
+of total variance the two forms differ by the spread of the interval mean across end
+states,
+\begin{equation}
+  \underbrace{\sum_{i_t} P_{i_0\to i_t}(\Delta)\bigl[\overline{V}_{i_0\to i_t}
+    + \bigl(\overline{\Gamma}_{i_0\to i_t}-(\bar{\gamma}_0)_{i_0}\bigr)^2\bigr]}_{\text{total, }\texttt{MR}}
+  \;=\; \underbrace{\sum_{i_t} P_{i_0\to i_t}(\Delta)\,\overline{V}_{i_0\to i_t}}_{\text{residual, }\texttt{VR},\,\texttt{IR}}
+  \;+\; \mathrm{Var}_{i_t}\bigl[\overline{\Gamma}_{i_0\to i_t}\mid i_0\bigr],
+  \label{eq:mr-vr}
+\end{equation}
+so \texttt{MR} charges to the observation variance a spread that the end state, once
+conditioned on, would resolve. The second difference is the boundary cross-covariance term
 \begin{equation}
   N_{\mathrm{ch}}\,\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
   \label{eq:mr-ir}
 \end{equation}
-that MacroIR retains, and it is the only place the two members diverge. Its consequence for
-the predicted variance across the regime grid is characterized in the Results.
+that enters the gain $\mathbf{g}$ of Eqs.~\ref{eq:mu-post} and~\ref{eq:sig-post}, which
+\texttt{IR} retains and both $\mathrm{av}=1$ members drop. Stepping \texttt{MR} to
+\texttt{VR} changes the variance form and nothing else, and stepping \texttt{VR} to
+\texttt{IR} restores the boundary term in the gain and changes nothing else, % src: papers/_program/nomenclature.md (the two concrete differences that drive the ladder)
+so the two halves of the \texttt{R} to \texttt{IR} step are separated and can be measured
+one at a time. Their consequences for the predicted variance across the regime grid are
+characterized in the Results.
 
 \subsection*{The top of the ladder}
 

@@ -1,8 +1,9 @@
 # D-4 — The calibration verdict
 
-> **Updated 2026-07-28. Recomputed on the freeze commit.** Luciano's call, same day: `433ed13` is the
+> **Updated 2026-07-28, coverage corrected 2026-07-29.** Luciano's call: `433ed13` is the
 > numerical-Fisher demo, so every number that fed the paper's verdict has been recomputed on
-> **`1c2ae6f` + `87889e6`** (the freeze plus the D-0 fill, multi-commit provenance per
+> **`1c2ae6f` + `87889e6` + `0ffbda7`** (the freeze, the D-0 fill, and the high-noise columns;
+> multi-commit provenance per
 > `../../_program/decisions.md` §4) against the **Gaussian Fisher**, which is the program's declared
 > anchor. The 2026-07-14 version of this file, computed on `433ed13` against
 > `Likelihood_Fisher_Covariance`, is preserved in git history. Its verdict **survives**; the
@@ -11,8 +12,9 @@
 > Scripts are committed this time, not left in a scratchpad: `recompute/d4_headline_and_nch_trend.py`
 > and `recompute/d4_distortion_envelopes.py`. Re-run them and this file must reproduce.
 >
-> **NMR is gone from the roster** (Luciano, 2026-07-28: "no hay razones para que esté dentro"). Its
-> row is kept in §5 as evidence for the drop, not as a verdict.
+> **NMR's membership is REOPENED** (2026-07-29). It was recorded as dropped on 2026-07-28 partly for
+> "no literature attribution", which is false: `NMR` **is** the published `MacroINR`, the control of
+> Comm Biol 2025. What survives is that it is measurably redundant with `NR` (§5).
 >
 > Abbreviations: emp = the covariance of the MLE cloud; Fisher = the covariance the likelihood reports
 > from its own Gaussian Fisher information; D = the diagonal `Likelihood_Gaussian_Information_Distortion`
@@ -46,18 +48,29 @@ parameters, ask whether the reported uncertainty is within ±15% of the truth.
 
 | Algo | cells | (param, cell) points | **within ±15%** | D envelope | Reading |
 |---|---:|---:|---:|---|---|
-| **IR** | 427 | 1708 | **93%** | 0.65 → 1.70 | Calibrated over almost the whole measured plane; both excursions are in the few-channel corner |
-| **R** | 119 | 476 | **51%** | 0.33 → 2.00 | Half the plane. Two-sided: over-confident at few channels, conservative at many |
-| **MR** | 84 | 336 | **20%** | 0.74 → 3.09 | Worse than R almost everywhere. The one-endpoint recursion misreports more, not less |
+| **IR** | 525 | 2100 | **94%** | 0.65 → 1.70 | Calibrated over almost the whole measured plane; both excursions are in the few-channel corner |
+| **R** | 224 | 896 | **70%** | 0.33 → 4.29 | Two-sided, and it is **the high-noise columns that rescue it**: over-confident at low noise, calibrated once instrumental noise dominates, which is region 3 of the usage map |
+| **MR** | 84 | 336 | **20%** | 0.74 → 3.09 | Worse than R almost everywhere it is measured. The one-endpoint recursion misreports more, not less |
 | **NR** | 84 | 336 | **0%** | 1.21 → 3.5 × 10⁴ | Never calibrated at any measured cell |
 
-Coverage is honestly unequal and must be stated with the number: IR spans N_ch 5 to 10⁴ at six noise
-levels; R spans seven N_ch values at four noise levels; MR and NR span four N_ch decades at three
-noise levels. **IR's 93% is therefore measured over a wider and harder region than R's 51%**, which
-strengthens rather than weakens the comparison.
+**Three commits, not two** (corrected 2026-07-29). The scan must read `1c2ae6f` + `87889e6` +
+**`0ffbda7`**. The first pass of this table read only the first two and under-reported both IR (93%)
+and, badly, R (51%): `0ffbda7` carries the high-noise columns out to a noise label of 10⁷, and R is
+calibrated across most of them. Anyone re-deriving these numbers over two directories will reproduce
+the wrong pair. The abstract in `../docs/manuscript-drafts/elife_paper.tex` already quotes the
+three-commit figure.
 
-The monotone 93 / 51 / 20 / 0 is the sentence the paper wants, and it replaces every "sole survivor"
-phrasing (`../../_program/decisions.md` §6).
+Coverage is honestly unequal and must be stated with the number: IR spans N_ch 5 to 10⁴ at eleven
+noise levels; R spans seven N_ch values at nine noise levels; MR and NR span four N_ch decades at
+three noise levels, **all of them low**. So **MR's 20% and NR's 0% are measured only where the gating
+signal is strong**, which is the regime that flatters them least; do not present those two as
+plane-wide fractions without saying so. IR's 94% and R's 70%, by contrast, are measured across the
+crossover.
+
+The monotone 94 / 70 / 20 / 0 is the sentence the paper wants, and it replaces every "sole survivor"
+phrasing (`../../_program/decisions.md` §6). **R's 70% is a better number for the paper than 51% was**,
+because the region map's whole point is that there is a region where the classical error bar is honest.
+A method that is never calibrated would contradict the map.
 
 ## 1a. The headline cell
 
@@ -166,15 +179,22 @@ rate directions, a different measure of a different object.
 
 ---
 
-## 5. NMR, kept as the evidence for dropping it
+## 5. NMR: measurably redundant with NR, and published
 
 NMR was in the fill and is on `87889e6` at all three noise levels. Recomputed, it is
 **numerically indistinguishable from NR**: envelope 1.226 to 35 738 against NR's 1.209 to 35 358, and
 0% of 336 points within ±15% for both. It measures the same failure NR measures, at the same size,
 with no literature attribution and no mechanistic role of its own.
 
-That is the argument for the drop, and it is stronger than the original "no attribution" reason
-because it is measured. Keep this section; delete the NMR verdict row everywhere else.
+**But the original "no attribution" reason was false** (corrected 2026-07-29): `NMR` is `MacroINR`,
+the published control of Comm Biol 2025, whose systematic underestimation of the evidence for schemes
+with conformational intermediates is that paper's central methodological claim. So what is measured
+here is redundancy with `NR`, not absence of a role.
+
+Read the other way, the redundancy is a **result**: the interval-mean conductance buys nothing without
+recursion, so recursion is the step that matters at the bottom of the ladder and interval conditioning
+is the step that matters at the top. `../../_program/decisions.md` §2 holds the three options and the
+standing recommendation (name it with its attribution, measure it once in a supplement beside `NR`).
 
 ---
 
@@ -182,7 +202,7 @@ because it is measured. Keep this section; delete the NMR verdict row everywhere
 
 The window-ignoring approximations over-state what the data know (NR by one to four orders of
 magnitude and growing with channel count, MR by ~1.6×, R by ~1.2×, all over-confident), the interval
-likelihood is within ±15% over 93% of the measured design space, and where it departs it mostly
+likelihood is within ±15% over 94% of the measured design space, and where it departs it mostly
 departs in the conservative direction. The sandwich correction returns all of them to ≈ 1, which is
 what makes the diagnostic a measurement rather than a verdict.
 
@@ -190,7 +210,7 @@ what makes the diagnostic a measurement rather than a verdict.
 
 ## 7. Recompute provenance
 
-Data: `projects/eLife_2025/figures/data/{1c2ae6f,87889e6}/figure_3_G_nch_{N}_nsim_10000_macro_{ALGO}_noise_{S}_*.csv`,
+Data: `projects/eLife_2025/figures/data/{1c2ae6f,87889e6,0ffbda7}/figure_3_G_nch_{N}_nsim_10000_macro_{ALGO}_noise_{S}_*.csv`,
 skip row 1 (the engine git hash). Filters, exactly as the figure notebooks:
 
 - **Cloud**: `_mle_cloud_runs.csv`, `variable == Model_Parameters_Hat`, `statistic == value`,

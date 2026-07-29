@@ -1,21 +1,21 @@
 \section*{Materials and methods}
 
-% Owner: methods_plan.md (M1--M11) + docs/figure_provenance.md (run manifest).
+% Owner: papers/1_method/methods.md (M1--M11) + papers/_program/provenance.md (run manifest).
 % Numbers are annotated with `% src:` per LINT-SRC. Definitions owned by the Theory
-% and Diagnostics sections are cited here, not restated (00_master_list.md).
+% and Diagnostics sections are cited here, not restated (papers/_program/00_index.md).
 
 \subsection*{Minimal model and simulation}
 
 We work with a two-state channel scheme, closed ($C$) and open ($O$), the smallest
 scheme in which the acquisition-averaging effect we study is present.
-% src: papers/macroir-elife-2025/methods_plan.md#M1 (scheme_CO; legacy/models_simple.h:10-66)
+% src: papers/1_method/methods.md#M1 (scheme_CO; legacy/models_simple.h:10-66)
 The closed-to-open transition is agonist dependent with association constant
 $k_{\mathrm{on}}$ multiplying the agonist concentration; the open-to-closed
 transition is agonist independent with dissociation rate $k_{\mathrm{off}}$. Only
 the open state conducts, and the code applies a sign flip so the single-channel
 current is inward. At the start of every recording all channels are closed, so the
 occupancy is $(1,0)$.
-% src: papers/macroir-elife-2025/methods_plan.md#M1 (v_g_formula; P_initial=[1,0]; sign flip)
+% src: papers/1_method/methods.md#M1 (v_g_formula; P_initial=[1,0]; sign flip)
 
 The scheme carries six parameters, all estimated in base-ten logarithmic
 coordinates. The values used to generate the data reported here, read from the
@@ -23,24 +23,25 @@ production run scripts rather than from the parameter tables in the repository
 (the tables hold stale values the figures never used), are
 $k_{\mathrm{on}} = 10\;\mu\mathrm{M}^{-1}\,\mathrm{s}^{-1}$,
 $k_{\mathrm{off}} = 100\;\mathrm{s}^{-1}$,
-a unitary conductance $g$ set to $1$, and a current baseline $b$ set to $1$
-(both in units of $g$),
+a unitary conductance $g$ set to $1$ (the engine parameter
+\texttt{unitary\_current}, written $i$ where the noise axis is defined below), and a
+current baseline $b$ set to $1$ (both in units of $g$),
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:42-50 (on=10, off=100, unitary=1, baseline=1)
-% src: papers/macroir-elife-2025/decisions/D-2_parameter_units.md (settled units; CSV != run values)
+% src: papers/1_method/decisions/D-2_parameter_units.md (settled units; CSV != run values)
 while the white-noise level and the mean channel number were swept (below). Current
 is expressed throughout in units of the unitary conductance $g$, which corresponds
 physically to a single-channel current of roughly $1\;\mathrm{pA}$.
-% src: papers/macroir-elife-2025/decisions/D-2_parameter_units.md (current in units of g; g ~ 1 pA)
+% src: papers/1_method/decisions/D-2_parameter_units.md (current in units of g; g ~ 1 pA)
 The dissociation time $\tau = 1/k_{\mathrm{off}} = 10\;\mathrm{ms}$ sets the natural
 time scale that normalises the acquisition-interval axis. The relaxation at the
 agonist condition is faster, with rate $k_{\mathrm{on}}[A] + k_{\mathrm{off}} =
 200\;\mathrm{s}^{-1}$; the axis uses $\tau = 1/k_{\mathrm{off}}$ by convention.
-% src: papers/macroir-elife-2025/decisions/D-2_parameter_units.md (tau = 1/k_off = 10 ms; lambda = k_on[A]+k_off)
+% src: papers/1_method/decisions/D-2_parameter_units.md (tau = 1/k_off = 10 ms; lambda = k_on[A]+k_off)
 
 The emission model is white instrumental noise only. Both the pink (one-over-$f$)
 and the proportional noise channels are set to zero, so the term the reader may
 expect from flicker noise is genuinely absent.
-% src: papers/macroir-elife-2025/methods_plan.md#M1 (pink and proportional = 0)
+% src: papers/1_method/methods.md#M1 (pink and proportional = 0)
 For a measurement interval $t$ of duration $\Delta_t$, the predicted current has
 mean $\bar y_t = N_{\mathrm{ch}}\,\mu_t\!\cdot\!\gamma_t + b$ and variance
 \[
@@ -53,7 +54,8 @@ where $N_{\mathrm{ch}}$ is the channel number, $\mu_t$ the occupancy mean, $\gam
 the interval-averaged conductance, $f_s$ the raw sampling rate, $n_{\mathrm{samp},t}$
 the number of raw samples averaged into the interval, $e_t$ the white instrumental
 variance over the interval, and $N_{\mathrm{ch}}\,v_t$ the channel-gating variance.
-% src: papers/macroir-elife-2025/decisions/D-2_parameter_units.md (e = Current_Noise*fs/n_samp; legacy/qmodel.h:3730,3735)
+% src: papers/1_method/decisions/D-2_parameter_units.md (e = Current_Noise*fs/n_samp)
+% src: legacy/qmodel.h:3740-3741 (e = Current_Noise * fs / number_of_samples + Pink_Noise)
 The white variance $e_t$ falls as the interval lengthens, because more raw samples
 are averaged into each recorded value. The gating variance $v_t$ is the
 single-interval conductance variance, whose form differs across the algorithm
@@ -67,7 +69,7 @@ Each recorded measurement is the mean of $n_{\mathrm{samp},t}$ consecutive raw
 samples, so the averaging window is fixed at acquisition. That window is the
 acquisition interval the whole study is about, and its length is set by the
 number of raw samples entering each recorded value.
-% src: papers/macroir-elife-2025/methods_plan.md#M2 (interval = averaging window, not a filter)
+% src: papers/1_method/methods.md#M2 (interval = averaging window, not a filter)
 
 Ground truth is generated by exact simulation of the continuous-time Markov chain
 (CTMC). We use uniformization with $1{,}000$ substeps per measurement interval, so
@@ -76,12 +78,15 @@ trajectory rather than from any moment-closure approximation.
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:69-74 (uniformization; number_of_substeps=1000)
 This is what licenses treating the simulation as the reference against which the
 Gaussian likelihood approximations are judged: the approximations are the object
-under test, and the simulator supplies the exact answer they are compared to. The
-two maximum-likelihood batteries used $10{,}000$ recordings per grid cell; the
-time-resolved run used $1{,}000$ recordings; the single-recording illustration
-(Figure~1) simulated one $20$-channel trace with $250$ within-interval substeps for
-visualisation and does not enter the quantitative comparison.
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#5 (n_sim=10000, 433ed13); #6 (1000 recordings); #4 (Figure 1: 20 ch, 250 substeps)
+under test, and the simulator supplies the exact answer they are compared to. Every
+maximum-likelihood grid cell reported here, the least-squares arm included, used
+$10^4$ recordings; the time-resolved run used $1{,}000$ recordings; the
+single-recording illustration (Figure~1) simulated one $20$-channel trace with $250$
+within-interval substeps for visualisation and does not enter the quantitative
+comparison.
+% src: papers/_program/provenance.md#5 (n_sim=10000 per cell); #6 (1000 recordings); #4 (Figure 1: 20 ch, 250 substeps)
+% src: projects/eLife_2025/figures/paper_both/figure_4_common.R:41 (filename pattern hard-codes nsim_10000)
+% src: projects/eLife_2025/figures/data/0ffbda7 (93 nonlinearsqr files, all nsim_10000, 30 cells)
 
 The simulation seed was set to $0$, which in this engine is the sentinel for a
 random seed drawn from \texttt{std::random\_device}, and the resolved seed was
@@ -89,51 +94,67 @@ never logged. The deposited ensembles are therefore statistically equivalent to,
 but not bit-for-bit reproducible from, a rerun of the same script. Because each
 ensemble is large ($1{,}000$ to $10{,}000$ recordings), the reported statistics are
 stable; the Monte-Carlo standard here is statistical equivalence, not bit identity.
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#9 (seed=0 -> random_device; legacy/mcmc.h:37-45)
-% src: papers/macroir-elife-2025/decisions/D-0_freeze_and_rerun_scope.md (seed never logged; not bit-reproducible; corrects methods_plan.md M5)
+% src: papers/_program/provenance.md#9 (seed=0 -> random_device; legacy/mcmc.h:37-45)
+% src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (seed never logged; not bit-reproducible)
 
-\subsection*{The macroscopic likelihood approximations}
+\subsection*{The likelihood family and its members}
 
-The recursive ladder compared in this paper, R, MR, VR and IR, is one filter run under flags that set how the interval-averaged conductance is conditioned. The \emph{recursive} flag sets whether the
-occupancy covariance is propagated between intervals, and is held true across the four. The
-\emph{averaging} flag $\mathrm{av}\in\{0,1,2\}$ counts the number of interval endpoints the
-hidden state is conditioned on. A third flag, the \emph{variance form}, distinguishes the two
-members that condition on the interval start: MR predicts the interval variance with the total
-per-start-state conductance variance, while VR removes the between-endpoint part, keeping MR's
-mean and gain. The two non-recursive members NR and NMR are named here to locate the ladder
-within the wider family and are measured in no figure of this paper.
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:200 (macro_VR: recursive, averaging=1, variance_form=1)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:150-158 (algorithm -> recursive, averaging flags)
+The members compared here answer one question first, then a second. The first
+question is whether the gating fluctuations are modelled at all. Classical nonlinear
+least squares answers no: it fits the deterministic mean current and treats every
+departure from it as independent measurement error. The macroscopic likelihoods
+answer yes, and among them the second question is how much of the acquisition
+interval the interval-averaged conductance is conditioned on. Least squares is the
+bottom rung of that cost ladder and the comparison anchor of this paper.
+
+Least squares is selected by the family flag \emph{family approximation} $= 2$, its
+data key is \texttt{nonlinearsqr}, and it runs non-recursive with the averaging flag
+at $1$; the variance flag is accepted and ignored on this branch. It sits off the
+lattice of endpoint and recursion flags that organises the macroscopic members, so it
+carries no compositional name.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_LSE.sh:144 (nonlinearsqr: recursive=false, averaging=1, family=2)
+% src: projects/eLife_2025/ops/local/figure_3_time_LSE.macroir:67-72 (family_approximation = 2; variance flag ignored, [VAR-BLOCK])
+The macroscopic members all take \emph{family approximation} $= 0$ and are one filter
+run under flags that set how the interval-averaged conductance is conditioned. The
+\emph{recursive} flag sets whether the occupancy covariance is propagated between
+intervals. The \emph{averaging} flag $\mathrm{av}\in\{0,1,2\}$ counts the number of
+interval endpoints the hidden state is conditioned on. A third flag, the
+\emph{variance form}, distinguishes the two members that condition on the interval
+start: MR predicts the interval variance with the total per-start-state conductance
+variance, while VR removes the between-endpoint part, keeping MR's mean and gain.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:196-201 (algorithm -> recursive, averaging, variance_form flags)
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{lcccl}
+\begin{tabular}{llccll}
 \toprule
-Member & Recursive & $\mathrm{av}$ & Variance & Conditioning of the conductance \\
+Member & Data key & Recursive & $\mathrm{av}$ & Variance & Conditioning of the conductance \\
 \midrule
-NR  & no  & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
-NMR & no  & 1 & total    & interval mean given the start state \\
-R   & yes & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
-MR  & yes & 1 & total    & interval mean given the start state \\
-VR  & yes & 1 & residual & MR's mean and gain, with the between-endpoint variance removed \\
-IR  & yes & 2 & total    & interval mean given both boundary states; the endpoints enter the gain \\
+LSE & \texttt{nonlinearsqr} & no  & 1 & n/a      & none; the mean current only \\
+NR  & \texttt{macro\_NR}    & no  & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+R   & \texttt{macro\_R}     & yes & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+MR  & \texttt{macro\_MR}    & yes & 1 & total    & interval mean given the start state \\
+VR  & \texttt{macro\_VR}    & yes & 1 & residual & MR's mean and gain, with the between-endpoint variance removed \\
+IR  & \texttt{macro\_IR}    & yes & 2 & total    & interval mean given both boundary states; the endpoints enter the gain \\
 \bottomrule
 \end{tabular}
-\caption{The recursive ladder R, MR, VR, IR as filter flags, with the non-recursive members
-NR and NMR named to locate it. Reading the endpoint flag as a ladder gives no endpoints (NR, R),
-one endpoint (NMR, MR, VR), then both boundary states (IR). MR and IR predict the same total
-interval variance and differ only in the gain; VR shares MR's gain but removes the
-between-endpoint part of the variance, which isolates the variance change from the gain change.
-The data key for a member is \texttt{macro\_}$\langle$member$\rangle$.}
+\caption{The members as flags. LSE takes \emph{family approximation} $= 2$ and every
+macroscopic member takes \emph{family approximation} $= 0$. Reading the endpoint flag
+as a ladder gives no endpoints (NR, R), one endpoint (MR, VR), then both boundary
+states (IR). MR and IR predict the same total interval variance and differ only in the
+gain; VR shares MR's gain but removes the between-endpoint part of the variance, which
+isolates the variance change from the gain change. LSE and the macroscopic members are
+written by different producers, so their output files carry different prefixes,
+\texttt{figure\_3\_LSE\_} and \texttt{figure\_3\_G\_}.}
 \label{tab:family}
 \end{table}
 
 Table~\ref{tab:family} lists the members. Reading the endpoint flag as a ladder,
-the members condition the conductance on progressively more of the interval: no
-endpoints, one endpoint, then both boundary states, with the exact trajectory (what
-the simulator supplies) as the unreachable top rung.
-% src: papers/macroir-elife-2025/nomenclature.md (endpoint ladder)
-MacroIR is the top implemented rung: it conditions on the pair of channel states at
+the macroscopic members condition the conductance on progressively more of the
+interval: no endpoints, one endpoint, then both boundary states, with the exact
+trajectory (what the simulator supplies) as the unreachable top rung.
+% src: papers/_program/nomenclature.md (endpoint ladder)
+\texttt{IR} is the top implemented rung: it conditions on the pair of channel states at
 the two ends of the interval, which we call the boundary state, and marginalises the
 interior analytically. It is the likelihood introduced for the P2X2 receptor
 \citep{moffatt2025bayesian}, here placed as one member of the completed grid, and it
@@ -146,20 +167,23 @@ Two reductions are worth stating because they anchor the family to prior work.
 Setting the boundary-conditioned conductance variance to zero in the recursive,
 no-endpoint member (R) recovers the macroscopic-fluctuation update of
 \citet{moffatt2007estimation}, so R is the recursive ancestor already in print.
-% src: papers/macroir-elife-2025/methods_plan.md#M6 (R reduces to Moffatt 2007; macromrt_macromrt_paper_section.md)
+% src: papers/1_method/methods.md#M6 (R reduces to Moffatt 2007)
 The single structural difference between the M and I families is that the
 one-endpoint members drop the boundary cross-covariance term
 $N_{\mathrm{ch}}\,\gamma^{\mathsf T}\!\Sigma\gamma$ that IR retains.
-% src: papers/macroir-elife-2025/nomenclature.md (MR drops N*gamma^T Sigma gamma that IR keeps)
+% src: papers/_program/nomenclature.md (MR drops N*gamma^T Sigma gamma that IR keeps)
 
 Throughout the reported runs the remaining build flags were held fixed:
 \emph{taylor variance correction} off, \emph{micro approximation} off, and the
 \emph{variance approximation} on.
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:81-89 (taylor=false, micro=false, variance=true)
-Because the Taylor variance correction is off, the recursive one-endpoint member
-that runs is MacroMR and not MacroMRT; the Taylor-corrected variants are not part
-of this paper.
-% src: papers/macroir-elife-2025/methods_plan.md#M6 (taylor=false -> MacroMR, not MRT)
+The V in VR names the \emph{variance form} flag, set to $1$, and has no connection to
+the \emph{taylor variance correction} flag, which is off in every run reported here;
+the Taylor-corrected variants MRT and IRT are not part of this paper. Because the
+Taylor variance correction is off, the recursive one-endpoint member that runs is
+MacroMR and not MacroMRT.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:200,202 (macro_VR: variance_form=1, taylor=false; macro_IRT: taylor=true, not run here)
+% src: papers/1_method/methods.md#M6 (taylor=false -> MacroMR, not MRT)
 
 The filter carries two numerical safeguards, present because the code runs them and
 because anyone reimplementing the filter meets the same constraint on day one. The
@@ -167,8 +191,58 @@ occupancy mean is held on the probability simplex, and the occupancy covariance 
 kept positive semidefinite through a trust-region shrink of the Kalman-like mean
 update. Two constants enter, a binomial-count floor set to $5$ and a minimum
 occupancy probability set to $10^{-12}$.
-% src: papers/macroir-elife-2025/methods_plan.md#M11 (simplex + PSD trust-region; Binomial_magical_number=5, min_P=1e-12)
+% src: papers/1_method/methods.md#M11 (simplex + PSD trust-region; Binomial_magical_number=5, min_P=1e-12)
 % src: theory/macroir/docs/Macro_IR/macro_ir_variance_inflation_correction.tex
+
+\subsection*{The two least-squares configurations}
+
+The least-squares arm runs in two configurations, and they are different statistical
+models. Both select \emph{family approximation} $= 2$, both fit data from the same
+simulator, and both minimise the same sum of squares. They differ in which parameters
+are free, so no quantity computed under one may be compared against the same quantity
+computed under the other.
+
+The six-parameter configuration is
+\texttt{ops/local/figure\_3\_time\_LSE.macroir}, and it feeds the time-resolved figure
+(Figure~3). All six parameters are free in base-ten logarithmic coordinates:
+$k_{\mathrm{on}}$, $k_{\mathrm{off}}$, the unitary current, \texttt{Current\_Noise},
+the current baseline and the mean channel number.
+% src: projects/eLife_2025/ops/local/figure_3_time_LSE.macroir:39-47 (six Log10 entries; none Fixed)
+The script's own header records why. The time-resolved figures accumulate the
+per-interval Fisher information and never invert it, so the flat directions of the
+least-squares fit are harmless there; and keeping six free preserves the
+parameter-index alignment with the macroscopic dumps that the figure code joins
+against, whereas fixing two would emit four indices against the macroscopic files' six
+and misalign them without any visible error. Two flat directions are then visible
+rather than hidden. \texttt{Current\_Noise} has an identically zero score row and an
+identically zero Fisher row, because the least-squares mean carries no noise term; and
+the unitary current and the mean channel number form a rank-one degenerate block along
+the amplitude ridge $N_{\mathrm{ch}}\,i$, so the unitary current is free in this
+configuration without being separately identified.
+% src: projects/eLife_2025/ops/local/figure_3_time_LSE.macroir:9-18 (rationale, param_index alignment, zero noise row, N*g ridge)
+
+The four-parameter configuration is \texttt{ops/local/figure\_4\_LSE.macroir}, which
+produces the grid cells, together with \texttt{ops/local/figure\_3\_mle\_LSE.macroir},
+which is the same model run with the per-group estimate cloud retained for the few
+cells that need one. Both fix the unitary current at $1$ and \texttt{Current\_Noise} at
+the cell value, leaving four free parameters: $k_{\mathrm{on}}$, $k_{\mathrm{off}}$,
+the current baseline and the mean channel number. This is the configuration behind
+every least-squares cell of Figures~4 and~6.
+% src: projects/eLife_2025/ops/local/figure_4_LSE.macroir:54-55 (unitary_current Fixed, Current_Noise Fixed)
+% src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:54-55 (same two Fixed; Stage 1 cloud retained)
+Its parameter indices are $0 = k_{\mathrm{on}}$, $1 = k_{\mathrm{off}}$,
+$2 = $ current baseline, $3 = $ mean channel number. There is no unitary-current index
+in these files, and index~2 is the baseline.
+% src: projects/eLife_2025/figures/data/0ffbda7 (figure_3_LSE_* battery files: param_index 0..3)
+
+The consequence is carried into the Results. A score, a Fisher information, a
+distortion matrix or a log-likelihood computed under six free parameters is a
+different object from the one computed under four, and the two distortion matrices
+differ in dimension, $6\times 6$ against $4\times 4$, so any scalar that accumulates
+over eigenvalues is not comparable between them. Every statement about least squares
+in the Results is scoped to one configuration and names it. The statement that least
+squares cannot deliver the unitary current is a statement about the four-parameter
+configuration.
 
 \subsection*{Parameter estimation and the two anchors}
 
@@ -179,11 +253,11 @@ The optimiser is Gauss--Newton with Levenberg damping (initial damping $10$, gro
 factor $3$, maximum damping $10^{10}$, at most $100$ iterations, relative gradient
 tolerance $10^{-6}$, value tolerance $10^{-10}$), warm-started at the simulation
 truth.
-% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:93-95 (lambda_kickoff=10, lambda_factor=3, lambda_max=1e10, grad_rtol=1e-6, dvalue_tol=1e-10; max_iter=gn_max_iter is injected, not literal here) ; :104 (theta_warmstart=par_tr)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:107 (GN_MAX_ITER default 100 -> injected as gn_max_iter; the "at most 100 iterations")
+% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:93-95 (lambda_kickoff=10, lambda_factor=3, lambda_max=1e10, grad_rtol=1e-6, dvalue_tol=1e-10; max_iter=gn_max_iter is injected)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:107 (GN_MAX_ITER default 100 -> injected as gn_max_iter)
 Two group sizes were used, $10$ and $100$; with $10{,}000$ recordings these give
 $1{,}000$ groups of $10$ and $100$ groups of $100$.
-% src: papers/macroir-elife-2025/methods_plan.md#M7 (group_size 10 and 100; 1000 groups of 10, 100 of 100)
+% src: papers/1_method/methods.md#M7 (group_size 10 and 100; 1000 groups of 10, 100 of 100)
 Second, a single joint MLE is computed over all replicates at once (one group of
 size $n_{\mathrm{sim}}$), giving the pooled estimate $\theta_{\mathrm{pool}}$; its
 near-zero gradient certifies that it is a stationary point of the pooled likelihood.
@@ -192,7 +266,7 @@ near-zero gradient certifies that it is a stationary point of the pooled likelih
 Warm-starting the per-group fits at the truth is deliberate. It isolates the error
 of the likelihood from the error of the optimiser, which is what this paper studies;
 it would be the wrong choice for a study of an estimator, which this is not.
-% src: papers/macroir-elife-2025/methods_plan.md#M7 (warm-start caveat: study of the likelihood, not the estimator)
+% src: papers/1_method/methods.md#M7 (warm-start caveat: study of the likelihood, not the estimator)
 
 The two anchors, the simulation truth $\theta_{\mathrm{sim}}$ and the pooled fit
 $\theta_{\mathrm{pool}}$, are distinct points because the Gaussian macroscopic
@@ -203,8 +277,8 @@ questions: at $\theta_{\mathrm{pool}}$ the score is zero by construction so bias
 washes out, whereas at $\theta_{\mathrm{sim}}$ the bias is visible but the Fisher
 information can be indefinite away from the maximum. Each figure states which anchor
 it uses.
-% src: papers/macroir-elife-2025/methods_plan.md#M7 (two anchors; state the anchor per figure)
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#5 (theta_pool score ~ 0; theta_sim Fisher can be indefinite)
+% src: papers/1_method/methods.md#M7 (two anchors; state the anchor per figure)
+% src: papers/_program/provenance.md#5 (theta_pool score ~ 0; theta_sim Fisher can be indefinite)
 
 \subsection*{Diagnostics and the Gaussian-Fisher anchor}
 
@@ -215,69 +289,59 @@ covariance $J$ of the score across replicates with the model's own Fisher
 information. The definitions, sign conventions, and thresholds of these
 diagnostics are owned by the Diagnostics section and its metric registry; here we
 describe only how they were computed.
-% src: papers/macroir-elife-2025/03_metrics_diagnostics.md (diagnostic definitions owned there)
+% src: papers/1_method/archive/03_metrics_diagnostics.md (diagnostic definitions owned there)
 
-The Fisher information was formed two ways. The finite-difference construction, which
-we write $F_{\mathrm{num}}$, is a central difference of the analytic score, with
-per-coordinate step
-$h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at $h_{\mathrm{rel}} = 10^{-5}$, and it is
-symmetrised as $(F_{\mathrm{num}} + F_{\mathrm{num}}^{\mathsf T})/2$. Because the score
-itself is obtained by automatic differentiation, this is a single numerical derivative,
-not two.
-% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#5 (central difference of analytic score; symmetrized)
-The analytic construction is the Gaussian Fisher information
-$\bar G = \sum_t \mathrm{GFI}_t$, summed over intervals. This analytic Gaussian Fisher
-is the anchor the Diagnostics section writes $\mathbf{H}$, that is
+Every diagnostic reported in this paper is anchored on the analytic Gaussian Fisher
+information $\bar G = \sum_t \mathrm{GFI}_t$, summed over intervals. This is the
+anchor the Diagnostics section writes $\mathbf{H}$, that is
 $\mathbf{H} = \bar G = \sum_t \mathrm{GFI}_t$. Its per-interval term is
 \[
   \mathrm{GFI}_t = \frac{(\partial_\theta \bar y_t)(\partial_\theta \bar y_t)^{\mathsf T}}{\sigma_t^2}
   + \frac{(\partial_\theta \sigma_t^2)(\partial_\theta \sigma_t^2)^{\mathsf T}}{2\,\sigma_t^4},
 \]
 which follows from the analytic derivative alone and needs no extra likelihood
-passes.
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#7 (Gaussian Fisher G_b = sum_t GFI_t; legacy/qmodel.h:6096-6098)
-Comparing the score covariance $J$ against either Fisher construction is the
-sandwich, or information-matrix-equality, diagnostic \citep{white1982maximum}:
-equality between the Fisher and the score covariance ($\mathbf{H} = J$ under the
-analytic anchor, $F_{\mathrm{num}} = J$ under the finite-difference one) holds only
-when the likelihood is correctly specified, and the extent to which they differ is
-what the distortion matrix quantifies.
+passes. It is positive semidefinite by construction, so no anchor used here can be
+indefinite.
+% src: papers/_program/provenance.md#7 (Gaussian Fisher G_b = sum_t GFI_t; legacy/qmodel.h:6096-6098)
+% src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:152-168 (Fim-less gaussian battery; gidm/gfc/gdcc/gdib)
+
+A second Fisher construction exists in the codebase and was used in an earlier
+battery: a central difference of the analytic score, with per-coordinate step
+$h_i = h_{\mathrm{rel}}\max(|\theta_i|,1)$ at $h_{\mathrm{rel}} = 10^{-5}$,
+symmetrised as $(F_{\mathrm{num}} + F_{\mathrm{num}}^{\mathsf T})/2$. Because the score
+itself is obtained by automatic differentiation, this is a single numerical derivative
+rather than two. That battery (data directory \texttt{433ed13}) is retained in the
+deposit as the demonstration that the two constructions target the same information,
+an agreement the time-resolved figures exhibit per interval. No number reported in this
+paper is taken from it.
+% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:151-157 (numerical Fisher; h_rel injected)
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:98 (H_RELS default 1e-5)
+% src: papers/_program/provenance.md#5 (433ed13 = numerical anchor, superseded for the body)
+% src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (body moved to the Gaussian anchor)
+
+Comparing the score covariance $J$ against the Fisher information is the sandwich, or
+information-matrix-equality, diagnostic \citep{white1982maximum}: equality
+$\mathbf{H} = J$ holds only when the likelihood is correctly specified, and the extent
+to which the two differ is what the distortion matrix quantifies. The comparison has a
+further premise on the least-squares branch, where $\bar G$ presumes homoscedastic
+residuals; the Diagnostics section states that premise where the distortion is defined.
 
 Uncertainty on every reported statistic comes from a nonparametric bootstrap over
 groups, reported as percentile intervals at the $2.5$, $16$, $50$, $84$ and
 $97.5\%$ quantiles. Despite the internal column names, no probit transform is
 applied; the intervals are ordinary empirical percentiles, verified equal to the
 R quantile of type~$6$.
-% src: papers/macroir-elife-2025/methods_plan.md#M8 (percentile bootstrap over groups; NOT probit; quantiles listed)
+% src: papers/1_method/methods.md#M8 (percentile bootstrap over groups; NOT probit; quantiles listed)
 % src: projects/eLife_2025/ops/local/figure_3_mle.macroir:111 (probit_cis = [0.025,0.16,0.5,0.84,0.975])
 The diagnostic battery used $100$ bootstrap replicates and a maximum lag of $10$ for
 the score autocorrelation; the empirical-versus-theoretical distortion capstone used
 $200$ replicates; and fewer than $10$ groups leaves the interval slots empty
 (not-a-number filled), which is one source of empty cells in the maps.
-% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:174-175,198 (n_bootstrap 100 + max_lag 10; capstone 200)
+% src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:158-166 (n_boostrap_samples 100, max_lag 10) ; :173-176 (capstone n_bootstrap 200)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:106 (MIN_GROUPS=10)
 The raw per-group MLE cloud is written unbootstrapped; any resampling of it is done
 downstream in the figure code.
-% src: papers/macroir-elife-2025/methods_plan.md#M8 (Model_Parameters_Hat not bootstrapped by the program)
-
-Two production batteries were run that differ only in which Fisher construction
-anchors the diagnostics. The finite-difference battery covers all five algorithms;
-the Gaussian battery covers MacroIR across the full channel-by-noise grid, with the
-remaining members being added on the canonical grid by the in-progress fill (below).
-% REFRESH-ON-GAUSSIAN
-Cross-algorithm comparisons are drawn from the finite-difference battery and
-MacroIR-specific mechanism results from the Gaussian battery. The split is a design
-choice rather than a completed cross-grid verification: the analytic Gaussian Fisher
-and the finite-difference Fisher target the same information, an identity the
-time-resolved figures show holds per interval, so anchoring a given panel on either
-construction is consistent. The finite-difference battery is retained to exhibit that
-agreement, not to anchor the mechanism results. The choice of anchor is recorded in
-the project decision log.
-% src: papers/macroir-elife-2025/methods_plan.md#M10 (anchor split; per-step F_t = J_t justification)
-% src: papers/macroir-elife-2025/decisions/D-0_freeze_and_rerun_scope.md (multi-commit provenance; Gaussian fill scope)
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#7 (numerical run = all five; Gaussian run = IR + fill)
+% src: papers/1_method/methods.md#M8 (Model_Parameters_Hat not bootstrapped by the program)
 
 \subsection*{Regime grid and reduction}
 
@@ -293,34 +357,65 @@ pre-pulse, agonist and post-pulse segments hold a fixed ratio of $20{:}40{:}40$
 percent of the steps.
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:185-190 (segment step counts 2:4:4 ... 20:40:40; total 100 ms)
 
-The swept ``noise'' axis is dimensionless. It is
-$\mathrm{noise\_in\_conductance\_tau} = 10\,\mathrm{Current\_Noise}\,k_{\mathrm{off}}/g^2$,
-the white current variance accumulated over one relaxation time $\tau$ taken relative
-to the single-channel signal power $g^2$, with a factor placing the level at which
-the white noise equals the single-channel signal near a label of $10$. With the run
-values it equals $1000\,\mathrm{Current\_Noise}$, so the figure label $0.1$
-corresponds to the engine parameter $\mathrm{Current\_Noise} = 10^{-4}$ (a white-noise
-power spectral density in units of $g^2\,\mathrm{s}$).
-% src: papers/macroir-elife-2025/decisions/D-2_parameter_units.md (noise_in_conductance_tau = 10*Current_Noise*k_off/g^2; = 1000*Current_Noise; label 0.1 -> 1e-4; crossover at 10)
-% src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:162-167,175-176 (Current_Noise = label/1000; axis name)
-The figures carry the dimensionless label on their axes; the underlying engine
-parameter is not what is plotted.
+The noise axis needs its conversion stated once, because the quantity the figures
+plot and the quantity the engine consumes differ by a fixed factor. The engine
+parameter is \texttt{Current\_Noise}, a white-noise power spectral density in units of
+$g^2\,\mathrm{s}$, and it reaches the likelihood only through the variance of one
+recorded point, $e_t = \mathrm{Current\_Noise}/\Delta_t$, with no correlation time of
+its own.
+% src: legacy/qmodel.h:3740-3741 (Current_Noise enters only as e = S*fs/n_samp)
+The sweep is declared by a label, and the dispatchers pair each label with an engine
+value by a hand-written case statement, so that
+$\mathrm{label} = 1000\,\mathrm{Current\_Noise}$ exactly. The figure label $0.1$ is
+$\mathrm{Current\_Noise} = 10^{-4}$.
+% src: projects/eLife_2025/ops/slurm/dispatch_figure_3_G.sh:209-222 (case block: vnoise = label/1000)
+The dimensionless noise is
+\[
+  \tilde S \;=\; \frac{\mathrm{Current\_Noise}\;k_{\mathrm{off}}}{i^2},
+\]
+with $i$ the unitary current, so $\tilde S$ is the instrumental noise accumulated over
+one channel time constant $\tau = 1/k_{\mathrm{off}}$, measured against the
+single-channel signal power. At the run values $k_{\mathrm{off}} = 100\;\mathrm{s}^{-1}$
+and $i = g = 1$, this gives
+\[
+  \tilde S \;=\; \frac{\mathrm{label}}{10},
+\]
+so the label is ten times the dimensionless noise it is named after. The factor of ten
+is the reference sampling interval $\Delta = 0.1\,\tau$ folded into the hardcoded
+divisor, and it is a naming artefact rather than a design choice; the simulations
+consumed \texttt{Current\_Noise} and are unaffected by it.
+% src: projects/eLife_2025/NOISE_AXIS_UNITS.md (S_tilde = 0.1 * label; the 1000 is 1/Delta at 0.1*tau, not k_off/i^2)
+Every stored label is left as written, because those strings tie each figure to the
+cell that produced it. The figures are drawn in label units and their axes say so;
+wherever an absolute noise level appears in prose we quote $\tilde S$. The reference
+cell used throughout, label $0.1$, is $\tilde S = 0.01$, and the label $10$ cell is
+$\tilde S = 1$, the level at which the instrumental noise over one channel time
+constant equals the unitary current.
 
-The mean channel number $N_{\mathrm{ch}}$ and the noise level were the other two map
-axes. The finite-difference production grid on disk holds all five algorithms at
-$N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ and noise labels $\{0.1, 1, 10\}$ at
-$10{,}000$ recordings, with MacroIR additionally at
-$N_{\mathrm{ch}} \in \{20, 50, 200, 500\}$; the Gaussian grid holds MacroIR at
-$N_{\mathrm{ch}} \in \{10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000\}$ and the
-six noise labels $\{0.05, 0.1, 0.2, 0.5, 1, 10\}$. Coverage of the four non-IR
-members on the Gaussian anchor is supplied by the in-progress D-0 fill, on the
-canonical $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ grid at the three noise
-labels $\{0.1, 1, 10\}$ (not MacroIR's six); until that fill lands these members are
-not yet deposited across the grid, and any figure that needs them refreshes when it
-does.
-% REFRESH-ON-GAUSSIAN
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#5 (433ed13 grid) ; #7 (1c2ae6f: NMR entirely absent from Gaussian family, NR missing 10000-channel cell; non-IR fill pending)
-% src: papers/macroir-elife-2025/decisions/D-0_freeze_and_rerun_scope.md (Gaussian fill IN PROGRESS on Dirac: {NR,NMR,R,MR} x Nch{10,100,1000,10000} x noise{0.1,1,10}; 3-label noise grid, not IR's 6)
+The mean channel number $N_{\mathrm{ch}}$ and the noise level are the other two map
+axes. The results reported here are read from three data directories, each named by
+the git commit hash of the build that wrote it: \texttt{1c2ae6f}, \texttt{87889e6} and
+\texttt{0ffbda7}, searched in that order with the first hit winning. Every cell they
+contribute to a body figure is at $n_{\mathrm{sim}} = 10^4$, which the figure code
+enforces by matching \texttt{nsim\_10000} in the filename, so a cell run at a smaller
+ensemble cannot enter a map silently.
+% src: projects/eLife_2025/figures/paper_both/figure_4_common.R:31,41 (DATA_DIRS search path; nsim_10000 in the pattern)
+% src: projects/eLife_2025/figures/paper_both/figure_6.Rmd:80 (same three directories)
+Across the three directories, \texttt{IR} covers
+$N_{\mathrm{ch}} \in \{5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000\}$ and
+noise labels from $0.05$ to $10^6$; NR covers
+$N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$ and R covers those and additionally
+$5$, $20$ and $50$ at label $0.1$, with the highest labels run only at the larger
+channel counts and reaching $10^7$ at $N_{\mathrm{ch}} = 10^4$; MR and
+VR cover the same channel numbers at labels $\{0.1, 1, 10\}$; and the least-squares arm
+covers $30$ cells on $N_{\mathrm{ch}} \in \{10, 100, 1000, 10000\}$, with labels from
+$0.1$ up to $10^4$, $10^5$, $10^6$ and $10^7$ respectively.
+% src: projects/eLife_2025/figures/data/1c2ae6f + 87889e6 + 0ffbda7 (per-algorithm nch and noise sets, nsim_10000 files)
+The label range is deliberately not rectangular: the highest noise labels were run only
+at the larger channel numbers, where the crossover the map measures sits. The figure
+code auto-detects which cells exist on disk at render time and prints the detected grid
+into the render log, so the cell set behind each figure is recoverable from that log.
+% src: projects/eLife_2025/figures/paper_both/figure_4_common.R:52-70 (autodetect_cells; detected grid printed on every render)
 
 Each grid cell is reduced through six stages: the per-group MLE cloud; the pooled
 joint fit $\theta_{\mathrm{pool}}$; the Fisher information at both anchors; the score
@@ -328,8 +423,11 @@ at both anchors, whose across-replicate covariance is $J$; the diagnostic batter
 paired with the Fisher at each anchor; and the empirical-versus-theoretical
 distortion capstone, anchored at $\theta_{\mathrm{pool}}$. Each cell writes five
 comma-separated-value families (the estimate cloud, the pooled fit, the two
-anchor batteries, and the capstone).
-% src: projects/eLife_2025/ops/local/figure_3_mle.macroir:97-201 (six stages; five CSV families per cell)
+anchor batteries, and the capstone). On the grid-production lane the cloud stage and
+the capstone are dropped, because no map reads them there; the cells that need a cloud
+are produced by the separate script that keeps that stage.
+% src: projects/eLife_2025/ops/local/figure_3_mle_LSE.macroir:105-178 (six stages; five CSV families per cell)
+% src: projects/eLife_2025/ops/local/figure_4_LSE.macroir:105-119,168-171 (Stage 1 and Stage 6 removed on the grid lane)
 
 \subsection*{Reproducibility and computational environment}
 
@@ -338,12 +436,11 @@ small typed domain-specific language run in a single process
 \citep{moffatt2025macroir}. Provenance is self-documenting at three levels: on every
 invocation the binary snapshots the assembled script and its full argument list into
 a run ledger; every analysis output file stamps the build's short git commit hash as
-its first row; and the data directories are named by that hash (\texttt{433ed13} for
-the finite-difference battery, \texttt{1c2ae6f} for the Gaussian battery), so results
-from different code versions can never overwrite one another and multi-commit
-provenance is documented per file.
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#2 (run ledger; hash-stamped row 1; hash-named data dirs)
-% src: papers/macroir-elife-2025/decisions/D-0_freeze_and_rerun_scope.md (each CSV self-stamps its hash; multi-commit provenance accepted)
+its first row; and the data directories are named by that hash, so results from
+different code versions can never overwrite one another and multi-commit provenance is
+documented per file.
+% src: papers/_program/provenance.md#2 (run ledger; hash-stamped row 1; hash-named data dirs)
+% src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (each CSV self-stamps its hash; multi-commit provenance accepted)
 
 The production batteries ran under SLURM at $32$ CPUs per task and $48\;\mathrm{GB}$
 of memory ($96\;\mathrm{GB}$ for the parameter-recovery lane), with the linear-algebra
@@ -351,7 +448,7 @@ back end pinned to a single thread so that OpenMP parallelises the per-simulatio
 bootstrap loops. The environment variable \texttt{MACRODR\_AXIS\_SERIAL=1} is
 load-bearing: it serialises the internal grid-combination loop, without which memory
 grows with the number of concurrent combinations and the jobs exhaust memory.
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#2,#9 (SLURM 32 CPU, 48/96 GB, BLAS 1 thread, MACRODR_AXIS_SERIAL=1)
+% src: papers/_program/provenance.md#2,#9 (SLURM 32 CPU, 48/96 GB, BLAS 1 thread, MACRODR_AXIS_SERIAL=1)
 % src: projects/eLife_2025/ops/slurm/dispatch_figure_3.sh:196-205 (CPUS 32, MEM 48G, MACRODR_AXIS_SERIAL=1)
 
 The one reproducibility limit worth stating twice is the simulation seed. Because the
@@ -361,5 +458,5 @@ equivalent, numerically different ensemble. All resampling that operates on a fi
 dataset (the bootstraps, the group partitioning) is deterministic and reproducible
 given the data. Deposition of the data and code, with pinned versions, is stated in
 the Data and code availability section.
-% src: papers/macroir-elife-2025/docs/figure_provenance.md#9 (seed not reproducible; bootstrap on fixed data is deterministic)
-% src: papers/macroir-elife-2025/decisions/D-0_freeze_and_rerun_scope.md (statistical-equivalence standard; deposition in backmatter)
+% src: papers/_program/provenance.md#9 (seed not reproducible; bootstrap on fixed data is deterministic)
+% src: papers/1_method/decisions/D-0_freeze_and_rerun_scope.md (statistical-equivalence standard; deposition in backmatter)

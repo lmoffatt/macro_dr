@@ -51,14 +51,33 @@
   The "one object with two knobs" framing is retired; the structure is a root question with the ladder
   hanging from it. **This does not make LSE peripheral** (§1): it is the root of the ladder and the
   paper's anchor.
-- **`NMR` is dropped from the program**, definitively (Luciano, 2026-07-28: "no hay razones para que
-  esté dentro"). No literature attribution, no mechanistic role, and now a measured reason as well:
-  recomputed on the freeze it is **numerically indistinguishable from NR** (envelope 1.23 to 3.6 × 10⁴
-  against NR's 1.21 to 3.5 × 10⁴; 0 of 336 points within ±15% for both). It measures the same failure
-  at the same size. Evidence kept in `../1_method/decisions/D-4_ranking_verdict.md` §5; delete its
-  verdict row and its novelty claim everywhere else.
-  **This entry supersedes the "six methods" listing that stood two bullets above it until 2026-07-28**
-  and contradicted this one from within the same section.
+- **`NMR`: the drop is REOPENED (2026-07-29), and the reason it was dropped is false.**
+  - The 2026-07-20 reason was "no literature attribution, no mechanistic role". **The first clause is
+    wrong and has been wrong the whole time.** `NMR` **is** `MacroINR`, and `MacroINR` is the
+    **published control** of Moffatt & Pierdominici-Sottile 2025 (Comm Biol), the method whose failure
+    carries that paper's central methodological claim: *"Model ranking was sensitive to likelihood
+    approximation: the control method (MacroINR) systematically underestimated evidence for schemes
+    with conformational intermediates"*, and *"leading to systematically different evidence values
+    (Supplementary Table S1)"*. That is attribution of the strongest kind: not a citation, a published
+    demonstration.
+  - **The published-name bridge `NMR = MacroINR` is CORRECT** (Luciano, 2026-07-29), closing the open
+    item in `nomenclature.md`. `MacroINR` parses as **I**nterval (the averaged conductance, `av = 1`)
+    + **N**on-**R**ecursive, which is exactly `NMR`. The Comm Biol Introduction's phrase "ignores time
+    averaging" is loose prose for "does not do IR's boundary-conditioned interval treatment"; it is not
+    a statement about the `av` flag, and it must not be read as one.
+  - **What survives is the measured reason**: recomputed on the freeze, NMR is **numerically
+    indistinguishable from NR** (envelope 1.23 to 3.6 × 10⁴ against NR's 1.21 to 3.5 × 10⁴; 0 of 336
+    points within ±15% for both). Evidence in `../1_method/decisions/D-4_ranking_verdict.md` §5.
+  - **That redundancy is itself a result, not only a reason to cut.** If the interval-mean conductance
+    buys nothing without recursion, then recursion is the step that matters at the bottom of the ladder
+    and interval conditioning is the step that matters at the top. That is the ladder's shape, measured.
+  - **Open, and it is a scope decision, not a naming one:** body column (no: it duplicates NR), cut
+    entirely (costs the bridge to the paper's only real-data demonstration), or **named with its
+    published attribution and measured once in a supplement beside NR, where the near-identity is the
+    finding**. The third is the standing recommendation.
+  - **This entry supersedes the "six methods" listing that stood two bullets above it until 2026-07-28**
+    and contradicted it from within the same section; the count is five or six depending on how the
+    item above resolves.
 - **`VR` keeps its letter** (Luciano, 2026-07-28), closing the open item in `program.md` §9. It earned
   it: VR was predicted to come out over-confident and more so than MR, and it did. The `V`/Taylor
   collision warning in `nomenclature.md` still stands and Methods must carry the one sentence.

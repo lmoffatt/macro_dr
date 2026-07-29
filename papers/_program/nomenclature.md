@@ -1,6 +1,6 @@
 # Nomenclature: naming the methods
 
-> Updated: 2026-07-28. Shared across the two papers; cited, never restated. Settled items graduate
+> Updated: 2026-07-29. Shared across the two papers; cited, never restated. Settled items graduate
 > to `decisions.md`. Which methods sit in the body: `program.md` §1.
 >
 > Scope: what we call every method in the program, what the letters mean, how to describe them so each
@@ -23,7 +23,7 @@ hanging from it** (`program.md` §1):
 
 - **Root: do you model the gating fluctuations at all?** `LSE` (classical nonlinear least squares on
   the mean current) answers no. In the engine it is `family_approximation = 2`; it carries the same two
-  knob settings as the dropped `NMR` and is distinguished only by that third flag. **It has no
+  knob settings as `NMR` and is distinguished only by that third flag. **It has no
   compositional name**, because it is a different kind of object, named for what it is.
   **Corrected 2026-07-28:** this used to read "no rung and no gloss", which is now misleading in the
   one place it matters. `LSE` is the bottom rung of the cost ladder the paper walks and it is the
@@ -41,14 +41,23 @@ says how the single-channel conductance is treated within an interval.
 |-------|-----------|-----|---|
 | `NR`  | false     | 0   | — |
 | `R`   | true      | 0   | — |
+| `NMR` | false     | 1   | total (**= the published `MacroINR`**; membership reopened, see below) |
 | `MR`  | true      | 1   | total |
 | `VR`  | true      | 1   | residual |
 | `IR`  | true      | 2   | residual (+ boundary gain) |
 
-`NMR` (false, 1, total) was the sixth row until 2026-07-28 and is **dropped from the program**
-(`decisions.md` §2). Recomputed on the freeze it is numerically indistinguishable from `NR`, so it
-occupied a lattice cell without measuring anything `NR` does not. The row is kept in
-`../1_method/decisions/D-4_ranking_verdict.md` §5 as the evidence for the drop.
+**`NMR` (false, 1, total), and the bridge, settled 2026-07-29.** `NMR` **is** `MacroINR`, the
+published control of Comm Biol 2025. The name parses as **I**nterval (the averaged conductance,
+`av = 1`) + **N**on-**R**ecursive, so the `I` is the conductance prefix and not `IR`'s
+boundary-conditioned `I`. **This closes the "open item: the MacroINR bridge" that stood at the foot of
+this file**, which suspected the bridge was wrong; it is right, and the Comm Biol Introduction's
+"ignores time averaging" is loose prose for "does not do IR's boundary-conditioned interval
+treatment", not a claim about the `av` flag.
+
+Its membership was briefly recorded as dropped on 2026-07-28 for "no literature attribution", which is
+false: it carries the published demonstration that model ranking is sensitive to the likelihood
+approximation. What is true is that it is **numerically indistinguishable from `NR`** on the freeze.
+Status and the three options are in `decisions.md` §2.
 
 The suffix (`N` / `R`) is the occupancy axis: non-recursive or recursive. The prefix is the
 conductance axis: none for the instantaneous conductance, `M` for the mean conductance, `I` for the
@@ -120,7 +129,7 @@ point stands; what is retired is stating a one-band result as a global verdict.
 |---|---|---|
 | the gating fluctuations are not modelled | `LSE` | the deterministic mean current only |
 | no endpoints | `NR`, `R` | instantaneous; the averaging is ignored |
-| one endpoint (the start) | `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
+| one endpoint (the start) | `NMR`, `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
 | two endpoints (the boundary) | `IR` | interval-mean given both boundary states; interior marginalized |
 | the full trajectory | (exact) | intractable; the stochastic simulation supplies it as ground truth |
 
@@ -162,10 +171,10 @@ between them free. This is static condensation, or the spatial Markov property, 
 It is **not** a transition state in the mechanistic sense (a short-lived conformational intermediate).
 Avoid the word *transition* anywhere near it (`project_boundary_state_naming`).
 
-## Open item: the `MacroINR` bridge
+## ~~Open item: the `MacroINR` bridge~~ CLOSED 2026-07-29
 
-`decisions.md` records: "Published-name bridge: IR = MacroIR, NMR = MacroINR." That looks wrong: `NMR`
-(≡ `MNR`) runs at av = 1, which is `M` (start-conditioned), not `I`. A published name carrying an `I`
-would misname it, unless `MacroINR` in Communications Biology denoted something else. Check against the
-Comm Biol text before the family table is written; if the bridge is wrong, fix it in `decisions.md`
-first.
+The bridge `NMR = MacroINR` is **correct**. See the lattice table above for the parse and for why the
+Comm Biol phrase "ignores time averaging" does not contradict `av = 1`. The suspicion recorded here
+until 2026-07-29 (that a published name carrying an `I` would misname a start-conditioned method) read
+the `I` as `IR`'s boundary-conditioned `I`; in the published name it is the interval-mean conductance
+prefix, which is exactly what `av = 1` is.

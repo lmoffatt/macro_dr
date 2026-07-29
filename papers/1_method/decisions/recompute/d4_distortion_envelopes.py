@@ -1,5 +1,5 @@
 import csv, glob, os, re
-DIRS=['/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/1c2ae6f/','/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/87889e6/']
+DIRS=['/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/1c2ae6f/','/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/87889e6/','/home/lmoffatt/Code/macro_dr/macro_dr/projects/eLife_2025/figures/data/0ffbda7/']
 PAR={0:'k_on',1:'k_off',2:'i',5:'N_ch'}
 def rows(p):
     f=open(p); next(f)
