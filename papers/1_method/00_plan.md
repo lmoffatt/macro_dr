@@ -118,7 +118,7 @@ keeps the paper from reading as though it lived only where IR wins by constructi
 
 **Owned by `../_program/machinery.md`** (definitions, sign conventions, thresholds, the decomposition
 identity, the hazards). Paper 1's Diagnostics *section* — how the machinery is presented and argued —
-is `SPINE.md` (Diagnostics). Do not restate the definitions here.
+is `docs/manuscript-drafts/sections/03_diagnostics.md`. Do not restate the definitions here.
 
 ## 4) The within-family validity map (the former ranking)
 
@@ -149,7 +149,7 @@ LSE rows are deliberately gone: they are other papers.
 
 ## 5) Figures
 
-**The arc is owned by `SPINE.md` (Results)** (was `results_plan.md`; `../_program/00_index.md` routes it) and
+**The arc is owned by `docs/manuscript-drafts/sections/04_results.md`** (was `results_plan.md`; `../_program/00_index.md` routes it) and
 the figure set (numbering, body-vs-supplement) is owned by `decisions.md` "The figure set". Paper 1's
 body, five figures, minus the program-wide cross-family map that belongs to paper 2:
 

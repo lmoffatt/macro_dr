@@ -90,7 +90,7 @@ heaviest sitting and the one with the most downstream leverage. D-A, D-B, M-2, M
 land in `1_method/decisions.md`; D-I lands in D-3 as a new DEAD class plus new CONCEDE entries, which
 is that file's native shape; D-J lands in D-4, the only file with the `% src:` recompute discipline.
 
-**Batch 4, plans and rules.** 3 files, ~300 lines. `00_plan.md`, `SPINE.md` (Title), `01_writing_plan.md`.
+**Batch 4, plans and rules.** 3 files, ~300 lines. `00_plan.md`, `1_method/docs/manuscript-drafts/sections/README.md`, `01_writing_plan.md`.
 Do the bibliography migration in the same sitting: `elife_paper.tex:47` is `\bibliography{biblio}` and
 `biblio.bib` has 15 entries, so the first D-I citation breaks the build. What needs copying across is
 the pre-1985 lineage (`katz1970membrane`, `katz1972statistical`, `anderson1973voltage`,
@@ -100,16 +100,16 @@ which describes neither file.
 
 **Batch 5, figure reality.** 5 files plus 1 archive, ~500 lines. Do an inventory pass over
 `figures/paper_both/` and `figures/data/` first, then `provenance.md`, `figures_build_plan.md`,
-`CONTINUE_HERE.md`, `figures_system.md`, `SPINE.md` (Results). Archive `04_figures_storyboard.md` and repoint
+`CONTINUE_HERE.md`, `figures_system.md`, `1_method/docs/manuscript-drafts/sections/04_results.md`. Archive `04_figures_storyboard.md` and repoint
 `figures_system.md:118` and `:149` in the same commit, because they currently route the reader to it as
-step 1 of the figure workflow while its own line 3 declares it retired. `SPINE.md` (Results) alone is about half
+step 1 of the figure workflow while its own line 3 declares it retired. `1_method/docs/manuscript-drafts/sections/04_results.md` alone is about half
 this batch.
 
-**Batch 6a, the conceptual sections.** 5 files, ~450 lines. `SPINE.md` (Introduction) (delete the literal
-`</content>` and `</invoke>` at `:118-119` first, that is free), `SPINE.md` (Theory), `SPINE.md` (Diagnostics),
-`analysis_figure_S1_score_mean.md`, `SPINE.md` (Methods).
+**Batch 6a, the conceptual sections.** 5 files, ~450 lines. `1_method/docs/manuscript-drafts/sections/01_introduction.md` (delete the literal
+`</content>` and `</invoke>` at `:118-119` first, that is free), `1_method/docs/manuscript-drafts/sections/02_theory.md`, `1_method/docs/manuscript-drafts/sections/03_diagnostics.md`,
+`analysis_figure_S1_score_mean.md`, `1_method/docs/manuscript-drafts/sections/06_methods.md`.
 
-**Batch 6b, the claim sections.** 2 files, ~250 lines. `SPINE.md` (Abstract), `SPINE.md` (Discussion). Both carry the
+**Batch 6b, the claim sections.** 2 files, ~250 lines. `1_method/docs/manuscript-drafts/sections/00_abstract.md`, `1_method/docs/manuscript-drafts/sections/05_discussion.md`. Both carry the
 D-J number, so they run last among the prose.
 
 **Batch 7, routing and closure.** 7 small files, ~120 lines. `_program/00_index.md` **goes last**,
@@ -145,9 +145,9 @@ Sweep these together or the update will be half-done.
 
 ## 3. Blocked edits, and what unblocks each
 
-**D-J, the ~100 threshold.** Blocks the punchline of `SPINE.md` (Abstract), `SPINE.md` (Discussion) D1, the new
-threshold section in D-4, `SPINE.md` (Title)'s rule 4, and the verify lists in `SPINE.md` (Results), `machinery.md` §11
-and `SPINE.md` (Methods). Three separate things unblock it.
+**D-J, the ~100 threshold.** Blocks the punchline of `1_method/docs/manuscript-drafts/sections/00_abstract.md`, `1_method/docs/manuscript-drafts/sections/05_discussion.md` D1, the new
+threshold section in D-4, `1_method/docs/manuscript-drafts/sections/README.md`'s rule 4, and the verify lists in `1_method/docs/manuscript-drafts/sections/04_results.md`, `machinery.md` §11
+and `1_method/docs/manuscript-drafts/sections/06_methods.md`. Three separate things unblock it.
 
 1. Choose the anchor (question 2 of §1).
 2. State the criterion. The data do not give a clean 100 under any unstated rule: IR's `k_off`
@@ -243,8 +243,8 @@ author's and must not be filled in silently.
 **Blocks inside edited files that must survive untouched.** `machinery.md` §5 (the K-factor identity)
 and §2 (the three tests: **machinery's wording wins over the voice note's**, see below); `axes.md` §1
 (the label definition and the K_off decision with its 35,000 CPU-hour costing); `provenance.md` §2, §6
-and §9; `SPINE.md` (Methods) M1-M11 apart from the four flagged statements; `SPINE.md` (Title)'s two evidence surveys;
-D-3's DEAD and CONCEDE lists; D-4 §2.1 and §7; `SPINE.md` (Discussion)'s anchor-problem section; `SPINE.md` (Results)'s
+and §9; `1_method/docs/manuscript-drafts/sections/06_methods.md` M1-M11 apart from the four flagged statements; `1_method/docs/manuscript-drafts/sections/README.md`'s two evidence surveys;
+D-3's DEAD and CONCEDE lists; D-4 §2.1 and §7; `1_method/docs/manuscript-drafts/sections/05_discussion.md`'s anchor-problem section; `1_method/docs/manuscript-drafts/sections/04_results.md`'s
 "claims the data do not support" section; and `00_plan.md`'s "The argument", which already states the
 three tests and the force-it-to-fail principle almost verbatim.
 
@@ -275,7 +275,7 @@ Recorded so nobody re-does them.
   already records the overturn. Delete the index note and fix the line reference. (A separate live
   question does remain: whether the *name* `noise_in_conductance_tau` is right given that the swept
   quantity is `Current_Noise` with no tau in it. Flag it, do not resolve it here.)
-- **The `SPINE.md` (Diagnostics) vs `analysis_figure_S1` conflict is a verify, not a fix.** They measure
+- **The `1_method/docs/manuscript-drafts/sections/03_diagnostics.md` vs `analysis_figure_S1` conflict is a verify, not a fix.** They measure
   different objects: `diagnostics.md:22` states test 2 over the whole record, the score-mean note
   reports max per-step magnitudes and significance counts, and the note's own reading is that NR's bias
   concentrates at the transitions and returns near zero on the plateau, so contributions may cancel in

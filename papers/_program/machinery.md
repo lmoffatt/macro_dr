@@ -5,7 +5,7 @@
 >
 > **Owns:** the diagnostics, their definitions, sign conventions, thresholds, what composes with what,
 > the numerical conventions, and the known hazards. All three papers cite this file; none restates it.
-> **Does not own:** how paper 1's Diagnostics *section* is written (`1_method/SPINE.md` (Diagnostics)), nor
+> **Does not own:** how paper 1's Diagnostics *section* is written (`1_method/docs/manuscript-drafts/sections/03_diagnostics.md`), nor
 > the model and simulator (`model_and_sim.md`), nor which CSV holds what (`provenance.md`).
 >
 > Primary sources: `theory/macroir/docs/Likelihood_Information_Distortion/supplement_information_distortion_main.tex`

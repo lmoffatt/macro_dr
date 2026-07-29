@@ -72,7 +72,7 @@ wrong. **TO MOVE** = lives at the old path, belongs at the new one. **REWRITE+MO
 | `carve_plan.md` | the repo boundary, the freeze trigger, code availability, engine work owed | REWRITE | "one paper = one repo" is reopened by the split (`decisions.md` §5) |
 | `paper-3.md` | the micro stub | LIVE | promote to a folder when it starts drafting. `paper-2.md` was archived 2026-07-28 under `archive/`, superseded by the merge |
 | `update_plan_2026-07-28.md` | the post-merge work order: what is done, what is blocked, and the edit order | **EXPIRES** | a work order, not a fact owner; it settles nothing. Delete it when the last batch lands (§0 of the file itself) |
-| `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | merge the model half of `1_method/SPINE.md`, Methods block, + `1_method/decisions/D-2_parameter_units.md` |
+| `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | merge the model half of `1_method/docs/manuscript-drafts/sections/06_methods.tex` + `1_method/decisions/D-2_parameter_units.md` |
 | `submission.md` | front/back matter, CRediT, data availability, MDAR, article type | CREATE | from `elife-author-instructions.md` + the missing-owner list |
 | `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | LIVE | done 2026-07-20: it sits at `_program/check.sh`, takes the paper folder as its argument, and item 9 checks this index. Do **not** triplicate it |
 
@@ -90,11 +90,11 @@ scoped to the old single-paper frame.
 | `00_plan.md` | paper 1's thesis, scope, roster, the band-A results, its open decisions | REWRITE | was `00_master_plan_v2.md`; reframed 2026-07-20, but its §0 and §1a still speak for the whole program — those parts now belong to `_program/` |
 | `decisions.md` | paper 1's own settled decisions | REWRITE | was `02_decision_log.md`; the cross-paper half has been copied to `_program/decisions.md` and must now be **deleted from here**, not left as a second copy |
 | `01_writing_plan.md` | the drafting task graph, the lints, the human budget | REWRITE (partly done) | six-figure gate updated to five body figures + supplements, §6/§7 redrawn to the writing critical path (2026-07-22, `1_method/decisions.md`) |
-| `SPINE.md` | **all eight manuscript sections in one file**: per section the job, the constraints, what is open or blocked, and the verify-before-submission list | LIVE | created 2026-07-29 from the eight section plans (`abstract/introduction/theory/diagnostics/results/discussion/methods/title.md`), which are archived under `1_method/archive/section-plans-20260729/`. Written from the `.tex`, not from the plans, because the manuscript is ahead of them. It holds no prose and no numbers: the prose is `docs/manuscript-drafts/sections/*.tex` and every number's provenance is a `% src:` comment beside it |
+| `docs/manuscript-drafts/sections/*.md` | **one brief per manuscript section, beside its own `.tex`** (`00_abstract.md` … `07_backmatter.md`): the job, the constraints, what is open or blocked, and the verify list. `sections/README.md` holds what governs every section, the title argument, and the standing blockers | LIVE | created 2026-07-29. Supersedes `SPINE.md` (written and split the same day) and, before it, the eight standalone section plans; all in `1_method/archive/section-plans-20260729/`. **Rule: a section brief holds no prose and no numbers.** That is what stopped the previous two layouts from rotting — they carried drafts and figure arcs the manuscript then overtook. Prose is `sections/*.tex`; every number's provenance is a `% src:` comment beside the claim |
 | `README.md` | routes into paper 1; points at the program layer | LIVE | — |
 | `00_master_plan.md`, `01_writing_plan.md`, `04_figures_storyboard.md`, `06_repro_pipeline.md` | retired/pointer stubs carried over from the pack | RETIRED/REWRITE | `04_*` and `06_*` are dead arcs; `01_writing_plan`'s six-figure gate was fixed 2026-07-22; `00_master_plan` is a tombstone |
 | `analysis_figure_S1_score_mean.md` | what the score-mean figure shows | LIVE | — |
-| `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `SPINE.md`, Results block, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
+| `figures_build_plan.md` | the **order** of figure runs and edits, and the command for each | LIVE | opened 2026-07-21 for the VR re-runs; owns build order only — the arc is `1_method/docs/manuscript-drafts/sections/04_results.md`, the visual system `_program/figures_system.md`, the run manifest `_program/provenance.md` |
 | `CONTINUE_HERE.md` | cold-start pointer for the figure work: what is in flight, and the traps that are not visible in the code | LIVE | opened 2026-07-22; a pointer, not a copy. Delete it the day it starts duplicating the documents it points at |
 | `decisions/D-0, D-3, D-4` | freeze scope, the novelty claim, the ranking verdict | LIVE | D-4 rescopes to band A rather than being rewritten |
 | `docs/manuscript-drafts/` | the vessel. Owns nothing; every claim in it is owned upstream | LIVE | — |
@@ -126,8 +126,8 @@ Look the topic up here before writing.
 | Everything a journal asks for on submission day | `_program/submission.md` |
 | Cross-paper settled decisions | `_program/decisions.md` |
 | Paper 1's thesis, scope, roster | `1_method/00_plan.md` |
-| The claim spine, constraints and verify lists of every section | `1_method/SPINE.md` |
-| Paper 1's figure arc | `1_method/SPINE.md`, Results block |
+| The claim spine, constraints and verify lists of every section | `1_method/docs/manuscript-drafts/sections/README.md` |
+| Paper 1's figure arc | `1_method/docs/manuscript-drafts/sections/README.md`, Results block |
 | Paper 1's cells | `1_method/grid.md` |
 | What paper 2 is, until it has a folder | `_program/paper-2.md` |
 | What paper 3 is, until it has a folder | `_program/paper-3.md` |
@@ -169,7 +169,7 @@ figures plus supplements (`1_method/decisions.md`).
 5. The five real rewrites, one at a time, each touching a thesis: `00_plan.md` and `1_method/decisions.md`
    (both must shed the parts that moved to `_program/`, or the split has just manufactured two copies
    of everything it separated), `nomenclature.md`. **The section rewrites are done differently: the eight
-   section plans were consolidated into `1_method/SPINE.md` on 2026-07-29 rather than rewritten.**
+   section plans were consolidated into `1_method/docs/manuscript-drafts/sections/README.md` on 2026-07-29 rather than rewritten.**
 
 **The immediate risk, named so it is not forgotten.** The cross-paper content was **copied** into
 `_program/decisions.md`, not moved. Until step 5 deletes it from `1_method/decisions.md` and from

@@ -1,0 +1,52 @@
+% ABSTRACT.
+% What this abstract must do, the constraints that bind it, what is open and the
+% verify list: sections/00_abstract.md, beside this file.
+%
+% Rewritten 2026-07-28 in the merged frame. Slots, in order: object and how it is
+% measured; the limitation; "here we test X against Y"; the criterion; the results, the
+% last of which carries the map; the closing statement. The clause "including Bayesian
+% recursive filters" is the position against munch2022bayesian, a published Bayesian
+% Kalman filter for this problem in this journal: what is offered here is the test of
+% whether such a filter tells the truth about its own uncertainty and the map of where it
+% does not. eLife wants the biological system in the title or the abstract; it is in both.
+% No channel-number threshold is quoted: the data support none, so the few-channel
+% departure is stated as a direction. If a number is ever wanted here it is the measured
+% reachability floor (N_ch below 17 for the channel count, below 52 for the opening rate,
+% figure_6.html), not "about 100".
+
+\begin{abstract}
+Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, which discards the fluctuations. Likelihoods that use the fluctuations exist, including Bayesian recursive filters, and have almost no uptake, because whether such a filter reports its own uncertainty correctly was never characterised. Here we test a ladder of macroscopic likelihoods, from least squares to a filter conditioned on both ends of the acquisition interval, against data simulated exactly from the process they approximate. At the true parameters the score must average to zero and its covariance must equal the Fisher information reported; the mismatch is measurable. A likelihood that models the gating variance but carries no recursion is calibrated interval by interval and under-reports parameter uncertainty ten to fifteen fold once a record accumulates; a sandwich correction restores nominal coverage. % src: papers/1_method/decisions/D-4_ranking_verdict.md §1a and §3 (NR ellipse-area factor 10 to 15; sandwich returns every rung to 0.87-1.07) ; projects/eLife_2025/figures/paper_both/figure_3.html (per-interval identity holds, accumulated ratio does not)
+% TODO-SIGN: direction convention as fixed in Diagnostics; if the pending code read reverses it, flip every TODO-SIGN site in one pass.
+The boundary-conditioned filter reports honestly at 94\% of the measured points, departing toward few channels. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py re-run over 1c2ae6f + 87889e6 + 0ffbda7 (1977 of 2100 points within 15%)
+The region where the fluctuations still determine the amplitude parameters and the region where the classical error bar is honest never overlap, lying one to three decades of noise apart. % src: projects/eLife_2025/figures/paper_both/figure_6.html (crossing table and fitted log-log slopes, Delta.k_off = 0.1)
+This supplies a test of whether a macroscopic-current filter tells the truth about its own uncertainty, and a map of where it does not.
+\end{abstract}
+
+
+% ---------------------------------------------------------------------------------------
+% DRAFT IN PROGRESS, Luciano, 2026-07-28/29. Kept here, commented, because until now it
+% lived as a SECOND \begin{abstract} in elife_paper.tex, which does not compile as two
+% abstracts. Working on it here means editing a draft, not duplicating an environment.
+%
+% The opening line below is the general-audience hook the live version does not have: it
+% enters at the level of "time-resolved biological variables" rather than at the level of
+% fitting kinetic schemes. Measured against 41 recent eLife research articles, eLife's own
+% first sentences enter at field level (median 19 words, undefined acronyms in line one),
+% so this is above the journal's norm rather than required by it. It is the one Nature slot
+% worth importing.
+%
+% S1: Variables biologicas resueltas en el tiempo suelen
+%
+% Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, which discards the fluctuations. Likelihoods that use the fluctuations exist, including Bayesian recursive filters, and have almost no uptake, because whether such a filter reports its own uncertainty correctly was never characterised. Here we test a ladder of macroscopic likelihoods, from least squares to a filter conditioned on both ends of the acquisition interval, against data simulated exactly from the process they approximate. At the true parameters the score must average to zero and its covariance must equal the Fisher information reported; the mismatch is measurable. A likelihood that models the gating variance but carries no recursion is calibrated interval by interval and under-reports parameter uncertainty ten to fifteen fold once a record accumulates; a sandwich correction restores nominal coverage.
+% The boundary-conditioned filter reports honestly at 94\% of the measured points, departing toward few channels.
+% The region where the fluctuations still determine the amplitude parameters and the region where the classical error bar is honest never overlap, lying one to three decades of noise apart.
+% This supplies a test of whether a macroscopic-current filter tells the truth about its own uncertainty, and a map of where it does not.
+% ---------------------------------------------------------------------------------------
+
+
+% IMPACT STATEMENT (eLife submission-form field, not part of the PDF). One sentence,
+% 15-30 words, third person, no "We show", no threshold, no algorithm promotion. 30 words:
+%
+% Testing macroscopic ion-channel likelihoods against exactly simulated data measures how
+% far each misreports its own uncertainty, and maps where on the design plane its reported
+% interval can be believed.

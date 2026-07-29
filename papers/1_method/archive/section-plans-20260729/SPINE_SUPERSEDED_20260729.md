@@ -1,5 +1,16 @@
 # SPINE — one block per manuscript section
 
+> **SUPERSEDED the same day it was written, 2026-07-29.** Split into one brief per section, each
+> beside its own `.tex`, at `../../docs/manuscript-drafts/sections/{00_abstract,01_introduction,
+> …,07_backmatter}.md`, with the cross-section rules and the standing blockers in
+> `../../docs/manuscript-drafts/sections/README.md`.
+>
+> The reason is distance: a single spine file is not where the writing happens. The consolidation
+> this file performed was still the work that mattered — it separated what survived from what was
+> already false and marked what had been overtaken — and the split preserves all of it. Kept for
+> rewind only.
+
+
 > **Created 2026-07-29**, consolidating the eight section plans (`abstract.md`, `introduction.md`,
 > `theory.md`, `diagnostics.md`, `results.md`, `discussion.md`, `methods.md`, `title.md`), which are
 > archived under `archive/section-plans-20260729/`. This is the file `elife_paper.tex:48` already
