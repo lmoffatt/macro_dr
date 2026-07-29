@@ -12,9 +12,10 @@
 > Scripts are committed this time, not left in a scratchpad: `recompute/d4_headline_and_nch_trend.py`
 > and `recompute/d4_distortion_envelopes.py`. Re-run them and this file must reproduce.
 >
-> **NMR's membership is REOPENED** (2026-07-29). It was recorded as dropped on 2026-07-28 partly for
-> "no literature attribution", which is false: `NMR` **is** the published `MacroINR`, the control of
-> Comm Biol 2025. What survives is that it is measurably redundant with `NR` (§5).
+> **NMR is a SUPPLEMENT member** (Luciano, 2026-07-29), not dropped. The 2026-07-28 record said
+> dropped, partly for "no literature attribution", which is false: `NMR` **is** the published
+> `MacroINR`, the control of Comm Biol 2025. What survives is that it is measurably redundant with
+> `NR` (§5), which is why it is a supplement member and not a body column.
 >
 > Abbreviations: emp = the covariance of the MLE cloud; Fisher = the covariance the likelihood reports
 > from its own Gaussian Fisher information; D = the diagonal `Likelihood_Gaussian_Information_Distortion`

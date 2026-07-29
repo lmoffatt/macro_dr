@@ -13,7 +13,7 @@ belongs to the macro paper because it is the question its anchor method answers.
 
 | | The question | What is at stake | Control variables | Methods |
 |---|---|---|---|---|
-| **macro** | Do you need a likelihood at all, and if so what must it condition on? | the **interval-likelihood closure** (conductance over one interval → Gaussian), plus the prior question of whether the gating signal is above the instrumental noise | N_ch and instrumental noise, **faceted by N_ch**; interval 1 → 0.01 τ | body: `LSE`, `NR`, `R`, `IR`; supplement: `MR`, `VR` |
+| **macro** | Do you need a likelihood at all, and if so what must it condition on? | the **interval-likelihood closure** (conductance over one interval → Gaussian), plus the prior question of whether the gating signal is above the instrumental noise | N_ch and instrumental noise, **faceted by N_ch**; interval 1 → 0.01 τ | body: `LSE`, `NR`, `R`, `IR`; supplement: `MR`, `VR`, `NMR` |
 | **micro** | Where does the Gaussian occupancy closure break, and where is the exact solver worth its cost? | the **macro closure** (multinomial → Gaussian); degrades at few channels | the **effective fluctuating count** N_ch·p(1−p), not N_ch alone (§5) | `micro_R`, `micro_IR` against macro `R`, `IR` |
 
 **The 1|2 cut was the artificial one.** It separated mid from high N_ch and the single-channel noise
@@ -32,7 +32,9 @@ whichever rung they are on today:
 `R` (recursive, instantaneous sample) → `IR` (condition on the interval).
 
 Reading LSE against IR answers "do you need a likelihood?". Reading R against IR answers "what does
-conditioning on the interval buy?". `MR` and `VR` split the R → IR step and live in a supplement.
+conditioning on the interval buy?". The supplement carries `MR` and `VR`, which split the R → IR step,
+and `NMR` (the published `MacroINR`), which is measurably indistinguishable from `NR` — and that
+near-identity is itself the finding: the interval-mean conductance buys nothing without recursion.
 
 ## 2. The channel-number axis, partitioned
 
@@ -75,7 +77,7 @@ few-channel degradation, which one or two annotated cells already supply (§6).
   VR → IR only the gain"**: the predictive variance divides the gain, so the variance step moves the
   update too, and `MR` and `IR` predict the *same* observable variance from the same state, so the
   whole MR-to-IR difference is the gain. Measured in `../1_method/figures_build_plan.md` §F1-2.
-- **Excludes:** `NMR`, dropped from the program (`decisions.md` §2), and micro as a subject.
+- **Excludes:** micro as a subject. Nothing else is excluded; `NMR`, `MR` and `VR` are supplement members (`decisions.md` §2).
 - **Still needs:** LSE and NR re-run at n_sims 10⁴ so they can share a panel with the band-A cells;
   the region map written into Results; the recording-condition overlay lifted out of the notebook
   into a citable Methods table; the sign convention verified against the producer.

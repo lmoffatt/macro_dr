@@ -41,7 +41,7 @@ says how the single-channel conductance is treated within an interval.
 |-------|-----------|-----|---|
 | `NR`  | false     | 0   | — |
 | `R`   | true      | 0   | — |
-| `NMR` | false     | 1   | total (**= the published `MacroINR`**; membership reopened, see below) |
+| `NMR` | false     | 1   | total (**= the published `MacroINR`**; supplement member) |
 | `MR`  | true      | 1   | total |
 | `VR`  | true      | 1   | residual |
 | `IR`  | true      | 2   | residual (+ boundary gain) |
@@ -57,7 +57,7 @@ treatment", not a claim about the `av` flag.
 Its membership was briefly recorded as dropped on 2026-07-28 for "no literature attribution", which is
 false: it carries the published demonstration that model ranking is sensitive to the likelihood
 approximation. What is true is that it is **numerically indistinguishable from `NR`** on the freeze.
-Status and the three options are in `decisions.md` §2.
+**Settled 2026-07-29: it goes to the supplement with `MR` and `VR`** (`decisions.md` §2).
 
 The suffix (`N` / `R`) is the occupancy axis: non-recursive or recursive. The prefix is the
 conductance axis: none for the instantaneous conductance, `M` for the mean conductance, `I` for the

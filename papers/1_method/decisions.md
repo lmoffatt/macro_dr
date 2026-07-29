@@ -18,15 +18,29 @@
   and discard the fluctuations → use the gating variance without a filter → filter on instantaneous
   samples → condition on the interval. Reading LSE against IR answers "do you need a likelihood?";
   reading R against IR answers "what does conditioning buy?".
-- **Supplement roster: `MR`, `VR`**, which split the R → IR step and carry the mechanism.
+- **Supplement roster: `MR`, `VR`, `NMR`** (2026-07-29). `MR` and `VR` split the R → IR step and carry
+  the mechanism. `NMR` is the published `MacroINR`, the control of Comm Biol 2025, and it sits beside
+  `NR` because the two are numerically indistinguishable — which is the finding, not a redundancy to
+  hide: **the interval-mean conductance buys nothing without recursion**, so recursion is the step
+  that matters at the bottom of the ladder and interval conditioning the step that matters at the top.
   - **`VR` keeps its name** (2026-07-28, `../_program/nomenclature.md`), displayed as "Variance
     Recursive". It is the control that turns "MR's problem is the gain, not the variance" from algebra
     into measurement, and it fired. **Do not describe it as "MR→VR changes only the variance, VR→IR
     only the gain":** the predictive variance divides the gain, so the variance step moves the update
     too, and IR's *total* predicted variance is algebraically equal to MR's
     (`figures_build_plan.md` §F1-2).
-  - **`NMR` is dropped from the program**, and now for a measured reason as well: on the freeze it is
-    numerically indistinguishable from `NR` (`decisions/D-4_ranking_verdict.md` §5).
+  - **`NMR` is a supplement member, not dropped** (2026-07-29). The old "no literature attribution"
+    reason was false: it is `MacroINR` in print. See `../_program/decisions.md` §2.
+  - **The supplement panels carry the FULL LATTICE, all six** (Luciano, 2026-07-29): `NR`, `NMR`, `R`,
+    `MR`, `VR`, `IR`. Not the three demoted members alone. They are *defined* by their position
+    relative to the body members, so a panel without `R` and `IR` cannot state "MR is worse than R,
+    VR worse still, IR closes it", and a panel without `NR` cannot show NMR's near-identity at all.
+    Three consequences, all favourable: `figure_1_all.Rmd` already renders exactly those six columns,
+    so this is columns added to existing scripts and not a new figure; the columns shared with the body
+    are a free consistency check, because a body and a supplement that disagree on `NR` or `IR` means a
+    bug; and **`LSE` stays out**, which is both conceptually right (it is not on the lattice, and the
+    supplement is about what conditioning buys within the lattice) and keeps **n_sims uniform at 10⁴**,
+    since the LSE arm is at 1000 and mixing them is the Jensen hazard.
 - **Literature positioning.** `R` carries the recursive lineage (Moffatt 2007; Münch 2022, a published
   Bayesian Kalman filter **in the target journal**, so the abstract must position against it: what is
   offered is the test of whether such filters tell the truth about their own uncertainty, not another

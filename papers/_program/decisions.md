@@ -43,15 +43,16 @@
 
 - Minimal **two-state** model (`scheme_CO`), single K_on/K_off, **non-stationary** protocol
   (single concentration jump). Both papers.
-- **Five methods on two levels.** Off the lattice: classical nonlinear least squares on the mean
+- **Six methods on two levels.** Off the lattice: classical nonlinear least squares on the mean
   current, data key `nonlinearsqr`, display `LSE`, engine flag `family_approximation = 2`. On the
-  lattice: `NR`, `R`, `MR`, `IR`, plus `VR`. Which of them sit in the body is in `program.md` §1.
+  lattice: `NR`, `NMR`, `R`, `MR`, `VR`, `IR`. **Body: `LSE`, `NR`, `R`, `IR`. Supplement: `MR`, `VR`,
+  `NMR`** (`program.md` §1).
 - **LSE is not a rung of the family** (2026-07-20). In the dispatcher it carries the same two knob
-  settings as the dropped `NMR` (`recursive=false, averaging=1`) and differs only by the third flag.
+  settings as `NMR` (`recursive=false, averaging=1`) and differs only by the third flag.
   The "one object with two knobs" framing is retired; the structure is a root question with the ladder
   hanging from it. **This does not make LSE peripheral** (§1): it is the root of the ladder and the
   paper's anchor.
-- **`NMR`: the drop is REOPENED (2026-07-29), and the reason it was dropped is false.**
+- **`NMR` goes to the SUPPLEMENT, with `MR` and `VR`** (Luciano, 2026-07-29). It is not dropped and it is not a body column. The 2026-07-20 drop, repeated on 2026-07-28, rested on a false premise:
   - The 2026-07-20 reason was "no literature attribution, no mechanistic role". **The first clause is
     wrong and has been wrong the whole time.** `NMR` **is** `MacroINR`, and `MacroINR` is the
     **published control** of Moffatt & Pierdominici-Sottile 2025 (Comm Biol), the method whose failure
@@ -71,13 +72,15 @@
   - **That redundancy is itself a result, not only a reason to cut.** If the interval-mean conductance
     buys nothing without recursion, then recursion is the step that matters at the bottom of the ladder
     and interval conditioning is the step that matters at the top. That is the ladder's shape, measured.
-  - **Open, and it is a scope decision, not a naming one:** body column (no: it duplicates NR), cut
-    entirely (costs the bridge to the paper's only real-data demonstration), or **named with its
-    published attribution and measured once in a supplement beside NR, where the near-identity is the
-    finding**. The third is the standing recommendation.
+  - **Settled: supplement.** Not a body column, because it duplicates `NR` there; not cut, because
+    cutting it costs the bridge to the paper's only real-data demonstration. In the supplement it is
+    named with its published attribution and measured beside `NR`, where the near-identity is the
+    finding. **This costs nothing to run:** NMR is already on `87889e6` at noise 0.1/1/10 across
+    N_ch 10 to 10⁴ at n_sims 10⁴, the same coverage as NR and MR, so any supplement panel that
+    carries MR can carry NMR unchanged.
   - **This entry supersedes the "six methods" listing that stood two bullets above it until 2026-07-28**
-    and contradicted it from within the same section; the count is five or six depending on how the
-    item above resolves.
+    and contradicted it from within the same section. The count is **six**: LSE off the lattice, and
+    NR, NMR, R, MR, VR, IR on it, of which four are body members.
 - **`VR` keeps its letter** (Luciano, 2026-07-28), closing the open item in `program.md` §9. It earned
   it: VR was predicted to come out over-confident and more so than MR, and it did. The `V`/Taylor
   collision warning in `nomenclature.md` still stands and Methods must carry the one sentence.
