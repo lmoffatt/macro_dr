@@ -53,4 +53,7 @@ inherits the unverified sign convention (`% TODO-SIGN` in the `.tex`). No channe
 unless D-J is closed — and note the manuscript already prefers the measured reachability floors
 (N_ch below 17 for the channel count, below 52 for the opening rate) over "about 100".
 
+
+**
+
 ---

@@ -14,13 +14,44 @@
 % reachability floor (N_ch below 17 for the channel count, below 52 for the opening rate,
 % figure_6.html), not "about 100".
 
+
+
+% REWRITTEN 2026-07-29, 219 words. The frame is Luciano's: the recursive family has been
+% available for two decades and is not used, TWO EXPLANATIONS ARE PLAUSIBLE (not
+% objections: nobody published them as such), and the paper removes both. Explanation one
+% is answered by the validity criteria, whose answer IS the usage map, so the three result
+% sentences are the three boundaries of Figure 6 stated as criteria a reader can evaluate.
+% Explanation two is answered by the packages.
+%
+% "for two decades" is load-bearing and must not become "MacroIR is not used": MacroIR is
+% from 2025 and is simply too new to have uptake. What has had twenty years and no uptake
+% is the family: celentano2004use, milescu2005maximum, moffatt2007estimation.
+%
+% Rule 4 ("no 'only'") is knowingly relaxed, bound to "across the plane", because the
+% finding IS an exclusivity: over 1148 shared (cell, parameter) points no intermediate
+% member is calibrated where the boundary-conditioned one is not, except five at
+% N_ch 10-20 where the latter is erring conservative.
+%
+% The corner is few channels and LOW noise, at ANY interval. Of 123 departures in 2100
+% points, 45 sit at N_ch 10 and none above 500, 102 at noise <= 0.1 and none above 0.5,
+% and by interval they favour the SHORT end (28/29/27 at 0.01/0.02/0.05 against 3 at 0.5).
+% Do not write "long intervals": the single largest excursion is there, the mass is not.
+%
+% The non-recursive result (ten to fifteen fold) is deliberately NOT a result sentence any
+% more. It is the largest number in the paper and the least new: moffatt2007estimation
+% already showed that ignoring the dependence of successive measurements gives worse
+% estimates, and delcore2025parameter cites it for exactly that.
+
 \begin{abstract}
-Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, which discards the fluctuations. Likelihoods that use the fluctuations exist, including Bayesian recursive filters, and have almost no uptake, because whether such a filter reports its own uncertainty correctly was never characterised. Here we test a ladder of macroscopic likelihoods, from least squares to a filter conditioned on both ends of the acquisition interval, against data simulated exactly from the process they approximate. At the true parameters the score must average to zero and its covariance must equal the Fisher information reported; the mismatch is measurable. A likelihood that models the gating variance but carries no recursion is calibrated interval by interval and under-reports parameter uncertainty ten to fifteen fold once a record accumulates; a sandwich correction restores nominal coverage. % src: papers/1_method/decisions/D-4_ranking_verdict.md §1a and §3 (NR ellipse-area factor 10 to 15; sandwich returns every rung to 0.87-1.07) ; projects/eLife_2025/figures/paper_both/figure_3.html (per-interval identity holds, accumulated ratio does not)
+Macroscopic ion-channel recordings carry stochastic fluctuations that the usual least-squares analysis discards. Likelihoods that use them have been available for two decades, including Bayesian recursive filters, and are rarely applied. Two reasons are plausible: unlike a least-squares fit, which can be judged from its residuals, a recursive filter tracks the data whether or not the uncertainty it reports is right; and they are hard to implement. We address both.
 % TODO-SIGN: direction convention as fixed in Diagnostics; if the pending code read reverses it, flip every TODO-SIGN site in one pass.
-The boundary-conditioned filter reports honestly at 94\% of the measured points, departing toward few channels. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py re-run over 1c2ae6f + 87889e6 + 0ffbda7 (1977 of 2100 points within 15%)
-The region where the fluctuations still determine the amplitude parameters and the region where the classical error bar is honest never overlap, lying one to three decades of noise apart. % src: projects/eLife_2025/figures/paper_both/figure_6.html (crossing table and fitted log-log slopes, Delta.k_off = 0.1)
-This supplies a test of whether a macroscopic-current filter tells the truth about its own uncertainty, and a map of where it does not.
+At the true parameters a correct likelihood's score averages to zero and the covariance of that score equals the Fisher information it reports; the two departures measure bias and distortion. We measure both for a minimal kinetic scheme, swept over channel number, instrumental noise and acquisition interval, against data simulated exactly from the process it approximates.
+Only the likelihood conditioned on both ends of the acquisition interval reports honestly across the plane, departing in a corner of few channels and low noise where the Gaussian closure itself fails. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py over 1c2ae6f + 87889e6 + 0ffbda7 (1977 of 2100 points within 15%; the 123 departures sit at N_ch <= 500 and noise <= 0.5)
+The intermediate members have no domain of their own, being calibrated only where least squares already is; and least squares is honest, and cheaper, exactly where instrumental noise exceeds gating noise, below a signal-to-noise ratio of the square root of the channel number. % src: domain scan over the same three directories (R calibrated where IR is not at 3 of 812 shared points, MR 2 of 336, NR 0 of 728, NMR 0 of 336, and all five at N_ch 10-20 where IR is conservative; R calibrated at 62 points against 134 failing at noise 0.1, and overwhelmingly calibrated above noise 1000) ; projects/eLife_2025/figures/paper_both/figure_6.html (LSE distortion crossing fitted at slope 1.01 and 1.03 in log noise-label against log N_ch; the label is a noise power, so the amplitude SNR at that boundary goes as sqrt(N_ch), which is the signal-to-gating-noise ratio N i p / (i sqrt(N p (1-p))) at p = 0.5)
+R and Python packages return it with its score and Fisher information, so the criteria travel to any recording. % src: sections/07_backmatter.tex (macroir: R and Python bindings over one self-contained C++ core carrying the likelihood, its score and its Gaussian Fisher information)
 \end{abstract}
+
+
 
 
 % ---------------------------------------------------------------------------------------
