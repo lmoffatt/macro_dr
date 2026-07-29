@@ -1,5 +1,17 @@
 # Materials and Methods — what it must contain, with the actual run values
 
+> **SUPERSEDED 2026-07-29. Do not read as current.** Consolidated into `../../SPINE.md`, which holds
+> the job, the constraints, the open items and the verify list for every section in one place; the
+> prose lives in `../../docs/manuscript-drafts/sections/*.tex` and the provenance of every number
+> lives beside it as a `% src:` comment.
+>
+> This file is pre-merge (papers 1 and 2 were fused 2026-07-23) and several of its scope sentences
+> were already false when it was harvested: it routes work to a "paper 2" that does not exist, names
+> a roster the merge replaced, and in places states thresholds and verdicts that the 2026-07-29
+> freeze recompute moved. It is kept for rewind and for the reasoning behind decisions that survived,
+> not as a source of facts.
+
+
 > Working doc, same genre as `abstract.md`. Opened 2026-07-14.
 > Every value below was read out of the run scripts and the production data, not out of a plan document. Path given for each. Where a value could not be found, it says so, and those are the items that must be settled before submission.
 > eLife excludes Methods from the ~5,000-word main-text target (`../_program/elife-author-instructions.md`), so this section can afford to be complete. It should be.

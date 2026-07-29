@@ -1,7 +1,7 @@
 # Paper 1 figures: the build plan
 
 > Opened 2026-07-21. **Owns: the order of runs and edits, and the command for each.** It does not own
-> what a figure *shows* (`results.md`), the eLife/visual rules (`../_program/figures_system.md`), or
+> what a figure *shows* (`SPINE.md` (Results)), the eLife/visual rules (`../_program/figures_system.md`), or
 > which run made which data (`../_program/provenance.md`). Cite those; do not restate them.
 >
 > Telegraphic on purpose. Every state claim below is dated and carries its file:line, because the
@@ -87,7 +87,7 @@ return the same `likelihood_algorithm_type` variant that `calc_likelihood_diagno
 question was settled: the figure-1 data directory has long carried
 `figure_1_likelihood_diagnostic_{IRV,MRV,MNRV}.csv`, three algorithms no panel ever loaded. The panel
 question itself was then answered on 2026-07-21: **Fig 1 is the four-column ladder R, MR, VR, IR**,
-superseding the 2026-07-20 two-column call (`decisions.md`, `results.md`).
+superseding the 2026-07-20 two-column call (`decisions.md`, `SPINE.md` (Results)).
 
 > **Trap.** Those `IRV`/`MRV`/`MNRV` files are the *old* Taylor-variant V-suffix convention
 > (2025-12/2026-06, slated for cleanup), unrelated to `macro_VR`. VR's own internal suffix is `_res`
@@ -268,7 +268,7 @@ hardcoded at `:592` against a fixed 7.0in page.
 | **7** | no (IR-only) | a scope decision, not data |
 
 **"Three of paper 1's figures depend on VR"** (`decisions.md:66`) is never enumerated, and it conflicts
-with `results.md`, which implies every five-algorithm figure. Enumerate it or drop the count.
+with `SPINE.md` (Results), which implies every five-algorithm figure. Enumerate it or drop the count.
 
 ## 3. Order
 
@@ -538,6 +538,6 @@ Figure 6 is now **Figure 4—figure supplement 3**.
 - Does Fig 1 get a VR column (§1, F1-3)? Default: no, per 2026-07-20.
 - VR's spelled-out display name (§3.2).
 - Which figures the "three" are (§2).
-- Fig 4's anchor and threshold conflicts, already open in `results.md`.
+- Fig 4's anchor and threshold conflicts, already open in `SPINE.md` (Results).
 - The arc cannot be captioned before VR runs: the thesis inverts if VR comes out calibrated
   (`decisions.md:69-73`).

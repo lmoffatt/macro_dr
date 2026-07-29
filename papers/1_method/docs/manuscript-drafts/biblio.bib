@@ -161,3 +161,105 @@
   pages   = {1208--1211},
   doi     = {10.1214/aoms/1177705693}
 }
+
+
+% ---------------------------------------------------------------------------
+% Migrated from biblio_full.bib 2026-07-29: the pre-1985 correlation lineage and
+% the ARMA-discrepancy precedent, all cited by 01_introduction.tex and none of them
+% resolvable until now (\bibliography{biblio} reads THIS file, not biblio_full).
+% ---------------------------------------------------------------------------
+@article{katz1970membrane,
+  author  = {Katz, Bernard and Miledi, Ricardo},
+  title   = {Membrane Noise Produced by Acetylcholine},
+  journal = {Nature},
+  year    = {1970},
+  volume  = {226},
+  pages   = {962--963},
+  doi     = {10.1038/226962a0},
+  note    = {The origin of the whole macroscopic-fluctuation programme: the current's
+             variance and time course carry single-channel information}
+}
+
+@article{katz1972statistical,
+  author  = {Katz, Bernard and Miledi, Ricardo},
+  title   = {The Statistical Nature of the Acetylcholine Potential and its Molecular Components},
+  journal = {The Journal of Physiology},
+  year    = {1972},
+  volume  = {224},
+  number  = {3},
+  pages   = {665--699},
+  doi     = {10.1113/jphysiol.1972.sp009918}
+}
+
+@article{anderson1973voltage,
+  author  = {Anderson, C. R. and Stevens, C. F.},
+  title   = {Voltage Clamp Analysis of Acetylcholine Produced End-Plate Current Fluctuations
+             at Frog Neuromuscular Junction},
+  journal = {The Journal of Physiology},
+  year    = {1973},
+  volume  = {235},
+  number  = {3},
+  pages   = {655--691},
+  doi     = {10.1113/jphysiol.1973.sp010410},
+  note    = {PDF: Anderson_Stevens_1973_Endplate_Current_Fluctuation_Spectra_JPhysiol.pdf.
+             Kinetics (the closing rate alpha) read off the Lorentzian POWER SPECTRUM of the
+             macroscopic current, i.e. from its temporal correlation. Predates MacroR by 32
+             years: the field has extracted kinetics from correlation since 1973, but from a
+             spectrum under stationary conditions, not from a likelihood}
+}
+
+@article{conti1980conductance,
+  author  = {Conti, F. and Neumcke, B. and Nonner, W. and St{\"a}mpfli, R.},
+  title   = {Conductance Fluctuations from the Inactivation Process of Sodium Channels
+             in Myelinated Nerve Fibres},
+  journal = {The Journal of Physiology},
+  year    = {1980},
+  volume  = {308},
+  pages   = {217--239},
+  doi     = {10.1113/jphysiol.1980.sp013279},
+  note    = {Source of the two-conductance-level covariance expression that Sigworth 1981 builds on}
+}
+
+@article{sigworth1981covariance,
+  author  = {Sigworth, Frederick J.},
+  title   = {Covariance of Nonstationary Sodium Current Fluctuations at the Node of Ranvier},
+  journal = {Biophysical Journal},
+  year    = {1981},
+  volume  = {34},
+  number  = {1},
+  pages   = {111--133},
+  doi     = {10.1016/S0006-3495(81)84840-0},
+  note    = {PDF: Sigworth_1981_Covariance_Nonstationary_Na_Fluctuations_BiophysJ.pdf.
+             THE in-domain precedent for using the two-time correlation of a macroscopic
+             current under NON-stationary conditions:
+             C(t1,t2) = N i^2 p(t1) [ p11(t2|t1) - p(t2) ], Eq. 4, the same object
+             MacroR/MacroIR propagate. Estimated from an ensemble of 256-504 repeated
+             records; used to discriminate kinetic schemes (one vs several open states),
+             not to fit rates by maximum likelihood, and with no uncertainty statement}
+}
+
+@article{lei2020considering,
+  author  = {Lei, Chon Lok and Ghosh, Sanmitra and Whittaker, Dominic G. and
+             Aboelkassem, Yasser and Beattie, Kylie A. and Cantwell, Chris D. and
+             Delhaas, Tammo and Houston, Charles and Novaes, Gustavo Montes and
+             Panfilov, Alexander V. and Pathmanathan, Pras and Riabiz, Marina and
+             dos Santos, Rodrigo Weber and Walmsley, John and Carr, Hugh and
+             Gavaghan, David J. and Mirams, Gary R.},
+  title   = {Considering Discrepancy when Calibrating a Mechanistic Electrophysiology Model},
+  journal = {Philosophical Transactions of the Royal Society A},
+  year    = {2020},
+  volume  = {378},
+  number  = {2173},
+  pages   = {20190349},
+  doi     = {10.1098/rsta.2019.0349},
+  note    = {PDF: Lei_Mirams_2020_Discrepancy_ARMA_GP_Electrophysiology_PhilTransA.pdf.
+             The only paper that puts an ARMA model on ion-channel current residuals
+             (ARMA(2,2), plus two Gaussian-process variants), on synthetic hERG data.
+             Their discrepancy model is PHENOMENOLOGICAL: it correlates the residuals in
+             time without deriving that correlation from finite-channel gating, so it buys
+             wider posteriors, not more information. Quotes: ignoring discrepancy gives
+             "model parameters that are wrong, and yet we are certain about this wrong
+             value"; but also "in some cases, the best predictions were still made by
+             ignoring discrepancy". VERIFY the full author list against the published
+             version before use}
+}

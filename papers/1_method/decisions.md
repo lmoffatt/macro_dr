@@ -118,7 +118,7 @@ the predictive variance divides it. See `figures_build_plan.md` §F1-2 for the m
 - **Three of paper 1's figures depend on the VR column existing.** VR's engine work has landed and
   it **ran for Figure 1 on 2026-07-21**; what is still missing is the *grid* run that Figs 5 and 6
   need (spec: `theory/macroir/notes/vr_variance_form_plan.md`; order: `figures_build_plan.md` §3).
-  Which three figures they are has never been enumerated, and `results.md` implies more.
+  Which three figures they are has never been enumerated, and `SPINE.md` (Results) implies more.
 - **The branch is resolved: VR came out over-confident, and MORE than MR (2026-07-22).** Measured on
   the Gaussian anchor at N_ch 100 / noise 0.1 / Delta = 0.1 tau, empirical-over-Fisher ellipse-area
   ratios: R 1.32, MR 1.97, **VR 2.18**, IR 1.02 on the kinetic pair, and R 1.09, MR 1.53, **VR 1.77**,
@@ -343,7 +343,7 @@ relationship itself, which is the part that belongs in the argument.
 ## The abstract, introduction and discussion skeletons (2026-07-28)
 
 Recorded here because they are decisions about what the paper argues; the prose belongs to
-`abstract.md`, `introduction.md` and `discussion.md`.
+`SPINE.md` (Abstract), `SPINE.md` (Introduction) and `SPINE.md` (Discussion).
 
 **Abstract.** Macroscopic currents are generally analysed by least squares, which ignores the
 information in the temporal correlation. Methods that use that correlation have little uptake,
@@ -399,4 +399,4 @@ the manuscript-production briefs in `decisions/`, and the two registers used to 
 **Q-1** (does NR stay — for paper 1 the answer is no, it moved, but confirm); **Q-2** (MR and VR main
 text or supplement — "strawman" is retired, so re-decide on the map footing); **Q-3** (resolved: the Fisher-to-zero result is Fig 3—figure supplement 1); the figure count is
 settled at five body figures plus supplements (the six-figure gate is moot); the title (three live
-versions, `title.md`).
+versions, `SPINE.md` (Title)).

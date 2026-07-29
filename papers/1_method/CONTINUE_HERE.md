@@ -8,7 +8,7 @@
 
 1. `figures_build_plan.md` — build order, what each figure needs, the dirac dispatch commands, and
    §3b/§3c/§3d for what was built on 21–22 July and what it measured.
-2. `results.md` §Fig 1–5 — the claims each figure now carries, with numbers.
+2. `SPINE.md` (Results) §Fig 1–5 — the claims each figure now carries, with numbers.
 3. `decisions.md` — the Fig-1 roster call, and the VR branch, now **resolved**.
 4. `../_program/provenance.md` — which run made which data.
 

@@ -1,5 +1,17 @@
 # Title — MacroIR validity paper (eLife 2025)
 
+> **SUPERSEDED 2026-07-29. Do not read as current.** Consolidated into `../../SPINE.md`, which holds
+> the job, the constraints, the open items and the verify list for every section in one place; the
+> prose lives in `../../docs/manuscript-drafts/sections/*.tex` and the provenance of every number
+> lives beside it as a `% src:` comment.
+>
+> This file is pre-merge (papers 1 and 2 were fused 2026-07-23) and several of its scope sentences
+> were already false when it was harvested: it routes work to a "paper 2" that does not exist, names
+> a roster the merge replaced, and in places states thresholds and verdicts that the 2026-07-29
+> freeze recompute moved. It is kept for rewind and for the reasoning behind decisions that survived,
+> not as a source of facts.
+
+
 ## CHOSEN (for now)
 
 > ## Information distortion in likelihood approximations for macroscopic ion-channel currents

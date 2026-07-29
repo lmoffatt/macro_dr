@@ -161,17 +161,17 @@ else
 fi
 
 # --- 6. body figures, captioned -----------------------------------------------------
-# The figure set is FIVE body figures plus supplements (papers/1_method/decisions.md,
-# "The figure set"; the old six-figure gate is retired). Body figures carry \caption;
+# The figure set is SIX body figures plus supplements (papers/1_method/decisions.md,
+# "The figure set", revised 2026-07-28: the usage map is a body figure, not a supplement). Body figures carry \caption;
 # supplements are attached with eLife's \figsupp (its own legend, no \caption) and add
 # \includegraphics without a caption, so the test is: >=5 captioned body figures, and at
 # least as many graphics as captions.
 N_FIG=$(grep -c '\\includegraphics' "$BODY_TMP" || true)
 N_CAP=$(grep -c '\\caption{' "$BODY_TMP" || true)
-if [ "$N_CAP" -ge 5 ] && [ "$N_FIG" -ge "$N_CAP" ]; then
+if [ "$N_CAP" -ge 6 ] && [ "$N_FIG" -ge "$N_CAP" ]; then
   green "6. figures: $N_CAP captioned body figures, $N_FIG graphics incl. supplements"
 else
-  red "6. figures: $N_CAP captioned body figures (need >=5), $N_FIG graphics"
+  red "6. figures: $N_CAP captioned body figures (need >=6), $N_FIG graphics"
 fi
 
 # --- 7. front/back matter -----------------------------------------------------------

@@ -132,6 +132,7 @@ Member & Data key & Recursive & $\mathrm{av}$ & Variance & Conditioning of the c
 \midrule
 LSE & \texttt{nonlinearsqr} & no  & 1 & n/a      & none; the mean current only \\
 NR  & \texttt{macro\_NR}    & no  & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
+NMR & \texttt{macro\_NMR}   & no  & 1 & total    & interval mean given the start state, without recursion \\
 R   & \texttt{macro\_R}     & yes & 0 & n/a      & instantaneous; the acquisition averaging is ignored \\
 MR  & \texttt{macro\_MR}    & yes & 1 & total    & interval mean given the start state \\
 VR  & \texttt{macro\_VR}    & yes & 1 & residual & MR's mean and gain, with the between-endpoint variance removed \\
@@ -145,7 +146,12 @@ states (IR). MR and IR predict the same total interval variance and differ only 
 gain; VR shares MR's gain but removes the between-endpoint part of the variance, which
 isolates the variance change from the gain change. LSE and the macroscopic members are
 written by different producers, so their output files carry different prefixes,
-\texttt{figure\_3\_LSE\_} and \texttt{figure\_3\_G\_}.}
+\texttt{figure\_3\_LSE\_} and \texttt{figure\_3\_G\_}. NMR is the member published as
+MacroINR in \citet{moffatt2025bayesian}, where it served as the control against which
+the boundary-conditioned member was compared; it is reported here only in the
+supplement, because over the range measured it is not separable from NR.}
+% src: papers/_program/decisions.md sec.2 (NMR = MacroINR, the published control; supplement member 2026-07-29)
+% src: papers/1_method/decisions/D-4_ranking_verdict.md sec.5 (NMR envelope 1.23-3.6e4 vs NR 1.21-3.5e4; 0/336 within 15% for both)
 \label{tab:family}
 \end{table}
 

@@ -1,6 +1,6 @@
 # Paper 2 (MacroIR / eLife 2025) — Figures Storyboard
 
-> **Arc superseded (retired doc).** The current figure set is owned by `decisions.md` "The figure set" (five body figures + supplements) and the argumentative arc by `results.md`; the old `00_master_plan_v2.md` is itself retired. The panel-level detail below (especially Fig 1 and Fig 2) is kept only as reference. Do NOT treat the 4-figure arc or the Δ/τ_min × N_ch axes here as current.
+> **Arc superseded (retired doc).** The current figure set is owned by `decisions.md` "The figure set" (five body figures + supplements) and the argumentative arc by `SPINE.md` (Results); the old `00_master_plan_v2.md` is itself retired. The panel-level detail below (especially Fig 1 and Fig 2) is kept only as reference. Do NOT treat the 4-figure arc or the Δ/τ_min × N_ch axes here as current.
 
 This is the “spec” for the main figures. Update it before updating code.
 
