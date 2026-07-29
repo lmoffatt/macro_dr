@@ -70,7 +70,8 @@ wrong. **TO MOVE** = lives at the old path, belongs at the new one. **REWRITE+MO
 | `notation_map.md` | symbol↔code↔CSV notation | LIVE | — |
 | `sources.md` | which audio/chat is the source of record, and which wins when two disagree | LIVE | was `08_sources_audio_notes.md` |
 | `carve_plan.md` | the repo boundary, the freeze trigger, code availability, engine work owed | REWRITE | "one paper = one repo" is reopened by the split (`decisions.md` §5) |
-| `paper-2.md`, `paper-3.md` | the two stubs | LIVE | promote to folders when they start drafting |
+| `paper-3.md` | the micro stub | LIVE | promote to a folder when it starts drafting. `paper-2.md` was archived 2026-07-28 under `archive/`, superseded by the merge |
+| `update_plan_2026-07-28.md` | the post-merge work order: what is done, what is blocked, and the edit order | **EXPIRES** | a work order, not a fact owner; it settles nothing. Delete it when the last batch lands (§0 of the file itself) |
 | `model_and_sim.md` | `scheme_CO`, the emission model, exact CTMC uniformization, the six parameters and their units | CREATE | merge the model half of `1_method/SPINE.md`, Methods block, + `1_method/decisions/D-2_parameter_units.md` |
 | `submission.md` | front/back matter, CRediT, data availability, MDAR, article type | CREATE | from `elife-author-instructions.md` + the missing-owner list |
 | `check.sh` | the done-oracle + index completeness, **taking the paper as an argument** | LIVE | done 2026-07-20: it sits at `_program/check.sh`, takes the paper folder as its argument, and item 9 checks this index. Do **not** triplicate it |
