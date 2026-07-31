@@ -48,7 +48,7 @@ macro_R = build_likelihood_function(model =model,
             micro_approximation        = false, 
             taylor_qdt_approximation   = false )
 
-macro_MNR = build_likelihood_function(model =model, 
+macro_INR = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
             variance_approximation = 1, taylor_variance_correction = 0,
             micro_approximation        = false, 
@@ -137,11 +137,11 @@ diagnostic_file_R = write_csv(experiment= experiment, simulation = simulation, l
    path= "figures/data/figure_1_likelihood_diagnostic_R")
 
 
-likelihood_diagnostic_MNR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNR, parameters=par_tr, experiment =experiment, 
+likelihood_diagnostic_INR = calc_likelihood_diagnostic(likelihood_algorithm =macro_INR, parameters=par_tr, experiment =experiment,
 simulation = simulation)
 
-diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNR,
-   path= "figures/data/figure_1_likelihood_diagnostic_MNR")
+diagnostic_file_INR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_INR,
+   path= "figures/data/figure_1_likelihood_diagnostic_INR")
 
 
 

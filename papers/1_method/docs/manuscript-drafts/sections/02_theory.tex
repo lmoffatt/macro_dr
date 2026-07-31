@@ -27,10 +27,11 @@ variance is accounted. The rest of this section unpacks that sentence.
 
 \subsection*{The observable is an interval average}
 
-A recorded sample is the current averaged over the acquisition window rather than sampled at an instant. The acquisition
-electronics integrate the current across the sampling window $\Delta$ and pass it through
-an anti-aliasing filter before it is written down, so the quantity a likelihood must
-describe is the windowed average
+A recorded sample is the current averaged over the acquisition window rather than sampled at an
+instant. The current is low-pass filtered in analogue form before it reaches the converter, so
+each stored value carries a weighted average of the recent current and not a reading of it at a
+point. Writing the sampling period as $\Delta$ and taking the weighting to be uniform across it,
+the quantity a likelihood must describe is the windowed average
 \begin{equation}
   \bar{y}_t \;=\; \frac{1}{\Delta}\int_{t-\Delta}^{t} y(\tau)\,\mathrm{d}\tau \;+\; \eta_t,
   \label{eq:obs-avg}
@@ -42,9 +43,29 @@ to the instantaneous current and the distinction is negligible; when $\Delta$ is
 to or longer than that relaxation the two diverge, and a likelihood built on instantaneous
 sampling describes the wrong random variable.
 
+Uniform weighting is a first approximation to what the electronics do. The analogue stage of a
+patch-clamp amplifier is normally a Bessel low-pass, chosen because its group delay is nearly
+flat and its step response barely overshoots, so the effective measurement kernel is that
+filter's impulse response, a smooth shape whose tails reach into the neighbouring intervals.
+The uniform window keeps the entire kernel inside one acquisition interval, which is what lets a
+likelihood conditioned on the two ends of that interval account for the averaging without
+reference to anything outside it. A Bessel kernel breaks that containment twice over: it
+correlates successive recorded values through the signal, and it colours the instrumental noise
+that Eq.~\ref{eq:obs-avg} takes to be white. We keep the uniform window throughout, in the
+simulator as well as in every likelihood (Methods), so that data and likelihood describe the same
+observable and the closures below are the only approximation under test. Carrying a general
+kernel, with the coloured noise that comes with it, through the same construction is left to
+later work.
+
 \subsection*{Two Gaussian approximations}
 
-Each member of the family makes two closures, on two different objects.
+Each member of the family makes two closures, on two different objects. To close a
+distribution is to replace it by the Gaussian with the same mean and covariance,
+discarding every higher moment. The word is borrowed from moment hierarchies, where that
+substitution lets a finite set of equations stand for an infinite one, and it fits here
+for the same reason: conditioning the occupancies on an observation takes them out of the
+multinomial family, and the exact conditional distribution after $t$ samples has no
+summary of fixed size, whereas $(\bm{\mu},\bm{\Sigma})$ is the same size at every step.
 
 \begin{tcolorbox}[title={The two Gaussian approximations}, colback=gray!5, colframe=gray!55]
 \textbf{Occupancy closure.} The joint distribution of the channel occupancies is exactly
@@ -110,28 +131,32 @@ Along the window axis the members form a ladder, indexed by how many of the inte
 endpoints the conductance is conditioned on (Table~\ref{tab:ladder}).
 
 \begin{table}[htbp]
+\begin{fullwidth}
 \centering
-\begin{tabular}{@{}lll@{}}
+\begin{tabularx}{\linewidth}{@{}ll>{\raggedright\arraybackslash}X@{}}
 \toprule
 Conditioned on & Members & Conductance model \\
 \midrule
 the fluctuations are not modelled & \texttt{LSE} & the deterministic mean current only \\
 no endpoints & \texttt{NR}, \texttt{R} & instantaneous; the acquisition averaging is ignored \\
-one endpoint (the start) & \texttt{MR}, \texttt{VR} & interval-mean conductance given the start state \\
+one endpoint (the start) & \texttt{MNR}, \texttt{MR}, \texttt{VR} & interval-mean conductance given the start state \\
 two endpoints (the boundary) & \texttt{IR} & interval-mean conductance given both boundary states; interior marginalized \\
 the full trajectory & (exact) & intractable; supplied by the stochastic simulation as ground truth \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
+\end{fullwidth}
 \caption{The window axis as an endpoint ladder, with least squares (\texttt{LSE}) shown at
 the foot of the cost ladder although it lies off the lattice. Crossing the window axis with
 the recursion axis gives the implemented grid: \texttt{NR} (non-recursive,
-$\mathrm{av}=0$), \texttt{R} (recursive, $\mathrm{av}=0$), \texttt{MR} (recursive,
+$\mathrm{av}=0$), \texttt{MNR} (non-recursive, $\mathrm{av}=1$, total start-conditioned
+interval variance), \texttt{R} (recursive, $\mathrm{av}=0$), \texttt{MR} (recursive,
 $\mathrm{av}=1$, total start-conditioned interval variance), \texttt{VR} (recursive,
 $\mathrm{av}=1$, residual interval variance), \texttt{IR} (recursive, $\mathrm{av}=2$),
 where $\mathrm{av}$ counts the conditioned endpoints. The body walks
-\texttt{LSE}, \texttt{NR}, \texttt{R}, \texttt{IR}; \texttt{MR} and \texttt{VR} split the
-step from \texttt{R} to \texttt{IR} and are reported in the Supplement. MacroIR is
-\texttt{IR}.} % src: papers/_program/nomenclature.md (the lattice as implemented; the ladder for the Methods presentation)
+\texttt{LSE}, \texttt{NR}, \texttt{R}, \texttt{IR}. Of the three reported in the Supplement,
+\texttt{MR} and \texttt{VR} split the step from \texttt{R} to \texttt{IR}, and \texttt{MNR}
+is not separable from \texttt{NR} over the range measured. MacroIR is
+\texttt{IR}.} % src: papers/_program/nomenclature.md (the lattice as implemented; the ladder for the Methods presentation); MNR row and supplement reason from sections/06_methods.tex Table 2 caption
 \label{tab:ladder}
 \end{table}
 
@@ -196,11 +221,33 @@ and its predicted variance decomposes into three independent contributions,
 The first term $\epsilon^2_{\Delta}$ is the instrumental noise over the window, which
 carries the acquisition averaging and decreases with $\Delta$; its parametric form is given
 in Methods. The second term is the population gating variance, the fluctuation of the window
-current transmitted through the occupancy covariance: $\widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}$
-is the boundary covariance of the window collapsed onto the conductance, computed without
-ever forming the $K^2$ boundary matrix. The third term is the within-window per-channel
-variance, with $\bm{\sigma}^2_{\bar{\gamma}_0}$ the start-conditioned interval variance
-built from $\overline{V}_{i_0\to i_t}$.
+current transmitted through the occupancy covariance. The tilde on it is an operator rather
+than a decoration, and the symbols under it are not the $K$-vector $\bar{\bm{\gamma}}_0$ and
+the $K\times K$ matrix $\bm{\Sigma}$ used elsewhere in this section: it denotes a bilinear
+form taken over boundary \emph{pairs}, contracted back to a scalar. Writing
+$\bm{\Sigma}^{\mathrm{bnd}}_{0\to\Delta}$ for the per-channel covariance of the boundary-pair
+occupancies,
+\begin{align}
+  \widetilde{\bm{\gamma}^\top\bm{\Sigma}\bm{\gamma}}
+  &\;=\; \sum_{i_0,i_t}\ \sum_{j_0,j_t}
+    \overline{\Gamma}_{i_0\to i_t}\,
+    \bigl(\bm{\Sigma}^{\mathrm{bnd}}_{0\to\Delta}\bigr)_{(i_0,i_t),(j_0,j_t)}\,
+    \overline{\Gamma}_{j_0\to j_t} \nonumber\\[2pt]
+  &\;=\; \bar{\bm{\gamma}}_0^\top\bigl(\bm{\Sigma}_0-\mathrm{diag}(\bm{\mu}_0)\bigr)\bar{\bm{\gamma}}_0
+    \;+\; \bm{\mu}_0^\top\bigl(\mathbf{H}\mathbf{1}\bigr),
+  \label{eq:tilde}
+\end{align}
+where $H_{i_0 i_t} = \overline{\Gamma}^2_{i_0\to i_t}\,P_{i_0\to i_t}(\Delta)$ and $\mathbf{1}$
+is the vector of ones. The first line is the definition and the second is what is evaluated:
+only $K$-vectors and $K\times K$ matrices appear, so the $K^2\times K^2$ boundary covariance
+is never formed. The distinction matters for reading Eq.~\ref{eq:pred-var}, because taking the
+tilde to mean $\bar{\bm{\gamma}}_0^\top\bm{\Sigma}_0\bar{\bm{\gamma}}_0$ keeps the first
+summand and drops the second, which is the single-channel spread of the interval mean across
+boundary pairs and does not vanish when the occupancy covariance does. The general operator,
+of which this is the bilinear case, is given in Appendix~1. The third term of
+Eq.~\ref{eq:pred-var} is the within-window per-channel variance, with
+$\bm{\sigma}^2_{\bar{\gamma}_0}$ the start-conditioned interval variance built from
+$\overline{V}_{i_0\to i_t}$.
 
 Writing $\mathbf{g}=\mathrm{Cov}(\text{end-of-window occupancy}, \bar{y})/N_{\mathrm{ch}}$
 for the per-channel cross-covariance between the interval current and the occupancy at the

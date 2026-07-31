@@ -57,7 +57,7 @@ NCHS=(${NCHS:-10 100 1000 10000})
 N_SIMS=(${N_SIMS:-1024 1024 1024 1024})
 N_NOISE=(${N_NOISE:-0.1 0.1 0.1 0.1})
 #N_ALGO=(${N_ALGO:-macro_IR macro_IRT })
-N_ALGO=(${N_ALGO:-macro_IR macro_R macro_MR macro_NR macro_NMR})
+N_ALGO=(${N_ALGO:-macro_IR macro_R macro_MR macro_NR macro_INR})
 # h_rel: relative step for the central-difference numerical Fisher. figure_2.macroir
 # keeps h_rel_value commented (file contract) and expects it injected — same idiom as
 # the local/debug dispatchers. Injected as a single-value axis (axis_h_fim) so the
@@ -96,7 +96,7 @@ for i in "${!NCHS[@]}"; do
     case "$algo" in
         macro_NR)  recursive=false; averaging=0 ;  taylor=false ; micro=false ;;
         macro_R)   recursive=true;  averaging=0 ;taylor=false ; micro=false ;;
-        macro_NMR) recursive=false; averaging=1 ;taylor=false ; micro=false ;;
+        macro_INR) recursive=false; averaging=1 ;taylor=false ; micro=false ;;
         macro_MR)  recursive=true;  averaging=1 ;taylor=false ; micro=false ;;
         macro_IR)  recursive=true;  averaging=2 ;taylor=false ; micro=false ;;
         macro_IRT)  recursive=true;  averaging=2 ;taylor=true ; micro=false ;;
@@ -104,7 +104,7 @@ for i in "${!NCHS[@]}"; do
         micro_MR)  recursive=true;  averaging=1 ;taylor=false ; micro=true ;;
         micro_IR)  recursive=true;  averaging=2 ;taylor=false ; micro=true ;;
         
-        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR, IRT})" >&2; exit 1 ;;
+        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,IR, IRT})" >&2; exit 1 ;;
     esac
 
    # label -> current_noise (vnoise = label / 1000). Kept IDENTICAL across all four dispatchers

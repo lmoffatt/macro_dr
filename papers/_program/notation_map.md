@@ -177,3 +177,52 @@ Here:
 
 These aliases are not yet used in the manuscript, but they are mathematically unambiguous.
 
+
+---
+
+## 6. Figure-label convention (settled 2026-07-30)
+
+Owner of this section: the figures. Rules 1-3 are about symbols, rule 4 about who says what,
+rule 5 about strips. They were settled by auditing figure_3/4/5 against the manuscript and
+finding three mismatches, listed under "Repairs owed" at the end.
+
+**R1. One meaning, one symbol, the same in the text and in every figure.** A quantity that the
+manuscript writes `r_t` is `r[t]` in a figure axis, never a second name such as `r_std`. If a
+figure needs a symbol the text does not have, the text gets the definition, not the figure.
+
+**R2. Descriptive subscripts upright, variable subscripts italic.** The manuscript writes
+`N_{\mathrm{ch}}`, `k_{\mathrm{off}}`, `\mathrm{std}`: the subscript is a word, not a variable.
+R plotmath italicises a bare subscript, so a word subscript must be quoted to match:
+`N["ch"]`, `k["off"]`, **not** `N[ch]`, `k[off]`. A running index stays bare: `s[t]`, `F[t]`.
+
+**R3. Symbols in the figure, words in the caption.** A panel or a row carries the symbol of what
+it plots. The prose name of the quantity lives in the legend, once, and is not repeated inside
+the image. This is also where the space comes from: a repeated prose row title costs about
+0.13 in of figure height per row, and a legend sentence costs nothing extra.
+
+**R4. Panel letters are letters and nothing else, bold, upper case, top-left of the row.** No
+box, no fill: a grey box with a single letter in it says nothing. eLife imposes no rule on panel
+lettering (`elife-author-instructions.md` §"Figure / image specifications" covers formats,
+300 dpi, RGB, whitespace, and nothing else), so this is our convention.
+
+**R5. Row titles go in a strip on the right, the side ggplot's own `facet_grid` uses.** Grey box,
+text rotated `-90`, ~6.5 pt; column strips horizontal at ~7.5 pt, as figure_4 and figure_5
+already do. Two consequences that are easy to get wrong:
+
+- The box must be drawn as a rect inside the plotting area, not as `plot.background`. A plot
+  background paints the margin too, so consecutive rows fuse into one continuous grey bar with no
+  separation between boxes, which a real facet strip does not have.
+- A rotated title has to fit in the ROW's height, which is the tight direction. Wrap it to two
+  lines and keep it prose: at 6.5 pt a 17-character line is 0.72 in, while "per-interval
+  information ratio" on one line is 1.46 in and will not fit a 0.84 in row. The symbol for the
+  quantity stays on the y axis, which is rotated by convention anyway and where a fraction is
+  still readable; the strip is a locator, not a definition (R3).
+
+**Repairs owed** (batch them into the next render of each figure; none is worth a render of its
+own, and figure_3 costs a 5 GB read):
+
+1. `figure_3.Rmd`: `bar(r)[std]^2` is the manuscript's `r_t`. Violates R1.
+2. All figures: `N[ch]`, `k[off]` italicise a word subscript. Violates R2. Global fix, but it
+   changes every figure, so do it when each is next rendered.
+3. `figure_3.Rmd`: prose row titles duplicate the legend. Violates R3, and it is the change that
+   pays for the height budget.

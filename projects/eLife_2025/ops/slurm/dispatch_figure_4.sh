@@ -199,7 +199,7 @@ for i in "${!NCHS[@]}"; do
     case "$algo" in
         macro_NR)  recursive=false; averaging=0 ; taylor=false ; family=0 ; variance_form=0 ;;
         macro_R)   recursive=true;  averaging=0 ; taylor=false ; family=0 ; variance_form=0 ;;
-        macro_NMR) recursive=false; averaging=1 ; taylor=false ; family=0 ; variance_form=0 ;;
+        macro_INR) recursive=false; averaging=1 ; taylor=false ; family=0 ; variance_form=0 ;;
         macro_MR)  recursive=true;  averaging=1 ; taylor=false ; family=0 ; variance_form=0 ;;
         macro_VR)  recursive=true;  averaging=1 ; taylor=false ; family=0 ; variance_form=1 ;;
         macro_IR)  recursive=true;  averaging=2 ; taylor=false ; family=0 ; variance_form=0 ;;
@@ -208,7 +208,7 @@ for i in "${!NCHS[@]}"; do
         micro_MR)  recursive=true;  averaging=1 ; taylor=false ; family=1 ; variance_form=0 ;;
         micro_IR)  recursive=true;  averaging=2 ; taylor=false ; family=1 ; variance_form=0 ;;
         nonlinearsqr) recursive=false; averaging=1 ; taylor=false ; family=2 ; variance_form=0 ;;
-        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,VR,IR,IRT}, micro_{R,MR,IR}, or nonlinearsqr)" >&2; exit 1 ;;
+        *) echo "[dispatch] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,VR,IR,IRT}, micro_{R,MR,IR}, or nonlinearsqr)" >&2; exit 1 ;;
     esac
 
     # Producer + file prefix by family. LSE (family 2) fixes i/Current_Noise (figure_4_LSE.macroir)

@@ -4,7 +4,7 @@
 #
 # SAME CELL as figure_3_time.macroir, deliberately: scheme_CO, N_ch=100,
 # Current_Noise=1e-4, exp_n_step=(20,40,40) with n_samp=50, 1000 simulations, seed=0.
-# Only then are the per-interval curves comparable against NR/R/NMR/MR/IR.
+# Only then are the per-interval curves comparable against NR/R/INR/MR/IR.
 #
 # WHY ALL SIX PARAMETERS STAY FREE (Log10) here, unlike figure_3_mle_LSE.macroir
 # which Fixes unitary_current + Current_Noise:
@@ -29,7 +29,7 @@
 #
 # Output: figures/data/figure_3_time_dlik_LSE.csv  (~1 GB, like the macro dumps).
 # The `algorithm` column is added in R from the filename, so the R ALGOS vector needs
-# "LSE" appended alongside NR/NMR/R/MR/IR.
+# "LSE" appended alongside NR/INR/R/MR/IR.
 #
 # RUN LOCALLY (no dirac), from where "figures/data/" resolves:
 #   build/gcc-release/macrodr_cli projects/eLife_2025/ops/local/figure_3_time_LSE.macroir

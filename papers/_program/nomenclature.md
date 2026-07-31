@@ -23,7 +23,7 @@ hanging from it** (`program.md` §1):
 
 - **Root: do you model the gating fluctuations at all?** `LSE` (classical nonlinear least squares on
   the mean current) answers no. In the engine it is `family_approximation = 2`; it carries the same two
-  knob settings as `NMR` and is distinguished only by that third flag. **It has no
+  knob settings as `MNR` and is distinguished only by that third flag. **It has no
   compositional name**, because it is a different kind of object, named for what it is.
   **Corrected 2026-07-28:** this used to read "no rung and no gloss", which is now misleading in the
   one place it matters. `LSE` is the bottom rung of the cost ladder the paper walks and it is the
@@ -41,15 +41,23 @@ says how the single-channel conductance is treated within an interval.
 |-------|-----------|-----|---|
 | `NR`  | false     | 0   | — |
 | `R`   | true      | 0   | — |
-| `NMR` | false     | 1   | total (**= the published `MacroINR`**; supplement member) |
+| `MNR` | false     | 1   | total (**= the published `MacroINR`**; supplement member) |
 | `MR`  | true      | 1   | total |
 | `VR`  | true      | 1   | residual |
 | `IR`  | true      | 2   | residual (+ boundary gain) |
 
-**`NMR` (false, 1, total), and the bridge, settled 2026-07-29.** `NMR` **is** `MacroINR`, the
+**`MNR` (false, 1, total), and the bridge, settled 2026-07-29.** `MNR` **is** `MacroINR`, the
 published control of Comm Biol 2025. The name parses as **I**nterval (the averaged conductance,
 `av = 1`) + **N**on-**R**ecursive, so the `I` is the conductance prefix and not `IR`'s
-boundary-conditioned `I`. **This closes the "open item: the MacroINR bridge" that stood at the foot of
+boundary-conditioned `I`.
+**Spelling fixed 2026-07-29: the label is `MNR`, not `NMR`.** The compositional rule is that the
+`N` modifies the `R`, so `NR` is the non-recursive base and a conductance prefix attaches to it as a
+unit: `M` + `NR` = `MNR`. That is the same parse as the published `MacroINR` = `I` + `NR`, which is
+the paragraph above. `NMR` would read as `N` + `MR`, putting the negation on `MR` instead, which is
+not how the family is built. Corrected in the manuscript (`02_theory.tex` Table 1,
+`06_methods.tex` Table 2 and its caption) and here. **The data key stays `macro_NMR`**: it is what
+the dispatch scripts accept and what every produced file in `figures/data/` carries, so renaming it
+would orphan the freeze. The Methods caption says so. **This closes the "open item: the MacroINR bridge" that stood at the foot of
 this file**, which suspected the bridge was wrong; it is right, and the Comm Biol Introduction's
 "ignores time averaging" is loose prose for "does not do IR's boundary-conditioned interval
 treatment", not a claim about the `av` flag.
@@ -129,7 +137,7 @@ point stands; what is retired is stating a one-band result as a global verdict.
 |---|---|---|
 | the gating fluctuations are not modelled | `LSE` | the deterministic mean current only |
 | no endpoints | `NR`, `R` | instantaneous; the averaging is ignored |
-| one endpoint (the start) | `NMR`, `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
+| one endpoint (the start) | `MNR`, `MR`, `VR` | interval-mean given the initial state (`VR` uses the residual variance) |
 | two endpoints (the boundary) | `IR` | interval-mean given both boundary states; interior marginalized |
 | the full trajectory | (exact) | intractable; the stochastic simulation supplies it as ground truth |
 
@@ -173,7 +181,7 @@ Avoid the word *transition* anywhere near it (`project_boundary_state_naming`).
 
 ## ~~Open item: the `MacroINR` bridge~~ CLOSED 2026-07-29
 
-The bridge `NMR = MacroINR` is **correct**. See the lattice table above for the parse and for why the
+The bridge `MNR = MacroINR` is **correct**. See the lattice table above for the parse and for why the
 Comm Biol phrase "ignores time averaging" does not contradict `av = 1`. The suspicion recorded here
 until 2026-07-29 (that a published name carrying an `I` would misname a start-conditioned method) read
 the `I` as `IR`'s boundary-conditioned `I`; in the published name it is the interval-mean conductance

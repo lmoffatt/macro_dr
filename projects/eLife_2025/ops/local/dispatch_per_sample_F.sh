@@ -56,7 +56,7 @@ ALGO="${ALGO:-macro_IR}"
 case "$ALGO" in
     macro_NR)  recursive=false; averaging=0; taylor=false; micro=false ;;
     macro_R)   recursive=true;  averaging=0; taylor=false; micro=false ;;
-    macro_NMR) recursive=false; averaging=1; taylor=false; micro=false ;;
+    macro_INR) recursive=false; averaging=1; taylor=false; micro=false ;;
     macro_MR)  recursive=true;  averaging=1; taylor=false; micro=false ;;
     macro_IR)  recursive=true;  averaging=2; taylor=false; micro=false ;;
     macro_IRT) recursive=true;  averaging=2; taylor=true;  micro=false ;;

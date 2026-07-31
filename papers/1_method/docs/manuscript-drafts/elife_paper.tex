@@ -11,6 +11,9 @@
 % which is where figure_1/3/4/5/6 and every supplement of the merged paper are written.
 \graphicspath{{../../../../projects/eLife_2025/figures/paper_both/}}
 \usepackage{booktabs}
+% tabularx gives the tables a last column that wraps to the available width. Both tables
+% overflow the 14.3 cm text block with plain l columns (121 pt and 141 pt in the log).
+\usepackage{tabularx}
 \usepackage{hyperref}
 \usepackage{tcolorbox}
 \usepackage{bm}
@@ -33,7 +36,11 @@
 
 \author[1*]{Luciano Moffatt}
 \affil[1]{Instituto de Qu\'imica F\'isica de los Materiales, Medio Ambiente y Energ\'ia (INQUIMAE), CONICET; Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires, Ciudad de Buenos Aires, C1428EHA, Argentina}
-\corr{lmoffatt@qi.fcen.uba.ar}
+% \corr takes TWO arguments (elife.cls:202): the address and the corresponding author's name,
+% which it prints in parentheses after it. Called with one argument, \corr is \long, so #2 picks
+% up the \par of the blank line below and the class typesets " (" + paragraph break + ")": the
+% empty parenthesis next to the e-mail in the margin. The empty second argument suppresses it.
+\corr{lmoffatt@qi.fcen.uba.ar}{}
 
 \begin{document}
 \maketitle
@@ -53,6 +60,9 @@
 \input{sections/05_discussion}
 \input{sections/06_methods}
 \input{sections/07_backmatter}
+% Appendix 1: the systematic member-by-member spec the Theory section points at. After the
+% backmatter and before the bibliography, which is where eLife puts appendixboxes.
+\input{sections/08_appendix_members}
 
 % Reads biblio.bib, the CITED-ONLY file. It was repointed to biblio_full on 2026-07-28 because
 % biblio.bib then had 15 entries and broke on the first prior-art citation; on 2026-07-29 the six

@@ -122,14 +122,14 @@ for i in "${!NCHS[@]}"; do
     case "$algo" in
         macro_NR)  recursive=false; averaging=0 ; taylor=false ; micro=false ;;
         macro_R)   recursive=true;  averaging=0 ; taylor=false ; micro=false ;;
-        macro_NMR) recursive=false; averaging=1 ; taylor=false ; micro=false ;;
+        macro_INR) recursive=false; averaging=1 ; taylor=false ; micro=false ;;
         macro_MR)  recursive=true;  averaging=1 ; taylor=false ; micro=false ;;
         macro_IR)  recursive=true;  averaging=2 ; taylor=false ; micro=false ;;
         macro_IRT) recursive=true;  averaging=2 ; taylor=true  ; micro=false ;;
         micro_R)   recursive=true;  averaging=0 ; taylor=false ; micro=true ;;
         micro_MR)  recursive=true;  averaging=1 ; taylor=false ; micro=true ;;
         micro_IR)  recursive=true;  averaging=2 ; taylor=false ; micro=true ;;
-        *) echo "[local] unknown algorithm '$algo' (want macro_{NR,R,NMR,MR,IR,IRT})" >&2; exit 1 ;;
+        *) echo "[local] unknown algorithm '$algo' (want macro_{NR,R,INR,MR,IR,IRT})" >&2; exit 1 ;;
     esac
 
     case "$nnoise" in

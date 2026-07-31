@@ -1,13 +1,33 @@
 % Paper 1 references, cited entries only.
 % Full verified pool (106 entries, T-3 2026-07-20) preserved in biblio_full.bib.
+%
+% ANNOTATIONS GO IN `annote`, NOT `note` (2026-07-29). vancouver-elife.bst reads `note` and
+% appends it to the printed reference, so the internal provenance notes (PDF filenames, reading
+% notes, "VERIFY the author list") were being typeset in the bibliography; `annote` is not in the
+% .bst's ENTRY list, so bibtex ignores it and the note stays in this file. biblio_full.bib still
+% uses `note`: rename the field when migrating an entry across.
 
-@software{moffatt2025macroir,
+% NEVER WRITE AN AT-SIGN IN A COMMENT IN THIS FILE. BibTeX has no comment syntax outside entries:
+% it skips text until the next at-sign, and then tries to parse an entry there. An at-sign in a
+% comment therefore aborts the entry that follows it ("I was expecting a { or a (") and every key
+% in the file goes undefined. Cost one build to learn, 2026-07-29.
+%
+% Entry type below is book, not software and not misc (2026-07-29). vancouver-elife.bst defines no
+% software type: bibtex fell through to the default handler, warned "entry type isn't style-file
+% defined", and printed "Moffatt L, MacroIR: ..." with a comma where every other entry has a
+% period. misc is defined but renders the same comma (its handler puts no block break between
+% authors and title) and warns twice, since it output.checks editor and publisher on every entry.
+% book gives the Vancouver form with no warnings: "Moffatt L. MacroIR: ... Zenodo; 2025. doi: ..."
+% All three variants were rendered and compared before choosing. This is the one place in the file
+% where `note` is deliberate rather than a mistake: it is the only field left that prints the
+% version, and the .bst lowercases its first word, hence "software" and not "Software".
+@book{moffatt2025macroir,
   author    = {Moffatt, Luciano},
   title     = {{MacroIR}: Bayesian Kinetic Modeling of {P2X2} Activation},
   year      = {2025},
   month     = sep,
   publisher = {Zenodo},
-  version   = {v1.0.0},
+  note      = {Software, version v1.0.0},
   doi       = {10.5281/zenodo.17162475},
   url       = {https://doi.org/10.5281/zenodo.17162475}
 }
@@ -176,7 +196,7 @@
   volume  = {226},
   pages   = {962--963},
   doi     = {10.1038/226962a0},
-  note    = {The origin of the whole macroscopic-fluctuation programme: the current's
+  annote  = {The origin of the whole macroscopic-fluctuation programme: the current's
              variance and time course carry single-channel information}
 }
 
@@ -201,7 +221,7 @@
   number  = {3},
   pages   = {655--691},
   doi     = {10.1113/jphysiol.1973.sp010410},
-  note    = {PDF: Anderson_Stevens_1973_Endplate_Current_Fluctuation_Spectra_JPhysiol.pdf.
+  annote  = {PDF: Anderson\_Stevens\_1973\_Endplate\_Current\_Fluctuation\_Spectra\_JPhysiol.pdf.
              Kinetics (the closing rate alpha) read off the Lorentzian POWER SPECTRUM of the
              macroscopic current, i.e. from its temporal correlation. Predates MacroR by 32
              years: the field has extracted kinetics from correlation since 1973, but from a
@@ -217,7 +237,7 @@
   volume  = {308},
   pages   = {217--239},
   doi     = {10.1113/jphysiol.1980.sp013279},
-  note    = {Source of the two-conductance-level covariance expression that Sigworth 1981 builds on}
+  annote  = {Source of the two-conductance-level covariance expression that Sigworth 1981 builds on}
 }
 
 @article{sigworth1981covariance,
@@ -229,10 +249,10 @@
   number  = {1},
   pages   = {111--133},
   doi     = {10.1016/S0006-3495(81)84840-0},
-  note    = {PDF: Sigworth_1981_Covariance_Nonstationary_Na_Fluctuations_BiophysJ.pdf.
+  annote  = {PDF: Sigworth\_1981\_Covariance\_Nonstationary\_Na\_Fluctuations\_BiophysJ.pdf.
              THE in-domain precedent for using the two-time correlation of a macroscopic
              current under NON-stationary conditions:
-             C(t1,t2) = N i^2 p(t1) [ p11(t2|t1) - p(t2) ], Eq. 4, the same object
+             $C(t_1,t_2) = N i^2 p(t_1) [ p_{11}(t_2 \mid t_1) - p(t_2) ]$, Eq. 4, the same object
              MacroR/MacroIR propagate. Estimated from an ensemble of 256-504 repeated
              records; used to discriminate kinetic schemes (one vs several open states),
              not to fit rates by maximum likelihood, and with no uncertainty statement}
@@ -252,7 +272,7 @@
   number  = {2173},
   pages   = {20190349},
   doi     = {10.1098/rsta.2019.0349},
-  note    = {PDF: Lei_Mirams_2020_Discrepancy_ARMA_GP_Electrophysiology_PhilTransA.pdf.
+  annote  = {PDF: Lei\_Mirams\_2020\_Discrepancy\_ARMA\_GP\_Electrophysiology\_PhilTransA.pdf.
              The only paper that puts an ARMA model on ion-channel current residuals
              (ARMA(2,2), plus two Gaussian-process variants), on synthetic hERG data.
              Their discrepancy model is PHENOMENOLOGICAL: it correlates the residuals in

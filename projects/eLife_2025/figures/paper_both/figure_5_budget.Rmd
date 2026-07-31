@@ -125,7 +125,7 @@ fig5 <- function(yv, ylo, yhi, ylab, spacing = 0.10, legend = "bottom") {
 g <- fig5("ncov", "ncov_lo", "ncov_hi",
           expression(N[ch] %.% "corrected covariance   (pooled variance at fixed channel budget)"))
 g
-ggsave("Figure_5.pdf", g, width = 7.0, height = 9.2)
+ggsave("Figure_5_budget.pdf", g, width = 7.0, height = 9.2)
 cat("Figure_5.pdf (body): N_ch*cov, 5 params x", length(NOISES), "noise columns\n")
 ```
 
@@ -137,7 +137,7 @@ cat("Figure_5.pdf (body): N_ch*cov, 5 params x", length(NOISES), "noise columns\
 # which the body's N_ch x cov renders as a misleading 3000x fan.
 gs <- fig5("cov", "lo", "hi", "distortion-corrected covariance   (per-recording precision)")
 gs
-ggsave("Figure_5_supplement_1.pdf", gs, width = 7.0, height = 9.2)
+ggsave("Figure_5_budget_supplement_1.pdf", gs, width = 7.0, height = 9.2)
 cat("Figure_5_supplement_1.pdf: direct cov, 5 params x", length(NOISES), "noise columns\n")
 ```
 

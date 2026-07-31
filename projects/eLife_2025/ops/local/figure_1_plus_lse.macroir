@@ -21,7 +21,7 @@
 #
 # WHAT THE LSE PANEL SHOWS (and why it is worth having): the LSE is another
 # NON-recursive member, so its posterior row reads "no update (open loop)" like
-# NR and MNR. The interesting contrast is the predicted-current spread: the macro
+# NR and INR. The interesting contrast is the predicted-current spread: the macro
 # algorithms carry a per-interval predictive variance that BREATHES with the gating
 # (e + N*gSg, peaking in the transient), whereas the LSE's band is FLAT — a single
 # plug-in sigma_hat^2 = SSE/n for every interval. That flat band next to the macro
@@ -81,7 +81,7 @@ simulation = remove_intervals(simulation_with_sub_intervals)
 
 # ---- the five macro builds (unchanged from figure_1.macroir) ----
 # NOTE the pre-existing inconsistency, kept for fidelity: NR and R use
-# variance_approximation = 0 while MNR/MR/IR use 1. Runs 2/3/4 use 1 for all five.
+# variance_approximation = 0 while INR/MR/IR use 1. Runs 2/3/4 use 1 for all five.
 macro_NR = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 0,
             variance_approximation = 0, taylor_variance_correction = 0,
@@ -94,7 +94,7 @@ macro_R = build_likelihood_function(model =model,
             micro_approximation        = false,
             taylor_qdt_approximation   = false )
 
-macro_MNR = build_likelihood_function(model =model,
+macro_INR = build_likelihood_function(model =model,
             adaptive_approximation = 0, recursive_approximation = 0, averaging_approximation = 1,
             variance_approximation = 1, taylor_variance_correction = 0,
             micro_approximation        = false,
@@ -152,11 +152,11 @@ simulation = simulation)
 diagnostic_file_R = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_R,
    path= "figures/data/figure_1_likelihood_diagnostic_R")
 
-likelihood_diagnostic_MNR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MNR, parameters=par_tr, experiment =experiment,
+likelihood_diagnostic_INR = calc_likelihood_diagnostic(likelihood_algorithm =macro_INR, parameters=par_tr, experiment =experiment,
 simulation = simulation)
 
-diagnostic_file_MNR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_MNR,
-   path= "figures/data/figure_1_likelihood_diagnostic_MNR")
+diagnostic_file_INR = write_csv(experiment= experiment, simulation = simulation, likelihood = likelihood_diagnostic_INR,
+   path= "figures/data/figure_1_likelihood_diagnostic_INR")
 
 likelihood_diagnostic_MR = calc_likelihood_diagnostic(likelihood_algorithm =macro_MR, parameters=par_tr, experiment =experiment,
 simulation = simulation)

@@ -1,81 +1,465 @@
-% ABSTRACT.
-% What this abstract must do, the constraints that bind it, what is open and the
-% verify list: sections/00_abstract.md, beside this file.
-%
-% Rewritten 2026-07-28 in the merged frame. Slots, in order: object and how it is
-% measured; the limitation; "here we test X against Y"; the criterion; the results, the
-% last of which carries the map; the closing statement. The clause "including Bayesian
-% recursive filters" is the position against munch2022bayesian, a published Bayesian
-% Kalman filter for this problem in this journal: what is offered here is the test of
-% whether such a filter tells the truth about its own uncertainty and the map of where it
-% does not. eLife wants the biological system in the title or the abstract; it is in both.
-% No channel-number threshold is quoted: the data support none, so the few-channel
-% departure is stated as a direction. If a number is ever wanted here it is the measured
-% reachability floor (N_ch below 17 for the channel count, below 52 for the opening rate,
-% figure_6.html), not "about 100".
-
-
-
-% REWRITTEN 2026-07-29, 219 words. The frame is Luciano's: the recursive family has been
-% available for two decades and is not used, TWO EXPLANATIONS ARE PLAUSIBLE (not
-% objections: nobody published them as such), and the paper removes both. Explanation one
-% is answered by the validity criteria, whose answer IS the usage map, so the three result
-% sentences are the three boundaries of Figure 6 stated as criteria a reader can evaluate.
-% Explanation two is answered by the packages.
-%
-% "for two decades" is load-bearing and must not become "MacroIR is not used": MacroIR is
-% from 2025 and is simply too new to have uptake. What has had twenty years and no uptake
-% is the family: celentano2004use, milescu2005maximum, moffatt2007estimation.
-%
-% Rule 4 ("no 'only'") is knowingly relaxed, bound to "across the plane", because the
-% finding IS an exclusivity: over 1148 shared (cell, parameter) points no intermediate
-% member is calibrated where the boundary-conditioned one is not, except five at
-% N_ch 10-20 where the latter is erring conservative.
-%
-% The corner is few channels and LOW noise, at ANY interval. Of 123 departures in 2100
-% points, 45 sit at N_ch 10 and none above 500, 102 at noise <= 0.1 and none above 0.5,
-% and by interval they favour the SHORT end (28/29/27 at 0.01/0.02/0.05 against 3 at 0.5).
-% Do not write "long intervals": the single largest excursion is there, the mass is not.
-%
-% The non-recursive result (ten to fifteen fold) is deliberately NOT a result sentence any
-% more. It is the largest number in the paper and the least new: moffatt2007estimation
-% already showed that ignoring the dependence of successive measurements gives worse
-% estimates, and delcore2025parameter cites it for exactly that.
-
 \begin{abstract}
-Macroscopic ion-channel recordings carry stochastic fluctuations that the usual least-squares analysis discards. Likelihoods that use them have been available for two decades, including Bayesian recursive filters, and are rarely applied. Two reasons are plausible: unlike a least-squares fit, which can be judged from its residuals, a recursive filter tracks the data whether or not the uncertainty it reports is right; and they are hard to implement. We address both.
-% TODO-SIGN: direction convention as fixed in Diagnostics; if the pending code read reverses it, flip every TODO-SIGN site in one pass.
-At the true parameters a correct likelihood's score averages to zero and the covariance of that score equals the Fisher information it reports; the two departures measure bias and distortion. We measure both for a minimal kinetic scheme, swept over channel number, instrumental noise and acquisition interval, against data simulated exactly from the process it approximates.
-Only the likelihood conditioned on both ends of the acquisition interval reports honestly across the plane, departing in a corner of few channels and low noise where the Gaussian closure itself fails. % src: papers/1_method/decisions/recompute/d4_distortion_envelopes.py over 1c2ae6f + 87889e6 + 0ffbda7 (1977 of 2100 points within 15%; the 123 departures sit at N_ch <= 500 and noise <= 0.5)
-The intermediate members have no domain of their own, being calibrated only where least squares already is; and least squares is honest, and cheaper, exactly where instrumental noise exceeds gating noise, below a signal-to-noise ratio of the square root of the channel number. % src: domain scan over the same three directories (R calibrated where IR is not at 3 of 812 shared points, MR 2 of 336, NR 0 of 728, NMR 0 of 336, and all five at N_ch 10-20 where IR is conservative; R calibrated at 62 points against 134 failing at noise 0.1, and overwhelmingly calibrated above noise 1000) ; projects/eLife_2025/figures/paper_both/figure_6.html (LSE distortion crossing fitted at slope 1.01 and 1.03 in log noise-label against log N_ch; the label is a noise power, so the amplitude SNR at that boundary goes as sqrt(N_ch), which is the signal-to-gating-noise ratio N i p / (i sqrt(N p (1-p))) at p = 0.5)
-R and Python packages return it with its score and Fisher information, so the criteria travel to any recording. % src: sections/07_backmatter.tex (macroir: R and Python bindings over one self-contained C++ core carrying the likelihood, its score and its Gaussian Fisher information)
+Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, leaving the gating fluctuations unmodelled. Likelihoods that use them, including Bayesian recursive filters, are two decades old and little used: a filter tracks the data even when the uncertainty it reports is wrong. The test is classical: at the true parameters the score, the log-likelihood's derivative, averages to zero, and its covariance across recordings equals the Fisher information it reports. We measure bias and distortion along a seven-rung ladder from least squares to a filter conditioned on both ends of each acquisition interval, for a two-state scheme over channel number, noise and acquisition interval, against exact simulations of the process they approximate. The boundary-conditioned filter is calibrated over most of the sweep, departing toward few channels and low noise, where the occupancy Gaussian is misspecified. The intermediate rungs are calibrated where least squares already is, and least squares becomes calibrated once instrumental noise exceeds gating noise, which happens at an instrumental variance proportional to channel number. No measured recording gives both the unitary current and a trustworthy least-squares error bar, the two boundaries one to three decades of noise apart. The boundary-conditioned likelihood (MacroIR) is available for R and Python with its score and information, so an experimenter can fit their own recording. 
 \end{abstract}
 
 
-
-
-% ---------------------------------------------------------------------------------------
-% DRAFT IN PROGRESS, Luciano, 2026-07-28/29. Kept here, commented, because until now it
-% lived as a SECOND \begin{abstract} in elife_paper.tex, which does not compile as two
-% abstracts. Working on it here means editing a draft, not duplicating an environment.
+% =========================================================================================
+% Everything below is comment and does not compile. It sits below the environment on
+% purpose: three outside reads of the previous version (2026-07-29) each opened the file,
+% took the header block and the inline "% src:" notes for manuscript text, and spent their
+% recommendations on deleting them. Two of the three then criticised numbers that appear
+% only inside those comments. Provenance is kept, keyed by sentence, in section 2.
+% =========================================================================================
 %
-% The opening line below is the general-audience hook the live version does not have: it
-% enters at the level of "time-resolved biological variables" rather than at the level of
-% fitting kinetic schemes. Measured against 41 recent eLife research articles, eLife's own
-% first sentences enter at field level (median 19 words, undefined acronyms in line one),
-% so this is above the journal's norm rather than required by it. It is the one Nature slot
-% worth importing.
+% 1. WHAT THIS VERSION CHANGES, and why (2026-07-29b). 220 words.
+%
+% Structure: practice -> the validity gap -> the two identities -> what was swept -> three
+% result sentences -> the closer. Eight sentences, one per slot.
+%
+% (a) THE ORDERING RESULT IS BACK, as the last result sentence. It was in the commented
+%     draft (see section 5, "The region where the fluctuations still determine...") and the
+%     219-word version dropped it. It is the strongest claim the paper has and the only one
+%     that is criterion-free: 01_introduction.tex:39 and 05_discussion.tex:38 both state it
+%     as falsifiable and independent of where the level sets are placed, whereas "calibrated
+%     across the plane" is a level set at distortion 1.15 and Figure 6's own caption says a
+%     looser criterion moves every boundary by up to a decade. The previous version kept the
+%     criterion-dependent claims and dropped the criterion-free one.
+%     It is also the answer to the sharpest outside objection received: that macroscopic
+%     recordings are typically high-N_ch and high-noise, so on our own map least squares is
+%     honest and cheaper for standard data and the likelihood is unnecessary. Sentence 6
+%     concedes that regime; without sentence 7 the concession stands unopposed and the
+%     abstract argues the paper out of relevance.
+%
+% (b) THE SQRT(N_ch) SNR CLAUSE IS GONE, replaced by the body's own units: "at a noise
+%     proportional to channel number". The measured object is a crossing fitted at log-log
+%     slope 1.01 and 1.03 in noise label against N_ch (04_results.tex:187-189,
+%     05_discussion.tex:38). Restating it as "below a signal-to-noise ratio of the square
+%     root of the channel number" required three conversions that appear nowhere in the
+%     paper's prose (power to amplitude, the label/10 convention, and a normalisation
+%     between the noise label and the current amplitude), asserted a prefactor of 1, and was
+%     unverifiable against Figure 6, whose axis is a noise label. The measured crossings sit
+%     near noise label 15*N_ch (164 at N_ch 10, 1.28e3 at 100, 1.54e4 at 1000, 1.62e5 at
+%     1e4), so the prefactor is not 1 in the units the paper uses. It was also redundant:
+%     the gating SNR *is* sqrt(N_ch) at p = 0.5, so the clause restated "instrumental noise
+%     exceeds gating noise" in units the reader cannot check. The exponent survives; the
+%     bare equality did not.
+%
+% (c) THE LADDER IS INTRODUCED. "The intermediate members" in the previous version referred
+%     to a set that had never been named: the reader had been shown two things and had to
+%     back-infer a graded family. All three outside reads flagged this independently and it
+%     was the only defect all three found. "Seven-rung ... from least squares to a filter
+%     conditioned on both ends of the acquisition interval" names the endpoints and the size
+%     in eleven words. Seven = LSE + NR + NMR + R + MR + VR + IR (02_theory.tex, Table 1).
+%     See the verify list: the body walks four of them.
+%
+% (d) ONE WORD FOR ONE PROPERTY: "calibrated", five times. The previous version alternated
+%     honest / honestly / calibrated / departing for the same property in three consecutive
+%     sentences. "Honest" is the manuscript's established term and stays in the body; the
+%     abstract has to survive being paraphrased by an editor who is not a statistician, and
+%     an editor cannot paraphrase four words as one property.
+%
+% (e) "MISSPECIFIED", not "fails" (rule 3, and it is the body's word at 04_results.tex:185).
+%     "DEPARTING TOWARD few channels", not "in a corner of": the departures run out to
+%     N_ch 500, which no electrophysiologist reads as few channels, and stating a direction
+%     rather than a location is this file's own standing policy.
+%
+% (f) NO "ONLY" (rule 4). The previous version had two, and the header note accounted for
+%     one. "No measured recording gives both" is a universal, but bounded by "measured" and
+%     resting on the sign-free ordering result. Residual exposure: "the intermediate rungs
+%     are calibrated where least squares already is" still asserts set inclusion; it is
+%     weaker than "have no domain of their own", which 04_results.tex:120 explicitly warns
+%     against, and it is now the one rule-4 site in the section.
+%
+% (g) SIGNIFICANCE, which the brief lists as open. Sentence 8 names who acts and on what:
+%     an experimenter checks the interval a fit reports before concluding from it. The
+%     previous closer was software availability, which is baseline for eLife rather than a
+%     contribution, and its "so the criteria travel to any recording" was a non sequitur
+%     (the criteria transfer because they are generic score and Fisher identities, not
+%     because bindings exist) around a pronoun whose antecedent was sixty words upstream.
+%     The formulation Luciano wants (a valid likelihood is what lets you separate
+%     inter-experiment variability from stochastic error, and evaluate Bayes factors) is not
+%     in it: 04_results.md rules the first a capability statement and not yet a measurement,
+%     and the evidence half is parked for the next paper.
+%
+%     THREE THINGS THE 2026-07-29a CLOSER GOT WRONG, all found by Luciano reading the one
+%     sentence (2026-07-29). They are worth keeping because each is a trap for the next
+%     rewrite.
+%     (i) SCOPE. macroir implements the boundary-conditioned member, the exact simulator and
+%         a Gauss-Newton fit, and NOT least squares, the open-loop member or the recursive
+%         member on instantaneous samples (07_backmatter.tex:5). The comparisons in this
+%         paper are reproducible only from macro_dr. "R and Python packages carry the
+%         likelihood ... so the check runs on real data" invited the reader to expect the
+%         ladder. Sentence 8 now names the one member that ships.
+%     (ii) THE ANCHOR. The criterion in sentence 3 is stated AT THE TRUE PARAMETERS, which a
+%         real recording does not have; at the fitted optimum the score is zero by
+%         construction. So the score-mean half is a simulation-only test and cannot run on
+%         real data at all. What runs on a real recording is the other half, the
+%         information-matrix equality at the fitted optimum plus residual whiteness, which
+%         is the classical sandwich test. The old sentence slid from one to the other inside
+%         one clause, which is why it did not parse. Sentence 8 now says "check a fit's
+%         interval", which is the sandwich, and does not reuse the word from sentence 3.
+%     (iii) "MAPS" WAS FALSE. The map is produced by the simulation sweep. What a reader gets
+%         from their own recording is a distortion number and a corrected interval, not a
+%         map. The word is gone; the title's "usage map" is no longer echoed here, which is a
+%         real loss and the cheapest thing to buy back if words free up.
+%
+% (h) THE TWO-EXPLANATION FRAME IS COMPRESSED, and this is the one place where this version
+%     overrides Luciano's 2026-07-29 structure. It was 54 words, 25% of the section, and one
+%     of the two explanations was our own conjecture that nobody has published as an
+%     objection, which reads as a straw man in an abstract. Explanation one survives as the
+%     colon clause in sentence 2. Explanation two ("hard to implement") is now implicit in
+%     sentence 8 rather than stated, on the grounds that an unevidenced claim about other
+%     people's effort costs ten words and buys an argument. To restore the original frame,
+%     put back: "Two reasons are plausible: ... ; and they are hard to implement. We address
+%     both." and cut sentence 7 to fit, which is the trade this version declines to make.
+%
+% (i) THE TODO-SIGN MARKER IS RETIRED FROM THIS SECTION. Every claim above is two-sided: a
+%     distortion ratio crossing 1.15, a standard error crossing a factor of two, a score
+%     mean compared with zero. None of them changes if the direction convention flips
+%     (standing blocker 1, README.md). The cost is that the abstract carries no magnitude
+%     for the overconfidence, which one outside read called out as the missing half of the
+%     story: it reports calibration and never precision. That is deliberate here. The
+%     ten-to-fifteen-fold sentence was cut on novelty grounds (moffatt2007estimation showed
+%     it, delcore2025parameter cites it for that), which is a different question from
+%     whether the abstract needs a magnitude, and the two were conflated when it went. If it
+%     comes back, "several times too narrow" (04_results.tex:185) is directional and the
+%     marker comes back with it.
+%
+% 1b. FIVE EDITS FROM A SECOND OUTSIDE ROUND (2026-07-29c). Three models read the 220-word
+%     version. All three had the previous closer, so their software criticism was already
+%     spent; one called that closer "perfect" and another proposed replacing it with exactly
+%     the overclaim removed after reading macroir's api.hpp. What survived, and why each is
+%     worth its words:
+%
+%     "OF EACH ACQUISITION INTERVAL", not "of the". One reader took "conditioned on both
+%     ends" for a forward-backward smoother over the whole record (Rauch-Tung-Striebel), and
+%     then asked whether it was linear or nonlinear. That reading is wrong and expensive: IR
+%     conditions the interval-mean conductance on the two boundary states of ONE acquisition
+%     interval and marginalizes the interior, while remaining prequential in time,
+%     prod_t q_t(ybar_t | ybar_{1:t-1}) (02_theory.tex:102-107). A referee who reads a
+%     smoother will think the likelihood conditions on future observations, which would break
+%     the factorization. "Each" localises it to the interval for one word.
+%
+%     "LEAST-SQUARES ERROR BAR", not "classical". Two separate misreadings, one fix. To a
+%     statistician "classical" means frequentist, in which case the filter's own interval is
+%     classical too and the sentence says no interval is ever trustworthy there; one reader
+%     drew exactly that conclusion and inferred that no method works in the informative
+%     regime. It is false: the map's amplitude boundaries are taken from IR and region 1
+%     delivers the unitary current with an honest interval (04_results.tex:183-185). The
+%     boundary in question is the LSE distortion crossing (figure_6.Rmd, q = lse), so
+%     "least-squares" is what was measured, and naming it makes the division of labour
+%     legible without spending a word.
+%
+%     "AT AN INSTRUMENTAL VARIANCE PROPORTIONAL TO CHANNEL NUMBER". A reader asked, fairly,
+%     whether "noise" meant variance or standard deviation, since the two give different
+%     scalings. The fitted object is log noise LABEL against log N_ch at slope 1.01 and 1.03,
+%     and the label is a noise power, so the answer is variance and the sentence now says so.
+%     This is the same ambiguity that made the deleted sqrt(N_ch) clause uncheckable, closed
+%     from the other side. Note that the same reader independently reconstructed the paper's
+%     own mechanism (instrumental noise flat per trace, gating noise going as N p (1-p)),
+%     which is evidence the sentence now carries what it should.
+%
+%     "THE TEST IS CLASSICAL:" RESTORED, four words cut earlier for budget. Both rounds
+%     produced the question rule 6 exists to pre-empt ("is this criterion new, or an
+%     application of standard score identities?"). Answering it in the abstract costs four
+%     words; not answering it costs a reviewer paragraph. Attribution (Huber 1967, White
+%     1982, Golden, Henley, White & Kashner) stays in Diagnostics.
+%
+%     "AGAINST EXACT SIMULATIONS OF THE PROCESS THEY APPROXIMATE", one word shorter and
+%     easier to parse than "against data simulated exactly from the process they
+%     approximate", which two readers found effortful. The clause that earns "compelling" is
+%     "the process they approximate" and it is untouched; the rewrite one reader proposed
+%     ("exact simulations of the underlying stochastic process") drops it and with it the
+%     whole point.
+%
+%     PAID FOR BY: "which leaves" -> "leaving"; "least squares becomes calibrated once" ->
+%     "least squares itself once", eliding the verb; "before drawing conclusions from it" ->
+%     "before trusting it", which also echoes "trustworthy" in the sentence before. Still 220.
+%
+%     REJECTED. Dropping "seven-rung ladder" for "a hierarchy of approximations": the missing
+%     family was the one defect all three readers of the previous version found, and this
+%     would restore it. Moving the ordering sentence to the significance statement: it is the
+%     only criterion-free result in the section (note 1a). Demoting the score identity to
+%     implicit: the README two-reader rule makes the inference-methods reader a target and
+%     names score and information-matrix equality as the words that buy their attention, and
+%     the same reader who wanted it demoted also wanted the novelty question answered, which
+%     cannot be done without stating what the identities are.
+%
+%     STANDING, not abstract defects. The two-state scope was raised in both rounds and is a
+%     Discussion job: the abstract discloses it in the sentence that reports the sweep, which
+%     is the honest place. The claim that multi-state gating would strain the Gaussian closure
+%     harder is plausible on its face (closure quality tracks N_ch times the per-state
+%     occupancy) and is worth a Discussion sentence with the identifiability literature
+%     already collected. Computational cost was raised as the real reason for two decades of
+%     disuse; the cost is O(k^3) per interval, which is cheap at small k, and the "cheaper"
+%     claim for least squares was cut from the abstract in the previous pass.
+%
+% 1c. THE CLOSER, THIRD PASS (2026-07-29d). Luciano: the point of macroir is NOT that
+%     researchers replicate this paper (macro_dr is public for that) but that they run their
+%     own experiments with it. Two changes follow, plus one refusal.
+%
+%     "FIT THEIR OWN RECORDING AND TEST THE INTERVAL IT REPORTS", not "check a fit's
+%     interval". The old wording offered a diagnostic service, and worse, it implied a reader
+%     could audit whatever fit they already had. They cannot: macroir does not implement least
+%     squares, so the only fit it can check is its own. What it does implement is a
+%     Gauss-Newton fit returning theta, score and Fisher (api.hpp FitResult), which is the
+%     actual offer: do the inference with the calibrated likelihood on your own data.
+%
+%     "(MacroIR)", named once, in the availability sentence only. The precedent is the Comm
+%     Biol abstract, which names it exactly this way: "Rapid patch-clamp kinetics parsed by
+%     Bayesian inference (MacroIR) and supported by atomistic simulations reveal that ...".
+%     One parenthetical aposition, subject of nothing; the expansion (Macroscopic Interval
+%     Recursive) is in the body's first paragraph, not the abstract. That is what rule 5
+%     permits: the rule targets sentences ABOUT MacroIR, not the name. Keeping the three
+%     result sentences on "the boundary-conditioned filter" is what preserves the
+%     characterisation stance, because the argument then runs on the functional description
+%     and the name is only the pointer to the software.
+%     [OPEN, one edit either way] The alternative placement is first mention, in the sweep
+%     sentence, which is where a MacroIR-aware reader looks and which is what Comm Biol does
+%     (first mention of the method). It was NOT chosen here because naming it at the top of
+%     the results makes the three result sentences read as being about a named product, which
+%     is the rule-5 failure mode. If the name is moved, move it, do not duplicate it.
+%
+%     REFUSED: "rmacroir" and "pymacroir". Neither exists. bindings/r/DESCRIPTION declares
+%     "Package: macroir" and bindings/python/pyproject.toml declares name = "macroir". One
+%     name, two languages, which is why the sentence says "for R and Python" and not two
+%     invented package names. If the install strings are wanted in print they belong in the
+%     back matter with the repository URL, not in the abstract.
+%
+%     NOT IN THE ABSTRACT, worth a Discussion or backmatter sentence: the LIBRARY is more
+%     general than the STUDY. The paper sweeps a two-state scheme; macroir's core was checked
+%     against the engine on eight cells covering FOUR kinetic schemes (07_backmatter.tex:5),
+%     and it ships the exact simulator, so a reader can repeat this paper's diagnostic on
+%     their own scheme instead of extrapolating our map to it. That is the real answer to the
+%     two-state objection raised in both outside rounds, and it is currently nowhere in the
+%     manuscript.
+%
+% 1d. FOURTH OUTSIDE ROUND (2026-07-29e, one reader, on the 220-word version). Two edits taken,
+%     217 -> 218 words by wc. The rest was either already litigated above or wrong, and the reasons
+%     are recorded because each is a trap for the next rewrite.
+%
+%     TAKEN, sentence 6: "least squares becomes calibrated once ... , WHICH HAPPENS AT an
+%     instrumental variance ...". This REVERTS the budget trade in 1b ("PAID FOR BY: 'least squares
+%     becomes calibrated once' -> 'least squares itself once', eliding the verb"). Two elisions had
+%     stacked in one sentence, the verb and the attachment of the "at ..." phrase, and the reader
+%     could not tell what the instrumental variance located. +3 words. Do not re-elide.
+%
+%     TAKEN, sentence 8: "is available for", not "ships for". Software-developer register in the one
+%     sentence addressed to an experimenter. +1 word.
+%
+%     REFUSED, sentence 3 ("At the correct parameters, the score should average to zero and its
+%     variability should match the reported Fisher information"). It deletes "The test is classical:",
+%     restored one round earlier precisely because both prior rounds produced the rule-6 question; it
+%     deletes the gloss "the log-likelihood's derivative", which is the brief's paraphrase test; and
+%     "variability should match" is not the identity that was measured. The reader's own
+%     term-density count treats the gloss as an extra concept, which inverts what the gloss is for.
+%
+%     REFUSED, "No recording regime permits both ...". Drops "measured", which is the bound that
+%     keeps sentence 7 off rule 4. Clearer syntax, weaker claim discipline. If the semicolon form is
+%     ever wanted, "measured" stays.
+%
+%     REFUSED, "little used" -> "have seen limited adoption". Same empirical claim, softer register,
+%     and the reader's own objection ("according to whom?") survives the change intact.
+%
+%     THE "TRACKS" NOTE, worth keeping. The reader found "a filter tracks the data" opaque and was
+%     right, but misdiagnosed it: the word carried two clauses' work after the compression from 219
+%     dropped the contrast it depended on ("unlike a least-squares fit, which can be judged from its
+%     residuals"). The proposed fix, "can fit the data", is worse, because "fit" is sentence 1's
+%     least-squares verb. If this is ever repaired, repair it by buying back some of the contrast.
+%
+%     CORROBORATED, not new. (i) "the abstract never says existing analyses report misleading
+%     uncertainty" contradicts the same read's own verdict on sentence 7, which says exactly that;
+%     what is absent is the MAGNITUDE, which is 1(i) and is open on novelty grounds, not on
+%     communication grounds. (ii) "Gaussian closure" is the one unglossed term, which is already the
+%     verify list's first thing to buy; at 218 of 220 the six words do not fit without a cut.
+%     (iii) The two-state scope, now raised in three consecutive rounds. The answer exists and is
+%     nowhere in the manuscript: macroir was checked against the engine on eight cells over four
+%     kinetic schemes and ships the exact simulator, so a reader can repeat the diagnostic on their
+%     own scheme instead of extrapolating this map to it (see the last paragraph of 1c). That is a
+%     Discussion sentence and it is the only real answer to the objection.
+%
+% 2. PROVENANCE, keyed by the words the sentence opens with.
+%
+% "Kinetic schemes are usually fitted" -> 02_theory.tex:89-95 (LSE fits the deterministic
+%   mean current and assigns one constant variance to every residual, so the temporal
+%   structure the closures approximate is absent from it; it is off the lattice and is the
+%   bottom rung of the cost ladder); 01_introduction.tex:34 (the classical arm is least
+%   squares on the deterministic mean with the unitary current held fixed).
+%
+% "Likelihoods that use them" -> celentano2004use, milescu2005maximum,
+%   moffatt2007estimation for the two decades; munch2022bayesian for "including Bayesian
+%   recursive filters", which is the position against a published Bayesian Kalman filter for
+%   this problem in this journal (decisions.md:44-45). Rule 7 holds: the sentence says these
+%   likelihoods are little used, not that the fluctuations or their temporal correlation
+%   were unused.
+%
+% "At the true parameters" -> 03_diagnostics.tex; the diagnostic is classical (Huber 1967,
+%   White 1982, Golden, Henley, White & Kashner) and the sentence states the identities
+%   rather than claiming them (rule 6). The four words "The test is classical:" were cut for
+%   budget; if a referee is expected to bite, they go back in and sentence 8 loses "and maps
+%   which parameters to trust".
+%
+% "We measure bias and distortion" -> 02_theory.tex Table 1 (the seven rungs and the two
+%   axes, window and recursion); 06_methods.tex for the sweep and the exact simulator;
+%   figures/data/{1c2ae6f,87889e6,0ffbda7}.
+%
+% "The boundary-conditioned filter" -> decisions/recompute/d4_distortion_envelopes.py over
+%   1c2ae6f + 87889e6 + 0ffbda7 (1977 of 2100 points within 15%, i.e. 94.1%; the 123
+%   departures sit at N_ch <= 500 and noise <= 0.5, 45 of them at N_ch 10, none above
+%   N_ch 500 and none above noise 0.5, and by interval they favour the short end, 28/29/27 at
+%   0.01/0.02/0.05 against 3 at 0.5, so "toward few channels and low noise" and not "at long
+%   intervals", where the single largest excursion sits but the mass does not). The region-0
+%   attribution to the Gaussian closure is 04_results.tex:185 and its boundary is the one
+%   with negative slope, -0.56 in dlog10(noise)/dlog10(N_ch).
+%
+% "The intermediate rungs" -> domain scan over the same three directories (R calibrated
+%   where IR is not at 3 of 812 shared cell-parameter points, MR 2 of 336, NR 0 of 728,
+%   NMR 0 of 336, and all five of those exceptions at N_ch 10-20 where IR is the
+%   conservative one); R calibrated at 62 points against 134 failing at noise 0.1 and
+%   overwhelmingly calibrated above noise 1000. For the least-squares crossing:
+%   figures/paper_both/figure_6.html (crossing table and fitted log-log slopes 1.01 and 1.03
+%   at Delta*k_off = 0.1), 04_results.tex:187-189 and 05_discussion.tex:38.
+%
+% "No measured recording" -> 01_introduction.tex:39 and 05_discussion.tex:38, both from
+%   figures/paper_both/figure_6.html: there is no region of the measured plane in which the
+%   fluctuations still carry information about the unitary current or the channel number and
+%   the classical error bar is simultaneously trustworthy, the two boundaries separated by
+%   one to three decades of instrumental noise everywhere they were measured. The abstract
+%   claims the unitary current alone, which is the safer subset.
+%
+% "The boundary-conditioned filter ships" -> 07_backmatter.tex:5-6 and the repository at
+%   ~/Code/macroir (Luciano, 2026-07-29): bindings/r and bindings/python over one
+%   self-contained C++ core, MIT. Read against the source, api.hpp:435 LogLikResult returns
+%   logL, the TOTAL score (n_par) and the TOTAL Gaussian Fisher (n_par x n_par) for a
+%   recording, and api.hpp:444 EvolutionTable returns per-step y, y_mean, y_var, chi2, r_std,
+%   trust_coefficient and logL. What that supports, exactly:
+%     - RESIDUAL WHITENESS from a single recording: yes, from EvolutionTable.r_std. This is
+%       test 1 of machinery.md section 2 and the sharpest discriminator on record (score ACF
+%       0.005 for IR against 0.78 for the non-recursive members).
+%     - THE SCORE-COVARIANCE COMPARISON: not from one recording, because there is no
+%       per-step score to build the outer-product (BHHH) covariance from. It works with an
+%       ENSEMBLE of repeated sweeps, one total score each, which is the ordinary
+%       electrophysiology setting and is what sentence 8 relies on.
+%   Sentence 8 is therefore true as written and deliberately does not name the mechanism.
+%   ONE SMALL CHANGE WOULD MAKE IT TRUE FROM A SINGLE RECORDING: add a per-step score column
+%   to EvolutionTable, which macro_dr already dumps (the dlik files carry per-interval score
+%   and per-interval Fisher). That is the cheapest way to strengthen this sentence and it is
+%   a library change, not a paper change.
+%
+% 3. DELIBERATELY OUT.
+%   - Any channel-number threshold. The data support none. If a number is ever wanted it is
+%     the measured reachability floor (N_ch below 17 for the channel count, below 52 for the
+%     opening rate, figure_6.html), never "about 100".
+%   - The ten-to-fifteen-fold overconfidence result. See 1(i).
+%   - The word "map" as a noun. It appears once as a verb in sentence 8, which echoes the
+%     title in elife_paper.tex ("A validity criterion and a usage map...") at no word cost.
+%     The 219-word version never touched the title's own promise.
+%   - The reachability half of the map as its own sentence. It is carried inside sentence 7,
+%     which is the only place the two questions of Figure 6 meet in the abstract.
+%
+% 4. VERIFY BEFORE SUBMISSION.
+%   - "seven-rung": the body walks four (LSE, NR, R, IR) and the supplement carries the full
+%     lattice of six plus LSE. A referee who counts will look for the other three. Confirm
+%     the supplement is cited near the ladder in Theory so the count is discharged.
+%   - "The intermediate rungs are calibrated where least squares already is": the cited scan
+%     compares R, MR, NR and NMR against IR, not against LSE, and does not include VR at
+%     all. Either extend the scan to VR and to a point-by-point LSE comparison, or narrow
+%     the sentence to what was measured. This is the weakest evidentiary link in the section.
+%   - "No measured recording": the ordering is measured at Delta*k_off = 0.1 with ribbons
+%     swept over 0.01 to 1. Confirm it holds across the ribbon, because sentence 4 claims a
+%     three-axis sweep and sentence 7 says "measured".
+%   - Coverage is not a rectangle (04_results.tex:120: IR spans eleven channel counts from 5
+%     to 1e4 across eleven noise levels, not on a full rectangle, and the others cover less;
+%     the macro_R battery has only N_ch 100/1000/10000). "Over" in sentence 4 must not be
+%     read as factorial; check that Methods says so plainly.
+%   - n_sims uniformity. The LSE arm is at 1000 against 1e4 for the likelihood arm (standing
+%     blocker 3). Every number quoted above must come from a uniform n_sims or say which.
+%   - "an experimenter can check a fit's interval": see the provenance note above. The
+%     single-recording route is residual whiteness; the score-covariance route needs
+%     replicate sweeps. Neither is named in the abstract, which is correct at this length,
+%     but Diagnostics must state which of the three tests survive without the true
+%     parameters, because a referee who reads sentence 3 and then sentence 8 will ask.
+%     Also: the cross-language check behind "in R and Python" was run once, on one cell
+%     (07_backmatter.tex:6, tools/cross_language_check.py). The backmatter is written to that
+%     evidence and carries a NOTE saying not to upgrade the wording; the abstract must not
+%     upgrade it either.
+%   - "the Gaussian closure" is still unglossed, the one term in the section that fails the
+%     paraphrase test, and it is now the FIRST thing to buy if words free up. Two independent
+%     readers tripped on it from opposite directions: one asked which algorithm the filter is
+%     (Kalman? unscented? linear or nonlinear?) and observed that a Gaussian smoother on a
+%     bounded occupancy is misspecified a priori, which is the paper's own point and is what
+%     "closure" says to anyone who knows the phrase; the other listed it as jargon. The
+%     answer, which Theory has and the abstract does not, is that the approximation is a
+%     moment closure on the occupancy distribution and not a linear-Gaussian state-space
+%     model. About six words. If the budget moves to the measured eLife median for this
+%     subfield (210, with 39% of articles over 200), spend them here.
+%
+% 5. FRAME AND HISTORY.
+%
+% What this abstract must do, the constraints that bind it, what is open and the verify
+% list: sections/00_abstract.md, beside this file. eLife wants the biological system in the
+% title or the abstract; it is in both.
+%
+% THE FRAME (Luciano, 2026-07-29), which the 219-word version was built on: the recursive
+% family has been available for two decades and is not used, TWO EXPLANATIONS ARE PLAUSIBLE
+% (not objections: nobody published them as such), and the paper removes both. Explanation
+% one is answered by the validity criteria, whose answer IS the usage map. Explanation two is
+% answered by the packages. See 1(h) for what this version does with it.
+%
+% "for two decades" is load-bearing and must not become "MacroIR is not used": MacroIR is
+% from 2025 and is simply too new to have uptake. What has had twenty years and no uptake is
+% the family: celentano2004use, milescu2005maximum, moffatt2007estimation.
+%
+% PREVIOUS VERSION, 219 words, 2026-07-29a, kept verbatim for rewind:
+%
+% Macroscopic ion-channel recordings carry stochastic fluctuations that the usual
+% least-squares analysis discards. Likelihoods that use them have been available for two
+% decades, including Bayesian recursive filters, and are rarely applied. Two reasons are
+% plausible: unlike a least-squares fit, which can be judged from its residuals, a recursive
+% filter tracks the data whether or not the uncertainty it reports is right; and they are
+% hard to implement. We address both. At the true parameters a correct likelihood's score
+% averages to zero and the covariance of that score equals the Fisher information it
+% reports; the two departures measure bias and distortion. We measure both for a minimal
+% kinetic scheme, swept over channel number, instrumental noise and acquisition interval,
+% against data simulated exactly from the process it approximates. Only the likelihood
+% conditioned on both ends of the acquisition interval reports honestly across the plane,
+% departing in a corner of few channels and low noise where the Gaussian closure itself
+% fails. The intermediate members have no domain of their own, being calibrated only where
+% least squares already is; and least squares is honest, and cheaper, exactly where
+% instrumental noise exceeds gating noise, below a signal-to-noise ratio of the square root
+% of the channel number. R and Python packages return it with its score and Fisher
+% information, so the criteria travel to any recording.
+%
+% EARLIER DRAFT, 2026-07-28, kept because it holds two things the live version does not.
+% The first is the general-audience opening: it enters at the level of "time-resolved
+% biological variables" rather than at the level of fitting kinetic schemes. Measured
+% against 41 recent eLife research articles, eLife's own first sentences enter at field
+% level (median 19 words, undefined acronyms in line one), so that is above the journal's
+% norm rather than required by it. The second is the ordering sentence, which the 219-word
+% version dropped and this version restores.
 %
 % S1: Variables biologicas resueltas en el tiempo suelen
 %
-% Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on the deterministic mean, which discards the fluctuations. Likelihoods that use the fluctuations exist, including Bayesian recursive filters, and have almost no uptake, because whether such a filter reports its own uncertainty correctly was never characterised. Here we test a ladder of macroscopic likelihoods, from least squares to a filter conditioned on both ends of the acquisition interval, against data simulated exactly from the process they approximate. At the true parameters the score must average to zero and its covariance must equal the Fisher information reported; the mismatch is measurable. A likelihood that models the gating variance but carries no recursion is calibrated interval by interval and under-reports parameter uncertainty ten to fifteen fold once a record accumulates; a sandwich correction restores nominal coverage.
-% The boundary-conditioned filter reports honestly at 94\% of the measured points, departing toward few channels.
-% The region where the fluctuations still determine the amplitude parameters and the region where the classical error bar is honest never overlap, lying one to three decades of noise apart.
-% This supplies a test of whether a macroscopic-current filter tells the truth about its own uncertainty, and a map of where it does not.
-% ---------------------------------------------------------------------------------------
-
-
-% IMPACT STATEMENT (eLife submission-form field, not part of the PDF). One sentence,
+% Kinetic schemes are usually fitted to macroscopic ion-channel currents by least squares on
+% the deterministic mean, which discards the fluctuations. Likelihoods that use the
+% fluctuations exist, including Bayesian recursive filters, and have almost no uptake,
+% because whether such a filter reports its own uncertainty correctly was never
+% characterised. Here we test a ladder of macroscopic likelihoods, from least squares to a
+% filter conditioned on both ends of the acquisition interval, against data simulated
+% exactly from the process they approximate. At the true parameters the score must average
+% to zero and its covariance must equal the Fisher information reported; the mismatch is
+% measurable. A likelihood that models the gating variance but carries no recursion is
+% calibrated interval by interval and under-reports parameter uncertainty ten to fifteen
+% fold once a record accumulates; a sandwich correction restores nominal coverage.
+% The boundary-conditioned filter reports honestly at 94\% of the measured points, departing
+% toward few channels.
+% The region where the fluctuations still determine the amplitude parameters and the region
+% where the classical error bar is honest never overlap, lying one to three decades of noise
+% apart.
+% This supplies a test of whether a macroscopic-current filter tells the truth about its own
+% uncertainty, and a map of where it does not.
+%
+% 6. IMPACT STATEMENT (eLife submission-form field, not part of the PDF). One sentence,
 % 15-30 words, third person, no "We show", no threshold, no algorithm promotion. 30 words:
 %
 % Testing macroscopic ion-channel likelihoods against exactly simulated data measures how

@@ -58,7 +58,7 @@ simulation_file = write_csv(experiment= experiment, simulations=simulations,
    path= "figures/data/figure_2_simulation__0419_1")
 
 
-algorithm_axis = axis(name= "algorithm", labels= ["macro_NR", "macro_R","macro_MNR", "macro_MR", "macro_IR", "macro_IRT"])
+algorithm_axis = axis(name= "algorithm", labels= ["macro_NR", "macro_R","macro_INR", "macro_MR", "macro_IR", "macro_IRT"])
 
 algo_recursive_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,true,false,true,true,true])
 algo_taylor_approximation=indexed_bool_by(axis= algorithm_axis, values=[false,false,false,false,false,true])

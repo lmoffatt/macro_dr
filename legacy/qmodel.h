@@ -4411,6 +4411,29 @@ class Macro_DMR {
 
         auto r_y_var = build<y_var>(e);
         r_y_var() = r_y_var() + N * gSg;
+        if constexpr (variance::value && averaging::value > 0) {
+            // Within-interval per-channel conductance variance. Restored here: the
+            // split of the algo-state computation into recursive and non-recursive
+            // copies dropped this term from the non-recursive one, so INR reported
+            // e + N*gSg alone while its recursive sibling MR added N*ms. Both the
+            // pre-split family (below, under #if 0) and the submitted Comm Biol
+            // source add it gated on `variance` alone: recursion governs the state
+            // update, not the predicted variance.
+            //
+            // Always the TOTAL form gvar_i = gsqr_i - gmean_i^2. With no gain there
+            // is no boundary cross-covariance to absorb Var_j[gmean_ij|i], which is
+            // also why (recursive=false, av=1) and (recursive=false, av=2) are the
+            // same algorithm: the end state is unobservable without an update, so
+            // gmean_ij can only enter through its row marginal gmean_i.
+            auto& t_gsqr_i = get<gsqr_i>(t_Qdt);
+            auto gvar_i_total = t_gsqr_i() - elemMult(t_gmean_i, t_gmean_i);
+            auto ms = getvalue(p_P_mean() * gvar_i_total);
+            if (std::isfinite(primitive(ms)) && primitive(ms) >= 0) {
+                r_y_var() = r_y_var() + N * ms;
+            } else {
+                return error_message("invalid channel noise", ms);
+            }
+        }
         using std::sqrt;
         auto r_r_std= build<r_std>(dy/sqrt(r_y_var()));
         auto chi = dy / r_y_var();
@@ -7639,7 +7662,7 @@ class Macro_DMR {
                 // The intra-interval Kalman snapshots (P_mean_t2_y*, P_Cov_t*, d_gS,
                 // d_GS, ...) are left EMPTY on purpose: the LSE is non-recursive, so
                 // figure 1 should show it as "no update (open loop)", exactly as it
-                // already marks NR and MNR. The open-loop prior mean goes into
+                // already marks NR and INR. The open-loop prior mean goes into
                 // P_mean_t20_y1 because that is the slot Algo_State_Dynamic::get_P_mean()
                 // falls back to when the conditioned ones are empty.
                 MacroState out{};
@@ -8689,7 +8712,7 @@ Maybe_error<dMacro_State_Ev_gradient_all> nonlinearsqr_dlogLikelihoodPredictions
 // MacroState = Macro_State_Ev_diagnostic, which switches on the driver's value-path
 // Evolution fill: per interval mu_t, y_var == sigma_hat^2 (FLAT band), r_std, Chi2 and
 // the open-loop prior mean. The intra-interval Kalman snapshots stay empty — the LSE is
-// non-recursive, so figure 1 shows it as "no update (open loop)" like NR and MNR.
+// non-recursive, so figure 1 shows it as "no update (open loop)" like NR and INR.
 // Takes Parameters_values (the diagnostics visit passes par.to_value()).
 template <class adaptive, class recursive, class averaging, class variance,
           class variance_correction, class family, class qdt_method, class variance_form,
